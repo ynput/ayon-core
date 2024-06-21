@@ -4,6 +4,7 @@ import inspect
 import traceback
 import collections
 from functools import partial
+from typing import Optional, Dict, List, Union, Any, Iterable, Literal
 
 import arrow
 import pyblish.plugin
@@ -13,11 +14,23 @@ from ayon_core.pipeline import (
     KnownPublishError,
     OptionalPyblishPluginMixin,
 )
+from ayon_core.pipeline.plugin_discover import DiscoverResult
 from ayon_core.pipeline.publish import get_publish_instance_label
+from ayon_core.tools.publisher.abstract import AbstractPublisherController
 
 PUBLISH_EVENT_SOURCE = "publisher.publish.model"
 # Define constant for plugin orders offset
 PLUGIN_ORDER_OFFSET = 0.5
+
+ActionFilterType = Literal[
+    "all",
+    "notProcessed",
+    "processed",
+    "failed",
+    "warning",
+    "failedOrWarning",
+    "succeeded"
+]
 
 
 class PublishReportMaker:
@@ -28,17 +41,17 @@ class PublishReportMaker:
 
     def __init__(
         self,
-        creator_discover_result=None,
-        convertor_discover_result=None,
-        publish_discover_result=None,
+        creator_discover_result: Optional[DiscoverResult] = None,
+        convertor_discover_result: Optional[DiscoverResult] = None,
+        publish_discover_result: Optional[DiscoverResult] = None,
     ):
-        self._create_discover_result = None
-        self._convert_discover_result = None
-        self._publish_discover_result = None
+        self._create_discover_result: Union[DiscoverResult, None] = None
+        self._convert_discover_result: Union[DiscoverResult, None] = None
+        self._publish_discover_result: Union[DiscoverResult, None] = None
 
-        self._all_instances_by_id = {}
-        self._plugin_data_by_id = {}
-        self._current_plugin_id = None
+        self._all_instances_by_id: Dict[str, pyblish.api.Instance] = {}
+        self._plugin_data_by_id: Dict[str, Any] = {}
+        self._current_plugin_id: Union[str, None] = None
 
         self.reset(
             creator_discover_result,
@@ -48,9 +61,9 @@ class PublishReportMaker:
 
     def reset(
         self,
-        creator_discover_result,
-        convertor_discover_result,
-        publish_discover_result,
+        creator_discover_result: Union[DiscoverResult, None],
+        convertor_discover_result: Union[DiscoverResult, None],
+        publish_discover_result: Union[DiscoverResult, None],
     ):
         """Reset report and clear all data."""
 
@@ -69,23 +82,23 @@ class PublishReportMaker:
         for plugin in publish_plugins:
             self._add_plugin_data_item(plugin)
 
-    def add_plugin_iter(self, plugin_id, context):
+    def add_plugin_iter(self, plugin_id: str, context: pyblish.api.Context):
         """Add report about single iteration of plugin."""
         for instance in context:
             self._all_instances_by_id[instance.id] = instance
 
         self._current_plugin_id = plugin_id
 
-    def set_plugin_passed(self, plugin_id):
+    def set_plugin_passed(self, plugin_id: str):
         plugin_data = self._plugin_data_by_id[plugin_id]
         plugin_data["passed"] = True
 
-    def set_plugin_skipped(self, plugin_id):
+    def set_plugin_skipped(self, plugin_id: str):
         """Set that current plugin has been skipped."""
         plugin_data = self._plugin_data_by_id[plugin_id]
         plugin_data["skipped"] = True
 
-    def add_result(self, plugin_id, result):
+    def add_result(self, plugin_id: str, result: Dict[str, Any]):
         """Handle result of one plugin and it's instance."""
 
         instance = result["instance"]
@@ -99,7 +112,9 @@ class PublishReportMaker:
             "process_time": result["duration"]
         })
 
-    def add_action_result(self, action, result):
+    def add_action_result(
+        self, action: pyblish.api.Action, result: Dict[str, Any]
+    ):
         """Add result of single action."""
         plugin = result["plugin"]
 
@@ -115,7 +130,9 @@ class PublishReportMaker:
             "logs": log_items
         })
 
-    def get_report(self, publish_context):
+    def get_report(
+        self, publish_context: pyblish.api.Context
+    ) -> Dict[str, Any]:
         """Report data with all details of current state."""
 
         now = arrow.utcnow().to("local")
@@ -167,7 +184,7 @@ class PublishReportMaker:
             "report_version": "1.0.1",
         }
 
-    def _add_plugin_data_item(self, plugin):
+    def _add_plugin_data_item(self, plugin: pyblish.api.Plugin):
         if plugin.id in self._plugin_data_by_id:
             # A plugin would be processed more than once. What can cause it:
             #   - there is a bug in controller
@@ -179,7 +196,9 @@ class PublishReportMaker:
         plugin_data_item = self._create_plugin_data_item(plugin)
         self._plugin_data_by_id[plugin.id] = plugin_data_item
 
-    def _create_plugin_data_item(self, plugin):
+    def _create_plugin_data_item(
+        self, plugin: pyblish.api.Plugin
+    ) -> Dict[str, Any]:
         label = None
         if hasattr(plugin, "label"):
             label = plugin.label
@@ -196,7 +215,9 @@ class PublishReportMaker:
             "passed": False
         }
 
-    def _extract_context_data(self, context):
+    def _extract_context_data(
+        self, context: pyblish.api.Context
+    ) -> Dict[str, Any]:
         context_label = "Context"
         if context is not None:
             context_label = context.data.get("label")
@@ -204,7 +225,9 @@ class PublishReportMaker:
             "label": context_label
         }
 
-    def _extract_instance_data(self, instance, exists):
+    def _extract_instance_data(
+        self, instance: pyblish.api.Instance, exists: bool
+    ) -> Dict[str, Any]:
         return {
             "name": instance.data.get("name"),
             "label": get_publish_instance_label(instance),
@@ -216,7 +239,9 @@ class PublishReportMaker:
             "instance_id": instance.data.get("instance_id"),
         }
 
-    def _extract_instance_log_items(self, result):
+    def _extract_instance_log_items(
+        self, result: Dict[str, Any]
+    ) -> List[Dict[str, Any]]:
         instance = result["instance"]
         instance_id = None
         if instance:
@@ -284,6 +309,68 @@ class PublishReportMaker:
         return output
 
 
+class PublishPluginActionItem:
+    """Representation of publish plugin action.
+
+    Data driven object which is used as proxy for controller and UI.
+
+    Args:
+        action_id (str): Action id.
+        plugin_id (str): Plugin id.
+        active (bool): Action is active.
+        on_filter (ActionFilterType): Actions have 'on' attribte which define when can be
+            action triggered (e.g. 'all', 'failed', ...).
+        label (str): Action's label.
+        icon (Union[str, None]) Action's icon.
+    """
+
+    def __init__(
+        self,
+        action_id: str,
+        plugin_id: str,
+        active: bool,
+        on_filter: ActionFilterType,
+        label: str,
+        icon: Union[str, None],
+    ):
+        self.action_id: str = action_id
+        self.plugin_id: str = plugin_id
+        self.active: bool = active
+        self.on_filter: ActionFilterType = on_filter
+        self.label: str = label
+        self.icon: Union[str, None] = icon
+
+    def to_data(self) -> Dict[str, Any]:
+        """Serialize object to dictionary.
+
+        Returns:
+            Dict[str, Union[str,bool,None]]: Serialized object.
+        """
+
+        return {
+            "action_id": self.action_id,
+            "plugin_id": self.plugin_id,
+            "active": self.active,
+            "on_filter": self.on_filter,
+            "label": self.label,
+            "icon": self.icon
+        }
+
+    @classmethod
+    def from_data(cls, data: Dict[str, Any]) -> "PublishPluginActionItem":
+        """Create object from data.
+
+        Args:
+            data (Dict[str, Union[str,bool,None]]): Data used to recreate
+                object.
+
+        Returns:
+            PublishPluginActionItem: Object created using data.
+        """
+
+        return cls(**data)
+
+
 class PublishPluginsProxy:
     """Wrapper around publish plugin.
 
@@ -302,10 +389,10 @@ class PublishPluginsProxy:
             processed.
     """
 
-    def __init__(self, plugins):
-        plugins_by_id = {}
-        actions_by_plugin_id = {}
-        action_ids_by_plugin_id = {}
+    def __init__(self, plugins: List[pyblish.api.Plugin]):
+        plugins_by_id: Dict[str, pyblish.api.Plugin] = {}
+        actions_by_plugin_id: Dict[str, Dict[str, pyblish.api.Action]] = {}
+        action_ids_by_plugin_id: Dict[str, List[str]] = {}
         for plugin in plugins:
             plugin_id = plugin.id
             plugins_by_id[plugin_id] = plugin
@@ -321,17 +408,23 @@ class PublishPluginsProxy:
                 action_ids.append(action_id)
                 actions_by_id[action_id] = action
 
-        self._plugins_by_id = plugins_by_id
-        self._actions_by_plugin_id = actions_by_plugin_id
-        self._action_ids_by_plugin_id = action_ids_by_plugin_id
+        self._plugins_by_id: Dict[str, pyblish.api.Plugin] = plugins_by_id
+        self._actions_by_plugin_id: Dict[
+            str, Dict[str, pyblish.api.Action]
+        ] = actions_by_plugin_id
+        self._action_ids_by_plugin_id: Dict[str, List[str]] = (
+            action_ids_by_plugin_id
+        )
 
-    def get_action(self, plugin_id, action_id):
+    def get_action(
+        self, plugin_id: str, action_id: str
+    ) -> pyblish.api.Action:
         return self._actions_by_plugin_id[plugin_id][action_id]
 
-    def get_plugin(self, plugin_id):
+    def get_plugin(self, plugin_id: str) -> pyblish.api.Plugin:
         return self._plugins_by_id[plugin_id]
 
-    def get_plugin_id(self, plugin):
+    def get_plugin_id(self, plugin: pyblish.api.Plugin) -> str:
         """Get id of plugin based on plugin object.
 
         It's used for validation errors report.
@@ -346,7 +439,9 @@ class PublishPluginsProxy:
 
         return plugin.id
 
-    def get_plugin_action_items(self, plugin_id):
+    def get_plugin_action_items(
+        self, plugin_id: str
+    ) -> List[PublishPluginActionItem]:
         """Get plugin action items for plugin by its id.
 
         Args:
@@ -364,7 +459,9 @@ class PublishPluginsProxy:
             for action_id in self._action_ids_by_plugin_id[plugin_id]
         ]
 
-    def _create_action_item(self, action, plugin_id):
+    def _create_action_item(
+        self, action: pyblish.api.Action, plugin_id: str
+    ) -> PublishPluginActionItem:
         label = action.label or action.__name__
         icon = getattr(action, "icon", None)
         return PublishPluginActionItem(
@@ -377,60 +474,6 @@ class PublishPluginsProxy:
         )
 
 
-class PublishPluginActionItem:
-    """Representation of publish plugin action.
-
-    Data driven object which is used as proxy for controller and UI.
-
-    Args:
-        action_id (str): Action id.
-        plugin_id (str): Plugin id.
-        active (bool): Action is active.
-        on_filter (str): Actions have 'on' attribte which define when can be
-            action triggered (e.g. 'all', 'failed', ...).
-        label (str): Action's label.
-        icon (Union[str, None]) Action's icon.
-    """
-
-    def __init__(self, action_id, plugin_id, active, on_filter, label, icon):
-        self.action_id = action_id
-        self.plugin_id = plugin_id
-        self.active = active
-        self.on_filter = on_filter
-        self.label = label
-        self.icon = icon
-
-    def to_data(self):
-        """Serialize object to dictionary.
-
-        Returns:
-            Dict[str, Union[str,bool,None]]: Serialized object.
-        """
-
-        return {
-            "action_id": self.action_id,
-            "plugin_id": self.plugin_id,
-            "active": self.active,
-            "on_filter": self.on_filter,
-            "label": self.label,
-            "icon": self.icon
-        }
-
-    @classmethod
-    def from_data(cls, data):
-        """Create object from data.
-
-        Args:
-            data (Dict[str, Union[str,bool,None]]): Data used to recreate
-                object.
-
-        Returns:
-            PublishPluginActionItem: Object created using data.
-        """
-
-        return cls(**data)
-
-
 class ValidationErrorItem:
     """Data driven validation error item.
 
@@ -441,22 +484,26 @@ class ValidationErrorItem:
     and UI connection.
 
     Args:
-        instance_id (str): Id of pyblish instance to which is validation error
-            connected.
+        instance_id (Union[str, None]): Pyblish instance id to which is
+            validation error connected.
         instance_label (str): Prepared instance label.
-        plugin_id (str): Id of pyblish Plugin which triggered the validation
+        plugin_id (str): Pyblish plugin id which triggered the validation
             error. Id is generated using 'PublishPluginsProxy'.
-    """
+        context_validation (bool): Error happened on context.
+        title (str): Error title.
+        descripttion (str): Error description.
+        detail (str): Error detail.
 
+    """
     def __init__(
         self,
-        instance_id,
-        instance_label,
-        plugin_id,
-        context_validation,
-        title,
-        description,
-        detail
+        instance_id: Union[str, None],
+        instance_label: Union[str, None],
+        plugin_id: str,
+        context_validation: bool,
+        title: str,
+        description: str,
+        detail: str
     ):
         self.instance_id = instance_id
         self.instance_label = instance_label
@@ -466,7 +513,7 @@ class ValidationErrorItem:
         self.description = description
         self.detail = detail
 
-    def to_data(self):
+    def to_data(self) -> Dict[str, Any]:
         """Serialize object to dictionary.
 
         Returns:
@@ -484,7 +531,12 @@ class ValidationErrorItem:
         }
 
     @classmethod
-    def from_result(cls, plugin_id, error, instance):
+    def from_result(
+        cls,
+        plugin_id: str,
+        error: PublishValidationError,
+        instance: Union[pyblish.api.Instance, None]
+    ):
         """Create new object based on resukt from controller.
 
         Returns:
@@ -519,19 +571,19 @@ class PublishValidationErrorsReport:
 
     Args:
         error_items (List[ValidationErrorItem]): List of validation errors.
-        plugin_action_items (Dict[str, PublishPluginActionItem]): Action items
-            by plugin id.
-    """
+        plugin_action_items (Dict[str, List[PublishPluginActionItem]]): Action
+            items by plugin id.
 
+    """
     def __init__(self, error_items, plugin_action_items):
         self._error_items = error_items
         self._plugin_action_items = plugin_action_items
 
-    def __iter__(self):
+    def __iter__(self) -> Iterable[ValidationErrorItem]:
         for item in self._error_items:
             yield item
 
-    def group_items_by_title(self):
+    def group_items_by_title(self) -> List[Dict[str, Any]]:
         """Group errors by plugin and their titles.
 
         Items are grouped by plugin and title -> same title from different
@@ -599,7 +651,9 @@ class PublishValidationErrorsReport:
         }
 
     @classmethod
-    def from_data(cls, data):
+    def from_data(
+        cls, data: Dict[str, Any]
+    ) -> "PublishValidationErrorsReport":
         """Recreate object from data.
 
         Args:
@@ -614,10 +668,12 @@ class PublishValidationErrorsReport:
             ValidationErrorItem.from_data(error_item)
             for error_item in data["error_items"]
         ]
-        plugin_action_items = [
-            PublishPluginActionItem.from_data(action_item)
-            for action_item in data["plugin_action_items"]
-        ]
+        plugin_action_items = {}
+        for action_item in data["plugin_action_items"]:
+            item = PublishPluginActionItem.from_data(action_item)
+            action_items = plugin_action_items.setdefault(item.plugin_id, [])
+            action_items.append(item)
+
         return cls(error_items, plugin_action_items)
 
 
@@ -625,20 +681,22 @@ class PublishValidationErrors:
     """Object to keep track about validation errors by plugin."""
 
     def __init__(self):
-        self._plugins_proxy = None
-        self._error_items = []
-        self._plugin_action_items = {}
+        self._plugins_proxy: Union[PublishPluginsProxy, None] = None
+        self._error_items: List[ValidationErrorItem] = []
+        self._plugin_action_items: Dict[
+            str, List[PublishPluginActionItem]
+        ] = {}
 
     def __bool__(self):
         return self.has_errors
 
     @property
-    def has_errors(self):
+    def has_errors(self) -> bool:
         """At least one error was added."""
 
         return bool(self._error_items)
 
-    def reset(self, plugins_proxy):
+    def reset(self, plugins_proxy: PublishPluginsProxy):
         """Reset object to default state.
 
         Args:
@@ -650,7 +708,7 @@ class PublishValidationErrors:
         self._error_items = []
         self._plugin_action_items = {}
 
-    def create_report(self):
+    def create_report(self) -> PublishValidationErrorsReport:
         """Create report based on currently existing errors.
 
         Returns:
@@ -662,12 +720,17 @@ class PublishValidationErrors:
             self._error_items, self._plugin_action_items
         )
 
-    def add_error(self, plugin, error, instance):
+    def add_error(
+        self,
+        plugin: pyblish.api.Plugin,
+        error: PublishValidationError,
+        instance: Union[pyblish.api.Instance, None]
+    ):
         """Add error from pyblish result.
 
         Args:
             plugin (pyblish.api.Plugin): Plugin which triggered error.
-            error (ValidationException): Validation error.
+            error (PublishValidationError): Validation error.
             instance (Union[pyblish.api.Instance, None]): Instance on which was
                 error raised or None if was raised on context.
         """
@@ -693,18 +756,21 @@ class PublishValidationErrors:
         self._plugin_action_items[plugin_id] = plugin_actions
 
 
-def collect_families_from_instances(instances, only_active=False):
+def collect_families_from_instances(
+    instances: List[pyblish.api.Instance],
+    only_active: Optional[bool] = False
+) -> List[str]:
     """Collect all families for passed publish instances.
 
     Args:
-        instances(list<pyblish.api.Instance>): List of publish instances from
+        instances (list[pyblish.api.Instance]): List of publish instances from
             which are families collected.
-        only_active(bool): Return families only for active instances.
+        only_active (bool): Return families only for active instances.
 
     Returns:
         list[str]: Families available on instances.
-    """
 
+    """
     all_families = set()
     for instance in instances:
         if only_active:
@@ -722,51 +788,55 @@ def collect_families_from_instances(instances, only_active=False):
 
 
 class PublishModel:
-    def __init__(self, controller):
+    def __init__(self, controller: AbstractPublisherController):
         self._controller = controller
 
         # Publishing should stop at validation stage
-        self._publish_up_validation = False
-        self._publish_comment_is_set = False
+        self._publish_up_validation: bool = False
+        self._publish_comment_is_set: bool = False
 
         # Any other exception that happened during publishing
-        self._publish_error_msg = None
+        self._publish_error_msg: Union[str, None] = None
         # Publishing is in progress
-        self._publish_is_running = False
+        self._publish_is_running: bool = False
         # Publishing is over validation order
-        self._publish_has_validated = False
+        self._publish_has_validated: bool = False
 
-        self._publish_has_validation_errors = False
-        self._publish_has_crashed = False
+        self._publish_has_validation_errors: bool = False
+        self._publish_has_crashed: bool = False
         # All publish plugins are processed
-        self._publish_has_started = False
-        self._publish_has_finished = False
-        self._publish_max_progress = 0
-        self._publish_progress = 0
+        self._publish_has_started: bool = False
+        self._publish_has_finished: bool = False
+        self._publish_max_progress: int = 0
+        self._publish_progress: int = 0
 
-        self._publish_plugins = []
-        self._publish_plugins_proxy = None
+        self._publish_plugins: List[pyblish.api.Plugin] = []
+        self._publish_plugins_proxy: PublishPluginsProxy = (
+            PublishPluginsProxy([])
+        )
 
         # pyblish.api.Context
         self._publish_context = None
         # Pyblish report
-        self._publish_report = PublishReportMaker()
+        self._publish_report: PublishReportMaker = PublishReportMaker()
         # Store exceptions of validation error
-        self._publish_validation_errors = PublishValidationErrors()
+        self._publish_validation_errors: PublishValidationErrors = (
+            PublishValidationErrors()
+        )
 
         # This information is not much important for controller but for widget
         #   which can change (and set) the comment.
-        self._publish_comment_is_set = False
+        self._publish_comment_is_set: bool = False
 
         # Validation order
         # - plugin with order same or higher than this value is extractor or
         #   higher
-        self._validation_order = (
+        self._validation_order: int = (
             pyblish.api.ValidatorOrder + PLUGIN_ORDER_OFFSET
         )
 
         # Plugin iterator
-        self._main_thread_iter = None
+        self._main_thread_iter: Iterable[partial] = []
 
     def reset(self):
         create_context = self._controller.get_create_context()
@@ -810,10 +880,10 @@ class PublishModel:
 
         self._emit_event("publish.reset.finished")
 
-    def set_publish_up_validation(self, value):
+    def set_publish_up_validation(self, value: bool):
         self._publish_up_validation = value
 
-    def start_publish(self, wait=True):
+    def start_publish(self, wait: Optional[bool] = True):
         """Run publishing.
 
         Make sure all changes are saved before method is called (Call
@@ -831,22 +901,23 @@ class PublishModel:
             func = self.get_next_process_func()
             func()
 
-    def get_next_process_func(self):
+    def get_next_process_func(self) -> partial:
         # Validations of progress before using iterator
         # - same conditions may be inside iterator but they may be used
         #   only in specific cases (e.g. when it happens for a first time)
 
-        # There are validation errors and validation is passed
-        # - can't do any progree
         if (
-            self._publish_has_validated
-            and self._publish_has_validation_errors
+            self._main_thread_iter is None
+            # There are validation errors and validation is passed
+            # - can't do any progree
+            or (
+                self._publish_has_validated
+                and self._publish_has_validation_errors
+            )
+            # Any unexpected error happened
+            # - everything should stop
+            or self._publish_has_crashed
         ):
-            item = partial(self.stop_publish)
-
-        # Any unexpected error happened
-        # - everything should stop
-        elif self._publish_has_crashed:
             item = partial(self.stop_publish)
 
         # Everything is ok so try to get new processing item
@@ -859,56 +930,56 @@ class PublishModel:
         if self._publish_is_running:
             self._stop_publish()
 
-    def is_running(self):
+    def is_running(self) -> bool:
         return self._publish_is_running
 
-    def is_crashed(self):
+    def is_crashed(self) -> bool:
         return self._publish_has_crashed
 
-    def has_started(self):
+    def has_started(self) -> bool:
         return self._publish_has_started
 
-    def has_finished(self):
+    def has_finished(self) -> bool:
         return self._publish_has_finished
 
-    def has_validated(self):
+    def has_validated(self) -> bool:
         return self._publish_has_validated
 
-    def has_validation_errors(self):
+    def has_validation_errors(self) -> bool:
         return self._publish_has_validation_errors
 
-    def publish_can_continue(self):
+    def publish_can_continue(self) -> bool:
         return (
             not self._publish_has_crashed
             and not self._publish_has_validation_errors
             and not self._publish_has_finished
         )
 
-    def get_progress(self):
+    def get_progress(self) -> int:
         return self._publish_progress
 
-    def get_max_progress(self):
+    def get_max_progress(self) -> int:
         return self._publish_max_progress
 
-    def get_publish_report(self):
+    def get_publish_report(self) -> Dict[str, Any]:
         return self._publish_report.get_report(
             self._publish_context
         )
 
-    def get_validation_errors(self):
+    def get_validation_errors(self) -> PublishValidationErrorsReport:
         return self._publish_validation_errors.create_report()
 
-    def get_error_msg(self):
+    def get_error_msg(self) -> Union[str, None]:
         return self._publish_error_msg
 
-    def set_comment(self, comment):
+    def set_comment(self, comment: str):
         # Ignore change of comment when publishing started
         if self._publish_has_started:
             return
         self._publish_context.data["comment"] = comment
         self._publish_comment_is_set = True
 
-    def run_action(self, plugin_id, action_id):
+    def run_action(self, plugin_id: str, action_id: str):
         # TODO handle result in UI
         plugin = self._publish_plugins_proxy.get_plugin(plugin_id)
         action = self._publish_plugins_proxy.get_action(plugin_id, action_id)
@@ -939,10 +1010,10 @@ class PublishModel:
 
         self._controller.emit_card_message("Action finished.")
 
-    def _emit_event(self, topic, data=None):
+    def _emit_event(self, topic: str, data: Optional[Dict[str, Any]] = None):
         self._controller.emit_event(topic, data, PUBLISH_EVENT_SOURCE)
 
-    def _set_finished(self, value):
+    def _set_finished(self, value: bool):
         if self._publish_has_finished != value:
             self._publish_has_finished = value
             self._emit_event(
@@ -950,7 +1021,7 @@ class PublishModel:
                 {"value": value}
             )
 
-    def _set_is_running(self, value):
+    def _set_is_running(self, value: bool):
         if self._publish_is_running != value:
             self._publish_is_running = value
             self._emit_event(
@@ -958,7 +1029,7 @@ class PublishModel:
                 {"value": value}
             )
 
-    def _set_has_validated(self, value):
+    def _set_has_validated(self, value: bool):
         if self._publish_has_validated != value:
             self._publish_has_validated = value
             self._emit_event(
@@ -966,7 +1037,7 @@ class PublishModel:
                 {"value": value}
             )
 
-    def _set_is_crashed(self, value):
+    def _set_is_crashed(self, value: bool):
         if self._publish_has_crashed != value:
             self._publish_has_crashed = value
             self._emit_event(
@@ -974,7 +1045,7 @@ class PublishModel:
                 {"value": value}
             )
 
-    def _set_has_validation_errors(self, value):
+    def _set_has_validation_errors(self, value: bool):
         if self._publish_has_validation_errors != value:
             self._publish_has_validation_errors = value
             self._emit_event(
@@ -982,7 +1053,7 @@ class PublishModel:
                 {"value": value}
             )
 
-    def _set_max_progress(self, value):
+    def _set_max_progress(self, value: int):
         if self._publish_max_progress != value:
             self._publish_max_progress = value
             self._emit_event(
@@ -990,7 +1061,7 @@ class PublishModel:
                 {"value": value}
             )
 
-    def _set_progress(self, value):
+    def _set_progress(self, value: int):
         if self._publish_progress != value:
             self._publish_progress = value
             self._emit_event(
@@ -998,7 +1069,7 @@ class PublishModel:
                 {"value": value}
             )
 
-    def _set_publish_error_msg(self, value):
+    def _set_publish_error_msg(self, value: Union[str, None]):
         if self._publish_error_msg != value:
             self._publish_error_msg = value
             self._emit_event(
@@ -1022,7 +1093,7 @@ class PublishModel:
 
         self._emit_event("publish.process.stopped")
 
-    def _publish_iterator(self):
+    def _publish_iterator(self) -> Iterable[partial]:
         """Main logic center of publishing.
 
         Iterator returns `partial` objects with callbacks that should be
@@ -1128,7 +1199,11 @@ class PublishModel:
         self._set_progress(self._publish_max_progress)
         yield partial(self.stop_publish)
 
-    def _process_and_continue(self, plugin, instance):
+    def _process_and_continue(
+        self,
+        plugin: pyblish.api.Plugin,
+        instance: pyblish.api.Instance
+    ):
         result = pyblish.plugin.process(
             plugin, self._publish_context, instance
         )
@@ -1158,7 +1233,7 @@ class PublishModel:
 
         self._publish_report.add_result(plugin.id, result)
 
-    def _add_validation_error(self, result):
+    def _add_validation_error(self, result: Dict[str, Any]):
         self._set_has_validation_errors(True)
         self._publish_validation_errors.add_error(
             result["plugin"],
@@ -1166,7 +1241,7 @@ class PublishModel:
             result["instance"]
         )
 
-    def _is_publish_plugin_active(self, plugin):
+    def _is_publish_plugin_active(self, plugin: pyblish.api.Plugin) -> bool:
         """Decide if publish plugin is active.
 
         This is hack because 'active' is mis-used in mixin
