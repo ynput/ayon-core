@@ -6,7 +6,7 @@ import logging
 import hou  # noqa
 
 from ayon_core.host import HostBase, IWorkfileHost, ILoadHost, IPublishHost
-
+from ayon_core.tools.utils import host_tools
 import pyblish.api
 
 from ayon_core.pipeline import (
@@ -25,6 +25,13 @@ from ayon_core.lib import (
     emit_event,
 )
 
+def show_workfiles_tool():
+    # Make sure on top is enabled on first show so the
+    # window is not hidden under main nuke window
+    print("showing workfiles tool..")
+    from ayon_core.tools.utils import host_tools
+    host_tools.show_workfiles(parent=hou.qt.mainWindow(),
+                                on_top=True)
 
 log = logging.getLogger("ayon_houdini")
 
@@ -87,7 +94,7 @@ class HoudiniHost(HostBase, IWorkfileHost, ILoadHost, IPublishHost):
             hdefereval.executeDeferred(shelves.generate_shelves)
             hdefereval.executeDeferred(creator_node_shelves.install)
             if os.environ.get("AYON_WORKFILE_TOOL_ON_START"):
-                hdefereval.executeDeferred(lib.wait_startup_launch_workfiles_app)
+                hdefereval.executeDeferred(lambda: host_tools.show_workfiles(parent=hou.qt.mainWindow()))
 
     def workfile_has_unsaved_changes(self):
         return hou.hipFile.hasUnsavedChanges()
