@@ -581,7 +581,7 @@ class InstanceListView(AbstractInstanceView):
         # Prepare instances by their groups
         instances_by_group_name = collections.defaultdict(list)
         group_names = set()
-        for instance in self._controller.instances.values():
+        for instance in self._controller.get_instances():
             group_label = instance.group_label
             group_names.add(group_label)
             instances_by_group_name[group_label].append(instance)
@@ -745,7 +745,7 @@ class InstanceListView(AbstractInstanceView):
 
     def _update_convertor_items_group(self):
         created_new_items = False
-        convertor_items_by_id = self._controller.convertor_items
+        convertor_items_by_id = self._controller.get_convertor_items()
         group_item = self._convertor_group_item
         if not convertor_items_by_id and group_item is None:
             return created_new_items

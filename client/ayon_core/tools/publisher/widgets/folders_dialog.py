@@ -62,7 +62,7 @@ class FoldersDialog(QtWidgets.QDialog):
         layout.addWidget(folders_widget, 1)
         layout.addLayout(btns_layout, 0)
 
-        controller.event_system.add_callback(
+        controller.register_event_callback(
             "controller.reset.finished", self._on_controller_reset
         )
 
@@ -119,7 +119,9 @@ class FoldersDialog(QtWidgets.QDialog):
         if self._soft_reset_enabled:
             self._soft_reset_enabled = False
 
-        self._folders_widget.set_project_name(self._controller.project_name)
+        self._folders_widget.set_project_name(
+            self._controller.get_current_project_name()
+        )
 
     def _on_filter_change(self, text):
         """Trigger change of filter of folders."""

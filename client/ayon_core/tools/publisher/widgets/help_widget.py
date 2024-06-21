@@ -64,7 +64,7 @@ class HelpDialog(QtWidgets.QDialog):
         main_layout = QtWidgets.QHBoxLayout(self)
         main_layout.addWidget(help_content, 1)
 
-        controller.event_system.add_callback(
+        controller.register_event_callback(
             "show.detailed.help", self._on_help_request
         )
 

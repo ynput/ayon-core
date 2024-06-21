@@ -1,25 +1,18 @@
 import os
 import logging
-import traceback
 import tempfile
 import shutil
-import inspect
-from abc import ABCMeta, abstractmethod
+from abc import abstractmethod
 import re
 
-import six
-import pyblish.api
 import ayon_api
 
 from ayon_core.lib.events import QueuedEventSystem
 from ayon_core.lib.profiles_filtering import filter_profiles
 from ayon_core.lib.attribute_definitions import UIDef
 from ayon_core.pipeline import (
-    PublishValidationError,
-    KnownPublishError,
     registered_host,
     get_process_id,
-    OptionalPyblishPluginMixin,
 )
 from ayon_core.pipeline.create import CreateContext
 from ayon_core.pipeline.create.context import (
@@ -27,29 +20,12 @@ from ayon_core.pipeline.create.context import (
     ConvertorsOperationFailed,
 )
 from ayon_core.tools.common_models import ProjectsModel, HierarchyModel
-from ayon_core.tools.publisher.models import (
-    PublishReportMaker,
+
+from .models import (
     CreatorItem,
-    PublishValidationErrors,
-    PublishPluginsProxy,
+    PublishModel,
 )
-
 from .abstract import AbstractPublisherController, CardMessageTypes
-
-# Define constant for plugin orders offset
-PLUGIN_ORDER_OFFSET = 0.5
-
-
-class MainThreadItem:
-    """Callback with args and kwargs."""
-
-    def __init__(self, callback, *args, **kwargs):
-        self.callback = callback
-        self.args = args
-        self.kwargs = kwargs
-
-    def process(self):
-        self.callback(*self.args, **self.kwargs)
 
 
 class BasePublisherController(AbstractPublisherController):
@@ -66,25 +42,9 @@ class BasePublisherController(AbstractPublisherController):
 
     def __init__(self):
         self._log = None
-        self._event_system = None
+        self._event_system_obj = None
 
-        # Host is valid for creation
-        self._host_is_valid = False
-
-        # Any other exception that happened during publishing
-        self._publish_error_msg = None
-        # Publishing is in progress
-        self._publish_is_running = False
-        # Publishing is over validation order
-        self._publish_has_validated = False
-
-        self._publish_has_validation_errors = False
-        self._publish_has_crashed = False
-        # All publish plugins are processed
-        self._publish_has_started = False
-        self._publish_has_finished = False
-        self._publish_max_progress = 0
-        self._publish_progress = 0
+        self._publish_model = PublishModel(self)
 
         # Controller must '_collect_creator_items' to fill the value
         self._creator_items = None
@@ -101,8 +61,104 @@ class BasePublisherController(AbstractPublisherController):
             self._log = logging.getLogger(self.__class__.__name__)
         return self._log
 
+    # Events system
+    def emit_event(self, topic, data=None, source=None):
+        """Use implemented event system to trigger event."""
+
+        if data is None:
+            data = {}
+        self._event_system.emit(topic, data, source)
+
+    def register_event_callback(self, topic, callback):
+        self._event_system.add_callback(topic, callback)
+
+    def is_host_valid(self) -> bool:
+        return self._create_context.host_is_valid
+
+    def publish_has_started(self):
+        return self._publish_model.has_started()
+
+    def publish_has_finished(self):
+        return self._publish_model.has_finished()
+
+    def publish_is_running(self):
+        return self._publish_model.is_running()
+
+    def publish_has_validated(self):
+        return self._publish_model.has_validated()
+
+    def publish_has_crashed(self):
+        return self._publish_model.is_crashed()
+
+    def publish_has_validation_errors(self):
+        return self._publish_model.has_validation_errors()
+
+    def publish_can_continue(self):
+        return self._publish_model.publish_can_continue()
+
+    def get_publish_max_progress(self):
+        return self._publish_model.get_max_progress()
+
+    def get_publish_progress(self):
+        return self._publish_model.get_progress()
+
+    def get_publish_error_msg(self):
+        return self._publish_model.get_error_msg()
+
+    def get_creator_items(self):
+        """Creators that can be shown in create dialog."""
+        if self._creator_items is None:
+            self._creator_items = self._collect_creator_items()
+        return self._creator_items
+
+    def get_creator_item_by_id(self, identifier):
+        items = self.get_creator_items()
+        return items.get(identifier)
+
+    @abstractmethod
+    def _collect_creator_items(self):
+        """Receive CreatorItems to work with.
+
+        Returns:
+            Dict[str, CreatorItem]: Creator items by their identifier.
+        """
+
+        pass
+
+    def get_creator_icon(self, identifier):
+        """Function to receive icon for creator identifier.
+
+        Args:
+            str: Creator's identifier for which should be icon returned.
+        """
+
+        creator_item = self.get_creator_item_by_id(identifier)
+        if creator_item is not None:
+            return creator_item.icon
+        return None
+
+    def get_thumbnail_temp_dir_path(self):
+        """Return path to directory where thumbnails can be temporary stored.
+
+        Returns:
+            str: Path to a directory.
+        """
+
+        return os.path.join(
+            tempfile.gettempdir(),
+            "publisher_thumbnails",
+            get_process_id()
+        )
+
+    def clear_thumbnail_temp_dir_path(self):
+        """Remove content of thumbnail temp directory."""
+
+        dirpath = self.get_thumbnail_temp_dir_path()
+        if os.path.exists(dirpath):
+            shutil.rmtree(dirpath)
+
     @property
-    def event_system(self):
+    def _event_system(self):
         """Inner event system for publisher controller.
 
         Is used for communication with UI. Event system is autocreated.
@@ -130,209 +186,18 @@ class BasePublisherController(AbstractPublisherController):
             "publish.max_progress.changed" - Attr 'publish_max_progress'
                 changed.
             "publish.progress.changed" - Attr 'publish_progress' changed.
-            "publish.host_is_valid.changed" - Attr 'host_is_valid' changed.
             "publish.finished.changed" - Attr 'publish_has_finished' changed.
 
         Returns:
             EventSystem: Event system which can trigger callbacks for topics.
         """
 
-        if self._event_system is None:
-            self._event_system = QueuedEventSystem()
-        return self._event_system
-
-    # Events system
-    def emit_event(self, topic, data=None, source=None):
-        """Use implemented event system to trigger event."""
-
-        if data is None:
-            data = {}
-        self.event_system.emit(topic, data, source)
-
-    def register_event_callback(self, topic, callback):
-        self.event_system.add_callback(topic, callback)
+        if self._event_system_obj is None:
+            self._event_system_obj = QueuedEventSystem()
+        return self._event_system_obj
 
     def _emit_event(self, topic, data=None):
         self.emit_event(topic, data, "controller")
-
-    def _get_host_is_valid(self):
-        return self._host_is_valid
-
-    def _set_host_is_valid(self, value):
-        if self._host_is_valid != value:
-            self._host_is_valid = value
-            self._emit_event(
-                "publish.host_is_valid.changed", {"value": value}
-            )
-
-    def _get_publish_has_started(self):
-        return self._publish_has_started
-
-    def _set_publish_has_started(self, value):
-        if value != self._publish_has_started:
-            self._publish_has_started = value
-
-    def _get_publish_has_finished(self):
-        return self._publish_has_finished
-
-    def _set_publish_has_finished(self, value):
-        if self._publish_has_finished != value:
-            self._publish_has_finished = value
-            self._emit_event("publish.finished.changed", {"value": value})
-
-    def _get_publish_is_running(self):
-        return self._publish_is_running
-
-    def _set_publish_is_running(self, value):
-        if self._publish_is_running != value:
-            self._publish_is_running = value
-            self._emit_event("publish.is_running.changed", {"value": value})
-
-    def _get_publish_has_validated(self):
-        return self._publish_has_validated
-
-    def _set_publish_has_validated(self, value):
-        if self._publish_has_validated != value:
-            self._publish_has_validated = value
-            self._emit_event(
-                "publish.has_validated.changed", {"value": value}
-            )
-
-    def _get_publish_has_crashed(self):
-        return self._publish_has_crashed
-
-    def _set_publish_has_crashed(self, value):
-        if self._publish_has_crashed != value:
-            self._publish_has_crashed = value
-            self._emit_event("publish.has_crashed.changed", {"value": value})
-
-    def _get_publish_has_validation_errors(self):
-        return self._publish_has_validation_errors
-
-    def _set_publish_has_validation_errors(self, value):
-        if self._publish_has_validation_errors != value:
-            self._publish_has_validation_errors = value
-            self._emit_event(
-                "publish.has_validation_errors.changed",
-                {"value": value}
-            )
-
-    def _get_publish_max_progress(self):
-        return self._publish_max_progress
-
-    def _set_publish_max_progress(self, value):
-        if self._publish_max_progress != value:
-            self._publish_max_progress = value
-            self._emit_event("publish.max_progress.changed", {"value": value})
-
-    def _get_publish_progress(self):
-        return self._publish_progress
-
-    def _set_publish_progress(self, value):
-        if self._publish_progress != value:
-            self._publish_progress = value
-            self._emit_event("publish.progress.changed", {"value": value})
-
-    def _get_publish_error_msg(self):
-        return self._publish_error_msg
-
-    def _set_publish_error_msg(self, value):
-        if self._publish_error_msg != value:
-            self._publish_error_msg = value
-            self._emit_event("publish.publish_error.changed", {"value": value})
-
-    host_is_valid = property(
-        _get_host_is_valid, _set_host_is_valid
-    )
-    publish_has_started = property(
-        _get_publish_has_started, _set_publish_has_started
-    )
-    publish_has_finished = property(
-        _get_publish_has_finished, _set_publish_has_finished
-    )
-    publish_is_running = property(
-        _get_publish_is_running, _set_publish_is_running
-    )
-    publish_has_validated = property(
-        _get_publish_has_validated, _set_publish_has_validated
-    )
-    publish_has_crashed = property(
-        _get_publish_has_crashed, _set_publish_has_crashed
-    )
-    publish_has_validation_errors = property(
-        _get_publish_has_validation_errors, _set_publish_has_validation_errors
-    )
-    publish_max_progress = property(
-        _get_publish_max_progress, _set_publish_max_progress
-    )
-    publish_progress = property(
-        _get_publish_progress, _set_publish_progress
-    )
-    publish_error_msg = property(
-        _get_publish_error_msg, _set_publish_error_msg
-    )
-
-    def _reset_attributes(self):
-        """Reset most of attributes that can be reset."""
-
-        self.publish_is_running = False
-        self.publish_has_started = False
-        self.publish_has_validated = False
-        self.publish_has_crashed = False
-        self.publish_has_validation_errors = False
-        self.publish_has_finished = False
-
-        self.publish_error_msg = None
-        self.publish_progress = 0
-
-    @property
-    def creator_items(self):
-        """Creators that can be shown in create dialog."""
-        if self._creator_items is None:
-            self._creator_items = self._collect_creator_items()
-        return self._creator_items
-
-    @abstractmethod
-    def _collect_creator_items(self):
-        """Receive CreatorItems to work with.
-
-        Returns:
-            Dict[str, CreatorItem]: Creator items by their identifier.
-        """
-
-        pass
-
-    def get_creator_icon(self, identifier):
-        """Function to receive icon for creator identifier.
-
-        Args:
-            str: Creator's identifier for which should be icon returned.
-        """
-
-        creator_item = self.creator_items.get(identifier)
-        if creator_item is not None:
-            return creator_item.icon
-        return None
-
-    def get_thumbnail_temp_dir_path(self):
-        """Return path to directory where thumbnails can be temporary stored.
-
-        Returns:
-            str: Path to a directory.
-        """
-
-        return os.path.join(
-            tempfile.gettempdir(),
-            "publisher_thumbnails",
-            get_process_id()
-        )
-
-    def clear_thumbnail_temp_dir_path(self):
-        """Remove content of thumbnail temp directory."""
-
-        dirpath = self.get_thumbnail_temp_dir_path()
-        if os.path.exists(dirpath):
-            shutil.rmtree(dirpath)
 
 
 class PublisherController(BasePublisherController):
@@ -347,7 +212,7 @@ class PublisherController(BasePublisherController):
     _log = None
 
     def __init__(self, headless=False):
-        super(PublisherController, self).__init__()
+        super().__init__()
 
         self._host = registered_host()
         self._headless = headless
@@ -355,31 +220,6 @@ class PublisherController(BasePublisherController):
         self._create_context = CreateContext(
             self._host, headless=headless, reset=False
         )
-
-        self._publish_plugins_proxy = None
-
-        # pyblish.api.Context
-        self._publish_context = None
-        # Pyblish report
-        self._publish_report = PublishReportMaker(self)
-        # Store exceptions of validation error
-        self._publish_validation_errors = PublishValidationErrors()
-
-        # Publishing should stop at validation stage
-        self._publish_up_validation = False
-        # This information is not much important for controller but for widget
-        #   which can change (and set) the comment.
-        self._publish_comment_is_set = False
-
-        # Validation order
-        # - plugin with order same or higher than this value is extractor or
-        #   higher
-        self._validation_order = (
-            pyblish.api.ValidatorOrder + PLUGIN_ORDER_OFFSET
-        )
-
-        # Plugin iterator
-        self._main_thread_iter = None
 
         # State flags to prevent executing method which is already in progress
         self._resetting_plugins = False
@@ -389,18 +229,16 @@ class PublisherController(BasePublisherController):
         self._projects_model = ProjectsModel(self)
         self._hierarchy_model = HierarchyModel(self)
 
-    @property
-    def project_name(self):
+    def get_current_project_name(self):
         """Current project context defined by host.
 
         Returns:
             str: Project name.
-        """
 
+        """
         return self._create_context.get_current_project_name()
 
-    @property
-    def current_folder_path(self):
+    def get_current_folder_path(self):
         """Current context folder path defined by host.
 
         Returns:
@@ -409,8 +247,7 @@ class PublisherController(BasePublisherController):
 
         return self._create_context.get_current_folder_path()
 
-    @property
-    def current_task_name(self):
+    def get_current_task_name(self):
         """Current context task name defined by host.
 
         Returns:
@@ -419,17 +256,36 @@ class PublisherController(BasePublisherController):
 
         return self._create_context.get_current_task_name()
 
-    @property
     def host_context_has_changed(self):
         return self._create_context.context_has_changed
 
     @property
     def instances(self):
-        """Current instances in create context."""
-        return self._create_context.instances_by_id
+        """Current instances in create context.
 
-    @property
-    def convertor_items(self):
+        Deprecated:
+            Use 'get_instances' instead. Kept for backwards compatibility with
+                traypublisher.
+
+        """
+        return self.get_instances()
+
+    def get_instances(self):
+        """Current instances in create context."""
+        return list(self._create_context.instances_by_id.values())
+
+    def get_instance_by_id(self, instance_id):
+        return self._create_context.instances_by_id.get(instance_id)
+
+    def get_instances_by_id(self, instance_ids=None):
+        if instance_ids is None:
+            instance_ids = self._create_context.instances_by_id.keys()
+        return {
+            instance_id: self.get_instance_by_id(instance_id)
+            for instance_id in instance_ids
+        }
+
+    def get_convertor_items(self):
         return self._create_context.convertor_items_by_id
 
     @property
@@ -437,11 +293,6 @@ class PublisherController(BasePublisherController):
         """All creators loaded in create context."""
 
         return self._create_context.creators
-
-    @property
-    def _publish_plugins(self):
-        """Publish plugins."""
-        return self._create_context.publish_plugins
 
     def _get_current_project_settings(self):
         """Current project settings.
@@ -484,7 +335,7 @@ class PublisherController(BasePublisherController):
         if not folder_path:
             return None
         folder_item = self._hierarchy_model.get_folder_item_by_path(
-            self.project_name, folder_path
+            self.get_current_project_name(), folder_path
         )
         if folder_item:
             return folder_item.entity_id
@@ -494,13 +345,13 @@ class PublisherController(BasePublisherController):
         if not folder_paths:
             return {}
         folder_items = self._hierarchy_model.get_folder_items_by_paths(
-            self.project_name, folder_paths
+            self.get_current_project_name(), folder_paths
         )
         output = {
             folder_path: []
             for folder_path in folder_paths
         }
-        project_name = self.project_name
+        project_name = self.get_current_project_name()
         for folder_item in folder_items.values():
             task_items = self._hierarchy_model.get_task_items(
                 project_name, folder_item.entity_id, None
@@ -514,7 +365,7 @@ class PublisherController(BasePublisherController):
             return True
         folder_paths = set(folder_paths)
         folder_items = self._hierarchy_model.get_folder_items_by_paths(
-            self.project_name, folder_paths
+            self.get_current_project_name(), folder_paths
         )
         for folder_item in folder_items.values():
             if folder_item is None:
@@ -539,7 +390,7 @@ class PublisherController(BasePublisherController):
     def get_existing_product_names(self, folder_path):
         if not folder_path:
             return None
-        project_name = self.project_name
+        project_name = self.get_current_project_name()
         folder_item = self._hierarchy_model.get_folder_item_by_path(
             project_name, folder_path
         )
@@ -562,8 +413,6 @@ class PublisherController(BasePublisherController):
 
         self._emit_event("controller.reset.started")
 
-        self.host_is_valid = self._create_context.host_is_valid
-
         self._create_context.reset_preparation()
 
         # Reset current context
@@ -573,7 +422,7 @@ class PublisherController(BasePublisherController):
 
         self._reset_plugins()
         # Publish part must be reset after plugins
-        self._reset_publish()
+        self._publish_model.reset(self._create_context)
         self._reset_instances()
 
         self._create_context.reset_finalization()
@@ -603,11 +452,12 @@ class PublisherController(BasePublisherController):
         allowed_creator_pattern = self._get_allowed_creators_pattern()
         for identifier, creator in self._create_context.creators.items():
             try:
-                if (not self._is_label_allowed(
-                        creator.label, allowed_creator_pattern)):
-                    self.log.debug(f"{creator.label} not allowed for context")
+                if self._is_label_allowed(
+                    creator.label, allowed_creator_pattern
+                ):
+                    output[identifier] = CreatorItem.from_creator(creator)
                     continue
-                output[identifier] = CreatorItem.from_creator(creator)
+                self.log.debug(f"{creator.label} not allowed for context")
             except Exception:
                 self.log.error(
                     "Failed to create creator item for '%s'",
@@ -638,7 +488,7 @@ class PublisherController(BasePublisherController):
             ["filter_creator_profiles"]
         )
         filtering_criteria = {
-            "task_names": self.current_task_name,
+            "task_names": self.get_current_task_name(),
             "task_types": task_type,
             "host_names": self._create_context.host_name
         }
@@ -863,9 +713,9 @@ class PublisherController(BasePublisherController):
 
         instance = None
         if instance_id:
-            instance = self.instances[instance_id]
+            instance = self.get_instance_by_id(instance_id)
 
-        project_name = self.project_name
+        project_name = self.get_current_project_name()
         folder_item = self._hierarchy_model.get_folder_item_by_path(
             project_name, folder_path
         )
@@ -1022,37 +872,10 @@ class PublisherController(BasePublisherController):
         self._emit_event("instances.refresh.finished")
 
     def get_publish_report(self):
-        return self._publish_report.get_report(self._publish_plugins)
+        return self._publish_model.get_publish_report()
 
     def get_validation_errors(self):
-        return self._publish_validation_errors.create_report()
-
-    def _reset_publish(self):
-        self._reset_attributes()
-
-        self._publish_up_validation = False
-        self._publish_comment_is_set = False
-
-        self._main_thread_iter = self._publish_iterator()
-        self._publish_context = pyblish.api.Context()
-        # Make sure "comment" is set on publish context
-        self._publish_context.data["comment"] = ""
-        # Add access to create context during publishing
-        # - must not be used for changing CreatedInstances during publishing!
-        # QUESTION
-        # - pop the key after first collector using it would be safest option?
-        self._publish_context.data["create_context"] = self._create_context
-
-        self._publish_plugins_proxy = PublishPluginsProxy(
-            self._publish_plugins
-        )
-
-        self._publish_report.reset(self._publish_context, self._create_context)
-        self._publish_validation_errors.reset(self._publish_plugins_proxy)
-
-        self.publish_max_progress = len(self._publish_plugins)
-
-        self._emit_event("publish.reset.finished")
+        return self._publish_model.get_validation_errors()
 
     def set_comment(self, comment):
         """Set comment from ui to pyblish context.
@@ -1062,9 +885,7 @@ class PublisherController(BasePublisherController):
         '_publish_comment_is_set' is used to keep track about the information.
         """
 
-        if not self._publish_comment_is_set:
-            self._publish_context.data["comment"] = comment
-            self._publish_comment_is_set = True
+        self._publish_model.set_comment(comment)
 
     def publish(self):
         """Run publishing.
@@ -1072,9 +893,7 @@ class PublisherController(BasePublisherController):
         Make sure all changes are saved before method is called (Call
         'save_changes' and check output).
         """
-
-        self._publish_up_validation = False
-        self._start_publish()
+        self._start_publish(False)
 
     def validate(self):
         """Run publishing and stop after Validation.
@@ -1082,292 +901,15 @@ class PublisherController(BasePublisherController):
         Make sure all changes are saved before method is called (Call
         'save_changes' and check output).
         """
-
-        if self.publish_has_validated:
-            return
-        self._publish_up_validation = True
-        self._start_publish()
-
-    def _start_publish(self):
-        """Start or continue in publishing."""
-        if self.publish_is_running:
-            return
-
-        self.publish_is_running = True
-        self.publish_has_started = True
-
-        self._emit_event("publish.process.started")
-
-        self._publish_next_process()
-
-    def _stop_publish(self):
-        """Stop or pause publishing."""
-        self.publish_is_running = False
-
-        self._emit_event("publish.process.stopped")
+        self._start_publish(True)
 
     def stop_publish(self):
         """Stop publishing process (any reason)."""
-
-        if self.publish_is_running:
-            self._stop_publish()
+        self._publish_model.stop_publish()
 
     def run_action(self, plugin_id, action_id):
-        # TODO handle result in UI
-        plugin = self._publish_plugins_proxy.get_plugin(plugin_id)
-        action = self._publish_plugins_proxy.get_action(plugin_id, action_id)
+        self._publish_model.run_action(plugin_id, action_id)
 
-        result = pyblish.plugin.process(
-            plugin, self._publish_context, None, action.id
-        )
-        exception = result.get("error")
-        if exception:
-            self._emit_event(
-                "publish.action.failed",
-                {
-                    "title": "Action failed",
-                    "message": "Action failed.",
-                    "traceback": "".join(
-                        traceback.format_exception(
-                            type(exception),
-                            exception,
-                            exception.__traceback__
-                        )
-                    ),
-                    "label": action.__name__,
-                    "identifier": action.id
-                }
-            )
-
-        self._publish_report.add_action_result(action, result)
-
-        self.emit_card_message("Action finished.")
-
-    def _publish_next_process(self):
-        # Validations of progress before using iterator
-        # - same conditions may be inside iterator but they may be used
-        #   only in specific cases (e.g. when it happens for a first time)
-
-        # There are validation errors and validation is passed
-        # - can't do any progree
-        if (
-            self.publish_has_validated
-            and self.publish_has_validation_errors
-        ):
-            item = MainThreadItem(self.stop_publish)
-
-        # Any unexpected error happened
-        # - everything should stop
-        elif self.publish_has_crashed:
-            item = MainThreadItem(self.stop_publish)
-
-        # Everything is ok so try to get new processing item
-        else:
-            item = next(self._main_thread_iter)
-
-        self._process_main_thread_item(item)
-
-    def _process_main_thread_item(self, item):
-        item()
-
-    def _is_publish_plugin_active(self, plugin):
-        """Decide if publish plugin is active.
-
-        This is hack because 'active' is mis-used in mixin
-        'OptionalPyblishPluginMixin' where 'active' is used for default value
-        of optional plugins. Because of that is 'active' state of plugin
-        which inherit from 'OptionalPyblishPluginMixin' ignored. That affects
-        headless publishing inside host, potentially remote publishing.
-
-        We have to change that to match pyblish base, but we can do that
-        only when all hosts use Publisher because the change requires
-        change of settings schemas.
-
-        Args:
-            plugin (pyblish.Plugin): Plugin which should be checked if is
-                active.
-
-        Returns:
-            bool: Is plugin active.
-        """
-
-        if plugin.active:
-            return True
-
-        if not plugin.optional:
-            return False
-
-        if OptionalPyblishPluginMixin in inspect.getmro(plugin):
-            return True
-        return False
-
-    def _publish_iterator(self):
-        """Main logic center of publishing.
-
-        Iterator returns `MainThreadItem` objects with callbacks that should be
-        processed in main thread (threaded in future?). Cares about changing
-        states of currently processed publish plugin and instance. Also
-        change state of processed orders like validation order has passed etc.
-
-        Also stops publishing, if should stop on validation.
-        """
-
-        for idx, plugin in enumerate(self._publish_plugins):
-            self._publish_progress = idx
-
-            # Check if plugin is over validation order
-            if not self.publish_has_validated:
-                self.publish_has_validated = (
-                    plugin.order >= self._validation_order
-                )
-
-            # Stop if plugin is over validation order and process
-            #   should process up to validation.
-            if self._publish_up_validation and self.publish_has_validated:
-                yield MainThreadItem(self.stop_publish)
-
-            # Stop if validation is over and validation errors happened
-            if (
-                self.publish_has_validated
-                and self.publish_has_validation_errors
-            ):
-                yield MainThreadItem(self.stop_publish)
-
-            # Add plugin to publish report
-            self._publish_report.add_plugin_iter(
-                plugin, self._publish_context)
-
-            # WARNING This is hack fix for optional plugins
-            if not self._is_publish_plugin_active(plugin):
-                self._publish_report.set_plugin_skipped()
-                continue
-
-            # Trigger callback that new plugin is going to be processed
-            plugin_label = plugin.__name__
-            if hasattr(plugin, "label") and plugin.label:
-                plugin_label = plugin.label
-            self._emit_event(
-                "publish.process.plugin.changed",
-                {"plugin_label": plugin_label}
-            )
-
-            # Plugin is instance plugin
-            if plugin.__instanceEnabled__:
-                instances = pyblish.logic.instances_by_plugin(
-                    self._publish_context, plugin
-                )
-                if not instances:
-                    self._publish_report.set_plugin_skipped()
-                    continue
-
-                for instance in instances:
-                    if instance.data.get("publish") is False:
-                        continue
-
-                    instance_label = (
-                        instance.data.get("label")
-                        or instance.data["name"]
-                    )
-                    self._emit_event(
-                        "publish.process.instance.changed",
-                        {"instance_label": instance_label}
-                    )
-
-                    yield MainThreadItem(
-                        self._process_and_continue, plugin, instance
-                    )
-            else:
-                families = collect_families_from_instances(
-                    self._publish_context, only_active=True
-                )
-                plugins = pyblish.logic.plugins_by_families(
-                    [plugin], families
-                )
-                if plugins:
-                    instance_label = (
-                        self._publish_context.data.get("label")
-                        or self._publish_context.data.get("name")
-                        or "Context"
-                    )
-                    self._emit_event(
-                        "publish.process.instance.changed",
-                        {"instance_label": instance_label}
-                    )
-                    yield MainThreadItem(
-                        self._process_and_continue, plugin, None
-                    )
-                else:
-                    self._publish_report.set_plugin_skipped()
-
-        # Cleanup of publishing process
-        self.publish_has_finished = True
-        self.publish_progress = self.publish_max_progress
-        yield MainThreadItem(self.stop_publish)
-
-    def _add_validation_error(self, result):
-        self.publish_has_validation_errors = True
-        self._publish_validation_errors.add_error(
-            result["plugin"],
-            result["error"],
-            result["instance"]
-        )
-
-    def _process_and_continue(self, plugin, instance):
-        result = pyblish.plugin.process(
-            plugin, self._publish_context, instance
-        )
-
-        exception = result.get("error")
-        if exception:
-            has_validation_error = False
-            if (
-                isinstance(exception, PublishValidationError)
-                and not self.publish_has_validated
-            ):
-                has_validation_error = True
-                self._add_validation_error(result)
-
-            else:
-                if isinstance(exception, KnownPublishError):
-                    msg = str(exception)
-                else:
-                    msg = (
-                        "Something went wrong. Send report"
-                        " to your supervisor or Ynput team."
-                    )
-                self.publish_error_msg = msg
-                self.publish_has_crashed = True
-
-            result["is_validation_error"] = has_validation_error
-
-        self._publish_report.add_result(result)
-
-        self._publish_next_process()
-
-
-def collect_families_from_instances(instances, only_active=False):
-    """Collect all families for passed publish instances.
-
-    Args:
-        instances(list<pyblish.api.Instance>): List of publish instances from
-            which are families collected.
-        only_active(bool): Return families only for active instances.
-
-    Returns:
-        list[str]: Families available on instances.
-    """
-
-    all_families = set()
-    for instance in instances:
-        if only_active:
-            if instance.data.get("publish") is False:
-                continue
-        family = instance.data.get("family")
-        if family:
-            all_families.add(family)
-
-        families = instance.data.get("families") or tuple()
-        for family in families:
-            all_families.add(family)
-
-    return list(all_families)
+    def _start_publish(self, up_validation):
+        self._publish_model.set_publish_up_validation(up_validation)
+        self._publish_model.start_publish(wait=True)

@@ -135,7 +135,7 @@ class TasksModel(QtGui.QStandardItemModel):
         task_type_items = {
             task_type_item.name: task_type_item
             for task_type_item in self._controller.get_task_type_items(
-                self._controller.project_name
+                self._controller.get_current_project_name()
             )
         }
         icon_name_by_task_name = {}

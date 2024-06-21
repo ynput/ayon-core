@@ -694,7 +694,7 @@ class InstanceCardView(AbstractInstanceView):
         # Prepare instances by group and identifiers by group
         instances_by_group = collections.defaultdict(list)
         identifiers_by_group = collections.defaultdict(set)
-        for instance in self._controller.instances.values():
+        for instance in self._controller.get_instances():
             group_name = instance.group_label
             instances_by_group[group_name].append(instance)
             identifiers_by_group[group_name].add(
@@ -787,7 +787,7 @@ class InstanceCardView(AbstractInstanceView):
         self._content_layout.insertWidget(0, widget)
 
     def _update_convertor_items_group(self):
-        convertor_items = self._controller.convertor_items
+        convertor_items = self._controller.get_convertor_items()
         if not convertor_items and self._convertor_items_group is None:
             return
 
