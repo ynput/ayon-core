@@ -161,6 +161,7 @@ class CreateHoudiniGeneric(plugin.HoudiniCreator):
     # TODO: Override "create" to create the AYON publish attributes on the
     #  selected node so it becomes a publishable instance.
     render_target = "local_no_render"
+    default_variant = "$OS"
 
     def get_detail_description(self):
         return "Publish any ROP node."
