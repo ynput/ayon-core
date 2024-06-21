@@ -533,6 +533,10 @@ class CreateHoudiniGeneric(plugin.HoudiniCreator):
         }
 
         return [
+            # TODO: This review toggle may be odd - because a regular
+            #  pointcache creator does not have the review toggle but with
+            #  this it does. Is that confusing? Can we make it so that `review`
+            #  only shows when relevant?
             BoolDef("review",
                     label="Review",
                     tooltip="Mark as reviewable",
