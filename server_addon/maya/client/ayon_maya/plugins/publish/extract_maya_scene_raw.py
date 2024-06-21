@@ -5,7 +5,7 @@ import os
 from ayon_core.lib import BoolDef
 from ayon_core.pipeline import AVALON_CONTAINER_ID, AYON_CONTAINER_ID
 from ayon_core.pipeline.publish import AYONPyblishPluginMixin
-from ayon_maya.api.lib import maintained_selection
+from ayon_maya.api.lib import maintained_selection, shader
 from ayon_maya.api import plugin
 from maya import cmds
 
@@ -88,17 +88,30 @@ class ExtractMayaSceneRaw(plugin.MayaExtractorPlugin, AYONPyblishPluginMixin):
         )
         with maintained_selection():
             cmds.select(selection, noExpand=True)
-            cmds.file(path,
-                      force=True,
-                      typ="mayaAscii" if self.scene_type == "ma" else "mayaBinary",  # noqa: E501
-                      exportSelected=True,
-                      preserveReferences=attribute_values[
-                          "preserve_references"
-                      ],
-                      constructionHistory=True,
-                      shader=instance.data.get("shader", True),
-                      constraints=True,
-                      expressions=True)
+            if instance.data.get("shader", True):
+                with shader(selection, shadingEngine="initialShadingGroup"):
+                    cmds.file(path,
+                              force=True,
+                              typ="mayaAscii" if self.scene_type == "ma" else "mayaBinary",  # noqa: E501
+                              exportSelected=True,
+                              preserveReferences=attribute_values[
+                                  "preserve_references"
+                                  ],
+                              constructionHistory=True,
+                              shader=instance.data.get("shader", True),
+                              expressions=True)
+            else:
+                cmds.file(path,
+                          force=True,
+                          typ="mayaAscii" if self.scene_type == "ma" else "mayaBinary",  # noqa: E501
+                          exportSelected=True,
+                          preserveReferences=attribute_values[
+                              "preserve_references"
+                              ],
+                          constructionHistory=True,
+                          shader=True,
+                          constraints=True,
+                          expressions=True)
 
         if "representations" not in instance.data:
             instance.data["representations"] = []
