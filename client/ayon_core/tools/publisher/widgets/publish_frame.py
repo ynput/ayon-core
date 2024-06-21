@@ -368,20 +368,10 @@ class PublishFrame(QtWidgets.QWidget):
         self._instance_label.setText("")
         self._plugin_label.setText("")
 
-        validate_enabled = not self._controller.publish_has_crashed
-        publish_enabled = not self._controller.publish_has_crashed
-        if validate_enabled:
-            validate_enabled = not self._controller.publish_has_validated
-        if publish_enabled:
-            if (
-                self._controller.publish_has_validated
-                and self._controller.publish_has_validation_errors
-            ):
-                publish_enabled = False
-
-            else:
-                publish_enabled = not self._controller.publish_has_finished()
-
+        publish_enabled = self._controller.publish_can_continue()
+        validate_enabled = (
+            publish_enabled and not self._controller.publish_has_validated()
+        )
         self._validate_btn.setEnabled(validate_enabled)
         self._publish_btn.setEnabled(publish_enabled)
 

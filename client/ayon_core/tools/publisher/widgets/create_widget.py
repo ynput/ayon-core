@@ -278,7 +278,7 @@ class CreateWidget(QtWidgets.QWidget):
             "main.window.closed", self._on_main_window_close
         )
         controller.register_event_callback(
-            "plugins.refresh.finished", self._on_plugins_refresh
+            "controller.reset.finished", self._on_controler_reset
         )
 
         self._main_splitter_widget = main_splitter_widget
@@ -529,7 +529,7 @@ class CreateWidget(QtWidgets.QWidget):
 
         self._set_creator(create_item)
 
-    def _on_plugins_refresh(self):
+    def _on_controler_reset(self):
         # Trigger refresh only if is visible
         self.refresh()
 
