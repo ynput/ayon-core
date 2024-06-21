@@ -5,7 +5,7 @@ import pyblish.api
 
 from ayon_core.pipeline import publish
 from ayon_houdini.api import plugin
-from ayon_houdini.api.lib import render_rop, get_output_parameter, splitext
+from ayon_houdini.api.lib import render_rop, splitext
 
 
 class ExtractROP(plugin.HoudiniExtractorPlugin):
