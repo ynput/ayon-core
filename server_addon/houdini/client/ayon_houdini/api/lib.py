@@ -8,6 +8,7 @@ import json
 from contextlib import contextmanager
 
 import six
+from qtpy import QtCore, QtWidgets
 import ayon_api
 
 from ayon_core.lib import StringTemplate
@@ -23,7 +24,11 @@ from ayon_core.pipeline import (
 from ayon_core.pipeline.create import CreateContext
 from ayon_core.pipeline.template_data import get_template_data
 from ayon_core.pipeline.context_tools import get_current_folder_entity
-from ayon_core.tools.utils import PopupUpdateKeys, SimplePopup
+from ayon_core.tools.utils import (
+    PopupUpdateKeys,
+    SimplePopup,
+    host_tools
+)
 from ayon_core.tools.utils.host_tools import get_tool_by_name
 
 import hou
@@ -1193,3 +1198,46 @@ def prompt_reset_context():
         update_content_on_context_change()
 
     dialog.deleteLater()
+
+
+def wait_startup_launch_workfiles_app():
+    """Show workfiles tool on Houdini launch.
+
+    Trigger to show workfiles tool on application launch. Can be executed only
+    once all other calls are ignored.
+
+    Workfiles tool show is deferred after application initialization using
+    QTimer.
+
+    Basically, it should wait till the app finish starting up.
+    """
+
+    # Show workfiles tool using timer
+    # - this will be probably triggered during initialization in that case
+    #   the application is not be able to show uis so it must be
+    #   deferred using timer
+    # - timer should be processed when initialization ends
+    #       When applications starts to process events.
+    timer = QtCore.QTimer()
+    timer.timeout.connect(lambda: _launch_workfile_app(timer))
+    timer.setInterval(100)
+    timer.start()
+
+
+def _launch_workfile_app(timer):
+    # Safeguard to not show window when application is still starting up
+    #   or is already closing down.
+    closing_down = QtWidgets.QApplication.closingDown()
+    starting_up = QtWidgets.QApplication.startingUp()
+
+    # Stop the timer if application finished start up of is closing down
+    if closing_down or not starting_up:
+        timer.stop()
+
+    # Skip if application is starting up or closing down
+    if starting_up or closing_down:
+        return
+
+    # Make sure on top is enabled on first show so the window is not hidden
+    #   under main nuke window
+    host_tools.show_workfiles(parent=hou.qt.mainWindow(), on_top=True)
