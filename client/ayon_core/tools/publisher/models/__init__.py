@@ -1,9 +1,9 @@
-from .create import CreatorItem
+from .create import CreateModel
 from .publish import PublishModel
 
 
 __all__ = (
-    "CreatorItem",
+    "CreateModel",
 
     "PublishModel",
 )

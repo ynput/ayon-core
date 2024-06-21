@@ -17,17 +17,6 @@ class AbstractPublisherController(ABC):
     access objects directly but by using wrappers that can be serialized.
     """
 
-    @property
-    @abstractmethod
-    def log(self):
-        """Controller's logger object.
-
-        Returns:
-            logging.Logger: Logger object that can be used for logging.
-        """
-
-        pass
-
     @abstractmethod
     def emit_event(self, topic, data=None, source=None):
         """Use implemented event system to trigger event."""
@@ -247,7 +236,6 @@ class AbstractPublisherController(ABC):
 
         pass
 
-    @property
     @abstractmethod
     def publish_has_validated(self):
         """Publish validation passed.
@@ -258,7 +246,6 @@ class AbstractPublisherController(ABC):
 
         pass
 
-    @property
     @abstractmethod
     def publish_has_crashed(self):
         """Publishing crashed for any reason.
@@ -269,7 +256,6 @@ class AbstractPublisherController(ABC):
 
         pass
 
-    @property
     @abstractmethod
     def publish_has_validation_errors(self):
         """During validation happened at least one validation error.

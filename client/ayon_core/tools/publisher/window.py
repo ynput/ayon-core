@@ -831,7 +831,6 @@ class PublisherWindow(QtWidgets.QDialog):
         self._set_comment_input_visiblity(True)
         self._set_publish_overlay_visibility(False)
         self._set_publish_visibility(False)
-        self._set_footer_enabled(False)
         self._update_publish_details_widget()
 
     def _on_controller_reset(self):
@@ -885,24 +884,13 @@ class PublisherWindow(QtWidgets.QDialog):
         self._set_publish_overlay_visibility(False)
         self._reset_btn.setEnabled(True)
         self._stop_btn.setEnabled(False)
-        publish_has_crashed = self._controller.publish_has_crashed()
-        validate_enabled = not publish_has_crashed
-        publish_enabled = not publish_has_crashed
         if self._is_on_publish_tab():
             self._go_to_report_tab()
 
-        if validate_enabled:
-            validate_enabled = not self._controller.publish_has_validated()
-        if publish_enabled:
-            if (
-                self._controller.publish_has_validated()
-                and self._controller.publish_has_validation_errors()
-            ):
-                publish_enabled = False
-
-            else:
-                publish_enabled = not self._controller.publish_has_finished()
-
+        publish_enabled = self._controller.publish_can_continue()
+        validate_enabled = (
+            publish_enabled and not self._controller.publish_has_validated()
+        )
         self._validate_btn.setEnabled(validate_enabled)
         self._publish_btn.setEnabled(publish_enabled)
 

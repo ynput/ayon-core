@@ -768,7 +768,8 @@ class PublishModel:
         # Plugin iterator
         self._main_thread_iter = None
 
-    def reset(self, create_context):
+    def reset(self):
+        create_context = self._controller.get_create_context()
         self._publish_up_validation = False
         self._publish_comment_is_set = False
         self._publish_has_started = False
