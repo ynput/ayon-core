@@ -23,6 +23,7 @@ from ayon_houdini.api import lib, shelves, creator_node_shelves
 from ayon_core.lib import (
     register_event_callback,
     emit_event,
+    env_value_to_bool,
 )
 
 
@@ -86,7 +87,7 @@ class HoudiniHost(HostBase, IWorkfileHost, ILoadHost, IPublishHost):
             # making it extremely slow to launch.
             hdefereval.executeDeferred(shelves.generate_shelves)
             hdefereval.executeDeferred(creator_node_shelves.install)
-            if os.environ.get("AYON_WORKFILE_TOOL_ON_START"):
+            if env_value_to_bool("AYON_WORKFILE_TOOL_ON_START"):
                 hdefereval.executeDeferred(lambda: host_tools.show_workfiles(parent=hou.qt.mainWindow()))
 
     def workfile_has_unsaved_changes(self):
