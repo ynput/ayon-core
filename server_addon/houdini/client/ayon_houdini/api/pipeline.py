@@ -25,13 +25,6 @@ from ayon_core.lib import (
     emit_event,
 )
 
-def show_workfiles_tool():
-    # Make sure on top is enabled on first show so the
-    # window is not hidden under main nuke window
-    print("showing workfiles tool..")
-    from ayon_core.tools.utils import host_tools
-    host_tools.show_workfiles(parent=hou.qt.mainWindow(),
-                                on_top=True)
 
 log = logging.getLogger("ayon_houdini")
 
