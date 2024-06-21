@@ -117,7 +117,9 @@ def attribute_def_to_parm_template(attribute_def, key=None):
 
 
 def set_values(node: "hou.OpNode", values: dict):
-    """
+    """Set parm values only if both the raw value (e.g. expression) or the
+    evaluated value differ. This way we preserve expressions if they happen
+    to evaluate to a matching value.
 
     Parms must exist on the node already.
 
@@ -161,9 +163,7 @@ class CreateHoudiniGeneric(plugin.HoudiniCreator):
     render_target = "local_no_render"
 
     def get_detail_description(self):
-        return (
-            """Publish any ROP node."""
-        )
+        return "Publish any ROP node."
 
     def create(self, product_name, instance_data, pre_create_data):
 
