@@ -593,3 +593,7 @@ class CreateHoudiniGeneric(plugin.HoudiniCreator):
             dynamic_data=dynamic_data,
             project_settings=self.project_settings
         )
+
+    def get_network_categories(self):
+        # Do not show anywhere in TAB menus since it applies to existing nodes
+        return []
