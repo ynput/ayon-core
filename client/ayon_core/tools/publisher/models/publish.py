@@ -876,6 +876,13 @@ class PublishModel:
     def has_validation_errors(self):
         return self._publish_has_validation_errors
 
+    def publish_can_continue(self):
+        return (
+            not self._publish_has_crashed
+            and not self._publish_has_validation_errors
+            and not self._publish_has_finished
+        )
+
     def get_progress(self):
         return self._publish_progress
 

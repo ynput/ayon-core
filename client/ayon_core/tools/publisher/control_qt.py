@@ -7,10 +7,24 @@ from ayon_core.lib.events import Event
 from ayon_core.pipeline.create import CreatedInstance
 
 from .control import (
-    MainThreadItem,
     PublisherController,
     BasePublisherController,
 )
+
+
+class MainThreadItem:
+    """Callback with args and kwargs."""
+
+    def __init__(self, callback, *args, **kwargs):
+        self.callback = callback
+        self.args = args
+        self.kwargs = kwargs
+
+    def __call__(self):
+        self.process()
+
+    def process(self):
+        self.callback(*self.args, **self.kwargs)
 
 
 class MainThreadProcess(QtCore.QObject):
@@ -34,10 +48,6 @@ class MainThreadProcess(QtCore.QObject):
 
         self._timer = timer
         self._switch_counter = self.count_timeout
-
-    def process(self, func, *args, **kwargs):
-        item = MainThreadItem(func, *args, **kwargs)
-        self.add_item(item)
 
     def add_item(self, item):
         self._items_to_process.append(item)
@@ -75,16 +85,32 @@ class QtPublisherController(PublisherController):
 
         super(QtPublisherController, self).__init__(*args, **kwargs)
 
-        self.event_system.add_callback(
+        self.register_event_callback(
             "publish.process.started", self._qt_on_publish_start
         )
-        self.event_system.add_callback(
+        self.register_event_callback(
             "publish.process.stopped", self._qt_on_publish_stop
         )
 
     def _reset_publish(self):
-        super(QtPublisherController, self)._reset_publish()
+        super()._reset_publish()
         self._main_thread_processor.clear()
+
+    def _start_publish(self, up_validation):
+        self._publish_model.set_publish_up_validation(up_validation)
+        self._publish_model.start_publish(wait=False)
+        self._process_main_thread_item(
+            MainThreadItem(self._next_publish_item_process)
+        )
+
+    def _next_publish_item_process(self):
+        if not self._publish_model.is_running():
+            return
+        func = self._publish_model.get_next_process_func()
+        self._process_main_thread_item(MainThreadItem(func))
+        self._process_main_thread_item(
+            MainThreadItem(self._next_publish_item_process)
+        )
 
     def _process_main_thread_item(self, item):
         self._main_thread_processor.add_item(item)
@@ -211,8 +237,8 @@ class QtRemotePublishController(BasePublisherController):
 
         pass
 
-    @abstractproperty
-    def current_folder_path(self):
+    @abstractmethod
+    def get_current_folder_path(self):
         """Current context folder path from host.
 
         Returns:
@@ -221,8 +247,8 @@ class QtRemotePublishController(BasePublisherController):
         """
         pass
 
-    @abstractproperty
-    def current_task_name(self):
+    @abstractmethod
+    def get_current_task_name(self):
         """Current context task name from client.
 
         Returns:

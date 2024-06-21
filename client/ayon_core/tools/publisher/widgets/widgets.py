@@ -1734,7 +1734,7 @@ class ProductAttributesWidget(QtWidgets.QWidget):
         thumbnail_widget.thumbnail_created.connect(self._on_thumbnail_create)
         thumbnail_widget.thumbnail_cleared.connect(self._on_thumbnail_clear)
 
-        controller.event_system.add_callback(
+        controller.register_event_callback(
             "instance.thumbnail.changed", self._on_thumbnail_changed
         )
 

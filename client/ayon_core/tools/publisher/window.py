@@ -273,55 +273,55 @@ class PublisherWindow(QtWidgets.QDialog):
             self._on_create_overlay_button_click
         )
 
-        controller.event_system.add_callback(
+        controller.register_event_callback(
             "instances.refresh.finished", self._on_instances_refresh
         )
-        controller.event_system.add_callback(
+        controller.register_event_callback(
             "publish.reset.finished", self._on_publish_reset
         )
-        controller.event_system.add_callback(
+        controller.register_event_callback(
             "controller.reset.finished", self._on_controller_reset
         )
-        controller.event_system.add_callback(
+        controller.register_event_callback(
             "publish.process.started", self._on_publish_start
         )
-        controller.event_system.add_callback(
+        controller.register_event_callback(
             "publish.has_validated.changed", self._on_publish_validated_change
         )
-        controller.event_system.add_callback(
+        controller.register_event_callback(
             "publish.finished.changed", self._on_publish_finished_change
         )
-        controller.event_system.add_callback(
+        controller.register_event_callback(
             "publish.process.stopped", self._on_publish_stop
         )
-        controller.event_system.add_callback(
+        controller.register_event_callback(
             "show.card.message", self._on_overlay_message
         )
-        controller.event_system.add_callback(
+        controller.register_event_callback(
             "instances.collection.failed", self._on_creator_error
         )
-        controller.event_system.add_callback(
+        controller.register_event_callback(
             "instances.save.failed", self._on_creator_error
         )
-        controller.event_system.add_callback(
+        controller.register_event_callback(
             "instances.remove.failed", self._on_creator_error
         )
-        controller.event_system.add_callback(
+        controller.register_event_callback(
             "instances.create.failed", self._on_creator_error
         )
-        controller.event_system.add_callback(
+        controller.register_event_callback(
             "convertors.convert.failed", self._on_convertor_error
         )
-        controller.event_system.add_callback(
+        controller.register_event_callback(
             "convertors.find.failed", self._on_convertor_error
         )
-        controller.event_system.add_callback(
+        controller.register_event_callback(
             "publish.action.failed", self._on_action_error
         )
-        controller.event_system.add_callback(
+        controller.register_event_callback(
             "export_report.request", self._export_report
         )
-        controller.event_system.add_callback(
+        controller.register_event_callback(
             "copy_report.request", self._copy_report
         )
 
@@ -453,14 +453,14 @@ class PublisherWindow(QtWidgets.QDialog):
         self._window_is_visible = False
         self._uninstall_app_event_listener()
         # TODO capture changes and ask user if wants to save changes on close
-        if not self._controller.host_context_has_changed:
+        if not self._controller.host_context_has_changed():
             self._save_changes(False)
         self._comment_input.setText("")  # clear comment
         self._reset_on_show = True
         self._controller.clear_thumbnail_temp_dir_path()
         # Trigger custom event that should be captured only in UI
         #   - backend (controller) must not be dependent on this event topic!!!
-        self._controller.event_system.emit("main.window.closed", {}, "window")
+        self._controller.emit_event("main.window.closed", {}, "window")
         super(PublisherWindow, self).closeEvent(event)
 
     def leaveEvent(self, event):
@@ -574,7 +574,7 @@ class PublisherWindow(QtWidgets.QDialog):
             bool: Save can happen.
         """
 
-        if not self._controller.host_context_has_changed:
+        if not self._controller.host_context_has_changed():
             return True
 
         title = "Host context changed"
@@ -885,23 +885,23 @@ class PublisherWindow(QtWidgets.QDialog):
         self._set_publish_overlay_visibility(False)
         self._reset_btn.setEnabled(True)
         self._stop_btn.setEnabled(False)
-        publish_has_crashed = self._controller.publish_has_crashed
+        publish_has_crashed = self._controller.publish_has_crashed()
         validate_enabled = not publish_has_crashed
         publish_enabled = not publish_has_crashed
         if self._is_on_publish_tab():
             self._go_to_report_tab()
 
         if validate_enabled:
-            validate_enabled = not self._controller.publish_has_validated
+            validate_enabled = not self._controller.publish_has_validated()
         if publish_enabled:
             if (
-                self._controller.publish_has_validated
-                and self._controller.publish_has_validation_errors
+                self._controller.publish_has_validated()
+                and self._controller.publish_has_validation_errors()
             ):
                 publish_enabled = False
 
             else:
-                publish_enabled = not self._controller.publish_has_finished
+                publish_enabled = not self._controller.publish_has_finished()
 
         self._validate_btn.setEnabled(validate_enabled)
         self._publish_btn.setEnabled(publish_enabled)
@@ -912,12 +912,12 @@ class PublisherWindow(QtWidgets.QDialog):
         self._update_publish_details_widget()
 
     def _validate_create_instances(self):
-        if not self._controller.host_is_valid:
+        if not self._controller.is_host_valid():
             self._set_footer_enabled(True)
             return
 
         all_valid = None
-        for instance in self._controller.instances.values():
+        for instance in self._controller.get_instances():
             if not instance["active"]:
                 continue
 

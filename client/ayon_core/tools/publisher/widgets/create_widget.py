@@ -274,10 +274,10 @@ class CreateWidget(QtWidgets.QWidget):
         thumbnail_widget.thumbnail_created.connect(self._on_thumbnail_create)
         thumbnail_widget.thumbnail_cleared.connect(self._on_thumbnail_clear)
 
-        controller.event_system.add_callback(
+        controller.register_event_callback(
             "main.window.closed", self._on_main_window_close
         )
-        controller.event_system.add_callback(
+        controller.register_event_callback(
             "plugins.refresh.finished", self._on_plugins_refresh
         )
 
@@ -313,13 +313,11 @@ class CreateWidget(QtWidgets.QWidget):
         self._last_current_context_task = None
         self._use_current_context = True
 
-    @property
-    def current_folder_path(self):
-        return self._controller.current_folder_path
+    def get_current_folder_path(self):
+        return self._controller.get_current_folder_path()
 
-    @property
-    def current_task_name(self):
-        return self._controller.current_task_name
+    def get_current_task_name(self):
+        return self._controller.get_current_task_name()
 
     def _context_change_is_enabled(self):
         return self._context_widget.is_enabled()
@@ -330,7 +328,7 @@ class CreateWidget(QtWidgets.QWidget):
             folder_path = self._context_widget.get_selected_folder_path()
 
         if folder_path is None:
-            folder_path = self.current_folder_path
+            folder_path = self.get_current_folder_path()
         return folder_path or None
 
     def _get_folder_id(self):
@@ -348,7 +346,7 @@ class CreateWidget(QtWidgets.QWidget):
                 task_name = self._context_widget.get_selected_task_name()
 
         if not task_name:
-            task_name = self.current_task_name
+            task_name = self.get_current_task_name()
         return task_name
 
     def _set_context_enabled(self, enabled):
@@ -364,8 +362,8 @@ class CreateWidget(QtWidgets.QWidget):
         self._use_current_context = True
 
     def refresh(self):
-        current_folder_path = self._controller.current_folder_path
-        current_task_name = self._controller.current_task_name
+        current_folder_path = self._controller.get_current_folder_path()
+        current_task_name = self._controller.get_current_task_name()
 
         # Get context before refresh to keep selection of folder and
         #   task widgets
@@ -481,7 +479,7 @@ class CreateWidget(QtWidgets.QWidget):
 
         # Add new create plugins
         new_creators = set()
-        creator_items_by_identifier = self._controller.creator_items
+        creator_items_by_identifier = self._controller.get_creator_items()
         for identifier, creator_item in creator_items_by_identifier.items():
             if creator_item.creator_type != "artist":
                 continue
@@ -562,7 +560,7 @@ class CreateWidget(QtWidgets.QWidget):
         description = ""
         if creator_item is not None:
             description = creator_item.detailed_description or description
-        self._controller.event_system.emit(
+        self._controller.emit_event(
             "show.detailed.help",
             {
                 "message": description
@@ -571,7 +569,7 @@ class CreateWidget(QtWidgets.QWidget):
         )
 
     def _set_creator_by_identifier(self, identifier):
-        creator_item = self._controller.creator_items.get(identifier)
+        creator_item = self._controller.get_creator_item_by_id(identifier)
         self._set_creator(creator_item)
 
     def _set_creator(self, creator_item):

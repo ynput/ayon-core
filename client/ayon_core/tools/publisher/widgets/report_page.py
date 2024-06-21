@@ -742,7 +742,7 @@ class PublishInstanceCardWidget(BaseClickableFrame):
     _success_pix = None
     _in_progress_pix = None
 
-    def __init__(self, instance, icon, publish_finished, parent):
+    def __init__(self, instance, icon, publish_can_continue, parent):
         super(PublishInstanceCardWidget, self).__init__(parent)
 
         self.setObjectName("CardViewWidget")
@@ -756,10 +756,10 @@ class PublishInstanceCardWidget(BaseClickableFrame):
             state_pix = self.get_error_pix()
         elif instance.warned:
             state_pix = self.get_warning_pix()
-        elif publish_finished:
-            state_pix = self.get_success_pix()
-        else:
+        elif publish_can_continue:
             state_pix = self.get_in_progress_pix()
+        else:
+            state_pix = self.get_success_pix()
 
         state_label = IconValuePixmapLabel(state_pix, self)
 
@@ -970,11 +970,7 @@ class PublishInstancesViewWidget(QtWidgets.QWidget):
         widgets = []
         group_widgets = []
 
-        publish_finished = (
-            self._controller.publish_has_crashed
-            or self._controller.publish_has_validation_errors
-            or self._controller.publish_has_finished
-        )
+        publish_can_continue = self._controller.publish_can_continue()
         instances_by_family = collections.defaultdict(list)
         for instance_item in instance_items:
             if not instance_item.exists:
@@ -996,7 +992,10 @@ class PublishInstancesViewWidget(QtWidgets.QWidget):
                 icon = identifier_icons[instance_item.creator_identifier]
 
                 widget = PublishInstanceCardWidget(
-                    instance_item, icon, publish_finished, self._instance_view
+                    instance_item,
+                    icon,
+                    publish_can_continue,
+                    self._instance_view
                 )
                 widget.selection_requested.connect(self._on_selection_request)
                 self._instance_layout.addWidget(widget, 0)
@@ -1502,11 +1501,11 @@ class CrashWidget(QtWidgets.QWidget):
         self._controller = controller
 
     def _on_copy_to_clipboard(self):
-        self._controller.event_system.emit(
+        self._controller.emit_event(
             "copy_report.request", {}, "report_page")
 
     def _on_save_to_disk_click(self):
-        self._controller.event_system.emit(
+        self._controller.emit_event(
             "export_report.request", {}, "report_page")
 
 
@@ -1744,8 +1743,8 @@ class ReportsWidget(QtWidgets.QWidget):
         view = self._instances_view
         validation_error_mode = False
         if (
-            not self._controller.publish_has_crashed
-            and self._controller.publish_has_validation_errors
+            not self._controller.publish_has_crashed()
+            and self._controller.publish_has_validation_errors()
         ):
             view = self._validation_error_view
             validation_error_mode = True
@@ -1755,8 +1754,9 @@ class ReportsWidget(QtWidgets.QWidget):
         self._detail_input_scroll.setVisible(validation_error_mode)
         self._views_layout.setCurrentWidget(view)
 
-        self._crash_widget.setVisible(self._controller.publish_has_crashed)
-        self._logs_view.setVisible(not self._controller.publish_has_crashed)
+        is_crashed = self._controller.publish_has_crashed()
+        self._crash_widget.setVisible(is_crashed)
+        self._logs_view.setVisible(not is_crashed)
 
         # Instance view & logs update
         instance_items = self._get_instance_items()
@@ -1832,13 +1832,13 @@ class ReportPageWidget(QtWidgets.QFrame):
         layout.addWidget(header_label, 0)
         layout.addWidget(publish_instances_widget, 0)
 
-        controller.event_system.add_callback(
+        controller.register_event_callback(
             "publish.process.started", self._on_publish_start
         )
-        controller.event_system.add_callback(
+        controller.register_event_callback(
             "publish.reset.finished", self._on_publish_reset
         )
-        controller.event_system.add_callback(
+        controller.register_event_callback(
             "publish.process.stopped", self._on_publish_stop
         )
 
@@ -1848,14 +1848,14 @@ class ReportPageWidget(QtWidgets.QFrame):
         self._controller = controller
 
     def _update_label(self):
-        if not self._controller.publish_has_started:
+        if not self._controller.publish_has_started():
             # This probably never happen when this widget is visible
             header_label = "Nothing to report until you run publish"
-        elif self._controller.publish_has_crashed:
+        elif self._controller.publish_has_crashed():
             header_label = "Publish error report"
-        elif self._controller.publish_has_validation_errors:
+        elif self._controller.publish_has_validation_errors():
             header_label = "Publish validation report"
-        elif self._controller.publish_has_finished:
+        elif self._controller.publish_has_finished():
             header_label = "Publish success report"
         else:
             header_label = "Publish report"
@@ -1863,7 +1863,7 @@ class ReportPageWidget(QtWidgets.QFrame):
 
     def _update_state(self):
         self._update_label()
-        publish_started = self._controller.publish_has_started
+        publish_started = self._controller.publish_has_started()
         self._publish_instances_widget.setVisible(publish_started)
         if publish_started:
             self._publish_instances_widget.update_data()

@@ -28,16 +28,18 @@ class AbstractPublisherController(ABC):
 
         pass
 
-    @property
     @abstractmethod
-    def event_system(self):
-        """Inner event system for publisher controller."""
+    def emit_event(self, topic, data=None, source=None):
+        """Use implemented event system to trigger event."""
 
         pass
 
-    @property
     @abstractmethod
-    def project_name(self):
+    def register_event_callback(self, topic, callback):
+        pass
+
+    @abstractmethod
+    def get_current_project_name(self):
         """Current context project name.
 
         Returns:
@@ -46,9 +48,8 @@ class AbstractPublisherController(ABC):
 
         pass
 
-    @property
     @abstractmethod
-    def current_folder_path(self):
+    def get_current_folder_path(self):
         """Current context folder path.
 
         Returns:
@@ -57,9 +58,8 @@ class AbstractPublisherController(ABC):
         """
         pass
 
-    @property
     @abstractmethod
-    def current_task_name(self):
+    def get_current_task_name(self):
         """Current context task name.
 
         Returns:
@@ -68,7 +68,6 @@ class AbstractPublisherController(ABC):
 
         pass
 
-    @property
     @abstractmethod
     def host_context_has_changed(self):
         """Host context changed after last reset.
@@ -81,9 +80,8 @@ class AbstractPublisherController(ABC):
 
         pass
 
-    @property
     @abstractmethod
-    def host_is_valid(self):
+    def is_host_valid(self):
         """Host is valid for creation part.
 
         Host must have implemented certain functionality to be able create
@@ -95,15 +93,22 @@ class AbstractPublisherController(ABC):
 
         pass
 
-    @property
     @abstractmethod
-    def instances(self):
+    def get_instances(self):
         """Collected/created instances.
 
         Returns:
             List[CreatedInstance]: List of created instances.
-        """
 
+        """
+        pass
+
+    @abstractmethod
+    def get_instance_by_id(self, instance_id):
+        pass
+
+    @abstractmethod
+    def get_instances_by_id(self, instance_ids=None):
         pass
 
     @abstractmethod
@@ -212,7 +217,6 @@ class AbstractPublisherController(ABC):
 
         pass
 
-    @property
     @abstractmethod
     def publish_has_started(self):
         """Has publishing finished.
@@ -223,7 +227,6 @@ class AbstractPublisherController(ABC):
 
         pass
 
-    @property
     @abstractmethod
     def publish_has_finished(self):
         """Has publishing finished.
@@ -234,7 +237,6 @@ class AbstractPublisherController(ABC):
 
         pass
 
-    @property
     @abstractmethod
     def publish_is_running(self):
         """Publishing is running right now.
@@ -278,9 +280,8 @@ class AbstractPublisherController(ABC):
 
         pass
 
-    @property
     @abstractmethod
-    def publish_max_progress(self):
+    def get_publish_max_progress(self):
         """Get maximum possible progress number.
 
         Returns:
@@ -289,9 +290,8 @@ class AbstractPublisherController(ABC):
 
         pass
 
-    @property
     @abstractmethod
-    def publish_progress(self):
+    def get_publish_progress(self):
         """Current progress number.
 
         Returns:
@@ -300,9 +300,8 @@ class AbstractPublisherController(ABC):
 
         pass
 
-    @property
     @abstractmethod
-    def publish_error_msg(self):
+    def get_publish_error_msg(self):
         """Current error message which cause fail of publishing.
 
         Returns:
@@ -353,9 +352,8 @@ class AbstractPublisherController(ABC):
 
         pass
 
-    @property
     @abstractmethod
-    def convertor_items(self):
+    def get_convertor_items(self):
         pass
 
     @abstractmethod

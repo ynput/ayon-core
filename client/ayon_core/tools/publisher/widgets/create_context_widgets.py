@@ -118,7 +118,7 @@ class CreateHierarchyController:
         self.event_system.add_callback(topic, callback)
 
     def get_project_name(self):
-        return self._controller.project_name
+        return self._controller.get_current_project_name()
 
     def get_folder_items(self, project_name, sender=None):
         return self._controller.get_folder_items(project_name, sender)
@@ -234,12 +234,12 @@ class CreateContextWidget(QtWidgets.QWidget):
 
     def update_current_context_btn(self):
         # Hide set current folder if there is no one
-        folder_path = self._controller.current_folder_path
+        folder_path = self._controller.get_current_folder_path()
         self._current_context_btn.setVisible(bool(folder_path))
 
     def set_selected_context(self, folder_id, task_name):
         self._hierarchy_controller.set_expected_selection(
-            self._controller.project_name,
+            self._controller.get_current_project_name(),
             folder_id,
             task_name
         )
@@ -270,13 +270,13 @@ class CreateContextWidget(QtWidgets.QWidget):
             )
 
     def refresh(self):
-        self._last_project_name = self._controller.project_name
+        self._last_project_name = self._controller.get_current_project_name()
         folder_id = self._last_folder_id
         task_name = self._last_selected_task_name
         if folder_id is None:
-            folder_path = self._controller.current_folder_path
+            folder_path = self._controller.get_current_folder_path()
             folder_id = self._controller.get_folder_id_from_path(folder_path)
-            task_name = self._controller.current_task_name
+            task_name = self._controller.get_current_task_name()
         self._hierarchy_controller.set_selected_project(
             self._last_project_name
         )
@@ -295,8 +295,8 @@ class CreateContextWidget(QtWidgets.QWidget):
         self.task_changed.emit()
 
     def _on_current_context_click(self):
-        folder_path = self._controller.current_folder_path
-        task_name = self._controller.current_task_name
+        folder_path = self._controller.get_current_folder_path()
+        task_name = self._controller.get_current_task_name()
         folder_id = self._controller.get_folder_id_from_path(folder_path)
         self._hierarchy_controller.set_expected_selection(
             self._last_project_name, folder_id, task_name
