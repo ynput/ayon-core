@@ -15,9 +15,8 @@ class CollectFrames(plugin.HoudiniInstancePlugin):
     # this plugin runs after CollectRopFrameRange
     order = pyblish.api.CollectorOrder + 0.1
     label = "Collect Frames"
-    families = ["vdbcache", "imagesequence", "ass",
-                "mantraifd", "redshiftproxy", "review",
-                "pointcache", "rop"]
+    families = ["camera", "vdbcache", "imagesequence", "ass", "mantraifd",
+                "redshiftproxy", "review", "pointcache", "fbx", "rop"]
 
     def process(self, instance):
 
