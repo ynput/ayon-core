@@ -85,10 +85,9 @@ class HoudiniHost(HostBase, IWorkfileHost, ILoadHost, IPublishHost):
             # initialization during start up delays Houdini UI by minutes
             # making it extremely slow to launch.
             hdefereval.executeDeferred(shelves.generate_shelves)
-
-        if not IS_HEADLESS:
-            import hdefereval # noqa, hdefereval is only available in ui mode
             hdefereval.executeDeferred(creator_node_shelves.install)
+            if os.environ.get("AYON_WORKFILE_TOOL_ON_START"):
+                hdefereval.executeDeferred(lib.wait_startup_launch_workfiles_app)
 
     def workfile_has_unsaved_changes(self):
         return hou.hipFile.hasUnsavedChanges()
