@@ -189,7 +189,12 @@ class CreateHoudiniGeneric(plugin.HoudiniCreator):
             product_type=product_type
         )
 
-        for node in hou.selectedNodes():
+        if pre_create_data.get("node"):
+            nodes = [pre_create_data.get("node")]
+        else:
+            nodes = hou.selectedNodes()
+
+        for node in nodes:
             if node.parm("AYON_creator_identifier"):
                 # Continue if already existing attributes
                 continue
