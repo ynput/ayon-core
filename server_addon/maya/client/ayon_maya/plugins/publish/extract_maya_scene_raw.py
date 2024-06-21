@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """Extract data as Maya scene (raw)."""
 import os
-
+import contextlib
 from ayon_core.lib import BoolDef
 from ayon_core.pipeline import AVALON_CONTAINER_ID, AYON_CONTAINER_ID
 from ayon_core.pipeline.publish import AYONPyblishPluginMixin
@@ -88,28 +88,19 @@ class ExtractMayaSceneRaw(plugin.MayaExtractorPlugin, AYONPyblishPluginMixin):
         )
         with maintained_selection():
             cmds.select(selection, noExpand=True)
-            if instance.data.get("shader", True):
-                with shader(selection, shadingEngine="initialShadingGroup"):
-                    cmds.file(path,
-                              force=True,
-                              typ="mayaAscii" if self.scene_type == "ma" else "mayaBinary",  # noqa: E501
-                              exportSelected=True,
-                              preserveReferences=attribute_values[
-                                  "preserve_references"
-                                  ],
-                              constructionHistory=True,
-                              shader=instance.data.get("shader", True),
-                              expressions=True)
-            else:
+            with contextlib.ExitStack() as stack:
+                if not instance.data.get("shader", True):
+                    # Fix bug where export without shader may import the geometry 'green'
+                    # due to the lack of any shader on import.
+                    stack.enter_context(shader(selection, shadingEngine="initialShadingGroup"))
+
                 cmds.file(path,
                           force=True,
-                          typ="mayaAscii" if self.scene_type == "ma" else "mayaBinary",  # noqa: E501
+                          typ="mayaAscii" if self.scene_type == "ma" else "mayaBinary",
                           exportSelected=True,
-                          preserveReferences=attribute_values[
-                              "preserve_references"
-                              ],
+                          preserveReferences=attribute_values["preserve_references"],
                           constructionHistory=True,
-                          shader=True,
+                          shader=instance.data.get("shader", True),
                           constraints=True,
                           expressions=True)
 
