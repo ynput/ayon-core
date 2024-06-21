@@ -2,7 +2,6 @@ import os
 import logging
 import tempfile
 import shutil
-from abc import abstractmethod
 
 import ayon_api
 
@@ -12,7 +11,6 @@ from ayon_core.pipeline import (
     registered_host,
     get_process_id,
 )
-from ayon_core.pipeline.create import CreateContext
 from ayon_core.tools.common_models import ProjectsModel, HierarchyModel
 
 from .models import (

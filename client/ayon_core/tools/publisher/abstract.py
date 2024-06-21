@@ -1,4 +1,11 @@
 from abc import ABC, abstractmethod
+from typing import Optional, Dict, List, Tuple, Any, Callable, Union, Iterable
+
+from ayon_core.lib import AbstractAttrDef
+from ayon_core.host import HostBase
+from ayon_core.tools.common_models import FolderItem, TaskItem
+from ayon_core.pipeline.create import CreateContext, CreatedInstance
+from ayon_core.pipeline.create.context import ConvertorItem
 
 
 class CardMessageTypes:
@@ -18,17 +25,28 @@ class AbstractPublisherController(ABC):
     """
 
     @abstractmethod
-    def emit_event(self, topic, data=None, source=None):
+    def is_headless(self) -> bool:
+        pass
+
+    @abstractmethod
+    def get_host(self) -> HostBase:
+        pass
+
+    @abstractmethod
+    def emit_event(
+        self, topic: str,
+        data: Optional[Dict[str, Any]] = None,
+        source: Optional[str] = None
+    ):
         """Use implemented event system to trigger event."""
-
         pass
 
     @abstractmethod
-    def register_event_callback(self, topic, callback):
+    def register_event_callback(self, topic: str, callback: Callable):
         pass
 
     @abstractmethod
-    def get_current_project_name(self):
+    def get_current_project_name(self) -> Union[str, None]:
         """Current context project name.
 
         Returns:
@@ -38,7 +56,7 @@ class AbstractPublisherController(ABC):
         pass
 
     @abstractmethod
-    def get_current_folder_path(self):
+    def get_current_folder_path(self) -> Union[str, None]:
         """Current context folder path.
 
         Returns:
@@ -48,7 +66,7 @@ class AbstractPublisherController(ABC):
         pass
 
     @abstractmethod
-    def get_current_task_name(self):
+    def get_current_task_name(self) -> Union[str, None]:
         """Current context task name.
 
         Returns:
@@ -58,7 +76,7 @@ class AbstractPublisherController(ABC):
         pass
 
     @abstractmethod
-    def host_context_has_changed(self):
+    def host_context_has_changed(self) -> bool:
         """Host context changed after last reset.
 
         'CreateContext' has this option available using 'context_has_changed'.
@@ -70,7 +88,7 @@ class AbstractPublisherController(ABC):
         pass
 
     @abstractmethod
-    def is_host_valid(self):
+    def is_host_valid(self) -> bool:
         """Host is valid for creation part.
 
         Host must have implemented certain functionality to be able create
@@ -83,7 +101,39 @@ class AbstractPublisherController(ABC):
         pass
 
     @abstractmethod
-    def get_instances(self):
+    def get_folder_entity(
+        self, project_name: str, folder_id: str
+    ) -> Union[Dict[str, Any], None]:
+        pass
+
+    @abstractmethod
+    def get_task_entity(
+        self, project_name: str, task_id: str
+    ) -> Union[Dict[str, Any], None]:
+        pass
+
+    @abstractmethod
+    def get_folder_item_by_path(
+        self, project_name: str, folder_path: str
+    ) -> Union[FolderItem, None]:
+        pass
+
+    @abstractmethod
+    def get_task_item_by_name(
+        self,
+        project_name: str,
+        folder_id: str,
+        task_name: str,
+        sender: Optional[str] = None
+    ) -> Union[TaskItem, None]:
+        pass
+
+    @abstractmethod
+    def get_create_context(self) -> CreateContext:
+        pass
+
+    @abstractmethod
+    def get_instances(self) -> List[CreatedInstance]:
         """Collected/created instances.
 
         Returns:
@@ -93,15 +143,19 @@ class AbstractPublisherController(ABC):
         pass
 
     @abstractmethod
-    def get_instance_by_id(self, instance_id):
+    def get_instance_by_id(
+        self, instance_id: str
+    ) -> Union[CreatedInstance, None]:
         pass
 
     @abstractmethod
-    def get_instances_by_id(self, instance_ids=None):
+    def get_instances_by_id(
+        self, instance_ids: Optional[Iterable[str]] = None
+    ) -> Dict[str, Union[CreatedInstance, None]]:
         pass
 
     @abstractmethod
-    def get_context_title(self):
+    def get_context_title(self) -> Union[str, None]:
         """Get context title for artist shown at the top of main window.
 
         Returns:
@@ -112,7 +166,7 @@ class AbstractPublisherController(ABC):
         pass
 
     @abstractmethod
-    def get_existing_product_names(self, folder_path):
+    def get_existing_product_names(self, folder_path: str) -> List[str]:
         pass
 
     @abstractmethod
@@ -126,15 +180,27 @@ class AbstractPublisherController(ABC):
         pass
 
     @abstractmethod
-    def get_creator_attribute_definitions(self, instances):
+    def get_creator_attribute_definitions(
+        self, instances: List[CreatedInstance]
+    ) -> List[Tuple[AbstractAttrDef, List[CreatedInstance], List[Any]]]:
         pass
 
     @abstractmethod
-    def get_publish_attribute_definitions(self, instances, include_context):
+    def get_publish_attribute_definitions(
+        self,
+        instances: List[CreatedInstance],
+        include_context: bool
+    ) -> List[Tuple[
+        str,
+        List[AbstractAttrDef],
+        Dict[str, List[Tuple[CreatedInstance, Any]]]
+    ]]:
         pass
 
     @abstractmethod
-    def get_creator_icon(self, identifier):
+    def get_creator_icon(
+        self, identifier: str
+    ) -> Union[str, Dict[str, Any], None]:
         """Receive creator's icon by identifier.
 
         Args:
@@ -149,11 +215,11 @@ class AbstractPublisherController(ABC):
     @abstractmethod
     def get_product_name(
         self,
-        creator_identifier,
-        variant,
-        task_name,
-        folder_path,
-        instance_id=None
+        creator_identifier: str,
+        variant: str,
+        task_name: Union[str, None],
+        folder_path: Union[str, None],
+        instance_id: Optional[str] = None
     ):
         """Get product name based on passed data.
 
@@ -171,7 +237,11 @@ class AbstractPublisherController(ABC):
 
     @abstractmethod
     def create(
-        self, creator_identifier, product_name, instance_data, options
+        self,
+        creator_identifier: str,
+        product_name: str,
+        instance_data: Dict[str, Any],
+        options: Dict[str, Any],
     ):
         """Trigger creation by creator identifier.
 
@@ -188,7 +258,7 @@ class AbstractPublisherController(ABC):
         pass
 
     @abstractmethod
-    def save_changes(self):
+    def save_changes(self) -> bool:
         """Save changes in create context.
 
         Save can crash because of unexpected errors.
@@ -200,14 +270,14 @@ class AbstractPublisherController(ABC):
         pass
 
     @abstractmethod
-    def remove_instances(self, instance_ids):
+    def remove_instances(self, instance_ids: List[str]):
         """Remove list of instances from create context."""
         # TODO expect instance ids
 
         pass
 
     @abstractmethod
-    def publish_has_started(self):
+    def publish_has_started(self) -> bool:
         """Has publishing finished.
 
         Returns:
@@ -217,7 +287,7 @@ class AbstractPublisherController(ABC):
         pass
 
     @abstractmethod
-    def publish_has_finished(self):
+    def publish_has_finished(self) -> bool:
         """Has publishing finished.
 
         Returns:
@@ -227,7 +297,7 @@ class AbstractPublisherController(ABC):
         pass
 
     @abstractmethod
-    def publish_is_running(self):
+    def publish_is_running(self) -> bool:
         """Publishing is running right now.
 
         Returns:
@@ -237,7 +307,7 @@ class AbstractPublisherController(ABC):
         pass
 
     @abstractmethod
-    def publish_has_validated(self):
+    def publish_has_validated(self) -> bool:
         """Publish validation passed.
 
         Returns:
@@ -247,7 +317,7 @@ class AbstractPublisherController(ABC):
         pass
 
     @abstractmethod
-    def publish_has_crashed(self):
+    def publish_has_crashed(self) -> bool:
         """Publishing crashed for any reason.
 
         Returns:
@@ -257,7 +327,7 @@ class AbstractPublisherController(ABC):
         pass
 
     @abstractmethod
-    def publish_has_validation_errors(self):
+    def publish_has_validation_errors(self) -> bool:
         """During validation happened at least one validation error.
 
         Returns:
@@ -267,7 +337,7 @@ class AbstractPublisherController(ABC):
         pass
 
     @abstractmethod
-    def get_publish_max_progress(self):
+    def get_publish_max_progress(self) -> int:
         """Get maximum possible progress number.
 
         Returns:
@@ -277,7 +347,7 @@ class AbstractPublisherController(ABC):
         pass
 
     @abstractmethod
-    def get_publish_progress(self):
+    def get_publish_progress(self) -> int:
         """Current progress number.
 
         Returns:
@@ -287,7 +357,7 @@ class AbstractPublisherController(ABC):
         pass
 
     @abstractmethod
-    def get_publish_error_msg(self):
+    def get_publish_error_msg(self) -> Union[str, None]:
         """Current error message which cause fail of publishing.
 
         Returns:
@@ -298,7 +368,7 @@ class AbstractPublisherController(ABC):
         pass
 
     @abstractmethod
-    def get_publish_report(self):
+    def get_publish_report(self) -> Dict[str, Any]:
         pass
 
     @abstractmethod
@@ -328,7 +398,7 @@ class AbstractPublisherController(ABC):
         pass
 
     @abstractmethod
-    def run_action(self, plugin_id, action_id):
+    def run_action(self, plugin_id: str, action_id: str):
         """Trigger pyblish action on a plugin.
 
         Args:
@@ -339,23 +409,27 @@ class AbstractPublisherController(ABC):
         pass
 
     @abstractmethod
-    def get_convertor_items(self):
+    def get_convertor_items(self) -> Dict[str, ConvertorItem]:
         pass
 
     @abstractmethod
-    def trigger_convertor_items(self, convertor_identifiers):
+    def trigger_convertor_items(self, convertor_identifiers: List[str]):
         pass
 
     @abstractmethod
-    def get_thumbnail_paths_for_instances(self, instance_ids):
+    def get_thumbnail_paths_for_instances(
+        self, instance_ids: List[str]
+    ) -> Dict[str, Union[str, None]]:
         pass
 
     @abstractmethod
-    def set_thumbnail_paths_for_instances(self, thumbnail_path_mapping):
+    def set_thumbnail_paths_for_instances(
+        self, thumbnail_path_mapping: Dict[str, str]
+    ):
         pass
 
     @abstractmethod
-    def set_comment(self, comment):
+    def set_comment(self, comment: str):
         """Set comment on pyblish context.
 
         Set "comment" key on current pyblish.api.Context data.
@@ -368,7 +442,9 @@ class AbstractPublisherController(ABC):
 
     @abstractmethod
     def emit_card_message(
-        self, message, message_type=CardMessageTypes.standard
+        self,
+        message: str,
+        message_type: Optional[str] = CardMessageTypes.standard
     ):
         """Emit a card message which can have a lifetime.
 
@@ -377,12 +453,13 @@ class AbstractPublisherController(ABC):
 
         Args:
             message (str): Message that will be showed.
+            message_type (Optional[str]): Message type.
         """
 
         pass
 
     @abstractmethod
-    def get_thumbnail_temp_dir_path(self):
+    def get_thumbnail_temp_dir_path(self) -> str:
         """Return path to directory where thumbnails can be temporary stored.
 
         Returns:
