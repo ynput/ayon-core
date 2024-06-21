@@ -203,11 +203,17 @@ class CreateHoudiniGeneric(plugin.HoudiniCreator):
                 product_type, product_name, instance_data.copy(), self
             )
 
-            # Imprint on the selected node
-            self.imprint(created_instance, values=instance_data, update=False)
-
             # Add instance
             self._add_instance_to_context(created_instance)
+
+            # Imprint on the selected node
+            # NOTE: We imprint after `_add_instance_to_context` to ensure
+            #  the imprinted data directly contains also the instance
+            #  attributes for the product type. Otherwise, they will appear
+            #  after first save.
+            self.imprint(created_instance,
+                         values=created_instance.data_to_store(),
+                         update=False)
 
     def collect_instances(self):
         for node in lsattr("AYON_id", plugin.AYON_INSTANCE_ID):
