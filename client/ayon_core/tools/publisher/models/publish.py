@@ -51,7 +51,7 @@ class PublishReportMaker:
 
         self._all_instances_by_id: Dict[str, pyblish.api.Instance] = {}
         self._plugin_data_by_id: Dict[str, Any] = {}
-        self._current_plugin_id: Union[str, None] = None
+        self._current_plugin_id: Optional[str] = None
 
         self.reset(
             creator_discover_result,
@@ -318,10 +318,10 @@ class PublishPluginActionItem:
         action_id (str): Action id.
         plugin_id (str): Plugin id.
         active (bool): Action is active.
-        on_filter (ActionFilterType): Actions have 'on' attribte which define when can be
-            action triggered (e.g. 'all', 'failed', ...).
+        on_filter (ActionFilterType): Actions have 'on' attribute which define
+            when can be action triggered (e.g. 'all', 'failed', ...).
         label (str): Action's label.
-        icon (Union[str, None]) Action's icon.
+        icon (Optional[str]) Action's icon.
     """
 
     def __init__(
@@ -331,14 +331,14 @@ class PublishPluginActionItem:
         active: bool,
         on_filter: ActionFilterType,
         label: str,
-        icon: Union[str, None],
+        icon: Optional[str],
     ):
         self.action_id: str = action_id
         self.plugin_id: str = plugin_id
         self.active: bool = active
         self.on_filter: ActionFilterType = on_filter
         self.label: str = label
-        self.icon: Union[str, None] = icon
+        self.icon: Optional[str] = icon
 
     def to_data(self) -> Dict[str, Any]:
         """Serialize object to dictionary.
@@ -484,34 +484,34 @@ class ValidationErrorItem:
     and UI connection.
 
     Args:
-        instance_id (Union[str, None]): Pyblish instance id to which is
+        instance_id (Optional[str]): Pyblish instance id to which is
             validation error connected.
-        instance_label (str): Prepared instance label.
+        instance_label (Optional[str]): Prepared instance label.
         plugin_id (str): Pyblish plugin id which triggered the validation
             error. Id is generated using 'PublishPluginsProxy'.
         context_validation (bool): Error happened on context.
         title (str): Error title.
-        descripttion (str): Error description.
+        description (str): Error description.
         detail (str): Error detail.
 
     """
     def __init__(
         self,
-        instance_id: Union[str, None],
-        instance_label: Union[str, None],
+        instance_id: Optional[str],
+        instance_label: Optional[str],
         plugin_id: str,
         context_validation: bool,
         title: str,
         description: str,
         detail: str
     ):
-        self.instance_id = instance_id
-        self.instance_label = instance_label
-        self.plugin_id = plugin_id
-        self.context_validation = context_validation
-        self.title = title
-        self.description = description
-        self.detail = detail
+        self.instance_id: Optional[str] = instance_id
+        self.instance_label: Optional[str] = instance_label
+        self.plugin_id: str = plugin_id
+        self.context_validation: bool = context_validation
+        self.title: str = title
+        self.description: str = description
+        self.detail: str = detail
 
     def to_data(self) -> Dict[str, Any]:
         """Serialize object to dictionary.
@@ -796,7 +796,7 @@ class PublishModel:
         self._publish_comment_is_set: bool = False
 
         # Any other exception that happened during publishing
-        self._publish_error_msg: Union[str, None] = None
+        self._publish_error_msg: Optional[str] = None
         # Publishing is in progress
         self._publish_is_running: bool = False
         # Publishing is over validation order
@@ -969,7 +969,7 @@ class PublishModel:
     def get_validation_errors(self) -> PublishValidationErrorsReport:
         return self._publish_validation_errors.create_report()
 
-    def get_error_msg(self) -> Union[str, None]:
+    def get_error_msg(self) -> Optional[str]:
         return self._publish_error_msg
 
     def set_comment(self, comment: str):
@@ -1069,7 +1069,7 @@ class PublishModel:
                 {"value": value}
             )
 
-    def _set_publish_error_msg(self, value: Union[str, None]):
+    def _set_publish_error_msg(self, value: Optional[str]):
         if self._publish_error_msg != value:
             self._publish_error_msg = value
             self._emit_event(

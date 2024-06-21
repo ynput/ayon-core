@@ -427,7 +427,7 @@ class CreateModel:
                 CardMessageTypes.error
             )
 
-    def save_changes(self, show_message: Optional[bool] = True):
+    def save_changes(self, show_message: Optional[bool] = True) -> bool:
         """Save changes happened during creation.
 
         Trigger save of changes using host api. This functionality does not
@@ -515,7 +515,9 @@ class CreateModel:
         return output
 
     def get_publish_attribute_definitions(
-        self, instances: List[CreatedInstance], include_context: bool
+        self,
+        instances: List[CreatedInstance],
+        include_context: bool
     ) -> List[Tuple[
         str,
         List[AbstractAttrDef],
