@@ -9,14 +9,16 @@ class CreateSetDress(plugin.MayaCreator):
     label = "Set Dress"
     product_type = "setdress"
     icon = "cubes"
+    exactSetMembersOnly = True
+    shader = True
     default_variants = ["Main", "Anim"]
 
     def get_instance_attr_defs(self):
         return [
             BoolDef("exactSetMembersOnly",
                     label="Exact Set Members Only",
-                    default=True),
+                    default=self.exactSetMembersOnly),
             BoolDef("shader",
                     label="Include shader",
-                    default=True)
+                    default=self.shader)
         ]
