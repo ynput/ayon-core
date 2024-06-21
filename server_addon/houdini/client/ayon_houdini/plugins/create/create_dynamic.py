@@ -32,8 +32,13 @@ class CreateRuntimeInstance(Creator):
     publishing. The created instances are transient and will be gone on
     resetting the `CreateContext` since they will not be recollected.
 
+    TODO: The goal is for this runtime instance to be so generic that it can
+        run anywhere, globally - and needs no knowledge about its host. It's
+        the simplest 'entry point' to ingesting something from anywhere.
+
     """
     # TODO: This should be a global HIDDEN creator instead!
+    # TODO: This should eventually not have a Houdini specific identifier
     identifier = "io.openpype.creators.houdini.batch"
     label = "Ingest"
     product_type = "dynamic"  # not actually used
