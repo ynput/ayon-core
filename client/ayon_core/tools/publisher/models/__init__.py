@@ -1,15 +1,9 @@
 from .create import CreatorItem
-from .publish import (
-    PublishReportMaker,
-    PublishValidationErrors,
-    PublishPluginsProxy,
-)
+from .publish import PublishModel
 
 
 __all__ = (
     "CreatorItem",
 
-    "PublishReportMaker",
-    "PublishValidationErrors",
-    "PublishPluginsProxy",
+    "PublishModel",
 )
