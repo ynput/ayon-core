@@ -11,8 +11,8 @@ class CreateProjectStructureAction(LauncherAction):
 
     def is_compatible(self, selection) -> bool:
         return (
-            selection.is_project_selected and
-            not selection.is_folder_selected
+            selection.is_project_selected
+            and not selection.is_folder_selected
         )
 
     def process(self, selection, **kwargs):
