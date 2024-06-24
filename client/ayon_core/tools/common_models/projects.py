@@ -1,5 +1,6 @@
 import contextlib
 from abc import ABC, abstractmethod
+from typing import Literal, Dict, Any
 
 import ayon_api
 
@@ -7,6 +8,14 @@ from ayon_core.style import get_default_entity_icon_color
 from ayon_core.lib import CacheItem, NestedCacheItem
 
 PROJECTS_MODEL_SENDER = "projects.model"
+StatusStatesType = Literal["not_started", "in_progress", "done", "blocked"]
+
+
+class StatusStates:
+    not_started = "not_started"
+    in_progress = "in_progress"
+    done = "done"
+    blocked = "blocked"
 
 
 class AbstractHierarchyController(ABC):
@@ -23,18 +32,24 @@ class StatusItem:
         color (str): Status color in hex ("#434a56").
         short (str): Short status name ("NRD").
         icon (str): Icon name in MaterialIcons ("fiber_new").
-        state (Literal["not_started", "in_progress", "done", "blocked"]):
-            Status state.
+        state (StatusStatesType): Status state.
 
     """
-    def __init__(self, name, color, short, icon, state):
-        self.name = name
-        self.color = color
-        self.short = short
-        self.icon = icon
-        self.state = state
+    def __init__(
+        self,
+        name: str,
+        color: str,
+        short: str,
+        icon: str,
+        state: StatusStatesType
+    ):
+        self.name: str = name
+        self.color: str = color
+        self.short: str = short
+        self.icon: str = icon
+        self.state: StatusStatesType = state
 
-    def to_data(self):
+    def to_data(self) -> Dict[str, Any]:
         return {
             "name": self.name,
             "color": self.color,
