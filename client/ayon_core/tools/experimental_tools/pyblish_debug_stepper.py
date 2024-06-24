@@ -3,37 +3,25 @@ Brought from https://gist.github.com/BigRoy/1972822065e38f8fae7521078e44eca2
 Code Credits: [BigRoy](https://github.com/BigRoy)
 
 Requirement:
-    This tool requires some modification in ayon-core.
-    Add the following two lines in sa similar fashion to this commit
-    https://github.com/ynput/OpenPype/commit/6a0ce21aa1f8cb17452fe066aa15134d22fda440
-    i.e. Add them just after
-        https://github.com/ynput/ayon-core/blob/8366d2e8b4003a252b8da822f7e38c6db08292b4/client/ayon_core/tools/publisher/control.py#L2483-L2487
-
-        ```
-            result["context"] = self._publish_context
-            pyblish.api.emit("pluginProcessedCustom", result=result)
-        ```
-
-    This modification should be temporary till the following PR get merged and released.
-        https://github.com/pyblish/pyblish-base/pull/401
+    It requires pyblish version >= 1.8.12
 
 How it works:
-    It registers a callback function `on_plugin_processed`
-        when event `pluginProcessedCustom` is emitted.
-    The logic of this function is roughly:
-        1. Pauses the publishing.
-        2. Collects some info about the plugin.
-        3. Shows that info to the tool's window.
-        4. Continues publishing on clicking `step` button.
+    This tool makes use of pyblish event `pluginProcessed` to:
+        1. Pause the publishing.
+        2. Collect some info about the plugin.
+        3. Show that info to the tool's window.
+        4. Continue publishing on clicking `step` button.
 
 How to use it:
     1. Launch the tool from AYON experimental tools window.
     2. Launch the publisher tool and click validate.
     3. Click Step to run plugins one by one.
 
-Note:
-    It won't work when triggering validation from code as our custom event lives inside ayon-core.
-    But, It should work when the mentioned PR above (#401) get merged and released.
+Note :
+    Pyblish debugger also works when triggering the validation or
+      publishing from code.
+    Here's an example about validating from code:
+    https://github.com/MustafaJafar/ayon-recipes/blob/main/validate_from_code.py
 
 """
 
@@ -225,13 +213,13 @@ class DebugUI(QtWidgets.QDialog):
 
     def showEvent(self, event):
         print("Registering callback..")
-        pyblish.api.register_callback("pluginProcessedCustom",  # "pluginProcessed"
+        pyblish.api.register_callback("pluginProcessed",
                                       self.on_plugin_processed)
 
     def hideEvent(self, event):
         self.pause(False)
         print("Deregistering callback..")
-        pyblish.api.deregister_callback("pluginProcessedCustom",  # "pluginProcessed"
+        pyblish.api.deregister_callback("pluginProcessed",
                                         self.on_plugin_processed)
 
     def on_plugin_processed(self, result):
