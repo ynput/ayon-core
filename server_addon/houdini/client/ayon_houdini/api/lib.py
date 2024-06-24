@@ -107,6 +107,19 @@ def get_output_parameter(node):
     elif node_type == "labs::karma::2.0":
         return node.parm("picture")
 
+    if isinstance(node, hou.RopNode):
+        # Use the parm name fallback that SideFX applies for detecting output
+        # files from PDG/TOPs graphs for ROP nodes. See #ayon-core/692
+        parm_names = [
+            "vm_picture", "sopoutput", "dopoutput", "lopoutput", "picture",
+            "copoutput", "filename", "usdfile", "file", "output",
+            "outputfilepath", "outputimage", "outfile"
+        ]
+        for name in parm_names:
+            parm = node.parm(name)
+            if parm:
+                return parm
+
     raise TypeError("Node type '%s' not supported" % node_type)
 
 
