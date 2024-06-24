@@ -58,7 +58,7 @@ class ListItemDelegate(QtWidgets.QStyledItemDelegate):
     radius_ratio = 0.3
 
     def __init__(self, parent):
-        super(ListItemDelegate, self).__init__(parent)
+        super().__init__(parent)
 
         group_color_info = get_objected_colors("publisher", "list-view-group")
 
@@ -71,7 +71,7 @@ class ListItemDelegate(QtWidgets.QStyledItemDelegate):
         if index.data(IS_GROUP_ROLE):
             self.group_item_paint(painter, option, index)
         else:
-            super(ListItemDelegate, self).paint(painter, option, index)
+            super().paint(painter, option, index)
 
     def group_item_paint(self, painter, option, index):
         """Paint group item."""
@@ -116,7 +116,7 @@ class InstanceListItemWidget(QtWidgets.QWidget):
     double_clicked = QtCore.Signal()
 
     def __init__(self, instance, parent):
-        super(InstanceListItemWidget, self).__init__(parent)
+        super().__init__(parent)
 
         self.instance = instance
 
@@ -155,7 +155,7 @@ class InstanceListItemWidget(QtWidgets.QWidget):
 
     def mouseDoubleClickEvent(self, event):
         widget = self.childAt(event.pos())
-        super(InstanceListItemWidget, self).mouseDoubleClickEvent(event)
+        super().mouseDoubleClickEvent(event)
         if widget is not self._active_checkbox:
             self.double_clicked.emit()
 
@@ -222,7 +222,7 @@ class ListContextWidget(QtWidgets.QFrame):
     double_clicked = QtCore.Signal()
 
     def __init__(self, parent):
-        super(ListContextWidget, self).__init__(parent)
+        super().__init__(parent)
 
         label_widget = QtWidgets.QLabel(CONTEXT_LABEL, self)
 
@@ -238,7 +238,7 @@ class ListContextWidget(QtWidgets.QFrame):
         self.label_widget = label_widget
 
     def mouseDoubleClickEvent(self, event):
-        super(ListContextWidget, self).mouseDoubleClickEvent(event)
+        super().mouseDoubleClickEvent(event)
         self.double_clicked.emit()
 
 
@@ -252,7 +252,7 @@ class InstanceListGroupWidget(QtWidgets.QFrame):
     toggle_requested = QtCore.Signal(str, int)
 
     def __init__(self, group_name, parent):
-        super(InstanceListGroupWidget, self).__init__(parent)
+        super().__init__(parent)
         self.setObjectName("InstanceListGroupWidget")
 
         self.group_name = group_name
@@ -336,7 +336,7 @@ class InstanceTreeView(QtWidgets.QTreeView):
     double_clicked = QtCore.Signal()
 
     def __init__(self, *args, **kwargs):
-        super(InstanceTreeView, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
 
         self.setObjectName("InstanceListView")
         self.setHeaderHidden(True)
@@ -387,7 +387,7 @@ class InstanceTreeView(QtWidgets.QTreeView):
             self.toggle_requested.emit(1)
             return True
 
-        return super(InstanceTreeView, self).event(event)
+        return super().event(event)
 
     def _mouse_press(self, event):
         """Store index of pressed group.
@@ -407,11 +407,11 @@ class InstanceTreeView(QtWidgets.QTreeView):
 
     def mousePressEvent(self, event):
         self._mouse_press(event)
-        super(InstanceTreeView, self).mousePressEvent(event)
+        super().mousePressEvent(event)
 
     def mouseDoubleClickEvent(self, event):
         self._mouse_press(event)
-        super(InstanceTreeView, self).mouseDoubleClickEvent(event)
+        super().mouseDoubleClickEvent(event)
 
     def _mouse_release(self, event, pressed_index):
         if event.button() != QtCore.Qt.LeftButton:
@@ -434,7 +434,7 @@ class InstanceTreeView(QtWidgets.QTreeView):
         self._pressed_group_index = None
         result = self._mouse_release(event, pressed_index)
         if not result:
-            super(InstanceTreeView, self).mouseReleaseEvent(event)
+            super().mouseReleaseEvent(event)
 
 
 class InstanceListView(AbstractInstanceView):

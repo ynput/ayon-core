@@ -12,7 +12,7 @@ class HelpButton(QtWidgets.QPushButton):
     """Button used to trigger help dialog."""
 
     def __init__(self, parent):
-        super(HelpButton, self).__init__(parent)
+        super().__init__(parent)
         self.setObjectName("CreateDialogHelpButton")
         self.setText("?")
 
@@ -21,7 +21,7 @@ class HelpWidget(QtWidgets.QWidget):
     """Widget showing help for single functionality."""
 
     def __init__(self, parent):
-        super(HelpWidget, self).__init__(parent)
+        super().__init__(parent)
 
         # TODO add hints what to help with?
         detail_description_input = QtWidgets.QTextEdit(self)
@@ -59,7 +59,7 @@ class HelpDialog(QtWidgets.QDialog):
     def __init__(
         self, controller: AbstractPublisherFrontend, parent: QtWidgets.QWidget
     ):
-        super(HelpDialog, self).__init__(parent)
+        super().__init__(parent)
 
         self.setWindowTitle("Help dialog")
 
@@ -84,5 +84,5 @@ class HelpDialog(QtWidgets.QDialog):
         self._help_content.set_detailed_text(text)
 
     def showEvent(self, event):
-        super(HelpDialog, self).showEvent(event)
+        super().showEvent(event)
         self.resize(self.default_width, self.default_height)

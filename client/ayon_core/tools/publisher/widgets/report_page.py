@@ -52,7 +52,7 @@ class VerticalScrollArea(QtWidgets.QScrollArea):
     """
 
     def __init__(self, *args, **kwargs):
-        super(VerticalScrollArea, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
 
         self.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
         self.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarAsNeeded)
@@ -82,7 +82,7 @@ class VerticalScrollArea(QtWidgets.QScrollArea):
         if old_widget:
             old_widget.removeEventFilter(self)
 
-        super(VerticalScrollArea, self).setVerticalScrollBar(widget)
+        super().setVerticalScrollBar(widget)
         if widget:
             widget.installEventFilter(self)
 
@@ -91,7 +91,7 @@ class VerticalScrollArea(QtWidgets.QScrollArea):
         if old_widget:
             old_widget.removeEventFilter(self)
 
-        super(VerticalScrollArea, self).setWidget(widget)
+        super().setWidget(widget)
         if widget:
             widget.installEventFilter(self)
 
@@ -107,7 +107,7 @@ class VerticalScrollArea(QtWidgets.QScrollArea):
             and (obj is self.widget() or obj is self.verticalScrollBar())
         ):
             self._size_changed_timer.start()
-        return super(VerticalScrollArea, self).eventFilter(obj, event)
+        return super().eventFilter(obj, event)
 
 
 # --- Publish actions widget ---
@@ -124,7 +124,7 @@ class ActionButton(BaseClickableFrame):
     action_clicked = QtCore.Signal(str, str)
 
     def __init__(self, plugin_action_item, parent):
-        super(ActionButton, self).__init__(parent)
+        super().__init__(parent)
 
         self.setObjectName("ValidationActionButton")
 
@@ -250,7 +250,7 @@ class ValidationErrorInstanceList(QtWidgets.QListView):
     Instances are collected per plugin's validation error title.
     """
     def __init__(self, *args, **kwargs):
-        super(ValidationErrorInstanceList, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
 
         self.setObjectName("ValidationErrorInstanceList")
 
@@ -261,7 +261,7 @@ class ValidationErrorInstanceList(QtWidgets.QListView):
         return self.sizeHint()
 
     def sizeHint(self):
-        result = super(ValidationErrorInstanceList, self).sizeHint()
+        result = super().sizeHint()
         row_count = self.model().rowCount()
         height = 0
         if row_count > 0:
@@ -284,7 +284,7 @@ class ValidationErrorTitleWidget(QtWidgets.QWidget):
     instance_changed = QtCore.Signal(str)
 
     def __init__(self, title_id, error_info, parent):
-        super(ValidationErrorTitleWidget, self).__init__(parent)
+        super().__init__(parent)
 
         self._title_id = title_id
         self._error_info = error_info
@@ -375,7 +375,7 @@ class ValidationErrorTitleWidget(QtWidgets.QWidget):
         self._expanded = False
 
     def sizeHint(self):
-        result = super(ValidationErrorTitleWidget, self).sizeHint()
+        result = super().sizeHint()
         expected_width = max(
             self._view_widget.minimumSizeHint().width(),
             self._view_widget.sizeHint().width()
@@ -479,7 +479,7 @@ class ValidationErrorTitleWidget(QtWidgets.QWidget):
 
 class ValidationArtistMessage(QtWidgets.QWidget):
     def __init__(self, message, parent):
-        super(ValidationArtistMessage, self).__init__(parent)
+        super().__init__(parent)
 
         artist_msg_label = QtWidgets.QLabel(message, self)
         artist_msg_label.setAlignment(QtCore.Qt.AlignCenter)
@@ -495,7 +495,7 @@ class ValidationErrorsView(QtWidgets.QWidget):
     selection_changed = QtCore.Signal()
 
     def __init__(self, parent):
-        super(ValidationErrorsView, self).__init__(parent)
+        super().__init__(parent)
 
         errors_scroll = VerticalScrollArea(self)
         errors_scroll.setWidgetResizable(True)
@@ -719,7 +719,7 @@ class _InstanceItem:
 
 class FamilyGroupLabel(QtWidgets.QWidget):
     def __init__(self, family, parent):
-        super(FamilyGroupLabel, self).__init__(parent)
+        super().__init__(parent)
 
         self.setLayoutDirection(QtCore.Qt.LeftToRight)
 
@@ -747,7 +747,7 @@ class PublishInstanceCardWidget(BaseClickableFrame):
     _in_progress_pix = None
 
     def __init__(self, instance, icon, publish_can_continue, parent):
-        super(PublishInstanceCardWidget, self).__init__(parent)
+        super().__init__(parent)
 
         self.setObjectName("CardViewWidget")
 
@@ -933,7 +933,7 @@ class PublishInstancesViewWidget(QtWidgets.QWidget):
             + scroll_bar.sizeHint().width()
         )
 
-        result = super(PublishInstancesViewWidget, self).sizeHint()
+        result = super().sizeHint()
         result.setWidth(width)
         return result
 
@@ -1045,7 +1045,7 @@ class LogIconFrame(QtWidgets.QFrame):
     _validation_error_pix = None
 
     def __init__(self, parent, log_type, log_level, is_validation_error):
-        super(LogIconFrame, self).__init__(parent)
+        super().__init__(parent)
 
         self.setAttribute(QtCore.Qt.WA_TranslucentBackground)
 
@@ -1113,7 +1113,7 @@ class LogItemWidget(QtWidgets.QWidget):
     }
 
     def __init__(self, log, parent):
-        super(LogItemWidget, self).__init__(parent)
+        super().__init__(parent)
 
         type_flag, level_n = self._get_log_info(log)
         icon_label = LogIconFrame(
@@ -1190,7 +1190,7 @@ class LogsWithIconsView(QtWidgets.QWidget):
     """
 
     def __init__(self, logs, parent):
-        super(LogsWithIconsView, self).__init__(parent)
+        super().__init__(parent)
         self.setAttribute(QtCore.Qt.WA_TranslucentBackground)
 
         logs_layout = QtWidgets.QVBoxLayout(self)
@@ -1270,7 +1270,7 @@ class InstanceLogsWidget(QtWidgets.QWidget):
     """
 
     def __init__(self, instance, parent):
-        super(InstanceLogsWidget, self).__init__(parent)
+        super().__init__(parent)
 
         self.setAttribute(QtCore.Qt.WA_TranslucentBackground)
 
@@ -1301,7 +1301,7 @@ class InstancesLogsView(QtWidgets.QFrame):
     """Publish instances logs view widget."""
 
     def __init__(self, parent):
-        super(InstancesLogsView, self).__init__(parent)
+        super().__init__(parent)
         self.setObjectName("InstancesLogsView")
 
         scroll_area = QtWidgets.QScrollArea(self)
@@ -1354,12 +1354,12 @@ class InstancesLogsView(QtWidgets.QFrame):
         self._plugin_ids_filter = None
 
     def showEvent(self, event):
-        super(InstancesLogsView, self).showEvent(event)
+        super().showEvent(event)
         self._is_showed = True
         self._update_instances()
 
     def hideEvent(self, event):
-        super(InstancesLogsView, self).hideEvent(event)
+        super().hideEvent(event)
         self._is_showed = False
 
     def closeEvent(self, event):
@@ -1519,7 +1519,7 @@ class CrashWidget(QtWidgets.QWidget):
 
 class ErrorDetailsWidget(QtWidgets.QWidget):
     def __init__(self, parent):
-        super(ErrorDetailsWidget, self).__init__(parent)
+        super().__init__(parent)
 
         inputs_widget = QtWidgets.QWidget(self)
         # Error 'Description' input

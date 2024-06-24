@@ -58,7 +58,7 @@ class BaseGroupWidget(QtWidgets.QWidget):
     double_clicked = QtCore.Signal()
 
     def __init__(self, group_name, parent):
-        super(BaseGroupWidget, self).__init__(parent)
+        super().__init__(parent)
 
         label_widget = QtWidgets.QLabel(group_name, self)
 
@@ -210,7 +210,7 @@ class InstanceGroupWidget(BaseGroupWidget):
     active_changed = QtCore.Signal(str, str, bool)
 
     def __init__(self, group_icons, *args, **kwargs):
-        super(InstanceGroupWidget, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
 
         self._group_icons = group_icons
 
@@ -280,14 +280,14 @@ class CardWidget(BaseClickableFrame):
     double_clicked = QtCore.Signal()
 
     def __init__(self, parent):
-        super(CardWidget, self).__init__(parent)
+        super().__init__(parent)
         self.setObjectName("CardViewWidget")
 
         self._selected = False
         self._id = None
 
     def mouseDoubleClickEvent(self, event):
-        super(CardWidget, self).mouseDoubleClickEvent(event)
+        super().mouseDoubleClickEvent(event)
         if self._is_valid_double_click(event):
             self.double_clicked.emit()
 
@@ -335,7 +335,7 @@ class ContextCardWidget(CardWidget):
     """
 
     def __init__(self, parent):
-        super(ContextCardWidget, self).__init__(parent)
+        super().__init__(parent)
 
         self._id = CONTEXT_ID
         self._group_identifier = CONTEXT_GROUP
@@ -365,7 +365,7 @@ class ConvertorItemCardWidget(CardWidget):
     """
 
     def __init__(self, item, parent):
-        super(ConvertorItemCardWidget, self).__init__(parent)
+        super().__init__(parent)
 
         self._id = item.id
         self.identifier = item.identifier
@@ -398,7 +398,7 @@ class InstanceCardWidget(CardWidget):
     active_changed = QtCore.Signal(str, bool)
 
     def __init__(self, instance, group_icon, parent):
-        super(InstanceCardWidget, self).__init__(parent)
+        super().__init__(parent)
 
         self._id = instance.id
         self._group_identifier = instance.group_label
@@ -561,7 +561,7 @@ class InstanceCardView(AbstractInstanceView):
     double_clicked = QtCore.Signal()
 
     def __init__(self, controller, parent):
-        super(InstanceCardView, self).__init__(parent)
+        super().__init__(parent)
 
         self._controller: AbstractPublisherFrontend = controller
 
@@ -613,7 +613,7 @@ class InstanceCardView(AbstractInstanceView):
             + scroll_bar.sizeHint().width()
         )
 
-        result = super(InstanceCardView, self).sizeHint()
+        result = super().sizeHint()
         result.setWidth(width)
         return result
 
@@ -654,7 +654,7 @@ class InstanceCardView(AbstractInstanceView):
             self._toggle_instances(1)
             return True
 
-        return super(InstanceCardView, self).keyPressEvent(event)
+        return super().keyPressEvent(event)
 
     def _get_selected_widgets(self):
         output = []
