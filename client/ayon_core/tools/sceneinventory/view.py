@@ -243,18 +243,18 @@ class SceneInventoryView(QtWidgets.QTreeView):
             for version_item in version_items_by_id.values():
                 if version_item.is_hero:
                     has_available_hero_version = True
-                if version_item.is_last_approved:
+
+                elif version_item.is_last_approved:
                     _last_approved_version_item = version_item
+                    _has_outdated_approved = True
 
                 if version_item.version_id not in version_ids:
                     continue
+
                 if version_item.is_hero:
                     has_loaded_hero_versions = True
-
                 elif not version_item.is_latest:
                     has_outdated = True
-                elif not version_item.is_last_approved:
-                    _has_outdated_approved = True
 
             if (
                 _has_outdated_approved
@@ -281,8 +281,8 @@ class SceneInventoryView(QtWidgets.QTreeView):
             )
 
         update_to_last_approved_action = None
+        approved_version_by_item_id = {}
         if has_outdated_approved:
-            approved_version_by_item_id = {}
             for container_item in container_items_by_id.values():
                 repre_id = container_item.representation_id
                 repre_info = repre_info_by_id.get(repre_id)
@@ -293,13 +293,14 @@ class SceneInventoryView(QtWidgets.QTreeView):
                 )
                 if (
                     version_item is None
-                    or version_item.id == repre_info.version_id
+                    or version_item.version_id == repre_info.version_id
                 ):
                     continue
                 approved_version_by_item_id[container_item.item_id] = (
                     version_item.version
                 )
 
+        if approved_version_by_item_id:
             update_icon = qtawesome.icon(
                 "fa.angle-double-up",
                 color="#00f0b4"
