@@ -34,7 +34,6 @@ from . import lib
 from .lib import imprint, read
 from .pipeline import containerise
 
-
 log = Logger.get_logger()
 SETTINGS_CATEGORY = "maya"
 
