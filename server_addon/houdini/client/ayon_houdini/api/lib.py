@@ -105,7 +105,7 @@ def get_output_parameter(node):
     elif node_type == "vray_renderer":
         return node.parm("SettingsOutput_img_file_path")
     elif node_type == "labs::karma::2.0":
-        return node.parm("file")
+        return node.parm("picture")
 
     raise TypeError("Node type '%s' not supported" % node_type)
 
