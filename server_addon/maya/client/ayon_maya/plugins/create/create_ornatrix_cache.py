@@ -23,6 +23,10 @@ class CreateOxCache(plugin.MayaCreator):
             [
                 BoolDef("renderVersion",
                         label="Use Render Version",
+                        tooltip="When on, hair in the scene will be "
+                                "switched to render mode and dense hair "
+                                "strands will be exported. Otherwise, what "
+                                "is seen in the viewport will be exported.",
                         default=True),
                 BoolDef("upDirection",
                         label="Up Direction",

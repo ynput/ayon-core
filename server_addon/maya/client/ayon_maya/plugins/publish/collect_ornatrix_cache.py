@@ -34,5 +34,4 @@ class CollectOxCache(plugin.MayaInstancePlugin):
             }
             if shape_data["cbId"]:
                 settings["nodes"].append(shape_data)
-        self.log.debug(settings)
         instance.data["cachesettings"] = settings

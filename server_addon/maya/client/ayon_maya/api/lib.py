@@ -1733,7 +1733,7 @@ def is_valid_reference_node(reference_node):
     """
     # maya 2022 is missing `isValidReference` so the check needs to be
     # done in different way.
-    if cmds.about(version=True) < 2023:
+    if int(cmds.about(version=True)) < 2023:
         try:
             cmds.referenceQuery(reference_node, filename=True)
             return True
