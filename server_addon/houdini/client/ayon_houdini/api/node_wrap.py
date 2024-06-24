@@ -5,16 +5,13 @@ from ayon_core.pipeline.create import CreateContext
 def make_publishable(node):
     # TODO: Can we make this imprinting much faster? Unfortunately
     #  CreateContext initialization is very slow.
-
     host = registered_host()
     context = CreateContext(host)
-
-    variant = node.name()
 
     # Apply the instance creation to the node
     context.create(
         creator_identifier="io.ayon.creators.houdini.publish",
-        variant=variant,
+        variant=node.name(),
         pre_create_data={
             "node": node
         }
