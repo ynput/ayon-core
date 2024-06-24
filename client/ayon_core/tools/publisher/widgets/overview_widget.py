@@ -1,7 +1,8 @@
 from qtpy import QtWidgets, QtCore
 
-from .border_label_widget import BorderedLabelWidget
+from ayon_core.tools.publisher.abstract import AbstractPublisherFrontend
 
+from .border_label_widget import BorderedLabelWidget
 from .card_view_widgets import InstanceCardView
 from .list_view_widgets import InstanceListView
 from .widgets import (
@@ -23,11 +24,13 @@ class OverviewWidget(QtWidgets.QFrame):
     anim_end_value = 200
     anim_duration = 200
 
-    def __init__(self, controller, parent):
-        super(OverviewWidget, self).__init__(parent)
+    def __init__(
+        self, controller: AbstractPublisherFrontend, parent: QtWidgets.QWidget
+    ):
+        super().__init__(parent)
 
         self._refreshing_instances = False
-        self._controller = controller
+        self._controller: AbstractPublisherFrontend = controller
 
         product_content_widget = QtWidgets.QWidget(self)
 

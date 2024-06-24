@@ -23,7 +23,7 @@ from ayon_core.pipeline.create.context import (
     ConvertorItem,
 )
 from ayon_core.tools.publisher.abstract import (
-    AbstractPublisherController,
+    AbstractPublisherBackend,
     CardMessageTypes,
 )
 CREATE_EVENT_SOURCE = "publisher.create.model"
@@ -191,9 +191,9 @@ class CreatorItem:
 
 
 class CreateModel:
-    def __init__(self, controller: AbstractPublisherController):
+    def __init__(self, controller: AbstractPublisherBackend):
         self._log = None
-        self._controller = controller
+        self._controller: AbstractPublisherBackend = controller
 
         self._create_context = CreateContext(
             controller.get_host(),

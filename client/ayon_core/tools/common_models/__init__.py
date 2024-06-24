@@ -5,6 +5,8 @@ from .projects import (
     ProjectItem,
     ProjectsModel,
     PROJECTS_MODEL_SENDER,
+    FolderTypeItem,
+    TaskTypeItem,
 )
 from .hierarchy import (
     FolderItem,
@@ -24,6 +26,8 @@ __all__ = (
     "ProjectItem",
     "ProjectsModel",
     "PROJECTS_MODEL_SENDER",
+    "FolderTypeItem",
+    "TaskTypeItem",
 
     "FolderItem",
     "TaskItem",

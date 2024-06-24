@@ -5,6 +5,8 @@ except Exception:
 
 from qtpy import QtWidgets, QtCore
 
+from ayon_core.tools.publisher.abstract import AbstractPublisherFrontend
+
 
 class HelpButton(QtWidgets.QPushButton):
     """Button used to trigger help dialog."""
@@ -54,7 +56,9 @@ class HelpDialog(QtWidgets.QDialog):
     default_width = 530
     default_height = 340
 
-    def __init__(self, controller, parent):
+    def __init__(
+        self, controller: AbstractPublisherFrontend, parent: QtWidgets.QWidget
+    ):
         super(HelpDialog, self).__init__(parent)
 
         self.setWindowTitle("Help dialog")
@@ -68,7 +72,7 @@ class HelpDialog(QtWidgets.QDialog):
             "show.detailed.help", self._on_help_request
         )
 
-        self._controller = controller
+        self._controller: AbstractPublisherFrontend = controller
 
         self._help_content = help_content
 

@@ -3,6 +3,8 @@ import json
 import time
 import collections
 import copy
+from typing import Optional
+
 from qtpy import QtWidgets, QtCore, QtGui
 
 from ayon_core import (
@@ -19,7 +21,7 @@ from ayon_core.tools.utils.lib import center_window
 
 from .constants import ResetKeySequence
 from .publish_report_viewer import PublishReportViewerWidget
-from .control import CardMessageTypes
+from .abstract import CardMessageTypes, AbstractPublisherFrontend
 from .control_qt import QtPublisherController
 from .widgets import (
     OverviewWidget,
@@ -48,8 +50,13 @@ class PublisherWindow(QtWidgets.QDialog):
     footer_border = 8
     publish_footer_spacer = 2
 
-    def __init__(self, parent=None, controller=None, reset_on_show=None):
-        super(PublisherWindow, self).__init__(parent)
+    def __init__(
+        self,
+        parent: Optional[QtWidgets.QWidget] = None,
+        controller: Optional[AbstractPublisherFrontend] = None,
+        reset_on_show: Optional[bool] = None
+    ):
+        super().__init__(parent)
 
         self.setObjectName("PublishWindow")
 
@@ -362,7 +369,7 @@ class PublisherWindow(QtWidgets.QDialog):
 
         self._overlay_object = overlay_object
 
-        self._controller = controller
+        self._controller: AbstractPublisherFrontend = controller
 
         self._first_show = True
         self._first_reset = True
@@ -386,7 +393,8 @@ class PublisherWindow(QtWidgets.QDialog):
         self._window_is_visible = False
 
     @property
-    def controller(self):
+    def controller(self) -> AbstractPublisherFrontend:
+        """Kept for compatibility with traypublisher."""
         return self._controller
 
     def show_and_publish(self, comment=None):
@@ -520,7 +528,7 @@ class PublisherWindow(QtWidgets.QDialog):
             )
 
         if reset_match_result == QtGui.QKeySequence.ExactMatch:
-            if not self.controller.publish_is_running:
+            if not self._controller.publish_is_running:
                 self.reset()
             event.accept()
             return
@@ -643,7 +651,7 @@ class PublisherWindow(QtWidgets.QDialog):
         if not force and not self._is_on_details_tab():
             return
 
-        report_data = self.controller.get_publish_report()
+        report_data = self._controller.get_publish_report()
         self._publish_details_widget.set_report_data(report_data)
 
     def _on_help_click(self):
@@ -921,7 +929,7 @@ class PublisherWindow(QtWidgets.QDialog):
     def _on_instances_refresh(self):
         self._validate_create_instances()
 
-        context_title = self.controller.get_context_title()
+        context_title = self._controller.get_context_title()
         self.set_context_label(context_title)
         self._update_publish_details_widget()
 

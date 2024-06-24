@@ -2,12 +2,13 @@ from qtpy import QtWidgets
 
 from ayon_core.lib.events import QueuedEventSystem
 from ayon_core.tools.utils import PlaceholderLineEdit, FoldersWidget
+from ayon_core.tools.publisher.abstract import AbstractPublisherFrontend
 
 
 class FoldersDialogController:
-    def __init__(self, controller):
+    def __init__(self, controller: AbstractPublisherFrontend):
         self._event_system = QueuedEventSystem()
-        self._controller = controller
+        self._controller: AbstractPublisherFrontend = controller
 
     @property
     def event_system(self):

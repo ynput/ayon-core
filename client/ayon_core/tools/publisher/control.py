@@ -17,43 +17,17 @@ from .models import (
     PublishModel,
     CreateModel,
 )
-from .abstract import AbstractPublisherController, CardMessageTypes
+from .abstract import (
+    AbstractPublisherBackend,
+    AbstractPublisherFrontend,
+    CardMessageTypes
+)
 
 
-class BasePublisherController(AbstractPublisherController):
-    """Implement common logic for controllers.
-
-    Implement event system, logger and common attributes. Attributes are
-    triggering value changes so anyone can listen to their topics.
-
-    Prepare implementation for creator items. Controller must implement just
-    their filling by '_collect_creator_items'.
-
-    All prepared implementation is based on calling super '__init__'.
-    """
-
-    def get_thumbnail_temp_dir_path(self):
-        """Return path to directory where thumbnails can be temporary stored.
-
-        Returns:
-            str: Path to a directory.
-        """
-
-        return os.path.join(
-            tempfile.gettempdir(),
-            "publisher_thumbnails",
-            get_process_id()
-        )
-
-    def clear_thumbnail_temp_dir_path(self):
-        """Remove content of thumbnail temp directory."""
-
-        dirpath = self.get_thumbnail_temp_dir_path()
-        if os.path.exists(dirpath):
-            shutil.rmtree(dirpath)
-
-
-class PublisherController(BasePublisherController):
+class PublisherController(
+    AbstractPublisherBackend,
+    AbstractPublisherFrontend,
+):
     """Middleware between UI, CreateContext and publish Context.
 
     Handle both creation and publishing parts.
@@ -137,6 +111,17 @@ class PublisherController(BasePublisherController):
             data = {}
         self._event_system.emit(topic, data, source)
 
+    def emit_card_message(
+        self, message, message_type=CardMessageTypes.standard
+    ):
+        self._emit_event(
+            "show.card.message",
+            {
+                "message": message,
+                "message_type": message_type
+            }
+        )
+
     def register_event_callback(self, topic, callback):
         self._event_system.add_callback(topic, callback)
 
@@ -183,6 +168,7 @@ class PublisherController(BasePublisherController):
         Args:
             identifier (str): Creator's identifier for which should
                 be icon returned.
+
         """
         return self._create_model.get_creator_icon(identifier)
 
@@ -200,9 +186,6 @@ class PublisherController(BasePublisherController):
     def get_instances(self):
         """Current instances in create context."""
         return self._create_model.get_instances()
-
-    def get_instance_by_id(self, instance_id):
-        return self._create_model.get_instance_by_id(instance_id)
 
     def get_instances_by_id(self, instance_ids=None):
         return self._create_model.get_instances_by_id(instance_ids)
@@ -356,16 +339,25 @@ class PublisherController(BasePublisherController):
             thumbnail_path_mapping
         )
 
-    def emit_card_message(
-        self, message, message_type=CardMessageTypes.standard
-    ):
-        self._emit_event(
-            "show.card.message",
-            {
-                "message": message,
-                "message_type": message_type
-            }
+    def get_thumbnail_temp_dir_path(self):
+        """Return path to directory where thumbnails can be temporary stored.
+
+        Returns:
+            str: Path to a directory.
+        """
+
+        return os.path.join(
+            tempfile.gettempdir(),
+            "publisher_thumbnails",
+            get_process_id()
         )
+
+    def clear_thumbnail_temp_dir_path(self):
+        """Remove content of thumbnail temp directory."""
+
+        dirpath = self.get_thumbnail_temp_dir_path()
+        if os.path.exists(dirpath):
+            shutil.rmtree(dirpath)
 
     def get_creator_attribute_definitions(self, instances):
         """Collect creator attribute definitions for multuple instances.

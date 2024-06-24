@@ -29,17 +29,20 @@ from ayon_core.tools.utils import NiceCheckbox
 
 from ayon_core.tools.utils import BaseClickableFrame
 from ayon_core.tools.utils.lib import html_escape
+
+from ayon_core.tools.publisher.abstract import AbstractPublisherFrontend
+from ayon_core.tools.publisher.constants import (
+    CONTEXT_ID,
+    CONTEXT_LABEL,
+    CONTEXT_GROUP,
+    CONVERTOR_ITEM_GROUP,
+)
+
 from .widgets import (
     AbstractInstanceView,
     ContextWarningLabel,
     IconValuePixmapLabel,
     PublishPixmapLabel
-)
-from ..constants import (
-    CONTEXT_ID,
-    CONTEXT_LABEL,
-    CONTEXT_GROUP,
-    CONVERTOR_ITEM_GROUP,
 )
 
 
@@ -560,7 +563,7 @@ class InstanceCardView(AbstractInstanceView):
     def __init__(self, controller, parent):
         super(InstanceCardView, self).__init__(parent)
 
-        self._controller = controller
+        self._controller: AbstractPublisherFrontend = controller
 
         scroll_area = QtWidgets.QScrollArea(self)
         scroll_area.setWidgetResizable(True)
