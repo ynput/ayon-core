@@ -1,7 +1,5 @@
 from typing import List
 
-import os
-import json
 import maya.cmds as cmds
 from ayon_core.pipeline import registered_host
 from ayon_core.pipeline.create import CreateContext
