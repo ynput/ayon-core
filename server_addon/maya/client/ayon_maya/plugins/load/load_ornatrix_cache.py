@@ -29,14 +29,16 @@ class OxCacheLoader(plugin.Loader):
         and allow published looks to also work for Ornatrix rigs and its caches.
 
         """
+        # Ensure Ornatrix is loaded
+        if not cmds.pluginInfo("Ornatrix.mll", query=True, loaded=True):
+            cmds.loadPlugin("Ornatrix.mll", quiet=True)
+
         product_type = context["product"]["productType"]
         # Build namespace
         folder_name = context["folder"]["name"]
         if namespace is None:
             namespace = self.create_namespace(folder_name)
 
-        # Ensure Ornatrix is loaded
-        cmds.loadPlugin("Ornatrix.mll", quiet=True)
 
         path = self.filepath_from_context(context)
         settings = self.read_settings(path)

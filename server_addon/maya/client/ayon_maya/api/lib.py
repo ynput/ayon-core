@@ -4312,6 +4312,7 @@ def get_sequence(filepath, pattern="%04d"):
                 if re.match(re_pattern, f)]
 
     pattern = [clique.PATTERNS["frames"]]
-    collection, remainder = clique.assemble(files, patterns=pattern)
+    collection, remainder = clique.assemble(
+        files, patterns=pattern, minimum_items=1)
 
     return collection

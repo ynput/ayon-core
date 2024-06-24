@@ -46,10 +46,10 @@ class CollectOxRig(plugin.MayaInstancePlugin):
         if not node_shape:
             return []
 
-        ox_nodes = [
-            ox_node for ox_node in cmds.listConnections(node_shape, destination=True)
-                    if cmds.nodeType(ox_node) in ORNATRIX_NODES
-        ] or []
+        ox_nodes = cmds.ls(
+            cmds.listConnections(node_shape, destination=True) or [],
+            type=ORNATRIX_NODES)
+
         ox_file_nodes = cmds.listConnections(ox_nodes, destination=False, type="file") or []
         if not ox_file_nodes:
             return []
@@ -66,8 +66,7 @@ class CollectOxRig(plugin.MayaInstancePlugin):
                 filepath = os.path.join(root, texture)
                 files = lib.search_textures(filepath)
                 if files:
-                    # Break out on first match in search paths..
-                    break
+                    continue
 
             if not files:
                 raise KnownPublishError(

@@ -1,7 +1,7 @@
 from typing import List
 
 import maya.cmds as cmds
-from ayon_core.pipeline import registered_host
+from ayon_core.pipeline import registered_host,CreatorError
 from ayon_core.pipeline.create import CreateContext
 from ayon_maya.api import lib, plugin
 
@@ -81,14 +81,20 @@ class OxRigLoader(plugin.ReferenceLoader):
         """
 
         # Check of the nodes connect to the ornatrix-related nodes
-        ox_nodes = [node for node in nodes if cmds.nodeType(nodes) in
-                    {"HairFromGuidesNode", "GuidesFromMeshNode",
-                     "MeshFromStrandsNode", "SurfaceCombNode"}]
-        assert not ox_nodes, "No Ornatrix nodes in rig, this is a bug."
+        ox_node_types = (
+            "HairFromGuidesNode", "GuidesFromMeshNode",
+            "MeshFromStrandsNode", "SurfaceCombNode"
+        )
+        # Check of the nodes connect to the ornatrix-related nodes
+        ox_nodes = cmds.ls(nodes, type=ox_node_types)
+        assert ox_nodes, "No Ornatrix nodes in rig, this is a bug."
 
         ox_geo_nodes = cmds.ls(nodes, assemblies=True, long=True)
         ox_input = next((node for node in nodes if
                          node.endswith("input_SET")), None)
+        if not ox_input:
+            raise CreatorError("No node found in input_SET")
+
         self.log.info("Creating variant: {}".format(variant))
 
         creator_identifier = "io.openpype.creators.maya.oxcache"
