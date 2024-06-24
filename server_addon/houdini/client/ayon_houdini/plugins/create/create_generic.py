@@ -173,6 +173,10 @@ FBX_PRODUCT_TYPES = NodeTypeProductTypes(
     product_types=["fbx", "pointcache", "model"],
     default="fbx"
 )
+FBX_ONLY_PRODUCT_TYPES = NodeTypeProductTypes(
+    product_types=["fbx"],
+    default="fbx"
+)
 USD_PRODUCT_TYPES = NodeTypeProductTypes(
     product_types=["usd", "pointcache"],
     default="usd"
@@ -188,6 +192,10 @@ REVIEW_PRODUCT_TYPES = NodeTypeProductTypes(
 RENDER_PRODUCT_TYPES = NodeTypeProductTypes(
     product_types=["render", "prerender"],
     default="render"
+)
+GLTF_PRODUCT_TYPES = NodeTypeProductTypes(
+    product_types=["gltf"],
+    default="gltf"
 )
 
 
@@ -219,11 +227,15 @@ class CreateHoudiniGeneric(plugin.HoudiniCreator):
         "comp": COMP_PRODUCT_TYPES,
         "opengl": REVIEW_PRODUCT_TYPES,
         "arnold": RENDER_PRODUCT_TYPES,
-        "labs::karma::2.0": RENDER_PRODUCT_TYPES,
         "karma": RENDER_PRODUCT_TYPES,
         "usdrender": RENDER_PRODUCT_TYPES,
         "usdrender_rop": RENDER_PRODUCT_TYPES,
-        "vray_renderer": RENDER_PRODUCT_TYPES
+        "vray_renderer": RENDER_PRODUCT_TYPES,
+        "labs::karma::2.0": RENDER_PRODUCT_TYPES,
+        "kinefx::rop_fbxanimoutput": FBX_ONLY_PRODUCT_TYPES,
+        "kinefx::rop_fbxcharacteroutput": FBX_ONLY_PRODUCT_TYPES,
+        "kinefx::rop_gltfcharacteroutput": GLTF_PRODUCT_TYPES,
+        "rop_gltf": GLTF_PRODUCT_TYPES
     }
 
     node_type_product_types_default = NodeTypeProductTypes(
