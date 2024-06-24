@@ -263,19 +263,23 @@ class PublisherController(BasePublisherController):
     def get_task_items_by_folder_paths(self, folder_paths):
         if not folder_paths:
             return {}
+
         folder_items = self._hierarchy_model.get_folder_items_by_paths(
             self.get_current_project_name(), folder_paths
         )
+
         output = {
             folder_path: []
             for folder_path in folder_paths
         }
         project_name = self.get_current_project_name()
-        for folder_item in folder_items.values():
-            task_items = self._hierarchy_model.get_task_items(
-                project_name, folder_item.entity_id, None
-            )
-            output[folder_item.path] = task_items
+        for folder_path, folder_item in folder_items.items():
+            task_items = []
+            if folder_item is not None:
+                task_items = self._hierarchy_model.get_task_items(
+                    project_name, folder_item.entity_id, None
+                )
+            output[folder_path] = task_items
 
         return output
 
