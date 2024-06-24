@@ -1,3 +1,6 @@
+import dataclasses
+from typing import Dict, List, Optional
+
 from ayon_houdini.api import plugin
 from ayon_houdini.api.lib import (
     lsattr, read
@@ -147,6 +150,23 @@ def set_values(node: "hou.OpNode", values: dict):
         parm.set(value)
 
 
+@dataclasses.dataclass
+class NodeTypeProductTypes:
+    """Product type settings for a node type.
+
+    Define the available product types the user can set on a ROP based on
+    node type.
+
+    When 'strict' an enum attribute is created and the user can not type a
+    custom product type, otherwise a string attribute is
+    created with a menu right hand side to help pick a type but allow custom
+    types.
+    """
+    product_types: List[str]
+    default: Optional[str] = None
+    strict: bool = True
+
+
 class CreateHoudiniGeneric(plugin.HoudiniCreator):
     """Generic creator to ingest arbitrary products"""
 
@@ -158,10 +178,27 @@ class CreateHoudiniGeneric(plugin.HoudiniCreator):
     icon = "male"
     description = "Make any ROP node publishable."
 
-    # TODO: Override "create" to create the AYON publish attributes on the
-    #  selected node so it becomes a publishable instance.
     render_target = "local_no_render"
     default_variant = "$OS"
+
+    # TODO: Move this to project settings
+    node_type_product_types: Dict[str, NodeTypeProductTypes] = {
+        "alembic": NodeTypeProductTypes(
+            product_types=["pointcache", "model"],
+            default="pointcache"
+        ),
+        "rop_fbx": NodeTypeProductTypes(
+            product_types=["fbx", "pointcache", "model"],
+            default="fbx"
+        )
+    }
+    node_type_product_types_default = NodeTypeProductTypes(
+        product_types=list(sorted(
+            {"ass", "pointcache", "model", "render",
+             "camera", "imagesequence", "review", "vdbcache", "fbx"})),
+        default="pointcache",
+        strict=False
+    )
 
     def get_detail_description(self):
         return "Publish any ROP node."
@@ -415,7 +452,20 @@ class CreateHoudiniGeneric(plugin.HoudiniCreator):
                     ])
                 publish_attributes_folder.addParmTemplate(parm_template)
 
-        # TODO
+        # Define the product types picker options
+        node_type_product_types: NodeTypeProductTypes = (
+            self.node_type_product_types.get(
+                node.type().name(), self.node_type_product_types_default
+            ))
+        product_type_kwargs = {
+            "menu_items": node_type_product_types.product_types,
+            "default_value": (node_type_product_types.default,)
+        }
+        if node_type_product_types.strict:
+            product_type_kwargs["menu_type"] = hou.menuType.Normal
+        else:
+            product_type_kwargs["menu_type"] = hou.menuType.StringReplace
+
         # Add the Folder Path, Task Name, Product Type, Variant, Product Name
         # and Active state in Instance attributes
         for attribute in [
@@ -432,7 +482,7 @@ class CreateHoudiniGeneric(plugin.HoudiniCreator):
             hou.StringParmTemplate(
                 "AYON_productType", "Product Type",
                 num_components=1,
-                default_value=("pointcache",)
+                **product_type_kwargs
             ),
             hou.StringParmTemplate(
                 "AYON_variant", "Variant",
@@ -557,8 +607,10 @@ class CreateHoudiniGeneric(plugin.HoudiniCreator):
         return [
             TextDef("productType",
                     label="Product Type",
-                    tooltip="Publish product type",
-                    default="pointcache")
+                    tooltip="Publish product type. When set to "
+                            "`__use_node_default__` it will use the project "
+                            "settings to define the default value.",
+                    default="__use_node_default__")
         ]
 
     def _get_product_name_dynamic(

@@ -2,64 +2,17 @@
 # As such, preferably the code here should run fast to avoid slowing down node
 # creation. Note: It does not trigger on existing nodes for scene open nor on
 # node copy-pasting.
-from ayon_core.lib import env_value_to_bool
+from ayon_core.lib import env_value_to_bool, is_dev_mode_enabled
+from ayon_houdini.api import node_wrap
 
 
-def make_publishable(node, product_type):
-    # TODO: Can we make this imprinting much faster? Unfortunately
-    #  CreateContext initialization is very slow.
-    from ayon_core.pipeline import registered_host
-    from ayon_core.pipeline.create import CreateContext
-
-    host = registered_host()
-    context = CreateContext(host)
-
-    variant = node.name()
-
-    # Apply the instance creation to the node
-    context.create(
-        creator_identifier="io.ayon.creators.houdini.publish",
-        variant=variant,
-        pre_create_data={
-            "productType": product_type,
-            "node": node
-        }
-    )
-
-
-def autocreate_publishable(node):
-    node_type = node.type().name()
-
-    # TODO: Move this choice of automatic 'imprint' to settings so studio can
-    #   configure which nodes should get automatically imprinted on creation
-    mapping = {
-        # Pointcache
-        "alembic": "pointcache",
-        "rop_alembic": "pointcache",
-        "geometry": "pointcache",
-        "rop_geometry": "pointcache",
-        # FBX
-        "filmboxfbx": "fbx",
-        "rop_fbx": "fbx",
-        # USD
-        "usd": "usd",
-        "usd_rop": "usd",
-        "usdexport": "usd",
-        "comp": "imagesequence",
-        "opengl": "review",
-        # Render
-        "arnold": "render",
-        "labs::karma::2.0": "render",
-        "karma": "render",
-        "usdrender": "render",
-        "usdrender_rop": "render",
-        "vray_renderer": "render"
-    }
-    product_type = mapping.get(node_type, None)
-    if product_type:
-        make_publishable(node, product_type)
+# Allow easier development by automatic reloads
+# TODO: remove this
+if is_dev_mode_enabled():
+    import importlib
+    importlib.reload(node_wrap)
 
 
 if env_value_to_bool("AYON_HOUDINI_AUTOCREATE", default=True):
     node = kwargs["node"]
-    autocreate_publishable(node)
+    node_wrap.autocreate_publishable(node)
