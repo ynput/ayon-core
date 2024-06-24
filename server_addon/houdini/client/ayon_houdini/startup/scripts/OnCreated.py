@@ -61,12 +61,5 @@ def autocreate_publishable(node):
 
 
 if env_value_to_bool("AYON_HOUDINI_AUTOCREATE", default=True):
-    # TODO: For now 'hide' this behind `AYON_HOUDINI_AUTOCREATE` env var
-    #  because it breaks existing creators, since it will also try and
-    #  auto-apply to e.g. the node created by the legacy pointcache creator
-    # TODO: We could also reverse this logic and have all legacy creators
-    #  force disable `AYON_HOUDINI_CREATE` in a context manager as it creates
-    #  the nodes so that this functionality can be easily 'disabled'
-    #  temporarily
     node = kwargs["node"]
     autocreate_publishable(node)
