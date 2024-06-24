@@ -130,16 +130,14 @@ class OxCacheLoader(plugin.Loader):
         """
         nodes = []
         orig_guide_name = node_settings["name"]
-        orig_shape_name = node_settings["shape"]["name"]
-        mesh_shape_name = "{}:{}".format(namespace, orig_shape_name)
         guide_name = "{}:{}".format(namespace, orig_guide_name)
-        mesh_shape_node = cmds.createNode("mesh", name=mesh_shape_name)
         hair_guide_node = cmds.createNode("HairFromGuidesNode", name=guide_name)
 
         lib.set_id(hair_guide_node, node_settings["cbId"])
-        mel.eval(f"OxAddStrandOperator {mesh_shape_node} {hair_guide_node};")
+        mel.eval("OxShowHairStackDialog();")
+        mel.eval(f'OxAddStrandOperator "" {hair_guide_node};')
         cmds.setAttr(f"{guide_name}.cacheFilePath", filepath)
-        nodes.extend([mesh_shape_node, hair_guide_node])
+        nodes.extend([hair_guide_node])
         return nodes
 
     def read_settings(self, path):
