@@ -71,9 +71,6 @@ def attribute_def_to_parm_template(attribute_def, key=None):
         if not attribute_def.multiselection:
             labels = [item["label"] for item in attribute_def.items]
             values = [item["value"] for item in attribute_def.items]
-
-            print(attribute_def.default)
-
             return hou.StringParmTemplate(
                 name=key,
                 label=attribute_def.label,
