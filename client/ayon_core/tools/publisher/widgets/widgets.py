@@ -95,7 +95,7 @@ class IconValuePixmapLabel(PublishPixmapLabel):
     def __init__(self, icon_def, parent):
         source_pixmap = self._parse_icon_def(icon_def)
 
-        super(IconValuePixmapLabel, self).__init__(source_pixmap, parent)
+        super().__init__(source_pixmap, parent)
 
     def set_icon_def(self, icon_def):
         """Set icon by it's definition name.
@@ -123,7 +123,7 @@ class ContextWarningLabel(PublishPixmapLabel):
     def __init__(self, parent):
         pix = get_pixmap("warning")
 
-        super(ContextWarningLabel, self).__init__(pix, parent)
+        super().__init__(pix, parent)
 
         self.setToolTip(
             "Contain invalid context. Please check details."
@@ -146,7 +146,7 @@ class PublishIconBtn(IconButton):
     """
 
     def __init__(self, pixmap_path, *args, **kwargs):
-        super(PublishIconBtn, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
 
         colors = get_objected_colors()
         icon = self.generate_icon(
@@ -209,7 +209,7 @@ class CreateBtn(PublishIconBtn):
 
     def __init__(self, parent=None):
         icon_path = get_icon_path("create")
-        super(CreateBtn, self).__init__(icon_path, "Create", parent)
+        super().__init__(icon_path, "Create", parent)
         self.setToolTip("Create new product/s")
         self.setLayoutDirection(QtCore.Qt.RightToLeft)
 
@@ -218,7 +218,7 @@ class SaveBtn(PublishIconBtn):
     """Save context and instances information."""
     def __init__(self, parent=None):
         icon_path = get_icon_path("save")
-        super(SaveBtn, self).__init__(icon_path, parent)
+        super().__init__(icon_path, parent)
         self.setToolTip(
             "Save changes ({})".format(
                 QtGui.QKeySequence(QtGui.QKeySequence.Save).toString()
@@ -230,7 +230,7 @@ class ResetBtn(PublishIconBtn):
     """Publish reset button."""
     def __init__(self, parent=None):
         icon_path = get_icon_path("refresh")
-        super(ResetBtn, self).__init__(icon_path, parent)
+        super().__init__(icon_path, parent)
         self.setToolTip(
             "Reset & discard changes ({})".format(ResetKeySequence.toString())
         )
@@ -240,7 +240,7 @@ class StopBtn(PublishIconBtn):
     """Publish stop button."""
     def __init__(self, parent):
         icon_path = get_icon_path("stop")
-        super(StopBtn, self).__init__(icon_path, parent)
+        super().__init__(icon_path, parent)
         self.setToolTip("Stop/Pause publishing")
 
 
@@ -248,7 +248,7 @@ class ValidateBtn(PublishIconBtn):
     """Publish validate button."""
     def __init__(self, parent=None):
         icon_path = get_icon_path("validate")
-        super(ValidateBtn, self).__init__(icon_path, parent)
+        super().__init__(icon_path, parent)
         self.setToolTip("Validate")
 
 
@@ -256,7 +256,7 @@ class PublishBtn(PublishIconBtn):
     """Publish start publish button."""
     def __init__(self, parent=None):
         icon_path = get_icon_path("play")
-        super(PublishBtn, self).__init__(icon_path, "Publish", parent)
+        super().__init__(icon_path, "Publish", parent)
         self.setToolTip("Publish")
 
 
@@ -264,7 +264,7 @@ class CreateInstanceBtn(PublishIconBtn):
     """Create add button."""
     def __init__(self, parent=None):
         icon_path = get_icon_path("add")
-        super(CreateInstanceBtn, self).__init__(icon_path, parent)
+        super().__init__(icon_path, parent)
         self.setToolTip("Create new instance")
 
 
@@ -275,7 +275,7 @@ class PublishReportBtn(PublishIconBtn):
 
     def __init__(self, parent=None):
         icon_path = get_icon_path("view_report")
-        super(PublishReportBtn, self).__init__(icon_path, parent)
+        super().__init__(icon_path, parent)
         self.setToolTip("Copy report")
         self._actions = []
 
@@ -288,7 +288,7 @@ class PublishReportBtn(PublishIconBtn):
         self.triggered.emit(identifier)
 
     def mouseReleaseEvent(self, event):
-        super(PublishReportBtn, self).mouseReleaseEvent(event)
+        super().mouseReleaseEvent(event)
         menu = QtWidgets.QMenu(self)
         actions = []
         for item in self._actions:
@@ -306,7 +306,7 @@ class RemoveInstanceBtn(PublishIconBtn):
     """Create remove button."""
     def __init__(self, parent=None):
         icon_path = resources.get_icon_path("delete")
-        super(RemoveInstanceBtn, self).__init__(icon_path, parent)
+        super().__init__(icon_path, parent)
         self.setToolTip("Remove selected instances")
 
 
@@ -314,7 +314,7 @@ class ChangeViewBtn(PublishIconBtn):
     """Create toggle view button."""
     def __init__(self, parent=None):
         icon_path = get_icon_path("change_view")
-        super(ChangeViewBtn, self).__init__(icon_path, parent)
+        super().__init__(icon_path, parent)
         self.setToolTip("Swap between views")
 
 
@@ -403,7 +403,7 @@ class ClickableLineEdit(QtWidgets.QLineEdit):
     clicked = QtCore.Signal()
 
     def __init__(self, *args, **kwargs):
-        super(ClickableLineEdit, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         self.setReadOnly(True)
         self._mouse_pressed = False
 
@@ -588,7 +588,7 @@ class FoldersFields(BaseClickableFrame):
 
 class TasksComboboxProxy(QtCore.QSortFilterProxyModel):
     def __init__(self, *args, **kwargs):
-        super(TasksComboboxProxy, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         self._filter_empty = False
 
     def set_filter_empty(self, filter_empty):
@@ -900,7 +900,7 @@ class VariantInputWidget(PlaceholderLineEdit):
     value_changed = QtCore.Signal()
 
     def __init__(self, parent):
-        super(VariantInputWidget, self).__init__(parent)
+        super().__init__(parent)
 
         self.setObjectName("VariantInput")
         self.setToolTip(VARIANT_TOOLTIP)
@@ -1011,7 +1011,7 @@ class MultipleItemWidget(QtWidgets.QWidget):
     """
 
     def __init__(self, parent):
-        super(MultipleItemWidget, self).__init__(parent)
+        super().__init__(parent)
 
         model = QtGui.QStandardItemModel()
 
@@ -1051,7 +1051,7 @@ class MultipleItemWidget(QtWidgets.QWidget):
         self.setMaximumHeight(height + (2 * self._view.spacing()))
 
     def showEvent(self, event):
-        super(MultipleItemWidget, self).showEvent(event)
+        super().showEvent(event)
         tmp_item = None
         if not self._value:
             # Add temp item to be able calculate maximum height of widget
@@ -1063,7 +1063,7 @@ class MultipleItemWidget(QtWidgets.QWidget):
             self._model.clear()
 
     def resizeEvent(self, event):
-        super(MultipleItemWidget, self).resizeEvent(event)
+        super().resizeEvent(event)
         self._update_size()
 
     def set_value(self, value=None):
@@ -1893,7 +1893,7 @@ class CreateNextPageOverlay(QtWidgets.QWidget):
     clicked = QtCore.Signal()
 
     def __init__(self, parent):
-        super(CreateNextPageOverlay, self).__init__(parent)
+        super().__init__(parent)
         self.setCursor(QtCore.Qt.PointingHandCursor)
         self._arrow_color = (
             get_objected_colors("font").get_qcolor()
@@ -1983,7 +1983,7 @@ class CreateNextPageOverlay(QtWidgets.QWidget):
     def mousePressEvent(self, event):
         if event.button() == QtCore.Qt.LeftButton:
             self._mouse_pressed = True
-        super(CreateNextPageOverlay, self).mousePressEvent(event)
+        super().mousePressEvent(event)
 
     def mouseReleaseEvent(self, event):
         if self._mouse_pressed:
@@ -1991,7 +1991,7 @@ class CreateNextPageOverlay(QtWidgets.QWidget):
             if self.rect().contains(event.pos()):
                 self.clicked.emit()
 
-        super(CreateNextPageOverlay, self).mouseReleaseEvent(event)
+        super().mouseReleaseEvent(event)
 
     def paintEvent(self, event):
         painter = QtGui.QPainter()

@@ -445,7 +445,7 @@ class PublisherWindow(QtWidgets.QDialog):
 
     def showEvent(self, event):
         self._window_is_visible = True
-        super(PublisherWindow, self).showEvent(event)
+        super().showEvent(event)
         if self._first_show:
             self._first_show = False
             self._on_first_show()
@@ -453,7 +453,7 @@ class PublisherWindow(QtWidgets.QDialog):
         self._show_timer.start()
 
     def resizeEvent(self, event):
-        super(PublisherWindow, self).resizeEvent(event)
+        super().resizeEvent(event)
         self._update_publish_frame_rect()
         self._update_create_overlay_size()
 
@@ -469,16 +469,16 @@ class PublisherWindow(QtWidgets.QDialog):
         # Trigger custom event that should be captured only in UI
         #   - backend (controller) must not be dependent on this event topic!!!
         self._controller.emit_event("main.window.closed", {}, "window")
-        super(PublisherWindow, self).closeEvent(event)
+        super().closeEvent(event)
 
     def leaveEvent(self, event):
-        super(PublisherWindow, self).leaveEvent(event)
+        super().leaveEvent(event)
         self._update_create_overlay_visibility()
 
     def eventFilter(self, obj, event):
         if event.type() == QtCore.QEvent.MouseMove:
             self._update_create_overlay_visibility(event.globalPos())
-        return super(PublisherWindow, self).eventFilter(obj, event)
+        return super().eventFilter(obj, event)
 
     def _install_app_event_listener(self):
         if self._app_event_listener_installed:
@@ -533,7 +533,7 @@ class PublisherWindow(QtWidgets.QDialog):
             event.accept()
             return
 
-        super(PublisherWindow, self).keyPressEvent(event)
+        super().keyPressEvent(event)
 
     def _on_overlay_message(self, event):
         self._overlay_object.add_message(
@@ -1087,7 +1087,7 @@ class ErrorsMessageBox(ErrorMessageBox):
         self._tabs_widget = None
         self._stack_layout = None
 
-        super(ErrorsMessageBox, self).__init__(error_title, parent)
+        super().__init__(error_title, parent)
 
         layout = self.layout()
         layout.setContentsMargins(0, 0, 0, 0)

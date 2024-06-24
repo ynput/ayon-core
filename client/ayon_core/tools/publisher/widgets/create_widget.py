@@ -35,14 +35,14 @@ class ResizeControlWidget(QtWidgets.QWidget):
     resized = QtCore.Signal()
 
     def resizeEvent(self, event):
-        super(ResizeControlWidget, self).resizeEvent(event)
+        super().resizeEvent(event)
         self.resized.emit()
 
 
 # TODO add creator identifier/label to details
 class CreatorShortDescWidget(QtWidgets.QWidget):
     def __init__(self, parent=None):
-        super(CreatorShortDescWidget, self).__init__(parent=parent)
+        super().__init__(parent=parent)
 
         # --- Short description widget ---
         icon_widget = IconValuePixmapLabel(None, self)
@@ -100,13 +100,13 @@ class CreatorsProxyModel(QtCore.QSortFilterProxyModel):
         l_show_order = left.data(CREATOR_SORT_ROLE)
         r_show_order = right.data(CREATOR_SORT_ROLE)
         if l_show_order == r_show_order:
-            return super(CreatorsProxyModel, self).lessThan(left, right)
+            return super().lessThan(left, right)
         return l_show_order < r_show_order
 
 
 class CreateWidget(QtWidgets.QWidget):
     def __init__(self, controller, parent=None):
-        super(CreateWidget, self).__init__(parent)
+        super().__init__(parent)
 
         self._controller: AbstractPublisherFrontend = controller
 
@@ -755,7 +755,7 @@ class CreateWidget(QtWidgets.QWidget):
         self._creators_splitter.setSizes([part, rem_width])
 
     def showEvent(self, event):
-        super(CreateWidget, self).showEvent(event)
+        super().showEvent(event)
         if self._first_show:
             self._first_show = False
             self._on_first_show()

@@ -215,7 +215,7 @@ class PublishFrame(QtWidgets.QWidget):
         self._last_plugin_label = None
 
     def mouseReleaseEvent(self, event):
-        super(PublishFrame, self).mouseReleaseEvent(event)
+        super().mouseReleaseEvent(event)
         self._change_shrunk_state()
 
     def _change_shrunk_state(self):
