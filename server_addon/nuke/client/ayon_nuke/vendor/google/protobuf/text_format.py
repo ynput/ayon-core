@@ -548,7 +548,7 @@ class _Printer(object):
     self.out.write(' ' if self.as_one_line else '\n')
 
   def _PrintShortRepeatedPrimitivesValue(self, field, value):
-    """Prints short repeated primitives value."""
+    """"Prints short repeated primitives value."""
     # Note: this is called only when value has at least one element.
     self._PrintFieldName(field)
     self.out.write(' [')
