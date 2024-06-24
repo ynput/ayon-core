@@ -6,7 +6,7 @@ import logging
 import hou  # noqa
 
 from ayon_core.host import HostBase, IWorkfileHost, ILoadHost, IPublishHost
-
+from ayon_core.tools.utils import host_tools
 import pyblish.api
 
 from ayon_core.pipeline import (
@@ -23,6 +23,7 @@ from ayon_houdini.api import lib, shelves, creator_node_shelves
 from ayon_core.lib import (
     register_event_callback,
     emit_event,
+    env_value_to_bool,
 )
 
 
@@ -85,10 +86,9 @@ class HoudiniHost(HostBase, IWorkfileHost, ILoadHost, IPublishHost):
             # initialization during start up delays Houdini UI by minutes
             # making it extremely slow to launch.
             hdefereval.executeDeferred(shelves.generate_shelves)
-
-        if not IS_HEADLESS:
-            import hdefereval # noqa, hdefereval is only available in ui mode
             hdefereval.executeDeferred(creator_node_shelves.install)
+            if env_value_to_bool("AYON_WORKFILE_TOOL_ON_START"):
+                hdefereval.executeDeferred(lambda: host_tools.show_workfiles(parent=hou.qt.mainWindow()))
 
     def workfile_has_unsaved_changes(self):
         return hou.hipFile.hasUnsavedChanges()
