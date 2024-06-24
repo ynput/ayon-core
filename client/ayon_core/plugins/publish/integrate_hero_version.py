@@ -619,12 +619,11 @@ class IntegrateHeroVersion(
 
             self.log.debug("Folder already exists: \"{}\"".format(dirname))
 
-        self.log.debug("Copying file \"{}\" to \"{}\"".format(
-            src_path, dst_path
-        ))
-
         if self.use_hardlinks:
             # First try hardlink and copy if paths are cross drive
+            self.log.debug("Hardlinking file \"{}\" to \"{}\"".format(
+                src_path, dst_path
+            ))
             try:
                 create_hard_link(src_path, dst_path)
                 # Return when successful
@@ -638,6 +637,13 @@ class IntegrateHeroVersion(
                     "Hardlink failed with errno:'{}'".format(exc.errno))
                 if exc.errno not in [errno.EXDEV, errno.EINVAL]:
                     raise
+
+            self.log.debug(
+                "Hardlinking failed, falling back to regular copy...")
+
+        self.log.debug("Copying file \"{}\" to \"{}\"".format(
+            src_path, dst_path
+        ))
 
         shutil.copy(src_path, dst_path)
 
