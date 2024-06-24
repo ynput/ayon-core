@@ -21,9 +21,6 @@ from ayon_core.lib import BoolDef
 
 from .lib import imprint, read, lsattr, add_self_publish_button
 
-# Backwards compatibility
-NewCreator = Creator
-
 
 SETTINGS_CATEGORY = "houdini"
 
