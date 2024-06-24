@@ -30,7 +30,7 @@ class OxCacheLoader(plugin.Loader):
 
         """
         # Ensure Ornatrix is loaded
-        cmds.loadPlugin("Ornatrix.mll", quiet=True)
+        cmds.loadPlugin("Ornatrix", quiet=True)
 
         product_type = context["product"]["productType"]
         # Build namespace

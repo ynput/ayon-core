@@ -18,7 +18,7 @@ class ExtractOxRig(plugin.MayaExtractorPlugin):
 
     def process(self, instance):
         """Plugin entry point."""
-        cmds.loadPlugin("Ornatrix.mll", quiet=True)
+        cmds.loadPlugin("Ornatrix", quiet=True)
         maya_settings = instance.context.data["project_settings"]["maya"]
         ext_mapping = {
             item["name"]: item["value"]

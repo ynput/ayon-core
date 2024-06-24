@@ -27,7 +27,7 @@ class OxRigLoader(plugin.ReferenceLoader):
 
         # Check if the plugin for Ornatrix is available on the pc
         try:
-            cmds.loadPlugin("Ornatrix.mll", quiet=True)
+            cmds.loadPlugin("Ornatrix", quiet=True)
         except Exception as exc:
             self.log.error("Encountered exception:\n%s" % exc)
             return

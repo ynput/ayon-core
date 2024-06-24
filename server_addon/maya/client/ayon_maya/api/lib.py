@@ -4254,7 +4254,7 @@ def search_textures(filepath):
             dynamic patterns like <UDIM> or %04d
 
     Returns:
-        list: The files found on disk
+        list[str | clique.Collection]: The files found on disk
 
     """
     filename = os.path.basename(filepath)
@@ -4299,7 +4299,7 @@ def get_sequence(filepath, pattern="%04d"):
         pattern (str): The pattern to swap with the variable frame number.
 
     Returns:
-        list: clique.Collection.
+        list[clique.Collection]: List of sequence frame collections.
 
     """
     import clique
@@ -4312,7 +4312,6 @@ def get_sequence(filepath, pattern="%04d"):
                 if re.match(re_pattern, f)]
 
     pattern = [clique.PATTERNS["frames"]]
-    collection, remainder = clique.assemble(
+    collections, remainder = clique.assemble(
         files, patterns=pattern, minimum_items=1)
-
-    return collection
+    return collections
