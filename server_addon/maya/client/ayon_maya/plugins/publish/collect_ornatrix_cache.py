@@ -19,8 +19,6 @@ class CollectOxCache(plugin.MayaInstancePlugin):
             ox_shape_id = lib.get_id(ox_shape)
             if not ox_shape_id:
                 continue
-            # Get transform data
-            parent = cmds.listRelatives(ox_shape, parent=True)[0]
             ox_cache_nodes = cmds.listConnections(
                 ox_shape, destination=True, type="HairFromGuidesNode") or []
             if not ox_cache_nodes:
