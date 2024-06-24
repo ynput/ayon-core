@@ -10,10 +10,10 @@ from ayon_core.tools.utils.delegates import PrettyTimeDelegate
 
 from .utils import BaseOverlayFrame
 
-
 REPRE_ID_ROLE = QtCore.Qt.UserRole + 1
 FILEPATH_ROLE = QtCore.Qt.UserRole + 2
-DATE_MODIFIED_ROLE = QtCore.Qt.UserRole + 3
+AUTHOR_ROLE = QtCore.Qt.UserRole + 3
+DATE_MODIFIED_ROLE = QtCore.Qt.UserRole + 4
 
 
 class PublishedFilesModel(QtGui.QStandardItemModel):
@@ -23,13 +23,19 @@ class PublishedFilesModel(QtGui.QStandardItemModel):
         controller (AbstractWorkfilesFrontend): The control object.
     """
 
+    columns = [
+        "Name",
+        "Author",
+        "Date Modified",
+    ]
+    date_modified_col = columns.index("Date Modified")
+
     def __init__(self, controller):
         super(PublishedFilesModel, self).__init__()
 
-        self.setColumnCount(2)
-
-        self.setHeaderData(0, QtCore.Qt.Horizontal, "Name")
-        self.setHeaderData(1, QtCore.Qt.Horizontal, "Date Modified")
+        self.setColumnCount(len(self.columns))
+        for idx, label in enumerate(self.columns):
+            self.setHeaderData(idx, QtCore.Qt.Horizontal, label)
 
         controller.register_event_callback(
             "selection.task.changed",
@@ -185,6 +191,8 @@ class PublishedFilesModel(QtGui.QStandardItemModel):
         self._remove_empty_item()
         self._remove_missing_context_item()
 
+        user_items_by_name = self._controller.get_user_items_by_name()
+
         items_to_remove = set(self._items_by_id.keys())
         new_items = []
         for file_item in file_items:
@@ -205,8 +213,15 @@ class PublishedFilesModel(QtGui.QStandardItemModel):
             else:
                 flags = QtCore.Qt.NoItemFlags
 
+            author = file_item.created_by
+            user_item = user_items_by_name.get(author)
+            if user_item is not None and user_item.full_name:
+                author = user_item.full_name
+
             item.setFlags(flags)
+
             item.setData(file_item.filepath, FILEPATH_ROLE)
+            item.setData(author, AUTHOR_ROLE)
             item.setData(file_item.modified, DATE_MODIFIED_ROLE)
 
             self._items_by_id[repre_id] = item
@@ -225,22 +240,30 @@ class PublishedFilesModel(QtGui.QStandardItemModel):
         # Use flags of first column for all columns
         if index.column() != 0:
             index = self.index(index.row(), 0, index.parent())
-        return super(PublishedFilesModel, self).flags(index)
+        return super().flags(index)
 
     def data(self, index, role=None):
         if role is None:
             role = QtCore.Qt.DisplayRole
 
         # Handle roles for first column
-        if index.column() == 1:
-            if role == QtCore.Qt.DecorationRole:
-                return None
+        col = index.column()
+        if col == 0:
+            return super().data(index, role)
 
-            if role in (QtCore.Qt.DisplayRole, QtCore.Qt.EditRole):
+        if role == QtCore.Qt.DecorationRole:
+            return None
+
+        if role in (QtCore.Qt.DisplayRole, QtCore.Qt.EditRole):
+            if col == 1:
+                role = AUTHOR_ROLE
+            elif col == 2:
                 role = DATE_MODIFIED_ROLE
-            index = self.index(index.row(), 0, index.parent())
+            else:
+                return None
+        index = self.index(index.row(), 0, index.parent())
 
-        return super(PublishedFilesModel, self).data(index, role)
+        return super().data(index, role)
 
 
 class SelectContextOverlay(BaseOverlayFrame):
@@ -295,7 +318,7 @@ class PublishedFilesWidget(QtWidgets.QWidget):
         view.setModel(proxy_model)
 
         time_delegate = PrettyTimeDelegate()
-        view.setItemDelegateForColumn(1, time_delegate)
+        view.setItemDelegateForColumn(model.date_modified_col, time_delegate)
 
         # Default to a wider first filename column it is what we mostly care
         # about and the date modified is relatively small anyway.

@@ -182,7 +182,27 @@ class TrayManager:
         }:
             envs.pop(key, None)
 
+        # Remove any existing addon path from 'PYTHONPATH'
+        addons_dir = os.environ.get("AYON_ADDONS_DIR", "")
+        if addons_dir:
+            addons_dir = os.path.normpath(addons_dir)
+        addons_dir = addons_dir.lower()
+
+        pythonpath = envs.get("PYTHONPATH") or ""
+        new_python_paths = []
+        for path in pythonpath.split(os.pathsep):
+            if not path:
+                continue
+            path = os.path.normpath(path)
+            if path.lower().startswith(addons_dir):
+                continue
+            new_python_paths.append(path)
+
+        envs["PYTHONPATH"] = os.pathsep.join(new_python_paths)
+
+        # Start new process
         run_detached_process(args, env=envs)
+        # Exit current tray process
         self.exit()
 
     def exit(self):
@@ -447,8 +467,10 @@ class SystemTrayIcon(QtWidgets.QSystemTrayIcon):
 
     def initialize_addons(self):
         self._initializing_addons = True
-        self.tray_man.initialize_addons()
-        self._initializing_addons = False
+        try:
+            self.tray_man.initialize_addons()
+        finally:
+            self._initializing_addons = False
 
     def _click_timer_timeout(self):
         self._click_timer.stop()

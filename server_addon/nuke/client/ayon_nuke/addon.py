@@ -2,11 +2,14 @@ import os
 import platform
 from ayon_core.addon import AYONAddon, IHostAddon
 
+from .version import __version__
+
 NUKE_ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
 
 
 class NukeAddon(AYONAddon, IHostAddon):
     name = "nuke"
+    version = __version__
     host_name = "nuke"
 
     def add_implementation_envs(self, env, _app):

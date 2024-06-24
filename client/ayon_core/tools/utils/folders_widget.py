@@ -3,7 +3,9 @@ import collections
 from qtpy import QtWidgets, QtGui, QtCore
 
 from ayon_core.lib.events import QueuedEventSystem
+from ayon_core.style import get_default_entity_icon_color
 from ayon_core.tools.common_models import (
+    ProjectsModel,
     HierarchyModel,
     HierarchyExpectedSelection,
 )
@@ -25,8 +27,9 @@ class FoldersQtModel(QtGui.QStandardItemModel):
 
     Args:
         controller (AbstractWorkfilesFrontend): The control object.
-    """
 
+    """
+    _default_folder_icon = None
     refreshed = QtCore.Signal()
 
     def __init__(self, controller):
@@ -70,13 +73,6 @@ class FoldersQtModel(QtGui.QStandardItemModel):
         """
 
         self.set_project_name(self._last_project_name)
-
-    def _clear_items(self):
-        self._items_by_id = {}
-        self._parent_id_by_id = {}
-        self._has_content = False
-        root_item = self.invisibleRootItem()
-        root_item.removeRows(0, root_item.rowCount())
 
     def get_index_by_id(self, item_id):
         """Get index by folder id.
@@ -123,7 +119,7 @@ class FoldersQtModel(QtGui.QStandardItemModel):
 
         if not project_name:
             self._last_project_name = project_name
-            self._fill_items({})
+            self._fill_items({}, {})
             self._current_refresh_thread = None
             return
 
@@ -140,14 +136,41 @@ class FoldersQtModel(QtGui.QStandardItemModel):
 
         thread = RefreshThread(
             project_name,
-            self._controller.get_folder_items,
-            project_name,
-            FOLDERS_MODEL_SENDER_NAME
+            self._thread_getter,
+            project_name
         )
         self._current_refresh_thread = thread
         self._refresh_threads[thread.id] = thread
         thread.refresh_finished.connect(self._on_refresh_thread)
         thread.start()
+
+    @classmethod
+    def _get_default_folder_icon(cls):
+        if cls._default_folder_icon is None:
+            cls._default_folder_icon = get_qt_icon({
+                "type": "awesome-font",
+                "name": "fa.folder",
+                "color": get_default_entity_icon_color()
+            })
+        return cls._default_folder_icon
+
+    def _clear_items(self):
+        self._items_by_id = {}
+        self._parent_id_by_id = {}
+        self._has_content = False
+        root_item = self.invisibleRootItem()
+        root_item.removeRows(0, root_item.rowCount())
+
+    def _thread_getter(self, project_name):
+        folder_items = self._controller.get_folder_items(
+            project_name, FOLDERS_MODEL_SENDER_NAME
+        )
+        folder_type_items = {}
+        if hasattr(self._controller, "get_folder_type_items"):
+            folder_type_items = self._controller.get_folder_type_items(
+                project_name, FOLDERS_MODEL_SENDER_NAME
+            )
+        return folder_items, folder_type_items
 
     def _on_refresh_thread(self, thread_id):
         """Callback when refresh thread is finished.
@@ -169,19 +192,59 @@ class FoldersQtModel(QtGui.QStandardItemModel):
             or thread_id != self._current_refresh_thread.id
         ):
             return
-
-        self._fill_items(thread.get_result())
+        if thread.failed:
+            # TODO visualize that refresh failed
+            folder_items, folder_type_items = {}, {}
+        else:
+            folder_items, folder_type_items = thread.get_result()
+        self._fill_items(folder_items, folder_type_items)
         self._current_refresh_thread = None
 
-    def _fill_item_data(self, item, folder_item):
+    def _get_folder_item_icon(
+        self,
+        folder_item,
+        folder_type_item_by_name,
+        folder_type_icon_cache
+    ):
+        icon = folder_type_icon_cache.get(folder_item.folder_type)
+        if icon is not None:
+            return icon
+
+        folder_type_item = folder_type_item_by_name.get(
+            folder_item.folder_type
+        )
+        icon = None
+        if folder_type_item is not None:
+            icon = get_qt_icon({
+                "type": "material-symbols",
+                "name": folder_type_item.icon,
+                "color": get_default_entity_icon_color()
+            })
+
+        if icon is None:
+            icon = self._get_default_folder_icon()
+        folder_type_icon_cache[folder_item.folder_type] = icon
+        return icon
+
+    def _fill_item_data(
+        self,
+        item,
+        folder_item,
+        folder_type_item_by_name,
+        folder_type_icon_cache
+    ):
         """
 
         Args:
             item (QtGui.QStandardItem): Item to fill data.
             folder_item (FolderItem): Folder item.
-        """
 
-        icon = get_qt_icon(folder_item.icon)
+        """
+        icon = self._get_folder_item_icon(
+            folder_item,
+            folder_type_item_by_name,
+            folder_type_icon_cache
+        )
         item.setData(folder_item.entity_id, FOLDER_ID_ROLE)
         item.setData(folder_item.name, FOLDER_NAME_ROLE)
         item.setData(folder_item.path, FOLDER_PATH_ROLE)
@@ -189,7 +252,7 @@ class FoldersQtModel(QtGui.QStandardItemModel):
         item.setData(folder_item.label, QtCore.Qt.DisplayRole)
         item.setData(icon, QtCore.Qt.DecorationRole)
 
-    def _fill_items(self, folder_items_by_id):
+    def _fill_items(self, folder_items_by_id, folder_type_items):
         if not folder_items_by_id:
             if folder_items_by_id is not None:
                 self._clear_items()
@@ -197,6 +260,11 @@ class FoldersQtModel(QtGui.QStandardItemModel):
             self.refreshed.emit()
             return
 
+        folder_type_item_by_name = {
+            folder_type.name: folder_type
+            for folder_type in folder_type_items
+        }
+        folder_type_icon_cache = {}
         self._has_content = True
 
         folder_ids = set(folder_items_by_id)
@@ -242,7 +310,12 @@ class FoldersQtModel(QtGui.QStandardItemModel):
                 else:
                     is_new = self._parent_id_by_id[item_id] != parent_id
 
-                self._fill_item_data(item, folder_item)
+                self._fill_item_data(
+                    item,
+                    folder_item,
+                    folder_type_item_by_name,
+                    folder_type_icon_cache
+                )
                 if is_new:
                     new_items.append(item)
                 self._items_by_id[item_id] = item
@@ -370,6 +443,8 @@ class FoldersWidget(QtWidgets.QWidget):
         """
 
         self._folders_proxy_model.setFilterFixedString(name)
+        if name:
+            self._folders_view.expandAll()
 
     def refresh(self):
         """Refresh folders model.
@@ -617,6 +692,7 @@ class SimpleSelectionModel(object):
 class SimpleFoldersController(object):
     def __init__(self):
         self._event_system = self._create_event_system()
+        self._projects_model = ProjectsModel(self)
         self._hierarchy_model = HierarchyModel(self)
         self._selection_model = SimpleSelectionModel(self)
         self._expected_selection = HierarchyExpectedSelection(
@@ -636,6 +712,11 @@ class SimpleFoldersController(object):
     # Model functions
     def get_folder_items(self, project_name, sender=None):
         return self._hierarchy_model.get_folder_items(project_name, sender)
+
+    def get_folder_type_items(self, project_name, sender=None):
+        return self._projects_model.get_folder_type_items(
+            project_name, sender
+        )
 
     def set_selected_project(self, project_name):
         self._selection_model.set_selected_project(project_name)

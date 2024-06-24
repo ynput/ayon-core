@@ -25,18 +25,19 @@ VERSION_PUBLISH_TIME_ROLE = QtCore.Qt.UserRole + 14
 VERSION_STATUS_NAME_ROLE = QtCore.Qt.UserRole + 15
 VERSION_STATUS_SHORT_ROLE = QtCore.Qt.UserRole + 16
 VERSION_STATUS_COLOR_ROLE = QtCore.Qt.UserRole + 17
-VERSION_AUTHOR_ROLE = QtCore.Qt.UserRole + 18
-VERSION_FRAME_RANGE_ROLE = QtCore.Qt.UserRole + 19
-VERSION_DURATION_ROLE = QtCore.Qt.UserRole + 20
-VERSION_HANDLES_ROLE = QtCore.Qt.UserRole + 21
-VERSION_STEP_ROLE = QtCore.Qt.UserRole + 22
-VERSION_AVAILABLE_ROLE = QtCore.Qt.UserRole + 23
-VERSION_THUMBNAIL_ID_ROLE = QtCore.Qt.UserRole + 24
-ACTIVE_SITE_ICON_ROLE = QtCore.Qt.UserRole + 25
-REMOTE_SITE_ICON_ROLE = QtCore.Qt.UserRole + 26
-REPRESENTATIONS_COUNT_ROLE = QtCore.Qt.UserRole + 27
-SYNC_ACTIVE_SITE_AVAILABILITY = QtCore.Qt.UserRole + 28
-SYNC_REMOTE_SITE_AVAILABILITY = QtCore.Qt.UserRole + 29
+VERSION_STATUS_ICON_ROLE = QtCore.Qt.UserRole + 18
+VERSION_AUTHOR_ROLE = QtCore.Qt.UserRole + 19
+VERSION_FRAME_RANGE_ROLE = QtCore.Qt.UserRole + 20
+VERSION_DURATION_ROLE = QtCore.Qt.UserRole + 21
+VERSION_HANDLES_ROLE = QtCore.Qt.UserRole + 22
+VERSION_STEP_ROLE = QtCore.Qt.UserRole + 23
+VERSION_AVAILABLE_ROLE = QtCore.Qt.UserRole + 24
+VERSION_THUMBNAIL_ID_ROLE = QtCore.Qt.UserRole + 25
+ACTIVE_SITE_ICON_ROLE = QtCore.Qt.UserRole + 26
+REMOTE_SITE_ICON_ROLE = QtCore.Qt.UserRole + 27
+REPRESENTATIONS_COUNT_ROLE = QtCore.Qt.UserRole + 28
+SYNC_ACTIVE_SITE_AVAILABILITY = QtCore.Qt.UserRole + 29
+SYNC_REMOTE_SITE_AVAILABILITY = QtCore.Qt.UserRole + 30
 
 
 class ProductsModel(QtGui.QStandardItemModel):
@@ -125,6 +126,7 @@ class ProductsModel(QtGui.QStandardItemModel):
         self._last_project_name = None
         self._last_folder_ids = []
         self._last_project_statuses = {}
+        self._last_status_icons_by_name = {}
 
     def get_product_item_indexes(self):
         return [
@@ -180,6 +182,13 @@ class ProductsModel(QtGui.QStandardItemModel):
             return status_item.color
 
         col = index.column()
+        if col == self.status_col and role == QtCore.Qt.DecorationRole:
+            role = VERSION_STATUS_ICON_ROLE
+
+        if role == VERSION_STATUS_ICON_ROLE:
+            status_name = self.data(index, VERSION_STATUS_NAME_ROLE)
+            return self._get_status_icon(status_name)
+
         if col == 0:
             return super(ProductsModel, self).data(index, role)
 
@@ -198,7 +207,9 @@ class ProductsModel(QtGui.QStandardItemModel):
             product_item = self._product_items_by_id.get(product_id)
             if product_item is None:
                 return None
-            return list(product_item.version_items.values())
+            product_items = list(product_item.version_items.values())
+            product_items.sort(reverse=True)
+            return product_items
 
         if role == QtCore.Qt.EditRole:
             return None
@@ -256,6 +267,25 @@ class ProductsModel(QtGui.QStandardItemModel):
                     self._reset_merge_color = False
                     break
                 yield color
+
+    def _get_status_icon(self, status_name):
+        icon = self._last_status_icons_by_name.get(status_name)
+        if icon is not None:
+            return icon
+
+        status_item = self._last_project_statuses.get(status_name)
+        if status_item is not None:
+            icon = get_qt_icon({
+                "type": "material-symbols",
+                "name": status_item.icon,
+                "color": status_item.color,
+            })
+
+        if icon is None:
+            icon = QtGui.QIcon()
+
+        self._last_status_icons_by_name[status_name] = icon
+        return icon
 
     def _clear(self):
         root_item = self.invisibleRootItem()
@@ -416,6 +446,7 @@ class ProductsModel(QtGui.QStandardItemModel):
             status_item.name: status_item
             for status_item in status_items
         }
+        self._last_status_icons_by_name = {}
 
         active_site_icon_def = self._controller.get_active_site_icon_def(
             project_name
