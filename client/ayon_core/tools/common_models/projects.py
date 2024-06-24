@@ -1,8 +1,7 @@
 import contextlib
-from abc import ABCMeta, abstractmethod
+from abc import ABC, abstractmethod
 
 import ayon_api
-import six
 
 from ayon_core.style import get_default_entity_icon_color
 from ayon_core.lib import CacheItem, NestedCacheItem
@@ -10,8 +9,7 @@ from ayon_core.lib import CacheItem, NestedCacheItem
 PROJECTS_MODEL_SENDER = "projects.model"
 
 
-@six.add_metaclass(ABCMeta)
-class AbstractHierarchyController:
+class AbstractHierarchyController(ABC):
     @abstractmethod
     def emit_event(self, topic, data, source):
         pass
