@@ -1,5 +1,15 @@
 from abc import ABC, abstractmethod
-from typing import Optional, Dict, List, Tuple, Any, Callable, Union, Iterable
+from typing import (
+    Optional,
+    Dict,
+    List,
+    Tuple,
+    Any,
+    Callable,
+    Union,
+    Iterable,
+    TYPE_CHECKING,
+)
 
 from ayon_core.lib import AbstractAttrDef
 from ayon_core.host import HostBase
@@ -12,7 +22,8 @@ from ayon_core.tools.common_models import (
     TaskTypeItem,
 )
 
-from .models import CreatorItem
+if TYPE_CHECKING:
+    from .models import CreatorItem
 
 
 class CardMessageTypes:
@@ -248,7 +259,7 @@ class AbstractPublisherFrontend(AbstractPublisherCommon):
 
     # --- Create ---
     @abstractmethod
-    def get_creator_items(self) -> Dict[str, CreatorItem]:
+    def get_creator_items(self) -> Dict[str, "CreatorItem"]:
         """Creator items by identifier.
 
         Returns:
