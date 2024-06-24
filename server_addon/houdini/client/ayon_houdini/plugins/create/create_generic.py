@@ -167,6 +167,33 @@ class NodeTypeProductTypes:
     strict: bool = True
 
 
+# Re-usable defaults
+GEO_PRODUCT_TYPES = NodeTypeProductTypes(
+    product_types=["pointcache", "model"],
+    default="pointcache"
+)
+FBX_PRODUCT_TYPES = NodeTypeProductTypes(
+    product_types=["fbx", "pointcache", "model"],
+    default="fbx"
+)
+USD_PRODUCT_TYPES = NodeTypeProductTypes(
+    product_types=["usd", "pointcache"],
+    default="usd"
+)
+COMP_PRODUCT_TYPES = NodeTypeProductTypes(
+    product_types=["imagesequence", "render"],
+    default="imagesequence"
+)
+REVIEW_PRODUCT_TYPES = NodeTypeProductTypes(
+    product_types=["review"],
+    default="review"
+)
+RENDER_PRODUCT_TYPES = NodeTypeProductTypes(
+    product_types=["render", "prerender"],
+    default="render"
+)
+
+
 class CreateHoudiniGeneric(plugin.HoudiniCreator):
     """Generic creator to ingest arbitrary products"""
 
@@ -183,29 +210,44 @@ class CreateHoudiniGeneric(plugin.HoudiniCreator):
 
     # TODO: Move this to project settings
     node_type_product_types: Dict[str, NodeTypeProductTypes] = {
-        "alembic": NodeTypeProductTypes(
-            product_types=["pointcache", "model"],
-            default="pointcache"
-        ),
-        "rop_fbx": NodeTypeProductTypes(
-            product_types=["fbx", "pointcache", "model"],
-            default="fbx"
-        )
+        "alembic": GEO_PRODUCT_TYPES,
+        "rop_alembic": GEO_PRODUCT_TYPES,
+        "geometry": GEO_PRODUCT_TYPES,
+        "rop_geometry": GEO_PRODUCT_TYPES,
+        "filmboxfbx": FBX_PRODUCT_TYPES,
+        "rop_fbx": FBX_PRODUCT_TYPES,
+        "usd": USD_PRODUCT_TYPES,
+        "usd_rop": USD_PRODUCT_TYPES,
+        "usdexport": USD_PRODUCT_TYPES,
+        "comp": COMP_PRODUCT_TYPES,
+        "opengl": REVIEW_PRODUCT_TYPES,
+        "arnold": RENDER_PRODUCT_TYPES,
+        "labs::karma::2.0": RENDER_PRODUCT_TYPES,
+        "karma": RENDER_PRODUCT_TYPES,
+        "usdrender": RENDER_PRODUCT_TYPES,
+        "usdrender_rop": RENDER_PRODUCT_TYPES,
+        "vray_renderer": RENDER_PRODUCT_TYPES
     }
+
     node_type_product_types_default = NodeTypeProductTypes(
         product_types=list(sorted(
-            {"ass", "pointcache", "model", "render",
-             "camera", "imagesequence", "review", "vdbcache", "fbx"})),
+            {
+                "ass", "pointcache", "model", "render", "camera", 
+                "imagesequence", "review", "vdbcache", "fbx"
+            })),
         default="pointcache",
         strict=False
     )
+
+    USE_DEFAULT_PRODUCT_TYPE = "__use_node_default__"
 
     def get_detail_description(self):
         return "Publish any ROP node."
 
     def create(self, product_name, instance_data, pre_create_data):
 
-        product_type = pre_create_data.get("productType", "pointcache")
+        product_type = pre_create_data.get("productType",
+                                           self.USE_DEFAULT_PRODUCT_TYPE)
         instance_data["productType"] = product_type
 
         # Unfortunately the Create Context will provide the product name
@@ -218,13 +260,6 @@ class CreateHoudiniGeneric(plugin.HoudiniCreator):
         task_entity = get_task_by_name(project_name,
                                        folder_id=folder_entity["id"],
                                        task_name=instance_data["task"])
-        product_name = self._get_product_name_dynamic(
-            self.create_context.project_name,
-            folder_entity=folder_entity,
-            task_entity=task_entity,
-            variant=instance_data["variant"],
-            product_type=product_type
-        )
 
         if pre_create_data.get("node"):
             nodes = [pre_create_data.get("node")]
@@ -240,10 +275,26 @@ class CreateHoudiniGeneric(plugin.HoudiniCreator):
             # this to the `AVALON_INSTANCE_ID` instead
             instance_data["id"] = plugin.AYON_INSTANCE_ID
 
+            # When using default product type base it on node type settings
+            node_product_type = product_type
+            if node_product_type == self.USE_DEFAULT_PRODUCT_TYPE:
+                node_type = node.type().name()
+                node_product_type = self.node_type_product_types.get(
+                    node_type, self.node_type_product_types_default
+                ).default
+
+            product_name = self._get_product_name_dynamic(
+                self.create_context.project_name,
+                folder_entity=folder_entity,
+                task_entity=task_entity,
+                variant=instance_data["variant"],
+                product_type=node_product_type
+            )
+
             instance_data["instance_node"] = node.path()
             instance_data["instance_id"] = node.path()
             created_instance = CreatedInstance(
-                product_type, product_name, instance_data.copy(), self
+                node_product_type, product_name, instance_data.copy(), self
             )
 
             # Add instance
@@ -607,10 +658,11 @@ class CreateHoudiniGeneric(plugin.HoudiniCreator):
         return [
             TextDef("productType",
                     label="Product Type",
-                    tooltip="Publish product type. When set to "
-                            "`__use_node_default__` it will use the project "
-                            "settings to define the default value.",
-                    default="__use_node_default__")
+                    tooltip=(
+                        "Publish product type. When set to "
+                        f"{self.USE_DEFAULT_PRODUCT_TYPE} it will use "
+                        "the project settings to define the default value."),
+                    default=self.USE_DEFAULT_PRODUCT_TYPE)
         ]
 
     def _get_product_name_dynamic(
