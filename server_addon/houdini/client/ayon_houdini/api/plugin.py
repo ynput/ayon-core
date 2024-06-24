@@ -20,7 +20,13 @@ from ayon_core.pipeline import (
 )
 from ayon_core.lib import BoolDef
 
-from .lib import imprint, read, lsattr, add_self_publish_button
+from .lib import (
+    imprint,
+    read,
+    lsattr,
+    add_self_publish_button,
+    no_auto_create_publishable
+)
 
 
 SETTINGS_CATEGORY = "houdini"
@@ -192,8 +198,9 @@ class HoudiniCreator(NewCreator, HoudiniCreatorBase):
 
             folder_path = instance_data["folderPath"]
 
-            instance_node = self.create_instance_node(
-                folder_path, product_name, "/out", node_type)
+            with no_auto_create_publishable():
+                instance_node = self.create_instance_node(
+                    folder_path, product_name, "/out", node_type)
 
             self.customize_node_look(instance_node)
 

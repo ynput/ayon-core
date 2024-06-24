@@ -1195,3 +1195,16 @@ def prompt_reset_context():
         update_content_on_context_change()
 
     dialog.deleteLater()
+
+
+@contextmanager
+def no_auto_create_publishable():
+    value = os.environ.get("AYON_HOUDINI_AUTOCREATE")
+    os.environ["AYON_HOUDINI_AUTOCREATE"] = "0"
+    try:
+        yield
+    finally:
+        if value is None:
+            del os.environ["AYON_HOUDINI_AUTOCREATE"]
+        else:
+            os.environ["AYON_HOUDINI_AUTOCREATE"] = value

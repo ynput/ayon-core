@@ -56,11 +56,10 @@ def autocreate_publishable(node):
     }
     product_type = mapping.get(node_type, None)
     if product_type:
-        print(node.parm("id"))
         make_publishable(node, product_type)
 
 
-if env_value_to_bool("AYON_HOUDINI_AUTOCREATE"):
+if env_value_to_bool("AYON_HOUDINI_AUTOCREATE", default=True):
     # TODO: For now 'hide' this behind `AYON_HOUDINI_AUTOCREATE` env var
     #  because it breaks existing creators, since it will also try and
     #  auto-apply to e.g. the node created by the legacy pointcache creator
