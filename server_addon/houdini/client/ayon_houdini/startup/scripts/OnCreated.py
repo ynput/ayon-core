@@ -52,6 +52,7 @@ def autocreate_publishable(node):
         "labs::karma::2.0": "render",
         "karma": "render",
         "usdrender": "render",
+        "usdrender_rop": "render",
         "vray_renderer": "render"
     }
     product_type = mapping.get(node_type, None)
