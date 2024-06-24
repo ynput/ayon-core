@@ -23,25 +23,13 @@ def make_publishable(node):
 
 # TODO: Move this choice of automatic 'imprint' to settings so studio can
 #   configure which nodes should get automatically imprinted on creation
-AUTO_CREATE_NODE_TYPES = {
-    "alembic",
-    "rop_alembic",
-    "geometry",
-    "rop_geometry",
-    "filmboxfbx",
-    "rop_fbx",
-    "usd",
-    "usd_rop",
-    "usdexport",
-    "comp",
-    "opengl",
-    "arnold",
-    "labs::karma::2.0",
-    "karma",
-    "usdrender",
-    "usdrender_rop",
-    "vray_renderer",
-}
+# TODO: Do not import and reload the creator plugin file
+from ayon_houdini.plugins.create import create_generic
+import importlib
+importlib.reload(create_generic)
+AUTO_CREATE_NODE_TYPES = set(
+    create_generic.CreateHoudiniGeneric.node_type_product_types.keys()
+)
 
 
 def autocreate_publishable(node):
