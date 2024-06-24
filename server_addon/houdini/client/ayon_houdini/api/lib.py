@@ -1038,17 +1038,25 @@ def add_self_publish_button(node):
     node.setParmTemplateGroup(template)
 
 
-def get_scene_viewer():
+def get_scene_viewer(visible_only=True):
     """
     Return an instance of a visible viewport.
 
     There may be many, some could be closed, any visible are current
+
+    Arguments:
+        visible_only (Optional[bool]): Only return viewers that currently
+            are the active tab (and hence are visible).
 
     Returns:
         Optional[hou.SceneViewer]: A scene viewer, if any.
     """
     panes = hou.ui.paneTabs()
     panes = [x for x in panes if x.type() == hou.paneTabType.SceneViewer]
+
+    if visible_only:
+        return next((pane for pane in panes if pane.isCurrentTab()), None)
+
     panes = sorted(panes, key=lambda x: x.isCurrentTab())
     if panes:
         return panes[-1]
@@ -1067,12 +1075,10 @@ def sceneview_snapshot(
     So, it's capable of generating snapshots image sequence.
     It works in different Houdini context e.g. Objects, Solaris
 
-    Example:
-    	This is how the function can be used::
-
-        	from ayon_houdini.api import lib
-	        sceneview = hou.ui.paneTabOfType(hou.paneTabType.SceneViewer)
-        	lib.sceneview_snapshot(sceneview)
+    Example::
+        >>> from ayon_houdini.api import lib
+        >>> sceneview = hou.ui.paneTabOfType(hou.paneTabType.SceneViewer)
+        >>> lib.sceneview_snapshot(sceneview)
 
     Notes:
         .png output will render poorly, so use .jpg.
