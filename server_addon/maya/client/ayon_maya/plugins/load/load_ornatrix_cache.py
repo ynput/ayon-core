@@ -133,11 +133,11 @@ class OxCacheLoader(plugin.Loader):
         orig_shape_name = node_settings["shape"]["name"]
         mesh_shape_name = "{}:{}".format(namespace, orig_shape_name)
         guide_name = "{}:{}".format(namespace, orig_guide_name)
-        mesh_shape_node = cmds.createNode("mesh", name=guide_name)
+        mesh_shape_node = cmds.createNode("mesh", name=mesh_shape_name)
         hair_guide_node = cmds.createNode("HairFromGuidesNode", name=guide_name)
 
         lib.set_id(hair_guide_node, node_settings["cbId"])
-        mel.eval(f"OxAddStrandOperator {mesh_shape_name} {guide_name};")
+        mel.eval(f"OxAddStrandOperator {mesh_shape_node} {hair_guide_node};")
         cmds.setAttr(f"{guide_name}.cacheFilePath", filepath)
         nodes.extend([mesh_shape_node, hair_guide_node])
         return nodes
