@@ -1,6 +1,6 @@
 import contextlib
 from abc import ABC, abstractmethod
-from typing import Literal, Dict, Any
+from typing import Dict, Any
 
 import ayon_api
 
@@ -8,7 +8,6 @@ from ayon_core.style import get_default_entity_icon_color
 from ayon_core.lib import CacheItem, NestedCacheItem
 
 PROJECTS_MODEL_SENDER = "projects.model"
-StatusStatesType = Literal["not_started", "in_progress", "done", "blocked"]
 
 
 class StatusStates:
@@ -32,7 +31,7 @@ class StatusItem:
         color (str): Status color in hex ("#434a56").
         short (str): Short status name ("NRD").
         icon (str): Icon name in MaterialIcons ("fiber_new").
-        state (StatusStatesType): Status state.
+        state (str): Status state.
 
     """
     def __init__(
@@ -41,13 +40,13 @@ class StatusItem:
         color: str,
         short: str,
         icon: str,
-        state: StatusStatesType
+        state: str
     ):
         self.name: str = name
         self.color: str = color
         self.short: str = short
         self.icon: str = icon
-        self.state: StatusStatesType = state
+        self.state: str = state
 
     def to_data(self) -> Dict[str, Any]:
         return {
