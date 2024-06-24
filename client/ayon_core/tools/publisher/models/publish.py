@@ -16,7 +16,7 @@ from ayon_core.pipeline import (
 )
 from ayon_core.pipeline.plugin_discover import DiscoverResult
 from ayon_core.pipeline.publish import get_publish_instance_label
-from ayon_core.tools.publisher.abstract import AbstractPublisherController
+from ayon_core.tools.publisher.abstract import AbstractPublisherBackend
 
 PUBLISH_EVENT_SOURCE = "publisher.publish.model"
 # Define constant for plugin orders offset
@@ -788,7 +788,7 @@ def collect_families_from_instances(
 
 
 class PublishModel:
-    def __init__(self, controller: AbstractPublisherController):
+    def __init__(self, controller: AbstractPublisherBackend):
         self._controller = controller
 
         # Publishing should stop at validation stage

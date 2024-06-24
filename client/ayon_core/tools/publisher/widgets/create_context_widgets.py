@@ -5,6 +5,7 @@ from ayon_core.tools.utils import PlaceholderLineEdit, GoToCurrentButton
 
 from ayon_core.tools.common_models import HierarchyExpectedSelection
 from ayon_core.tools.utils import FoldersWidget, TasksWidget
+from ayon_core.tools.publisher.abstract import AbstractPublisherFrontend
 
 
 class CreateSelectionModel(object):
@@ -18,8 +19,8 @@ class CreateSelectionModel(object):
 
     event_source = "publisher.create.selection.model"
 
-    def __init__(self, controller):
-        self._controller = controller
+    def __init__(self, controller: "CreateHierarchyController"):
+        self._controller: CreateHierarchyController = controller
 
         self._project_name = None
         self._folder_id = None
@@ -94,9 +95,9 @@ class CreateHierarchyController:
         controller (PublisherController): Publisher controller.
 
     """
-    def __init__(self, controller):
+    def __init__(self, controller: AbstractPublisherFrontend):
         self._event_system = QueuedEventSystem()
-        self._controller = controller
+        self._controller: AbstractPublisherFrontend = controller
         self._selection_model = CreateSelectionModel(self)
         self._expected_selection = HierarchyExpectedSelection(
             self, handle_project=False
@@ -168,10 +169,10 @@ class CreateContextWidget(QtWidgets.QWidget):
     folder_changed = QtCore.Signal()
     task_changed = QtCore.Signal()
 
-    def __init__(self, controller, parent):
-        super(CreateContextWidget, self).__init__(parent)
+    def __init__(self, controller: AbstractPublisherFrontend, parent):
+        super().__init__(parent)
 
-        self._controller = controller
+        self._controller: AbstractPublisherFrontend = controller
         self._enabled = True
         self._last_project_name = None
         self._last_folder_id = None

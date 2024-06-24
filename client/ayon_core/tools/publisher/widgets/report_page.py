@@ -19,15 +19,17 @@ from ayon_core.tools.utils import (
     paint_image_with_color,
     SeparatorWidget,
 )
+from ayon_core.tools.publisher.abstract import AbstractPublisherFrontend
+from ayon_core.tools.publisher.constants import (
+    INSTANCE_ID_ROLE,
+    CONTEXT_ID,
+    CONTEXT_LABEL,
+)
+
 from .widgets import IconValuePixmapLabel
 from .icons import (
     get_pixmap,
     get_image,
-)
-from ..constants import (
-    INSTANCE_ID_ROLE,
-    CONTEXT_ID,
-    CONTEXT_LABEL,
 )
 
 LOG_DEBUG_VISIBLE = 1 << 0
@@ -159,8 +161,10 @@ class ValidateActionsWidget(QtWidgets.QFrame):
     Change actions based on selected validation error.
     """
 
-    def __init__(self, controller, parent):
-        super(ValidateActionsWidget, self).__init__(parent)
+    def __init__(
+        self, controller: AbstractPublisherFrontend, parent: QtWidgets.QWidget
+    ):
+        super().__init__(parent)
 
         self.setAttribute(QtCore.Qt.WA_TranslucentBackground)
 
@@ -172,7 +176,7 @@ class ValidateActionsWidget(QtWidgets.QFrame):
         layout.setContentsMargins(0, 0, 0, 0)
         layout.addWidget(content_widget)
 
-        self._controller = controller
+        self._controller: AbstractPublisherFrontend = controller
         self._content_widget = content_widget
         self._content_layout = content_layout
 
@@ -874,8 +878,10 @@ class PublishInstancesViewWidget(QtWidgets.QWidget):
     _min_width_measure_string = 24 * "O"
     selection_changed = QtCore.Signal()
 
-    def __init__(self, controller, parent):
-        super(PublishInstancesViewWidget, self).__init__(parent)
+    def __init__(
+        self, controller: AbstractPublisherFrontend, parent: QtWidgets.QWidget
+    ):
+        super().__init__(parent)
 
         scroll_area = VerticalScrollArea(self)
         scroll_area.setWidgetResizable(True)
@@ -898,7 +904,7 @@ class PublishInstancesViewWidget(QtWidgets.QWidget):
         layout.setContentsMargins(0, 0, 0, 0)
         layout.addWidget(scroll_area, 1)
 
-        self._controller = controller
+        self._controller: AbstractPublisherFrontend = controller
         self._scroll_area = scroll_area
         self._instance_view = instance_view
         self._instance_layout = instance_layout
@@ -1357,7 +1363,7 @@ class InstancesLogsView(QtWidgets.QFrame):
         self._is_showed = False
 
     def closeEvent(self, event):
-        super(InstancesLogsView, self).closeEvent(event)
+        super().closeEvent(event)
         self._is_showed = False
 
     def _update_instances(self):
@@ -1455,8 +1461,10 @@ class CrashWidget(QtWidgets.QWidget):
     actions.
     """
 
-    def __init__(self, controller, parent):
-        super(CrashWidget, self).__init__(parent)
+    def __init__(
+        self, controller: AbstractPublisherFrontend, parent: QtWidgets.QWidget
+    ):
+        super().__init__(parent)
 
         main_label = QtWidgets.QLabel("This is not your fault", self)
         main_label.setAlignment(QtCore.Qt.AlignCenter)
@@ -1498,7 +1506,7 @@ class CrashWidget(QtWidgets.QWidget):
         copy_clipboard_btn.clicked.connect(self._on_copy_to_clipboard)
         save_to_disk_btn.clicked.connect(self._on_save_to_disk_click)
 
-        self._controller = controller
+        self._controller: AbstractPublisherFrontend = controller
 
     def _on_copy_to_clipboard(self):
         self._controller.emit_event(
@@ -1623,8 +1631,10 @@ class ReportsWidget(QtWidgets.QWidget):
         └──────┴─────────┴─────────┘
     """
 
-    def __init__(self, controller, parent):
-        super(ReportsWidget, self).__init__(parent)
+    def __init__(
+        self, controller: AbstractPublisherFrontend, parent: QtWidgets.QWidget
+    ):
+        super().__init__(parent)
 
         # Instances view
         views_widget = QtWidgets.QWidget(self)
@@ -1708,7 +1718,7 @@ class ReportsWidget(QtWidgets.QWidget):
         self._detail_input_scroll = detail_input_scroll
         self._crash_widget = crash_widget
 
-        self._controller = controller
+        self._controller: AbstractPublisherFrontend = controller
 
         self._validation_errors_by_id = {}
 
@@ -1818,8 +1828,10 @@ class ReportPageWidget(QtWidgets.QFrame):
     and validation error detail with possible actions (repair).
     """
 
-    def __init__(self, controller, parent):
-        super(ReportPageWidget, self).__init__(parent)
+    def __init__(
+        self, controller: AbstractPublisherFrontend, parent: QtWidgets.QWidget
+    ):
+        super().__init__(parent)
 
         header_label = QtWidgets.QLabel(self)
         header_label.setAlignment(QtCore.Qt.AlignCenter)
@@ -1845,7 +1857,7 @@ class ReportPageWidget(QtWidgets.QFrame):
         self._header_label = header_label
         self._publish_instances_widget = publish_instances_widget
 
-        self._controller = controller
+        self._controller: AbstractPublisherFrontend = controller
 
     def _update_label(self):
         if not self._controller.publish_has_started():

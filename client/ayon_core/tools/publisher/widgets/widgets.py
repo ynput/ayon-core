@@ -10,6 +10,11 @@ from qtpy import QtWidgets, QtCore, QtGui
 import qtawesome
 
 from ayon_core.lib.attribute_definitions import UnknownDef
+from ayon_core.style import get_objected_colors
+from ayon_core.pipeline.create import (
+    PRODUCT_NAME_ALLOWED_SYMBOLS,
+    TaskNotSetError,
+)
 from ayon_core.tools.attribute_defs import create_widget_for_attr_def
 from ayon_core.tools import resources
 from ayon_core.tools.flickcharm import FlickCharm
@@ -20,24 +25,20 @@ from ayon_core.tools.utils import (
     BaseClickableFrame,
     set_style_property,
 )
-from ayon_core.style import get_objected_colors
-from ayon_core.pipeline.create import (
-    PRODUCT_NAME_ALLOWED_SYMBOLS,
-    TaskNotSetError,
+from ayon_core.tools.publisher.abstract import AbstractPublisherFrontend
+from ayon_core.tools.publisher.constants import (
+    VARIANT_TOOLTIP,
+    ResetKeySequence,
+    INPUTS_LAYOUT_HSPACING,
+    INPUTS_LAYOUT_VSPACING,
 )
+
 from .thumbnail_widget import ThumbnailWidget
 from .folders_dialog import FoldersDialog
 from .tasks_model import TasksModel
 from .icons import (
     get_pixmap,
     get_icon_path
-)
-
-from ..constants import (
-    VARIANT_TOOLTIP,
-    ResetKeySequence,
-    INPUTS_LAYOUT_HSPACING,
-    INPUTS_LAYOUT_VSPACING,
 )
 
 FA_PREFIXES = ["", "fa.", "fa5.", "fa5b.", "fa5s.", "ei.", "mdi."]
@@ -363,7 +364,9 @@ class AbstractInstanceView(QtWidgets.QWidget):
             "{} Method 'get_selected_items' is not implemented."
         ).format(self.__class__.__name__))
 
-    def set_selected_items(self, instance_ids, context_selected):
+    def set_selected_items(
+        self, instance_ids, context_selected, convertor_identifiers
+    ):
         """Change selection for instances and context.
 
         Used to applying selection from one view to other.
@@ -371,8 +374,9 @@ class AbstractInstanceView(QtWidgets.QWidget):
         Args:
             instance_ids (List[str]): Selected instance ids.
             context_selected (bool): Context is selected.
-        """
+            convertor_identifiers (List[str]): Selected convertor identifiers.
 
+        """
         raise NotImplementedError((
             "{} Method 'set_selected_items' is not implemented."
         ).format(self.__class__.__name__))
@@ -429,8 +433,10 @@ class FoldersFields(BaseClickableFrame):
     """
     value_changed = QtCore.Signal()
 
-    def __init__(self, controller, parent):
-        super(FoldersFields, self).__init__(parent)
+    def __init__(
+        self, controller: AbstractPublisherFrontend, parent: QtWidgets.QWidget
+    ):
+        super().__init__(parent)
         self.setObjectName("FolderPathInputWidget")
 
         # Don't use 'self' for parent!
@@ -465,7 +471,7 @@ class FoldersFields(BaseClickableFrame):
         icon_btn.clicked.connect(self._mouse_release_callback)
         dialog.finished.connect(self._on_dialog_finish)
 
-        self._controller = controller
+        self._controller: AbstractPublisherFrontend = controller
         self._dialog = dialog
         self._name_input = name_input
         self._icon_btn = icon_btn
@@ -613,8 +619,10 @@ class TasksCombobox(QtWidgets.QComboBox):
     """
     value_changed = QtCore.Signal()
 
-    def __init__(self, controller, parent):
-        super(TasksCombobox, self).__init__(parent)
+    def __init__(
+        self, controller: AbstractPublisherFrontend, parent: QtWidgets.QWidget
+    ):
+        super().__init__(parent)
         self.setObjectName("TasksCombobox")
 
         # Set empty delegate to propagate stylesheet to a combobox
@@ -1095,10 +1103,12 @@ class GlobalAttrsWidget(QtWidgets.QWidget):
     multiselection_text = "< Multiselection >"
     unknown_value = "N/A"
 
-    def __init__(self, controller, parent):
-        super(GlobalAttrsWidget, self).__init__(parent)
+    def __init__(
+        self, controller: AbstractPublisherFrontend, parent: QtWidgets.QWidget
+    ):
+        super().__init__(parent)
 
-        self._controller = controller
+        self._controller: AbstractPublisherFrontend = controller
         self._current_instances = []
 
         variant_input = VariantInputWidget(self)
@@ -1338,8 +1348,10 @@ class CreatorAttrsWidget(QtWidgets.QWidget):
     widgets are merged into one (different label does not count).
     """
 
-    def __init__(self, controller, parent):
-        super(CreatorAttrsWidget, self).__init__(parent)
+    def __init__(
+        self, controller: AbstractPublisherFrontend, parent: QtWidgets.QWidget
+    ):
+        super().__init__(parent)
 
         scroll_area = QtWidgets.QScrollArea(self)
         scroll_area.setWidgetResizable(True)
@@ -1351,7 +1363,7 @@ class CreatorAttrsWidget(QtWidgets.QWidget):
 
         self._main_layout = main_layout
 
-        self._controller = controller
+        self._controller: AbstractPublisherFrontend = controller
         self._scroll_area = scroll_area
 
         self._attr_def_id_to_instances = {}
@@ -1476,8 +1488,10 @@ class PublishPluginAttrsWidget(QtWidgets.QWidget):
     does not count).
     """
 
-    def __init__(self, controller, parent):
-        super(PublishPluginAttrsWidget, self).__init__(parent)
+    def __init__(
+        self, controller: AbstractPublisherFrontend, parent: QtWidgets.QWidget
+    ):
+        super().__init__(parent)
 
         scroll_area = QtWidgets.QScrollArea(self)
         scroll_area.setWidgetResizable(True)
@@ -1489,7 +1503,7 @@ class PublishPluginAttrsWidget(QtWidgets.QWidget):
 
         self._main_layout = main_layout
 
-        self._controller = controller
+        self._controller: AbstractPublisherFrontend = controller
         self._scroll_area = scroll_area
 
         self._attr_def_id_to_instances = {}
@@ -1635,8 +1649,10 @@ class ProductAttributesWidget(QtWidgets.QWidget):
     instance_context_changed = QtCore.Signal()
     convert_requested = QtCore.Signal()
 
-    def __init__(self, controller, parent):
-        super(ProductAttributesWidget, self).__init__(parent)
+    def __init__(
+        self, controller: AbstractPublisherFrontend, parent: QtWidgets.QWidget
+    ):
+        super().__init__(parent)
 
         # TOP PART
         top_widget = QtWidgets.QWidget(self)
@@ -1738,7 +1754,7 @@ class ProductAttributesWidget(QtWidgets.QWidget):
             "instance.thumbnail.changed", self._on_thumbnail_changed
         )
 
-        self._controller = controller
+        self._controller: AbstractPublisherFrontend = controller
 
         self._convert_widget = convert_widget
 

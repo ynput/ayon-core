@@ -9,14 +9,8 @@ from ayon_core.pipeline.create import (
     TaskNotSetError,
 )
 
-from .thumbnail_widget import ThumbnailWidget
-from .widgets import (
-    IconValuePixmapLabel,
-    CreateBtn,
-)
-from .create_context_widgets import CreateContextWidget
-from .precreate_widget import PreCreateWidget
-from ..constants import (
+from ayon_core.tools.publisher.abstract import AbstractPublisherFrontend
+from ayon_core.tools.publisher.constants import (
     VARIANT_TOOLTIP,
     PRODUCT_TYPE_ROLE,
     CREATOR_IDENTIFIER_ROLE,
@@ -25,6 +19,14 @@ from ..constants import (
     INPUTS_LAYOUT_HSPACING,
     INPUTS_LAYOUT_VSPACING,
 )
+
+from .thumbnail_widget import ThumbnailWidget
+from .widgets import (
+    IconValuePixmapLabel,
+    CreateBtn,
+)
+from .create_context_widgets import CreateContextWidget
+from .precreate_widget import PreCreateWidget
 
 SEPARATORS = ("---separator---", "---")
 
@@ -106,7 +108,7 @@ class CreateWidget(QtWidgets.QWidget):
     def __init__(self, controller, parent=None):
         super(CreateWidget, self).__init__(parent)
 
-        self._controller = controller
+        self._controller: AbstractPublisherFrontend = controller
 
         self._folder_path = None
         self._product_names = None

@@ -29,8 +29,9 @@ from qtpy import QtWidgets, QtCore, QtGui
 from ayon_core.style import get_objected_colors
 from ayon_core.tools.utils import NiceCheckbox
 from ayon_core.tools.utils.lib import html_escape, checkstate_int_to_enum
-from .widgets import AbstractInstanceView
-from ..constants import (
+
+from ayon_core.tools.publisher.abstract import AbstractPublisherFrontend
+from ayon_core.tools.publisher.constants import (
     INSTANCE_ID_ROLE,
     SORT_VALUE_ROLE,
     IS_GROUP_ROLE,
@@ -40,6 +41,8 @@ from ..constants import (
     CONVERTER_IDENTIFIER_ROLE,
     CONVERTOR_ITEM_GROUP,
 )
+
+from .widgets import AbstractInstanceView
 
 
 class ListItemDelegate(QtWidgets.QStyledItemDelegate):
@@ -442,10 +445,12 @@ class InstanceListView(AbstractInstanceView):
 
     double_clicked = QtCore.Signal()
 
-    def __init__(self, controller, parent):
-        super(InstanceListView, self).__init__(parent)
+    def __init__(
+        self, controller: AbstractPublisherFrontend, parent: QtWidgets.QWidget
+    ):
+        super().__init__(parent)
 
-        self._controller = controller
+        self._controller: AbstractPublisherFrontend = controller
 
         instance_view = InstanceTreeView(self)
         instance_delegate = ListItemDelegate(instance_view)

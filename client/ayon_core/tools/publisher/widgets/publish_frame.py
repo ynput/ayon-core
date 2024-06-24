@@ -1,5 +1,7 @@
 from qtpy import QtWidgets, QtCore
 
+from ayon_core.tools.publisher.abstract import AbstractPublisherFrontend
+
 from .widgets import (
     StopBtn,
     ResetBtn,
@@ -31,8 +33,13 @@ class PublishFrame(QtWidgets.QWidget):
 
     details_page_requested = QtCore.Signal()
 
-    def __init__(self, controller, borders, parent):
-        super(PublishFrame, self).__init__(parent)
+    def __init__(
+        self,
+        controller: AbstractPublisherFrontend,
+        borders: int,
+        parent: QtWidgets.QWidget
+    ):
+        super().__init__(parent)
 
         # Bottom part of widget where process and callback buttons are showed
         # - QFrame used to be able set background using stylesheets easily
@@ -179,7 +186,7 @@ class PublishFrame(QtWidgets.QWidget):
 
         self._shrunk_anim = shrunk_anim
 
-        self._controller = controller
+        self._controller: AbstractPublisherFrontend = controller
 
         self._content_frame = content_frame
         self._content_layout = content_layout

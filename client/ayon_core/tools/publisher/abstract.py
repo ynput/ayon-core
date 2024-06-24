@@ -3,9 +3,16 @@ from typing import Optional, Dict, List, Tuple, Any, Callable, Union, Iterable
 
 from ayon_core.lib import AbstractAttrDef
 from ayon_core.host import HostBase
-from ayon_core.tools.common_models import FolderItem, TaskItem
 from ayon_core.pipeline.create import CreateContext, CreatedInstance
 from ayon_core.pipeline.create.context import ConvertorItem
+from ayon_core.tools.common_models import (
+    FolderItem,
+    TaskItem,
+    FolderTypeItem,
+    TaskTypeItem,
+)
+
+from .models import CreatorItem
 
 
 class CardMessageTypes:
@@ -14,22 +21,19 @@ class CardMessageTypes:
     error = "error"
 
 
-class AbstractPublisherController(ABC):
-    """Publisher tool controller.
-
-    Define what must be implemented to be able use Publisher functionality.
-
-    Goal is to have "data driven" controller that can be used to control UI
-    running in different process. That lead to some disadvantages like UI can't
-    access objects directly but by using wrappers that can be serialized.
-    """
-
+class AbstractPublisherCommon(ABC):
     @abstractmethod
-    def is_headless(self) -> bool:
-        pass
+    def register_event_callback(self, topic, callback):
+        """Register event callback.
 
-    @abstractmethod
-    def get_host(self) -> HostBase:
+        Listen for events with given topic.
+
+        Args:
+            topic (str): Name of topic.
+            callback (Callable): Callback that will be called when event
+                is triggered.
+        """
+
         pass
 
     @abstractmethod
@@ -38,11 +42,32 @@ class AbstractPublisherController(ABC):
         data: Optional[Dict[str, Any]] = None,
         source: Optional[str] = None
     ):
-        """Use implemented event system to trigger event."""
+        """Emit event.
+
+        Args:
+            topic (str): Event topic used for callbacks filtering.
+            data (Optional[dict[str, Any]]): Event data.
+            source (Optional[str]): Event source.
+
+        """
         pass
 
     @abstractmethod
-    def register_event_callback(self, topic: str, callback: Callable):
+    def emit_card_message(
+        self,
+        message: str,
+        message_type: Optional[str] = CardMessageTypes.standard
+    ):
+        """Emit a card message which can have a lifetime.
+
+        This is for UI purposes. Method can be extended to more arguments
+        in future e.g. different message timeout or type (color).
+
+        Args:
+            message (str): Message that will be showed.
+            message_type (Optional[str]): Message type.
+        """
+
         pass
 
     @abstractmethod
@@ -88,34 +113,36 @@ class AbstractPublisherController(ABC):
         pass
 
     @abstractmethod
-    def is_host_valid(self) -> bool:
-        """Host is valid for creation part.
+    def reset(self):
+        """Reset whole controller.
 
-        Host must have implemented certain functionality to be able create
-        in Publisher tool.
-
-        Returns:
-            bool: Host can handle creation of instances.
+        This should reset create context, publish context and all variables
+        that are related to it.
         """
 
         pass
 
+
+class AbstractPublisherBackend(AbstractPublisherCommon):
     @abstractmethod
-    def get_folder_entity(
-        self, project_name: str, folder_id: str
-    ) -> Union[Dict[str, Any], None]:
+    def is_headless(self) -> bool:
+        """Controller is in headless mode.
+
+        Notes:
+            Not sure if this method is relevant in UI tool?
+
+        Returns:
+            bool: Headless mode.
+
+        """
         pass
 
     @abstractmethod
-    def get_task_entity(
-        self, project_name: str, task_id: str
-    ) -> Union[Dict[str, Any], None]:
+    def get_host(self) -> HostBase:
         pass
 
     @abstractmethod
-    def get_folder_item_by_path(
-        self, project_name: str, folder_path: str
-    ) -> Union[FolderItem, None]:
+    def get_create_context(self) -> CreateContext:
         pass
 
     @abstractmethod
@@ -129,29 +156,40 @@ class AbstractPublisherController(ABC):
         pass
 
     @abstractmethod
-    def get_create_context(self) -> CreateContext:
+    def get_folder_entity(
+        self, project_name: str, folder_id: str
+    ) -> Union[Dict[str, Any], None]:
         pass
 
     @abstractmethod
-    def get_instances(self) -> List[CreatedInstance]:
-        """Collected/created instances.
+    def get_folder_item_by_path(
+        self, project_name: str, folder_path: str
+    ) -> Union[FolderItem, None]:
+        pass
+
+    @abstractmethod
+    def get_task_entity(
+        self, project_name: str, task_id: str
+    ) -> Union[Dict[str, Any], None]:
+        pass
+
+
+class AbstractPublisherFrontend(AbstractPublisherCommon):
+    @abstractmethod
+    def register_event_callback(self, topic: str, callback: Callable):
+        pass
+
+    @abstractmethod
+    def is_host_valid(self) -> bool:
+        """Host is valid for creation part.
+
+        Host must have implemented certain functionality to be able create
+            in Publisher tool.
 
         Returns:
-            List[CreatedInstance]: List of created instances.
+            bool: Host can handle creation of instances.
 
         """
-        pass
-
-    @abstractmethod
-    def get_instance_by_id(
-        self, instance_id: str
-    ) -> Union[CreatedInstance, None]:
-        pass
-
-    @abstractmethod
-    def get_instances_by_id(
-        self, instance_ids: Optional[Iterable[str]] = None
-    ) -> Dict[str, Union[CreatedInstance, None]]:
         pass
 
     @abstractmethod
@@ -166,17 +204,106 @@ class AbstractPublisherController(ABC):
         pass
 
     @abstractmethod
-    def get_existing_product_names(self, folder_path: str) -> List[str]:
+    def get_task_items_by_folder_paths(
+        self, folder_paths: Iterable[str]
+    ) -> Dict[str, List[TaskItem]]:
         pass
 
     @abstractmethod
-    def reset(self):
-        """Reset whole controller.
+    def get_folder_items(
+        self, project_name: str, sender: Optional[str] = None
+    ) -> List[FolderItem]:
+        pass
 
-        This should reset create context, publish context and all variables
-        that are related to it.
+    @abstractmethod
+    def get_task_items(
+        self, project_name: str, folder_id: str, sender: Optional[str] = None
+    ) -> List[TaskItem]:
+        pass
+
+    @abstractmethod
+    def get_folder_type_items(
+        self, project_name: str, sender: Optional[str] = None
+    ) -> List[FolderTypeItem]:
+        pass
+
+    @abstractmethod
+    def get_task_type_items(
+        self, project_name: str, sender: Optional[str] = None
+    ) -> List[TaskTypeItem]:
+        pass
+
+    @abstractmethod
+    def are_folder_paths_valid(self, folder_paths: Iterable[str]) -> bool:
+        """Folder paths do exist in project.
+
+        Args:
+            folder_paths (Iterable[str]): List of folder paths.
+
+        Returns:
+            bool: All folder paths exist in project.
+
+        """
+        pass
+
+    # --- Create ---
+    @abstractmethod
+    def get_creator_items(self) -> Dict[str, CreatorItem]:
+        """Creator items by identifier.
+
+        Returns:
+            Dict[str, CreatorItem]: Creator items that will be shown to user.
+
+        """
+        pass
+
+    @abstractmethod
+    def get_creator_icon(
+        self, identifier: str
+    ) -> Union[str, Dict[str, Any], None]:
+        """Receive creator's icon by identifier.
+
+        Todos:
+            Icon should be part of 'CreatorItem'.
+
+        Args:
+            identifier (str): Creator's identifier.
+
+        Returns:
+            Union[str, None]: Creator's icon string.
         """
 
+        pass
+
+    @abstractmethod
+    def get_convertor_items(self) -> Dict[str, ConvertorItem]:
+        """Convertor items by identifier.
+
+        Returns:
+            Dict[str, ConvertorItem]: Convertor items that can be triggered
+                by user.
+
+        """
+        pass
+
+    @abstractmethod
+    def get_instances(self) -> List[CreatedInstance]:
+        """Collected/created instances.
+
+        Returns:
+            List[CreatedInstance]: List of created instances.
+
+        """
+        pass
+
+    @abstractmethod
+    def get_instances_by_id(
+        self, instance_ids: Optional[Iterable[str]] = None
+    ) -> Dict[str, Union[CreatedInstance, None]]:
+        pass
+
+    @abstractmethod
+    def get_existing_product_names(self, folder_path: str) -> List[str]:
         pass
 
     @abstractmethod
@@ -195,21 +322,6 @@ class AbstractPublisherController(ABC):
         List[AbstractAttrDef],
         Dict[str, List[Tuple[CreatedInstance, Any]]]
     ]]:
-        pass
-
-    @abstractmethod
-    def get_creator_icon(
-        self, identifier: str
-    ) -> Union[str, Dict[str, Any], None]:
-        """Receive creator's icon by identifier.
-
-        Args:
-            identifier (str): Creator's identifier.
-
-        Returns:
-            Union[str, None]: Creator's icon string.
-        """
-
         pass
 
     @abstractmethod
@@ -258,6 +370,17 @@ class AbstractPublisherController(ABC):
         pass
 
     @abstractmethod
+    def trigger_convertor_items(self, convertor_identifiers: List[str]):
+        pass
+
+    @abstractmethod
+    def remove_instances(self, instance_ids: Iterable[str]):
+        """Remove list of instances from create context."""
+        # TODO expect instance ids
+
+        pass
+
+    @abstractmethod
     def save_changes(self) -> bool:
         """Save changes in create context.
 
@@ -269,10 +392,37 @@ class AbstractPublisherController(ABC):
 
         pass
 
+    # --- Publish ---
     @abstractmethod
-    def remove_instances(self, instance_ids: List[str]):
-        """Remove list of instances from create context."""
-        # TODO expect instance ids
+    def publish(self):
+        """Trigger publishing without any order limitations."""
+
+        pass
+
+    @abstractmethod
+    def validate(self):
+        """Trigger publishing which will stop after validation order."""
+
+        pass
+
+    @abstractmethod
+    def stop_publish(self):
+        """Stop publishing can be also used to pause publishing.
+
+        Pause of publishing is possible only if all plugins successfully
+        finished.
+        """
+
+        pass
+
+    @abstractmethod
+    def run_action(self, plugin_id: str, action_id: str):
+        """Trigger pyblish action on a plugin.
+
+        Args:
+            plugin_id (str): Id of publish plugin.
+            action_id (str): Id of publish action.
+        """
 
         pass
 
@@ -312,8 +462,18 @@ class AbstractPublisherController(ABC):
 
         Returns:
             bool: If publishing passed last possible validation order.
-        """
 
+        """
+        pass
+
+    @abstractmethod
+    def publish_can_continue(self):
+        """Publish has still plugins to process and did not crash yet.
+
+        Returns:
+            bool: Publishing can continue in processing.
+
+        """
         pass
 
     @abstractmethod
@@ -337,21 +497,21 @@ class AbstractPublisherController(ABC):
         pass
 
     @abstractmethod
-    def get_publish_max_progress(self) -> int:
-        """Get maximum possible progress number.
-
-        Returns:
-            int: Number that can be used as 100% of publish progress bar.
-        """
-
-        pass
-
-    @abstractmethod
     def get_publish_progress(self) -> int:
         """Current progress number.
 
         Returns:
             int: Current progress value from 0 to 'publish_max_progress'.
+        """
+
+        pass
+
+    @abstractmethod
+    def get_publish_max_progress(self) -> int:
+        """Get maximum possible progress number.
+
+        Returns:
+            int: Number that can be used as 100% of publish progress bar.
         """
 
         pass
@@ -376,59 +536,6 @@ class AbstractPublisherController(ABC):
         pass
 
     @abstractmethod
-    def publish(self):
-        """Trigger publishing without any order limitations."""
-
-        pass
-
-    @abstractmethod
-    def validate(self):
-        """Trigger publishing which will stop after validation order."""
-
-        pass
-
-    @abstractmethod
-    def stop_publish(self):
-        """Stop publishing can be also used to pause publishing.
-
-        Pause of publishing is possible only if all plugins successfully
-        finished.
-        """
-
-        pass
-
-    @abstractmethod
-    def run_action(self, plugin_id: str, action_id: str):
-        """Trigger pyblish action on a plugin.
-
-        Args:
-            plugin_id (str): Id of publish plugin.
-            action_id (str): Id of publish action.
-        """
-
-        pass
-
-    @abstractmethod
-    def get_convertor_items(self) -> Dict[str, ConvertorItem]:
-        pass
-
-    @abstractmethod
-    def trigger_convertor_items(self, convertor_identifiers: List[str]):
-        pass
-
-    @abstractmethod
-    def get_thumbnail_paths_for_instances(
-        self, instance_ids: List[str]
-    ) -> Dict[str, Union[str, None]]:
-        pass
-
-    @abstractmethod
-    def set_thumbnail_paths_for_instances(
-        self, thumbnail_path_mapping: Dict[str, str]
-    ):
-        pass
-
-    @abstractmethod
     def set_comment(self, comment: str):
         """Set comment on pyblish context.
 
@@ -441,21 +548,15 @@ class AbstractPublisherController(ABC):
         pass
 
     @abstractmethod
-    def emit_card_message(
-        self,
-        message: str,
-        message_type: Optional[str] = CardMessageTypes.standard
+    def get_thumbnail_paths_for_instances(
+        self, instance_ids: List[str]
+    ) -> Dict[str, Union[str, None]]:
+        pass
+
+    @abstractmethod
+    def set_thumbnail_paths_for_instances(
+        self, thumbnail_path_mapping: Dict[str, Optional[str]]
     ):
-        """Emit a card message which can have a lifetime.
-
-        This is for UI purposes. Method can be extended to more arguments
-        in future e.g. different message timeout or type (color).
-
-        Args:
-            message (str): Message that will be showed.
-            message_type (Optional[str]): Message type.
-        """
-
         pass
 
     @abstractmethod
