@@ -308,7 +308,7 @@ def remap_paths(rop_node, mapping):
 
 
 def get_usd_render_rop_rendersettings(rop_node, stage=None, logger=None):
-    """"Return the chosen UsdRender.Settings from the stage (if any).
+    """Return the chosen UsdRender.Settings from the stage (if any).
 
     Args:
         rop_node (hou.Node): The Houdini USD Render ROP node.
