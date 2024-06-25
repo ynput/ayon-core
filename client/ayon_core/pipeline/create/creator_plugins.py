@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 import copy
 import collections
-from typing import TYPE_CHECKING, List, Dict, Optional, Union
+from typing import TYPE_CHECKING, List, Optional, Union
 
 from abc import ABCMeta, abstractmethod
 
@@ -128,7 +128,7 @@ class ProductConvertorPlugin(object):
         """Access to shared data that can be used during 'find_instances'.
 
         Retruns:
-            Dict[str, Any]: Shared data.
+            dict[str, Any]: Shared data.
 
         Raises:
             UnavailableSharedData: When called out of collection phase.
@@ -163,7 +163,7 @@ class BaseCreator:
     to `self` if it's not Plugin specific.
 
     Args:
-        project_settings (Dict[str, Any]): Project settings.
+        project_settings (dict[str, Any]): Project settings.
         create_context (CreateContext): Context which initialized creator.
         headless (bool): Running in headless mode.
     """
@@ -223,7 +223,7 @@ class BaseCreator:
         """Helper method to get settings values.
 
         Args:
-            project_settings (Dict[str, Any]): Project settings.
+            project_settings (dict[str, Any]): Project settings.
             category_name (str): Category of settings.
             plugin_name (str): Name of settings.
 
@@ -274,7 +274,7 @@ class BaseCreator:
             }
 
         Args:
-            project_settings (Dict[str, Any]): Project settings.
+            project_settings (dict[str, Any]): Project settings.
         """
 
         settings_category = self.settings_category
@@ -567,7 +567,7 @@ class BaseCreator:
         """Access to shared data that can be used during creator's collection.
 
         Retruns:
-            Dict[str, Any]: Shared data.
+            dict[str, Any]: Shared data.
 
         Raises:
             UnavailableSharedData: When called out of collection phase.
@@ -596,7 +596,7 @@ class BaseCreator:
                 versions.
 
         Returns:
-            Dict[str, int]: Next versions by instance id.
+            dict[str, int]: Next versions by instance id.
         """
 
         return get_next_versions_for_instances(
@@ -920,7 +920,7 @@ def cache_and_get_instances(creator, shared_key, list_instances_func):
             if data were not yet stored under 'shared_key'.
 
     Returns:
-        Dict[str, Dict[str, Any]]: Cached instances by creator identifier from
+        dict[str, dict[str, Any]]: Cached instances by creator identifier from
             result of passed function.
     """
 
