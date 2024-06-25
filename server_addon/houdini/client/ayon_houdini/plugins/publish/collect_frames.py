@@ -41,11 +41,10 @@ class CollectFrames(plugin.HoudiniInstancePlugin):
         file_name = os.path.basename(output)
         result = file_name
 
-        # Get the filename pattern match from the output
-        # path, so we can compute all frames that would
-        # come out from rendering the ROP node if there
-        # is a frame pattern in the name
-        pattern = r"\w+\.(\d+)" + re.escape(ext)
+        # Get the filename pattern match from the output path, so we can 
+        # compute all frames that would come out from rendering the ROP node
+        # if there is a frame pattern in the name
+        pattern = r".*\.(\d+)" + re.escape(ext) + "$"
         match = re.match(pattern, file_name)
 
         if match and start_frame is not None:
