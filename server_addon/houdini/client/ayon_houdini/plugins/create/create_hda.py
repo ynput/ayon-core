@@ -1,7 +1,13 @@
 # -*- coding: utf-8 -*-
 """Creator plugin for creating publishable Houdini Digital Assets."""
 import hou
-from assettools import setToolSubmenu
+
+try:
+    # Houdini 20+
+    from assettools import setTabSubMenu
+except ImportError:
+    # Fallback for older Houdini
+    from assettools import setToolSubmenu as setTabSubMenu
 
 import ayon_api
 from ayon_core.pipeline import (
@@ -121,7 +127,7 @@ class CreateHDA(plugin.HoudiniCreator):
             hda_def.setUserInfo(get_ayon_username())
 
         if pre_create_data.get("use_project"):
-            setToolSubmenu(hda_def, "AYON/{}".format(self.project_name))
+            setTabSubMenu(hda_def, "AYON/{}".format(self.project_name))
 
         return hda_node
 
