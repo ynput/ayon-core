@@ -30,6 +30,10 @@ AUTO_CREATE_NODE_TYPES = set(
 
 
 def autocreate_publishable(node):
+    # For now only consider RopNode
+    if not isinstance(node, hou.RopNode):
+        return
+
     node_type = node.type().name()
     if node_type in AUTO_CREATE_NODE_TYPES:
         make_publishable(node)
