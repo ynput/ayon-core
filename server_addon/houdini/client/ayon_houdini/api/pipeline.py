@@ -6,7 +6,7 @@ import logging
 import hou  # noqa
 
 from ayon_core.host import HostBase, IWorkfileHost, ILoadHost, IPublishHost
-
+from ayon_core.tools.utils import host_tools
 import pyblish.api
 
 from ayon_core.pipeline import (
@@ -23,6 +23,7 @@ from ayon_houdini.api import lib, shelves, creator_node_shelves
 from ayon_core.lib import (
     register_event_callback,
     emit_event,
+    env_value_to_bool,
 )
 
 
@@ -85,10 +86,9 @@ class HoudiniHost(HostBase, IWorkfileHost, ILoadHost, IPublishHost):
             # initialization during start up delays Houdini UI by minutes
             # making it extremely slow to launch.
             hdefereval.executeDeferred(shelves.generate_shelves)
-
-        if not IS_HEADLESS:
-            import hdefereval # noqa, hdefereval is only available in ui mode
             hdefereval.executeDeferred(creator_node_shelves.install)
+            if env_value_to_bool("AYON_WORKFILE_TOOL_ON_START"):
+                hdefereval.executeDeferred(lambda: host_tools.show_workfiles(parent=hou.qt.mainWindow()))
 
     def workfile_has_unsaved_changes(self):
         return hou.hipFile.hasUnsavedChanges()
@@ -221,12 +221,8 @@ def containerise(name,
 
     """
 
-    # Ensure AVALON_CONTAINERS subnet exists
-    subnet = hou.node(AVALON_CONTAINERS)
-    if subnet is None:
-        obj_network = hou.node("/obj")
-        subnet = obj_network.createNode("subnet",
-                                        node_name="AVALON_CONTAINERS")
+    # Get AVALON_CONTAINERS subnet
+    subnet = get_or_create_avalon_container()
 
     # Create proper container name
     container_name = "{}_{}".format(name, suffix or "CON")
@@ -399,6 +395,18 @@ def on_new():
         # Run without execute deferred when no UI is available because
         # without UI `hdefereval` is not available to import
         _enforce_start_frame()
+
+
+def get_or_create_avalon_container() -> "hou.OpNode":
+    avalon_container = hou.node(AVALON_CONTAINERS)
+    if avalon_container:
+        return avalon_container
+
+    parent_path, name = AVALON_CONTAINERS.rsplit("/", 1)
+    parent = hou.node(parent_path)
+    return parent.createNode(
+        "subnet", node_name=name
+    )
 
 
 def _set_context_settings():
