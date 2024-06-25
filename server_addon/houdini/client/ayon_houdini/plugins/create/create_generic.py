@@ -202,6 +202,9 @@ GLTF_PRODUCT_TYPES = NodeTypeProductTypes(
 class CreateHoudiniGeneric(plugin.HoudiniCreator):
     """Generic creator to ingest arbitrary products"""
 
+    USE_DEFAULT_PRODUCT_TYPE = "__use_node_default__"
+    USE_DEFAULT_NODE_NAME = "__use_node_name__"
+
     host_name = "houdini"
 
     identifier = "io.ayon.creators.houdini.publish"
@@ -211,7 +214,8 @@ class CreateHoudiniGeneric(plugin.HoudiniCreator):
     description = "Make any ROP node publishable."
 
     render_target = "local_no_render"
-    default_variant = "$OS"
+    default_variant = USE_DEFAULT_NODE_NAME
+    default_variants = ["Main", USE_DEFAULT_NODE_NAME]
 
     # TODO: Move this to project settings
     node_type_product_types: Dict[str, NodeTypeProductTypes] = {
@@ -248,8 +252,6 @@ class CreateHoudiniGeneric(plugin.HoudiniCreator):
         strict=False
     )
 
-    USE_DEFAULT_PRODUCT_TYPE = "__use_node_default__"
-
     def get_detail_description(self):
         return "Publish any ROP node."
 
@@ -275,6 +277,8 @@ class CreateHoudiniGeneric(plugin.HoudiniCreator):
         else:
             nodes = hou.selectedNodes()
 
+        source_variant = instance_data["variant"]
+
         for node in nodes:
             if node.parm("AYON_creator_identifier"):
                 # Continue if already existing attributes
@@ -292,14 +296,20 @@ class CreateHoudiniGeneric(plugin.HoudiniCreator):
                     node_type, self.node_type_product_types_default
                 ).default
 
+            # Allow variant to be based off of the created node name
+            variant = source_variant
+            if variant == self.USE_DEFAULT_NODE_NAME:
+                variant = node.name()
+
             product_name = self._get_product_name_dynamic(
                 self.create_context.project_name,
                 folder_entity=folder_entity,
                 task_entity=task_entity,
-                variant=instance_data["variant"],
+                variant=variant,
                 product_type=node_product_type
             )
 
+            instance_data["variant"] = variant
             instance_data["instance_node"] = node.path()
             instance_data["instance_id"] = node.path()
             created_instance = CreatedInstance(
@@ -547,7 +557,7 @@ class CreateHoudiniGeneric(plugin.HoudiniCreator):
             hou.StringParmTemplate(
                 "AYON_variant", "Variant",
                 num_components=1,
-                default_value=(self.default_variant,)
+                default_value=("$OS",)
             ),
             hou.StringParmTemplate(
                 "AYON_productName", "Product Name",

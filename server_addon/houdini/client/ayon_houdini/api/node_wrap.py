@@ -13,7 +13,7 @@ def make_publishable(node):
     # Apply the instance creation to the node
     context.create(
         creator_identifier="io.ayon.creators.houdini.publish",
-        variant=node.name(),
+        variant="__use_node_name__",
         pre_create_data={
             "node": node
         }
