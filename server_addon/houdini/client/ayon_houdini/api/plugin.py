@@ -148,7 +148,11 @@ class HoudiniCreatorBase(object):
 
     @staticmethod
     def create_instance_node(
-        folder_path, node_name, parent, node_type="geometry"
+        folder_path,
+        node_name,
+        parent,
+        node_type="geometry",
+        pre_create_data=None
     ):
         """Create node representing instance.
 
@@ -157,6 +161,7 @@ class HoudiniCreatorBase(object):
             node_name (str): Name of the new node.
             parent (str): Name of the parent node.
             node_type (str, optional): Type of the node.
+            pre_create_data (Optional[Dict]): Pre create data.
 
         Returns:
             hou.Node: Newly created instance node.
@@ -193,7 +198,12 @@ class HoudiniCreator(NewCreator, HoudiniCreatorBase):
             folder_path = instance_data["folderPath"]
 
             instance_node = self.create_instance_node(
-                folder_path, product_name, "/out", node_type)
+                folder_path,
+                product_name,
+                "/out",
+                node_type,
+                pre_create_data
+            )
 
             self.customize_node_look(instance_node)
 
