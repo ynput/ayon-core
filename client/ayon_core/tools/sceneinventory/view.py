@@ -1,10 +1,7 @@
-import uuid
 import collections
 import logging
-import itertools
 from functools import partial
 
-import ayon_api
 from qtpy import QtWidgets, QtCore
 import qtawesome
 
@@ -17,12 +14,27 @@ from ayon_core.pipeline import (
 )
 from ayon_core.tools.utils.lib import (
     iter_model_rows,
-    format_version
+    format_version,
+    preserve_expanded_rows,
+    preserve_selection,
 )
+from ayon_core.tools.utils.delegates import StatusDelegate
 
 from .switch_dialog import SwitchAssetDialog
-from .model import InventoryModel
-
+from .model import (
+    InventoryModel,
+    FilterProxyModel,
+    ITEM_UNIQUE_NAME_ROLE,
+    OBJECT_NAME_ROLE,
+    ITEM_ID_ROLE,
+    IS_CONTAINER_ITEM_ROLE,
+    STATUS_NAME_ROLE,
+    STATUS_SHORT_ROLE,
+    STATUS_COLOR_ROLE,
+    STATUS_ICON_ROLE,
+)
+from .delegates import VersionDelegate
+from .select_version_dialog import SelectVersionDialog, VersionOption
 
 DEFAULT_COLOR = "#fb9c15"
 
@@ -43,12 +55,104 @@ class SceneInventoryView(QtWidgets.QTreeView):
         self.setSelectionMode(QtWidgets.QAbstractItemView.ExtendedSelection)
         self.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
 
+        model = InventoryModel(controller)
+        proxy_model = FilterProxyModel()
+        proxy_model.setSourceModel(model)
+        proxy_model.setSortCaseSensitivity(QtCore.Qt.CaseInsensitive)
+
+        self.setModel(proxy_model)
+
+        version_delegate = VersionDelegate()
+        status_delegate = StatusDelegate(
+            STATUS_NAME_ROLE,
+            STATUS_SHORT_ROLE,
+            STATUS_COLOR_ROLE,
+            STATUS_ICON_ROLE,
+        )
+        for col, delegate in (
+            (model.version_col, version_delegate),
+            (model.status_col, status_delegate),
+        ):
+            self.setItemDelegateForColumn(col, delegate)
+
+        # set some nice default widths for the view
+        for col, width in model.width_by_column.items():
+            self.setColumnWidth(col, width)
+
+        sync_enabled = controller.is_sitesync_enabled()
+        self.setColumnHidden(model.active_site_col, not sync_enabled)
+        self.setColumnHidden(model.remote_site_col, not sync_enabled)
+
         self.customContextMenuRequested.connect(self._show_right_mouse_menu)
+
+        self._model = model
+        self._proxy_model = proxy_model
+        self._version_delegate = version_delegate
+        self._status_delegate = status_delegate
 
         self._hierarchy_view = False
         self._selected = None
 
         self._controller = controller
+
+    def refresh(self):
+        with preserve_expanded_rows(
+            tree_view=self,
+            role=ITEM_UNIQUE_NAME_ROLE
+        ):
+            with preserve_selection(
+                tree_view=self,
+                role=ITEM_UNIQUE_NAME_ROLE,
+                current_index=False
+            ):
+                kwargs = {}
+                # TODO do not touch view's inner attribute
+                if self._hierarchy_view:
+                    kwargs["selected"] = self._selected
+                self._model.refresh(**kwargs)
+
+    def set_hierarchy_view(self, enabled):
+        self._proxy_model.set_hierarchy_view(enabled)
+        self._model.set_hierarchy_view(enabled)
+
+    def set_text_filter(self, text_filter):
+        if hasattr(self._proxy_model, "setFilterRegularExpression"):
+            self._proxy_model.setFilterRegularExpression(text_filter)
+        else:
+            self._proxy_model.setFilterRegExp(text_filter)
+
+    def set_filter_outdated(self, enabled):
+        self._proxy_model.set_filter_outdated(enabled)
+
+    def get_selected_indexes(self):
+        """Get the selected rows"""
+        indexes, _ = self._get_selected_indexes()
+        return indexes
+
+    def get_selected_item_ids(self):
+        return self._get_item_ids_from_indexes(
+            self.get_selected_indexes()
+        )
+
+    def get_selected_container_indexes(self):
+        return self._get_container_indexes(
+            self.get_selected_indexes()
+        )
+
+    def _get_selected_indexes(self):
+        selection_model = self.selectionModel()
+        indexes = selection_model.selectedRows()
+        active = self.currentIndex()
+        active = active.sibling(active.row(), 0)
+        if active not in indexes:
+            indexes.append(active)
+        return indexes, active
+
+    def _get_item_ids_from_indexes(self, indexes):
+        return {
+            index.data(ITEM_ID_ROLE)
+            for index in self._get_container_indexes(indexes)
+        }
 
     def _set_hierarchy_view(self, enabled):
         if enabled == self._hierarchy_view:
@@ -56,172 +160,94 @@ class SceneInventoryView(QtWidgets.QTreeView):
         self._hierarchy_view = enabled
         self.hierarchy_view_changed.emit(enabled)
 
-    def _enter_hierarchy(self, items):
-        self._selected = set(i["objectName"] for i in items)
+    def _enter_hierarchy(self, item_ids):
+        self._selected = set(item_ids)
         self._set_hierarchy_view(True)
         self.data_changed.emit()
         self.expandToDepth(1)
-        self.setStyleSheet("""
-        QTreeView {
-             border-color: #fb9c15;
-        }
-        """)
+        self.setStyleSheet("border-color: #fb9c15;")
 
     def _leave_hierarchy(self):
         self._set_hierarchy_view(False)
         self.data_changed.emit()
-        self.setStyleSheet("QTreeView {}")
+        self.setStyleSheet("")
 
-    def _build_item_menu_for_selection(self, items, menu):
-        # Exclude items that are "NOT FOUND" since setting versions, updating
-        # and removal won't work for those items.
-        items = [item for item in items if not item.get("isNotFound")]
-        if not items:
+    def _build_item_menu_for_selection(self, menu, indexes, active_index):
+        item_ids = {
+            index.data(ITEM_ID_ROLE)
+            for index in indexes
+        }
+        item_ids.discard(None)
+        if not item_ids:
             return
 
-        # An item might not have a representation, for example when an item
-        # is listed as "NOT FOUND"
-        repre_ids = set()
-        for item in items:
-            repre_id = item["representation"]
-            try:
-                uuid.UUID(repre_id)
-                repre_ids.add(repre_id)
-            except ValueError:
-                pass
-
-        project_name = self._controller.get_current_project_name()
-        repre_entities = ayon_api.get_representations(
-            project_name,
-            representation_ids=repre_ids,
-            fields={"versionId"}
+        container_items_by_id = self._controller.get_container_items_by_id(
+            item_ids
         )
 
-        version_ids = {
-            repre_entity["versionId"]
-            for repre_entity in repre_entities
+        active_repre_id = None
+        if active_index is not None:
+            for index in self._get_container_indexes({active_index}):
+                item_id = index.data(ITEM_ID_ROLE)
+                container_item = container_items_by_id[item_id]
+                active_repre_id = container_item.representation_id
+                break
+
+        repre_info_by_id = self._controller.get_representation_info_items({
+            container_item.representation_id
+            for container_item in container_items_by_id.values()
+        })
+        valid_repre_ids = {
+            repre_id
+            for repre_id, repre_info in repre_info_by_id.items()
+            if repre_info.is_valid
         }
 
-        loaded_versions = ayon_api.get_versions(
-            project_name, version_ids=version_ids
-        )
-
-        loaded_hero_versions = []
-        versions_by_product_id = collections.defaultdict(list)
+        # Exclude items that are "NOT FOUND" since setting versions, updating
+        # and removal won't work for those items.
+        filtered_items = []
         product_ids = set()
-        for version_entity in loaded_versions:
-            version = version_entity["version"]
-            if version < 0:
-                loaded_hero_versions.append(version_entity)
-            else:
-                product_id = version_entity["productId"]
-                versions_by_product_id[product_id].append(version_entity)
-                product_ids.add(product_id)
+        version_ids = set()
+        for container_item in container_items_by_id.values():
+            repre_id = container_item.representation_id
+            repre_info = repre_info_by_id.get(repre_id)
+            if repre_info and repre_info.is_valid:
+                filtered_items.append(container_item)
+                version_ids.add(repre_info.version_id)
+                product_ids.add(repre_info.product_id)
 
-        all_versions = ayon_api.get_versions(
-            project_name, product_ids=product_ids
+        # remove
+        remove_icon = qtawesome.icon("fa.remove", color=DEFAULT_COLOR)
+        remove_action = QtWidgets.QAction(remove_icon, "Remove items", menu)
+        remove_action.triggered.connect(
+            lambda: self._show_remove_warning_dialog(item_ids))
+
+        if not filtered_items:
+            # Keep remove action for invalid items
+            menu.addAction(remove_action)
+            return
+
+        version_items_by_product_id = self._controller.get_version_items(
+            product_ids
         )
-        hero_versions = []
-        version_entities = []
-        for version_entity in all_versions:
-            version = version_entity["version"]
-            if version < 0:
-                hero_versions.append(version_entity)
-            else:
-                version_entities.append(version_entity)
-
-        has_loaded_hero_versions = len(loaded_hero_versions) > 0
-        has_available_hero_version = len(hero_versions) > 0
         has_outdated = False
+        has_loaded_hero_versions = False
+        has_available_hero_version = False
+        for version_items_by_id in version_items_by_product_id.values():
+            for version_item in version_items_by_id.values():
+                if version_item.is_hero:
+                    has_available_hero_version = True
 
-        for version_entity in version_entities:
-            product_id = version_entity["productId"]
-            current_versions = versions_by_product_id[product_id]
-            for current_version in current_versions:
-                if current_version["version"] < version_entity["version"]:
+                if version_item.version_id not in version_ids:
+                    continue
+                if version_item.is_hero:
+                    has_loaded_hero_versions = True
+
+                elif not version_item.is_latest:
                     has_outdated = True
-                    break
-
-            if has_outdated:
-                break
 
         switch_to_versioned = None
         if has_loaded_hero_versions:
-            def _on_switch_to_versioned(items):
-                repre_ids = {
-                    item["representation"]
-                    for item in items
-                }
-
-                repre_entities = ayon_api.get_representations(
-                    project_name,
-                    representation_ids=repre_ids,
-                    fields={"id", "versionId"}
-                )
-
-                version_id_by_repre_id = {}
-                for repre_entity in repre_entities:
-                    repre_id = repre_entity["id"]
-                    version_id = repre_entity["versionId"]
-                    version_id_by_repre_id[repre_id] = version_id
-                version_ids = set(version_id_by_repre_id.values())
-
-                src_version_entity_by_id = {
-                    version_entity["id"]: version_entity
-                    for version_entity in ayon_api.get_versions(
-                        project_name,
-                        version_ids,
-                        fields={"productId", "version"}
-                    )
-                }
-                hero_versions_by_product_id = {}
-                for version_entity in src_version_entity_by_id.values():
-                    version = version_entity["version"]
-                    if version < 0:
-                        product_id = version_entity["productId"]
-                        hero_versions_by_product_id[product_id] = abs(version)
-
-                if not hero_versions_by_product_id:
-                    return
-
-                standard_versions = ayon_api.get_versions(
-                    project_name,
-                    product_ids=hero_versions_by_product_id.keys(),
-                    versions=hero_versions_by_product_id.values()
-                )
-                standard_version_by_product_id = {
-                    product_id: {}
-                    for product_id in hero_versions_by_product_id.keys()
-                }
-                for version_entity in standard_versions:
-                    product_id = version_entity["productId"]
-                    version = version_entity["version"]
-                    standard_version_by_product_id[product_id][version] = (
-                        version_entity
-                    )
-
-                # Specify version per item to update to
-                update_items = []
-                update_versions = []
-                for item in items:
-                    repre_id = item["representation"]
-                    version_id = version_id_by_repre_id.get(repre_id)
-                    version_entity = src_version_entity_by_id.get(version_id)
-                    if not version_entity or version_entity["version"] >= 0:
-                        continue
-                    product_id = version_entity["productId"]
-                    version_entities_by_version = (
-                        standard_version_by_product_id[product_id]
-                    )
-                    new_version = hero_versions_by_product_id.get(product_id)
-                    new_version_entity = version_entities_by_version.get(
-                        new_version
-                    )
-                    if new_version_entity is not None:
-                        update_items.append(item)
-                        update_versions.append(new_version)
-                self._update_containers(update_items, update_versions)
-
             update_icon = qtawesome.icon(
                 "fa.asterisk",
                 color=DEFAULT_COLOR
@@ -232,7 +258,7 @@ class SceneInventoryView(QtWidgets.QTreeView):
                 menu
             )
             switch_to_versioned.triggered.connect(
-                lambda: _on_switch_to_versioned(items)
+                lambda: self._on_switch_to_versioned(item_ids)
             )
 
         update_to_latest_action = None
@@ -247,7 +273,9 @@ class SceneInventoryView(QtWidgets.QTreeView):
                 menu
             )
             update_to_latest_action.triggered.connect(
-                lambda: self._update_containers(items, version=-1)
+                lambda: self._update_containers_to_version(
+                    item_ids, version=-1
+                )
             )
 
         change_to_hero = None
@@ -263,20 +291,23 @@ class SceneInventoryView(QtWidgets.QTreeView):
                 menu
             )
             change_to_hero.triggered.connect(
-                lambda: self._update_containers(
-                    items, version=HeroVersionType(-1)
+                lambda: self._update_containers_to_version(
+                    item_ids, version=HeroVersionType(-1)
                 )
             )
 
         # set version
-        set_version_icon = qtawesome.icon("fa.hashtag", color=DEFAULT_COLOR)
-        set_version_action = QtWidgets.QAction(
-            set_version_icon,
-            "Set version",
-            menu
-        )
-        set_version_action.triggered.connect(
-            lambda: self._show_version_dialog(items))
+        set_version_action = None
+        if active_repre_id is not None:
+            set_version_icon = qtawesome.icon("fa.hashtag", color=DEFAULT_COLOR)
+            set_version_action = QtWidgets.QAction(
+                set_version_icon,
+                "Set version",
+                menu
+            )
+            set_version_action.triggered.connect(
+                lambda: self._show_version_dialog(item_ids, active_repre_id)
+            )
 
         # switch folder
         switch_folder_icon = qtawesome.icon("fa.sitemap", color=DEFAULT_COLOR)
@@ -286,13 +317,7 @@ class SceneInventoryView(QtWidgets.QTreeView):
             menu
         )
         switch_folder_action.triggered.connect(
-            lambda: self._show_switch_dialog(items))
-
-        # remove
-        remove_icon = qtawesome.icon("fa.remove", color=DEFAULT_COLOR)
-        remove_action = QtWidgets.QAction(remove_icon, "Remove items", menu)
-        remove_action.triggered.connect(
-            lambda: self._show_remove_warning_dialog(items))
+            lambda: self._show_switch_dialog(item_ids))
 
         # add the actions
         if switch_to_versioned:
@@ -304,14 +329,15 @@ class SceneInventoryView(QtWidgets.QTreeView):
         if change_to_hero:
             menu.addAction(change_to_hero)
 
-        menu.addAction(set_version_action)
+        if set_version_action is not None:
+            menu.addAction(set_version_action)
         menu.addAction(switch_folder_action)
 
         menu.addSeparator()
 
         menu.addAction(remove_action)
 
-        self._handle_sitesync(menu, repre_ids)
+        self._handle_sitesync(menu, valid_repre_ids)
 
     def _handle_sitesync(self, menu, repre_ids):
         """Adds actions for download/upload when SyncServer is enabled
@@ -325,6 +351,9 @@ class SceneInventoryView(QtWidgets.QTreeView):
         """
 
         if not self._controller.is_sitesync_enabled():
+            return
+
+        if not repre_ids:
             return
 
         menu.addSeparator()
@@ -365,30 +394,35 @@ class SceneInventoryView(QtWidgets.QTreeView):
 
         self.data_changed.emit()
 
-    def _build_item_menu(self, items=None):
+    def _build_item_menu(self, indexes=None, active_index=None):
         """Create menu for the selected items"""
-
-        if not items:
-            items = []
-
         menu = QtWidgets.QMenu(self)
-
-        # add the actions
-        self._build_item_menu_for_selection(items, menu)
 
         # These two actions should be able to work without selection
         # expand all items
-        expandall_action = QtWidgets.QAction(menu, text="Expand all items")
-        expandall_action.triggered.connect(self.expandAll)
+        expand_all_action = QtWidgets.QAction(menu, text="Expand all items")
+        expand_all_action.triggered.connect(self.expandAll)
 
         # collapse all items
         collapse_action = QtWidgets.QAction(menu, text="Collapse all items")
         collapse_action.triggered.connect(self.collapseAll)
 
-        menu.addAction(expandall_action)
+        if not indexes:
+            indexes = []
+
+        item_ids = {
+            index.data(ITEM_ID_ROLE)
+            for index in indexes
+        }
+        item_ids.discard(None)
+
+        # add the actions
+        self._build_item_menu_for_selection(menu, indexes, active_index)
+
+        menu.addAction(expand_all_action)
         menu.addAction(collapse_action)
 
-        custom_actions = self._get_custom_actions(containers=items)
+        custom_actions = self._get_custom_actions(item_ids)
         if custom_actions:
             submenu = QtWidgets.QMenu("Actions", self)
             for action in custom_actions:
@@ -396,7 +430,10 @@ class SceneInventoryView(QtWidgets.QTreeView):
                 icon = qtawesome.icon("fa.%s" % action.icon, color=color)
                 action_item = QtWidgets.QAction(icon, action.label, submenu)
                 action_item.triggered.connect(
-                    partial(self._process_custom_action, action, items))
+                    partial(
+                        self._process_custom_action, action, item_ids
+                    )
+                )
 
                 submenu.addAction(action_item)
 
@@ -421,9 +458,9 @@ class SceneInventoryView(QtWidgets.QTreeView):
             menu
         )
         enter_hierarchy_action.triggered.connect(
-            lambda: self._enter_hierarchy(items))
+            lambda: self._enter_hierarchy(item_ids))
 
-        if items:
+        if indexes:
             menu.addAction(enter_hierarchy_action)
 
         if back_to_flat_action is not None:
@@ -431,11 +468,11 @@ class SceneInventoryView(QtWidgets.QTreeView):
 
         return menu
 
-    def _get_custom_actions(self, containers):
+    def _get_custom_actions(self, item_ids):
         """Get the registered Inventory Actions
 
         Args:
-            containers(list): collection of containers
+            item_ids (Iterable[str]): collection of containers
 
         Returns:
             list: collection of filter and initialized actions
@@ -448,29 +485,40 @@ class SceneInventoryView(QtWidgets.QTreeView):
         # Fedd an empty dict if no selection, this will ensure the compat
         # lookup always work, so plugin can interact with Scene Inventory
         # reversely.
-        containers = containers or [dict()]
+        if not item_ids:
+            containers = [dict()]
+        else:
+            containers_by_id = self._controller.get_containers_by_item_ids(
+                item_ids
+            )
+            containers = list(containers_by_id.values())
 
         # Check which action will be available in the menu
         Plugins = discover_inventory_actions()
-        compatible = [p() for p in Plugins if
-                      any(p.is_compatible(c) for c in containers)]
+        compatible = [
+            p()
+            for p in Plugins
+            if any(p.is_compatible(c) for c in containers)
+        ]
 
         return sorted(compatible, key=sorter)
 
-    def _process_custom_action(self, action, containers):
+    def _process_custom_action(self, action, item_ids):
         """Run action and if results are returned positive update the view
 
         If the result is list or dict, will select view items by the result.
 
         Args:
             action (InventoryAction): Inventory Action instance
-            containers (list): Data of currently selected items
+            item_ids (Iterable[str]): Data of currently selected items
 
         Returns:
             None
         """
-
-        result = action.process(containers)
+        containers_by_id = self._controller.get_containers_by_item_ids(
+            item_ids
+        )
+        result = action.process(list(containers_by_id.values()))
         if result:
             self.data_changed.emit()
 
@@ -498,17 +546,24 @@ class SceneInventoryView(QtWidgets.QTreeView):
         if options.get("clear", True):
             self.clearSelection()
 
-        object_names = set(object_names)
-        if (
-            self._hierarchy_view
-            and not self._selected.issuperset(object_names)
-        ):
-            # If any container not in current cherry-picked view, update
-            # view before selecting them.
-            self._selected.update(object_names)
-            self.data_changed.emit()
-
         model = self.model()
+        object_names = set(object_names)
+        if self._hierarchy_view:
+            item_ids = set()
+            for index in iter_model_rows(model):
+                if not index.data(IS_CONTAINER_ITEM_ROLE):
+                    continue
+                if index.data(OBJECT_NAME_ROLE) in object_names:
+                    item_id = index.data(ITEM_ID_ROLE)
+                    if item_id:
+                        item_ids.add(item_id)
+
+            if not self._selected.issuperset(item_ids):
+                # If any container not in current cherry-picked view, update
+                # view before selecting them.
+                self._selected.update(item_ids)
+                self.data_changed.emit()
+
         selection_model = self.selectionModel()
 
         select_mode = {
@@ -517,12 +572,10 @@ class SceneInventoryView(QtWidgets.QTreeView):
             "toggle": QtCore.QItemSelectionModel.Toggle,
         }[options.get("mode", "select")]
 
-        for index in iter_model_rows(model, 0):
-            item = index.data(InventoryModel.ItemRole)
-            if item.get("isGroupNode"):
+        for index in iter_model_rows(model):
+            if not index.data(IS_CONTAINER_ITEM_ROLE):
                 continue
-
-            name = item.get("objectName")
+            name = index.data(OBJECT_NAME_ROLE)
             if name in object_names:
                 self.scrollTo(index)  # Ensure item is visible
                 flags = select_mode | QtCore.QItemSelectionModel.Rows
@@ -539,177 +592,222 @@ class SceneInventoryView(QtWidgets.QTreeView):
         globalpos = self.viewport().mapToGlobal(pos)
 
         if not self.selectionModel().hasSelection():
-            print("No selection")
             # Build menu without selection, feed an empty list
             menu = self._build_item_menu()
             menu.exec_(globalpos)
             return
 
-        active = self.currentIndex()  # index under mouse
-        active = active.sibling(active.row(), 0)  # get first column
-
-        # move index under mouse
-        indices = self.get_indices()
-        if active in indices:
-            indices.remove(active)
-
-        indices.append(active)
+        indexes, active_index = self._get_selected_indexes()
 
         # Extend to the sub-items
-        all_indices = self._extend_to_children(indices)
-        items = [dict(i.data(InventoryModel.ItemRole)) for i in all_indices
-                 if i.parent().isValid()]
+        all_indexes = self._extend_to_children(indexes)
 
-        if self._hierarchy_view:
-            # Ensure no group item
-            items = [n for n in items if not n.get("isGroupNode")]
-
-        menu = self._build_item_menu(items)
+        menu = self._build_item_menu(all_indexes, active_index)
         menu.exec_(globalpos)
 
-    def get_indices(self):
-        """Get the selected rows"""
-        selection_model = self.selectionModel()
-        return selection_model.selectedRows()
+    def _get_container_indexes(self, indexes):
+        container_indexes = []
+        indexes_queue = collections.deque()
+        indexes_queue.extend(indexes)
+        # Ignore already added containers
+        items_ids = set()
+        while indexes_queue:
+            index = indexes_queue.popleft()
+            if index.data(IS_CONTAINER_ITEM_ROLE):
+                item_id = index.data(ITEM_ID_ROLE)
+                if item_id in items_ids:
+                    continue
+                items_ids.add(item_id)
+                container_indexes.append(index)
+                continue
+            model = index.model()
+            for row in range(model.rowCount(index)):
+                child = model.index(row, 0, parent=index)
+                indexes_queue.append(child)
+        return container_indexes
 
-    def _extend_to_children(self, indices):
+    def _extend_to_children(self, indexes):
         """Extend the indices to the children indices.
 
         Top-level indices are extended to its children indices. Sub-items
         are kept as is.
 
         Args:
-            indices (list): The indices to extend.
+            indexes (list): The indices to extend.
 
         Returns:
             list: The children indices
 
         """
-        def get_children(i):
-            model = i.model()
-            rows = model.rowCount(parent=i)
-            for row in range(rows):
-                child = model.index(row, 0, parent=i)
-                yield child
+        def get_children(index):
+            model = index.model()
+            for row in range(model.rowCount(index)):
+                yield model.index(row, 0, parent=index)
 
         subitems = set()
-        for i in indices:
-            valid_parent = i.parent().isValid()
-            if valid_parent and i not in subitems:
-                subitems.add(i)
+        for index in indexes:
+            if index.parent().isValid() and index not in subitems:
+                subitems.add(index)
 
                 if self._hierarchy_view:
                     # Assume this is a group item
-                    for child in get_children(i):
+                    for child in get_children(index):
                         subitems.add(child)
             else:
                 # is top level item
-                for child in get_children(i):
+                for child in get_children(index):
                     subitems.add(child)
 
         return list(subitems)
 
-    def _show_version_dialog(self, items):
+    def _show_version_dialog(self, item_ids, active_repre_id):
         """Create a dialog with the available versions for the selected file
 
         Args:
-            items (list): list of items to run the "set_version" for
+            item_ids (Iterable[str]): List of item ids to run the
+                "set_version" for.
+            active_repre_id (Union[str, None]): Active representation id.
 
         Returns:
             None
+
         """
-
-        active = items[-1]
-
-        project_name = self._controller.get_current_project_name()
-        # Get available versions for active representation
-        repre_entity = ayon_api.get_representation_by_id(
-            project_name,
-            active["representation"],
-            fields={"versionId"}
+        container_items_by_id = self._controller.get_container_items_by_id(
+            item_ids
+        )
+        repre_ids = {
+            container_item.representation_id
+            for container_item in container_items_by_id.values()
+        }
+        repre_info_by_id = self._controller.get_representation_info_items(
+            repre_ids
         )
 
-        repre_version_entity = ayon_api.get_version_by_id(
-            project_name,
-            repre_entity["versionId"],
-            fields={"productId"}
+        product_ids = {
+            repre_info.product_id
+            for repre_info in repre_info_by_id.values()
+        }
+        active_repre_info = repre_info_by_id[active_repre_id]
+        active_version_id = active_repre_info.version_id
+        active_product_id = active_repre_info.product_id
+        version_items_by_product_id = self._controller.get_version_items(
+            product_ids
         )
-
-        version_entities = list(ayon_api.get_versions(
-            project_name,
-            product_ids={repre_version_entity["productId"]},
-        ))
-        hero_version = None
-        standard_versions = []
-        for version_entity in version_entities:
-            if version_entity["version"] < 0:
-                hero_version = version_entity
-            else:
-                standard_versions.append(version_entity)
-        standard_versions.sort(key=lambda item: item["version"])
-        standard_versions.reverse()
-
-        # Get index among the listed versions
-        current_item = None
-        current_version = active["version"]
-        if isinstance(current_version, HeroVersionType):
-            current_item = hero_version
-        else:
-            for version_entity in standard_versions:
-                if version_entity["version"] == current_version:
-                    current_item = version_entity
-                    break
-
-        all_versions = []
-        if hero_version:
-            all_versions.append(hero_version)
-        all_versions.extend(standard_versions)
-
-        if current_item:
-            index = all_versions.index(current_item)
-        else:
-            index = 0
-
-        versions_by_label = dict()
-        labels = []
-        for version_entity in all_versions:
-            label = format_version(version_entity["version"])
-            labels.append(label)
-            versions_by_label[label] = version_entity["version"]
-
-        label, state = QtWidgets.QInputDialog.getItem(
-            self,
-            "Set version..",
-            "Set version number to",
-            labels,
-            current=index,
-            editable=False
+        version_items = list(
+            version_items_by_product_id[active_product_id].values()
         )
-        if not state:
+        versions = {version_item.version for version_item in version_items}
+        product_ids_by_version = collections.defaultdict(set)
+        for version_items_by_id in version_items_by_product_id.values():
+            for version_item in version_items_by_id.values():
+                version = version_item.version
+                _prod_version = version
+                if _prod_version < 0:
+                    _prod_version = -1
+                product_ids_by_version[_prod_version].add(
+                    version_item.product_id
+                )
+                if version in versions:
+                    continue
+                versions.add(version)
+                version_items.append(version_item)
+
+        def version_sorter(item):
+            hero_value = 0
+            i_version = item.version
+            if i_version < 0:
+                hero_value = 1
+                i_version = abs(i_version)
+            return i_version, hero_value
+
+        version_items.sort(key=version_sorter, reverse=True)
+        show_statuses = len(product_ids) == 1
+        status_items_by_name = {}
+        if show_statuses:
+            status_items_by_name = {
+                status_item.name: status_item
+                for status_item in self._controller.get_project_status_items()
+            }
+
+        version_options = []
+        active_version_idx = 0
+        for idx, version_item in enumerate(version_items):
+            version = version_item.version
+            label = format_version(version)
+            if version_item.version_id == active_version_id:
+                active_version_idx = idx
+
+            status_name = version_item.status
+            status_short = None
+            status_color = None
+            status_icon = None
+            status_item = status_items_by_name.get(status_name)
+            if status_item:
+                status_short = status_item.short
+                status_color = status_item.color
+                status_icon = status_item.icon
+            version_options.append(
+                VersionOption(
+                    version,
+                    label,
+                    status_name,
+                    status_short,
+                    status_color,
+                    status_icon,
+                )
+            )
+
+        version_option = SelectVersionDialog.ask_for_version(
+            version_options,
+            active_version_idx,
+            show_statuses=show_statuses,
+            parent=self
+        )
+        if version_option is None:
             return
 
-        if label:
-            version = versions_by_label[label]
-            if version < 0:
-                version = HeroVersionType(version)
-            self._update_containers(items, version)
+        product_version = version = version_option.version
+        if version < 0:
+            product_version = -1
+            version = HeroVersionType(version)
 
-    def _show_switch_dialog(self, items):
+        product_ids = product_ids_by_version[product_version]
+
+        filtered_item_ids = set()
+        for container_item in container_items_by_id.values():
+            repre_id = container_item.representation_id
+            repre_info = repre_info_by_id[repre_id]
+            if repre_info.product_id in product_ids:
+                filtered_item_ids.add(container_item.item_id)
+
+        self._update_containers_to_version(
+            filtered_item_ids, version
+        )
+
+    def _show_switch_dialog(self, item_ids):
         """Display Switch dialog"""
-        dialog = SwitchAssetDialog(self._controller, self, items)
+        containers_by_id = self._controller.get_containers_by_item_ids(
+            item_ids
+        )
+        dialog = SwitchAssetDialog(
+            self._controller, self, list(containers_by_id.values())
+        )
         dialog.switched.connect(self.data_changed.emit)
         dialog.show()
 
-    def _show_remove_warning_dialog(self, items):
+    def _show_remove_warning_dialog(self, item_ids):
         """Prompt a dialog to inform the user the action will remove items"""
-
+        containers_by_id = self._controller.get_containers_by_item_ids(
+            item_ids
+        )
+        containers = list(containers_by_id.values())
         accept = QtWidgets.QMessageBox.Ok
         buttons = accept | QtWidgets.QMessageBox.Cancel
 
         state = QtWidgets.QMessageBox.question(
             self,
             "Are you sure?",
-            "Are you sure you want to remove {} item(s)".format(len(items)),
+            f"Are you sure you want to remove {len(containers)} item(s)",
             buttons=buttons,
             defaultButton=accept
         )
@@ -717,15 +815,15 @@ class SceneInventoryView(QtWidgets.QTreeView):
         if state != accept:
             return
 
-        for item in items:
-            remove_container(item)
+        for container in containers:
+            remove_container(container)
         self.data_changed.emit()
 
-    def _show_version_error_dialog(self, version, items):
+    def _show_version_error_dialog(self, version, item_ids):
         """Shows QMessageBox when version switch doesn't work
 
-            Args:
-                version: str or int or None
+        Args:
+            version: str or int or None
         """
         if version == -1:
             version_str = "latest"
@@ -745,7 +843,7 @@ class SceneInventoryView(QtWidgets.QTreeView):
             "Switch Folder",
             QtWidgets.QMessageBox.ActionRole
         )
-        switch_btn.clicked.connect(lambda: self._show_switch_dialog(items))
+        switch_btn.clicked.connect(lambda: self._show_switch_dialog(item_ids))
 
         dialog.addButton(QtWidgets.QMessageBox.Cancel)
 
@@ -760,69 +858,115 @@ class SceneInventoryView(QtWidgets.QTreeView):
     def update_all(self):
         """Update all items that are currently 'outdated' in the view"""
         # Get the source model through the proxy model
-        model = self.model().sourceModel()
-
-        # Get all items from outdated groups
-        outdated_items = []
-        for index in iter_model_rows(model,
-                                     column=0,
-                                     include_root=False):
-            item = index.data(model.ItemRole)
-
-            if not item.get("isGroupNode"):
-                continue
-
-            # Only the group nodes contain the "highest_version" data and as
-            # such we find only the groups and take its children.
-            if not model.outdated(item):
-                continue
-
-            # Collect all children which we want to update
-            children = item.children()
-            outdated_items.extend(children)
-
-        if not outdated_items:
+        item_ids = self._model.get_outdated_item_ids()
+        if not item_ids:
             log.info("Nothing to update.")
             return
 
         # Trigger update to latest
-        self._update_containers(outdated_items, version=-1)
+        self._update_containers_to_version(item_ids, version=-1)
 
-    def _update_containers(self, items, version):
+    def _on_switch_to_versioned(self, item_ids):
+        containers_items_by_id = self._controller.get_container_items_by_id(
+            item_ids
+        )
+        repre_ids = {
+            container_item.representation_id
+            for container_item in containers_items_by_id.values()
+        }
+        repre_info_by_id = self._controller.get_representation_info_items(
+            repre_ids
+        )
+        product_ids = {
+            repre_info.product_id
+            for repre_info in repre_info_by_id.values()
+            if repre_info.is_valid
+        }
+        version_items_by_product_id = self._controller.get_version_items(
+            product_ids
+        )
+
+        update_containers = []
+        update_versions = []
+        for item_id, container_item in containers_items_by_id.items():
+            repre_id = container_item.representation_id
+            repre_info = repre_info_by_id[repre_id]
+            product_id = repre_info.product_id
+            version_items_id = version_items_by_product_id[product_id]
+            version_item = version_items_id.get(repre_info.version_id, {})
+            if not version_item or not version_item.is_hero:
+                continue
+            version = abs(version_item.version)
+            version_found = False
+            for version_item in version_items_id.values():
+                if version_item.is_hero:
+                    continue
+                if version_item.version == version:
+                    version_found = True
+                    break
+
+            if not version_found:
+                continue
+
+            update_containers.append(container_item.item_id)
+            update_versions.append(version)
+
+        # Specify version per item to update to
+        self._update_containers(update_containers, update_versions)
+
+    def _update_containers(self, item_ids, versions):
         """Helper to update items to given version (or version per item)
 
         If at least one item is specified this will always try to refresh
         the inventory even if errors occurred on any of the items.
 
         Arguments:
-            items (list): Items to update
-            version (int or list): Version to set to.
+            item_ids (Iterable[str]): Items to update
+            versions (Iterable[Union[int, HeroVersion]]): Version to set to.
                 This can be a list specifying a version for each item.
                 Like `update_container` version -1 sets the latest version
                 and HeroTypeVersion instances set the hero version.
 
         """
 
-        if isinstance(version, (list, tuple)):
-            # We allow a unique version to be specified per item. In that case
-            # the length must match with the items
-            assert len(items) == len(version), (
-                "Number of items mismatches number of versions: "
-                "{} items - {} versions".format(len(items), len(version))
-            )
-            versions = version
-        else:
-            # Repeat the same version infinitely
-            versions = itertools.repeat(version)
+        # We allow a unique version to be specified per item. In that case
+        # the length must match with the items
+        assert len(item_ids) == len(versions), (
+            "Number of items mismatches number of versions: "
+            f"{len(item_ids)} items - {len(versions)} versions"
+        )
 
         # Trigger update to latest
+        containers_by_id = self._controller.get_containers_by_item_ids(
+            item_ids
+        )
         try:
-            for item, item_version in zip(items, versions):
+            for item_id, item_version in zip(item_ids, versions):
+                container = containers_by_id[item_id]
                 try:
-                    update_container(item, item_version)
+                    update_container(container, item_version)
                 except AssertionError:
-                    self._show_version_error_dialog(item_version, [item])
                     log.warning("Update failed", exc_info=True)
+                    self._show_version_error_dialog(
+                        item_version, [item_id]
+                    )
         finally:
             # Always update the scene inventory view, even if errors occurred
             self.data_changed.emit()
+
+    def _update_containers_to_version(self, item_ids, version):
+        """Helper to update items to given version (or version per item)
+
+        If at least one item is specified this will always try to refresh
+        the inventory even if errors occurred on any of the items.
+
+        Arguments:
+            item_ids (Iterable[str]): Items to update
+            version (Union[int, HeroVersion]): Version to set to.
+                This can be a list specifying a version for each item.
+                Like `update_container` version -1 sets the latest version
+                and HeroTypeVersion instances set the hero version.
+
+        """
+        versions = [version for _ in range(len(item_ids))]
+        self._update_containers(item_ids, versions)

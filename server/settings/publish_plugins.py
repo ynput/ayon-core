@@ -59,6 +59,28 @@ class CollectFramesFixDefModel(BaseSettingsModel):
     )
 
 
+class PluginStateByHostModelProfile(BaseSettingsModel):
+    _layout = "expanded"
+    # Filtering
+    host_names: list[str] = SettingsField(
+        default_factory=list,
+        title="Host names"
+    )
+    # Profile values
+    enabled: bool = SettingsField(True, title="Enabled")
+    optional: bool = SettingsField(True, title="Optional")
+    active: bool = SettingsField(True, title="Active")
+
+
+class PluginStateByHostModel(BaseSettingsModel):
+    _isGroup = True
+    plugin_state_profiles: list[PluginStateByHostModelProfile] = SettingsField(
+        default_factory=list,
+        title="Plugin enable state profiles",
+        description="Change plugin state based on host name."
+    )
+
+
 class ValidateIntentProfile(BaseSettingsModel):
     _layout = "expanded"
     hosts: list[str] = SettingsField(default_factory=list, title="Host names")
@@ -536,7 +558,7 @@ class ExtractBurninProfile(BaseSettingsModel):
     _layout = "expanded"
     product_types: list[str] = SettingsField(
         default_factory=list,
-        title="Produt types"
+        title="Product types"
     )
     hosts: list[str] = SettingsField(
         default_factory=list,
@@ -766,9 +788,17 @@ class PublishPuginsModel(BaseSettingsModel):
         default_factory=ValidateBaseModel,
         title="Validate Editorial Asset Name"
     )
-    ValidateVersion: ValidateBaseModel = SettingsField(
-        default_factory=ValidateBaseModel,
-        title="Validate Version"
+    ValidateVersion: PluginStateByHostModel = SettingsField(
+        default_factory=PluginStateByHostModel,
+        title="Validate Version",
+        description=(
+            "Validate that product version to integrate"
+            " is newer than latest version in AYON."
+        )
+    )
+    ValidateOutdatedContainers: PluginStateByHostModel = SettingsField(
+        default_factory=PluginStateByHostModel,
+        title="Validate Outdated Containers"
     )
     ValidateIntent: ValidateIntentModel = SettingsField(
         default_factory=ValidateIntentModel,
@@ -833,7 +863,8 @@ DEFAULT_PUBLISH_VALUES = {
             "nuke",
             "photoshop",
             "resolve",
-            "tvpaint"
+            "tvpaint",
+            "substancepainter"
         ],
         "skip_hosts_headless_publish": []
     },
@@ -851,9 +882,41 @@ DEFAULT_PUBLISH_VALUES = {
         "active": True
     },
     "ValidateVersion": {
-        "enabled": True,
-        "optional": False,
-        "active": True
+        "plugin_state_profiles": [
+            {
+                "host_names": [
+                    "aftereffects",
+                    "blender",
+                    "houdini",
+                    "maya",
+                    "nuke",
+                    "photoshop",
+                    "substancepainter"
+                ],
+                "enabled": True,
+                "optional": False,
+                "active": True
+            }
+        ]
+    },
+    "ValidateOutdatedContainers": {
+        "plugin_state_profiles": [
+            {
+                # Default host names are based on original
+                #   filter of ValidateContainer pyblish plugin
+                "host_names": [
+                    "maya",
+                    "houdini",
+                    "nuke",
+                    "harmony",
+                    "photoshop",
+                    "aftereffects"
+                ],
+                "enabled": True,
+                "optional": True,
+                "active": True
+            }
+        ]
     },
     "ValidateIntent": {
         "enabled": False,

@@ -42,7 +42,7 @@ def prepare_changes(old_entity, new_entity):
 
     Returns:
         dict[str, Any]: Changes that have new entity.
-        
+
     """
     changes = {}
     for key in set(new_entity.keys()):
@@ -108,67 +108,6 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
 
     label = "Integrate Asset"
     order = pyblish.api.IntegratorOrder
-    families = ["workfile",
-                "pointcache",
-                "pointcloud",
-                "proxyAbc",
-                "camera",
-                "animation",
-                "model",
-                "maxScene",
-                "mayaAscii",
-                "mayaScene",
-                "setdress",
-                "layout",
-                "ass",
-                "vdbcache",
-                "scene",
-                "vrayproxy",
-                "vrayscene_layer",
-                "render",
-                "prerender",
-                "imagesequence",
-                "review",
-                "rendersetup",
-                "rig",
-                "plate",
-                "look",
-                "ociolook",
-                "audio",
-                "yetiRig",
-                "yeticache",
-                "nukenodes",
-                "gizmo",
-                "source",
-                "matchmove",
-                "image",
-                "assembly",
-                "fbx",
-                "gltf",
-                "textures",
-                "action",
-                "harmony.template",
-                "harmony.palette",
-                "editorial",
-                "background",
-                "camerarig",
-                "redshiftproxy",
-                "effect",
-                "xgen",
-                "hda",
-                "usd",
-                "staticMesh",
-                "skeletalMesh",
-                "mvLook",
-                "mvUsd",
-                "mvUsdComposition",
-                "mvUsdOverride",
-                "online",
-                "uasset",
-                "blendScene",
-                "yeticacheUE",
-                "tycache"
-                ]
 
     default_template_name = "publish"
 
@@ -358,7 +297,7 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
 
         # Compute the resource file infos once (files belonging to the
         # version instance instead of an individual representation) so
-        # we can re-use those file infos per representation
+        # we can reuse those file infos per representation
         resource_file_infos = self.get_files_info(
             resource_destinations, anatomy
         )
@@ -441,29 +380,28 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
         data = {
             "families": get_instance_families(instance)
         }
-        attribibutes = {}
+        attributes = {}
 
         product_group = instance.data.get("productGroup")
         if product_group:
-            attribibutes["productGroup"] = product_group
+            attributes["productGroup"] = product_group
         elif existing_product_entity:
             # Preserve previous product group if new version does not set it
             product_group = existing_product_entity.get("attrib", {}).get(
                 "productGroup"
             )
             if product_group is not None:
-                attribibutes["productGroup"] = product_group
+                attributes["productGroup"] = product_group
 
         product_id = None
         if existing_product_entity:
             product_id = existing_product_entity["id"]
-
         product_entity = new_product_entity(
             product_name,
             product_type,
             folder_entity["id"],
             data=data,
-            attribs=attribibutes,
+            attribs=attributes,
             entity_id=product_id
         )
 
@@ -525,6 +463,7 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
             version_number,
             product_entity["id"],
             task_id=task_id,
+            status=instance.data.get("status"),
             data=version_data,
             attribs=version_attributes,
             entity_id=version_id,

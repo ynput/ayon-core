@@ -1271,6 +1271,63 @@
                 }
             ]
         },
+        "equalizer": {
+            "enabled": true,
+            "label": "3DEqualizer",
+            "icon": "{}/app_icons/3de4.png",
+            "host_name": "equalizer",
+            "environment": "{}",
+            "variants": [
+                {
+                    "name": "7-1v2",
+                    "label": "7.1v2",
+                    "use_python_2": false,
+                    "executables": {
+                        "windows": [
+                            "C:\\Program Files\\3DE4_win64_r7.1v2\\bin\\3DE4.exe"
+                        ],
+                        "darwin": [],
+                        "linux": []
+                    },
+                    "environment": "{}"
+                }
+            ]
+        },
+        "motionbuilder": {
+            "enabled": true,
+            "label": "Motion Builder",
+            "icon": "{}/app_icons/motionbuilder.png",
+            "host_name": "motionbuilder",
+            "environment": "{}",
+            "variants": [
+                {
+                    "name": "2025",
+                    "label": "2025",
+                    "use_python_2": false,
+                    "executables": {
+                        "windows": [
+                            "C:\\Program Files\\Autodesk\\MotionBuilder 2025\\bin\\x64\\motionbuilder.exe"
+                        ],
+                        "darwin": [],
+                        "linux": []
+                    },
+                    "environment": "{}"
+                },
+                {
+                    "name": "2024",
+                    "label": "2024",
+                    "use_python_2": false,
+                    "executables": {
+                        "windows": [
+                            "C:\\Program Files\\Autodesk\\MotionBuilder 2024\\bin\\x64\\motionbuilder.exe"
+                        ],
+                        "darwin": [],
+                        "linux": []
+                    },
+                    "environment": "{}"
+                }
+            ]
+        },
         "additional_apps": []
     }
 }

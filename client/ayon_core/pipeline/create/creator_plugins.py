@@ -8,7 +8,7 @@ from abc import ABCMeta, abstractmethod
 import six
 
 from ayon_core.settings import get_project_settings
-from ayon_core.lib import Logger
+from ayon_core.lib import Logger, AbstractAttrDef
 from ayon_core.pipeline.plugin_discover import (
     discover,
     register_plugin,
@@ -22,10 +22,9 @@ from .product_name import get_product_name
 from .utils import get_next_versions_for_instances
 from .legacy_create import LegacyCreator
 
-
 if TYPE_CHECKING:
+    # Avoid cyclic imports
     from .context import CreateContext, CreatedInstance, UpdateData
-    from ayon_core.lib import AbstractAttrDef
 
 
 class CreatorError(Exception):
@@ -395,7 +394,7 @@ class BaseCreator:
         """Helper method to remove instance from create context.
 
         Instances must be removed from DCC workfile metadat aand from create
-        context in which plugin is existing at the moment of removement to
+        context in which plugin is existing at the moment of removal to
         propagate the change without restarting create context.
 
         Args:
@@ -447,7 +446,7 @@ class BaseCreator:
         """Store changes of existing instances so they can be recollected.
 
         Args:
-            update_list (List[UpdateData]): Gets list of tuples. Each item
+            update_list (list[UpdateData]): Gets list of tuples. Each item
                 contain changed instance and it's changes.
         """
 
@@ -455,13 +454,13 @@ class BaseCreator:
 
     @abstractmethod
     def remove_instances(self, instances):
-        """Method called on instance removement.
+        """Method called on instance removal.
 
         Can also remove instance metadata from context but should return
         'True' if did so.
 
         Args:
-            instances (List[CreatedInstance]): Instance objects which should be
+            instances (list[CreatedInstance]): Instance objects which should be
                 removed.
         """
 
@@ -486,8 +485,7 @@ class BaseCreator:
     ):
         """Dynamic data for product name filling.
 
-        These may be get dynamically created based on current context of
-        workfile.
+        These may be dynamically created based on current context of workfile.
         """
 
         return {}
@@ -717,7 +715,7 @@ class Creator(BaseCreator):
         By default, returns `default_variants` value.
 
         Returns:
-            List[str]: Whisper variants for user input.
+            list[str]: Whisper variants for user input.
         """
 
         return copy.deepcopy(self.default_variants)
@@ -790,7 +788,7 @@ class Creator(BaseCreator):
             updating keys/values when plugin attributes change.
 
         Returns:
-            List[AbstractAttrDef]: Attribute definitions that can be tweaked
+            list[AbstractAttrDef]: Attribute definitions that can be tweaked
                 for created instance.
         """
         return self.pre_create_attr_defs
@@ -809,7 +807,7 @@ class AutoCreator(BaseCreator):
     """
 
     def remove_instances(self, instances):
-        """Skip removement."""
+        """Skip removal."""
         pass
 
 
