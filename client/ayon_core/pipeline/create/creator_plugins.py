@@ -1,14 +1,14 @@
 # -*- coding: utf-8 -*-
 import copy
 import collections
-from typing import TYPE_CHECKING, List, Optional, Union
+from typing import TYPE_CHECKING, Optional, Union
 
 from abc import ABCMeta, abstractmethod
 
 import six
 
 from ayon_core.settings import get_project_settings
-from ayon_core.lib import Logger, AbstractAttrDef
+from ayon_core.lib import Logger
 from ayon_core.pipeline.plugin_discover import (
     discover,
     register_plugin,
@@ -25,6 +25,7 @@ from .legacy_create import LegacyCreator
 if TYPE_CHECKING:
     # Avoid cyclic imports
     from .context import CreateContext, CreatedInstance, UpdateData
+    from ayon_core.lib import AbstractAttrDef
 
 
 class CreatorError(Exception):
@@ -191,7 +192,7 @@ class BaseCreator:
     # Instance attribute definitions that can be changed per instance
     # - returns list of attribute definitions from
     #       `ayon_core.lib.attribute_definitions`
-    instance_attr_defs: List[AbstractAttrDef] = []
+    instance_attr_defs: "list[AbstractAttrDef]" = []
 
     # Filtering by host name - can be used to be filtered by host name
     # - used on all hosts when set to 'None' for Backwards compatibility
@@ -556,7 +557,7 @@ class BaseCreator:
         keys/values when plugin attributes change.
 
         Returns:
-            List[AbstractAttrDef]: Attribute definitions that can be tweaked
+            list[AbstractAttrDef]: Attribute definitions that can be tweaked
                 for created instance.
         """
 
