@@ -485,8 +485,7 @@ class BaseCreator:
     ):
         """Dynamic data for product name filling.
 
-        These may be get dynamically created based on current context of
-        workfile.
+        These may be dynamically created based on current context of workfile.
         """
 
         return {}
