@@ -14,7 +14,7 @@ class ExtractThumbnail(plugin.MayaExtractorPlugin):
     capture.
 
     """
-    order = pyblish.api.ExtractorOrder - 0.45
+    order = pyblish.api.ExtractorOrder - 0.3
     label = "Thumbnail"
     families = ["review"]
 

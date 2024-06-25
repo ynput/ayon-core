@@ -14,6 +14,10 @@ class ExtractThumbnail(publish.Extractor):
     families = ["review"]
 
     def process(self, instance):
+        if instance.data.get("thumbnailSource"):
+            self.log.debug("Thumbnail source found, skipping...")
+            return
+
         ext = instance.data.get("imageFormat")
         frame = int(instance.data["frameStart"])
         staging_dir = self.staging_dir(instance)
