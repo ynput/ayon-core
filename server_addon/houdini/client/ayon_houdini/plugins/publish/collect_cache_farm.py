@@ -12,9 +12,7 @@ class CollectDataforCache(plugin.HoudiniInstancePlugin):
 
     # Run after Collect Frames
     order = pyblish.api.CollectorOrder + 0.11
-    families = ["ass", "pointcache",
-                "mantraifd", "redshiftproxy",
-                "vdbcache", "model"]
+    families = ["ass", "pointcache", "redshiftproxy", "vdbcache", "model"]
     targets = ["local", "remote"]
     label = "Collect Data for Cache"
 

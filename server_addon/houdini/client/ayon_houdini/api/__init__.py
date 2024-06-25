@@ -4,10 +4,6 @@ from .pipeline import (
     containerise
 )
 
-from .plugin import (
-    Creator,
-)
-
 from .lib import (
     lsattr,
     lsattrs,
@@ -22,8 +18,6 @@ __all__ = [
 
     "ls",
     "containerise",
-
-    "Creator",
 
     # Utility functions
     "lsattr",

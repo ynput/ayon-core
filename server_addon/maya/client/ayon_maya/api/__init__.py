@@ -12,7 +12,6 @@ from .pipeline import (
     MayaHost,
 )
 from .plugin import (
-    Creator,
     Loader
 )
 
@@ -45,7 +44,6 @@ __all__ = [
     "containerise",
     "MayaHost",
 
-    "Creator",
     "Loader",
 
     # Workfiles API

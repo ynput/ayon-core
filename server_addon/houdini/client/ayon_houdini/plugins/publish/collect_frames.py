@@ -14,9 +14,8 @@ class CollectFrames(plugin.HoudiniInstancePlugin):
     # this plugin runs after CollectRopFrameRange
     order = pyblish.api.CollectorOrder + 0.1
     label = "Collect Frames"
-    families = ["vdbcache", "imagesequence", "ass",
-                "mantraifd", "redshiftproxy", "review",
-                "pointcache"]
+    families = ["camera", "vdbcache", "imagesequence", "ass",
+                "redshiftproxy", "review", "pointcache", "fbx"]
 
     def process(self, instance):
 
@@ -34,8 +33,10 @@ class CollectFrames(plugin.HoudiniInstancePlugin):
         # todo: `frames` currently conflicts with "explicit frames" for a
         #       for a custom frame list. So this should be refactored.
 
-        # Set frames to the file name by default.
-        instance.data.update({"frames": file_name})
+        instance.data.update({
+            "frames": file_name,  # Set frames to the file name by default.
+            "stagingDir": os.path.dirname(output)
+        })
 
         # Skip unnecessary logic if start and end frames are equal.
         if start_frame == end_frame:
