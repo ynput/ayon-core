@@ -1,3 +1,5 @@
+import hou
+
 from ayon_core.pipeline import registered_host
 from ayon_core.pipeline.create import CreateContext
 
