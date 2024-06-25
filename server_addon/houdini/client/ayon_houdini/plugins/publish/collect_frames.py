@@ -48,16 +48,18 @@ class CollectFrames(plugin.HoudiniInstancePlugin):
         match = re.match(pattern, file_name)
 
         if match and start_frame is not None:
-            self.log.debug("Collecting file sequence %s [%s-%s]",
-                           file_name, start_frame, end_frame)
             # Check if frames are bigger than 1 (file collection)
             # override the result
             if end_frame - start_frame > 0:
                 result = self.create_file_list(
                     match, int(start_frame), int(end_frame)
                 )
+
+        if isinstance(result, list):
+            self.log.debug("Collect frames: file sequence '%s' [%s-%s]",
+                           file_name, start_frame, end_frame)
         else:
-            self.log.debug("Collecting single file %s", file_name)
+            self.log.debug("Collect frames: single file '%s'", file_name)
 
         # todo: `frames` currently conflicts with "explicit frames" for a
         #       for a custom frame list. So this should be refactored.
