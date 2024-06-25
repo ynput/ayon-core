@@ -232,6 +232,7 @@ class CreateHoudiniGeneric(plugin.HoudiniCreator):
         "opengl": REVIEW_PRODUCT_TYPES,
         "arnold": RENDER_PRODUCT_TYPES,
         "karma": RENDER_PRODUCT_TYPES,
+        "ifd": RENDER_PRODUCT_TYPES,
         "usdrender": RENDER_PRODUCT_TYPES,
         "usdrender_rop": RENDER_PRODUCT_TYPES,
         "vray_renderer": RENDER_PRODUCT_TYPES,
