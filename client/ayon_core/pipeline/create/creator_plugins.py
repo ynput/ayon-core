@@ -49,8 +49,8 @@ class ProductConvertorPlugin(object):
     Publisher and give user ability to run conversion script.
 
     Convertor logic should be very simple. Method 'find_instances' is to
-    look for legacy instances in scene a possibly call
-    pre-implemented 'add_convertor_item'.
+    look for legacy instances in scene and possibly call pre-implemented
+    'add_convertor_item'.
 
     User will have ability to trigger conversion which is executed by calling
     'convert' which should call 'remove_convertor_item' when is done.
