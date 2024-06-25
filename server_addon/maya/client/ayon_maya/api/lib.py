@@ -1721,7 +1721,7 @@ def is_valid_reference_node(reference_node):
     Reference node 'reference_node' is not associated with a reference file.
 
     Note that this does *not* check whether the reference node points to an
-    existing file. Instead it only returns whether maya considers it valid
+    existing file. Instead, it only returns whether maya considers it valid
     and thus is not an unassociated reference node
 
     Arguments:
@@ -1731,9 +1731,18 @@ def is_valid_reference_node(reference_node):
         bool: Whether reference node is a valid reference
 
     """
+    # maya 2022 is missing `isValidReference` so the check needs to be
+    # done in different way.
+    if int(cmds.about(version=True)) < 2023:
+        try:
+            cmds.referenceQuery(reference_node, filename=True)
+            return True
+        except RuntimeError:
+            return False
     sel = OpenMaya.MSelectionList()
     sel.add(reference_node)
     depend_node = sel.getDependNode(0)
+
     return OpenMaya.MFnReference(depend_node).isValidReference()
 
 
