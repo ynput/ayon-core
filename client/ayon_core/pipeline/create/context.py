@@ -7,6 +7,7 @@ import collections
 import inspect
 from uuid import uuid4
 from contextlib import contextmanager
+from typing import Optional
 
 import pyblish.logic
 import pyblish.api
@@ -1431,7 +1432,7 @@ class CreateContext:
         self.convertors_plugins = {}
         self.convertor_items_by_id = {}
 
-        self.publish_discover_result = None
+        self.publish_discover_result: Optional[DiscoverResult] = None
         self.publish_plugins_mismatch_targets = []
         self.publish_plugins = []
         self.plugins_with_defs = []
