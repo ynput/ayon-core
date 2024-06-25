@@ -2,6 +2,7 @@ import glob
 import os
 import tempfile
 
+import pyblish.api
 from ayon_maya.api import lib
 from ayon_maya.api import plugin
 
@@ -13,7 +14,7 @@ class ExtractThumbnail(plugin.MayaExtractorPlugin):
     capture.
 
     """
-
+    order = pyblish.api.ExtractorOrder - 0.1
     label = "Thumbnail"
     families = ["review"]
 
