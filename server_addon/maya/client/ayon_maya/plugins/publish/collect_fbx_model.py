@@ -9,7 +9,7 @@ class CollectFbxModel(plugin.MayaInstancePlugin,
     """Collect Camera for FBX export."""
 
     order = pyblish.api.CollectorOrder + 0.2
-    label = "Collect Model for FBX export"
+    label = "Collect Fbx Model"
     families = ["model"]
     optional = True
 
