@@ -455,7 +455,7 @@ class BaseCreator:
         'True' if did so.
 
         Args:
-            instance(List[CreatedInstance]): Instance objects which should be
+            instances (List[CreatedInstance]): Instance objects which should be
                 removed.
         """
 
