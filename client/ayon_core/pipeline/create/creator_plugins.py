@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 import copy
 import collections
-from typing import TYPE_CHECKING, Optional, Union
+from typing import TYPE_CHECKING, Optional
 
 from abc import ABCMeta, abstractmethod
 
@@ -229,7 +229,7 @@ class BaseCreator:
             plugin_name (str): Name of settings.
 
         Returns:
-            Union[dict[str, Any], None]: Settings values or None.
+            Optional[dict[str, Any]]: Settings values or None.
         """
 
         settings = project_settings.get(category_name)
