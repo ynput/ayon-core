@@ -2,7 +2,6 @@ import glob
 import os
 import tempfile
 
-import pyblish.api
 from ayon_maya.api import lib
 from ayon_maya.api import plugin
 
@@ -14,13 +13,14 @@ class ExtractThumbnail(plugin.MayaExtractorPlugin):
     capture.
 
     """
-    order = pyblish.api.ExtractorOrder - 0.45
     label = "Thumbnail"
     families = ["review"]
 
     def process(self, instance):
         self.log.debug("Extracting thumbnail..")
-
+        if instance.data.get("thumbnailSource"):
+            self.log.debug("Thumbnail source found, skipping...")
+            return
         camera = instance.data["review_camera"]
 
         task_data = instance.data["anatomyData"].get("task", {})

@@ -1,5 +1,4 @@
 import os
-import pyblish.api
 from ayon_core.pipeline import publish
 from ayon_max.api.preview_animation import render_preview_animation
 
@@ -8,12 +7,15 @@ class ExtractThumbnail(publish.Extractor):
     """Extract Thumbnail for Review
     """
 
-    order = pyblish.api.ExtractorOrder - 0.45
     label = "Extract Thumbnail"
     hosts = ["max"]
     families = ["review"]
 
     def process(self, instance):
+        if instance.data.get("thumbnailSource"):
+            self.log.debug("Thumbnail source found, skipping...")
+            return
+
         ext = instance.data.get("imageFormat")
         frame = int(instance.data["frameStart"])
         staging_dir = self.staging_dir(instance)
