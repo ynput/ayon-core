@@ -8,7 +8,7 @@ class ExtractThumbnail(publish.Extractor):
     """Extract Thumbnail for Review
     """
 
-    order = pyblish.api.ExtractorOrder
+    order = pyblish.api.ExtractorOrder - 0.3
     label = "Extract Thumbnail"
     hosts = ["max"]
     families = ["review"]
