@@ -156,7 +156,7 @@ class ProductConvertorPlugin(object):
 class BaseCreator:
     """Plugin that create and modify instance data before publishing process.
 
-    We should maybe find better name as creation is only one part of it's logic
+    We should maybe find better name as creation is only one part of its logic
     and to avoid expectations that it is the same as `avalon.api.Creator`.
 
     Single object should be used for multiple instances instead of single
