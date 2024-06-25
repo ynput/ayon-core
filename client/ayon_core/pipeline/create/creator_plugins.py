@@ -460,7 +460,7 @@ class BaseCreator:
         'True' if did so.
 
         Args:
-            instances (List[CreatedInstance]): Instance objects which should be
+            instances (list[CreatedInstance]): Instance objects which should be
                 removed.
         """
 
@@ -716,7 +716,7 @@ class Creator(BaseCreator):
         By default, returns `default_variants` value.
 
         Returns:
-            List[str]: Whisper variants for user input.
+            list[str]: Whisper variants for user input.
         """
 
         return copy.deepcopy(self.default_variants)
@@ -789,7 +789,7 @@ class Creator(BaseCreator):
             updating keys/values when plugin attributes change.
 
         Returns:
-            List[AbstractAttrDef]: Attribute definitions that can be tweaked
+            list[AbstractAttrDef]: Attribute definitions that can be tweaked
                 for created instance.
         """
         return self.pre_create_attr_defs
