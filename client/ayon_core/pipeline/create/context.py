@@ -7,6 +7,7 @@ import collections
 import inspect
 from uuid import uuid4
 from contextlib import contextmanager
+from typing import Optional
 
 import pyblish.logic
 import pyblish.api
@@ -37,6 +38,7 @@ from .creator_plugins import (
 
 # Changes of instances and context are send as tuple of 2 information
 UpdateData = collections.namedtuple("UpdateData", ["instance", "changes"])
+_NOT_SET = object()
 
 
 class UnavailableSharedData(Exception):
@@ -681,7 +683,7 @@ class PublishAttributeValues(AttributeValues):
 
     @property
     def parent(self):
-        self.publish_attributes.parent
+        return self.publish_attributes.parent
 
 
 class PublishAttributes:
@@ -1401,6 +1403,11 @@ class CreateContext:
         self._current_folder_path = None
         self._current_task_name = None
         self._current_workfile_path = None
+        self._current_project_settings = None
+
+        self._current_folder_entity = _NOT_SET
+        self._current_task_entity = _NOT_SET
+        self._current_task_type = _NOT_SET
 
         self._current_project_anatomy = None
 
@@ -1425,7 +1432,7 @@ class CreateContext:
         self.convertors_plugins = {}
         self.convertor_items_by_id = {}
 
-        self.publish_discover_result = None
+        self.publish_discover_result: Optional[DiscoverResult] = None
         self.publish_plugins_mismatch_targets = []
         self.publish_plugins = []
         self.plugins_with_defs = []
@@ -1571,6 +1578,64 @@ class CreateContext:
 
         return self._current_task_name
 
+    def get_current_task_type(self):
+        """Task type which was used as current context on context reset.
+
+        Returns:
+            Union[str, None]: Task type.
+
+        """
+        if self._current_task_type is _NOT_SET:
+            task_type = None
+            task_entity = self.get_current_task_entity()
+            if task_entity:
+                task_type = task_entity["taskType"]
+            self._current_task_type = task_type
+        return self._current_task_type
+
+    def get_current_folder_entity(self):
+        """Folder entity for current context folder.
+
+        Returns:
+            Union[dict[str, Any], None]: Folder entity.
+
+        """
+        if self._current_folder_entity is not _NOT_SET:
+            return copy.deepcopy(self._current_folder_entity)
+        folder_entity = None
+        folder_path = self.get_current_folder_path()
+        if folder_path:
+            project_name = self.get_current_project_name()
+            folder_entity = ayon_api.get_folder_by_path(
+                project_name, folder_path
+            )
+        self._current_folder_entity = folder_entity
+        return copy.deepcopy(self._current_folder_entity)
+
+    def get_current_task_entity(self):
+        """Task entity for current context task.
+
+        Returns:
+            Union[dict[str, Any], None]: Task entity.
+
+        """
+        if self._current_task_entity is not _NOT_SET:
+            return copy.deepcopy(self._current_task_entity)
+        task_entity = None
+        task_name = self.get_current_task_name()
+        if task_name:
+            folder_entity = self.get_current_folder_entity()
+            if folder_entity:
+                project_name = self.get_current_project_name()
+                task_entity = ayon_api.get_task_by_name(
+                    project_name,
+                    folder_id=folder_entity["id"],
+                    task_name=task_name
+                )
+        self._current_task_entity = task_entity
+        return copy.deepcopy(self._current_task_entity)
+
+
     def get_current_workfile_path(self):
         """Workfile path which was opened on context reset.
 
@@ -1591,6 +1656,12 @@ class CreateContext:
             self._current_project_anatomy = Anatomy(
                 self._current_project_name)
         return self._current_project_anatomy
+
+    def get_current_project_settings(self):
+        if self._current_project_settings is None:
+            self._current_project_settings = get_project_settings(
+                self.get_current_project_name())
+        return self._current_project_settings
 
     @property
     def context_has_changed(self):
@@ -1718,7 +1789,12 @@ class CreateContext:
         self._current_task_name = task_name
         self._current_workfile_path = workfile_path
 
+        self._current_folder_entity = _NOT_SET
+        self._current_task_entity = _NOT_SET
+        self._current_task_type = _NOT_SET
+
         self._current_project_anatomy = None
+        self._current_project_settings = None
 
     def reset_plugins(self, discover_publish_plugins=True):
         """Reload plugins.
@@ -1772,7 +1848,7 @@ class CreateContext:
 
     def _reset_creator_plugins(self):
         # Prepare settings
-        project_settings = get_project_settings(self.project_name)
+        project_settings = self.get_current_project_settings()
 
         # Discover and prepare creators
         creators = {}
@@ -1987,12 +2063,12 @@ class CreateContext:
                     "Folder '{}' was not found".format(folder_path)
                 )
 
-        task_name = None
         if task_entity is None:
-            task_name = self.get_current_task_name()
-            task_entity = ayon_api.get_task_by_name(
-                project_name, folder_entity["id"], task_name
-            )
+            current_task_name = self.get_current_task_name()
+            if current_task_name:
+                task_entity = ayon_api.get_task_by_name(
+                    project_name, folder_entity["id"], current_task_name
+                )
 
         if pre_create_data is None:
             pre_create_data = {}
@@ -2018,7 +2094,7 @@ class CreateContext:
 
         instance_data = {
             "folderPath": folder_entity["path"],
-            "task": task_name,
+            "task": task_entity["name"] if task_entity else None,
             "productType": creator.product_type,
             "variant": variant
         }
@@ -2053,7 +2129,7 @@ class CreateContext:
             exc_info = sys.exc_info()
             self.log.warning(error_message.format(identifier, exc_info[1]))
 
-        except:
+        except:  # noqa: E722
             add_traceback = True
             exc_info = sys.exc_info()
             self.log.warning(
@@ -2163,7 +2239,7 @@ class CreateContext:
                 exc_info = sys.exc_info()
                 self.log.warning(error_message.format(identifier, exc_info[1]))
 
-            except:
+            except:  # noqa: E722
                 failed = True
                 add_traceback = True
                 exc_info = sys.exc_info()
@@ -2197,7 +2273,7 @@ class CreateContext:
             try:
                 convertor.find_instances()
 
-            except:
+            except:  # noqa: E722
                 failed_info.append(
                     prepare_failed_convertor_operation_info(
                         convertor.identifier, sys.exc_info()
@@ -2373,7 +2449,7 @@ class CreateContext:
                 exc_info = sys.exc_info()
                 self.log.warning(error_message.format(identifier, exc_info[1]))
 
-            except:
+            except:  # noqa: E722
                 failed = True
                 add_traceback = True
                 exc_info = sys.exc_info()
@@ -2440,7 +2516,7 @@ class CreateContext:
                     error_message.format(identifier, exc_info[1])
                 )
 
-            except:
+            except:  # noqa: E722
                 failed = True
                 add_traceback = True
                 exc_info = sys.exc_info()
@@ -2546,7 +2622,7 @@ class CreateContext:
             try:
                 self.run_convertor(convertor_identifier)
 
-            except:
+            except:  # noqa: E722
                 failed_info.append(
                     prepare_failed_convertor_operation_info(
                         convertor_identifier, sys.exc_info()

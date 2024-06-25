@@ -6,7 +6,10 @@ from ayon_server.settings import (
     ensure_unique_names,
 )
 
-from .common import KnobModel
+from .common import (
+    KnobModel,
+    ColorspaceConfigurationModel,
+)
 
 
 class NodesModel(BaseSettingsModel):
@@ -52,6 +55,8 @@ class OverrideNodesModel(NodesModel):
 
 
 class NodesSetting(BaseSettingsModel):
+    _isGroup: bool = True
+
     required_nodes: list[RequiredNodesModel] = SettingsField(
         title="Plugin required",
         default_factory=list
@@ -83,6 +88,8 @@ def ocio_configs_switcher_enum():
 class WorkfileColorspaceSettings(BaseSettingsModel):
     """Nuke workfile colorspace preset. """
 
+    _isGroup: bool = True
+
     color_management: Literal["Nuke", "OCIO"] = SettingsField(
         title="Color Management Workflow"
     )
@@ -97,8 +104,23 @@ class WorkfileColorspaceSettings(BaseSettingsModel):
     working_space: str = SettingsField(
         title="Working Space"
     )
-    thumbnail_space: str = SettingsField(
-        title="Thumbnail Space"
+    monitor_lut: str = SettingsField(
+        title="Thumbnails"
+    )
+    monitor_out_lut: str = SettingsField(
+        title="Monitor Out"
+    )
+    int_8_lut: str = SettingsField(
+        title="8-bit Files"
+    )
+    int_16_lut: str = SettingsField(
+        title="16-bit Files"
+    )
+    log_lut: str = SettingsField(
+        title="Log Files"
+    )
+    float_lut: str = SettingsField(
+        title="Float Files"
     )
 
 
@@ -110,6 +132,8 @@ class ReadColorspaceRulesItems(BaseSettingsModel):
 
 
 class RegexInputsModel(BaseSettingsModel):
+    _isGroup: bool = True
+
     inputs: list[ReadColorspaceRulesItems] = SettingsField(
         default_factory=list,
         title="Inputs"
@@ -117,19 +141,64 @@ class RegexInputsModel(BaseSettingsModel):
 
 
 class ViewProcessModel(BaseSettingsModel):
-    viewerProcess: str = SettingsField(
-        title="Viewer Process Name"
+    _isGroup: bool = True
+
+    display: str = SettingsField(
+        "",
+        title="Display",
+        description="What display to use",
+    )
+    view: str = SettingsField(
+        "",
+        title="View",
+        description=(
+            "What view to use. Anatomy context tokens can "
+            "be used to dynamically set the value."
+        ),
+    )
+
+
+class MonitorProcessModel(BaseSettingsModel):
+    _isGroup: bool = True
+
+    display: str = SettingsField(
+        "",
+        title="Display",
+        description="What display to use",
+    )
+    view: str = SettingsField(
+        "",
+        title="View",
+        description=(
+            "What view to use. Anatomy context tokens can "
+            "be used to dynamically set the value."
+        ),
     )
 
 
 class ImageIOConfigModel(BaseSettingsModel):
+    """[DEPRECATED] Addon OCIO config settings. Please set the OCIO config
+    path in the Core addon profiles here
+    (ayon+settings://core/imageio/ocio_config_profiles).
+    """
+
     override_global_config: bool = SettingsField(
         False,
-        title="Override global OCIO config"
+        title="Override global OCIO config",
+        description=(
+            "DEPRECATED functionality. Please set the OCIO config path in the "
+            "Core addon profiles here (ayon+settings://core/imageio/"
+            "ocio_config_profiles)."
+        ),
     )
     filepath: list[str] = SettingsField(
         default_factory=list,
-        title="Config path"
+        title="Config path",
+        description=(
+            "DEPRECATED functionality. Please set the OCIO config path in the "
+            "Core addon profiles here (ayon+settings://core/imageio/"
+            "ocio_config_profiles)."
+        ),
     )
 
 
@@ -141,6 +210,8 @@ class ImageIOFileRuleModel(BaseSettingsModel):
 
 
 class ImageIOFileRulesModel(BaseSettingsModel):
+    _isGroup: bool = True
+
     activate_host_rules: bool = SettingsField(False)
     rules: list[ImageIOFileRuleModel] = SettingsField(
         default_factory=list,
@@ -155,14 +226,7 @@ class ImageIOFileRulesModel(BaseSettingsModel):
 
 class ImageIOSettings(BaseSettingsModel):
     """Nuke color management project settings. """
-    _isGroup: bool = True
 
-    """# TODO: enhance settings with host api:
-    to restructure settings for simplification.
-
-    now: nuke/imageio/viewer/viewerProcess
-    future: nuke/imageio/viewer
-    """
     activate_host_color_management: bool = SettingsField(
         True, title="Enable Color Management")
     ocio_config: ImageIOConfigModel = SettingsField(
@@ -179,18 +243,13 @@ class ImageIOSettings(BaseSettingsModel):
         description="""Viewer profile is used during
         Creation of new viewer node at knob viewerProcess"""
     )
-
-    """# TODO: enhance settings with host api:
-    to restructure settings for simplification.
-
-    now: nuke/imageio/baking/viewerProcess
-    future: nuke/imageio/baking
-    """
-    baking: ViewProcessModel = SettingsField(
-        default_factory=ViewProcessModel,
-        title="Baking",
-        description="""Baking profile is used during
-        publishing baked colorspace data at knob viewerProcess"""
+    monitor: MonitorProcessModel = SettingsField(
+        default_factory=MonitorProcessModel,
+        title="Monitor OUT"
+    )
+    baking_target: ColorspaceConfigurationModel = SettingsField(
+        default_factory=ColorspaceConfigurationModel,
+        title="Baking Target Colorspace"
     )
 
     workfile: WorkfileColorspaceSettings = SettingsField(
@@ -213,180 +272,83 @@ class ImageIOSettings(BaseSettingsModel):
 
 
 DEFAULT_IMAGEIO_SETTINGS = {
-    "viewer": {
-        "viewerProcess": "sRGB (default)"
-    },
-    "baking": {
-        "viewerProcess": "rec709 (default)"
+    "viewer": {"display": "ACES", "view": "sRGB"},
+    "monitor": {"display": "ACES", "view": "Rec.709"},
+    "baking_target": {
+        "enabled": True,
+        "type": "colorspace",
+        "colorspace": "Output - Rec.709",
     },
     "workfile": {
         "color_management": "OCIO",
-        "native_ocio_config": "nuke-default",
-        "working_space": "scene_linear",
-        "thumbnail_space": "sRGB (default)",
+        "native_ocio_config": "aces_1.2",
+        "working_space": "role_scene_linear",
+        "monitor_lut": "ACES/sRGB",
+        "monitor_out_lut": "ACES/sRGB",
+        "int_8_lut": "role_matte_paint",
+        "int_16_lut": "role_texture_paint",
+        "log_lut": "role_compositing_log",
+        "float_lut": "role_scene_linear",
     },
     "nodes": {
         "required_nodes": [
             {
-                "plugins": [
-                    "CreateWriteRender"
-                ],
+                "plugins": ["CreateWriteRender"],
                 "nuke_node_class": "Write",
                 "knobs": [
-                    {
-                        "type": "text",
-                        "name": "file_type",
-                        "text": "exr"
-                    },
-                    {
-                        "type": "text",
-                        "name": "datatype",
-                        "text": "16 bit half"
-                    },
-                    {
-                        "type": "text",
-                        "name": "compression",
-                        "text": "Zip (1 scanline)"
-                    },
-                    {
-                        "type": "boolean",
-                        "name": "autocrop",
-                        "boolean": True
-                    },
+                    {"type": "text", "name": "file_type", "text": "exr"},
+                    {"type": "text", "name": "datatype", "text": "16 bit half"},
+                    {"type": "text", "name": "compression", "text": "Zip (1 scanline)"},
+                    {"type": "boolean", "name": "autocrop", "boolean": True},
                     {
                         "type": "color_gui",
                         "name": "tile_color",
-                        "color_gui": [
-                            186,
-                            35,
-                            35
-                        ]
+                        "color_gui": [186, 35, 35],
                     },
-                    {
-                        "type": "text",
-                        "name": "channels",
-                        "text": "rgb"
-                    },
-                    {
-                        "type": "text",
-                        "name": "colorspace",
-                        "text": "scene_linear"
-                    },
-                    {
-                        "type": "boolean",
-                        "name": "create_directories",
-                        "boolean": True
-                    }
-                ]
+                    {"type": "text", "name": "channels", "text": "rgb"},
+                    {"type": "text", "name": "colorspace", "text": "scene_linear"},
+                    {"type": "boolean", "name": "create_directories", "boolean": True},
+                ],
             },
             {
-                "plugins": [
-                    "CreateWritePrerender"
-                ],
+                "plugins": ["CreateWritePrerender"],
                 "nuke_node_class": "Write",
                 "knobs": [
-                    {
-                        "type": "text",
-                        "name": "file_type",
-                        "text": "exr"
-                    },
-                    {
-                        "type": "text",
-                        "name": "datatype",
-                        "text": "16 bit half"
-                    },
-                    {
-                        "type": "text",
-                        "name": "compression",
-                        "text": "Zip (1 scanline)"
-                    },
-                    {
-                        "type": "boolean",
-                        "name": "autocrop",
-                        "boolean": True
-                    },
+                    {"type": "text", "name": "file_type", "text": "exr"},
+                    {"type": "text", "name": "datatype", "text": "16 bit half"},
+                    {"type": "text", "name": "compression", "text": "Zip (1 scanline)"},
+                    {"type": "boolean", "name": "autocrop", "boolean": True},
                     {
                         "type": "color_gui",
                         "name": "tile_color",
-                        "color_gui": [
-                            171,
-                            171,
-                            10
-                        ]
+                        "color_gui": [171, 171, 10],
                     },
-                    {
-                        "type": "text",
-                        "name": "channels",
-                        "text": "rgb"
-                    },
-                    {
-                        "type": "text",
-                        "name": "colorspace",
-                        "text": "scene_linear"
-                    },
-                    {
-                        "type": "boolean",
-                        "name": "create_directories",
-                        "boolean": True
-                    }
-                ]
+                    {"type": "text", "name": "channels", "text": "rgb"},
+                    {"type": "text", "name": "colorspace", "text": "scene_linear"},
+                    {"type": "boolean", "name": "create_directories", "boolean": True},
+                ],
             },
             {
-                "plugins": [
-                    "CreateWriteImage"
-                ],
+                "plugins": ["CreateWriteImage"],
                 "nuke_node_class": "Write",
                 "knobs": [
-                    {
-                        "type": "text",
-                        "name": "file_type",
-                        "text": "tiff"
-                    },
-                    {
-                        "type": "text",
-                        "name": "datatype",
-                        "text": "16 bit"
-                    },
-                    {
-                        "type": "text",
-                        "name": "compression",
-                        "text": "Deflate"
-                    },
+                    {"type": "text", "name": "file_type", "text": "tiff"},
+                    {"type": "text", "name": "datatype", "text": "16 bit"},
+                    {"type": "text", "name": "compression", "text": "Deflate"},
                     {
                         "type": "color_gui",
                         "name": "tile_color",
-                        "color_gui": [
-                            56,
-                            162,
-                            7
-                        ]
+                        "color_gui": [56, 162, 7],
                     },
-                    {
-                        "type": "text",
-                        "name": "channels",
-                        "text": "rgb"
-                    },
-                    {
-                        "type": "text",
-                        "name": "colorspace",
-                        "text": "texture_paint"
-                    },
-                    {
-                        "type": "boolean",
-                        "name": "create_directories",
-                        "boolean": True
-                    }
-                ]
-            }
+                    {"type": "text", "name": "channels", "text": "rgb"},
+                    {"type": "text", "name": "colorspace", "text": "texture_paint"},
+                    {"type": "boolean", "name": "create_directories", "boolean": True},
+                ],
+            },
         ],
-        "override_nodes": []
+        "override_nodes": [],
     },
     "regex_inputs": {
-        "inputs": [
-            {
-                "regex": "(beauty).*(?=.exr)",
-                "colorspace": "linear"
-            }
-        ]
-    }
+        "inputs": [{"regex": "(beauty).*(?=.exr)", "colorspace": "linear"}]
+    },
 }

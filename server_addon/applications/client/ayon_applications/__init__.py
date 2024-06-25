@@ -1,3 +1,4 @@
+from .version import __version__
 from .constants import (
     APPLICATIONS_ADDON_ROOT,
     DEFAULT_ENV_SUBGROUP,
@@ -31,6 +32,8 @@ from .addon import ApplicationsAddon
 
 
 __all__ = (
+    "__version__",
+
     "APPLICATIONS_ADDON_ROOT",
     "DEFAULT_ENV_SUBGROUP",
     "PLATFORM_NAMES",

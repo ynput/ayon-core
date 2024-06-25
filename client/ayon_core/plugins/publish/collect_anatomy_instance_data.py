@@ -33,6 +33,7 @@ import collections
 import pyblish.api
 import ayon_api
 
+from ayon_core.pipeline.template_data import get_folder_template_data
 from ayon_core.pipeline.version_start import get_versioning_start
 
 
@@ -312,7 +313,14 @@ class CollectAnatomyInstanceData(pyblish.api.ContextPlugin):
 
             # Define version
             version_number = None
-            if self.follow_workfile_version:
+
+            # Allow an instance to force enable or disable the version
+            # following of the current context
+            use_context_version = self.follow_workfile_version
+            if "followWorkfileVersion" in instance.data:
+                use_context_version = instance.data["followWorkfileVersion"]
+
+            if use_context_version:
                 version_number = context.data("version")
 
             # Even if 'follow_workfile_version' is enabled, it may not be set
@@ -383,27 +391,18 @@ class CollectAnatomyInstanceData(pyblish.api.ContextPlugin):
         # - 'folder', 'hierarchy', 'parent', 'folder'
         folder_entity = instance.data.get("folderEntity")
         if folder_entity:
-            folder_name = folder_entity["name"]
-            folder_path = folder_entity["path"]
-            hierarchy_parts = folder_path.split("/")
-            hierarchy_parts.pop(0)
-            hierarchy_parts.pop(-1)
-            parent_name = project_entity["name"]
-            if hierarchy_parts:
-                parent_name = hierarchy_parts[-1]
-
-            hierarchy = "/".join(hierarchy_parts)
-            anatomy_data.update({
-                "asset": folder_name,
-                "hierarchy": hierarchy,
-                "parent": parent_name,
-                "folder": {
-                    "name": folder_name,
-                },
-            })
+            folder_data = get_folder_template_data(
+                folder_entity,
+                project_entity["name"]
+            )
+            anatomy_data.update(folder_data)
             return
 
-        if instance.data.get("newAssetPublishing"):
+        if (
+            instance.data.get("newHierarchyIntegration")
+            # Backwards compatible (Deprecated since 24/06/06)
+            or instance.data.get("newAssetPublishing")
+        ):
             hierarchy = instance.data["hierarchy"]
             anatomy_data["hierarchy"] = hierarchy
 
@@ -418,6 +417,11 @@ class CollectAnatomyInstanceData(pyblish.api.ContextPlugin):
                 "parent": parent_name,
                 "folder": {
                     "name": folder_name,
+                    "path": instance.data["folderPath"],
+                    # TODO get folder type from hierarchy
+                    #   Using 'Shot' is current default behavior of editorial
+                    #   (or 'newHierarchyIntegration') publishing.
+                    "type": "Shot",
                 },
             })
 
@@ -439,15 +443,22 @@ class CollectAnatomyInstanceData(pyblish.api.ContextPlugin):
         if task_data:
             # Fill task data
             # - if we're in editorial, make sure the task type is filled
-            if (
-                not instance.data.get("newAssetPublishing")
-                or task_data["type"]
-            ):
+            new_hierarchy = (
+                instance.data.get("newHierarchyIntegration")
+                # Backwards compatible (Deprecated since 24/06/06)
+                or instance.data.get("newAssetPublishing")
+            )
+            if not new_hierarchy or task_data["type"]:
                 anatomy_data["task"] = task_data
                 return
 
         # New hierarchy is not created, so we can only skip rest of the logic
-        if not instance.data.get("newAssetPublishing"):
+        new_hierarchy = (
+            instance.data.get("newHierarchyIntegration")
+            # Backwards compatible (Deprecated since 24/06/06)
+            or instance.data.get("newAssetPublishing")
+        )
+        if not new_hierarchy:
             return
 
         # Try to find task data based on hierarchy context and folder path

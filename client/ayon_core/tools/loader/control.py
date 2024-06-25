@@ -3,14 +3,13 @@ import uuid
 
 import ayon_api
 
+from ayon_core.lib import NestedCacheItem, CacheItem
 from ayon_core.lib.events import QueuedEventSystem
 from ayon_core.pipeline import Anatomy, get_current_context
 from ayon_core.host import ILoadHost
 from ayon_core.tools.common_models import (
     ProjectsModel,
     HierarchyModel,
-    NestedCacheItem,
-    CacheItem,
     ThumbnailsModel,
 )
 
@@ -180,6 +179,16 @@ class LoaderController(BackendLoaderController, FrontendLoaderController):
     def get_project_items(self, sender=None):
         return self._projects_model.get_project_items(sender)
 
+    def get_folder_type_items(self, project_name, sender=None):
+        return self._projects_model.get_folder_type_items(
+            project_name, sender
+        )
+
+    def get_project_status_items(self, project_name, sender=None):
+        return self._projects_model.get_project_status_items(
+            project_name, sender
+        )
+
     def get_folder_items(self, project_name, sender=None):
         return self._hierarchy_model.get_folder_items(project_name, sender)
 
@@ -343,10 +352,18 @@ class LoaderController(BackendLoaderController, FrontendLoaderController):
             return set()
 
         if not self._loaded_products_cache.is_valid:
-            if isinstance(self._host, ILoadHost):
-                containers = self._host.get_containers()
-            else:
-                containers = self._host.ls()
+            try:
+                if isinstance(self._host, ILoadHost):
+                    containers = self._host.get_containers()
+                else:
+                    containers = self._host.ls()
+
+            except BaseException:
+                self.log.error(
+                    "Failed to collect loaded products.", exc_info=True
+                )
+                containers = []
+
             repre_ids = set()
             for container in containers:
                 repre_id = container.get("representation")
