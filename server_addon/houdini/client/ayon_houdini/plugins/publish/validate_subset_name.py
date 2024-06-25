@@ -10,10 +10,9 @@ from ayon_core.pipeline.publish import (
     ValidateContentsOrder,
     RepairAction,
 )
-
+from ayon_core.pipeline.create import get_product_name
 from ayon_houdini.api import plugin
 from ayon_houdini.api.action import SelectInvalidAction
-from ayon_core.pipeline.create import get_product_name
 
 
 class FixProductNameAction(RepairAction):
@@ -26,7 +25,7 @@ class ValidateSubsetName(plugin.HoudiniInstancePlugin,
 
     """
 
-    families = ["staticMesh"]
+    families = ["staticMesh", "hda"]
     label = "Validate Product Name"
     order = ValidateContentsOrder + 0.1
     actions = [FixProductNameAction, SelectInvalidAction]
@@ -67,7 +66,13 @@ class ValidateSubsetName(plugin.HoudiniInstancePlugin,
             instance.context.data["hostName"],
             instance.data["productType"],
             variant=instance.data["variant"],
-            dynamic_data={"asset": folder_entity["name"]}
+            dynamic_data={
+                "asset": folder_entity["name"],
+                "folder": {
+                            "label": folder_entity["label"],
+                            "name": folder_entity["name"]
+                            }
+                }
         )
 
         if instance.data.get("productName") != product_name:
@@ -97,7 +102,13 @@ class ValidateSubsetName(plugin.HoudiniInstancePlugin,
             instance.context.data["hostName"],
             instance.data["productType"],
             variant=instance.data["variant"],
-            dynamic_data={"asset": folder_entity["name"]}
+            dynamic_data={
+                "asset": folder_entity["name"],
+                "folder": {
+                            "label": folder_entity["label"],
+                            "name": folder_entity["name"]
+                            }
+                }
         )
 
         instance.data["productName"] = product_name
