@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 import copy
 import collections
+import typing
 
 from abc import ABCMeta, abstractmethod
 
@@ -20,6 +21,10 @@ from .constants import DEFAULT_VARIANT_VALUE
 from .product_name import get_product_name
 from .utils import get_next_versions_for_instances
 from .legacy_create import LegacyCreator
+
+if typing.TYPE_CHECKING:
+    # Avoid cyclic imports
+    from .context import CreateContext, UpdateData
 
 
 class CreatorError(Exception):
@@ -441,7 +446,7 @@ class BaseCreator:
         """Store changes of existing instances so they can be recollected.
 
         Args:
-            update_list(List[UpdateData]): Gets list of tuples. Each item
+            update_list (list[UpdateData]): Gets list of tuples. Each item
                 contain changed instance and it's changes.
         """
 
