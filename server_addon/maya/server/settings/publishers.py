@@ -184,6 +184,11 @@ class CollectFbxCameraModel(BaseSettingsModel):
     enabled: bool = SettingsField(title="CollectFbxCamera")
 
 
+
+class CollectFbxModelModel(BaseSettingsModel):
+    enabled: bool = SettingsField(title="CollectFbxModel")
+
+
 class CollectGLTFModel(BaseSettingsModel):
     enabled: bool = SettingsField(title="CollectGLTF")
 
@@ -625,6 +630,10 @@ class PublishersModel(BaseSettingsModel):
         default_factory=CollectFbxCameraModel,
         title="Collect Camera for FBX export",
     )
+    CollectFbxModel: CollectFbxModelModel = SettingsField(
+        default_factory=CollectFbxModelModel,
+        title="Collect Model for FBX export",
+    )
     CollectGLTF: CollectGLTFModel = SettingsField(
         default_factory=CollectGLTFModel,
         title="Collect Assets for GLB/GLTF export"
@@ -1045,6 +1054,9 @@ DEFAULT_PUBLISH_SETTINGS = {
         "enabled": False
     },
     "CollectFbxCamera": {
+        "enabled": False
+    },
+    "CollectFbxModel": {
         "enabled": False
     },
     "CollectGLTF": {
