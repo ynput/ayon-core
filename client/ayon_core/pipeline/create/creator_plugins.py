@@ -394,7 +394,7 @@ class BaseCreator:
         """Helper method to remove instance from create context.
 
         Instances must be removed from DCC workfile metadat aand from create
-        context in which plugin is existing at the moment of removement to
+        context in which plugin is existing at the moment of removal to
         propagate the change without restarting create context.
 
         Args:
@@ -454,7 +454,7 @@ class BaseCreator:
 
     @abstractmethod
     def remove_instances(self, instances):
-        """Method called on instance removement.
+        """Method called on instance removal.
 
         Can also remove instance metadata from context but should return
         'True' if did so.
@@ -808,7 +808,7 @@ class AutoCreator(BaseCreator):
     """
 
     def remove_instances(self, instances):
-        """Skip removement."""
+        """Skip removal."""
         pass
 
 
