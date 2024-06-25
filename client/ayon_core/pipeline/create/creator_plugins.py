@@ -128,7 +128,7 @@ class ProductConvertorPlugin(object):
     def collection_shared_data(self):
         """Access to shared data that can be used during 'find_instances'.
 
-        Retruns:
+        Returns:
             dict[str, Any]: Shared data.
 
         Raises:
@@ -567,7 +567,7 @@ class BaseCreator:
     def collection_shared_data(self):
         """Access to shared data that can be used during creator's collection.
 
-        Retruns:
+        Returns:
             dict[str, Any]: Shared data.
 
         Raises:
