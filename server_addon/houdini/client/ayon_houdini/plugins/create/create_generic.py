@@ -563,6 +563,11 @@ class CreateHoudiniGeneric(plugin.HoudiniCreator):
             hou.StringParmTemplate(
                 "AYON_productName", "Product Name",
                 num_components=1,
+                # TODO: This default value should adhere more to AYON's
+                #   product name templates. We might need to avoid making
+                #   this field editable and set up callbacks so it evaluates
+                #   dynamically using the `get_product_name` logic based off
+                #   of other attributes on the node
                 default_value=('`chs("AYON_productType")``chs("AYON_variant")`',)
             ),
             hou.ToggleParmTemplate(
@@ -668,6 +673,8 @@ class CreateHoudiniGeneric(plugin.HoudiniCreator):
                     label="Review",
                     tooltip="Mark as reviewable",
                     default=True),
+            # TODO: This render target isn't actually 'accurate' for render
+            #  instances that should also allow a split export+render workflow.
             EnumDef("render_target",
                     items=render_target_items,
                     label="Render target",
