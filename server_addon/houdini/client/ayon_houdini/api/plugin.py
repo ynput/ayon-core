@@ -10,8 +10,7 @@ import hou
 import pyblish.api
 from ayon_core.pipeline import (
     CreatorError,
-    LegacyCreator,
-    Creator as NewCreator,
+    Creator,
     CreatedInstance,
     AYON_INSTANCE_ID,
     AVALON_INSTANCE_ID,
@@ -24,80 +23,6 @@ from .lib import imprint, read, lsattr, add_self_publish_button
 
 
 SETTINGS_CATEGORY = "houdini"
-
-
-class Creator(LegacyCreator):
-    """Creator plugin to create instances in Houdini
-
-    To support the wide range of node types for render output (Alembic, VDB,
-    Mantra) the Creator needs a node type to create the correct instance
-
-    By default, if none is given, is `geometry`. An example of accepted node
-    types: geometry, alembic, ifd (mantra)
-
-    Please check the Houdini documentation for more node types.
-
-    Tip: to find the exact node type to create press the `i` left of the node
-    when hovering over a node. The information is visible under the name of
-    the node.
-
-    Deprecated:
-        This creator is deprecated and will be removed in future version.
-
-    """
-    defaults = ['Main']
-
-    def __init__(self, *args, **kwargs):
-        super(Creator, self).__init__(*args, **kwargs)
-        self.nodes = []
-
-    def process(self):
-        """This is the base functionality to create instances in Houdini
-
-        The selected nodes are stored in self to be used in an override method.
-        This is currently necessary in order to support the multiple output
-        types in Houdini which can only be rendered through their own node.
-
-        Default node type if none is given is `geometry`
-
-        It also makes it easier to apply custom settings per instance type
-
-        Example of override method for Alembic:
-
-            def process(self):
-                instance =  super(CreateEpicNode, self, process()
-                # Set parameters for Alembic node
-                instance.setParms(
-                    {"sop_path": "$HIP/%s.abc" % self.nodes[0]}
-                )
-
-        Returns:
-            hou.Node
-
-        """
-        try:
-            if (self.options or {}).get("useSelection"):
-                self.nodes = hou.selectedNodes()
-
-            # Get the node type and remove it from the data, not needed
-            node_type = self.data.pop("node_type", None)
-            if node_type is None:
-                node_type = "geometry"
-
-            # Get out node
-            out = hou.node("/out")
-            instance = out.createNode(node_type, node_name=self.name)
-            instance.moveToGoodPosition()
-
-            imprint(instance, self.data)
-
-            self._process(instance)
-
-        except hou.Error as er:
-            six.reraise(
-                CreatorError,
-                CreatorError("Creator error: {}".format(er)),
-                sys.exc_info()[2])
 
 
 class HoudiniCreatorBase(object):
@@ -148,7 +73,11 @@ class HoudiniCreatorBase(object):
 
     @staticmethod
     def create_instance_node(
-        folder_path, node_name, parent, node_type="geometry"
+        folder_path,
+        node_name,
+        parent,
+        node_type="geometry",
+        pre_create_data=None
     ):
         """Create node representing instance.
 
@@ -157,6 +86,7 @@ class HoudiniCreatorBase(object):
             node_name (str): Name of the new node.
             parent (str): Name of the parent node.
             node_type (str, optional): Type of the node.
+            pre_create_data (Optional[Dict]): Pre create data.
 
         Returns:
             hou.Node: Newly created instance node.
@@ -170,7 +100,7 @@ class HoudiniCreatorBase(object):
 
 
 @six.add_metaclass(ABCMeta)
-class HoudiniCreator(NewCreator, HoudiniCreatorBase):
+class HoudiniCreator(Creator, HoudiniCreatorBase):
     """Base class for most of the Houdini creator plugins."""
     selected_nodes = []
     settings_name = None
@@ -193,7 +123,12 @@ class HoudiniCreator(NewCreator, HoudiniCreatorBase):
             folder_path = instance_data["folderPath"]
 
             instance_node = self.create_instance_node(
-                folder_path, product_name, "/out", node_type)
+                folder_path,
+                product_name,
+                "/out",
+                node_type,
+                pre_create_data
+            )
 
             self.customize_node_look(instance_node)
 

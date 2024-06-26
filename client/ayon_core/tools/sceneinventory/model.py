@@ -217,7 +217,9 @@ class InventoryModel(QtGui.QStandardItemModel):
                 version_label = format_version(version_item.version)
                 is_hero = version_item.version < 0
                 is_latest = version_item.is_latest
-                if not is_latest:
+                # TODO maybe use different colors for last approved and last
+                #    version? Or don't care about color at all?
+                if not is_latest and not version_item.is_last_approved:
                     version_color = self.OUTDATED_COLOR
                 status_name = version_item.status
 
