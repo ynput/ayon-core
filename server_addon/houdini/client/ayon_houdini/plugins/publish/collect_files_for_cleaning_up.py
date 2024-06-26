@@ -14,8 +14,9 @@ class CollectFilesForCleaningUp(plugin.HoudiniInstancePlugin,
     and adds them to file remove list.
 
     CAUTION:
-        This collector deletes the exported files and
-          deletes the parent folder if it was empty.
+        This collector registers exported files and
+          the parent folder (if it was empty) for deletion
+          in `ExplicitCleanUp` plug-in.
         Artists are free to change the file path in the ROP node.
     """
 
