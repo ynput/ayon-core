@@ -59,4 +59,4 @@ class CollectFrames(plugin.HoudiniInstancePlugin):
         frame_collection = frame_collection[0]
         frame_collection.indexes.clear()
         frame_collection.indexes.update(list(range(start_frame, (end_frame + 1))))
-        instance.data.update({"frames": list(frame_collection)})
+        instance.data["frames"] = list(frame_collection)
