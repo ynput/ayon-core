@@ -1,19 +1,6 @@
 # -*- coding: utf-8 -*-
 # flake8: noqa E402
 """AYON lib functions."""
-# add vendor to sys path based on Python version
-import sys
-import os
-import site
-from ayon_core import AYON_CORE_ROOT
-
-# Add Python version specific vendor folder
-python_version_dir = os.path.join(
-    AYON_CORE_ROOT, "vendor", "python", "python_{}".format(sys.version[0])
-)
-# Prepend path in sys paths
-sys.path.insert(0, python_version_dir)
-site.addsitedir(python_version_dir)
 
 from .local_settings import (
     IniSettingRegistry,

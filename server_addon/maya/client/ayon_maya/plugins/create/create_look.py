@@ -42,6 +42,6 @@ class CreateLook(plugin.MayaCreator):
 
     def get_pre_create_attr_defs(self):
         # Show same attributes on create but include use selection
-        defs = super(CreateLook, self).get_pre_create_attr_defs()
+        defs = list(super().get_pre_create_attr_defs())
         defs.extend(self.get_instance_attr_defs())
         return defs

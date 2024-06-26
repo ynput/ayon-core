@@ -1,3 +1,4 @@
+import io
 import os
 import sys
 import re
@@ -9,7 +10,7 @@ import importlib.machinery
 import platform
 import collections
 from pathlib import Path
-from typing import Any, Optional, Iterable, Pattern, List, Tuple
+from typing import Optional, Iterable, Pattern, List, Tuple
 
 # Patterns of directories to be skipped for server part of addon
 IGNORE_DIR_PATTERNS: List[Pattern] = [
@@ -70,9 +71,7 @@ class ZipFileLongPaths(zipfile.ZipFile):
             else:
                 tpath = "\\\\?\\" + tpath
 
-        return super(ZipFileLongPaths, self)._extract_member(
-            member, tpath, pwd
-        )
+        return super()._extract_member(member, tpath, pwd)
 
 
 def _value_match_regexes(value: str, regexes: Iterable[Pattern]) -> bool:
@@ -86,7 +85,7 @@ def find_files_in_subdir(
     src_path: str,
     ignore_file_patterns: Optional[List[Pattern]] = None,
     ignore_dir_patterns: Optional[List[Pattern]] = None,
-    ignore_subdirs: Optional[Iterable[Tuple[str]]] = None
+    include_empty_dirs: bool = True
 ):
     """Find all files to copy in subdirectories of given path.
 
@@ -100,29 +99,32 @@ def find_files_in_subdir(
             to match files to ignore.
         ignore_dir_patterns (Optional[List[Pattern]]): List of regexes
             to match directories to ignore.
-        ignore_subdirs (Optional[Iterable[Tuple[str]]]): List of
-            subdirectories to ignore.
+        include_empty_dirs (Optional[bool]): Do not skip empty directories.
 
     Returns:
         List[Tuple[str, str]]: List of tuples with path to file and parent
             directories relative to 'src_path'.
     """
+    if not os.path.exists(src_path):
+        return []
 
     if ignore_file_patterns is None:
         ignore_file_patterns = IGNORE_FILE_PATTERNS
 
     if ignore_dir_patterns is None:
         ignore_dir_patterns = IGNORE_DIR_PATTERNS
-    output: list[tuple[str, str]] = []
+    output: List[Tuple[str, str]] = []
 
     hierarchy_queue = collections.deque()
     hierarchy_queue.append((src_path, []))
     while hierarchy_queue:
-        item: tuple[str, str] = hierarchy_queue.popleft()
+        item: Tuple[str, List[str]] = hierarchy_queue.popleft()
         dirpath, parents = item
-        if ignore_subdirs and parents in ignore_subdirs:
-            continue
-        for name in os.listdir(dirpath):
+        subnames = list(os.listdir(dirpath))
+        if not subnames and include_empty_dirs:
+            output.append((dirpath, os.path.sep.join(parents)))
+
+        for name in subnames:
             path = os.path.join(dirpath, name)
             if os.path.isfile(path):
                 if not _value_match_regexes(name, ignore_file_patterns):
@@ -139,89 +141,54 @@ def find_files_in_subdir(
     return output
 
 
-def read_addon_version(version_path: Path) -> str:
-    # Read version
-    version_content: dict[str, Any] = {}
-    with open(str(version_path), "r") as stream:
-        exec(stream.read(), version_content)
-    return version_content["__version__"]
-
-
-def get_addon_version(addon_dir: Path) -> str:
-    return read_addon_version(addon_dir / "server" / "version.py")
-
-
 def create_addon_zip(
     output_dir: Path,
     addon_name: str,
     addon_version: str,
-    keep_source: bool,
+    files_mapping: List[Tuple[str, str]],
+    client_zip_content: io.BytesIO
 ):
     zip_filepath = output_dir / f"{addon_name}-{addon_version}.zip"
 
-    addon_output_dir = output_dir / addon_name / addon_version
     with ZipFileLongPaths(zip_filepath, "w", zipfile.ZIP_DEFLATED) as zipf:
-        # Add client code content to zip
-        src_root = os.path.normpath(str(addon_output_dir.absolute()))
-        src_root_offset = len(src_root) + 1
-        for root, _, filenames in os.walk(str(addon_output_dir)):
-            rel_root = ""
-            if root != src_root:
-                rel_root = root[src_root_offset:]
+        for src_path, dst_subpath in files_mapping:
+            zipf.write(src_path, dst_subpath)
 
-            for filename in filenames:
-                src_path = os.path.join(root, filename)
-                if rel_root:
-                    dst_path = os.path.join(rel_root, filename)
-                else:
-                    dst_path = filename
-
-                zipf.write(src_path, dst_path)
-
-    if not keep_source:
-        shutil.rmtree(str(output_dir / addon_name))
+        if client_zip_content is not None:
+            zipf.writestr("private/client.zip", client_zip_content.getvalue())
 
 
-def prepare_client_code(
-    addon_name: str,
+def prepare_client_zip(
     addon_dir: Path,
-    addon_output_dir: Path,
-    addon_version: str
+    addon_name: str,
+    addon_version: str,
+    client_dir: str
 ):
-    client_dir = addon_dir / "client"
-    if not client_dir.exists():
-        return
+    if not client_dir:
+        return None
+    client_dir_obj = addon_dir / "client" / client_dir
+    if not client_dir_obj.exists():
+        return None
 
-    # Prepare private dir in output
-    private_dir = addon_output_dir / "private"
-    private_dir.mkdir(parents=True, exist_ok=True)
+    # Update version.py with server version if 'version.py' is available
+    version_path = client_dir_obj / "version.py"
+    if version_path.exists():
+        with open(version_path, "w") as stream:
+            stream.write(
+                CLIENT_VERSION_CONTENT.format(addon_name, addon_version)
+            )
 
-    # Copy pyproject toml if available
-    pyproject_toml = client_dir / "pyproject.toml"
-    if pyproject_toml.exists():
-        shutil.copy(pyproject_toml, private_dir)
+    zip_content = io.BytesIO()
+    with ZipFileLongPaths(zip_content, "a", zipfile.ZIP_DEFLATED) as zipf:
+        # Add client code content to zip
+        for path, sub_path in find_files_in_subdir(
+            str(client_dir_obj), include_empty_dirs=False
+        ):
+            sub_path = os.path.join(client_dir, sub_path)
+            zipf.write(path, sub_path)
 
-    for subpath in client_dir.iterdir():
-        if subpath.name == "pyproject.toml":
-            continue
-
-        if subpath.is_file():
-            continue
-
-        # Update version.py with server version if 'version.py' is available
-        version_path = subpath / "version.py"
-        if version_path.exists():
-            with open(version_path, "w") as stream:
-                stream.write(
-                    CLIENT_VERSION_CONTENT.format(addon_name, addon_version)
-                )
-
-        zip_filepath = private_dir / "client.zip"
-        with ZipFileLongPaths(zip_filepath, "w", zipfile.ZIP_DEFLATED) as zipf:
-            # Add client code content to zip
-            for path, sub_path in find_files_in_subdir(str(subpath)):
-                sub_path = os.path.join(subpath.name, sub_path)
-                zipf.write(path, sub_path)
+    zip_content.seek(0)
+    return zip_content
 
 
 def import_filepath(path: Path, module_name: Optional[str] = None):
@@ -241,44 +208,78 @@ def import_filepath(path: Path, module_name: Optional[str] = None):
     return module
 
 
+def _get_server_mapping(
+    addon_dir: Path, addon_version: str
+) -> List[Tuple[str, str]]:
+    server_dir = addon_dir / "server"
+    public_dir = addon_dir / "public"
+    src_package_py = addon_dir / "package.py"
+    pyproject_toml = addon_dir / "client" / "pyproject.toml"
+
+    mapping: List[Tuple[str, str]] = [
+        (src_path, f"server/{sub_path}")
+        for src_path, sub_path in find_files_in_subdir(str(server_dir))
+    ]
+    mapping.extend([
+        (src_path, f"public/{sub_path}")
+        for src_path, sub_path in find_files_in_subdir(str(public_dir))
+    ])
+    mapping.append((src_package_py.as_posix(), "package.py"))
+    if pyproject_toml.exists():
+        mapping.append((pyproject_toml.as_posix(), "private/pyproject.toml"))
+
+    return mapping
+
+
 def create_addon_package(
     addon_dir: Path,
     output_dir: Path,
     create_zip: bool,
-    keep_source: bool,
 ):
     src_package_py = addon_dir / "package.py"
+
     package = import_filepath(src_package_py)
+    addon_name = package.name
     addon_version = package.version
 
-    addon_output_dir = output_dir / addon_dir.name / addon_version
-    if addon_output_dir.exists():
-        shutil.rmtree(str(addon_output_dir))
-    addon_output_dir.mkdir(parents=True)
+    files_mapping = _get_server_mapping(addon_dir, addon_version)
 
-    # Copy server content
-    dst_package_py = addon_output_dir / "package.py"
-    shutil.copy(src_package_py, dst_package_py)
-
-    server_dir = addon_dir / "server"
-    shutil.copytree(
-        server_dir, addon_output_dir / "server", dirs_exist_ok=True
-    )
-
-    prepare_client_code(
-        package.name, addon_dir, addon_output_dir, addon_version
+    client_dir = getattr(package, "client_dir", None)
+    client_zip_content = prepare_client_zip(
+        addon_dir, addon_name, addon_version, client_dir
     )
 
     if create_zip:
         create_addon_zip(
-            output_dir, addon_dir.name, addon_version, keep_source
+            output_dir,
+            addon_name,
+            addon_version,
+            files_mapping,
+            client_zip_content
         )
+
+    else:
+        addon_output_dir = output_dir / addon_dir.name / addon_version
+        if addon_output_dir.exists():
+            shutil.rmtree(str(addon_output_dir))
+
+        addon_output_dir.mkdir(parents=True, exist_ok=True)
+
+        for src_path, dst_subpath in files_mapping:
+            dst_path = addon_output_dir / dst_subpath
+            dst_path.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(src_path, dst_path)
+
+        if client_zip_content is not None:
+            private_dir = addon_output_dir / "private"
+            private_dir.mkdir(parents=True, exist_ok=True)
+            with open(private_dir / "client.zip", "wb") as stream:
+                stream.write(client_zip_content.read())
 
 
 def main(
     output_dir=None,
     skip_zip=True,
-    keep_source=False,
     clear_output_dir=False,
     addons=None,
 ):
@@ -313,9 +314,7 @@ def main(
         if not server_dir.exists():
             continue
 
-        create_addon_package(
-            addon_dir, output_dir, create_zip, keep_source
-        )
+        create_addon_package(addon_dir, output_dir, create_zip)
 
         print(f"- package '{addon_dir.name}' created")
     print(f"Package creation finished. Output directory: {output_dir}")
@@ -366,10 +365,12 @@ if __name__ == "__main__":
     )
 
     args = parser.parse_args(sys.argv[1:])
+    if args.keep_sources:
+        print("Keeping sources is not supported anymore!")
+
     main(
         args.output_dir,
         args.skip_zip,
-        args.keep_sources,
         args.clear_output_dir,
         args.addons,
     )

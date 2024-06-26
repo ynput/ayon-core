@@ -156,7 +156,7 @@ class ApplicationManager:
 
         Args:
             app_name (str): Name of application that should be launched.
-            **data (dict): Any additional data. Data may be used during
+            **data (Any): Any additional data. Data may be used during
                 preparation to store objects usable in multiple places.
 
         Raises:
