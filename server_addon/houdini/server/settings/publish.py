@@ -31,6 +31,7 @@ class AOVFilterSubmodel(BaseSettingsModel):
         title="AOV regex"
     )
 
+
 class CollectLocalRenderInstancesModel(BaseSettingsModel):
 
     use_deadline_aov_filter: bool = SettingsField(
@@ -109,7 +110,7 @@ DEFAULT_HOUDINI_PUBLISH_SETTINGS = {
     },
     "CollectLocalRenderInstances": {
         "use_deadline_aov_filter": False,
-        "aov_filter" : {
+        "aov_filter": {
             "host_name": "houdini",
             "value": [
                 ".*([Bb]eauty).*"
