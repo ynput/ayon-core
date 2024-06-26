@@ -1,13 +1,19 @@
 # -*- coding: utf-8 -*-
 """Creator plugin for creating publishable Houdini Digital Assets."""
-import ayon_api
+import hou
+from assettools import setToolSubmenu
 
+import ayon_api
 from ayon_core.pipeline import (
     CreatorError,
     get_current_project_name
 )
+from ayon_core.lib import (
+    get_ayon_username,
+    BoolDef
+)
+
 from ayon_houdini.api import plugin
-import hou
 
 
 class CreateHDA(plugin.HoudiniCreator):
@@ -37,19 +43,38 @@ class CreateHDA(plugin.HoudiniCreator):
         return product_name.lower() in existing_product_names_low
 
     def create_instance_node(
-        self, folder_path, node_name, parent, node_type="geometry"
+        self,
+        folder_path,
+        node_name,
+        parent,
+        node_type="geometry",
+        pre_create_data=None
     ):
+        if pre_create_data is None:
+            pre_create_data = {}
 
-        parent_node = hou.node("/obj")
         if self.selected_nodes:
             # if we have `use selection` enabled, and we have some
             # selected nodes ...
-            subnet = parent_node.collapseIntoSubnet(
-                self.selected_nodes,
-                subnet_name="{}_subnet".format(node_name))
-            subnet.moveToGoodPosition()
-            to_hda = subnet
+            if self.selected_nodes[0].type().name() == "subnet":
+                to_hda = self.selected_nodes[0]
+                to_hda.setName("{}_subnet".format(node_name), unique_name=True)
+            else:
+                parent_node = self.selected_nodes[0].parent()
+                subnet = parent_node.collapseIntoSubnet(
+                    self.selected_nodes,
+                    subnet_name="{}_subnet".format(node_name))
+                subnet.moveToGoodPosition()
+                to_hda = subnet
         else:
+            # Use Obj as the default path
+            parent_node = hou.node("/obj")
+            # Find and return the NetworkEditor pane tab with the minimum index
+            pane = hou.ui.paneTabOfType(hou.paneTabType.NetworkEditor)
+            if isinstance(pane, hou.NetworkEditor):
+                # Use the NetworkEditor pane path as the parent path.
+                parent_node = pane.pwd()
+
             to_hda = parent_node.createNode(
                 "subnet", node_name="{}_subnet".format(node_name))
         if not to_hda.type().definition():
@@ -71,7 +96,8 @@ class CreateHDA(plugin.HoudiniCreator):
             hda_node = to_hda.createDigitalAsset(
                 name=type_name,
                 description=node_name,
-                hda_file_name="$HIP/{}.hda".format(node_name)
+                hda_file_name="$HIP/{}.hda".format(node_name),
+                ignore_external_references=True
             )
             hda_node.layoutChildren()
         elif self._check_existing(folder_path, node_name):
@@ -81,21 +107,92 @@ class CreateHDA(plugin.HoudiniCreator):
         else:
             hda_node = to_hda
 
-        hda_node.setName(node_name)
+        # If user tries to create the same HDA instance more than
+        # once, then all of them will have the same product name and
+        # point to the same hda_file_name. But, their node names will
+        # be incremented.
+        hda_node.setName(node_name, unique_name=True)
         self.customize_node_look(hda_node)
+
+        # Set Custom settings.
+        hda_def = hda_node.type().definition()
+
+        if pre_create_data.get("set_user"):
+            hda_def.setUserInfo(get_ayon_username())
+
+        if pre_create_data.get("use_project"):
+            setToolSubmenu(hda_def, "AYON/{}".format(self.project_name))
+
         return hda_node
 
     def create(self, product_name, instance_data, pre_create_data):
         instance_data.pop("active", None)
 
-        instance = super(CreateHDA, self).create(
+        return super(CreateHDA, self).create(
             product_name,
             instance_data,
             pre_create_data)
 
-        return instance
-
     def get_network_categories(self):
+        # Houdini allows creating sub-network nodes inside
+        # these categories.
+        # Therefore this plugin can work in these categories.
         return [
-            hou.objNodeTypeCategory()
+            hou.chopNodeTypeCategory(),
+            hou.cop2NodeTypeCategory(),
+            hou.dopNodeTypeCategory(),
+            hou.ropNodeTypeCategory(),
+            hou.lopNodeTypeCategory(),
+            hou.objNodeTypeCategory(),
+            hou.sopNodeTypeCategory(),
+            hou.topNodeTypeCategory(),
+            hou.vopNodeTypeCategory()
         ]
+
+    def get_pre_create_attr_defs(self):
+        attrs = super(CreateHDA, self).get_pre_create_attr_defs()
+        return attrs + [
+            BoolDef("set_user",
+                    tooltip="Set current user as the author of the HDA",
+                    default=False,
+                    label="Set Current User"),
+            BoolDef("use_project",
+                    tooltip="Use project name as tab submenu path.\n"
+                            "The location in TAB Menu will be\n"
+                            "'AYON/project_name/your_HDA_name'",
+                    default=True,
+                    label="Use Project as menu entry"),
+        ]
+
+    def get_dynamic_data(
+        self,
+        project_name,
+        folder_entity,
+        task_entity,
+        variant,
+        host_name,
+        instance
+    ):
+        """
+        Pass product name from product name templates as dynamic data.
+        """
+        dynamic_data = super(CreateHDA, self).get_dynamic_data(
+            project_name,
+            folder_entity,
+            task_entity,
+            variant,
+            host_name,
+            instance
+        )
+
+        dynamic_data.update(
+            {
+                "asset": folder_entity["name"],
+                "folder": {
+                            "label": folder_entity["label"],
+                            "name": folder_entity["name"]
+                }
+            }
+        )
+
+        return dynamic_data
