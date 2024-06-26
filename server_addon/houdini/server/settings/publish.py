@@ -55,7 +55,6 @@ def product_types_enum():
         {"value": "imagesequence", "label": "Composite (Image Sequence)"},
         {"value": "ass", "label": "Arnold ASS"},
         {"value": "arnold_rop", "label": "Arnold ROP"},
-        {"value": "mantraifd", "label": "Mantra IFD"},
         {"value": "mantra_rop", "label": "Mantra ROP"},
         {"value": "redshiftproxy", "label": "Redshift Proxy"},
         {"value": "redshift_rop", "label": "Redshift ROP"},
