@@ -61,7 +61,8 @@ class CollectFilesForCleaningUp(plugin.HoudiniInstancePlugin,
             # This can be Render products or submitted cache to farm.
             for expected in expected_files:
                 # expected.values() is a list of lists
-                files.extend(sum(expected.values(), []))
+                for output_files in expected.values():
+                    files.extend(output_files)
         else:
             # Products with frames or single file.
             frames = instance.data.get("frames", "")
