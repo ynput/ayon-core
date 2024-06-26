@@ -153,8 +153,8 @@ class FusionSubmitDeadlineModel(BaseSettingsModel):
     )
     group: str = SettingsField("", title="Group Name")
     plugin: str = SettingsField("Fusion",
-                        enum_resolver=fusion_deadline_plugin_enum,
-                        title="Deadline Plugin")
+                                enum_resolver=fusion_deadline_plugin_enum,
+                                title="Deadline Plugin")
 
 
 class NukeSubmitDeadlineModel(BaseSettingsModel):
@@ -376,7 +376,7 @@ class PublishPluginsModel(BaseSettingsModel):
     ProcessSubmittedCacheJobOnFarm: ProcessCacheJobFarmModel = SettingsField(
         default_factory=ProcessCacheJobFarmModel,
         title="Process submitted cache Job on farm",
-            section="Publish Jobs")
+        section="Publish Jobs")
     ProcessSubmittedJobOnFarm: ProcessSubmittedJobOnFarmModel = SettingsField(
         default_factory=ProcessSubmittedJobOnFarmModel,
         title="Process submitted job on farm")
