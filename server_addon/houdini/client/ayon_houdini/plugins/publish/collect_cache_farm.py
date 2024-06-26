@@ -58,4 +58,4 @@ class CollectDataforCache(plugin.HoudiniInstancePlugin):
         instance.data["families"].append("publish.hou")
         instance.data["expectedFiles"].append(cache_files)
 
-        self.log.debug("{}".format(instance.data["expectedFiles"]))
+        self.log.debug("Caching on farm expected files: {}".format(instance.data["expectedFiles"]))
