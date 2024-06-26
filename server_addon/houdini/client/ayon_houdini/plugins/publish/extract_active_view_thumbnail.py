@@ -1,10 +1,13 @@
 import tempfile
 import pyblish.api
+
+from ayon_core.pipeline import OptionalPyblishPluginMixin
 from ayon_houdini.api import lib, plugin
 from ayon_houdini.api.pipeline import IS_HEADLESS
 
 
-class ExtractActiveViewThumbnail(plugin.HoudiniExtractorPlugin):
+class ExtractActiveViewThumbnail(plugin.HoudiniExtractorPlugin,
+                                 OptionalPyblishPluginMixin):
     """Set instance thumbnail to a screengrab of current active viewport.
 
     This makes it so that if an instance does not have a thumbnail set yet that
@@ -17,6 +20,9 @@ class ExtractActiveViewThumbnail(plugin.HoudiniExtractorPlugin):
     families = ["workfile"]
 
     def process(self, instance):
+        if not self.is_active(instance):
+            return
+
         if IS_HEADLESS:
             self.log.debug(
                 "Skip extraction of active view thumbnail, due to being in"
