@@ -3,7 +3,7 @@ import os
 import clique
 import pyblish.api
 from ayon_core.pipeline import AYONPyblishPluginMixin
-from ayon_houdini.api import lib, plugin
+from ayon_houdini.api import plugin
 
 
 class CollectFilesForCleaningUp(plugin.HoudiniInstancePlugin,
@@ -30,28 +30,9 @@ class CollectFilesForCleaningUp(plugin.HoudiniInstancePlugin,
     intermediate_exported_render = False
 
     def process(self, instance):
-        import hou  # noqa: E402
-
-        node = hou.node(instance.data.get("instance_node", ""))
-        if not node:
-            self.log.debug(
-                "Skipping Collector. Instance has no instance_node")
-            return
-
-        output_parm = lib.get_output_parameter(node)
-        if not output_parm:
-            self.log.debug(
-                f"ROP node type '{node.type().name()}' is not "
-                "supported for cleaning up.")
-            return
-
-        filepath = output_parm.eval()
-        if not filepath:
-            self.log.warning("No filepath value to collect.")
-            return
 
         files = []
-        staging_dir, _ = os.path.split(filepath)
+        staging_dirs = []
 
         expected_files = instance.data.get("expectedFiles", [])
 
@@ -62,13 +43,26 @@ class CollectFilesForCleaningUp(plugin.HoudiniInstancePlugin,
             for expected in expected_files:
                 # expected.values() is a list of lists
                 for output_files in expected.values():
+                    staging_dir, _ = os.path.split(output_files[0])
+                    if staging_dir not in staging_dirs:
+                        staging_dirs.append(staging_dir)
                     files.extend(output_files)
         else:
             # Products with frames or single file.
-            frames = instance.data.get("frames", "")
-            if isinstance(frames, str):
+
+            staging_dir = instance.data.get("stagingDir")
+            staging_dirs.append(staging_dir)
+
+            frames = instance.data.get("frames")
+            if frames is None:
+                self.log.warning(
+                    f"No frames data found on instance {instance}"
+                    ". Skipping collection for caching on farm..."
+                )
+                return
+            elif isinstance(frames, str):
                 # single file.
-                files.append(filepath)
+                files.append(frames)
             else:
                 # list of frame.
                 files.extend(
@@ -87,11 +81,12 @@ class CollectFilesForCleaningUp(plugin.HoudiniInstancePlugin,
             end_frame = instance.data["frameEndHandle"]
             ifd_files = self._get_ifd_file_list(ifd_file,
                                                 start_frame, end_frame)
+            staging_dirs.append(os.path.dirname(ifd_file))
             files.extend(ifd_files)
 
         self.log.debug(
-            f"Add directories to 'cleanupEmptyDir': {staging_dir}")
-        instance.context.data["cleanupEmptyDirs"].append(staging_dir)
+            f"Add directories to 'cleanupEmptyDir': {staging_dirs}")
+        instance.context.data["cleanupEmptyDirs"].extend(staging_dirs)
 
         self.log.debug("Add files to 'cleanupFullPaths': {}".format(files))
         instance.context.data["cleanupFullPaths"].extend(files)
