@@ -148,89 +148,6 @@ def validate_fps():
     return True
 
 
-def create_remote_publish_node(force=True):
-    """Function to create a remote publish node in /out
-
-    This is a hacked "Shell" node that does *nothing* except for triggering
-    `colorbleed.lib.publish_remote()` as pre-render script.
-
-    All default attributes of the Shell node are hidden to the Artist to
-    avoid confusion.
-
-    Additionally some custom attributes are added that can be collected
-    by a Collector to set specific settings for the publish, e.g. whether
-    to separate the jobs per instance or process in one single job.
-
-    """
-
-    cmd = "import colorbleed.lib; colorbleed.lib.publish_remote()"
-
-    existing = hou.node("/out/REMOTE_PUBLISH")
-    if existing:
-        if force:
-            log.warning("Removing existing '/out/REMOTE_PUBLISH' node..")
-            existing.destroy()
-        else:
-            raise RuntimeError("Node already exists /out/REMOTE_PUBLISH. "
-                               "Please remove manually or set `force` to "
-                               "True.")
-
-    # Create the shell node
-    out = hou.node("/out")
-    node = out.createNode("shell", node_name="REMOTE_PUBLISH")
-    node.moveToGoodPosition()
-
-    # Set color make it stand out (avalon/pyblish color)
-    node.setColor(hou.Color(0.439, 0.709, 0.933))
-
-    # Set the pre-render script
-    node.setParms({
-        "prerender": cmd,
-        "lprerender": "python"  # command language
-    })
-
-    # Lock the attributes to ensure artists won't easily mess things up.
-    node.parm("prerender").lock(True)
-    node.parm("lprerender").lock(True)
-
-    # Lock up the actual shell command
-    command_parm = node.parm("command")
-    command_parm.set("")
-    command_parm.lock(True)
-    shellexec_parm = node.parm("shellexec")
-    shellexec_parm.set(False)
-    shellexec_parm.lock(True)
-
-    # Get the node's parm template group so we can customize it
-    template = node.parmTemplateGroup()
-
-    # Hide default tabs
-    template.hideFolder("Shell", True)
-    template.hideFolder("Scripts", True)
-
-    # Hide default settings
-    template.hide("execute", True)
-    template.hide("renderdialog", True)
-    template.hide("trange", True)
-    template.hide("f", True)
-    template.hide("take", True)
-
-    # Add custom settings to this node.
-    parm_folder = hou.FolderParmTemplate("folder", "Submission Settings")
-
-    # Separate Jobs per Instance
-    parm = hou.ToggleParmTemplate(name="separateJobPerInstance",
-                                  label="Separate Job per Instance",
-                                  default_value=False)
-    parm_folder.addParmTemplate(parm)
-
-    # Add our custom Submission Settings folder
-    template.append(parm_folder)
-
-    # Apply template back to the node
-    node.setParmTemplateGroup(template)
-
-
 def render_rop(ropnode):
     """Render ROP node utility for Publishing.
 
@@ -1060,17 +977,25 @@ def add_self_publish_button(node):
     node.setParmTemplateGroup(template)
 
 
-def get_scene_viewer():
+def get_scene_viewer(visible_only=True):
     """
     Return an instance of a visible viewport.
 
     There may be many, some could be closed, any visible are current
+
+    Arguments:
+        visible_only (Optional[bool]): Only return viewers that currently
+            are the active tab (and hence are visible).
 
     Returns:
         Optional[hou.SceneViewer]: A scene viewer, if any.
     """
     panes = hou.ui.paneTabs()
     panes = [x for x in panes if x.type() == hou.paneTabType.SceneViewer]
+
+    if visible_only:
+        return next((pane for pane in panes if pane.isCurrentTab()), None)
+
     panes = sorted(panes, key=lambda x: x.isCurrentTab())
     if panes:
         return panes[-1]
@@ -1089,12 +1014,10 @@ def sceneview_snapshot(
     So, it's capable of generating snapshots image sequence.
     It works in different Houdini context e.g. Objects, Solaris
 
-    Example:
-    	This is how the function can be used::
-
-        	from ayon_houdini.api import lib
-	        sceneview = hou.ui.paneTabOfType(hou.paneTabType.SceneViewer)
-        	lib.sceneview_snapshot(sceneview)
+    Example::
+        >>> from ayon_houdini.api import lib
+        >>> sceneview = hou.ui.paneTabOfType(hou.paneTabType.SceneViewer)
+        >>> lib.sceneview_snapshot(sceneview)
 
     Notes:
         .png output will render poorly, so use .jpg.
