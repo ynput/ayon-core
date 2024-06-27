@@ -743,6 +743,14 @@ class IntegrateHeroVersionModel(BaseSettingsModel):
     optional: bool = SettingsField(False, title="Optional")
     active: bool = SettingsField(True, title="Active")
     families: list[str] = SettingsField(default_factory=list, title="Families")
+    use_hardlinks: bool = SettingsField(
+        False, title="Use Hardlinks",
+        description="When enabled first try to make a hardlink of the version "
+                    "instead of a copy. This helps reduce disk usage, but may "
+                    "create issues.\nFor example there are known issues on "
+                    "Windows being unable to delete any of the hardlinks if "
+                    "any of the links is in use creating issues with updating "
+                    "hero versions.")
 
 
 class CleanUpModel(BaseSettingsModel):
@@ -1136,7 +1144,8 @@ DEFAULT_PUBLISH_VALUES = {
             "layout",
             "mayaScene",
             "simpleUnrealTexture"
-        ]
+        ],
+        "use_hardlinks": False
     },
     "CleanUp": {
         "paterns": [],
