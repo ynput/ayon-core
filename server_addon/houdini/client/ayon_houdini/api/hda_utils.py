@@ -542,3 +542,43 @@ def select_folder_path(node):
     folder_parm = node.parm("folder_path")
     folder_parm.set(selected_folder_path)
     folder_parm.pressButton()  # allow any callbacks to trigger
+
+
+def get_available_products(node):
+    """Return products menu items
+    It gets a list of available products of the specified product types
+      within the specified folder path with in the specified project.
+    Users can specify those in the HDA parameters.
+    Returns:
+        List[str]: Product options for Products menu.
+    """
+    project_name = node.evalParm("project_name")
+    folder_path = node.evalParm("folder_path")
+    product_type = node.evalParm("product_type")
+
+    folder_entity = ayon_api.get_folder_by_path(project_name,
+                                            folder_path,
+                                            fields={"id"})
+    if not folder_entity:
+        return []
+
+    products = ayon_api.get_products(
+        project_name,
+        folder_ids=[folder_entity["id"]],
+        product_types=[product_type]
+    )
+
+    return([
+        product["name"] for product in products
+    ])
+
+
+def refresh_version(node):
+    """Callback on product name change
+
+    Refresh version parameter value by setting its value to
+    the latest version of the selected product.
+    """
+
+    versions = get_available_versions(node)
+    node.parm("version").set(str(versions[0]))
