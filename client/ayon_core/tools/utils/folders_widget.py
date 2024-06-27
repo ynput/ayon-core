@@ -96,7 +96,7 @@ class FoldersQtModel(QtGui.QStandardItemModel):
             Union[str, None]: Folder id or None if folder is not available.
 
         """
-        for folder_id, item in self._items_by_id.values():
+        for folder_id, item in self._items_by_id.items():
             if item.data(FOLDER_PATH_ROLE) == folder_path:
                 return folder_id
         return None
