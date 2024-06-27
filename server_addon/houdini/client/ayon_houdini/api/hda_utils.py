@@ -135,7 +135,7 @@ def update_info(node, context):
     node.setParms(parms)
 
 
-def _get_thumbnail(project_name, version_id, thumbnail_dir):
+def _get_thumbnail(project_name: str, version_id: str, thumbnail_dir: str):
     folder = hou.text.expandString(thumbnail_dir)
     path = os.path.join(folder, "{}_thumbnail.jpg".format(version_id))
     expanded_path = hou.text.expandString(path)
@@ -154,9 +154,9 @@ def _get_thumbnail(project_name, version_id, thumbnail_dir):
         return path
 
 
-def set_representation(node, repre_id):
+def set_representation(node, representation_id: str):
     file_parm = node.parm("file")
-    if not repre_id:
+    if not representation_id:
         # Clear filepath and thumbnail
         with _unlocked_parm(file_parm):
             file_parm.set("")
@@ -170,10 +170,10 @@ def set_representation(node, repre_id):
 
     # Ignore invalid representation ids silently
     # TODO remove - added for backwards compatibility with OpenPype scenes
-    if not is_valid_uuid(repre_id):
+    if not is_valid_uuid(representation_id):
         return
 
-    repre_entity = get_representation_by_id(project_name, repre_id)
+    repre_entity = get_representation_by_id(project_name, representation_id)
     if not repre_entity:
         return
 
@@ -198,7 +198,7 @@ def set_representation(node, repre_id):
         set_node_thumbnail(node, thumbnail_path)
 
 
-def set_node_thumbnail(node, thumbnail):
+def set_node_thumbnail(node, thumbnail: str):
     """Update node thumbnail to thumbnail"""
     if thumbnail is None:
         lib.set_node_thumbnail(node, None)
