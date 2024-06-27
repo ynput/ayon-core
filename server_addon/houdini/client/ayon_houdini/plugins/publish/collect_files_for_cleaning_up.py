@@ -11,8 +11,7 @@ class CollectFilesForCleaningUp(plugin.HoudiniInstancePlugin,
                                 AYONPyblishPluginMixin):
     """Collect Files For Cleaning Up.
 
-    This collector collects output files
-    and adds them to file remove list.
+    This collector collects output files and adds them to file remove list.
 
     CAUTION:
         This collector registers exported files and
@@ -25,9 +24,9 @@ class CollectFilesForCleaningUp(plugin.HoudiniInstancePlugin,
         Farm instances will be processed on farm by other dedicated plugins
           that live in core addon e.g. `CollectRenderedFiles` plugin.
         These dedicated plugins don't support tracking and removing
-          intermediated render files.
+          intermediate render files.
 
-        Local Render instances don't track intermediated render files,
+        Local Render instances don't track intermediate render files,
         Therefore, this plugin doesn't support removing
           intermediate render files.
 
