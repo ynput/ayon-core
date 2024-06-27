@@ -6,5 +6,5 @@ from ayon_houdini.api.hda_utils import (
     setup_flag_changed_callback,
     get_available_versions,
     get_available_products,
-    refresh_version
+    set_to_latest_version
 )

@@ -557,8 +557,8 @@ def get_available_products(node):
     product_type = node.evalParm("product_type")
 
     folder_entity = ayon_api.get_folder_by_path(project_name,
-                                            folder_path,
-                                            fields={"id"})
+                                                folder_path,
+                                                fields={"id"})
     if not folder_entity:
         return []
 
@@ -568,12 +568,10 @@ def get_available_products(node):
         product_types=[product_type]
     )
 
-    return([
-        product["name"] for product in products
-    ])
+    return [product["name"] for product in products]
 
 
-def refresh_version(node):
+def set_to_latest_version(node):
     """Callback on product name change
 
     Refresh version parameter value by setting its value to
@@ -581,4 +579,5 @@ def refresh_version(node):
     """
 
     versions = get_available_versions(node)
-    node.parm("version").set(str(versions[0]))
+    if versions:
+        node.parm("version").set(str(versions[0]))
