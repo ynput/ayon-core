@@ -29,8 +29,9 @@ from qtpy import QtWidgets, QtCore, QtGui
 from ayon_core.style import get_objected_colors
 from ayon_core.tools.utils import NiceCheckbox
 from ayon_core.tools.utils.lib import html_escape, checkstate_int_to_enum
-from .widgets import AbstractInstanceView
-from ..constants import (
+
+from ayon_core.tools.publisher.abstract import AbstractPublisherFrontend
+from ayon_core.tools.publisher.constants import (
     INSTANCE_ID_ROLE,
     SORT_VALUE_ROLE,
     IS_GROUP_ROLE,
@@ -40,6 +41,8 @@ from ..constants import (
     CONVERTER_IDENTIFIER_ROLE,
     CONVERTOR_ITEM_GROUP,
 )
+
+from .widgets import AbstractInstanceView
 
 
 class ListItemDelegate(QtWidgets.QStyledItemDelegate):
@@ -55,7 +58,7 @@ class ListItemDelegate(QtWidgets.QStyledItemDelegate):
     radius_ratio = 0.3
 
     def __init__(self, parent):
-        super(ListItemDelegate, self).__init__(parent)
+        super().__init__(parent)
 
         group_color_info = get_objected_colors("publisher", "list-view-group")
 
@@ -68,7 +71,7 @@ class ListItemDelegate(QtWidgets.QStyledItemDelegate):
         if index.data(IS_GROUP_ROLE):
             self.group_item_paint(painter, option, index)
         else:
-            super(ListItemDelegate, self).paint(painter, option, index)
+            super().paint(painter, option, index)
 
     def group_item_paint(self, painter, option, index):
         """Paint group item."""
@@ -113,7 +116,7 @@ class InstanceListItemWidget(QtWidgets.QWidget):
     double_clicked = QtCore.Signal()
 
     def __init__(self, instance, parent):
-        super(InstanceListItemWidget, self).__init__(parent)
+        super().__init__(parent)
 
         self.instance = instance
 
@@ -152,7 +155,7 @@ class InstanceListItemWidget(QtWidgets.QWidget):
 
     def mouseDoubleClickEvent(self, event):
         widget = self.childAt(event.pos())
-        super(InstanceListItemWidget, self).mouseDoubleClickEvent(event)
+        super().mouseDoubleClickEvent(event)
         if widget is not self._active_checkbox:
             self.double_clicked.emit()
 
@@ -219,7 +222,7 @@ class ListContextWidget(QtWidgets.QFrame):
     double_clicked = QtCore.Signal()
 
     def __init__(self, parent):
-        super(ListContextWidget, self).__init__(parent)
+        super().__init__(parent)
 
         label_widget = QtWidgets.QLabel(CONTEXT_LABEL, self)
 
@@ -235,7 +238,7 @@ class ListContextWidget(QtWidgets.QFrame):
         self.label_widget = label_widget
 
     def mouseDoubleClickEvent(self, event):
-        super(ListContextWidget, self).mouseDoubleClickEvent(event)
+        super().mouseDoubleClickEvent(event)
         self.double_clicked.emit()
 
 
@@ -249,7 +252,7 @@ class InstanceListGroupWidget(QtWidgets.QFrame):
     toggle_requested = QtCore.Signal(str, int)
 
     def __init__(self, group_name, parent):
-        super(InstanceListGroupWidget, self).__init__(parent)
+        super().__init__(parent)
         self.setObjectName("InstanceListGroupWidget")
 
         self.group_name = group_name
@@ -333,7 +336,7 @@ class InstanceTreeView(QtWidgets.QTreeView):
     double_clicked = QtCore.Signal()
 
     def __init__(self, *args, **kwargs):
-        super(InstanceTreeView, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
 
         self.setObjectName("InstanceListView")
         self.setHeaderHidden(True)
@@ -384,7 +387,7 @@ class InstanceTreeView(QtWidgets.QTreeView):
             self.toggle_requested.emit(1)
             return True
 
-        return super(InstanceTreeView, self).event(event)
+        return super().event(event)
 
     def _mouse_press(self, event):
         """Store index of pressed group.
@@ -404,11 +407,11 @@ class InstanceTreeView(QtWidgets.QTreeView):
 
     def mousePressEvent(self, event):
         self._mouse_press(event)
-        super(InstanceTreeView, self).mousePressEvent(event)
+        super().mousePressEvent(event)
 
     def mouseDoubleClickEvent(self, event):
         self._mouse_press(event)
-        super(InstanceTreeView, self).mouseDoubleClickEvent(event)
+        super().mouseDoubleClickEvent(event)
 
     def _mouse_release(self, event, pressed_index):
         if event.button() != QtCore.Qt.LeftButton:
@@ -431,7 +434,7 @@ class InstanceTreeView(QtWidgets.QTreeView):
         self._pressed_group_index = None
         result = self._mouse_release(event, pressed_index)
         if not result:
-            super(InstanceTreeView, self).mouseReleaseEvent(event)
+            super().mouseReleaseEvent(event)
 
 
 class InstanceListView(AbstractInstanceView):
@@ -442,10 +445,12 @@ class InstanceListView(AbstractInstanceView):
 
     double_clicked = QtCore.Signal()
 
-    def __init__(self, controller, parent):
-        super(InstanceListView, self).__init__(parent)
+    def __init__(
+        self, controller: AbstractPublisherFrontend, parent: QtWidgets.QWidget
+    ):
+        super().__init__(parent)
 
-        self._controller = controller
+        self._controller: AbstractPublisherFrontend = controller
 
         instance_view = InstanceTreeView(self)
         instance_delegate = ListItemDelegate(instance_view)
@@ -581,7 +586,7 @@ class InstanceListView(AbstractInstanceView):
         # Prepare instances by their groups
         instances_by_group_name = collections.defaultdict(list)
         group_names = set()
-        for instance in self._controller.instances.values():
+        for instance in self._controller.get_instances():
             group_label = instance.group_label
             group_names.add(group_label)
             instances_by_group_name[group_label].append(instance)
@@ -745,7 +750,7 @@ class InstanceListView(AbstractInstanceView):
 
     def _update_convertor_items_group(self):
         created_new_items = False
-        convertor_items_by_id = self._controller.convertor_items
+        convertor_items_by_id = self._controller.get_convertor_items()
         group_item = self._convertor_group_item
         if not convertor_items_by_id and group_item is None:
             return created_new_items
