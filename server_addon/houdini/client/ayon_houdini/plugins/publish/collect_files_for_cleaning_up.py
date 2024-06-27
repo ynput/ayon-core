@@ -31,8 +31,8 @@ class CollectFilesForCleaningUp(plugin.HoudiniInstancePlugin,
 
     def process(self, instance):
 
-        files: List[os.PathLike] = []
-        staging_dirs: List[os.PathLike] = []
+        files: list[os.PathLike] = []
+        staging_dirs: list[os.PathLike] = []
 
         expected_files = instance.data.get("expectedFiles", [])
 
