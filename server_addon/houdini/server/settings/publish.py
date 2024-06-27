@@ -58,7 +58,7 @@ class ValidateWorkfilePathsModel(BaseSettingsModel):
     )
 
 
-class BasicValidateModel(BaseSettingsModel):
+class BasicEnabledStatesModel(BaseSettingsModel):
     enabled: bool = SettingsField(title="Enabled")
     optional: bool = SettingsField(title="Optional")
     active: bool = SettingsField(title="Active")
@@ -78,25 +78,30 @@ class PublishPluginsModel(BaseSettingsModel):
         default_factory=CollectLocalRenderInstancesModel,
         title="Collect Local Render Instances"
     )
-    ValidateInstanceInContextHoudini: BasicValidateModel = SettingsField(
-        default_factory=BasicValidateModel,
+    ValidateInstanceInContextHoudini: BasicEnabledStatesModel = SettingsField(
+        default_factory=BasicEnabledStatesModel,
         title="Validate Instance is in same Context",
         section="Validators")
-    ValidateMeshIsStatic: BasicValidateModel = SettingsField(
-        default_factory=BasicValidateModel,
+    ValidateMeshIsStatic: BasicEnabledStatesModel = SettingsField(
+        default_factory=BasicEnabledStatesModel,
         title="Validate Mesh is Static")
-    ValidateReviewColorspace: BasicValidateModel = SettingsField(
-        default_factory=BasicValidateModel,
+    ValidateReviewColorspace: BasicEnabledStatesModel = SettingsField(
+        default_factory=BasicEnabledStatesModel,
         title="Validate Review Colorspace")
-    ValidateSubsetName: BasicValidateModel = SettingsField(
-        default_factory=BasicValidateModel,
+    ValidateSubsetName: BasicEnabledStatesModel = SettingsField(
+        default_factory=BasicEnabledStatesModel,
         title="Validate Subset Name")
-    ValidateUnrealStaticMeshName: BasicValidateModel = SettingsField(
-        default_factory=BasicValidateModel,
+    ValidateUnrealStaticMeshName: BasicEnabledStatesModel = SettingsField(
+        default_factory=BasicEnabledStatesModel,
         title="Validate Unreal Static Mesh Name")
     ValidateWorkfilePaths: ValidateWorkfilePathsModel = SettingsField(
         default_factory=ValidateWorkfilePathsModel,
         title="Validate workfile paths settings")
+    ExtractActiveViewThumbnail: BasicEnabledStatesModel = SettingsField(
+        default_factory=BasicEnabledStatesModel,
+        title="Extract Active View Thumbnail",
+        section="Extractors"
+    )
 
 
 DEFAULT_HOUDINI_PUBLISH_SETTINGS = {
@@ -153,5 +158,10 @@ DEFAULT_HOUDINI_PUBLISH_SETTINGS = {
             "$HIP",
             "$JOB"
         ]
+    },
+    "ExtractActiveViewThumbnail": {
+        "enabled": True,
+        "optional": False,
+        "active": True
     }
 }
