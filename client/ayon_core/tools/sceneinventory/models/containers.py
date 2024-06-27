@@ -103,8 +103,17 @@ class ContainerItem:
 
     @classmethod
     def from_container_data(cls, container):
+        repre_id = container["representation"]
+
+        try:
+            uuid.UUID(repre_id)
+        except (ValueError, TypeError, AttributeError):
+            # Fake not existing representation id so container is shown in UI
+            #   but as invalid
+            repre_id = uuid.uuid4().hex
+
         return cls(
-            representation_id=container["representation"],
+            representation_id=repre_id,
             loader_name=container["loader"],
             namespace=container["namespace"],
             object_name=container["objectName"],
@@ -359,13 +368,6 @@ class ContainersModel:
         containers_by_id = {}
         container_items_by_id = {}
         for container in containers:
-            try:
-                uuid.UUID(container["representation"])
-            except (ValueError, TypeError, AttributeError):
-                # Skip container if does not have valid UUID representation id
-                # (silently)
-                continue
-
             try:
                 item = ContainerItem.from_container_data(container)
             except Exception as e:
