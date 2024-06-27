@@ -54,6 +54,9 @@ def _unlocked_parm(parm):
 def get_available_versions(node):
     """Return the versions list for node.
 
+    The versions are sorted with the latest version first and oldest lower
+    version last.
+
     Args:
         node (hou.Node): Node to query selected products' versions for.
 
