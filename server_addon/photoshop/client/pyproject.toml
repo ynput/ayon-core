@@ -1,6 +1,0 @@
-[project]
-name="photoshop"
-description="AYON Phostoshop addon."
-
-[ayon.runtimeDependencies]
-wsrpc_aiohttp = "^3.1.1" # websocket server
