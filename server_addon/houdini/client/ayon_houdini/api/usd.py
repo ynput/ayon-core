@@ -3,17 +3,6 @@
 import contextlib
 import logging
 
-import ayon_api
-from qtpy import QtWidgets, QtCore, QtGui
-
-from ayon_core import style
-from ayon_core.pipeline import get_current_project_name
-from ayon_core.tools.utils import (
-    PlaceholderLineEdit,
-    RefreshButton,
-    SimpleFoldersWidget,
-)
-
 from pxr import Sdf
 
 
