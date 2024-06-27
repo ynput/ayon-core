@@ -51,9 +51,6 @@ class CollectFilesForCleaningUp(plugin.HoudiniInstancePlugin,
         else:
             # Products with frames or single file.
 
-            staging_dir = instance.data.get("stagingDir")
-            staging_dirs.append(staging_dir)
-
             frames = instance.data.get("frames")
             if frames is None:
                 self.log.warning(
@@ -61,9 +58,13 @@ class CollectFilesForCleaningUp(plugin.HoudiniInstancePlugin,
                     ". Skipping collection for caching on farm..."
                 )
                 return
-            elif isinstance(frames, str):
+
+            staging_dir = instance.data.get("stagingDir")
+            staging_dirs.append(staging_dir)
+
+            if isinstance(frames, str):
                 # single file.
-                files.append(frames)
+                files.append(f"{staging_dir}/{frames}")
             else:
                 # list of frame.
                 files.extend(
