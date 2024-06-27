@@ -1,6 +1,0 @@
-[project]
-name="aftereffects"
-description="AYON AfterEffects addon."
-
-[ayon.runtimeDependencies]
-wsrpc_aiohttp = "^3.1.1" # websocket server

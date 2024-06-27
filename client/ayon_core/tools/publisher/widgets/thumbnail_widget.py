@@ -19,7 +19,10 @@ from ayon_core.tools.utils import (
     paint_image_with_color,
     PixmapButton,
 )
-from ayon_core.tools.publisher.control import CardMessageTypes
+from ayon_core.tools.publisher.abstract import (
+    CardMessageTypes,
+    AbstractPublisherFrontend,
+)
 
 from .icons import get_image
 from .screenshot_widget import capture_to_file
@@ -34,7 +37,7 @@ class ThumbnailPainterWidget(QtWidgets.QWidget):
     checker_boxes_count = 20
 
     def __init__(self, parent):
-        super(ThumbnailPainterWidget, self).__init__(parent)
+        super().__init__(parent)
 
         border_color = get_objected_colors("bg-buttons").get_qcolor()
         thumbnail_bg_color = get_objected_colors("bg-view").get_qcolor()
@@ -299,10 +302,12 @@ class ThumbnailWidget(QtWidgets.QWidget):
     thumbnail_created = QtCore.Signal(str)
     thumbnail_cleared = QtCore.Signal()
 
-    def __init__(self, controller, parent):
+    def __init__(
+        self, controller: AbstractPublisherFrontend, parent: QtWidgets.QWidget
+    ):
         # Missing implementation for thumbnail
         # - widget kept to make a visial offset of global attr widget offset
-        super(ThumbnailWidget, self).__init__(parent)
+        super().__init__(parent)
         self.setAcceptDrops(True)
 
         thumbnail_painter = ThumbnailPainterWidget(self)
@@ -355,7 +360,7 @@ class ThumbnailWidget(QtWidgets.QWidget):
         paste_btn.clicked.connect(self._on_paste_from_clipboard)
         browse_btn.clicked.connect(self._on_browse_clicked)
 
-        self._controller = controller
+        self._controller: AbstractPublisherFrontend = controller
         self._output_dir = controller.get_thumbnail_temp_dir_path()
 
         self._review_extensions = set(IMAGE_EXTENSIONS) | set(VIDEO_EXTENSIONS)
@@ -570,12 +575,12 @@ class ThumbnailWidget(QtWidgets.QWidget):
         )
 
     def resizeEvent(self, event):
-        super(ThumbnailWidget, self).resizeEvent(event)
+        super().resizeEvent(event)
         self._adapt_to_size()
         self._update_buttons_position()
 
     def showEvent(self, event):
-        super(ThumbnailWidget, self).showEvent(event)
+        super().showEvent(event)
         self._adapt_to_size()
         self._update_buttons_position()
 
