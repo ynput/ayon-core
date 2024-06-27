@@ -69,7 +69,7 @@
                 [ "return result" ]
                 language python
             }
-            parmtag { "script_callback" "hou.phm().refresh_version(kwargs['node'])\nhou.phm().on_representation_parms_changed(kwargs['node'])" }
+            parmtag { "script_callback" "hou.phm().set_to_latest_version(kwargs['node'])\nhou.phm().on_representation_parms_changed(kwargs['node'])" }
             parmtag { "script_callback_language" "python" }
         }
         parm {
