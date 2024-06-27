@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+import os
 from pprint import pformat
 import hou
 import pyblish.api
@@ -27,12 +28,14 @@ class ExtractHDA(plugin.HoudiniExtractorPlugin):
         if "representations" not in instance.data:
             instance.data["representations"] = []
 
+        file = os.path.basename(hda_def.libraryFilePath())
+        staging_dir = os.path.dirname(hda_def.libraryFilePath())
         self.log.info("Using HDA from {}".format(hda_def.libraryFilePath()))
 
         representation = {
             'name': 'hda',
             'ext': 'hda',
-            'files': instance.data["frames"],
-            "stagingDir": instance.data["stagingDir"],
+            'files': file,
+            "stagingDir": staging_dir,
         }
         instance.data["representations"].append(representation)
