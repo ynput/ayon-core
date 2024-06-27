@@ -3,6 +3,7 @@
 import os
 import contextlib
 import uuid
+from typing import List
 
 import ayon_api
 from ayon_api import (
@@ -27,7 +28,7 @@ from ayon_core.style import load_stylesheet
 
 from ayon_houdini.api import lib
 
-from qtpy import QtWidgets
+from qtpy import QtCore, QtWidgets
 import hou
 
 
@@ -426,6 +427,68 @@ def keep_background_images_linked(node, old_name):
         set_background_images(parent, images)
 
 
+class PickAssetDialog(QtWidgets.QDialog):
+    """Simple dialog to allow a user to select project and asset."""
+
+    def __init__(self, parent=None):
+        super(PickAssetDialog, self).__init__(parent)
+        self.setWindowTitle("Select project and folder path..")
+        self.setStyleSheet(load_stylesheet())
+
+        project_widget = QtWidgets.QComboBox()
+        project_widget.addItems(self.get_projects())
+
+        filter_widget = QtWidgets.QLineEdit()
+        filter_widget.setPlaceholderText("Filter folders..")
+
+        folder_widget = SimpleFoldersWidget(parent=self)
+
+        accept_button = QtWidgets.QPushButton("Accept")
+
+        main_layout = QtWidgets.QVBoxLayout(self)
+        main_layout.addWidget(project_widget, 0)
+        main_layout.addWidget(filter_widget, 0)
+        main_layout.addWidget(folder_widget, 1)
+        main_layout.addWidget(accept_button, 0)
+
+        self.project_widget = project_widget
+        self.folder_widget = folder_widget
+
+        project_widget.currentTextChanged.connect(self.on_project_changed)
+        filter_widget.textChanged.connect(folder_widget.set_name_filter)
+        folder_widget.double_clicked.connect(self.accept)
+        accept_button.clicked.connect(self.accept)
+
+        # Default refreshed to current project
+        project_name = get_current_project_name()
+        self.set_project_name(project_name)
+
+    def get_selected_folder_path(self):
+        return self.folder_widget.get_selected_folder_path()
+
+    def get_selected_project_name(self):
+        return self.project_widget.currentText()
+
+    def get_projects(self) -> List[str]:
+        projects = ayon_api.get_projects(fields=["name"])
+        return [p["name"] for p in projects]
+
+    def on_project_changed(self, project_name: str):
+        self.folder_widget.set_project_name(project_name)
+
+    def set_project_name(self, project_name: str):
+        self.project_widget.setCurrentText(project_name)
+
+        if self.project_widget.currentText() != project_name:
+            # Project does not exist
+            return
+
+        # Force the set of widget because even though a callback exist on the
+        # project widget it may have been initialized to that value and hence
+        # detect no change.
+        self.folder_widget.set_project_name(project_name)
+
+
 def select_folder_path(node):
     """Show dialog to select folder path.
 
@@ -445,44 +508,33 @@ def select_folder_path(node):
     project_name = node.evalParm("project_name")
     folder_path = node.evalParm("folder_path")
 
-    class PickDialog(QtWidgets.QDialog):
-        def __init__(self, parent=None):
-            super(PickDialog, self).__init__(parent)
-            self.setWindowTitle("Select folder..")
-
-            filter_widget = QtWidgets.QLineEdit()
-            filter_widget.setPlaceholderText("Filter folders..")
-            folder_widget = SimpleFoldersWidget(parent=self)
-            accept_button = QtWidgets.QPushButton("Accept")
-
-            layout = QtWidgets.QVBoxLayout(self)
-            layout.addWidget(filter_widget)
-            layout.addWidget(folder_widget)
-            layout.addWidget(accept_button)
-
-            filter_widget.textChanged.connect(folder_widget.set_name_filter)
-
-            folder_widget.double_clicked.connect(self.accept)
-            accept_button.clicked.connect(self.accept)
-
-            self.folder_widget = folder_widget
-
-        def get_selected_folder_path(self):
-            return self.folder_widget.get_selected_folder_path()
-
-    dialog = PickDialog(parent=main_window)
-    dialog.folder_widget.set_project_name(project_name)
+    dialog = PickAssetDialog(parent=main_window)
+    dialog.set_project_name(project_name)
     if folder_path:
-        # TODO: This does not work because project is refreshed in a thread
-        #       and thus the setting of folder path occurs before the project
-        #       refresh
-        dialog.folder_widget.set_selected_folder_path(folder_path)
+        # We add a small delay to the setting of the selected folder
+        # because the folder widget's set project logic itself also runs
+        # with a bit of a delay, and unfortunately otherwise the project
+        # has not been selected yet and thus selection does not work.
+        def _select_folder_path():
+            dialog.folder_widget.set_selected_folder_path(folder_path)
+        QtCore.QTimer.singleShot(100, _select_folder_path)
+
     dialog.setStyleSheet(load_stylesheet())
 
     result = dialog.exec_()
     if result != QtWidgets.QDialog.Accepted:
         return
 
+    # Set project
+    selected_project_name = dialog.get_selected_project_name()
+    if selected_project_name == get_current_project_name():
+        selected_project_name = '$AYON_PROJECT_NAME'
+
+    project_parm = node.parm("project_name")
+    project_parm.set(selected_project_name)
+    project_parm.pressButton()  # allow any callbacks to trigger
+
+    # Set folder path
     selected_folder_path = dialog.get_selected_folder_path()
     if not selected_folder_path:
         # Do nothing if user accepted with nothing selected
@@ -491,4 +543,6 @@ def select_folder_path(node):
     if selected_folder_path == get_current_folder_path():
         selected_folder_path = '$AYON_FOLDER_PATH'
 
-    node.parm("folder_path").set(selected_folder_path)
+    folder_parm = node.parm("folder_path")
+    folder_parm.set(selected_folder_path)
+    folder_parm.pressButton()  # allow any callbacks to trigger
