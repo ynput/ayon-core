@@ -15,10 +15,9 @@ from ayon_core.pipeline import (
     Anatomy,
     AutoCreator,
     CreatedInstance,
-    Creator as NewCreator,
+    Creator,
     CreatorError,
     HiddenCreator,
-    LegacyCreator,
     LoaderPlugin,
     get_current_project_name,
     get_representation_path,
@@ -68,22 +67,6 @@ def get_reference_node_parents(*args, **kwargs):
     log.warning(msg)
     cmds.warning(msg)
     return lib.get_reference_node_parents(*args, **kwargs)
-
-
-class Creator(LegacyCreator):
-    defaults = ['Main']
-
-    def process(self):
-        nodes = list()
-
-        with lib.undo_chunk():
-            if (self.options or {}).get("useSelection"):
-                nodes = cmds.ls(selection=True)
-
-            instance = cmds.sets(nodes, name=self.name)
-            lib.imprint(instance, self.data)
-
-        return instance
 
 
 @six.add_metaclass(ABCMeta)
@@ -274,7 +257,7 @@ class MayaCreatorBase(object):
 
 
 @six.add_metaclass(ABCMeta)
-class MayaCreator(NewCreator, MayaCreatorBase):
+class MayaCreator(Creator, MayaCreatorBase):
 
     settings_category = "maya"
 
@@ -381,7 +364,7 @@ def ensure_namespace(namespace):
         return cmds.namespace(add=namespace)
 
 
-class RenderlayerCreator(NewCreator, MayaCreatorBase):
+class RenderlayerCreator(Creator, MayaCreatorBase):
     """Creator which creates an instance per renderlayer in the workfile.
 
     Create and manages renderlayer product per renderLayer in workfile.

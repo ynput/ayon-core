@@ -10,6 +10,11 @@ from qtpy import QtWidgets, QtCore, QtGui
 import qtawesome
 
 from ayon_core.lib.attribute_definitions import UnknownDef
+from ayon_core.style import get_objected_colors
+from ayon_core.pipeline.create import (
+    PRODUCT_NAME_ALLOWED_SYMBOLS,
+    TaskNotSetError,
+)
 from ayon_core.tools.attribute_defs import create_widget_for_attr_def
 from ayon_core.tools import resources
 from ayon_core.tools.flickcharm import FlickCharm
@@ -20,24 +25,20 @@ from ayon_core.tools.utils import (
     BaseClickableFrame,
     set_style_property,
 )
-from ayon_core.style import get_objected_colors
-from ayon_core.pipeline.create import (
-    PRODUCT_NAME_ALLOWED_SYMBOLS,
-    TaskNotSetError,
+from ayon_core.tools.publisher.abstract import AbstractPublisherFrontend
+from ayon_core.tools.publisher.constants import (
+    VARIANT_TOOLTIP,
+    ResetKeySequence,
+    INPUTS_LAYOUT_HSPACING,
+    INPUTS_LAYOUT_VSPACING,
 )
+
 from .thumbnail_widget import ThumbnailWidget
 from .folders_dialog import FoldersDialog
 from .tasks_model import TasksModel
 from .icons import (
     get_pixmap,
     get_icon_path
-)
-
-from ..constants import (
-    VARIANT_TOOLTIP,
-    ResetKeySequence,
-    INPUTS_LAYOUT_HSPACING,
-    INPUTS_LAYOUT_VSPACING,
 )
 
 FA_PREFIXES = ["", "fa.", "fa5.", "fa5b.", "fa5s.", "ei.", "mdi."]
@@ -94,7 +95,7 @@ class IconValuePixmapLabel(PublishPixmapLabel):
     def __init__(self, icon_def, parent):
         source_pixmap = self._parse_icon_def(icon_def)
 
-        super(IconValuePixmapLabel, self).__init__(source_pixmap, parent)
+        super().__init__(source_pixmap, parent)
 
     def set_icon_def(self, icon_def):
         """Set icon by it's definition name.
@@ -122,7 +123,7 @@ class ContextWarningLabel(PublishPixmapLabel):
     def __init__(self, parent):
         pix = get_pixmap("warning")
 
-        super(ContextWarningLabel, self).__init__(pix, parent)
+        super().__init__(pix, parent)
 
         self.setToolTip(
             "Contain invalid context. Please check details."
@@ -145,7 +146,7 @@ class PublishIconBtn(IconButton):
     """
 
     def __init__(self, pixmap_path, *args, **kwargs):
-        super(PublishIconBtn, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
 
         colors = get_objected_colors()
         icon = self.generate_icon(
@@ -208,7 +209,7 @@ class CreateBtn(PublishIconBtn):
 
     def __init__(self, parent=None):
         icon_path = get_icon_path("create")
-        super(CreateBtn, self).__init__(icon_path, "Create", parent)
+        super().__init__(icon_path, "Create", parent)
         self.setToolTip("Create new product/s")
         self.setLayoutDirection(QtCore.Qt.RightToLeft)
 
@@ -217,7 +218,7 @@ class SaveBtn(PublishIconBtn):
     """Save context and instances information."""
     def __init__(self, parent=None):
         icon_path = get_icon_path("save")
-        super(SaveBtn, self).__init__(icon_path, parent)
+        super().__init__(icon_path, parent)
         self.setToolTip(
             "Save changes ({})".format(
                 QtGui.QKeySequence(QtGui.QKeySequence.Save).toString()
@@ -229,7 +230,7 @@ class ResetBtn(PublishIconBtn):
     """Publish reset button."""
     def __init__(self, parent=None):
         icon_path = get_icon_path("refresh")
-        super(ResetBtn, self).__init__(icon_path, parent)
+        super().__init__(icon_path, parent)
         self.setToolTip(
             "Reset & discard changes ({})".format(ResetKeySequence.toString())
         )
@@ -239,7 +240,7 @@ class StopBtn(PublishIconBtn):
     """Publish stop button."""
     def __init__(self, parent):
         icon_path = get_icon_path("stop")
-        super(StopBtn, self).__init__(icon_path, parent)
+        super().__init__(icon_path, parent)
         self.setToolTip("Stop/Pause publishing")
 
 
@@ -247,7 +248,7 @@ class ValidateBtn(PublishIconBtn):
     """Publish validate button."""
     def __init__(self, parent=None):
         icon_path = get_icon_path("validate")
-        super(ValidateBtn, self).__init__(icon_path, parent)
+        super().__init__(icon_path, parent)
         self.setToolTip("Validate")
 
 
@@ -255,7 +256,7 @@ class PublishBtn(PublishIconBtn):
     """Publish start publish button."""
     def __init__(self, parent=None):
         icon_path = get_icon_path("play")
-        super(PublishBtn, self).__init__(icon_path, "Publish", parent)
+        super().__init__(icon_path, "Publish", parent)
         self.setToolTip("Publish")
 
 
@@ -263,7 +264,7 @@ class CreateInstanceBtn(PublishIconBtn):
     """Create add button."""
     def __init__(self, parent=None):
         icon_path = get_icon_path("add")
-        super(CreateInstanceBtn, self).__init__(icon_path, parent)
+        super().__init__(icon_path, parent)
         self.setToolTip("Create new instance")
 
 
@@ -274,7 +275,7 @@ class PublishReportBtn(PublishIconBtn):
 
     def __init__(self, parent=None):
         icon_path = get_icon_path("view_report")
-        super(PublishReportBtn, self).__init__(icon_path, parent)
+        super().__init__(icon_path, parent)
         self.setToolTip("Copy report")
         self._actions = []
 
@@ -287,7 +288,7 @@ class PublishReportBtn(PublishIconBtn):
         self.triggered.emit(identifier)
 
     def mouseReleaseEvent(self, event):
-        super(PublishReportBtn, self).mouseReleaseEvent(event)
+        super().mouseReleaseEvent(event)
         menu = QtWidgets.QMenu(self)
         actions = []
         for item in self._actions:
@@ -305,7 +306,7 @@ class RemoveInstanceBtn(PublishIconBtn):
     """Create remove button."""
     def __init__(self, parent=None):
         icon_path = resources.get_icon_path("delete")
-        super(RemoveInstanceBtn, self).__init__(icon_path, parent)
+        super().__init__(icon_path, parent)
         self.setToolTip("Remove selected instances")
 
 
@@ -313,7 +314,7 @@ class ChangeViewBtn(PublishIconBtn):
     """Create toggle view button."""
     def __init__(self, parent=None):
         icon_path = get_icon_path("change_view")
-        super(ChangeViewBtn, self).__init__(icon_path, parent)
+        super().__init__(icon_path, parent)
         self.setToolTip("Swap between views")
 
 
@@ -363,7 +364,9 @@ class AbstractInstanceView(QtWidgets.QWidget):
             "{} Method 'get_selected_items' is not implemented."
         ).format(self.__class__.__name__))
 
-    def set_selected_items(self, instance_ids, context_selected):
+    def set_selected_items(
+        self, instance_ids, context_selected, convertor_identifiers
+    ):
         """Change selection for instances and context.
 
         Used to applying selection from one view to other.
@@ -371,8 +374,9 @@ class AbstractInstanceView(QtWidgets.QWidget):
         Args:
             instance_ids (List[str]): Selected instance ids.
             context_selected (bool): Context is selected.
-        """
+            convertor_identifiers (List[str]): Selected convertor identifiers.
 
+        """
         raise NotImplementedError((
             "{} Method 'set_selected_items' is not implemented."
         ).format(self.__class__.__name__))
@@ -399,7 +403,7 @@ class ClickableLineEdit(QtWidgets.QLineEdit):
     clicked = QtCore.Signal()
 
     def __init__(self, *args, **kwargs):
-        super(ClickableLineEdit, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         self.setReadOnly(True)
         self._mouse_pressed = False
 
@@ -429,8 +433,10 @@ class FoldersFields(BaseClickableFrame):
     """
     value_changed = QtCore.Signal()
 
-    def __init__(self, controller, parent):
-        super(FoldersFields, self).__init__(parent)
+    def __init__(
+        self, controller: AbstractPublisherFrontend, parent: QtWidgets.QWidget
+    ):
+        super().__init__(parent)
         self.setObjectName("FolderPathInputWidget")
 
         # Don't use 'self' for parent!
@@ -465,7 +471,7 @@ class FoldersFields(BaseClickableFrame):
         icon_btn.clicked.connect(self._mouse_release_callback)
         dialog.finished.connect(self._on_dialog_finish)
 
-        self._controller = controller
+        self._controller: AbstractPublisherFrontend = controller
         self._dialog = dialog
         self._name_input = name_input
         self._icon_btn = icon_btn
@@ -582,7 +588,7 @@ class FoldersFields(BaseClickableFrame):
 
 class TasksComboboxProxy(QtCore.QSortFilterProxyModel):
     def __init__(self, *args, **kwargs):
-        super(TasksComboboxProxy, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         self._filter_empty = False
 
     def set_filter_empty(self, filter_empty):
@@ -613,8 +619,10 @@ class TasksCombobox(QtWidgets.QComboBox):
     """
     value_changed = QtCore.Signal()
 
-    def __init__(self, controller, parent):
-        super(TasksCombobox, self).__init__(parent)
+    def __init__(
+        self, controller: AbstractPublisherFrontend, parent: QtWidgets.QWidget
+    ):
+        super().__init__(parent)
         self.setObjectName("TasksCombobox")
 
         # Set empty delegate to propagate stylesheet to a combobox
@@ -892,7 +900,7 @@ class VariantInputWidget(PlaceholderLineEdit):
     value_changed = QtCore.Signal()
 
     def __init__(self, parent):
-        super(VariantInputWidget, self).__init__(parent)
+        super().__init__(parent)
 
         self.setObjectName("VariantInput")
         self.setToolTip(VARIANT_TOOLTIP)
@@ -1003,7 +1011,7 @@ class MultipleItemWidget(QtWidgets.QWidget):
     """
 
     def __init__(self, parent):
-        super(MultipleItemWidget, self).__init__(parent)
+        super().__init__(parent)
 
         model = QtGui.QStandardItemModel()
 
@@ -1043,7 +1051,7 @@ class MultipleItemWidget(QtWidgets.QWidget):
         self.setMaximumHeight(height + (2 * self._view.spacing()))
 
     def showEvent(self, event):
-        super(MultipleItemWidget, self).showEvent(event)
+        super().showEvent(event)
         tmp_item = None
         if not self._value:
             # Add temp item to be able calculate maximum height of widget
@@ -1055,7 +1063,7 @@ class MultipleItemWidget(QtWidgets.QWidget):
             self._model.clear()
 
     def resizeEvent(self, event):
-        super(MultipleItemWidget, self).resizeEvent(event)
+        super().resizeEvent(event)
         self._update_size()
 
     def set_value(self, value=None):
@@ -1095,10 +1103,12 @@ class GlobalAttrsWidget(QtWidgets.QWidget):
     multiselection_text = "< Multiselection >"
     unknown_value = "N/A"
 
-    def __init__(self, controller, parent):
-        super(GlobalAttrsWidget, self).__init__(parent)
+    def __init__(
+        self, controller: AbstractPublisherFrontend, parent: QtWidgets.QWidget
+    ):
+        super().__init__(parent)
 
-        self._controller = controller
+        self._controller: AbstractPublisherFrontend = controller
         self._current_instances = []
 
         variant_input = VariantInputWidget(self)
@@ -1338,8 +1348,10 @@ class CreatorAttrsWidget(QtWidgets.QWidget):
     widgets are merged into one (different label does not count).
     """
 
-    def __init__(self, controller, parent):
-        super(CreatorAttrsWidget, self).__init__(parent)
+    def __init__(
+        self, controller: AbstractPublisherFrontend, parent: QtWidgets.QWidget
+    ):
+        super().__init__(parent)
 
         scroll_area = QtWidgets.QScrollArea(self)
         scroll_area.setWidgetResizable(True)
@@ -1351,7 +1363,7 @@ class CreatorAttrsWidget(QtWidgets.QWidget):
 
         self._main_layout = main_layout
 
-        self._controller = controller
+        self._controller: AbstractPublisherFrontend = controller
         self._scroll_area = scroll_area
 
         self._attr_def_id_to_instances = {}
@@ -1476,8 +1488,10 @@ class PublishPluginAttrsWidget(QtWidgets.QWidget):
     does not count).
     """
 
-    def __init__(self, controller, parent):
-        super(PublishPluginAttrsWidget, self).__init__(parent)
+    def __init__(
+        self, controller: AbstractPublisherFrontend, parent: QtWidgets.QWidget
+    ):
+        super().__init__(parent)
 
         scroll_area = QtWidgets.QScrollArea(self)
         scroll_area.setWidgetResizable(True)
@@ -1489,7 +1503,7 @@ class PublishPluginAttrsWidget(QtWidgets.QWidget):
 
         self._main_layout = main_layout
 
-        self._controller = controller
+        self._controller: AbstractPublisherFrontend = controller
         self._scroll_area = scroll_area
 
         self._attr_def_id_to_instances = {}
@@ -1635,8 +1649,10 @@ class ProductAttributesWidget(QtWidgets.QWidget):
     instance_context_changed = QtCore.Signal()
     convert_requested = QtCore.Signal()
 
-    def __init__(self, controller, parent):
-        super(ProductAttributesWidget, self).__init__(parent)
+    def __init__(
+        self, controller: AbstractPublisherFrontend, parent: QtWidgets.QWidget
+    ):
+        super().__init__(parent)
 
         # TOP PART
         top_widget = QtWidgets.QWidget(self)
@@ -1734,11 +1750,11 @@ class ProductAttributesWidget(QtWidgets.QWidget):
         thumbnail_widget.thumbnail_created.connect(self._on_thumbnail_create)
         thumbnail_widget.thumbnail_cleared.connect(self._on_thumbnail_clear)
 
-        controller.event_system.add_callback(
+        controller.register_event_callback(
             "instance.thumbnail.changed", self._on_thumbnail_changed
         )
 
-        self._controller = controller
+        self._controller: AbstractPublisherFrontend = controller
 
         self._convert_widget = convert_widget
 
@@ -1877,7 +1893,7 @@ class CreateNextPageOverlay(QtWidgets.QWidget):
     clicked = QtCore.Signal()
 
     def __init__(self, parent):
-        super(CreateNextPageOverlay, self).__init__(parent)
+        super().__init__(parent)
         self.setCursor(QtCore.Qt.PointingHandCursor)
         self._arrow_color = (
             get_objected_colors("font").get_qcolor()
@@ -1967,7 +1983,7 @@ class CreateNextPageOverlay(QtWidgets.QWidget):
     def mousePressEvent(self, event):
         if event.button() == QtCore.Qt.LeftButton:
             self._mouse_pressed = True
-        super(CreateNextPageOverlay, self).mousePressEvent(event)
+        super().mousePressEvent(event)
 
     def mouseReleaseEvent(self, event):
         if self._mouse_pressed:
@@ -1975,7 +1991,7 @@ class CreateNextPageOverlay(QtWidgets.QWidget):
             if self.rect().contains(event.pos()):
                 self.clicked.emit()
 
-        super(CreateNextPageOverlay, self).mouseReleaseEvent(event)
+        super().mouseReleaseEvent(event)
 
     def paintEvent(self, event):
         painter = QtGui.QPainter()

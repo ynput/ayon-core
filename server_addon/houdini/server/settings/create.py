@@ -61,9 +61,6 @@ class CreatePluginsModel(BaseSettingsModel):
     CreateKarmaROP: CreatorModel = SettingsField(
         default_factory=CreatorModel,
         title="Create Karma ROP")
-    CreateMantraIFD: CreatorModel = SettingsField(
-        default_factory=CreatorModel,
-        title="Create Mantra IFD")
     CreateMantraROP: CreatorModel = SettingsField(
         default_factory=CreatorModel,
         title="Create Mantra ROP")
@@ -126,10 +123,6 @@ DEFAULT_HOUDINI_CREATE_SETTINGS = {
         "default_variants": ["Main"]
     },
     "CreateKarmaROP": {
-        "enabled": True,
-        "default_variants": ["Main"]
-    },
-    "CreateMantraIFD": {
         "enabled": True,
         "default_variants": ["Main"]
     },
