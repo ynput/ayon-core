@@ -68,11 +68,7 @@ class CollectFilesForCleaningUpModel(BaseSettingsModel):
     enabled: bool = SettingsField(title="Enabled")
     optional: bool = SettingsField(title="Optional")
     active: bool = SettingsField(title="Active")
-    intermediate_exported_render: bool = SettingsField(
-        title="Include Intermediate Exported Render Files",
-        description="Include intermediate exported render scenes for cleanup"
-                    " (.idf, .ass, .usd, .rs) for render instances.",
-    )
+
     families: list[str] = SettingsField(
         default_factory=list,
         enum_resolver=product_types_enum,
