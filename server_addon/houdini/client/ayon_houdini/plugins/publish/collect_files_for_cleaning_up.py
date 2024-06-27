@@ -1,4 +1,5 @@
 import os
+from typing import List
 
 import clique
 import pyblish.api
@@ -52,8 +53,8 @@ class CollectFilesForCleaningUp(plugin.HoudiniInstancePlugin,
             self.log.debug("Should be processed on farm, skipping.")
             return
 
-        files: list[os.PathLike] = []
-        staging_dirs: list[os.PathLike] = []
+        files: List[str] = []
+        staging_dirs: List[str] = []
         expected_files = instance.data.get("expectedFiles", [])
 
         # Prefer 'expectedFiles' over 'frames' because it usually contains more
