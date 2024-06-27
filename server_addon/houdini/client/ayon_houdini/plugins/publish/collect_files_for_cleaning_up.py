@@ -1,7 +1,6 @@
 import os
 from typing import List
 
-import clique
 import pyblish.api
 from ayon_core.pipeline import AYONPyblishPluginMixin
 from ayon_houdini.api import plugin
@@ -97,28 +96,3 @@ class CollectFilesForCleaningUp(plugin.HoudiniInstancePlugin,
 
         self.log.debug("Add files to 'cleanupFullPaths': {}".format(files))
         instance.context.data["cleanupFullPaths"].extend(files)
-
-    def _get_ifd_file_list(self, ifd_file, start_frame, end_frame):
-
-        file_name = os.path.basename(ifd_file)
-        parent_path = os.path.dirname(ifd_file)
-
-        # Compute frames list
-        collections, _ = clique.assemble(
-            [file_name],
-            patterns=[clique.PATTERNS["frames"]],
-            minimum_items=1
-        )
-
-        # It's always expected to be one collection.
-        if len(collections) != 1:
-            raise ValueError(
-                f"Expected to detect a single sequence from {file_name} but "
-                f"instead got {collections}")
-
-        frame_collection = collections[0]
-        frame_collection.indexes.clear()
-        frame_collection.indexes.update(
-            list(range(start_frame, (end_frame + 1))))
-
-        return [f"{parent_path}/{frame}" for frame in frame_collection]
