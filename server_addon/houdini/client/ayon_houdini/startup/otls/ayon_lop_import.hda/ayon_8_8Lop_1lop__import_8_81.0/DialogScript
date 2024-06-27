@@ -48,11 +48,28 @@
             parmtag { "script_callback_language" "python" }
         }
         parm {
+            name    "product_type"
+            label   "Product Type"
+            type    string
+            default { "usd" }
+        }
+        parm {
             name    "product_name"
             label   "Product"
             type    string
             default { "usdAsset" }
-            parmtag { "script_callback" "hou.phm().on_representation_parms_changed(kwargs['node'])" }
+            menureplace {
+                [ "products = hou.phm().get_available_products(kwargs['node'])" ]
+                [ "" ]
+                [ "result = []" ]
+                [ "for product in products:" ]
+                [ "    result.append(product)" ]
+                [ "    result.append(product)" ]
+                [ "    " ]
+                [ "return result" ]
+                language python
+            }
+            parmtag { "script_callback" "hou.phm().refresh_version(kwargs['node'])\nhou.phm().on_representation_parms_changed(kwargs['node'])" }
             parmtag { "script_callback_language" "python" }
         }
         parm {
