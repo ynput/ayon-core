@@ -20,7 +20,7 @@ class ExtractActiveViewThumbnail(plugin.HoudiniExtractorPlugin,
     families = ["workfile"]
 
     def process(self, instance):
-        if not self.is_active(instance):
+        if not self.is_active(instance.data):
             return
 
         if IS_HEADLESS:
