@@ -165,7 +165,7 @@ class FoldersQtModel(QtGui.QStandardItemModel):
         folder_items = self._controller.get_folder_items(
             project_name, FOLDERS_MODEL_SENDER_NAME
         )
-        folder_type_items = {}
+        folder_type_items = []
         if hasattr(self._controller, "get_folder_type_items"):
             folder_type_items = self._controller.get_folder_type_items(
                 project_name, FOLDERS_MODEL_SENDER_NAME
@@ -194,7 +194,7 @@ class FoldersQtModel(QtGui.QStandardItemModel):
             return
         if thread.failed:
             # TODO visualize that refresh failed
-            folder_items, folder_type_items = {}, {}
+            folder_items, folder_type_items = {}, []
         else:
             folder_items, folder_type_items = thread.get_result()
         self._fill_items(folder_items, folder_type_items)
