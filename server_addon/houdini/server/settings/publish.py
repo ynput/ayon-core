@@ -148,7 +148,6 @@ DEFAULT_HOUDINI_PUBLISH_SETTINGS = {
         "enabled": False,
         "optional": True,
         "active": True,
-        "intermediate_exported_render": False,
         "families" : []
     },
     "CollectLocalRenderInstances": {
