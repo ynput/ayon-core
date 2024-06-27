@@ -1,6 +1,0 @@
-[project]
-name="jobqueue"
-description="AYON JobQueue addon."
-
-[ayon.runtimeDependencies]
-aiohttp_json_rpc = "*"
