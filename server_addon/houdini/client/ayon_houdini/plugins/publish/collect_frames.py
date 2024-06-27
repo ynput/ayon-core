@@ -61,24 +61,3 @@ class CollectFrames(plugin.HoudiniInstancePlugin):
         frame_collection.indexes.clear()
         frame_collection.indexes.update(list(range(start_frame, (end_frame + 1))))
         instance.data["frames"] = list(frame_collection)
-
-
-class CollectHDAFrames(plugin.HoudiniInstancePlugin):
-    """Collect all frames which would be saved from HDA nodes"""
-
-    order = pyblish.api.CollectorOrder
-    label = "Collect Frames"
-    families = ["hda"]
-
-    def process(self, instance):
-
-        hda_node = hou.node(instance.data.get("instance_node"))
-        hda_def = hda_node.type().definition()
-
-        file_name = os.path.basename(hda_def.libraryFilePath())
-        staging_dir = os.path.dirname(hda_def.libraryFilePath())
-
-        instance.data.update({
-            "frames": file_name,  # Set frames to the file name by default.
-            "stagingDir": staging_dir
-        })
