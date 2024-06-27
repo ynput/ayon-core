@@ -31,6 +31,7 @@ class AOVFilterSubmodel(BaseSettingsModel):
         title="AOV regex"
     )
 
+
 class CollectLocalRenderInstancesModel(BaseSettingsModel):
 
     use_deadline_aov_filter: bool = SettingsField(
@@ -66,36 +67,36 @@ class BasicValidateModel(BaseSettingsModel):
 class PublishPluginsModel(BaseSettingsModel):
     CollectAssetHandles: CollectAssetHandlesModel = SettingsField(
         default_factory=CollectAssetHandlesModel,
-        title="Collect Asset Handles.",
+        title="Collect Asset Handles",
         section="Collectors"
     )
     CollectChunkSize: CollectChunkSizeModel = SettingsField(
         default_factory=CollectChunkSizeModel,
-        title="Collect Chunk Size."
+        title="Collect Chunk Size"
     )
     CollectLocalRenderInstances: CollectLocalRenderInstancesModel = SettingsField(
         default_factory=CollectLocalRenderInstancesModel,
-        title="Collect Local Render Instances."
+        title="Collect Local Render Instances"
     )
     ValidateInstanceInContextHoudini: BasicValidateModel = SettingsField(
         default_factory=BasicValidateModel,
-        title="Validate Instance is in same Context.",
+        title="Validate Instance is in same Context",
         section="Validators")
     ValidateMeshIsStatic: BasicValidateModel = SettingsField(
         default_factory=BasicValidateModel,
-        title="Validate Mesh is Static.")
+        title="Validate Mesh is Static")
     ValidateReviewColorspace: BasicValidateModel = SettingsField(
         default_factory=BasicValidateModel,
-        title="Validate Review Colorspace.")
+        title="Validate Review Colorspace")
     ValidateSubsetName: BasicValidateModel = SettingsField(
         default_factory=BasicValidateModel,
-        title="Validate Subset Name.")
+        title="Validate Subset Name")
     ValidateUnrealStaticMeshName: BasicValidateModel = SettingsField(
         default_factory=BasicValidateModel,
-        title="Validate Unreal Static Mesh Name.")
+        title="Validate Unreal Static Mesh Name")
     ValidateWorkfilePaths: ValidateWorkfilePathsModel = SettingsField(
         default_factory=ValidateWorkfilePathsModel,
-        title="Validate workfile paths settings.")
+        title="Validate workfile paths settings")
 
 
 DEFAULT_HOUDINI_PUBLISH_SETTINGS = {
@@ -109,7 +110,7 @@ DEFAULT_HOUDINI_PUBLISH_SETTINGS = {
     },
     "CollectLocalRenderInstances": {
         "use_deadline_aov_filter": False,
-        "aov_filter" : {
+        "aov_filter": {
             "host_name": "houdini",
             "value": [
                 ".*([Bb]eauty).*"
