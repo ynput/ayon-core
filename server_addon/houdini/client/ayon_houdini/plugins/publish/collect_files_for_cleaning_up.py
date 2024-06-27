@@ -1,4 +1,5 @@
 import os
+from typing import List
 
 import clique
 import pyblish.api
@@ -10,8 +11,7 @@ class CollectFilesForCleaningUp(plugin.HoudiniInstancePlugin,
                                 AYONPyblishPluginMixin):
     """Collect Files For Cleaning Up.
 
-    This collector collects output files
-    and adds them to file remove list.
+    This collector collects output files and adds them to file remove list.
 
     CAUTION:
         This collector registers exported files and
@@ -24,9 +24,9 @@ class CollectFilesForCleaningUp(plugin.HoudiniInstancePlugin,
         Farm instances will be processed on farm by other dedicated plugins
           that live in core addon e.g. `CollectRenderedFiles` plugin.
         These dedicated plugins don't support tracking and removing
-          intermediated render files.
+          intermediate render files.
 
-        Local Render instances don't track intermediated render files,
+        Local Render instances don't track intermediate render files,
         Therefore, this plugin doesn't support removing
           intermediate render files.
 
@@ -52,12 +52,12 @@ class CollectFilesForCleaningUp(plugin.HoudiniInstancePlugin,
             self.log.debug("Should be processed on farm, skipping.")
             return
 
-        files: list[os.PathLike] = []
-        staging_dirs: list[os.PathLike] = []
+        files: List[str] = []
+        staging_dirs: List[str] = []
         expected_files = instance.data.get("expectedFiles", [])
 
-        # Prefer 'expectedFiles' over 'frames' because it usually contains
-        # more output files than just a single file or single sequence of files.
+        # Prefer 'expectedFiles' over 'frames' because it usually contains more
+        # output files than just a single file or single sequence of files.
         if expected_files:
             # Products with expected files
             # This can be Render products or submitted cache to farm.
@@ -104,14 +104,19 @@ class CollectFilesForCleaningUp(plugin.HoudiniInstancePlugin,
         parent_path = os.path.dirname(ifd_file)
 
         # Compute frames list
-        frame_collection, _ = clique.assemble(
+        collections, _ = clique.assemble(
             [file_name],
             patterns=[clique.PATTERNS["frames"]],
             minimum_items=1
         )
 
         # It's always expected to be one collection.
-        frame_collection = frame_collection[0]
+        if len(collections) != 1:
+            raise ValueError(
+                f"Expected to detect a single sequence from {file_name} but "
+                f"instead got {collections}")
+
+        frame_collection = collections[0]
         frame_collection.indexes.clear()
         frame_collection.indexes.update(
             list(range(start_frame, (end_frame + 1))))
