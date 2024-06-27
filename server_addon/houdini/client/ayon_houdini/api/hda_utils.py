@@ -459,14 +459,10 @@ class PickAssetDialog(QtWidgets.QDialog):
         folder_widget.double_clicked.connect(self.accept)
         accept_button.clicked.connect(self.accept)
 
-        # Default refreshed to current project
-        project_name = get_current_project_name()
-        self.set_project_name(project_name)
-
-    def get_selected_folder_path(self):
+    def get_selected_folder_path(self) -> str:
         return self.folder_widget.get_selected_folder_path()
 
-    def get_selected_project_name(self):
+    def get_selected_project_name(self) -> str:
         return self.project_widget.currentText()
 
     def get_projects(self) -> List[str]:
