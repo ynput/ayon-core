@@ -107,7 +107,7 @@ class PublishPluginsModel(BaseSettingsModel):
         default_factory=CollectChunkSizeModel,
         title="Collect Chunk Size"
     )
-    CollectFilesForCleaningUp:CollectFilesForCleaningUpModel = SettingsField(
+    CollectFilesForCleaningUp: CollectFilesForCleaningUpModel = SettingsField(
         default_factory=CollectFilesForCleaningUpModel,
         title="Collect Files For Cleaning Up."
     )
