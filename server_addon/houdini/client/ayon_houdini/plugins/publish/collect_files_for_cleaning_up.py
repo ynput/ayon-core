@@ -36,7 +36,8 @@ class CollectFilesForCleaningUp(plugin.HoudiniInstancePlugin,
 
         expected_files = instance.data.get("expectedFiles", [])
 
-        # 'expectedFiles' are preferred over 'frames'
+        # Prefer 'expectedFiles' over 'frames' because it usually contains
+        # more output files than just a single file or single sequence of files.
         if expected_files:
             # Products with expected files
             # This can be Render products or submitted cache to farm.
