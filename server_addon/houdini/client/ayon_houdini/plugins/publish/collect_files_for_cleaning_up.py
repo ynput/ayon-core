@@ -15,9 +15,27 @@ class CollectFilesForCleaningUp(plugin.HoudiniInstancePlugin,
 
     CAUTION:
         This collector registers exported files and
-          the parent folder (if it was empty) for deletion
-          in `ExplicitCleanUp` plug-in.
+          the parent folder for deletion in `ExplicitCleanUp` plug-in.
+          please refer to `ExplicitCleanUp`'s docstring for further info.
+
+    Notes:
         Artists are free to change the file path in the ROP node.
+
+        Farm instances will be processed on farm by other dedicated plugins
+          that live in core addon e.g. `CollectRenderedFiles` plugin.
+        These dedicated plugins don't support tracking and removing
+          intermediated render files.
+
+        Local Render instances don't track intermediated render files,
+        Therefore, this plugin doesn't support removing
+          intermediate render files.
+
+        HDA is not added to this plugin's options in server settings.
+        Cleaning up HDA products will break the scene as Houdini will no longer
+          be able to find the HDA file.
+        In addition,HDA plugins always save HDAs to external files.
+        Therefore, Cleaning up HDA products will break the ability to go back
+          to the workfile and continue on the HDA.
     """
 
     # It should run after CollectFrames and Collect Render plugins,
@@ -27,13 +45,15 @@ class CollectFilesForCleaningUp(plugin.HoudiniInstancePlugin,
     hosts = ["houdini"]
     families = ["*"]
     label = "Collect Files For Cleaning Up"
-    intermediate_exported_render = False
 
     def process(self, instance):
 
+        if instance.data.get("farm"):
+            self.log.debug("Should be processed on farm, skipping.")
+            return
+
         files: list[os.PathLike] = []
         staging_dirs: list[os.PathLike] = []
-
         expected_files = instance.data.get("expectedFiles", [])
 
         # Prefer 'expectedFiles' over 'frames' because it usually contains
@@ -70,21 +90,6 @@ class CollectFilesForCleaningUp(plugin.HoudiniInstancePlugin,
                 files.extend(
                     [f"{staging_dir}/{frame}" for frame in frames]
                 )
-
-        # Intermediate exported render files.
-        # Note: This only takes effect when setting render target to
-        #       "Farm Rendering - Split export & render jobs"
-        #       as it's the only case where "ifdFile" exists in instance data.
-        # TODO : Clean up intermediate files of Karma product type.
-        #        as "ifdFile" works for other render product types only.
-        ifd_file = instance.data.get("ifdFile")
-        if self.intermediate_exported_render and ifd_file:
-            start_frame = instance.data["frameStartHandle"]
-            end_frame = instance.data["frameEndHandle"]
-            ifd_files = self._get_ifd_file_list(ifd_file,
-                                                start_frame, end_frame)
-            staging_dirs.append(os.path.dirname(ifd_file))
-            files.extend(ifd_files)
 
         self.log.debug(
             f"Add directories to 'cleanupEmptyDir': {staging_dirs}")
