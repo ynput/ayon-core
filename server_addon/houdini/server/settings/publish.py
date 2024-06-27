@@ -99,7 +99,8 @@ class PublishPluginsModel(BaseSettingsModel):
         title="Validate workfile paths settings")
     ExtractActiveViewThumbnail: BasicEnabledStatesModel = SettingsField(
         default_factory=BasicEnabledStatesModel,
-        title="Extract Active View Thumbnail"
+        title="Extract Active View Thumbnail",
+        section="Extractors"
     )
 
 
