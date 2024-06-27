@@ -104,14 +104,19 @@ class CollectFilesForCleaningUp(plugin.HoudiniInstancePlugin,
         parent_path = os.path.dirname(ifd_file)
 
         # Compute frames list
-        frame_collection, _ = clique.assemble(
+        collections, _ = clique.assemble(
             [file_name],
             patterns=[clique.PATTERNS["frames"]],
             minimum_items=1
         )
 
         # It's always expected to be one collection.
-        frame_collection = frame_collection[0]
+        if len(collections) != 1:
+            raise ValueError(
+                f"Expected to detect a single sequence from {file_name} but "
+                f"instead got {collections}")
+
+        frame_collection = collections[0]
         frame_collection.indexes.clear()
         frame_collection.indexes.update(
             list(range(start_frame, (end_frame + 1))))
