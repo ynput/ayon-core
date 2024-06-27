@@ -153,8 +153,8 @@ class FusionSubmitDeadlineModel(BaseSettingsModel):
     )
     group: str = SettingsField("", title="Group Name")
     plugin: str = SettingsField("Fusion",
-                        enum_resolver=fusion_deadline_plugin_enum,
-                        title="Deadline Plugin")
+                                enum_resolver=fusion_deadline_plugin_enum,
+                                title="Deadline Plugin")
 
 
 class NukeSubmitDeadlineModel(BaseSettingsModel):
@@ -191,7 +191,6 @@ class NukeSubmitDeadlineModel(BaseSettingsModel):
 
     @validator(
         "limit_groups",
-        "env_allowed_keys",
         "env_search_replace_values")
     def validate_unique_names(cls, value):
         ensure_unique_names(value)
@@ -209,6 +208,32 @@ class HarmonySubmitDeadlineModel(BaseSettingsModel):
     chunk_size: int = SettingsField(title="Chunk Size")
     group: str = SettingsField(title="Group")
     department: str = SettingsField(title="Department")
+
+
+class HoudiniSubmitDeadlineModel(BaseSettingsModel):
+    """Houdini deadline render submitter settings."""
+    enabled: bool = SettingsField(title="Enabled")
+    optional: bool = SettingsField(title="Optional")
+    active: bool = SettingsField(title="Active")
+    
+    priority: int = SettingsField(title="Priority")
+    chunk_size: int = SettingsField(title="Chunk Size")
+    group: str = SettingsField(title="Group")
+
+    export_priority: int = SettingsField(title="Export Priority")
+    export_chunk_size: int = SettingsField(title="Export Chunk Size")
+    export_group: str = SettingsField(title="Export Group")
+
+
+class HoudiniCacheSubmitDeadlineModel(BaseSettingsModel):
+    """Houdini deadline cache submitter settings."""
+    enabled: bool = SettingsField(title="Enabled")
+    optional: bool = SettingsField(title="Optional")
+    active: bool = SettingsField(title="Active")
+    
+    priority: int = SettingsField(title="Priority")
+    chunk_size: int = SettingsField(title="Chunk Size")
+    group: str = SettingsField(title="Group")
 
 
 class AfterEffectsSubmitDeadlineModel(BaseSettingsModel):
@@ -245,6 +270,7 @@ class BlenderSubmitDeadlineModel(BaseSettingsModel):
     optional: bool = SettingsField(title="Optional")
     active: bool = SettingsField(title="Active")
     use_published: bool = SettingsField(title="Use Published scene")
+    asset_dependencies: bool = SettingsField(title="Use Asset dependencies")
     priority: int = SettingsField(title="Priority")
     chunk_size: int = SettingsField(title="Frame per Task")
     group: str = SettingsField("", title="Group Name")
@@ -287,6 +313,13 @@ class ProcessSubmittedJobOnFarmModel(BaseSettingsModel):
         default_factory=list,
         title="Skip integration of representation with ext"
     )
+    families_transfer: list[str] = SettingsField(
+        default_factory=list,
+        title=(
+            "List of family names to transfer\n"
+            "to generated instances (AOVs for example)."
+        )
+    )
     aov_filter: list[AOVFilterSubmodel] = SettingsField(
         default_factory=list,
         title="Reviewable products filter",
@@ -325,6 +358,12 @@ class PublishPluginsModel(BaseSettingsModel):
     HarmonySubmitDeadline: HarmonySubmitDeadlineModel = SettingsField(
         default_factory=HarmonySubmitDeadlineModel,
         title="Harmony Submit to deadline")
+    HoudiniCacheSubmitDeadline: HoudiniCacheSubmitDeadlineModel = SettingsField(
+        default_factory=HoudiniCacheSubmitDeadlineModel,
+        title="Houdini Submit cache to deadline")
+    HoudiniSubmitDeadline: HoudiniSubmitDeadlineModel = SettingsField(
+        default_factory=HoudiniSubmitDeadlineModel,
+        title="Houdini Submit render to deadline")
     MaxSubmitDeadline: MaxSubmitDeadlineModel = SettingsField(
         default_factory=MaxSubmitDeadlineModel,
         title="Max Submit to deadline")
@@ -336,11 +375,11 @@ class PublishPluginsModel(BaseSettingsModel):
         title="Nuke Submit to deadline")
     ProcessSubmittedCacheJobOnFarm: ProcessCacheJobFarmModel = SettingsField(
         default_factory=ProcessCacheJobFarmModel,
-        title="Process submitted cache Job on farm.",
-            section="Publish Jobs")
+        title="Process submitted cache Job on farm",
+        section="Publish Jobs")
     ProcessSubmittedJobOnFarm: ProcessSubmittedJobOnFarmModel = SettingsField(
         default_factory=ProcessSubmittedJobOnFarmModel,
-        title="Process submitted job on farm.")
+        title="Process submitted job on farm")
 
 
 DEFAULT_DEADLINE_PLUGINS_SETTINGS = {
@@ -375,6 +414,7 @@ DEFAULT_DEADLINE_PLUGINS_SETTINGS = {
         "optional": False,
         "active": True,
         "use_published": True,
+        "asset_dependencies": True,
         "priority": 50,
         "chunk_size": 10,
         "group": "none",
@@ -408,6 +448,25 @@ DEFAULT_DEADLINE_PLUGINS_SETTINGS = {
         "chunk_size": 10000,
         "group": "",
         "department": ""
+    },
+    "HoudiniCacheSubmitDeadline": {
+        "enabled": True,
+        "optional": False,
+        "active": True,
+        "priority": 50,
+        "chunk_size": 999999,
+        "group": ""
+    },
+    "HoudiniSubmitDeadline": {
+        "enabled": True,
+        "optional": False,
+        "active": True,
+        "priority": 50,
+        "chunk_size": 1,
+        "group": "",
+        "export_priority": 50,
+        "export_chunk_size": 10,
+        "export_group": ""
     },
     "MaxSubmitDeadline": {
         "enabled": True,
@@ -470,6 +529,7 @@ DEFAULT_DEADLINE_PLUGINS_SETTINGS = {
         "deadline_priority": 50,
         "publishing_script": "",
         "skip_integration_repre_list": [],
+        "families_transfer": ["render3d", "render2d", "ftrack", "slate"],
         "aov_filter": [
             {
                 "name": "maya",

@@ -1,20 +1,16 @@
-import copy
-import attr
-import pyblish.api
 import os
-import clique
-from copy import deepcopy
+import copy
 import re
 import warnings
+from copy import deepcopy
+
+import attr
+import ayon_api
+import clique
 
 from ayon_core.pipeline import (
     get_current_project_name,
     get_representation_path,
-    Anatomy,
-)
-from ayon_core.client import (
-    get_last_version_by_subset_name,
-    get_representations
 )
 from ayon_core.lib import Logger
 from ayon_core.pipeline.publish import KnownPublishError
@@ -58,16 +54,16 @@ def remap_source(path, anatomy):
     return source
 
 
-def extend_frames(asset, subset, start, end):
+def extend_frames(folder_path, product_name, start, end):
     """Get latest version of asset nad update frame range.
 
     Based on minimum and maximum values.
 
     Arguments:
-        asset (str): asset name
-        subset (str): subset name
-        start (int): start frame
-        end (int): end frame
+        folder_path (str): Folder path.
+        product_name (str): Product name.
+        start (int): Start frame.
+        end (int): End frame.
 
     Returns:
         (int, int): update frame start/end
@@ -78,16 +74,19 @@ def extend_frames(asset, subset, start, end):
     prev_end = None
 
     project_name = get_current_project_name()
-    version = get_last_version_by_subset_name(
+    folder_entity = ayon_api.get_folder_by_path(
+        project_name, folder_path, fields={"id"}
+    )
+    version_entity = ayon_api.get_last_version_by_product_name(
         project_name,
-        subset,
-        asset_name=asset
+        product_name,
+        folder_entity["id"]
     )
 
     # Set prev start / end frames for comparison
     if not prev_start and not prev_end:
-        prev_start = version["data"]["frameStart"]
-        prev_end = version["data"]["frameEnd"]
+        prev_start = version_entity["attrib"]["frameStart"]
+        prev_end = version_entity["attrib"]["frameEnd"]
 
     updated_start = min(start, prev_start)
     updated_end = max(end, prev_end)
@@ -136,7 +135,7 @@ def get_transferable_representations(instance):
         list of dicts: List of transferable representations.
 
     """
-    anatomy = instance.context.data["anatomy"]  # type: Anatomy
+    anatomy = instance.context.data["anatomy"]
     to_transfer = []
 
     for representation in instance.data.get("representations", []):
@@ -165,7 +164,6 @@ def get_transferable_representations(instance):
 
 def create_skeleton_instance(
         instance, families_transfer=None, instance_transfer=None):
-    # type: (pyblish.api.Instance, list, dict) -> dict
     """Create skeleton instance from original instance data.
 
     This will create dictionary containing skeleton
@@ -190,7 +188,7 @@ def create_skeleton_instance(
 
     context = instance.context
     data = instance.data.copy()
-    anatomy = instance.context.data["anatomy"]  # type: Anatomy
+    anatomy = instance.context.data["anatomy"]
 
     # get time related data from instance (or context)
     time_data = get_time_data_from_instance_or_context(instance)
@@ -198,7 +196,7 @@ def create_skeleton_instance(
     if data.get("extendFrames", False):
         time_data.start, time_data.end = extend_frames(
             data["folderPath"],
-            data["subset"],
+            data["productName"],
             time_data.start,
             time_data.end,
         )
@@ -215,18 +213,19 @@ def create_skeleton_instance(
         log.warning(("Could not find root path for remapping \"{}\". "
                      "This may cause issues.").format(source))
 
-    family = ("render"
+    product_type = ("render"
               if "prerender.farm" not in instance.data["families"]
               else "prerender")
-    families = [family]
+    families = [product_type]
 
     # pass review to families if marked as review
     if data.get("review"):
         families.append("review")
 
     instance_skeleton_data = {
-        "family": family,
-        "subset": data["subset"],
+        "productType": product_type,
+        "productName": data["productName"],
+        "task": data["task"],
         "families": families,
         "folderPath": data["folderPath"],
         "frameStart": time_data.start,
@@ -472,8 +471,8 @@ def create_instances_for_aov(instance, skeleton, aov_filter,
             expected files.
 
     """
-    # we cannot attach AOVs to other subsets as we consider every
-    # AOV subset of its own.
+    # we cannot attach AOVs to other products as we consider every
+    # AOV product of its own.
 
     log = Logger.get_logger("farm_publishing")
     additional_color_data = {
@@ -493,7 +492,7 @@ def create_instances_for_aov(instance, skeleton, aov_filter,
         log.warning(e)
         additional_color_data["colorspaceTemplate"] = colorspace_template
 
-    # if there are subset to attach to and more than one AOV,
+    # if there are product to attach to and more than one AOV,
     # we cannot proceed.
     if (
         len(instance.data.get("attachTo", [])) > 0
@@ -501,7 +500,7 @@ def create_instances_for_aov(instance, skeleton, aov_filter,
     ):
         raise KnownPublishError(
             "attaching multiple AOVs or renderable cameras to "
-            "subset is not supported yet.")
+            "product is not supported yet.")
 
     # create instances for every AOV we found in expected files.
     # NOTE: this is done for every AOV and every render camera (if
@@ -544,7 +543,7 @@ def _create_instances_for_aov(instance, skeleton, aov_filter, additional_data,
     task = os.environ["AYON_TASK_NAME"]
 
     anatomy = instance.context.data["anatomy"]
-    subset = skeleton["subset"]
+    s_product_name = skeleton["productName"]
     cameras = instance.data.get("cameras", [])
     exp_files = instance.data["expectedFiles"]
     log = Logger.get_logger("farm_publishing")
@@ -570,34 +569,33 @@ def _create_instances_for_aov(instance, skeleton, aov_filter, additional_data,
             ext = cols[0].tail.lstrip(".")
             col = list(cols[0])
 
-        # create subset name `familyTaskSubset_AOV`
+        # create product name `<product type><Task><Product name>`
         # TODO refactor/remove me
-        family = skeleton["family"]
-        if not subset.startswith(family):
+        product_type = skeleton["productType"]
+        if not s_product_name.startswith(product_type):
             group_name = '{}{}{}{}{}'.format(
-                family,
+                product_type,
                 task[0].upper(), task[1:],
-                subset[0].upper(), subset[1:])
+                s_product_name[0].upper(), s_product_name[1:])
         else:
-            group_name = subset
+            group_name = s_product_name
 
         # if there are multiple cameras, we need to add camera name
         expected_filepath = col[0] if isinstance(col, (list, tuple)) else col
         cams = [cam for cam in cameras if cam in expected_filepath]
         if cams:
             for cam in cams:
-                if aov:
-                    if not aov.startswith(cam):
-                        subset_name = '{}_{}_{}'.format(group_name, cam, aov)
-                    else:
-                        subset_name = "{}_{}".format(group_name, aov)
+                if not aov:
+                    product_name = '{}_{}'.format(group_name, cam)
+                elif not aov.startswith(cam):
+                    product_name = '{}_{}_{}'.format(group_name, cam, aov)
                 else:
-                    subset_name = '{}_{}'.format(group_name, cam)
+                    product_name = "{}_{}".format(group_name, aov)
         else:
             if aov:
-                subset_name = '{}_{}'.format(group_name, aov)
+                product_name = '{}_{}'.format(group_name, aov)
             else:
-                subset_name = '{}'.format(group_name)
+                product_name = '{}'.format(group_name)
 
         if isinstance(col, (list, tuple)):
             staging = os.path.dirname(col[0])
@@ -609,7 +607,7 @@ def _create_instances_for_aov(instance, skeleton, aov_filter, additional_data,
         except ValueError as e:
             log.warning(e)
 
-        log.info("Creating data for: {}".format(subset_name))
+        log.info("Creating data for: {}".format(product_name))
 
         app = os.environ.get("AYON_HOST_NAME", "")
 
@@ -620,14 +618,31 @@ def _create_instances_for_aov(instance, skeleton, aov_filter, additional_data,
         aov_patterns = aov_filter
 
         preview = match_aov_pattern(app, aov_patterns, render_file_name)
-        # toggle preview on if multipart is on
-        if instance.data.get("multipartExr"):
-            log.debug("Adding preview tag because its multipartExr")
-            preview = True
 
         new_instance = deepcopy(skeleton)
-        new_instance["subset"] = subset_name
-        new_instance["subsetGroup"] = group_name
+        new_instance["productName"] = product_name
+        new_instance["productGroup"] = group_name
+
+        # toggle preview on if multipart is on
+        # Because we cant query the multipartExr data member of each AOV we'll
+        # need to have hardcoded rule of excluding any renders with
+        # "cryptomatte" in the file name from being a multipart EXR. This issue
+        # happens with Redshift that forces Cryptomatte renders to be separate
+        # files even when the rest of the AOVs are merged into a single EXR.
+        # There might be an edge case where the main instance has cryptomatte
+        # in the name even though it's a multipart EXR.
+        if instance.data.get("renderer") == "redshift":
+            if (
+                instance.data.get("multipartExr") and
+                "cryptomatte" not in render_file_name.lower()
+            ):
+                log.debug("Adding preview tag because it's multipartExr")
+                preview = True
+            else:
+                new_instance["multipartExr"] = False
+        elif instance.data.get("multipartExr"):
+            log.debug("Adding preview tag because its multipartExr")
+            preview = True
 
         # explicitly disable review by user
         preview = preview and not do_not_add_review
@@ -693,7 +708,7 @@ def _create_instances_for_aov(instance, skeleton, aov_filter, additional_data,
     return instances
 
 
-def get_resources(project_name, version, extension=None):
+def get_resources(project_name, version_entity, extension=None):
     """Get the files from the specific version.
 
     This will return all get all files from representation.
@@ -711,7 +726,7 @@ def get_resources(project_name, version, extension=None):
 
     Args:
         project_name (str): Name of the project.
-        version (dict): Version document.
+        version_entity (dict): Version entity.
         extension (str): extension used to filter
             representations.
 
@@ -728,13 +743,14 @@ def get_resources(project_name, version, extension=None):
 
     # there is a `context_filter` argument that won't probably work in
     # final release of AYON. SO we'll rather not use it
-    repre_docs = list(get_representations(
-        project_name, version_ids=[version["_id"]]))
+    repre_entities = list(ayon_api.get_representations(
+        project_name, version_ids={version_entity["id"]}
+    ))
 
     filtered = []
-    for doc in repre_docs:
-        if doc["context"]["ext"] in extensions:
-            filtered.append(doc)
+    for repre_entity in repre_entities:
+        if repre_entity["context"]["ext"] in extensions:
+            filtered.append(repre_entity)
 
     representation = filtered[0]
     directory = get_representation_path(representation)
@@ -750,7 +766,6 @@ def get_resources(project_name, version, extension=None):
 
 
 def create_skeleton_instance_cache(instance):
-    # type: (pyblish.api.Instance, list, dict) -> dict
     """Create skeleton instance from original instance data.
 
     This will create dictionary containing skeleton
@@ -770,7 +785,7 @@ def create_skeleton_instance_cache(instance):
 
     context = instance.context
     data = instance.data.copy()
-    anatomy = instance.context.data["anatomy"]  # type: Anatomy
+    anatomy = instance.context.data["anatomy"]
 
     # get time related data from instance (or context)
     time_data = get_time_data_from_instance_or_context(instance)
@@ -778,7 +793,7 @@ def create_skeleton_instance_cache(instance):
     if data.get("extendFrames", False):
         time_data.start, time_data.end = extend_frames(
             data["folderPath"],
-            data["subset"],
+            data["productName"],
             time_data.start,
             time_data.end,
         )
@@ -795,15 +810,16 @@ def create_skeleton_instance_cache(instance):
         log.warning(("Could not find root path for remapping \"{}\". "
                      "This may cause issues.").format(source))
 
-    family = instance.data["family"]
+    product_type = instance.data["productType"]
     # Make sure "render" is in the families to go through
     # validating expected and rendered files
     # during publishing job.
-    families = ["render", family]
+    families = ["render", product_type]
 
     instance_skeleton_data = {
-        "family": family,
-        "subset": data["subset"],
+        "productName": data["productName"],
+        "productType": product_type,
+        "family": product_type,
         "families": families,
         "folderPath": data["folderPath"],
         "frameStart": time_data.start,
@@ -910,8 +926,8 @@ def create_instances_for_cache(instance, skeleton):
 
     """
     anatomy = instance.context.data["anatomy"]
-    subset = skeleton["subset"]
-    family = skeleton["family"]
+    product_name = skeleton["productName"]
+    product_type = skeleton["productType"]
     exp_files = instance.data["expectedFiles"]
     log = Logger.get_logger("farm_publishing")
 
@@ -948,9 +964,9 @@ def create_instances_for_cache(instance, skeleton):
 
         new_instance = deepcopy(skeleton)
 
-        new_instance["subset"] = subset
-        log.info("Creating data for: {}".format(subset))
-        new_instance["family"] = family
+        new_instance["productName"] = product_name
+        log.info("Creating data for: {}".format(product_name))
+        new_instance["productType"] = product_type
         new_instance["families"] = skeleton["families"]
         # create representation
         if isinstance(col, (list, tuple)):
@@ -984,7 +1000,7 @@ def create_instances_for_cache(instance, skeleton):
 def copy_extend_frames(instance, representation):
     """Copy existing frames from latest version.
 
-    This will copy all existing frames from subset's latest version back
+    This will copy all existing frames from product's latest version back
     to render directory and rename them to what renderer is expecting.
 
     Arguments:
@@ -1003,22 +1019,26 @@ def copy_extend_frames(instance, representation):
     start = instance.data.get("frameStart")
     end = instance.data.get("frameEnd")
     project_name = instance.context.data["project"]
-    anatomy = instance.context.data["anatomy"]  # type: Anatomy
+    anatomy = instance.context.data["anatomy"]
 
-    # get latest version of subset
-    # this will stop if subset wasn't published yet
+    folder_entity = ayon_api.get_folder_by_path(
+        project_name, instance.data.get("folderPath")
+    )
 
-    version = get_last_version_by_subset_name(
+    # get latest version of product
+    # this will stop if product wasn't published yet
+
+    version_entity = ayon_api.get_last_version_by_product_name(
         project_name,
-        instance.data.get("subset"),
-        asset_name=instance.data.get("folderPath")
+        instance.data.get("productName"),
+        folder_entity["id"]
     )
 
     # get its files based on extension
-    subset_resources = get_resources(
-        project_name, version, representation.get("ext")
+    product_resources = get_resources(
+        project_name, version_entity, representation.get("ext")
     )
-    r_col, _ = clique.assemble(subset_resources)
+    r_col, _ = clique.assemble(product_resources)
 
     # if override remove all frames we are expecting to be rendered,
     # so we'll copy only those missing from current render
@@ -1064,11 +1084,11 @@ def copy_extend_frames(instance, representation):
     log.info("Finished copying %i files" % len(resource_files))
 
 
-def attach_instances_to_subset(attach_to, instances):
-    """Attach instance to subset.
+def attach_instances_to_product(attach_to, instances):
+    """Attach instance to product.
 
-    If we are attaching to other subsets, create copy of existing
-    instances, change data to match its subset and replace
+    If we are attaching to other products, create copy of existing
+    instances, change data to match its product and replace
     existing instances with modified data.
 
     Args:
@@ -1084,11 +1104,12 @@ def attach_instances_to_subset(attach_to, instances):
         for i in instances:
             new_inst = copy.deepcopy(i)
             new_inst["version"] = attach_instance.get("version")
-            new_inst["subset"] = attach_instance.get("subset")
+            new_inst["productName"] = attach_instance.get("productName")
+            new_inst["productType"] = attach_instance.get("productType")
             new_inst["family"] = attach_instance.get("family")
             new_inst["append"] = True
-            # don't set subsetGroup if we are attaching
-            new_inst.pop("subsetGroup")
+            # don't set productGroup if we are attaching
+            new_inst.pop("productGroup")
             new_instances.append(new_inst)
     return new_instances
 
@@ -1108,7 +1129,7 @@ def create_metadata_path(instance, anatomy):
         # directory is not available
         log.warning("Path is unreachable: `{}`".format(output_dir))
 
-    metadata_filename = "{}_metadata.json".format(ins_data["subset"])
+    metadata_filename = "{}_metadata.json".format(ins_data["productName"])
 
     metadata_path = os.path.join(output_dir, metadata_filename)
 

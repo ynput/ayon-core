@@ -13,12 +13,8 @@ from ayon_core.lib import (
     Logger,
     import_filepath,
     filter_profiles,
-    is_func_signature_supported,
 )
-from ayon_core.settings import (
-    get_project_settings,
-    get_system_settings,
-)
+from ayon_core.settings import get_project_settings
 from ayon_core.pipeline import (
     tempdir,
     Anatomy
@@ -105,7 +101,7 @@ def get_hero_template_name_profiles(
 def get_publish_template_name(
     project_name,
     host_name,
-    family,
+    product_type,
     task_name,
     task_type,
     project_settings=None,
@@ -123,7 +119,7 @@ def get_publish_template_name(
     Args:
         project_name (str): Name of project where to look for settings.
         host_name (str): Name of host integration.
-        family (str): Family for which should be found template.
+        product_type (str): Product type for which should be found template.
         task_name (str): Task name on which is instance working.
         task_type (str): Task type on which is instance working.
         project_settings (Dict[str, Any]): Prepared project settings.
@@ -138,7 +134,7 @@ def get_publish_template_name(
     template = None
     filter_criteria = {
         "hosts": host_name,
-        "product_types": family,
+        "product_types": product_type,
         "task_names": task_name,
         "task_types": task_type,
     }
@@ -340,17 +336,16 @@ def get_plugin_settings(plugin, project_settings, log, category=None):
     settings_category = getattr(plugin, "settings_category", None)
     if settings_category:
         try:
-            return (
-                project_settings
-                [settings_category]
-                ["publish"]
-                [plugin.__name__]
-            )
+            category_settings = project_settings[settings_category]
         except KeyError:
             log.warning((
-                "Couldn't find plugin '{}' settings"
-                " under settings category '{}'"
-            ).format(plugin.__name__, settings_category))
+                "Couldn't find settings category '{}' in project settings"
+            ).format(settings_category))
+            return {}
+
+        try:
+            return category_settings["publish"][plugin.__name__]
+        except KeyError:
             return {}
 
     # Use project settings based on a category name
@@ -421,8 +416,8 @@ def apply_plugin_settings_automatically(plugin, settings, logger=None):
 def filter_pyblish_plugins(plugins):
     """Pyblish plugin filter which applies AYON settings.
 
-    Apply OpenPype settings on discovered plugins. On plugin with implemented
-    class method 'def apply_settings(cls, project_settings, system_settings)'
+    Apply settings on discovered plugins. On plugin with implemented
+    class method 'def apply_settings(cls, project_settings)'
     is called the method. Default behavior looks for plugin name and current
     host name to look for
 
@@ -440,7 +435,6 @@ def filter_pyblish_plugins(plugins):
     project_name = os.environ.get("AYON_PROJECT_NAME")
 
     project_settings = get_project_settings(project_name)
-    system_settings = get_system_settings()
 
     # iterate over plugins
     for plugin in plugins[:]:
@@ -452,19 +446,7 @@ def filter_pyblish_plugins(plugins):
             # - can be used to target settings from custom settings place
             # - skip default behavior when successful
             try:
-                # Support to pass only project settings
-                # - make sure that both settings are passed, when can be
-                #   - that covers cases when *args are in method parameters
-                both_supported = is_func_signature_supported(
-                    apply_settings_func, project_settings, system_settings
-                )
-                project_supported = is_func_signature_supported(
-                    apply_settings_func, project_settings
-                )
-                if not both_supported and project_supported:
-                    plugin.apply_settings(project_settings)
-                else:
-                    plugin.apply_settings(project_settings, system_settings)
+                plugin.apply_settings(project_settings)
 
             except Exception:
                 log.warning(
@@ -701,19 +683,26 @@ def get_publish_repre_path(instance, repre, only_published=False):
     return None
 
 
-def get_custom_staging_dir_info(project_name, host_name, family, task_name,
-                                task_type, subset_name,
-                                project_settings=None,
-                                anatomy=None, log=None):
+def get_custom_staging_dir_info(
+    project_name,
+    host_name,
+    product_type,
+    task_name,
+    task_type,
+    product_name,
+    project_settings=None,
+    anatomy=None,
+    log=None
+):
     """Checks profiles if context should use special custom dir as staging.
 
     Args:
         project_name (str)
         host_name (str)
-        family (str)
+        product_type (str)
         task_name (str)
         task_type (str)
-        subset_name (str)
+        product_name (str)
         project_settings(Dict[str, Any]): Prepared project settings.
         anatomy (Dict[str, Any])
         log (Logger) (optional)
@@ -736,10 +725,10 @@ def get_custom_staging_dir_info(project_name, host_name, family, task_name,
 
     filtering_criteria = {
         "hosts": host_name,
-        "families": family,
+        "families": product_type,
         "task_names": task_name,
         "task_types": task_type,
-        "subsets": subset_name
+        "subsets": product_name
     }
     profile = filter_profiles(custom_staging_dir_profiles,
                               filtering_criteria,
@@ -752,44 +741,33 @@ def get_custom_staging_dir_info(project_name, host_name, family, task_name,
         anatomy = Anatomy(project_name)
 
     template_name = profile["template_name"] or TRANSIENT_DIR_TEMPLATE
-    _validate_transient_template(project_name, template_name, anatomy)
 
-    custom_staging_dir = anatomy.templates[template_name]["folder"]
+    custom_staging_dir = anatomy.get_template_item(
+        "staging", template_name, "directory", default=None
+    )
+    if custom_staging_dir is None:
+        raise ValueError((
+            "Anatomy of project \"{}\" does not have set"
+            " \"{}\" template key!"
+        ).format(project_name, template_name))
     is_persistent = profile["custom_staging_dir_persistent"]
 
-    return custom_staging_dir, is_persistent
-
-
-def _validate_transient_template(project_name, template_name, anatomy):
-    """Check that transient template is correctly configured.
-
-    Raises:
-        ValueError - if misconfigured template
-    """
-    if template_name not in anatomy.templates:
-        raise ValueError(("Anatomy of project \"{}\" does not have set"
-                          " \"{}\" template key!"
-                          ).format(project_name, template_name))
-
-    if "folder" not in anatomy.templates[template_name]:
-        raise ValueError(("There is not set \"folder\" template in \"{}\" anatomy"  # noqa
-                             " for project \"{}\"."
-                         ).format(template_name, project_name))
+    return custom_staging_dir.template, is_persistent
 
 
 def get_published_workfile_instance(context):
     """Find workfile instance in context"""
     for i in context:
-        is_workfile = (
-            "workfile" in i.data.get("families", []) or
-            i.data["family"] == "workfile"
-        )
-        if not is_workfile:
-            continue
-
         # test if there is instance of workfile waiting
         # to be published.
         if not i.data.get("publish", True):
+            continue
+
+        if not (
+            i.data["productType"] == "workfile"
+            # QUESTION Is check in 'families' valid?
+            or "workfile" in i.data.get("families", [])
+        ):
             continue
 
         return i
@@ -825,9 +803,9 @@ def replace_with_published_scene_path(instance, replace_in_path=True):
     template_data["ext"] = rep.get("ext")
     template_data["comment"] = None
 
-    anatomy = instance.context.data['anatomy']
-    anatomy_filled = anatomy.format(template_data)
-    template_filled = anatomy_filled["publish"]["path"]
+    anatomy = instance.context.data["anatomy"]
+    template = anatomy.get_template_item("publish", "default", "path")
+    template_filled = template.format_strict(template_data)
     file_path = os.path.normpath(template_filled)
 
     log.info("Using published scene for render {}".format(file_path))
@@ -917,7 +895,7 @@ def get_publish_instance_label(instance):
     is used string conversion of instance object -> 'instance._name'.
 
     Todos:
-        Maybe 'subset' key could be used too.
+        Maybe 'productName' key could be used too.
 
     Args:
         instance (pyblish.api.Instance): Pyblish instance.
@@ -936,8 +914,8 @@ def get_publish_instance_label(instance):
 def get_publish_instance_families(instance):
     """Get all families of the instance.
 
-    Look for families under 'family' and 'families' keys in instance data.
-    Value of 'family' is used as first family and then all other families
+    Look for families under 'productType' and 'families' keys in instance data.
+    Value of 'productType' is used as first family and then all other families
     in random order.
 
     Args:

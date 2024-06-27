@@ -1,14 +1,14 @@
 import ayon_api
 
 from ayon_core.lib.events import QueuedEventSystem
-from ayon_core.host import ILoadHost
+from ayon_core.host import HostBase
 from ayon_core.pipeline import (
     registered_host,
     get_current_context,
 )
-from ayon_core.tools.ayon_utils.models import HierarchyModel
+from ayon_core.tools.common_models import HierarchyModel, ProjectsModel
 
-from .models import SiteSyncModel
+from .models import SiteSyncModel, ContainersModel
 
 
 class SceneInventoryController:
@@ -28,10 +28,15 @@ class SceneInventoryController:
         self._current_folder_id = None
         self._current_folder_set = False
 
-        self._site_sync_model = SiteSyncModel(self)
+        self._containers_model = ContainersModel(self)
+        self._sitesync_model = SiteSyncModel(self)
         # Switch dialog requirements
         self._hierarchy_model = HierarchyModel(self)
+        self._projects_model = ProjectsModel(self)
         self._event_system = self._create_event_system()
+
+    def get_host(self) -> HostBase:
+        return self._host
 
     def emit_event(self, topic, data=None, source=None):
         if data is None:
@@ -47,7 +52,8 @@ class SceneInventoryController:
         self._current_folder_id = None
         self._current_folder_set = False
 
-        self._site_sync_model.reset()
+        self._containers_model.reset()
+        self._sitesync_model.reset()
         self._hierarchy_model.reset()
 
     def get_current_context(self):
@@ -69,10 +75,10 @@ class SceneInventoryController:
 
         context = self.get_current_context()
         project_name = context["project_name"]
-        folder_name = context.get("asset_name")
+        folder_path = context.get("folder_path")
         folder_id = None
-        if folder_name:
-            folder = ayon_api.get_folder_by_path(project_name, folder_name)
+        if folder_path:
+            folder = ayon_api.get_folder_by_path(project_name, folder_path)
             if folder:
                 folder_id = folder["id"]
 
@@ -80,31 +86,50 @@ class SceneInventoryController:
         self._current_folder_set = True
         return self._current_folder_id
 
+    def get_project_status_items(self):
+        project_name = self.get_current_project_name()
+        return self._projects_model.get_project_status_items(
+            project_name, None
+        )
+
+    # Containers methods
     def get_containers(self):
-        host = self._host
-        if isinstance(host, ILoadHost):
-            return list(host.get_containers())
-        elif hasattr(host, "ls"):
-            return list(host.ls())
-        return []
+        return self._containers_model.get_containers()
+
+    def get_containers_by_item_ids(self, item_ids):
+        return self._containers_model.get_containers_by_item_ids(item_ids)
+
+    def get_container_items(self):
+        return self._containers_model.get_container_items()
+
+    def get_container_items_by_id(self, item_ids):
+        return self._containers_model.get_container_items_by_id(item_ids)
+
+    def get_representation_info_items(self, representation_ids):
+        return self._containers_model.get_representation_info_items(
+            representation_ids
+        )
+
+    def get_version_items(self, product_ids):
+        return self._containers_model.get_version_items(product_ids)
 
     # Site Sync methods
-    def is_sync_server_enabled(self):
-        return self._site_sync_model.is_sync_server_enabled()
+    def is_sitesync_enabled(self):
+        return self._sitesync_model.is_sitesync_enabled()
 
     def get_sites_information(self):
-        return self._site_sync_model.get_sites_information()
+        return self._sitesync_model.get_sites_information()
 
     def get_site_provider_icons(self):
-        return self._site_sync_model.get_site_provider_icons()
+        return self._sitesync_model.get_site_provider_icons()
 
     def get_representations_site_progress(self, representation_ids):
-        return self._site_sync_model.get_representations_site_progress(
+        return self._sitesync_model.get_representations_site_progress(
             representation_ids
         )
 
     def resync_representations(self, representation_ids, site_type):
-        return self._site_sync_model.resync_representations(
+        return self._sitesync_model.resync_representations(
             representation_ids, site_type
         )
 

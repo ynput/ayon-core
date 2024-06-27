@@ -1,17 +1,17 @@
 import os
 import re
 import copy
+import uuid
 
 import arrow
 import ayon_api
 from ayon_api.operations import OperationsSession
 
-from ayon_core.client import get_project
-from ayon_core.client.operations import (
-    prepare_workfile_info_update_data,
-)
+from ayon_core.lib import get_ayon_username
 from ayon_core.pipeline.template_data import (
     get_template_data,
+    get_task_template_data,
+    get_folder_template_data,
 )
 from ayon_core.pipeline.workfile import (
     get_workdir_with_workdir_data,
@@ -25,45 +25,18 @@ from ayon_core.tools.workfiles.abstract import (
     WorkfileInfo,
 )
 
-
-def get_folder_template_data(folder):
-    if not folder:
-        return {}
-    parts = folder["path"].split("/")
-    parts.pop(-1)
-    hierarchy = "/".join(parts)
-    return {
-        "asset": folder["name"],
-        "folder": {
-            "name": folder["name"],
-            "type": folder["folderType"],
-            "path": folder["path"],
-        },
-        "hierarchy": hierarchy,
-    }
-
-
-def get_task_template_data(project_entity, task):
-    if not task:
-        return {}
-    short_name = None
-    task_type_name = task["taskType"]
-    for task_type_info in project_entity["taskTypes"]:
-        if task_type_info["name"] == task_type_name:
-            short_name = task_type_info["shortName"]
-            break
-
-    return {
-        "task": {
-            "name": task["name"],
-            "type": task_type_name,
-            "short": short_name,
-        }
-    }
+_NOT_SET = object()
 
 
 class CommentMatcher(object):
-    """Use anatomy and work file data to parse comments from filenames"""
+    """Use anatomy and work file data to parse comments from filenames.
+
+    Args:
+        extensions (set[str]): Set of extensions.
+        file_template (AnatomyStringTemplate): File template.
+        data (dict[str, Any]): Data to fill the template with.
+
+    """
     def __init__(self, extensions, file_template, data):
         self.fname_regex = None
 
@@ -140,7 +113,9 @@ class WorkareaModel:
 
     def _get_base_data(self):
         if self._base_data is None:
-            base_data = get_template_data(get_project(self.project_name))
+            base_data = get_template_data(
+                ayon_api.get_project(self.project_name)
+            )
             base_data["app"] = self._controller.get_host_name()
             self._base_data = base_data
         return copy.deepcopy(self._base_data)
@@ -151,7 +126,7 @@ class WorkareaModel:
             folder = self._controller.get_folder_entity(
                 self.project_name, folder_id
             )
-            fill_data = get_folder_template_data(folder)
+            fill_data = get_folder_template_data(folder, self.project_name)
             self._fill_data_by_folder_id[folder_id] = fill_data
         return copy.deepcopy(fill_data)
 
@@ -199,7 +174,7 @@ class WorkareaModel:
         folder_mapping[task_id] = workdir
         return workdir
 
-    def get_file_items(self, folder_id, task_id):
+    def get_file_items(self, folder_id, task_id, task_name):
         items = []
         if not folder_id or not task_id:
             return items
@@ -217,26 +192,49 @@ class WorkareaModel:
             if ext not in self._extensions:
                 continue
 
-            modified = os.path.getmtime(filepath)
-            items.append(
-                FileItem(workdir, filename, modified)
+            workfile_info = self._controller.get_workfile_info(
+                folder_id, task_name, filepath
             )
+            modified = os.path.getmtime(filepath)
+            items.append(FileItem(
+                workdir,
+                filename,
+                modified,
+                workfile_info.created_by,
+                workfile_info.updated_by,
+            ))
         return items
 
     def _get_template_key(self, fill_data):
         task_type = fill_data.get("task", {}).get("type")
         # TODO cache
         return get_workfile_template_key(
+            self.project_name,
             task_type,
             self._controller.get_host_name(),
-            project_name=self.project_name
         )
 
     def _get_last_workfile_version(
         self, workdir, file_template, fill_data, extensions
     ):
+        """
+
+        Todos:
+            Validate if logic of this function is correct. It does return
+                last version + 1 which might be wrong.
+
+        Args:
+            workdir (str): Workdir path.
+            file_template (str): File template.
+            fill_data (dict[str, Any]): Fill data.
+            extensions (set[str]): Extensions.
+
+        Returns:
+            int: Next workfile version.
+
+        """
         version = get_last_workfile_with_version(
-            workdir, str(file_template), fill_data, extensions
+            workdir, file_template, fill_data, extensions
         )[1]
 
         if version is None:
@@ -246,7 +244,7 @@ class WorkareaModel:
                 self._controller.get_host_name(),
                 task_name=task_info.get("name"),
                 task_type=task_info.get("type"),
-                family="workfile",
+                product_type="workfile",
                 project_settings=self._controller.project_settings,
             )
         else:
@@ -261,8 +259,21 @@ class WorkareaModel:
         root,
         current_filename,
     ):
+        """Get comments from root directory.
+
+        Args:
+            file_template (AnatomyStringTemplate): File template.
+            extensions (set[str]): Extensions.
+            fill_data (dict[str, Any]): Fill data.
+            root (str): Root directory.
+            current_filename (str): Current filename.
+
+        Returns:
+            Tuple[list[str], Union[str, None]]: Comment hints and current
+                comment.
+
+        """
         current_comment = None
-        comment_hints = set()
         filenames = []
         if root and os.path.exists(root):
             for filename in os.listdir(root):
@@ -275,10 +286,11 @@ class WorkareaModel:
                     filenames.append(filename)
 
         if not filenames:
-            return comment_hints, current_comment
+            return [], current_comment
 
         matcher = CommentMatcher(extensions, file_template, fill_data)
 
+        comment_hints = set()
         for filename in filenames:
             comment = matcher.parse_comment(filename)
             if comment:
@@ -289,23 +301,24 @@ class WorkareaModel:
         return list(comment_hints), current_comment
 
     def _get_workdir(self, anatomy, template_key, fill_data):
-        template_info = anatomy.templates_obj[template_key]
-        directory_template = template_info["folder"]
+        directory_template = anatomy.get_template_item(
+            "work", template_key, "directory"
+        )
         return directory_template.format_strict(fill_data).normalized()
 
     def get_workarea_save_as_data(self, folder_id, task_id):
-        folder = None
-        task = None
+        folder_entity = None
+        task_entity = None
         if folder_id:
-            folder = self._controller.get_folder_entity(
+            folder_entity = self._controller.get_folder_entity(
                 self.project_name, folder_id
             )
-        if task_id:
-            task = self._controller.get_task_entity(
-                self.project_name, task_id
-            )
+            if folder_entity and task_id:
+                task_entity = self._controller.get_task_entity(
+                    self.project_name, task_id
+                )
 
-        if not folder or not task:
+        if not folder_entity or not task_entity:
             return {
                 "template_key": None,
                 "template_has_version": None,
@@ -335,8 +348,13 @@ class WorkareaModel:
 
         workdir = self._get_workdir(anatomy, template_key, fill_data)
 
-        template_info = anatomy.templates_obj[template_key]
-        file_template = template_info["file"]
+        file_template = anatomy.get_template_item(
+            "work", template_key, "file"
+        )
+        file_template_str = file_template.template
+
+        template_has_version = "{version" in file_template_str
+        template_has_comment = "{comment" in file_template_str
 
         comment_hints, comment = self._get_comments_from_root(
             file_template,
@@ -346,10 +364,8 @@ class WorkareaModel:
             current_filename,
         )
         last_version = self._get_last_workfile_version(
-            workdir, file_template, fill_data, extensions)
-        str_file_template = str(file_template)
-        template_has_version = "{version" in str_file_template
-        template_has_comment = "{comment" in str_file_template
+            workdir, file_template_str, fill_data, extensions
+        )
 
         return {
             "template_key": template_key,
@@ -372,18 +388,34 @@ class WorkareaModel:
         version,
         comment,
     ):
+        """Fill workarea filepath based on context.
+
+        Args:
+            folder_id (str): Folder id.
+            task_id (str): Task id.
+            extension (str): File extension.
+            use_last_version (bool): Use last version.
+            version (int): Version number.
+            comment (str): Comment.
+
+        Returns:
+            WorkareaFilepathResult: Workarea filepath result.
+
+        """
         anatomy = self._controller.project_anatomy
         fill_data = self._prepare_fill_data(folder_id, task_id)
+
         template_key = self._get_template_key(fill_data)
 
         workdir = self._get_workdir(anatomy, template_key, fill_data)
 
-        template_info = anatomy.templates_obj[template_key]
-        file_template = template_info["file"]
+        file_template = anatomy.get_template_item(
+            "work", template_key, "file"
+        )
 
         if use_last_version:
             version = self._get_last_workfile_version(
-                workdir, file_template, fill_data, self._extensions
+                workdir, file_template.template, fill_data, self._extensions
             )
         fill_data["version"] = version
         fill_data["ext"] = extension.lstrip(".")
@@ -418,6 +450,7 @@ class WorkfileEntitiesModel:
         self._controller = controller
         self._cache = {}
         self._items = {}
+        self._current_username = _NOT_SET
 
     def _get_workfile_info_identifier(
         self, folder_id, task_id, rootless_path
@@ -438,8 +471,12 @@ class WorkfileEntitiesModel:
         self, folder_id, task_id, workfile_info, filepath
     ):
         note = ""
+        created_by = None
+        updated_by = None
         if workfile_info:
             note = workfile_info["attrib"].get("description") or ""
+            created_by = workfile_info.get("createdBy")
+            updated_by = workfile_info.get("updatedBy")
 
         filestat = os.stat(filepath)
         return WorkfileInfo(
@@ -449,6 +486,8 @@ class WorkfileEntitiesModel:
             filesize=filestat.st_size,
             creation_time=filestat.st_ctime,
             modification_time=filestat.st_mtime,
+            created_by=created_by,
+            updated_by=updated_by,
             note=note
         )
 
@@ -460,7 +499,7 @@ class WorkfileEntitiesModel:
         for workfile_info in ayon_api.get_workfiles_info(
             self._controller.get_current_project_name(),
             task_ids=[task_id],
-            fields=["id", "path", "attrib"],
+            fields=["id", "path", "attrib", "createdBy", "updatedBy"],
         ):
             workfile_identifier = self._get_workfile_info_identifier(
                 folder_id, task_id, workfile_info["path"]
@@ -504,25 +543,41 @@ class WorkfileEntitiesModel:
             self._items.pop(identifier, None)
             return
 
-        if note is None:
-            return
+        old_note = workfile_info.get("attrib", {}).get("note")
 
         new_workfile_info = copy.deepcopy(workfile_info)
-        attrib = new_workfile_info.setdefault("attrib", {})
-        attrib["description"] = note
-        update_data = prepare_workfile_info_update_data(
-            workfile_info, new_workfile_info
-        )
-        self._cache[identifier] = new_workfile_info
-        self._items.pop(identifier, None)
+        update_data = {}
+        if note is not None and old_note != note:
+            update_data["attrib"] = {"description": note}
+            attrib = new_workfile_info.setdefault("attrib", {})
+            attrib["description"] = note
+
+        username = self._get_current_username()
+        # Automatically fix 'createdBy' and 'updatedBy' fields
+        # NOTE both fields were not automatically filled by server
+        #   until 1.1.3 release.
+        if workfile_info.get("createdBy") is None:
+            update_data["createdBy"] = username
+            new_workfile_info["createdBy"] = username
+
+        if workfile_info.get("updatedBy") != username:
+            update_data["updatedBy"] = username
+            new_workfile_info["updatedBy"] = username
+
         if not update_data:
             return
+
+        self._cache[identifier] = new_workfile_info
+        self._items.pop(identifier, None)
 
         project_name = self._controller.get_current_project_name()
 
         session = OperationsSession()
         session.update_entity(
-            project_name, "workfile", workfile_info["id"], update_data
+            project_name,
+            "workfile",
+            workfile_info["id"],
+            update_data,
         )
         session.commit()
 
@@ -531,19 +586,30 @@ class WorkfileEntitiesModel:
 
         project_name = self._controller.get_current_project_name()
 
+        username = self._get_current_username()
         workfile_info = {
+            "id": uuid.uuid4().hex,
             "path": rootless_path,
             "taskId": task_id,
             "attrib": {
                 "extension": extension,
                 "description": note
-            }
+            },
+            # TODO remove 'createdBy' and 'updatedBy' fields when server is
+            #   or above 1.1.3 .
+            "createdBy": username,
+            "updatedBy": username,
         }
 
         session = OperationsSession()
         session.create_entity(project_name, "workfile", workfile_info)
         session.commit()
         return workfile_info
+
+    def _get_current_username(self):
+        if self._current_username is _NOT_SET:
+            self._current_username = get_ayon_username()
+        return self._current_username
 
 
 class PublishWorkfilesModel:
@@ -576,7 +642,7 @@ class PublishWorkfilesModel:
         return self._cached_repre_extensions
 
     def _file_item_from_representation(
-        self, repre_entity, project_anatomy, task_name=None
+        self, repre_entity, project_anatomy, author, task_name=None
     ):
         if task_name is not None:
             task_info = repre_entity["context"].get("task")
@@ -611,18 +677,20 @@ class PublishWorkfilesModel:
             dirpath,
             filename,
             created_at.float_timestamp,
+            author,
+            None,
             repre_entity["id"]
         )
 
     def get_file_items(self, folder_id, task_name):
         # TODO refactor to use less server API calls
         project_name = self._controller.get_current_project_name()
-        # Get subset docs of asset
+        # Get subset docs of folder
         product_entities = ayon_api.get_products(
             project_name,
-            folder_ids=[folder_id],
-            product_types=["workfile"],
-            fields=["id", "name"]
+            folder_ids={folder_id},
+            product_types={"workfile"},
+            fields={"id", "name"}
         )
 
         output = []
@@ -630,29 +698,37 @@ class PublishWorkfilesModel:
         if not product_ids:
             return output
 
-        # Get version docs of subsets with their families
+        # Get version docs of products with their families
         version_entities = ayon_api.get_versions(
             project_name,
             product_ids=product_ids,
-            fields=["id", "productId"]
+            fields={"id", "author"}
         )
-        version_ids = {version["id"] for version in version_entities}
-        if not version_ids:
+        versions_by_id = {
+            version["id"]: version
+            for version in version_entities
+        }
+        if not versions_by_id:
             return output
 
         # Query representations of filtered versions and add filter for
         #   extension
         repre_entities = ayon_api.get_representations(
             project_name,
-            version_ids=version_ids
+            version_ids=set(versions_by_id)
         )
         project_anatomy = self._controller.project_anatomy
 
         # Filter queried representations by task name if task is set
         file_items = []
         for repre_entity in repre_entities:
+            version_id = repre_entity["versionId"]
+            version_entity = versions_by_id[version_id]
             file_item = self._file_item_from_representation(
-                repre_entity, project_anatomy, task_name
+                repre_entity,
+                project_anatomy,
+                version_entity["author"],
+                task_name,
             )
             if file_item is not None:
                 file_items.append(file_item)
@@ -696,19 +772,21 @@ class WorkfilesModel:
         return self._workarea_model.get_workarea_dir_by_context(
             folder_id, task_id)
 
-    def get_workarea_file_items(self, folder_id, task_id):
+    def get_workarea_file_items(self, folder_id, task_id, task_name):
         """Workfile items for passed context from workarea.
 
         Args:
             folder_id (Union[str, None]): Folder id.
             task_id (Union[str, None]): Task id.
+            task_name (Union[str, None]): Task name.
 
         Returns:
             list[FileItem]: List of file items matching workarea of passed
                 context.
         """
-
-        return self._workarea_model.get_file_items(folder_id, task_id)
+        return self._workarea_model.get_file_items(
+            folder_id, task_id, task_name
+        )
 
     def get_workarea_save_as_data(self, folder_id, task_id):
         return self._workarea_model.get_workarea_save_as_data(

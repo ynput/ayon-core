@@ -22,7 +22,9 @@ class LoadClipOptionsModel(BaseSettingsModel):
     add_retime: bool = SettingsField(
         title="Add retime"
     )
-
+    deep_exr: bool = SettingsField(
+        title="Deep Exr Read Node"
+    )
 
 class LoadClipModel(BaseSettingsModel):
     enabled: bool = SettingsField(
@@ -42,7 +44,7 @@ class LoadClipModel(BaseSettingsModel):
     )
 
 
-class LoaderPuginsModel(BaseSettingsModel):
+class LoaderPluginsModel(BaseSettingsModel):
     LoadImage: LoadImageModel = SettingsField(
         default_factory=LoadImageModel,
         title="Load Image"
@@ -65,7 +67,8 @@ DEFAULT_LOADER_PLUGINS_SETTINGS = {
         "node_name_template": "{class_name}_{ext}",
         "options_defaults": {
             "start_at_workfile": True,
-            "add_retime": True
+            "add_retime": True,
+            "deep_exr": False
         }
     }
 }

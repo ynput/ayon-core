@@ -18,7 +18,7 @@ class HostBase(object):
     Compared to 'avalon' concept:
     What was before considered as functions in host implementation folder. The
     host implementation should primarily care about adding ability of creation
-    (mark subsets to be published) and optionally about referencing published
+    (mark products to be published) and optionally about referencing published
     representations as containers.
 
     Host may need extend some functionality like working with workfiles
@@ -108,7 +108,7 @@ class HostBase(object):
 
         return os.environ.get("AYON_PROJECT_NAME")
 
-    def get_current_asset_name(self):
+    def get_current_folder_path(self):
         """
         Returns:
             Union[str, None]: Current asset name.
@@ -134,12 +134,12 @@ class HostBase(object):
 
         Returns:
             Dict[str, Union[str, None]]: Context with 3 keys 'project_name',
-                'asset_name' and 'task_name'. All of them can be 'None'.
+                'folder_path' and 'task_name'. All of them can be 'None'.
         """
 
         return {
             "project_name": self.get_current_project_name(),
-            "asset_name": self.get_current_asset_name(),
+            "folder_path": self.get_current_folder_path(),
             "task_name": self.get_current_task_name()
         }
 
@@ -161,13 +161,13 @@ class HostBase(object):
         # Use current context to fill the context title
         current_context = self.get_current_context()
         project_name = current_context["project_name"]
-        asset_name = current_context["asset_name"]
+        folder_path = current_context["folder_path"]
         task_name = current_context["task_name"]
         items = []
         if project_name:
             items.append(project_name)
-            if asset_name:
-                items.append(asset_name.lstrip("/"))
+            if folder_path:
+                items.append(folder_path.lstrip("/"))
                 if task_name:
                     items.append(task_name)
         if items:

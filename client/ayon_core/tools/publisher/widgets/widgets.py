@@ -10,6 +10,11 @@ from qtpy import QtWidgets, QtCore, QtGui
 import qtawesome
 
 from ayon_core.lib.attribute_definitions import UnknownDef
+from ayon_core.style import get_objected_colors
+from ayon_core.pipeline.create import (
+    PRODUCT_NAME_ALLOWED_SYMBOLS,
+    TaskNotSetError,
+)
 from ayon_core.tools.attribute_defs import create_widget_for_attr_def
 from ayon_core.tools import resources
 from ayon_core.tools.flickcharm import FlickCharm
@@ -20,24 +25,20 @@ from ayon_core.tools.utils import (
     BaseClickableFrame,
     set_style_property,
 )
-from ayon_core.style import get_objected_colors
-from ayon_core.pipeline.create import (
-    SUBSET_NAME_ALLOWED_SYMBOLS,
-    TaskNotSetError,
-)
-from .thumbnail_widget import ThumbnailWidget
-from .assets_widget import AssetsDialog
-from .tasks_widget import TasksModel
-from .icons import (
-    get_pixmap,
-    get_icon_path
-)
-
-from ..constants import (
+from ayon_core.tools.publisher.abstract import AbstractPublisherFrontend
+from ayon_core.tools.publisher.constants import (
     VARIANT_TOOLTIP,
     ResetKeySequence,
     INPUTS_LAYOUT_HSPACING,
     INPUTS_LAYOUT_VSPACING,
+)
+
+from .thumbnail_widget import ThumbnailWidget
+from .folders_dialog import FoldersDialog
+from .tasks_model import TasksModel
+from .icons import (
+    get_pixmap,
+    get_icon_path
 )
 
 FA_PREFIXES = ["", "fa.", "fa5.", "fa5b.", "fa5s.", "ei.", "mdi."]
@@ -94,7 +95,7 @@ class IconValuePixmapLabel(PublishPixmapLabel):
     def __init__(self, icon_def, parent):
         source_pixmap = self._parse_icon_def(icon_def)
 
-        super(IconValuePixmapLabel, self).__init__(source_pixmap, parent)
+        super().__init__(source_pixmap, parent)
 
     def set_icon_def(self, icon_def):
         """Set icon by it's definition name.
@@ -122,12 +123,12 @@ class ContextWarningLabel(PublishPixmapLabel):
     def __init__(self, parent):
         pix = get_pixmap("warning")
 
-        super(ContextWarningLabel, self).__init__(pix, parent)
+        super().__init__(pix, parent)
 
         self.setToolTip(
             "Contain invalid context. Please check details."
         )
-        self.setObjectName("FamilyIconLabel")
+        self.setObjectName("ProductTypeIconLabel")
 
 
 class PublishIconBtn(IconButton):
@@ -145,7 +146,7 @@ class PublishIconBtn(IconButton):
     """
 
     def __init__(self, pixmap_path, *args, **kwargs):
-        super(PublishIconBtn, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
 
         colors = get_objected_colors()
         icon = self.generate_icon(
@@ -208,7 +209,7 @@ class CreateBtn(PublishIconBtn):
 
     def __init__(self, parent=None):
         icon_path = get_icon_path("create")
-        super(CreateBtn, self).__init__(icon_path, "Create", parent)
+        super().__init__(icon_path, "Create", parent)
         self.setToolTip("Create new product/s")
         self.setLayoutDirection(QtCore.Qt.RightToLeft)
 
@@ -217,7 +218,7 @@ class SaveBtn(PublishIconBtn):
     """Save context and instances information."""
     def __init__(self, parent=None):
         icon_path = get_icon_path("save")
-        super(SaveBtn, self).__init__(icon_path, parent)
+        super().__init__(icon_path, parent)
         self.setToolTip(
             "Save changes ({})".format(
                 QtGui.QKeySequence(QtGui.QKeySequence.Save).toString()
@@ -229,7 +230,7 @@ class ResetBtn(PublishIconBtn):
     """Publish reset button."""
     def __init__(self, parent=None):
         icon_path = get_icon_path("refresh")
-        super(ResetBtn, self).__init__(icon_path, parent)
+        super().__init__(icon_path, parent)
         self.setToolTip(
             "Reset & discard changes ({})".format(ResetKeySequence.toString())
         )
@@ -239,7 +240,7 @@ class StopBtn(PublishIconBtn):
     """Publish stop button."""
     def __init__(self, parent):
         icon_path = get_icon_path("stop")
-        super(StopBtn, self).__init__(icon_path, parent)
+        super().__init__(icon_path, parent)
         self.setToolTip("Stop/Pause publishing")
 
 
@@ -247,7 +248,7 @@ class ValidateBtn(PublishIconBtn):
     """Publish validate button."""
     def __init__(self, parent=None):
         icon_path = get_icon_path("validate")
-        super(ValidateBtn, self).__init__(icon_path, parent)
+        super().__init__(icon_path, parent)
         self.setToolTip("Validate")
 
 
@@ -255,7 +256,7 @@ class PublishBtn(PublishIconBtn):
     """Publish start publish button."""
     def __init__(self, parent=None):
         icon_path = get_icon_path("play")
-        super(PublishBtn, self).__init__(icon_path, "Publish", parent)
+        super().__init__(icon_path, "Publish", parent)
         self.setToolTip("Publish")
 
 
@@ -263,7 +264,7 @@ class CreateInstanceBtn(PublishIconBtn):
     """Create add button."""
     def __init__(self, parent=None):
         icon_path = get_icon_path("add")
-        super(CreateInstanceBtn, self).__init__(icon_path, parent)
+        super().__init__(icon_path, parent)
         self.setToolTip("Create new instance")
 
 
@@ -274,7 +275,7 @@ class PublishReportBtn(PublishIconBtn):
 
     def __init__(self, parent=None):
         icon_path = get_icon_path("view_report")
-        super(PublishReportBtn, self).__init__(icon_path, parent)
+        super().__init__(icon_path, parent)
         self.setToolTip("Copy report")
         self._actions = []
 
@@ -287,7 +288,7 @@ class PublishReportBtn(PublishIconBtn):
         self.triggered.emit(identifier)
 
     def mouseReleaseEvent(self, event):
-        super(PublishReportBtn, self).mouseReleaseEvent(event)
+        super().mouseReleaseEvent(event)
         menu = QtWidgets.QMenu(self)
         actions = []
         for item in self._actions:
@@ -305,7 +306,7 @@ class RemoveInstanceBtn(PublishIconBtn):
     """Create remove button."""
     def __init__(self, parent=None):
         icon_path = resources.get_icon_path("delete")
-        super(RemoveInstanceBtn, self).__init__(icon_path, parent)
+        super().__init__(icon_path, parent)
         self.setToolTip("Remove selected instances")
 
 
@@ -313,7 +314,7 @@ class ChangeViewBtn(PublishIconBtn):
     """Create toggle view button."""
     def __init__(self, parent=None):
         icon_path = get_icon_path("change_view")
-        super(ChangeViewBtn, self).__init__(icon_path, parent)
+        super().__init__(icon_path, parent)
         self.setToolTip("Swap between views")
 
 
@@ -363,7 +364,9 @@ class AbstractInstanceView(QtWidgets.QWidget):
             "{} Method 'get_selected_items' is not implemented."
         ).format(self.__class__.__name__))
 
-    def set_selected_items(self, instance_ids, context_selected):
+    def set_selected_items(
+        self, instance_ids, context_selected, convertor_identifiers
+    ):
         """Change selection for instances and context.
 
         Used to applying selection from one view to other.
@@ -371,8 +374,9 @@ class AbstractInstanceView(QtWidgets.QWidget):
         Args:
             instance_ids (List[str]): Selected instance ids.
             context_selected (bool): Context is selected.
-        """
+            convertor_identifiers (List[str]): Selected convertor identifiers.
 
+        """
         raise NotImplementedError((
             "{} Method 'set_selected_items' is not implemented."
         ).format(self.__class__.__name__))
@@ -399,7 +403,7 @@ class ClickableLineEdit(QtWidgets.QLineEdit):
     clicked = QtCore.Signal()
 
     def __init__(self, *args, **kwargs):
-        super(ClickableLineEdit, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         self.setReadOnly(True)
         self._mouse_pressed = False
 
@@ -422,29 +426,31 @@ class ClickableLineEdit(QtWidgets.QLineEdit):
         event.accept()
 
 
-class AssetsField(BaseClickableFrame):
-    """Field where asset name of selected instance/s is showed.
+class FoldersFields(BaseClickableFrame):
+    """Field where folder path of selected instance/s is showed.
 
-    Click on the field will trigger `AssetsDialog`.
+    Click on the field will trigger `FoldersDialog`.
     """
     value_changed = QtCore.Signal()
 
-    def __init__(self, controller, parent):
-        super(AssetsField, self).__init__(parent)
-        self.setObjectName("AssetNameInputWidget")
+    def __init__(
+        self, controller: AbstractPublisherFrontend, parent: QtWidgets.QWidget
+    ):
+        super().__init__(parent)
+        self.setObjectName("FolderPathInputWidget")
 
         # Don't use 'self' for parent!
         # - this widget has specific styles
-        dialog = AssetsDialog(controller, parent)
+        dialog = FoldersDialog(controller, parent)
 
         name_input = ClickableLineEdit(self)
-        name_input.setObjectName("AssetNameInput")
+        name_input.setObjectName("FolderPathInput")
 
         icon_name = "fa.window-maximize"
         icon = qtawesome.icon(icon_name, color="white")
         icon_btn = QtWidgets.QPushButton(self)
         icon_btn.setIcon(icon)
-        icon_btn.setObjectName("AssetNameInputButton")
+        icon_btn.setObjectName("FolderPathInputButton")
 
         layout = QtWidgets.QHBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
@@ -465,6 +471,7 @@ class AssetsField(BaseClickableFrame):
         icon_btn.clicked.connect(self._mouse_release_callback)
         dialog.finished.connect(self._on_dialog_finish)
 
+        self._controller: AbstractPublisherFrontend = controller
         self._dialog = dialog
         self._name_input = name_input
         self._icon_btn = icon_btn
@@ -480,28 +487,28 @@ class AssetsField(BaseClickableFrame):
         if not result:
             return
 
-        asset_name = self._dialog.get_selected_asset()
-        if asset_name is None:
+        folder_path = self._dialog.get_selected_folder_path()
+        if folder_path is None:
             return
 
-        self._selected_items = [asset_name]
+        self._selected_items = [folder_path]
         self._has_value_changed = (
             self._origin_value != self._selected_items
         )
-        self.set_text(asset_name)
+        self.set_text(folder_path)
         self._set_is_valid(True)
 
         self.value_changed.emit()
 
     def _mouse_release_callback(self):
-        self._dialog.set_selected_assets(self._selected_items)
+        self._dialog.set_selected_folders(self._selected_items)
         self._dialog.open()
 
     def set_multiselection_text(self, text):
-        """Change text for multiselection of different assets.
+        """Change text for multiselection of different folders.
 
         When there are selected multiple instances at once and they don't have
-        same asset in context.
+        same folder in context.
         """
         self._multiselection_text = text
 
@@ -520,63 +527,58 @@ class AssetsField(BaseClickableFrame):
         set_style_property(self._icon_btn, "state", state)
 
     def is_valid(self):
-        """Is asset valid."""
+        """Is folder valid."""
         return self._is_valid
 
     def has_value_changed(self):
-        """Value of asset has changed."""
+        """Value of folder has changed."""
         return self._has_value_changed
 
     def get_selected_items(self):
-        """Selected asset names."""
+        """Selected folder paths."""
         return list(self._selected_items)
 
     def set_text(self, text):
         """Set text in text field.
 
-        Does not change selected items (assets).
+        Does not change selected items (folders).
         """
         self._name_input.setText(text)
         self._name_input.end(False)
 
-    def set_selected_items(self, asset_names=None):
-        """Set asset names for selection of instances.
+    def set_selected_items(self, folder_paths=None):
+        """Set folder paths for selection of instances.
 
-        Passed asset names are validated and if there are 2 or more different
-        asset names then multiselection text is shown.
+        Passed folder paths are validated and if there are 2 or more different
+        folder paths then multiselection text is shown.
 
         Args:
-            asset_names (list, tuple, set, NoneType): List of asset names.
+            folder_paths (list, tuple, set, NoneType): List of folder paths.
+
         """
-        if asset_names is None:
-            asset_names = []
+        if folder_paths is None:
+            folder_paths = []
 
         self._has_value_changed = False
-        self._origin_value = list(asset_names)
-        self._selected_items = list(asset_names)
-        is_valid = True
-        if not asset_names:
+        self._origin_value = list(folder_paths)
+        self._selected_items = list(folder_paths)
+        is_valid = self._controller.are_folder_paths_valid(folder_paths)
+        if not folder_paths:
             self.set_text("")
 
-        elif len(asset_names) == 1:
-            asset_name = tuple(asset_names)[0]
-            is_valid = self._dialog.name_is_valid(asset_name)
-            self.set_text(asset_name)
+        elif len(folder_paths) == 1:
+            folder_path = tuple(folder_paths)[0]
+            self.set_text(folder_path)
         else:
-            for asset_name in asset_names:
-                is_valid = self._dialog.name_is_valid(asset_name)
-                if not is_valid:
-                    break
-
             multiselection_text = self._multiselection_text
             if multiselection_text is None:
-                multiselection_text = "|".join(asset_names)
+                multiselection_text = "|".join(folder_paths)
             self.set_text(multiselection_text)
 
         self._set_is_valid(is_valid)
 
     def reset_to_origin(self):
-        """Change to asset names set with last `set_selected_items` call."""
+        """Change to folder paths set with last `set_selected_items` call."""
         self.set_selected_items(self._origin_value)
 
     def confirm_value(self):
@@ -586,7 +588,7 @@ class AssetsField(BaseClickableFrame):
 
 class TasksComboboxProxy(QtCore.QSortFilterProxyModel):
     def __init__(self, *args, **kwargs):
-        super(TasksComboboxProxy, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         self._filter_empty = False
 
     def set_filter_empty(self, filter_empty):
@@ -610,15 +612,17 @@ class TasksCombobox(QtWidgets.QComboBox):
     """Combobox to show tasks for selected instances.
 
     Combobox gives ability to select only from intersection of task names for
-    asset names in selected instances.
+    folder paths in selected instances.
 
-    If asset names in selected instances does not have same tasks then combobox
+    If folder paths in selected instances does not have same tasks then combobox
     will be empty.
     """
     value_changed = QtCore.Signal()
 
-    def __init__(self, controller, parent):
-        super(TasksCombobox, self).__init__(parent)
+    def __init__(
+        self, controller: AbstractPublisherFrontend, parent: QtWidgets.QWidget
+    ):
+        super().__init__(parent)
         self.setObjectName("TasksCombobox")
 
         # Set empty delegate to propagate stylesheet to a combobox
@@ -746,23 +750,23 @@ class TasksCombobox(QtWidgets.QComboBox):
         """
         return list(self._selected_items)
 
-    def set_asset_names(self, asset_names):
-        """Set asset names for which should show tasks."""
+    def set_folder_paths(self, folder_paths):
+        """Set folder paths for which should show tasks."""
         self._ignore_index_change = True
 
-        self._model.set_asset_names(asset_names)
+        self._model.set_folder_paths(folder_paths)
         self._proxy_model.set_filter_empty(False)
         self._proxy_model.sort(0)
 
         self._ignore_index_change = False
 
-        # It is a bug if not exactly one asset got here
-        if len(asset_names) != 1:
+        # It is a bug if not exactly one folder got here
+        if len(folder_paths) != 1:
             self.set_selected_item("")
             self._set_is_valid(False)
             return
 
-        asset_name = tuple(asset_names)[0]
+        folder_path = tuple(folder_paths)[0]
 
         is_valid = False
         if self._selected_items:
@@ -770,7 +774,7 @@ class TasksCombobox(QtWidgets.QComboBox):
 
         valid_task_names = []
         for task_name in self._selected_items:
-            _is_valid = self._model.is_task_name_valid(asset_name, task_name)
+            _is_valid = self._model.is_task_name_valid(folder_path, task_name)
             if _is_valid:
                 valid_task_names.append(task_name)
             else:
@@ -791,42 +795,42 @@ class TasksCombobox(QtWidgets.QComboBox):
 
         self._set_is_valid(is_valid)
 
-    def confirm_value(self, asset_names):
+    def confirm_value(self, folder_paths):
         new_task_name = self._selected_items[0]
         self._origin_value = [
-            (asset_name, new_task_name)
-            for asset_name in asset_names
+            (folder_path, new_task_name)
+            for folder_path in folder_paths
         ]
         self._origin_selection = copy.deepcopy(self._selected_items)
         self._has_value_changed = False
 
-    def set_selected_items(self, asset_task_combinations=None):
+    def set_selected_items(self, folder_task_combinations=None):
         """Set items for selected instances.
 
         Args:
-            asset_task_combinations (list): List of tuples. Each item in
-                the list contain asset name and task name.
+            folder_task_combinations (list): List of tuples. Each item in
+                the list contain folder path and task name.
         """
         self._proxy_model.set_filter_empty(False)
         self._proxy_model.sort(0)
 
-        if asset_task_combinations is None:
-            asset_task_combinations = []
+        if folder_task_combinations is None:
+            folder_task_combinations = []
 
         task_names = set()
-        task_names_by_asset_name = collections.defaultdict(set)
-        for asset_name, task_name in asset_task_combinations:
+        task_names_by_folder_path = collections.defaultdict(set)
+        for folder_path, task_name in folder_task_combinations:
             task_names.add(task_name)
-            task_names_by_asset_name[asset_name].add(task_name)
-        asset_names = set(task_names_by_asset_name.keys())
+            task_names_by_folder_path[folder_path].add(task_name)
+        folder_paths = set(task_names_by_folder_path.keys())
 
         self._ignore_index_change = True
 
-        self._model.set_asset_names(asset_names)
+        self._model.set_folder_paths(folder_paths)
 
         self._has_value_changed = False
 
-        self._origin_value = copy.deepcopy(asset_task_combinations)
+        self._origin_value = copy.deepcopy(folder_task_combinations)
 
         self._origin_selection = list(task_names)
         self._selected_items = list(task_names)
@@ -840,9 +844,9 @@ class TasksCombobox(QtWidgets.QComboBox):
             task_name = tuple(task_names)[0]
             idx = self.findText(task_name)
             is_valid = not idx < 0
-            if not is_valid and len(asset_names) > 1:
-                is_valid = self._validate_task_names_by_asset_names(
-                    task_names_by_asset_name
+            if not is_valid and len(folder_paths) > 1:
+                is_valid = self._validate_task_names_by_folder_paths(
+                    task_names_by_folder_path
                 )
             self.set_selected_item(task_name)
 
@@ -853,9 +857,9 @@ class TasksCombobox(QtWidgets.QComboBox):
                 if not is_valid:
                     break
 
-            if not is_valid and len(asset_names) > 1:
-                is_valid = self._validate_task_names_by_asset_names(
-                    task_names_by_asset_name
+            if not is_valid and len(folder_paths) > 1:
+                is_valid = self._validate_task_names_by_folder_paths(
+                    task_names_by_folder_path
                 )
             multiselection_text = self._multiselection_text
             if multiselection_text is None:
@@ -868,10 +872,10 @@ class TasksCombobox(QtWidgets.QComboBox):
 
         self.value_changed.emit()
 
-    def _validate_task_names_by_asset_names(self, task_names_by_asset_name):
-        for asset_name, task_names in task_names_by_asset_name.items():
+    def _validate_task_names_by_folder_paths(self, task_names_by_folder_path):
+        for folder_path, task_names in task_names_by_folder_path.items():
             for task_name in task_names:
-                if not self._model.is_task_name_valid(asset_name, task_name):
+                if not self._model.is_task_name_valid(folder_path, task_name):
                     return False
         return True
 
@@ -896,12 +900,12 @@ class VariantInputWidget(PlaceholderLineEdit):
     value_changed = QtCore.Signal()
 
     def __init__(self, parent):
-        super(VariantInputWidget, self).__init__(parent)
+        super().__init__(parent)
 
         self.setObjectName("VariantInput")
         self.setToolTip(VARIANT_TOOLTIP)
 
-        name_pattern = "^[{}]*$".format(SUBSET_NAME_ALLOWED_SYMBOLS)
+        name_pattern = "^[{}]*$".format(PRODUCT_NAME_ALLOWED_SYMBOLS)
         self._name_pattern = name_pattern
         self._compiled_name_pattern = re.compile(name_pattern)
 
@@ -1007,7 +1011,7 @@ class MultipleItemWidget(QtWidgets.QWidget):
     """
 
     def __init__(self, parent):
-        super(MultipleItemWidget, self).__init__(parent)
+        super().__init__(parent)
 
         model = QtGui.QStandardItemModel()
 
@@ -1047,7 +1051,7 @@ class MultipleItemWidget(QtWidgets.QWidget):
         self.setMaximumHeight(height + (2 * self._view.spacing()))
 
     def showEvent(self, event):
-        super(MultipleItemWidget, self).showEvent(event)
+        super().showEvent(event)
         tmp_item = None
         if not self._value:
             # Add temp item to be able calculate maximum height of widget
@@ -1059,7 +1063,7 @@ class MultipleItemWidget(QtWidgets.QWidget):
             self._model.clear()
 
     def resizeEvent(self, event):
-        super(MultipleItemWidget, self).resizeEvent(event)
+        super().resizeEvent(event)
         self._update_size()
 
     def set_value(self, value=None):
@@ -1077,10 +1081,10 @@ class MultipleItemWidget(QtWidgets.QWidget):
 
 
 class GlobalAttrsWidget(QtWidgets.QWidget):
-    """Global attributes mainly to define context and subset name of instances.
+    """Global attributes mainly to define context and product name of instances.
 
-    Subset name is or may be affected on context. Gives abiity to modify
-    context and subset name of instance. This change is not autopromoted but
+    product name is or may be affected on context. Gives abiity to modify
+    context and product name of instance. This change is not autopromoted but
     must be submitted.
 
     Warning: Until artist hit `Submit` changes must not be propagated to
@@ -1088,10 +1092,10 @@ class GlobalAttrsWidget(QtWidgets.QWidget):
 
     Global attributes contain these widgets:
     Variant:      [  text input  ]
-    Asset:        [ asset dialog ]
+    Folder:       [ folder dialog ]
     Task:         [   combobox   ]
-    Family:       [   immutable  ]
-    Subset name:  [   immutable  ]
+    Product type: [   immutable  ]
+    product name: [   immutable  ]
                      [Submit] [Cancel]
     """
     instance_context_changed = QtCore.Signal()
@@ -1099,27 +1103,29 @@ class GlobalAttrsWidget(QtWidgets.QWidget):
     multiselection_text = "< Multiselection >"
     unknown_value = "N/A"
 
-    def __init__(self, controller, parent):
-        super(GlobalAttrsWidget, self).__init__(parent)
+    def __init__(
+        self, controller: AbstractPublisherFrontend, parent: QtWidgets.QWidget
+    ):
+        super().__init__(parent)
 
-        self._controller = controller
+        self._controller: AbstractPublisherFrontend = controller
         self._current_instances = []
 
         variant_input = VariantInputWidget(self)
-        asset_value_widget = AssetsField(controller, self)
+        folder_value_widget = FoldersFields(controller, self)
         task_value_widget = TasksCombobox(controller, self)
-        family_value_widget = MultipleItemWidget(self)
-        subset_value_widget = MultipleItemWidget(self)
+        product_type_value_widget = MultipleItemWidget(self)
+        product_value_widget = MultipleItemWidget(self)
 
         variant_input.set_multiselection_text(self.multiselection_text)
-        asset_value_widget.set_multiselection_text(self.multiselection_text)
+        folder_value_widget.set_multiselection_text(self.multiselection_text)
         task_value_widget.set_multiselection_text(self.multiselection_text)
 
         variant_input.set_value()
-        asset_value_widget.set_selected_items()
+        folder_value_widget.set_selected_items()
         task_value_widget.set_selected_items()
-        family_value_widget.set_value()
-        subset_value_widget.set_value()
+        product_type_value_widget.set_value()
+        product_value_widget.set_value()
 
         submit_btn = QtWidgets.QPushButton("Confirm", self)
         cancel_btn = QtWidgets.QPushButton("Cancel", self)
@@ -1137,23 +1143,23 @@ class GlobalAttrsWidget(QtWidgets.QWidget):
         main_layout.setHorizontalSpacing(INPUTS_LAYOUT_HSPACING)
         main_layout.setVerticalSpacing(INPUTS_LAYOUT_VSPACING)
         main_layout.addRow("Variant", variant_input)
-        main_layout.addRow("Folder", asset_value_widget)
+        main_layout.addRow("Folder", folder_value_widget)
         main_layout.addRow("Task", task_value_widget)
-        main_layout.addRow("Product type", family_value_widget)
-        main_layout.addRow("Product name", subset_value_widget)
+        main_layout.addRow("Product type", product_type_value_widget)
+        main_layout.addRow("Product name", product_value_widget)
         main_layout.addRow(btns_layout)
 
         variant_input.value_changed.connect(self._on_variant_change)
-        asset_value_widget.value_changed.connect(self._on_asset_change)
+        folder_value_widget.value_changed.connect(self._on_folder_change)
         task_value_widget.value_changed.connect(self._on_task_change)
         submit_btn.clicked.connect(self._on_submit)
         cancel_btn.clicked.connect(self._on_cancel)
 
         self.variant_input = variant_input
-        self.asset_value_widget = asset_value_widget
+        self.folder_value_widget = folder_value_widget
         self.task_value_widget = task_value_widget
-        self.family_value_widget = family_value_widget
-        self.subset_value_widget = subset_value_widget
+        self.product_type_value_widget = product_type_value_widget
+        self.product_value_widget = product_value_widget
         self.submit_btn = submit_btn
         self.cancel_btn = cancel_btn
 
@@ -1161,67 +1167,67 @@ class GlobalAttrsWidget(QtWidgets.QWidget):
         """Commit changes for selected instances."""
 
         variant_value = None
-        asset_name = None
+        folder_path = None
         task_name = None
         if self.variant_input.has_value_changed():
             variant_value = self.variant_input.get_value()[0]
 
-        if self.asset_value_widget.has_value_changed():
-            asset_name = self.asset_value_widget.get_selected_items()[0]
+        if self.folder_value_widget.has_value_changed():
+            folder_path = self.folder_value_widget.get_selected_items()[0]
 
         if self.task_value_widget.has_value_changed():
             task_name = self.task_value_widget.get_selected_items()[0]
 
-        subset_names = set()
+        product_names = set()
         invalid_tasks = False
-        asset_names = []
+        folder_paths = []
         for instance in self._current_instances:
             new_variant_value = instance.get("variant")
-            new_asset_name = instance.get("folderPath")
+            new_folder_path = instance.get("folderPath")
             new_task_name = instance.get("task")
             if variant_value is not None:
                 new_variant_value = variant_value
 
-            if asset_name is not None:
-                new_asset_name = asset_name
+            if folder_path is not None:
+                new_folder_path = folder_path
 
             if task_name is not None:
                 new_task_name = task_name
 
-            asset_names.append(new_asset_name)
+            folder_paths.append(new_folder_path)
             try:
-                new_subset_name = self._controller.get_subset_name(
+                new_product_name = self._controller.get_product_name(
                     instance.creator_identifier,
                     new_variant_value,
                     new_task_name,
-                    new_asset_name,
+                    new_folder_path,
                     instance.id,
                 )
 
             except TaskNotSetError:
                 invalid_tasks = True
                 instance.set_task_invalid(True)
-                subset_names.add(instance["subset"])
+                product_names.add(instance["productName"])
                 continue
 
-            subset_names.add(new_subset_name)
+            product_names.add(new_product_name)
             if variant_value is not None:
                 instance["variant"] = variant_value
 
-            if asset_name is not None:
-                instance["folderPath"] = asset_name
-                instance.set_asset_invalid(False)
+            if folder_path is not None:
+                instance["folderPath"] = folder_path
+                instance.set_folder_invalid(False)
 
             if task_name is not None:
                 instance["task"] = task_name or None
                 instance.set_task_invalid(False)
 
-            instance["subset"] = new_subset_name
+            instance["productName"] = new_product_name
 
         if invalid_tasks:
             self.task_value_widget.set_invalid_empty_task()
 
-        self.subset_value_widget.set_value(subset_names)
+        self.product_value_widget.set_value(product_names)
 
         self._set_btns_enabled(False)
         self._set_btns_visible(invalid_tasks)
@@ -1229,11 +1235,11 @@ class GlobalAttrsWidget(QtWidgets.QWidget):
         if variant_value is not None:
             self.variant_input.confirm_value()
 
-        if asset_name is not None:
-            self.asset_value_widget.confirm_value()
+        if folder_path is not None:
+            self.folder_value_widget.confirm_value()
 
         if task_name is not None:
-            self.task_value_widget.confirm_value(asset_names)
+            self.task_value_widget.confirm_value(folder_paths)
 
         self.instance_context_changed.emit()
 
@@ -1241,19 +1247,19 @@ class GlobalAttrsWidget(QtWidgets.QWidget):
         """Cancel changes and set back to their irigin value."""
 
         self.variant_input.reset_to_origin()
-        self.asset_value_widget.reset_to_origin()
+        self.folder_value_widget.reset_to_origin()
         self.task_value_widget.reset_to_origin()
         self._set_btns_enabled(False)
 
     def _on_value_change(self):
         any_invalid = (
             not self.variant_input.is_valid()
-            or not self.asset_value_widget.is_valid()
+            or not self.folder_value_widget.is_valid()
             or not self.task_value_widget.is_valid()
         )
         any_changed = (
             self.variant_input.has_value_changed()
-            or self.asset_value_widget.has_value_changed()
+            or self.folder_value_widget.has_value_changed()
             or self.task_value_widget.has_value_changed()
         )
         self._set_btns_visible(any_changed or any_invalid)
@@ -1263,9 +1269,9 @@ class GlobalAttrsWidget(QtWidgets.QWidget):
     def _on_variant_change(self):
         self._on_value_change()
 
-    def _on_asset_change(self):
-        asset_names = self.asset_value_widget.get_selected_items()
-        self.task_value_widget.set_asset_names(asset_names)
+    def _on_folder_change(self):
+        folder_paths = self.folder_value_widget.get_selected_items()
+        self.task_value_widget.set_folder_paths(folder_paths)
         self._on_value_change()
 
     def _on_task_change(self):
@@ -1290,40 +1296,40 @@ class GlobalAttrsWidget(QtWidgets.QWidget):
 
         self._current_instances = instances
 
-        asset_names = set()
+        folder_paths = set()
         variants = set()
-        families = set()
-        subset_names = set()
+        product_types = set()
+        product_names = set()
 
         editable = True
         if len(instances) == 0:
             editable = False
 
-        asset_task_combinations = []
+        folder_task_combinations = []
         for instance in instances:
             # NOTE I'm not sure how this can even happen?
             if instance.creator_identifier is None:
                 editable = False
 
             variants.add(instance.get("variant") or self.unknown_value)
-            families.add(instance.get("family") or self.unknown_value)
-            asset_name = instance.get("folderPath") or self.unknown_value
+            product_types.add(instance.get("productType") or self.unknown_value)
+            folder_path = instance.get("folderPath") or self.unknown_value
             task_name = instance.get("task") or ""
-            asset_names.add(asset_name)
-            asset_task_combinations.append((asset_name, task_name))
-            subset_names.add(instance.get("subset") or self.unknown_value)
+            folder_paths.add(folder_path)
+            folder_task_combinations.append((folder_path, task_name))
+            product_names.add(instance.get("productName") or self.unknown_value)
 
         self.variant_input.set_value(variants)
 
-        # Set context of asset widget
-        self.asset_value_widget.set_selected_items(asset_names)
+        # Set context of folder widget
+        self.folder_value_widget.set_selected_items(folder_paths)
         # Set context of task widget
-        self.task_value_widget.set_selected_items(asset_task_combinations)
-        self.family_value_widget.set_value(families)
-        self.subset_value_widget.set_value(subset_names)
+        self.task_value_widget.set_selected_items(folder_task_combinations)
+        self.product_type_value_widget.set_value(product_types)
+        self.product_value_widget.set_value(product_names)
 
         self.variant_input.setEnabled(editable)
-        self.asset_value_widget.setEnabled(editable)
+        self.folder_value_widget.setEnabled(editable)
         self.task_value_widget.setEnabled(editable)
 
 
@@ -1342,8 +1348,10 @@ class CreatorAttrsWidget(QtWidgets.QWidget):
     widgets are merged into one (different label does not count).
     """
 
-    def __init__(self, controller, parent):
-        super(CreatorAttrsWidget, self).__init__(parent)
+    def __init__(
+        self, controller: AbstractPublisherFrontend, parent: QtWidgets.QWidget
+    ):
+        super().__init__(parent)
 
         scroll_area = QtWidgets.QScrollArea(self)
         scroll_area.setWidgetResizable(True)
@@ -1355,7 +1363,7 @@ class CreatorAttrsWidget(QtWidgets.QWidget):
 
         self._main_layout = main_layout
 
-        self._controller = controller
+        self._controller: AbstractPublisherFrontend = controller
         self._scroll_area = scroll_area
 
         self._attr_def_id_to_instances = {}
@@ -1476,12 +1484,14 @@ class PublishPluginAttrsWidget(QtWidgets.QWidget):
     Widgets are disabled if context of instance is not valid.
 
     Definitions are shown for all instance no matter if they have different
-    families. Similar definitions are merged into one (different label
+    product types. Similar definitions are merged into one (different label
     does not count).
     """
 
-    def __init__(self, controller, parent):
-        super(PublishPluginAttrsWidget, self).__init__(parent)
+    def __init__(
+        self, controller: AbstractPublisherFrontend, parent: QtWidgets.QWidget
+    ):
+        super().__init__(parent)
 
         scroll_area = QtWidgets.QScrollArea(self)
         scroll_area.setWidgetResizable(True)
@@ -1493,7 +1503,7 @@ class PublishPluginAttrsWidget(QtWidgets.QWidget):
 
         self._main_layout = main_layout
 
-        self._controller = controller
+        self._controller: AbstractPublisherFrontend = controller
         self._scroll_area = scroll_area
 
         self._attr_def_id_to_instances = {}
@@ -1624,7 +1634,7 @@ class PublishPluginAttrsWidget(QtWidgets.QWidget):
             plugin_val[attr_def.key] = value
 
 
-class SubsetAttributesWidget(QtWidgets.QWidget):
+class ProductAttributesWidget(QtWidgets.QWidget):
     """Wrapper widget where attributes of instance/s are modified.
     ┌─────────────────┬─────────────┐
     │   Global        │             │
@@ -1639,8 +1649,10 @@ class SubsetAttributesWidget(QtWidgets.QWidget):
     instance_context_changed = QtCore.Signal()
     convert_requested = QtCore.Signal()
 
-    def __init__(self, controller, parent):
-        super(SubsetAttributesWidget, self).__init__(parent)
+    def __init__(
+        self, controller: AbstractPublisherFrontend, parent: QtWidgets.QWidget
+    ):
+        super().__init__(parent)
 
         # TOP PART
         top_widget = QtWidgets.QWidget(self)
@@ -1666,9 +1678,9 @@ class SubsetAttributesWidget(QtWidgets.QWidget):
         # Set the label text with 'setText' to apply html
         convert_label.setText(
             (
-                "Found old publishable subsets"
+                "Found old publishable products"
                 " incompatible with new publisher."
-                "<br/><br/>Press the <b>update subsets</b> button"
+                "<br/><br/>Press the <b>update products</b> button"
                 " to automatically update them"
                 " to be able to publish again."
             )
@@ -1677,7 +1689,7 @@ class SubsetAttributesWidget(QtWidgets.QWidget):
         convert_label.setAlignment(QtCore.Qt.AlignCenter)
 
         convert_btn = QtWidgets.QPushButton(
-            "Update subsets", convert_widget
+            "Update products", convert_widget
         )
         convert_separator = QtWidgets.QFrame(convert_widget)
         convert_separator.setObjectName("Separator")
@@ -1738,11 +1750,11 @@ class SubsetAttributesWidget(QtWidgets.QWidget):
         thumbnail_widget.thumbnail_created.connect(self._on_thumbnail_create)
         thumbnail_widget.thumbnail_cleared.connect(self._on_thumbnail_clear)
 
-        controller.event_system.add_callback(
+        controller.register_event_callback(
             "instance.thumbnail.changed", self._on_thumbnail_changed
         )
 
-        self._controller = controller
+        self._controller: AbstractPublisherFrontend = controller
 
         self._convert_widget = convert_widget
 
@@ -1881,7 +1893,7 @@ class CreateNextPageOverlay(QtWidgets.QWidget):
     clicked = QtCore.Signal()
 
     def __init__(self, parent):
-        super(CreateNextPageOverlay, self).__init__(parent)
+        super().__init__(parent)
         self.setCursor(QtCore.Qt.PointingHandCursor)
         self._arrow_color = (
             get_objected_colors("font").get_qcolor()
@@ -1971,7 +1983,7 @@ class CreateNextPageOverlay(QtWidgets.QWidget):
     def mousePressEvent(self, event):
         if event.button() == QtCore.Qt.LeftButton:
             self._mouse_pressed = True
-        super(CreateNextPageOverlay, self).mousePressEvent(event)
+        super().mousePressEvent(event)
 
     def mouseReleaseEvent(self, event):
         if self._mouse_pressed:
@@ -1979,7 +1991,7 @@ class CreateNextPageOverlay(QtWidgets.QWidget):
             if self.rect().contains(event.pos()):
                 self.clicked.emit()
 
-        super(CreateNextPageOverlay, self).mouseReleaseEvent(event)
+        super().mouseReleaseEvent(event)
 
     def paintEvent(self, event):
         painter = QtGui.QPainter()

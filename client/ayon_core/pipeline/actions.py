@@ -1,4 +1,9 @@
 import logging
+import warnings
+
+import ayon_api
+
+from ayon_core.settings import get_studio_settings, get_project_settings
 from ayon_core.pipeline.plugin_discover import (
     discover,
     register_plugin,
@@ -8,6 +13,307 @@ from ayon_core.pipeline.plugin_discover import (
 )
 
 from .load.utils import get_representation_path_from_context
+
+
+class LauncherActionSelection:
+    """Object helper to pass selection to actions.
+
+    Object support backwards compatibility for 'session' from OpenPype where
+    environment variable keys were used to define selection.
+
+    Args:
+        project_name (str): Selected project name.
+        folder_id (str): Selected folder id.
+        task_id (str): Selected task id.
+        folder_path (Optional[str]): Selected folder path.
+        task_name (Optional[str]): Selected task name.
+        project_entity (Optional[dict[str, Any]]): Project entity.
+        folder_entity (Optional[dict[str, Any]]): Folder entity.
+        task_entity (Optional[dict[str, Any]]): Task entity.
+
+    """
+    def __init__(
+        self,
+        project_name,
+        folder_id,
+        task_id,
+        folder_path=None,
+        task_name=None,
+        project_entity=None,
+        folder_entity=None,
+        task_entity=None,
+        project_settings=None,
+    ):
+        self._project_name = project_name
+        self._folder_id = folder_id
+        self._task_id = task_id
+
+        self._folder_path = folder_path
+        self._task_name = task_name
+
+        self._project_entity = project_entity
+        self._folder_entity = folder_entity
+        self._task_entity = task_entity
+
+        self._project_settings = project_settings
+
+    def __getitem__(self, key):
+        warnings.warn(
+            (
+                "Using deprecated access to selection data. Please use"
+                " attributes and methods"
+                " defined by 'LauncherActionSelection'."
+            ),
+            category=DeprecationWarning
+        )
+        if key in {"AYON_PROJECT_NAME", "AVALON_PROJECT"}:
+            return self.project_name
+        if key in {"AYON_FOLDER_PATH", "AVALON_ASSET"}:
+            return self.folder_path
+        if key in {"AYON_TASK_NAME", "AVALON_TASK"}:
+            return self.task_name
+        raise KeyError(f"Key: {key} not found")
+
+    def __iter__(self):
+        for key in self.keys():
+            yield key
+
+    def __contains__(self, key):
+        warnings.warn(
+            (
+                "Using deprecated access to selection data. Please use"
+                " attributes and methods"
+                " defined by 'LauncherActionSelection'."
+            ),
+            category=DeprecationWarning
+        )
+        # Fake missing keys check for backwards compatibility
+        if key in {
+            "AYON_PROJECT_NAME",
+            "AVALON_PROJECT",
+        }:
+            return self._project_name is not None
+        if key in {
+            "AYON_FOLDER_PATH",
+            "AVALON_ASSET",
+        }:
+            return self._folder_id is not None
+        if key in {
+            "AYON_TASK_NAME",
+            "AVALON_TASK",
+        }:
+            return self._task_id is not None
+        return False
+
+    def get(self, key, default=None):
+        """
+
+        Deprecated:
+            Added for backwards compatibility with older actions.
+
+        """
+        warnings.warn(
+            (
+                "Using deprecated access to selection data. Please use"
+                " attributes and methods"
+                " defined by 'LauncherActionSelection'."
+            ),
+            category=DeprecationWarning
+        )
+        try:
+            return self[key]
+        except KeyError:
+            return default
+
+    def items(self):
+        """
+
+        Deprecated:
+            Added for backwards compatibility with older actions.
+
+        """
+        for key, value in (
+            ("AYON_PROJECT_NAME", self.project_name),
+            ("AYON_FOLDER_PATH", self.folder_path),
+            ("AYON_TASK_NAME", self.task_name),
+        ):
+            if value is not None:
+                yield (key, value)
+
+    def keys(self):
+        """
+
+        Deprecated:
+            Added for backwards compatibility with older actions.
+
+        """
+        for key, _ in self.items():
+            yield key
+
+    def values(self):
+        """
+
+        Deprecated:
+            Added for backwards compatibility with older actions.
+
+        """
+        for _, value in self.items():
+            yield value
+
+    def get_project_name(self):
+        """Selected project name.
+
+        Returns:
+            Union[str, None]: Selected project name.
+
+        """
+        return self._project_name
+
+    def get_folder_id(self):
+        """Selected folder id.
+
+        Returns:
+            Union[str, None]: Selected folder id.
+
+        """
+        return self._folder_id
+
+    def get_folder_path(self):
+        """Selected folder path.
+
+        Returns:
+            Union[str, None]: Selected folder path.
+
+        """
+        if self._folder_id is None:
+            return None
+        if self._folder_path is None:
+            self._folder_path = self.folder_entity["path"]
+        return self._folder_path
+
+    def get_task_id(self):
+        """Selected task id.
+
+        Returns:
+            Union[str, None]: Selected task id.
+
+        """
+        return self._task_id
+
+    def get_task_name(self):
+        """Selected task name.
+
+        Returns:
+            Union[str, None]: Selected task name.
+
+        """
+        if self._task_id is None:
+            return None
+        if self._task_name is None:
+            self._task_name = self.task_entity["name"]
+        return self._task_name
+
+    def get_project_entity(self):
+        """Project entity for the selection.
+
+        Returns:
+            Union[dict[str, Any], None]: Project entity.
+
+        """
+        if self._project_name is None:
+            return None
+        if self._project_entity is None:
+            self._project_entity = ayon_api.get_project(self._project_name)
+        return self._project_entity
+
+    def get_folder_entity(self):
+        """Folder entity for the selection.
+
+        Returns:
+            Union[dict[str, Any], None]: Folder entity.
+
+        """
+        if self._project_name is None or self._folder_id is None:
+            return None
+        if self._folder_entity is None:
+            self._folder_entity = ayon_api.get_folder_by_id(
+                self._project_name, self._folder_id
+            )
+        return self._folder_entity
+
+    def get_task_entity(self):
+        """Task entity for the selection.
+
+        Returns:
+            Union[dict[str, Any], None]: Task entity.
+
+        """
+        if (
+            self._project_name is None
+            or self._task_id is None
+        ):
+            return None
+        if self._task_entity is None:
+            self._task_entity = ayon_api.get_task_by_id(
+                self._project_name, self._task_id
+            )
+        return self._task_entity
+
+    def get_project_settings(self):
+        """Project settings for the selection.
+
+        Returns:
+            dict[str, Any]: Project settings or studio settings if
+                project is not selected.
+
+        """
+        if self._project_settings is None:
+            if self._project_name is None:
+                settings = get_studio_settings()
+            else:
+                settings = get_project_settings(self._project_name)
+            self._project_settings = settings
+        return self._project_settings
+
+    @property
+    def is_project_selected(self):
+        """Return whether a project is selected.
+
+        Returns:
+            bool: Whether a project is selected.
+
+        """
+        return self._project_name is not None
+
+    @property
+    def is_folder_selected(self):
+        """Return whether a folder is selected.
+
+        Returns:
+            bool: Whether a folder is selected.
+
+        """
+        return self._folder_id is not None
+
+    @property
+    def is_task_selected(self):
+        """Return whether a task is selected.
+
+        Returns:
+            bool: Whether a task is selected.
+
+        """
+        return self._task_id is not None
+
+    project_name = property(get_project_name)
+    folder_id = property(get_folder_id)
+    task_id = property(get_task_id)
+    folder_path = property(get_folder_path)
+    task_name = property(get_task_name)
+
+    project_entity = property(get_project_entity)
+    folder_entity = property(get_folder_entity)
+    task_entity = property(get_task_entity)
 
 
 class LauncherAction(object):
@@ -21,17 +327,23 @@ class LauncherAction(object):
     log = logging.getLogger("LauncherAction")
     log.propagate = True
 
-    def is_compatible(self, session):
+    def is_compatible(self, selection):
         """Return whether the class is compatible with the Session.
 
         Args:
-            session (dict[str, Union[str, None]]): Session data with
-                AYON_PROJECT_NAME, AYON_FOLDER_PATH and AYON_TASK_NAME.
-        """
+            selection (LauncherActionSelection): Data with selection.
 
+        """
         return True
 
-    def process(self, session, **kwargs):
+    def process(self, selection, **kwargs):
+        """Process the action.
+
+        Args:
+            selection (LauncherActionSelection): Data with selection.
+            **kwargs: Additional arguments.
+
+        """
         pass
 
 

@@ -10,7 +10,7 @@ Scene contains one or more outdated loaded containers, eg. versions loaded into 
 ### How to repair?
 
 Use 'Scene Inventory' and update all highlighted old container to latest OR
-    refresh Publish and switch 'Validate Containers' toggle on 'Options' tab.
+refresh Publish and switch 'Validate Containers' toggle on 'Context' tab.
 
     WARNING: Skipping this validator will result in publishing (and probably rendering) old version of loaded assets.
 </description>

@@ -3,14 +3,13 @@ import uuid
 
 import ayon_api
 
+from ayon_core.lib import NestedCacheItem, CacheItem
 from ayon_core.lib.events import QueuedEventSystem
 from ayon_core.pipeline import Anatomy, get_current_context
 from ayon_core.host import ILoadHost
-from ayon_core.tools.ayon_utils.models import (
+from ayon_core.tools.common_models import (
     ProjectsModel,
     HierarchyModel,
-    NestedCacheItem,
-    CacheItem,
     ThumbnailsModel,
 )
 
@@ -113,7 +112,7 @@ class LoaderController(BackendLoaderController, FrontendLoaderController):
         self._products_model = ProductsModel(self)
         self._loader_actions_model = LoaderActionsModel(self)
         self._thumbnails_model = ThumbnailsModel()
-        self._site_sync_model = SiteSyncModel(self)
+        self._sitesync_model = SiteSyncModel(self)
 
     @property
     def log(self):
@@ -149,7 +148,7 @@ class LoaderController(BackendLoaderController, FrontendLoaderController):
         self._loader_actions_model.reset()
         self._projects_model.reset()
         self._thumbnails_model.reset()
-        self._site_sync_model.reset()
+        self._sitesync_model.reset()
 
         self._projects_model.refresh()
 
@@ -179,6 +178,16 @@ class LoaderController(BackendLoaderController, FrontendLoaderController):
     # Entity model wrappers
     def get_project_items(self, sender=None):
         return self._projects_model.get_project_items(sender)
+
+    def get_folder_type_items(self, project_name, sender=None):
+        return self._projects_model.get_folder_type_items(
+            project_name, sender
+        )
+
+    def get_project_status_items(self, project_name, sender=None):
+        return self._projects_model.get_project_status_items(
+            project_name, sender
+        )
 
     def get_folder_items(self, project_name, sender=None):
         return self._hierarchy_model.get_folder_items(project_name, sender)
@@ -240,7 +249,7 @@ class LoaderController(BackendLoaderController, FrontendLoaderController):
                 project_name, representation_ids)
         )
 
-        action_items.extend(self._site_sync_model.get_site_sync_action_items(
+        action_items.extend(self._sitesync_model.get_sitesync_action_items(
             project_name, representation_ids)
         )
 
@@ -254,8 +263,8 @@ class LoaderController(BackendLoaderController, FrontendLoaderController):
         version_ids,
         representation_ids
     ):
-        if self._site_sync_model.is_site_sync_action(identifier):
-            self._site_sync_model.trigger_action_item(
+        if self._sitesync_model.is_sitesync_action(identifier):
+            self._sitesync_model.trigger_action_item(
                 identifier,
                 project_name,
                 representation_ids
@@ -320,10 +329,10 @@ class LoaderController(BackendLoaderController, FrontendLoaderController):
             context = get_current_context()
         folder_id = None
         project_name = context.get("project_name")
-        asset_name = context.get("asset_name")
-        if project_name and asset_name:
+        folder_path = context.get("folder_path")
+        if project_name and folder_path:
             folder = ayon_api.get_folder_by_path(
-                project_name, asset_name, fields=["id"]
+                project_name, folder_path, fields=["id"]
             )
             if folder:
                 folder_id = folder["id"]
@@ -343,10 +352,18 @@ class LoaderController(BackendLoaderController, FrontendLoaderController):
             return set()
 
         if not self._loaded_products_cache.is_valid:
-            if isinstance(self._host, ILoadHost):
-                containers = self._host.get_containers()
-            else:
-                containers = self._host.ls()
+            try:
+                if isinstance(self._host, ILoadHost):
+                    containers = self._host.get_containers()
+                else:
+                    containers = self._host.ls()
+
+            except BaseException:
+                self.log.error(
+                    "Failed to collect loaded products.", exc_info=True
+                )
+                containers = []
+
             repre_ids = set()
             for container in containers:
                 repre_id = container.get("representation")
@@ -368,24 +385,24 @@ class LoaderController(BackendLoaderController, FrontendLoaderController):
             self._loaded_products_cache.update_data(product_ids)
         return self._loaded_products_cache.get_data()
 
-    def is_site_sync_enabled(self, project_name=None):
-        return self._site_sync_model.is_site_sync_enabled(project_name)
+    def is_sitesync_enabled(self, project_name=None):
+        return self._sitesync_model.is_sitesync_enabled(project_name)
 
     def get_active_site_icon_def(self, project_name):
-        return self._site_sync_model.get_active_site_icon_def(project_name)
+        return self._sitesync_model.get_active_site_icon_def(project_name)
 
     def get_remote_site_icon_def(self, project_name):
-        return self._site_sync_model.get_remote_site_icon_def(project_name)
+        return self._sitesync_model.get_remote_site_icon_def(project_name)
 
     def get_version_sync_availability(self, project_name, version_ids):
-        return self._site_sync_model.get_version_sync_availability(
+        return self._sitesync_model.get_version_sync_availability(
             project_name, version_ids
         )
 
     def get_representations_sync_status(
         self, project_name, representation_ids
     ):
-        return self._site_sync_model.get_representations_sync_status(
+        return self._sitesync_model.get_representations_sync_status(
             project_name, representation_ids
         )
 

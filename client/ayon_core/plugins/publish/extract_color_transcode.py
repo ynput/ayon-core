@@ -26,11 +26,11 @@ class ExtractOIIOTranscode(publish.Extractor):
     This dict contains source colorspace information, collected by hosts.
 
     Target colorspace is selected by profiles in the Settings, based on:
-    - families
-    - host
+    - host names
+    - product types
+    - product names
     - task types
     - task names
-    - subset names
 
     Can produce one or more representations (with different extensions) based
     on output definition in format:
@@ -202,10 +202,10 @@ class ExtractOIIOTranscode(publish.Extractor):
                 added_representations = True
 
             if added_representations:
-                self._mark_original_repre_for_deletion(repre, profile,
-                                                       added_review)
+                self._mark_original_repre_for_deletion(
+                    repre, profile, added_review
+                )
 
-        for repre in tuple(instance.data["representations"]):
             tags = repre.get("tags") or []
             if "delete" in tags and "thumbnail" not in tags:
                 instance.data["representations"].remove(repre)
@@ -230,33 +230,7 @@ class ExtractOIIOTranscode(publish.Extractor):
             return
 
         new_repre["ext"] = output_extension
-
-        renamed_files = []
-        for file_name in files_to_convert:
-            file_name, _ = os.path.splitext(file_name)
-            file_name = '{}.{}'.format(file_name,
-                                       output_extension)
-            renamed_files.append(file_name)
-        new_repre["files"] = renamed_files
-
-    def _rename_in_representation(self, new_repre, files_to_convert,
-                                  output_name, output_extension):
-        """Replace old extension with new one everywhere in representation.
-
-        Args:
-            new_repre (dict)
-            files_to_convert (list): of filenames from repre["files"],
-                standardized to always list
-            output_name (str): key of output definition from Settings,
-                if "<passthrough>" token used, keep original repre name
-            output_extension (str): extension from output definition
-        """
-        if output_name != "passthrough":
-            new_repre["name"] = output_name
-        if not output_extension:
-            return
-
-        new_repre["ext"] = output_extension
+        new_repre["outputName"] = output_name
 
         renamed_files = []
         for file_name in files_to_convert:
@@ -313,15 +287,15 @@ class ExtractOIIOTranscode(publish.Extractor):
     def _get_profile(self, instance):
         """Returns profile if and how repre should be color transcoded."""
         host_name = instance.context.data["hostName"]
-        family = instance.data["family"]
+        product_type = instance.data["productType"]
+        product_name = instance.data["productName"]
         task_data = instance.data["anatomyData"].get("task", {})
         task_name = task_data.get("name")
         task_type = task_data.get("type")
-        subset = instance.data["subset"]
         filtering_criteria = {
             "hosts": host_name,
-            "product_types": family,
-            "product_names": subset,
+            "product_types": product_type,
+            "product_names": product_name,
             "task_names": task_name,
             "task_types": task_type,
         }
@@ -331,9 +305,11 @@ class ExtractOIIOTranscode(publish.Extractor):
         if not profile:
             self.log.debug((
               "Skipped instance. None of profiles in presets are for"
-              " Host: \"{}\" | Product types: \"{}\" | Task \"{}\""
-              " | Task type \"{}\" | Product names: \"{}\" "
-            ).format(host_name, family, task_name, task_type, subset))
+              " Host: \"{}\" | Product types: \"{}\" | Product names: \"{}\""
+              " | Task name \"{}\" | Task type \"{}\""
+            ).format(
+                host_name, product_type, product_name, task_name, task_type
+            ))
 
         return profile
 
@@ -361,7 +337,7 @@ class ExtractOIIOTranscode(publish.Extractor):
 
         if not repre.get("colorspaceData"):
             self.log.debug("Representation '{}' has no colorspace data. "
-                           "Skipped.")
+                           "Skipped.".format(repre["name"]))
             return False
 
         return True

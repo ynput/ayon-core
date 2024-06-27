@@ -578,7 +578,8 @@ class OptionalAction(QtWidgets.QWidgetAction):
     def set_option_tip(self, options):
         sep = "\n\n"
         if not options or not isinstance(options[0], AbstractAttrDef):
-            mak = (lambda opt: opt["name"] + " :\n    " + opt["help"])
+            def mak(opt):
+                return opt["name"] + " :\n    " + opt["help"]
             self.option_tip = sep.join(mak(opt) for opt in options)
             return
 

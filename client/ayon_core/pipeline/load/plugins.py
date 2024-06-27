@@ -1,8 +1,7 @@
 import os
 import logging
 
-from ayon_core.settings import get_system_settings, get_project_settings
-from ayon_core.pipeline import schema
+from ayon_core.settings import get_project_settings
 from ayon_core.pipeline.plugin_discover import (
     discover,
     register_plugin,
@@ -24,8 +23,8 @@ class LoaderPlugin(list):
 
     """
 
-    families = []
-    representations = []
+    product_types = set()
+    representations = set()
     extensions = {"*"}
     order = 0
     is_multiple_contexts_compatible = False
@@ -33,11 +32,11 @@ class LoaderPlugin(list):
 
     options = []
 
-    log = logging.getLogger("SubsetLoader")
+    log = logging.getLogger("ProductLoader")
     log.propagate = True
 
     @classmethod
-    def apply_settings(cls, project_settings, system_settings):
+    def apply_settings(cls, project_settings):
         host_name = os.environ.get("AYON_HOST_NAME")
         plugin_type = "load"
         plugin_type_settings = (
@@ -76,11 +75,11 @@ class LoaderPlugin(list):
             setattr(cls, option, value)
 
     @classmethod
-    def has_valid_extension(cls, repre_doc):
+    def has_valid_extension(cls, repre_entity):
         """Has representation document valid extension for loader.
 
         Args:
-            repre_doc (dict[str, Any]): Representation document.
+            repre_entity (dict[str, Any]): Representation entity.
 
         Returns:
              bool: Representation has valid extension
@@ -90,11 +89,11 @@ class LoaderPlugin(list):
             return True
 
         # Get representation main file extension from 'context'
-        repre_context = repre_doc.get("context") or {}
+        repre_context = repre_entity.get("context") or {}
         ext = repre_context.get("ext")
         if not ext:
             # Legacy way how to get extensions
-            path = repre_doc.get("data", {}).get("path")
+            path = repre_entity.get("attrib", {}).get("path")
             if not path:
                 cls.log.info(
                     "Representation doesn't have known source of extension"
@@ -116,9 +115,9 @@ class LoaderPlugin(list):
     def is_compatible_loader(cls, context):
         """Return whether a loader is compatible with a context.
 
-        On override make sure it is overriden as class or static method.
+        On override make sure it is overridden as class or static method.
 
-        This checks the version's families and the representation for the given
+        This checks the product type and the representation for the given
         loader plugin.
 
         Args:
@@ -130,49 +129,48 @@ class LoaderPlugin(list):
         """
 
         plugin_repre_names = cls.get_representations()
-        plugin_families = cls.families
+        plugin_product_types = cls.product_types
         if (
             not plugin_repre_names
-            or not plugin_families
+            or not plugin_product_types
             or not cls.extensions
         ):
             return False
 
-        repre_doc = context.get("representation")
-        if not repre_doc:
+        repre_entity = context.get("representation")
+        if not repre_entity:
             return False
 
         plugin_repre_names = set(plugin_repre_names)
         if (
             "*" not in plugin_repre_names
-            and repre_doc["name"] not in plugin_repre_names
+            and repre_entity["name"] not in plugin_repre_names
         ):
             return False
 
-        if not cls.has_valid_extension(repre_doc):
+        if not cls.has_valid_extension(repre_entity):
             return False
 
-        plugin_families = set(plugin_families)
-        if "*" in plugin_families:
+        plugin_product_types = set(plugin_product_types)
+        if "*" in plugin_product_types:
             return True
 
-        subset_doc = context["subset"]
-        maj_version, _ = schema.get_schema_version(subset_doc["schema"])
-        if maj_version < 3:
-            families = context["version"]["data"].get("families")
-        else:
-            families = subset_doc["data"].get("families")
-            if families is None:
-                family = subset_doc["data"].get("family")
-                if family:
-                    families = [family]
+        product_entity = context["product"]
+        product_type = product_entity["productType"]
 
-        if not families:
-            return False
-        return any(family in plugin_families for family in families)
+        return product_type in plugin_product_types
 
     @classmethod
     def get_representations(cls):
+        """Representation names with which is plugin compatible.
+
+        Empty set makes the plugin incompatible with any representation. To
+            allow compatibility with all representations use '{"*"}'.
+
+        Returns:
+            set[str]: Names with which is plugin compatible.
+
+        """
         return cls.representations
 
     @classmethod
@@ -192,13 +190,13 @@ class LoaderPlugin(list):
         raise NotImplementedError("Loader.load() must be "
                                   "implemented by subclass")
 
-    def update(self, container, representation):
+    def update(self, container, context):
         """Update `container` to `representation`
 
-        Arguments:
+        Args:
             container (avalon-core:container-1.0): Container to update,
                 from `host.ls()`.
-            representation (dict): Update the container to this representation.
+            context (dict): Update the container to this representation.
 
         """
         raise NotImplementedError("Loader.update() must be "
@@ -225,7 +223,7 @@ class LoaderPlugin(list):
             Returns static (cls) options or could collect from 'contexts'.
 
             Args:
-                contexts (list): of repre or subset contexts
+                contexts (list): of repre or product contexts
             Returns:
                 (list)
         """
@@ -245,8 +243,8 @@ class LoaderPlugin(list):
             return self._fname
 
 
-class SubsetLoaderPlugin(LoaderPlugin):
-    """Load subset into host application
+class ProductLoaderPlugin(LoaderPlugin):
+    """Load product into host application
     Arguments:
         context (dict): avalon-core:context-1.0
         name (str, optional): Use pre-defined name
@@ -262,11 +260,10 @@ def discover_loader_plugins(project_name=None):
     plugins = discover(LoaderPlugin)
     if not project_name:
         project_name = get_current_project_name()
-    system_settings = get_system_settings()
     project_settings = get_project_settings(project_name)
     for plugin in plugins:
         try:
-            plugin.apply_settings(project_settings, system_settings)
+            plugin.apply_settings(project_settings)
         except Exception:
             log.warning(
                 "Failed to apply settings to loader {}".format(

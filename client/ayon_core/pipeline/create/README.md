@@ -6,17 +6,17 @@ Entry point of creation. All data and metadata are handled through create contex
 
 Discovers Creator plugins to be able create new instances and convert existing instances. Creators may have defined attributes that are specific for their instances. Attributes definition can enhance behavior of instance during publishing.
 
-Publish plugins are loaded because they can also define attributes definitions. These are less family specific To be able define attributes Publish plugin must inherit from `AYONPyblishPluginMixin` and must override `get_attribute_defs` class method which must return list of attribute definitions. Values of publish plugin definitions are stored per plugin name under `publish_attributes`. Also can override `convert_attribute_values` class method which gives ability to modify values on instance before are used in CreatedInstance. Method `convert_attribute_values` can be also used without `get_attribute_defs` to modify values when changing compatibility (remove metadata from instance because are irrelevant).
+Publish plugins are loaded because they can also define attributes definitions. These are less product type specific To be able define attributes Publish plugin must inherit from `AYONPyblishPluginMixin` and must override `get_attribute_defs` class method which must return list of attribute definitions. Values of publish plugin definitions are stored per plugin name under `publish_attributes`. Also can override `convert_attribute_values` class method which gives ability to modify values on instance before are used in CreatedInstance. Method `convert_attribute_values` can be also used without `get_attribute_defs` to modify values when changing compatibility (remove metadata from instance because are irrelevant).
 
-Possible attribute definitions can be found in `openpype/pipeline/lib/attribute_definitions.py`.
+Possible attribute definitions can be found in `ayon_core/lib/attribute_definitions.py`.
 
 Except creating and removing instances are all changes not automatically propagated to host context (scene/workfile/...) to propagate changes call `save_changes` which trigger update of all instances in context using Creators implementation.
 
 
 ## CreatedInstance
-Product of creation is "instance" which holds basic data defying it. Core data are `creator_identifier`, `family` and `subset`. Other data can be keys used to fill subset name or metadata modifying publishing process of the instance (more described later). All instances have `id` which holds constant `ayon.create.instance` or `pyblish.avalon.instance` (for backwards compatibility) and `instance_id` which is identifier of the instance.
-Family tells how should be instance processed and subset what name will published item have.
-- There are cases when subset is not fully filled during creation and may change during publishing. That is in most of cases caused because instance is related to other instance or instance data do not represent final product.
+Product of creation is "instance" which holds basic data defying it. Core data are `creator_identifier`, `productType` and `productName`. Other data can be keys used to fill product name or metadata modifying publishing process of the instance (more described later). All instances have `id` which holds constant `ayon.create.instance` or `pyblish.avalon.instance` (for backwards compatibility) and `instance_id` which is identifier of the instance.
+Product type tells how should be instance processed and product name what name will published item have.
+- There are cases when product name is not fully filled during creation and may change during publishing. That is in most of cases caused because instance is related to other instance or instance data do not represent final product.
 
 `CreatedInstance` is entity holding the data which are stored and used.
 
@@ -27,12 +27,12 @@ Family tells how should be instance processed and subset what name will publishe
     "id": "ayon.create.instance",
     ## Identifier of this specific instance (automatically assigned)
     "instance_id": <uuid4>,
-    ## Instance family (used from Creator)
-    "family": <family>,
+    ## Instance product type (used from Creator)
+    "productType": <product type>,
 
     # Mutable data
-    ## Subset name based on subset name template - may change overtime (on context change)
-    "subset": <subset>,
+    ## Product name based on product name template - may change overtime (on context change)
+    "productName": <product name>,
     ## Instance is active and will be published
     "active": True,
     ## Version of instance
@@ -54,7 +54,7 @@ Family tells how should be instance processed and subset what name will publishe
 ```
 
 ## Creator
-To be able create, update, remove or collect existing instances there must be defined a creator. Creator must have unique identifier and can represents a family. There can be multiple Creators for single family. Identifier of creator should contain family (advise).
+To be able create, update, remove or collect existing instances there must be defined a creator. Creator must have unique identifier and can represent a product type. There can be multiple Creators for single product type. Identifier of creator should contain product type (advise).
 
 Creator has abstract methods to handle instances. For new instance creation is used `create` which should create metadata in host context and add new instance object to `CreateContext`. To collect existing instances is used `collect_instances` which should find all existing instances related to creator and add them to `CreateContext`. To update data of instance is used `update_instances` which is called from `CreateContext` on `save_changes`. To remove instance use `remove_instances` which should remove metadata from host context and remove instance from `CreateContext`.
 

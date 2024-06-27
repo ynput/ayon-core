@@ -7,11 +7,11 @@ from ayon_core.tools.utils import (
 )
 from ayon_core.style import get_objected_colors
 
-from ayon_core.tools.ayon_utils.widgets import (
+from ayon_core.tools.utils import (
     FoldersQtModel,
     FOLDERS_MODEL_SENDER_NAME,
 )
-from ayon_core.tools.ayon_utils.widgets.folders_widget import FOLDER_ID_ROLE
+from ayon_core.tools.utils.folders_widget import FOLDER_ID_ROLE
 
 if qtpy.API == "pyside":
     from PySide.QtGui import QStyleOptionViewItemV4
@@ -56,34 +56,34 @@ class UnderlinesFolderDelegate(QtWidgets.QItemDelegate):
         item_rect = QtCore.QRect(option.rect)
         item_rect.setHeight(option.rect.height() - self.bar_height)
 
-        subset_colors = index.data(UNDERLINE_COLORS_ROLE) or []
+        product_colors = index.data(UNDERLINE_COLORS_ROLE) or []
 
-        subset_colors_width = 0
-        if subset_colors:
-            subset_colors_width = option.rect.width() / len(subset_colors)
+        product_colors_width = 0
+        if product_colors:
+            product_colors_width = option.rect.width() / len(product_colors)
 
-        subset_rects = []
+        product_rects = []
         counter = 0
-        for subset_c in subset_colors:
+        for product_c in product_colors:
             new_color = None
             new_rect = None
-            if subset_c:
-                new_color = QtGui.QColor(subset_c)
+            if product_c:
+                new_color = QtGui.QColor(product_c)
 
                 new_rect = QtCore.QRect(
-                    option.rect.left() + (counter * subset_colors_width),
+                    option.rect.left() + (counter * product_colors_width),
                     option.rect.top() + (
                         option.rect.height() - self.bar_height
                     ),
-                    subset_colors_width,
+                    product_colors_width,
                     self.bar_height
                 )
-            subset_rects.append((new_color, new_rect))
+            product_rects.append((new_color, new_rect))
             counter += 1
 
         # Background
         if option.state & QtWidgets.QStyle.State_Selected:
-            if len(subset_colors) == 0:
+            if len(product_colors) == 0:
                 item_rect.setTop(item_rect.top() + (self.bar_height / 2))
 
             if option.state & QtWidgets.QStyle.State_MouseOver:
@@ -106,10 +106,10 @@ class UnderlinesFolderDelegate(QtWidgets.QItemDelegate):
         )
 
         if option.state & QtWidgets.QStyle.State_Selected:
-            for color, subset_rect in subset_rects:
-                if not color or not subset_rect:
+            for color, product_rect in product_rects:
+                if not color or not product_rect:
                     continue
-                painter.fillRect(subset_rect, QtGui.QBrush(color))
+                painter.fillRect(product_rect, QtGui.QBrush(color))
 
         # Icon
         icon_index = index.model().index(
@@ -187,16 +187,6 @@ class LoaderFoldersModel(FoldersQtModel):
         super(LoaderFoldersModel, self).__init__(*args, **kwargs)
 
         self._colored_items = set()
-
-    def _fill_item_data(self, item, folder_item):
-        """
-
-        Args:
-            item (QtGui.QStandardItem): Item to fill data.
-            folder_item (FolderItem): Folder item.
-        """
-
-        super(LoaderFoldersModel, self)._fill_item_data(item, folder_item)
 
     def set_merged_products_selection(self, items):
         changes = {
@@ -321,6 +311,8 @@ class LoaderFoldersWidget(QtWidgets.QWidget):
         """
 
         self._folders_proxy_model.setFilterFixedString(name)
+        if name:
+            self._folders_view.expandAll()
 
     def set_merged_products_selection(self, items):
         """

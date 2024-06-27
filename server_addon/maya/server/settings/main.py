@@ -30,6 +30,15 @@ class ExtMappingItemModel(BaseSettingsModel):
 class MayaSettings(BaseSettingsModel):
     """Maya Project Settings."""
 
+    use_cbid_workflow: bool = SettingsField(
+        True, title="Use cbId workflow",
+        description=(
+            "When enabled, a per node `cbId` identifier will be created and "
+            "validated for many product types. This is then used for look "
+            "publishing and many others. By disabling this, the `cbId` "
+            "attribute will still be created on scene save but it will not "
+            "be validated."))
+
     open_workfile_post_initialization: bool = SettingsField(
         True, title="Open Workfile Post Initialization")
     explicit_plugins_loading: ExplicitPluginsLoadingModel = SettingsField(
@@ -88,6 +97,7 @@ DEFAULT_MEL_WORKSPACE_SETTINGS = "\n".join((
 ))
 
 DEFAULT_MAYA_SETTING = {
+    "use_cbid_workflow": True,
     "open_workfile_post_initialization": True,
     "explicit_plugins_loading": DEFAULT_EXPLITCIT_PLUGINS_LOADING_SETTINGS,
     "imageio": DEFAULT_IMAGEIO_SETTINGS,

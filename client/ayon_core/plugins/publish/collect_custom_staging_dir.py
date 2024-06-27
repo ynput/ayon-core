@@ -28,7 +28,7 @@ class CollectCustomStagingDir(pyblish.api.InstancePlugin):
     Location of the folder is configured in `project_anatomy/templates/others`.
     ('transient' key is expected, with 'folder' key)
 
-    Which family/task type/subset is applicable is configured in:
+    Which family/task type/product is applicable is configured in:
     `project_settings/global/tools/publish/custom_staging_dir_profiles`
 
     """
@@ -38,8 +38,8 @@ class CollectCustomStagingDir(pyblish.api.InstancePlugin):
     template_key = "transient"
 
     def process(self, instance):
-        family = instance.data["family"]
-        subset_name = instance.data["subset"]
+        product_type = instance.data["productType"]
+        product_name = instance.data["productName"]
         host_name = instance.context.data["hostName"]
         project_name = instance.context.data["projectName"]
         project_settings = instance.context.data["project_settings"]
@@ -47,9 +47,15 @@ class CollectCustomStagingDir(pyblish.api.InstancePlugin):
         task = instance.data["anatomyData"].get("task", {})
 
         transient_tml, is_persistent = get_custom_staging_dir_info(
-            project_name, host_name, family, task.get("name"),
-            task.get("type"), subset_name, project_settings=project_settings,
-            anatomy=anatomy, log=self.log)
+            project_name,
+            host_name,
+            product_type,
+            product_name,
+            task.get("name"),
+            task.get("type"),
+            project_settings=project_settings,
+            anatomy=anatomy,
+            log=self.log)
 
         if transient_tml:
             anatomy_data = copy.deepcopy(instance.data["anatomyData"])
@@ -66,5 +72,5 @@ class CollectCustomStagingDir(pyblish.api.InstancePlugin):
             result_str = "Not adding"
 
         self.log.debug("{} custom staging dir for instance with '{}'".format(
-            result_str, family
+            result_str, product_type
         ))

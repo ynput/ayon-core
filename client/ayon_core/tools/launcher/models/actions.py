@@ -2,10 +2,115 @@ import os
 
 from ayon_core import resources
 from ayon_core.lib import Logger, AYONSettingsRegistry
+from ayon_core.addon import AddonsManager
 from ayon_core.pipeline.actions import (
     discover_launcher_actions,
     LauncherAction,
+    LauncherActionSelection,
 )
+from ayon_core.pipeline.workfile import should_use_last_workfile_on_launch
+
+try:
+    # Available since applications addon 0.2.4
+    from ayon_applications.action import ApplicationAction
+except ImportError:
+    # Backwards compatibility from 0.3.3 (24/06/10)
+    # TODO: Remove in future releases
+    class ApplicationAction(LauncherAction):
+        """Action to launch an application.
+
+        Application action based on 'ApplicationManager' system.
+
+        Handling of applications in launcher is not ideal and should be completely
+        redone from scratch. This is just a temporary solution to keep backwards
+        compatibility with AYON launcher.
+
+        Todos:
+            Move handling of errors to frontend.
+        """
+
+        # Application object
+        application = None
+        # Action attributes
+        name = None
+        label = None
+        label_variant = None
+        group = None
+        icon = None
+        color = None
+        order = 0
+        data = {}
+        project_settings = {}
+        project_entities = {}
+
+        _log = None
+
+        @property
+        def log(self):
+            if self._log is None:
+                self._log = Logger.get_logger(self.__class__.__name__)
+            return self._log
+
+        def is_compatible(self, selection):
+            if not selection.is_task_selected:
+                return False
+
+            project_entity = self.project_entities[selection.project_name]
+            apps = project_entity["attrib"].get("applications")
+            if not apps or self.application.full_name not in apps:
+                return False
+
+            project_settings = self.project_settings[selection.project_name]
+            only_available = project_settings["applications"]["only_available"]
+            if only_available and not self.application.find_executable():
+                return False
+            return True
+
+        def _show_message_box(self, title, message, details=None):
+            from qtpy import QtWidgets, QtGui
+            from ayon_core import style
+
+            dialog = QtWidgets.QMessageBox()
+            icon = QtGui.QIcon(resources.get_ayon_icon_filepath())
+            dialog.setWindowIcon(icon)
+            dialog.setStyleSheet(style.load_stylesheet())
+            dialog.setWindowTitle(title)
+            dialog.setText(message)
+            if details:
+                dialog.setDetailedText(details)
+            dialog.exec_()
+
+        def process(self, selection, **kwargs):
+            """Process the full Application action"""
+
+            from ayon_applications import (
+                ApplicationExecutableNotFound,
+                ApplicationLaunchFailed,
+            )
+
+            try:
+                self.application.launch(
+                    project_name=selection.project_name,
+                    folder_path=selection.folder_path,
+                    task_name=selection.task_name,
+                    **self.data
+                )
+
+            except ApplicationExecutableNotFound as exc:
+                details = exc.details
+                msg = exc.msg
+                log_msg = str(msg)
+                if details:
+                    log_msg += "\n" + details
+                self.log.warning(log_msg)
+                self._show_message_box(
+                    "Application executable not found", msg, details
+                )
+
+            except ApplicationLaunchFailed as exc:
+                msg = str(exc)
+                self.log.warning(msg, exc_info=True)
+                self._show_message_box("Application launch failed", msg)
 
 
 # class Action:
@@ -38,113 +143,6 @@ from ayon_core.pipeline.actions import (
 #
 #     def add_action(self, action):
 #         self._actions.append(action)
-
-
-class ApplicationAction(LauncherAction):
-    """Action to launch an application.
-
-    Application action based on 'ApplicationManager' system.
-
-    Handling of applications in launcher is not ideal and should be completely
-    redone from scratch. This is just a temporary solution to keep backwards
-    compatibility with AYON launcher.
-
-    Todos:
-        Move handling of errors to frontend.
-    """
-
-    # Application object
-    application = None
-    # Action attributes
-    name = None
-    label = None
-    label_variant = None
-    group = None
-    icon = None
-    color = None
-    order = 0
-    data = {}
-    project_settings = {}
-    project_entities = {}
-
-    _log = None
-    required_session_keys = (
-        "AYON_PROJECT_NAME",
-        "AYON_FOLDER_PATH",
-        "AYON_TASK_NAME"
-    )
-
-    @property
-    def log(self):
-        if self._log is None:
-            self._log = Logger.get_logger(self.__class__.__name__)
-        return self._log
-
-    def is_compatible(self, session):
-        for key in self.required_session_keys:
-            if not session.get(key):
-                return False
-
-        project_name = session["AYON_PROJECT_NAME"]
-        project_entity = self.project_entities[project_name]
-        apps = project_entity["attrib"].get("applications")
-        if not apps or self.application.full_name not in apps:
-            return False
-
-        project_settings = self.project_settings[project_name]
-        only_available = project_settings["applications"]["only_available"]
-        if only_available and not self.application.find_executable():
-            return False
-        return True
-
-    def _show_message_box(self, title, message, details=None):
-        from qtpy import QtWidgets, QtGui
-        from ayon_core import style
-
-        dialog = QtWidgets.QMessageBox()
-        icon = QtGui.QIcon(resources.get_ayon_icon_filepath())
-        dialog.setWindowIcon(icon)
-        dialog.setStyleSheet(style.load_stylesheet())
-        dialog.setWindowTitle(title)
-        dialog.setText(message)
-        if details:
-            dialog.setDetailedText(details)
-        dialog.exec_()
-
-    def process(self, session, **kwargs):
-        """Process the full Application action"""
-
-        from ayon_core.lib import (
-            ApplictionExecutableNotFound,
-            ApplicationLaunchFailed,
-        )
-
-        project_name = session["AYON_PROJECT_NAME"]
-        asset_name = session["AYON_FOLDER_PATH"]
-        task_name = session["AYON_TASK_NAME"]
-        try:
-            self.application.launch(
-                project_name=project_name,
-                asset_name=asset_name,
-                task_name=task_name,
-                **self.data
-            )
-
-        except ApplictionExecutableNotFound as exc:
-            details = exc.details
-            msg = exc.msg
-            log_msg = str(msg)
-            if details:
-                log_msg += "\n" + details
-            self.log.warning(log_msg)
-            self._show_message_box(
-                "Application executable not found", msg, details
-            )
-
-        except ApplicationLaunchFailed as exc:
-            msg = str(exc)
-            self.log.warning(msg, exc_info=True)
-            self._show_message_box("Application launch failed", msg)
 
 
 class ActionItem:
@@ -278,6 +276,8 @@ class ActionsModel:
 
         self._launcher_tool_reg = AYONSettingsRegistry("launcher_tool")
 
+        self._addons_manager = None
+
     @property
     def log(self):
         if self._log is None:
@@ -293,6 +293,34 @@ class ActionsModel:
         self._get_action_objects()
         self._controller.emit_event("actions.refresh.finished")
 
+    def _should_start_last_workfile(
+        self,
+        project_name,
+        task_id,
+        identifier,
+        host_name,
+        not_open_workfile_actions
+    ):
+        if identifier in not_open_workfile_actions:
+            return not not_open_workfile_actions[identifier]
+
+        task_name = None
+        task_type = None
+        if task_id is not None:
+            task_entity = self._controller.get_task_entity(
+                project_name, task_id
+            )
+            task_name = task_entity["name"]
+            task_type = task_entity["taskType"]
+
+        output = should_use_last_workfile_on_launch(
+            project_name,
+            host_name,
+            task_name,
+            task_type
+        )
+        return output
+
     def get_action_items(self, project_name, folder_id, task_id):
         """Get actions for project.
 
@@ -304,22 +332,28 @@ class ActionsModel:
         Returns:
             list[ActionItem]: List of actions.
         """
-
         not_open_workfile_actions = self._get_no_last_workfile_for_context(
             project_name, folder_id, task_id)
-        session = self._prepare_session(project_name, folder_id, task_id)
+        selection = self._prepare_selection(project_name, folder_id, task_id)
         output = []
         action_items = self._get_action_items(project_name)
         for identifier, action in self._get_action_objects().items():
-            if not action.is_compatible(session):
+            if not action.is_compatible(selection):
                 continue
 
             action_item = action_items[identifier]
             # Handling of 'force_not_open_workfile' for applications
             if action_item.is_application:
                 action_item = action_item.copy()
+                start_last_workfile = self._should_start_last_workfile(
+                    project_name,
+                    task_id,
+                    identifier,
+                    action.application.host_name,
+                    not_open_workfile_actions
+                )
                 action_item.force_not_open_workfile = (
-                    not_open_workfile_actions.get(identifier, False)
+                    not start_last_workfile
                 )
 
             output.append(action_item)
@@ -339,7 +373,7 @@ class ActionsModel:
         )
 
     def trigger_action(self, project_name, folder_id, task_id, identifier):
-        session = self._prepare_session(project_name, folder_id, task_id)
+        selection = self._prepare_selection(project_name, folder_id, task_id)
         failed = False
         error_message = None
         action_label = identifier
@@ -359,12 +393,16 @@ class ActionsModel:
                 per_action = self._get_no_last_workfile_for_context(
                     project_name, folder_id, task_id
                 )
-                force_not_open_workfile = per_action.get(identifier, False)
-                if force_not_open_workfile:
-                    action.data["start_last_workfile"] = False
-                else:
-                    action.data.pop("start_last_workfile", None)
-            action.process(session)
+                start_last_workfile = self._should_start_last_workfile(
+                    project_name,
+                    task_id,
+                    identifier,
+                    action.application.host_name,
+                    per_action
+                )
+                action.data["start_last_workfile"] = start_last_workfile
+
+            action.process(selection)
         except Exception as exc:
             self.log.warning("Action trigger failed.", exc_info=True)
             failed = True
@@ -379,6 +417,11 @@ class ActionsModel:
                 "full_label": action_label,
             }
         )
+
+    def _get_addons_manager(self):
+        if self._addons_manager is None:
+            self._addons_manager = AddonsManager()
+        return self._addons_manager
 
     def _get_no_last_workfile_reg_data(self):
         try:
@@ -401,29 +444,18 @@ class ActionsModel:
             .get(task_id, {})
         )
 
-    def _prepare_session(self, project_name, folder_id, task_id):
-        folder_path = None
-        if folder_id:
-            folder = self._controller.get_folder_entity(
-                project_name, folder_id)
-            if folder:
-                folder_path = folder["path"]
-
-        task_name = None
-        if task_id:
-            task = self._controller.get_task_entity(project_name, task_id)
-            if task:
-                task_name = task["name"]
-
-        return {
-            "AYON_PROJECT_NAME": project_name,
-            "AYON_FOLDER_PATH": folder_path,
-            "AYON_TASK_NAME": task_name,
-            # Deprecated - kept for backwards compatibility
-            "AVALON_PROJECT": project_name,
-            "AVALON_ASSET": folder_path,
-            "AVALON_TASK": task_name,
-        }
+    def _prepare_selection(self, project_name, folder_id, task_id):
+        project_entity = None
+        if project_name:
+            project_entity = self._controller.get_project_entity(project_name)
+        project_settings = self._controller.get_project_settings(project_name)
+        return LauncherActionSelection(
+            project_name,
+            folder_id,
+            task_id,
+            project_entity=project_entity,
+            project_settings=project_settings,
+        )
 
     def _get_discovered_action_classes(self):
         if self._discovered_actions is None:
@@ -458,12 +490,16 @@ class ActionsModel:
         action_items = {}
         for identifier, action in self._get_action_objects().items():
             is_application = isinstance(action, ApplicationAction)
-            if is_application:
+            # Backwards compatibility from 0.3.3 (24/06/10)
+            # TODO: Remove in future releases
+            if is_application and hasattr(action, "project_settings"):
                 action.project_entities[project_name] = project_entity
                 action.project_settings[project_name] = project_settings
+
             label = action.label or identifier
             variant_label = getattr(action, "label_variant", None)
             icon = get_action_icon(action)
+
             item = ActionItem(
                 identifier,
                 label,
@@ -478,19 +514,20 @@ class ActionsModel:
         return action_items
 
     def _get_applications_action_classes(self):
-        from ayon_core.lib.applications import (
-            CUSTOM_LAUNCH_APP_GROUPS,
-            ApplicationManager,
-        )
+        addons_manager = self._get_addons_manager()
+        applications_addon = addons_manager.get_enabled_addon("applications")
+        if hasattr(applications_addon, "get_applications_action_classes"):
+            return applications_addon.get_applications_action_classes()
 
+        # Backwards compatibility from 0.3.3 (24/06/10)
+        # TODO: Remove in future releases
         actions = []
+        if applications_addon is None:
+            return actions
 
-        manager = ApplicationManager()
+        manager = applications_addon.get_applications_manager()
         for full_name, application in manager.applications.items():
-            if (
-                application.group.name in CUSTOM_LAUNCH_APP_GROUPS
-                or not application.enabled
-            ):
+            if not application.enabled:
                 continue
 
             action = type(

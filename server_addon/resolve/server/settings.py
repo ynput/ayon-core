@@ -1,4 +1,9 @@
-from ayon_server.settings import BaseSettingsModel, SettingsField
+from pydantic import validator
+from ayon_server.settings import (
+    BaseSettingsModel,
+    SettingsField,
+    ensure_unique_names,
+)
 
 from .imageio import ResolveImageIOModel
 
@@ -56,7 +61,7 @@ class CreateShotClipModels(BaseSettingsModel):
 
     workfileFrameStart: int = SettingsField(
         1001,
-        title="Workfiles Start Frame",
+        title="Workfile Start Frame",
         section="Shot Attributes"
     )
     handleStart: int = SettingsField(
@@ -69,10 +74,66 @@ class CreateShotClipModels(BaseSettingsModel):
     )
 
 
-class CreatorPuginsModel(BaseSettingsModel):
+class CreatorPluginsModel(BaseSettingsModel):
     CreateShotClip: CreateShotClipModels = SettingsField(
         default_factory=CreateShotClipModels,
         title="Create Shot Clip"
+    )
+
+
+class MetadataMappingModel(BaseSettingsModel):
+    """Metadata mapping
+
+    Representation document context data are used for formatting of
+    anatomy tokens. Following are supported:
+    - version
+    - task
+    - asset
+
+    """
+    name: str = SettingsField(
+        "",
+        title="Metadata property name"
+    )
+    value: str = SettingsField(
+        "",
+        title="Metadata value template"
+    )
+
+
+class LoadMediaModel(BaseSettingsModel):
+    clip_color_last: str = SettingsField(
+        "Olive",
+        title="Clip color for last version"
+    )
+    clip_color_old: str = SettingsField(
+        "Orange",
+        title="Clip color for old version"
+    )
+    media_pool_bin_path: str = SettingsField(
+        "Loader/{folder[path]}",
+        title="Media Pool bin path template"
+    )
+    metadata: list[MetadataMappingModel] = SettingsField(
+        default_factory=list,
+        title="Metadata mapping",
+        description=(
+            "Set these media pool item metadata values on load and update. The"
+            " keys must match the exact Resolve metadata names like"
+            " 'Clip Name' or 'Shot'"
+        )
+    )
+
+    @validator("metadata")
+    def validate_unique_outputs(cls, value):
+        ensure_unique_names(value)
+        return value
+
+
+class LoaderPluginsModel(BaseSettingsModel):
+    LoadMedia: LoadMediaModel = SettingsField(
+        default_factory=LoadMediaModel,
+        title="Load Media"
     )
 
 
@@ -84,9 +145,13 @@ class ResolveSettings(BaseSettingsModel):
         default_factory=ResolveImageIOModel,
         title="Color Management (ImageIO)"
     )
-    create: CreatorPuginsModel = SettingsField(
-        default_factory=CreatorPuginsModel,
+    create: CreatorPluginsModel = SettingsField(
+        default_factory=CreatorPluginsModel,
         title="Creator plugins",
+    )
+    load: LoaderPluginsModel = SettingsField(
+        default_factory=LoaderPluginsModel,
+        title="Loader plugins",
     )
 
 
@@ -108,6 +173,36 @@ DEFAULT_VALUES = {
             "workfileFrameStart": 1001,
             "handleStart": 10,
             "handleEnd": 10
+        }
+    },
+    "load": {
+        "LoadMedia": {
+            "clip_color_last": "Olive",
+            "clip_color_old": "Orange",
+            "media_pool_bin_path": (
+                "Loader/{folder[path]}"
+            ),
+            "metadata": [
+                {
+                    "name": "Comments",
+                    "value": "{version[attrib][comment]}"
+                },
+                {
+                    "name": "Shot",
+                    "value": "{folder[path]}"
+                },
+                {
+                    "name": "Take",
+                    "value": "{product[name]} {version[name]}"
+                },
+                {
+                    "name": "Clip Name",
+                    "value": (
+                        "{folder[path]} {product[name]} "
+                        "{version[name]} ({representation[name]})"
+                    )
+                }
+            ]
         }
     }
 }

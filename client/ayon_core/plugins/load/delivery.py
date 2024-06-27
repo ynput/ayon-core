@@ -2,9 +2,9 @@ import copy
 import platform
 from collections import defaultdict
 
+import ayon_api
 from qtpy import QtWidgets, QtCore, QtGui
 
-from ayon_core.client import get_representations
 from ayon_core.pipeline import load, Anatomy
 from ayon_core import resources, style
 
@@ -22,14 +22,14 @@ from ayon_core.pipeline.delivery import (
 )
 
 
-class Delivery(load.SubsetLoaderPlugin):
+class Delivery(load.ProductLoaderPlugin):
     """Export selected versions to folder structure from Template"""
 
     is_multiple_contexts_compatible = True
     sequence_splitter = "__sequence_splitter__"
 
-    representations = ["*"]
-    families = ["*"]
+    representations = {"*"}
+    product_types = {"*"}
     tool_names = ["library_loader"]
 
     label = "Deliver Versions"
@@ -91,9 +91,15 @@ class DeliveryOptionsDialog(QtWidgets.QDialog):
             longest_key = max(self.templates.keys(), key=len)
             dropdown.setMinimumContentsLength(len(longest_key))
 
-        template_label = QtWidgets.QLabel()
-        template_label.setCursor(QtGui.QCursor(QtCore.Qt.IBeamCursor))
-        template_label.setTextInteractionFlags(QtCore.Qt.TextSelectableByMouse)
+        template_dir_label = QtWidgets.QLabel()
+        template_dir_label.setCursor(QtGui.QCursor(QtCore.Qt.IBeamCursor))
+        template_dir_label.setTextInteractionFlags(
+            QtCore.Qt.TextSelectableByMouse)
+
+        template_file_label = QtWidgets.QLabel()
+        template_file_label.setCursor(QtGui.QCursor(QtCore.Qt.IBeamCursor))
+        template_file_label.setTextInteractionFlags(
+            QtCore.Qt.TextSelectableByMouse)
 
         renumber_frame = QtWidgets.QCheckBox()
 
@@ -123,7 +129,8 @@ class DeliveryOptionsDialog(QtWidgets.QDialog):
 
         input_layout.addRow("Selected representations", selected_label)
         input_layout.addRow("Delivery template", dropdown)
-        input_layout.addRow("Template value", template_label)
+        input_layout.addRow("Directory template", template_dir_label)
+        input_layout.addRow("File template", template_file_label)
         input_layout.addRow("Renumber Frame", renumber_frame)
         input_layout.addRow("Renumber start frame", first_frame_start)
         input_layout.addRow("Root", root_line_edit)
@@ -151,7 +158,8 @@ class DeliveryOptionsDialog(QtWidgets.QDialog):
         layout.addWidget(text_area)
 
         self.selected_label = selected_label
-        self.template_label = template_label
+        self.template_dir_label = template_dir_label
+        self.template_file_label = template_file_label
         self.dropdown = dropdown
         self.first_frame_start = first_frame_start
         self.renumber_frame = renumber_frame
@@ -202,7 +210,7 @@ class DeliveryOptionsDialog(QtWidgets.QDialog):
             )
 
             anatomy_data = copy.deepcopy(repre["context"])
-            new_report_items = check_destination_path(str(repre["_id"]),
+            new_report_items = check_destination_path(repre["id"],
                                                       self.anatomy,
                                                       anatomy_data,
                                                       datetime_data,
@@ -260,7 +268,7 @@ class DeliveryOptionsDialog(QtWidgets.QDialog):
                     report_items.update(new_report_items)
                     self._update_progress(uploaded)
             else:  # fallback for Pype2 and representations without files
-                frame = repre['context'].get('frame')
+                frame = repre["context"].get("frame")
                 if frame:
                     repre["context"]["frame"] = len(str(frame)) * "#"
 
@@ -282,7 +290,13 @@ class DeliveryOptionsDialog(QtWidgets.QDialog):
         """Adds list of delivery templates from Anatomy to dropdown."""
         templates = {}
         for template_name, value in anatomy.templates["delivery"].items():
-            if not isinstance(value, str) or not value.startswith('{root'):
+            directory_template = value["directory"]
+            if not directory_template.startswith("{root"):
+                self.log.warning(
+                    "Skipping template '%s' because directory template does "
+                    "not start with `{root` in value: %s",
+                    template_name, directory_template
+                )
                 continue
 
             templates[template_name] = value
@@ -290,9 +304,9 @@ class DeliveryOptionsDialog(QtWidgets.QDialog):
         return templates
 
     def _set_representations(self, project_name, contexts):
-        version_ids = [context["version"]["_id"] for context in contexts]
+        version_ids = {context["version"]["id"] for context in contexts}
 
-        repres = list(get_representations(
+        repres = list(ayon_api.get_representations(
             project_name, version_ids=version_ids
         ))
 
@@ -346,7 +360,8 @@ class DeliveryOptionsDialog(QtWidgets.QDialog):
         name = self.dropdown.currentText()
         template_value = self.templates.get(name)
         if template_value:
-            self.template_label.setText(template_value)
+            self.template_dir_label.setText(template_value["directory"])
+            self.template_file_label.setText(template_value["file"])
             self.btn_delivery.setEnabled(bool(self._get_selected_repres()))
 
     def _update_progress(self, uploaded):

@@ -3,7 +3,6 @@ import shutil
 
 import ayon_api
 
-from ayon_core.client import get_asset_by_id
 from ayon_core.host import IWorkfileHost
 from ayon_core.lib import Logger, emit_event
 from ayon_core.lib.events import QueuedEventSystem
@@ -16,10 +15,11 @@ from ayon_core.pipeline.context_tools import (
 )
 from ayon_core.pipeline.workfile import create_workdir_extra_folders
 
-from ayon_core.tools.ayon_utils.models import (
+from ayon_core.tools.common_models import (
     HierarchyModel,
     HierarchyExpectedSelection,
     ProjectsModel,
+    UsersModel,
 )
 
 from .abstract import (
@@ -156,12 +156,13 @@ class BaseWorkfileController(
         self._log = None
 
         self._current_project_name = None
-        self._current_folder_name = None
+        self._current_folder_path = None
         self._current_folder_id = None
         self._current_task_name = None
         self._save_is_enabled = True
 
         # Expected selected folder and task
+        self._users_model = self._create_users_model()
         self._expected_selection = self._create_expected_selection_obj()
         self._selection_model = self._create_selection_model()
         self._projects_model = self._create_projects_model()
@@ -177,6 +178,12 @@ class BaseWorkfileController(
     def is_host_valid(self):
         return self._host_is_valid
 
+    def _create_users_model(self):
+        return UsersModel(self)
+
+    def _create_workfiles_model(self):
+        return WorkfilesModel(self)
+
     def _create_expected_selection_obj(self):
         return WorkfilesToolExpectedSelection(self)
 
@@ -188,9 +195,6 @@ class BaseWorkfileController(
 
     def _create_hierarchy_model(self):
         return HierarchyModel(self)
-
-    def _create_workfiles_model(self):
-        return WorkfilesModel(self)
 
     @property
     def event_system(self):
@@ -226,6 +230,16 @@ class BaseWorkfileController(
     def get_project_entity(self, project_name):
         return self._projects_model.get_project_entity(
             project_name)
+
+    def get_folder_type_items(self, project_name, sender=None):
+        return self._projects_model.get_folder_type_items(
+            project_name, sender
+        )
+
+    def get_task_type_items(self, project_name, sender=None):
+        return self._projects_model.get_task_type_items(
+            project_name, sender
+        )
 
     def get_folder_entity(self, project_name, folder_id):
         return self._hierarchy_model.get_folder_entity(
@@ -272,6 +286,10 @@ class BaseWorkfileController(
             "workfile_save_enable.changed",
             {"enabled": enabled}
         )
+
+    def get_user_items_by_name(self):
+        project_name = self.get_current_project_name()
+        return self._users_model.get_user_items_by_name(project_name)
 
     # Host information
     def get_workfile_extensions(self):
@@ -403,9 +421,11 @@ class BaseWorkfileController(
         return self._workfiles_model.get_workarea_dir_by_context(
             folder_id, task_id)
 
-    def get_workarea_file_items(self, folder_id, task_id):
+    def get_workarea_file_items(self, folder_id, task_name, sender=None):
+        task_id = self._get_task_id(folder_id, task_name)
         return self._workfiles_model.get_workarea_file_items(
-            folder_id, task_id)
+            folder_id, task_id, task_name
+        )
 
     def get_workarea_save_as_data(self, folder_id, task_id):
         return self._workfiles_model.get_workarea_save_as_data(
@@ -440,12 +460,14 @@ class BaseWorkfileController(
         return self._workfiles_model.get_published_file_items(
             folder_id, task_name)
 
-    def get_workfile_info(self, folder_id, task_id, filepath):
+    def get_workfile_info(self, folder_id, task_name, filepath):
+        task_id = self._get_task_id(folder_id, task_name)
         return self._workfiles_model.get_workfile_info(
             folder_id, task_id, filepath
         )
 
-    def save_workfile_info(self, folder_id, task_id, filepath, note):
+    def save_workfile_info(self, folder_id, task_name, filepath, note):
+        task_id = self._get_task_id(folder_id, task_name)
         self._workfiles_model.save_workfile_info(
             folder_id, task_id, filepath, note
         )
@@ -468,12 +490,12 @@ class BaseWorkfileController(
         context = self._get_host_current_context()
 
         project_name = context["project_name"]
-        folder_name = context["asset_name"]
+        folder_path = context["folder_path"]
         task_name = context["task_name"]
         current_file = self.get_current_workfile()
         folder_id = None
-        if folder_name:
-            folder = ayon_api.get_folder_by_path(project_name, folder_name)
+        if folder_path:
+            folder = ayon_api.get_folder_by_path(project_name, folder_path)
             if folder:
                 folder_id = folder["id"]
 
@@ -481,7 +503,7 @@ class BaseWorkfileController(
         self._project_anatomy = None
 
         self._current_project_name = project_name
-        self._current_folder_name = folder_name
+        self._current_folder_path = folder_path
         self._current_folder_id = folder_id
         self._current_task_name = task_name
 
@@ -573,6 +595,7 @@ class BaseWorkfileController(
                 workdir,
                 filename,
                 template_key,
+                src_filepath=representation_filepath
             )
         except Exception:
             failed = True
@@ -619,6 +642,17 @@ class BaseWorkfileController(
     def _emit_event(self, topic, data=None):
         self.emit_event(topic, data, "controller")
 
+    def _get_task_id(self, folder_id, task_name, sender=None):
+        task_item = self._hierarchy_model.get_task_item_by_name(
+            self.get_current_project_name(),
+            folder_id,
+            task_name,
+            sender
+        )
+        if not task_item:
+            return None
+        return task_item.id
+
     # Expected selection
     # - expected selection is used to restore selection after refresh
     #   or when current context should be used
@@ -635,12 +669,10 @@ class BaseWorkfileController(
             folder = self.get_folder_entity(project_name, folder_id)
         if task is None:
             task = self.get_task_entity(project_name, task_id)
-        # NOTE keys should are OpenPype compatible
         return {
             "project_name": project_name,
             "folder_id": folder_id,
-            "asset_id": folder_id,
-            "asset_name": folder["name"],
+            "folder_path": folder["path"],
             "task_id": task_id,
             "task_name": task["name"],
             "host_name": self.get_host_name(),
@@ -661,15 +693,7 @@ class BaseWorkfileController(
             folder_id != self.get_current_folder_id()
             or task_name != self.get_current_task_name()
         ):
-            # Use OpenPype asset-like object
-            asset_doc = get_asset_by_id(
-                event_data["project_name"],
-                event_data["folder_id"],
-            )
-            change_current_context(
-                asset_doc,
-                event_data["task_name"]
-            )
+            self._change_current_context(project_name, folder_id, task_id)
 
         self._host_open_workfile(filepath)
 
@@ -711,12 +735,8 @@ class BaseWorkfileController(
             folder_id != self.get_current_folder_id()
             or task_name != self.get_current_task_name()
         ):
-            # Use OpenPype asset-like object
-            asset_doc = get_asset_by_id(project_name, folder["id"])
-            change_current_context(
-                asset_doc,
-                task["name"],
-                template_key=template_key
+            self._change_current_context(
+                project_name, folder_id, task_id, template_key
             )
 
         # Save workfile
@@ -728,7 +748,7 @@ class BaseWorkfileController(
             self._host_save_workfile(dst_filepath)
 
         # Make sure workfile info exists
-        self.save_workfile_info(folder_id, task_id, dst_filepath, None)
+        self.save_workfile_info(folder_id, task_name, dst_filepath, None)
 
         # Create extra folders
         create_workdir_extra_folders(
@@ -741,4 +761,18 @@ class BaseWorkfileController(
 
         # Trigger after save events
         emit_event("workfile.save.after", event_data, source="workfiles.tool")
-        self.reset()
+
+    def _change_current_context(
+        self, project_name, folder_id, task_id, template_key=None
+    ):
+        # Change current context
+        folder_entity = self.get_folder_entity(project_name, folder_id)
+        task_entity = self.get_task_entity(project_name, task_id)
+        change_current_context(
+            folder_entity,
+            task_entity,
+            template_key=template_key
+        )
+        self._current_folder_id = folder_entity["id"]
+        self._current_folder_path = folder_entity["path"]
+        self._current_task_name = task_entity["name"]

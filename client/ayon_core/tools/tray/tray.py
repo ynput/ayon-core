@@ -1,10 +1,11 @@
-import collections
 import os
 import sys
+import collections
 import atexit
 
 import platform
 
+import ayon_api
 from qtpy import QtCore, QtGui, QtWidgets
 
 from ayon_core import resources, style
@@ -12,57 +13,25 @@ from ayon_core.lib import (
     Logger,
     get_ayon_launcher_args,
     run_detached_process,
+    is_dev_mode_enabled,
+    is_staging_enabled,
+    is_running_from_build,
 )
-from ayon_core.lib import is_running_from_build
+from ayon_core.settings import get_studio_settings
 from ayon_core.addon import (
     ITrayAction,
     ITrayService,
     TrayAddonsManager,
 )
-from ayon_core.settings import get_system_settings
 from ayon_core.tools.utils import (
     WrappedCallbackItem,
     get_ayon_qt_app,
 )
 
 from .info_widget import InfoWidget
-
-
-# TODO PixmapLabel should be moved to 'utils' in other future PR so should be
-#   imported from there
-class PixmapLabel(QtWidgets.QLabel):
-    """Label resizing image to height of font."""
-    def __init__(self, pixmap, parent):
-        super(PixmapLabel, self).__init__(parent)
-        self._empty_pixmap = QtGui.QPixmap(0, 0)
-        self._source_pixmap = pixmap
-
-    def set_source_pixmap(self, pixmap):
-        """Change source image."""
-        self._source_pixmap = pixmap
-        self._set_resized_pix()
-
-    def _get_pix_size(self):
-        size = self.fontMetrics().height() * 3
-        return size, size
-
-    def _set_resized_pix(self):
-        if self._source_pixmap is None:
-            self.setPixmap(self._empty_pixmap)
-            return
-        width, height = self._get_pix_size()
-        self.setPixmap(
-            self._source_pixmap.scaled(
-                width,
-                height,
-                QtCore.Qt.KeepAspectRatio,
-                QtCore.Qt.SmoothTransformation
-            )
-        )
-
-    def resizeEvent(self, event):
-        self._set_resized_pix()
-        super(PixmapLabel, self).resizeEvent(event)
+from .dialogs import (
+    UpdateDialog,
+)
 
 
 class TrayManager:
@@ -78,22 +47,26 @@ class TrayManager:
 
         self.log = Logger.get_logger(self.__class__.__name__)
 
-        system_settings = get_system_settings()
+        studio_settings = get_studio_settings()
 
-        version_check_interval = system_settings["general"].get(
-            "version_check_interval"
+        update_check_interval = studio_settings["core"].get(
+            "update_check_interval"
         )
-        if version_check_interval is None:
-            version_check_interval = 5
-        self._version_check_interval = version_check_interval * 60 * 1000
+        if update_check_interval is None:
+            update_check_interval = 5
+        self._update_check_interval = update_check_interval * 60 * 1000
 
         self._addons_manager = TrayAddonsManager()
 
         self.errors = []
 
-        self.main_thread_timer = None
+        self._update_check_timer = None
+        self._outdated_dialog = None
+
+        self._main_thread_timer = None
         self._main_thread_callbacks = collections.deque()
         self._execution_in_progress = None
+        self._closing = False
 
     @property
     def doubleclick_callback(self):
@@ -107,29 +80,25 @@ class TrayManager:
         if callback:
             self.execute_in_main_thread(callback)
 
-    def _restart_and_install(self):
-        self.restart(use_expected_version=True)
+    def show_tray_message(self, title, message, icon=None, msecs=None):
+        """Show tray message.
 
-    def execute_in_main_thread(self, callback, *args, **kwargs):
-        if isinstance(callback, WrappedCallbackItem):
-            item = callback
-        else:
-            item = WrappedCallbackItem(callback, *args, **kwargs)
+        Args:
+            title (str): Title of message.
+            message (str): Content of message.
+            icon (QSystemTrayIcon.MessageIcon): Message's icon. Default is
+                Information icon, may differ by Qt version.
+            msecs (int): Duration of message visibility in milliseconds.
+                Default is 10000 msecs, may differ by Qt version.
+        """
+        args = [title, message]
+        kwargs = {}
+        if icon:
+            kwargs["icon"] = icon
+        if msecs:
+            kwargs["msecs"] = msecs
 
-        self._main_thread_callbacks.append(item)
-
-        return item
-
-    def _main_thread_execution(self):
-        if self._execution_in_progress:
-            return
-        self._execution_in_progress = True
-        for _ in range(len(self._main_thread_callbacks)):
-            if self._main_thread_callbacks:
-                item = self._main_thread_callbacks.popleft()
-                item.execute()
-
-        self._execution_in_progress = False
+        self.tray_widget.showMessage(*args, **kwargs)
 
     def initialize_addons(self):
         """Add addons to tray."""
@@ -140,7 +109,9 @@ class TrayManager:
         self.tray_widget.menu.addMenu(admin_submenu)
 
         # Add services if they are
-        services_submenu = ITrayService.services_submenu(self.tray_widget.menu)
+        services_submenu = ITrayService.services_submenu(
+            self.tray_widget.menu
+        )
         self.tray_widget.menu.addMenu(services_submenu)
 
         # Add separator
@@ -165,39 +136,192 @@ class TrayManager:
         main_thread_timer.timeout.connect(self._main_thread_execution)
         main_thread_timer.start()
 
-        self.main_thread_timer = main_thread_timer
+        self._main_thread_timer = main_thread_timer
+
+        update_check_timer = QtCore.QTimer()
+        if self._update_check_interval > 0:
+            update_check_timer.timeout.connect(self._on_update_check_timer)
+            update_check_timer.setInterval(self._update_check_interval)
+            update_check_timer.start()
+        self._update_check_timer = update_check_timer
 
         self.execute_in_main_thread(self._startup_validations)
 
+    def restart(self):
+        """Restart Tray tool.
+
+        First creates new process with same argument and close current tray.
+        """
+
+        self._closing = True
+
+        args = get_ayon_launcher_args()
+
+        # Create a copy of sys.argv
+        additional_args = list(sys.argv)
+        # Remove first argument from 'sys.argv'
+        # - when running from code the first argument is 'start.py'
+        # - when running from build the first argument is executable
+        additional_args.pop(0)
+        additional_args = [
+            arg
+            for arg in additional_args
+            if arg not in {"--use-staging", "--use-dev"}
+        ]
+
+        if is_dev_mode_enabled():
+            additional_args.append("--use-dev")
+        elif is_staging_enabled():
+            additional_args.append("--use-staging")
+
+        args.extend(additional_args)
+
+        envs = dict(os.environ.items())
+        for key in {
+            "AYON_BUNDLE_NAME",
+        }:
+            envs.pop(key, None)
+
+        # Remove any existing addon path from 'PYTHONPATH'
+        addons_dir = os.environ.get("AYON_ADDONS_DIR", "")
+        if addons_dir:
+            addons_dir = os.path.normpath(addons_dir)
+        addons_dir = addons_dir.lower()
+
+        pythonpath = envs.get("PYTHONPATH") or ""
+        new_python_paths = []
+        for path in pythonpath.split(os.pathsep):
+            if not path:
+                continue
+            path = os.path.normpath(path)
+            if path.lower().startswith(addons_dir):
+                continue
+            new_python_paths.append(path)
+
+        envs["PYTHONPATH"] = os.pathsep.join(new_python_paths)
+
+        # Start new process
+        run_detached_process(args, env=envs)
+        # Exit current tray process
+        self.exit()
+
+    def exit(self):
+        self._closing = True
+        self.tray_widget.exit()
+
+    def on_exit(self):
+        self._addons_manager.on_exit()
+
+    def execute_in_main_thread(self, callback, *args, **kwargs):
+        if isinstance(callback, WrappedCallbackItem):
+            item = callback
+        else:
+            item = WrappedCallbackItem(callback, *args, **kwargs)
+
+        self._main_thread_callbacks.append(item)
+
+        return item
+
+    def _on_update_check_timer(self):
+        try:
+            bundles = ayon_api.get_bundles()
+            user = ayon_api.get_user()
+            # This is a workaround for bug in ayon-python-api
+            if user.get("code") == 401:
+                raise Exception("Unauthorized")
+        except Exception:
+            self._revalidate_ayon_auth()
+            if self._closing:
+                return
+
+            try:
+                bundles = ayon_api.get_bundles()
+            except Exception:
+                return
+
+        if is_dev_mode_enabled():
+            return
+
+        bundle_type = (
+            "stagingBundle"
+            if is_staging_enabled()
+            else "productionBundle"
+        )
+
+        expected_bundle = bundles.get(bundle_type)
+        current_bundle = os.environ.get("AYON_BUNDLE_NAME")
+        is_expected = expected_bundle == current_bundle
+        if is_expected or expected_bundle is None:
+            self._restart_action.setVisible(False)
+            if (
+                self._outdated_dialog is not None
+                and self._outdated_dialog.isVisible()
+            ):
+                self._outdated_dialog.close_silently()
+            return
+
+        self._restart_action.setVisible(True)
+
+        if self._outdated_dialog is None:
+            self._outdated_dialog = UpdateDialog()
+            self._outdated_dialog.restart_requested.connect(
+                self._restart_and_install
+            )
+            self._outdated_dialog.ignore_requested.connect(
+                self._outdated_bundle_ignored
+            )
+
+        self._outdated_dialog.show()
+        self._outdated_dialog.raise_()
+        self._outdated_dialog.activateWindow()
+
+    def _revalidate_ayon_auth(self):
+        result = self._show_ayon_login(restart_on_token_change=False)
+        if self._closing:
+            return False
+
+        if not result.new_token:
+            self.exit()
+            return False
+        return True
+
+    def _restart_and_install(self):
+        self.restart()
+
+    def _outdated_bundle_ignored(self):
+        self.show_tray_message(
+            "AYON update ignored",
+            (
+                "Please restart AYON launcher as soon as possible"
+                " to propagate updates."
+            )
+        )
+
+    def _main_thread_execution(self):
+        if self._execution_in_progress:
+            return
+        self._execution_in_progress = True
+        for _ in range(len(self._main_thread_callbacks)):
+            if self._main_thread_callbacks:
+                item = self._main_thread_callbacks.popleft()
+                try:
+                    item.execute()
+                except BaseException:
+                    self.log.erorr(
+                        "Main thread execution failed", exc_info=True
+                    )
+
+        self._execution_in_progress = False
+
     def _startup_validations(self):
         """Run possible startup validations."""
-        pass
-
-    def show_tray_message(self, title, message, icon=None, msecs=None):
-        """Show tray message.
-
-        Args:
-            title (str): Title of message.
-            message (str): Content of message.
-            icon (QSystemTrayIcon.MessageIcon): Message's icon. Default is
-                Information icon, may differ by Qt version.
-            msecs (int): Duration of message visibility in milliseconds.
-                Default is 10000 msecs, may differ by Qt version.
-        """
-        args = [title, message]
-        kwargs = {}
-        if icon:
-            kwargs["icon"] = icon
-        if msecs:
-            kwargs["msecs"] = msecs
-
-        self.tray_widget.showMessage(*args, **kwargs)
+        # Trigger bundle validation on start
+        self._update_check_timer.timeout.emit()
 
     def _add_version_item(self):
         login_action = QtWidgets.QAction("Login", self.tray_widget)
         login_action.triggered.connect(self._on_ayon_login)
         self.tray_widget.menu.addAction(login_action)
-
         version_string = os.getenv("AYON_VERSION", "AYON Info")
 
         version_action = QtWidgets.QAction(version_string, self.tray_widget)
@@ -216,16 +340,24 @@ class TrayManager:
         self._restart_action = restart_action
 
     def _on_ayon_login(self):
-        self.execute_in_main_thread(self._show_ayon_login)
+        self.execute_in_main_thread(
+            self._show_ayon_login,
+            restart_on_token_change=True
+        )
 
-    def _show_ayon_login(self):
+    def _show_ayon_login(self, restart_on_token_change):
         from ayon_common.connection.credentials import change_user_ui
 
         result = change_user_ui()
         if result.shutdown:
             self.exit()
+            return result
 
-        elif result.restart or result.token_changed:
+        restart = result.restart
+        if restart_on_token_change and result.token_changed:
+            restart = True
+
+        if restart:
             # Remove environment variables from current connection
             # - keep develop, staging, headless values
             for key in {
@@ -235,23 +367,13 @@ class TrayManager:
             }:
                 os.environ.pop(key, None)
             self.restart()
+        return result
 
     def _on_restart_action(self):
-        self.restart(use_expected_version=True)
+        self.restart()
 
-    def restart(self, use_expected_version=False, reset_version=False):
-        """Restart Tray tool.
-
-        First creates new process with same argument and close current tray.
-
-        Args:
-            use_expected_version(bool): OpenPype version is set to expected
-                version.
-            reset_version(bool): OpenPype version is cleaned up so igniters
-                logic will decide which version will be used.
-        """
+    def _restart_ayon(self):
         args = get_ayon_launcher_args()
-        envs = dict(os.environ.items())
 
         # Create a copy of sys.argv
         additional_args = list(sys.argv)
@@ -259,34 +381,27 @@ class TrayManager:
         # - when running from code the first argument is 'start.py'
         # - when running from build the first argument is executable
         additional_args.pop(0)
+        additional_args = [
+            arg
+            for arg in additional_args
+            if arg not in {"--use-staging", "--use-dev"}
+        ]
 
-        cleanup_additional_args = False
-        if use_expected_version:
-            cleanup_additional_args = True
-            reset_version = True
-
-        # Pop OPENPYPE_VERSION
-        if reset_version:
-            cleanup_additional_args = True
-            envs.pop("OPENPYPE_VERSION", None)
-
-        if cleanup_additional_args:
-            _additional_args = []
-            for arg in additional_args:
-                if arg == "--use-staging" or arg.startswith("--use-version"):
-                    continue
-                _additional_args.append(arg)
-            additional_args = _additional_args
+        if is_dev_mode_enabled():
+            additional_args.append("--use-dev")
+        elif is_staging_enabled():
+            additional_args.append("--use-staging")
 
         args.extend(additional_args)
+
+        envs = dict(os.environ.items())
+        for key in {
+            "AYON_BUNDLE_NAME",
+        }:
+            envs.pop(key, None)
+
         run_detached_process(args, env=envs)
         self.exit()
-
-    def exit(self):
-        self.tray_widget.exit()
-
-    def on_exit(self):
-        self._addons_manager.on_exit()
 
     def _on_version_action(self):
         if self._info_widget is None:
@@ -352,8 +467,10 @@ class SystemTrayIcon(QtWidgets.QSystemTrayIcon):
 
     def initialize_addons(self):
         self._initializing_addons = True
-        self.tray_man.initialize_addons()
-        self._initializing_addons = False
+        try:
+            self.tray_man.initialize_addons()
+        finally:
+            self._initializing_addons = False
 
     def _click_timer_timeout(self):
         self._click_timer.stop()
@@ -457,7 +574,7 @@ class TrayStarter(QtCore.QObject):
 def main():
     app = get_ayon_qt_app()
 
-    starter = TrayStarter(app)
+    starter = TrayStarter(app)  # noqa F841
 
     if not is_running_from_build() and os.name == "nt":
         import ctypes

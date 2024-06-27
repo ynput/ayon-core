@@ -87,13 +87,28 @@ class RegexInputsModel(BaseSettingsModel):
 
 
 class ImageIOConfigModel(BaseSettingsModel):
+    """[DEPRECATED] Addon OCIO config settings. Please set the OCIO config
+    path in the Core addon profiles here
+    (ayon+settings://core/imageio/ocio_config_profiles).
+    """
+
     override_global_config: bool = SettingsField(
         False,
-        title="Override global OCIO config"
+        title="Override global OCIO config",
+        description=(
+            "DEPRECATED functionality. Please set the OCIO config path in the "
+            "Core addon profiles here (ayon+settings://core/imageio/"
+            "ocio_config_profiles)."
+        ),
     )
     filepath: list[str] = SettingsField(
         default_factory=list,
-        title="Config path"
+        title="Config path",
+        description=(
+            "DEPRECATED functionality. Please set the OCIO config path in the "
+            "Core addon profiles here (ayon+settings://core/imageio/"
+            "ocio_config_profiles)."
+        ),
     )
 
 
@@ -149,15 +164,15 @@ class ImageIOSettings(BaseSettingsModel):
 
 DEFAULT_IMAGEIO_SETTINGS = {
     "workfile": {
-        "ocioConfigName": "nuke-default",
-        "workingSpace": "linear",
-        "viewerLut": "sRGB",
-        "eightBitLut": "sRGB",
-        "sixteenBitLut": "sRGB",
-        "logLut": "Cineon",
-        "floatLut": "linear",
-        "thumbnailLut": "sRGB",
-        "monitorOutLut": "sRGB"
+        "ocioConfigName": "aces_1.2",
+        "workingSpace": "role_scene_linear",
+        "viewerLut": "ACES/sRGB",
+        "eightBitLut": "role_matte_paint",
+        "sixteenBitLut": "role_texture_paint",
+        "logLut": "role_compositing_log",
+        "floatLut": "role_scene_linear",
+        "thumbnailLut": "ACES/sRGB",
+        "monitorOutLut": "ACES/sRGB"
     },
     "regexInputs": {
         "inputs": [

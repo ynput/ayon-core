@@ -1,18 +1,10 @@
 import collections
 import logging
 
+import ayon_api
 from qtpy import QtWidgets, QtCore
 import qtawesome
 
-from ayon_core.client import (
-    get_assets,
-    get_subset_by_name,
-    get_subsets,
-    get_versions,
-    get_hero_versions,
-    get_last_versions,
-    get_representations,
-)
 from ayon_core.pipeline.load import (
     discover_loader_plugins,
     switch_container,
@@ -135,16 +127,16 @@ class SwitchAssetDialog(QtWidgets.QDialog):
         # first asset field, this also allows to see the placeholder value.
         accept_btn.setFocus()
 
-        self._folder_docs_by_id = {}
-        self._product_docs_by_id = {}
-        self._version_docs_by_id = {}
-        self._repre_docs_by_id = {}
+        self._folder_entities_by_id = {}
+        self._product_entities_by_id = {}
+        self._version_entities_by_id = {}
+        self._repre_entities_by_id = {}
 
         self._missing_folder_ids = set()
         self._missing_product_ids = set()
         self._missing_version_ids = set()
         self._missing_repre_ids = set()
-        self._missing_docs = False
+        self._missing_entities = False
 
         self._inactive_folder_ids = set()
         self._inactive_product_ids = set()
@@ -245,10 +237,10 @@ class SwitchAssetDialog(QtWidgets.QDialog):
 
     def find_last_versions(self, product_ids):
         project_name = self._project_name
-        return get_last_versions(
+        return ayon_api.get_last_versions(
             project_name,
-            subset_ids=product_ids,
-            fields=["_id", "parent", "type"]
+            product_ids,
+            fields={"id", "productId", "version"}
         )
 
     def _on_show_timer(self):
@@ -265,124 +257,119 @@ class SwitchAssetDialog(QtWidgets.QDialog):
         }
 
         project_name = self._project_name
-        repres = list(get_representations(
+        repre_entities = list(ayon_api.get_representations(
             project_name,
             representation_ids=repre_ids,
-            archived=True,
         ))
-        repres_by_id = {str(repre["_id"]): repre for repre in repres}
+        repres_by_id = {r["id"]: r for r in repre_entities}
 
-        content_repre_docs_by_id = {}
+        content_repre_entities_by_id = {}
         inactive_repre_ids = set()
         missing_repre_ids = set()
         version_ids = set()
         for repre_id in repre_ids:
-            repre_doc = repres_by_id.get(repre_id)
-            if repre_doc is None:
+            repre_entity = repres_by_id.get(repre_id)
+            if repre_entity is None:
                 missing_repre_ids.add(repre_id)
-            elif repres_by_id[repre_id]["type"] == "archived_representation":
+            elif not repres_by_id[repre_id]["active"]:
                 inactive_repre_ids.add(repre_id)
-                version_ids.add(repre_doc["parent"])
+                version_ids.add(repre_entity["versionId"])
             else:
-                content_repre_docs_by_id[repre_id] = repre_doc
-                version_ids.add(repre_doc["parent"])
+                content_repre_entities_by_id[repre_id] = repre_entity
+                version_ids.add(repre_entity["versionId"])
 
-        version_docs = get_versions(
+        version_entities = ayon_api.get_versions(
             project_name,
-            version_ids=version_ids,
-            hero=True
+            version_ids=version_ids
         )
-        content_version_docs_by_id = {}
-        for version_doc in version_docs:
-            version_id = version_doc["_id"]
-            content_version_docs_by_id[version_id] = version_doc
+        content_version_entities_by_id = {}
+        for version_entity in version_entities:
+            version_id = version_entity["id"]
+            content_version_entities_by_id[version_id] = version_entity
 
         missing_version_ids = set()
         product_ids = set()
         for version_id in version_ids:
-            version_doc = content_version_docs_by_id.get(version_id)
-            if version_doc is None:
+            version_entity = content_version_entities_by_id.get(version_id)
+            if version_entity is None:
                 missing_version_ids.add(version_id)
             else:
-                product_ids.add(version_doc["parent"])
+                product_ids.add(version_entity["productId"])
 
-        product_docs = get_subsets(
-            project_name, subset_ids=product_ids, archived=True
+        product_entities = ayon_api.get_products(
+            project_name, product_ids=product_ids
         )
-        product_docs_by_id = {sub["_id"]: sub for sub in product_docs}
+        product_entities_by_id = {p["id"]: p for p in product_entities}
 
         folder_ids = set()
         inactive_product_ids = set()
         missing_product_ids = set()
-        content_product_docs_by_id = {}
+        content_product_entities_by_id = {}
         for product_id in product_ids:
-            product_doc = product_docs_by_id.get(product_id)
-            if product_doc is None:
+            product_entity = product_entities_by_id.get(product_id)
+            if product_entity is None:
                 missing_product_ids.add(product_id)
-            elif product_doc["type"] == "archived_subset":
-                folder_ids.add(product_doc["parent"])
-                inactive_product_ids.add(product_id)
             else:
-                folder_ids.add(product_doc["parent"])
-                content_product_docs_by_id[product_id] = product_doc
+                folder_ids.add(product_entity["folderId"])
+                content_product_entities_by_id[product_id] = product_entity
 
-        folder_docs = get_assets(
-            project_name, asset_ids=folder_ids, archived=True
+        folder_entities = ayon_api.get_folders(
+            project_name, folder_ids=folder_ids, active=None
         )
-        folder_docs_by_id = {
-            folder_doc["_id"]: folder_doc
-            for folder_doc in folder_docs
+        folder_entities_by_id = {
+            folder_entity["id"]: folder_entity
+            for folder_entity in folder_entities
         }
 
         missing_folder_ids = set()
         inactive_folder_ids = set()
-        content_folder_docs_by_id = {}
+        content_folder_entities_by_id = {}
         for folder_id in folder_ids:
-            folder_doc = folder_docs_by_id.get(folder_id)
-            if folder_doc is None:
+            folder_entity = folder_entities_by_id.get(folder_id)
+            if folder_entity is None:
                 missing_folder_ids.add(folder_id)
-            elif folder_doc["type"] == "archived_asset":
+            elif not folder_entity["active"]:
                 inactive_folder_ids.add(folder_id)
             else:
-                content_folder_docs_by_id[folder_id] = folder_doc
+                content_folder_entities_by_id[folder_id] = folder_entity
 
         # stash context values, works only for single representation
         init_folder_id = None
         init_product_name = None
         init_repre_name = None
-        if len(repres) == 1:
-            init_repre_doc = repres[0]
-            init_version_doc = content_version_docs_by_id.get(
-                init_repre_doc["parent"])
-            init_product_doc = None
-            init_folder_doc = None
-            if init_version_doc:
-                init_product_doc = content_product_docs_by_id.get(
-                    init_version_doc["parent"]
+        if len(repre_entities) == 1:
+            init_repre_entity = repre_entities[0]
+            init_version_entity = content_version_entities_by_id.get(
+                init_repre_entity["versionId"])
+            init_product_entity = None
+            init_folder_entity = None
+            if init_version_entity:
+                init_product_entity = content_product_entities_by_id.get(
+                    init_version_entity["productId"]
                 )
-            if init_product_doc:
-                init_folder_doc = content_folder_docs_by_id.get(
-                    init_product_doc["parent"]
+            if init_product_entity:
+                init_folder_entity = content_folder_entities_by_id.get(
+                    init_product_entity["folderId"]
                 )
-            if init_folder_doc:
-                init_repre_name = init_repre_doc["name"]
-                init_product_name = init_product_doc["name"]
-                init_folder_id = init_folder_doc["_id"]
+            if init_folder_entity:
+                init_repre_name = init_repre_entity["name"]
+                init_product_name = init_product_entity["name"]
+                init_folder_id = init_folder_entity["id"]
 
         self._init_folder_id = init_folder_id
         self._init_product_name = init_product_name
         self._init_repre_name = init_repre_name
 
-        self._folder_docs_by_id = content_folder_docs_by_id
-        self._product_docs_by_id = content_product_docs_by_id
-        self._version_docs_by_id = content_version_docs_by_id
-        self._repre_docs_by_id = content_repre_docs_by_id
+        self._folder_entities_by_id = content_folder_entities_by_id
+        self._product_entities_by_id = content_product_entities_by_id
+        self._version_entities_by_id = content_version_entities_by_id
+        self._repre_entities_by_id = content_repre_entities_by_id
 
         self._missing_folder_ids = missing_folder_ids
         self._missing_product_ids = missing_product_ids
         self._missing_version_ids = missing_version_ids
         self._missing_repre_ids = missing_repre_ids
-        self._missing_docs = (
+        self._missing_entities = (
             bool(missing_folder_ids)
             or bool(missing_version_ids)
             or bool(missing_product_ids)
@@ -524,7 +511,7 @@ class SwitchAssetDialog(QtWidgets.QDialog):
             and not selected_product_name
             and not selected_repre
         ):
-            return list(self._repre_docs_by_id.keys())
+            return list(self._repre_entities_by_id.keys())
 
         # Everything is selected
         # [x] [x] [x]
@@ -571,68 +558,68 @@ class SwitchAssetDialog(QtWidgets.QDialog):
         self, folder_id, selected_product_name, selected_repre
     ):
         project_name = self._project_name
-        product_doc = get_subset_by_name(
+        product_entity = ayon_api.get_product_by_name(
             project_name,
             selected_product_name,
             folder_id,
-            fields=["_id"]
+            fields={"id"}
         )
 
-        product_id = product_doc["_id"]
+        product_id = product_entity["id"]
         last_versions_by_product_id = self.find_last_versions([product_id])
-        version_doc = last_versions_by_product_id.get(product_id)
-        if not version_doc:
+        version_entity = last_versions_by_product_id.get(product_id)
+        if not version_entity:
             return []
 
-        repre_docs = get_representations(
+        repre_entities = ayon_api.get_representations(
             project_name,
-            version_ids=[version_doc["_id"]],
-            representation_names=[selected_repre],
-            fields=["_id"]
+            version_ids={version_entity["id"]},
+            representation_names={selected_repre},
+            fields={"id"}
         )
-        return [repre_doc["_id"] for repre_doc in repre_docs]
+        return {repre_entity["id"] for repre_entity in repre_entities}
 
     def _get_current_output_repre_ids_xxo(self, folder_id, product_name):
         project_name = self._project_name
-        product_doc = get_subset_by_name(
+        product_entity = ayon_api.get_product_by_name(
             project_name,
             product_name,
             folder_id,
-            fields=["_id"]
+            fields={"id"}
         )
-        if not product_doc:
+        if not product_entity:
             return []
 
         repre_names = set()
-        for repre_doc in self._repre_docs_by_id.values():
-            repre_names.add(repre_doc["name"])
+        for repre_entity in self._repre_entities_by_id.values():
+            repre_names.add(repre_entity["name"])
 
         # TODO where to take version ids?
         version_ids = []
-        repre_docs = get_representations(
+        repre_entities = ayon_api.get_representations(
             project_name,
             representation_names=repre_names,
             version_ids=version_ids,
-            fields=["_id"]
+            fields={"id"}
         )
-        return [repre_doc["_id"] for repre_doc in repre_docs]
+        return {repre_entity["id"] for repre_entity in repre_entities}
 
     def _get_current_output_repre_ids_xox(self, folder_id, selected_repre):
         product_names = {
-            product_doc["name"]
-            for product_doc in self._product_docs_by_id.values()
+            product_entity["name"]
+            for product_entity in self._product_entities_by_id.values()
         }
 
         project_name = self._project_name
-        product_docs = get_subsets(
+        product_entities = ayon_api.get_products(
             project_name,
-            asset_ids=[folder_id],
-            subset_names=product_names,
-            fields=["_id", "name"]
+            folder_ids=[folder_id],
+            product_names=product_names,
+            fields={"id", "name"}
         )
         product_name_by_id = {
-            product_doc["_id"]: product_doc["name"]
-            for product_doc in product_docs
+            product_entity["id"]: product_entity["name"]
+            for product_entity in product_entities
         }
         product_ids = list(product_name_by_id.keys())
         last_versions_by_product_id = self.find_last_versions(product_ids)
@@ -640,35 +627,37 @@ class SwitchAssetDialog(QtWidgets.QDialog):
         for product_id, last_version in last_versions_by_product_id.items():
             product_name = product_name_by_id[product_id]
             last_version_id_by_product_name[product_name] = (
-                last_version["_id"]
+                last_version["id"]
             )
 
-        repre_docs = get_representations(
+        repre_entities = ayon_api.get_representations(
             project_name,
             version_ids=last_version_id_by_product_name.values(),
-            representation_names=[selected_repre],
-            fields=["_id"]
+            representation_names={selected_repre},
+            fields={"id"}
         )
-        return [repre_doc["_id"] for repre_doc in repre_docs]
+        return {repre_entity["id"] for repre_entity in repre_entities}
 
     def _get_current_output_repre_ids_xoo(self, folder_id):
         project_name = self._project_name
         repres_by_product_name = collections.defaultdict(set)
-        for repre_doc in self._repre_docs_by_id.values():
-            version_doc = self._version_docs_by_id[repre_doc["parent"]]
-            product_doc = self._product_docs_by_id[version_doc["parent"]]
-            product_name = product_doc["name"]
-            repres_by_product_name[product_name].add(repre_doc["name"])
+        for repre_entity in self._repre_entities_by_id.values():
+            version_id = repre_entity["versionId"]
+            version_entity = self._version_entities_by_id[version_id]
+            product_id = version_entity["productId"]
+            product_entity = self._product_entities_by_id[product_id]
+            product_name = product_entity["name"]
+            repres_by_product_name[product_name].add(repre_entity["name"])
 
-        product_docs = list(get_subsets(
+        product_entities = list(ayon_api.get_products(
             project_name,
-            asset_ids=[folder_id],
-            subset_names=repres_by_product_name.keys(),
-            fields=["_id", "name"]
+            folder_ids=[folder_id],
+            product_names=repres_by_product_name.keys(),
+            fields={"id", "name"}
         ))
         product_name_by_id = {
-            product_doc["_id"]: product_doc["name"]
-            for product_doc in product_docs
+            product_entity["id"]: product_entity["name"]
+            for product_entity in product_entities
         }
         product_ids = list(product_name_by_id.keys())
         last_versions_by_product_id = self.find_last_versions(product_ids)
@@ -676,7 +665,7 @@ class SwitchAssetDialog(QtWidgets.QDialog):
         for product_id, last_version in last_versions_by_product_id.items():
             product_name = product_name_by_id[product_id]
             last_version_id_by_product_name[product_name] = (
-                last_version["_id"]
+                last_version["id"]
             )
 
         repre_names_by_version_id = {}
@@ -686,97 +675,103 @@ class SwitchAssetDialog(QtWidgets.QDialog):
             if version_id is not None:
                 repre_names_by_version_id[version_id] = list(repre_names)
 
-        repre_docs = get_representations(
+        repre_entities = ayon_api.get_representations(
             project_name,
             names_by_version_ids=repre_names_by_version_id,
-            fields=["_id"]
+            fields={"id"}
         )
-        return [repre_doc["_id"] for repre_doc in repre_docs]
+        return {repre_entity["id"] for repre_entity in repre_entities}
 
     def _get_current_output_repre_ids_oxx(
         self, product_name, selected_repre
     ):
         project_name = self._project_name
-        product_docs = get_subsets(
+        product_entities = ayon_api.get_products(
             project_name,
-            asset_ids=self._folder_docs_by_id.keys(),
-            subset_names=[product_name],
-            fields=["_id"]
+            folder_ids=self._folder_entities_by_id.keys(),
+            product_names=[product_name],
+            fields={"id"}
         )
-        product_ids = [product_doc["_id"] for product_doc in product_docs]
+        product_ids = {
+            product_entity["id"] for product_entity in product_entities
+        }
         last_versions_by_product_id = self.find_last_versions(product_ids)
-        last_version_ids = [
-            last_version["_id"]
+        last_version_ids = {
+            last_version["id"]
             for last_version in last_versions_by_product_id.values()
-        ]
-        repre_docs = get_representations(
+        }
+
+        repre_entities = ayon_api.get_representations(
             project_name,
             version_ids=last_version_ids,
-            representation_names=[selected_repre],
-            fields=["_id"]
+            representation_names={selected_repre},
+            fields={"id"}
         )
-        return [repre_doc["_id"] for repre_doc in repre_docs]
+        return {repre_entity["id"] for repre_entity in repre_entities}
 
     def _get_current_output_repre_ids_oxo(self, product_name):
         project_name = self._project_name
-        product_docs = get_subsets(
+        product_entities = ayon_api.get_products(
             project_name,
-            asset_ids=self._folder_docs_by_id.keys(),
-            subset_names=[product_name],
-            fields=["_id", "parent"]
+            folder_ids=self._folder_entities_by_id.keys(),
+            product_names={product_name},
+            fields={"id", "folderId"}
         )
-        product_docs_by_id = {
-            product_doc["_id"]: product_doc
-            for product_doc in product_docs
+        product_entities_by_id = {
+            product_entity["id"]: product_entity
+            for product_entity in product_entities
         }
-        if not product_docs:
+        if not product_entities_by_id:
             return list()
 
         last_versions_by_product_id = self.find_last_versions(
-            product_docs_by_id.keys()
+            product_entities_by_id.keys()
         )
 
         product_id_by_version_id = {}
         for product_id, last_version in last_versions_by_product_id.items():
-            version_id = last_version["_id"]
+            version_id = last_version["id"]
             product_id_by_version_id[version_id] = product_id
 
         if not product_id_by_version_id:
             return list()
 
         repre_names_by_folder_id = collections.defaultdict(set)
-        for repre_doc in self._repre_docs_by_id.values():
-            version_doc = self._version_docs_by_id[repre_doc["parent"]]
-            product_doc = self._product_docs_by_id[version_doc["parent"]]
-            folder_doc = self._folder_docs_by_id[product_doc["parent"]]
-            folder_id = folder_doc["_id"]
-            repre_names_by_folder_id[folder_id].add(repre_doc["name"])
+        for repre_entity in self._repre_entities_by_id.values():
+            version_id = repre_entity["versionId"]
+            version_entity = self._version_entities_by_id[version_id]
+            product_id = version_entity["productId"]
+            product_entity = self._product_entities_by_id[product_id]
+            folder_id = product_entity["folderId"]
+            folder_entity = self._folder_entities_by_id[folder_id]
+            folder_id = folder_entity["id"]
+            repre_names_by_folder_id[folder_id].add(repre_entity["name"])
 
         repre_names_by_version_id = {}
         for last_version_id, product_id in product_id_by_version_id.items():
-            product_doc = product_docs_by_id[product_id]
-            folder_id = product_doc["parent"]
+            product_entity = product_entities_by_id[product_id]
+            folder_id = product_entity["folderId"]
             repre_names = repre_names_by_folder_id.get(folder_id)
             if not repre_names:
                 continue
             repre_names_by_version_id[last_version_id] = repre_names
 
-        repre_docs = get_representations(
+        repre_entities = ayon_api.get_representations(
             project_name,
             names_by_version_ids=repre_names_by_version_id,
-            fields=["_id"]
+            fields={"id"}
         )
-        return [repre_doc["_id"] for repre_doc in repre_docs]
+        return {repre_entity["id"] for repre_entity in repre_entities}
 
     def _get_current_output_repre_ids_oox(self, selected_repre):
         project_name = self._project_name
-        repre_docs = get_representations(
+        repre_entities = ayon_api.get_representations(
             project_name,
             representation_names=[selected_repre],
-            version_ids=self._version_docs_by_id.keys(),
-            fields=["_id"]
+            version_ids=self._version_entities_by_id.keys(),
+            fields={"id"}
         )
-        return [repre_doc["_id"] for repre_doc in repre_docs]
+        return {repre_entity["id"] for repre_entity in repre_entities}
 
     def _get_product_box_values(self):
         project_name = self._project_name
@@ -784,18 +779,18 @@ class SwitchAssetDialog(QtWidgets.QDialog):
         if selected_folder_id:
             folder_ids = [selected_folder_id]
         else:
-            folder_ids = list(self._folder_docs_by_id.keys())
+            folder_ids = list(self._folder_entities_by_id.keys())
 
-        product_docs = get_subsets(
+        product_entities = ayon_api.get_products(
             project_name,
-            asset_ids=folder_ids,
-            fields=["parent", "name"]
+            folder_ids=folder_ids,
+            fields={"folderId", "name"}
         )
 
         product_names_by_parent_id = collections.defaultdict(set)
-        for product_doc in product_docs:
-            product_names_by_parent_id[product_doc["parent"]].add(
-                product_doc["name"]
+        for product_entity in product_entities:
+            product_names_by_parent_id[product_entity["folderId"]].add(
+                product_entity["name"]
             )
 
         possible_product_names = None
@@ -824,15 +819,17 @@ class SwitchAssetDialog(QtWidgets.QDialog):
         # [ ] [ ] [?]
         if not selected_folder_id and not selected_product_name:
             # Find all representations of selection's products
-            possible_repres = get_representations(
+            possible_repres = ayon_api.get_representations(
                 project_name,
-                version_ids=self._version_docs_by_id.keys(),
-                fields=["parent", "name"]
+                version_ids=self._version_entities_by_id.keys(),
+                fields={"versionId", "name"}
             )
 
             possible_repres_by_parent = collections.defaultdict(set)
             for repre in possible_repres:
-                possible_repres_by_parent[repre["parent"]].add(repre["name"])
+                possible_repres_by_parent[repre["versionId"]].add(
+                    repre["name"]
+                )
 
             output_repres = None
             for repre_names in possible_repres_by_parent.values():
@@ -848,44 +845,44 @@ class SwitchAssetDialog(QtWidgets.QDialog):
 
         # [x] [x] [?]
         if selected_folder_id and selected_product_name:
-            product_doc = get_subset_by_name(
+            product_entity = ayon_api.get_product_by_name(
                 project_name,
                 selected_product_name,
                 selected_folder_id,
-                fields=["_id"]
+                fields={"id"}
             )
 
-            product_id = product_doc["_id"]
+            product_id = product_entity["id"]
             last_versions_by_product_id = self.find_last_versions([product_id])
-            version_doc = last_versions_by_product_id.get(product_id)
-            repre_docs = get_representations(
+            version_entity = last_versions_by_product_id.get(product_id)
+            repre_entities = ayon_api.get_representations(
                 project_name,
-                version_ids=[version_doc["_id"]],
-                fields=["name"]
+                version_ids={version_entity["id"]},
+                fields={"name"}
             )
-            return [
-                repre_doc["name"]
-                for repre_doc in repre_docs
-            ]
+            return {
+                repre_entity["name"]
+                for repre_entity in repre_entities
+            }
 
         # [x] [ ] [?]
         # If only folder is selected
         if selected_folder_id:
             # Filter products by names from content
             product_names = {
-                product_doc["name"]
-                for product_doc in self._product_docs_by_id.values()
+                product_entity["name"]
+                for product_entity in self._product_entities_by_id.values()
             }
 
-            product_docs = get_subsets(
+            product_entities = ayon_api.get_products(
                 project_name,
-                asset_ids=[selected_folder_id],
-                subset_names=product_names,
-                fields=["_id"]
+                folder_ids={selected_folder_id},
+                product_names=product_names,
+                fields={"id"}
             )
             product_ids = {
-                product_doc["_id"]
-                for product_doc in product_docs
+                product_entity["id"]
+                for product_entity in product_entities
             }
             if not product_ids:
                 return list()
@@ -895,24 +892,24 @@ class SwitchAssetDialog(QtWidgets.QDialog):
             for product_id, last_version in (
                 last_versions_by_product_id.items()
             ):
-                version_id = last_version["_id"]
+                version_id = last_version["id"]
                 product_id_by_version_id[version_id] = product_id
 
             if not product_id_by_version_id:
                 return list()
 
-            repre_docs = list(get_representations(
+            repre_entities = list(ayon_api.get_representations(
                 project_name,
                 version_ids=product_id_by_version_id.keys(),
-                fields=["name", "parent"]
+                fields={"name", "versionId"}
             ))
-            if not repre_docs:
+            if not repre_entities:
                 return list()
 
             repre_names_by_parent = collections.defaultdict(set)
-            for repre_doc in repre_docs:
-                repre_names_by_parent[repre_doc["parent"]].add(
-                    repre_doc["name"]
+            for repre_entity in repre_entities:
+                repre_names_by_parent[repre_entity["versionId"]].add(
+                    repre_entity["name"]
                 )
 
             available_repres = None
@@ -926,46 +923,46 @@ class SwitchAssetDialog(QtWidgets.QDialog):
             return list(available_repres)
 
         # [ ] [x] [?]
-        product_docs = list(get_subsets(
+        product_entities = list(ayon_api.get_products(
             project_name,
-            asset_ids=self._folder_docs_by_id.keys(),
-            subset_names=[selected_product_name],
-            fields=["_id", "parent"]
+            folder_ids=self._folder_entities_by_id.keys(),
+            product_names=[selected_product_name],
+            fields={"id", "folderId"}
         ))
-        if not product_docs:
+        if not product_entities:
             return list()
 
-        product_docs_by_id = {
-            product_doc["_id"]: product_doc
-            for product_doc in product_docs
+        product_entities_by_id = {
+            product_entity["id"]: product_entity
+            for product_entity in product_entities
         }
         last_versions_by_product_id = self.find_last_versions(
-            product_docs_by_id.keys()
+            product_entities_by_id.keys()
         )
 
         product_id_by_version_id = {}
         for product_id, last_version in last_versions_by_product_id.items():
-            version_id = last_version["_id"]
+            version_id = last_version["id"]
             product_id_by_version_id[version_id] = product_id
 
         if not product_id_by_version_id:
             return list()
 
-        repre_docs = list(
-            get_representations(
+        repre_entities = list(
+            ayon_api.get_representations(
                 project_name,
                 version_ids=product_id_by_version_id.keys(),
-                fields=["name", "parent"]
+                fields={"name", "versionId"}
             )
         )
-        if not repre_docs:
+        if not repre_entities:
             return list()
 
         repre_names_by_folder_id = collections.defaultdict(set)
-        for repre_doc in repre_docs:
-            product_id = product_id_by_version_id[repre_doc["parent"]]
-            folder_id = product_docs_by_id[product_id]["parent"]
-            repre_names_by_folder_id[folder_id].add(repre_doc["name"])
+        for repre_entity in repre_entities:
+            product_id = product_id_by_version_id[repre_entity["versionId"]]
+            folder_id = product_entities_by_id[product_id]["folderId"]
+            repre_names_by_folder_id[folder_id].add(repre_entity["name"])
 
         available_repres = None
         for repre_names in repre_names_by_folder_id.values():
@@ -981,7 +978,7 @@ class SwitchAssetDialog(QtWidgets.QDialog):
         selected_folder_id = self._folders_field.get_selected_folder_id()
         if (
             selected_folder_id is None
-            and (self._missing_docs or self._inactive_folder_ids)
+            and (self._missing_entities or self._inactive_folder_ids)
         ):
             validation_state.folder_ok = False
 
@@ -1003,17 +1000,17 @@ class SwitchAssetDialog(QtWidgets.QDialog):
 
         # [x] [ ] [?]
         project_name = self._project_name
-        product_docs = get_subsets(
-            project_name, asset_ids=[selected_folder_id], fields=["name"]
+        product_entities = ayon_api.get_products(
+            project_name, folder_ids=[selected_folder_id], fields={"name"}
         )
 
         product_names = set(
-            product_doc["name"]
-            for product_doc in product_docs
+            product_entity["name"]
+            for product_entity in product_entities
         )
 
-        for product_doc in self._product_docs_by_id.values():
-            if product_doc["name"] not in product_names:
+        for product_entity in self._product_entities_by_id.values():
+            if product_entity["name"] not in product_names:
                 validation_state.product_ok = False
                 break
 
@@ -1043,49 +1040,49 @@ class SwitchAssetDialog(QtWidgets.QDialog):
             selected_folder_id is not None
             and selected_product_name is not None
         ):
-            product_doc = get_subset_by_name(
+            product_entity = ayon_api.get_product_by_name(
                 project_name,
                 selected_product_name,
                 selected_folder_id,
-                fields=["_id"]
+                fields={"id"}
             )
-            product_id = product_doc["_id"]
+            product_id = product_entity["id"]
             last_versions_by_product_id = self.find_last_versions([product_id])
             last_version = last_versions_by_product_id.get(product_id)
             if not last_version:
                 validation_state.repre_ok = False
                 return
 
-            repre_docs = get_representations(
+            repre_entities = ayon_api.get_representations(
                 project_name,
-                version_ids=[last_version["_id"]],
-                fields=["name"]
+                version_ids={last_version["id"]},
+                fields={"name"}
             )
 
             repre_names = set(
-                repre_doc["name"]
-                for repre_doc in repre_docs
+                repre_entity["name"]
+                for repre_entity in repre_entities
             )
-            for repre_doc in self._repre_docs_by_id.values():
-                if repre_doc["name"] not in repre_names:
+            for repre_entity in self._repre_entities_by_id.values():
+                if repre_entity["name"] not in repre_names:
                     validation_state.repre_ok = False
                     break
             return
 
         # [x] [ ] [ ]
         if selected_folder_id is not None:
-            product_docs = list(get_subsets(
+            product_entities = list(ayon_api.get_products(
                 project_name,
-                asset_ids=[selected_folder_id],
-                fields=["_id", "name"]
+                folder_ids={selected_folder_id},
+                fields={"id", "name"}
             ))
 
             product_name_by_id = {}
             product_ids = set()
-            for product_doc in product_docs:
-                product_id = product_doc["_id"]
+            for product_entity in product_entities:
+                product_id = product_entity["id"]
                 product_ids.add(product_id)
-                product_name_by_id[product_id] = product_doc["name"]
+                product_name_by_id[product_id] = product_entity["name"]
 
             last_versions_by_product_id = self.find_last_versions(product_ids)
 
@@ -1093,66 +1090,71 @@ class SwitchAssetDialog(QtWidgets.QDialog):
             for product_id, last_version in (
                 last_versions_by_product_id.items()
             ):
-                version_id = last_version["_id"]
+                version_id = last_version["id"]
                 product_id_by_version_id[version_id] = product_id
 
-            repre_docs = get_representations(
+            repre_entities = ayon_api.get_representations(
                 project_name,
                 version_ids=product_id_by_version_id.keys(),
-                fields=["name", "parent"]
+                fields={"name", "versionId"}
             )
             repres_by_product_name = collections.defaultdict(set)
-            for repre_doc in repre_docs:
-                product_id = product_id_by_version_id[repre_doc["parent"]]
+            for repre_entity in repre_entities:
+                version_id = repre_entity["versionId"]
+                product_id = product_id_by_version_id[version_id]
                 product_name = product_name_by_id[product_id]
-                repres_by_product_name[product_name].add(repre_doc["name"])
+                repres_by_product_name[product_name].add(repre_entity["name"])
 
-            for repre_doc in self._repre_docs_by_id.values():
-                version_doc = self._version_docs_by_id[repre_doc["parent"]]
-                product_doc = self._product_docs_by_id[version_doc["parent"]]
-                repre_names = repres_by_product_name[product_doc["name"]]
-                if repre_doc["name"] not in repre_names:
+            for repre_entity in self._repre_entities_by_id.values():
+                version_id = repre_entity["versionId"]
+                version_entity = self._version_entities_by_id[version_id]
+                product_id = version_entity["productId"]
+                product_entity = self._product_entities_by_id[product_id]
+                repre_names = repres_by_product_name[product_entity["name"]]
+                if repre_entity["name"] not in repre_names:
                     validation_state.repre_ok = False
                     break
             return
 
         # [ ] [x] [ ]
-        # Product documents
-        product_docs = get_subsets(
+        # Product entities
+        product_entities = ayon_api.get_products(
             project_name,
-            asset_ids=self._folder_docs_by_id.keys(),
-            subset_names=[selected_product_name],
-            fields=["_id", "name", "parent"]
+            folder_ids=self._folder_entities_by_id.keys(),
+            product_names={selected_product_name},
+            fields={"id", "name", "folderId"}
         )
-        product_docs_by_id = {}
-        for product_doc in product_docs:
-            product_docs_by_id[product_doc["_id"]] = product_doc
+        product_entities_by_id = {}
+        for product_entity in product_entities:
+            product_entities_by_id[product_entity["id"]] = product_entity
 
         last_versions_by_product_id = self.find_last_versions(
-            product_docs_by_id.keys()
+            product_entities_by_id.keys()
         )
         product_id_by_version_id = {}
         for product_id, last_version in last_versions_by_product_id.items():
-            version_id = last_version["_id"]
+            version_id = last_version["id"]
             product_id_by_version_id[version_id] = product_id
 
-        repre_docs = get_representations(
+        repre_entities = ayon_api.get_representations(
             project_name,
             version_ids=product_id_by_version_id.keys(),
-            fields=["name", "parent"]
+            fields={"name", "versionId"}
         )
         repres_by_folder_id = collections.defaultdict(set)
-        for repre_doc in repre_docs:
-            product_id = product_id_by_version_id[repre_doc["parent"]]
-            folder_id = product_docs_by_id[product_id]["parent"]
-            repres_by_folder_id[folder_id].add(repre_doc["name"])
+        for repre_entity in repre_entities:
+            product_id = product_id_by_version_id[repre_entity["versionId"]]
+            folder_id = product_entities_by_id[product_id]["folderId"]
+            repres_by_folder_id[folder_id].add(repre_entity["name"])
 
-        for repre_doc in self._repre_docs_by_id.values():
-            version_doc = self._version_docs_by_id[repre_doc["parent"]]
-            product_doc = self._product_docs_by_id[version_doc["parent"]]
-            folder_id = product_doc["parent"]
+        for repre_entity in self._repre_entities_by_id.values():
+            version_id = repre_entity["versionId"]
+            version_entity = self._version_entities_by_id[version_id]
+            product_id = version_entity["productId"]
+            product_entity = self._product_entities_by_id[product_id]
+            folder_id = product_entity["folderId"]
             repre_names = repres_by_folder_id[folder_id]
-            if repre_doc["name"] not in repre_names:
+            if repre_entity["name"] not in repre_names:
                 validation_state.repre_ok = False
                 break
 
@@ -1182,57 +1184,59 @@ class SwitchAssetDialog(QtWidgets.QDialog):
         if selected_folder_id:
             folder_ids = {selected_folder_id}
         else:
-            folder_ids = set(self._folder_docs_by_id.keys())
+            folder_ids = set(self._folder_entities_by_id.keys())
 
         product_names = None
         if selected_product_name:
             product_names = [selected_product_name]
 
-        product_docs = list(get_subsets(
+        product_entities = list(ayon_api.get_products(
             project_name,
-            subset_names=product_names,
-            asset_ids=folder_ids
+            product_names=product_names,
+            folder_ids=folder_ids
         ))
         product_ids = set()
-        product_docs_by_parent_and_name = collections.defaultdict(dict)
-        for product_doc in product_docs:
-            product_ids.add(product_doc["_id"])
-            folder_id = product_doc["parent"]
-            name = product_doc["name"]
-            product_docs_by_parent_and_name[folder_id][name] = product_doc
+        product_entities_by_parent_and_name = collections.defaultdict(dict)
+        for product_entity in product_entities:
+            product_ids.add(product_entity["id"])
+            folder_id = product_entity["folderId"]
+            name = product_entity["name"]
+            product_entities_by_parent_and_name[folder_id][name] = (
+                product_entity
+            )
 
         # versions
-        _version_docs = get_versions(project_name, subset_ids=product_ids)
-        version_docs = list(reversed(
-            sorted(_version_docs, key=lambda item: item["name"])
-        ))
-
-        hero_version_docs = list(get_hero_versions(
-            project_name, subset_ids=product_ids
+        _version_entities = ayon_api.get_versions(
+            project_name, product_ids=product_ids
+        )
+        version_entities = list(reversed(
+            sorted(_version_entities, key=lambda item: item["version"])
         ))
 
         version_ids = set()
-        version_docs_by_parent_id_and_name = collections.defaultdict(dict)
-        for version_doc in version_docs:
-            version_ids.add(version_doc["_id"])
-            product_id = version_doc["parent"]
-            name = version_doc["name"]
-            version_docs_by_parent_id_and_name[product_id][name] = version_doc
+        version_entities_by_product_id = collections.defaultdict(dict)
+        hero_version_entities_by_product_id = {}
+        for version_entity in version_entities:
+            version_ids.add(version_entity["id"])
+            product_id = version_entity["productId"]
+            version = version_entity["version"]
+            if version < 0:
+                hero_version_entities_by_product_id[product_id] = (
+                    version_entity
+                )
+                continue
+            version_entities_by_product_id[product_id][version] = (
+                version_entity
+            )
 
-        hero_version_docs_by_parent_id = {}
-        for hero_version_doc in hero_version_docs:
-            version_ids.add(hero_version_doc["_id"])
-            parent_id = hero_version_doc["parent"]
-            hero_version_docs_by_parent_id[parent_id] = hero_version_doc
-
-        repre_docs = get_representations(
+        repre_entities = ayon_api.get_representations(
             project_name, version_ids=version_ids
         )
-        repre_docs_by_parent_id_by_name = collections.defaultdict(dict)
-        for repre_doc in repre_docs:
-            parent_id = repre_doc["parent"]
-            name = repre_doc["name"]
-            repre_docs_by_parent_id_by_name[parent_id][name] = repre_doc
+        repre_entities_by_name_version_id = collections.defaultdict(dict)
+        for repre_entity in repre_entities:
+            version_id = repre_entity["versionId"]
+            name = repre_entity["name"]
+            repre_entities_by_name_version_id[version_id][name] = repre_entity
 
         for container in self._items:
             self._switch_container(
@@ -1241,10 +1245,10 @@ class SwitchAssetDialog(QtWidgets.QDialog):
                 selected_folder_id,
                 selected_product_name,
                 selected_representation,
-                product_docs_by_parent_and_name,
-                version_docs_by_parent_id_and_name,
-                hero_version_docs_by_parent_id,
-                repre_docs_by_parent_id_by_name,
+                product_entities_by_parent_and_name,
+                version_entities_by_product_id,
+                hero_version_entities_by_product_id,
+                repre_entities_by_name_version_id,
             )
 
         self.switched.emit()
@@ -1258,81 +1262,81 @@ class SwitchAssetDialog(QtWidgets.QDialog):
         selected_folder_id,
         selected_product_name,
         selected_representation,
-        product_docs_by_parent_and_name,
-        version_docs_by_parent_id_and_name,
-        hero_version_docs_by_parent_id,
-        repre_docs_by_parent_id_by_name,
+        product_entities_by_parent_and_name,
+        version_entities_by_product_id,
+        hero_version_entities_by_product_id,
+        repre_entities_by_name_version_id,
     ):
         container_repre_id = container["representation"]
-        container_repre = self._repre_docs_by_id[container_repre_id]
+        container_repre = self._repre_entities_by_id[container_repre_id]
         container_repre_name = container_repre["name"]
-        container_version_id = container_repre["parent"]
+        container_version_id = container_repre["versionId"]
 
-        container_version = self._version_docs_by_id[container_version_id]
+        container_version = self._version_entities_by_id[container_version_id]
 
-        container_product_id = container_version["parent"]
-        container_product = self._product_docs_by_id[container_product_id]
+        container_product_id = container_version["productId"]
+        container_product = self._product_entities_by_id[container_product_id]
         container_product_name = container_product["name"]
 
-        container_folder_id = container_product["parent"]
+        container_folder_id = container_product["folderId"]
 
         if selected_folder_id:
             folder_id = selected_folder_id
         else:
             folder_id = container_folder_id
 
-        products_by_name = product_docs_by_parent_and_name[folder_id]
+        products_by_name = product_entities_by_parent_and_name[folder_id]
         if selected_product_name:
-            product_doc = products_by_name[selected_product_name]
+            product_entity = products_by_name[selected_product_name]
         else:
-            product_doc = products_by_name[container_product["name"]]
+            product_entity = products_by_name[container_product["name"]]
 
-        repre_doc = None
-        product_id = product_doc["_id"]
-        if container_version["type"] == "hero_version":
-            hero_version = hero_version_docs_by_parent_id.get(
+        repre_entity = None
+        product_id = product_entity["id"]
+        if container_version["version"] < 0:
+            hero_version = hero_version_entities_by_product_id.get(
                 product_id
             )
             if hero_version:
-                _repres = repre_docs_by_parent_id_by_name.get(
-                    hero_version["_id"]
+                _repres = repre_entities_by_name_version_id.get(
+                    hero_version["id"]
                 )
                 if selected_representation:
-                    repre_doc = _repres.get(selected_representation)
+                    repre_entity = _repres.get(selected_representation)
                 else:
-                    repre_doc = _repres.get(container_repre_name)
+                    repre_entity = _repres.get(container_repre_name)
 
-        if not repre_doc:
-            version_docs_by_name = (
-                version_docs_by_parent_id_and_name[product_id]
+        if not repre_entity:
+            version_entities_by_version = (
+                version_entities_by_product_id[product_id]
             )
-            # If asset or subset are selected for switching, we use latest
+            # If folder or product are selected for switching, we use latest
             # version else we try to keep the current container version.
-            version_name = None
+            version = None
             if (
                 selected_folder_id in (None, container_folder_id)
                 and selected_product_name in (None, container_product_name)
             ):
-                version_name = container_version.get("name")
+                version = container_version.get("version")
 
-            version_doc = None
-            if version_name is not None:
-                version_doc = version_docs_by_name.get(version_name)
+            version_entity = None
+            if version is not None:
+                version_entity = version_entities_by_version.get(version)
 
-            if version_doc is None:
-                version_name = max(version_docs_by_name)
-                version_doc = version_docs_by_name[version_name]
+            if version_entity is None:
+                version_name = max(version_entities_by_version)
+                version_entity = version_entities_by_version[version_name]
 
-            version_id = version_doc["_id"]
-            repres_by_name = repre_docs_by_parent_id_by_name[version_id]
+            version_id = version_entity["id"]
+            repres_by_name = repre_entities_by_name_version_id[version_id]
             if selected_representation:
-                repre_doc = repres_by_name[selected_representation]
+                repre_entity = repres_by_name[selected_representation]
             else:
-                repre_doc = repres_by_name[container_repre_name]
+                repre_entity = repres_by_name[container_repre_name]
 
         error = None
         try:
-            switch_container(container, repre_doc, loader)
+            switch_container(container, repre_entity, loader)
         except (
             LoaderSwitchNotImplementedError,
             IncompatibleLoaderError,

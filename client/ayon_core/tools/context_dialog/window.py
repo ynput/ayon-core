@@ -6,19 +6,17 @@ from qtpy import QtWidgets, QtCore, QtGui
 
 from ayon_core import style
 from ayon_core.lib.events import QueuedEventSystem
-from ayon_core.tools.ayon_utils.models import (
+from ayon_core.tools.common_models import (
     ProjectsModel,
     HierarchyModel,
 )
-from ayon_core.tools.ayon_utils.widgets import (
+from ayon_core.tools.utils import (
     ProjectsCombobox,
     FoldersWidget,
     TasksWidget,
-)
-from ayon_core.tools.utils.lib import (
-    center_window,
     get_ayon_qt_app,
 )
+from ayon_core.tools.utils.lib import center_window
 
 
 class SelectionModel(object):
@@ -229,6 +227,16 @@ class ContextDialogController:
     def get_project_items(self, sender=None):
         return self._projects_model.get_project_items(sender)
 
+    def get_folder_type_items(self, project_name, sender=None):
+        return self._projects_model.get_folder_type_items(
+            project_name, sender
+        )
+
+    def get_task_type_items(self, project_name, sender=None):
+        return self._projects_model.get_task_type_items(
+            project_name, sender
+        )
+
     def get_folder_items(self, project_name, sender=None):
         return self._hierarchy_model.get_folder_items(project_name, sender)
 
@@ -277,8 +285,8 @@ class ContextDialogController:
     def is_initial_context_valid(self):
         return self._initial_folder_found and self._initial_project_found
 
-    def set_initial_context(self, project_name=None, asset_name=None):
-        result = self._prepare_initial_context(project_name, asset_name)
+    def set_initial_context(self, project_name=None, folder_path=None):
+        result = self._prepare_initial_context(project_name, folder_path)
 
         self._initial_project_name = project_name
         self._initial_folder_id = result["folder_id"]
@@ -352,7 +360,7 @@ class ContextDialogController:
         with open(self._output_path, "w") as stream:
             json.dump(self.get_selected_context(), stream, indent=4)
 
-    def _prepare_initial_context(self, project_name, asset_name):
+    def _prepare_initial_context(self, project_name, folder_path):
         project_found = True
         output = {
             "project_found": project_found,
@@ -362,26 +370,26 @@ class ContextDialogController:
             "tasks_found": True,
         }
         if project_name is None:
-            asset_name = None
+            folder_path = None
         else:
             project = ayon_api.get_project(project_name)
             project_found = project is not None
         output["project_found"] = project_found
-        if not project_found or not asset_name:
+        if not project_found or not folder_path:
             return output
 
-        output["folder_label"] = asset_name
+        output["folder_label"] = folder_path
 
         folder_id = None
         folder_found = False
         # First try to find by path
-        folder = ayon_api.get_folder_by_path(project_name, asset_name)
+        folder = ayon_api.get_folder_by_path(project_name, folder_path)
         # Try to find by name if folder was not found by path
-        #   - prevent to query by name if 'asset_name' contains '/'
-        if not folder and "/" not in asset_name:
+        #   - prevent to query by name if 'folder_path' contains '/'
+        if not folder and "/" not in folder_path:
             folder = next(
                 ayon_api.get_folders(
-                    project_name, folder_names=[asset_name], fields=["id"]),
+                    project_name, folder_names=[folder_path], fields=["id"]),
                 None
             )
 
@@ -496,10 +504,10 @@ class ContextDialog(QtWidgets.QDialog):
 
     Context has 3 parts:
     - Project
-    - Asset
+    - Folder
     - Task
 
-    It is possible to predefine project and asset. In that case their widgets
+    It is possible to predefine project and folder. In that case their widgets
     will have passed preselected values and will be disabled.
     """
     def __init__(self, controller=None, parent=None):
@@ -521,7 +529,7 @@ class ContextDialog(QtWidgets.QDialog):
         # UI initialization
         main_splitter = QtWidgets.QSplitter(self)
 
-        # Left side widget contains project combobox and asset widget
+        # Left side widget contains project combobox and folders widget
         left_side_widget = QtWidgets.QWidget(main_splitter)
 
         project_combobox = ProjectsCombobox(
@@ -531,7 +539,7 @@ class ContextDialog(QtWidgets.QDialog):
         )
         project_combobox.set_select_item_visible(True)
 
-        # Assets widget
+        # Folders widget
         folders_widget = FoldersWidget(
             controller,
             parent=left_side_widget,
@@ -661,11 +669,7 @@ class ContextDialog(QtWidgets.QDialog):
         self._controller.set_strict(enabled)
 
     def refresh(self):
-        """Refresh all widget one by one.
-
-        When asset refresh is triggered we have to wait when is done so
-        this method continues with `_on_asset_widget_refresh_finished`.
-        """
+        """Refresh all widget one by one."""
 
         self._controller.reset()
 
@@ -673,10 +677,10 @@ class ContextDialog(QtWidgets.QDialog):
         """Result of dialog."""
         return self._controller.get_selected_context()
 
-    def set_context(self, project_name=None, asset_name=None):
+    def set_context(self, project_name=None, folder_path=None):
         """Set context which will be used and locked in dialog."""
 
-        self._controller.set_initial_context(project_name, asset_name)
+        self._controller.set_initial_context(project_name, folder_path)
 
     def _on_projects_refresh(self):
         initial_context = self._controller.get_initial_context()
@@ -784,16 +788,25 @@ class ContextDialog(QtWidgets.QDialog):
 def main(
     path_to_store,
     project_name=None,
-    asset_name=None,
+    folder_path=None,
     strict=True
 ):
     # Run Qt application
     app = get_ayon_qt_app()
     controller = ContextDialogController()
     controller.set_strict(strict)
-    controller.set_initial_context(project_name, asset_name)
+    controller.set_initial_context(project_name, folder_path)
     controller.set_output_json_path(path_to_store)
     window = ContextDialog(controller=controller)
     window.show()
     app.exec_()
     controller.store_output()
+
+
+def ask_for_context(strict=True):
+    controller = ContextDialogController()
+    controller.set_strict(strict)
+    window = ContextDialog(controller=controller)
+    window.exec_()
+
+    return controller.get_selected_context()

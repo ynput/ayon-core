@@ -13,8 +13,10 @@ class WorkfileInfo:
         task_id (str): Task id.
         filepath (str): Filepath.
         filesize (int): File size.
-        creation_time (int): Creation time (timestamp).
-        modification_time (int): Modification time (timestamp).
+        creation_time (float): Creation time (timestamp).
+        modification_time (float): Modification time (timestamp).
+        created_by (Union[str, none]): User who created the file.
+        updated_by (Union[str, none]): User who last updated the file.
         note (str): Note.
     """
 
@@ -26,6 +28,8 @@ class WorkfileInfo:
         filesize,
         creation_time,
         modification_time,
+        created_by,
+        updated_by,
         note,
     ):
         self.folder_id = folder_id
@@ -34,6 +38,8 @@ class WorkfileInfo:
         self.filesize = filesize
         self.creation_time = creation_time
         self.modification_time = modification_time
+        self.created_by = created_by
+        self.updated_by = updated_by
         self.note = note
 
     def to_data(self):
@@ -50,6 +56,8 @@ class WorkfileInfo:
             "filesize": self.filesize,
             "creation_time": self.creation_time,
             "modification_time": self.modification_time,
+            "created_by": self.created_by,
+            "updated_by": self.updated_by,
             "note": self.note,
         }
 
@@ -212,6 +220,7 @@ class FileItem:
         dirpath (str): Directory path of file.
         filename (str): Filename.
         modified (float): Modified timestamp.
+        created_by (Optional[str]): Username.
         representation_id (Optional[str]): Representation id of published
             workfile.
         filepath (Optional[str]): Prepared filepath.
@@ -223,6 +232,8 @@ class FileItem:
         dirpath,
         filename,
         modified,
+        created_by=None,
+        updated_by=None,
         representation_id=None,
         filepath=None,
         exists=None
@@ -230,6 +241,8 @@ class FileItem:
         self.filename = filename
         self.dirpath = dirpath
         self.modified = modified
+        self.created_by = created_by
+        self.updated_by = updated_by
         self.representation_id = representation_id
         self._filepath = filepath
         self._exists = exists
@@ -269,6 +282,7 @@ class FileItem:
             "filename": self.filename,
             "dirpath": self.dirpath,
             "modified": self.modified,
+            "created_by": self.created_by,
             "representation_id": self.representation_id,
             "filepath": self.filepath,
             "exists": self.exists,
@@ -520,6 +534,56 @@ class AbstractWorkfilesFrontend(AbstractWorkfilesCommon):
                 is triggered.
         """
 
+        pass
+
+    @abstractmethod
+    def get_user_items_by_name(self):
+        """Get user items available on AYON server.
+
+        Returns:
+            Dict[str, UserItem]: User items by username.
+
+        """
+        pass
+
+    @abstractmethod
+    def get_folder_type_items(self, project_name, sender=None):
+        """Folder type items for a project.
+
+        This function may trigger events with topics
+        'projects.folder_types.refresh.started' and
+        'projects.folder_types.refresh.finished' which will contain 'sender'
+        value in data.
+        That may help to avoid re-refresh of items in UI elements.
+
+        Args:
+            project_name (str): Project name.
+            sender (str): Who requested folder type items.
+
+        Returns:
+            list[FolderTypeItem]: Folder type information.
+
+        """
+        pass
+
+    @abstractmethod
+    def get_task_type_items(self, project_name, sender=None):
+        """Task type items for a project.
+
+        This function may trigger events with topics
+        'projects.task_types.refresh.started' and
+        'projects.task_types.refresh.finished' which will contain 'sender'
+        value in data.
+        That may help to avoid re-refresh of items in UI elements.
+
+        Args:
+            project_name (str): Project name.
+            sender (str): Who requested task type items.
+
+        Returns:
+            list[TaskTypeItem]: Task type information.
+
+        """
         pass
 
     # Host information
@@ -810,12 +874,13 @@ class AbstractWorkfilesFrontend(AbstractWorkfilesCommon):
         pass
 
     @abstractmethod
-    def get_workarea_file_items(self, folder_id, task_id):
+    def get_workarea_file_items(self, folder_id, task_name, sender=None):
         """Get workarea file items.
 
         Args:
             folder_id (str): Folder id.
-            task_id (str): Task id.
+            task_name (str): Task name.
+            sender (Optional[str]): Who requested workarea file items.
 
         Returns:
             list[FileItem]: List of workarea file items.
@@ -881,12 +946,12 @@ class AbstractWorkfilesFrontend(AbstractWorkfilesCommon):
         pass
 
     @abstractmethod
-    def get_workfile_info(self, folder_id, task_id, filepath):
+    def get_workfile_info(self, folder_id, task_name, filepath):
         """Workfile info from database.
 
         Args:
             folder_id (str): Folder id.
-            task_id (str): Task id.
+            task_name (str): Task id.
             filepath (str): Workfile path.
 
         Returns:
@@ -897,7 +962,7 @@ class AbstractWorkfilesFrontend(AbstractWorkfilesCommon):
         pass
 
     @abstractmethod
-    def save_workfile_info(self, folder_id, task_id, filepath, note):
+    def save_workfile_info(self, folder_id, task_name, filepath, note):
         """Save workfile info to database.
 
         At this moment the only information which can be saved about
@@ -908,7 +973,7 @@ class AbstractWorkfilesFrontend(AbstractWorkfilesCommon):
 
         Args:
             folder_id (str): Folder id.
-            task_id (str): Task id.
+            task_name (str): Task id.
             filepath (str): Workfile path.
             note (Union[str, None]): Note.
         """

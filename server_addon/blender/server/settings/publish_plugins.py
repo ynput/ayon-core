@@ -44,6 +44,14 @@ class ExtractBlendModel(BaseSettingsModel):
         default_factory=list,
         title="Families"
     )
+    compress: bool = SettingsField(True, title="Compress")
+
+
+class ExtractBlendAnimationModel(BaseSettingsModel):
+    enabled: bool = SettingsField(True)
+    optional: bool = SettingsField(title="Optional")
+    active: bool = SettingsField(title="Active")
+    compress: bool = SettingsField(False, title="Compress")
 
 
 class ExtractPlayblastModel(BaseSettingsModel):
@@ -51,13 +59,14 @@ class ExtractPlayblastModel(BaseSettingsModel):
     optional: bool = SettingsField(title="Optional")
     active: bool = SettingsField(title="Active")
     presets: str = SettingsField("", title="Presets", widget="textarea")
+    compress: bool = SettingsField(False, title="Compress")
 
     @validator("presets")
     def validate_json(cls, value):
         return validate_json_dict(value)
 
 
-class PublishPuginsModel(BaseSettingsModel):
+class PublishPluginsModel(BaseSettingsModel):
     ValidateCameraZeroKeyframe: ValidatePluginModel = SettingsField(
         default_factory=ValidatePluginModel,
         title="Validate Camera Zero Keyframe",
@@ -79,6 +88,10 @@ class PublishPuginsModel(BaseSettingsModel):
     ValidateMeshNoNegativeScale: ValidatePluginModel = SettingsField(
         default_factory=ValidatePluginModel,
         title="Validate Mesh No Negative Scale"
+    )
+    ValidateModelMeshUvMap1: ValidatePluginModel = SettingsField(
+        default_factory=ValidatePluginModel,
+        title="Validate Model Mesh Has UV map named map1"
     )
     ValidateTransformZero: ValidatePluginModel = SettingsField(
         default_factory=ValidatePluginModel,
@@ -110,8 +123,8 @@ class PublishPuginsModel(BaseSettingsModel):
         default_factory=ValidatePluginModel,
         title="Extract ABC"
     )
-    ExtractBlendAnimation: ValidatePluginModel = SettingsField(
-        default_factory=ValidatePluginModel,
+    ExtractBlendAnimation: ExtractBlendAnimationModel = SettingsField(
+        default_factory=ExtractBlendAnimationModel,
         title="Extract Blend Animation"
     )
     ExtractAnimationFBX: ValidatePluginModel = SettingsField(
@@ -137,6 +150,10 @@ class PublishPuginsModel(BaseSettingsModel):
     ExtractPlayblast: ExtractPlayblastModel = SettingsField(
         default_factory=ExtractPlayblastModel,
         title="Extract Playblast"
+    )
+    ExtractModelUSD: ValidatePluginModel = SettingsField(
+        default_factory=ValidatePluginModel,
+        title="Extract Model USD"
     )
 
 
@@ -172,6 +189,11 @@ DEFAULT_BLENDER_PUBLISH_SETTINGS = {
         "optional": False,
         "active": True
     },
+    "ValidateModelMeshUvMap1": {
+        "enabled": False,
+        "optional": True,
+        "active": True
+    },
     "ValidateTransformZero": {
         "enabled": False,
         "optional": True,
@@ -198,7 +220,8 @@ DEFAULT_BLENDER_PUBLISH_SETTINGS = {
             "action",
             "layout",
             "blendScene"
-        ]
+        ],
+        "compress": False
     },
     "ExtractFBX": {
         "enabled": False,
@@ -213,7 +236,8 @@ DEFAULT_BLENDER_PUBLISH_SETTINGS = {
     "ExtractBlendAnimation": {
         "enabled": True,
         "optional": True,
-        "active": True
+        "active": True,
+        "compress": False
     },
     "ExtractAnimationFBX": {
         "enabled": False,
@@ -328,5 +352,10 @@ DEFAULT_BLENDER_PUBLISH_SETTINGS = {
             },
             indent=4
         )
+    },
+    "ExtractModelUSD": {
+        "enabled": True,
+        "optional": True,
+        "active": True
     }
 }
