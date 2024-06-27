@@ -61,7 +61,7 @@ def get_available_versions(node):
         node (hou.Node): Node to query selected products' versions for.
 
     Returns:
-        List[int]: Version numbers for the product
+        list[int]: Version numbers for the product
     """
 
     project_name = node.evalParm("project_name") or get_current_project_name()
@@ -552,8 +552,12 @@ def get_available_products(node):
     It gets a list of available products of the specified product types
       within the specified folder path with in the specified project.
     Users can specify those in the HDA parameters.
+
+    Args:
+        node (hou.OpNode): The HDA node.
+
     Returns:
-        List[str]: Product options for Products menu.
+        list[str]: Product names for Products menu.
     """
     project_name = node.evalParm("project_name")
     folder_path = node.evalParm("folder_path")
@@ -579,6 +583,9 @@ def set_to_latest_version(node):
 
     Refresh version parameter value by setting its value to
     the latest version of the selected product.
+
+    Args:
+        node (hou.OpNode): The HDA node.
     """
 
     versions = get_available_versions(node)
