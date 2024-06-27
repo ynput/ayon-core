@@ -7,7 +7,7 @@ from ..constants import INPUTS_LAYOUT_HSPACING, INPUTS_LAYOUT_VSPACING
 
 class PreCreateWidget(QtWidgets.QWidget):
     def __init__(self, parent):
-        super(PreCreateWidget, self).__init__(parent)
+        super().__init__(parent)
 
         # Precreate attribute defininitions of Creator
         scroll_area = QtWidgets.QScrollArea(self)
@@ -79,7 +79,7 @@ class PreCreateWidget(QtWidgets.QWidget):
 
 class AttributesWidget(QtWidgets.QWidget):
     def __init__(self, parent=None):
-        super(AttributesWidget, self).__init__(parent)
+        super().__init__(parent)
 
         layout = QtWidgets.QGridLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
