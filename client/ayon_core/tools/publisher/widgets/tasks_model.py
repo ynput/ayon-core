@@ -1,7 +1,10 @@
+from typing import Optional
+
 from qtpy import QtCore, QtGui
 
 from ayon_core.style import get_default_entity_icon_color
 from ayon_core.tools.utils import get_qt_icon
+from ayon_core.tools.publisher.abstract import AbstractPublisherFrontend
 
 TASK_NAME_ROLE = QtCore.Qt.UserRole + 1
 TASK_TYPE_ROLE = QtCore.Qt.UserRole + 2
@@ -19,14 +22,19 @@ class TasksModel(QtGui.QStandardItemModel):
     tasks with same names then model is empty too.
 
     Args:
-        controller (PublisherController): Controller which handles creation and
+        controller (AbstractPublisherFrontend): Controller which handles creation and
             publishing.
+
     """
-    def __init__(self, controller, allow_empty_task=False):
-        super(TasksModel, self).__init__()
+    def __init__(
+        self,
+        controller: AbstractPublisherFrontend,
+        allow_empty_task: Optional[bool] = False
+    ):
+        super().__init__()
 
         self._allow_empty_task = allow_empty_task
-        self._controller = controller
+        self._controller: AbstractPublisherFrontend = controller
         self._items_by_name = {}
         self._folder_paths = []
         self._task_names_by_folder_path = {}
@@ -135,7 +143,7 @@ class TasksModel(QtGui.QStandardItemModel):
         task_type_items = {
             task_type_item.name: task_type_item
             for task_type_item in self._controller.get_task_type_items(
-                self._controller.project_name
+                self._controller.get_current_project_name()
             )
         }
         icon_name_by_task_name = {}
