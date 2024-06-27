@@ -182,7 +182,7 @@ DEFAULT_CREATORS = {
                     "type": "text",
                     "default": "",
                     "required_column": True,
-                    "validation_pattern": "^([a-z0-9#._\\/]*)$"
+                    "validation_pattern": "^([a-zA-Z\\:\\ 0-9#._\\\\/]*)$"
                 },
                 {
                     "name": "Folder Path",
@@ -215,7 +215,7 @@ DEFAULT_CREATORS = {
                 {
                     "name": "Version",
                     "type": "number",
-                    "default": 1,
+                    "default": "1",
                     "required_column": True,
                     "validation_pattern": "^(\\d{1,3})$"
                 },
@@ -231,47 +231,47 @@ DEFAULT_CREATORS = {
                     "type": "text",
                     "default": "",
                     "required_column": False,
-                    "validation_pattern": "^([a-zA-Z0-9#._\\/]*)$"
+                    "validation_pattern": "^([a-zA-Z\\:\\ 0-9#._\\\\/]*)$"
                 },
                 {
                     "name": "Frame Start",
                     "type": "number",
-                    "default": 0,
+                    "default": "0",
                     "required_column": True,
                     "validation_pattern": "^(\\d{1,8})$"
                 },
                 {
                     "name": "Frame End",
                     "type": "number",
-                    "default": 0,
+                    "default": "0",
                     "required_column": True,
                     "validation_pattern": "^(\\d{1,8})$"
                 },
                 {
                     "name": "Handle Start",
                     "type": "number",
-                    "default": 0,
+                    "default": "0",
                     "required_column": True,
                     "validation_pattern": "^(\\d)$"
                 },
                 {
                     "name": "Handle End",
                     "type": "number",
-                    "default": 0,
+                    "default": "0",
                     "required_column": True,
                     "validation_pattern": "^(\\d)$"
                 },
                 {
                     "name": "FPS",
                     "type": "decimal",
-                    "default": 0.0,
+                    "default": "0.0",
                     "required_column": True,
                     "validation_pattern": "^[0-9]*\\.[0-9]+$|^[0-9]+$"
                 },
                 {
                     "name": "Slate Exists",
                     "type": "bool",
-                    "default": True,
+                    "default": "True",
                     "required_column": False,
                     "validation_pattern": "(True|False)"
                 },
