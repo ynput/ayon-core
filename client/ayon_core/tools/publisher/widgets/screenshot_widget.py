@@ -15,7 +15,7 @@ class ScreenMarquee(QtWidgets.QDialog):
     """
 
     def __init__(self, parent=None):
-        super(ScreenMarquee, self).__init__(parent=parent)
+        super().__init__(parent=parent)
 
         self.setWindowFlags(
             QtCore.Qt.Window
@@ -138,7 +138,7 @@ class ScreenMarquee(QtWidgets.QDialog):
             event.accept()
             self.close()
             return
-        return super(ScreenMarquee, self).keyPressEvent(event)
+        return super().keyPressEvent(event)
 
     def showEvent(self, event):
         self._fit_screen_geometry()

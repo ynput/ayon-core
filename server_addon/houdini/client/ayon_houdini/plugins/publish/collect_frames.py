@@ -1,9 +1,8 @@
 # -*- coding: utf-8 -*-
 """Collector plugin for frames data on ROP instances."""
 import os
-import re
-
 import hou  # noqa
+import clique
 import pyblish.api
 from ayon_houdini.api import lib, plugin
 
@@ -16,86 +15,49 @@ class CollectFrames(plugin.HoudiniInstancePlugin):
     order = pyblish.api.CollectorOrder + 0.1
     label = "Collect Frames"
     families = ["camera", "vdbcache", "imagesequence", "ass",
-                "redshiftproxy", "review", "pointcache", "fbx"]
+                "redshiftproxy", "review", "pointcache", "fbx",
+                "model"]
 
     def process(self, instance):
 
+        # CollectRopFrameRange computes `start_frame` and `end_frame`
+        #  depending on the trange value.
+        start_frame = instance.data["frameStartHandle"]
+        end_frame = instance.data["frameEndHandle"]
+
+        # Evaluate the file name at the first frame.
         ropnode = hou.node(instance.data["instance_node"])
-
-        start_frame = instance.data.get("frameStartHandle", None)
-        end_frame = instance.data.get("frameEndHandle", None)
-
         output_parm = lib.get_output_parameter(ropnode)
-        if start_frame is not None:
-            # When rendering only a single frame still explicitly
-            # get the name for that particular frame instead of current frame
-            output = output_parm.evalAtFrame(start_frame)
-        else:
-            self.log.warning("Using current frame: {}".format(hou.frame()))
-            output = output_parm.eval()
-
-        _, ext = lib.splitext(
-            output, allowed_multidot_extensions=[
-                ".ass.gz", ".bgeo.sc", ".bgeo.gz",
-                ".bgeo.lzma", ".bgeo.bz2"])
+        output = output_parm.evalAtFrame(start_frame)
         file_name = os.path.basename(output)
-        result = file_name
-
-        # Get the filename pattern match from the output
-        # path, so we can compute all frames that would
-        # come out from rendering the ROP node if there
-        # is a frame pattern in the name
-        pattern = r"\w+\.(\d+)" + re.escape(ext)
-        match = re.match(pattern, file_name)
-
-        if match and start_frame is not None:
-
-            # Check if frames are bigger than 1 (file collection)
-            # override the result
-            if end_frame - start_frame > 0:
-                result = self.create_file_list(
-                    match, int(start_frame), int(end_frame)
-                )
 
         # todo: `frames` currently conflicts with "explicit frames" for a
         #       for a custom frame list. So this should be refactored.
+
         instance.data.update({
-            "frames": result,
+            "frames": file_name,  # Set frames to the file name by default.
             "stagingDir": os.path.dirname(output)
         })
 
-    @staticmethod
-    def create_file_list(match, start_frame, end_frame):
-        """Collect files based on frame range and `regex.match`
+        # Skip unnecessary logic if start and end frames are equal.
+        if start_frame == end_frame:
+            return
 
-        Args:
-            match(re.match): match object
-            start_frame(int): start of the animation
-            end_frame(int): end of the animation
+        # Create collection using frame pattern.
+        # e.g. 'pointcacheBgeoCache_AB010.1001.bgeo'
+        # will be <Collection "pointcacheBgeoCache_AB010.%d.bgeo [1001]">
+        frame_collection, _ = clique.assemble(
+            [file_name],
+            patterns=[clique.PATTERNS["frames"]],
+            minimum_items=1
+        )
 
-        Returns:
-            list
+        # Return as no frame pattern detected.
+        if not frame_collection:
+            return
 
-        """
-
-        # Get the padding length
-        frame = match.group(1)
-        padding = len(frame)
-
-        # Get the parts of the filename surrounding the frame number,
-        # so we can put our own frame numbers in.
-        span = match.span(1)
-        prefix = match.string[: span[0]]
-        suffix = match.string[span[1]:]
-
-        # Generate filenames for all frames
-        result = []
-        for i in range(start_frame, end_frame + 1):
-
-            # Format frame number by the padding amount
-            str_frame = "{number:0{width}d}".format(number=i, width=padding)
-
-            file_name = prefix + str_frame + suffix
-            result.append(file_name)
-
-        return result
+        # It's always expected to be one collection.
+        frame_collection = frame_collection[0]
+        frame_collection.indexes.clear()
+        frame_collection.indexes.update(list(range(start_frame, (end_frame + 1))))
+        instance.data["frames"] = list(frame_collection)

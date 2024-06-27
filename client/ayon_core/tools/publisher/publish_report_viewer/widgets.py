@@ -52,7 +52,7 @@ class PluginLoadReportModel(QtGui.QStandardItemModel):
 
 class DetailWidget(QtWidgets.QTextEdit):
     def __init__(self, text, *args, **kwargs):
-        super(DetailWidget, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
 
         self.setReadOnly(True)
         self.setHtml(text)
@@ -73,7 +73,7 @@ class DetailWidget(QtWidgets.QTextEdit):
 
 class PluginLoadReportWidget(QtWidgets.QWidget):
     def __init__(self, parent):
-        super(PluginLoadReportWidget, self).__init__(parent)
+        super().__init__(parent)
 
         view = QtWidgets.QTreeView(self)
         view.setEditTriggers(QtWidgets.QAbstractItemView.NoEditTriggers)
@@ -101,11 +101,11 @@ class PluginLoadReportWidget(QtWidgets.QWidget):
             self._create_widget(child_index)
 
     def showEvent(self, event):
-        super(PluginLoadReportWidget, self).showEvent(event)
+        super().showEvent(event)
         self._update_widgets_size_hints()
 
     def resizeEvent(self, event):
-        super(PluginLoadReportWidget, self).resizeEvent(event)
+        super().resizeEvent(event)
         self._update_widgets_size_hints()
 
     def _update_widgets_size_hints(self):
@@ -146,7 +146,7 @@ class ZoomPlainText(QtWidgets.QPlainTextEdit):
     max_point_size = 200.0
 
     def __init__(self, *args, **kwargs):
-        super(ZoomPlainText, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
 
         anim_timer = QtCore.QTimer()
         anim_timer.setInterval(20)
@@ -160,7 +160,7 @@ class ZoomPlainText(QtWidgets.QPlainTextEdit):
     def wheelEvent(self, event):
         modifiers = QtWidgets.QApplication.keyboardModifiers()
         if modifiers != QtCore.Qt.ControlModifier:
-            super(ZoomPlainText, self).wheelEvent(event)
+            super().wheelEvent(event)
             return
 
         if hasattr(event, "angleDelta"):
@@ -219,7 +219,7 @@ class ZoomPlainText(QtWidgets.QPlainTextEdit):
 
 class DetailsWidget(QtWidgets.QWidget):
     def __init__(self, parent):
-        super(DetailsWidget, self).__init__(parent)
+        super().__init__(parent)
 
         output_widget = ZoomPlainText(self)
         output_widget.setObjectName("PublishLogConsole")
@@ -327,7 +327,7 @@ class DetailsPopup(QtWidgets.QDialog):
     closed = QtCore.Signal()
 
     def __init__(self, parent, center_widget):
-        super(DetailsPopup, self).__init__(parent)
+        super().__init__(parent)
         self.setWindowTitle("Report Details")
         layout = QtWidgets.QHBoxLayout(self)
 
@@ -338,19 +338,19 @@ class DetailsPopup(QtWidgets.QDialog):
     def showEvent(self, event):
         layout = self.layout()
         layout.insertWidget(0, self._center_widget)
-        super(DetailsPopup, self).showEvent(event)
+        super().showEvent(event)
         if self._first_show:
             self._first_show = False
             self.resize(700, 400)
 
     def closeEvent(self, event):
-        super(DetailsPopup, self).closeEvent(event)
+        super().closeEvent(event)
         self.closed.emit()
 
 
 class PublishReportViewerWidget(QtWidgets.QFrame):
     def __init__(self, parent=None):
-        super(PublishReportViewerWidget, self).__init__(parent)
+        super().__init__(parent)
 
         instances_model = InstancesModel()
         instances_proxy = InstanceProxyModel()
