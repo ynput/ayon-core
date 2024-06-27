@@ -360,6 +360,13 @@ class ContainersModel:
         container_items_by_id = {}
         for container in containers:
             try:
+                uuid.UUID(container["representation"])
+            except (ValueError, TypeError, AttributeError):
+                # Skip container if does not have valid UUID representation id
+                # (silently)
+                continue
+
+            try:
                 item = ContainerItem.from_container_data(container)
             except Exception as e:
                 # skip item if required data are missing
