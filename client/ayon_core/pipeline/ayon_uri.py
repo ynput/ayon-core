@@ -111,7 +111,7 @@ def get_representation_by_names(
         project_name: str,
         folder_path: str,
         product_name: str,
-        version_name: str,
+        version_name: Union[int, str],
         representation_name: str,
 ) -> Optional[dict]:
     """Get representation entity for asset and subset.
