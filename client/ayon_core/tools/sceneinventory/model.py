@@ -147,6 +147,7 @@ class InventoryModel(QtGui.QStandardItemModel):
         product_ids = {
             repre_info.product_id
             for repre_info in repre_info_by_id.values()
+            if repre_info.is_valid
         }
         version_items_by_product_id = self._controller.get_version_items(
             product_ids
