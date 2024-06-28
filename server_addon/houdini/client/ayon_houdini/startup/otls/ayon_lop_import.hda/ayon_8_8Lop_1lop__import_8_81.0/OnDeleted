@@ -1,0 +1,6 @@
+from ayon_houdini.api.lib import remove_all_thumbnails
+
+
+# Clear thumbnails
+node = kwargs["node"]
+remove_all_thumbnails(node)
