@@ -54,7 +54,7 @@ class AyonURIOutputProcessor(OutputProcessor):
         if asset_path in cache:
             return cache[asset_path]
 
-        uri_data = ayon_uri.parse_ayon_uri(asset_path)
+        uri_data = ayon_uri.parse_ayon_entity_uri(asset_path)
         if not uri_data:
             cache[asset_path] = asset_path
             return asset_path
@@ -115,7 +115,7 @@ class AyonURIOutputProcessor(OutputProcessor):
         if asset_path in cache:
             return cache[asset_path]
 
-        uri_data = ayon_uri.parse_ayon_uri(asset_path)
+        uri_data = ayon_uri.parse_ayon_entity_uri(asset_path)
         if not uri_data:
             cache[asset_path] = asset_path
             return asset_path

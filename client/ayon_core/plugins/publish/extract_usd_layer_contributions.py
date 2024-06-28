@@ -21,8 +21,8 @@ from ayon_core.lib.usdlib import (
     set_layer_defaults
 )
 from ayon_core.pipeline.ayon_uri import (
-    construct_ayon_uri,
-    parse_ayon_uri,
+    construct_ayon_entity_uri,
+    parse_ayon_entity_uri,
     get_representation_path_by_ayon_uri,
     get_representation_path_by_names
 )
@@ -102,7 +102,7 @@ def get_instance_uri_path(
     project_name = context.data["projectName"]
 
     # Get the layer's published path
-    path = construct_ayon_uri(
+    path = construct_ayon_entity_uri(
         project_name=project_name,
         folder_path=folder_path,
         product=product_name,
@@ -579,7 +579,7 @@ class ExtractUSDLayerContribution(publish.Extractor):
                                    filepath: str,
                                    contribution: VariantContribution):
         instance = contribution.instance
-        uri = construct_ayon_uri(
+        uri = construct_ayon_entity_uri(
             project_name=instance.data["projectEntity"]["name"],
             folder_path=instance.data["folderPath"],
             product=instance.data["productName"],
@@ -597,7 +597,7 @@ class ExtractUSDLayerContribution(publish.Extractor):
 
     def instance_match_ayon_uri(self, instance, ayon_uri):
 
-        uri_data = parse_ayon_uri(ayon_uri)
+        uri_data = parse_ayon_entity_uri(ayon_uri)
         if not uri_data:
             return False
 
