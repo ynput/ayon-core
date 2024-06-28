@@ -12,7 +12,7 @@ from ayon_core.lib import (
     UILabelDef,
     EnumDef
 )
-from ayon_core.lib.usdlib import (
+from ayon_core.pipeline.usdlib import (
     get_or_define_prim_spec,
     add_ordered_reference,
     variant_nested_prim_path,
