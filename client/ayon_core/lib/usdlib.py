@@ -44,6 +44,17 @@ class Layer:
 
     @classmethod
     def create_anonymous(cls, path, tag="LOP", anchor=None):
+        """Create an anonymous layer instance.
+
+        Arguments:
+            path (str): The layer's filepath.
+            tag (Optional[str]): The tag to give to the anonymous layer.
+                This defaults to 'LOP' because Houdini requires that tag for
+                its in-memory layers that it will be able to manage. In other
+                integrations no similar requirements have been found so it was
+                deemed a 'safe' default for now.
+            anchor (Optional[Layer]): Another layer to relatively anchor to.
+        """
         sdf_layer = Sdf.Layer.CreateAnonymous(tag)
         return cls(layer=sdf_layer, path=path, anchor=anchor, tag=tag)
 
