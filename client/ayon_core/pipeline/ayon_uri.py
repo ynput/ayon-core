@@ -18,7 +18,7 @@ from ayon_core.pipeline import get_representation_path
 
 
 def parse_ayon_uri(uri: str) -> Optional[dict]:
-    """Parse ayon entity URI into individual components.
+    """Parse AYON entity URI into individual components.
 
     URI specification:
         ayon+entity://{project}/{folder}?product={product}
@@ -79,7 +79,7 @@ def construct_ayon_uri(
         project_name: str,
         folder_path: str,
         product: str,
-        version: str,
+        version: Union[int, str],
         representation_name: str
 ) -> str:
     """Construct Ayon entity URI from its components

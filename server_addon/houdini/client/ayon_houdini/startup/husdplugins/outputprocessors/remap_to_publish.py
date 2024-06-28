@@ -5,7 +5,7 @@ import hou
 from husd.outputprocessor import OutputProcessor
 
 
-class AyonRemapPaths(OutputProcessor):
+class AYONRemapPaths(OutputProcessor):
     """Remap paths based on a mapping dict on rop node."""
 
     def __init__(self):
@@ -63,4 +63,4 @@ class AyonRemapPaths(OutputProcessor):
 
 
 def usdOutputProcessor():
-    return AyonRemapPaths
+    return AYONRemapPaths

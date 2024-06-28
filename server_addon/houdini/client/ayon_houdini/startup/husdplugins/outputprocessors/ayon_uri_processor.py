@@ -24,7 +24,7 @@ class AyonURIOutputProcessor(OutputProcessor):
 
     @staticmethod
     def displayName():
-        return "Ayon URI Output Processor"
+        return "AYON URI Output Processor"
 
     def processReferencePath(self,
                              asset_path,
@@ -62,8 +62,8 @@ class AyonURIOutputProcessor(OutputProcessor):
         # Try and find it as an existing publish
         query = {
             "project_name": uri_data["project"],
-            "asset_name": uri_data["asset"],
-            "subset_name": uri_data["product"],
+            "folder_path": uri_data["folder"],
+            "product_name": uri_data["product"],
             "version_name": uri_data["version"],
             "representation_name": uri_data["representation"],
         }
