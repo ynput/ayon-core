@@ -29,8 +29,7 @@ class Layer:
             anchor_path = self.anchor.get_full_path()
             root = os.path.dirname(anchor_path)
             return os.path.normpath(os.path.join(root, self.path))
-        else:
-            return self.path
+        return self.path
 
     def export(self, path=None, args=None):
         """Save the layer"""
