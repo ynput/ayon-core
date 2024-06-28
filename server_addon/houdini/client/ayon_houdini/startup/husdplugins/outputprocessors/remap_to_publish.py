@@ -39,7 +39,7 @@ class AYONRemapPaths(OutputProcessor):
         return group.asDialogScript()
 
     def beginSave(self, config_node, config_overrides, lop_node, t):
-        super(AyonRemapPaths, self).beginSave(config_node,
+        super(AYONRemapPaths, self).beginSave(config_node,
                                               config_overrides,
                                               lop_node,
                                               t)
