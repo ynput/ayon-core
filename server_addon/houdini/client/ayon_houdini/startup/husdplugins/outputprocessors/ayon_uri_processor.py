@@ -5,7 +5,7 @@ from husd.outputprocessor import OutputProcessor
 from ayon_core.pipeline import ayon_uri
 
 
-class AyonURIOutputProcessor(OutputProcessor):
+class AYONURIOutputProcessor(OutputProcessor):
     """Process AYON Entity URIs into their full path equivalents."""
 
     def __init__(self):
@@ -131,4 +131,4 @@ class AyonURIOutputProcessor(OutputProcessor):
 
 
 def usdOutputProcessor():
-    return AyonURIOutputProcessor
+    return AYONURIOutputProcessor
