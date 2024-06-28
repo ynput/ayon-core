@@ -191,7 +191,7 @@ def get_representation_path_by_names(
 
 def get_representation_path_by_ayon_uri(
         uri: str,
-        context: Optional[pyblish.api.Context]=None
+        context: Optional[pyblish.api.Context] = None
 ):
     """Return resolved path for AYON entity URI.
 
