@@ -1,6 +1,7 @@
 from operator import attrgetter
 import dataclasses
 import os
+from typing import Optional
 
 import pyblish.api
 from pxr import Sdf
@@ -23,9 +24,9 @@ from ayon_core.pipeline.usdlib import (
 from ayon_core.pipeline.entity_uri import (
     construct_ayon_entity_uri,
     parse_ayon_entity_uri,
-    get_representation_path_by_ayon_uri,
     get_representation_path_by_names
 )
+from ayon_core.pipeline.publish.lib import get_instance_expected_output_path
 from ayon_core.pipeline import publish
 
 
@@ -91,6 +92,63 @@ class VariantContribution(_BaseContribution):
     variant_is_default: bool  # Whether to author variant selection opinion
 
 
+def get_representation_path_in_publish_context(
+    context: pyblish.api.Context,
+    project_name,
+    folder_path,
+    product_name,
+    version_name,
+    representation_name,
+):
+    """Return resolved path for product if present in publishing context.
+
+    Allow resolving 'latest' paths from a publishing context's instances
+    as if they will exist after publishing without them being integrated yet.
+
+    Args:
+        context (pyblish.api.Context): Publishing context.
+        project_name (str): Project name.
+        folder_path (str): Folder path.
+        product_name (str): Product name.
+        version_name (str): Version name.
+        representation_name (str): Representation name.
+
+    Returns:
+        Union[str, None]: Returns the path if it could be resolved
+
+    """
+    if context.data["projectName"] != project_name:
+        return
+
+    if version_name == "hero":
+        raise NotImplementedError(
+            "Hero version resolving not implemented from context"
+        )
+
+    # Search first in publish context to allow resolving latest versions
+    # from e.g. the current publish session if the context is provided
+    specific_version = isinstance(version_name, int)
+    for instance in context:
+        if instance.data.get("folderPath") != folder_path:
+            continue
+
+        if instance.data.get("productName") != product_name:
+            continue
+
+        # Only consider if the instance has a representation by
+        # that name
+        representations = instance.data.get("representations", [])
+        if not any(representation.get("name") == representation_name
+                   for representation in representations):
+            continue
+
+        return get_instance_expected_output_path(
+            instance,
+            representation_name=representation_name,
+            version=version_name if specific_version else None
+        )
+
+
 def get_instance_uri_path(
         instance,
         resolve=True
@@ -113,11 +171,24 @@ def get_instance_uri_path(
     # Resolve contribution path
     # TODO: Remove this when Asset Resolver is used
     if resolve:
-        path = get_representation_path_by_ayon_uri(
-            path,
-            # Allow also resolving live to entries from current context
-            context=instance.context
-        )
+        query = parse_ayon_entity_uri(path)
+        names = {
+            "project_name": query["project"],
+            "folder_path": query["folderPath"],
+            "product_name": query["product"],
+            "version_name": query["version"],
+            "representation_name": query["representation"],
+        }
+
+        # We want to resolve the paths live from the publishing context
+        path = get_representation_path_in_publish_context(context, **names)
+        if path:
+            return path
+
+        # If for whatever reason we were unable to retrieve from the context
+        # then get the path from an existing database entry
+        path = get_representation_path_by_names(**query)
+
         # Ensure `None` for now is also a string
         path = str(path)
 
@@ -125,6 +196,7 @@ def get_instance_uri_path(
 
 
 def get_last_publish(instance, representation="usd"):
+    """Wrapper to quickly get last representation publish path"""
     return get_representation_path_by_names(
         project_name=instance.context.data["projectName"],
         folder_path=instance.data["folderPath"],
@@ -149,6 +221,9 @@ def add_representation(instance, name,
     Arguments:
         instance (pyblish.api.Instance): Publish instance
         name (str): The representation name
+        files (str | List[str]): List of files or single file of the
+            representation. This should be the filename only.
+        staging_dir (str): The directory containing the files.
         ext (Optional[str]): Explicit extension for the output
         output_name (Optional[str]): Output name suffix for the
             destination file to ensure the file is unique if
