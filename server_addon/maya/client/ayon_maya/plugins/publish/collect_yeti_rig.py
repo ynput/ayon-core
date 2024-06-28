@@ -276,19 +276,15 @@ class CollectYetiRig(plugin.MayaInstancePlugin):
         """
         import clique
 
-        escaped = (
-            re.escape(os.path.basename(filepath))
-            if os.path.isabs(filepath) else re.escape(filepath)
-        )
-        re_pattern = escaped.replace(pattern, "-?[0-9]+")
-
+        filename = os.path.basename(filepath)
+        re_pattern = re.escape(filename)
+        re_pattern = re_pattern.replace(re.escape(pattern), "-?[0-9]+")
         source_dir = os.path.dirname(filepath)
-        files = [f for f in os.listdir(source_dir)
-                 if re.match(re_pattern, f)]
-
-        pattern = [clique.PATTERNS["frames"]]
-        collection, remainder = clique.assemble(
-            files, patterns=pattern, minimum_items=1)
+        files = [f for f in os.listdir(source_dir) if re.match(re_pattern, f)]
+        collection, _remainder = clique.assemble(
+            files,
+            patterns=[clique.PATTERNS["frames"]],
+            minimum_items=1)
 
         return collection
 
