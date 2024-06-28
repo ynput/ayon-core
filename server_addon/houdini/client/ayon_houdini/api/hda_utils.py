@@ -442,7 +442,7 @@ class SelectFolderPathDialog(QtWidgets.QDialog):
         project_widget.addItems(self.get_projects())
 
         filter_widget = QtWidgets.QLineEdit()
-        filter_widget.setPlaceholderText("Filter folders..")
+        filter_widget.setPlaceholderText("Folder name filter...")
 
         folder_widget = SimpleFoldersWidget(parent=self)
 
