@@ -4,7 +4,7 @@ import inspect
 import traceback
 import collections
 from functools import partial
-from typing import Optional, Dict, List, Union, Any, Iterable, Literal
+from typing import Optional, Dict, List, Union, Any, Iterable
 
 import arrow
 import pyblish.plugin
@@ -22,15 +22,6 @@ PUBLISH_EVENT_SOURCE = "publisher.publish.model"
 # Define constant for plugin orders offset
 PLUGIN_ORDER_OFFSET = 0.5
 
-ActionFilterType = Literal[
-    "all",
-    "notProcessed",
-    "processed",
-    "failed",
-    "warning",
-    "failedOrWarning",
-    "succeeded"
-]
 
 
 class PublishReportMaker:
@@ -318,8 +309,10 @@ class PublishPluginActionItem:
         action_id (str): Action id.
         plugin_id (str): Plugin id.
         active (bool): Action is active.
-        on_filter (ActionFilterType): Actions have 'on' attribute which define
-            when can be action triggered (e.g. 'all', 'failed', ...).
+        on_filter (Literal["all", "notProcessed", "processed", "failed",
+            "warning", "failedOrWarning", "succeeded"]): Actions have 'on'
+            attribute which define  when can be action triggered
+            (e.g. 'all', 'failed', ...).
         label (str): Action's label.
         icon (Optional[str]) Action's icon.
     """
@@ -329,14 +322,14 @@ class PublishPluginActionItem:
         action_id: str,
         plugin_id: str,
         active: bool,
-        on_filter: ActionFilterType,
+        on_filter: str,
         label: str,
         icon: Optional[str],
     ):
         self.action_id: str = action_id
         self.plugin_id: str = plugin_id
         self.active: bool = active
-        self.on_filter: ActionFilterType = on_filter
+        self.on_filter: str = on_filter
         self.label: str = label
         self.icon: Optional[str] = icon
 
