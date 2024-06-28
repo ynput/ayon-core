@@ -2,7 +2,7 @@ import logging
 
 from husd.outputprocessor import OutputProcessor
 
-from ayon_core.pipeline import ayon_uri
+from ayon_core.pipeline import entity_uri
 
 
 class AYONURIOutputProcessor(OutputProcessor):
@@ -54,7 +54,7 @@ class AYONURIOutputProcessor(OutputProcessor):
         if asset_path in cache:
             return cache[asset_path]
 
-        uri_data = ayon_uri.parse_ayon_entity_uri(asset_path)
+        uri_data = entity_uri.parse_ayon_entity_uri(asset_path)
         if not uri_data:
             cache[asset_path] = asset_path
             return asset_path
@@ -67,7 +67,7 @@ class AYONURIOutputProcessor(OutputProcessor):
             "version_name": uri_data["version"],
             "representation_name": uri_data["representation"],
         }
-        path = ayon_uri.get_representation_path_by_names(
+        path = entity_uri.get_representation_path_by_names(
             **query
         )
         if path:
@@ -115,7 +115,7 @@ class AYONURIOutputProcessor(OutputProcessor):
         if asset_path in cache:
             return cache[asset_path]
 
-        uri_data = ayon_uri.parse_ayon_entity_uri(asset_path)
+        uri_data = entity_uri.parse_ayon_entity_uri(asset_path)
         if not uri_data:
             cache[asset_path] = asset_path
             return asset_path

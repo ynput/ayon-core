@@ -3,7 +3,7 @@ from typing import List, AnyStr
 
 import pyblish.api
 
-from ayon_core.pipeline.ayon_uri import get_instance_expected_output_path
+from ayon_core.pipeline.entity_uri import get_instance_expected_output_path
 from ayon_houdini.api import plugin
 from ayon_houdini.api.lib import render_rop
 from ayon_houdini.api.usd import remap_paths
