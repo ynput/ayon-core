@@ -17,7 +17,7 @@ from ayon_core.pipeline.template_data import get_template_data_with_names
 from ayon_core.pipeline import get_representation_path
 
 
-def parse_ayon_uri(uri: str) -> Optional[dict]:
+def parse_ayon_entity_uri(uri: str) -> Optional[dict]:
     """Parse AYON entity URI into individual components.
 
     URI specification:
@@ -32,13 +32,13 @@ def parse_ayon_uri(uri: str) -> Optional[dict]:
     `ayon://` is preferred for user readability.
 
     Example:
-    >>> parse_ayon_uri(
+    >>> parse_ayon_entity_uri(
     >>>     "ayon://test/char/villain?product=modelMain&version=2&representation=usd"  # noqa: E501
     >>> )
     {'project': 'test', 'folderPath': '/char/villain',
      'product': 'modelMain', 'version': 1,
      'representation': 'usd'}
-    >>> parse_ayon_uri(
+    >>> parse_ayon_entity_uri(
     >>>     "ayon+entity://project/folder?product=renderMain&version=3&representation=exr"  # noqa: E501
     >>> )
     {'project': 'project', 'folderPath': '/folder',
@@ -75,7 +75,7 @@ def parse_ayon_uri(uri: str) -> Optional[dict]:
     return result
 
 
-def construct_ayon_uri(
+def construct_ayon_entity_uri(
         project_name: str,
         folder_path: str,
         product: str,
@@ -206,7 +206,7 @@ def get_representation_path_by_ayon_uri(
         Union[str, None]: Returns the path if it could be resolved
 
     """
-    query = parse_ayon_uri(uri)
+    query = parse_ayon_entity_uri(uri)
 
     if context is not None and context.data["projectName"] == query["project"]:
         # Search first in publish context to allow resolving latest versions
