@@ -221,12 +221,8 @@ def containerise(name,
 
     """
 
-    # Ensure AVALON_CONTAINERS subnet exists
-    subnet = hou.node(AVALON_CONTAINERS)
-    if subnet is None:
-        obj_network = hou.node("/obj")
-        subnet = obj_network.createNode("subnet",
-                                        node_name="AVALON_CONTAINERS")
+    # Get AVALON_CONTAINERS subnet
+    subnet = get_or_create_avalon_container()
 
     # Create proper container name
     container_name = "{}_{}".format(name, suffix or "CON")
@@ -399,6 +395,18 @@ def on_new():
         # Run without execute deferred when no UI is available because
         # without UI `hdefereval` is not available to import
         _enforce_start_frame()
+
+
+def get_or_create_avalon_container() -> "hou.OpNode":
+    avalon_container = hou.node(AVALON_CONTAINERS)
+    if avalon_container:
+        return avalon_container
+
+    parent_path, name = AVALON_CONTAINERS.rsplit("/", 1)
+    parent = hou.node(parent_path)
+    return parent.createNode(
+        "subnet", node_name=name
+    )
 
 
 def _set_context_settings():
