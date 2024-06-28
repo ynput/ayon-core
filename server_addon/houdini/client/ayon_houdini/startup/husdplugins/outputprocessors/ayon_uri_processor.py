@@ -3,6 +3,7 @@ import logging
 from husd.outputprocessor import OutputProcessor
 
 from ayon_core.pipeline import entity_uri
+from ayon_core.pipeline.load.utils import get_representation_path_by_names
 
 
 class AYONURIOutputProcessor(OutputProcessor):
@@ -67,7 +68,7 @@ class AYONURIOutputProcessor(OutputProcessor):
             "version_name": uri_data["version"],
             "representation_name": uri_data["representation"],
         }
-        path = entity_uri.get_representation_path_by_names(
+        path = get_representation_path_by_names(
             **query
         )
         if path:
