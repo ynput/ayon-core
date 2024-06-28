@@ -1,6 +1,6 @@
 import os
 import copy
-from typing import Optional
+from typing import Optional, Union
 from urllib.parse import urlparse, parse_qs
 
 import pyblish.api
