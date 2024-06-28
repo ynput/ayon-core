@@ -228,12 +228,13 @@ class InventoryModel(QtGui.QStandardItemModel):
                 status_name
             )
 
+            repre_name = (
+                repre_info.representation_name or "<unknown representation>"
+            )
             container_model_items = []
             for container_item in container_items:
-                unique_name = (
-                    repre_info.representation_name
-                    + container_item.object_name or "<none>"
-                )
+                object_name = container_item.object_name or "<none>"
+                unique_name = repre_name + object_name
 
                 item = QtGui.QStandardItem()
                 item.setColumnCount(root_item.columnCount())
