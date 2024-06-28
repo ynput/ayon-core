@@ -1,9 +1,5 @@
-import os
-import copy
 from typing import Optional, Union
 from urllib.parse import urlparse, parse_qs
-
-import pyblish.api
 
 from ayon_api import (
     get_folder_by_path,
@@ -13,7 +9,6 @@ from ayon_api import (
     get_version_by_name,
     get_last_version_by_product_id
 )
-from ayon_core.pipeline.template_data import get_template_data_with_names
 from ayon_core.pipeline import get_representation_path
 
 
@@ -86,7 +81,6 @@ def construct_ayon_entity_uri(
 
     Returns:
         str: AYON Entity URI to query entity path.
-             Also works with `get_representation_path_by_ayon_uri`
     """
     if version < 0:
         version = "hero"
@@ -187,111 +181,3 @@ def get_representation_path_by_names(
     if representation:
         path = get_representation_path(representation)
         return path.replace("\\", "/")
-
-
-def get_representation_path_by_ayon_uri(
-        uri: str,
-        context: Optional[pyblish.api.Context] = None
-):
-    """Return resolved path for AYON entity URI.
-
-    Allow resolving 'latest' paths from a publishing context's instances
-    as if they will exist after publishing without them being integrated yet.
-
-    Args:
-        uri (str): AYON entity URI. See `parse_ayon_entity_uri`
-        context (pyblish.api.Context): Publishing context.
-
-    Returns:
-        Union[str, None]: Returns the path if it could be resolved
-
-    """
-    query = parse_ayon_entity_uri(uri)
-
-    if context is not None and context.data["projectName"] == query["project"]:
-        # Search first in publish context to allow resolving latest versions
-        # from e.g. the current publish session if the context is provided
-        if query["version"] == "hero":
-            raise NotImplementedError(
-                "Hero version resolving not implemented from context"
-            )
-
-        specific_version = isinstance(query["version"], int)
-        for instance in context:
-            if instance.data.get("folderPath") != query["folderPath"]:
-                continue
-
-            if instance.data.get("productName") != query["product"]:
-                continue
-
-            # Only consider if the instance has a representation by
-            # that name
-            representations = instance.data.get("representations", [])
-            if not any(representation.get("name") == query["representation"]
-                       for representation in representations):
-                continue
-
-            return get_instance_expected_output_path(
-                instance,
-                representation_name=query["representation"],
-                version=query["version"] if specific_version else None
-            )
-
-    return get_representation_path_by_names(
-        project_name=query["project"],
-        folder_path=query["asset"],
-        product_name=query["product"],
-        version_name=query["version"],
-        representation_name=query["representation"],
-    )
-
-
-def get_instance_expected_output_path(
-        instance: pyblish.api.Instance,
-        representation_name: str,
-        ext: Optional[str] = None,
-        version: Optional[str] = None
-):
-    """Return expected publish filepath for representation in instance
-
-    This does not validate whether the instance has any representation by the
-    given name, extension and/or version.
-
-    Arguments:
-        instance (pyblish.api.Instance): publish instance
-        representation_name (str): representation name
-        ext (Optional[str]): extension for the file, useful if `name` != `ext`
-        version (Optional[int]): if provided, force it to format to this
-            particular version.
-
-    Returns:
-        str: Resolved path
-
-    """
-
-    if ext is None:
-        ext = representation_name
-    if version is None:
-        version = instance.data["version"]
-
-    context = instance.context
-    anatomy = context.data["anatomy"]
-
-    template_data = copy.deepcopy(instance.data["anatomyData"])
-    template_data.update(get_template_data_with_names(
-        project_name=context.data["projectName"],
-        folder_path=instance.data["folderPath"],
-        task_name=instance.data["task"],
-        host_name=context.data["hostName"],
-        settings=context.data["project_settings"]
-    ))
-    template_data.update({
-        "ext": ext,
-        "representation": representation_name,
-        "variant": instance.data.get("variant"),
-        "version": version
-    })
-
-    path_template_obj = anatomy.get_template_item("publish", "default")["path"]
-    template_filled = path_template_obj.format_strict(template_data)
-    return os.path.normpath(template_filled)
