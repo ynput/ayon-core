@@ -23,9 +23,9 @@ from ayon_core.pipeline.usdlib import (
 )
 from ayon_core.pipeline.entity_uri import (
     construct_ayon_entity_uri,
-    parse_ayon_entity_uri,
-    get_representation_path_by_names
+    parse_ayon_entity_uri
 )
+from ayon_core.pipeline.load.utils import get_representation_path_by_names
 from ayon_core.pipeline.publish.lib import get_instance_expected_output_path
 from ayon_core.pipeline import publish
 
