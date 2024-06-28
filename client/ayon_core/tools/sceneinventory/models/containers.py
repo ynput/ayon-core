@@ -103,17 +103,8 @@ class ContainerItem:
 
     @classmethod
     def from_container_data(cls, container):
-        repre_id = container["representation"]
-
-        try:
-            uuid.UUID(repre_id)
-        except (ValueError, TypeError, AttributeError):
-            # Fake not existing representation id so container is shown in UI
-            #   but as invalid
-            repre_id = uuid.uuid4().hex
-
         return cls(
-            representation_id=repre_id,
+            representation_id=container["representation"],
             loader_name=container["loader"],
             namespace=container["namespace"],
             object_name=container["objectName"],
@@ -367,9 +358,20 @@ class ContainersModel:
         container_items = []
         containers_by_id = {}
         container_items_by_id = {}
+        invalid_ids_mapping = {}
         for container in containers:
             try:
                 item = ContainerItem.from_container_data(container)
+                repre_id = item.representation_id
+                try:
+                    uuid.UUID(repre_id)
+                except (ValueError, TypeError, AttributeError):
+                    # Fake not existing representation id so container is shown in UI
+                    #   but as invalid
+                    item.representation_id = invalid_ids_mapping.setdefault(
+                        repre_id, uuid.uuid4().hex
+                    )
+
             except Exception as e:
                 # skip item if required data are missing
                 self._controller.log_error(
