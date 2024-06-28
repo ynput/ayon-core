@@ -20,7 +20,7 @@ from ayon_core.pipeline.usdlib import (
     add_ordered_sublayer,
     set_layer_defaults
 )
-from ayon_core.pipeline.ayon_uri import (
+from ayon_core.pipeline.entity_uri import (
     construct_ayon_entity_uri,
     parse_ayon_entity_uri,
     get_representation_path_by_ayon_uri,
