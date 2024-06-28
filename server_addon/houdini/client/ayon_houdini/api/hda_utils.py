@@ -435,7 +435,7 @@ class SelectFolderPathDialog(QtWidgets.QDialog):
 
     def __init__(self, parent=None):
         super(SelectFolderPathDialog, self).__init__(parent)
-        self.setWindowTitle("Select project and folder path..")
+        self.setWindowTitle("Set project and folder path")
         self.setStyleSheet(load_stylesheet())
 
         project_widget = QtWidgets.QComboBox()
