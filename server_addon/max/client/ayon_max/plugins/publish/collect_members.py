@@ -12,15 +12,17 @@ class CollectMembers(pyblish.api.InstancePlugin):
     hosts = ['max']
 
     def process(self, instance):
-        if instance.data["productType"] == "workfile":
-            self.log.debug(
-                "Skipping Collecting Members for workfile product type."
-            )
-            return
-        if instance.data.get("instance_node"):
+        if instance.data["productType"] in {
+            "workfile", "tyflow", "tycache", "tyspline"}:
+                self.log.debug(
+                    "Skipping Collecting Members for workfile "
+                    "and tyflow product type."
+                )
+                return
+
+        elif instance.data.get("instance_node"):
             container = rt.GetNodeByName(instance.data["instance_node"])
             instance.data["members"] = [
                 member.node for member
                 in container.modifiers[0].openPypeData.all_handles
             ]
-            self.log.debug("{}".format(instance.data["members"]))
