@@ -755,6 +755,9 @@ def get_representation_path_by_names(
         version_name,
         representation_name
     )
+    if not representation:
+        return
+
     if not anatomy:
         anatomy = Anatomy(project_name)
 
