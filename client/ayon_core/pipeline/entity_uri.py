@@ -72,7 +72,7 @@ def construct_ayon_entity_uri(
     Returns:
         str: AYON Entity URI to query entity path.
     """
-    if version < 0:
+    if isinstance(version, int) and version < 0:
         version = "hero"
     if not (isinstance(version, int) or version in {"latest", "hero"}):
         raise ValueError(
