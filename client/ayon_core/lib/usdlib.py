@@ -56,7 +56,7 @@ class Layer:
             anchor (Optional[Layer]): Another layer to relatively anchor to.
         """
         sdf_layer = Sdf.Layer.CreateAnonymous(tag)
-        return cls(layer=sdf_layer, path=path, anchor=anchor, tag=tag)
+        return cls(layer=sdf_layer, path=path, anchor=anchor)
 
 
 def setup_asset_layer(
