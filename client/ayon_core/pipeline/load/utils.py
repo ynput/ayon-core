@@ -1,10 +1,11 @@
 import os
+import uuid
 import platform
 import logging
 import inspect
 import collections
 import numbers
-from typing import Optional, Union
+from typing import Optional, Union, Any
 
 import ayon_api
 
@@ -465,8 +466,13 @@ def update_container(container, version=-1):
 
     # Compute the different version from 'representation'
     project_name = get_current_project_name()
+    repre_id = container["representation"]
+    if not _is_valid_representation_id(repre_id):
+        raise ValueError(
+            f"Got container with invalid representation id '{repre_id}'"
+        )
     current_representation = ayon_api.get_representation_by_id(
-        project_name, container["representation"]
+        project_name, repre_id
     )
 
     assert current_representation is not None, "This is a bug"
@@ -903,6 +909,16 @@ def get_outdated_containers(host=None, project_name=None):
     return filter_containers(containers, project_name).outdated
 
 
+def _is_valid_representation_id(repre_id: Any) -> bool:
+    if not repre_id:
+        return False
+    try:
+        uuid.UUID(repre_id)
+    except (ValueError, TypeError, AttributeError):
+        return False
+    return True
+
+
 def filter_containers(containers, project_name):
     """Filter containers and split them into 4 categories.
 
@@ -938,7 +954,7 @@ def filter_containers(containers, project_name):
     repre_ids = {
         container["representation"]
         for container in containers
-        if container["representation"]
+        if _is_valid_representation_id(container["representation"])
     }
     if not repre_ids:
         if containers:
@@ -1003,7 +1019,7 @@ def filter_containers(containers, project_name):
     for container in containers:
         container_name = container["objectName"]
         repre_id = container["representation"]
-        if not repre_id:
+        if not _is_valid_representation_id(repre_id):
             invalid_containers.append(container)
             continue
 
