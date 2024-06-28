@@ -17,7 +17,7 @@ class AYONRemapPaths(OutputProcessor):
 
     @staticmethod
     def displayName():
-        return "Ayon Remap Paths"
+        return "AYON Remap Paths"
 
     @staticmethod
     def hidden():

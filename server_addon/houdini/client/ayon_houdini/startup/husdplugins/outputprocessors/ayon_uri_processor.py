@@ -6,11 +6,11 @@ from ayon_core.pipeline import ayon_uri
 
 
 class AyonURIOutputProcessor(OutputProcessor):
-    """Process Ayon URIs into their full path equivalents."""
+    """Process AYON Entity URIs into their full path equivalents."""
 
     def __init__(self):
         """ There is only one object of each output processor class that is
-            ever created in a Houdini session. Therefore be very careful
+            ever created in a Houdini session. Therefore, be very careful
             about what data gets put in this object.
         """
         self._save_cache = dict()
@@ -72,7 +72,7 @@ class AyonURIOutputProcessor(OutputProcessor):
         )
         if path:
             self.log.debug(
-                "Ayon URI Resolver - ref: %s -> %s", asset_path, path
+                "AYON URI Resolver - ref: %s -> %s", asset_path, path
             )
             cache[asset_path] = path
             return path
@@ -125,7 +125,7 @@ class AyonURIOutputProcessor(OutputProcessor):
         # processors can potentially manage it easily?
         path = relative_template.format(**uri_data)
 
-        self.log.debug("Ayon URI Resolver - save: %s -> %s", asset_path, path)
+        self.log.debug("AYON URI Resolver - save: %s -> %s", asset_path, path)
         cache[asset_path] = path
         return path
 
