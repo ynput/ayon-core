@@ -3,10 +3,10 @@ import os
 import logging
 
 try:
-    from pxr import Usd, UsdGeom, Sdf, Kind
+    from pxr import UsdGeom, Sdf, Kind
 except ImportError:
     # Allow to fall back on Multiverse 6.3.0+ pxr usd library
-    from mvpxr import Usd, UsdGeom, Sdf, Kind
+    from mvpxr import UsdGeom, Sdf, Kind
 
 log = logging.getLogger(__name__)
 
@@ -407,11 +407,11 @@ def add_variant_references_to_layer(
         skip_variant_on_single_file (bool): If this is enabled and only
             a single variant is provided then do not create the variant set
             but just reference that single file.
-        layer (Sdf.Layer): When provided operate on this layer, otherwise
-            create an anonymous layer in memory.
+        layer (Optional[Sdf.Layer]): When provided operate on this layer,
+            otherwise create an anonymous layer in memory.
 
     Returns:
-        Usd.Stage: The saved usd stage
+        Sdf.Layer: The layer with the added references inside the variants.
 
     """
     if layer is None:
