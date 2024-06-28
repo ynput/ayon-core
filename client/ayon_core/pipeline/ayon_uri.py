@@ -88,6 +88,8 @@ def construct_ayon_uri(
         str: Ayon Entity URI to query entity path.
             Also works with `get_representation_path_by_ayon_uri`
     """
+    if version < 0:
+        version = "hero"
     if not (isinstance(version, int) or version in {"latest", "hero"}):
         raise ValueError(
             "Version must either be integer, 'latest' or 'hero'. "
