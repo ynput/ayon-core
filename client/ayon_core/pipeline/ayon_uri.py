@@ -261,7 +261,6 @@ def get_instance_expected_output_path(
         ext (Optional[str]): extension for the file, useful if `name` != `ext`
         version (Optional[int]): if provided, force it to format to this
             particular version.
-        representation_name (str): representation name
 
     Returns:
         str: Resolved path
