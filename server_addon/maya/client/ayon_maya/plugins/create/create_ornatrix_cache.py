@@ -2,7 +2,7 @@ from ayon_maya.api import (
     lib,
     plugin
 )
-from ayon_core.lib import BoolDef, NumberDef
+from ayon_core.lib import BoolDef, NumberDef, EnumDef
 
 
 class CreateOxCache(plugin.MayaCreator):
@@ -21,6 +21,13 @@ class CreateOxCache(plugin.MayaCreator):
                 if attr_def.key not in remove]
         defs.extend(
             [
+                EnumDef("format",
+                        items={
+                            0: "Ogawa",
+                            1: "HDF5",
+                        },
+                        label="Format",
+                        default=0),
                 BoolDef("renderVersion",
                         label="Use Render Version",
                         tooltip="When on, hair in the scene will be "
@@ -28,9 +35,14 @@ class CreateOxCache(plugin.MayaCreator):
                                 "strands will be exported. Otherwise, what "
                                 "is seen in the viewport will be exported.",
                         default=True),
-                BoolDef("upDirection",
+                EnumDef("upDirection",
+                        items={
+                            0: "X",
+                            1: "Y",
+                            2: "Z"
+                        },
                         label="Up Direction",
-                        default=True),
+                        default=1),
                 BoolDef("useWorldCoordinates",
                         label="Use World Coordinates",
                         default=False),
@@ -61,9 +73,9 @@ class CreateOxCache(plugin.MayaCreator):
                 BoolDef("exportNormals",
                         label="Export Normals",
                         default=False),
-                BoolDef("velocityIntervalCenter",
-                        label="Velocity Interval Center",
-                        default=False),
+                NumberDef("velocityIntervalCenter",
+                          label="Velocity Interval Center",
+                          default=0.0),
                 NumberDef("velocityIntervalLength",
                         label="Velocity Interval Length",
                         default=0.5),
