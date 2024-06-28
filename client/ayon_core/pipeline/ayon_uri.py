@@ -18,7 +18,7 @@ from ayon_core.pipeline import get_representation_path
 
 
 def parse_ayon_uri(uri: str) -> Optional[dict]:
-    """Parse ayon entity URI into individual components.
+    """Parse AYON entity URI into individual components.
 
     URI specification:
         ayon+entity://{project}/{folder}?product={product}
@@ -79,7 +79,7 @@ def construct_ayon_uri(
         project_name: str,
         folder_path: str,
         product: str,
-        version: str,
+        version: Union[int, str],
         representation_name: str
 ) -> str:
     """Construct Ayon entity URI from its components
@@ -88,6 +88,8 @@ def construct_ayon_uri(
         str: Ayon Entity URI to query entity path.
             Also works with `get_representation_path_by_ayon_uri`
     """
+    if version < 0:
+        version = "hero"
     if not (isinstance(version, int) or version in {"latest", "hero"}):
         raise ValueError(
             "Version must either be integer, 'latest' or 'hero'. "
