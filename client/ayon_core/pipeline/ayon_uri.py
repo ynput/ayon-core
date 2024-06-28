@@ -82,11 +82,11 @@ def construct_ayon_entity_uri(
         version: Union[int, str],
         representation_name: str
 ) -> str:
-    """Construct Ayon entity URI from its components
+    """Construct AYON entity URI from its components
 
     Returns:
-        str: Ayon Entity URI to query entity path.
-            Also works with `get_representation_path_by_ayon_uri`
+        str: AYON Entity URI to query entity path.
+             Also works with `get_representation_path_by_ayon_uri`
     """
     if version < 0:
         version = "hero"
@@ -193,13 +193,13 @@ def get_representation_path_by_ayon_uri(
         uri: str,
         context: Optional[pyblish.api.Context]=None
 ):
-    """Return resolved path for Ayon entity URI.
+    """Return resolved path for AYON entity URI.
 
     Allow resolving 'latest' paths from a publishing context's instances
     as if they will exist after publishing without them being integrated yet.
 
     Args:
-        uri (str): Ayon entity URI. See `parse_ayon_uri`
+        uri (str): AYON entity URI. See `parse_ayon_entity_uri`
         context (pyblish.api.Context): Publishing context.
 
     Returns:
