@@ -1,5 +1,6 @@
 import os
 import re
+import clique
 
 import pyblish.api
 from ayon_core.pipeline.publish import KnownPublishError
@@ -274,8 +275,6 @@ class CollectYetiRig(plugin.MayaInstancePlugin):
             list: file sequence.
 
         """
-        import clique
-
         filename = os.path.basename(filepath)
         re_pattern = re.escape(filename)
         re_pattern = re_pattern.replace(re.escape(pattern), "-?[0-9]+")
