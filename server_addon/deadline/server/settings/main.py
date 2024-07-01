@@ -6,6 +6,7 @@ from ayon_server.settings import (
     SettingsField,
     ensure_unique_names,
 )
+from ayon_server.settings.enum import secrets_enum
 if TYPE_CHECKING:
     from ayon_server.addons import BaseServerAddon
 
@@ -34,13 +35,26 @@ async def defined_deadline_ws_name_enum_resolver(
 
 class ServerItemSubmodel(BaseSettingsModel):
     """Connection info about configured DL servers."""
-    _layout = "compact"
+    _layout = "expanded"
     name: str = SettingsField(title="Name")
     value: str = SettingsField(title="Url")
     require_authentication: bool = SettingsField(
         False, title="Require authentication")
     not_verify_ssl: bool = SettingsField(
         False, title="Don't verify SSL")
+    default_username: str = SettingsField(
+        title="Default user name",
+        description="Webservice username, 'Require authentication' must be "
+                    "enabled."
+    )
+    default_password: str = SettingsField(
+        "",
+        placeholder="Select password from Ayon secrets",
+        enum_resolver=secrets_enum,
+        title="Default password",
+        description="Webservice password, 'Require authentication' must be "
+                    "enabled."
+    )
 
 
 class DeadlineSettings(BaseSettingsModel):
@@ -77,7 +91,10 @@ DEFAULT_VALUES = {
             "name": "default",
             "value": "http://127.0.0.1:8082",
             "require_authentication": False,
-            "not_verify_ssl": False
+            "not_verify_ssl": False,
+            "default_username": "",
+            "default_password": ""
+
         }
     ],
     "deadline_server": "default",
