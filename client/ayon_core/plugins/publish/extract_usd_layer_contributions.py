@@ -30,18 +30,6 @@ from ayon_core.pipeline.publish.lib import get_instance_expected_output_path
 from ayon_core.pipeline import publish
 
 
-# A contribution defines a contribution into a (department) layer which will
-# get layered into the target product, usually the asset or shot.
-# We need to at least know what it targets (e.g. where does it go into) and
-# in what order (which contribution is stronger?)
-# Preferably the bootstrapped data (e.g. the Shot) preserves metadata about
-# the contributions so that we can design a system where custom contributions
-# outside of the predefined orders are possible to be managed. So that if a
-# particular asset requires an extra contribution level, you can add it
-# directly from the publisher at that particular order. Future publishes will
-# then see the existing contribution and will persist adding it to future
-# bootstraps at that order
-
 # This global toggle is here mostly for debugging purposes and should usually
 # be True so that new publishes merge and extend on previous contributions.
 # With this enabled a new variant model layer publish would e.g. merge with
@@ -256,6 +244,17 @@ class CollectUSDLayerContributions(pyblish.api.InstancePlugin,
     label = "Collect USD Layer Contributions (Asset/Shot)"
     families = ["usd"]
 
+    # A contribution defines a contribution into a (department) layer which
+    # will get layered into the target product, usually the asset or shot.
+    # We need to at least know what it targets (e.g. where does it go into) and
+    # in what order (which contribution is stronger?)
+    # Preferably the bootstrapped data (e.g. the Shot) preserves metadata about
+    # the contributions so that we can design a system where custom
+    # contributions outside the predefined orders are possible to be
+    # managed. So that if a particular asset requires an extra contribution
+    # level, you can add itdirectly from the publisher at that particular
+    # order. Future publishes will then see the existing contribution and will
+    # persist adding it to future bootstraps at that order
     contribution_layers: Dict[str, int] = {
         # asset layers
         "model": 100,
