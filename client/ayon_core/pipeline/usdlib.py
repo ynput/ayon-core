@@ -619,9 +619,14 @@ def add_ordered_reference(
     return prim_spec
 
 
-def set_variant_reference(sdf_layer, prim_path, variant_selections, path,
-                          as_payload=False,
-                          append=True):
+def set_variant_reference(
+        sdf_layer,
+        prim_path,
+        variant_selections,
+        path,
+        as_payload=False,
+        append=True
+):
     """Get or define variant selection at prim path and add a reference
 
     If the Variant Prim already exists the prepended references are replaced
