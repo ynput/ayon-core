@@ -30,6 +30,15 @@ class ValidateInstanceInContextHoudini(plugin.HoudiniInstancePlugin,
         if not self.is_active(instance.data):
             return
 
+        attr_values = self.get_attr_values_from_data(instance.data)
+        if not attr_values and not instance.data.get("instance_node"):
+            # Skip instances that do not have the attr values because that
+            # hints these are runtime-instances, like e.g. USD layer
+            # contributions. We will confirm that by checking these do not
+            # have an instance node. We do not need to check these because they
+            # 'spawn off' from an original instance that has the check itself.
+            return
+
         folder_path = instance.data.get("folderPath")
         task = instance.data.get("task")
         context = self.get_context(instance)
