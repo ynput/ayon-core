@@ -104,6 +104,9 @@ def get_representation_path_in_publish_context(
 
     Allow resolving 'latest' paths from a publishing context's instances
     as if they will exist after publishing without them being integrated yet.
+    
+    Use first instance that has same folder path and product name,
+    and contains representation with passed name.
 
     Args:
         context (pyblish.api.Context): Publishing context.
