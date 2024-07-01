@@ -55,8 +55,9 @@ class ExtractFBX(
                 new_materials.append(mat)
                 new_materials_objs.append(obj)
 
-        scale_length = bpy.context.scene.unit_settings.scale_length
-        bpy.context.scene.unit_settings.scale_length = 0.01
+        scene = bpy.context.scene
+        scale_length = scene.unit_settings.scale_length
+        scene.unit_settings.scale_length = instance.data.get("unitScale")
 
         with bpy.context.temp_override(**context):
             # We export the fbx
@@ -68,7 +69,7 @@ class ExtractFBX(
                 add_leaf_bones=False
             )
 
-        bpy.context.scene.unit_settings.scale_length = scale_length
+        scene.unit_settings.scale_length = scale_length
 
         plugin.deselect_all()
 

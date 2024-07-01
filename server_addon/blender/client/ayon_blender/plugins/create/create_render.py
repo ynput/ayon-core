@@ -43,3 +43,8 @@ class CreateRenderlayer(plugin.BlenderCreator):
         save_file(filepath, copy=False)
 
         return collection
+
+    def get_instance_attr_defs(self):
+        defs = lib.collect_animation_defs()
+
+        return defs

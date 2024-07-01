@@ -49,8 +49,22 @@ class ExtractCamera(
         context = plugin.create_blender_context(
             active=camera, selected=selected)
 
-        scale_length = bpy.context.scene.unit_settings.scale_length
-        bpy.context.scene.unit_settings.scale_length = 0.01
+        scene = bpy.context.scene
+        scale_length = scene.unit_settings.scale_length
+        frame_start = scene.frame_start
+        frame_end = scene.frame_end
+        frame_step = scene.frame_step
+        fps = scene.render.fps
+        fps_base = scene.render.fps_base
+        scene.unit_settings.scale_length = instance.data.get(
+            "unitScale", scale_length)
+        scene.frame_start = instance.data.get("frameStart", frame_start)
+        scene.frame_end = instance.data.get("frameEnd", frame_end)
+        scene.frame_step = instance.data.get("frameStep", frame_step)
+        inst_fps = instance.data.get("fps")
+        if inst_fps:
+            scene.render.fps = inst_fps
+            scene.render.fps_base = 1
 
         with bpy.context.temp_override(**context):
             # We export the fbx
@@ -66,7 +80,12 @@ class ExtractCamera(
                 bake_anim_simplify_factor=0.0
             )
 
-        bpy.context.scene.unit_settings.scale_length = scale_length
+        scene.unit_settings.scale_length = scale_length
+        scene.frame_start = frame_start
+        scene.frame_end = frame_end
+        scene.frame_step = frame_step
+        scene.render.fps = fps
+        scene.render.fps_base = fps_base
 
         plugin.deselect_all()
 

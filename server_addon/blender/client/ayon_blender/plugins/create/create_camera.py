@@ -2,6 +2,7 @@
 
 import bpy
 
+from ayon_core.lib import NumberDef
 from ayon_blender.api import plugin, lib
 from ayon_blender.api.pipeline import AVALON_INSTANCES
 
@@ -40,3 +41,15 @@ class CreateCamera(plugin.BlenderCreator):
             camera_obj.parent = asset_group
 
         return asset_group
+
+    def get_instance_attr_defs(self):
+        defs = lib.collect_animation_defs()
+
+        defs.append(
+            NumberDef("unitScale",
+                      label="Unit Scale (FBX)",
+                      default=1.0,
+                      tooltip="Scale of the model, valid only for FBX export.")
+        )
+
+        return defs
