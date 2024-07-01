@@ -162,7 +162,7 @@ class HostDirmap(object):
         if (
             sitesync_addon is None
             or not sitesync_addon.enabled
-            or project_name not in sitesync_addon.get_enabled_projects()
+            or not sitesync_addon.is_project_enabled(project_name, True)
         ):
             return mapping
 
