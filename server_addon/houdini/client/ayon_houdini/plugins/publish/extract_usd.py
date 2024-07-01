@@ -35,7 +35,8 @@ class ExtractUSD(plugin.HoudiniExtractorPlugin):
         # paths on used resources/textures for looks
         instance_mapping = instance.data.get("assetRemap", {})
         if instance_mapping:
-            self.log.info(instance_mapping)
+            self.log.debug("Instance-specific asset path remapping:\n"
+                           f"{instance_mapping}")
         mapping.update(instance_mapping)
 
         with remap_paths(ropnode, mapping):
