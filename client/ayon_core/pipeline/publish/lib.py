@@ -968,13 +968,6 @@ def get_instance_expected_output_path(
     anatomy = context.data["anatomy"]
 
     template_data = copy.deepcopy(instance.data["anatomyData"])
-    template_data.update(get_template_data_with_names(
-        project_name=context.data["projectName"],
-        folder_path=instance.data["folderPath"],
-        task_name=instance.data["task"],
-        host_name=context.data["hostName"],
-        settings=context.data["project_settings"]
-    ))
     template_data.update({
         "ext": ext,
         "representation": representation_name,
