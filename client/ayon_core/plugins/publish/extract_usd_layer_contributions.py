@@ -93,6 +93,9 @@ def get_representation_path_in_publish_context(
         Union[str, None]: Returns the path if it could be resolved
 
     """
+    # The AYON publishing logic is set up in such a way that you can not
+    # publish to another project. As such, we know if the project name we're
+    # looking for doesn't match the publishing context it'll not be in there.
     if context.data["projectName"] != project_name:
         return
 
