@@ -286,7 +286,7 @@ class CollectUSDLayerContributions(pyblish.api.InstancePlugin,
         # Define contribution layers via settings
         contribution_layers = {}
         for entry in plugin_settings.get("contribution_layers", []):
-            contribution_layers[entry["name"]] = entry["order"]
+            contribution_layers[entry["name"]] = int(entry["order"])
         if contribution_layers:
             cls.contribution_layers = contribution_layers
 
