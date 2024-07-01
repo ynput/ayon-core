@@ -68,7 +68,8 @@ class ContributionLayersModel(BaseSettingsModel):
                     "layer on top.")
 
 
-class CollectUSDLayerContributionsModel(ValidateBaseModel):
+class CollectUSDLayerContributionsModel(BaseSettingsModel):
+    enabled: bool = SettingsField(True, title="Enabled")
     contribution_layers: list[ContributionLayersModel] = SettingsField(
         title="Department Layer Orders",
         description=(
@@ -914,8 +915,6 @@ DEFAULT_PUBLISH_VALUES = {
     },
     "CollectUSDLayerContributions": {
         "enabled": True,
-        "optional": False,
-        "active": True,
         "contribution_layers": [
             # Asset layers
             {"name": "model", "order": 100},
