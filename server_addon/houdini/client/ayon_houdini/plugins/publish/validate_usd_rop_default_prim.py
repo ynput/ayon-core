@@ -11,8 +11,7 @@ from ayon_houdini.api import plugin
 
 
 class ValidateUSDRopDefaultPrim(plugin.HoudiniInstancePlugin):
-    """Validate the default prim exists if
-     """
+    """Validate the default prim exists if default prim value is set on ROP"""
 
     order = pyblish.api.ValidatorOrder
     families = ["usdrop"]
