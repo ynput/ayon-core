@@ -179,9 +179,13 @@ class CollectRenderProducts(plugin.HoudiniInstancePlugin):
 
             # Main layer
             return ""
-        else:
+        elif len(targets) == 1:
             # AOV for a single var
             return targets[0].name
+        else:
+            self.log.warning(
+                f"Render product has no rendervars set: {render_product}")
+            return ""
 
     def get_render_products(self, usdrender_rop, stage):
         """"The render products in the defined render settings
