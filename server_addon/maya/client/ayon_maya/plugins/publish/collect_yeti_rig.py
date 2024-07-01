@@ -284,8 +284,9 @@ class CollectYetiRig(plugin.MayaInstancePlugin):
             files,
             patterns=[clique.PATTERNS["frames"]],
             minimum_items=1)
-
-        return collection
+        files = [texture for texture_collection in collection
+                 for texture in texture_collection]
+        return files
 
     def _replace_tokens(self, strings):
         env_re = re.compile(r"\$\{(\w+)\}")
