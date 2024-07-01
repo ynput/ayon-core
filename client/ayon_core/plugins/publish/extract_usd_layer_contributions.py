@@ -1,7 +1,7 @@
 from operator import attrgetter
 import dataclasses
 import os
-from typing import Optional
+from typing import Optional, Dict
 
 import pyblish.api
 from pxr import Sdf
@@ -41,21 +41,6 @@ from ayon_core.pipeline import publish
 # directly from the publisher at that particular order. Future publishes will
 # then see the existing contribution and will persist adding it to future
 # bootstraps at that order
-# TODO: Avoid hardcoded ordering - might need to be set through settings?
-LAYER_ORDERS = {
-    # asset layers
-    "model": 100,
-    "assembly": 150,
-    "groom": 175,
-    "look": 200,
-    "rig": 300,
-    # shot layers
-    "layout": 200,
-    "animation": 300,
-    "simulation": 400,
-    "fx": 500,
-    "lighting": 600,
-}
 
 # This global toggle is here mostly for debugging purposes and should usually
 # be True so that new publishes merge and extend on previous contributions.
@@ -271,6 +256,34 @@ class CollectUSDLayerContributions(pyblish.api.InstancePlugin,
     label = "Collect USD Layer Contributions (Asset/Shot)"
     families = ["usd"]
 
+    contribution_layers: Dict[str, int] = {
+        # asset layers
+        "model": 100,
+        "assembly": 150,
+        "groom": 175,
+        "look": 200,
+        "rig": 300,
+        # shot layers
+        "layout": 200,
+        "animation": 300,
+        "simulation": 400,
+        "fx": 500,
+        "lighting": 600,
+    }
+
+    @classmethod
+    def apply_settings(cls, project_setting):
+        plugin_settings = project_setting["core"]["publish"].get(
+            "CollectUSDLayerContributions", {}
+        )
+
+        # Define contribution layers via settings
+        contribution_layers = {}
+        for entry in plugin_settings.get("contribution_layers", []):
+            contribution_layers[entry["name"]] = entry["order"]
+        if contribution_layers:
+            cls.contribution_layers = contribution_layers
+
     def process(self, instance):
 
         attr_values = self.get_attr_values_from_data(instance.data)
@@ -291,7 +304,9 @@ class CollectUSDLayerContributions(pyblish.api.InstancePlugin,
             attr_values[key] = attr_values[key].format(**data)
 
         # Define contribution
-        order = LAYER_ORDERS.get(attr_values["contribution_layer"], 0)
+        order = self.contribution_layers.get(
+            attr_values["contribution_layer"], 0
+        )
 
         if attr_values["contribution_apply_as_variant"]:
             contribution = VariantContribution(
@@ -477,7 +492,7 @@ class CollectUSDLayerContributions(pyblish.api.InstancePlugin,
                         "predefined ordering.\nA higher order (further down "
                         "the list) will contribute as a stronger opinion."
                     ),
-                    items=list(LAYER_ORDERS.keys()),
+                    items=list(cls.contribution_layers.keys()),
                     default="model"),
             BoolDef("contribution_apply_as_variant",
                     label="Add as variant",
