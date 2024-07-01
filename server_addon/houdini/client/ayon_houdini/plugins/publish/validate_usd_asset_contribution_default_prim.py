@@ -29,6 +29,10 @@ class ValidateUSDAssetContributionDefaultPrim(plugin.HoudiniInstancePlugin,
     hosts = ["houdini"]
     label = "Validate USD Asset Contribution Default Prim"
     actions = [SelectROPAction, RepairAction]
+
+    # TODO: Unfortunately currently this does not show as optional toggle
+    #   because the product type is `usd` and not `usdrop` - however we do
+    #   not want to run this for ALL `usd` product types?
     optional = True
 
     def process(self, instance):
