@@ -32,6 +32,8 @@ class ValidateUSDAssetContributionDefaultPrim(plugin.HoudiniInstancePlugin,
     optional = True
 
     def process(self, instance):
+        if not self.is_active(instance.data):
+            return
 
         # Check if instance is set to be an asset contribution
         settings = self.get_attr_values_from_data_for_plugin_name(
