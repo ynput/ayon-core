@@ -243,6 +243,7 @@ class CollectUSDLayerContributions(pyblish.api.InstancePlugin,
     order = pyblish.api.CollectorOrder + 0.35
     label = "Collect USD Layer Contributions (Asset/Shot)"
     families = ["usd"]
+    enabled = True
 
     # A contribution defines a contribution into a (department) layer which
     # will get layered into the target product, usually the asset or shot.
@@ -271,10 +272,13 @@ class CollectUSDLayerContributions(pyblish.api.InstancePlugin,
     }
 
     @classmethod
-    def apply_settings(cls, project_setting):
-        plugin_settings = project_setting["core"]["publish"].get(
+    def apply_settings(cls, project_settings):
+        # Override contribution_layers logic to turn data into Dict[str, int]
+        plugin_settings = project_settings["core"]["publish"].get(
             "CollectUSDLayerContributions", {}
         )
+
+        cls.enabled = plugin_settings.get("enabled", cls.enabled)
 
         # Define contribution layers via settings
         contribution_layers = {}
