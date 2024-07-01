@@ -286,7 +286,9 @@ class CollectYetiRig(plugin.MayaInstancePlugin):
             minimum_items=1)
             
         if len(collections) > 1:
-            raise ValueError(f"Multiple collections found for {files}. This is a bug.")
+            raise ValueError(
+                f"Multiple collections found for {collections}. "
+                "This is a bug.")
 
         return list(collections[0])
 
