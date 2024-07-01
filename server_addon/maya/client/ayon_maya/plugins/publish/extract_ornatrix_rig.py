@@ -6,7 +6,7 @@ import json
 
 from ayon_maya.api import lib
 from ayon_maya.api import plugin
-from maya import cmds
+from maya import cmds, mel
 
 
 class ExtractOxRig(plugin.MayaExtractorPlugin):
@@ -77,6 +77,7 @@ class ExtractOxRig(plugin.MayaExtractorPlugin):
         # Ornatrix related staging dirs
         maya_path = os.path.join(dirname,
                                  "ornatrix_rig.{}".format(self.scene_type))
+        ox_groom_path = os.path.join(dirname, "ornatrix_rig.oxg.yaml")
         nodes = instance.data["setMembers"]
         with lib.maintained_selection():
             with lib.attribute_values(texture_attributes):
@@ -88,6 +89,7 @@ class ExtractOxRig(plugin.MayaExtractorPlugin):
                           preserveReferences=False,
                           constructionHistory=True,
                           shader=False)
+                mel.eval(f"OxSaveGroom -path {ox_groom_path}")
 
         # Ensure files can be stored
         # build representations
@@ -100,6 +102,16 @@ class ExtractOxRig(plugin.MayaExtractorPlugin):
                 'name': self.scene_type,
                 'ext': self.scene_type,
                 'files': os.path.basename(maya_path),
+                'stagingDir': dirname
+            }
+        )
+
+        self.log.debug("OxGroom file: {}".format(ox_groom_path))
+        instance.data["representations"].append(
+            {
+                'name': "yaml",
+                'ext': "yaml",
+                'files': os.path.basename(ox_groom_path),
                 'stagingDir': dirname
             }
         )
