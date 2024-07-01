@@ -13,7 +13,7 @@ class CreateUSDLook(plugin.HoudiniCreator):
     identifier = "io.openpype.creators.houdini.usd.look"
     label = "Look"
     product_type = "look"
-    icon = "gears"
+    icon = "paint-brush"
     enabled = True
     description = "Create USD Look"
 
