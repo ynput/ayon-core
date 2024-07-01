@@ -272,7 +272,7 @@ class CollectYetiRig(plugin.MayaInstancePlugin):
             pattern (str): The pattern to swap with the variable frame number.
 
         Returns:
-            list: file sequence.
+            list[str]: file sequence.
 
         """
         filename = os.path.basename(filepath)
