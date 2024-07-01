@@ -1,3 +1,5 @@
+import inspect
+
 import hou
 import pyblish.api
 
@@ -22,7 +24,7 @@ class ValidateUSDAssetContributionDefaultPrim(plugin.HoudiniInstancePlugin,
     primitive actually exists (or has modifications) if the ROP specifies
     a default prim - so that does not have to be validated with this validator.
 
-     """
+    """
 
     order = pyblish.api.ValidatorOrder
     families = ["usdrop"]
@@ -43,7 +45,6 @@ class ValidateUSDAssetContributionDefaultPrim(plugin.HoudiniInstancePlugin,
         settings = self.get_attr_values_from_data_for_plugin_name(
             "CollectUSDLayerContributions", instance.data
         )
-        self.log.info(settings)
         if (
                 not settings.get("contribution_enabled", False)
                 or settings.get("contribution_target_product_init") != "asset"
@@ -54,7 +55,8 @@ class ValidateUSDAssetContributionDefaultPrim(plugin.HoudiniInstancePlugin,
         default_prim = rop_node.evalParm("defaultprim")
         if not default_prim:
             raise PublishValidationError(
-                f"No default prim specified on ROP node: {rop_node.path()}"
+                f"No default prim specified on ROP node: {rop_node.path()}",
+                description=self.get_description()
             )
 
         folder_name = instance.data["folderPath"].rsplit("/", 1)[-1]
@@ -62,7 +64,8 @@ class ValidateUSDAssetContributionDefaultPrim(plugin.HoudiniInstancePlugin,
             raise PublishValidationError(
                 f"Default prim specified on ROP node does not match the "
                 f"asset's folder name: '{default_prim}' "
-                f"(should be: '/{folder_name}')"
+                f"(should be: '/{folder_name}')",
+                description=self.get_description()
             )
 
     @classmethod
@@ -79,4 +82,21 @@ class ValidateUSDAssetContributionDefaultPrim(plugin.HoudiniInstancePlugin,
             data
             .get("publish_attributes", {})
             .get(plugin_name, {})
+        )
+
+    def get_description(self):
+        return inspect.cleandoc(
+            """### Default primitive not set to current asset
+
+            The USD instance has **USD Contribution** enabled and is set to 
+            initialize as **asset**. The asset requires a default root 
+            primitive with the name of the folder it's related to.
+            
+            For example, you're working in `/asset/char_hero` then the
+            folder's name is `char_hero`. For the asset hence all prims should
+            live under `/char_hero` root primitive.
+            
+            This validation solely ensures the **default primitive** on the ROP
+            node is set to match the folder name.
+            """
         )
