@@ -10,7 +10,7 @@ class CreateUSD(plugin.HoudiniCreator):
     identifier = "io.openpype.creators.houdini.usd"
     label = "USD"
     product_type = "usd"
-    icon = "gears"
+    icon = "cubes"
     enabled = False
     description = "Create USD"
 
