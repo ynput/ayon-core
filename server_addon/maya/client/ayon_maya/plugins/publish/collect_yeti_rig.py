@@ -1,5 +1,6 @@
 import os
 
+import re
 import pyblish.api
 from ayon_core.pipeline.publish import KnownPublishError
 from ayon_maya.api import lib
@@ -214,3 +215,20 @@ class CollectYetiRig(plugin.MayaInstancePlugin):
             resources.append(item)
 
         return resources
+
+    def _replace_tokens(self, strings):
+        env_re = re.compile(r"\$\{(\w+)\}")
+
+        replaced = []
+        for s in strings:
+            matches = re.finditer(env_re, s)
+            for m in matches:
+                try:
+                    s = s.replace(m.group(), os.environ[m.group(1)])
+                except KeyError:
+                    msg = "Cannot find requested {} in environment".format(
+                        m.group(1))
+                    self.log.error(msg)
+                    raise RuntimeError(msg)
+            replaced.append(s)
+        return replaced

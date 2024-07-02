@@ -11,6 +11,7 @@ import json
 import logging
 import contextlib
 import capture
+import clique
 from .exitstack import ExitStack
 from collections import OrderedDict, defaultdict
 from math import ceil
@@ -4254,7 +4255,7 @@ def search_textures(filepath):
             dynamic patterns like <UDIM> or %04d
 
     Returns:
-        list[str | clique.Collection]: The files found on disk
+        list: The files found on disk
 
     """
     filename = os.path.basename(filepath)
@@ -4264,15 +4265,15 @@ def search_textures(filepath):
 
         # For UDIM based textures (tiles)
         if "<UDIM>" in filename:
-            sequences = get_sequence(filepath,
-                                     pattern="<UDIM>")
+            sequences = self.get_sequence(filepath,
+                                          pattern="<UDIM>")
             if sequences:
                 return sequences
 
         # Frame/time - Based textures (animated masks f.e)
         elif "%04d" in filename:
-            sequences = get_sequence(filepath,
-                                     pattern="%04d")
+            sequences = self.get_sequence(filepath,
+                                          pattern="%04d")
             if sequences:
                 return sequences
 
@@ -4281,7 +4282,6 @@ def search_textures(filepath):
         return [filepath]
 
     return []
-
 
 def get_sequence(filepath, pattern="%04d"):
     """Get sequence from filename.
@@ -4299,11 +4299,9 @@ def get_sequence(filepath, pattern="%04d"):
         pattern (str): The pattern to swap with the variable frame number.
 
     Returns:
-        list[clique.Collection]: List of sequence frame collections.
+        list: file sequence.
 
     """
-    import clique
-
     escaped = re.escape(filepath)
     re_pattern = escaped.replace(pattern, "-?[0-9]+")
 
@@ -4312,6 +4310,6 @@ def get_sequence(filepath, pattern="%04d"):
                 if re.match(re_pattern, f)]
 
     pattern = [clique.PATTERNS["frames"]]
-    collections, remainder = clique.assemble(
-        files, patterns=pattern, minimum_items=1)
-    return collections
+    collection, remainder = clique.assemble(files, patterns=pattern)
+
+    return collection
