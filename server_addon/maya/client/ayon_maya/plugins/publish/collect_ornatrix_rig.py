@@ -21,10 +21,7 @@ class CollectOxRig(plugin.MayaInstancePlugin):
     families = ["oxrig"]
 
     def process(self, instance):
-        assert "input_SET" in instance.data["setMembers"], (
-            "Ornatrix Rig must have an input_SET")
-
-        ornatrix_nodes = cmds.ls(instance[:], long=True)
+        ornatrix_nodes = cmds.ls(instance.data["setMembers"], long=True)
         self.log.debug(f"Getting ornatrix nodes: {ornatrix_nodes}")
         # Force frame range for yeti cache export for the rig
         # Collect any textures if used

@@ -90,10 +90,6 @@ class OxRigLoader(plugin.ReferenceLoader):
         assert ox_nodes, "No Ornatrix nodes in rig, this is a bug."
 
         ox_geo_nodes = cmds.ls(nodes, assemblies=True, long=True)
-        ox_input = next((node for node in nodes if
-                         node.endswith("input_SET")), None)
-        if not ox_input:
-            raise CreatorError("No node found in input_SET")
 
         self.log.info("Creating variant: {}".format(variant))
 

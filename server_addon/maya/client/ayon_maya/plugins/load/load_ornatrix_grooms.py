@@ -11,7 +11,7 @@ class OxOrnatrixGrooms(plugin.Loader):
     """Load Ornatrix Grooms"""
 
     product_types = {"oxrig"}
-    representations = {"yaml"}
+    representations = {"oxg.zip"}
 
     label = "Load Ornatrix Grooms"
     order = -9
@@ -32,8 +32,9 @@ class OxOrnatrixGrooms(plugin.Loader):
 
 
         path = self.filepath_from_context(context)
-        # TODO: load Ox Grooms
-        nodes = [mel.eval(f"OxLoadGroom -path \"{path}\";")]
+        path = path.replace("\\", "/")
+
+        nodes = [mel.eval(f'OxLoadGroom -path "{path}";')]
 
         group_name = "{}:{}".format(namespace, name)
         group_node = cmds.group(nodes, name=group_name)

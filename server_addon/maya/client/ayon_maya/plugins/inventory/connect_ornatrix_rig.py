@@ -86,7 +86,8 @@ class ConnectOrnatrixRig(InventoryAction):
             with open(settings_file, "w") as fp:
                 source_nodes.extend(
                     item.get("node") for item in json.load(fp))
-            grooms_file = maya_file.replace(ext, ".oxg.yaml")
+            grooms_file = maya_file.replace(ext, ".oxg.zip")
+            grooms_file = grooms_file.replace("\\", "/")
             # Compare loaded connections to scene.
             for node in source_nodes:
                 target_node = cmds.ls(f"{source_namespace}:{node}")[0]
@@ -96,7 +97,7 @@ class ConnectOrnatrixRig(InventoryAction):
                         "in \"animation\" or \"pointcache\"."
                     )
                     return
-                mel.eval(f"OxLoadGroom -path \"{grooms_file}\";")
+                mel.eval(f'OxLoadGroom -path "{grooms_file}";')
 
     def display_warning(self, message, show_cancel=False):
         """Show feedback to user.

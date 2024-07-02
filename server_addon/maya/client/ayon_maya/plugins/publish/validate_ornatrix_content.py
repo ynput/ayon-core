@@ -11,8 +11,13 @@ from ayon_maya.api import plugin
 from maya import cmds
 
 
-class ValidateModelContent(plugin.MayaInstancePlugin,
-                           OptionalPyblishPluginMixin):
+ORNATRIX_NODES = {
+    "HairFromGuidesNode", "GuidesFromMeshNode",
+    "MeshFromStrandsNode", "SurfaceCombNode"
+}
+
+class ValidateOrnatrixContent(plugin.MayaInstancePlugin,
+                              OptionalPyblishPluginMixin):
     """Adheres to the content of 'oxrig' product type
 
     See `get_description` for more details.
@@ -21,7 +26,7 @@ class ValidateModelContent(plugin.MayaInstancePlugin,
 
     order = ValidateContentsOrder
     families = ["oxrig"]
-    label = "Ornatrix Content"
+    label = "Validate Ornatrix Content"
     actions = [ayon_maya.api.action.SelectInvalidAction]
 
     optional = False
@@ -30,14 +35,16 @@ class ValidateModelContent(plugin.MayaInstancePlugin,
     def get_invalid(cls, instance):
         invalid = []
         nodes = instance.data["setMembers"]
-        ox_nodes = []
+        nodes_with_ornatrix = []
         for node in nodes:
             node_shape = cmds.listRelatives(node, shapes=True)
             if not node_shape:
-                invalid.extend(node_shape)
-            all_nodes_connections = cmds.listConnections(node_shape, destination=True)
-            ox_nodes = cmds.ls(all_nodes_connections or [], type=ORNATRIX_NODES)
-        remainder = nodes.difference(ox_nodes)
+                invalid.append(node)
+            ox_nodes = cmds.ls(cmds.listConnections(
+                node_shape, destination=True) or [], type=ORNATRIX_NODES)
+            if ox_nodes:
+                nodes_with_ornatrix.append(node)
+        remainder = [node for node in nodes if node not in nodes_with_ornatrix]
         if remainder:
             invalid.extend(remainder)
 

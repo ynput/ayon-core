@@ -39,7 +39,7 @@ class ExtractOxRig(plugin.MayaExtractorPlugin):
 
         # Define extract output file path
         dirname = self.staging_dir(instance)
-        settings_path = os.path.join(dirname, "ornatrix_rig.rigsettings")
+        settings_path = os.path.join(dirname, "ornatrix.rigsettings")
         image_search_path = instance.data["resourcesDir"]
 
         # add textures to transfers
@@ -60,24 +60,16 @@ class ExtractOxRig(plugin.MayaExtractorPlugin):
         with open(settings_path, "w") as fp:
             json.dump(resources, fp, ensure_ascii=False)
 
-        # Get input_SET members
-        input_set = next(i for i in instance if i == "input_SET")
-
-        # Get all items
-        set_members = cmds.sets(input_set, query=True) or []
-        set_members += cmds.listRelatives(set_members,
-                                          allDescendents=True,
-                                          fullPath=True) or []
-
         texture_attributes = {
             resource["texture_attribute"]: resource["destination_file"]
             for resource in resources
         }
-
+        source_nodes = [resource["node"] for resource in resources]
         # Ornatrix related staging dirs
         maya_path = os.path.join(dirname,
                                  "ornatrix_rig.{}".format(self.scene_type))
-        ox_groom_path = os.path.join(dirname, "ornatrix_rig.oxg.yaml")
+        ox_groom_path = os.path.join(dirname, "ornatrix_rig.oxg.zip")
+        ox_groom_path = ox_groom_path.replace("\\", "/")
         nodes = instance.data["setMembers"]
         with lib.maintained_selection():
             with lib.attribute_values(texture_attributes):
@@ -89,8 +81,11 @@ class ExtractOxRig(plugin.MayaExtractorPlugin):
                           preserveReferences=False,
                           constructionHistory=True,
                           shader=False)
-                # save the groom presets
+
+        with lib.maintained_selection():
+                cmds.select(source_nodes, noExpand=True)
                 mel.eval(f'OxSaveGroom -path "{ox_groom_path}"')
+                self.log.debug(f"{ox_groom_path}")
 
         # Ensure files can be stored
         # build representations
@@ -107,11 +102,11 @@ class ExtractOxRig(plugin.MayaExtractorPlugin):
             }
         )
 
-        self.log.debug("OxGrooms file: {}".format(ox_groom_path))
+        self.log.debug("OxGroom file: {}".format(ox_groom_path))
         instance.data["representations"].append(
             {
-                'name': "yaml",
-                'ext': "yaml",
+                'name': "oxg.zip",
+                'ext': "oxg.zip",
                 'files': os.path.basename(ox_groom_path),
                 'stagingDir': dirname
             }
