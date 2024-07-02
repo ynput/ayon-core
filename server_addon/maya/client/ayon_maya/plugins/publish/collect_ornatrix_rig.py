@@ -74,6 +74,7 @@ class CollectOxRig(plugin.MayaInstancePlugin):
                     "(searched: %s)" % (texture))
 
             item = {
+                "node": node,
                 "files": files,
                 "source": texture,
                 "texture_attribute": texture_attr

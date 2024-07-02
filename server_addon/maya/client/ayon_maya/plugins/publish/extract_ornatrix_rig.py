@@ -39,7 +39,7 @@ class ExtractOxRig(plugin.MayaExtractorPlugin):
 
         # Define extract output file path
         dirname = self.staging_dir(instance)
-        settings_path = os.path.join(dirname, "ornatrix.rigsettings")
+        settings_path = os.path.join(dirname, "ornatrix_rig.rigsettings")
         image_search_path = instance.data["resourcesDir"]
 
         # add textures to transfers
@@ -89,6 +89,7 @@ class ExtractOxRig(plugin.MayaExtractorPlugin):
                           preserveReferences=False,
                           constructionHistory=True,
                           shader=False)
+                # save the groom presets
                 mel.eval(f'OxSaveGroom -path "{ox_groom_path}"')
 
         # Ensure files can be stored
@@ -106,7 +107,7 @@ class ExtractOxRig(plugin.MayaExtractorPlugin):
             }
         )
 
-        self.log.debug("OxGroom file: {}".format(ox_groom_path))
+        self.log.debug("OxGrooms file: {}".format(ox_groom_path))
         instance.data["representations"].append(
             {
                 'name': "yaml",

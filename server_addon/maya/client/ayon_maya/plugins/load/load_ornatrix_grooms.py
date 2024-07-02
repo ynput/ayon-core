@@ -33,7 +33,7 @@ class OxOrnatrixGrooms(plugin.Loader):
 
         path = self.filepath_from_context(context)
         # TODO: load Ox Grooms
-        nodes = [mel.eval(f'OxLoadGroom -path "{path}";')]
+        nodes = [mel.eval(f"OxLoadGroom -path \"{path}\";")]
 
         group_name = "{}:{}".format(namespace, name)
         group_node = cmds.group(nodes, name=group_name)
