@@ -280,6 +280,12 @@ class CollectYetiRig(plugin.MayaInstancePlugin):
         re_pattern = re_pattern.replace(re.escape(pattern), "-?[0-9]+")
         source_dir = os.path.dirname(filepath)
         files = [f for f in os.listdir(source_dir) if re.match(re_pattern, f)]
+        if not files:
+            # Files do not exist, this may not be a problem if e.g. the
+            # textures were relative paths and we're searching across
+            # multiple image search paths.
+            return
+        
         collections, _remainder = clique.assemble(
             files,
             patterns=[clique.PATTERNS["frames"]],
@@ -290,7 +296,10 @@ class CollectYetiRig(plugin.MayaInstancePlugin):
                 f"Multiple collections found for {collections}. "
                 "This is a bug.")
 
-        return list(collections[0])
+        return [
+            os.path.join(source_dir, filename) 
+            for filename in collections[0]
+        ]
 
     def _replace_tokens(self, strings):
         env_re = re.compile(r"\$\{(\w+)\}")
