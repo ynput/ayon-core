@@ -4,7 +4,7 @@ import inspect
 import copy
 import tempfile
 import xml.etree.ElementTree
-from typing import Optional
+from typing import Optional, Union
 
 import pyblish.util
 import pyblish.plugin
@@ -939,7 +939,7 @@ def get_publish_instance_families(instance):
 def get_instance_expected_output_path(
         instance: pyblish.api.Instance,
         representation_name: str,
-        ext: Optional[str] = None,
+        ext: Union[str, None],
         version: Optional[str] = None
 ):
     """Return expected publish filepath for representation in instance
@@ -948,10 +948,11 @@ def get_instance_expected_output_path(
     given name, extension and/or version.
 
     Arguments:
-        instance (pyblish.api.Instance): publish instance
-        representation_name (str): representation name
-        ext (Optional[str]): extension for the file, useful if `name` != `ext`
-        version (Optional[int]): if provided, force it to format to this
+        instance (pyblish.api.Instance): Publish instance
+        representation_name (str): Representation name
+        ext (Union[str, None]): Extension for the file.
+            When None, the `ext` will be set to the representation name.
+        version (Optional[int]): If provided, force it to format to this
             particular version.
 
     Returns:
