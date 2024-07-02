@@ -64,7 +64,7 @@ class ValidateOrnatrixContent(plugin.MayaInstancePlugin,
 
     @classmethod
     def get_description(self):
-        return inspect.cleandoc(f"""
+        return inspect.cleandoc("""
             ### Ornatrix content is invalid
 
             Your oxrig instance does not adhere to the rules of a
