@@ -124,7 +124,8 @@ def get_representation_path_in_publish_context(
         return get_instance_expected_output_path(
             instance,
             representation_name=representation_name,
-            version=version_name if specific_version else None
+            version=version_name if specific_version else None,
+            ext=None
         )
 
 
