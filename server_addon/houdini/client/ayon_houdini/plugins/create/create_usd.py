@@ -8,10 +8,11 @@ import hou
 class CreateUSD(plugin.HoudiniCreator):
     """Universal Scene Description"""
     identifier = "io.openpype.creators.houdini.usd"
-    label = "USD (experimental)"
+    label = "USD"
     product_type = "usd"
-    icon = "gears"
+    icon = "cubes"
     enabled = False
+    description = "Create USD"
 
     def create(self, product_name, instance_data, pre_create_data):
 
@@ -49,3 +50,6 @@ class CreateUSD(plugin.HoudiniCreator):
             hou.ropNodeTypeCategory(),
             hou.lopNodeTypeCategory()
         ]
+
+    def get_publish_families(self):
+        return ["usd", "usdrop"]
