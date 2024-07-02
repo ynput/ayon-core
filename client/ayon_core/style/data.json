@@ -105,7 +105,8 @@
                 "bg-expander": "#2C313A",
                 "bg-expander-hover": "#2d6c9f",
                 "bg-expander-selected-hover": "#3784c5"
-            }
+            },
+            "overridden-label": "#FF8C1A"
         },
         "settings": {
             "invalid-light": "#C93636",
