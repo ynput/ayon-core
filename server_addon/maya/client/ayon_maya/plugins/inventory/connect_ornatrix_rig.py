@@ -86,6 +86,9 @@ class ConnectOrnatrixRig(InventoryAction):
             with open(settings_file, "w") as fp:
                 source_nodes.extend(
                     item.get("node") for item in json.load(fp))
+            self.display_warning(
+                source_nodes
+            )
             grooms_file = maya_file.replace(ext, ".oxg.zip")
             grooms_file = grooms_file.replace("\\", "/")
             # Compare loaded connections to scene.
