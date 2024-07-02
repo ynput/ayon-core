@@ -95,7 +95,6 @@ class OxCacheLoader(plugin.Loader):
             if cmds.ls(node, type="HairFromGuidesNode"):
                 cmds.setAttr(f"{node}.cacheFilePath", path)
 
-
     def switch(self, container, context):
         self.update(container, context)
 
@@ -127,17 +126,15 @@ class OxCacheLoader(plugin.Loader):
             node_settings (dict): node settings
 
         Returns:
-            _type_: _description_
+            list: loaded nodes
         """
         nodes = []
         orig_guide_name = node_settings["name"]
         guide_name = "{}:{}".format(namespace, orig_guide_name)
         hair_guide_node = cmds.createNode("HairFromGuidesNode", name=guide_name)
-
         lib.set_id(hair_guide_node, node_settings["cbId"])
+        cmds.setAttr(f"{hair_guide_node}.cacheFilePath", filepath, type="string")
         mel.eval("OxShowHairStackDialog();")
-        mel.eval(f'OxAddStrandOperator "" {hair_guide_node};')
-        cmds.setAttr(f"{guide_name}.cacheFilePath", filepath)
         nodes.extend([hair_guide_node])
         return nodes
 

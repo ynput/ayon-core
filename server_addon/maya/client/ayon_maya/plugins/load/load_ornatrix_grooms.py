@@ -24,6 +24,10 @@ class OxOrnatrixGrooms(plugin.Loader):
         except Exception as exc:
             self.log.error("Encountered exception:\n%s" % exc)
             return
+
+        # prevent loading the presets with the selected meshes
+        cmds.select(deselect=True)
+
         product_type = context["product"]["productType"]
         # Build namespace
         folder_name = context["folder"]["name"]

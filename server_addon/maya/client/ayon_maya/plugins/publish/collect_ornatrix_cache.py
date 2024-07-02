@@ -21,14 +21,16 @@ class CollectOxCache(plugin.MayaInstancePlugin):
                 continue
             ox_cache_nodes = cmds.listConnections(
                 ox_shape, destination=True, type="HairFromGuidesNode") or []
+            self.log.debug(f"{ox_shape}")
             if not ox_cache_nodes:
                 continue
             # transfer cache file
             nodes.append({
-                "name": ox_shapes,
+                "name": ox_shape,
                 "cbId": ox_shape_id,
                 "ox_nodes": ox_cache_nodes,
                 "cache_file_attributes": ["{}.cacheFilePath".format(ox_node)
                                           for ox_node in ox_cache_nodes]
             })
         instance.data["cachesettings"] = {"nodes": nodes}
+        self.log.debug(f"{nodes}")
