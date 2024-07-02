@@ -30,9 +30,7 @@ class OxAlembicLoader(plugin.ReferenceLoader):
             )
         ]
 
-    def process_reference(
-        self, context, name=None, namespace=None, options=None
-    ):
+    def process_reference(self, context, name, namespace, options):
         cmds.loadPlugin("Ornatrix", quiet=True)
         folder_name = context["folder"]["name"]
         namespace = namespace or unique_namespace(
@@ -63,7 +61,8 @@ class OxAlembicLoader(plugin.ReferenceLoader):
                 groupName=group_name,
                 options=ox_import_options
             )
-        color = plugin.get_load_color_for_product_type("oxacache")
+
+        color = plugin.get_load_color_for_product_type("oxcache")
         if color is not None:
             red, green, blue = color
             cmds.setAttr(group_name + ".useOutlinerColor", 1)

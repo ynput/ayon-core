@@ -1,11 +1,9 @@
 import json
 import os
 from ayon_core.pipeline import get_representation_path
-from ayon_core.settings import get_project_settings
 from ayon_maya.api import lib
 from ayon_maya.api.pipeline import containerise
 from ayon_maya.api import plugin
-from ayon_maya.api.plugin import get_load_color_for_product_type
 from maya import cmds, mel
 
 
@@ -45,19 +43,6 @@ class OxCacheLoader(plugin.Loader):
         nodes = []
         for setting in settings["nodes"]:
             nodes.extend(self.create_node(namespace, path, setting))
-
-        group_name = "{}:{}".format(namespace, name)
-        group_node = cmds.group(nodes, name=group_name)
-        project_name = context["project"]["name"]
-
-        settings = get_project_settings(project_name)
-        color = get_load_color_for_product_type(product_type, settings)
-        if color is not None:
-            red, green, blue = color
-            cmds.setAttr(group_node + ".useOutlinerColor", 1)
-            cmds.setAttr(group_node + ".outlinerColor", red, green, blue)
-
-        nodes.append(group_node)
 
         self[:] = nodes
 
