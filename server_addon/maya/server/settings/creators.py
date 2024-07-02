@@ -124,6 +124,14 @@ class CreateVrayProxyModel(BaseSettingsModel):
         default_factory=list, title="Default Products")
 
 
+class CreateSetDressModel(BaseSettingsModel):
+    enabled: bool = SettingsField(True)
+    exactSetMembersOnly: bool = SettingsField(title="Exact Set Members Only")
+    shader: bool = SettingsField(title="Include shader")
+    default_variants: list[str] = SettingsField(
+        default_factory=list, title="Default Products")
+
+
 class CreateMultishotLayout(BasicCreatorModel):
     shotParent: str = SettingsField(title="Shot Parent Folder")
     groupLoadedAssets: bool = SettingsField(title="Group Loaded Assets")
@@ -217,8 +225,8 @@ class CreatorsModel(BaseSettingsModel):
         default_factory=BasicCreatorModel,
         title="Create Rig"
     )
-    CreateSetDress: BasicCreatorModel = SettingsField(
-        default_factory=BasicCreatorModel,
+    CreateSetDress: CreateSetDressModel = SettingsField(
+        default_factory=CreateSetDressModel,
         title="Create Set Dress"
     )
     CreateVrayProxy: CreateVrayProxyModel = SettingsField(
@@ -396,6 +404,8 @@ DEFAULT_CREATORS_SETTINGS = {
     },
     "CreateSetDress": {
         "enabled": True,
+        "exactSetMembersOnly": True,
+        "shader": True,
         "default_variants": [
             "Main",
             "Anim"

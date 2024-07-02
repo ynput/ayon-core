@@ -233,18 +233,37 @@ class SceneInventoryView(QtWidgets.QTreeView):
         has_outdated = False
         has_loaded_hero_versions = False
         has_available_hero_version = False
-        for version_items_by_id in version_items_by_product_id.values():
+        has_outdated_approved = False
+        last_version_by_product_id = {}
+        for product_id, version_items_by_id in (
+            version_items_by_product_id.items()
+        ):
+            _has_outdated_approved = False
+            _last_approved_version_item = None
             for version_item in version_items_by_id.values():
                 if version_item.is_hero:
                     has_available_hero_version = True
 
+                elif version_item.is_last_approved:
+                    _last_approved_version_item = version_item
+                    _has_outdated_approved = True
+
                 if version_item.version_id not in version_ids:
                     continue
+
                 if version_item.is_hero:
                     has_loaded_hero_versions = True
-
                 elif not version_item.is_latest:
                     has_outdated = True
+
+            if (
+                _has_outdated_approved
+                and _last_approved_version_item is not None
+            ):
+                last_version_by_product_id[product_id] = (
+                    _last_approved_version_item
+                )
+                has_outdated_approved = True
 
         switch_to_versioned = None
         if has_loaded_hero_versions:
@@ -259,6 +278,42 @@ class SceneInventoryView(QtWidgets.QTreeView):
             )
             switch_to_versioned.triggered.connect(
                 lambda: self._on_switch_to_versioned(item_ids)
+            )
+
+        update_to_last_approved_action = None
+        approved_version_by_item_id = {}
+        if has_outdated_approved:
+            for container_item in container_items_by_id.values():
+                repre_id = container_item.representation_id
+                repre_info = repre_info_by_id.get(repre_id)
+                if not repre_info or not repre_info.is_valid:
+                    continue
+                version_item = last_version_by_product_id.get(
+                    repre_info.product_id
+                )
+                if (
+                    version_item is None
+                    or version_item.version_id == repre_info.version_id
+                ):
+                    continue
+                approved_version_by_item_id[container_item.item_id] = (
+                    version_item.version
+                )
+
+        if approved_version_by_item_id:
+            update_icon = qtawesome.icon(
+                "fa.angle-double-up",
+                color="#00f0b4"
+            )
+            update_to_last_approved_action = QtWidgets.QAction(
+                update_icon,
+                "Update to last approved",
+                menu
+            )
+            update_to_last_approved_action.triggered.connect(
+                lambda: self._update_containers_to_approved_versions(
+                    approved_version_by_item_id
+                )
             )
 
         update_to_latest_action = None
@@ -299,7 +354,9 @@ class SceneInventoryView(QtWidgets.QTreeView):
         # set version
         set_version_action = None
         if active_repre_id is not None:
-            set_version_icon = qtawesome.icon("fa.hashtag", color=DEFAULT_COLOR)
+            set_version_icon = qtawesome.icon(
+                "fa.hashtag", color=DEFAULT_COLOR
+            )
             set_version_action = QtWidgets.QAction(
                 set_version_icon,
                 "Set version",
@@ -322,6 +379,9 @@ class SceneInventoryView(QtWidgets.QTreeView):
         # add the actions
         if switch_to_versioned:
             menu.addAction(switch_to_versioned)
+
+        if update_to_last_approved_action:
+            menu.addAction(update_to_last_approved_action)
 
         if update_to_latest_action:
             menu.addAction(update_to_latest_action)
@@ -969,4 +1029,25 @@ class SceneInventoryView(QtWidgets.QTreeView):
 
         """
         versions = [version for _ in range(len(item_ids))]
+        self._update_containers(item_ids, versions)
+
+    def _update_containers_to_approved_versions(
+        self, approved_version_by_item_id
+    ):
+        """Helper to update items to given version (or version per item)
+
+        If at least one item is specified this will always try to refresh
+        the inventory even if errors occurred on any of the items.
+
+        Arguments:
+            approved_version_by_item_id (Dict[str, int]): Version to set by
+                item id.
+
+        """
+        versions = []
+        item_ids = []
+        for item_id, version in approved_version_by_item_id.items():
+            item_ids.append(item_id)
+            versions.append(version)
+
         self._update_containers(item_ids, versions)
