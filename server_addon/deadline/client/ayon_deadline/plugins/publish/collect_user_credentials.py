@@ -12,8 +12,7 @@ Provides:
 """
 import pyblish.api
 
-from ayon_api import get_server_api_connection, get_secret
-from ayon_core.pipeline import KnownPublishError
+from ayon_api import get_server_api_connection
 
 from ayon_deadline.lib import FARM_FAMILIES
 
@@ -79,11 +78,7 @@ class CollectDeadlineUserCredentials(pyblish.api.InstancePlugin):
         deadline_addon = addons_manager["deadline"]
 
         default_username = deadline_info["default_username"]
-        secret_name = deadline_info["default_password"]
-        secret = get_secret(secret_name)
-        if not secret:
-            raise KnownPublishError(f"'{secret_name}' secret not found")
-        default_password = secret["value"]
+        default_password = deadline_info["default_password"]
         if default_username and default_password:
             self.log.debug("Setting credentials from defaults")
             instance.data["deadline"]["auth"] = (default_username,

@@ -6,7 +6,6 @@ from ayon_server.settings import (
     SettingsField,
     ensure_unique_names,
 )
-from ayon_server.settings.enum import secrets_enum
 if TYPE_CHECKING:
     from ayon_server.addons import BaseServerAddon
 
@@ -50,8 +49,6 @@ class ServerItemSubmodel(BaseSettingsModel):
     )
     default_password: str = SettingsField(
         "",
-        placeholder="Select password from Ayon secrets",
-        enum_resolver=secrets_enum,
         title="Default password",
         description="Webservice password, 'Require authentication' must be "
                     "enabled."
