@@ -10,7 +10,8 @@ class CollectFarmInstances(plugin.HoudiniInstancePlugin):
                 "karma_rop",
                 "redshift_rop",
                 "arnold_rop",
-                "vray_rop"]
+                "vray_rop",
+                "usdrender"]
 
     targets = ["local", "remote"]
     label = "Collect farm instances"
