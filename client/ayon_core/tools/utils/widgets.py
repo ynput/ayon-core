@@ -770,7 +770,7 @@ class SeparatorWidget(QtWidgets.QFrame):
         if self._orientation == orientation:
             return
 
-        # Reset min/max sizes in opossite direction
+        # Reset min/max sizes in opposite direction
         if self._orientation == QtCore.Qt.Vertical:
             self.setMinimumHeight(0)
             self.setMaximumHeight(self._maximum_height)
