@@ -1,5 +1,6 @@
 import os
 import re
+import clique
 
 import pyblish.api
 from ayon_core.pipeline.publish import KnownPublishError
@@ -271,22 +272,34 @@ class CollectYetiRig(plugin.MayaInstancePlugin):
             pattern (str): The pattern to swap with the variable frame number.
 
         Returns:
-            list: file sequence.
+            Optional[list[str]]: file sequence.
 
         """
-        import clique
-
-        escaped = re.escape(filepath)
-        re_pattern = escaped.replace(pattern, "-?[0-9]+")
-
+        filename = os.path.basename(filepath)
+        re_pattern = re.escape(filename)
+        re_pattern = re_pattern.replace(re.escape(pattern), "-?[0-9]+")
         source_dir = os.path.dirname(filepath)
-        files = [f for f in os.listdir(source_dir)
-                 if re.match(re_pattern, f)]
+        files = [f for f in os.listdir(source_dir) if re.match(re_pattern, f)]
+        if not files:
+            # Files do not exist, this may not be a problem if e.g. the
+            # textures were relative paths and we're searching across
+            # multiple image search paths.
+            return
+        
+        collections, _remainder = clique.assemble(
+            files,
+            patterns=[clique.PATTERNS["frames"]],
+            minimum_items=1)
+            
+        if len(collections) > 1:
+            raise ValueError(
+                f"Multiple collections found for {collections}. "
+                "This is a bug.")
 
-        pattern = [clique.PATTERNS["frames"]]
-        collection, remainder = clique.assemble(files, patterns=pattern)
-
-        return collection
+        return [
+            os.path.join(source_dir, filename) 
+            for filename in collections[0]
+        ]
 
     def _replace_tokens(self, strings):
         env_re = re.compile(r"\$\{(\w+)\}")
