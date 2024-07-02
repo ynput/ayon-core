@@ -3,7 +3,6 @@
 import os
 import logging
 from operator import attrgetter
-
 import json
 
 from ayon_core.host import HostBase, IWorkfileHost, ILoadHost, IPublishHost
@@ -14,6 +13,7 @@ from ayon_core.pipeline import (
     AVALON_CONTAINER_ID,
     AYON_CONTAINER_ID,
 )
+from ayon_core.lib import register_event_callback
 from ayon_max.api.menu import AYONMenu
 from ayon_max.api import lib
 from ayon_max.api.plugin import MS_CUSTOM_ATTRIB
@@ -47,18 +47,25 @@ class MaxHost(HostBase, IWorkfileHost, ILoadHost, IPublishHost):
         register_loader_plugin_path(LOAD_PATH)
         register_creator_plugin_path(CREATE_PATH)
 
-        # self._register_callbacks()
+        _set_project()
+
         self.menu = AYONMenu()
 
+        register_event_callback("workfile.open.before", on_before_open)
         self._has_been_setup = True
 
-        rt.callbacks.addScript(rt.Name('systemPostNew'), on_new)
+        def context_setting():
+            return lib.set_context_setting()
+
+        rt.callbacks.addScript(rt.Name('systemPostNew'),
+                               context_setting)
 
         rt.callbacks.addScript(rt.Name('filePostOpen'),
                                lib.check_colorspace)
 
         rt.callbacks.addScript(rt.Name('postWorkspaceChange'),
                                self._deferred_menu_creation)
+
         rt.NodeEventCallback(
             nameChanged=lib.update_modifier_node_names)
 
@@ -179,14 +186,6 @@ def ls():
         yield parse_container(container)
 
 
-def on_new():
-    lib.set_context_setting()
-    if rt.checkForSave():
-        rt.resetMaxFile(rt.Name("noPrompt"))
-        rt.clearUndoBuffer()
-        rt.redrawViews()
-
-
 def containerise(name: str, nodes: list, context,
                  namespace=None, loader=None, suffix="_CON"):
     data = {
@@ -203,6 +202,27 @@ def containerise(name: str, nodes: list, context,
     if not lib.imprint(container_name, data):
         print(f"imprinting of {container_name} failed.")
     return container
+
+
+def _set_project():
+    workdir = os.getenv("AYON_WORKDIR")
+
+    os.makedirs(workdir, exist_ok=True)
+    mxp_filepath = os.path.join(workdir, "workspace.mxp")
+    if os.path.exists(mxp_filepath):
+        rt.pathConfig.load(mxp_filepath)
+        directory_count = rt.pathConfig.getProjectSubDirectoryCount()
+        for count in range(directory_count):
+            proj_dir = rt.pathConfig.getProjectSubDirectory(count)
+            os.makedirs(proj_dir, exist_ok=True)
+        rt.pathConfig.doProjectSetupStepsUsingDirectory(workdir)
+    rt.pathConfig.setCurrentProjectFolder(workdir)
+
+
+def on_before_open():
+    """Check and set up project before opening workfile
+    """
+    _set_project()
 
 
 def load_custom_attribute_data():
