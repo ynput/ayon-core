@@ -6,7 +6,7 @@ class PublisherTabBtn(QtWidgets.QPushButton):
     tab_clicked = QtCore.Signal(str)
 
     def __init__(self, identifier, label, parent):
-        super(PublisherTabBtn, self).__init__(label, parent)
+        super().__init__(label, parent)
         self._identifier = identifier
         self._active = False
 
@@ -36,7 +36,7 @@ class PublisherTabsWidget(QtWidgets.QFrame):
     tab_changed = QtCore.Signal(str, str)
 
     def __init__(self, parent=None):
-        super(PublisherTabsWidget, self).__init__(parent)
+        super().__init__(parent)
 
         btns_widget = QtWidgets.QWidget(self)
         btns_layout = QtWidgets.QHBoxLayout(btns_widget)

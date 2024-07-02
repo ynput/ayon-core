@@ -37,6 +37,9 @@ __all__ = (
     "CONTEXT_ID",
     "CONTEXT_LABEL",
 
+    "CONTEXT_GROUP",
+    "CONVERTOR_ITEM_GROUP",
+
     "VARIANT_TOOLTIP",
 
     "INPUTS_LAYOUT_HSPACING",

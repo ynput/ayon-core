@@ -1,0 +1,17 @@
+""
+DialogScript	DialogScript
+CreateScript	CreateScript
+InternalFileOptions	InternalFileOptions
+Contents.gz	Contents.gz
+TypePropertiesOptions	TypePropertiesOptions
+Tools.shelf	Tools.shelf
+Help	Help
+IconImage	IconImage
+MessageNodes	MessageNodes
+PythonModule	PythonModule
+OnDeleted	OnDeleted
+OnNameChanged	OnNameChanged
+OnLoaded	OnLoaded
+OnCreated	OnCreated
+ExtraFileOptions	ExtraFileOptions
+AYON__icon.png	AYON_icon.png
