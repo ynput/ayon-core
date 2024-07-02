@@ -4,6 +4,7 @@ import inspect
 import copy
 import tempfile
 import xml.etree.ElementTree
+from typing import Optional, Union
 
 import pyblish.util
 import pyblish.plugin
@@ -20,7 +21,6 @@ from ayon_core.pipeline import (
     Anatomy
 )
 from ayon_core.pipeline.plugin_discover import DiscoverResult
-
 from .constants import (
     DEFAULT_PUBLISH_TEMPLATE,
     DEFAULT_HERO_PUBLISH_TEMPLATE,
@@ -933,3 +933,48 @@ def get_publish_instance_families(instance):
         families.discard(family)
     output.extend(families)
     return output
+
+
+def get_instance_expected_output_path(
+        instance: pyblish.api.Instance,
+        representation_name: str,
+        ext: Union[str, None],
+        version: Optional[str] = None
+):
+    """Return expected publish filepath for representation in instance
+
+    This does not validate whether the instance has any representation by the
+    given name, extension and/or version.
+
+    Arguments:
+        instance (pyblish.api.Instance): Publish instance
+        representation_name (str): Representation name
+        ext (Union[str, None]): Extension for the file.
+            When None, the `ext` will be set to the representation name.
+        version (Optional[int]): If provided, force it to format to this
+            particular version.
+
+    Returns:
+        str: Resolved path
+
+    """
+
+    if ext is None:
+        ext = representation_name
+    if version is None:
+        version = instance.data["version"]
+
+    context = instance.context
+    anatomy = context.data["anatomy"]
+
+    template_data = copy.deepcopy(instance.data["anatomyData"])
+    template_data.update({
+        "ext": ext,
+        "representation": representation_name,
+        "variant": instance.data.get("variant"),
+        "version": version
+    })
+
+    path_template_obj = anatomy.get_template_item("publish", "default")["path"]
+    template_filled = path_template_obj.format_strict(template_data)
+    return os.path.normpath(template_filled)
