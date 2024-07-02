@@ -1,0 +1,59 @@
+[Executable]
+Type=String
+Label=Unreal Executable
+Category=Executable
+Index=0
+Description=Unreal Executable
+Required=true
+Default=
+DisableIfBlank=false
+
+[LoggingDirectory]
+Type=string
+Label=Command Line Arguments
+Category=Executable
+Index=2
+Description=What command line arguments should be passed to the executable?
+Required=false
+DisableIfBlank=false
+
+[ProjectFile]
+Type=String
+Label=Project File
+Category=Project
+Index=0
+Description=The name of the .uproject file ("MyGame.uproject") within the Game folder.
+Required=true
+Default=
+DisableIfBlank=false
+
+[CommandLineArguments]
+Type=string
+Label=Command Line Arguments
+Category=Project
+Index=1
+Description=What command line arguments should be passed to the executable?
+Required=false
+Default=
+DisableIfBlank=false
+
+[CommandLineMode]
+Type=boolean
+Label=Command Line Mode
+Category=Project
+Index=1
+Description=Should the Editor process commands as commandline arguments
+Required=false
+DisableIfBlank=false
+Default=true
+
+[StartupDirectory]
+Type=string
+Label=Startup Directory
+Category=Command Line Options
+CategoryOrder=0
+Index=3
+Description=The directory to start the command line in (leave blank to use default)
+Required=false
+Default=
+DisableIfBlank=true
