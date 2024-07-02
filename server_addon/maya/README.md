@@ -1,4 +1,0 @@
-Maya Integration Addon
-======================
-
-WIP
