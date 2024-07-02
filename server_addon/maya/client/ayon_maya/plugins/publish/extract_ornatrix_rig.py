@@ -89,7 +89,7 @@ class ExtractOxRig(plugin.MayaExtractorPlugin):
                           preserveReferences=False,
                           constructionHistory=True,
                           shader=False)
-                mel.eval(f"OxSaveGroom -path {ox_groom_path}")
+                mel.eval(f'OxSaveGroom -path "{ox_groom_path}"')
 
         # Ensure files can be stored
         # build representations

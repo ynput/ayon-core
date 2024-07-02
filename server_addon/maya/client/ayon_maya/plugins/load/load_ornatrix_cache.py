@@ -10,7 +10,7 @@ from maya import cmds, mel
 
 
 class OxCacheLoader(plugin.Loader):
-    """Load Ornatrix Cache with one or more Yeti nodes"""
+    """Load Ornatrix Cache with one or more Ornatrix nodes"""
 
     product_types = {"oxcache", "oxrig"}
     representations = {"abc"}
