@@ -16,8 +16,8 @@ from ayon_houdini.api import plugin
 
 
 # region assettools
-# logic based onHou 19.5.752 assettools.py because this logic was removed
-# in Hou 20+
+# logic based on Houdini 19.5.752 `assettools.py` because
+# this logic was removed in Houdini 20+
 def get_tool_submenus(hda_def):
     """Returns the tab submenu entries of this node.
 
