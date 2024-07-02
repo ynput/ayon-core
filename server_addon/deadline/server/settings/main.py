@@ -43,6 +43,7 @@ class ServerItemSubmodel(BaseSettingsModel):
     not_verify_ssl: bool = SettingsField(
         False, title="Don't verify SSL")
     default_username: str = SettingsField(
+        "",
         title="Default user name",
         description="Webservice username, 'Require authentication' must be "
                     "enabled."
