@@ -21,7 +21,6 @@ from ayon_core.pipeline import (
     Anatomy
 )
 from ayon_core.pipeline.plugin_discover import DiscoverResult
-from ayon_core.pipeline.template_data import get_template_data_with_names
 from .constants import (
     DEFAULT_PUBLISH_TEMPLATE,
     DEFAULT_HERO_PUBLISH_TEMPLATE,
