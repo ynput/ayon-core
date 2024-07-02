@@ -83,17 +83,15 @@ class ConnectOrnatrixRig(InventoryAction):
                 ext, ".rigsettings")
             if not os.path.exists(settings_file):
                 continue
-            with open(settings_file, "w") as fp:
-                source_nodes.extend(
-                    item.get("node") for item in json.load(fp))
-            self.display_warning(
-                source_nodes
-            )
+            with open(settings_file, "r") as fp:
+                source_nodes = json.load(fp)
+
             grooms_file = maya_file.replace(ext, ".oxg.zip")
             grooms_file = grooms_file.replace("\\", "/")
             # Compare loaded connections to scene.
             for node in source_nodes:
-                target_node = cmds.ls(f"{source_namespace}:{node}")[0]
+                node_name = node.get("node").replace("|", "")
+                target_node = cmds.ls(f"{source_namespace}:{node_name}")
                 if not target_node:
                     self.display_warning(
                         "No target node found "
