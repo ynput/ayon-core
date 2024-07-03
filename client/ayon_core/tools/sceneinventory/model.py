@@ -147,6 +147,7 @@ class InventoryModel(QtGui.QStandardItemModel):
         product_ids = {
             repre_info.product_id
             for repre_info in repre_info_by_id.values()
+            if repre_info.is_valid
         }
         version_items_by_product_id = self._controller.get_version_items(
             product_ids
@@ -217,7 +218,9 @@ class InventoryModel(QtGui.QStandardItemModel):
                 version_label = format_version(version_item.version)
                 is_hero = version_item.version < 0
                 is_latest = version_item.is_latest
-                if not is_latest:
+                # TODO maybe use different colors for last approved and last
+                #    version? Or don't care about color at all?
+                if not is_latest and not version_item.is_last_approved:
                     version_color = self.OUTDATED_COLOR
                 status_name = version_item.status
 
@@ -225,12 +228,13 @@ class InventoryModel(QtGui.QStandardItemModel):
                 status_name
             )
 
+            repre_name = (
+                repre_info.representation_name or "<unknown representation>"
+            )
             container_model_items = []
             for container_item in container_items:
-                unique_name = (
-                    repre_info.representation_name
-                    + container_item.object_name or "<none>"
-                )
+                object_name = container_item.object_name or "<none>"
+                unique_name = repre_name + object_name
 
                 item = QtGui.QStandardItem()
                 item.setColumnCount(root_item.columnCount())

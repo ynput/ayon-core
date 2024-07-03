@@ -3,7 +3,9 @@ import collections
 
 import ayon_api
 from ayon_api.graphql import GraphQlQuery
+
 from ayon_core.host import ILoadHost
+from ayon_core.tools.common_models.projects import StatusStates
 
 
 # --- Implementation that should be in ayon-python-api ---
@@ -149,26 +151,35 @@ class RepresentationInfo:
 
 
 class VersionItem:
-    def __init__(self, version_id, product_id, version, status, is_latest):
-        self.version = version
-        self.version_id = version_id
-        self.product_id = product_id
-        self.version = version
-        self.status = status
-        self.is_latest = is_latest
+    def __init__(
+        self,
+        version_id: str,
+        product_id: str,
+        version: int,
+        status: str,
+        is_latest: bool,
+        is_last_approved: bool,
+    ):
+        self.version_id: str = version_id
+        self.product_id: str = product_id
+        self.version: int = version
+        self.status: str = status
+        self.is_latest: bool = is_latest
+        self.is_last_approved: bool = is_last_approved
 
     @property
     def is_hero(self):
         return self.version < 0
 
     @classmethod
-    def from_entity(cls, version_entity, is_latest):
+    def from_entity(cls, version_entity, is_latest, is_last_approved):
         return cls(
             version_id=version_entity["id"],
             product_id=version_entity["productId"],
             version=version_entity["version"],
             status=version_entity["status"],
             is_latest=is_latest,
+            is_last_approved=is_last_approved,
         )
 
 
@@ -275,6 +286,11 @@ class ContainersModel:
             if product_id not in self._version_items_by_product_id
         }
         if missing_ids:
+            status_items_by_name = {
+                status_item.name: status_item
+                for status_item in self._controller.get_project_status_items()
+            }
+
             def version_sorted(entity):
                 return entity["version"]
 
@@ -300,9 +316,21 @@ class ContainersModel:
                 version_entities_by_product_id.items()
             ):
                 last_version = abs(version_entities[-1]["version"])
+                last_approved_id = None
+                for version_entity in version_entities:
+                    status_item = status_items_by_name.get(
+                        version_entity["status"]
+                    )
+                    if status_item is None:
+                        continue
+                    if status_item.state == StatusStates.done:
+                        last_approved_id = version_entity["id"]
+
                 version_items_by_id = {
                     entity["id"]: VersionItem.from_entity(
-                        entity, abs(entity["version"]) == last_version
+                        entity,
+                        abs(entity["version"]) == last_version,
+                        entity["id"] == last_approved_id
                     )
                     for entity in version_entities
                 }
@@ -330,9 +358,20 @@ class ContainersModel:
         container_items = []
         containers_by_id = {}
         container_items_by_id = {}
+        invalid_ids_mapping = {}
         for container in containers:
             try:
                 item = ContainerItem.from_container_data(container)
+                repre_id = item.representation_id
+                try:
+                    uuid.UUID(repre_id)
+                except (ValueError, TypeError, AttributeError):
+                    # Fake not existing representation id so container is shown in UI
+                    #   but as invalid
+                    item.representation_id = invalid_ids_mapping.setdefault(
+                        repre_id, uuid.uuid4().hex
+                    )
+
             except Exception as e:
                 # skip item if required data are missing
                 self._controller.log_error(

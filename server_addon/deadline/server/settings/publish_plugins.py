@@ -153,8 +153,8 @@ class FusionSubmitDeadlineModel(BaseSettingsModel):
     )
     group: str = SettingsField("", title="Group Name")
     plugin: str = SettingsField("Fusion",
-                        enum_resolver=fusion_deadline_plugin_enum,
-                        title="Deadline Plugin")
+                                enum_resolver=fusion_deadline_plugin_enum,
+                                title="Deadline Plugin")
 
 
 class NukeSubmitDeadlineModel(BaseSettingsModel):
@@ -270,6 +270,7 @@ class BlenderSubmitDeadlineModel(BaseSettingsModel):
     optional: bool = SettingsField(title="Optional")
     active: bool = SettingsField(title="Active")
     use_published: bool = SettingsField(title="Use Published scene")
+    asset_dependencies: bool = SettingsField(title="Use Asset dependencies")
     priority: int = SettingsField(title="Priority")
     chunk_size: int = SettingsField(title="Frame per Task")
     group: str = SettingsField("", title="Group Name")
@@ -374,11 +375,11 @@ class PublishPluginsModel(BaseSettingsModel):
         title="Nuke Submit to deadline")
     ProcessSubmittedCacheJobOnFarm: ProcessCacheJobFarmModel = SettingsField(
         default_factory=ProcessCacheJobFarmModel,
-        title="Process submitted cache Job on farm.",
-            section="Publish Jobs")
+        title="Process submitted cache Job on farm",
+        section="Publish Jobs")
     ProcessSubmittedJobOnFarm: ProcessSubmittedJobOnFarmModel = SettingsField(
         default_factory=ProcessSubmittedJobOnFarmModel,
-        title="Process submitted job on farm.")
+        title="Process submitted job on farm")
 
 
 DEFAULT_DEADLINE_PLUGINS_SETTINGS = {
@@ -413,6 +414,7 @@ DEFAULT_DEADLINE_PLUGINS_SETTINGS = {
         "optional": False,
         "active": True,
         "use_published": True,
+        "asset_dependencies": True,
         "priority": 50,
         "chunk_size": 10,
         "group": "none",

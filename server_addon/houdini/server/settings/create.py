@@ -32,6 +32,16 @@ class CreateStaticMeshModel(BaseSettingsModel):
     )
 
 
+class CreateUSDRenderModel(CreatorModel):
+    default_renderer: str = SettingsField(
+        "Karma CPU",
+        title="Default Renderer",
+        description=(
+            "Specify either the Hydra renderer plug-in nice name, like "
+            "'Karma CPU', or the plug-in name, e.g. 'BRAY_HdKarma'"
+        ))
+
+
 class CreatePluginsModel(BaseSettingsModel):
     CreateAlembicCamera: CreatorModel = SettingsField(
         default_factory=CreatorModel,
@@ -51,9 +61,6 @@ class CreatePluginsModel(BaseSettingsModel):
     CreateKarmaROP: CreatorModel = SettingsField(
         default_factory=CreatorModel,
         title="Create Karma ROP")
-    CreateMantraIFD: CreatorModel = SettingsField(
-        default_factory=CreatorModel,
-        title="Create Mantra IFD")
     CreateMantraROP: CreatorModel = SettingsField(
         default_factory=CreatorModel,
         title="Create Mantra ROP")
@@ -81,10 +88,10 @@ class CreatePluginsModel(BaseSettingsModel):
         title="Create Static Mesh")
     CreateUSD: CreatorModel = SettingsField(
         default_factory=CreatorModel,
-        title="Create USD (experimental)")
-    CreateUSDRender: CreatorModel = SettingsField(
-        default_factory=CreatorModel,
-        title="Create USD render (experimental)")
+        title="Create USD")
+    CreateUSDRender: CreateUSDRenderModel = SettingsField(
+        default_factory=CreateUSDRenderModel,
+        title="Create USD render")
     CreateVDBCache: CreatorModel = SettingsField(
         default_factory=CreatorModel,
         title="Create VDB Cache")
@@ -116,10 +123,6 @@ DEFAULT_HOUDINI_CREATE_SETTINGS = {
         "default_variants": ["Main"]
     },
     "CreateKarmaROP": {
-        "enabled": True,
-        "default_variants": ["Main"]
-    },
-    "CreateMantraIFD": {
         "enabled": True,
         "default_variants": ["Main"]
     },
@@ -165,12 +168,13 @@ DEFAULT_HOUDINI_CREATE_SETTINGS = {
         ]
     },
     "CreateUSD": {
-        "enabled": False,
+        "enabled": True,
         "default_variants": ["Main"]
     },
     "CreateUSDRender": {
-        "enabled": False,
-        "default_variants": ["Main"]
+        "enabled": True,
+        "default_variants": ["Main"],
+        "default_renderer": "Karma CPU"
     },
     "CreateVDBCache": {
         "enabled": True,

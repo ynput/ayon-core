@@ -18,7 +18,7 @@ class ValidateUSDRenderProductNames(plugin.HoudiniInstancePlugin):
     def process(self, instance):
 
         invalid = []
-        for filepath in instance.data["files"]:
+        for filepath in instance.data.get("files", []):
 
             if not filepath:
                 invalid.append("Detected empty output filepath.")
