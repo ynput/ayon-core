@@ -4,9 +4,10 @@ This will add additional families to different instance based on
 the creator_identifier parameter.
 """
 import pyblish.api
+from ayon_houdini.api import plugin
 
 
-class CollectPointcacheType(pyblish.api.InstancePlugin):
+class CollectPointcacheType(plugin.HoudiniInstancePlugin):
     """Collect data type for different instances."""
 
     order = pyblish.api.CollectorOrder
