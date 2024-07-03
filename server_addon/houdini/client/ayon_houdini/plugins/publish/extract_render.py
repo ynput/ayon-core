@@ -15,12 +15,19 @@ class ExtractRender(plugin.HoudiniExtractorPlugin):
                 "karma_rop",
                 "redshift_rop",
                 "arnold_rop",
-                "vray_rop"]
+                "vray_rop",
+                "usdrender"]
 
     def process(self, instance):
         creator_attribute = instance.data["creator_attributes"]
         product_type = instance.data["productType"]
         rop_node = hou.node(instance.data.get("instance_node"))
+
+        # TODO: This section goes against pyblish concepts where
+        # pyblish plugins should change the state of the scene.
+        # However, in ayon publisher tool users can have options and
+        # these options should some how synced with the houdini nodes.
+        # More info: https://github.com/ynput/ayon-core/issues/417
 
         # Align split parameter value on rop node to the render target.
         if instance.data["splitRender"]:
@@ -32,6 +39,8 @@ class ExtractRender(plugin.HoudiniExtractorPlugin):
                 rop_node.setParms({"RS_archive_enable": 1})
             elif product_type == "vray_rop":
                 rop_node.setParms({"render_export_mode": "2"})
+            elif product_type == "usdrender":
+                rop_node.setParms({"runcommand": 0})
         else:
             if product_type == "arnold_rop":
                 rop_node.setParms({"ar_ass_export_enable": 0})
@@ -41,6 +50,8 @@ class ExtractRender(plugin.HoudiniExtractorPlugin):
                 rop_node.setParms({"RS_archive_enable": 0})
             elif product_type == "vray_rop":
                 rop_node.setParms({"render_export_mode": "1"})
+            elif product_type == "usdrender":
+                rop_node.setParms({"runcommand": 1})
 
         if instance.data.get("farm"):
             self.log.debug("Render should be processed on farm, skipping local render.")

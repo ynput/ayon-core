@@ -23,7 +23,7 @@ class ValidateHoudiniNotApprenticeLicense(plugin.HoudiniInstancePlugin):
     """
 
     order = pyblish.api.ValidatorOrder
-    families = ["usd", "abc", "fbx", "camera"]
+    families = ["usdrop", "abc", "fbx", "camera"]
     label = "Houdini Apprentice License"
 
     def process(self, instance):
