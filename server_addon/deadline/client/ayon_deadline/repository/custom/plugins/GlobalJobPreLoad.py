@@ -13,7 +13,7 @@ from Deadline.Scripting import (
     FileUtils,
     DirectoryUtils,
 )
-__version__ = "1.1.0"
+__version__ = "1.1.1"
 VERSION_REGEX = re.compile(
     r"(?P<major>0|[1-9]\d*)"
     r"\.(?P<minor>0|[1-9]\d*)"
@@ -342,7 +342,7 @@ def inject_openpype_environment(deadlinePlugin):
             "envgroup": "farm"
         }
 
-        if job.GetJobEnvironmentKeyValue("IS_TEST"):
+        if job.GetJobEnvironmentKeyValue("AYON_IN_TESTS"):
             args.append("--automatic-tests")
 
         if all(add_kwargs.values()):
@@ -501,7 +501,7 @@ def inject_ayon_environment(deadlinePlugin):
             "extractenvironments",
             export_url
         ]
-        if job.GetJobEnvironmentKeyValue("IS_TEST"):
+        if job.GetJobEnvironmentKeyValue("AYON_IN_TESTS"):
             args.append("--automatic-tests")
 
         for key, value in add_kwargs.items():
