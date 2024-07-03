@@ -342,7 +342,8 @@ def inject_openpype_environment(deadlinePlugin):
             "envgroup": "farm"
         }
 
-        if job.GetJobEnvironmentKeyValue("AYON_IN_TESTS"):
+        # use legacy IS_TEST env var to mark automatic tests for OP
+        if job.GetJobEnvironmentKeyValue("IS_TEST"):
             args.append("--automatic-tests")
 
         if all(add_kwargs.values()):
