@@ -1,6 +1,0 @@
-node = kwargs["node"]
-hda_module = node.hdaModule()
-hda_module.setup_flag_changed_callback(node)
-
-node.parm("product_type").lock(True)
-node.parm("file").lock(True)
