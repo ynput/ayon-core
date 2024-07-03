@@ -1,0 +1,14 @@
+node = kwargs["node"]
+hda_module = node.hdaModule()
+hda_module.setup_flag_changed_callback(node)
+
+
+# Duplicate callback
+def on_duplicate():
+    """Duplicate thumbnail on node duplicate"""
+    if node.evalParm("show_thumbnail") and node.evalParm("representation"):
+       hda_module.on_representation_id_changed(node)
+
+
+if not hou.hipFile.isLoadingHipFile():
+    on_duplicate()

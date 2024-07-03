@@ -1,3 +1,4 @@
+from .version import __version__
 from .addon import (
     MaxAddon,
     MAX_HOST_DIR,
@@ -5,6 +6,8 @@ from .addon import (
 
 
 __all__ = (
+    "__version__",
+
     "MaxAddon",
     "MAX_HOST_DIR",
 )
