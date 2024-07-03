@@ -22,9 +22,12 @@ class ValidateBypassed(plugin.HoudiniInstancePlugin):
 
     def process(self, instance):
 
-        if len(instance) == 0:
-            # Ignore instances without any nodes
+        if not instance.data.get("instance_node"):
+            # Ignore instances without an instance node
             # e.g. in memory bootstrap instances
+            self.log.debug(
+                "Skipping instance without instance node: {}".format(instance)
+            )
             return
 
         invalid = self.get_invalid(instance)

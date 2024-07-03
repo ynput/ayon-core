@@ -134,6 +134,9 @@ class PublishPluginsModel(BaseSettingsModel):
     ValidateWorkfilePaths: ValidateWorkfilePathsModel = SettingsField(
         default_factory=ValidateWorkfilePathsModel,
         title="Validate workfile paths settings")
+    ValidateUSDRenderProductPaths: BasicEnabledStatesModel = SettingsField(
+        default_factory=BasicEnabledStatesModel,
+        title="Validate USD Render Product Paths")
     ExtractActiveViewThumbnail: BasicEnabledStatesModel = SettingsField(
         default_factory=BasicEnabledStatesModel,
         title="Extract Active View Thumbnail",
@@ -201,6 +204,11 @@ DEFAULT_HOUDINI_PUBLISH_SETTINGS = {
             "$HIP",
             "$JOB"
         ]
+    },
+    "ValidateUSDRenderProductPaths": {
+        "enabled": False,
+        "optional": True,
+        "active": True
     },
     "ExtractActiveViewThumbnail": {
         "enabled": True,
