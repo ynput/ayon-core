@@ -114,7 +114,7 @@ class MaxSubmitDeadline(abstract_submit_deadline.AbstractSubmitDeadline,
             "AYON_TASK_NAME",
             "AYON_WORKDIR",
             "AYON_APP_NAME",
-            "IS_TEST",
+            "AYON_IN_TESTS",
         ]
 
         environment = {
