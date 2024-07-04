@@ -234,9 +234,6 @@ class ProcessSubmittedJobOnFarm(pyblish.api.InstancePlugin,
             "--targets", "farm"
         ]
 
-        if is_in_tests():
-            args.append("--automatic-tests")
-
         # Generate the payload for Deadline submission
         secondary_pool = (
             self.deadline_pool_secondary or instance.data.get("secondaryPool")

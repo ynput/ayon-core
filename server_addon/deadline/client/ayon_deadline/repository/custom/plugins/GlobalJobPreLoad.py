@@ -502,8 +502,6 @@ def inject_ayon_environment(deadlinePlugin):
             "extractenvironments",
             export_url
         ]
-        if job.GetJobEnvironmentKeyValue("AYON_IN_TESTS"):
-            args.append("--automatic-tests")
 
         for key, value in add_kwargs.items():
             args.extend(["--{}".format(key), value])
@@ -517,6 +515,10 @@ def inject_ayon_environment(deadlinePlugin):
             "AYON_API_KEY": ayon_api_key,
             "AYON_BUNDLE_NAME": ayon_bundle_name,
         }
+
+        automatic_tests = job.GetJobEnvironmentKeyValue("AYON_IN_TESTS")
+        if automatic_tests:
+            environment["AYON_IN_TESTS"] = automatic_tests
         for env, val in environment.items():
             # Add the env var for the Render Plugin that is about to render
             deadlinePlugin.SetEnvironmentVariable(env, val)
