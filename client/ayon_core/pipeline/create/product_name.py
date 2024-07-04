@@ -1,3 +1,5 @@
+import ayon_api
+
 from ayon_core.settings import get_project_settings
 from ayon_core.lib import filter_profiles, prepare_template_data
 
@@ -88,6 +90,7 @@ def get_product_name(
     dynamic_data=None,
     project_settings=None,
     product_type_filter=None,
+    project_entity=None,
 ):
     """Calculate product name based on passed context and AYON settings.
 
@@ -120,6 +123,8 @@ def get_product_name(
         product_type_filter (Optional[str]): Use different product type for
             product template filtering. Value of `product_type` is used when
             not passed.
+        project_entity (Optional[Dict[str, Any]]): Project entity used when
+            task short name is required by template.
 
     Raises:
         TemplateFillError: If filled template contains placeholder key which
@@ -149,6 +154,18 @@ def get_product_name(
     }
     if "{task}" in template.lower():
         task_value = task_name
+
+    elif "{task[short]}" in template.lower():
+        # NOTE this is very inefficient approach
+        #   - project entity should be required
+        if project_entity is None:
+            project_entity = ayon_api.get_project(project_name)
+        task_types_by_name = {
+            task["name"]: task for task in
+            project_entity["taskTypes"]
+        }
+        task_short = task_types_by_name.get(task_type, {}).get("shortName")
+        task_value["short"] = task_short
 
     fill_pairs = {
         "variant": variant,
