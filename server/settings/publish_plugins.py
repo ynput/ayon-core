@@ -1181,10 +1181,10 @@ DEFAULT_PUBLISH_VALUES = {
         ]
     },
     "ExtractUSDAssetContribution": {
-        "use_ayon_entity_uri": True,
+        "use_ayon_entity_uri": False,
     },
     "ExtractUSDLayerContribution": {
-        "use_ayon_entity_uri": True,
+        "use_ayon_entity_uri": False,
     },
     "PreIntegrateThumbnails": {
         "enabled": True,
