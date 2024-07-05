@@ -153,38 +153,34 @@ class StatusesQtModel(QtGui.QStandardItemModel):
         empty_statuses_item = QtGui.QStandardItem("No statuses..")
         select_project_item = QtGui.QStandardItem("Select project..")
 
-        select_all_item = QtGui.QStandardItem()
-        deselect_all_item = QtGui.QStandardItem()
-        swap_states_item = QtGui.QStandardItem()
+        select_all_item = QtGui.QStandardItem("Select all")
+        deselect_all_item = QtGui.QStandardItem("Deselect all")
+        swap_states_item = QtGui.QStandardItem("Swap")
 
         for item in (
             empty_statuses_item,
             select_project_item,
+            select_all_item,
+            deselect_all_item,
+            swap_states_item,
         ):
             item.setData(STANDARD_ITEM_TYPE, ITEM_TYPE_ROLE)
 
-        for item, label in (
-            (select_all_item, "Select all"),
-            (deselect_all_item, "Deselect all"),
-            (swap_states_item, "Swap"),
-        ):
-            item.setData(label, STATUS_NAME_ROLE)
-
-        select_all_item.setData(get_qt_icon({
+        select_all_item.setIcon(get_qt_icon({
             "type": "material-symbols",
             "name": "done_all",
             "color": "white"
-        }), STATUS_ICON_ROLE)
-        deselect_all_item.setData(get_qt_icon({
+        }))
+        deselect_all_item.setIcon(get_qt_icon({
             "type": "material-symbols",
             "name": "remove_done",
             "color": "white"
-        }), STATUS_ICON_ROLE)
-        swap_states_item.setData(get_qt_icon({
+        }))
+        swap_states_item.setIcon(get_qt_icon({
             "type": "material-symbols",
             "name": "swap_horiz",
             "color": "white"
-        }), STATUS_ICON_ROLE)
+        }))
 
         for item in (
             empty_statuses_item,
@@ -259,9 +255,12 @@ class StatusesQtModel(QtGui.QStandardItemModel):
 
     def _add_selection_items(self):
         root_item = self.invisibleRootItem()
+        items = self._get_selection_items()
         for item in self._get_selection_items():
-            idx = root_item.rowCount()
-            root_item.insertRow(idx, item)
+            row = item.row()
+            if row >= 0:
+                root_item.takeRow(row)
+        root_item.appendRows(items)
 
     def _remove_items(self):
         root_item = self.invisibleRootItem()
@@ -312,27 +311,12 @@ class StatusesCombobox(CustomPaintMultiselectComboBox):
         )
 
     def _on_status_filter_change(self):
-        tooltip = "Statuses filter"
-        all_enabled = True
-        all_disabled = True
-        lines = []
+        lines = ["Statuses filter"]
         for item in self.get_all_value_info():
             status_name, enabled = item
-            if enabled:
-                all_disabled = False
-            else:
-                all_enabled = False
-
             lines.append(f"{'✔' if enabled else '☐'} {status_name}")
 
-        if all_disabled:
-            tooltip += "\n- All disabled"
-        elif all_enabled:
-            tooltip += "\n- All enabled"
-        else:
-            mod_names = "\n".join(lines)
-            tooltip += f"\n{mod_names}"
-        self.setToolTip(tooltip)
+        self.setToolTip("\n".join(lines))
 
     def _on_project_change(self, event):
         project_name = event["project_name"]
