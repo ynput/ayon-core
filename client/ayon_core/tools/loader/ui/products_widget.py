@@ -22,6 +22,7 @@ from .products_model import (
     VERSION_STATUS_COLOR_ROLE,
     VERSION_STATUS_ICON_ROLE,
     VERSION_THUMBNAIL_ID_ROLE,
+    STATUS_NAME_FILTER_ROLE,
 )
 from .products_delegates import (
     VersionDelegate,
@@ -36,15 +37,23 @@ class ProductsProxyModel(RecursiveSortFilterProxyModel):
         super(ProductsProxyModel, self).__init__(parent)
 
         self._product_type_filters = {}
+        self._statuses_filter = None
         self._ascending_sort = True
 
     def set_product_type_filters(self, product_type_filters):
         self._product_type_filters = product_type_filters
         self.invalidateFilter()
 
+    def set_statuses_filter(self, statuses_filter):
+        if self._statuses_filter == statuses_filter:
+            return
+        self._statuses_filter = statuses_filter
+        self.invalidateFilter()
+
     def filterAcceptsRow(self, source_row, source_parent):
         source_model = self.sourceModel()
         index = source_model.index(source_row, 0, source_parent)
+
         product_types_s = source_model.data(index, PRODUCT_TYPE_ROLE)
         product_types = []
         if product_types_s:
@@ -53,8 +62,22 @@ class ProductsProxyModel(RecursiveSortFilterProxyModel):
         for product_type in product_types:
             if not self._product_type_filters.get(product_type, True):
                 return False
-        return super(ProductsProxyModel, self).filterAcceptsRow(
-            source_row, source_parent)
+
+        if not self._accept_row_by_statuses(index):
+            return False
+        return super().filterAcceptsRow(source_row, source_parent)
+
+    def _accept_row_by_statuses(self, index):
+        if self._statuses_filter is None:
+            return True
+        if not self._statuses_filter:
+            return False
+
+        status_s = index.data(STATUS_NAME_FILTER_ROLE)
+        for status in status_s.split("|"):
+            if status in self._statuses_filter:
+                return True
+        return False
 
     def lessThan(self, left, right):
         l_model = left.model()
@@ -211,9 +234,19 @@ class ProductsWidget(QtWidgets.QWidget):
 
         Args:
             name (str): The string filter.
-        """
 
+        """
         self._products_proxy_model.setFilterFixedString(name)
+
+    def set_statuses_filter(self, status_names):
+        """Set filter of version statuses.
+
+        Args:
+            status_names (list[str]): The list of status names.
+
+        """
+        self._products_proxy_model.set_statuses_filter(status_names)
+        self._version_delegate.set_statuses_filter(status_names)
 
     def set_product_type_filter(self, product_type_filters):
         """
