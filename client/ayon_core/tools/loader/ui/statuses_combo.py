@@ -7,9 +7,7 @@ from ayon_core.tools.common_models import StatusItem
 
 from ._multicombobox import (
     CustomPaintMultiselectComboBox,
-    CUSTOM_ITEM_TYPE,
     STANDARD_ITEM_TYPE,
-    SEPARATOR_ITEM_TYPE,
 )
 
 STATUS_ITEM_TYPE = 0
