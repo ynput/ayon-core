@@ -282,6 +282,7 @@ class CustomPaintMultiselectComboBox(QtWidgets.QComboBox):
         self._short_text_role = short_text_role
         self._text_color_role = text_color_role
         self._icon_role = icon_role
+        self._item_type_role = item_type_role
 
         self._popup_is_shown = False
         self._block_mouse_release_timer = QtCore.QTimer(self, singleShot=True)
@@ -498,6 +499,10 @@ class CustomPaintMultiselectComboBox(QtWidgets.QComboBox):
             role = self._value_role
         items = []
         for idx in range(self.count()):
+            item_type = self.itemData(idx, role=self._item_type_role)
+            if item_type is not None and item_type != CUSTOM_ITEM_TYPE:
+                continue
+
             state = checkstate_int_to_enum(
                 self.itemData(idx, role=QtCore.Qt.CheckStateRole)
             )
@@ -510,6 +515,10 @@ class CustomPaintMultiselectComboBox(QtWidgets.QComboBox):
             role = self._value_role
         items = []
         for idx in range(self.count()):
+            item_type = self.itemData(idx, role=self._item_type_role)
+            if item_type is not None and item_type != CUSTOM_ITEM_TYPE:
+                continue
+
             state = checkstate_int_to_enum(
                 self.itemData(idx, role=QtCore.Qt.CheckStateRole)
             )
