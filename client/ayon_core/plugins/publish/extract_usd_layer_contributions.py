@@ -561,6 +561,8 @@ class ExtractUSDLayerContribution(publish.Extractor):
     label = "Extract USD Layer Contributions (Asset/Shot)"
     order = pyblish.api.ExtractorOrder + 0.45
 
+    use_ayon_entity_uri = True
+
     def process(self, instance):
 
         folder_path = instance.data["folderPath"]
@@ -578,7 +580,8 @@ class ExtractUSDLayerContribution(publish.Extractor):
 
         contributions = instance.data.get("usd_contributions", [])
         for contribution in sorted(contributions, key=attrgetter("order")):
-            path = get_instance_uri_path(contribution.instance)
+            path = get_instance_uri_path(contribution.instance,
+                                         resolve=not self.use_ayon_entity_uri)
             if isinstance(contribution, VariantContribution):
                 # Add contribution as a reference inside a variant
                 self.log.debug(f"Adding variant: {contribution}")
@@ -720,6 +723,8 @@ class ExtractUSDAssetContribution(publish.Extractor):
     label = "Extract USD Asset/Shot Contributions"
     order = ExtractUSDLayerContribution.order + 0.01
 
+    use_ayon_entity_uri = True
+
     def process(self, instance):
 
         folder_path = instance.data["folderPath"]
@@ -795,15 +800,15 @@ class ExtractUSDAssetContribution(publish.Extractor):
             layer_id = layer_instance.data["usd_layer_id"]
             order = layer_instance.data["usd_layer_order"]
 
-            path = get_instance_uri_path(instance=layer_instance)
+            path = get_instance_uri_path(instance=layer_instance,
+                                         resolve=not self.use_ayon_entity_uri)
             add_ordered_sublayer(target_layer,
                                  contribution_path=path,
                                  layer_id=layer_id,
                                  order=order,
                                  # Add the sdf argument metadata which allows
                                  # us to later detect whether another path
-                                 # has the same layer id, so we can replace it
-                                 # it.
+                                 # has the same layer id, so we can replace it.
                                  add_sdf_arguments_metadata=True)
 
         # Save the file
