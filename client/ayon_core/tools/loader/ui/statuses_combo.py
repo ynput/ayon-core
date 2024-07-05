@@ -1,6 +1,6 @@
 from typing import List, Dict
 
-from qtpy import QtWidgets, QtCore, QtGui
+from qtpy import QtCore, QtGui
 
 from ayon_core.tools.utils import get_qt_icon
 from ayon_core.tools.common_models import StatusItem
