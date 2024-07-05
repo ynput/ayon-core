@@ -84,6 +84,17 @@ class CollectUSDLayerContributionsModel(BaseSettingsModel):
         return value
 
 
+class AyonEntityURIModel(BaseSettingsModel):
+    use_ayon_entity_uri: bool = SettingsField(
+        title="Use AYON Entity URI",
+        description=(
+            "When enabled the USD paths written using the contribution "
+            "workflow will use ayon entity URIs instead of resolved published "
+            "paths. You can only load these if you use the AYON USD Resolver."
+        )
+    )
+
+
 class PluginStateByHostModelProfile(BaseSettingsModel):
     _layout = "expanded"
     # Filtering
@@ -857,6 +868,14 @@ class PublishPuginsModel(BaseSettingsModel):
         default_factory=ExtractBurninModel,
         title="Extract Burnin"
     )
+    ExtractUSDAssetContribution: AyonEntityURIModel = SettingsField(
+        default_factory=AyonEntityURIModel,
+        title="Extract USD Asset Contribution",
+    )
+    ExtractUSDLayerContribution: AyonEntityURIModel = SettingsField(
+        default_factory=AyonEntityURIModel,
+        title="Extract USD Layer Contribution",
+    )
     PreIntegrateThumbnails: PreIntegrateThumbnailsModel = SettingsField(
         default_factory=PreIntegrateThumbnailsModel,
         title="Override Integrate Thumbnail Representations"
@@ -1160,6 +1179,12 @@ DEFAULT_PUBLISH_VALUES = {
                 ]
             }
         ]
+    },
+    "ExtractUSDAssetContribution": {
+        "use_ayon_entity_uri": True,
+    },
+    "ExtractUSDLayerContribution": {
+        "use_ayon_entity_uri": True,
     },
     "PreIntegrateThumbnails": {
         "enabled": True,
