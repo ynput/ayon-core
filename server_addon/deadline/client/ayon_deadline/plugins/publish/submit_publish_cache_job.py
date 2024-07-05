@@ -128,7 +128,7 @@ class ProcessSubmittedCacheJobOnFarm(pyblish.api.InstancePlugin,
             "AYON_TASK_NAME": instance.context.data["task"],
             "AYON_USERNAME": instance.context.data["user"],
             "AYON_LOG_NO_COLORS": "1",
-            "IS_TEST": str(int(is_in_tests())),
+            "AYON_IN_TESTS": str(int(is_in_tests())),
             "AYON_PUBLISH_JOB": "1",
             "AYON_RENDER_JOB": "0",
             "AYON_REMOTE_PUBLISH": "0",
@@ -155,9 +155,6 @@ class ProcessSubmittedCacheJobOnFarm(pyblish.api.InstancePlugin,
             "--targets", "deadline",
             "--targets", "farm"
         ]
-
-        if is_in_tests():
-            args.append("--automatic-tests")
 
         # Generate the payload for Deadline submission
         secondary_pool = (
