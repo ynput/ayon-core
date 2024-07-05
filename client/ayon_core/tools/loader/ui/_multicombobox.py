@@ -10,6 +10,10 @@ from ayon_core.tools.utils.constants import (
     ITEM_IS_USER_TRISTATE,
 )
 
+CUSTOM_ITEM_TYPE = 0
+STANDARD_ITEM_TYPE = 1
+SEPARATOR_ITEM_TYPE = 2
+
 
 class CustomPaintDelegate(QtWidgets.QStyledItemDelegate):
     """Delegate showing status name and short name."""
@@ -22,6 +26,7 @@ class CustomPaintDelegate(QtWidgets.QStyledItemDelegate):
         short_text_role,
         text_color_role,
         icon_role,
+        item_type_role=None,
         parent=None
     ):
         super().__init__(parent)
@@ -29,8 +34,24 @@ class CustomPaintDelegate(QtWidgets.QStyledItemDelegate):
         self._text_color_role = text_color_role
         self._short_text_role = short_text_role
         self._icon_role = icon_role
+        self._item_type_role = item_type_role
 
     def paint(self, painter, option, index):
+        item_type = None
+        if self._item_type_role is not None:
+            item_type = index.data(self._item_type_role)
+
+        if item_type is None:
+            item_type = CUSTOM_ITEM_TYPE
+
+        if item_type == STANDARD_ITEM_TYPE:
+            super().paint(painter, option, index)
+            return
+
+        elif item_type == SEPARATOR_ITEM_TYPE:
+            self._paint_separator(painter, option, index)
+            return
+
         if option.widget:
             style = option.widget.style()
         else:
@@ -158,6 +179,29 @@ class CustomPaintDelegate(QtWidgets.QStyledItemDelegate):
 
         painter.restore()
 
+    def _paint_separator(self, painter, option, index):
+        painter.save()
+        painter.setClipRect(option.rect)
+
+        style = option.widget.style()
+        style.drawPrimitive(
+            QtWidgets.QCommonStyle.PE_PanelItemViewItem,
+            option,
+            painter,
+            option.widget
+        )
+
+        pen = painter.pen()
+        pen.setWidth(2)
+        painter.setPen(pen)
+        mid_y = (option.rect.top() + option.rect.bottom()) * 0.5
+        painter.drawLine(
+            QtCore.QPointF(option.rect.left(), mid_y),
+            QtCore.QPointF(option.rect.right(), mid_y)
+        )
+
+        painter.restore()
+
     def _get_index_name(self, index):
         return index.data(self._text_role)
 
@@ -198,11 +242,12 @@ class CustomPaintMultiselectComboBox(QtWidgets.QComboBox):
 
     def __init__(
         self,
-        name_role,
-        short_name_role,
+        text_role,
+        short_text_role,
         text_color_role,
         icon_role,
         value_role=None,
+        item_type_role=None,
         model=None,
         placeholder=None,
         parent=None,
@@ -218,21 +263,23 @@ class CustomPaintMultiselectComboBox(QtWidgets.QComboBox):
         self.setView(combo_view)
 
         item_delegate = CustomPaintDelegate(
-            name_role,
-            short_name_role,
-            text_color_role,
-            icon_role,
+            text_role=text_role,
+            short_text_role=short_text_role,
+            text_color_role=text_color_role,
+            icon_role=icon_role,
+            item_type_role=item_type_role,
+            parent=combo_view,
         )
         combo_view.setItemDelegateForColumn(0, item_delegate)
 
         if value_role is None:
-            value_role = name_role
+            value_role = text_role
 
         self._combo_view = combo_view
         self._item_delegate = item_delegate
         self._value_role = value_role
-        self._name_role = name_role
-        self._short_name_role = short_name_role
+        self._text_role = text_role
+        self._short_text_role = short_text_role
         self._text_color_role = text_color_role
         self._icon_role = icon_role
 
@@ -307,40 +354,18 @@ class CustomPaintMultiselectComboBox(QtWidgets.QComboBox):
         state = checkstate_int_to_enum(
             current_index.data(QtCore.Qt.CheckStateRole)
         )
+
         new_state = None
 
         if event.type() == QtCore.QEvent.MouseButtonRelease:
-            if (
-                self._block_mouse_release_timer.isActive()
-                or not current_index.isValid()
-                or not self.view().isVisible()
-                or not self.view().rect().contains(event.pos())
-                or not index_flags & QtCore.Qt.ItemIsSelectable
-                or not index_flags & QtCore.Qt.ItemIsEnabled
-                or not index_flags & QtCore.Qt.ItemIsUserCheckable
-            ):
-                return
-
-            if state == QtCore.Qt.Checked:
-                new_state = UNCHECKED_INT
-            else:
-                new_state = CHECKED_INT
+            new_state = self._mouse_released_event_handle(
+                event, current_index, index_flags, state
+            )
 
         elif event.type() == QtCore.QEvent.KeyPress:
-            # TODO: handle QtCore.Qt.Key_Enter, Key_Return?
-            if event.key() == QtCore.Qt.Key_Space:
-                if (
-                    index_flags & QtCore.Qt.ItemIsUserCheckable
-                    and index_flags & ITEM_IS_USER_TRISTATE
-                ):
-                    new_state = (checkstate_enum_to_int(state) + 1) % 3
-
-                elif index_flags & QtCore.Qt.ItemIsUserCheckable:
-                    # toggle the current items check state
-                    if state != QtCore.Qt.Checked:
-                        new_state = CHECKED_INT
-                    else:
-                        new_state = UNCHECKED_INT
+            new_state = self._key_press_event_handler(
+                event, current_index, index_flags, state
+            )
 
         if new_state is not None:
             model.setData(current_index, new_state, QtCore.Qt.CheckStateRole)
@@ -421,7 +446,7 @@ class CustomPaintMultiselectComboBox(QtWidgets.QComboBox):
 
             icon = index.data(self._icon_role)
             # TODO handle this case
-            if icon.isNull():
+            if icon is None or icon.isNull():
                 continue
 
             icon_rect = QtCore.QRect(content_rect)
@@ -520,3 +545,42 @@ class CustomPaintMultiselectComboBox(QtWidgets.QComboBox):
             return event.ignore()
 
         return super().keyPressEvent(event)
+
+    def _mouse_released_event_handle(
+        self, event, current_index, index_flags, state
+    ):
+        if (
+            self._block_mouse_release_timer.isActive()
+            or not current_index.isValid()
+            or not self.view().isVisible()
+            or not self.view().rect().contains(event.pos())
+            or not index_flags & QtCore.Qt.ItemIsSelectable
+            or not index_flags & QtCore.Qt.ItemIsEnabled
+            or not index_flags & QtCore.Qt.ItemIsUserCheckable
+        ):
+            return None
+
+        if state == QtCore.Qt.Checked:
+            return UNCHECKED_INT
+        return CHECKED_INT
+
+
+    def _key_press_event_handler(
+        self, event, current_index, index_flags, state
+    ):
+        # TODO: handle QtCore.Qt.Key_Enter, Key_Return?
+        if event.key() != QtCore.Qt.Key_Space:
+            return None
+
+        if (
+            index_flags & QtCore.Qt.ItemIsUserCheckable
+            and index_flags & ITEM_IS_USER_TRISTATE
+        ):
+            return (checkstate_enum_to_int(state) + 1) % 3
+
+        if index_flags & QtCore.Qt.ItemIsUserCheckable:
+            # toggle the current items check state
+            if state != QtCore.Qt.Checked:
+                return CHECKED_INT
+            return UNCHECKED_INT
+        return None
