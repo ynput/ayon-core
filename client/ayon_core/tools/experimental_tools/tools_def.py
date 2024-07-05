@@ -98,7 +98,7 @@ class ExperimentalTools:
                 ]
             ),
             ExperimentalHostTool(
-                "DebugExprimentalTool",
+                "pyblish_debug_stepper",
                 "Pyblish Debug Stepper",
                 "Debug Pyblish plugins step by step.",
                 self._show_pyblish_debugger,
@@ -173,12 +173,12 @@ class ExperimentalTools:
         # Because they will always be disabled due
         #   to the fact their settings don't exist.
         experimental_settings.update({
-            "DebugExprimentalTool": True,
+            "pyblish_debug_stepper": True,
         })
 
-        for identifier, eperimental_tool in self.tools_by_identifier.items():
+        for identifier, experimental_tool in self.tools_by_identifier.items():
             enabled = experimental_settings.get(identifier, False)
-            eperimental_tool.set_enabled(enabled)
+            experimental_tool.set_enabled(enabled)
 
     def _show_publisher(self):
         if self._publisher_tool is None:
