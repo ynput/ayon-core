@@ -126,11 +126,15 @@ def get_product_name(
         project_entity (Optional[Dict[str, Any]]): Project entity used when
             task short name is required by template.
 
+    Returns:
+        str: Product name.
+
     Raises:
+        TaskNotSetError: If template requires task which is not provided.
         TemplateFillError: If filled template contains placeholder key which
             is not collected.
-    """
 
+    """
     if not product_type:
         return ""
 
@@ -156,8 +160,6 @@ def get_product_name(
         task_value = task_name
 
     elif "{task[short]}" in template.lower():
-        # NOTE this is very inefficient approach
-        #   - project entity should be required
         if project_entity is None:
             project_entity = ayon_api.get_project(project_name)
         task_types_by_name = {
