@@ -282,7 +282,7 @@ class HarmonySubmitDeadline(
             "AYON_WORKDIR",
             "AYON_APP_NAME",
             "AYON_LOG_NO_COLORS"
-            "IS_TEST"
+            "AYON_IN_TESTS"
         ]
 
         environment = {
