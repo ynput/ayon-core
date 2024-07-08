@@ -9,5 +9,3 @@ class CreateTyFlow(plugin.MaxCacheCreator):
     label = "TyFlow"
     product_type = "tyflow"
     icon = "gear"
-
-    settings_category = "max"
