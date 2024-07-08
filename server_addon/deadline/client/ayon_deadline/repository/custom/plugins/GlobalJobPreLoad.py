@@ -13,7 +13,7 @@ from Deadline.Scripting import (
     FileUtils,
     DirectoryUtils,
 )
-__version__ = "1.1.0"
+__version__ = "1.1.1"
 VERSION_REGEX = re.compile(
     r"(?P<major>0|[1-9]\d*)"
     r"\.(?P<minor>0|[1-9]\d*)"
@@ -342,6 +342,7 @@ def inject_openpype_environment(deadlinePlugin):
             "envgroup": "farm"
         }
 
+        # use legacy IS_TEST env var to mark automatic tests for OP
         if job.GetJobEnvironmentKeyValue("IS_TEST"):
             args.append("--automatic-tests")
 
@@ -501,8 +502,6 @@ def inject_ayon_environment(deadlinePlugin):
             "extractenvironments",
             export_url
         ]
-        if job.GetJobEnvironmentKeyValue("IS_TEST"):
-            args.append("--automatic-tests")
 
         for key, value in add_kwargs.items():
             args.extend(["--{}".format(key), value])
@@ -516,6 +515,10 @@ def inject_ayon_environment(deadlinePlugin):
             "AYON_API_KEY": ayon_api_key,
             "AYON_BUNDLE_NAME": ayon_bundle_name,
         }
+
+        automatic_tests = job.GetJobEnvironmentKeyValue("AYON_IN_TESTS")
+        if automatic_tests:
+            environment["AYON_IN_TESTS"] = automatic_tests
         for env, val in environment.items():
             # Add the env var for the Render Plugin that is about to render
             deadlinePlugin.SetEnvironmentVariable(env, val)
