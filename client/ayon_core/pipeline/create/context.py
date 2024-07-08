@@ -2112,6 +2112,7 @@ class CreateContext:
         )
         kwargs = {"project_entity": project_entity}
         # Backwards compatibility for 'project_entity' argument
+        # - 'get_product_name' signature changed 24/07/08
         if not is_func_signature_supported(
             creator.get_product_name, *args, **kwargs
         ):
