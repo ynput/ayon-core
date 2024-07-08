@@ -50,6 +50,30 @@ class RedshiftRenderPluginInfo():
     Version = attr.ib(default="1")
 
 
+@attr.s
+class HuskStandalonePluginInfo():
+    """Requires Deadline Husk Standalone Plugin.
+    See Deadline Plug-in:
+        https://github.com/BigRoy/HuskStandaloneSubmitter
+    Also see Husk options here:
+        https://www.sidefx.com/docs/houdini/ref/utils/husk.html
+    """
+    SceneFile = attr.ib()
+    # TODO: Below parameters are only supported by custom version of the plugin
+    Renderer = attr.ib(default=None)
+    RenderSettings = attr.ib(default="/Render/rendersettings")
+    Purpose = attr.ib(default="geometry,render")
+    Complexity = attr.ib(default="veryhigh")
+    Snapshot = attr.ib(default=-1)
+    LogLevel = attr.ib(default="2")
+    PreRender = attr.ib(default="")
+    PreFrame = attr.ib(default="")
+    PostFrame = attr.ib(default="")
+    PostRender = attr.ib(default="")
+    RestartDelegate = attr.ib(default="")
+    Version = attr.ib(default="")
+
+
 class HoudiniSubmitDeadline(
     abstract_submit_deadline.AbstractSubmitDeadline,
     AYONPyblishPluginMixin
@@ -69,8 +93,7 @@ class HoudiniSubmitDeadline(
     label = "Submit Render to Deadline"
     order = pyblish.api.IntegratorOrder
     hosts = ["houdini"]
-    families = ["usdrender",
-                "redshift_rop",
+    families = ["redshift_rop",
                 "arnold_rop",
                 "mantra_rop",
                 "karma_rop",
@@ -149,11 +172,14 @@ class HoudiniSubmitDeadline(
 
         job_type = "[RENDER]"
         if split_render_job and not is_export_job:
-            # Convert from family to Deadline plugin name
-            # i.e., arnold_rop -> Arnold
-            plugin = (
-                instance.data["productType"].replace("_rop", "").capitalize()
-            )
+            product_type = instance.data["productType"]
+            plugin = {
+                "usdrender": "HuskStandalone",
+            }.get(product_type)
+            if not plugin:
+                # Convert from product type to Deadline plugin name
+                # i.e., arnold_rop -> Arnold
+                plugin = product_type.replace("_rop", "").capitalize()
         else:
             plugin = "Houdini"
             if split_render_job:
@@ -185,7 +211,8 @@ class HoudiniSubmitDeadline(
         # Make sure we make job frame dependent so render tasks pick up a soon
         # as export tasks are done
         if split_render_job and not is_export_job:
-            job_info.IsFrameDependent = True
+            job_info.IsFrameDependent = bool(instance.data.get(
+                "splitRenderFrameDependent", True))
 
         job_info.Pool = instance.data.get("primaryPool")
         job_info.SecondaryPool = instance.data.get("secondaryPool")
@@ -206,6 +233,13 @@ class HoudiniSubmitDeadline(
                 "chunk", self.chunk_size
             )
             job_info.Group = self.group
+
+        # Apply render globals, like e.g. data from collect machine list
+        render_globals = instance.data.get("renderGlobals", {})
+        if render_globals:
+            self.log.debug("Applying 'renderGlobals' to job info: %s",
+                           render_globals)
+            job_info.update(render_globals)
 
         job_info.Comment = context.data.get("comment")
 
@@ -292,6 +326,10 @@ class HoudiniSubmitDeadline(
                         " - using version configured in Deadline"
                     ))
 
+            elif product_type == "usdrender":
+                plugin_info = self._get_husk_standalone_plugin_info(
+                    instance, hou_major_minor)
+
             else:
                 self.log.error(
                     "Product type '%s' not supported yet to split render job",
@@ -321,3 +359,45 @@ class HoudiniSubmitDeadline(
         # Store output dir for unified publisher (filesequence)
         output_dir = os.path.dirname(instance.data["files"][0])
         instance.data["outputDir"] = output_dir
+
+    def _get_husk_standalone_plugin_info(self, instance, hou_major_minor):
+        # Not all hosts can import this module.
+        import hou
+
+        # Supply additional parameters from the USD Render ROP
+        # to the Husk Standalone Render Plug-in
+        rop_node = hou.node(instance.data["instance_node"])
+        snapshot_interval = -1
+        if rop_node.evalParm("dosnapshot"):
+            snapshot_interval = rop_node.evalParm("snapshotinterval")
+
+        restart_delegate = 0
+        if rop_node.evalParm("husk_restartdelegate"):
+            restart_delegate = rop_node.evalParm("husk_restartdelegateframes")
+
+        rendersettings = (
+            rop_node.evalParm("rendersettings")
+            or "/Render/rendersettings"
+        )
+        return HuskStandalonePluginInfo(
+            SceneFile=instance.data["ifdFile"],
+            Renderer=rop_node.evalParm("renderer"),
+            RenderSettings=rendersettings,
+            Purpose=rop_node.evalParm("husk_purpose"),
+            Complexity=rop_node.evalParm("husk_complexity"),
+            Snapshot=snapshot_interval,
+            PreRender=rop_node.evalParm("husk_prerender"),
+            PreFrame=rop_node.evalParm("husk_preframe"),
+            PostFrame=rop_node.evalParm("husk_postframe"),
+            PostRender=rop_node.evalParm("husk_postrender"),
+            RestartDelegate=restart_delegate,
+            Version=hou_major_minor
+        )
+
+
+class HoudiniSubmitDeadlineUsdRender(HoudiniSubmitDeadline):
+    # Do not use published workfile paths for USD Render ROP because the
+    # Export Job doesn't seem to occur using the published path either, so
+    # output paths then do not match the actual rendered paths
+    use_published = False
+    families = ["usdrender"]

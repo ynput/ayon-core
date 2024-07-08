@@ -15,7 +15,6 @@ import six
 from ayon_core.lib import Logger
 from ayon_core.addon import AddonsManager
 from ayon_core.settings import get_project_settings
-from ayon_core.settings.lib import get_site_local_overrides
 
 
 @six.add_metaclass(ABCMeta)
@@ -163,7 +162,7 @@ class HostDirmap(object):
         if (
             sitesync_addon is None
             or not sitesync_addon.enabled
-            or project_name not in sitesync_addon.get_enabled_projects()
+            or not sitesync_addon.is_project_enabled(project_name, True)
         ):
             return mapping
 
@@ -181,17 +180,14 @@ class HostDirmap(object):
                 exclude_locals=False,
                 cached=False)
 
-            # TODO implement
-            # Dirmap is dependent on 'get_site_local_overrides' which
-            #   is not implemented in AYON. The mapping should be received
-            #   from sitesync addon.
-            active_overrides = get_site_local_overrides(
+            # overrides for roots set in `Site Settings`
+            active_roots = sitesync_addon.get_site_root_overrides(
                 project_name, active_site)
-            remote_overrides = get_site_local_overrides(
+            remote_roots = sitesync_addon.get_site_root_overrides(
                 project_name, remote_site)
 
-            self.log.debug("local overrides {}".format(active_overrides))
-            self.log.debug("remote overrides {}".format(remote_overrides))
+            self.log.debug("active roots overrides {}".format(active_roots))
+            self.log.debug("remote roots overrides {}".format(remote_roots))
 
             current_platform = platform.system().lower()
             remote_provider = sitesync_addon.get_provider_for_site(
@@ -201,9 +197,9 @@ class HostDirmap(object):
             # won't be root on cloud or sftp provider
             if remote_provider != "local_drive":
                 remote_site = "studio"
-            for root_name, active_site_dir in active_overrides.items():
+            for root_name, active_site_dir in active_roots.items():
                 remote_site_dir = (
-                    remote_overrides.get(root_name)
+                    remote_roots.get(root_name)
                     or sync_settings["sites"][remote_site]["root"][root_name]
                 )
 

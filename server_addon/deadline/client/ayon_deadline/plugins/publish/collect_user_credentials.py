@@ -19,6 +19,10 @@ from ayon_deadline.lib import FARM_FAMILIES
 
 class CollectDeadlineUserCredentials(pyblish.api.InstancePlugin):
     """Collects user name and password for artist if DL requires authentication
+
+    If Deadline server is marked to require authentication, it looks first for
+    default values in 'Studio Settings', which could be overriden by artist
+    dependent values from 'Site settings`.
     """
     order = pyblish.api.CollectorOrder + 0.250
     label = "Collect Deadline User Credentials"
@@ -73,6 +77,14 @@ class CollectDeadlineUserCredentials(pyblish.api.InstancePlugin):
 
         addons_manager = instance.context.data["ayonAddonsManager"]
         deadline_addon = addons_manager["deadline"]
+
+        default_username = deadline_info["default_username"]
+        default_password = deadline_info["default_password"]
+        if default_username and default_password:
+            self.log.debug("Setting credentials from defaults")
+            instance.data["deadline"]["auth"] = (default_username,
+                                                 default_password)
+
         # TODO import 'get_addon_site_settings' when available
         #   in public 'ayon_api'
         local_settings = get_server_api_connection().get_addon_site_settings(
@@ -80,5 +92,8 @@ class CollectDeadlineUserCredentials(pyblish.api.InstancePlugin):
         local_settings = local_settings["local_settings"]
         for server_info in local_settings:
             if deadline_server_name == server_info["server_name"]:
-                instance.data["deadline"]["auth"] = (server_info["username"],
-                                                     server_info["password"])
+                if server_info["username"] and server_info["password"]:
+                    self.log.debug("Setting credentials from Site Settings")
+                    instance.data["deadline"]["auth"] = \
+                        (server_info["username"], server_info["password"])
+                    break

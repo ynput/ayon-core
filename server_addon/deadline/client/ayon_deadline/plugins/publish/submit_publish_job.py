@@ -94,7 +94,7 @@ class ProcessSubmittedJobOnFarm(pyblish.api.InstancePlugin,
                 "vrayscene", "maxrender",
                 "arnold_rop", "mantra_rop",
                 "karma_rop", "vray_rop",
-                "redshift_rop"]
+                "redshift_rop", "usdrender"]
     settings_category = "deadline"
 
     aov_filter = [
@@ -206,7 +206,7 @@ class ProcessSubmittedJobOnFarm(pyblish.api.InstancePlugin,
             "AYON_TASK_NAME": instance.context.data["task"],
             "AYON_USERNAME": instance.context.data["user"],
             "AYON_LOG_NO_COLORS": "1",
-            "IS_TEST": str(int(is_in_tests())),
+            "AYON_IN_TESTS": str(int(is_in_tests())),
             "AYON_PUBLISH_JOB": "1",
             "AYON_RENDER_JOB": "0",
             "AYON_REMOTE_PUBLISH": "0",
@@ -233,9 +233,6 @@ class ProcessSubmittedJobOnFarm(pyblish.api.InstancePlugin,
             "--targets", "deadline",
             "--targets", "farm"
         ]
-
-        if is_in_tests():
-            args.append("--automatic-tests")
 
         # Generate the payload for Deadline submission
         secondary_pool = (
