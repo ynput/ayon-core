@@ -42,13 +42,16 @@ class StatusesQtModel(QtGui.QStandardItemModel):
 
         self.refresh(None)
 
+    def get_placeholder_text(self):
+        return self._placeholder
+
     def refresh(self, project_name):
         # New project was selected
         #   status filter is reset to show all statuses
-        check_all = False
+        uncheck_all = False
         if project_name != self._last_project:
             self._last_project = project_name
-            check_all = True
+            uncheck_all = True
 
         if project_name is None:
             self._add_select_project_item()
@@ -72,14 +75,14 @@ class StatusesQtModel(QtGui.QStandardItemModel):
             if name in self._items_by_name:
                 is_new = False
                 item = self._items_by_name[name]
-                if check_all:
-                    item.setCheckState(QtCore.Qt.Checked)
+                if uncheck_all:
+                    item.setCheckState(QtCore.Qt.Unchecked)
                 items_to_remove.discard(name)
             else:
                 is_new = True
                 item = QtGui.QStandardItem()
                 item.setData(ITEM_SUBTYPE_ROLE, STATUS_ITEM_TYPE)
-                item.setCheckState(QtCore.Qt.Checked)
+                item.setCheckState(QtCore.Qt.Unchecked)
                 item.setFlags(
                     QtCore.Qt.ItemIsEnabled
                     | QtCore.Qt.ItemIsSelectable
@@ -148,8 +151,8 @@ class StatusesQtModel(QtGui.QStandardItemModel):
         if self._empty_statuses_item is not None:
             return
 
-        empty_statuses_item = QtGui.QStandardItem("No statuses..")
-        select_project_item = QtGui.QStandardItem("Select project..")
+        empty_statuses_item = QtGui.QStandardItem("No statuses...")
+        select_project_item = QtGui.QStandardItem("Select project...")
 
         select_all_item = QtGui.QStandardItem("Select all")
         deselect_all_item = QtGui.QStandardItem("Deselect all")
@@ -291,9 +294,10 @@ class StatusesCombobox(CustomPaintMultiselectComboBox):
             model=model,
             parent=parent
         )
-        self.set_placeholder_text("Statuses filter..")
+        self.set_placeholder_text("Statuses...")
         self._model = model
         self._last_project_name = None
+        self._fully_disabled_filter = False
 
         controller.register_event_callback(
             "selection.project.changed",
@@ -310,7 +314,7 @@ class StatusesCombobox(CustomPaintMultiselectComboBox):
 
     def _on_status_filter_change(self):
         lines = ["Statuses filter"]
-        for item in self.get_all_value_info():
+        for item in self.get_value_info():
             status_name, enabled = item
             lines.append(f"{'✔' if enabled else '☐'} {status_name}")
 
@@ -320,7 +324,6 @@ class StatusesCombobox(CustomPaintMultiselectComboBox):
         project_name = event["project_name"]
         self._last_project_name = project_name
         self._model.refresh(project_name)
-        self._on_status_filter_change()
 
     def _on_projects_refresh(self):
         if self._last_project_name:
