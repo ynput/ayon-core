@@ -1,5 +1,6 @@
 import os
 import logging
+from typing import Any, Dict
 
 from ayon_core.settings import get_project_settings
 from ayon_core.pipeline.plugin_discover import (
@@ -25,6 +26,7 @@ class LoaderPlugin(list):
 
     product_types = set()
     representations = set()
+    statuses = set()
     extensions = {"*"}
     order = 0
     is_multiple_contexts_compatible = False
@@ -73,6 +75,15 @@ class LoaderPlugin(list):
             else:
                 print("  - setting `{}`: `{}`".format(option, value))
             setattr(cls, option, value)
+
+    @classmethod
+    def has_valid_status(cls, version_entity: Dict[str, Any]) -> bool:
+        if not version_entity or not cls.statuses:
+            return True
+        return version_entity["status"].lower() in {
+            status.lower()
+            for status in cls.statuses
+        }
 
     @classmethod
     def has_valid_extension(cls, repre_entity):
@@ -146,6 +157,9 @@ class LoaderPlugin(list):
             "*" not in plugin_repre_names
             and repre_entity["name"] not in plugin_repre_names
         ):
+            return False
+
+        if not cls.has_valid_status(context.get("version")):
             return False
 
         if not cls.has_valid_extension(repre_entity):
