@@ -1,18 +1,7 @@
-import uuid
-
 import ayon_api
-import pyblish.api
+import ayon_api.utils
 
 from ayon_core.pipeline import registered_host
-
-
-def is_valid_uuid(value) -> bool:
-    """Return whether value is a valid UUID"""
-    try:
-        uuid.UUID(value)
-    except ValueError:
-        return False
-    return True
 
 
 class CollectSceneLoadedVersions(pyblish.api.ContextPlugin):
@@ -51,9 +40,11 @@ class CollectSceneLoadedVersions(pyblish.api.ContextPlugin):
             container["representation"]
             for container in containers
         }
+
+        # Ignore representation ids that are not valid
         repre_ids = {
-            repre_id for repre_id in repre_ids
-            if is_valid_uuid(repre_id)
+            representation_id for representation_id in repre_ids
+            if ayon_api.utils.convert_entity_id(representation_id)
         }
 
         project_name = context.data["projectName"]

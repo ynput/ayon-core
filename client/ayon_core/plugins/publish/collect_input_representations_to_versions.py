@@ -1,16 +1,6 @@
-import uuid
-
 import ayon_api
+import ayon_api.utils
 import pyblish.api
-
-
-def is_valid_uuid(value) -> bool:
-    """Return whether value is a valid UUID"""
-    try:
-        uuid.UUID(value)
-    except ValueError:
-        return False
-    return True
 
 
 class CollectInputRepresentationsToVersions(pyblish.api.ContextPlugin):
@@ -37,7 +27,7 @@ class CollectInputRepresentationsToVersions(pyblish.api.ContextPlugin):
         # Ignore representation ids that are not valid
         representations = {
             representation_id for representation_id in representations
-            if is_valid_uuid(representation_id)
+            if ayon_api.utils.convert_entity_id(representation_id)
         }
 
         repre_entities = ayon_api.get_representations(
