@@ -1872,7 +1872,7 @@ class PlaceholderCreateMixin(object):
                     creator_plugin.identifier,
                     create_variant,
                     folder_entity,
-                    task_name=task_name,
+                    task_entity,
                     pre_create_data=pre_create_data
                 )
 
