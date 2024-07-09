@@ -1,7 +1,8 @@
 import ayon_api
-import pyblish.api
+import ayon_api.utils
 
 from ayon_core.pipeline import registered_host
+import pyblish.api
 
 
 class CollectSceneLoadedVersions(pyblish.api.ContextPlugin):
@@ -41,6 +42,12 @@ class CollectSceneLoadedVersions(pyblish.api.ContextPlugin):
             for container in containers
         }
 
+        # Ignore representation ids that are not valid
+        repre_ids = {
+            representation_id for representation_id in repre_ids
+            if ayon_api.utils.convert_entity_id(representation_id)
+        }
+
         project_name = context.data["projectName"]
         repre_entities = ayon_api.get_representations(
             project_name,
@@ -65,7 +72,7 @@ class CollectSceneLoadedVersions(pyblish.api.ContextPlugin):
                 continue
 
             # NOTE:
-            # may have more then one representation that are same version
+            # may have more than one representation that are same version
             version = {
                 "container_name": con["name"],
                 "representation_id": repre_entity["id"],
