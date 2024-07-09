@@ -765,7 +765,7 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
             # Manage anatomy template data
             template_data.pop("frame", None)
             if is_udim:
-                template_data["udim"] = repre["udim"][0]
+                template_data["udim"] = repre["udim"]
             # Construct destination filepath from template
             template_filled = path_template_obj.format_strict(template_data)
             repre_context = template_filled.used_values
@@ -792,7 +792,7 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
         # Explicitly store the full list even though template data might
         # have a different value because it uses just a single udim tile
         if repre.get("udim"):
-            repre_context["udim"] = repre.get("udim")  # store list
+            repre_context["udim"] = repre.get("udim")[0]  # store list
 
         # Use previous representation's id if there is a name match
         existing = existing_repres_by_name.get(repre["name"].lower())
