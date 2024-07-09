@@ -2,6 +2,7 @@ import ayon_api
 import ayon_api.utils
 
 from ayon_core.pipeline import registered_host
+import pyblish.api
 
 
 class CollectSceneLoadedVersions(pyblish.api.ContextPlugin):
