@@ -1,3 +1,5 @@
+from typing import List, Tuple, Optional, Iterable, Any
+
 from qtpy import QtWidgets, QtCore, QtGui
 
 from ayon_core.tools.utils.lib import (
@@ -10,7 +12,7 @@ from ayon_core.tools.utils.constants import (
     ITEM_IS_USER_TRISTATE,
 )
 
-CUSTOM_ITEM_TYPE = 0
+VALUE_ITEM_TYPE = 0
 STANDARD_ITEM_TYPE = 1
 SEPARATOR_ITEM_TYPE = 2
 
@@ -22,11 +24,11 @@ class CustomPaintDelegate(QtWidgets.QStyledItemDelegate):
 
     def __init__(
         self,
-        text_role,
-        short_text_role,
-        text_color_role,
-        icon_role,
-        item_type_role=None,
+        text_role: int,
+        short_text_role: int,
+        text_color_role: int,
+        icon_role: int,
+        item_type_role: Optional[int] = None,
         parent=None
     ):
         super().__init__(parent)
@@ -42,7 +44,7 @@ class CustomPaintDelegate(QtWidgets.QStyledItemDelegate):
             item_type = index.data(self._item_type_role)
 
         if item_type is None:
-            item_type = CUSTOM_ITEM_TYPE
+            item_type = VALUE_ITEM_TYPE
 
         if item_type == STANDARD_ITEM_TYPE:
             super().paint(painter, option, index)
@@ -290,15 +292,49 @@ class CustomPaintMultiselectComboBox(QtWidgets.QComboBox):
         self._placeholder_text = placeholder
 
         self._custom_text = None
+        self._all_unchecked_as_checked = True
 
-    def get_placeholder_text(self):
+    def all_unchecked_as_checked(self) -> bool:
+        return self._all_unchecked_as_checked
+
+    def set_all_unchecked_as_checked(self, value: bool):
+        """Set if all unchecked items should be treated as checked.
+
+        Args:
+            value (bool): If True, all unchecked items will be treated
+                as checked.
+
+        """
+        self._all_unchecked_as_checked = value
+
+    def get_placeholder_text(self) -> Optional[str]:
         return self._placeholder_text
 
-    def set_placeholder_text(self, text):
+    def set_placeholder_text(self, text: Optional[str]):
+        """Set the placeholder text.
+
+        Text shown when nothing is selected.
+
+        Args:
+            text (str | None): The placeholder text.
+
+        """
+        if text == self._placeholder_text:
+            return
         self._placeholder_text = text
         self.repaint()
 
-    def set_custom_text(self, text):
+    def set_custom_text(self, text: Optional[str]):
+        """Set the placeholder text.
+
+        Text always shown in combobox field.
+
+        Args:
+            text (str | None): The text. Use 'None' to reset to default.
+
+        """
+        if text == self._custom_text:
+            return
         self._custom_text = text
         self.repaint()
 
@@ -481,64 +517,78 @@ class CustomPaintMultiselectComboBox(QtWidgets.QComboBox):
     def setItemCheckState(self, index, state):
         self.setItemData(index, state, QtCore.Qt.CheckStateRole)
 
-    def set_value(self, values, role=None):
+    def set_value(self, values: Optional[Iterable[Any]], role: Optional[int] = None):
         if role is None:
             role = self._value_role
 
         for idx in range(self.count()):
             value = self.itemData(idx, role=role)
-            if value in values:
-                check_state = CHECKED_INT
-            else:
+            check_state = CHECKED_INT
+            if values is None or value not in values:
                 check_state = UNCHECKED_INT
             self.setItemData(idx, check_state, QtCore.Qt.CheckStateRole)
         self.repaint()
 
+    def get_value_info(
+        self,
+        role: Optional[int] = None,
+        propagate_all_unchecked_as_checked: bool = None
+    ) -> List[Tuple[Any, bool]]:
+        """Get the values and their checked state.
+
+        Args:
+            role (int | None): The role to get the values from.
+                If None, the default value role is used.
+            propagate_all_unchecked_as_checked (bool | None): If True,
+                all unchecked items will be treated as checked.
+                If None, the current value of
+                'propagate_all_unchecked_as_checked' is used.
+
+        Returns:
+            List[Tuple[Any, bool]]: The values and their checked state.
+
+        """
+        if role is None:
+            role = self._value_role
+
+        if propagate_all_unchecked_as_checked is None:
+            propagate_all_unchecked_as_checked = (
+                self._all_unchecked_as_checked
+            )
+
+        items = []
+        all_unchecked = True
+        for idx in range(self.count()):
+            item_type = self.itemData(idx, role=self._item_type_role)
+            if item_type is not None and item_type != VALUE_ITEM_TYPE:
+                continue
+
+            state = checkstate_int_to_enum(
+                self.itemData(idx, role=QtCore.Qt.CheckStateRole)
+            )
+            checked = state == QtCore.Qt.Checked
+            if checked:
+                all_unchecked = False
+            items.append(
+                (self.itemData(idx, role=role), checked)
+            )
+
+        if propagate_all_unchecked_as_checked and all_unchecked:
+            items = [
+                (value, True)
+                for value, checked in items
+            ]
+        return items
+
     def get_value(self, role=None):
         if role is None:
             role = self._value_role
-        items = []
-        for idx in range(self.count()):
-            item_type = self.itemData(idx, role=self._item_type_role)
-            if item_type is not None and item_type != CUSTOM_ITEM_TYPE:
-                continue
 
-            state = checkstate_int_to_enum(
-                self.itemData(idx, role=QtCore.Qt.CheckStateRole)
-            )
-            if state == QtCore.Qt.Checked:
-                items.append(self.itemData(idx, role=role))
-        return items
-
-    def get_all_value_info(self, role=None):
-        if role is None:
-            role = self._value_role
-        items = []
-        for idx in range(self.count()):
-            item_type = self.itemData(idx, role=self._item_type_role)
-            if item_type is not None and item_type != CUSTOM_ITEM_TYPE:
-                continue
-
-            state = checkstate_int_to_enum(
-                self.itemData(idx, role=QtCore.Qt.CheckStateRole)
-            )
-            items.append(
-                (
-                    self.itemData(idx, role=role),
-                    state == QtCore.Qt.Checked
-                )
-            )
-        return items
-
-    def _get_checked_idx(self):
-        indexes = []
-        for idx in range(self.count()):
-            state = checkstate_int_to_enum(
-                self.itemData(idx, role=QtCore.Qt.CheckStateRole)
-            )
-            if state == QtCore.Qt.Checked:
-                indexes.append(idx)
-        return indexes
+        return [
+            value
+            for value, checked in self.get_value_info(role)
+            if checked
+        ]
 
     def wheelEvent(self, event):
         event.ignore()
@@ -554,6 +604,20 @@ class CustomPaintMultiselectComboBox(QtWidgets.QComboBox):
             return event.ignore()
 
         return super().keyPressEvent(event)
+
+    def _get_checked_idx(self) -> List[int]:
+        checked_indexes = []
+        for idx in range(self.count()):
+            item_type = self.itemData(idx, role=self._item_type_role)
+            if item_type is not None and item_type != VALUE_ITEM_TYPE:
+                continue
+
+            state = checkstate_int_to_enum(
+                self.itemData(idx, role=QtCore.Qt.CheckStateRole)
+            )
+            if state == QtCore.Qt.Checked:
+                checked_indexes.append(idx)
+        return checked_indexes
 
     def _mouse_released_event_handle(
         self, event, current_index, index_flags, state
@@ -572,7 +636,6 @@ class CustomPaintMultiselectComboBox(QtWidgets.QComboBox):
         if state == QtCore.Qt.Checked:
             return UNCHECKED_INT
         return CHECKED_INT
-
 
     def _key_press_event_handler(
         self, event, current_index, index_flags, state
