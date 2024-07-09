@@ -167,6 +167,12 @@ class AbstractPublisherBackend(AbstractPublisherCommon):
         pass
 
     @abstractmethod
+    def get_project_entity(
+        self, project_name: str
+    ) -> Union[Dict[str, Any], None]:
+        pass
+
+    @abstractmethod
     def get_folder_entity(
         self, project_name: str, folder_id: str
     ) -> Union[Dict[str, Any], None]:
