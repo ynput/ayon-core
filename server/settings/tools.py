@@ -572,17 +572,6 @@ DEFAULT_TOOLS_VALUES = {
                 "task_types": [],
                 "task_names": [],
                 "template_name": "tycache"
-            },
-            {
-                "product_types": [
-                    "image"
-                ],
-                "hosts": [
-                    "substancepainter"
-                ],
-                "task_types": [],
-                "task_names": [],
-                "template_name": "substanceImage"
             }
         ],
         "hero_template_name_profiles": [
