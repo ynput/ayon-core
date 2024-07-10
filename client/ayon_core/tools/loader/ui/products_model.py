@@ -351,11 +351,10 @@ class ProductsModel(QtGui.QStandardItemModel):
                 representation count by version id.
             sync_availability_by_version_id (Optional[str, Tuple[int, int]]):
                 Mapping of sync availability by version id.
-        """
 
+        """
         model_item.setData(version_item.version_id, VERSION_ID_ROLE)
         model_item.setData(version_item.version, VERSION_NAME_ROLE)
-        model_item.setData(version_item.version_id, VERSION_ID_ROLE)
         model_item.setData(version_item.is_hero, VERSION_HERO_ROLE)
         model_item.setData(
             version_item.published_time, VERSION_PUBLISH_TIME_ROLE
@@ -398,11 +397,11 @@ class ProductsModel(QtGui.QStandardItemModel):
         remote_site_icon,
         repre_count_by_version_id,
         sync_availability_by_version_id,
+        last_version_by_product_id,
     ):
         model_item = self._items_by_id.get(product_item.product_id)
-        versions = list(product_item.version_items.values())
-        versions.sort()
-        last_version = versions[-1]
+        last_version = last_version_by_product_id[product_item.product_id]
+
         statuses = {
             version_item.status
             for version_item in product_item.version_items.values()
@@ -443,7 +442,7 @@ class ProductsModel(QtGui.QStandardItemModel):
     def get_last_project_name(self):
         return self._last_project_name
 
-    def refresh(self, project_name, folder_ids):
+    def refresh(self, project_name, folder_ids, status_names):
         self._clear()
 
         self._last_project_name = project_name
@@ -473,16 +472,27 @@ class ProductsModel(QtGui.QStandardItemModel):
             product_item.product_id: product_item
             for product_item in product_items
         }
-        last_version_id_by_product_id = {}
+        last_version_by_product_id = {}
         for product_item in product_items:
-            versions = list(product_item.version_items.values())
-            versions.sort()
-            last_version = versions[-1]
-            last_version_id_by_product_id[product_item.product_id] = (
-                last_version.version_id
+            all_versions = list(product_item.version_items.values())
+            all_versions.sort()
+            versions = [
+                version_item
+                for version_item in all_versions
+                if status_names is None or version_item.status in status_names
+            ]
+            if versions:
+                last_version = versions[-1]
+            else:
+                last_version = all_versions[-1]
+            last_version_by_product_id[product_item.product_id] = (
+                last_version
             )
 
-        version_ids = set(last_version_id_by_product_id.values())
+        version_ids = {
+            version_item.version_id
+            for version_item in last_version_by_product_id.values()
+        }
         repre_count_by_version_id = self._controller.get_versions_representation_count(
             project_name, version_ids
         )
@@ -559,6 +569,7 @@ class ProductsModel(QtGui.QStandardItemModel):
                     remote_site_icon,
                     repre_count_by_version_id,
                     sync_availability_by_version_id,
+                    last_version_by_product_id,
                 )
                 new_items.append(item)
 
@@ -581,6 +592,7 @@ class ProductsModel(QtGui.QStandardItemModel):
                         remote_site_icon,
                         repre_count_by_version_id,
                         sync_availability_by_version_id,
+                        last_version_by_product_id,
                     )
                     new_merged_items.append(item)
                     merged_product_types.add(product_item.product_type)

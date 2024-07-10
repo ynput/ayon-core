@@ -1,4 +1,7 @@
 import numbers
+import uuid
+from typing import Dict, Set
+
 from qtpy import QtWidgets, QtCore, QtGui
 
 from ayon_core.tools.utils.lib import format_version
@@ -74,7 +77,7 @@ class VersionsFilterModel(QtCore.QSortFilterProxyModel):
 
 
 class VersionComboBox(QtWidgets.QComboBox):
-    value_changed = QtCore.Signal(str)
+    value_changed = QtCore.Signal()
 
     def __init__(self, product_id, parent):
         super().__init__(parent)
@@ -105,6 +108,11 @@ class VersionComboBox(QtWidgets.QComboBox):
         if self.currentIndex() != 0:
             self.setCurrentIndex(0)
 
+    def all_versions_filtered_out(self):
+        if self._items_by_id:
+            return self.count() == 0
+        return False
+
     def update_versions(self, version_items, current_version_id):
         self.blockSignals(True)
         version_items = list(version_items)
@@ -129,7 +137,13 @@ class VersionComboBox(QtWidgets.QComboBox):
         if value == self._current_id:
             return
         self._current_id = value
-        self.value_changed.emit(self._product_id)
+        self.value_changed.emit()
+
+
+class EditorInfo:
+    def __init__(self, widget):
+        self.widget = widget
+        self.added = False
 
 
 class VersionDelegate(QtWidgets.QStyledItemDelegate):
@@ -139,7 +153,8 @@ class VersionDelegate(QtWidgets.QStyledItemDelegate):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self._editor_by_product_id = {}
+
+        self._editor_by_id: Dict[str, EditorInfo] = {}
         self._statuses_filter = None
 
     def displayText(self, value, locale):
@@ -149,8 +164,8 @@ class VersionDelegate(QtWidgets.QStyledItemDelegate):
 
     def set_statuses_filter(self, status_names):
         self._statuses_filter = set(status_names)
-        for widget in self._editor_by_product_id.values():
-            widget.set_statuses_filter(status_names)
+        for info in self._editor_by_id.values():
+            info.widget.set_statuses_filter(status_names)
 
     def paint(self, painter, option, index):
         fg_color = index.data(QtCore.Qt.ForegroundRole)
@@ -209,26 +224,20 @@ class VersionDelegate(QtWidgets.QStyledItemDelegate):
         if not product_id:
             return
 
+        item_id = uuid.uuid4().hex
+
         editor = VersionComboBox(product_id, parent)
-        self._editor_by_product_id[product_id] = editor
-        editor.value_changed.connect(self._on_editor_change)
-        editor.set_statuses_filter(self._statuses_filter)
+        editor.setProperty("itemId", item_id)
 
-        def on_destroy(obj):
-            self._on_destroy(product_id)
+        self._editor_by_id[item_id] = EditorInfo(editor)
 
-        editor.destroyed.connect(on_destroy)
+        def editor_changed():
+            self._on_editor_change(item_id)
+
+        editor.value_changed.connect(editor_changed)
+        editor.destroyed.connect(self._on_destroy)
 
         return editor
-
-    def _on_editor_change(self, product_id):
-        editor = self._editor_by_product_id[product_id]
-
-        # Update model data
-        self.commitData.emit(editor)
-
-    def _on_destroy(self, product_id):
-        self._editor_by_product_id.pop(product_id, None)
 
     def setEditorData(self, editor, index):
         editor.clear()
@@ -237,12 +246,28 @@ class VersionDelegate(QtWidgets.QStyledItemDelegate):
         versions = index.data(VERSION_NAME_EDIT_ROLE) or []
         version_id = index.data(VERSION_ID_ROLE)
         editor.update_versions(versions, version_id)
+        editor.set_statuses_filter(self._statuses_filter)
+
+        item_id = editor.property("itemId")
+        self._editor_by_id[item_id].added = True
 
     def setModelData(self, editor, model, index):
         """Apply the integer version back in the model"""
 
         version_id = editor.itemData(editor.currentIndex())
         model.setData(index, version_id, VERSION_NAME_EDIT_ROLE)
+
+    def _on_editor_change(self, item_id):
+        info = self._editor_by_id.get(item_id)
+        if info is None or not info.added:
+            return
+
+        editor = info.widget
+        self.commitData.emit(editor)
+
+    def _on_destroy(self, obj):
+        item_id = obj.property("itemId")
+        self._editor_by_id.pop(item_id, None)
 
 
 class LoadedInSceneDelegate(QtWidgets.QStyledItemDelegate):
