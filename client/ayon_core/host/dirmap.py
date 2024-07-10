@@ -225,9 +225,9 @@ class HostDirmap(object):
         """Safely handle root overrides.
 
         SiteSync raises ValueError for non local or studio sites.
-        TODO: could be removed when `get_site_root_overrides` is not raising
-        an Error but just returns {}
         """
+        # TODO: could be removed when `get_site_root_overrides` is not raising
+        #     an Error but just returns {}
         try:
             site_roots_overrides = sitesync_addon.get_site_root_overrides(
                 project_name, site_name)
