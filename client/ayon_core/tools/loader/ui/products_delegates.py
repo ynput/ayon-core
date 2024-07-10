@@ -1,6 +1,6 @@
 import numbers
 import uuid
-from typing import Dict, Set
+from typing import Dict
 
 from qtpy import QtWidgets, QtCore, QtGui
 
