@@ -83,7 +83,7 @@ class UpdateDialog(QtWidgets.QDialog):
         top_layout.addWidget(label_widget, 1)
 
         ignore_btn = QtWidgets.QPushButton("Ignore", self)
-        restart_btn = QtWidgets.QPushButton("Restart && Change", self)
+        restart_btn = QtWidgets.QPushButton("Restart && Update", self)
         restart_btn.setObjectName("TrayRestartButton")
 
         btns_layout = QtWidgets.QHBoxLayout()
