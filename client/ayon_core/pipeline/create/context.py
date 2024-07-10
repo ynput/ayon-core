@@ -13,6 +13,7 @@ import pyblish.api
 import ayon_api
 
 from ayon_core.settings import get_project_settings
+from ayon_core.lib import is_func_signature_supported
 from ayon_core.lib.attribute_definitions import (
     UnknownDef,
     serialize_attr_defs,
@@ -1404,6 +1405,7 @@ class CreateContext:
         self._current_workfile_path = None
         self._current_project_settings = None
 
+        self._current_project_entity = _NOT_SET
         self._current_folder_entity = _NOT_SET
         self._current_task_entity = _NOT_SET
         self._current_task_type = _NOT_SET
@@ -1591,6 +1593,22 @@ class CreateContext:
                 task_type = task_entity["taskType"]
             self._current_task_type = task_type
         return self._current_task_type
+
+    def get_current_project_entity(self):
+        """Project entity for current context project.
+
+        Returns:
+            Union[dict[str, Any], None]: Folder entity.
+
+        """
+        if self._current_project_entity is not _NOT_SET:
+            return copy.deepcopy(self._current_project_entity)
+        project_entity = None
+        project_name = self.get_current_project_name()
+        if project_name:
+            project_entity = ayon_api.get_project(project_name)
+        self._current_project_entity = project_entity
+        return copy.deepcopy(self._current_project_entity)
 
     def get_current_folder_entity(self):
         """Folder entity for current context folder.
@@ -1788,6 +1806,7 @@ class CreateContext:
         self._current_task_name = task_name
         self._current_workfile_path = workfile_path
 
+        self._current_project_entity = _NOT_SET
         self._current_folder_entity = _NOT_SET
         self._current_task_entity = _NOT_SET
         self._current_task_type = _NOT_SET
@@ -2083,13 +2102,22 @@ class CreateContext:
         # TODO validate types
         _pre_create_data.update(pre_create_data)
 
-        product_name = creator.get_product_name(
+        project_entity = self.get_current_project_entity()
+        args = (
             project_name,
             folder_entity,
             task_entity,
             variant,
             self.host_name,
         )
+        kwargs = {"project_entity": project_entity}
+        # Backwards compatibility for 'project_entity' argument
+        # - 'get_product_name' signature changed 24/07/08
+        if not is_func_signature_supported(
+            creator.get_product_name, *args, **kwargs
+        ):
+            kwargs.pop("project_entity")
+        product_name = creator.get_product_name(*args, **kwargs)
 
         instance_data = {
             "folderPath": folder_entity["path"],
