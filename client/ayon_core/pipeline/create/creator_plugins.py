@@ -303,7 +303,6 @@ class BaseCreator:
                 ))
             setattr(self, key, value)
 
-
     @property
     def identifier(self):
         """Identifier of creator (must be unique).
@@ -498,7 +497,8 @@ class BaseCreator:
         task_entity,
         variant,
         host_name=None,
-        instance=None
+        instance=None,
+        project_entity=None,
     ):
         """Return product name for passed context.
 
@@ -515,8 +515,9 @@ class BaseCreator:
             instance (Optional[CreatedInstance]): Object of 'CreatedInstance'
                 for which is product name updated. Passed only on product name
                 update.
-        """
+            project_entity (Optional[dict[str, Any]]): Project entity.
 
+        """
         if host_name is None:
             host_name = self.create_context.host_name
 
@@ -542,7 +543,8 @@ class BaseCreator:
             self.product_type,
             variant,
             dynamic_data=dynamic_data,
-            project_settings=self.project_settings
+            project_settings=self.project_settings,
+            project_entity=project_entity,
         )
 
     def get_instance_attr_defs(self):
