@@ -765,7 +765,7 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
             # Manage anatomy template data
             template_data.pop("frame", None)
             if is_udim:
-                template_data["udim"] = repre["udim"]
+                template_data["udim"] = repre["udim"][0]
             # Construct destination filepath from template
             template_filled = path_template_obj.format_strict(template_data)
             repre_context = template_filled.used_values
