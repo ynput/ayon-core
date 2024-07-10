@@ -639,6 +639,14 @@ def get_representation_path_with_anatomy(repre_entity, anatomy):
     try:
         context = repre_entity["context"]
         context["root"] = anatomy.roots
+
+        # Auto-fix 'udim' being list of integers
+        # - This is a legacy issue for old representation entities,
+        #   added 24/07/10
+        udim = context.get("udim")
+        if isinstance(udim, list):
+            context["udim"] = udim[0]
+
         path = StringTemplate.format_strict_template(template, context)
 
     except TemplateUnsolved as exc:
@@ -681,6 +689,14 @@ def get_representation_path(representation, root=None):
 
         try:
             context = representation["context"]
+
+            # Auto-fix 'udim' being list of integers
+            # - This is a legacy issue for old representation entities,
+            #   added 24/07/10
+            udim = context.get("udim")
+            if isinstance(udim, list):
+                context["udim"] = udim[0]
+
             context["root"] = root
             path = StringTemplate.format_strict_template(
                 template, context
