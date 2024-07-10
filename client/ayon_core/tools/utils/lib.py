@@ -485,7 +485,10 @@ class _IconsCache:
             parts = [icon_type, icon_def["path"]]
 
         elif icon_type in {"awesome-font", "material-symbols"}:
-            parts = [icon_type, icon_def["name"], icon_def["color"]]
+            color = icon_def["color"] or ""
+            if isinstance(color, QtGui.QColor):
+                color = color.name()
+            parts = [icon_type, icon_def["name"] or "", color]
         return "|".join(parts)
 
     @classmethod
