@@ -34,11 +34,16 @@ from .actions_utils import show_actions_menu
 
 class ProductsProxyModel(RecursiveSortFilterProxyModel):
     def __init__(self, parent=None):
-        super(ProductsProxyModel, self).__init__(parent)
+        super().__init__(parent)
 
         self._product_type_filters = {}
         self._statuses_filter = None
         self._ascending_sort = True
+
+    def get_statuses_filter(self):
+        if self._statuses_filter is None:
+            return None
+        return set(self._statuses_filter)
 
     def set_product_type_filters(self, product_type_filters):
         self._product_type_filters = product_type_filters
@@ -97,13 +102,13 @@ class ProductsProxyModel(RecursiveSortFilterProxyModel):
             if not self._ascending_sort:
                 output = not output
             return output
-        return super(ProductsProxyModel, self).lessThan(left, right)
+        return super().lessThan(left, right)
 
     def sort(self, column, order=None):
         if order is None:
             order = QtCore.Qt.AscendingOrder
         self._ascending_sort = order == QtCore.Qt.AscendingOrder
-        super(ProductsProxyModel, self).sort(column, order)
+        super().sort(column, order)
 
 
 class ProductsWidget(QtWidgets.QWidget):
@@ -245,8 +250,8 @@ class ProductsWidget(QtWidgets.QWidget):
             status_names (list[str]): The list of status names.
 
         """
-        self._products_proxy_model.set_statuses_filter(status_names)
         self._version_delegate.set_statuses_filter(status_names)
+        self._products_proxy_model.set_statuses_filter(status_names)
 
     def set_product_type_filter(self, product_type_filters):
         """
@@ -314,7 +319,8 @@ class ProductsWidget(QtWidgets.QWidget):
     def _refresh_model(self):
         self._products_model.refresh(
             self._selected_project_name,
-            self._selected_folder_ids
+            self._selected_folder_ids,
+            self._products_proxy_model.get_statuses_filter()
         )
 
     def _on_context_menu(self, point):
