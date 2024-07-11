@@ -115,7 +115,6 @@ class ProductsWidget(QtWidgets.QWidget):
     refreshed = QtCore.Signal()
     merged_products_selection_changed = QtCore.Signal()
     selection_changed = QtCore.Signal()
-    version_changed = QtCore.Signal()
     default_widths = (
         200,  # Product name
         90,   # Product type
@@ -192,6 +191,9 @@ class ProductsWidget(QtWidgets.QWidget):
         products_view.selectionModel().selectionChanged.connect(
             self._on_selection_change)
         products_model.version_changed.connect(self._on_version_change)
+        version_delegate.version_changed.connect(
+            self._on_version_delegate_change
+        )
 
         controller.register_event_callback(
             "selection.folders.changed",
@@ -441,6 +443,9 @@ class ProductsWidget(QtWidgets.QWidget):
 
     def _on_version_change(self):
         self._on_selection_change()
+
+    def _on_version_delegate_change(self, product_id, version_id):
+        self._products_model.set_product_version(product_id, version_id)
 
     def _on_folders_selection_change(self, event):
         project_name = event["project_name"]
