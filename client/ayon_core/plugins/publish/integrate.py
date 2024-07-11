@@ -789,11 +789,6 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
             if value is not None:
                 repre_context[key] = value
 
-        # Explicitly store the full list even though template data might
-        # have a different value because it uses just a single udim tile
-        if repre.get("udim"):
-            repre_context["udim"] = repre.get("udim")  # store list
-
         # Use previous representation's id if there is a name match
         existing = existing_repres_by_name.get(repre["name"].lower())
         repre_id = None
