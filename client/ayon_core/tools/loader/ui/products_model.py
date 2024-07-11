@@ -148,6 +148,18 @@ class ProductsModel(QtGui.QStandardItemModel):
 
         return self._product_items_by_id.get(product_id)
 
+    def set_product_version(self, product_id, version_id):
+        if version_id is None:
+            return
+
+        product_item = self._items_by_id.get(product_id)
+        if product_item is None:
+            return
+
+        self.setData(
+            product_item.index(), version_id, VERSION_NAME_EDIT_ROLE
+        )
+
     def set_enable_grouping(self, enable_grouping):
         if enable_grouping is self._grouping_enabled:
             return

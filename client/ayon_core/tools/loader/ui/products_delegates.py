@@ -77,7 +77,7 @@ class VersionsFilterModel(QtCore.QSortFilterProxyModel):
 
 
 class VersionComboBox(QtWidgets.QComboBox):
-    value_changed = QtCore.Signal()
+    value_changed = QtCore.Signal(str, str)
 
     def __init__(self, product_id, parent):
         super().__init__(parent)
@@ -137,7 +137,7 @@ class VersionComboBox(QtWidgets.QComboBox):
         if value == self._current_id:
             return
         self._current_id = value
-        self.value_changed.emit()
+        self.value_changed.emit(self._product_id, value)
 
 
 class EditorInfo:
@@ -149,7 +149,7 @@ class EditorInfo:
 class VersionDelegate(QtWidgets.QStyledItemDelegate):
     """A delegate that display version integer formatted as version string."""
 
-    version_changed = QtCore.Signal()
+    version_changed = QtCore.Signal(str, str)
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -231,10 +231,7 @@ class VersionDelegate(QtWidgets.QStyledItemDelegate):
 
         self._editor_by_id[item_id] = EditorInfo(editor)
 
-        def editor_changed():
-            self._on_editor_change(item_id)
-
-        editor.value_changed.connect(editor_changed)
+        editor.value_changed.connect(self._on_editor_change)
         editor.destroyed.connect(self._on_destroy)
 
         return editor
@@ -257,13 +254,8 @@ class VersionDelegate(QtWidgets.QStyledItemDelegate):
         version_id = editor.itemData(editor.currentIndex())
         model.setData(index, version_id, VERSION_NAME_EDIT_ROLE)
 
-    def _on_editor_change(self, item_id):
-        info = self._editor_by_id.get(item_id)
-        if info is None or not info.added:
-            return
-
-        editor = info.widget
-        self.commitData.emit(editor)
+    def _on_editor_change(self, product_id, version_id):
+        self.version_changed.emit(product_id, version_id)
 
     def _on_destroy(self, obj):
         item_id = obj.property("itemId")
