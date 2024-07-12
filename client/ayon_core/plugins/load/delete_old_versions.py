@@ -1,6 +1,7 @@
 import collections
 import os
 import uuid
+from typing import Optional
 
 import clique
 import ayon_api
@@ -40,6 +41,8 @@ class DeleteOldVersions(load.ProductLoaderPlugin):
             "remove_publish_folder", help="Remove publish folder:"
         )
     ]
+
+    requires_confirmation = True
 
     def delete_whole_dir_paths(self, dir_paths, delete=True):
         size = 0
@@ -191,6 +194,32 @@ class DeleteOldVersions(load.ProductLoaderPlugin):
             msgBox.windowFlags() | QtCore.Qt.FramelessWindowHint
         )
         msgBox.exec_()
+
+    def confirm(self,
+                text: str,
+                informative_text: Optional[str] = None,
+                detailed_text: Optional[str] = None) -> bool:
+        """Prompt user for a confirmation"""
+
+        messagebox = QtWidgets.QMessageBox()
+        messagebox.setWindowFlags(
+            messagebox.windowFlags() | QtCore.Qt.FramelessWindowHint
+        )
+        messagebox.setIcon(QtWidgets.QMessageBox.Warning)
+        messagebox.setWindowTitle("Delete Old Versions")
+        messagebox.setText(text)
+        if informative_text:
+            messagebox.setInformativeText(informative_text)
+        if detailed_text:
+            messagebox.setDetailedText(detailed_text)
+        messagebox.setStandardButtons(
+            QtWidgets.QMessageBox.Yes
+            | QtWidgets.QMessageBox.Cancel
+        )
+        messagebox.setDefaultButton(QtWidgets.QMessageBox.Cancel)
+        messagebox.setStyleSheet(style.load_stylesheet())
+        messagebox.setAttribute(QtCore.Qt.WA_DeleteOnClose, True)
+        return messagebox.exec_() == QtWidgets.QMessageBox.Yes
 
     def get_data(self, context, versions_count):
         product_entity = context["product"]
@@ -365,19 +394,40 @@ class DeleteOldVersions(load.ProductLoaderPlugin):
         return size
 
     def load(self, contexts, name=None, namespace=None, options=None):
+
+        # Get user options
+        versions_to_keep = 2
+        remove_publish_folder = False
+        if options:
+            versions_to_keep = options.get(
+                "versions_to_keep", versions_to_keep
+            )
+            remove_publish_folder = options.get(
+                "remove_publish_folder", remove_publish_folder
+            )
+
+        # Because we do not want this run by accident we will add an extra
+        # user confirmation
+        if self.requires_confirmation:
+            contexts_list = "\n".join(sorted(
+                "- {folder[name]} > {product[name]}".format_map(context)
+                for context in contexts
+            ))
+            num_contexts = len(contexts)
+            s = "s" if num_contexts > 1 else ""
+            if not self.confirm(
+                "Are you sure you want to delete versions?\n\n"
+                f"This will keep only the last {versions_to_keep} "
+                f"versions for the {num_contexts} selected product{s}.",
+                informative_text="Warning: This will delete files from disk",
+                detailed_text=f"Keep only {versions_to_keep} versions for:\n"
+                              f"{contexts_list}"
+            ):
+                return
+
         try:
             size = 0
             for count, context in enumerate(contexts):
-                versions_to_keep = 2
-                remove_publish_folder = False
-                if options:
-                    versions_to_keep = options.get(
-                        "versions_to_keep", versions_to_keep
-                    )
-                    remove_publish_folder = options.get(
-                        "remove_publish_folder", remove_publish_folder
-                    )
-
                 data = self.get_data(context, versions_to_keep)
                 if not data:
                     continue
@@ -407,6 +457,8 @@ class CalculateOldVersions(DeleteOldVersions):
             "remove_publish_folder", help="Remove publish folder:"
         )
     ]
+
+    requires_confirmation = False
 
     def main(self, project_name, data, remove_publish_folder):
         size = 0
