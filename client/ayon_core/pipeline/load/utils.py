@@ -587,6 +587,21 @@ def switch_container(container, representation, loader_plugin=None):
     return loader.switch(container, context)
 
 
+def _fix_representation_context_compatibility(repre_context):
+    """Helper function to fix representation context compatibility.
+
+    Args:
+        repre_context (dict): Representation context.
+
+    """
+    # Auto-fix 'udim' being list of integers
+    # - This is a legacy issue for old representation entities,
+    #   added 24/07/10
+    udim = repre_context.get("udim")
+    if isinstance(udim, list):
+        repre_context["udim"] = udim[0]
+
+
 def get_representation_path_from_context(context):
     """Preparation wrapper using only context as a argument"""
     from ayon_core.pipeline import get_current_project_name
@@ -638,7 +653,9 @@ def get_representation_path_with_anatomy(repre_entity, anatomy):
 
     try:
         context = repre_entity["context"]
+        _fix_representation_context_compatibility(context)
         context["root"] = anatomy.roots
+
         path = StringTemplate.format_strict_template(template, context)
 
     except TemplateUnsolved as exc:
@@ -681,6 +698,9 @@ def get_representation_path(representation, root=None):
 
         try:
             context = representation["context"]
+
+            _fix_representation_context_compatibility(context)
+
             context["root"] = root
             path = StringTemplate.format_strict_template(
                 template, context
