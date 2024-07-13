@@ -2043,7 +2043,8 @@ class CreateContext:
         variant,
         folder_entity=None,
         task_entity=None,
-        pre_create_data=None
+        pre_create_data=None,
+        active=True
     ):
         """Trigger create of plugins with standartized arguments.
 
@@ -2061,6 +2062,8 @@ class CreateContext:
                 of creation (possible context of created instance/s).
             task_entity (Dict[str, Any]): Task entity.
             pre_create_data (Dict[str, Any]): Pre-create attribute values.
+            active (Optional[bool]): Whether the created instance defaults
+                to be active or not. Defaults to True.
 
         Returns:
             Any: Output of triggered creator's 'create' method.
@@ -2124,7 +2127,8 @@ class CreateContext:
             "folderPath": folder_entity["path"],
             "task": task_entity["name"] if task_entity else None,
             "productType": creator.product_type,
-            "variant": variant
+            "variant": variant,
+            "active": bool(active)
         }
         return creator.create(
             product_name,
