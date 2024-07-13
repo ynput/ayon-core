@@ -1797,6 +1797,16 @@ class PlaceholderCreateMixin(object):
                     "\ncompiling of product name."
                 )
             ),
+            attribute_definitions.BoolDef(
+                "active",
+                label="Active",
+                default=options.get("active", True),
+                tooltip=(
+                    "Active"
+                    "\nDefines whether the created instance will default to "
+                    "active or not."
+                )
+            ),
             attribute_definitions.UISeparatorDef(),
             attribute_definitions.NumberDef(
                 "order",
@@ -1826,6 +1836,7 @@ class PlaceholderCreateMixin(object):
         legacy_create = self.builder.use_legacy_creators
         creator_name = placeholder.data["creator"]
         create_variant = placeholder.data["create_variant"]
+        active = placeholder.data.get("active", True)
 
         creator_plugin = self.builder.get_creators_by_name()[creator_name]
 
@@ -1873,7 +1884,8 @@ class PlaceholderCreateMixin(object):
                     create_variant,
                     folder_entity,
                     task_entity,
-                    pre_create_data=pre_create_data
+                    pre_create_data=pre_create_data,
+                    active=active
                 )
 
         except:  # noqa: E722
