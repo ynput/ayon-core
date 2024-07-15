@@ -48,7 +48,7 @@ class DeleteOldVersions(load.ProductLoaderPlugin):
         size = 0
 
         for dir_path in dir_paths:
-            # Delete all files and fodlers in dir path
+            # Delete all files and folders in dir path
             for root, dirs, files in os.walk(dir_path, topdown=False):
                 for name in files:
                     file_path = os.path.join(root, name)
