@@ -3,9 +3,7 @@ import copy
 import collections
 from typing import TYPE_CHECKING, Optional
 
-from abc import ABCMeta, abstractmethod
-
-import six
+from abc import ABC, abstractmethod
 
 from ayon_core.settings import get_project_settings
 from ayon_core.lib import Logger
@@ -38,8 +36,7 @@ class CreatorError(Exception):
         super(CreatorError, self).__init__(message)
 
 
-@six.add_metaclass(ABCMeta)
-class ProductConvertorPlugin(object):
+class ProductConvertorPlugin(ABC):
     """Helper for conversion of instances created using legacy creators.
 
     Conversion from legacy creators would mean to lose legacy instances,
@@ -152,8 +149,7 @@ class ProductConvertorPlugin(object):
         self._create_context.remove_convertor_item(self.identifier)
 
 
-@six.add_metaclass(ABCMeta)
-class BaseCreator:
+class BaseCreator(ABC):
     """Plugin that create and modify instance data before publishing process.
 
     We should maybe find better name as creation is only one part of its logic
