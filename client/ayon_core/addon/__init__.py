@@ -9,10 +9,15 @@ from .interfaces import (
 )
 
 from .base import (
+    ProcessPreparationError,
     AYONAddon,
     AddonsManager,
     TrayAddonsManager,
     load_addons,
+)
+
+from .utils import (
+    ensure_addons_are_process_ready,
 )
 
 
@@ -25,8 +30,11 @@ __all__ = (
     "ITrayService",
     "IHostAddon",
 
+    "ProcessPreparationError",
     "AYONAddon",
     "AddonsManager",
     "TrayAddonsManager",
     "load_addons",
+
+    "ensure_addons_are_process_ready",
 )
