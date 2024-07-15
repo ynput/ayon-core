@@ -87,9 +87,8 @@ def get_folder_template_data(folder_entity, project_name):
     """
 
     path = folder_entity["path"]
-    parents = path.split("/")
-    # Remove empty string from the beginning
-    parents.pop(0)
+    # Remove empty string from the beginning and split by '/'
+    parents = path.lstrip("/").split("/")
     # Remove last part which is folder name
     folder_name = parents.pop(-1)
     hierarchy = "/".join(parents)
