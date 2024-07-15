@@ -1,7 +1,6 @@
 import os
-from abc import ABCMeta, abstractmethod
+from abc import ABC, abstractmethod
 
-import six
 from ayon_core.style import get_default_entity_icon_color
 
 
@@ -335,8 +334,7 @@ class WorkareaFilepathResult:
         self.filepath = filepath
 
 
-@six.add_metaclass(ABCMeta)
-class AbstractWorkfilesCommon(object):
+class AbstractWorkfilesCommon(ABC):
     @abstractmethod
     def is_host_valid(self):
         """Host is valid for workfiles tool work.
