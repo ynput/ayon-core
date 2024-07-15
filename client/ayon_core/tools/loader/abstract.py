@@ -1,5 +1,4 @@
-from abc import ABCMeta, abstractmethod
-import six
+from abc import ABC, abstractmethod
 
 from ayon_core.lib.attribute_definitions import (
     AbstractAttrDef,
@@ -347,8 +346,7 @@ class ActionItem:
         return cls(**data)
 
 
-@six.add_metaclass(ABCMeta)
-class _BaseLoaderController(object):
+class _BaseLoaderController(ABC):
     """Base loader controller abstraction.
 
     Abstract base class that is required for both frontend and backed.

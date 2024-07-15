@@ -1,11 +1,9 @@
 # -*- coding: utf-8 -*-
 """Abstract ExpectedFile class definition."""
-from abc import ABCMeta, abstractmethod
-import six
+from abc import ABC, abstractmethod
 
 
-@six.add_metaclass(ABCMeta)
-class ExpectedFiles:
+class ExpectedFiles(ABC):
     """Class grouping functionality for all supported renderers.
 
     Attributes:
