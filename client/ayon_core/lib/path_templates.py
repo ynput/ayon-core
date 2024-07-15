@@ -12,7 +12,7 @@ class TemplateUnsolved(Exception):
     """Exception for unsolved template when strict is set to True."""
 
     msg = "Template \"{0}\" is unsolved.{1}{2}"
-    invalid_types_msg = " Keys with invalid DataType: `{0}`."
+    invalid_types_msg = " Keys with invalid data type: `{0}`."
     missing_keys_msg = " Missing keys: \"{0}\"."
 
     def __init__(self, template, missing_keys, invalid_types):
@@ -198,8 +198,9 @@ class StringTemplate(object):
                 new_parts.extend(tmp_parts[idx])
         return new_parts
 
+
 class TemplateResult(str):
-    """Result of template format with most of information in.
+    """Result of template format with most of the information in.
 
     Args:
         used_values (dict): Dictionary of template filling data with
