@@ -1836,7 +1836,7 @@ class PlaceholderCreateMixin(object):
         legacy_create = self.builder.use_legacy_creators
         creator_name = placeholder.data["creator"]
         create_variant = placeholder.data["create_variant"]
-        active = placeholder.data.get("active", True)
+        active = placeholder.data.get("active")
 
         creator_plugin = self.builder.get_creators_by_name()[creator_name]
 
