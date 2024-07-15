@@ -1,7 +1,7 @@
 import collections
 import os
 import uuid
-from typing import Optional, List, Dict, Any
+from typing import List, Dict, Any
 
 import clique
 import ayon_api
