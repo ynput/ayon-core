@@ -2130,7 +2130,12 @@ class CreateContext:
             "variant": variant
         }
         if active is not None:
-            instance_data["active"] = bool(active)
+            if not isinstance(active, bool):
+                self.log.warning(
+                    "CreateContext.create 'active' argument is not a bool. "
+                    f"Converting {active} {type(active)} to bool.")
+                active = bool(active)
+            instance_data["active"] = active
 
         return creator.create(
             product_name,
