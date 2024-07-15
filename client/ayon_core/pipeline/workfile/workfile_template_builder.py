@@ -15,9 +15,8 @@ import os
 import re
 import collections
 import copy
-from abc import ABCMeta, abstractmethod
+from abc import ABC, abstractmethod
 
-import six
 from ayon_api import (
     get_folders,
     get_folder_by_path,
@@ -82,8 +81,7 @@ class TemplateLoadFailed(Exception):
     pass
 
 
-@six.add_metaclass(ABCMeta)
-class AbstractTemplateBuilder(object):
+class AbstractTemplateBuilder(ABC):
     """Abstraction of Template Builder.
 
     Builder cares about context, shared data, cache, discovery of plugins
@@ -941,8 +939,7 @@ class AbstractTemplateBuilder(object):
         )
 
 
-@six.add_metaclass(ABCMeta)
-class PlaceholderPlugin(object):
+class PlaceholderPlugin(ABC):
     """Plugin which care about handling of placeholder items logic.
 
     Plugin create and update placeholders in scene and populate them on
