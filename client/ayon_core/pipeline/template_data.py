@@ -87,14 +87,14 @@ def get_folder_template_data(folder_entity, project_name):
     """
 
     path = folder_entity["path"]
-    hierarchy_parts = path.split("/")
+    parents = path.split("/")
     # Remove empty string from the beginning
-    hierarchy_parts.pop(0)
+    parents.pop(0)
     # Remove last part which is folder name
-    folder_name = hierarchy_parts.pop(-1)
-    hierarchy = "/".join(hierarchy_parts)
-    if hierarchy_parts:
-        parent_name = hierarchy_parts[-1]
+    folder_name = parents.pop(-1)
+    hierarchy = "/".join(parents)
+    if parents:
+        parent_name = parents[-1]
     else:
         parent_name = project_name
 
@@ -103,6 +103,7 @@ def get_folder_template_data(folder_entity, project_name):
             "name": folder_name,
             "type": folder_entity["folderType"],
             "path": path,
+            "parents": parents,
         },
         "asset": folder_name,
         "hierarchy": hierarchy,
