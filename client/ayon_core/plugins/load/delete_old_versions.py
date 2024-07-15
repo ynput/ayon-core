@@ -220,10 +220,8 @@ class DeleteOldVersions(load.ProductLoaderPlugin):
         messagebox.setIcon(QtWidgets.QMessageBox.Warning)
         messagebox.setWindowTitle("Delete Old Versions")
         messagebox.setText(text)
-        if informative_text:
-            messagebox.setInformativeText(informative_text)
-        if detailed_text:
-            messagebox.setDetailedText(detailed_text)
+        messagebox.setInformativeText(informative_text)
+        messagebox.setDetailedText(detailed_text)
         messagebox.setStandardButtons(
             QtWidgets.QMessageBox.Yes
             | QtWidgets.QMessageBox.Cancel
