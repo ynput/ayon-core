@@ -1,18 +1,16 @@
 import time
 import collections
 import contextlib
-from abc import ABCMeta, abstractmethod
+from abc import ABC, abstractmethod
 
 import ayon_api
-import six
 
 from ayon_core.lib import NestedCacheItem
 
 HIERARCHY_MODEL_SENDER = "hierarchy.model"
 
 
-@six.add_metaclass(ABCMeta)
-class AbstractHierarchyController:
+class AbstractHierarchyController(ABC):
     @abstractmethod
     def emit_event(self, topic, data, source):
         pass

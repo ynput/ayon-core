@@ -91,8 +91,7 @@ class AbstractAttrDefMeta(ABCMeta):
         return obj
 
 
-@six.add_metaclass(AbstractAttrDefMeta)
-class AbstractAttrDef(object):
+class AbstractAttrDef(metaclass=AbstractAttrDefMeta):
     """Abstraction of attribute definition.
 
     Each attribute definition must have implemented validation and

@@ -1,5 +1,4 @@
-from abc import ABCMeta, abstractmethod
-import six
+from abc import ABC, abstractmethod
 
 
 class MissingMethodsError(ValueError):
@@ -106,8 +105,7 @@ class ILoadHost:
         return self.get_containers()
 
 
-@six.add_metaclass(ABCMeta)
-class IWorkfileHost:
+class IWorkfileHost(ABC):
     """Implementation requirements to be able use workfile utils and tool."""
 
     @staticmethod
