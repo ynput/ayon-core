@@ -294,7 +294,7 @@ class StatusesCombobox(CustomPaintMultiselectComboBox):
             model=model,
             parent=parent
         )
-        self.set_placeholder_text("Statuses...")
+        self.set_placeholder_text("Version status filter...")
         self._model = model
         self._last_project_name = None
         self._fully_disabled_filter = False
