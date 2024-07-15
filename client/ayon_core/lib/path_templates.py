@@ -2,8 +2,6 @@ import os
 import re
 import numbers
 
-import six
-
 KEY_PATTERN = re.compile(r"(\{.*?[^{0]*\})")
 KEY_PADDING_PATTERN = re.compile(r"([^:]+)\S+[><]\S+")
 SUB_DICT_PATTERN = re.compile(r"([^\[\]]+)")
@@ -43,7 +41,7 @@ class TemplateUnsolved(Exception):
 class StringTemplate(object):
     """String that can be formatted."""
     def __init__(self, template):
-        if not isinstance(template, six.string_types):
+        if not isinstance(template, str):
             raise TypeError("<{}> argument must be a string, not {}.".format(
                 self.__class__.__name__, str(type(template))
             ))
@@ -63,7 +61,7 @@ class StringTemplate(object):
 
         new_parts = []
         for part in parts:
-            if not isinstance(part, six.string_types):
+            if not isinstance(part, str):
                 new_parts.append(part)
                 continue
 
@@ -113,7 +111,7 @@ class StringTemplate(object):
         """
         result = TemplatePartResult()
         for part in self._parts:
-            if isinstance(part, six.string_types):
+            if isinstance(part, str):
                 result.add_output(part)
             else:
                 part.format(data, result)
@@ -176,7 +174,7 @@ class StringTemplate(object):
                         value = "<>"
                     elif (
                         len(parts) == 1
-                        and isinstance(parts[0], six.string_types)
+                        and isinstance(parts[0], str)
                     ):
                         value = "<{}>".format(parts[0])
                     else:
@@ -299,7 +297,7 @@ class TemplatePartResult:
         self._optional = True
 
     def add_output(self, other):
-        if isinstance(other, six.string_types):
+        if isinstance(other, str):
             self._output += other
 
         elif isinstance(other, TemplatePartResult):
@@ -457,7 +455,7 @@ class FormattingPart:
             return True
 
         for inh_class in type(value).mro():
-            if inh_class in six.string_types:
+            if inh_class in str:
                 return True
         return False
 
@@ -568,7 +566,7 @@ class OptionalPart:
     def format(self, data, result):
         new_result = TemplatePartResult(True)
         for part in self._parts:
-            if isinstance(part, six.string_types):
+            if isinstance(part, str):
                 new_result.add_output(part)
             else:
                 part.format(data, new_result)
