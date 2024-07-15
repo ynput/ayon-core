@@ -4,7 +4,6 @@ import sys
 import copy
 
 import clique
-import six
 import pyblish.api
 from ayon_api import (
     get_attributes_for_type,
@@ -160,15 +159,14 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
             # Raise DuplicateDestinationError as KnownPublishError
             # and rollback the transactions
             file_transactions.rollback()
-            six.reraise(KnownPublishError,
-                        KnownPublishError(exc),
-                        sys.exc_info()[2])
-        except Exception:
+            raise KnownPublishError(exc).with_traceback(sys.exc_info()[2])
+
+        except Exception as exc:
             # clean destination
             # todo: preferably we'd also rollback *any* changes to the database
             file_transactions.rollback()
             self.log.critical("Error when registering", exc_info=True)
-            six.reraise(*sys.exc_info())
+            raise exc
 
         # Finalizing can't rollback safely so no use for moving it to
         # the try, except.
