@@ -455,7 +455,7 @@ class FormattingPart:
             return True
 
         for inh_class in type(value).mro():
-            if inh_class in str:
+            if isinstance(inh_class, str):
                 return True
         return False
 
