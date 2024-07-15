@@ -7,18 +7,15 @@ exists is used.
 """
 
 import os
-from abc import ABCMeta, abstractmethod
+from abc import ABC, abstractmethod
 import platform
-
-import six
 
 from ayon_core.lib import Logger
 from ayon_core.addon import AddonsManager
 from ayon_core.settings import get_project_settings
 
 
-@six.add_metaclass(ABCMeta)
-class HostDirmap(object):
+class HostDirmap(ABC):
     """Abstract class for running dirmap on a workfile in a host.
 
     Dirmap is used to translate paths inside of host workfile from one
