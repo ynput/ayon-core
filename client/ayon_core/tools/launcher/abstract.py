@@ -1,10 +1,7 @@
-from abc import ABCMeta, abstractmethod
-
-import six
+from abc import ABC, abstractmethod
 
 
-@six.add_metaclass(ABCMeta)
-class AbstractLauncherCommon(object):
+class AbstractLauncherCommon(ABC):
     @abstractmethod
     def register_event_callback(self, topic, callback):
         """Register event callback.
