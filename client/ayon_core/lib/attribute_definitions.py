@@ -881,7 +881,7 @@ class FileDef(AbstractAttrDef):
         )
 
     def convert_value(self, value):
-        if isinstance(value, str) or isinstance(value, dict):
+        if isinstance(value, (str, dict)):
             value = [value]
 
         if isinstance(value, (tuple, list, set)):
