@@ -217,9 +217,6 @@ class DeleteOldVersions(load.ProductLoaderPlugin):
         )
 
         messagebox = QtWidgets.QMessageBox()
-        messagebox.setWindowFlags(
-            messagebox.windowFlags() | QtCore.Qt.FramelessWindowHint
-        )
         messagebox.setIcon(QtWidgets.QMessageBox.Warning)
         messagebox.setWindowTitle("Delete Old Versions")
         messagebox.setText(text)
