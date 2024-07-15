@@ -1,7 +1,7 @@
 import collections
 import os
 import uuid
-from typing import Optional
+from typing import Optional, List, Dict, Any
 
 import clique
 import ayon_api
@@ -195,11 +195,26 @@ class DeleteOldVersions(load.ProductLoaderPlugin):
         )
         msgBox.exec_()
 
-    def confirm(self,
-                text: str,
-                informative_text: Optional[str] = None,
-                detailed_text: Optional[str] = None) -> bool:
-        """Prompt user for a confirmation"""
+    def _confirm_delete(self,
+                        contexts: List[Dict[str, Any]],
+                        versions_to_keep: int) -> bool:
+        """Prompt user for a deletion confirmation"""
+
+        contexts_list = "\n".join(sorted(
+            "- {folder[name]} > {product[name]}".format_map(context)
+            for context in contexts
+        ))
+        num_contexts = len(contexts)
+        s = "s" if num_contexts > 1 else ""
+        text = (
+            "Are you sure you want to delete versions?\n\n"
+            f"This will keep only the last {versions_to_keep} "
+            f"versions for the {num_contexts} selected product{s}."
+        )
+        informative_text="Warning: This will delete files from disk"
+        detailed_text = (
+            f"Keep only {versions_to_keep} versions for:\n{contexts_list}"
+        )
 
         messagebox = QtWidgets.QMessageBox()
         messagebox.setWindowFlags(
@@ -408,22 +423,11 @@ class DeleteOldVersions(load.ProductLoaderPlugin):
 
         # Because we do not want this run by accident we will add an extra
         # user confirmation
-        if self.requires_confirmation:
-            contexts_list = "\n".join(sorted(
-                "- {folder[name]} > {product[name]}".format_map(context)
-                for context in contexts
-            ))
-            num_contexts = len(contexts)
-            s = "s" if num_contexts > 1 else ""
-            if not self.confirm(
-                "Are you sure you want to delete versions?\n\n"
-                f"This will keep only the last {versions_to_keep} "
-                f"versions for the {num_contexts} selected product{s}.",
-                informative_text="Warning: This will delete files from disk",
-                detailed_text=f"Keep only {versions_to_keep} versions for:\n"
-                              f"{contexts_list}"
-            ):
-                return
+        if (
+                self.requires_confirmation
+                and not self._confirm_delete(contexts, versions_to_keep)
+        ):
+            return
 
         try:
             size = 0
