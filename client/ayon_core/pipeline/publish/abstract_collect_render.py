@@ -7,8 +7,6 @@ TODO: use @dataclass when times come.
 from abc import abstractmethod
 
 import attr
-import six
-
 import pyblish.api
 
 from .publish_plugins import AbstractMetaContextPlugin
@@ -122,8 +120,9 @@ class RenderInstance(object):
             raise ValueError("both tiles X a Y sizes are set to 1")
 
 
-@six.add_metaclass(AbstractMetaContextPlugin)
-class AbstractCollectRender(pyblish.api.ContextPlugin):
+class AbstractCollectRender(
+    pyblish.api.ContextPlugin, metaclass=AbstractMetaContextPlugin
+):
     """Gather all publishable render layers from renderSetup."""
 
     order = pyblish.api.CollectorOrder + 0.01
