@@ -122,7 +122,7 @@ class weakref_partial:
         )
 
 
-class EventCallback(object):
+class EventCallback:
     """Callback registered to a topic.
 
     The callback function is registered to a topic. Topic is a string which
@@ -379,8 +379,7 @@ class EventCallback(object):
             self._partial_func = None
 
 
-# Inherit from 'object' for Python 2 hosts
-class Event(object):
+class Event:
     """Base event object.
 
     Can be used for any event because is not specific. Only required argument
@@ -487,7 +486,7 @@ class Event(object):
         return obj
 
 
-class EventSystem(object):
+class EventSystem:
     """Encapsulate event handling into an object.
 
     System wraps registered callbacks and triggered events into single object,
