@@ -10,6 +10,7 @@ import threading
 import collections
 from uuid import uuid4
 from abc import ABCMeta, abstractmethod
+from typing import Optional
 
 import six
 import appdirs
