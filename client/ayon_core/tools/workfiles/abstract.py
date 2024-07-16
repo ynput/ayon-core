@@ -1,7 +1,6 @@
 import os
-from abc import ABCMeta, abstractmethod
+from abc import ABC, abstractmethod
 
-import six
 from ayon_core.style import get_default_entity_icon_color
 
 
@@ -335,8 +334,7 @@ class WorkareaFilepathResult:
         self.filepath = filepath
 
 
-@six.add_metaclass(ABCMeta)
-class AbstractWorkfilesCommon(object):
+class AbstractWorkfilesCommon(ABC):
     @abstractmethod
     def is_host_valid(self):
         """Host is valid for workfiles tool work.
@@ -542,6 +540,46 @@ class AbstractWorkfilesFrontend(AbstractWorkfilesCommon):
 
         Returns:
             Dict[str, UserItem]: User items by username.
+
+        """
+        pass
+
+    @abstractmethod
+    def get_folder_type_items(self, project_name, sender=None):
+        """Folder type items for a project.
+
+        This function may trigger events with topics
+        'projects.folder_types.refresh.started' and
+        'projects.folder_types.refresh.finished' which will contain 'sender'
+        value in data.
+        That may help to avoid re-refresh of items in UI elements.
+
+        Args:
+            project_name (str): Project name.
+            sender (str): Who requested folder type items.
+
+        Returns:
+            list[FolderTypeItem]: Folder type information.
+
+        """
+        pass
+
+    @abstractmethod
+    def get_task_type_items(self, project_name, sender=None):
+        """Task type items for a project.
+
+        This function may trigger events with topics
+        'projects.task_types.refresh.started' and
+        'projects.task_types.refresh.finished' which will contain 'sender'
+        value in data.
+        That may help to avoid re-refresh of items in UI elements.
+
+        Args:
+            project_name (str): Project name.
+            sender (str): Who requested task type items.
+
+        Returns:
+            list[TaskTypeItem]: Task type information.
 
         """
         pass
