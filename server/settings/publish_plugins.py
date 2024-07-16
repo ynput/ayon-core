@@ -57,6 +57,31 @@ class CollectFramesFixDefModel(BaseSettingsModel):
         True,
         title="Show 'Rewrite latest version' toggle"
     )
+    
+
+class ContributionLayersModel(BaseSettingsModel):
+    _layout = "compact"
+    name: str = SettingsField(title="Name")
+    order: str = SettingsField(
+        title="Order",
+        description="Higher order means a higher strength and stacks the "
+                    "layer on top.")
+
+
+class CollectUSDLayerContributionsModel(BaseSettingsModel):
+    enabled: bool = SettingsField(True, title="Enabled")
+    contribution_layers: list[ContributionLayersModel] = SettingsField(
+        title="Department Layer Orders",
+        description=(
+            "Define available department layers and their strength "
+            "ordering inside the USD contribution workflow."
+        )
+    )
+
+    @validator("contribution_layers")
+    def validate_unique_outputs(cls, value):
+        ensure_unique_names(value)
+        return value
 
 
 class PluginStateByHostModelProfile(BaseSettingsModel):
@@ -743,6 +768,14 @@ class IntegrateHeroVersionModel(BaseSettingsModel):
     optional: bool = SettingsField(False, title="Optional")
     active: bool = SettingsField(True, title="Active")
     families: list[str] = SettingsField(default_factory=list, title="Families")
+    use_hardlinks: bool = SettingsField(
+        False, title="Use Hardlinks",
+        description="When enabled first try to make a hardlink of the version "
+                    "instead of a copy. This helps reduce disk usage, but may "
+                    "create issues.\nFor example there are known issues on "
+                    "Windows being unable to delete any of the hardlinks if "
+                    "any of the links is in use creating issues with updating "
+                    "hero versions.")
 
 
 class CleanUpModel(BaseSettingsModel):
@@ -783,6 +816,10 @@ class PublishPuginsModel(BaseSettingsModel):
     CollectFramesFixDef: CollectFramesFixDefModel = SettingsField(
         default_factory=CollectFramesFixDefModel,
         title="Collect Frames to Fix",
+    )
+    CollectUSDLayerContributions: CollectUSDLayerContributionsModel = SettingsField(
+        default_factory=CollectUSDLayerContributionsModel,
+        title="Collect USD Layer Contributions",
     )
     ValidateEditorialAssetName: ValidateBaseModel = SettingsField(
         default_factory=ValidateBaseModel,
@@ -875,6 +912,23 @@ DEFAULT_PUBLISH_VALUES = {
     "CollectFramesFixDef": {
         "enabled": True,
         "rewrite_version_enable": True
+    },
+    "CollectUSDLayerContributions": {
+        "enabled": True,
+        "contribution_layers": [
+            # Asset layers
+            {"name": "model", "order": 100},
+            {"name": "assembly", "order": 150},
+            {"name": "groom", "order": 175},
+            {"name": "look", "order": 300},
+            {"name": "rig", "order": 100},
+            # Shot layers
+            {"name": "layout", "order": 200},
+            {"name": "animation", "order": 300},
+            {"name": "simulation", "order": 400},
+            {"name": "fx", "order": 500},
+            {"name": "lighting", "order": 600},
+        ],
     },
     "ValidateEditorialAssetName": {
         "enabled": True,
@@ -1136,7 +1190,8 @@ DEFAULT_PUBLISH_VALUES = {
             "layout",
             "mayaScene",
             "simpleUnrealTexture"
-        ]
+        ],
+        "use_hardlinks": False
     },
     "CleanUp": {
         "paterns": [],

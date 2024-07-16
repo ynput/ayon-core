@@ -1,5 +1,7 @@
 from qtpy import QtWidgets, QtCore
 
+from ayon_core.tools.publisher.abstract import AbstractPublisherFrontend
+
 from .widgets import (
     StopBtn,
     ResetBtn,
@@ -31,8 +33,13 @@ class PublishFrame(QtWidgets.QWidget):
 
     details_page_requested = QtCore.Signal()
 
-    def __init__(self, controller, borders, parent):
-        super(PublishFrame, self).__init__(parent)
+    def __init__(
+        self,
+        controller: AbstractPublisherFrontend,
+        borders: int,
+        parent: QtWidgets.QWidget
+    ):
+        super().__init__(parent)
 
         # Bottom part of widget where process and callback buttons are showed
         # - QFrame used to be able set background using stylesheets easily
@@ -157,29 +164,29 @@ class PublishFrame(QtWidgets.QWidget):
         shrunk_anim.valueChanged.connect(self._on_shrunk_anim)
         shrunk_anim.finished.connect(self._on_shrunk_anim_finish)
 
-        controller.event_system.add_callback(
+        controller.register_event_callback(
             "publish.reset.finished", self._on_publish_reset
         )
-        controller.event_system.add_callback(
+        controller.register_event_callback(
             "publish.process.started", self._on_publish_start
         )
-        controller.event_system.add_callback(
+        controller.register_event_callback(
             "publish.has_validated.changed", self._on_publish_validated_change
         )
-        controller.event_system.add_callback(
+        controller.register_event_callback(
             "publish.process.stopped", self._on_publish_stop
         )
 
-        controller.event_system.add_callback(
+        controller.register_event_callback(
             "publish.process.instance.changed", self._on_instance_change
         )
-        controller.event_system.add_callback(
+        controller.register_event_callback(
             "publish.process.plugin.changed", self._on_plugin_change
         )
 
         self._shrunk_anim = shrunk_anim
 
-        self._controller = controller
+        self._controller: AbstractPublisherFrontend = controller
 
         self._content_frame = content_frame
         self._content_layout = content_layout
@@ -208,7 +215,7 @@ class PublishFrame(QtWidgets.QWidget):
         self._last_plugin_label = None
 
     def mouseReleaseEvent(self, event):
-        super(PublishFrame, self).mouseReleaseEvent(event)
+        super().mouseReleaseEvent(event)
         self._change_shrunk_state()
 
     def _change_shrunk_state(self):
@@ -314,8 +321,12 @@ class PublishFrame(QtWidgets.QWidget):
         self._validate_btn.setEnabled(True)
         self._publish_btn.setEnabled(True)
 
-        self._progress_bar.setValue(self._controller.publish_progress)
-        self._progress_bar.setMaximum(self._controller.publish_max_progress)
+        self._progress_bar.setValue(
+            self._controller.get_publish_progress()
+        )
+        self._progress_bar.setMaximum(
+            self._controller.get_publish_max_progress()
+        )
 
     def _on_publish_start(self):
         if self._last_plugin_label:
@@ -351,12 +362,12 @@ class PublishFrame(QtWidgets.QWidget):
         """Change plugin label when instance is going to be processed."""
 
         self._last_plugin_label = event["plugin_label"]
-        self._progress_bar.setValue(self._controller.publish_progress)
+        self._progress_bar.setValue(self._controller.get_publish_progress())
         self._plugin_label.setText(event["plugin_label"])
         QtWidgets.QApplication.processEvents()
 
     def _on_publish_stop(self):
-        self._progress_bar.setValue(self._controller.publish_progress)
+        self._progress_bar.setValue(self._controller.get_publish_progress())
 
         self._reset_btn.setEnabled(True)
         self._stop_btn.setEnabled(False)
@@ -364,31 +375,21 @@ class PublishFrame(QtWidgets.QWidget):
         self._instance_label.setText("")
         self._plugin_label.setText("")
 
-        validate_enabled = not self._controller.publish_has_crashed
-        publish_enabled = not self._controller.publish_has_crashed
-        if validate_enabled:
-            validate_enabled = not self._controller.publish_has_validated
-        if publish_enabled:
-            if (
-                self._controller.publish_has_validated
-                and self._controller.publish_has_validation_errors
-            ):
-                publish_enabled = False
-
-            else:
-                publish_enabled = not self._controller.publish_has_finished
-
+        publish_enabled = self._controller.publish_can_continue()
+        validate_enabled = (
+            publish_enabled and not self._controller.publish_has_validated()
+        )
         self._validate_btn.setEnabled(validate_enabled)
         self._publish_btn.setEnabled(publish_enabled)
 
-        if self._controller.publish_has_crashed:
+        if self._controller.publish_has_crashed():
             self._set_error_msg()
 
-        elif self._controller.publish_has_validation_errors:
+        elif self._controller.publish_has_validation_errors():
             self._set_progress_visibility(False)
             self._set_validation_errors()
 
-        elif self._controller.publish_has_finished:
+        elif self._controller.publish_has_finished():
             self._set_finished()
 
         else:
@@ -411,7 +412,9 @@ class PublishFrame(QtWidgets.QWidget):
 
         self._set_main_label("Error happened")
 
-        self._message_label_top.setText(self._controller.publish_error_msg)
+        self._message_label_top.setText(
+            self._controller.get_publish_error_msg()
+        )
 
         self._set_success_property(1)
 
@@ -467,11 +470,11 @@ class PublishFrame(QtWidgets.QWidget):
 
     def _on_report_triggered(self, identifier):
         if identifier == "export_report":
-            self._controller.event_system.emit(
+            self._controller.emit_event(
                 "export_report.request", {}, "publish_frame")
 
         elif identifier == "copy_report":
-            self._controller.event_system.emit(
+            self._controller.emit_event(
                 "copy_report.request", {}, "publish_frame")
 
         elif identifier == "go_to_report":

@@ -2,12 +2,13 @@ from qtpy import QtWidgets
 
 from ayon_core.lib.events import QueuedEventSystem
 from ayon_core.tools.utils import PlaceholderLineEdit, FoldersWidget
+from ayon_core.tools.publisher.abstract import AbstractPublisherFrontend
 
 
 class FoldersDialogController:
-    def __init__(self, controller):
+    def __init__(self, controller: AbstractPublisherFrontend):
         self._event_system = QueuedEventSystem()
-        self._controller = controller
+        self._controller: AbstractPublisherFrontend = controller
 
     @property
     def event_system(self):
@@ -26,6 +27,11 @@ class FoldersDialogController:
     def get_folder_items(self, project_name, sender=None):
         return self._controller.get_folder_items(project_name, sender)
 
+    def get_folder_type_items(self, project_name, sender=None):
+        return self._controller.get_folder_type_items(
+            project_name, sender
+        )
+
     def set_selected_folder(self, folder_id):
         pass
 
@@ -34,7 +40,7 @@ class FoldersDialog(QtWidgets.QDialog):
     """Dialog to select folder for a context of instance."""
 
     def __init__(self, controller, parent):
-        super(FoldersDialog, self).__init__(parent)
+        super().__init__(parent)
         self.setWindowTitle("Select folder")
 
         filter_input = PlaceholderLineEdit(self)
@@ -57,7 +63,7 @@ class FoldersDialog(QtWidgets.QDialog):
         layout.addWidget(folders_widget, 1)
         layout.addLayout(btns_layout, 0)
 
-        controller.event_system.add_callback(
+        controller.register_event_callback(
             "controller.reset.finished", self._on_controller_reset
         )
 
@@ -99,7 +105,7 @@ class FoldersDialog(QtWidgets.QDialog):
 
     def showEvent(self, event):
         """Refresh folders widget on show."""
-        super(FoldersDialog, self).showEvent(event)
+        super().showEvent(event)
         if self._first_show:
             self._first_show = False
             self._on_first_show()
@@ -114,7 +120,9 @@ class FoldersDialog(QtWidgets.QDialog):
         if self._soft_reset_enabled:
             self._soft_reset_enabled = False
 
-        self._folders_widget.set_project_name(self._controller.project_name)
+        self._folders_widget.set_project_name(
+            self._controller.get_current_project_name()
+        )
 
     def _on_filter_change(self, text):
         """Trigger change of filter of folders."""

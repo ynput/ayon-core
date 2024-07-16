@@ -1,3 +1,5 @@
+import ayon_api
+
 from ayon_core.settings import get_project_settings
 from ayon_core.lib import filter_profiles, prepare_template_data
 
@@ -37,7 +39,7 @@ def get_product_name_template(
         task_name (str): Name of task in which context the product is created.
         task_type (str): Type of task in which context the product is created.
         default_template (Union[str, None]): Default template which is used if
-            settings won't find any matching possitibility. Constant
+            settings won't find any matching possibility. Constant
             'DEFAULT_PRODUCT_TEMPLATE' is used if not defined.
         project_settings (Union[Dict[str, Any], None]): Prepared settings for
             project. Settings are queried if not passed.
@@ -88,6 +90,7 @@ def get_product_name(
     dynamic_data=None,
     project_settings=None,
     product_type_filter=None,
+    project_entity=None,
 ):
     """Calculate product name based on passed context and AYON settings.
 
@@ -120,12 +123,18 @@ def get_product_name(
         product_type_filter (Optional[str]): Use different product type for
             product template filtering. Value of `product_type` is used when
             not passed.
+        project_entity (Optional[Dict[str, Any]]): Project entity used when
+            task short name is required by template.
+
+    Returns:
+        str: Product name.
 
     Raises:
+        TaskNotSetError: If template requires task which is not provided.
         TemplateFillError: If filled template contains placeholder key which
             is not collected.
-    """
 
+    """
     if not product_type:
         return ""
 
@@ -149,6 +158,16 @@ def get_product_name(
     }
     if "{task}" in template.lower():
         task_value = task_name
+
+    elif "{task[short]}" in template.lower():
+        if project_entity is None:
+            project_entity = ayon_api.get_project(project_name)
+        task_types_by_name = {
+            task["name"]: task for task in
+            project_entity["taskTypes"]
+        }
+        task_short = task_types_by_name.get(task_type, {}).get("shortName")
+        task_value["short"] = task_short
 
     fill_pairs = {
         "variant": variant,

@@ -6,7 +6,6 @@ import platform
 import shutil
 
 import clique
-import six
 import pyblish.api
 
 from ayon_core import resources, AYON_CORE_ROOT
@@ -456,7 +455,7 @@ class ExtractBurnin(publish.Extractor):
             sys_name = platform.system().lower()
             font_filepath = font_filepath.get(sys_name)
 
-        if font_filepath and isinstance(font_filepath, six.string_types):
+        if font_filepath and isinstance(font_filepath, str):
             font_filepath = font_filepath.format(**os.environ)
             if not os.path.exists(font_filepath):
                 font_filepath = None

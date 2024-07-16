@@ -5,6 +5,7 @@ from ayon_core.tools.utils import PlaceholderLineEdit, GoToCurrentButton
 
 from ayon_core.tools.common_models import HierarchyExpectedSelection
 from ayon_core.tools.utils import FoldersWidget, TasksWidget
+from ayon_core.tools.publisher.abstract import AbstractPublisherFrontend
 
 
 class CreateSelectionModel(object):
@@ -18,8 +19,8 @@ class CreateSelectionModel(object):
 
     event_source = "publisher.create.selection.model"
 
-    def __init__(self, controller):
-        self._controller = controller
+    def __init__(self, controller: "CreateHierarchyController"):
+        self._controller: CreateHierarchyController = controller
 
         self._project_name = None
         self._folder_id = None
@@ -94,9 +95,9 @@ class CreateHierarchyController:
         controller (PublisherController): Publisher controller.
 
     """
-    def __init__(self, controller):
+    def __init__(self, controller: AbstractPublisherFrontend):
         self._event_system = QueuedEventSystem()
-        self._controller = controller
+        self._controller: AbstractPublisherFrontend = controller
         self._selection_model = CreateSelectionModel(self)
         self._expected_selection = HierarchyExpectedSelection(
             self, handle_project=False
@@ -118,7 +119,7 @@ class CreateHierarchyController:
         self.event_system.add_callback(topic, callback)
 
     def get_project_name(self):
-        return self._controller.project_name
+        return self._controller.get_current_project_name()
 
     def get_folder_items(self, project_name, sender=None):
         return self._controller.get_folder_items(project_name, sender)
@@ -126,6 +127,16 @@ class CreateHierarchyController:
     def get_task_items(self, project_name, folder_id, sender=None):
         return self._controller.get_task_items(
             project_name, folder_id, sender
+        )
+
+    def get_folder_type_items(self, project_name, sender=None):
+        return self._controller.get_folder_type_items(
+            project_name, sender
+        )
+
+    def get_task_type_items(self, project_name, sender=None):
+        return self._controller.get_task_type_items(
+            project_name, sender
         )
 
     # Selection model
@@ -158,10 +169,10 @@ class CreateContextWidget(QtWidgets.QWidget):
     folder_changed = QtCore.Signal()
     task_changed = QtCore.Signal()
 
-    def __init__(self, controller, parent):
-        super(CreateContextWidget, self).__init__(parent)
+    def __init__(self, controller: AbstractPublisherFrontend, parent):
+        super().__init__(parent)
 
-        self._controller = controller
+        self._controller: AbstractPublisherFrontend = controller
         self._enabled = True
         self._last_project_name = None
         self._last_folder_id = None
@@ -224,12 +235,12 @@ class CreateContextWidget(QtWidgets.QWidget):
 
     def update_current_context_btn(self):
         # Hide set current folder if there is no one
-        folder_path = self._controller.current_folder_path
+        folder_path = self._controller.get_current_folder_path()
         self._current_context_btn.setVisible(bool(folder_path))
 
     def set_selected_context(self, folder_id, task_name):
         self._hierarchy_controller.set_expected_selection(
-            self._controller.project_name,
+            self._controller.get_current_project_name(),
             folder_id,
             task_name
         )
@@ -260,13 +271,13 @@ class CreateContextWidget(QtWidgets.QWidget):
             )
 
     def refresh(self):
-        self._last_project_name = self._controller.project_name
+        self._last_project_name = self._controller.get_current_project_name()
         folder_id = self._last_folder_id
         task_name = self._last_selected_task_name
         if folder_id is None:
-            folder_path = self._controller.current_folder_path
+            folder_path = self._controller.get_current_folder_path()
             folder_id = self._controller.get_folder_id_from_path(folder_path)
-            task_name = self._controller.current_task_name
+            task_name = self._controller.get_current_task_name()
         self._hierarchy_controller.set_selected_project(
             self._last_project_name
         )
@@ -285,8 +296,8 @@ class CreateContextWidget(QtWidgets.QWidget):
         self.task_changed.emit()
 
     def _on_current_context_click(self):
-        folder_path = self._controller.current_folder_path
-        task_name = self._controller.current_task_name
+        folder_path = self._controller.get_current_folder_path()
+        task_name = self._controller.get_current_task_name()
         folder_id = self._controller.get_folder_id_from_path(folder_path)
         self._hierarchy_controller.set_expected_selection(
             self._last_project_name, folder_id, task_name
