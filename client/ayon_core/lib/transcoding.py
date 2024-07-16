@@ -837,7 +837,7 @@ def get_ffprobe_streams(path_to_file, logger=None):
 def get_image_info_metadata(
     path_to_file,
     keys=None,
-    logger=None
+    logger=None,
 ):
     """Get metadata from image file.
 
@@ -921,7 +921,7 @@ def get_image_info_metadata(
             rate_info = metadata_stream.get("framespersecond")
 
         try:
-            metadata_stream["framerate"] = eval(str(rate_info))
+            metadata_stream["framerate"] = float(str(rate_info))
         except Exception as e:
             logger.warning(
                 "Failed to evaluate '{}' value to framerate. Error: {}".format(
