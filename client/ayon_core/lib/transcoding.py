@@ -928,6 +928,7 @@ def get_image_info_metadata(
                     rate_info, e)
             )
 
+    # aggregate all required metadata from prepared metadata stream
     output = {}
     for key in keys:
         for k, v in metadata_stream.items():
