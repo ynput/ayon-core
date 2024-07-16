@@ -8,7 +8,6 @@ import logging
 import weakref
 from uuid import uuid4
 
-from .python_2_comp import WeakMethod
 from .python_module_tools import is_func_signature_supported
 
 
@@ -18,7 +17,7 @@ class MissingEventSystem(Exception):
 
 def _get_func_ref(func):
     if inspect.ismethod(func):
-        return WeakMethod(func)
+        return weakref.WeakMethod(func)
     return weakref.ref(func)
 
 
