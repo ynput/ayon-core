@@ -218,6 +218,7 @@ __all__ = [
 
     "prepare_template_data",
     "source_hash",
+
     "format_file_size",
     "collect_frames",
     "create_hard_link",
@@ -234,7 +235,9 @@ __all__ = [
     "get_datetime_data",
     "get_timestamp",
     "get_formatted_current_time",
+
     "Logger",
+
     "is_in_ayon_launcher_process",
     "is_running_from_build",
     "is_using_ayon_console",
