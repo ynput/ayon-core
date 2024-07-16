@@ -2,7 +2,6 @@ import os
 import copy
 import json
 import collections
-import six
 
 from ayon_core import resources
 
@@ -75,7 +74,7 @@ def _convert_color_values_to_objects(value):
             output[_key] = _convert_color_values_to_objects(_value)
         return output
 
-    if not isinstance(value, six.string_types):
+    if not isinstance(value, str):
         raise TypeError((
             "Unexpected type in colors data '{}'. Expected 'str' or 'dict'."
         ).format(str(type(value))))

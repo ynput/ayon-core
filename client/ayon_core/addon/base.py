@@ -9,9 +9,8 @@ import logging
 import threading
 import collections
 from uuid import uuid4
-from abc import ABCMeta, abstractmethod
+from abc import ABC, abstractmethod
 
-import six
 import appdirs
 import ayon_api
 from semver import VersionInfo
@@ -499,8 +498,7 @@ def is_func_marked(func):
     return getattr(func, _MARKING_ATTR, False)
 
 
-@six.add_metaclass(ABCMeta)
-class AYONAddon(object):
+class AYONAddon(ABC):
     """Base class of AYON addon.
 
     Attributes:
