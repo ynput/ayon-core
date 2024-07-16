@@ -1,6 +1,5 @@
 import os
 import json
-import six
 import uuid
 
 import appdirs
@@ -387,7 +386,7 @@ class LoadedFilesModel(QtGui.QStandardItemModel):
         if not filepaths:
             return
 
-        if isinstance(filepaths, six.string_types):
+        if isinstance(filepaths, str):
             filepaths = [filepaths]
 
         filtered_paths = []
