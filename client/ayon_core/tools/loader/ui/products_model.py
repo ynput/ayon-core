@@ -127,6 +127,7 @@ class ProductsModel(QtGui.QStandardItemModel):
 
         self._last_project_name = None
         self._last_folder_ids = []
+        self._last_status_names = None
         self._last_project_statuses = {}
         self._last_status_icons_by_name = {}
 
@@ -165,7 +166,11 @@ class ProductsModel(QtGui.QStandardItemModel):
             return
         self._grouping_enabled = enable_grouping
         # Ignore change if groups are not available
-        self.refresh(self._last_project_name, self._last_folder_ids)
+        self.refresh(
+            self._last_project_name,
+            self._last_folder_ids,
+            self._last_status_names
+        )
 
     def flags(self, index):
         # Make the version column editable
@@ -459,6 +464,7 @@ class ProductsModel(QtGui.QStandardItemModel):
 
         self._last_project_name = project_name
         self._last_folder_ids = folder_ids
+        self._last_status_names = status_names
         status_items = self._controller.get_project_status_items(project_name)
         self._last_project_statuses = {
             status_item.name: status_item
