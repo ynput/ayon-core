@@ -56,7 +56,7 @@ class TrayManager:
             update_check_interval = 5
         self._update_check_interval = update_check_interval * 60 * 1000
 
-        self._addons_manager = TrayAddonsManager()
+        self._addons_manager = TrayAddonsManager(self)
 
         self.errors = []
 
@@ -103,7 +103,7 @@ class TrayManager:
     def initialize_addons(self):
         """Add addons to tray."""
 
-        self._addons_manager.initialize(self, self.tray_widget.menu)
+        self._addons_manager.initialize(self.tray_widget.menu)
 
         admin_submenu = ITrayAction.admin_submenu(self.tray_widget.menu)
         self.tray_widget.menu.addMenu(admin_submenu)
