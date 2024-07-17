@@ -13,11 +13,11 @@ class Commands:
     @staticmethod
     def launch_tray():
         from ayon_core.lib import Logger
-        from ayon_core.tools import tray
+        from ayon_core.tools.tray.ui import main
 
         Logger.set_process_name("Tray")
 
-        tray.main()
+        main()
 
     @staticmethod
     def add_addons(click_func):
