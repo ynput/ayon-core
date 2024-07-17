@@ -71,8 +71,8 @@ MOVED_ADDON_MILESTONE_VERSIONS = {
 class ProcessPreparationError(Exception):
     """Exception that can be used when process preparation failed.
 
-    The message is showed to user (either as UI dialog or printed). If
-        different error is raised a "generic" error message is showed to user
+    The message is shown to user (either as UI dialog or printed). If
+        different error is raised a "generic" error message is shown to user
         with option to copy error message to clipboard.
 
     """
@@ -654,7 +654,7 @@ class AYONAddon(object):
         Implementation of this method is optional.
 
         Note:
-            The logic can be similar to logic in tray, but in tray not require
+            The logic can be similar to logic in tray, but tray does not require
                 to be logged in.
 
         Args:
