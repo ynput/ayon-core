@@ -51,8 +51,11 @@ def _handle_error(
 
     try:
         run_ayon_launcher_process(
-            "run", script_path, tmp_path,
-            creationflags=0
+            "--skip-bootstrap",
+            script_path,
+            tmp_path,
+            add_sys_paths=True,
+            creationflags=0,
         )
 
     finally:
