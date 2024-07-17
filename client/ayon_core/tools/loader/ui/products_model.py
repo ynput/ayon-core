@@ -127,7 +127,6 @@ class ProductsModel(QtGui.QStandardItemModel):
 
         self._last_project_name = None
         self._last_folder_ids = []
-        self._last_status_names = None
         self._last_project_statuses = {}
         self._last_status_icons_by_name = {}
 
@@ -168,8 +167,7 @@ class ProductsModel(QtGui.QStandardItemModel):
         # Ignore change if groups are not available
         self.refresh(
             self._last_project_name,
-            self._last_folder_ids,
-            self._last_status_names
+            self._last_folder_ids
         )
 
     def flags(self, index):
@@ -459,12 +457,11 @@ class ProductsModel(QtGui.QStandardItemModel):
     def get_last_project_name(self):
         return self._last_project_name
 
-    def refresh(self, project_name, folder_ids, status_names):
+    def refresh(self, project_name, folder_ids):
         self._clear()
 
         self._last_project_name = project_name
         self._last_folder_ids = folder_ids
-        self._last_status_names = status_names
         status_items = self._controller.get_project_status_items(project_name)
         self._last_project_statuses = {
             status_item.name: status_item
@@ -492,17 +489,9 @@ class ProductsModel(QtGui.QStandardItemModel):
         }
         last_version_by_product_id = {}
         for product_item in product_items:
-            all_versions = list(product_item.version_items.values())
-            all_versions.sort()
-            versions = [
-                version_item
-                for version_item in all_versions
-                if status_names is None or version_item.status in status_names
-            ]
-            if versions:
-                last_version = versions[-1]
-            else:
-                last_version = all_versions[-1]
+            versions = list(product_item.version_items.values())
+            versions.sort()
+            last_version = versions[-1]
             last_version_by_product_id[product_item.product_id] = (
                 last_version
             )

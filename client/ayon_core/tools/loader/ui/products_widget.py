@@ -321,8 +321,7 @@ class ProductsWidget(QtWidgets.QWidget):
     def _refresh_model(self):
         self._products_model.refresh(
             self._selected_project_name,
-            self._selected_folder_ids,
-            self._products_proxy_model.get_statuses_filter()
+            self._selected_folder_ids
         )
 
     def _on_context_menu(self, point):
