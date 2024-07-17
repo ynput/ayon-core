@@ -6,14 +6,10 @@ class TrayAddonsManager(AddonsManager):
     # Define order of addons in menu
     # TODO find better way how to define order
     addons_menu_order = (
-        "user",
         "ftrack",
         "kitsu",
         "launcher_tool",
-        "avalon",
         "clockify",
-        "traypublish_tool",
-        "log_viewer",
     )
 
     def __init__(self, tray_manager):
