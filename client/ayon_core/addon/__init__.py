@@ -10,6 +10,7 @@ from .interfaces import (
 
 from .base import (
     ProcessPreparationError,
+    ProcessContext,
     AYONAddon,
     AddonsManager,
     TrayAddonsManager,
@@ -31,6 +32,7 @@ __all__ = (
     "IHostAddon",
 
     "ProcessPreparationError",
+    "ProcessContext",
     "AYONAddon",
     "AddonsManager",
     "TrayAddonsManager",

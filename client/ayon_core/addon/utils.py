@@ -3,6 +3,7 @@ import sys
 import contextlib
 import tempfile
 import json
+import traceback
 from io import StringIO
 from typing import Optional
 
@@ -21,6 +22,10 @@ def _handle_error(
     Shows UI to inform user about the error, or prints the message
         to stdout if running in headless mode.
 
+    Todos:
+        Make this functionality with the dialog as unified function, so it can
+            be used elsewhere.
+
     Args:
         process_context (ProcessContext): The context in which the
             error occurred.
@@ -30,7 +35,8 @@ def _handle_error(
 
     """
     if process_context.headless:
-        print(detail)
+        if detail:
+            print(detail)
         print(f"{10*'*'}\n{message}\n{10*'*'}")
         return
 
@@ -38,16 +44,15 @@ def _handle_error(
     script_path = os.path.join(current_dir, "ui", "process_ready_error.py")
     with tempfile.NamedTemporaryFile("w", delete=False) as tmp:
         tmp_path = tmp.name
+        json.dump(
+            {"message": message, "detail": detail},
+            tmp.file
+        )
 
     try:
-        with open(tmp_path, "w") as stream:
-            json.dump(
-                {"message": message, "detail": detail},
-                stream
-            )
-
         run_ayon_launcher_process(
-            "run", script_path, tmp_path
+            "run", script_path, tmp_path,
+            creationflags=0
         )
 
     finally:
@@ -85,27 +90,35 @@ def ensure_addons_are_process_ready(
     message = None
     failed = False
     use_detail = False
-    with contextlib.redirect_stdout(StringIO()) as stdout:
-        for addon in addons_manager.get_enabled_addons():
-            failed = True
-            try:
-                addon.ensure_is_process_ready(process_context)
-                failed = False
-            except ProcessPreparationError as exc:
-                message = str(exc)
+    output = StringIO()
+    with contextlib.redirect_stdout(output):
+        with contextlib.redirect_stderr(output):
+            for addon in addons_manager.get_enabled_addons():
+                failed = True
+                try:
+                    addon.ensure_is_process_ready(process_context)
+                    failed = False
+                except ProcessPreparationError as exc:
+                    message = str(exc)
+                    print(f"Addon preparation failed: '{addon.name}'")
+                    print(message)
 
-            except BaseException as exc:
-                message = "An unexpected error occurred."
-                use_detail = True
+                except BaseException as exc:
+                    message = "An unexpected error occurred."
+                    print(f"Addon preparation failed: '{addon.name}'")
+                    print(message)
+                    # Print the traceback so it is in the output
+                    traceback.print_exception(*sys.exc_info())
+                    use_detail = True
 
-            if failed:
-                break
+                if failed:
+                    break
 
+    output_str = output.getvalue()
+    # Print stdout/stderr to console as it was redirected
+    print(output_str)
     if failed:
-        detail = None
-        if use_detail:
-            detail = stdout.get_value()
-
+        detail = output_str if use_detail else None
         _handle_error(process_context, message, detail)
         if not exit_on_failure:
             return exc
