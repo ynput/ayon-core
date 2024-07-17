@@ -175,10 +175,3 @@ class TrayAddonsManager(AddonsManager):
                         ),
                         exc_info=True
                     )
-
-    # DEPRECATED
-    def get_enabled_tray_modules(self):
-        return self.get_enabled_tray_addons()
-
-    def start_modules(self):
-        self.start_addons()
