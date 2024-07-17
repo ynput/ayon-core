@@ -1,8 +1,8 @@
 import contextlib
-from abc import ABCMeta, abstractmethod
+from abc import ABC, abstractmethod
+from typing import Dict, Any
 
 import ayon_api
-import six
 
 from ayon_core.style import get_default_entity_icon_color
 from ayon_core.lib import CacheItem, NestedCacheItem
@@ -10,8 +10,14 @@ from ayon_core.lib import CacheItem, NestedCacheItem
 PROJECTS_MODEL_SENDER = "projects.model"
 
 
-@six.add_metaclass(ABCMeta)
-class AbstractHierarchyController:
+class StatusStates:
+    not_started = "not_started"
+    in_progress = "in_progress"
+    done = "done"
+    blocked = "blocked"
+
+
+class AbstractHierarchyController(ABC):
     @abstractmethod
     def emit_event(self, topic, data, source):
         pass
@@ -25,18 +31,24 @@ class StatusItem:
         color (str): Status color in hex ("#434a56").
         short (str): Short status name ("NRD").
         icon (str): Icon name in MaterialIcons ("fiber_new").
-        state (Literal["not_started", "in_progress", "done", "blocked"]):
-            Status state.
+        state (str): Status state.
 
     """
-    def __init__(self, name, color, short, icon, state):
-        self.name = name
-        self.color = color
-        self.short = short
-        self.icon = icon
-        self.state = state
+    def __init__(
+        self,
+        name: str,
+        color: str,
+        short: str,
+        icon: str,
+        state: str
+    ):
+        self.name: str = name
+        self.color: str = color
+        self.short: str = short
+        self.icon: str = icon
+        self.state: str = state
 
-    def to_data(self):
+    def to_data(self) -> Dict[str, Any]:
         return {
             "name": self.name,
             "color": self.color,
