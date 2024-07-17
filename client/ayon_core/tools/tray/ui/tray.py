@@ -26,7 +26,7 @@ from ayon_core.tools.utils import (
     WrappedCallbackItem,
     get_ayon_qt_app,
 )
-from ayon_core.tools.tray.addons_manager import TrayAddonsManager
+from ayon_core.tools.tray import TrayAddonsManager
 
 from .info_widget import InfoWidget
 from .dialogs import (
