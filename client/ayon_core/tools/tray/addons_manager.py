@@ -19,7 +19,7 @@ class TrayAddonsManager(AddonsManager):
     def __init__(self, tray_manager):
         super().__init__(initialize=False)
 
-        self.tray_manager = tray_manager
+        self._tray_manager = tray_manager
 
         self.doubleclick_callbacks = {}
         self.doubleclick_callback = None
@@ -68,8 +68,8 @@ class TrayAddonsManager(AddonsManager):
         ]
 
     def restart_tray(self):
-        if self.tray_manager:
-            self.tray_manager.restart()
+        if self._tray_manager:
+            self._tray_manager.restart()
 
     def tray_init(self):
         report = {}
@@ -77,7 +77,7 @@ class TrayAddonsManager(AddonsManager):
         prev_start_time = time_start
         for addon in self.get_enabled_tray_addons():
             try:
-                addon._tray_manager = self.tray_manager
+                addon._tray_manager = self._tray_manager
                 addon.tray_init()
                 addon.tray_initialized = True
             except Exception:
