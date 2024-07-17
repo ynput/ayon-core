@@ -16,10 +16,10 @@ class TrayAddonsManager(AddonsManager):
         "log_viewer",
     )
 
-    def __init__(self, settings=None):
-        super(TrayAddonsManager, self).__init__(settings, initialize=False)
+    def __init__(self, tray_manager):
+        super().__init__(initialize=False)
 
-        self.tray_manager = None
+        self.tray_manager = tray_manager
 
         self.doubleclick_callbacks = {}
         self.doubleclick_callback = None
@@ -48,8 +48,7 @@ class TrayAddonsManager(AddonsManager):
             "Callback with name \"{}\" is already registered."
         ).format(callback_name))
 
-    def initialize(self, tray_manager, tray_menu):
-        self.tray_manager = tray_manager
+    def initialize(self, tray_menu):
         self.initialize_addons()
         self.tray_init()
         self.connect_addons()
