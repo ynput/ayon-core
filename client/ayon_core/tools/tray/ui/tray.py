@@ -21,12 +21,12 @@ from ayon_core.settings import get_studio_settings
 from ayon_core.addon import (
     ITrayAction,
     ITrayService,
-    TrayAddonsManager,
 )
 from ayon_core.tools.utils import (
     WrappedCallbackItem,
     get_ayon_qt_app,
 )
+from ayon_core.tools.tray.addons_manager import TrayAddonsManager
 
 from .info_widget import InfoWidget
 from .dialogs import (
