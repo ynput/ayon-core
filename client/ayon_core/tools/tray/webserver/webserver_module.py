@@ -1,47 +1,62 @@
-"""WebServerAddon spawns aiohttp server in asyncio loop.
+"""TrayWebserver spawns aiohttp server in asyncio loop.
 
-Main usage of the module is in AYON tray where make sense to add ability
-of other modules to add theirs routes. Module which would want use that
-option must have implemented method `webserver_initialization` which must
-expect `WebServerManager` object where is possible to add routes or paths
-with handlers.
+Usage is to add ability to register routes from addons, or for inner calls
+of tray. Addon which would want use that option must have implemented method
+webserver_initialization` which must expect `WebServerManager` object where
+is possible to add routes or paths with handlers.
 
 WebServerManager is by default created only in tray.
 
-It is possible to create server manager without using module logic at all
-using `create_new_server_manager`. That can be handy for standalone scripts
-with predefined host and port and separated routes and logic.
-
 Running multiple servers in one process is not recommended and probably won't
 work as expected. It is because of few limitations connected to asyncio module.
-
-When module's `create_server_manager` is called it is also set environment
-variable "AYON_WEBSERVER_URL". Which should lead to root access point
-of server.
 """
 
 import os
 import socket
 
 from ayon_core import resources
-from ayon_core.addon import AYONAddon, ITrayService
+from ayon_core.lib import Logger
 
-from .version import __version__
+from .server import WebServerManager
+from .host_console_listener import HostListener
 
 
-class WebServerAddon(AYONAddon, ITrayService):
-    name = "webserver"
-    version = __version__
-    label = "WebServer"
-
+class TrayWebserver:
     webserver_url_env = "AYON_WEBSERVER_URL"
 
-    def initialize(self, settings):
-        self._server_manager = None
-        self._host_listener = None
-
+    def __init__(self, tray_manager):
+        self._log = None
+        self._tray_manager = tray_manager
         self._port = self.find_free_port()
-        self._webserver_url = None
+
+        self._server_manager = WebServerManager(self._port, None)
+
+        webserver_url = self._server_manager.url
+        self._webserver_url = webserver_url
+
+        self._host_listener = HostListener(self, self._tray_manager)
+
+        static_prefix = "/res"
+        self._server_manager.add_static(static_prefix, resources.RESOURCES_DIR)
+        statisc_url = "{}{}".format(
+            self._webserver_url, static_prefix
+        )
+
+        os.environ[self.webserver_url_env] = str(webserver_url)
+        os.environ["AYON_STATICS_SERVER"] = statisc_url
+
+        # Deprecated
+        os.environ["OPENPYPE_WEBSERVER_URL"] = str(webserver_url)
+        os.environ["OPENPYPE_STATICS_SERVER"] = statisc_url
+
+    @property
+    def log(self):
+        if self._log is None:
+            self._log = Logger.get_logger("TrayWebserver")
+        return self._log
+
+    def add_route(self, *args, **kwargs):
+        self._server_manager.add_route(*args, **kwargs)
 
     @property
     def server_manager(self):
@@ -73,71 +88,35 @@ class WebServerAddon(AYONAddon, ITrayService):
         """
         return self._webserver_url
 
-    def connect_with_addons(self, enabled_modules):
+    def connect_with_addons(self, enabled_addons):
         if not self._server_manager:
             return
 
-        for module in enabled_modules:
-            if not hasattr(module, "webserver_initialization"):
+        for addon in enabled_addons:
+            if not hasattr(addon, "webserver_initialization"):
                 continue
 
             try:
-                module.webserver_initialization(self._server_manager)
+                addon.webserver_initialization(self._server_manager)
             except Exception:
                 self.log.warning(
-                    (
-                        "Failed to connect module \"{}\" to webserver."
-                    ).format(module.name),
+                    f"Failed to connect addon \"{addon.name}\" to webserver.",
                     exc_info=True
                 )
 
-    def tray_init(self):
-        self.create_server_manager()
-        self._add_resources_statics()
-        self._add_listeners()
+    def start(self):
+        self._start_server()
 
-    def tray_start(self):
-        self.start_server()
+    def stop(self):
+        self._stop_server()
 
-    def tray_exit(self):
-        self.stop_server()
-
-    def start_server(self):
+    def _start_server(self):
         if self._server_manager is not None:
             self._server_manager.start_server()
 
-    def stop_server(self):
+    def _stop_server(self):
         if self._server_manager is not None:
             self._server_manager.stop_server()
-
-    @staticmethod
-    def create_new_server_manager(port=None, host=None):
-        """Create webserver manager for passed port and host.
-
-        Args:
-            port(int): Port on which wil webserver listen.
-            host(str): Host name or IP address. Default is 'localhost'.
-
-        Returns:
-            WebServerManager: Prepared manager.
-        """
-        from .server import WebServerManager
-
-        return WebServerManager(port, host)
-
-    def create_server_manager(self):
-        if self._server_manager is not None:
-            return
-
-        self._server_manager = self.create_new_server_manager(self._port)
-        self._server_manager.on_stop_callbacks.append(
-            self.set_service_failed_icon
-        )
-
-        webserver_url = self._server_manager.url
-        os.environ["OPENPYPE_WEBSERVER_URL"] = str(webserver_url)
-        os.environ[self.webserver_url_env] = str(webserver_url)
-        self._webserver_url = webserver_url
 
     @staticmethod
     def find_free_port(
@@ -193,20 +172,3 @@ class WebServerAddon(AYONAddon, ITrayService):
                 break
 
         return found_port
-
-    def _add_resources_statics(self):
-        static_prefix = "/res"
-        self._server_manager.add_static(static_prefix, resources.RESOURCES_DIR)
-        statisc_url = "{}{}".format(
-            self._webserver_url, static_prefix
-        )
-
-        os.environ["AYON_STATICS_SERVER"] = statisc_url
-        os.environ["OPENPYPE_STATICS_SERVER"] = statisc_url
-
-    def _add_listeners(self):
-        from . import host_console_listener
-
-        self._host_listener = host_console_listener.HostListener(
-            self._server_manager, self
-        )

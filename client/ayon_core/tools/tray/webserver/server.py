@@ -1,6 +1,7 @@
 import re
 import threading
 import asyncio
+from typing import Callable, Optional
 
 from aiohttp import web
 
@@ -11,7 +12,9 @@ from .cors_middleware import cors_middleware
 class WebServerManager:
     """Manger that care about web server thread."""
 
-    def __init__(self, port=None, host=None):
+    def __init__(
+        self, port: Optional[int] = None, host: Optional[str] = None
+    ):
         self._log = None
 
         self.port = port or 8079
@@ -40,14 +43,14 @@ class WebServerManager:
         return self._log
 
     @property
-    def url(self):
-        return "http://{}:{}".format(self.host, self.port)
+    def url(self) -> str:
+        return f"http://{self.host}:{self.port}"
 
-    def add_route(self, *args, **kwargs):
-        self.app.router.add_route(*args, **kwargs)
+    def add_route(self, request_method: str, path: str, handler: Callable):
+        self.app.router.add_route(request_method, path, handler)
 
-    def add_static(self, *args, **kwargs):
-        self.app.router.add_static(*args, **kwargs)
+    def add_static(self, prefix: str, path: str):
+        self.app.router.add_static(prefix, path)
 
     def start_server(self):
         if self.webserver_thread and not self.webserver_thread.is_alive():
@@ -68,7 +71,7 @@ class WebServerManager:
             )
 
     @property
-    def is_running(self):
+    def is_running(self) -> bool:
         if not self.webserver_thread:
             return False
         return self.webserver_thread.is_running
