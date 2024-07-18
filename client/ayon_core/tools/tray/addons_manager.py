@@ -1,5 +1,7 @@
 import time
+
 from ayon_core.addon import AddonsManager, ITrayAddon, ITrayService
+from ayon_core.tools.tray.webserver import TrayWebserver
 
 
 class TrayAddonsManager(AddonsManager):
@@ -16,9 +18,14 @@ class TrayAddonsManager(AddonsManager):
         super().__init__(initialize=False)
 
         self._tray_manager = tray_manager
+        self._tray_webserver = None
 
         self.doubleclick_callbacks = {}
         self.doubleclick_callback = None
+
+    def get_doubleclick_callback(self):
+        callback_name = self.doubleclick_callback
+        return self.doubleclick_callbacks.get(callback_name)
 
     def add_doubleclick_callback(self, addon, callback):
         """Register double-click callbacks on tray icon.
@@ -68,6 +75,7 @@ class TrayAddonsManager(AddonsManager):
             self._tray_manager.restart()
 
     def tray_init(self):
+        self._tray_webserver = TrayWebserver(self._tray_manager)
         report = {}
         time_start = time.time()
         prev_start_time = time_start
@@ -91,6 +99,11 @@ class TrayAddonsManager(AddonsManager):
         if self._report is not None:
             report[self._report_total_key] = time.time() - time_start
             self._report["Tray init"] = report
+
+    def connect_addons(self):
+        enabled_addons = self.get_enabled_addons()
+        self._tray_webserver.connect_with_addons(enabled_addons)
+        super().connect_addons()
 
     def tray_menu(self, tray_menu):
         ordered_addons = []
@@ -132,6 +145,7 @@ class TrayAddonsManager(AddonsManager):
             self._report["Tray menu"] = report
 
     def start_addons(self):
+        self._tray_webserver.start()
         report = {}
         time_start = time.time()
         prev_start_time = time_start
@@ -159,6 +173,7 @@ class TrayAddonsManager(AddonsManager):
             self._report["Addons start"] = report
 
     def on_exit(self):
+        self._tray_webserver.stop()
         for addon in self.get_enabled_tray_addons():
             if addon.tray_initialized:
                 try:
