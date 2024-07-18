@@ -1,5 +1,5 @@
 from .structures import HostMsgAction
-from .webserver_module import TrayWebserver
+from .webserver import TrayWebserver
 
 
 __all__ = (
