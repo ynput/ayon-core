@@ -23,9 +23,7 @@ class IconType:
 
 class HostListener:
     def __init__(self, webserver, tray_manager):
-        self._window_per_id = {}
         self._tray_manager = tray_manager
-        self.webserver = webserver
         self._window_per_id = {}  # dialogs per host name
         self._action_per_id = {}  # QAction per host name
 

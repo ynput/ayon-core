@@ -52,6 +52,25 @@ class WebServerManager:
     def add_static(self, prefix: str, path: str):
         self.app.router.add_static(prefix, path)
 
+    def add_addon_route(
+        self,
+        addon_name: str,
+        path: str,
+        request_method: str,
+        handler: Callable
+    ) -> str:
+        path = path.lstrip("/")
+        full_path = f"/addons/{addon_name}/{path}"
+        self.app.router.add_route(request_method, full_path, handler)
+        return full_path
+
+    def add_addon_static(
+        self, addon_name: str, prefix: str, path: str
+    ) -> str:
+        full_path = f"/addons/{addon_name}/{prefix}"
+        self.app.router.add_static(full_path, path)
+        return full_path
+
     def start_server(self):
         if self.webserver_thread and not self.webserver_thread.is_alive():
             self.webserver_thread.start()
