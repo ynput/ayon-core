@@ -186,12 +186,12 @@ class ProductsWidget(QtWidgets.QWidget):
         products_proxy_model.rowsInserted.connect(self._on_rows_inserted)
         products_proxy_model.rowsMoved.connect(self._on_rows_moved)
         products_model.refreshed.connect(self._on_refresh)
+        products_model.version_changed.connect(self._on_version_change)
         products_view.customContextMenuRequested.connect(
             self._on_context_menu)
         products_view_sel_model = products_view.selectionModel()
         products_view_sel_model.selectionChanged.connect(
             self._on_selection_change)
-        products_model.version_changed.connect(self._on_version_change)
         version_delegate.version_changed.connect(
             self._on_version_delegate_change
         )
