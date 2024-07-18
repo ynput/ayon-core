@@ -132,7 +132,7 @@ class ProductsModel(QtGui.QStandardItemModel):
 
     def get_product_item_indexes(self):
         return [
-            item.index()
+            self.indexFromItem(item)
             for item in self._items_by_id.values()
         ]
 
