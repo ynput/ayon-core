@@ -923,20 +923,20 @@ class AddonsManager:
         report = {}
         time_start = time.time()
         prev_start_time = time_start
-        enabled_modules = self.get_enabled_addons()
-        self.log.debug("Has {} enabled modules.".format(len(enabled_modules)))
-        for module in enabled_modules:
+        enabled_addons = self.get_enabled_addons()
+        self.log.debug("Has {} enabled addons.".format(len(enabled_addons)))
+        for addon in enabled_addons:
             try:
-                if not is_func_marked(module.connect_with_addons):
-                    module.connect_with_addons(enabled_modules)
+                if not is_func_marked(addon.connect_with_addons):
+                    addon.connect_with_addons(enabled_addons)
 
-                elif hasattr(module, "connect_with_modules"):
+                elif hasattr(addon, "connect_with_modules"):
                     self.log.warning((
                         "DEPRECATION WARNING: Addon '{}' still uses"
                         " 'connect_with_modules' method. Please switch to use"
                         " 'connect_with_addons' method."
-                    ).format(module.name))
-                    module.connect_with_modules(enabled_modules)
+                    ).format(addon.name))
+                    addon.connect_with_modules(enabled_addons)
 
             except Exception:
                 self.log.error(
@@ -945,7 +945,7 @@ class AddonsManager:
                 )
 
             now = time.time()
-            report[module.__class__.__name__] = now - prev_start_time
+            report[addon.__class__.__name__] = now - prev_start_time
             prev_start_time = now
 
         if self._report is not None:
