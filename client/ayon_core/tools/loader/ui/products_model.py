@@ -538,10 +538,11 @@ class ProductsModel(QtGui.QStandardItemModel):
             for product_name, product_items in groups.items():
                 group_product_types |= {p.product_type for p in product_items}
                 for product_item in product_items:
-                    group_product_types |= {
+                    group_status_names |= {
                         version_item.status
                         for version_item in product_item.version_items.values()
                     }
+                    group_product_types.add(product_item.product_type)
 
                 if len(product_items) == 1:
                     top_items.append(product_items[0])
@@ -584,13 +585,15 @@ class ProductsModel(QtGui.QStandardItemModel):
                 product_name, product_items = path_info
                 (merged_color_hex, merged_color_qt) = self._get_next_color()
                 merged_color = qtawesome.icon(
-                    "fa.circle", color=merged_color_qt)
+                    "fa.circle", color=merged_color_qt
+                )
                 merged_item = self._get_merged_model_item(
                     product_name, len(product_items), merged_color_hex)
                 merged_item.setData(merged_color, QtCore.Qt.DecorationRole)
                 new_items.append(merged_item)
 
                 merged_product_types = set()
+                merged_status_names = set()
                 new_merged_items = []
                 for product_item in product_items:
                     item = self._get_product_model_item(
@@ -603,9 +606,21 @@ class ProductsModel(QtGui.QStandardItemModel):
                     )
                     new_merged_items.append(item)
                     merged_product_types.add(product_item.product_type)
+                    merged_status_names |= {
+                        version_item.status
+                        for version_item in (
+                            product_item.version_items.values()
+                        )
+                    }
 
                 merged_item.setData(
-                    "|".join(merged_product_types), PRODUCT_TYPE_ROLE)
+                    "|".join(merged_product_types),
+                    PRODUCT_TYPE_ROLE
+                )
+                merged_item.setData(
+                    "|".join(merged_status_names),
+                    STATUS_NAME_FILTER_ROLE
+                )
                 if new_merged_items:
                     merged_item.appendRows(new_merged_items)
 
