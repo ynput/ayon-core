@@ -156,9 +156,8 @@ class ProductsModel(QtGui.QStandardItemModel):
         if product_item is None:
             return
 
-        self.setData(
-            product_item.index(), version_id, VERSION_NAME_EDIT_ROLE
-        )
+        index = self.indexFromItem(product_item)
+        self.setData(index, version_id, VERSION_NAME_EDIT_ROLE)
 
     def set_enable_grouping(self, enable_grouping):
         if enable_grouping is self._grouping_enabled:
