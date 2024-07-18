@@ -40,7 +40,7 @@ class ValidateCurrentSaveFile(pyblish.api.ContextPlugin):
         current_file = context.data["currentFile"]
         if not current_file:
             raise PublishValidationError(
-                "File not saved",
+                "Workfile is not saved. Please save your scene to continue.",
                 title="File not saved",
                 description=self.get_description())
 
@@ -49,8 +49,6 @@ class ValidateCurrentSaveFile(pyblish.api.ContextPlugin):
             ### File not saved
             
             Your workfile must be saved to continue publishing.
-            
-            Please save your scene.
             
             The **Save Workfile** action will save it for you with the first 
             available workfile version number in your current context.
