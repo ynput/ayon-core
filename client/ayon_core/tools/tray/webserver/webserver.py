@@ -13,6 +13,7 @@ work as expected. It is because of few limitations connected to asyncio module.
 
 import os
 import socket
+from typing import Callable
 
 from ayon_core import resources
 from ayon_core.lib import Logger
@@ -39,7 +40,7 @@ class TrayWebserver:
         static_prefix = "/res"
         self._server_manager.add_static(static_prefix, resources.RESOURCES_DIR)
         statisc_url = "{}{}".format(
-            self._webserver_url, static_prefix
+            webserver_url, static_prefix
         )
 
         os.environ[self.webserver_url_env] = str(webserver_url)
@@ -55,8 +56,11 @@ class TrayWebserver:
             self._log = Logger.get_logger("TrayWebserver")
         return self._log
 
-    def add_route(self, *args, **kwargs):
-        self._server_manager.add_route(*args, **kwargs)
+    def add_route(self, request_method: str, path: str, handler: Callable):
+        self._server_manager.add_route(request_method, path, handler)
+
+    def add_static(self, prefix: str, path: str):
+        self._server_manager.add_static(prefix, path)
 
     @property
     def server_manager(self):

@@ -12,10 +12,7 @@ class Commands:
     """
     @staticmethod
     def launch_tray():
-        from ayon_core.lib import Logger
-        from ayon_core.tools.tray.ui import main
-
-        Logger.set_process_name("Tray")
+        from ayon_core.tools.tray import main
 
         main()
 

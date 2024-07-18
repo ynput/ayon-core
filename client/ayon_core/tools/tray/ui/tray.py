@@ -1,10 +1,12 @@
 import os
 import sys
+import time
 import collections
 import atexit
-
+import json
 import platform
 
+from aiohttp.web_response import Response
 import ayon_api
 from qtpy import QtCore, QtGui, QtWidgets
 
@@ -27,6 +29,11 @@ from ayon_core.tools.utils import (
     get_ayon_qt_app,
 )
 from ayon_core.tools.tray import TrayAddonsManager
+from ayon_core.tools.tray.lib import (
+    set_tray_server_url,
+    remove_tray_server_url,
+    TrayIsRunningError,
+)
 
 from .info_widget import InfoWidget
 from .dialogs import (
@@ -68,6 +75,7 @@ class TrayManager:
         self._execution_in_progress = None
         self._closing = False
         self._services_submenu = None
+        self._start_time = time.time()
 
     @property
     def doubleclick_callback(self):
@@ -105,6 +113,15 @@ class TrayManager:
 
         tray_menu = self.tray_widget.menu
         self._addons_manager.initialize(tray_menu)
+        webserver = self._addons_manager.get_tray_webserver()
+        try:
+            set_tray_server_url(webserver.webserver_url, False)
+        except TrayIsRunningError:
+            self.log.error("Tray is already running.")
+            self.exit()
+            return
+
+        webserver.add_route("GET", "/tray", self._get_web_tray_info)
 
         admin_submenu = ITrayAction.admin_submenu(tray_menu)
         tray_menu.addMenu(admin_submenu)
@@ -125,7 +142,15 @@ class TrayManager:
         tray_menu.addAction(exit_action)
 
         # Tell each addon which addons were imported
-        self._addons_manager.start_addons()
+        # TODO Capture only webserver issues (the only thing that can crash).
+        try:
+            self._addons_manager.start_addons()
+        except Exception:
+            self.log.error(
+                "Failed to start addons.",
+                exc_info=True
+            )
+            return self.exit()
 
         # Print time report
         self._addons_manager.print_report()
@@ -146,6 +171,8 @@ class TrayManager:
         self._update_check_timer = update_check_timer
 
         self.execute_in_main_thread(self._startup_validations)
+
+        set_tray_server_url(webserver.webserver_url, True)
 
     def get_services_submenu(self):
         return self._services_submenu
@@ -213,6 +240,7 @@ class TrayManager:
         self.tray_widget.exit()
 
     def on_exit(self):
+        remove_tray_server_url()
         self._addons_manager.on_exit()
 
     def execute_in_main_thread(self, callback, *args, **kwargs):
@@ -224,6 +252,19 @@ class TrayManager:
         self._main_thread_callbacks.append(item)
 
         return item
+
+    async def _get_web_tray_info(self, request):
+        return Response(text=json.dumps({
+            "bundle": os.getenv("AYON_BUNDLE_NAME"),
+            "dev_mode": is_dev_mode_enabled(),
+            "staging_mode": is_staging_enabled(),
+            "addons": {
+                addon.name: addon.version
+                for addon in self._addons_manager.get_enabled_addons()
+            },
+            "installer_version": os.getenv("AYON_VERSION"),
+            "running_time": time.time() - self._start_time,
+        }))
 
     def _on_update_check_timer(self):
         try:

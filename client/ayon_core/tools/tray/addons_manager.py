@@ -146,6 +146,7 @@ class TrayAddonsManager(AddonsManager):
 
     def start_addons(self):
         self._tray_webserver.start()
+
         report = {}
         time_start = time.time()
         prev_start_time = time_start
@@ -185,3 +186,6 @@ class TrayAddonsManager(AddonsManager):
                         ),
                         exc_info=True
                     )
+
+    def get_tray_webserver(self):
+        return self._tray_webserver
