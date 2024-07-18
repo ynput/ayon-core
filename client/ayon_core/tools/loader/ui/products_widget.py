@@ -188,7 +188,8 @@ class ProductsWidget(QtWidgets.QWidget):
         products_model.refreshed.connect(self._on_refresh)
         products_view.customContextMenuRequested.connect(
             self._on_context_menu)
-        products_view.selectionModel().selectionChanged.connect(
+        products_view_sel_model = products_view.selectionModel()
+        products_view_sel_model.selectionChanged.connect(
             self._on_selection_change)
         products_model.version_changed.connect(self._on_version_change)
         version_delegate.version_changed.connect(
