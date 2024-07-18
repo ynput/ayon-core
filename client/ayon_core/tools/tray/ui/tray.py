@@ -67,12 +67,12 @@ class TrayManager:
         self._main_thread_callbacks = collections.deque()
         self._execution_in_progress = None
         self._closing = False
+        self._services_submenu = None
 
     @property
     def doubleclick_callback(self):
         """Double-click callback for Tray icon."""
-        callback_name = self._addons_manager.doubleclick_callback
-        return self._addons_manager.doubleclick_callbacks.get(callback_name)
+        return self._addons_manager.get_doubleclick_callback()
 
     def execute_doubleclick(self):
         """Execute double click callback in main thread."""
@@ -103,26 +103,26 @@ class TrayManager:
     def initialize_addons(self):
         """Add addons to tray."""
 
-        self._addons_manager.initialize(self.tray_widget.menu)
+        tray_menu = self.tray_widget.menu
+        self._addons_manager.initialize(tray_menu)
 
-        admin_submenu = ITrayAction.admin_submenu(self.tray_widget.menu)
-        self.tray_widget.menu.addMenu(admin_submenu)
+        admin_submenu = ITrayAction.admin_submenu(tray_menu)
+        tray_menu.addMenu(admin_submenu)
 
         # Add services if they are
-        services_submenu = ITrayService.services_submenu(
-            self.tray_widget.menu
-        )
-        self.tray_widget.menu.addMenu(services_submenu)
+        services_submenu = ITrayService.services_submenu(tray_menu)
+        self._services_submenu = services_submenu
+        tray_menu.addMenu(services_submenu)
 
         # Add separator
-        self.tray_widget.menu.addSeparator()
+        tray_menu.addSeparator()
 
         self._add_version_item()
 
         # Add Exit action to menu
         exit_action = QtWidgets.QAction("Exit", self.tray_widget)
         exit_action.triggered.connect(self.tray_widget.exit)
-        self.tray_widget.menu.addAction(exit_action)
+        tray_menu.addAction(exit_action)
 
         # Tell each addon which addons were imported
         self._addons_manager.start_addons()
@@ -146,6 +146,9 @@ class TrayManager:
         self._update_check_timer = update_check_timer
 
         self.execute_in_main_thread(self._startup_validations)
+
+    def get_services_submenu(self):
+        return self._services_submenu
 
     def restart(self):
         """Restart Tray tool.
@@ -319,9 +322,10 @@ class TrayManager:
         self._update_check_timer.timeout.emit()
 
     def _add_version_item(self):
+        tray_menu = self.tray_widget.menu
         login_action = QtWidgets.QAction("Login", self.tray_widget)
         login_action.triggered.connect(self._on_ayon_login)
-        self.tray_widget.menu.addAction(login_action)
+        tray_menu.addAction(login_action)
         version_string = os.getenv("AYON_VERSION", "AYON Info")
 
         version_action = QtWidgets.QAction(version_string, self.tray_widget)
@@ -333,9 +337,9 @@ class TrayManager:
         restart_action.triggered.connect(self._on_restart_action)
         restart_action.setVisible(False)
 
-        self.tray_widget.menu.addAction(version_action)
-        self.tray_widget.menu.addAction(restart_action)
-        self.tray_widget.menu.addSeparator()
+        tray_menu.addAction(version_action)
+        tray_menu.addAction(restart_action)
+        tray_menu.addSeparator()
 
         self._restart_action = restart_action
 
