@@ -28,7 +28,11 @@ class ShowWorkfilesAction(pyblish.api.Action):
 
 
 class ValidateCurrentSaveFile(pyblish.api.ContextPlugin):
-    """File must be saved before publishing"""
+    """File must be saved before publishing
+
+    This does not validate for unsaved changes. It only validates whether
+    the current context was able to identify any 'currentFile'.
+    """
 
     label = "Validate File Saved"
     order = pyblish.api.ValidatorOrder - 0.1
