@@ -6,6 +6,7 @@ import copy
 import clique
 import pyblish.api
 from ayon_api import (
+    get_server_api_connection,
     get_attributes_for_type,
     get_product_by_name,
     get_version_by_name,
@@ -25,6 +26,7 @@ from ayon_core.lib.file_transaction import (
     DuplicateDestinationError
 )
 from ayon_core.pipeline.publish import (
+    get_publish_repre_path,
     KnownPublishError,
     get_publish_template_name,
 )
@@ -347,6 +349,8 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
 
         self.log.debug("{}".format(op_session.to_data()))
         op_session.commit()
+
+        self._upload_reviewable(project_name, version_entity["id"], instance)
 
         # Backwards compatibility used in hero integration.
         # todo: can we avoid the need to store this?
@@ -983,6 +987,57 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
             "hash": source_hash(path),
             "hash_type": "op3",
         }
+
+    def _upload_reviewable(self, project_name, version_id, instance):
+        uploaded_labels = set()
+        ayon_con = get_server_api_connection()
+        base_headers = ayon_con.get_headers()
+        endpoint = (
+            f"/api/projects/{project_name}/versions/{version_id}/reviewables"
+        )
+        for repre in instance.data["representations"]:
+            repre_tags = repre.get("tags") or []
+            # Ignore representations that are not reviewable
+            if "webreview" not in repre_tags:
+                continue
+
+            # exclude representations with are going to be published on farm
+            if "publish_on_farm" in repre_tags:
+                continue
+
+            # Skip thumbnails
+            if repre.get("thumbnail") or "thumbnail" in repre_tags:
+                continue
+
+            # include only thumbnail representations
+            repre_path = get_publish_repre_path(
+                instance, repre, False
+            )
+            repre_ext = os.path.splitext(repre_path)[-1].lower()
+
+            label = repre.get("outputName")
+            if not label:
+                # TODO how to label the reviewable if there is no output name?
+                label = "Main"
+
+            # Make sure label is unique
+            orig_label = label
+            idx = 0
+            while label in uploaded_labels:
+                idx += 1
+                label = f"{orig_label}_{idx}"
+
+            uploaded_labels.add(label)
+
+            # Upload the reviewable
+            self.log.info(f"Uploading reviewable '{label}' ...")
+            headers = copy.deepcopy(base_headers)
+            ayon_con.upload_file(
+                f"/api/projects/{project_name}/versions/{version_id}/reviewables",
+                repre_path,
+                headers=headers
+            )
+
 
     def _validate_path_in_project_roots(self, anatomy, file_path):
         """Checks if 'file_path' starts with any of the roots.
