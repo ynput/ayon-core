@@ -1,7 +1,5 @@
 from abc import ABCMeta, abstractmethod
 
-import six
-
 from ayon_core import resources
 
 
@@ -15,8 +13,7 @@ class _AYONInterfaceMeta(ABCMeta):
         return str(self)
 
 
-@six.add_metaclass(_AYONInterfaceMeta)
-class AYONInterface:
+class AYONInterface(metaclass=_AYONInterfaceMeta):
     """Base class of Interface that can be used as Mixin with abstract parts.
 
     This is way how AYON addon can define that contains specific predefined
