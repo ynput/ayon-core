@@ -1011,7 +1011,8 @@ DEFAULT_PUBLISH_VALUES = {
                         "ext": "png",
                         "tags": [
                             "ftrackreview",
-                            "kitsureview"
+                            "kitsureview",
+                            "webreview"
                         ],
                         "burnins": [],
                         "ffmpeg_args": {
@@ -1051,7 +1052,8 @@ DEFAULT_PUBLISH_VALUES = {
                         "tags": [
                             "burnin",
                             "ftrackreview",
-                            "kitsureview"
+                            "kitsureview",
+                            "webreview"
                         ],
                         "burnins": [],
                         "ffmpeg_args": {
@@ -1063,7 +1065,10 @@ DEFAULT_PUBLISH_VALUES = {
                             "output": [
                                 "-pix_fmt yuv420p",
                                 "-crf 18",
-                                "-intra"
+                                "-c:a acc",
+                                "-b:a 192k",
+                                "-g 1",
+                                "-movflags faststart"
                             ]
                         },
                         "filter": {
