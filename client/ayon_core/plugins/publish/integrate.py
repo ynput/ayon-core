@@ -992,6 +992,14 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
 
     def _upload_reviewable(self, project_name, version_id, instance):
         ayon_con = get_server_api_connection()
+        major, minor, _, _, _ = ayon_con.get_server_version_tuple()
+        if (major, minor) < (1, 3):
+            self.log.info(
+                "Skipping reviewable upload, supported from server 1.3.x."
+                f" User server version {ayon_con.get_server_version()}"
+            )
+            return
+
         base_headers = ayon_con.get_headers()
 
         uploaded_labels = set()
