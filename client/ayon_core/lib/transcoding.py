@@ -1466,8 +1466,6 @@ def _get_media_mime_type_from_ftyp(content):
         return "video/mp4"
     if content[8:12] in (b"M4V\x20", b"mp42"):
         return "video/mp4v"
-    if content[8:13] in (b"3gpis"):
-        return "video/3gpp"
     # (
     #     b"avc1", b"iso2", b"isom", b"mmp4", b"mp41", b"mp71",
     #     b"msnv", b"ndas", b"ndsc", b"ndsh", b"ndsm", b"ndsp", b"ndss",
