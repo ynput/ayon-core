@@ -11,6 +11,7 @@ from ayon_api import (
     get_product_by_name,
     get_version_by_name,
     get_representations,
+    RequestTypes,
 )
 from ayon_api.operations import (
     OperationsSession,
@@ -1028,7 +1029,7 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
                 query = f"?label={label}"
 
             endpoint = (
-                f"/api/projects/{project_name}"
+                f"/projects/{project_name}"
                 f"/versions/{version_id}/reviewables{query}"
             )
             # Make sure label is unique
@@ -1049,7 +1050,8 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
             ayon_con.upload_file(
                 endpoint,
                 repre_path,
-                headers=headers
+                headers=headers,
+                request_type=RequestTypes.post,
             )
 
     def _validate_path_in_project_roots(self, anatomy, file_path):
