@@ -20,7 +20,7 @@ from ayon_api.operations import (
 )
 from ayon_api.utils import create_entity_id
 
-from ayon_core.lib import source_hash
+from ayon_core.lib import source_hash, get_media_mime_type
 from ayon_core.lib.file_transaction import (
     FileTransaction,
     DuplicateDestinationError
@@ -990,12 +990,10 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
         }
 
     def _upload_reviewable(self, project_name, version_id, instance):
-        uploaded_labels = set()
         ayon_con = get_server_api_connection()
         base_headers = ayon_con.get_headers()
-        endpoint = (
-            f"/api/projects/{project_name}/versions/{version_id}/reviewables"
-        )
+
+        uploaded_labels = set()
         for repre in instance.data["representations"]:
             repre_tags = repre.get("tags") or []
             # Ignore representations that are not reviewable
@@ -1014,13 +1012,25 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
             repre_path = get_publish_repre_path(
                 instance, repre, False
             )
-            repre_ext = os.path.splitext(repre_path)[-1].lower()
+            if not repre_path or not os.path.exists(repre_path):
+                # TODO log skipper path
+                continue
 
+            content_type = get_media_mime_type(repre_path)
+            if not content_type:
+                self.log.warning("Could not determine Content-Type")
+                continue
+
+            # Use output name as label if available
             label = repre.get("outputName")
-            if not label:
-                # TODO how to label the reviewable if there is no output name?
-                label = "Main"
+            query = ""
+            if label:
+                query = f"?label={label}"
 
+            endpoint = (
+                f"/api/projects/{project_name}"
+                f"/versions/{version_id}/reviewables{query}"
+            )
             # Make sure label is unique
             orig_label = label
             idx = 0
@@ -1033,12 +1043,14 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
             # Upload the reviewable
             self.log.info(f"Uploading reviewable '{label}' ...")
             headers = copy.deepcopy(base_headers)
+            headers["Content-Type"] = content_type
+            headers["x-file-name"] = os.path.basename(repre_path)
+            self.log.info(f"Uploading reviewable {repre_path}")
             ayon_con.upload_file(
-                f"/api/projects/{project_name}/versions/{version_id}/reviewables",
+                endpoint,
                 repre_path,
                 headers=headers
             )
-
 
     def _validate_path_in_project_roots(self, anatomy, file_path):
         """Checks if 'file_path' starts with any of the roots.
