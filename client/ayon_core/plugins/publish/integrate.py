@@ -1000,8 +1000,6 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
             )
             return
 
-        base_headers = ayon_con.get_headers()
-
         uploaded_labels = set()
         for repre in instance.data["representations"]:
             repre_tags = repre.get("tags") or []
@@ -1051,8 +1049,8 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
 
             # Upload the reviewable
             self.log.info(f"Uploading reviewable '{label}' ...")
-            headers = copy.deepcopy(base_headers)
-            headers["Content-Type"] = content_type
+
+            headers = ayon_con.get_headers(content_type)
             headers["x-file-name"] = os.path.basename(repre_path)
             self.log.info(f"Uploading reviewable {repre_path}")
             ayon_con.upload_file(
