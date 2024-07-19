@@ -27,7 +27,6 @@ class TrayWebserver:
 
     def __init__(self, tray_manager):
         self._log = None
-        self._tray_manager = tray_manager
         self._port = self.find_free_port()
 
         self._server_manager = WebServerManager(self._port, None)
@@ -35,7 +34,7 @@ class TrayWebserver:
         webserver_url = self._server_manager.url
         self._webserver_url = webserver_url
 
-        self._host_listener = HostListener(self, self._tray_manager)
+        self._host_listener = HostListener(self, tray_manager)
 
         static_prefix = "/res"
         self._server_manager.add_static(static_prefix, resources.RESOURCES_DIR)
