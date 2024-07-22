@@ -34,10 +34,10 @@ class FilterFarmEnvironments(PreLaunchHook):
         task_entity = data["task_entity"]
 
         filter_data = {
-            "hosts": self.host_name,
+            "host_names": self.host_name,
             "task_types": task_entity["taskType"],
-            "tasks": task_entity["name"],
-            "folders": data["folder_path"]
+            "task_names": task_entity["name"],
+            "folder_paths": data["folder_path"]
         }
         matching_profile = filter_profiles(
             filter_env_profiles, filter_data, logger=self.log
