@@ -171,8 +171,9 @@ class ProductTypesView(QtWidgets.QListView):
 
         # Apply product types filter
         if self._refresh_product_types_filter:
+            project_name = self._controller.get_selected_project_name()
             product_types_filter = (
-                self._controller.get_current_context_product_types_filter()
+                self._controller.get_product_types_filter(project_name)
             )
             if product_types_filter.is_include:
                 self._on_disable_all()
