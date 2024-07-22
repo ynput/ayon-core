@@ -6,13 +6,11 @@ import copy
 import clique
 import pyblish.api
 from ayon_api import (
-    get_server_api_connection,
     get_attributes_for_type,
     get_product_by_name,
     get_version_by_name,
     get_representations,
 )
-from ayon_api.server_api import RequestTypes
 from ayon_api.operations import (
     OperationsSession,
     new_product_entity,
@@ -21,13 +19,12 @@ from ayon_api.operations import (
 )
 from ayon_api.utils import create_entity_id
 
-from ayon_core.lib import source_hash, get_media_mime_type
+from ayon_core.lib import source_hash
 from ayon_core.lib.file_transaction import (
     FileTransaction,
     DuplicateDestinationError
 )
 from ayon_core.pipeline.publish import (
-    get_publish_repre_path,
     KnownPublishError,
     get_publish_template_name,
 )
@@ -989,76 +986,6 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
             "hash": source_hash(path),
             "hash_type": "op3",
         }
-
-    def _upload_reviewable(self, project_name, version_id, instance):
-        ayon_con = get_server_api_connection()
-        major, minor, _, _, _ = ayon_con.get_server_version_tuple()
-        if (major, minor) < (1, 3):
-            self.log.info(
-                "Skipping reviewable upload, supported from server 1.3.x."
-                f" User server version {ayon_con.get_server_version()}"
-            )
-            return
-
-        uploaded_labels = set()
-        for repre in instance.data["representations"]:
-            repre_tags = repre.get("tags") or []
-            # Ignore representations that are not reviewable
-            if "webreview" not in repre_tags:
-                continue
-
-            # exclude representations with are going to be published on farm
-            if "publish_on_farm" in repre_tags:
-                continue
-
-            # Skip thumbnails
-            if repre.get("thumbnail") or "thumbnail" in repre_tags:
-                continue
-
-            # include only thumbnail representations
-            repre_path = get_publish_repre_path(
-                instance, repre, False
-            )
-            if not repre_path or not os.path.exists(repre_path):
-                # TODO log skipper path
-                continue
-
-            content_type = get_media_mime_type(repre_path)
-            if not content_type:
-                self.log.warning("Could not determine Content-Type")
-                continue
-
-            # Use output name as label if available
-            label = repre.get("outputName")
-            query = ""
-            if label:
-                query = f"?label={label}"
-
-            endpoint = (
-                f"/projects/{project_name}"
-                f"/versions/{version_id}/reviewables{query}"
-            )
-            # Make sure label is unique
-            orig_label = label
-            idx = 0
-            while label in uploaded_labels:
-                idx += 1
-                label = f"{orig_label}_{idx}"
-
-            uploaded_labels.add(label)
-
-            # Upload the reviewable
-            self.log.info(f"Uploading reviewable '{label}' ...")
-
-            headers = ayon_con.get_headers(content_type)
-            headers["x-file-name"] = os.path.basename(repre_path)
-            self.log.info(f"Uploading reviewable {repre_path}")
-            ayon_con.upload_file(
-                endpoint,
-                repre_path,
-                headers=headers,
-                request_type=RequestTypes.post,
-            )
 
     def _validate_path_in_project_roots(self, anatomy, file_path):
         """Checks if 'file_path' starts with any of the roots.
