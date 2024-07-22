@@ -80,6 +80,15 @@ class TrayManager:
         self._services_submenu = None
         self._start_time = time.time()
 
+        try:
+            set_tray_server_url(
+                self._addons_manager.webserver_url, False
+            )
+        except TrayIsRunningError:
+            self.log.error("Tray is already running.")
+            self.exit()
+            return
+
     @property
     def doubleclick_callback(self):
         """Double-click callback for Tray icon."""
@@ -116,13 +125,6 @@ class TrayManager:
 
         tray_menu = self.tray_widget.menu
         self._addons_manager.initialize(tray_menu)
-        webserver_url = self._addons_manager.webserver_url
-        try:
-            set_tray_server_url(webserver_url, False)
-        except TrayIsRunningError:
-            self.log.error("Tray is already running.")
-            self.exit()
-            return
 
         self._addons_manager.add_route(
             "GET", "/tray", self._get_web_tray_info
@@ -177,7 +179,7 @@ class TrayManager:
 
         self.execute_in_main_thread(self._startup_validations)
 
-        set_tray_server_url(webserver_url, True)
+        set_tray_server_url(self._addons_manager.webserver_url, True)
 
     def get_services_submenu(self):
         return self._services_submenu

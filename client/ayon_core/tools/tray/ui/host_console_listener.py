@@ -9,7 +9,7 @@ from qtpy import QtWidgets
 from ayon_core.addon import ITrayService
 from ayon_core.tools.stdout_broker.window import ConsoleDialog
 
-from .structures import HostMsgAction
+from ayon_core.tools.tray import HostMsgAction
 
 log = logging.getLogger(__name__)
 
