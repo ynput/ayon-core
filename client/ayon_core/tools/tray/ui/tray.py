@@ -35,6 +35,7 @@ from ayon_core.tools.tray.lib import (
     TrayIsRunningError,
 )
 
+from .host_console_listener import HostListener
 from .info_widget import InfoWidget
 from .dialogs import (
     UpdateDialog,
@@ -64,6 +65,8 @@ class TrayManager:
         self._update_check_interval = update_check_interval * 60 * 1000
 
         self._addons_manager = TrayAddonsManager(self)
+
+        self._host_listener = HostListener(self._addons_manager, self)
 
         self.errors = []
 
