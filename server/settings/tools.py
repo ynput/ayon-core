@@ -195,6 +195,7 @@ def _product_types_enum():
         "editorial",
         "gizmo",
         "image",
+        "imagesequence",
         "layout",
         "look",
         "matchmove",
