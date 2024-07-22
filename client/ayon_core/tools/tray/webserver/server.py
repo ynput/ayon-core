@@ -1,12 +1,72 @@
 import re
 import threading
 import asyncio
+import socket
+import random
 from typing import Callable, Optional
 
 from aiohttp import web
 
 from ayon_core.lib import Logger
+from ayon_core.resources import RESOURCES_DIR
+
 from .cors_middleware import cors_middleware
+
+
+def find_free_port(
+    port_from=None, port_to=None, exclude_ports=None, host=None
+):
+    """Find available socket port from entered range.
+
+    It is also possible to only check if entered port is available.
+
+    Args:
+        port_from (int): Port number which is checked as first.
+        port_to (int): Last port that is checked in sequence from entered
+            `port_from`. Only `port_from` is checked if is not entered.
+            Nothing is processed if is equeal to `port_from`!
+        exclude_ports (list, tuple, set): List of ports that won't be
+            checked form entered range.
+        host (str): Host where will check for free ports. Set to
+            "localhost" by default.
+    """
+    if port_from is None:
+        port_from = 8079
+
+    if port_to is None:
+        port_to = 65535
+
+    # Excluded ports (e.g. reserved for other servers/clients)
+    if exclude_ports is None:
+        exclude_ports = []
+
+    # Default host is localhost but it is possible to look for other hosts
+    if host is None:
+        host = "localhost"
+
+    found_port = None
+    while True:
+        port = random.randint(port_from, port_to)
+        if port in exclude_ports:
+            continue
+
+        sock = None
+        try:
+            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            sock.bind((host, port))
+            found_port = port
+
+        except socket.error:
+            continue
+
+        finally:
+            if sock:
+                sock.close()
+
+        if found_port is not None:
+            break
+
+    return found_port
 
 
 class WebServerManager:
@@ -20,8 +80,6 @@ class WebServerManager:
         self.port = port or 8079
         self.host = host or "localhost"
 
-        self.client = None
-        self.handlers = {}
         self.on_stop_callbacks = []
 
         self.app = web.Application(
@@ -33,8 +91,9 @@ class WebServerManager:
         )
 
         # add route with multiple methods for single "external app"
-
         self.webserver_thread = WebServerThread(self)
+
+        self.add_static("/res", RESOURCES_DIR)
 
     @property
     def log(self):
@@ -70,6 +129,19 @@ class WebServerManager:
         full_path = f"/addons/{addon_name}/{prefix}"
         self.app.router.add_static(full_path, path)
         return full_path
+
+    def connect_with_addons(self, addons):
+        for addon in addons:
+            if not hasattr(addon, "webserver_initialization"):
+                continue
+
+            try:
+                addon.webserver_initialization(self)
+            except Exception:
+                self.log.warning(
+                    f"Failed to connect addon \"{addon.name}\" to webserver.",
+                    exc_info=True
+                )
 
     def start_server(self):
         if self.webserver_thread and not self.webserver_thread.is_alive():

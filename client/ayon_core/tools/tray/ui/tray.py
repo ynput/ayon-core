@@ -113,15 +113,17 @@ class TrayManager:
 
         tray_menu = self.tray_widget.menu
         self._addons_manager.initialize(tray_menu)
-        webserver = self._addons_manager.get_tray_webserver()
+        webserver_url = self._addons_manager.webserver_url
         try:
-            set_tray_server_url(webserver.webserver_url, False)
+            set_tray_server_url(webserver_url, False)
         except TrayIsRunningError:
             self.log.error("Tray is already running.")
             self.exit()
             return
 
-        webserver.add_route("GET", "/tray", self._get_web_tray_info)
+        self._addons_manager.add_route(
+            "GET", "/tray", self._get_web_tray_info
+        )
 
         admin_submenu = ITrayAction.admin_submenu(tray_menu)
         tray_menu.addMenu(admin_submenu)
@@ -172,7 +174,7 @@ class TrayManager:
 
         self.execute_in_main_thread(self._startup_validations)
 
-        set_tray_server_url(webserver.webserver_url, True)
+        set_tray_server_url(webserver_url, True)
 
     def get_services_submenu(self):
         return self._services_submenu
