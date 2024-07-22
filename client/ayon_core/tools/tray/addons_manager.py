@@ -1,10 +1,19 @@
+import os
 import time
+from typing import Callable
 
+from ayon_core.resources import RESOURCES_DIR
 from ayon_core.addon import AddonsManager, ITrayAddon, ITrayService
-from ayon_core.tools.tray.webserver import TrayWebserver
+from ayon_core.tools.tray.webserver import (
+    HostListener,
+    find_free_port,
+    WebServerManager,
+)
 
 
 class TrayAddonsManager(AddonsManager):
+    # TODO do not use env variable
+    webserver_url_env = "AYON_WEBSERVER_URL"
     # Define order of addons in menu
     # TODO find better way how to define order
     addons_menu_order = (
@@ -18,10 +27,16 @@ class TrayAddonsManager(AddonsManager):
         super().__init__(initialize=False)
 
         self._tray_manager = tray_manager
-        self._tray_webserver = None
+
+        self._host_listener = None
+        self._server_manager = WebServerManager(find_free_port(), None)
 
         self.doubleclick_callbacks = {}
         self.doubleclick_callback = None
+
+    @property
+    def webserver_url(self):
+        return self._server_manager.url
 
     def get_doubleclick_callback(self):
         callback_name = self.doubleclick_callback
@@ -57,6 +72,35 @@ class TrayAddonsManager(AddonsManager):
         self.connect_addons()
         self.tray_menu(tray_menu)
 
+    def add_route(self, request_method: str, path: str, handler: Callable):
+        self._server_manager.add_route(request_method, path, handler)
+
+    def add_static(self, prefix: str, path: str):
+        self._server_manager.add_static(prefix, path)
+
+    def add_addon_route(
+        self,
+        addon_name: str,
+        path: str,
+        request_method: str,
+        handler: Callable
+    ) -> str:
+        return self._server_manager.add_addon_route(
+            addon_name,
+            path,
+            request_method,
+            handler
+        )
+
+    def add_addon_static(
+        self, addon_name: str, prefix: str, path: str
+    ) -> str:
+        return self._server_manager.add_addon_static(
+            addon_name,
+            prefix,
+            path
+        )
+
     def get_enabled_tray_addons(self):
         """Enabled tray addons.
 
@@ -75,7 +119,7 @@ class TrayAddonsManager(AddonsManager):
             self._tray_manager.restart()
 
     def tray_init(self):
-        self._tray_webserver = TrayWebserver(self._tray_manager)
+        self._init_tray_webserver()
         report = {}
         time_start = time.time()
         prev_start_time = time_start
@@ -101,8 +145,9 @@ class TrayAddonsManager(AddonsManager):
             self._report["Tray init"] = report
 
     def connect_addons(self):
-        enabled_addons = self.get_enabled_addons()
-        self._tray_webserver.connect_with_addons(enabled_addons)
+        self._server_manager.connect_with_addons(
+            self.get_enabled_addons()
+        )
         super().connect_addons()
 
     def tray_menu(self, tray_menu):
@@ -145,7 +190,7 @@ class TrayAddonsManager(AddonsManager):
             self._report["Tray menu"] = report
 
     def start_addons(self):
-        self._tray_webserver.start()
+        self._server_manager.start_server()
 
         report = {}
         time_start = time.time()
@@ -174,7 +219,7 @@ class TrayAddonsManager(AddonsManager):
             self._report["Addons start"] = report
 
     def on_exit(self):
-        self._tray_webserver.stop()
+        self._server_manager.stop_server()
         for addon in self.get_enabled_tray_addons():
             if addon.tray_initialized:
                 try:
@@ -188,4 +233,20 @@ class TrayAddonsManager(AddonsManager):
                     )
 
     def get_tray_webserver(self):
-        return self._tray_webserver
+        # TODO rename/remove method
+        return self._server_manager
+
+    def _init_tray_webserver(self):
+        self._host_listener = HostListener(self._server_manager, self)
+
+        webserver_url = self.webserver_url
+        statisc_url = f"{webserver_url}/res"
+
+        # TODO stop using these env variables
+        # - function 'get_tray_server_url' should be used instead
+        os.environ[self.webserver_url_env] = webserver_url
+        os.environ["AYON_STATICS_SERVER"] = statisc_url
+
+        # Deprecated
+        os.environ["OPENPYPE_WEBSERVER_URL"] = webserver_url
+        os.environ["OPENPYPE_STATICS_SERVER"] = statisc_url

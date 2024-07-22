@@ -27,7 +27,7 @@ class HostListener:
         self._window_per_id = {}  # dialogs per host name
         self._action_per_id = {}  # QAction per host name
 
-        webserver.add_route('*', "/ws/host_listener", self.websocket_handler)
+        webserver.add_route("*", "/ws/host_listener", self.websocket_handler)
 
     def _host_is_connecting(self, host_name, label):
         """ Initialize dialog, adds to submenu."""
