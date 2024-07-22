@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+from typing import List
 
 from ayon_core.lib.attribute_definitions import (
     AbstractAttrDef,
@@ -344,6 +345,16 @@ class ActionItem:
             options = deserialize_attr_defs(options)
         data["options"] = options
         return cls(**data)
+
+
+class ProductTypesFilter:
+    """Product types filter.
+
+    Defines the filtering for product types.
+    """
+    def __init__(self, product_types: List[str], is_include: bool):
+        self.product_types: List[str] = product_types
+        self.is_include: bool = is_include
 
 
 class _BaseLoaderController(ABC):
@@ -1003,6 +1014,16 @@ class FrontendLoaderController(_BaseLoaderController):
 
         Returns:
             dict[str, tuple[int, int]]: Sync status by representation id.
+        """
+
+        pass
+
+    @abstractmethod
+    def get_current_context_product_types_filter(self):
+        """Return product type filter for current context.
+
+        Returns:
+            ProductTypesFilter: Product type filter for current context
         """
 
         pass
