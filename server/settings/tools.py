@@ -213,7 +213,6 @@ def _product_types_enum():
         "setdress",
         "take",
         "usd",
-        "usdShade",
         "vdbcache",
         "vrayproxy",
         "workfile",
