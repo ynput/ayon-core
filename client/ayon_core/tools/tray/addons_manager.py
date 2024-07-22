@@ -2,10 +2,8 @@ import os
 import time
 from typing import Callable
 
-from ayon_core.resources import RESOURCES_DIR
 from ayon_core.addon import AddonsManager, ITrayAddon, ITrayService
 from ayon_core.tools.tray.webserver import (
-    HostListener,
     find_free_port,
     WebServerManager,
 )
@@ -28,15 +26,14 @@ class TrayAddonsManager(AddonsManager):
 
         self._tray_manager = tray_manager
 
-        self._host_listener = None
-        self._server_manager = WebServerManager(find_free_port(), None)
+        self._webserver_manager = WebServerManager(find_free_port(), None)
 
         self.doubleclick_callbacks = {}
         self.doubleclick_callback = None
 
     @property
     def webserver_url(self):
-        return self._server_manager.url
+        return self._webserver_manager.url
 
     def get_doubleclick_callback(self):
         callback_name = self.doubleclick_callback
@@ -73,10 +70,10 @@ class TrayAddonsManager(AddonsManager):
         self.tray_menu(tray_menu)
 
     def add_route(self, request_method: str, path: str, handler: Callable):
-        self._server_manager.add_route(request_method, path, handler)
+        self._webserver_manager.add_route(request_method, path, handler)
 
     def add_static(self, prefix: str, path: str):
-        self._server_manager.add_static(prefix, path)
+        self._webserver_manager.add_static(prefix, path)
 
     def add_addon_route(
         self,
@@ -85,7 +82,7 @@ class TrayAddonsManager(AddonsManager):
         request_method: str,
         handler: Callable
     ) -> str:
-        return self._server_manager.add_addon_route(
+        return self._webserver_manager.add_addon_route(
             addon_name,
             path,
             request_method,
@@ -95,7 +92,7 @@ class TrayAddonsManager(AddonsManager):
     def add_addon_static(
         self, addon_name: str, prefix: str, path: str
     ) -> str:
-        return self._server_manager.add_addon_static(
+        return self._webserver_manager.add_addon_static(
             addon_name,
             prefix,
             path
@@ -145,7 +142,7 @@ class TrayAddonsManager(AddonsManager):
             self._report["Tray init"] = report
 
     def connect_addons(self):
-        self._server_manager.connect_with_addons(
+        self._webserver_manager.connect_with_addons(
             self.get_enabled_addons()
         )
         super().connect_addons()
@@ -190,7 +187,7 @@ class TrayAddonsManager(AddonsManager):
             self._report["Tray menu"] = report
 
     def start_addons(self):
-        self._server_manager.start_server()
+        self._webserver_manager.start_server()
 
         report = {}
         time_start = time.time()
@@ -219,7 +216,7 @@ class TrayAddonsManager(AddonsManager):
             self._report["Addons start"] = report
 
     def on_exit(self):
-        self._server_manager.stop_server()
+        self._webserver_manager.stop_server()
         for addon in self.get_enabled_tray_addons():
             if addon.tray_initialized:
                 try:
@@ -234,11 +231,9 @@ class TrayAddonsManager(AddonsManager):
 
     def get_tray_webserver(self):
         # TODO rename/remove method
-        return self._server_manager
+        return self._webserver_manager
 
     def _init_tray_webserver(self):
-        self._host_listener = HostListener(self._server_manager, self)
-
         webserver_url = self.webserver_url
         statisc_url = f"{webserver_url}/res"
 
