@@ -71,6 +71,21 @@ class ProductTypesQtModel(QtGui.QStandardItemModel):
         self._refreshing = False
         self.refreshed.emit()
 
+    def reset_product_types_filter(self):
+
+        project_name = self._controller.get_selected_project_name()
+        product_types_filter = (
+            self._controller.get_product_types_filter(project_name)
+        )
+        if product_types_filter.is_include:
+            self.change_state_for_all(False)
+        else:
+            self.change_state_for_all(True)
+        self.change_states(
+            product_types_filter.is_include,
+            product_types_filter.product_types
+        )
+
     def setData(self, index, value, role=None):
         checkstate_changed = False
         if role is None:
@@ -169,20 +184,9 @@ class ProductTypesView(QtWidgets.QListView):
 
     def _on_refresh_finished(self):
 
-        # Apply product types filter
+        # Apply product types filter on first show
         if self._refresh_product_types_filter:
-            project_name = self._controller.get_selected_project_name()
-            product_types_filter = (
-                self._controller.get_product_types_filter(project_name)
-            )
-            if product_types_filter.is_include:
-                self._on_disable_all()
-            else:
-                self._on_enable_all()
-            self._product_types_model.change_states(
-                product_types_filter.is_include,
-                product_types_filter.product_types
-            )
+            self._product_types_model.reset_product_types_filter()
 
         self.filter_changed.emit()
 
