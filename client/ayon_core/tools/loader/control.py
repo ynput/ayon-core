@@ -3,7 +3,10 @@ import uuid
 
 import ayon_api
 
-from ayon_core.lib import NestedCacheItem, CacheItem
+from ayon_core.settings import get_current_project_settings
+from ayon_core.pipeline import get_current_host_name
+from ayon_core.pipeline.context_tools import get_current_task_entity
+from ayon_core.lib import NestedCacheItem, CacheItem, filter_profiles
 from ayon_core.lib.events import QueuedEventSystem
 from ayon_core.pipeline import Anatomy, get_current_context
 from ayon_core.host import ILoadHost
@@ -13,7 +16,11 @@ from ayon_core.tools.common_models import (
     ThumbnailsModel,
 )
 
-from .abstract import BackendLoaderController, FrontendLoaderController
+from .abstract import (
+    BackendLoaderController,
+    FrontendLoaderController,
+    ProductTypesFilter
+)
 from .models import (
     SelectionModel,
     ProductsModel,
@@ -425,3 +432,28 @@ class LoaderController(BackendLoaderController, FrontendLoaderController):
 
     def _emit_event(self, topic, data=None):
         self._event_system.emit(topic, data or {}, "controller")
+
+    def get_current_context_product_types_filter(self):
+        context = get_current_context()
+        # There may be cases where there is no current context, like
+        # Tray Loader so we only do this when we have a context
+        if all(context.values()):
+            settings = get_current_project_settings()
+            profiles = settings["core"]["tools"]["loader"]["product_type_filter_profiles"]  # noqa
+            if profiles:
+                task_entity = get_current_task_entity(fields={"taskType"})
+                profile = filter_profiles(profiles, key_values={
+                    "hosts": get_current_host_name(),
+                    "task_types": (task_entity or {}).get("taskType")
+                })
+                if profile:
+                    return ProductTypesFilter(
+                        is_include=profile["is_include"],
+                        product_types=profile["filter_product_types"]
+                    )
+
+        # Default to all as allowed
+        return ProductTypesFilter(
+            is_include=False,
+            product_types=[]
+        )

@@ -151,6 +151,7 @@ class ProductTypesView(QtWidgets.QListView):
         )
 
         self._controller = controller
+        self._refresh_product_types_filter = False
 
         self._product_types_model = product_types_model
         self._product_types_proxy_model = product_types_proxy_model
@@ -162,7 +163,26 @@ class ProductTypesView(QtWidgets.QListView):
         project_name = event["project_name"]
         self._product_types_model.refresh(project_name)
 
+    def showEvent(self, event):
+        self._refresh_product_types_filter = True
+        super().showEvent(event)
+
     def _on_refresh_finished(self):
+
+        # Apply product types filter
+        if self._refresh_product_types_filter:
+            product_types_filter = (
+                self._controller.get_current_context_product_types_filter()
+            )
+            if product_types_filter.is_include:
+                self._on_disable_all()
+            else:
+                self._on_enable_all()
+            self._product_types_model.change_states(
+                product_types_filter.is_include,
+                product_types_filter.product_types
+            )
+
         self.filter_changed.emit()
 
     def _on_filter_change(self):
