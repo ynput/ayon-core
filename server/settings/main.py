@@ -178,7 +178,7 @@ class EnvironmentReplacementModel(BaseSettingsModel):
 class FilterFarmEnvironmentModel(BaseSettingsModel):
     _layout = "expanded"
 
-    hosts: list[str] = SettingsField(
+    host_names: list[str] = SettingsField(
         default_factory=list,
         title="Host names"
     )
@@ -194,9 +194,9 @@ class FilterFarmEnvironmentModel(BaseSettingsModel):
         title="Task names"
     )
 
-    folders: list[str] = SettingsField(
+    folder_paths: list[str] = SettingsField(
         default_factory=list,
-        title="Folders"
+        title="Folder paths"
     )
 
     skip_environment: list[str] = SettingsField(
