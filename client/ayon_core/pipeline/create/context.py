@@ -2043,7 +2043,8 @@ class CreateContext:
         variant,
         folder_entity=None,
         task_entity=None,
-        pre_create_data=None
+        pre_create_data=None,
+        active=None
     ):
         """Trigger create of plugins with standartized arguments.
 
@@ -2061,6 +2062,8 @@ class CreateContext:
                 of creation (possible context of created instance/s).
             task_entity (Dict[str, Any]): Task entity.
             pre_create_data (Dict[str, Any]): Pre-create attribute values.
+            active (Optional[bool]): Whether the created instance defaults
+                to be active or not.
 
         Returns:
             Any: Output of triggered creator's 'create' method.
@@ -2126,6 +2129,14 @@ class CreateContext:
             "productType": creator.product_type,
             "variant": variant
         }
+        if active is not None:
+            if not isinstance(active, bool):
+                self.log.warning(
+                    "CreateContext.create 'active' argument is not a bool. "
+                    f"Converting {active} {type(active)} to bool.")
+                active = bool(active)
+            instance_data["active"] = active
+
         return creator.create(
             product_name,
             instance_data,
