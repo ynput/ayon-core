@@ -433,27 +433,43 @@ class LoaderController(BackendLoaderController, FrontendLoaderController):
     def _emit_event(self, topic, data=None):
         self._event_system.emit(topic, data or {}, "controller")
 
-    def get_current_context_product_types_filter(self):
-        context = get_current_context()
-        # There may be cases where there is no current context, like
-        # Tray Loader so we only do this when we have a context
-        if all(context.values()):
-            settings = get_current_project_settings()
-            profiles = settings["core"]["tools"]["loader"]["product_type_filter_profiles"]  # noqa
-            if profiles:
-                task_entity = get_current_task_entity(fields={"taskType"})
-                profile = filter_profiles(profiles, key_values={
-                    "hosts": get_current_host_name(),
-                    "task_types": (task_entity or {}).get("taskType")
-                })
-                if profile:
-                    return ProductTypesFilter(
-                        is_include=profile["is_include"],
-                        product_types=profile["filter_product_types"]
-                    )
-
-        # Default to all as allowed
-        return ProductTypesFilter(
+    def get_product_types_filter(self, project_name):
+        output = ProductTypesFilter(
             is_include=False,
             product_types=[]
         )
+        # Without host is not determined context
+        if self._host is None:
+            return output
+
+        context = self.get_current_context()
+        if (
+            not all(context.values())
+            or context["project_name"] != project_name
+        ):
+            return output
+        settings = get_current_project_settings()
+        profiles = (
+            settings
+            ["core"]
+            ["tools"]
+            ["loader"]
+            ["product_type_filter_profiles"]
+        )
+        if not profiles:
+            return output
+        task_entity = get_current_task_entity(fields={"taskType"})
+        host_name = getattr(self._host, "name", get_current_host_name())
+        profile = filter_profiles(
+            profiles,
+            {
+                "hosts": host_name,
+                "task_types": (task_entity or {}).get("taskType")
+            }
+        )
+        if profile:
+            output = ProductTypesFilter(
+                is_include=profile["is_include"],
+                product_types=profile["filter_product_types"]
+            )
+        return output
