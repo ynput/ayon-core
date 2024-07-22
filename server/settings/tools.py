@@ -499,14 +499,7 @@ DEFAULT_TOOLS_VALUES = {
         "workfile_lock_profiles": []
     },
     "loader": {
-        "product_type_filter_profiles": [
-            {
-                "hosts": [],
-                "task_types": [],
-                "is_include": True,
-                "filter_product_types": []
-            }
-        ]
+        "product_type_filter_profiles": []
     },
     "publish": {
         "template_name_profiles": [
