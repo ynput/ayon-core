@@ -199,7 +199,7 @@ class FilterFarmEnvironmentModel(BaseSettingsModel):
         title="Folders"
     )
 
-    skip_environment: list[str] = SettingsField(
+    skip_env_keys: list[str] = SettingsField(
         default_factory=list,
         title="Skip environment variables"
     )
