@@ -11,8 +11,8 @@ from ayon_api import (
     get_product_by_name,
     get_version_by_name,
     get_representations,
-    RequestTypes,
 )
+from ayon_api.server_api import RequestTypes
 from ayon_api.operations import (
     OperationsSession,
     new_product_entity,
