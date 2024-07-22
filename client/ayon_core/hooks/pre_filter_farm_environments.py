@@ -1,4 +1,3 @@
-import copy
 import re
 
 from ayon_applications import PreLaunchHook, LaunchTypes
@@ -47,15 +46,11 @@ class FilterFarmEnvironments(PreLaunchHook):
                            f"for {filter_data}")
             return
 
-        calculated_env = copy.deepcopy(self.launch_context.env)
+        self._skip_environment_variables(
+            self.launch_context.env, matching_profile)
 
-        calculated_env = self._skip_environment_variables(
-            calculated_env, matching_profile)
-
-        calculated_env = self._modify_environment_variables(
-            calculated_env, matching_profile)
-
-        self.launch_context.env = calculated_env
+        self._modify_environment_variables(
+            self.launch_context.env, matching_profile)
 
     def _modify_environment_variables(self, calculated_env, matching_profile):
         """Modify environment variable values."""
@@ -67,12 +62,8 @@ class FilterFarmEnvironments(PreLaunchHook):
             value = re.sub(value, env_item["pattern"], env_item["replacement"])
             calculated_env[env_item["environment_key"]] = value
 
-        return calculated_env
-
     def _skip_environment_variables(self, calculated_env, matching_profile):
         """Skips list of environment variable names"""
         for skip_env in matching_profile["skip_environment"]:
             self.log.info(f"Skipping {skip_env}")
             calculated_env.pop(skip_env)
-
-        return calculated_env
