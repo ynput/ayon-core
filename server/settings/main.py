@@ -169,6 +169,46 @@ class VersionStartCategoryModel(BaseSettingsModel):
     )
 
 
+class EnvironmentReplacementModel(BaseSettingsModel):
+    environment_key: str = SettingsField("", title="Enviroment variable")
+    pattern: str = SettingsField("", title="Pattern")
+    replacement: str = SettingsField("", title="Replacement")
+
+
+class FilterFarmEnvironmentModel(BaseSettingsModel):
+    _layout = "expanded"
+
+    hosts: list[str] = SettingsField(
+        default_factory=list,
+        title="Host names"
+    )
+
+    task_types: list[str] = SettingsField(
+        default_factory=list,
+        title="Task types",
+        enum_resolver=task_types_enum
+    )
+
+    task_names: list[str] = SettingsField(
+        default_factory=list,
+        title="Task names"
+    )
+
+    folders: list[str] = SettingsField(
+        default_factory=list,
+        title="Folders"
+    )
+
+    skip_environment: list[str] = SettingsField(
+        default_factory=list,
+        title="Skip environment variables"
+    )
+    replace_in_environment: list[EnvironmentReplacementModel] = SettingsField(
+        default_factory=list,
+        title="Replace values in environment"
+    )
+
+
 class CoreSettings(BaseSettingsModel):
     studio_name: str = SettingsField("", title="Studio name", scope=["studio"])
     studio_code: str = SettingsField("", title="Studio code", scope=["studio"])
@@ -218,6 +258,9 @@ class CoreSettings(BaseSettingsModel):
         widget="textarea",
         title="Project environments",
         section="---"
+    )
+    filter_farm_environment: list[FilterFarmEnvironmentModel] = SettingsField(
+        default_factory=list,
     )
 
     @validator(
@@ -313,5 +356,6 @@ DEFAULT_VALUES = {
     "project_environments": json.dumps(
         {},
         indent=4
-    )
+    ),
+    "filter_farm_environment": [],
 }
