@@ -22,8 +22,6 @@ from ayon_core.settings import get_studio_settings
 from .interfaces import (
     IPluginPaths,
     IHostAddon,
-    ITrayAddon,
-    ITrayService
 )
 
 # Files that will be always ignored on addons import
