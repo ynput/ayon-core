@@ -93,35 +93,50 @@ def ensure_addons_are_process_ready(
     message = None
     failed = False
     use_detail = False
+    # Wrap the output in StringIO to capture it for details on fail
+    # - but in case stdout was invalid on start of process also store
+    #   the tracebacks
+    tracebacks = []
     output = StringIO()
     with contextlib.redirect_stdout(output):
         with contextlib.redirect_stderr(output):
             for addon in addons_manager.get_enabled_addons():
-                failed = True
+                addon_failed = True
                 try:
                     addon.ensure_is_process_ready(process_context)
-                    failed = False
+                    addon_failed = False
                 except ProcessPreparationError as exc:
                     message = str(exc)
                     print(f"Addon preparation failed: '{addon.name}'")
                     print(message)
 
                 except BaseException as exc:
+                    use_detail = True
                     message = "An unexpected error occurred."
+                    formatted_traceback = "".join(traceback.format_exception(
+                        *sys.exc_info()
+                    ))
+                    tracebacks.append(formatted_traceback)
                     print(f"Addon preparation failed: '{addon.name}'")
                     print(message)
-                    # Print the traceback so it is in the output
-                    traceback.print_exception(*sys.exc_info())
-                    use_detail = True
+                    # Print the traceback so it is in the stdout
+                    print(formatted_traceback)
 
-                if failed:
+                if addon_failed:
+                    failed = True
                     break
 
     output_str = output.getvalue()
     # Print stdout/stderr to console as it was redirected
     print(output_str)
     if failed:
-        detail = output_str if use_detail else None
+        detail = None
+        if use_detail:
+            # In case stdout was not captured, use the tracebacks
+            if not output_str:
+                output_str = "\n".join(tracebacks)
+            detail = output_str
+
         _handle_error(process_context, message, detail)
         if not exit_on_failure:
             return exc
