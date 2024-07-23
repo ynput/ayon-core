@@ -75,12 +75,12 @@ class IntegrateAYONReview(pyblish.api.InstancePlugin):
                 f"/projects/{project_name}"
                 f"/versions/{version_id}/reviewables{query}"
             )
-
+            filename = os.path.basename(repre_path)
             # Upload the reviewable
-            self.log.info(f"Uploading reviewable '{label}' ...")
+            self.log.info(f"Uploading reviewable '{label or filename}' ...")
 
             headers = ayon_con.get_headers(content_type)
-            headers["x-file-name"] = os.path.basename(repre_path)
+            headers["x-file-name"] = filename
             self.log.info(f"Uploading reviewable {repre_path}")
             ayon_con.upload_file(
                 endpoint,
