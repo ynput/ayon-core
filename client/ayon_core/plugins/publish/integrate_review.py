@@ -64,8 +64,7 @@ class IntegrateAYONReview(pyblish.api.InstancePlugin):
                 self.log.warning("Could not determine Content-Type")
                 continue
 
-            # Use output name as label if available
-            label = repre.get("outputName")
+            label = self._get_review_label(repre, uploaded_labels)
             query = ""
             if label:
                 query = f"?label={label}"
@@ -74,14 +73,6 @@ class IntegrateAYONReview(pyblish.api.InstancePlugin):
                 f"/projects/{project_name}"
                 f"/versions/{version_id}/reviewables{query}"
             )
-            # Make sure label is unique
-            orig_label = label
-            idx = 0
-            while label in uploaded_labels:
-                idx += 1
-                label = f"{orig_label}_{idx}"
-
-            uploaded_labels.add(label)
 
             # Upload the reviewable
             self.log.info(f"Uploading reviewable '{label}' ...")
@@ -95,3 +86,15 @@ class IntegrateAYONReview(pyblish.api.InstancePlugin):
                 headers=headers,
                 request_type=RequestTypes.post,
             )
+
+    def _get_review_label(self, repre, uploaded_labels):
+        # Use output name as label if available
+        label = repre.get("outputName")
+        if not label:
+            return None
+        orig_label = label
+        idx = 0
+        while label in uploaded_labels:
+            idx += 1
+            label = f"{orig_label}_{idx}"
+        return label
