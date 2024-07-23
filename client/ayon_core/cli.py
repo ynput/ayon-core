@@ -83,6 +83,7 @@ main_cli.set_alias("addon", "module")
 
 
 @main_cli.command()
+@click.pass_context
 @click.argument("output_json_path")
 @click.option("--project", help="Project name", default=None)
 @click.option("--asset", help="Folder path", default=None)
@@ -91,7 +92,9 @@ main_cli.set_alias("addon", "module")
 @click.option(
     "--envgroup", help="Environment group (e.g. \"farm\")", default=None
 )
-def extractenvironments(output_json_path, project, asset, task, app, envgroup):
+def extractenvironments(
+    ctx, output_json_path, project, asset, task, app, envgroup
+):
     """Extract environment variables for entered context to a json file.
 
     Entered output filepath will be created if does not exists.
