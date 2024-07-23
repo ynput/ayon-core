@@ -271,7 +271,7 @@ def _set_addons_environments(addons_manager):
 
 def _add_addons(addons_manager):
     """Modules/Addons can add their cli commands dynamically."""
-    log = Logger.get_logger("CLI-AddModules")
+    log = Logger.get_logger("CLI-AddAddons")
     for addon_obj in addons_manager.addons:
         try:
             addon_obj.cli(addon)
