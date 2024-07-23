@@ -99,13 +99,23 @@ def get_tray_file_info(
 
 
 def get_tray_server_url(
+    validate: Optional[bool] = False,
     server_url: Optional[str] = None,
-    variant: Optional[str] = None
+    variant: Optional[str] = None,
 ) -> Optional[str]:
     data = get_tray_file_info(server_url, variant)
     if data is None:
         return None
-    return data.get("url")
+    url = data.get("url")
+    if not url:
+        return None
+
+    if not validate:
+        return url
+
+    if _get_tray_information(url):
+        return url
+    return None
 
 
 def set_tray_server_url(tray_url: str, started: bool):
