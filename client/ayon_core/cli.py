@@ -12,7 +12,11 @@ import acre
 from ayon_core import AYON_CORE_ROOT
 from ayon_core.addon import AddonsManager
 from ayon_core.settings import get_general_environments
-from ayon_core.lib import initialize_ayon_connection, is_running_from_build
+from ayon_core.lib import (
+    initialize_ayon_connection,
+    is_running_from_build,
+    Logger,
+)
 
 from .cli_commands import Commands
 
@@ -64,7 +68,6 @@ def tray():
     Commands.launch_tray()
 
 
-@Commands.add_addons
 @main_cli.group(help="Run command line arguments of AYON addons")
 @click.pass_context
 def addon(ctx):
@@ -245,10 +248,8 @@ def _set_global_environments() -> None:
         os.environ["QT_AUTO_SCREEN_SCALE_FACTOR"] = "1"
 
 
-def _set_addons_environments():
+def _set_addons_environments(addons_manager):
     """Set global environments for AYON addons."""
-
-    addons_manager = AddonsManager()
 
     # Merge environments with current environments and update values
     if module_envs := addons_manager.collect_global_environments():
@@ -256,6 +257,21 @@ def _set_addons_environments():
         env = acre.merge(parsed_envs, dict(os.environ))
         os.environ.clear()
         os.environ.update(env)
+
+
+def _add_addons(addons_manager):
+    """Modules/Addons can add their cli commands dynamically."""
+    log = Logger.get_logger("CLI-AddModules")
+    for addon_obj in addons_manager.addons:
+        try:
+            addon_obj.cli(addon)
+
+        except Exception:
+            log.warning(
+                "Failed to add cli command for module \"{}\"".format(
+                    addon_obj.name
+                ), exc_info=True
+            )
 
 
 def main(*args, **kwargs):
@@ -281,8 +297,9 @@ def main(*args, **kwargs):
     print("  - global AYON ...")
     _set_global_environments()
     print("  - for addons ...")
-    _set_addons_environments()
-
+    addons_manager = AddonsManager()
+    _set_addons_environments(addons_manager)
+    _add_addons(addons_manager)
     try:
         main_cli(obj={}, prog_name="ayon")
     except Exception:  # noqa
