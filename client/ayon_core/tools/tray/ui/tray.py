@@ -62,32 +62,46 @@ class TrayManager:
         )
         if update_check_interval is None:
             update_check_interval = 5
-        self._update_check_interval = update_check_interval * 60 * 1000
+
+        update_check_interval = update_check_interval * 60 * 1000
+
+        # create timer loop to check callback functions
+        main_thread_timer = QtCore.QTimer()
+        main_thread_timer.setInterval(300)
+
+        update_check_timer = QtCore.QTimer()
+        if update_check_interval > 0:
+            update_check_timer.setInterval(update_check_interval)
+
+        main_thread_timer.timeout.connect(self._main_thread_execution)
+        update_check_timer.timeout.connect(self._on_update_check_timer)
 
         self._addons_manager = TrayAddonsManager(self)
-
         self._host_listener = HostListener(self._addons_manager, self)
 
         self.errors = []
 
-        self._update_check_timer = None
         self._outdated_dialog = None
 
-        self._main_thread_timer = None
+        self._update_check_timer = update_check_timer
+        self._update_check_interval = update_check_interval
+        self._main_thread_timer = main_thread_timer
         self._main_thread_callbacks = collections.deque()
         self._execution_in_progress = None
-        self._closing = False
         self._services_submenu = None
         self._start_time = time.time()
 
+        self._closing = False
         try:
             set_tray_server_url(
                 self._addons_manager.webserver_url, False
             )
         except TrayIsRunningError:
             self.log.error("Tray is already running.")
-            self.exit()
-            return
+            self._closing = True
+
+    def is_closing(self):
+        return self._closing
 
     @property
     def doubleclick_callback(self):
@@ -122,6 +136,8 @@ class TrayManager:
 
     def initialize_addons(self):
         """Add addons to tray."""
+        if self._closing:
+            return
 
         tray_menu = self.tray_widget.menu
         self._addons_manager.initialize(tray_menu)
@@ -162,24 +178,15 @@ class TrayManager:
         # Print time report
         self._addons_manager.print_report()
 
-        # create timer loop to check callback functions
-        main_thread_timer = QtCore.QTimer()
-        main_thread_timer.setInterval(300)
-        main_thread_timer.timeout.connect(self._main_thread_execution)
-        main_thread_timer.start()
+        self._main_thread_timer.start()
 
-        self._main_thread_timer = main_thread_timer
-
-        update_check_timer = QtCore.QTimer()
         if self._update_check_interval > 0:
-            update_check_timer.timeout.connect(self._on_update_check_timer)
-            update_check_timer.setInterval(self._update_check_interval)
-            update_check_timer.start()
-        self._update_check_timer = update_check_timer
+            self._update_check_timer.start()
 
         self.execute_in_main_thread(self._startup_validations)
-
-        set_tray_server_url(self._addons_manager.webserver_url, True)
+        set_tray_server_url(
+            self._addons_manager.webserver_url, True
+        )
 
     def get_services_submenu(self):
         return self._services_submenu
@@ -244,7 +251,10 @@ class TrayManager:
 
     def exit(self):
         self._closing = True
-        self.tray_widget.exit()
+        if self._main_thread_timer.isActive():
+            self.execute_in_main_thread(self.tray_widget.exit)
+        else:
+            self.tray_widget.exit()
 
     def on_exit(self):
         remove_tray_server_url()
@@ -349,20 +359,24 @@ class TrayManager:
         )
 
     def _main_thread_execution(self):
-        if self._execution_in_progress:
-            return
-        self._execution_in_progress = True
-        for _ in range(len(self._main_thread_callbacks)):
-            if self._main_thread_callbacks:
-                item = self._main_thread_callbacks.popleft()
-                try:
-                    item.execute()
-                except BaseException:
-                    self.log.erorr(
-                        "Main thread execution failed", exc_info=True
-                    )
+        try:
+            if self._execution_in_progress:
+                return
+            self._execution_in_progress = True
+            for _ in range(len(self._main_thread_callbacks)):
+                if self._main_thread_callbacks:
+                    item = self._main_thread_callbacks.popleft()
+                    try:
+                        item.execute()
+                    except BaseException:
+                        self.log.erorr(
+                            "Main thread execution failed", exc_info=True
+                        )
 
-        self._execution_in_progress = False
+            self._execution_in_progress = False
+
+        except KeyboardInterrupt:
+            self.execute_in_main_thread(self.exit)
 
     def _startup_validations(self):
         """Run possible startup validations."""
@@ -476,19 +490,23 @@ class SystemTrayIcon(QtWidgets.QSystemTrayIcon):
     def __init__(self, parent):
         icon = QtGui.QIcon(resources.get_ayon_icon_filepath())
 
-        super(SystemTrayIcon, self).__init__(icon, parent)
+        super().__init__(icon, parent)
 
         self._exited = False
 
+        self._doubleclick = False
+        self._click_pos = None
+        self._initializing_addons = False
+
         # Store parent - QtWidgets.QMainWindow()
-        self.parent = parent
+        self._parent = parent
 
         # Setup menu in Tray
         self.menu = QtWidgets.QMenu()
         self.menu.setStyleSheet(style.load_stylesheet())
 
         # Set addons
-        self.tray_man = TrayManager(self, self.parent)
+        self._tray_manager = TrayManager(self, parent)
 
         # Add menu to Context of SystemTrayIcon
         self.setContextMenu(self.menu)
@@ -508,10 +526,9 @@ class SystemTrayIcon(QtWidgets.QSystemTrayIcon):
         click_timer.timeout.connect(self._click_timer_timeout)
 
         self._click_timer = click_timer
-        self._doubleclick = False
-        self._click_pos = None
 
-        self._initializing_addons = False
+    def is_closing(self) -> bool:
+        return self._tray_manager.is_closing()
 
     @property
     def initializing_addons(self):
@@ -520,7 +537,7 @@ class SystemTrayIcon(QtWidgets.QSystemTrayIcon):
     def initialize_addons(self):
         self._initializing_addons = True
         try:
-            self.tray_man.initialize_addons()
+            self._tray_manager.initialize_addons()
         finally:
             self._initializing_addons = False
 
@@ -530,7 +547,7 @@ class SystemTrayIcon(QtWidgets.QSystemTrayIcon):
         # Reset bool value
         self._doubleclick = False
         if doubleclick:
-            self.tray_man.execute_doubleclick()
+            self._tray_manager.execute_doubleclick()
         else:
             self._show_context_menu()
 
@@ -544,7 +561,7 @@ class SystemTrayIcon(QtWidgets.QSystemTrayIcon):
     def on_systray_activated(self, reason):
         # show contextMenu if left click
         if reason == QtWidgets.QSystemTrayIcon.Trigger:
-            if self.tray_man.doubleclick_callback:
+            if self._tray_manager.doubleclick_callback:
                 self._click_pos = QtGui.QCursor().pos()
                 self._click_timer.start()
             else:
@@ -563,7 +580,7 @@ class SystemTrayIcon(QtWidgets.QSystemTrayIcon):
         self._exited = True
 
         self.hide()
-        self.tray_man.on_exit()
+        self._tray_manager.on_exit()
         QtCore.QCoreApplication.exit()
 
 
@@ -588,6 +605,11 @@ class TrayStarter(QtCore.QObject):
         self._start_timer = start_timer
 
     def _on_start_timer(self):
+        if self._tray_widget.is_closing():
+            self._start_timer.stop()
+            self._tray_widget.exit()
+            return
+
         if self._timer_counter == 0:
             self._timer_counter += 1
             splash = self._get_splash()
