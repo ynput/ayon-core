@@ -82,6 +82,8 @@ def get_tray_storage_dir() -> str:
 
 
 def _get_tray_information(tray_url: str) -> Optional[Dict[str, Any]]:
+    if not tray_url:
+        return None
     try:
         response = requests.get(f"{tray_url}/tray")
         response.raise_for_status()
@@ -173,11 +175,13 @@ def set_tray_server_url(tray_url: str, started: bool):
             that tray is starting up.
 
     """
-    filepath = _get_tray_info_filepath()
-    if os.path.exists(filepath):
-        info = get_tray_file_info()
-        if info.get("pid") != os.getpid():
+    file_info = get_tray_file_info()
+    if file_info and file_info.get("pid") != os.getpid():
+        tray_url = file_info.get("url")
+        if _get_tray_information(tray_url):
             raise TrayIsRunningError("Tray is already running.")
+
+    filepath = _get_tray_info_filepath()
     os.makedirs(os.path.dirname(filepath), exist_ok=True)
     data = {
         "url": tray_url,
