@@ -61,7 +61,9 @@ class IntegrateAYONReview(pyblish.api.InstancePlugin):
 
             content_type = get_media_mime_type(repre_path)
             if not content_type:
-                self.log.warning("Could not determine Content-Type")
+                self.log.warning(
+                    f"Could not determine Content-Type for {repre_path}"
+                )
                 continue
 
             label = self._get_review_label(repre, uploaded_labels)
