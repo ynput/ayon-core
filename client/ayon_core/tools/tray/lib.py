@@ -25,10 +25,12 @@ class TrayIsRunningError(Exception):
 
 
 def _get_default_server_url() -> str:
+    """Get default AYON server url."""
     return os.getenv("AYON_SERVER_URL")
 
 
 def _get_default_variant() -> str:
+    """Get default settings variant."""
     return ayon_api.get_default_settings_variant()
 
 
@@ -55,16 +57,31 @@ def _windows_pid_is_running(pid: int) -> bool:
 
 
 def _create_tray_hash(server_url: str, variant: str) -> str:
+    """Create tray hash for metadata filename.
+
+    Args:
+        server_url (str): AYON server url.
+        variant (str): Settings variant.
+
+    Returns:
+        str: Hash for metadata filename.
+
+    """
     data = f"{server_url}|{variant}"
     return hashlib.sha256(data.encode()).hexdigest()
 
 
 def get_tray_storage_dir() -> str:
+    """Get tray storage directory.
+
+    Returns:
+        str: Tray storage directory where metadata files are stored.
+
+    """
     return get_ayon_appdirs("tray")
 
 
 def _get_tray_information(tray_url: str) -> Optional[Dict[str, Any]]:
-    # TODO implement server side information
     response = requests.get(f"{tray_url}/tray")
     try:
         response.raise_for_status()
@@ -87,6 +104,19 @@ def get_tray_file_info(
     server_url: Optional[str] = None,
     variant: Optional[str] = None
 ) -> Optional[Dict[str, Any]]:
+    """Get tray information from file.
+
+    Metadata information about running tray that should contain tray
+        server url.
+
+    Args:
+        server_url (Optional[str]): AYON server url.
+        variant (Optional[str]): Settings variant.
+
+    Returns:
+        Optional[Dict[str, Any]]: Tray information.
+
+    """
     filepath = _get_tray_info_filepath(server_url, variant)
     if not os.path.exists(filepath):
         return None
@@ -103,6 +133,20 @@ def get_tray_server_url(
     server_url: Optional[str] = None,
     variant: Optional[str] = None,
 ) -> Optional[str]:
+    """Get tray server url.
+
+    Does not validate if tray is running.
+
+    Args:
+        server_url (Optional[str]): AYON server url.
+        variant (Optional[str]): Settings variant.
+        validate (Optional[bool]): Validate if tray is running.
+            By default, does not validate.
+
+    Returns:
+        Optional[str]: Tray server url.
+
+    """
     data = get_tray_file_info(server_url, variant)
     if data is None:
         return None
@@ -119,6 +163,16 @@ def get_tray_server_url(
 
 
 def set_tray_server_url(tray_url: str, started: bool):
+    """Add tray server information file.
+
+    Called from tray logic, do not use on your own.
+
+    Args:
+        tray_url (str): Webserver url with port.
+        started (bool): If tray is started. When set to 'False' it means
+            that tray is starting up.
+
+    """
     filepath = _get_tray_info_filepath()
     if os.path.exists(filepath):
         info = get_tray_file_info()
@@ -135,6 +189,10 @@ def set_tray_server_url(tray_url: str, started: bool):
 
 
 def remove_tray_server_url():
+    """Remove tray information file.
+
+    Called from tray logic, do not use on your own.
+    """
     filepath = _get_tray_info_filepath()
     if not os.path.exists(filepath):
         return
@@ -149,6 +207,16 @@ def get_tray_information(
     server_url: Optional[str] = None,
     variant: Optional[str] = None
 ) -> Optional[Dict[str, Any]]:
+    """Get information about tray.
+
+    Args:
+        server_url (Optional[str]): AYON server url.
+        variant (Optional[str]): Settings variant.
+
+    Returns:
+        Optional[Dict[str, Any]]: Tray information.
+
+    """
     tray_url = get_tray_server_url(server_url, variant)
     return _get_tray_information(tray_url)
 
@@ -156,7 +224,17 @@ def get_tray_information(
 def get_tray_state(
     server_url: Optional[str] = None,
     variant: Optional[str] = None
-):
+) -> int:
+    """Get tray state for AYON server and variant.
+
+    Args:
+        server_url (Optional[str]): AYON server url.
+        variant (Optional[str]): Settings variant.
+
+    Returns:
+        int: Tray state.
+
+    """
     file_info = get_tray_file_info(server_url, variant)
     if file_info is None:
         return TrayState.NOT_RUNNING
@@ -177,6 +255,16 @@ def is_tray_running(
     server_url: Optional[str] = None,
     variant: Optional[str] = None
 ) -> bool:
+    """Check if tray is running.
+
+    Args:
+        server_url (Optional[str]): AYON server url.
+        variant (Optional[str]): Settings variant.
+
+    Returns:
+        bool: True if tray is running
+
+    """
     state = get_tray_state(server_url, variant)
     return state != TrayState.NOT_RUNNING
 
