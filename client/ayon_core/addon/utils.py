@@ -89,7 +89,7 @@ def ensure_addons_are_process_ready(
     if addons_manager is None:
         addons_manager = AddonsManager()
 
-    exc = None
+    exception = None
     message = None
     failed = False
     use_detail = False
@@ -106,11 +106,13 @@ def ensure_addons_are_process_ready(
                     addon.ensure_is_process_ready(process_context)
                     addon_failed = False
                 except ProcessPreparationError as exc:
+                    exception = exc
                     message = str(exc)
                     print(f"Addon preparation failed: '{addon.name}'")
                     print(message)
 
                 except BaseException as exc:
+                    exception = exc
                     use_detail = True
                     message = "An unexpected error occurred."
                     formatted_traceback = "".join(traceback.format_exception(
@@ -139,5 +141,5 @@ def ensure_addons_are_process_ready(
 
         _handle_error(process_context, message, detail)
         if not exit_on_failure:
-            return exc
+            return exception
         sys.exit(1)
