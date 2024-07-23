@@ -20,7 +20,12 @@ class Commands:
         tray.main()
 
     @staticmethod
-    def publish(path: str, targets: list=None, gui:bool=False) -> None:
+    def publish(
+        path: str,
+        targets: list = None,
+        gui: bool = False,
+        addons_manager=None,
+    ) -> None:
         """Start headless publishing.
 
         Publish use json from passed path argument.
@@ -81,14 +86,15 @@ class Commands:
 
         install_ayon_plugins()
 
-        manager = AddonsManager()
+        if addons_manager is None:
+            addons_manager = AddonsManager()
 
-        publish_paths = manager.collect_plugin_paths()["publish"]
+        publish_paths = addons_manager.collect_plugin_paths()["publish"]
 
         for plugin_path in publish_paths:
             pyblish.api.register_plugin_path(plugin_path)
 
-        applications_addon = manager.get_enabled_addon("applications")
+        applications_addon = addons_manager.get_enabled_addon("applications")
         if applications_addon is not None:
             context = get_global_context()
             env = applications_addon.get_farm_publish_environment_variables(
@@ -137,15 +143,12 @@ class Commands:
 
     @staticmethod
     def extractenvironments(
-        output_json_path, project, asset, task, app, env_group
+        output_json_path, project, asset, task, app, env_group, addons_manager
     ):
         """Produces json file with environment based on project and app.
 
         Called by Deadline plugin to propagate environment into render jobs.
         """
-
-        from ayon_core.addon import AddonsManager
-
         warnings.warn(
             (
                 "Command 'extractenvironments' is deprecated and will be"
@@ -155,7 +158,6 @@ class Commands:
             DeprecationWarning
         )
 
-        addons_manager = AddonsManager()
         applications_addon = addons_manager.get_enabled_addon("applications")
         if applications_addon is None:
             raise RuntimeError(
