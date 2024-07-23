@@ -82,12 +82,12 @@ def get_tray_storage_dir() -> str:
 
 
 def _get_tray_information(tray_url: str) -> Optional[Dict[str, Any]]:
-    response = requests.get(f"{tray_url}/tray")
     try:
+        response = requests.get(f"{tray_url}/tray")
         response.raise_for_status()
-    except requests.HTTPError:
+        return response.json()
+    except (requests.HTTPError, requests.ConnectionError):
         return None
-    return response.json()
 
 
 def _get_tray_info_filepath(
@@ -196,11 +196,12 @@ def remove_tray_server_url():
     filepath = _get_tray_info_filepath()
     if not os.path.exists(filepath):
         return
+
     with open(filepath, "r") as stream:
         data = json.load(stream)
-    if data.get("pid") != os.getpid():
-        return
-    os.remove(filepath)
+
+    if data.get("pid") == os.getpid():
+        os.remove(filepath)
 
 
 def get_tray_information(
