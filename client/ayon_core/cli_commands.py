@@ -2,7 +2,9 @@
 """Implementation of AYON commands."""
 import os
 import sys
-import warnings
+from typing import Optional, List
+
+from ayon_core.addon import AddonsManager
 
 
 class Commands:
@@ -22,9 +24,9 @@ class Commands:
     @staticmethod
     def publish(
         path: str,
-        targets: list = None,
-        gui: bool = False,
-        addons_manager=None,
+        targets: Optional[List[str]] = None,
+        gui: Optional[bool] = False,
+        addons_manager: Optional[AddonsManager] = None,
     ) -> None:
         """Start headless publishing.
 
@@ -32,8 +34,9 @@ class Commands:
 
         Args:
             path (str): Path to JSON.
-            targets (list of str): List of pyblish targets.
-            gui (bool): Show publish UI.
+            targets (Optional[List[str]]): List of pyblish targets.
+            gui (Optional[bool]): Show publish UI.
+            addons_manager (Optional[AddonsManager]): Addons manager instance.
 
         Raises:
             RuntimeError: When there is no path to process.
