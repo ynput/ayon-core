@@ -12,7 +12,11 @@ import acre
 from ayon_core import AYON_CORE_ROOT
 from ayon_core.addon import AddonsManager
 from ayon_core.settings import get_general_environments
-from ayon_core.lib import initialize_ayon_connection, is_running_from_build
+from ayon_core.lib import (
+    initialize_ayon_connection,
+    is_running_from_build,
+    Logger,
+)
 
 from .cli_commands import Commands
 
@@ -64,7 +68,6 @@ def tray():
     Commands.launch_tray()
 
 
-@Commands.add_addons
 @main_cli.group(help="Run command line arguments of AYON addons")
 @click.pass_context
 def addon(ctx):
@@ -80,6 +83,7 @@ main_cli.set_alias("addon", "module")
 
 
 @main_cli.command()
+@click.pass_context
 @click.argument("output_json_path")
 @click.option("--project", help="Project name", default=None)
 @click.option("--asset", help="Folder path", default=None)
@@ -88,7 +92,9 @@ main_cli.set_alias("addon", "module")
 @click.option(
     "--envgroup", help="Environment group (e.g. \"farm\")", default=None
 )
-def extractenvironments(output_json_path, project, asset, task, app, envgroup):
+def extractenvironments(
+    ctx, output_json_path, project, asset, task, app, envgroup
+):
     """Extract environment variables for entered context to a json file.
 
     Entered output filepath will be created if does not exists.
@@ -103,23 +109,30 @@ def extractenvironments(output_json_path, project, asset, task, app, envgroup):
         'addon applications extractenvironments ...' instead.
     """
     Commands.extractenvironments(
-        output_json_path, project, asset, task, app, envgroup
+        output_json_path,
+        project,
+        asset,
+        task,
+        app,
+        envgroup,
+        ctx.obj["addons_manager"]
     )
 
 
 @main_cli.command()
+@click.pass_context
 @click.argument("path", required=True)
 @click.option("-t", "--targets", help="Targets", default=None,
               multiple=True)
 @click.option("-g", "--gui", is_flag=True,
               help="Show Publish UI", default=False)
-def publish(path, targets, gui):
+def publish(ctx, path, targets, gui):
     """Start CLI publishing.
 
     Publish collects json from path provided as an argument.
-S
+
     """
-    Commands.publish(path, targets, gui)
+    Commands.publish(path, targets, gui, ctx.obj["addons_manager"])
 
 
 @main_cli.command(context_settings={"ignore_unknown_options": True})
@@ -245,10 +258,8 @@ def _set_global_environments() -> None:
         os.environ["QT_AUTO_SCREEN_SCALE_FACTOR"] = "1"
 
 
-def _set_addons_environments():
+def _set_addons_environments(addons_manager):
     """Set global environments for AYON addons."""
-
-    addons_manager = AddonsManager()
 
     # Merge environments with current environments and update values
     if module_envs := addons_manager.collect_global_environments():
@@ -256,6 +267,21 @@ def _set_addons_environments():
         env = acre.merge(parsed_envs, dict(os.environ))
         os.environ.clear()
         os.environ.update(env)
+
+
+def _add_addons(addons_manager):
+    """Modules/Addons can add their cli commands dynamically."""
+    log = Logger.get_logger("CLI-AddAddons")
+    for addon_obj in addons_manager.addons:
+        try:
+            addon_obj.cli(addon)
+
+        except Exception:
+            log.warning(
+                "Failed to add cli command for module \"{}\"".format(
+                    addon_obj.name
+                ), exc_info=True
+            )
 
 
 def main(*args, **kwargs):
@@ -281,10 +307,14 @@ def main(*args, **kwargs):
     print("  - global AYON ...")
     _set_global_environments()
     print("  - for addons ...")
-    _set_addons_environments()
-
+    addons_manager = AddonsManager()
+    _set_addons_environments(addons_manager)
+    _add_addons(addons_manager)
     try:
-        main_cli(obj={}, prog_name="ayon")
+        main_cli(
+            prog_name="ayon",
+            obj={"addons_manager": addons_manager},
+        )
     except Exception:  # noqa
         exc_info = sys.exc_info()
         print("!!! AYON crashed:")
