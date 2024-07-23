@@ -120,7 +120,7 @@ def publish(path, targets, gui):
     """Start CLI publishing.
 
     Publish collects json from path provided as an argument.
-S
+
     """
     Commands.publish(path, targets, gui)
 
