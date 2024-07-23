@@ -20,27 +20,6 @@ class Commands:
         tray.main()
 
     @staticmethod
-    def add_addons(click_func):
-        """Modules/Addons can add their cli commands dynamically."""
-
-        from ayon_core.lib import Logger
-        from ayon_core.addon import AddonsManager
-
-        manager = AddonsManager()
-        log = Logger.get_logger("CLI-AddModules")
-        for addon in manager.addons:
-            try:
-                addon.cli(click_func)
-
-            except Exception:
-                log.warning(
-                    "Failed to add cli command for module \"{}\"".format(
-                        addon.name
-                    ), exc_info=True
-                )
-        return click_func
-
-    @staticmethod
     def publish(path: str, targets: list=None, gui:bool=False) -> None:
         """Start headless publishing.
 
