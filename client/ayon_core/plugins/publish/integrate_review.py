@@ -52,7 +52,6 @@ class IntegrateAYONReview(pyblish.api.InstancePlugin):
             if repre.get("thumbnail") or "thumbnail" in repre_tags:
                 continue
 
-            # include only thumbnail representations
             repre_path = get_publish_repre_path(
                 instance, repre, False
             )
