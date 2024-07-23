@@ -15,9 +15,8 @@ import os
 import re
 import collections
 import copy
-from abc import ABCMeta, abstractmethod
+from abc import ABC, abstractmethod
 
-import six
 from ayon_api import (
     get_folders,
     get_folder_by_path,
@@ -82,8 +81,7 @@ class TemplateLoadFailed(Exception):
     pass
 
 
-@six.add_metaclass(ABCMeta)
-class AbstractTemplateBuilder(object):
+class AbstractTemplateBuilder(ABC):
     """Abstraction of Template Builder.
 
     Builder cares about context, shared data, cache, discovery of plugins
@@ -941,8 +939,7 @@ class AbstractTemplateBuilder(object):
         )
 
 
-@six.add_metaclass(ABCMeta)
-class PlaceholderPlugin(object):
+class PlaceholderPlugin(ABC):
     """Plugin which care about handling of placeholder items logic.
 
     Plugin create and update placeholders in scene and populate them on
@@ -1797,6 +1794,16 @@ class PlaceholderCreateMixin(object):
                     "\ncompiling of product name."
                 )
             ),
+            attribute_definitions.BoolDef(
+                "active",
+                label="Active",
+                default=options.get("active", True),
+                tooltip=(
+                    "Active"
+                    "\nDefines whether the created instance will default to "
+                    "active or not."
+                )
+            ),
             attribute_definitions.UISeparatorDef(),
             attribute_definitions.NumberDef(
                 "order",
@@ -1826,6 +1833,7 @@ class PlaceholderCreateMixin(object):
         legacy_create = self.builder.use_legacy_creators
         creator_name = placeholder.data["creator"]
         create_variant = placeholder.data["create_variant"]
+        active = placeholder.data.get("active")
 
         creator_plugin = self.builder.get_creators_by_name()[creator_name]
 
@@ -1873,7 +1881,8 @@ class PlaceholderCreateMixin(object):
                     create_variant,
                     folder_entity,
                     task_entity,
-                    pre_create_data=pre_create_data
+                    pre_create_data=pre_create_data,
+                    active=active
                 )
 
         except:  # noqa: E722

@@ -4,9 +4,8 @@ import copy
 import json
 import shutil
 import subprocess
-from abc import ABCMeta, abstractmethod
+from abc import ABC, abstractmethod
 
-import six
 import clique
 import speedcopy
 import pyblish.api
@@ -1661,8 +1660,7 @@ class ExtractReview(pyblish.api.InstancePlugin):
         return vf_back
 
 
-@six.add_metaclass(ABCMeta)
-class _OverscanValue:
+class _OverscanValue(ABC):
     def __repr__(self):
         return "<{}> {}".format(self.__class__.__name__, str(self))
 
