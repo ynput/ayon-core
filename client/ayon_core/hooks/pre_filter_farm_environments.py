@@ -64,6 +64,6 @@ class FilterFarmEnvironments(PreLaunchHook):
 
     def _skip_environment_variables(self, calculated_env, matching_profile):
         """Skips list of environment variable names"""
-        for skip_env in matching_profile["skip_environment"]:
+        for skip_env in matching_profile["skip_env_keys"]:
             self.log.info(f"Skipping {skip_env}")
             calculated_env.pop(skip_env)
