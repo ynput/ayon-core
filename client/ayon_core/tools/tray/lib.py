@@ -383,6 +383,10 @@ def main():
 
     state = get_tray_state()
     if state == TrayState.RUNNING:
+        show_message_in_tray(
+            "Tray is already running",
+            "Your AYON tray application is already running."
+        )
         print("Tray is already running.")
         return
 
