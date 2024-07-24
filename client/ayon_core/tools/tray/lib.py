@@ -177,8 +177,7 @@ def set_tray_server_url(tray_url: Optional[str], started: bool):
     """
     file_info = get_tray_file_info()
     if file_info and file_info["pid"] != os.getpid():
-        tray_url = file_info["url"]
-        if not file_info["started"] or _get_tray_information(tray_url):
+        if not file_info["started"] or _get_tray_information(file_info["url"]):
             raise TrayIsRunningError("Tray is already running.")
 
     filepath = _get_tray_info_filepath()
