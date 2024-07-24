@@ -382,6 +382,9 @@ def make_sure_tray_is_running(
     args = get_ayon_launcher_args("tray", "--force")
     if env is None:
         env = os.environ.copy()
+    
+    # Make sure 'QT_API' is not set
+    env.pop("QT_API", None)
 
     if ayon_url:
         env["AYON_SERVER_URL"] = ayon_url
