@@ -124,6 +124,11 @@ def _wait_for_starting_tray(
         if data.get("started") is True:
             return data
 
+        pid = data.get("pid")
+        if pid and not _is_process_running(pid):
+            remove_tray_server_url()
+            return None
+
         if time.time() - started_at > timeout:
             return None
         time.sleep(0.1)
@@ -276,7 +281,12 @@ def remove_tray_server_url(force: Optional[bool] = False):
     except BaseException:
         data = {}
 
-    if force or not data or data.get("pid") == os.getpid():
+    if (
+        force
+        or not data
+        or data.get("pid") == os.getpid()
+        or not _is_process_running(data.get("pid"))
+    ):
         os.remove(filepath)
 
 
