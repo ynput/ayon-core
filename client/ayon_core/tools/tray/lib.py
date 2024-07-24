@@ -344,6 +344,38 @@ def is_tray_running(
     return state != TrayState.NOT_RUNNING
 
 
+def show_message_in_tray(
+    title, message, icon=None, msecs=None, tray_url=None
+):
+    """Show message in tray.
+
+    Args:
+        title (str): Message title.
+        message (str): Message content.
+        icon (Optional[str]): Icon for the message.
+        msecs (Optional[int]): Duration of the message.
+        tray_url (Optional[str]): Tray server url.
+
+    """
+    if not tray_url:
+        tray_url = get_tray_server_url()
+
+    # TODO handle this case, e.g. raise an error?
+    if not tray_url:
+        return
+
+    # TODO handle response, can fail whole request or can fail on status
+    requests.post(
+        f"{tray_url}/tray/message",
+        json={
+            "title": title,
+            "message": message,
+            "icon": icon,
+            "msecs": msecs
+        }
+    )
+
+
 def main():
     from ayon_core.tools.tray.ui import main
 
