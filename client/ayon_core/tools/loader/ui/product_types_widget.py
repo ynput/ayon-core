@@ -72,7 +72,6 @@ class ProductTypesQtModel(QtGui.QStandardItemModel):
         self.refreshed.emit()
 
     def reset_product_types_filter(self):
-
         project_name = self._controller.get_selected_project_name()
         product_types_filter = (
             self._controller.get_product_types_filter(project_name)
@@ -183,7 +182,6 @@ class ProductTypesView(QtWidgets.QListView):
         super().showEvent(event)
 
     def _on_refresh_finished(self):
-
         # Apply product types filter on first show
         if self._refresh_product_types_filter:
             self._product_types_model.reset_product_types_filter()
