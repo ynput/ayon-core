@@ -292,7 +292,7 @@ class TrayManager:
             },
             "installer_version": os.getenv("AYON_VERSION"),
             "running_time": time.time() - self._start_time,
-        }))
+        })
 
     def _on_update_check_timer(self):
         try:
