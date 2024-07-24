@@ -59,13 +59,20 @@ def main_cli(ctx):
 
 
 @main_cli.command()
-def tray():
+@click.option(
+    "--force",
+    is_flag=True,
+    help="Force to start tray and close any existing one.")
+def tray(force):
     """Launch AYON tray.
 
     Default action of AYON command is to launch tray widget to control basic
     aspects of AYON. See documentation for more information.
     """
-    Commands.launch_tray()
+
+    from ayon_core.tools.tray import main
+
+    main(force)
 
 
 @main_cli.group(help="Run command line arguments of AYON addons")
