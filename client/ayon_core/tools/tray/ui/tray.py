@@ -133,6 +133,7 @@ class TrayManager:
             kwargs["msecs"] = msecs
 
         self.tray_widget.showMessage(*args, **kwargs)
+        # TODO validate 'self.tray_widget.supportsMessages()'
 
     def initialize_addons(self):
         """Add addons to tray."""
@@ -144,6 +145,9 @@ class TrayManager:
 
         self._addons_manager.add_route(
             "GET", "/tray", self._get_web_tray_info
+        )
+        self._addons_manager.add_route(
+            "POST", "/tray/message", self._web_show_tray_message
         )
 
         admin_submenu = ITrayAction.admin_submenu(tray_menu)
@@ -285,7 +289,37 @@ class TrayManager:
             },
             "installer_version": os.getenv("AYON_VERSION"),
             "running_time": time.time() - self._start_time,
-        }))
+        })
+
+    async def _web_show_tray_message(self, request: Request) -> Response:
+        data = await request.json()
+        try:
+            title = data["title"]
+            message = data["message"]
+            icon = data.get("icon")
+            msecs = data.get("msecs")
+        except KeyError as exc:
+            return json_response(
+                {
+                    "error": f"Missing required data. {exc}",
+                    "success": False,
+                },
+                status=400,
+            )
+
+        if icon == "information":
+            icon = QtWidgets.QSystemTrayIconInformation
+        elif icon == "warning":
+            icon = QtWidgets.QSystemTrayIconWarning
+        elif icon == "critical":
+            icon = QtWidgets.QSystemTrayIcon.Critical
+        else:
+            icon = None
+
+        self.execute_in_main_thread(
+            self.show_tray_message, title, message, icon, msecs
+        )
+        return json_response({"success": True})
 
     def _on_update_check_timer(self):
         try:
