@@ -191,19 +191,26 @@ def set_tray_server_url(tray_url: Optional[str], started: bool):
         json.dump(data, stream)
 
 
-def remove_tray_server_url():
+def remove_tray_server_url(force: Optional[bool] = False):
     """Remove tray information file.
 
     Called from tray logic, do not use on your own.
+
+    Args:
+        force (Optional[bool]): Force remove tray information file.
+
     """
     filepath = _get_tray_info_filepath()
     if not os.path.exists(filepath):
         return
 
-    with open(filepath, "r") as stream:
-        data = json.load(stream)
+    try:
+        with open(filepath, "r") as stream:
+            data = json.load(stream)
+    except BaseException:
+        data = {}
 
-    if data.get("pid") == os.getpid():
+    if force or not data or data.get("pid") == os.getpid():
         os.remove(filepath)
 
 
@@ -250,7 +257,7 @@ def get_tray_state(
     info = _get_tray_information(tray_url)
     if not info:
         # Remove the information as the tray is not running
-        remove_tray_server_url()
+        remove_tray_server_url(force=True)
         return TrayState.NOT_RUNNING
     return TrayState.RUNNING
 
@@ -296,7 +303,7 @@ def main():
             pid = file_info.get("pid")
             if pid is not None:
                 os.kill(pid, signal.SIGTERM)
-            remove_tray_server_url()
+            remove_tray_server_url(force=True)
 
     # Prepare the file with 'pid' information as soon as possible
     try:
