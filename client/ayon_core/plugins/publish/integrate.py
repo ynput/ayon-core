@@ -349,8 +349,6 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
         self.log.debug("{}".format(op_session.to_data()))
         op_session.commit()
 
-        self._upload_reviewable(project_name, version_entity["id"], instance)
-
         # Backwards compatibility used in hero integration.
         # todo: can we avoid the need to store this?
         instance.data["published_representations"] = {
