@@ -3,6 +3,9 @@
 import os
 import sys
 import warnings
+from typing import Optional, List
+
+from ayon_core.addon import AddonsManager
 
 
 class Commands:
@@ -17,36 +20,21 @@ class Commands:
         main()
 
     @staticmethod
-    def add_addons(click_func):
-        """Modules/Addons can add their cli commands dynamically."""
-
-        from ayon_core.lib import Logger
-        from ayon_core.addon import AddonsManager
-
-        manager = AddonsManager()
-        log = Logger.get_logger("CLI-AddModules")
-        for addon in manager.addons:
-            try:
-                addon.cli(click_func)
-
-            except Exception:
-                log.warning(
-                    "Failed to add cli command for module \"{}\"".format(
-                        addon.name
-                    ), exc_info=True
-                )
-        return click_func
-
-    @staticmethod
-    def publish(path: str, targets: list=None, gui:bool=False) -> None:
+    def publish(
+        path: str,
+        targets: Optional[List[str]] = None,
+        gui: Optional[bool] = False,
+        addons_manager: Optional[AddonsManager] = None,
+    ) -> None:
         """Start headless publishing.
 
         Publish use json from passed path argument.
 
         Args:
             path (str): Path to JSON.
-            targets (list of str): List of pyblish targets.
-            gui (bool): Show publish UI.
+            targets (Optional[List[str]]): List of pyblish targets.
+            gui (Optional[bool]): Show publish UI.
+            addons_manager (Optional[AddonsManager]): Addons manager instance.
 
         Raises:
             RuntimeError: When there is no path to process.
@@ -99,14 +87,15 @@ class Commands:
 
         install_ayon_plugins()
 
-        manager = AddonsManager()
+        if addons_manager is None:
+            addons_manager = AddonsManager()
 
-        publish_paths = manager.collect_plugin_paths()["publish"]
+        publish_paths = addons_manager.collect_plugin_paths()["publish"]
 
         for plugin_path in publish_paths:
             pyblish.api.register_plugin_path(plugin_path)
 
-        applications_addon = manager.get_enabled_addon("applications")
+        applications_addon = addons_manager.get_enabled_addon("applications")
         if applications_addon is not None:
             context = get_global_context()
             env = applications_addon.get_farm_publish_environment_variables(
@@ -155,15 +144,12 @@ class Commands:
 
     @staticmethod
     def extractenvironments(
-        output_json_path, project, asset, task, app, env_group
+        output_json_path, project, asset, task, app, env_group, addons_manager
     ):
         """Produces json file with environment based on project and app.
 
         Called by Deadline plugin to propagate environment into render jobs.
         """
-
-        from ayon_core.addon import AddonsManager
-
         warnings.warn(
             (
                 "Command 'extractenvironments' is deprecated and will be"
@@ -173,7 +159,6 @@ class Commands:
             DeprecationWarning
         )
 
-        addons_manager = AddonsManager()
         applications_addon = addons_manager.get_enabled_addon("applications")
         if applications_addon is None:
             raise RuntimeError(
