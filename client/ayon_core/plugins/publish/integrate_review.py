@@ -10,7 +10,7 @@ from ayon_core.pipeline.publish import get_publish_repre_path
 
 class IntegrateAYONReview(pyblish.api.InstancePlugin):
     label = "Integrate AYON Review"
-    # Must happen after IntegrateNew
+    # Must happen after IntegrateAsset
     order = pyblish.api.IntegratorOrder + 0.15
 
     def process(self, instance):
@@ -33,7 +33,7 @@ class IntegrateAYONReview(pyblish.api.InstancePlugin):
         if (major, minor) < (1, 3):
             self.log.info(
                 "Skipping reviewable upload, supported from server 1.3.x."
-                f" User server version {ayon_con.get_server_version()}"
+                f" Current server version {ayon_con.get_server_version()}"
             )
             return
 
