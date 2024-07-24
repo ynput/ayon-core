@@ -184,9 +184,13 @@ class TrayManager:
             self._update_check_timer.start()
 
         self.execute_in_main_thread(self._startup_validations)
-        set_tray_server_url(
-            self._addons_manager.webserver_url, True
-        )
+        try:
+            set_tray_server_url(
+                self._addons_manager.webserver_url, True
+            )
+        except TrayIsRunningError:
+            self.log.warning("Other tray started meanwhile. Exiting.")
+            self.exit()
 
     def get_services_submenu(self):
         return self._services_submenu
