@@ -43,6 +43,7 @@ class AliasedGroup(click.Group):
               help="Enable debug")
 @click.option("--verbose", expose_value=False,
               help=("Change AYON log level (debug - critical or 0-50)"))
+@click.option("--force", is_flag=True, expose_value=False, hidden=True)
 def main_cli(ctx):
     """AYON is main command serving as entry point to pipeline system.
 
