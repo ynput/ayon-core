@@ -164,13 +164,13 @@ def get_tray_server_url(
     return None
 
 
-def set_tray_server_url(tray_url: str, started: bool):
+def set_tray_server_url(tray_url: Optional[str], started: bool):
     """Add tray server information file.
 
     Called from tray logic, do not use on your own.
 
     Args:
-        tray_url (str): Webserver url with port.
+        tray_url (Optional[str]): Webserver url with port.
         started (bool): If tray is started. When set to 'False' it means
             that tray is starting up.
 
@@ -298,6 +298,13 @@ def main():
             if pid is not None:
                 os.kill(pid, signal.SIGTERM)
             remove_tray_server_url()
+
+    # Prepare the file with 'pid' information as soon as possible
+    try:
+        set_tray_server_url(None, False)
+    except TrayIsRunningError:
+        print("Tray is running")
+        sys.exit(1)
 
     main()
 
