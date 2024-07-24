@@ -13,7 +13,6 @@ from .base import (
     ProcessContext,
     AYONAddon,
     AddonsManager,
-    TrayAddonsManager,
     load_addons,
 )
 
@@ -35,7 +34,6 @@ __all__ = (
     "ProcessContext",
     "AYONAddon",
     "AddonsManager",
-    "TrayAddonsManager",
     "load_addons",
 
     "ensure_addons_are_process_ready",
