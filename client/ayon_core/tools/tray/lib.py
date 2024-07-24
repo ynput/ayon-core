@@ -124,6 +124,7 @@ def _wait_for_starting_tray(
 
         pid = data.get("pid")
         if pid and not _is_process_running(pid):
+            remove_tray_server_url()
             return None
 
         if time.time() - started_at > timeout:
