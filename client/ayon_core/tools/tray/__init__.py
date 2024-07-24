@@ -1,4 +1,4 @@
-from .webserver import HostMsgAction
+from .structures import HostMsgAction
 from .lib import (
     TrayState,
     get_tray_state,
