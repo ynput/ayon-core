@@ -86,7 +86,3 @@ AYON addons should contain separated logic of specific kind of implementation, s
  "inventory": []
  }
  ```
-
-### TrayAddonsManager
-- inherits from `AddonsManager`
-- has specific implementation for AYON Tray and handle `ITrayAddon` methods
