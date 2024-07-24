@@ -14,7 +14,6 @@ class FilterFarmEnvironments(PreLaunchHook):
     - skipping (list) of environment variable keys
     - removing value in environment variable:
         - supports regular expression in pattern
-        - doesn't remove env var if value empty!
     """
     order = 1000
 
@@ -55,12 +54,16 @@ class FilterFarmEnvironments(PreLaunchHook):
     def _modify_environment_variables(self, calculated_env, matching_profile):
         """Modify environment variable values."""
         for env_item in matching_profile["replace_in_environment"]:
-            value = calculated_env.get(env_item["environment_key"])
+            key = env_item["environment_key"]
+            value = calculated_env.get(key)
             if not value:
                 continue
 
             value = re.sub(value, env_item["pattern"], env_item["replacement"])
-            calculated_env[env_item["environment_key"]] = value
+            if value:
+                calculated_env[key] = value
+            else:
+                calculated_env.pop(key)
 
     def _skip_environment_variables(self, calculated_env, matching_profile):
         """Skips list of environment variable names"""
