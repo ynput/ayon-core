@@ -278,7 +278,12 @@ def remove_tray_server_url(force: Optional[bool] = False):
     except BaseException:
         data = {}
 
-    if force or not data or data.get("pid") == os.getpid():
+    if (
+        force
+        or not data
+        or data.get("pid") == os.getpid()
+        or not _is_process_running(data.get("pid"))
+    ):
         os.remove(filepath)
 
 
