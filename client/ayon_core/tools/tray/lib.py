@@ -1,6 +1,8 @@
 import os
+import sys
 import json
 import hashlib
+import platform
 import subprocess
 import csv
 import time
@@ -56,6 +58,28 @@ def _windows_pid_is_running(pid: int) -> bool:
     return False
 
 
+def _is_process_running(pid: int) -> bool:
+    """Check whether process with pid is running."""
+    if platform.system().lower() == "windows":
+        return _windows_pid_is_running(pid)
+
+    if pid == 0:
+        return True
+
+    try:
+        os.kill(pid, 0)
+    except ProcessLookupError:
+        return False
+    except PermissionError:
+        return True
+    return True
+
+
+def _kill_tray_process(pid: int):
+    if _is_process_running(pid):
+        os.kill(pid, signal.SIGTERM)
+
+
 def _create_tray_hash(server_url: str, variant: str) -> str:
     """Create tray hash for metadata filename.
 
@@ -69,6 +93,38 @@ def _create_tray_hash(server_url: str, variant: str) -> str:
     """
     data = f"{server_url}|{variant}"
     return hashlib.sha256(data.encode()).hexdigest()
+
+
+def _wait_for_starting_tray(
+    server_url: Optional[str] = None,
+    variant: Optional[str] = None,
+    timeout: Optional[int] = None
+) -> Optional[Dict[str, Any]]:
+    """Wait for tray to start.
+
+    Args:
+        server_url (Optional[str]): AYON server url.
+        variant (Optional[str]): Settings variant.
+        timeout (Optional[int]): Timeout for tray validation.
+
+    Returns:
+        Optional[Dict[str, Any]]: Tray file information.
+
+    """
+    if timeout is None:
+        timeout = 10
+    started_at = time.time()
+    while True:
+        data = get_tray_file_info(server_url, variant)
+        if data is None:
+            return None
+
+        if data.get("started") is True:
+            return data
+
+        if time.time() - started_at > timeout:
+            return None
+        time.sleep(0.1)
 
 
 def get_tray_storage_dir() -> str:
@@ -134,6 +190,7 @@ def get_tray_server_url(
     validate: Optional[bool] = False,
     server_url: Optional[str] = None,
     variant: Optional[str] = None,
+    timeout: Optional[int] = None
 ) -> Optional[str]:
     """Get tray server url.
 
@@ -144,6 +201,7 @@ def get_tray_server_url(
         variant (Optional[str]): Settings variant.
         validate (Optional[bool]): Validate if tray is running.
             By default, does not validate.
+        timeout (Optional[int]): Timeout for tray start-up.
 
     Returns:
         Optional[str]: Tray server url.
@@ -152,6 +210,12 @@ def get_tray_server_url(
     data = get_tray_file_info(server_url, variant)
     if data is None:
         return None
+
+    if data.get("started") is False:
+        data = _wait_for_starting_tray(server_url, variant, timeout)
+        if data is None:
+            return None
+
     url = data.get("url")
     if not url:
         return None
@@ -291,18 +355,22 @@ def main():
         return
 
     if state == TrayState.STARTING:
-        # TODO try to handle stuck tray?
-        print("Tray is starting.")
-        return
-        time.sleep(5)
+        print("Tray is starting. Waiting for it to start.")
+        _wait_for_starting_tray()
         state = get_tray_state()
         if state == TrayState.RUNNING:
+            print("Tray started. Exiting.")
             return
+
         if state == TrayState.STARTING:
+            print(
+                "Tray did not start in expected time."
+                " Killing the process and starting new."
+            )
             file_info = get_tray_file_info() or {}
             pid = file_info.get("pid")
             if pid is not None:
-                os.kill(pid, signal.SIGTERM)
+                _kill_tray_process(pid)
             remove_tray_server_url(force=True)
 
     # Prepare the file with 'pid' information as soon as possible
