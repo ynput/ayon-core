@@ -43,7 +43,8 @@ class AliasedGroup(click.Group):
               help="Enable debug")
 @click.option("--verbose", expose_value=False,
               help=("Change AYON log level (debug - critical or 0-50)"))
-def main_cli(ctx):
+@click.option("--force", is_flag=True, hidden=True)
+def main_cli(ctx, force):
     """AYON is main command serving as entry point to pipeline system.
 
     It wraps different commands together.
@@ -55,17 +56,24 @@ def main_cli(ctx):
             print(ctx.get_help())
             sys.exit(0)
         else:
-            ctx.invoke(tray)
+            ctx.forward(tray)
 
 
 @main_cli.command()
-def tray():
+@click.option(
+    "--force",
+    is_flag=True,
+    help="Force to start tray and close any existing one.")
+def tray(force):
     """Launch AYON tray.
 
     Default action of AYON command is to launch tray widget to control basic
     aspects of AYON. See documentation for more information.
     """
-    Commands.launch_tray()
+
+    from ayon_core.tools.tray import main
+
+    main(force)
 
 
 @main_cli.group(help="Run command line arguments of AYON addons")
