@@ -7,6 +7,7 @@ import subprocess
 import csv
 import time
 import signal
+import locale
 from typing import Optional, Dict, Tuple, Any
 
 import ayon_api
@@ -50,7 +51,8 @@ def _get_server_and_variant(
 def _windows_pid_is_running(pid: int) -> bool:
     args = ["tasklist.exe", "/fo", "csv", "/fi", f"PID eq {pid}"]
     output = subprocess.check_output(args)
-    csv_content = csv.DictReader(output.decode("utf-8").splitlines())
+    encoding = locale.getpreferredencoding()
+    csv_content = csv.DictReader(output.decode(encoding).splitlines())
     # if "PID" not in csv_content.fieldnames:
     #     return False
     for _ in csv_content:
