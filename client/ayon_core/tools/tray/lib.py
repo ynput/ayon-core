@@ -122,6 +122,10 @@ def _wait_for_starting_tray(
         if data.get("started") is True:
             return data
 
+        pid = data.get("pid")
+        if pid and not _is_process_running(pid):
+            return None
+
         if time.time() - started_at > timeout:
             return None
         time.sleep(0.1)
