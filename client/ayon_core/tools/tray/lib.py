@@ -344,12 +344,20 @@ def is_tray_running(
     return state != TrayState.NOT_RUNNING
 
 
-def main():
+def main(force=False):
     from ayon_core.tools.tray.ui import main
 
     Logger.set_process_name("Tray")
 
     state = get_tray_state()
+    if force and state in (TrayState.RUNNING, TrayState.STARTING):
+        file_info = get_tray_file_info() or {}
+        pid = file_info.get("pid")
+        if pid is not None:
+            _kill_tray_process(pid)
+        remove_tray_server_url(force=True)
+        state = TrayState.NOT_RUNNING
+
     if state == TrayState.RUNNING:
         print("Tray is already running.")
         return
