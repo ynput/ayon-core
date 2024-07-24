@@ -1,5 +1,4 @@
 from .webserver import HostMsgAction
-from .addons_manager import TrayAddonsManager
 from .lib import (
     TrayState,
     get_tray_state,
@@ -11,7 +10,6 @@ from .lib import (
 
 __all__ = (
     "HostMsgAction",
-    "TrayAddonsManager",
 
     "TrayState",
     "get_tray_state",
