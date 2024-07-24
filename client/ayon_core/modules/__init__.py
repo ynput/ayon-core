@@ -17,7 +17,6 @@ from .base import (
     load_modules,
 
     ModulesManager,
-    TrayModulesManager,
 )
 
 
@@ -38,5 +37,4 @@ __all__ = (
     "load_modules",
 
     "ModulesManager",
-    "TrayModulesManager",
 )
