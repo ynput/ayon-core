@@ -14,19 +14,16 @@ class ProductTypeItem:
     Args:
         name (str): Product type name.
         icon (dict[str, Any]): Product type icon definition.
-        checked (bool): Is product type checked for filtering.
     """
 
-    def __init__(self, name, icon, checked):
+    def __init__(self, name, icon):
         self.name = name
         self.icon = icon
-        self.checked = checked
 
     def to_data(self):
         return {
             "name": self.name,
             "icon": self.icon,
-            "checked": self.checked,
         }
 
     @classmethod
