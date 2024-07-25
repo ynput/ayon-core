@@ -364,7 +364,8 @@ def show_message_in_tray(
     Args:
         title (str): Message title.
         message (str): Message content.
-        icon (Optional[str]): Icon for the message.
+        icon (Optional[Literal["information", "warning", "critical"]]): Icon
+            for the message.
         msecs (Optional[int]): Duration of the message.
         tray_url (Optional[str]): Tray server url.
 
