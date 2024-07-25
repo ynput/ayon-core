@@ -7,12 +7,13 @@ import subprocess
 import csv
 import time
 import signal
+import locale
 from typing import Optional, Dict, Tuple, Any
 
 import ayon_api
 import requests
 
-from ayon_core.lib import Logger
+from ayon_core.lib import Logger, get_ayon_launcher_args, run_detached_process
 from ayon_core.lib.local_settings import get_ayon_appdirs
 
 
@@ -50,7 +51,8 @@ def _get_server_and_variant(
 def _windows_pid_is_running(pid: int) -> bool:
     args = ["tasklist.exe", "/fo", "csv", "/fi", f"PID eq {pid}"]
     output = subprocess.check_output(args)
-    csv_content = csv.DictReader(output.decode("utf-8").splitlines())
+    encoding = locale.getpreferredencoding()
+    csv_content = csv.DictReader(output.decode(encoding).splitlines())
     # if "PID" not in csv_content.fieldnames:
     #     return False
     for _ in csv_content:
@@ -121,6 +123,11 @@ def _wait_for_starting_tray(
 
         if data.get("started") is True:
             return data
+
+        pid = data.get("pid")
+        if pid and not _is_process_running(pid):
+            remove_tray_server_url()
+            return None
 
         if time.time() - started_at > timeout:
             return None
@@ -274,7 +281,12 @@ def remove_tray_server_url(force: Optional[bool] = False):
     except BaseException:
         data = {}
 
-    if force or not data or data.get("pid") == os.getpid():
+    if (
+        force
+        or not data
+        or data.get("pid") == os.getpid()
+        or not _is_process_running(data.get("pid"))
+    ):
         os.remove(filepath)
 
 
@@ -376,12 +388,61 @@ def show_message_in_tray(
     )
 
 
-def main():
+def make_sure_tray_is_running(
+    ayon_url: Optional[str] = None,
+    variant: Optional[str] = None,
+    env: Optional[Dict[str, str]] = None
+):
+    """Make sure that tray for AYON url and variant is running.
+
+    Args:
+        ayon_url (Optional[str]): AYON server url.
+        variant (Optional[str]): Settings variant.
+        env (Optional[Dict[str, str]]): Environment variables for the process.
+
+    """
+    state = get_tray_state(ayon_url, variant)
+    if state == TrayState.RUNNING:
+        return
+
+    if state == TrayState.STARTING:
+        _wait_for_starting_tray(ayon_url, variant)
+        state = get_tray_state(ayon_url, variant)
+        if state == TrayState.RUNNING:
+            return
+
+    args = get_ayon_launcher_args("tray", "--force")
+    if env is None:
+        env = os.environ.copy()
+    
+    # Make sure 'QT_API' is not set
+    env.pop("QT_API", None)
+
+    if ayon_url:
+        env["AYON_SERVER_URL"] = ayon_url
+
+    # TODO maybe handle variant in a better way
+    if variant:
+        if variant == "staging":
+            args.append("--use-staging")
+
+    run_detached_process(args, env=env)
+
+
+def main(force=False):
     from ayon_core.tools.tray.ui import main
 
     Logger.set_process_name("Tray")
 
     state = get_tray_state()
+    if force and state in (TrayState.RUNNING, TrayState.STARTING):
+        file_info = get_tray_file_info() or {}
+        pid = file_info.get("pid")
+        if pid is not None:
+            _kill_tray_process(pid)
+        remove_tray_server_url(force=True)
+        state = TrayState.NOT_RUNNING
+
     if state == TrayState.RUNNING:
         show_message_in_tray(
             "Tray is already running",
