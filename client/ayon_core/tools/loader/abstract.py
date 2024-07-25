@@ -349,9 +349,9 @@ class ProductTypesFilter:
 
     Defines the filtering for product types.
     """
-    def __init__(self, product_types: List[str], is_include: bool):
+    def __init__(self, product_types: List[str], is_allow_list: bool):
         self.product_types: List[str] = product_types
-        self.is_include: bool = is_include
+        self.is_allow_list: bool = is_allow_list
 
 
 class _BaseLoaderController(ABC):
