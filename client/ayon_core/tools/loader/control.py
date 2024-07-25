@@ -434,7 +434,7 @@ class LoaderController(BackendLoaderController, FrontendLoaderController):
 
     def get_product_types_filter(self, project_name):
         output = ProductTypesFilter(
-            is_include=False,
+            is_allow_list=False,
             product_types=[]
         )
         # Without host is not determined context
@@ -479,7 +479,7 @@ class LoaderController(BackendLoaderController, FrontendLoaderController):
         )
         if profile:
             output = ProductTypesFilter(
-                is_include=profile["is_include"],
+                is_allow_list=profile["is_include"],
                 product_types=profile["filter_product_types"]
             )
         return output
