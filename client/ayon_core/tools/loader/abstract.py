@@ -1017,7 +1017,7 @@ class FrontendLoaderController(_BaseLoaderController):
 
     @abstractmethod
     def get_product_types_filter(self):
-        """Return product type filter for project name (and current context).
+        """Return product type filter for current context.
 
         Returns:
             ProductTypesFilter: Product type filter for current context
