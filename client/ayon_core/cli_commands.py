@@ -14,12 +14,6 @@ class Commands:
     Most of its methods are called by :mod:`cli` module.
     """
     @staticmethod
-    def launch_tray():
-        from ayon_core.tools.tray import main
-
-        main()
-
-    @staticmethod
     def publish(
         path: str,
         targets: Optional[List[str]] = None,
