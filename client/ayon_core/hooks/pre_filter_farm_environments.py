@@ -23,7 +23,7 @@ class FilterFarmEnvironments(PreLaunchHook):
         data = self.launch_context.data
         project_settings = data["project_settings"]
         filter_env_profiles = (
-            project_settings["core"]["filter_farm_environment"])
+            project_settings["core"]["filter_env_profiles"])
 
         if not filter_env_profiles:
             self.log.debug("No profiles found for env var filtering")
