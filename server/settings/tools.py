@@ -222,6 +222,13 @@ def _product_types_enum():
     ]
 
 
+def filter_type_enum():
+    return [
+        {"value": "is_allow_list", "label": "Allow list"},
+        {"value": "is_deny_list", "label": "Deny list"},
+    ]
+
+
 class LoaderProductTypeFilterProfile(BaseSettingsModel):
     _layout = "expanded"
     # TODO this should use hosts enum
@@ -231,9 +238,15 @@ class LoaderProductTypeFilterProfile(BaseSettingsModel):
         title="Task types",
         enum_resolver=task_types_enum
     )
-    is_include: bool = SettingsField(True, title="Exclude / Include")
+    filter_type: str = SettingsField(
+        "is_allow_list",
+        title="Filter type",
+        section="Product type filter",
+        enum_resolver=filter_type_enum
+    )
     filter_product_types: list[str] = SettingsField(
         default_factory=list,
+        title="Product types",
         enum_resolver=_product_types_enum
     )
 
