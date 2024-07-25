@@ -432,7 +432,7 @@ class LoaderController(BackendLoaderController, FrontendLoaderController):
     def _emit_event(self, topic, data=None):
         self._event_system.emit(topic, data or {}, "controller")
 
-    def get_product_types_filter(self, project_name):
+    def get_product_types_filter(self):
         output = ProductTypesFilter(
             is_allow_list=False,
             product_types=[]
