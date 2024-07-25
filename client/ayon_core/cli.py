@@ -143,9 +143,7 @@ def extractenvironments(
 @click.argument("path", required=True)
 @click.option("-t", "--targets", help="Targets", default=None,
               multiple=True)
-@click.option("-g", "--gui", is_flag=True,
-              help="Show Publish UI", default=False)
-def publish(ctx, path, targets, gui):
+def publish(ctx, path, targets):
     """Start CLI publishing.
 
     Publish collects json from path provided as an argument.
@@ -231,21 +229,15 @@ def publish(ctx, path, targets, gui):
     for plugin in plugins:
         print(plugin)
 
-    if gui:
-        from ayon_core.tools.utils.host_tools import show_publish
-        from ayon_core.tools.utils.lib import qt_app_context
-        with qt_app_context():
-            show_publish()
-    else:
-        # Error exit as soon as any error occurs.
-        error_format = ("Failed {plugin.__name__}: "
-                        "{error} -- {error.traceback}")
+    # Error exit as soon as any error occurs.
+    error_format = ("Failed {plugin.__name__}: "
+                    "{error} -- {error.traceback}")
 
-        for result in pyblish.util.publish_iter():
-            if result["error"]:
-                log.error(error_format.format(**result))
-                # uninstall()
-                sys.exit(1)
+    for result in pyblish.util.publish_iter():
+        if result["error"]:
+            log.error(error_format.format(**result))
+            # uninstall()
+            sys.exit(1)
 
     log.info("Publish finished.")
 
