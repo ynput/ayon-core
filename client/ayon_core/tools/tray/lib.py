@@ -356,6 +356,39 @@ def is_tray_running(
     return state != TrayState.NOT_RUNNING
 
 
+def show_message_in_tray(
+    title, message, icon=None, msecs=None, tray_url=None
+):
+    """Show message in tray.
+
+    Args:
+        title (str): Message title.
+        message (str): Message content.
+        icon (Optional[Literal["information", "warning", "critical"]]): Icon
+            for the message.
+        msecs (Optional[int]): Duration of the message.
+        tray_url (Optional[str]): Tray server url.
+
+    """
+    if not tray_url:
+        tray_url = get_tray_server_url()
+
+    # TODO handle this case, e.g. raise an error?
+    if not tray_url:
+        return
+
+    # TODO handle response, can fail whole request or can fail on status
+    requests.post(
+        f"{tray_url}/tray/message",
+        json={
+            "title": title,
+            "message": message,
+            "icon": icon,
+            "msecs": msecs
+        }
+    )
+
+
 def make_sure_tray_is_running(
     ayon_url: Optional[str] = None,
     variant: Optional[str] = None,
@@ -412,6 +445,10 @@ def main(force=False):
         state = TrayState.NOT_RUNNING
 
     if state == TrayState.RUNNING:
+        show_message_in_tray(
+            "Tray is already running",
+            "Your AYON tray application is already running."
+        )
         print("Tray is already running.")
         return
 
