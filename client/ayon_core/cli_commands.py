@@ -2,7 +2,6 @@
 """Implementation of AYON commands."""
 import os
 import sys
-import warnings
 from typing import Optional, List
 
 from ayon_core.addon import AddonsManager
@@ -136,36 +135,3 @@ class Commands:
 
         log.info("Publish finished.")
 
-    @staticmethod
-    def extractenvironments(
-        output_json_path, project, asset, task, app, env_group, addons_manager
-    ):
-        """Produces json file with environment based on project and app.
-
-        Called by Deadline plugin to propagate environment into render jobs.
-        """
-        warnings.warn(
-            (
-                "Command 'extractenvironments' is deprecated and will be"
-                " removed in future. Please use "
-                "'addon applications extractenvironments ...' instead."
-            ),
-            DeprecationWarning
-        )
-
-        applications_addon = addons_manager.get_enabled_addon("applications")
-        if applications_addon is None:
-            raise RuntimeError(
-                "Applications addon is not available or enabled."
-            )
-
-        # Please ignore the fact this is using private method
-        applications_addon._cli_extract_environments(
-            output_json_path, project, asset, task, app, env_group
-        )
-
-    @staticmethod
-    def contextselection(output_path, project_name, folder_path, strict):
-        from ayon_core.tools.context_dialog import main
-
-        main(output_path, project_name, folder_path, strict)
