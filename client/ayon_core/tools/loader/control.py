@@ -3,9 +3,8 @@ import uuid
 
 import ayon_api
 
-from ayon_core.settings import get_current_project_settings
+from ayon_core.settings import get_project_settings
 from ayon_core.pipeline import get_current_host_name
-from ayon_core.pipeline.context_tools import get_current_task_entity
 from ayon_core.lib import NestedCacheItem, CacheItem, filter_profiles
 from ayon_core.lib.events import QueuedEventSystem
 from ayon_core.pipeline import Anatomy, get_current_context
@@ -443,12 +442,10 @@ class LoaderController(BackendLoaderController, FrontendLoaderController):
             return output
 
         context = self.get_current_context()
-        if (
-            not all(context.values())
-            or context["project_name"] != project_name
-        ):
+        project_name = context.get("project_name")
+        if not project_name:
             return output
-        settings = get_current_project_settings()
+        settings = get_project_settings(project_name)
         profiles = (
             settings
             ["core"]
@@ -458,13 +455,26 @@ class LoaderController(BackendLoaderController, FrontendLoaderController):
         )
         if not profiles:
             return output
-        task_entity = get_current_task_entity(fields={"taskType"})
+
+        folder_id = context.get("folder_id")
+        task_name = context.get("task_name")
+        task_type = None
+        if folder_id and task_name:
+            task_entity = ayon_api.get_task_by_name(
+                project_name,
+                folder_id,
+                task_name,
+                fields={"taskType"}
+            )
+            if task_entity:
+                task_type = task_entity.get("taskType")
+
         host_name = getattr(self._host, "name", get_current_host_name())
         profile = filter_profiles(
             profiles,
             {
                 "hosts": host_name,
-                "task_types": (task_entity or {}).get("taskType")
+                "task_types": task_type,
             }
         )
         if profile:
