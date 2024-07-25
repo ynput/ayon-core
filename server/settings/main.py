@@ -175,7 +175,7 @@ class EnvironmentReplacementModel(BaseSettingsModel):
     replacement: str = SettingsField("", title="Replacement")
 
 
-class FilterFarmEnvironmentModel(BaseSettingsModel):
+class FilterEnvsProfileModel(BaseSettingsModel):
     _layout = "expanded"
 
     host_names: list[str] = SettingsField(
