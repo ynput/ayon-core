@@ -357,5 +357,5 @@ DEFAULT_VALUES = {
         {},
         indent=4
     ),
-    "filter_farm_environment": [],
+    "filter_env_profiles": [],
 }
