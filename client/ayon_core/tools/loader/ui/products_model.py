@@ -39,6 +39,8 @@ REPRESENTATIONS_COUNT_ROLE = QtCore.Qt.UserRole + 28
 SYNC_ACTIVE_SITE_AVAILABILITY = QtCore.Qt.UserRole + 29
 SYNC_REMOTE_SITE_AVAILABILITY = QtCore.Qt.UserRole + 30
 
+STATUS_NAME_FILTER_ROLE = QtCore.Qt.UserRole + 31
+
 
 class ProductsModel(QtGui.QStandardItemModel):
     refreshed = QtCore.Signal()
@@ -105,7 +107,7 @@ class ProductsModel(QtGui.QStandardItemModel):
     }
 
     def __init__(self, controller):
-        super(ProductsModel, self).__init__()
+        super().__init__()
         self.setColumnCount(len(self.column_labels))
         for idx, label in enumerate(self.column_labels):
             self.setHeaderData(idx, QtCore.Qt.Horizontal, label)
@@ -130,7 +132,7 @@ class ProductsModel(QtGui.QStandardItemModel):
 
     def get_product_item_indexes(self):
         return [
-            item.index()
+            self.indexFromItem(item)
             for item in self._items_by_id.values()
         ]
 
@@ -146,12 +148,26 @@ class ProductsModel(QtGui.QStandardItemModel):
 
         return self._product_items_by_id.get(product_id)
 
+    def set_product_version(self, product_id, version_id):
+        if version_id is None:
+            return
+
+        product_item = self._items_by_id.get(product_id)
+        if product_item is None:
+            return
+
+        index = self.indexFromItem(product_item)
+        self.setData(index, version_id, VERSION_NAME_EDIT_ROLE)
+
     def set_enable_grouping(self, enable_grouping):
         if enable_grouping is self._grouping_enabled:
             return
         self._grouping_enabled = enable_grouping
         # Ignore change if groups are not available
-        self.refresh(self._last_project_name, self._last_folder_ids)
+        self.refresh(
+            self._last_project_name,
+            self._last_folder_ids
+        )
 
     def flags(self, index):
         # Make the version column editable
@@ -163,7 +179,7 @@ class ProductsModel(QtGui.QStandardItemModel):
             )
         if index.column() != 0:
             index = self.index(index.row(), 0, index.parent())
-        return super(ProductsModel, self).flags(index)
+        return super().flags(index)
 
     def data(self, index, role=None):
         if role is None:
@@ -190,7 +206,7 @@ class ProductsModel(QtGui.QStandardItemModel):
             return self._get_status_icon(status_name)
 
         if col == 0:
-            return super(ProductsModel, self).data(index, role)
+            return super().data(index, role)
 
         if role == QtCore.Qt.DecorationRole:
             if col == 1:
@@ -223,7 +239,7 @@ class ProductsModel(QtGui.QStandardItemModel):
 
         index = self.index(index.row(), 0, index.parent())
 
-        return super(ProductsModel, self).data(index, role)
+        return super().data(index, role)
 
     def setData(self, index, value, role=None):
         if not index.isValid():
@@ -255,7 +271,7 @@ class ProductsModel(QtGui.QStandardItemModel):
             self._set_version_data_to_product_item(item, final_version_item)
             self.version_changed.emit()
             return True
-        return super(ProductsModel, self).setData(index, value, role)
+        return super().setData(index, value, role)
 
     def _get_next_color(self):
         return next(self._color_iterator)
@@ -349,11 +365,10 @@ class ProductsModel(QtGui.QStandardItemModel):
                 representation count by version id.
             sync_availability_by_version_id (Optional[str, Tuple[int, int]]):
                 Mapping of sync availability by version id.
-        """
 
+        """
         model_item.setData(version_item.version_id, VERSION_ID_ROLE)
         model_item.setData(version_item.version, VERSION_NAME_ROLE)
-        model_item.setData(version_item.version_id, VERSION_ID_ROLE)
         model_item.setData(version_item.is_hero, VERSION_HERO_ROLE)
         model_item.setData(
             version_item.published_time, VERSION_PUBLISH_TIME_ROLE
@@ -396,11 +411,15 @@ class ProductsModel(QtGui.QStandardItemModel):
         remote_site_icon,
         repre_count_by_version_id,
         sync_availability_by_version_id,
+        last_version_by_product_id,
     ):
         model_item = self._items_by_id.get(product_item.product_id)
-        versions = list(product_item.version_items.values())
-        versions.sort()
-        last_version = versions[-1]
+        last_version = last_version_by_product_id[product_item.product_id]
+
+        statuses = {
+            version_item.status
+            for version_item in product_item.version_items.values()
+        }
         if model_item is None:
             product_id = product_item.product_id
             model_item = QtGui.QStandardItem(product_item.product_name)
@@ -418,6 +437,7 @@ class ProductsModel(QtGui.QStandardItemModel):
             self._product_items_by_id[product_id] = product_item
             self._items_by_id[product_id] = model_item
 
+        model_item.setData("|".join(statuses), STATUS_NAME_FILTER_ROLE)
         model_item.setData(product_item.folder_label, FOLDER_LABEL_ROLE)
         in_scene = 1 if product_item.product_in_scene else 0
         model_item.setData(in_scene, PRODUCT_IN_SCENE_ROLE)
@@ -466,16 +486,19 @@ class ProductsModel(QtGui.QStandardItemModel):
             product_item.product_id: product_item
             for product_item in product_items
         }
-        last_version_id_by_product_id = {}
+        last_version_by_product_id = {}
         for product_item in product_items:
             versions = list(product_item.version_items.values())
             versions.sort()
             last_version = versions[-1]
-            last_version_id_by_product_id[product_item.product_id] = (
-                last_version.version_id
+            last_version_by_product_id[product_item.product_id] = (
+                last_version
             )
 
-        version_ids = set(last_version_id_by_product_id.values())
+        version_ids = {
+            version_item.version_id
+            for version_item in last_version_by_product_id.values()
+        }
         repre_count_by_version_id = self._controller.get_versions_representation_count(
             project_name, version_ids
         )
@@ -494,10 +517,7 @@ class ProductsModel(QtGui.QStandardItemModel):
 
             product_name = product_item.product_name
             group = product_name_matches_by_group[group_name]
-            if product_name not in group:
-                group[product_name] = [product_item]
-                continue
-            group[product_name].append(product_item)
+            group.setdefault(product_name, []).append(product_item)
 
         group_names = set(product_name_matches_by_group.keys())
 
@@ -513,8 +533,16 @@ class ProductsModel(QtGui.QStandardItemModel):
             merged_product_items = {}
             top_items = []
             group_product_types = set()
+            group_status_names = set()
             for product_name, product_items in groups.items():
                 group_product_types |= {p.product_type for p in product_items}
+                for product_item in product_items:
+                    group_status_names |= {
+                        version_item.status
+                        for version_item in product_item.version_items.values()
+                    }
+                    group_product_types.add(product_item.product_type)
+
                 if len(product_items) == 1:
                     top_items.append(product_items[0])
                 else:
@@ -529,7 +557,13 @@ class ProductsModel(QtGui.QStandardItemModel):
             if group_name:
                 parent_item = self._get_group_model_item(group_name)
                 parent_item.setData(
-                    "|".join(group_product_types), PRODUCT_TYPE_ROLE)
+                    "|".join(group_product_types),
+                    PRODUCT_TYPE_ROLE
+                )
+                parent_item.setData(
+                    "|".join(group_status_names),
+                    STATUS_NAME_FILTER_ROLE
+                )
 
             new_items = []
             if parent_item is not None and parent_item.row() < 0:
@@ -542,6 +576,7 @@ class ProductsModel(QtGui.QStandardItemModel):
                     remote_site_icon,
                     repre_count_by_version_id,
                     sync_availability_by_version_id,
+                    last_version_by_product_id,
                 )
                 new_items.append(item)
 
@@ -549,13 +584,15 @@ class ProductsModel(QtGui.QStandardItemModel):
                 product_name, product_items = path_info
                 (merged_color_hex, merged_color_qt) = self._get_next_color()
                 merged_color = qtawesome.icon(
-                    "fa.circle", color=merged_color_qt)
+                    "fa.circle", color=merged_color_qt
+                )
                 merged_item = self._get_merged_model_item(
                     product_name, len(product_items), merged_color_hex)
                 merged_item.setData(merged_color, QtCore.Qt.DecorationRole)
                 new_items.append(merged_item)
 
                 merged_product_types = set()
+                merged_status_names = set()
                 new_merged_items = []
                 for product_item in product_items:
                     item = self._get_product_model_item(
@@ -564,12 +601,25 @@ class ProductsModel(QtGui.QStandardItemModel):
                         remote_site_icon,
                         repre_count_by_version_id,
                         sync_availability_by_version_id,
+                        last_version_by_product_id,
                     )
                     new_merged_items.append(item)
                     merged_product_types.add(product_item.product_type)
+                    merged_status_names |= {
+                        version_item.status
+                        for version_item in (
+                            product_item.version_items.values()
+                        )
+                    }
 
                 merged_item.setData(
-                    "|".join(merged_product_types), PRODUCT_TYPE_ROLE)
+                    "|".join(merged_product_types),
+                    PRODUCT_TYPE_ROLE
+                )
+                merged_item.setData(
+                    "|".join(merged_status_names),
+                    STATUS_NAME_FILTER_ROLE
+                )
                 if new_merged_items:
                     merged_item.appendRows(new_merged_items)
 
