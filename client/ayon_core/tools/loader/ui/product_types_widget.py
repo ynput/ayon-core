@@ -52,11 +52,6 @@ class ProductTypesQtModel(QtGui.QStandardItemModel):
                 new_items.append(item)
                 self._items_by_name[name] = item
 
-            item.setCheckState(
-                QtCore.Qt.Checked
-                if product_type_item.checked
-                else QtCore.Qt.Unchecked
-            )
             icon = get_qt_icon(product_type_item.icon)
             item.setData(icon, QtCore.Qt.DecorationRole)
 
