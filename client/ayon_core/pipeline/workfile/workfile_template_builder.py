@@ -3,7 +3,7 @@
 Build templates are manually prepared using plugin definitions which create
 placeholders inside the template which are populated on import.
 
-This approach is very explicit to achive very specific build logic that can be
+This approach is very explicit to achieve very specific build logic that can be
 targeted by task types and names.
 
 Placeholders are created using placeholder plugins which should care about
@@ -15,9 +15,8 @@ import os
 import re
 import collections
 import copy
-from abc import ABCMeta, abstractmethod
+from abc import ABC, abstractmethod
 
-import six
 from ayon_api import (
     get_folders,
     get_folder_by_path,
@@ -82,12 +81,11 @@ class TemplateLoadFailed(Exception):
     pass
 
 
-@six.add_metaclass(ABCMeta)
-class AbstractTemplateBuilder(object):
+class AbstractTemplateBuilder(ABC):
     """Abstraction of Template Builder.
 
     Builder cares about context, shared data, cache, discovery of plugins
-    and trigger logic. Provides public api for host workfile build systen.
+    and trigger logic. Provides public api for host workfile build system.
 
     Rest of logic is based on plugins that care about collection and creation
     of placeholder items.
@@ -806,7 +804,7 @@ class AbstractTemplateBuilder(object):
         )
 
     def get_template_preset(self):
-        """Unified way how template preset is received usign settings.
+        """Unified way how template preset is received using settings.
 
         Method is dependent on '_get_build_profiles' which should return filter
         profiles to resolve path to a template. Default implementation looks
@@ -941,8 +939,7 @@ class AbstractTemplateBuilder(object):
         )
 
 
-@six.add_metaclass(ABCMeta)
-class PlaceholderPlugin(object):
+class PlaceholderPlugin(ABC):
     """Plugin which care about handling of placeholder items logic.
 
     Plugin create and update placeholders in scene and populate them on
@@ -1427,7 +1424,7 @@ class PlaceholderLoadMixin(object):
                 placeholder='{"camera":"persp", "lights":True}',
                 tooltip=(
                     "Loader"
-                    "\nDefines a dictionnary of arguments used to load assets."
+                    "\nDefines a dictionary of arguments used to load assets."
                     "\nUseable arguments depend on current placeholder Loader."
                     "\nField should be a valid python dict."
                     " Anything else will be ignored."
@@ -1472,7 +1469,7 @@ class PlaceholderLoadMixin(object):
         ]
 
     def parse_loader_args(self, loader_args):
-        """Helper function to parse string of loader arugments.
+        """Helper function to parse string of loader arguments.
 
         Empty dictionary is returned if conversion fails.
 
@@ -1797,6 +1794,16 @@ class PlaceholderCreateMixin(object):
                     "\ncompiling of product name."
                 )
             ),
+            attribute_definitions.BoolDef(
+                "active",
+                label="Active",
+                default=options.get("active", True),
+                tooltip=(
+                    "Active"
+                    "\nDefines whether the created instance will default to "
+                    "active or not."
+                )
+            ),
             attribute_definitions.UISeparatorDef(),
             attribute_definitions.NumberDef(
                 "order",
@@ -1826,6 +1833,7 @@ class PlaceholderCreateMixin(object):
         legacy_create = self.builder.use_legacy_creators
         creator_name = placeholder.data["creator"]
         create_variant = placeholder.data["create_variant"]
+        active = placeholder.data.get("active")
 
         creator_plugin = self.builder.get_creators_by_name()[creator_name]
 
@@ -1872,8 +1880,9 @@ class PlaceholderCreateMixin(object):
                     creator_plugin.identifier,
                     create_variant,
                     folder_entity,
-                    task_name=task_name,
-                    pre_create_data=pre_create_data
+                    task_entity,
+                    pre_create_data=pre_create_data,
+                    active=active
                 )
 
         except:  # noqa: E722

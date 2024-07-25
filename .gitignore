@@ -34,7 +34,6 @@ Temporary Items
 
 # Package dirs
 ###########
-/server_addon/packages/*
 /package/*
 
 /.venv

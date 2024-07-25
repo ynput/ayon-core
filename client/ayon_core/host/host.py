@@ -1,15 +1,13 @@
 import os
 import logging
 import contextlib
-from abc import ABCMeta, abstractproperty
-import six
+from abc import ABC, abstractproperty
 
 # NOTE can't import 'typing' because of issues in Maya 2020
 #   - shiboken crashes on 'typing' module import
 
 
-@six.add_metaclass(ABCMeta)
-class HostBase(object):
+class HostBase(ABC):
     """Base of host implementation class.
 
     Host is pipeline implementation of DCC application. This class should help
