@@ -337,11 +337,11 @@ class LoaderController(BackendLoaderController, FrontendLoaderController):
         project_name = context.get("project_name")
         folder_path = context.get("folder_path")
         if project_name and folder_path:
-            folder = ayon_api.get_folder_by_path(
+            folder_entity = ayon_api.get_folder_by_path(
                 project_name, folder_path, fields=["id"]
             )
-            if folder:
-                folder_id = folder["id"]
+            if folder_entity:
+                folder_id = folder_entity["id"]
         return {
             "project_name": project_name,
             "folder_id": folder_id,
