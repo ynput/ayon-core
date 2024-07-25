@@ -27,13 +27,13 @@ from ayon_core.tools.utils import (
     WrappedCallbackItem,
     get_ayon_qt_app,
 )
-from ayon_core.tools.tray import TrayAddonsManager
 from ayon_core.tools.tray.lib import (
     set_tray_server_url,
     remove_tray_server_url,
     TrayIsRunningError,
 )
 
+from .addons_manager import TrayAddonsManager
 from .host_console_listener import HostListener
 from .info_widget import InfoWidget
 from .dialogs import (
