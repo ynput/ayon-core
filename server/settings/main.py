@@ -259,7 +259,7 @@ class CoreSettings(BaseSettingsModel):
         title="Project environments",
         section="---"
     )
-    filter_farm_environment: list[FilterFarmEnvironmentModel] = SettingsField(
+    filter_env_profiles: list[FilterEnvsProfileModel] = SettingsField(
         default_factory=list,
     )
 
