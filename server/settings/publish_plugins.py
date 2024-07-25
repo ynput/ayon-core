@@ -964,7 +964,8 @@ DEFAULT_PUBLISH_VALUES = {
                     "nuke",
                     "harmony",
                     "photoshop",
-                    "aftereffects"
+                    "aftereffects",
+                    "fusion"
                 ],
                 "enabled": True,
                 "optional": True,
