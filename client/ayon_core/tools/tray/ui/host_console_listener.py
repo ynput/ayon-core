@@ -9,7 +9,7 @@ from qtpy import QtWidgets
 from ayon_core.addon import ITrayService
 from ayon_core.tools.stdout_broker.window import ConsoleDialog
 
-from .structures import HostMsgAction
+from ayon_core.tools.tray import HostMsgAction
 
 log = logging.getLogger(__name__)
 
@@ -22,18 +22,19 @@ class IconType:
 
 
 class HostListener:
-    def __init__(self, webserver, module):
-        self._window_per_id = {}
-        self.module = module
-        self.webserver = webserver
+    def __init__(self, addons_manager, tray_manager):
+        self._tray_manager = tray_manager
         self._window_per_id = {}  # dialogs per host name
         self._action_per_id = {}  # QAction per host name
 
-        webserver.add_route('*', "/ws/host_listener", self.websocket_handler)
+        addons_manager.add_route(
+            "*", "/ws/host_listener", self.websocket_handler
+        )
 
     def _host_is_connecting(self, host_name, label):
-        """ Initialize dialog, adds to submenu. """
-        services_submenu = self.module._services_submenu
+        """ Initialize dialog, adds to submenu."""
+        ITrayService.services_submenu(self._tray_manager)
+        services_submenu = self._tray_manager.get_services_submenu()
         action = QtWidgets.QAction(label, services_submenu)
         action.triggered.connect(lambda: self.show_widget(host_name))
 
@@ -73,8 +74,9 @@ class HostListener:
 
             Dialog get initialized when 'host_name' is connecting.
         """
-        self.module.execute_in_main_thread(
-            lambda: self._show_widget(host_name))
+        self._tray_manager.execute_in_main_thread(
+            self._show_widget, host_name
+        )
 
     def _show_widget(self, host_name):
         widget = self._window_per_id[host_name]
@@ -95,21 +97,23 @@ class HostListener:
                     if action == HostMsgAction.CONNECTING:
                         self._action_per_id[host_name] = None
                         # must be sent to main thread, or action wont trigger
-                        self.module.execute_in_main_thread(
-                            lambda: self._host_is_connecting(host_name, text))
+                        self._tray_manager.execute_in_main_thread(
+                            self._host_is_connecting, host_name, text
+                        )
                     elif action == HostMsgAction.CLOSE:
                         # clean close
                         self._close(host_name)
                         await ws.close()
                     elif action == HostMsgAction.INITIALIZED:
-                        self.module.execute_in_main_thread(
+                        self._tray_manager.execute_in_main_thread(
                             # must be queued as _host_is_connecting might not
                             # be triggered/finished yet
-                            lambda: self._set_host_icon(host_name,
-                                                        IconType.RUNNING))
+                            self._set_host_icon, host_name, IconType.RUNNING
+                        )
                     elif action == HostMsgAction.ADD:
-                        self.module.execute_in_main_thread(
-                            lambda: self._add_text(host_name, text))
+                        self._tray_manager.execute_in_main_thread(
+                            self._add_text, host_name, text
+                        )
                 elif msg.type == aiohttp.WSMsgType.ERROR:
                     print('ws connection closed with exception %s' %
                           ws.exception())
@@ -131,7 +135,7 @@ class HostListener:
 
     def _close(self, host_name):
         """ Clean close - remove from menu, delete widget."""
-        services_submenu = self.module._services_submenu
+        services_submenu = self._tray_manager.get_services_submenu()
         action = self._action_per_id.pop(host_name)
         services_submenu.removeAction(action)
         widget = self._window_per_id.pop(host_name)
