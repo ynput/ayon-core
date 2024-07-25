@@ -478,8 +478,12 @@ class LoaderController(BackendLoaderController, FrontendLoaderController):
             }
         )
         if profile:
+            # TODO remove 'is_include' after release '0.4.3'
+            is_allow_list = profile.get("is_include")
+            if is_allow_list is None:
+                is_allow_list = profile["filter_type"] == "is_allow_list"
             output = ProductTypesFilter(
-                is_allow_list=profile["is_include"],
+                is_allow_list=is_allow_list,
                 product_types=profile["filter_product_types"]
             )
         return output
