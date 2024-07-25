@@ -5,6 +5,7 @@ import sys
 import code
 import traceback
 from pathlib import Path
+import warnings
 
 import click
 import acre
@@ -116,14 +117,25 @@ def extractenvironments(
         This function is deprecated and will be removed in future. Please use
         'addon applications extractenvironments ...' instead.
     """
-    Commands.extractenvironments(
-        output_json_path,
-        project,
-        asset,
-        task,
-        app,
-        envgroup,
-        ctx.obj["addons_manager"]
+    warnings.warn(
+        (
+            "Command 'extractenvironments' is deprecated and will be"
+            " removed in future. Please use"
+            " 'addon applications extractenvironments ...' instead."
+        ),
+        DeprecationWarning
+    )
+
+    addons_manager = ctx.obj["addons_manager"]
+    applications_addon = addons_manager.get_enabled_addon("applications")
+    if applications_addon is None:
+        raise RuntimeError(
+            "Applications addon is not available or enabled."
+        )
+
+    # Please ignore the fact this is using private method
+    applications_addon._cli_extract_environments(
+        output_json_path, project, asset, task, app, envgroup
     )
 
 
@@ -170,12 +182,10 @@ def contextselection(
     Context is project name, folder path and task name. The result is stored
     into json file which path is passed in first argument.
     """
-    Commands.contextselection(
-        output_path,
-        project,
-        folder,
-        strict
-    )
+    from ayon_core.tools.context_dialog import main
+
+    main(output_path, project, folder, strict)
+
 
 
 @main_cli.command(
