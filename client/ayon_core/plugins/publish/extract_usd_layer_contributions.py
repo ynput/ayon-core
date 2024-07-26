@@ -138,13 +138,14 @@ def get_instance_uri_path(
     folder_path = instance.data["folderPath"]
     product_name = instance.data["productName"]
     project_name = context.data["projectName"]
+    version_name = instance.data["version"]
 
     # Get the layer's published path
     path = construct_ayon_entity_uri(
         project_name=project_name,
         folder_path=folder_path,
         product=product_name,
-        version="latest",
+        version=version_name,
         representation_name="usd"
     )
 
