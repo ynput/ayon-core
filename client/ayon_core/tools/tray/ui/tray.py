@@ -3,12 +3,11 @@ import sys
 import time
 import collections
 import atexit
-import json
 import platform
 
-from aiohttp.web_response import Response
 import ayon_api
 from qtpy import QtCore, QtGui, QtWidgets
+from aiohttp.web import Response, json_response, Request
 
 from ayon_core import resources, style
 from ayon_core.lib import (
@@ -91,6 +90,10 @@ class TrayManager:
         self._services_submenu = None
         self._start_time = time.time()
 
+        # Cache AYON username used in process
+        # - it can change only by changing ayon_api global connection
+        #   should be safe for tray application to cache the value only once
+        self._cached_username = None
         self._closing = False
         try:
             set_tray_server_url(
@@ -133,6 +136,7 @@ class TrayManager:
             kwargs["msecs"] = msecs
 
         self.tray_widget.showMessage(*args, **kwargs)
+        # TODO validate 'self.tray_widget.supportsMessages()'
 
     def initialize_addons(self):
         """Add addons to tray."""
@@ -143,7 +147,10 @@ class TrayManager:
         self._addons_manager.initialize(tray_menu)
 
         self._addons_manager.add_route(
-            "GET", "/tray", self._get_web_tray_info
+            "GET", "/tray", self._web_get_tray_info
+        )
+        self._addons_manager.add_route(
+            "POST", "/tray/message", self._web_show_tray_message
         )
 
         admin_submenu = ITrayAction.admin_submenu(tray_menu)
@@ -274,8 +281,12 @@ class TrayManager:
 
         return item
 
-    async def _get_web_tray_info(self, request):
-        return Response(text=json.dumps({
+    async def _web_get_tray_info(self, _request: Request) -> Response:
+        if self._cached_username is None:
+            self._cached_username = ayon_api.get_user()["name"]
+
+        return json_response({
+            "username": self._cached_username,
             "bundle": os.getenv("AYON_BUNDLE_NAME"),
             "dev_mode": is_dev_mode_enabled(),
             "staging_mode": is_staging_enabled(),
@@ -285,7 +296,37 @@ class TrayManager:
             },
             "installer_version": os.getenv("AYON_VERSION"),
             "running_time": time.time() - self._start_time,
-        }))
+        })
+
+    async def _web_show_tray_message(self, request: Request) -> Response:
+        data = await request.json()
+        try:
+            title = data["title"]
+            message = data["message"]
+            icon = data.get("icon")
+            msecs = data.get("msecs")
+        except KeyError as exc:
+            return json_response(
+                {
+                    "error": f"Missing required data. {exc}",
+                    "success": False,
+                },
+                status=400,
+            )
+
+        if icon == "information":
+            icon = QtWidgets.QSystemTrayIconInformation
+        elif icon == "warning":
+            icon = QtWidgets.QSystemTrayIconWarning
+        elif icon == "critical":
+            icon = QtWidgets.QSystemTrayIcon.Critical
+        else:
+            icon = None
+
+        self.execute_in_main_thread(
+            self.show_tray_message, title, message, icon, msecs
+        )
+        return json_response({"success": True})
 
     def _on_update_check_timer(self):
         try:

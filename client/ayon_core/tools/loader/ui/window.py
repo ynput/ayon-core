@@ -345,6 +345,8 @@ class LoaderWindow(QtWidgets.QWidget):
     def closeEvent(self, event):
         super(LoaderWindow, self).closeEvent(event)
 
+        self._product_types_widget.reset_product_types_filter_on_refresh()
+
         self._reset_on_show = True
 
     def keyPressEvent(self, event):
