@@ -13,9 +13,16 @@ class ProductTypesQtModel(QtGui.QStandardItemModel):
         super(ProductTypesQtModel, self).__init__()
         self._controller = controller
 
+        self._reset_filters_on_refresh = True
         self._refreshing = False
         self._bulk_change = False
+        self._last_project = None
         self._items_by_name = {}
+
+        controller.register_event_callback(
+            "controller.reset.finished",
+            self._on_controller_reset_finish,
+        )
 
     def is_refreshing(self):
         return self._refreshing
@@ -37,14 +44,19 @@ class ProductTypesQtModel(QtGui.QStandardItemModel):
         self._refreshing = True
         product_type_items = self._controller.get_product_type_items(
             project_name)
+        self._last_project = project_name
 
         items_to_remove = set(self._items_by_name.keys())
         new_items = []
+        items_filter_required = {}
         for product_type_item in product_type_items:
             name = product_type_item.name
             items_to_remove.discard(name)
-            item = self._items_by_name.get(product_type_item.name)
+            item = self._items_by_name.get(name)
+            # Apply filter to new items or if filters reset is requested
+            filter_required = self._reset_filters_on_refresh
             if item is None:
+                filter_required = True
                 item = QtGui.QStandardItem(name)
                 item.setData(name, PRODUCT_TYPE_ROLE)
                 item.setEditable(False)
@@ -52,13 +64,25 @@ class ProductTypesQtModel(QtGui.QStandardItemModel):
                 new_items.append(item)
                 self._items_by_name[name] = item
 
-            item.setCheckState(
-                QtCore.Qt.Checked
-                if product_type_item.checked
-                else QtCore.Qt.Unchecked
-            )
+            if filter_required:
+                items_filter_required[name] = item
+
             icon = get_qt_icon(product_type_item.icon)
             item.setData(icon, QtCore.Qt.DecorationRole)
+
+        if items_filter_required:
+            product_types_filter = self._controller.get_product_types_filter()
+            for product_type, item in items_filter_required.items():
+                matching = (
+                    int(product_type in product_types_filter.product_types)
+                    + int(product_types_filter.is_allow_list)
+                )
+                state = (
+                    QtCore.Qt.Checked
+                    if matching % 2 == 0
+                    else QtCore.Qt.Unchecked
+                )
+                item.setCheckState(state)
 
         root_item = self.invisibleRootItem()
         if new_items:
@@ -68,8 +92,12 @@ class ProductTypesQtModel(QtGui.QStandardItemModel):
             item = self._items_by_name.pop(name)
             root_item.removeRow(item.row())
 
+        self._reset_filters_on_refresh = False
         self._refreshing = False
         self.refreshed.emit()
+
+    def reset_product_types_filter_on_refresh(self):
+        self._reset_filters_on_refresh = True
 
     def setData(self, index, value, role=None):
         checkstate_changed = False
@@ -122,6 +150,9 @@ class ProductTypesQtModel(QtGui.QStandardItemModel):
         if changed:
             self.filter_changed.emit()
 
+    def _on_controller_reset_finish(self):
+        self.refresh(self._last_project)
+
 
 class ProductTypesView(QtWidgets.QListView):
     filter_changed = QtCore.Signal()
@@ -151,6 +182,7 @@ class ProductTypesView(QtWidgets.QListView):
         )
 
         self._controller = controller
+        self._refresh_product_types_filter = False
 
         self._product_types_model = product_types_model
         self._product_types_proxy_model = product_types_proxy_model
@@ -158,11 +190,15 @@ class ProductTypesView(QtWidgets.QListView):
     def get_filter_info(self):
         return self._product_types_model.get_filter_info()
 
+    def reset_product_types_filter_on_refresh(self):
+        self._product_types_model.reset_product_types_filter_on_refresh()
+
     def _on_project_change(self, event):
         project_name = event["project_name"]
         self._product_types_model.refresh(project_name)
 
     def _on_refresh_finished(self):
+        # Apply product types filter on first show
         self.filter_changed.emit()
 
     def _on_filter_change(self):
