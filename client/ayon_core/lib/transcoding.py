@@ -878,7 +878,7 @@ def get_image_info_metadata(
         ffprobe_stream = get_ffprobe_data(path_to_file, logger)
         if "streams" in ffprobe_stream and len(ffprobe_stream["streams"]) > 0:
             metadata_stream = _ffprobe_metadata_conversion(
-                ffprobe_stream["streams"][0])
+                ffprobe_stream["streams"][-1])
 
     if not metadata_stream and is_oiio_supported():
         oiio_stream = get_oiio_info_for_input(path_to_file, logger=logger)
