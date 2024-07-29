@@ -868,6 +868,23 @@ def get_image_info_metadata(
                 output[key] = val
         return output
 
+    def _get_video_metadata_from_ffprobe(ffprobe_stream):
+        """Extract video metadata from ffprobe stream.
+
+        Args:
+            ffprobe_stream (dict): Stream data obtained from ffprobe.
+
+        Returns:
+            dict: Video metadata extracted from the ffprobe stream.
+        """
+        video_stream = None
+        for stream in ffprobe_stream["streams"]:
+            if stream["codec_type"] == "video":
+                video_stream = stream
+                break
+        metadata_stream = _ffprobe_metadata_conversion(video_stream)
+        return metadata_stream
+
     metadata_stream = None
     ext = os.path.splitext(path_to_file)[-1].lower()
     if ext not in IMAGE_EXTENSIONS:
@@ -877,8 +894,7 @@ def get_image_info_metadata(
         ).format(ext))
         ffprobe_stream = get_ffprobe_data(path_to_file, logger)
         if "streams" in ffprobe_stream and len(ffprobe_stream["streams"]) > 0:
-            metadata_stream = _ffprobe_metadata_conversion(
-                ffprobe_stream["streams"][-1])
+            metadata_stream = _get_video_metadata_from_ffprobe(ffprobe_stream)
 
     if not metadata_stream and is_oiio_supported():
         oiio_stream = get_oiio_info_for_input(path_to_file, logger=logger)
@@ -899,8 +915,7 @@ def get_image_info_metadata(
         ))
         ffprobe_stream = get_ffprobe_data(path_to_file, logger)
         if "streams" in ffprobe_stream and len(ffprobe_stream["streams"]) > 0:
-            metadata_stream = _ffprobe_metadata_conversion(
-                ffprobe_stream["streams"][0])
+            metadata_stream = _get_video_metadata_from_ffprobe(ffprobe_stream)
 
     if not metadata_stream:
         logger.warning("Failed to get metadata from image file.")
@@ -938,6 +953,7 @@ def get_image_info_metadata(
             if isinstance(v, dict) and key in v:
                 output[key] = v[key]
                 break
+
     return output
 
 
