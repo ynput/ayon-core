@@ -7,19 +7,15 @@ exists is used.
 """
 
 import os
-from abc import ABCMeta, abstractmethod
+from abc import ABC, abstractmethod
 import platform
-
-import six
 
 from ayon_core.lib import Logger
 from ayon_core.addon import AddonsManager
 from ayon_core.settings import get_project_settings
-from ayon_core.settings.lib import get_site_local_overrides
 
 
-@six.add_metaclass(ABCMeta)
-class HostDirmap(object):
+class HostDirmap(ABC):
     """Abstract class for running dirmap on a workfile in a host.
 
     Dirmap is used to translate paths inside of host workfile from one
@@ -163,7 +159,7 @@ class HostDirmap(object):
         if (
             sitesync_addon is None
             or not sitesync_addon.enabled
-            or project_name not in sitesync_addon.get_enabled_projects()
+            or not sitesync_addon.is_project_enabled(project_name, True)
         ):
             return mapping
 
@@ -181,29 +177,24 @@ class HostDirmap(object):
                 exclude_locals=False,
                 cached=False)
 
-            # TODO implement
-            # Dirmap is dependent on 'get_site_local_overrides' which
-            #   is not implemented in AYON. The mapping should be received
-            #   from sitesync addon.
-            active_overrides = get_site_local_overrides(
-                project_name, active_site)
-            remote_overrides = get_site_local_overrides(
-                project_name, remote_site)
+            # overrides for roots set in `Site Settings`
+            active_roots_overrides = self._get_site_root_overrides(
+                sitesync_addon, project_name, active_site)
 
-            self.log.debug("local overrides {}".format(active_overrides))
-            self.log.debug("remote overrides {}".format(remote_overrides))
+            remote_roots_overrides = self._get_site_root_overrides(
+                sitesync_addon, project_name, remote_site)
 
             current_platform = platform.system().lower()
             remote_provider = sitesync_addon.get_provider_for_site(
                 project_name, remote_site
             )
             # dirmap has sense only with regular disk provider, in the workfile
-            # won't be root on cloud or sftp provider
+            # won't be root on cloud or sftp provider so fallback to studio
             if remote_provider != "local_drive":
                 remote_site = "studio"
-            for root_name, active_site_dir in active_overrides.items():
+            for root_name, active_site_dir in active_roots_overrides.items():
                 remote_site_dir = (
-                    remote_overrides.get(root_name)
+                    remote_roots_overrides.get(root_name)
                     or sync_settings["sites"][remote_site]["root"][root_name]
                 )
 
@@ -224,3 +215,22 @@ class HostDirmap(object):
 
             self.log.debug("local sync mapping:: {}".format(mapping))
         return mapping
+
+    def _get_site_root_overrides(
+        self, sitesync_addon, project_name, site_name
+    ):
+        """Safely handle root overrides.
+
+        SiteSync raises ValueError for non local or studio sites.
+        """
+        # TODO: could be removed when `get_site_root_overrides` is not raising
+        #     an Error but just returns {}
+        try:
+            site_roots_overrides = sitesync_addon.get_site_root_overrides(
+                project_name, site_name)
+        except ValueError:
+            site_roots_overrides = {}
+        self.log.debug("{} roots overrides {}".format(
+            site_name, site_roots_overrides))
+
+        return site_roots_overrides

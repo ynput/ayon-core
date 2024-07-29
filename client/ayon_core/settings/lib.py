@@ -123,22 +123,6 @@ class _AyonSettingsCache:
         return cache_item.get_value()
 
 
-def get_site_local_overrides(project_name, site_name, local_settings=None):
-    """Site overrides from local settings for passet project and site name.
-
-    Deprecated:
-        This function is not implemented for AYON and will be removed.
-
-    Args:
-        project_name (str): For which project are overrides.
-        site_name (str): For which site are overrides needed.
-        local_settings (dict): Preloaded local settings. They are loaded
-            automatically if not passed.
-    """
-
-    return {}
-
-
 def get_ayon_settings(project_name=None):
     """AYON studio settings.
 

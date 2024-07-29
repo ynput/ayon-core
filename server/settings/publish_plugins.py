@@ -57,6 +57,31 @@ class CollectFramesFixDefModel(BaseSettingsModel):
         True,
         title="Show 'Rewrite latest version' toggle"
     )
+    
+
+class ContributionLayersModel(BaseSettingsModel):
+    _layout = "compact"
+    name: str = SettingsField(title="Name")
+    order: str = SettingsField(
+        title="Order",
+        description="Higher order means a higher strength and stacks the "
+                    "layer on top.")
+
+
+class CollectUSDLayerContributionsModel(BaseSettingsModel):
+    enabled: bool = SettingsField(True, title="Enabled")
+    contribution_layers: list[ContributionLayersModel] = SettingsField(
+        title="Department Layer Orders",
+        description=(
+            "Define available department layers and their strength "
+            "ordering inside the USD contribution workflow."
+        )
+    )
+
+    @validator("contribution_layers")
+    def validate_unique_outputs(cls, value):
+        ensure_unique_names(value)
+        return value
 
 
 class PluginStateByHostModelProfile(BaseSettingsModel):
@@ -792,6 +817,10 @@ class PublishPuginsModel(BaseSettingsModel):
         default_factory=CollectFramesFixDefModel,
         title="Collect Frames to Fix",
     )
+    CollectUSDLayerContributions: CollectUSDLayerContributionsModel = SettingsField(
+        default_factory=CollectUSDLayerContributionsModel,
+        title="Collect USD Layer Contributions",
+    )
     ValidateEditorialAssetName: ValidateBaseModel = SettingsField(
         default_factory=ValidateBaseModel,
         title="Validate Editorial Asset Name"
@@ -884,6 +913,23 @@ DEFAULT_PUBLISH_VALUES = {
         "enabled": True,
         "rewrite_version_enable": True
     },
+    "CollectUSDLayerContributions": {
+        "enabled": True,
+        "contribution_layers": [
+            # Asset layers
+            {"name": "model", "order": 100},
+            {"name": "assembly", "order": 150},
+            {"name": "groom", "order": 175},
+            {"name": "look", "order": 300},
+            {"name": "rig", "order": 100},
+            # Shot layers
+            {"name": "layout", "order": 200},
+            {"name": "animation", "order": 300},
+            {"name": "simulation", "order": 400},
+            {"name": "fx", "order": 500},
+            {"name": "lighting", "order": 600},
+        ],
+    },
     "ValidateEditorialAssetName": {
         "enabled": True,
         "optional": False,
@@ -918,7 +964,8 @@ DEFAULT_PUBLISH_VALUES = {
                     "nuke",
                     "harmony",
                     "photoshop",
-                    "aftereffects"
+                    "aftereffects",
+                    "fusion"
                 ],
                 "enabled": True,
                 "optional": True,
