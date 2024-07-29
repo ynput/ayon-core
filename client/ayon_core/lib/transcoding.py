@@ -935,6 +935,11 @@ def get_image_info_metadata(
         if rate_info is None:
             rate_info = metadata_stream.get("framespersecond")
 
+        # calculate framerate from string expression
+        if "/" in str(rate_info):
+            time, frame = str(rate_info).split("/")
+            rate_info = float(time) / float(frame)
+
         try:
             metadata_stream["framerate"] = float(str(rate_info))
         except Exception as e:
