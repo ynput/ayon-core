@@ -62,7 +62,7 @@ def _handle_error(
         os.remove(tmp_path)
 
 
-def _start_tray(process_context):
+def _start_tray():
     from ayon_core.tools.tray import make_sure_tray_is_running
 
     make_sure_tray_is_running()
@@ -139,7 +139,7 @@ def ensure_addons_are_process_context_ready(
     print(output_str)
     if not failed:
         if not process_context.headless:
-            _start_tray(process_context)
+            _start_tray()
         return None
 
     detail = None
