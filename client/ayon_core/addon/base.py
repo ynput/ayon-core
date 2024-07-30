@@ -235,10 +235,10 @@ def _handle_moved_addons(addon_name, milestone_version, log):
         "client",
     )
     if not os.path.exists(addon_dir):
-        log.error((
-            "Addon '{}' is not be available."
-            " Please update applications addon to '{}' or higher."
-        ).format(addon_name, milestone_version))
+        log.error(
+            f"Addon '{addon_name}' is not available. Please update "
+            f"{addon_name} addon to '{milestone_version}' or higher."
+        )
         return None
 
     log.warning((
