@@ -62,6 +62,12 @@ def _handle_error(
         os.remove(tmp_path)
 
 
+def _start_tray(process_context):
+    from ayon_core.tools.tray import make_sure_tray_is_running
+
+    make_sure_tray_is_running()
+
+
 def ensure_addons_are_process_context_ready(
     process_context: ProcessContext,
     addons_manager: Optional[AddonsManager] = None,
@@ -131,18 +137,22 @@ def ensure_addons_are_process_context_ready(
     output_str = output.getvalue()
     # Print stdout/stderr to console as it was redirected
     print(output_str)
-    if failed:
-        detail = None
-        if use_detail:
-            # In case stdout was not captured, use the tracebacks as detail
-            if not output_str:
-                output_str = "\n".join(tracebacks)
-            detail = output_str
+    if not failed:
+        if not process_context.headless:
+            _start_tray(process_context)
+        return None
 
-        _handle_error(process_context, message, detail)
-        if not exit_on_failure:
-            return exception
-        sys.exit(1)
+    detail = None
+    if use_detail:
+        # In case stdout was not captured, use the tracebacks as detail
+        if not output_str:
+            output_str = "\n".join(tracebacks)
+        detail = output_str
+
+    _handle_error(process_context, message, detail)
+    if not exit_on_failure:
+        return exception
+    sys.exit(1)
 
 
 def ensure_addons_are_process_ready(
