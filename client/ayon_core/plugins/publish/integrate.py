@@ -114,18 +114,19 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
     # the database even if not used by the destination template
     db_representation_context_keys = [
         "project",
-        "asset",
         "hierarchy",
         "folder",
         "task",
         "product",
-        "subset",
-        "family",
         "version",
         "representation",
         "username",
         "user",
-        "output"
+        "output",
+        # OpenPype keys - should be removed
+        "asset",  # folder[name]
+        "subset",  # product[name]
+        "family",  # product[type]
     ]
 
     def process(self, instance):

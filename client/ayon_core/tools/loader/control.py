@@ -3,7 +3,9 @@ import uuid
 
 import ayon_api
 
-from ayon_core.lib import NestedCacheItem, CacheItem
+from ayon_core.settings import get_project_settings
+from ayon_core.pipeline import get_current_host_name
+from ayon_core.lib import NestedCacheItem, CacheItem, filter_profiles
 from ayon_core.lib.events import QueuedEventSystem
 from ayon_core.pipeline import Anatomy, get_current_context
 from ayon_core.host import ILoadHost
@@ -13,7 +15,11 @@ from ayon_core.tools.common_models import (
     ThumbnailsModel,
 )
 
-from .abstract import BackendLoaderController, FrontendLoaderController
+from .abstract import (
+    BackendLoaderController,
+    FrontendLoaderController,
+    ProductTypesFilter
+)
 from .models import (
     SelectionModel,
     ProductsModel,
@@ -331,11 +337,11 @@ class LoaderController(BackendLoaderController, FrontendLoaderController):
         project_name = context.get("project_name")
         folder_path = context.get("folder_path")
         if project_name and folder_path:
-            folder = ayon_api.get_folder_by_path(
+            folder_entity = ayon_api.get_folder_by_path(
                 project_name, folder_path, fields=["id"]
             )
-            if folder:
-                folder_id = folder["id"]
+            if folder_entity:
+                folder_id = folder_entity["id"]
         return {
             "project_name": project_name,
             "folder_id": folder_id,
@@ -425,3 +431,59 @@ class LoaderController(BackendLoaderController, FrontendLoaderController):
 
     def _emit_event(self, topic, data=None):
         self._event_system.emit(topic, data or {}, "controller")
+
+    def get_product_types_filter(self):
+        output = ProductTypesFilter(
+            is_allow_list=False,
+            product_types=[]
+        )
+        # Without host is not determined context
+        if self._host is None:
+            return output
+
+        context = self.get_current_context()
+        project_name = context.get("project_name")
+        if not project_name:
+            return output
+        settings = get_project_settings(project_name)
+        profiles = (
+            settings
+            ["core"]
+            ["tools"]
+            ["loader"]
+            ["product_type_filter_profiles"]
+        )
+        if not profiles:
+            return output
+
+        folder_id = context.get("folder_id")
+        task_name = context.get("task_name")
+        task_type = None
+        if folder_id and task_name:
+            task_entity = ayon_api.get_task_by_name(
+                project_name,
+                folder_id,
+                task_name,
+                fields={"taskType"}
+            )
+            if task_entity:
+                task_type = task_entity.get("taskType")
+
+        host_name = getattr(self._host, "name", get_current_host_name())
+        profile = filter_profiles(
+            profiles,
+            {
+                "hosts": host_name,
+                "task_types": task_type,
+            }
+        )
+        if profile:
+            # TODO remove 'is_include' after release '0.4.3'
+            is_allow_list = profile.get("is_include")
+            if is_allow_list is None:
+                is_allow_list = profile["filter_type"] == "is_allow_list"
+            output = ProductTypesFilter(
+                is_allow_list=is_allow_list,
+                product_types=profile["filter_product_types"]
+            )
+        return output

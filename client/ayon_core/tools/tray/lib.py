@@ -13,7 +13,7 @@ from typing import Optional, Dict, Tuple, Any
 import ayon_api
 import requests
 
-from ayon_core.lib import Logger
+from ayon_core.lib import Logger, get_ayon_launcher_args, run_detached_process
 from ayon_core.lib.local_settings import get_ayon_appdirs
 
 
@@ -356,6 +356,80 @@ def is_tray_running(
     return state != TrayState.NOT_RUNNING
 
 
+def show_message_in_tray(
+    title, message, icon=None, msecs=None, tray_url=None
+):
+    """Show message in tray.
+
+    Args:
+        title (str): Message title.
+        message (str): Message content.
+        icon (Optional[Literal["information", "warning", "critical"]]): Icon
+            for the message.
+        msecs (Optional[int]): Duration of the message.
+        tray_url (Optional[str]): Tray server url.
+
+    """
+    if not tray_url:
+        tray_url = get_tray_server_url()
+
+    # TODO handle this case, e.g. raise an error?
+    if not tray_url:
+        return
+
+    # TODO handle response, can fail whole request or can fail on status
+    requests.post(
+        f"{tray_url}/tray/message",
+        json={
+            "title": title,
+            "message": message,
+            "icon": icon,
+            "msecs": msecs
+        }
+    )
+
+
+def make_sure_tray_is_running(
+    ayon_url: Optional[str] = None,
+    variant: Optional[str] = None,
+    env: Optional[Dict[str, str]] = None
+):
+    """Make sure that tray for AYON url and variant is running.
+
+    Args:
+        ayon_url (Optional[str]): AYON server url.
+        variant (Optional[str]): Settings variant.
+        env (Optional[Dict[str, str]]): Environment variables for the process.
+
+    """
+    state = get_tray_state(ayon_url, variant)
+    if state == TrayState.RUNNING:
+        return
+
+    if state == TrayState.STARTING:
+        _wait_for_starting_tray(ayon_url, variant)
+        state = get_tray_state(ayon_url, variant)
+        if state == TrayState.RUNNING:
+            return
+
+    args = get_ayon_launcher_args("tray", "--force")
+    if env is None:
+        env = os.environ.copy()
+    
+    # Make sure 'QT_API' is not set
+    env.pop("QT_API", None)
+
+    if ayon_url:
+        env["AYON_SERVER_URL"] = ayon_url
+
+    # TODO maybe handle variant in a better way
+    if variant:
+        if variant == "staging":
+            args.append("--use-staging")
+
+    run_detached_process(args, env=env)
+
+
 def main(force=False):
     from ayon_core.tools.tray.ui import main
 
@@ -371,6 +445,10 @@ def main(force=False):
         state = TrayState.NOT_RUNNING
 
     if state == TrayState.RUNNING:
+        show_message_in_tray(
+            "Tray is already running",
+            "Your AYON tray application is already running."
+        )
         print("Tray is already running.")
         return
 

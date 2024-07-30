@@ -123,7 +123,7 @@ def product_type_item_from_data(product_type_data):
         "color": "#0091B2",
     }
     # TODO implement checked logic
-    return ProductTypeItem(product_type_data["name"], icon, True)
+    return ProductTypeItem(product_type_data["name"], icon)
 
 
 def create_default_product_type_item(product_type):
@@ -132,7 +132,7 @@ def create_default_product_type_item(product_type):
         "name": "fa.folder",
         "color": "#0091B2",
     }
-    return ProductTypeItem(product_type, icon, True)
+    return ProductTypeItem(product_type, icon)
 
 
 class ProductsModel:
