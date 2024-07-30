@@ -17,6 +17,7 @@ from .base import (
 )
 
 from .utils import (
+    ensure_addons_are_process_context_ready,
     ensure_addons_are_process_ready,
 )
 
@@ -36,5 +37,6 @@ __all__ = (
     "AddonsManager",
     "load_addons",
 
+    "ensure_addons_are_process_context_ready",
     "ensure_addons_are_process_ready",
 )
