@@ -1,7 +1,6 @@
 """Helper functions or classes for Webserver module.
 
-These must not be imported in module itself to not break Python 2
-applications.
+These must not be imported in module itself to not break in-DCC process.
 """
 
 import inspect
