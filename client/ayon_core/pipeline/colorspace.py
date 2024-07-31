@@ -699,6 +699,33 @@ def get_ocio_config_views(config_path):
     )
 
 
+def _get_config_path_from_profile_data(
+        data, data_type, template_data) -> dict:
+    """Get config path from profile data.
+
+    Args:
+        data (dict[str, Any]): Profile data.
+        data_type (str): Profile type.
+        template_data (dict[str, Any]): Template data.
+
+    Returns:
+        dict[str, str]: Config data with path and template.
+    """
+    template = data[data_type]
+    result = StringTemplate.format_strict_template(
+        template, template_data
+    )
+    normalized_path = str(result.normalized())
+    if not os.path.exists(normalized_path):
+        log.warning(f"Path was not found '{normalized_path}'.")
+        return None
+
+    return {
+        "path": normalized_path,
+        "template": template
+    }
+
+
 def _get_global_config_data(
     project_name,
     host_name,
@@ -717,7 +744,7 @@ def _get_global_config_data(
     2. Custom path to ocio config.
     3. Path to 'ocioconfig' representation on product. Name of product can be
         defined in settings. Product name can be regex but exact match is
-        always preferred.
+        always preferred. Fallback can be defined in case no product is found.
 
     None is returned when no profile is found, when path
 
@@ -755,19 +782,8 @@ def _get_global_config_data(
 
     profile_type = profile["type"]
     if profile_type in ("builtin_path", "custom_path"):
-        template = profile[profile_type]
-        result = StringTemplate.format_strict_template(
-            template, template_data
-        )
-        normalized_path = str(result.normalized())
-        if not os.path.exists(normalized_path):
-            log.warning(f"Path was not found '{normalized_path}'.")
-            return None
-
-        return {
-            "path": normalized_path,
-            "template": template
-        }
+        return _get_config_path_from_profile_data(
+            profile, profile_type, template_data)
 
     # TODO decide if this is the right name for representation
     repre_name = "ocioconfig"
@@ -778,7 +794,21 @@ def _get_global_config_data(
         return None
     folder_path = folder_info["path"]
 
-    product_name = profile["product_name"]
+    # Backward compatibility for old projects
+    # TODO remove in future 0.4.4 onwards
+    product_name = profile.get("product_name")
+    # TODO: this should be required after backward compatibility is removed
+    fallback_data = None
+    published_product_data = profile.get("published_product")
+
+    if product_name is None and published_product_data is None:
+        log.warning("Product name or published product is missing.")
+        return None
+
+    if published_product_data:
+        product_name = published_product_data["product_name"]
+        fallback_data = published_product_data["fallback"]
+
     if folder_id is None:
         folder_entity = ayon_api.get_folder_by_path(
             project_name, folder_path, fields={"id"}
@@ -798,6 +828,13 @@ def _get_global_config_data(
         )
     }
     if not product_entities_by_name:
+        # TODO: make this required in future 0.4.4 onwards
+        if fallback_data:
+            # in case no product was found we need to use fallback
+            fallback_type = fallback_data["type"]
+            return _get_config_path_from_profile_data(
+                fallback_data, fallback_type, template_data
+            )
         log.debug(
             f"No product entities were found for folder '{folder_path}' with"
             f" product name filter '{product_name}'."
