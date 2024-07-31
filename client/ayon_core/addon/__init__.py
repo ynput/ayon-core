@@ -11,7 +11,6 @@ from .interfaces import (
 from .base import (
     AYONAddon,
     AddonsManager,
-    TrayAddonsManager,
     load_addons,
 )
 
@@ -27,6 +26,5 @@ __all__ = (
 
     "AYONAddon",
     "AddonsManager",
-    "TrayAddonsManager",
     "load_addons",
 )
