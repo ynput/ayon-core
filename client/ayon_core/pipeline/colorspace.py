@@ -795,7 +795,7 @@ def _get_global_config_data(
     folder_path = folder_info["path"]
 
     # Backward compatibility for old projects
-    # TODO remove in future 0.4.4 onwards
+    # TODO remove in future 0.4.5 onwards
     product_name = profile.get("product_name")
     # TODO: this should be required after backward compatibility is removed
     fallback_data = None
@@ -828,7 +828,7 @@ def _get_global_config_data(
         )
     }
     if not product_entities_by_name:
-        # TODO: make this required in future 0.4.4 onwards
+        # TODO: make this required in future 0.4.5 onwards
         if fallback_data:
             # in case no product was found we need to use fallback
             fallback_type = fallback_data["type"]
