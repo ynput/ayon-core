@@ -210,8 +210,8 @@ def run_ayon_launcher_process(*args, add_sys_paths=False, **kwargs):
         env = clean_envs_for_ayon_process(os.environ)
 
     if add_sys_paths:
-        pp_set = frozenset(sys.path)
-        new_pythonpath = list(pp_set)
+        new_pythonpath = list(sys.path)
+        pp_set = set(new_pythonpath)
         pythonpath = env.get("PYTHONPATH") or ""
         for path in frozenset(pythonpath.split(os.pathsep)):
             if path and path not in pp_set:
