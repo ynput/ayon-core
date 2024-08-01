@@ -788,12 +788,6 @@ def _get_global_config_data(
     # TODO decide if this is the right name for representation
     repre_name = "ocioconfig"
 
-    folder_info = template_data.get("folder")
-    if not folder_info:
-        log.warning("Folder info is missing.")
-        return None
-    folder_path = folder_info["path"]
-
     # Backward compatibility for old projects
     # TODO remove in future 0.4.5 onwards
     product_name = profile.get("product_name")
@@ -808,6 +802,23 @@ def _get_global_config_data(
     if published_product_data:
         product_name = published_product_data["product_name"]
         fallback_data = published_product_data["fallback"]
+
+    folder_info = template_data.get("folder")
+    if not folder_info:
+        log.warning("Folder info is missing.")
+
+        # TODO: this fallback should be required after backward compatibility
+        #  is removed
+        if fallback_data:
+            log.info("Using fallback data for ocio config path.")
+            # in case no product was found we need to use fallback
+            fallback_type = fallback_data["type"]
+            return _get_config_path_from_profile_data(
+                fallback_data, fallback_type, template_data
+            )
+        return None
+
+    folder_path = folder_info["path"]
 
     if folder_id is None:
         folder_entity = ayon_api.get_folder_by_path(
@@ -827,6 +838,7 @@ def _get_global_config_data(
             fields={"id", "name"}
         )
     }
+
     if not product_entities_by_name:
         # TODO: make this required in future 0.4.5 onwards
         if fallback_data:
@@ -874,6 +886,7 @@ def _get_global_config_data(
 
     path = get_representation_path_with_anatomy(repre_entity, anatomy)
     template = repre_entity["attrib"]["template"]
+
     return {
         "path": path,
         "template": template,
