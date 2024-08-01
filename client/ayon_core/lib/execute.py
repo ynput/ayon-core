@@ -210,11 +210,12 @@ def run_ayon_launcher_process(*args, add_sys_paths=False, **kwargs):
         env = clean_envs_for_ayon_process(os.environ)
 
     if add_sys_paths:
-        new_pythonpath = list(sys.path)
-        for path in env.get("PYTHONPATH", "").split(os.pathsep):
-            if not path or path in new_pythonpath:
-                continue
-            new_pythonpath.append(path)
+        pp_set = frozenset(sys.path)
+        new_pythonpath = list(pp_set)
+        pythonpath = env.get("PYTHONPATH") or ""
+        for path in frozenset(pythonpath.split(os.pathsep)):
+            if path and path not in pp_set:
+                new_pythonpath.append(path)
         env["PYTHONPATH"] = os.pathsep.join(new_pythonpath)
 
     return run_subprocess(args, env=env, **kwargs)
