@@ -211,11 +211,11 @@ def run_ayon_launcher_process(*args, add_sys_paths=False, **kwargs):
 
     if add_sys_paths:
         new_pythonpath = list(sys.path)
-        pp_set = set(new_pythonpath)
-        pythonpath = env.get("PYTHONPATH") or ""
-        for path in frozenset(pythonpath.split(os.pathsep)):
-            if path and path not in pp_set:
+        lookup_set = set(new_pythonpath)
+        for path in (env.get("PYTHONPATH") or "").split(os.pathsep):
+            if path and path not in lookup_set:
                 new_pythonpath.append(path)
+                lookup_set.add(path)
         env["PYTHONPATH"] = os.pathsep.join(new_pythonpath)
 
     return run_subprocess(args, env=env, **kwargs)
