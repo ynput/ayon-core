@@ -575,10 +575,6 @@ def make_sure_tray_is_running(
         if tray_info.get_ayon_username() == username:
             return
 
-        pid = tray_info.pid
-        if pid is not None:
-            _kill_tray_process(pid)
-
     args = get_ayon_launcher_args("tray", "--force")
     if env is None:
         env = os.environ.copy()
