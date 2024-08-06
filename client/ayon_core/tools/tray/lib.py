@@ -551,6 +551,7 @@ def show_message_in_tray(
 def make_sure_tray_is_running(
     ayon_url: Optional[str] = None,
     variant: Optional[str] = None,
+    username: Optional[str] = None,
     env: Optional[Dict[str, str]] = None
 ):
     """Make sure that tray for AYON url and variant is running.
@@ -558,18 +559,25 @@ def make_sure_tray_is_running(
     Args:
         ayon_url (Optional[str]): AYON server url.
         variant (Optional[str]): Settings variant.
+        username (Optional[str]): Username under which should be tray running.
         env (Optional[Dict[str, str]]): Environment variables for the process.
 
     """
-    state = get_tray_state(ayon_url, variant)
-    if state == TrayState.RUNNING:
-        return
+    tray_info = TrayInfo.new(
+        ayon_url, variant, wait_to_start=False
+    )
+    if tray_info.state == TrayState.STARTING:
+        tray_info.wait_to_start()
 
-    if state == TrayState.STARTING:
-        _wait_for_starting_tray(ayon_url, variant)
-        state = get_tray_state(ayon_url, variant)
-        if state == TrayState.RUNNING:
+    if tray_info.state == TrayState.RUNNING:
+        if not username:
+            username = get_ayon_username()
+        if tray_info.get_ayon_username() == username:
             return
+
+        pid = tray_info.pid
+        if pid is not None:
+            _kill_tray_process(pid)
 
     args = get_ayon_launcher_args("tray", "--force")
     if env is None:
