@@ -15,11 +15,9 @@ openassetio-mediacreation = "*" # for default media creation traits
 ayon-openassetio-manager-plugin = { git = "https://github.com/ynput/ayon-openassetio-manager-plugin.git", branch = "master" }
 
 [ayon.runtimeDependencies]
-aiohttp_json_rpc = "*" # TVPaint server
 aiohttp-middlewares = "^2.0.0"
-wsrpc_aiohttp = "^3.1.1" # websocket server
 Click = "^8"
-OpenTimelineIO = "0.14.1"
-opencolorio = "2.2.1"
+OpenTimelineIO = "0.16.0"
+opencolorio = "^2.3.2"
 Pillow = "9.5.0"
-pynput = "^1.7.2" # Timers manager - TODO remove
+websocket-client = ">=0.40.0,<2"

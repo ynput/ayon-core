@@ -7,8 +7,6 @@ TODO: use @dataclass when times come.
 from abc import abstractmethod
 
 import attr
-import six
-
 import pyblish.api
 
 from .publish_plugins import AbstractMetaContextPlugin
@@ -80,6 +78,7 @@ class RenderInstance(object):
     anatomyData = attr.ib(default=None)
     outputDir = attr.ib(default=None)
     context = attr.ib(default=None)
+    deadline = attr.ib(default=None)
 
     # The source instance the data of this render instance should merge into
     source_instance = attr.ib(default=None, type=pyblish.api.Instance)
@@ -121,8 +120,9 @@ class RenderInstance(object):
             raise ValueError("both tiles X a Y sizes are set to 1")
 
 
-@six.add_metaclass(AbstractMetaContextPlugin)
-class AbstractCollectRender(pyblish.api.ContextPlugin):
+class AbstractCollectRender(
+    pyblish.api.ContextPlugin, metaclass=AbstractMetaContextPlugin
+):
     """Gather all publishable render layers from renderSetup."""
 
     order = pyblish.api.CollectorOrder + 0.01
@@ -215,13 +215,12 @@ class AbstractCollectRender(pyblish.api.ContextPlugin):
 
             # add additional data
             data = self.add_additional_data(data)
-            render_instance_dict = attr.asdict(render_instance)
 
-            # Merge into source instance if provided, otherwise create instance
-            instance = render_instance_dict.pop("source_instance", None)
+            instance = render_instance.source_instance
             if instance is None:
                 instance = context.create_instance(render_instance.name)
 
+            render_instance_dict = attr.asdict(render_instance)
             instance.data.update(render_instance_dict)
             instance.data.update(data)
 

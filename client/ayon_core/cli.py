@@ -5,6 +5,7 @@ import sys
 import code
 import traceback
 from pathlib import Path
+import warnings
 
 import click
 import acre
@@ -12,9 +13,12 @@ import acre
 from ayon_core import AYON_CORE_ROOT
 from ayon_core.addon import AddonsManager
 from ayon_core.settings import get_general_environments
-from ayon_core.lib import initialize_ayon_connection, is_running_from_build
+from ayon_core.lib import (
+    initialize_ayon_connection,
+    is_running_from_build,
+    Logger,
+)
 
-from .cli_commands import Commands
 
 
 class AliasedGroup(click.Group):
@@ -39,7 +43,8 @@ class AliasedGroup(click.Group):
               help="Enable debug")
 @click.option("--verbose", expose_value=False,
               help=("Change AYON log level (debug - critical or 0-50)"))
-def main_cli(ctx):
+@click.option("--force", is_flag=True, hidden=True)
+def main_cli(ctx, force):
     """AYON is main command serving as entry point to pipeline system.
 
     It wraps different commands together.
@@ -51,20 +56,26 @@ def main_cli(ctx):
             print(ctx.get_help())
             sys.exit(0)
         else:
-            ctx.invoke(tray)
+            ctx.forward(tray)
 
 
 @main_cli.command()
-def tray():
+@click.option(
+    "--force",
+    is_flag=True,
+    help="Force to start tray and close any existing one.")
+def tray(force):
     """Launch AYON tray.
 
     Default action of AYON command is to launch tray widget to control basic
     aspects of AYON. See documentation for more information.
     """
-    Commands.launch_tray()
+
+    from ayon_core.tools.tray import main
+
+    main(force)
 
 
-@Commands.add_addons
 @main_cli.group(help="Run command line arguments of AYON addons")
 @click.pass_context
 def addon(ctx):
@@ -80,6 +91,7 @@ main_cli.set_alias("addon", "module")
 
 
 @main_cli.command()
+@click.pass_context
 @click.argument("output_json_path")
 @click.option("--project", help="Project name", default=None)
 @click.option("--asset", help="Folder path", default=None)
@@ -88,7 +100,9 @@ main_cli.set_alias("addon", "module")
 @click.option(
     "--envgroup", help="Environment group (e.g. \"farm\")", default=None
 )
-def extractenvironments(output_json_path, project, asset, task, app, envgroup):
+def extractenvironments(
+    ctx, output_json_path, project, asset, task, app, envgroup
+):
     """Extract environment variables for entered context to a json file.
 
     Entered output filepath will be created if does not exists.
@@ -102,24 +116,42 @@ def extractenvironments(output_json_path, project, asset, task, app, envgroup):
         This function is deprecated and will be removed in future. Please use
         'addon applications extractenvironments ...' instead.
     """
-    Commands.extractenvironments(
+    warnings.warn(
+        (
+            "Command 'extractenvironments' is deprecated and will be"
+            " removed in future. Please use"
+            " 'addon applications extractenvironments ...' instead."
+        ),
+        DeprecationWarning
+    )
+
+    addons_manager = ctx.obj["addons_manager"]
+    applications_addon = addons_manager.get_enabled_addon("applications")
+    if applications_addon is None:
+        raise RuntimeError(
+            "Applications addon is not available or enabled."
+        )
+
+    # Please ignore the fact this is using private method
+    applications_addon._cli_extract_environments(
         output_json_path, project, asset, task, app, envgroup
     )
 
 
 @main_cli.command()
+@click.pass_context
 @click.argument("path", required=True)
 @click.option("-t", "--targets", help="Targets", default=None,
               multiple=True)
-@click.option("-g", "--gui", is_flag=True,
-              help="Show Publish UI", default=False)
-def publish(path, targets, gui):
+def publish(ctx, path, targets):
     """Start CLI publishing.
 
     Publish collects json from path provided as an argument.
-S
+
     """
-    Commands.publish(path, targets, gui)
+    from ayon_core.pipeline.publish import main_cli_publish
+
+    main_cli_publish(path, targets, ctx.obj["addons_manager"])
 
 
 @main_cli.command(context_settings={"ignore_unknown_options": True})
@@ -149,12 +181,10 @@ def contextselection(
     Context is project name, folder path and task name. The result is stored
     into json file which path is passed in first argument.
     """
-    Commands.contextselection(
-        output_path,
-        project,
-        folder,
-        strict
-    )
+    from ayon_core.tools.context_dialog import main
+
+    main(output_path, project, folder, strict)
+
 
 
 @main_cli.command(
@@ -245,10 +275,8 @@ def _set_global_environments() -> None:
         os.environ["QT_AUTO_SCREEN_SCALE_FACTOR"] = "1"
 
 
-def _set_addons_environments():
+def _set_addons_environments(addons_manager):
     """Set global environments for AYON addons."""
-
-    addons_manager = AddonsManager()
 
     # Merge environments with current environments and update values
     if module_envs := addons_manager.collect_global_environments():
@@ -256,6 +284,21 @@ def _set_addons_environments():
         env = acre.merge(parsed_envs, dict(os.environ))
         os.environ.clear()
         os.environ.update(env)
+
+
+def _add_addons(addons_manager):
+    """Modules/Addons can add their cli commands dynamically."""
+    log = Logger.get_logger("CLI-AddAddons")
+    for addon_obj in addons_manager.addons:
+        try:
+            addon_obj.cli(addon)
+
+        except Exception:
+            log.warning(
+                "Failed to add cli command for module \"{}\"".format(
+                    addon_obj.name
+                ), exc_info=True
+            )
 
 
 def main(*args, **kwargs):
@@ -268,7 +311,7 @@ def main(*args, **kwargs):
         os.path.join(AYON_CORE_ROOT, "tools"),
         # add common AYON vendor
         # (common for multiple Python interpreter versions)
-        os.path.join(AYON_CORE_ROOT, "vendor", "python", "common")
+        os.path.join(AYON_CORE_ROOT, "vendor", "python")
     ]
     for path in additional_paths:
         if path not in split_paths:
@@ -281,10 +324,14 @@ def main(*args, **kwargs):
     print("  - global AYON ...")
     _set_global_environments()
     print("  - for addons ...")
-    _set_addons_environments()
-
+    addons_manager = AddonsManager()
+    _set_addons_environments(addons_manager)
+    _add_addons(addons_manager)
     try:
-        main_cli(obj={}, prog_name="ayon")
+        main_cli(
+            prog_name="ayon",
+            obj={"addons_manager": addons_manager},
+        )
     except Exception:  # noqa
         exc_info = sys.exc_info()
         print("!!! AYON crashed:")

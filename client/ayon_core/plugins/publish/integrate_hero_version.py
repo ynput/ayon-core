@@ -87,7 +87,9 @@ class IntegrateHeroVersion(
     ]
     # QUESTION/TODO this process should happen on server if crashed due to
     # permissions error on files (files were used or user didn't have perms)
-    # *but all other plugins must be sucessfully completed
+    # *but all other plugins must be successfully completed
+
+    use_hardlinks = False
 
     def process(self, instance):
         if not self.is_active(instance.data):
@@ -262,6 +264,9 @@ class IntegrateHeroVersion(
             op_session.create_entity(
                 project_name, "version", new_hero_version
             )
+
+        # Store hero entity to 'instance.data'
+        instance.data["heroVersionEntity"] = new_hero_version
 
         # Separate old representations into `to replace` and `to delete`
         old_repres_to_replace = {}
@@ -617,23 +622,31 @@ class IntegrateHeroVersion(
 
             self.log.debug("Folder already exists: \"{}\"".format(dirname))
 
+        if self.use_hardlinks:
+            # First try hardlink and copy if paths are cross drive
+            self.log.debug("Hardlinking file \"{}\" to \"{}\"".format(
+                src_path, dst_path
+            ))
+            try:
+                create_hard_link(src_path, dst_path)
+                # Return when successful
+                return
+
+            except OSError as exc:
+                # re-raise exception if different than
+                # EXDEV - cross drive path
+                # EINVAL - wrong format, must be NTFS
+                self.log.debug(
+                    "Hardlink failed with errno:'{}'".format(exc.errno))
+                if exc.errno not in [errno.EXDEV, errno.EINVAL]:
+                    raise
+
+            self.log.debug(
+                "Hardlinking failed, falling back to regular copy...")
+
         self.log.debug("Copying file \"{}\" to \"{}\"".format(
             src_path, dst_path
         ))
-
-        # First try hardlink and copy if paths are cross drive
-        try:
-            create_hard_link(src_path, dst_path)
-            # Return when successful
-            return
-
-        except OSError as exc:
-            # re-raise exception if different than
-            # EXDEV - cross drive path
-            # EINVAL - wrong format, must be NTFS
-            self.log.debug("Hardlink failed with errno:'{}'".format(exc.errno))
-            if exc.errno not in [errno.EXDEV, errno.EINVAL]:
-                raise
 
         shutil.copy(src_path, dst_path)
 

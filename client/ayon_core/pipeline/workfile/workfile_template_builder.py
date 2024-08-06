@@ -3,7 +3,7 @@
 Build templates are manually prepared using plugin definitions which create
 placeholders inside the template which are populated on import.
 
-This approach is very explicit to achive very specific build logic that can be
+This approach is very explicit to achieve very specific build logic that can be
 targeted by task types and names.
 
 Placeholders are created using placeholder plugins which should care about
@@ -15,9 +15,8 @@ import os
 import re
 import collections
 import copy
-from abc import ABCMeta, abstractmethod
+from abc import ABC, abstractmethod
 
-import six
 from ayon_api import (
     get_folders,
     get_folder_by_path,
@@ -36,12 +35,20 @@ from ayon_core.lib import (
     filter_profiles,
     attribute_definitions,
 )
+from ayon_core.lib.events import EventSystem, EventCallback, Event
 from ayon_core.lib.attribute_definitions import get_attributes_keys
 from ayon_core.pipeline import Anatomy
 from ayon_core.pipeline.load import (
     get_loaders_by_name,
     get_representation_contexts,
     load_with_repre_context,
+)
+from ayon_core.pipeline.plugin_discover import (
+    discover,
+    register_plugin,
+    register_plugin_path,
+    deregister_plugin,
+    deregister_plugin_path
 )
 
 from ayon_core.pipeline.create import (
@@ -74,12 +81,11 @@ class TemplateLoadFailed(Exception):
     pass
 
 
-@six.add_metaclass(ABCMeta)
-class AbstractTemplateBuilder(object):
+class AbstractTemplateBuilder(ABC):
     """Abstraction of Template Builder.
 
     Builder cares about context, shared data, cache, discovery of plugins
-    and trigger logic. Provides public api for host workfile build systen.
+    and trigger logic. Provides public api for host workfile build system.
 
     Rest of logic is based on plugins that care about collection and creation
     of placeholder items.
@@ -123,6 +129,8 @@ class AbstractTemplateBuilder(object):
         self._current_folder_entity = _NOT_SET
         self._current_task_entity = _NOT_SET
         self._linked_folder_entities = _NOT_SET
+
+        self._event_system = EventSystem()
 
     @property
     def project_name(self):
@@ -211,10 +219,14 @@ class AbstractTemplateBuilder(object):
         Returns:
             List[PlaceholderPlugin]: Plugin classes available for host.
         """
+        plugins = []
 
+        # Backwards compatibility
         if hasattr(self._host, "get_workfile_build_placeholder_plugins"):
             return self._host.get_workfile_build_placeholder_plugins()
-        return []
+
+        plugins.extend(discover(PlaceholderPlugin))
+        return plugins
 
     @property
     def host(self):
@@ -256,6 +268,8 @@ class AbstractTemplateBuilder(object):
         self._linked_folder_entities = _NOT_SET
 
         self._project_settings = None
+
+        self._event_system = EventSystem()
 
         self.clear_shared_data()
         self.clear_shared_populate_data()
@@ -498,15 +512,21 @@ class AbstractTemplateBuilder(object):
                                               process if version is created
 
         """
-        template_preset = self.get_template_preset()
-
-        if template_path is None:
-            template_path = template_preset["path"]
-
-        if keep_placeholders is None:
-            keep_placeholders = template_preset["keep_placeholder"]
-        if create_first_version is None:
-            create_first_version = template_preset["create_first_version"]
+        if any(
+            value is None
+            for value in [
+                template_path,
+                keep_placeholders,
+                create_first_version,
+            ]
+        ):
+            template_preset = self.get_template_preset()
+            if template_path is None:
+                template_path = template_preset["path"]
+            if keep_placeholders is None:
+                keep_placeholders = template_preset["keep_placeholder"]
+            if create_first_version is None:
+                create_first_version = template_preset["create_first_version"]
 
         # check if first version is created
         created_version_workfile = False
@@ -729,6 +749,16 @@ class AbstractTemplateBuilder(object):
 
                 placeholder.set_finished()
 
+            # Trigger on_depth_processed event
+            self.emit_event(
+                topic="template.depth_processed",
+                data={
+                    "depth": iter_counter,
+                    "placeholders_by_scene_id": placeholder_by_scene_id
+                },
+                source="builder"
+            )
+
             # Clear shared data before getting new placeholders
             self.clear_shared_populate_data()
 
@@ -747,6 +777,16 @@ class AbstractTemplateBuilder(object):
                 placeholder_by_scene_id[identifier] = placeholder
                 placeholders.append(placeholder)
 
+        # Trigger on_finished event
+        self.emit_event(
+            topic="template.finished",
+            data={
+                "depth": iter_counter,
+                "placeholders_by_scene_id": placeholder_by_scene_id,
+            },
+            source="builder"
+        )
+
         self.refresh()
 
     def _get_build_profiles(self):
@@ -764,7 +804,7 @@ class AbstractTemplateBuilder(object):
         )
 
     def get_template_preset(self):
-        """Unified way how template preset is received usign settings.
+        """Unified way how template preset is received using settings.
 
         Method is dependent on '_get_build_profiles' which should return filter
         profiles to resolve path to a template. Default implementation looks
@@ -772,12 +812,14 @@ class AbstractTemplateBuilder(object):
         - 'project_settings/{host name}/templated_workfile_build/profiles'
 
         Returns:
-            str: Path to a template file with placeholders.
+            dict: Dictionary with `path`, `keep_placeholder` and
+                `create_first_version` settings from the template preset
+                for current context.
 
         Raises:
             TemplateProfileNotFound: When profiles are not filled.
             TemplateLoadFailed: Profile was found but path is not set.
-            TemplateNotFound: Path was set but file does not exists.
+            TemplateNotFound: Path was set but file does not exist.
         """
 
         host_name = self.host_name
@@ -872,9 +914,32 @@ class AbstractTemplateBuilder(object):
             "create_first_version": create_first_version
         }
 
+    def emit_event(self, topic, data=None, source=None) -> Event:
+        return self._event_system.emit(topic, data, source)
 
-@six.add_metaclass(ABCMeta)
-class PlaceholderPlugin(object):
+    def add_event_callback(self, topic, callback, order=None):
+        return self._event_system.add_callback(topic, callback, order=order)
+
+    def add_on_finished_callback(
+        self, callback, order=None
+    ) -> EventCallback:
+        return self.add_event_callback(
+            topic="template.finished",
+            callback=callback,
+            order=order
+        )
+
+    def add_on_depth_processed_callback(
+        self, callback, order=None
+    ) -> EventCallback:
+        return self.add_event_callback(
+            topic="template.depth_processed",
+            callback=callback,
+            order=order
+        )
+
+
+class PlaceholderPlugin(ABC):
     """Plugin which care about handling of placeholder items logic.
 
     Plugin create and update placeholders in scene and populate them on
@@ -1359,7 +1424,7 @@ class PlaceholderLoadMixin(object):
                 placeholder='{"camera":"persp", "lights":True}',
                 tooltip=(
                     "Loader"
-                    "\nDefines a dictionnary of arguments used to load assets."
+                    "\nDefines a dictionary of arguments used to load assets."
                     "\nUseable arguments depend on current placeholder Loader."
                     "\nField should be a valid python dict."
                     " Anything else will be ignored."
@@ -1404,7 +1469,7 @@ class PlaceholderLoadMixin(object):
         ]
 
     def parse_loader_args(self, loader_args):
-        """Helper function to parse string of loader arugments.
+        """Helper function to parse string of loader arguments.
 
         Empty dictionary is returned if conversion fails.
 
@@ -1729,6 +1794,16 @@ class PlaceholderCreateMixin(object):
                     "\ncompiling of product name."
                 )
             ),
+            attribute_definitions.BoolDef(
+                "active",
+                label="Active",
+                default=options.get("active", True),
+                tooltip=(
+                    "Active"
+                    "\nDefines whether the created instance will default to "
+                    "active or not."
+                )
+            ),
             attribute_definitions.UISeparatorDef(),
             attribute_definitions.NumberDef(
                 "order",
@@ -1758,6 +1833,7 @@ class PlaceholderCreateMixin(object):
         legacy_create = self.builder.use_legacy_creators
         creator_name = placeholder.data["creator"]
         create_variant = placeholder.data["create_variant"]
+        active = placeholder.data.get("active")
 
         creator_plugin = self.builder.get_creators_by_name()[creator_name]
 
@@ -1804,8 +1880,9 @@ class PlaceholderCreateMixin(object):
                     creator_plugin.identifier,
                     create_variant,
                     folder_entity,
-                    task_name=task_name,
-                    pre_create_data=pre_create_data
+                    task_entity,
+                    pre_create_data=pre_create_data,
+                    active=active
                 )
 
         except:  # noqa: E722
@@ -1904,3 +1981,23 @@ class CreatePlaceholderItem(PlaceholderItem):
 
     def create_failed(self, creator_data):
         self._failed_created_publish_instances.append(creator_data)
+
+
+def discover_workfile_build_plugins(*args, **kwargs):
+    return discover(PlaceholderPlugin, *args, **kwargs)
+
+
+def register_workfile_build_plugin(plugin: PlaceholderPlugin):
+    register_plugin(PlaceholderPlugin, plugin)
+
+
+def deregister_workfile_build_plugin(plugin: PlaceholderPlugin):
+    deregister_plugin(PlaceholderPlugin, plugin)
+
+
+def register_workfile_build_plugin_path(path: str):
+    register_plugin_path(PlaceholderPlugin, path)
+
+
+def deregister_workfile_build_plugin_path(path: str):
+    deregister_plugin_path(PlaceholderPlugin, path)

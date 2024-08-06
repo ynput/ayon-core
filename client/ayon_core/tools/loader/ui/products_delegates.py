@@ -1,4 +1,7 @@
 import numbers
+import uuid
+from typing import Dict
+
 from qtpy import QtWidgets, QtCore, QtGui
 
 from ayon_core.tools.utils.lib import format_version
@@ -15,31 +18,21 @@ from .products_model import (
     SYNC_REMOTE_SITE_AVAILABILITY,
 )
 
+STATUS_NAME_ROLE = QtCore.Qt.UserRole + 1
 
-class VersionComboBox(QtWidgets.QComboBox):
-    value_changed = QtCore.Signal(str)
 
-    def __init__(self, product_id, parent):
-        super(VersionComboBox, self).__init__(parent)
-        self._product_id = product_id
+class VersionsModel(QtGui.QStandardItemModel):
+    def __init__(self):
+        super().__init__()
         self._items_by_id = {}
 
-        self._current_id = None
-
-        self.currentIndexChanged.connect(self._on_index_change)
-
-    def update_versions(self, version_items, current_version_id):
-        model = self.model()
-        root_item = model.invisibleRootItem()
-        version_items = list(reversed(version_items))
-        version_ids = [
+    def update_versions(self, version_items):
+        version_ids = {
             version_item.version_id
             for version_item in version_items
-        ]
-        if current_version_id not in version_ids and version_ids:
-            current_version_id = version_ids[0]
-        self._current_id = current_version_id
+        }
 
+        root_item = self.invisibleRootItem()
         to_remove = set(self._items_by_id.keys()) - set(version_ids)
         for item_id in to_remove:
             item = self._items_by_id.pop(item_id)
@@ -54,13 +47,89 @@ class VersionComboBox(QtWidgets.QComboBox):
                 item = QtGui.QStandardItem(label)
                 item.setData(version_id, QtCore.Qt.UserRole)
                 self._items_by_id[version_id] = item
+            item.setData(version_item.status, STATUS_NAME_ROLE)
 
             if item.row() != idx:
                 root_item.insertRow(idx, item)
 
+
+class VersionsFilterModel(QtCore.QSortFilterProxyModel):
+    def __init__(self):
+        super().__init__()
+        self._status_filter = None
+
+    def filterAcceptsRow(self, row, parent):
+        if self._status_filter is None:
+            return True
+
+        if not self._status_filter:
+            return False
+
+        index = self.sourceModel().index(row, 0, parent)
+        status = index.data(STATUS_NAME_ROLE)
+        return status in self._status_filter
+
+    def set_statuses_filter(self, status_names):
+        if self._status_filter == status_names:
+            return
+        self._status_filter = status_names
+        self.invalidateFilter()
+
+
+class VersionComboBox(QtWidgets.QComboBox):
+    value_changed = QtCore.Signal(str, str)
+
+    def __init__(self, product_id, parent):
+        super().__init__(parent)
+
+        versions_model = VersionsModel()
+        proxy_model = VersionsFilterModel()
+        proxy_model.setSourceModel(versions_model)
+
+        self.setModel(proxy_model)
+
+        self._product_id = product_id
+        self._items_by_id = {}
+
+        self._current_id = None
+
+        self._versions_model = versions_model
+        self._proxy_model = proxy_model
+
+        self.currentIndexChanged.connect(self._on_index_change)
+
+    def get_product_id(self):
+        return self._product_id
+
+    def set_statuses_filter(self, status_names):
+        self._proxy_model.set_statuses_filter(status_names)
+        if self.count() == 0:
+            return
+        if self.currentIndex() != 0:
+            self.setCurrentIndex(0)
+
+    def all_versions_filtered_out(self):
+        if self._items_by_id:
+            return self.count() == 0
+        return False
+
+    def update_versions(self, version_items, current_version_id):
+        self.blockSignals(True)
+        version_items = list(version_items)
+        version_ids = [
+            version_item.version_id
+            for version_item in version_items
+        ]
+        if current_version_id not in version_ids and version_ids:
+            current_version_id = version_ids[0]
+        self._current_id = current_version_id
+
+        self._versions_model.update_versions(version_items)
+
         index = version_ids.index(current_version_id)
         if self.currentIndex() != index:
             self.setCurrentIndex(index)
+        self.blockSignals(False)
 
     def _on_index_change(self):
         idx = self.currentIndex()
@@ -68,22 +137,29 @@ class VersionComboBox(QtWidgets.QComboBox):
         if value == self._current_id:
             return
         self._current_id = value
-        self.value_changed.emit(self._product_id)
+        self.value_changed.emit(self._product_id, value)
 
 
 class VersionDelegate(QtWidgets.QStyledItemDelegate):
     """A delegate that display version integer formatted as version string."""
 
-    version_changed = QtCore.Signal()
+    version_changed = QtCore.Signal(str, str)
 
     def __init__(self, *args, **kwargs):
-        super(VersionDelegate, self).__init__(*args, **kwargs)
-        self._editor_by_product_id = {}
+        super().__init__(*args, **kwargs)
+
+        self._editor_by_id: Dict[str, VersionComboBox] = {}
+        self._statuses_filter = None
 
     def displayText(self, value, locale):
         if not isinstance(value, numbers.Integral):
             return "N/A"
         return format_version(value)
+
+    def set_statuses_filter(self, status_names):
+        self._statuses_filter = set(status_names)
+        for widget in self._editor_by_id.values():
+            widget.set_statuses_filter(status_names)
 
     def paint(self, painter, option, index):
         fg_color = index.data(QtCore.Qt.ForegroundRole)
@@ -104,7 +180,10 @@ class VersionDelegate(QtWidgets.QStyledItemDelegate):
             style = QtWidgets.QApplication.style()
 
         style.drawControl(
-            style.CE_ItemViewItem, option, painter, option.widget
+            QtWidgets.QCommonStyle.CE_ItemViewItem,
+            option,
+            painter,
+            option.widget
         )
 
         painter.save()
@@ -116,9 +195,14 @@ class VersionDelegate(QtWidgets.QStyledItemDelegate):
         pen.setColor(fg_color)
         painter.setPen(pen)
 
-        text_rect = style.subElementRect(style.SE_ItemViewItemText, option)
+        text_rect = style.subElementRect(
+            QtWidgets.QCommonStyle.SE_ItemViewItemText,
+            option
+        )
         text_margin = style.proxy().pixelMetric(
-            style.PM_FocusFrameHMargin, option, option.widget
+            QtWidgets.QCommonStyle.PM_FocusFrameHMargin,
+            option,
+            option.widget
         ) + 1
 
         painter.drawText(
@@ -134,19 +218,17 @@ class VersionDelegate(QtWidgets.QStyledItemDelegate):
         if not product_id:
             return
 
+        item_id = uuid.uuid4().hex
+
         editor = VersionComboBox(product_id, parent)
-        self._editor_by_product_id[product_id] = editor
+        editor.setProperty("itemId", item_id)
+
         editor.value_changed.connect(self._on_editor_change)
+        editor.destroyed.connect(self._on_destroy)
+
+        self._editor_by_id[item_id] = editor
 
         return editor
-
-    def _on_editor_change(self, product_id):
-        editor = self._editor_by_product_id[product_id]
-
-        # Update model data
-        self.commitData.emit(editor)
-        # Display model data
-        self.version_changed.emit()
 
     def setEditorData(self, editor, index):
         editor.clear()
@@ -154,13 +236,22 @@ class VersionDelegate(QtWidgets.QStyledItemDelegate):
         # Current value of the index
         versions = index.data(VERSION_NAME_EDIT_ROLE) or []
         version_id = index.data(VERSION_ID_ROLE)
+
         editor.update_versions(versions, version_id)
+        editor.set_statuses_filter(self._statuses_filter)
 
     def setModelData(self, editor, model, index):
         """Apply the integer version back in the model"""
 
         version_id = editor.itemData(editor.currentIndex())
         model.setData(index, version_id, VERSION_NAME_EDIT_ROLE)
+
+    def _on_editor_change(self, product_id, version_id):
+        self.version_changed.emit(product_id, version_id)
+
+    def _on_destroy(self, obj):
+        item_id = obj.property("itemId")
+        self._editor_by_id.pop(item_id, None)
 
 
 class LoadedInSceneDelegate(QtWidgets.QStyledItemDelegate):

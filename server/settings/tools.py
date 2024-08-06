@@ -35,6 +35,28 @@ class ProductNameProfile(BaseSettingsModel):
     template: str = SettingsField("", title="Template")
 
 
+class FilterCreatorProfile(BaseSettingsModel):
+    """Provide list of allowed Creator identifiers for context"""
+
+    _layout = "expanded"
+    host_names: list[str] = SettingsField(
+        default_factory=list, title="Host names"
+    )
+    task_types: list[str] = SettingsField(
+        default_factory=list,
+        title="Task types",
+        enum_resolver=task_types_enum
+    )
+    task_names: list[str] = SettingsField(
+        default_factory=list,
+        title="Task names")
+    creator_labels: list[str] = SettingsField(
+        default_factory=list,
+        title="Allowed Creator Labels",
+        description="Copy creator label from Publisher, regex supported."
+    )
+
+
 class CreatorToolModel(BaseSettingsModel):
     # TODO this was dynamic dictionary '{name: task_names}'
     product_types_smart_select: list[ProductTypeSmartSelectModel] = (
@@ -46,6 +68,13 @@ class CreatorToolModel(BaseSettingsModel):
     product_name_profiles: list[ProductNameProfile] = SettingsField(
         default_factory=list,
         title="Product name profiles"
+    )
+
+    filter_creator_profiles: list[FilterCreatorProfile] = SettingsField(
+        default_factory=list,
+        title="Filter creator profiles",
+        description="Allowed list of creator labels that will be only shown if "
+                    "profile matches context."
     )
 
     @validator("product_types_smart_select")
@@ -118,6 +147,15 @@ class WorkfilesLockProfile(BaseSettingsModel):
     enabled: bool = SettingsField(True, title="Enabled")
 
 
+class AYONMenuModel(BaseSettingsModel):
+    _layout = "expanded"
+    version_up_current_workfile: bool = SettingsField(
+        False,
+        title="Version Up Workfile",
+        description="Add 'Version Up Workfile' to AYON menu"
+    )
+
+
 class WorkfilesToolModel(BaseSettingsModel):
     workfile_template_profiles: list[WorkfileTemplateProfile] = SettingsField(
         default_factory=list,
@@ -157,6 +195,7 @@ def _product_types_enum():
         "editorial",
         "gizmo",
         "image",
+        "imagesequence",
         "layout",
         "look",
         "matchmove",
@@ -174,13 +213,19 @@ def _product_types_enum():
         "setdress",
         "take",
         "usd",
-        "usdShade",
         "vdbcache",
         "vrayproxy",
         "workfile",
         "xgen",
         "yetiRig",
         "yeticache"
+    ]
+
+
+def filter_type_enum():
+    return [
+        {"value": "is_allow_list", "label": "Allow list"},
+        {"value": "is_deny_list", "label": "Deny list"},
     ]
 
 
@@ -193,9 +238,15 @@ class LoaderProductTypeFilterProfile(BaseSettingsModel):
         title="Task types",
         enum_resolver=task_types_enum
     )
-    is_include: bool = SettingsField(True, title="Exclude / Include")
+    filter_type: str = SettingsField(
+        "is_allow_list",
+        title="Filter type",
+        section="Product type filter",
+        enum_resolver=filter_type_enum
+    )
     filter_product_types: list[str] = SettingsField(
         default_factory=list,
+        title="Product types",
         enum_resolver=_product_types_enum
     )
 
@@ -268,6 +319,10 @@ class PublishToolModel(BaseSettingsModel):
 
 
 class GlobalToolsModel(BaseSettingsModel):
+    ayon_menu: AYONMenuModel = SettingsField(
+        default_factory=AYONMenuModel,
+        title="AYON Menu"
+    )
     creator: CreatorToolModel = SettingsField(
         default_factory=CreatorToolModel,
         title="Creator"
@@ -287,6 +342,9 @@ class GlobalToolsModel(BaseSettingsModel):
 
 
 DEFAULT_TOOLS_VALUES = {
+    "ayon_menu": {
+        "version_up_current_workfile": False
+    },
     "creator": {
         "product_types_smart_select": [
             {
@@ -403,8 +461,20 @@ DEFAULT_TOOLS_VALUES = {
                 "task_types": [],
                 "tasks": [],
                 "template": "SK_{folder[name]}{variant}"
+            },
+            {
+                "product_types": [
+                    "hda"
+                ],
+                "hosts": [
+                    "houdini"
+                ],
+                "task_types": [],
+                "tasks": [],
+                "template": "{folder[name]}_{variant}"
             }
-        ]
+        ],
+        "filter_creator_profiles": []
     },
     "Workfiles": {
         "workfile_template_profiles": [
@@ -442,14 +512,7 @@ DEFAULT_TOOLS_VALUES = {
         "workfile_lock_profiles": []
     },
     "loader": {
-        "product_type_filter_profiles": [
-            {
-                "hosts": [],
-                "task_types": [],
-                "is_include": True,
-                "filter_product_types": []
-            }
-        ]
+        "product_type_filter_profiles": []
     },
     "publish": {
         "template_name_profiles": [

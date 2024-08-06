@@ -100,6 +100,14 @@ from .context_tools import (
 
 from .openassetio_host_interface import get_openassetio_manager
 
+from .workfile import (
+    discover_workfile_build_plugins,
+    register_workfile_build_plugin,
+    deregister_workfile_build_plugin,
+    register_workfile_build_plugin_path,
+    deregister_workfile_build_plugin_path,
+)
+
 install = install_host
 uninstall = uninstall_host
 
@@ -200,6 +208,13 @@ __all__ = (
     "get_current_project_name",
     "get_current_folder_path",
     "get_current_task_name",
+
+    # Workfile templates
+    "discover_workfile_build_plugins",
+    "register_workfile_build_plugin",
+    "deregister_workfile_build_plugin",
+    "register_workfile_build_plugin_path",
+    "deregister_workfile_build_plugin_path",
 
     # Backwards compatible function names
     "install",

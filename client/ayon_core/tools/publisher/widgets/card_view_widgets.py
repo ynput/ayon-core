@@ -29,17 +29,20 @@ from ayon_core.tools.utils import NiceCheckbox
 
 from ayon_core.tools.utils import BaseClickableFrame
 from ayon_core.tools.utils.lib import html_escape
+
+from ayon_core.tools.publisher.abstract import AbstractPublisherFrontend
+from ayon_core.tools.publisher.constants import (
+    CONTEXT_ID,
+    CONTEXT_LABEL,
+    CONTEXT_GROUP,
+    CONVERTOR_ITEM_GROUP,
+)
+
 from .widgets import (
     AbstractInstanceView,
     ContextWarningLabel,
     IconValuePixmapLabel,
     PublishPixmapLabel
-)
-from ..constants import (
-    CONTEXT_ID,
-    CONTEXT_LABEL,
-    CONTEXT_GROUP,
-    CONVERTOR_ITEM_GROUP,
 )
 
 
@@ -52,9 +55,10 @@ class SelectionTypes:
 class BaseGroupWidget(QtWidgets.QWidget):
     selected = QtCore.Signal(str, str, str)
     removed_selected = QtCore.Signal()
+    double_clicked = QtCore.Signal()
 
     def __init__(self, group_name, parent):
-        super(BaseGroupWidget, self).__init__(parent)
+        super().__init__(parent)
 
         label_widget = QtWidgets.QLabel(group_name, self)
 
@@ -192,6 +196,7 @@ class ConvertorItemsGroupWidget(BaseGroupWidget):
                 else:
                     widget = ConvertorItemCardWidget(item, self)
                     widget.selected.connect(self._on_widget_selection)
+                    widget.double_clicked(self.double_clicked)
                     self._widgets_by_id[item.id] = widget
                     self._content_layout.insertWidget(widget_idx, widget)
                 widget_idx += 1
@@ -205,7 +210,7 @@ class InstanceGroupWidget(BaseGroupWidget):
     active_changed = QtCore.Signal(str, str, bool)
 
     def __init__(self, group_icons, *args, **kwargs):
-        super(InstanceGroupWidget, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
 
         self._group_icons = group_icons
 
@@ -254,6 +259,7 @@ class InstanceGroupWidget(BaseGroupWidget):
                     )
                     widget.selected.connect(self._on_widget_selection)
                     widget.active_changed.connect(self._on_active_changed)
+                    widget.double_clicked.connect(self.double_clicked)
                     self._widgets_by_id[instance.id] = widget
                     self._content_layout.insertWidget(widget_idx, widget)
                 widget_idx += 1
@@ -271,13 +277,19 @@ class CardWidget(BaseClickableFrame):
     # Group identifier of card
     # - this must be set because if send when mouse is released with card id
     _group_identifier = None
+    double_clicked = QtCore.Signal()
 
     def __init__(self, parent):
-        super(CardWidget, self).__init__(parent)
+        super().__init__(parent)
         self.setObjectName("CardViewWidget")
 
         self._selected = False
         self._id = None
+
+    def mouseDoubleClickEvent(self, event):
+        super().mouseDoubleClickEvent(event)
+        if self._is_valid_double_click(event):
+            self.double_clicked.emit()
 
     @property
     def id(self):
@@ -312,6 +324,9 @@ class CardWidget(BaseClickableFrame):
 
         self.selected.emit(self._id, self._group_identifier, selection_type)
 
+    def _is_valid_double_click(self, event):
+        return True
+
 
 class ContextCardWidget(CardWidget):
     """Card for global context.
@@ -320,7 +335,7 @@ class ContextCardWidget(CardWidget):
     """
 
     def __init__(self, parent):
-        super(ContextCardWidget, self).__init__(parent)
+        super().__init__(parent)
 
         self._id = CONTEXT_ID
         self._group_identifier = CONTEXT_GROUP
@@ -350,7 +365,7 @@ class ConvertorItemCardWidget(CardWidget):
     """
 
     def __init__(self, item, parent):
-        super(ConvertorItemCardWidget, self).__init__(parent)
+        super().__init__(parent)
 
         self._id = item.id
         self.identifier = item.identifier
@@ -383,7 +398,7 @@ class InstanceCardWidget(CardWidget):
     active_changed = QtCore.Signal(str, bool)
 
     def __init__(self, instance, group_icon, parent):
-        super(InstanceCardWidget, self).__init__(parent)
+        super().__init__(parent)
 
         self._id = instance.id
         self._group_identifier = instance.group_label
@@ -527,6 +542,15 @@ class InstanceCardWidget(CardWidget):
     def _on_expend_clicked(self):
         self._set_expanded()
 
+    def _is_valid_double_click(self, event):
+        widget = self.childAt(event.pos())
+        if (
+            widget is self._active_checkbox
+            or widget is self._expand_btn
+        ):
+            return False
+        return True
+
 
 class InstanceCardView(AbstractInstanceView):
     """Publish access to card view.
@@ -534,10 +558,12 @@ class InstanceCardView(AbstractInstanceView):
     Wrapper of all widgets in card view.
     """
 
-    def __init__(self, controller, parent):
-        super(InstanceCardView, self).__init__(parent)
+    double_clicked = QtCore.Signal()
 
-        self._controller = controller
+    def __init__(self, controller, parent):
+        super().__init__(parent)
+
+        self._controller: AbstractPublisherFrontend = controller
 
         scroll_area = QtWidgets.QScrollArea(self)
         scroll_area.setWidgetResizable(True)
@@ -587,7 +613,7 @@ class InstanceCardView(AbstractInstanceView):
             + scroll_bar.sizeHint().width()
         )
 
-        result = super(InstanceCardView, self).sizeHint()
+        result = super().sizeHint()
         result.setWidth(width)
         return result
 
@@ -628,7 +654,7 @@ class InstanceCardView(AbstractInstanceView):
             self._toggle_instances(1)
             return True
 
-        return super(InstanceCardView, self).keyPressEvent(event)
+        return super().keyPressEvent(event)
 
     def _get_selected_widgets(self):
         output = []
@@ -671,7 +697,7 @@ class InstanceCardView(AbstractInstanceView):
         # Prepare instances by group and identifiers by group
         instances_by_group = collections.defaultdict(list)
         identifiers_by_group = collections.defaultdict(set)
-        for instance in self._controller.instances.values():
+        for instance in self._controller.get_instances():
             group_name = instance.group_label
             instances_by_group[group_name].append(instance)
             identifiers_by_group[group_name].add(
@@ -715,6 +741,7 @@ class InstanceCardView(AbstractInstanceView):
                 )
                 group_widget.active_changed.connect(self._on_active_changed)
                 group_widget.selected.connect(self._on_widget_selection)
+                group_widget.double_clicked.connect(self.double_clicked)
                 self._content_layout.insertWidget(widget_idx, group_widget)
                 self._widgets_by_group[group_name] = group_widget
 
@@ -755,6 +782,7 @@ class InstanceCardView(AbstractInstanceView):
 
         widget = ContextCardWidget(self._content_widget)
         widget.selected.connect(self._on_widget_selection)
+        widget.double_clicked.connect(self.double_clicked)
 
         self._context_widget = widget
 
@@ -762,7 +790,7 @@ class InstanceCardView(AbstractInstanceView):
         self._content_layout.insertWidget(0, widget)
 
     def _update_convertor_items_group(self):
-        convertor_items = self._controller.convertor_items
+        convertor_items = self._controller.get_convertor_items()
         if not convertor_items and self._convertor_items_group is None:
             return
 
@@ -778,6 +806,7 @@ class InstanceCardView(AbstractInstanceView):
                 CONVERTOR_ITEM_GROUP, self._content_widget
             )
             group_widget.selected.connect(self._on_widget_selection)
+            group_widget.double_clicked.connect(self.double_clicked)
             self._content_layout.insertWidget(1, group_widget)
             self._convertor_items_group = group_widget
 

@@ -7,12 +7,14 @@ import collections
 import inspect
 from uuid import uuid4
 from contextlib import contextmanager
+from typing import Optional
 
 import pyblish.logic
 import pyblish.api
 import ayon_api
 
 from ayon_core.settings import get_project_settings
+from ayon_core.lib import is_func_signature_supported
 from ayon_core.lib.attribute_definitions import (
     UnknownDef,
     serialize_attr_defs,
@@ -37,6 +39,7 @@ from .creator_plugins import (
 
 # Changes of instances and context are send as tuple of 2 information
 UpdateData = collections.namedtuple("UpdateData", ["instance", "changes"])
+_NOT_SET = object()
 
 
 class UnavailableSharedData(Exception):
@@ -45,7 +48,7 @@ class UnavailableSharedData(Exception):
 
 
 class ImmutableKeyError(TypeError):
-    """Accessed key is immutable so does not allow changes or removements."""
+    """Accessed key is immutable so does not allow changes or removals."""
 
     def __init__(self, key, msg=None):
         self.immutable_key = key
@@ -681,7 +684,7 @@ class PublishAttributeValues(AttributeValues):
 
     @property
     def parent(self):
-        self.publish_attributes.parent
+        return self.publish_attributes.parent
 
 
 class PublishAttributes:
@@ -1401,6 +1404,12 @@ class CreateContext:
         self._current_folder_path = None
         self._current_task_name = None
         self._current_workfile_path = None
+        self._current_project_settings = None
+
+        self._current_project_entity = _NOT_SET
+        self._current_folder_entity = _NOT_SET
+        self._current_task_entity = _NOT_SET
+        self._current_task_type = _NOT_SET
 
         self._current_project_anatomy = None
 
@@ -1425,7 +1434,7 @@ class CreateContext:
         self.convertors_plugins = {}
         self.convertor_items_by_id = {}
 
-        self.publish_discover_result = None
+        self.publish_discover_result: Optional[DiscoverResult] = None
         self.publish_plugins_mismatch_targets = []
         self.publish_plugins = []
         self.plugins_with_defs = []
@@ -1571,6 +1580,80 @@ class CreateContext:
 
         return self._current_task_name
 
+    def get_current_task_type(self):
+        """Task type which was used as current context on context reset.
+
+        Returns:
+            Union[str, None]: Task type.
+
+        """
+        if self._current_task_type is _NOT_SET:
+            task_type = None
+            task_entity = self.get_current_task_entity()
+            if task_entity:
+                task_type = task_entity["taskType"]
+            self._current_task_type = task_type
+        return self._current_task_type
+
+    def get_current_project_entity(self):
+        """Project entity for current context project.
+
+        Returns:
+            Union[dict[str, Any], None]: Folder entity.
+
+        """
+        if self._current_project_entity is not _NOT_SET:
+            return copy.deepcopy(self._current_project_entity)
+        project_entity = None
+        project_name = self.get_current_project_name()
+        if project_name:
+            project_entity = ayon_api.get_project(project_name)
+        self._current_project_entity = project_entity
+        return copy.deepcopy(self._current_project_entity)
+
+    def get_current_folder_entity(self):
+        """Folder entity for current context folder.
+
+        Returns:
+            Union[dict[str, Any], None]: Folder entity.
+
+        """
+        if self._current_folder_entity is not _NOT_SET:
+            return copy.deepcopy(self._current_folder_entity)
+        folder_entity = None
+        folder_path = self.get_current_folder_path()
+        if folder_path:
+            project_name = self.get_current_project_name()
+            folder_entity = ayon_api.get_folder_by_path(
+                project_name, folder_path
+            )
+        self._current_folder_entity = folder_entity
+        return copy.deepcopy(self._current_folder_entity)
+
+    def get_current_task_entity(self):
+        """Task entity for current context task.
+
+        Returns:
+            Union[dict[str, Any], None]: Task entity.
+
+        """
+        if self._current_task_entity is not _NOT_SET:
+            return copy.deepcopy(self._current_task_entity)
+        task_entity = None
+        task_name = self.get_current_task_name()
+        if task_name:
+            folder_entity = self.get_current_folder_entity()
+            if folder_entity:
+                project_name = self.get_current_project_name()
+                task_entity = ayon_api.get_task_by_name(
+                    project_name,
+                    folder_id=folder_entity["id"],
+                    task_name=task_name
+                )
+        self._current_task_entity = task_entity
+        return copy.deepcopy(self._current_task_entity)
+
+
     def get_current_workfile_path(self):
         """Workfile path which was opened on context reset.
 
@@ -1591,6 +1674,12 @@ class CreateContext:
             self._current_project_anatomy = Anatomy(
                 self._current_project_name)
         return self._current_project_anatomy
+
+    def get_current_project_settings(self):
+        if self._current_project_settings is None:
+            self._current_project_settings = get_project_settings(
+                self.get_current_project_name())
+        return self._current_project_settings
 
     @property
     def context_has_changed(self):
@@ -1718,7 +1807,13 @@ class CreateContext:
         self._current_task_name = task_name
         self._current_workfile_path = workfile_path
 
+        self._current_project_entity = _NOT_SET
+        self._current_folder_entity = _NOT_SET
+        self._current_task_entity = _NOT_SET
+        self._current_task_type = _NOT_SET
+
         self._current_project_anatomy = None
+        self._current_project_settings = None
 
     def reset_plugins(self, discover_publish_plugins=True):
         """Reload plugins.
@@ -1772,7 +1867,7 @@ class CreateContext:
 
     def _reset_creator_plugins(self):
         # Prepare settings
-        project_settings = get_project_settings(self.project_name)
+        project_settings = self.get_current_project_settings()
 
         # Discover and prepare creators
         creators = {}
@@ -1948,7 +2043,8 @@ class CreateContext:
         variant,
         folder_entity=None,
         task_entity=None,
-        pre_create_data=None
+        pre_create_data=None,
+        active=None
     ):
         """Trigger create of plugins with standartized arguments.
 
@@ -1966,6 +2062,8 @@ class CreateContext:
                 of creation (possible context of created instance/s).
             task_entity (Dict[str, Any]): Task entity.
             pre_create_data (Dict[str, Any]): Pre-create attribute values.
+            active (Optional[bool]): Whether the created instance defaults
+                to be active or not.
 
         Returns:
             Any: Output of triggered creator's 'create' method.
@@ -1987,12 +2085,12 @@ class CreateContext:
                     "Folder '{}' was not found".format(folder_path)
                 )
 
-        task_name = None
         if task_entity is None:
-            task_name = self.get_current_task_name()
-            task_entity = ayon_api.get_task_by_name(
-                project_name, folder_entity["id"], task_name
-            )
+            current_task_name = self.get_current_task_name()
+            if current_task_name:
+                task_entity = ayon_api.get_task_by_name(
+                    project_name, folder_entity["id"], current_task_name
+                )
 
         if pre_create_data is None:
             pre_create_data = {}
@@ -2008,20 +2106,37 @@ class CreateContext:
         # TODO validate types
         _pre_create_data.update(pre_create_data)
 
-        product_name = creator.get_product_name(
+        project_entity = self.get_current_project_entity()
+        args = (
             project_name,
             folder_entity,
             task_entity,
             variant,
             self.host_name,
         )
+        kwargs = {"project_entity": project_entity}
+        # Backwards compatibility for 'project_entity' argument
+        # - 'get_product_name' signature changed 24/07/08
+        if not is_func_signature_supported(
+            creator.get_product_name, *args, **kwargs
+        ):
+            kwargs.pop("project_entity")
+        product_name = creator.get_product_name(*args, **kwargs)
 
         instance_data = {
             "folderPath": folder_entity["path"],
-            "task": task_name,
+            "task": task_entity["name"] if task_entity else None,
             "productType": creator.product_type,
             "variant": variant
         }
+        if active is not None:
+            if not isinstance(active, bool):
+                self.log.warning(
+                    "CreateContext.create 'active' argument is not a bool. "
+                    f"Converting {active} {type(active)} to bool.")
+                active = bool(active)
+            instance_data["active"] = active
+
         return creator.create(
             product_name,
             instance_data,
@@ -2053,7 +2168,7 @@ class CreateContext:
             exc_info = sys.exc_info()
             self.log.warning(error_message.format(identifier, exc_info[1]))
 
-        except:
+        except:  # noqa: E722
             add_traceback = True
             exc_info = sys.exc_info()
             self.log.warning(
@@ -2163,7 +2278,7 @@ class CreateContext:
                 exc_info = sys.exc_info()
                 self.log.warning(error_message.format(identifier, exc_info[1]))
 
-            except:
+            except:  # noqa: E722
                 failed = True
                 add_traceback = True
                 exc_info = sys.exc_info()
@@ -2197,7 +2312,7 @@ class CreateContext:
             try:
                 convertor.find_instances()
 
-            except:
+            except:  # noqa: E722
                 failed_info.append(
                     prepare_failed_convertor_operation_info(
                         convertor.identifier, sys.exc_info()
@@ -2373,7 +2488,7 @@ class CreateContext:
                 exc_info = sys.exc_info()
                 self.log.warning(error_message.format(identifier, exc_info[1]))
 
-            except:
+            except:  # noqa: E722
                 failed = True
                 add_traceback = True
                 exc_info = sys.exc_info()
@@ -2440,7 +2555,7 @@ class CreateContext:
                     error_message.format(identifier, exc_info[1])
                 )
 
-            except:
+            except:  # noqa: E722
                 failed = True
                 add_traceback = True
                 exc_info = sys.exc_info()
@@ -2501,7 +2616,7 @@ class CreateContext:
     def collection_shared_data(self):
         """Access to shared data that can be used during creator's collection.
 
-        Retruns:
+        Returns:
             Dict[str, Any]: Shared data.
 
         Raises:
@@ -2546,7 +2661,7 @@ class CreateContext:
             try:
                 self.run_convertor(convertor_identifier)
 
-            except:
+            except:  # noqa: E722
                 failed_info.append(
                     prepare_failed_convertor_operation_info(
                         convertor_identifier, sys.exc_info()

@@ -5,7 +5,7 @@
 
 [tool.poetry]
 name = "ayon-core"
-version = "0.3.1"
+version = "0.4.3-dev.1"
 description = ""
 authors = ["Ynput Team <team@ynput.io>"]
 readme = "README.md"
@@ -20,9 +20,9 @@ pytest = "^8.0"
 pytest-print = "^1.0"
 ayon-python-api = "^1.0"
 # linting dependencies
-ruff = "^0.3.3"
-pre-commit = "^3.6.2"
-codespell = "^2.2.6"
+ruff = "^0.5"
+pre-commit = "^3.8"
+codespell = "^2.3"
 deal = "^4.24.3"
 semver = "^3.0.2"
 openassetio-traitgen = "*" # for generating traits from yaml definitions
@@ -83,11 +83,6 @@ unfixable = []
 dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
 
 exclude = [
-    "client/ayon_core/hosts/unreal/integration/*",
-    "client/ayon_core/hosts/aftereffects/api/extension/js/libs/*",
-    "client/ayon_core/hosts/hiero/api/startup/*",
-    "client/ayon_core/modules/deadline/repository/custom/plugins/CelAction/*",
-    "client/ayon_core/modules/deadline/repository/custom/plugins/HarmonyAYON/*",
     "client/ayon_core/modules/click_wrap.py",
     "client/ayon_core/scripts/slates/__init__.py"
 ]
@@ -112,7 +107,8 @@ line-ending = "auto"
 [tool.codespell]
 # Ignore words that are not in the dictionary.
 ignore-words-list = "ayon,ynput,parms,parm,hda,developpement"
-skip = "./.*,./package/*,*/vendor/*,*/unreal/integration/*,*/aftereffects/api/extension/js/libs/*,poetry.lock"
+
+skip = "./.*,./package/*,*/vendor/*,poetry.lock"
 count = true
 quiet-level = 3
 

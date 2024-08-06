@@ -1,19 +1,6 @@
 # -*- coding: utf-8 -*-
 # flake8: noqa E402
 """AYON lib functions."""
-# add vendor to sys path based on Python version
-import sys
-import os
-import site
-from ayon_core import AYON_CORE_ROOT
-
-# Add Python version specific vendor folder
-python_version_dir = os.path.join(
-    AYON_CORE_ROOT, "vendor", "python", "python_{}".format(sys.version[0])
-)
-# Prepend path in sys paths
-sys.path.insert(0, python_version_dir)
-site.addsitedir(python_version_dir)
 
 from .local_settings import (
     IniSettingRegistry,
@@ -27,6 +14,10 @@ from .local_settings import (
     get_openpype_username,
 )
 from .ayon_connection import initialize_ayon_connection
+from .cache import (
+    CacheItem,
+    NestedCacheItem,
+)
 from .events import (
     emit_event,
     register_event_callback
@@ -118,6 +109,7 @@ from .transcoding import (
     convert_ffprobe_fps_value,
     convert_ffprobe_fps_to_float,
     get_rescaled_command_arguments,
+    get_media_mime_type,
 )
 
 from .plugin_tools import (
@@ -135,6 +127,7 @@ from .path_tools import (
 )
 
 from .ayon_info import (
+    is_in_ayon_launcher_process,
     is_running_from_build,
     is_using_ayon_console,
     is_staging_enabled,
@@ -156,6 +149,9 @@ __all__ = [
     "get_openpype_username",
 
     "initialize_ayon_connection",
+
+    "CacheItem",
+    "NestedCacheItem",
 
     "emit_event",
     "register_event_callback",
@@ -214,6 +210,7 @@ __all__ = [
     "convert_ffprobe_fps_value",
     "convert_ffprobe_fps_to_float",
     "get_rescaled_command_arguments",
+    "get_media_mime_type",
 
     "compile_list_of_regexes",
 
@@ -241,6 +238,7 @@ __all__ = [
 
     "Logger",
 
+    "is_in_ayon_launcher_process",
     "is_running_from_build",
     "is_using_ayon_console",
     "is_staging_enabled",

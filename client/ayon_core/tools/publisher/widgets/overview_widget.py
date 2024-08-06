@@ -1,7 +1,8 @@
 from qtpy import QtWidgets, QtCore
 
-from .border_label_widget import BorderedLabelWidget
+from ayon_core.tools.publisher.abstract import AbstractPublisherFrontend
 
+from .border_label_widget import BorderedLabelWidget
 from .card_view_widgets import InstanceCardView
 from .list_view_widgets import InstanceListView
 from .widgets import (
@@ -18,15 +19,18 @@ class OverviewWidget(QtWidgets.QFrame):
     instance_context_changed = QtCore.Signal()
     create_requested = QtCore.Signal()
     convert_requested = QtCore.Signal()
+    publish_tab_requested = QtCore.Signal()
 
     anim_end_value = 200
     anim_duration = 200
 
-    def __init__(self, controller, parent):
-        super(OverviewWidget, self).__init__(parent)
+    def __init__(
+        self, controller: AbstractPublisherFrontend, parent: QtWidgets.QWidget
+    ):
+        super().__init__(parent)
 
         self._refreshing_instances = False
-        self._controller = controller
+        self._controller: AbstractPublisherFrontend = controller
 
         product_content_widget = QtWidgets.QWidget(self)
 
@@ -113,8 +117,14 @@ class OverviewWidget(QtWidgets.QFrame):
         product_list_view.selection_changed.connect(
             self._on_product_change
         )
+        product_list_view.double_clicked.connect(
+            self.publish_tab_requested
+        )
         product_view_cards.selection_changed.connect(
             self._on_product_change
+        )
+        product_view_cards.double_clicked.connect(
+            self.publish_tab_requested
         )
         # Active instances changed
         product_list_view.active_changed.connect(
@@ -132,16 +142,16 @@ class OverviewWidget(QtWidgets.QFrame):
         )
 
         # --- Controller callbacks ---
-        controller.event_system.add_callback(
+        controller.register_event_callback(
             "publish.process.started", self._on_publish_start
         )
-        controller.event_system.add_callback(
+        controller.register_event_callback(
             "controller.reset.started", self._on_controller_reset_start
         )
-        controller.event_system.add_callback(
+        controller.register_event_callback(
             "publish.reset.finished", self._on_publish_reset
         )
-        controller.event_system.add_callback(
+        controller.register_event_callback(
             "instances.refresh.finished", self._on_instances_refresh
         )
 
@@ -284,7 +294,7 @@ class OverviewWidget(QtWidgets.QFrame):
         # Disable delete button if nothing is selected
         self._delete_btn.setEnabled(len(instance_ids) > 0)
 
-        instances_by_id = self._controller.instances
+        instances_by_id = self._controller.get_instances_by_id(instance_ids)
         instances = [
             instances_by_id[instance_id]
             for instance_id in instance_ids
@@ -447,7 +457,9 @@ class OverviewWidget(QtWidgets.QFrame):
 
         self._create_btn.setEnabled(True)
         self._product_attributes_wrap.setEnabled(True)
-        self._product_content_widget.setEnabled(self._controller.host_is_valid)
+        self._product_content_widget.setEnabled(
+            self._controller.is_host_valid()
+        )
 
     def _on_instances_refresh(self):
         """Controller refreshed instances."""

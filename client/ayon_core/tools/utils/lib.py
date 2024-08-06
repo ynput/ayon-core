@@ -1,10 +1,14 @@
 import os
 import sys
 import contextlib
+import collections
+import traceback
 from functools import partial
+from typing import Union, Any
 
 from qtpy import QtWidgets, QtCore, QtGui
 import qtawesome
+import qtmaterialsymbols
 
 from ayon_core.style import (
     get_objected_colors,
@@ -13,7 +17,7 @@ from ayon_core.style import (
 from ayon_core.resources import get_image_path
 from ayon_core.lib import Logger
 
-from .constants import CHECKED_INT, UNCHECKED_INT
+from .constants import CHECKED_INT, UNCHECKED_INT, PARTIALLY_CHECKED_INT
 
 log = Logger.get_logger(__name__)
 
@@ -33,10 +37,10 @@ def checkstate_enum_to_int(state):
     if isinstance(state, int):
         return state
     if state == QtCore.Qt.Checked:
-        return 0
+        return CHECKED_INT
     if state == QtCore.Qt.PartiallyChecked:
-        return 1
-    return 2
+        return PARTIALLY_CHECKED_INT
+    return UNCHECKED_INT
 
 
 def center_window(window):
@@ -196,16 +200,16 @@ def get_openpype_qt_app():
     return get_ayon_qt_app()
 
 
-def iter_model_rows(model, column, include_root=False):
+def iter_model_rows(model, column=0, include_root=False):
     """Iterate over all row indices in a model"""
-    indices = [QtCore.QModelIndex()]  # start iteration at root
-
-    for index in indices:
+    indexes_queue = collections.deque()
+    # start iteration at root
+    indexes_queue.append(QtCore.QModelIndex())
+    while indexes_queue:
+        index = indexes_queue.popleft()
         # Add children to the iterations
-        child_rows = model.rowCount(index)
-        for child_row in range(child_rows):
-            child_index = model.index(child_row, column, index)
-            indices.append(child_index)
+        for child_row in range(model.rowCount(index)):
+            indexes_queue.append(model.index(child_row, column, index))
 
         if not include_root and not index.isValid():
             continue
@@ -423,25 +427,38 @@ class RefreshThread(QtCore.QThread):
         self._id = thread_id
         self._callback = partial(func, *args, **kwargs)
         self._exception = None
+        self._traceback = None
         self._result = None
         self.finished.connect(self._on_finish_callback)
 
     @property
-    def id(self):
+    def id(self) -> str:
         return self._id
 
     @property
-    def failed(self):
+    def failed(self) -> bool:
         return self._exception is not None
 
     def run(self):
         try:
             self._result = self._callback()
         except Exception as exc:
+            exc_type, exc_value, exc_traceback = sys.exc_info()
+            err_traceback = "".join(traceback.format_exception(
+                exc_type, exc_value, exc_traceback
+            ))
+            print(err_traceback)
+            self._traceback = err_traceback
             self._exception = exc
 
-    def get_result(self):
+    def get_result(self) -> Any:
         return self._result
+
+    def get_exception(self) -> Union[BaseException, None]:
+        return self._exception
+
+    def get_traceback(self) -> Union[str, None]:
+        return self._traceback
 
     def _on_finish_callback(self):
         """Trigger custom signal with thread id.
@@ -467,8 +484,11 @@ class _IconsCache:
         if icon_type == "path":
             parts = [icon_type, icon_def["path"]]
 
-        elif icon_type == "awesome-font":
-            parts = [icon_type, icon_def["name"], icon_def["color"]]
+        elif icon_type in {"awesome-font", "material-symbols"}:
+            color = icon_def["color"] or ""
+            if isinstance(color, QtGui.QColor):
+                color = color.name()
+            parts = [icon_type, icon_def["name"] or "", color]
         return "|".join(parts)
 
     @classmethod
@@ -494,6 +514,13 @@ class _IconsCache:
             if icon is None:
                 icon = cls.get_qta_icon_by_name_and_color(
                     "fa.{}".format(icon_name), icon_color)
+
+        elif icon_type == "material-symbols":
+            icon_name = icon_def["name"]
+            icon_color = icon_def["color"]
+            if qtmaterialsymbols.get_icon_name_char(icon_name) is not None:
+                icon = qtmaterialsymbols.get_icon(icon_name, icon_color)
+
         if icon is None:
             icon = cls.get_default()
         cls._cache[cache_key] = icon
