@@ -10,6 +10,7 @@ import threading
 import collections
 from uuid import uuid4
 from abc import ABC, abstractmethod
+from typing import Optional
 
 import appdirs
 import ayon_api
@@ -62,6 +63,56 @@ MOVED_ADDON_MILESTONE_VERSIONS = {
     "houdini": VersionInfo(0, 3, 0),
     "unreal": VersionInfo(0, 2, 0),
 }
+
+
+class ProcessPreparationError(Exception):
+    """Exception that can be used when process preparation failed.
+
+    The message is shown to user (either as UI dialog or printed). If
+        different error is raised a "generic" error message is shown to user
+        with option to copy error message to clipboard.
+
+    """
+    pass
+
+
+class ProcessContext:
+    """Context of child process.
+
+    Notes:
+        This class is used to pass context to child process. It can be used
+            to use different behavior of addon based on information in
+            the context.
+        The context can be enhanced in future versions.
+
+    Args:
+        addon_name (Optional[str]): Addon name which triggered process.
+        addon_version (Optional[str]): Addon version which triggered process.
+        project_name (Optional[str]): Project name. Can be filled in case
+            process is triggered for specific project. Some addons can have
+            different behavior based on project.
+        headless (Optional[bool]): Is process running in headless mode.
+
+    """
+    def __init__(
+        self,
+        addon_name: Optional[str] = None,
+        addon_version: Optional[str] = None,
+        project_name: Optional[str] = None,
+        headless: Optional[bool] = None,
+        **kwargs,
+    ):
+        if headless is None:
+            # TODO use lib function to get headless mode
+            headless = os.getenv("AYON_HEADLESS_MODE") == "1"
+        self.addon_name: Optional[str] = addon_name
+        self.addon_version: Optional[str] = addon_version
+        self.project_name: Optional[str] = project_name
+        self.headless: bool = headless
+
+        if kwargs:
+            unknown_keys = ", ".join([f'"{key}"' for key in kwargs.keys()])
+            print(f"Unknown keys in ProcessContext: {unknown_keys}")
 
 
 # Inherit from `object` for Python 2 hosts
@@ -584,7 +635,29 @@ class AYONAddon(ABC):
         Args:
             enabled_addons (list[AYONAddon]): Addons that are enabled.
         """
+        pass
 
+    def ensure_is_process_ready(
+        self, process_context: ProcessContext
+    ):
+        """Make sure addon is prepared for a process.
+
+        This method is called when some action makes sure that addon has set
+        necessary data. For example if user should be logged in
+        and filled credentials in environment variables this method should
+        ask user for credentials.
+
+        Implementation of this method is optional.
+
+        Note:
+            The logic can be similar to logic in tray, but tray does not require
+                to be logged in.
+
+        Args:
+            process_context (ProcessContext): Context of child
+                process.
+
+        """
         pass
 
     def get_global_environments(self):
