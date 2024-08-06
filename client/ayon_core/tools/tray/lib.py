@@ -13,7 +13,12 @@ from typing import Optional, Dict, Tuple, Any
 import ayon_api
 import requests
 
-from ayon_core.lib import Logger, get_ayon_launcher_args, run_detached_process
+from ayon_core.lib import (
+    Logger,
+    get_ayon_launcher_args,
+    run_detached_process,
+    get_ayon_username,
+)
 from ayon_core.lib.local_settings import get_ayon_appdirs
 
 
@@ -590,6 +595,7 @@ def main(force=False):
     Logger.set_process_name("Tray")
 
     tray_info = TrayInfo.new(wait_to_start=False)
+
     file_state = tray_info.get_file_state()
     if force and file_state in (TrayState.RUNNING, TrayState.STARTING):
         pid = tray_info.pid
@@ -597,6 +603,17 @@ def main(force=False):
             _kill_tray_process(pid)
         remove_tray_server_url(force=True)
         file_state = TrayState.NOT_RUNNING
+
+    if file_state in (TrayState.RUNNING, TrayState.STARTING):
+        expected_username = get_ayon_username()
+        username = tray_info.get_ayon_username()
+        # TODO probably show some message to the user???
+        if expected_username != username:
+            pid = tray_info.pid
+            if pid is not None:
+                _kill_tray_process(pid)
+            remove_tray_server_url(force=True)
+            file_state = TrayState.NOT_RUNNING
 
     if file_state == TrayState.RUNNING:
         if tray_info.get_state() == TrayState.RUNNING:
