@@ -50,14 +50,28 @@ class CollectCommentPIModel(BaseSettingsModel):
     enabled: bool = SettingsField(True)
     families: list[str] = SettingsField(default_factory=list, title="Families")
 
+class CollectFramesFixDefProfilesModel(BaseSettingsModel):
 
-class CollectFramesFixDefModel(BaseSettingsModel):
-    enabled: bool = SettingsField(True)
+    hosts: list[str] = SettingsField(
+        default_factory=list,
+        title="Host names"
+    )
+    families: list[str] = SettingsField(
+        default_factory=list,
+        title="Families"
+    )
     rewrite_version_enable: bool = SettingsField(
         True,
         title="Show 'Rewrite latest version' toggle"
     )
-    
+
+
+class CollectFramesFixDefModel(BaseSettingsModel):
+    enabled: bool = SettingsField(True)
+    profiles: list[CollectFramesFixDefProfilesModel] = SettingsField(
+        default_factory=list, title="profiles"
+    )
+
 
 class ContributionLayersModel(BaseSettingsModel):
     _layout = "compact"
@@ -360,7 +374,7 @@ class ExtractReviewFFmpegModel(BaseSettingsModel):
 def extract_review_filter_enum():
     return [
         {
-            "value": "everytime",
+            "value": "everytime",  # codespell:ignore everytime
             "label": "Always"
         },
         {
@@ -382,7 +396,7 @@ class ExtractReviewFilterModel(BaseSettingsModel):
         default_factory=list, title="Custom Tags"
     )
     single_frame_filter: str = SettingsField(
-        "everytime",
+        "everytime",  # codespell:ignore everytime
         description=(
             "Use output <b>always</b> / only if input <b>is 1 frame</b>"
             " image / only if has <b>2+ frames</b> or <b>is video</b>"
@@ -780,7 +794,7 @@ class IntegrateHeroVersionModel(BaseSettingsModel):
 
 class CleanUpModel(BaseSettingsModel):
     _isGroup = True
-    paterns: list[str] = SettingsField(
+    paterns: list[str] = SettingsField(  # codespell:ignore paterns
         default_factory=list,
         title="Patterns (regex)"
     )
@@ -911,7 +925,18 @@ DEFAULT_PUBLISH_VALUES = {
     },
     "CollectFramesFixDef": {
         "enabled": True,
-        "rewrite_version_enable": True
+        "profiles": [
+            {
+                "hosts": ["nuke"],
+                "families": ["render", "prerender"],
+                "rewrite_version_enable": False
+            },
+            {
+                "hosts": ["houdini"],
+                "families": ["*"],
+                "rewrite_version_enable": False
+            }
+        ]
     },
     "CollectUSDLayerContributions": {
         "enabled": True,
@@ -1200,7 +1225,7 @@ DEFAULT_PUBLISH_VALUES = {
         "use_hardlinks": False
     },
     "CleanUp": {
-        "paterns": [],
+        "paterns": [],  # codespell:ignore paterns
         "remove_temp_renders": False
     },
     "CleanUpFarm": {
