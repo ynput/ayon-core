@@ -1,6 +1,8 @@
 import pyblish.api
 import ayon_api
 
+from ayon_core.lib import filter_profiles
+from ayon_core.pipeline import get_current_host_name
 from ayon_core.lib.attribute_definitions import (
     TextDef,
     BoolDef
@@ -21,10 +23,23 @@ class CollectFramesFixDef(
     order = pyblish.api.CollectorOrder + 0.495
     label = "Collect Frames to Fix"
     targets = ["local"]
-    hosts = ["nuke"]
-    families = ["render", "prerender"]
 
-    rewrite_version_enable = False
+    @classmethod
+    def apply_settings(cls, project_settings):
+
+        profiles = project_settings["core"]["publish"][cls.__name__]["profiles"]
+        host_name = get_current_host_name()
+        filtering_criteria = {
+            "hosts": host_name
+        }
+        profile = filter_profiles(
+            profiles,
+            filtering_criteria,
+            logger=cls.log
+        )
+
+        cls.families = profile["families"]
+        cls.rewrite_version_enable = profile["rewrite_version_enable"]
 
     def process(self, instance):
         attribute_values = self.get_attr_values_from_data(instance.data)
@@ -65,7 +80,7 @@ class CollectFramesFixDef(
             product_type = repre_context.get("product", {}).get("type")
             if not product_type:
                 product_type = repre_context.get("family")
-            if product_type not in self.families:
+            if "*" not in self.families and product_type not in self.families:
                 continue
 
             for file_info in repre.get("files"):
