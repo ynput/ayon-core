@@ -895,6 +895,10 @@ OverlayMessageWidget QWidget {
 #PublishWindow QComboBox {
     padding: 1px 1px 1px 0.2em;
 }
+#PublishWindow QLabel[overridden="1"] {
+    color: {color:publisher:overridden-label};
+}
+
 PublisherTabsWidget {
     background: {color:publisher:tab-bg};
 }
@@ -922,7 +926,7 @@ PublisherTabBtn[active="1"]:hover {
     background: {color:bg};
 }
 
-PixmapButton{
+PixmapButton {
     border: 0px solid transparent;
     border-radius: 0.2em;
     background: {color:bg-buttons};

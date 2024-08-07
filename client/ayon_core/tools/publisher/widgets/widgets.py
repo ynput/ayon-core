@@ -77,6 +77,14 @@ def parse_icon_def(
             continue
 
 
+def set_label_overriden_style(label_widget, is_overriden):
+    set_style_property(
+        label_widget,
+        "overridden",
+        str(int(is_overriden))
+    )
+
+
 class PublishPixmapLabel(PixmapLabel):
     def _get_pix_size(self):
         size = self.fontMetrics().height()
@@ -1368,6 +1376,7 @@ class CreatorAttrsWidget(QtWidgets.QWidget):
 
         self._attr_def_id_to_instances = {}
         self._attr_def_id_to_attr_def = {}
+        self._attr_def_id_to_label = {}
 
         # To store content of scroll area to prevent garbage collection
         self._content_widget = None
@@ -1393,6 +1402,7 @@ class CreatorAttrsWidget(QtWidgets.QWidget):
         self._content_widget = None
         self._attr_def_id_to_instances = {}
         self._attr_def_id_to_attr_def = {}
+        self._attr_def_id_to_label = {}
 
         result = self._controller.get_creator_attribute_definitions(
             instances
@@ -1416,7 +1426,6 @@ class CreatorAttrsWidget(QtWidgets.QWidget):
                         widget.set_value(values[0])
                 else:
                     widget.set_value(values, True)
-
             widget.value_changed.connect(self._input_value_changed)
             self._attr_def_id_to_instances[attr_def.id] = attr_instances
             self._attr_def_id_to_attr_def[attr_def.id] = attr_def
@@ -1435,6 +1444,7 @@ class CreatorAttrsWidget(QtWidgets.QWidget):
                 label = attr_def.label or attr_def.key
             if label:
                 label_widget = QtWidgets.QLabel(label, self)
+                self._attr_def_id_to_label[attr_def.id] = label_widget
                 tooltip = attr_def.tooltip
                 if tooltip:
                     label_widget.setToolTip(tooltip)
@@ -1443,6 +1453,13 @@ class CreatorAttrsWidget(QtWidgets.QWidget):
                         QtCore.Qt.AlignRight
                         | QtCore.Qt.AlignVCenter
                     )
+
+                is_value_overridden = False
+                for value in values:
+                    if value != attr_def.default:
+                        is_value_overridden = True
+                        break
+                set_label_overriden_style(label_widget, is_value_overridden)
                 content_layout.addWidget(
                     label_widget, row, 0, 1, expand_cols
                 )
@@ -1462,6 +1479,12 @@ class CreatorAttrsWidget(QtWidgets.QWidget):
         attr_def = self._attr_def_id_to_attr_def.get(attr_id)
         if not instances or not attr_def:
             return
+
+        # Update the styling of the associated label if is default or override
+        label_widget = self._attr_def_id_to_label.get(attr_id)
+        if label_widget:
+            # Change style for overridden value
+            set_label_overriden_style(label_widget, value != attr_def.default)
 
         for instance in instances:
             creator_attributes = instance["creator_attributes"]
@@ -1509,6 +1532,7 @@ class PublishPluginAttrsWidget(QtWidgets.QWidget):
         self._attr_def_id_to_instances = {}
         self._attr_def_id_to_attr_def = {}
         self._attr_def_id_to_plugin_name = {}
+        self._attr_def_id_to_label = {}
 
         # Store content of scroll area to prevent garbage collection
         self._content_widget = None
@@ -1535,6 +1559,7 @@ class PublishPluginAttrsWidget(QtWidgets.QWidget):
         self._attr_def_id_to_instances = {}
         self._attr_def_id_to_attr_def = {}
         self._attr_def_id_to_plugin_name = {}
+        self._attr_def_id_to_label = {}
 
         result = self._controller.get_publish_attribute_definitions(
             instances, context_selected
@@ -1568,6 +1593,7 @@ class PublishPluginAttrsWidget(QtWidgets.QWidget):
                     widget.setVisible(False)
                     hidden_widget = True
 
+                label_widget = None
                 if not hidden_widget:
                     expand_cols = 2
                     if attr_def.is_value_def and attr_def.is_label_horizontal:
@@ -1579,6 +1605,7 @@ class PublishPluginAttrsWidget(QtWidgets.QWidget):
                         label = attr_def.label or attr_def.key
                     if label:
                         label_widget = QtWidgets.QLabel(label, content_widget)
+                        self._attr_def_id_to_label[attr_def.id] = label_widget
                         tooltip = attr_def.tooltip
                         if tooltip:
                             label_widget.setToolTip(tooltip)
@@ -1587,6 +1614,7 @@ class PublishPluginAttrsWidget(QtWidgets.QWidget):
                                 QtCore.Qt.AlignRight
                                 | QtCore.Qt.AlignVCenter
                             )
+
                         attr_def_layout.addWidget(
                             label_widget, row, 0, 1, expand_cols
                         )
@@ -1619,6 +1647,17 @@ class PublishPluginAttrsWidget(QtWidgets.QWidget):
                 else:
                     widget.set_value(values[0])
 
+                if label_widget is not None:
+                    is_value_overridden = False
+                    for value in values:
+                        if value != attr_def.default:
+                            is_value_overridden = True
+                            break
+
+                    set_label_overriden_style(
+                        label_widget, is_value_overridden
+                    )
+
         self._scroll_area.setWidget(content_widget)
         self._content_widget = content_widget
 
@@ -1628,6 +1667,11 @@ class PublishPluginAttrsWidget(QtWidgets.QWidget):
         plugin_name = self._attr_def_id_to_plugin_name.get(attr_id)
         if not instances or not attr_def or not plugin_name:
             return
+
+        # Update the styling of the associated label if is default or override
+        label_widget = self._attr_def_id_to_label.get(attr_id)
+        if label_widget:
+            set_label_overriden_style(label_widget, value != attr_def.default)
 
         for instance in instances:
             plugin_val = instance.publish_attributes[plugin_name]
