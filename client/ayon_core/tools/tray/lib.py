@@ -10,8 +10,8 @@ import signal
 import locale
 from typing import Optional, Dict, Tuple, Any
 
-import ayon_api
 import requests
+from ayon_api.utils import get_default_settings_variant
 
 from ayon_core.lib import (
     Logger,
@@ -39,7 +39,7 @@ def _get_default_server_url() -> str:
 
 def _get_default_variant() -> str:
     """Get default settings variant."""
-    return ayon_api.get_default_settings_variant()
+    return get_default_settings_variant()
 
 
 def _get_server_and_variant(
