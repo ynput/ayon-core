@@ -20,9 +20,14 @@ pytest = "^8.0"
 pytest-print = "^1.0"
 ayon-python-api = "^1.0"
 # linting dependencies
-ruff = "^0.3.3"
-pre-commit = "^3.6.2"
-codespell = "^2.2.6"
+ruff = "^0.5"
+pre-commit = "^3.8"
+codespell = "^2.3"
+deal = "^4.24.3"
+semver = "^3.0.2"
+openassetio-traitgen = "*" # for generating traits from yaml definitions
+openassetio-mediacreation = "*" # for default media creation traits
+ayon-openassetio-manager-plugin = { git = "https://github.com/ynput/ayon-openassetio-manager-plugin.git", branch = "main" }
 
 
 [tool.ruff]
@@ -103,11 +108,7 @@ line-ending = "auto"
 # Ignore words that are not in the dictionary.
 ignore-words-list = "ayon,ynput,parms,parm,hda,developpement"
 
-# Ignore lines that contain this regex. This is hack for missing inline ignore.
-# Remove with next codespell release (>2.2.6)
-ignore-regex = ".*codespell:ignore.*"
-
-skip = "./.*,./package/*,*/vendor/*,*/unreal/integration/*,*/aftereffects/api/extension/js/libs/*"
+skip = "./.*,./package/*,*/vendor/*,poetry.lock"
 count = true
 quiet-level = 3
 

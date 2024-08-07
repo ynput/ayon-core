@@ -1,32 +1,25 @@
+import copy
+import inspect
 import os
 import sys
-import inspect
-import copy
 import tempfile
 import xml.etree.ElementTree
-from typing import Optional, Union, List
+from typing import List, Optional, Union
 
 import ayon_api
-import pyblish.util
-import pyblish.plugin
 import pyblish.api
-
-from ayon_core.lib import (
-    Logger,
-    import_filepath,
-    filter_profiles,
-)
-from ayon_core.settings import get_project_settings
+import pyblish.plugin
+import pyblish.util
 from ayon_core.addon import AddonsManager
-from ayon_core.pipeline import (
-    tempdir,
-    Anatomy
-)
+from ayon_core.lib import Logger, filter_profiles, import_filepath
+from ayon_core.pipeline import Anatomy, tempdir
 from ayon_core.pipeline.plugin_discover import DiscoverResult
+from ayon_core.settings import get_project_settings
+
 from .constants import (
-    DEFAULT_PUBLISH_TEMPLATE,
     DEFAULT_HERO_PUBLISH_TEMPLATE,
-    TRANSIENT_DIR_TEMPLATE
+    DEFAULT_PUBLISH_TEMPLATE,
+    TRANSIENT_DIR_TEMPLATE,
 )
 
 
@@ -167,7 +160,7 @@ class HelpContent:
 
 def load_help_content_from_filepath(filepath):
     """Load help content from xml file.
-    Xml file may containt errors and warnings.
+    Xml file may contain errors and warnings.
     """
     errors = {}
     warnings = {}
@@ -338,16 +331,17 @@ def get_plugin_settings(plugin, project_settings, log, category=None):
     settings_category = getattr(plugin, "settings_category", None)
     if settings_category:
         try:
-            category_settings = project_settings[settings_category]
+            return (
+                project_settings
+                [settings_category]
+                ["publish"]
+                [plugin.__name__]
+            )
         except KeyError:
             log.warning((
-                "Couldn't find settings category '{}' in project settings"
-            ).format(settings_category))
-            return {}
-
-        try:
-            return category_settings["publish"][plugin.__name__]
-        except KeyError:
+                "Couldn't find plugin '{}' settings"
+                " under settings category '{}'"
+            ).format(plugin.__name__, settings_category))
             return {}
 
     # Use project settings based on a category name
@@ -431,7 +425,7 @@ def filter_pyblish_plugins(plugins):
     log = Logger.get_logger("filter_pyblish_plugins")
 
     # TODO: Don't use host from 'pyblish.api' but from defined host by us.
-    #   - kept becau on farm is probably used host 'shell' which propably
+    #   - kept because on farm is probably used host 'shell' which probably
     #       affect how settings are applied there
     host_name = pyblish.api.current_host()
     project_name = os.environ.get("AYON_PROJECT_NAME")
@@ -527,7 +521,7 @@ def filter_instances_for_context_plugin(plugin, context):
 
     Args:
         plugin (pyblish.api.Plugin): Plugin with filters.
-        context (pyblish.api.Context): Pyblish context with insances.
+        context (pyblish.api.Context): Pyblish context with instances.
 
     Returns:
         Iterator[pyblish.lib.Instance]: Iteration of valid instances.
@@ -1001,10 +995,7 @@ def main_cli_publish(
             list of JSON paths.
 
     """
-    from ayon_core.pipeline import (
-        install_ayon_plugins,
-        get_global_context,
-    )
+    from ayon_core.pipeline import get_global_context, install_ayon_plugins
 
     # Register target and host
     if not isinstance(path, str):
@@ -1090,3 +1081,18 @@ def main_cli_publish(
             sys.exit(1)
 
     log.info("Publish finished.")
+
+
+    def register_representation(instance, traits_data):
+        """Register representation on instance.
+
+        Args:
+            instance (pyblish.api.Instance): Instance on which should be
+                representation registered.
+            traits_data (dict): Representation traits data.
+        """
+
+        if "representations" not in instance.data:
+            instance.data["representations"] = []
+
+        instance.data["representations"].append(traits_data)

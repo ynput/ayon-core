@@ -87,7 +87,7 @@ function Write-Info {
     if (Test-CommandExists "Write-Color") {
         Write-Color -Text $Text -Color $Color -BackGroundColor $BackGroundColor -StartTab $StartTab -LinesBefore $LinesBefore -LinesAfter $LinesAfter -StartSpaces $StartSpaces -LogFile $LogFile -DateTimeFormat $DateTimeFormat -LogTime $LogTime -LogRetry $LogRetry -Encoding $Encoding -ShowTime $ShowTime -NoNewLine $NoNewLine
     } else {
-        $message = $Text -join ' '
+        $message = $Text -join ''
         if ($NoNewLine)
         {
             Write-Host $message -NoNewline
@@ -153,6 +153,12 @@ function Restore-Cwd() {
         Write-Info -Text ">>> ", "Restoring current directory" -Color Green, Gray
         Set-Location -Path $CurrentDir
     }
+}
+
+function New-TemporaryDirectory {
+    $parent = [System.IO.Path]::GetTempPath()
+    [string] $name = [System.Guid]::NewGuid()
+    New-Item -ItemType Directory -Path (Join-Path $parent $name)
 }
 
 function Initialize-Environment {
@@ -233,6 +239,76 @@ function Invoke-Codespell {
     & $Poetry $CodespellArgs
 }
 
+function Sync-Traits {
+    <#
+    .SYNOPSIS
+      function to update traits defined by yaml files.
+
+    .DESCRIPTION
+      This will take all yaml files in client/ayon_core/pipeline/traits and
+      generate python files from them. The generated files will be placed in
+      client/ayon_core/pipeline/traits/generated.
+
+      It expects openassetio-traitgen to be installed and available in the PATH.
+    #>
+    Write-Info -Text ">>> ", "Reading Poetry ... " -Color Green, Gray -NoNewline
+    if (-not(Test-Path -PathType Container -Path "$( $env:POETRY_HOME )\bin"))
+    {
+        Write-Info -Text "NOT FOUND" -Color Yellow
+        Write-Info -Text "!!! ", "Poetry is not installed." -Color Red, Yellow
+        Write-Info -Text "    Please run `./manage.ps1 create-env` to install Poetry." -Color Yellow
+        Exit-WithCode 1
+    }
+    else
+    {
+        Write-Info -Text "OK" -Color Green
+    }
+
+    $TempTraitDir = New-TemporaryDirectory
+    Write-Info -Text ">>> ", "Generating traits ..." -Color Green, Gray
+    Write-Info -Text ">>> ", "Temporary directory: ", "$($TempTraitDir)" -Color Green, Gray, White
+    $DirectoryPath = "$($RepoRoot)\client\ayon_core\pipeline\traits"
+    $Poetry = "$RepoRoot\.poetry\bin\poetry.exe"
+
+    Write-Info -Text ">>> ", "Cleaning generated traits ..." -Color Green, Gray
+    try {
+        Remove-Item -Recurse -Force "$($DirectoryPath)\generated\*"
+    }
+    catch {
+        Write-Info -Text "!!! ", "Cannot clean generated Traits directory. " -Color Red, Yellow
+        Write-Info $_.Exception.Message -Color Red
+        Exit-WithCode 1
+    }
+
+    Get-ChildItem -Path $DirectoryPath -Filter "*.yml" | ForEach-Object {
+        Write-Info -Text "  - ", "Generating from ", "[ $($_.FullName)  ]" -Color Cyan, Gray, White
+        & $Poetry run openassetio-traitgen -o $TempTraitDir -g python -v $_.FullName
+        # $Content = Get-Content $_.FullName
+        # Write-Output $Content
+    }
+
+    Write-Info -Text ">>> ", "Moving traits to repository ..." -Color Green, Gray
+    Move-Item -Path $TempTraitDir\* -Destination "$($DirectoryPath)\generated" -Force
+    # Get all subdirectories
+    $SubDirs = Get-ChildItem -Path "$($DirectoryPath)\generated" -Directory
+    $InitContent = ""
+    $AllSubmodules = ""
+    # Loop through each subdirectory
+    foreach ($subDir in $SubDirs) {
+        # Extract the directory name
+        $moduleName = $subDir.Name
+
+        # Add the import statement to the content
+        $InitContent += "from . import $moduleName`n"
+        $AllSubmodules += "    $($subDir.Name),`n"
+    }
+    $InitContent += "`n`n__all__ = [`n$AllSubmodules]`n"
+
+    Write-Info -Text ">>> ", "Writing index ..." -Color Green, Gray
+    $InitContent | Out-File -FilePath "$DirectoryPath\generated\__init__.py" -Encoding utf8 -Force
+    Write-Info -Text ">>> ", "Traits generated." -Color Green, White
+}
+
 function Write-Help {
     <#
     .SYNOPSIS
@@ -248,6 +324,7 @@ function Write-Help {
     Write-Info -Text "  ruff-check                    ", "Run Ruff check for the repository" -Color White, Cyan
     Write-Info -Text "  ruff-fix                      ", "Run Ruff fix for the repository" -Color White, Cyan
     Write-Info -Text "  codespell                     ", "Run codespell check for the repository" -Color White, Cyan
+    Write-Info -Text "  generate-traits               ", "Update traits defined by yaml files." -Color White, Cyan
     Write-Host ""
 }
 
@@ -266,9 +343,12 @@ function Resolve-Function {
     } elseif ($FunctionName -eq "rufffix") {
         Set-Cwd
         Invoke-Ruff -Fix
-    } elseif ($FunctionName -eq "codespell") {
+    } elseif ($FunctionName -eq "codespell")
+    {
         Set-Cwd
         Invoke-CodeSpell
+    } elseif ($FunctionName -eq "generatetraits") {
+        Sync-Traits
     } else {
         Write-Host "Unknown function ""$FunctionName"""
         Write-Help

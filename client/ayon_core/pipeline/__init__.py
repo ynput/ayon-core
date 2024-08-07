@@ -98,6 +98,8 @@ from .context_tools import (
     get_current_task_name
 )
 
+from .openassetio_host_interface import get_openassetio_manager
+
 from .workfile import (
     discover_workfile_build_plugins,
     register_workfile_build_plugin,
@@ -217,4 +219,7 @@ __all__ = (
     # Backwards compatible function names
     "install",
     "uninstall",
+
+    # OpenAssetIO
+    "get_openassetio_manager",
 )
