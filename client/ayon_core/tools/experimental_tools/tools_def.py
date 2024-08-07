@@ -1,4 +1,5 @@
 import os
+from .pyblish_debug_stepper import DebugUI
 
 # Constant key under which local settings are stored
 LOCAL_EXPERIMENTAL_KEY = "experimental_tools"
@@ -95,6 +96,12 @@ class ExperimentalTools:
                     "hiero",
                     "resolve",
                 ]
+            ),
+            ExperimentalHostTool(
+                "pyblish_debug_stepper",
+                "Pyblish Debug Stepper",
+                "Debug Pyblish plugins step by step.",
+                self._show_pyblish_debugger,
             )
         ]
 
@@ -162,9 +169,16 @@ class ExperimentalTools:
             local_settings.get(LOCAL_EXPERIMENTAL_KEY)
         ) or {}
 
-        for identifier, eperimental_tool in self.tools_by_identifier.items():
+        # Enable the following tools by default.
+        # Because they will always be disabled due
+        #   to the fact their settings don't exist.
+        experimental_settings.update({
+            "pyblish_debug_stepper": True,
+        })
+
+        for identifier, experimental_tool in self.tools_by_identifier.items():
             enabled = experimental_settings.get(identifier, False)
-            eperimental_tool.set_enabled(enabled)
+            experimental_tool.set_enabled(enabled)
 
     def _show_publisher(self):
         if self._publisher_tool is None:
@@ -175,3 +189,7 @@ class ExperimentalTools:
             )
 
         self._publisher_tool.show()
+
+    def _show_pyblish_debugger(self):
+        window = DebugUI(parent=self._parent_widget)
+        window.show()
