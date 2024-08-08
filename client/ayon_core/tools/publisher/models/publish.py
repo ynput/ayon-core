@@ -172,7 +172,7 @@ class PublishReportMaker:
             "crashed_file_paths": crashed_file_paths,
             "id": uuid.uuid4().hex,
             "created_at": now.isoformat(),
-            "report_version": "1.0.1",
+            "report_version": "1.1.0",
         }
 
     def _add_plugin_data_item(self, plugin: pyblish.api.Plugin):
@@ -194,11 +194,23 @@ class PublishReportMaker:
         if hasattr(plugin, "label"):
             label = plugin.label
 
+        plugin_type = "instance" if plugin.__instanceEnabled__ else "context"
+        # Get docstring
+        # NOTE we do care only about docstring from the plugin so we can't
+        #   use 'inspect.getdoc' which also looks for docstring in parent
+        #   classes.
+        docstring = getattr(plugin, "__doc__", None)
+        if docstring:
+            docstring = inspect.cleandoc(docstring)
         return {
             "id": plugin.id,
             "name": plugin.__name__,
             "label": label,
             "order": plugin.order,
+            "filepath": inspect.getfile(plugin),
+            "docstring": docstring,
+            "plugin_type": plugin_type,
+            "families": list(plugin.families),
             "targets": list(plugin.targets),
             "instances_data": [],
             "actions_data": [],

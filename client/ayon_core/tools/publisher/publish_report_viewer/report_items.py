@@ -13,8 +13,16 @@ class PluginItem:
         self.skipped = plugin_data["skipped"]
         self.passed = plugin_data["passed"]
 
+        # Introduced in report '1.1.0'
+        self.docstring = plugin_data.get("docstring")
+        self.filepath = plugin_data.get("filepath")
+        self.plugin_type = plugin_data.get("plugin_type")
+        self.families = plugin_data.get("families")
+
         errored = False
+        process_time = 0.0
         for instance_data in plugin_data["instances_data"]:
+            process_time += instance_data["process_time"]
             for log_item in instance_data["logs"]:
                 errored = log_item["type"] == "error"
                 if errored:
@@ -22,6 +30,7 @@ class PluginItem:
             if errored:
                 break
 
+        self.process_time = process_time
         self.errored = errored
 
     @property
