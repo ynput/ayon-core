@@ -584,7 +584,7 @@ def _get_legacy_product_name_and_group(
     return resulting_product_name, resulting_group_name
 
 
-def _get_product_name_and_group_from_template(
+def get_product_name_and_group_from_template(
         task_entity,
         project_name,
         host_name,
@@ -701,7 +701,7 @@ def _create_instances_for_aov(instance, skeleton, aov_filter, additional_data,
                 dynamic_data=dynamic_data)
 
         else:
-            product_name, group_name = _get_product_name_and_group_from_template(
+            product_name, group_name = get_product_name_and_group_from_template(
                 task_entity=instance.data["taskEntity"],
                 project_name=instance.context.data["projectName"],
                 host_name=instance.context.data["hostName"],
