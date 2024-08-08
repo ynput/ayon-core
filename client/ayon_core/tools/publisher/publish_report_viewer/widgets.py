@@ -22,6 +22,21 @@ TRACEBACK_ROLE = QtCore.Qt.UserRole + 2
 IS_DETAIL_ITEM_ROLE = QtCore.Qt.UserRole + 3
 
 
+def get_pretty_milliseconds(value):
+    if value < 1000:
+        return f"{value:.3f}ms"
+    value /= 1000
+    if value < 60:
+        return f"{value:.2f}s"
+    seconds = int(value % 60)
+    value /= 60
+    if value < 60:
+        return f"{value:.2f}m {seconds:.2f}s"
+    minutes = int(value % 60)
+    value /= 60
+    return f"{value:.2f}h {minutes:.2f}m"
+
+
 class PluginLoadReportModel(QtGui.QStandardItemModel):
     def __init__(self):
         super().__init__()
@@ -367,27 +382,31 @@ class PluginDetailsWidget(QtWidgets.QWidget):
 
         form_separator = SeparatorWidget(parent=content_widget)
 
-        plugin_families_label = QtWidgets.QLabel("Families:")
-        plugin_families_widget = QtWidgets.QLabel(content_widget)
-        plugin_families_widget.setWordWrap(True)
+        plugin_class_label = QtWidgets.QLabel("Class:")
+        plugin_class_widget = QtWidgets.QLabel(content_widget)
 
         plugin_order_label = QtWidgets.QLabel("Order:")
         plugin_order_widget = QtWidgets.QLabel(content_widget)
 
-        plugin_class_label = QtWidgets.QLabel("Class:")
-        plugin_class_widget = QtWidgets.QLabel(content_widget)
+        plugin_families_label = QtWidgets.QLabel("Families:")
+        plugin_families_widget = QtWidgets.QLabel(content_widget)
+        plugin_families_widget.setWordWrap(True)
 
         plugin_path_label = QtWidgets.QLabel("File Path:")
         plugin_path_widget = ElideLabel(content_widget)
         plugin_path_widget.set_elide_mode(QtCore.Qt.ElideLeft)
 
+        plugin_time_label = QtWidgets.QLabel("Time:")
+        plugin_time_widget = QtWidgets.QLabel(content_widget)
+
         # Set interaction flags
         for label_widget in (
             plugin_label_widget,
-            plugin_families_widget,
-            plugin_order_widget,
-            plugin_class_widget,
             plugin_doc_widget,
+            plugin_class_widget,
+            plugin_order_widget,
+            plugin_families_widget,
+            plugin_time_widget,
         ):
             label_widget.setTextInteractionFlags(
                 QtCore.Qt.TextBrowserInteraction
@@ -395,10 +414,11 @@ class PluginDetailsWidget(QtWidgets.QWidget):
 
         # Change style of form labels
         for label_widget in (
-            plugin_families_label,
-            plugin_order_label,
             plugin_class_label,
+            plugin_order_label,
+            plugin_families_label,
             plugin_path_label,
+            plugin_time_label,
         ):
             label_widget.setObjectName("PluginFormLabel")
 
@@ -409,12 +429,14 @@ class PluginDetailsWidget(QtWidgets.QWidget):
             )
         plugin_label_widget.setText(plugin_label)
         plugin_doc_widget.setText(plugin_item.docstring or "N/A")
-        plugin_families_widget.setText(str(plugin_item.families or "N/A"))
-        plugin_order_widget.setText(str(plugin_item.order or "N/A"))
         plugin_class_widget.setText(plugin_item.name or "N/A")
+        plugin_order_widget.setText(str(plugin_item.order or "N/A"))
+        plugin_families_widget.setText(str(plugin_item.families or "N/A"))
         plugin_path_widget.setText(plugin_item.filepath or "N/A")
-        # Show full path in tooltip
         plugin_path_widget.setToolTip(plugin_item.filepath or None)
+        plugin_time_widget.setText(
+            get_pretty_milliseconds(plugin_item.process_time)
+        )
 
         content_layout = QtWidgets.QGridLayout(content_widget)
         content_layout.setContentsMargins(8, 8, 8, 8)
@@ -436,10 +458,11 @@ class PluginDetailsWidget(QtWidgets.QWidget):
         row += 1
 
         for label_widget, value_widget in (
-            (plugin_families_label, plugin_families_widget),
             (plugin_class_label, plugin_class_widget),
             (plugin_order_label, plugin_order_widget),
+            (plugin_families_label, plugin_families_widget),
             (plugin_path_label, plugin_path_widget),
+            (plugin_time_label, plugin_time_widget),
         ):
             content_layout.addWidget(label_widget, row, 0)
             content_layout.addWidget(value_widget, row, 1)
