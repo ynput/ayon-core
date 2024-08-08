@@ -104,6 +104,70 @@ class PlaceholderLineEdit(QtWidgets.QLineEdit):
             self.setPalette(filter_palette)
 
 
+class ElideLabel(QtWidgets.QLabel):
+    """Label which elide text.
+
+    By default, elide happens in middle. Can be changed with
+    'set_elide_mode' method.
+    """
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.setSizePolicy(
+            QtWidgets.QSizePolicy.Expanding,
+            QtWidgets.QSizePolicy.Preferred
+        )
+        # Store text set during init
+        self._text = self.text()
+        # Define initial elide mode
+        self._elide_mode = QtCore.Qt.ElideMiddle
+        # Make sure that text of QLabel is empty
+        super().setText("")
+
+    def setText(self, text):
+        # Update private text attribute and force update
+        self._text = text
+        self.update()
+
+    def setWordWrap(self, word_wrap):
+        # Word wrap is not supported in 'ElideLabel'
+        if word_wrap:
+            raise ValueError("Word wrap is not supported in 'ElideLabel'.")
+
+    def set_set(self, text):
+        self.setText(text)
+
+    def set_elide_mode(self, elide_mode):
+        """Change elide type.
+
+        Args:
+            elide_mode: Possible elide type. Available in 'QtCore.Qt'
+                'ElideLeft', 'ElideRight' and 'ElideMiddle'.
+
+        """
+        if elide_mode == QtCore.Qt.ElideNone:
+            raise ValueError(
+                "Invalid elide type. 'ElideNone' is not supported."
+            )
+
+        if elide_mode not in (
+            QtCore.Qt.ElideLeft,
+            QtCore.Qt.ElideRight,
+            QtCore.Qt.ElideMiddle,
+        ):
+            raise ValueError(f"Unknown value '{elide_mode}'")
+        self._elide_mode = elide_mode
+
+    def paintEvent(self, event):
+        super().paintEvent(event)
+
+        painter = QtGui.QPainter(self)
+        fm = painter.fontMetrics()
+        elided_line = fm.elidedText(
+            self._text, self._elide_mode, self.width()
+        )
+        painter.drawText(QtCore.QPoint(0, fm.ascent()), elided_line)
+
+
 class ExpandingTextEdit(QtWidgets.QTextEdit):
     """QTextEdit which does not have sroll area but expands height."""
 
