@@ -576,8 +576,7 @@ class LoadedFilesWidget(QtWidgets.QWidget):
             filepaths = []
             for url in mime_data.urls():
                 filepath = url.toLocalFile()
-                ext = os.path.splitext(filepath)[-1]
-                if os.path.exists(filepath) and ext == ".json":
+                if os.path.exists(filepath):
                     filepaths.append(filepath)
             self._add_filepaths(filepaths)
         event.accept()
