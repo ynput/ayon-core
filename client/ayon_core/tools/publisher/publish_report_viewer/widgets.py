@@ -1,7 +1,7 @@
 from math import ceil
 from qtpy import QtWidgets, QtCore, QtGui
 
-from ayon_core.tools.utils import NiceCheckbox
+from ayon_core.tools.utils import NiceCheckbox, ElideLabel
 
 # from ayon_core.tools.utils import DeselectableTreeView
 from .constants import (
@@ -352,6 +352,155 @@ class DetailsWidget(QtWidgets.QWidget):
         self._output_widget.setPlainText(text)
 
 
+class PluginDetailsWidget(QtWidgets.QWidget):
+    def __init__(self, plugin_item, parent):
+        super().__init__(parent)
+
+        content_widget = QtWidgets.QWidget(self)
+
+        plugin_label_widget = QtWidgets.QLabel(content_widget)
+
+        plugin_type_label = QtWidgets.QLabel("Plugin type:")
+        plugin_type_widget = QtWidgets.QLabel(content_widget)
+
+        plugin_path_label = QtWidgets.QLabel("File Path:")
+        plugin_path_widget = ElideLabel(content_widget)
+
+        plugin_doc_widget = QtWidgets.QLabel(content_widget)
+        plugin_doc_widget.setWordWrap(True)
+
+        plugin_families_label = QtWidgets.QLabel("Families:")
+        plugin_families_widget = QtWidgets.QLabel(content_widget)
+        plugin_families_widget.setWordWrap(True)
+
+        plugin_label_widget.setText(plugin_item.label or plugin_item.name)
+        plugin_doc_widget.setText(plugin_item.docstring or "N/A")
+        plugin_type_widget.setText(plugin_item.plugin_type or "N/A")
+        plugin_path_widget.setText(plugin_item.filepath or "N/A")
+        plugin_path_widget.setToolTip(plugin_item.filepath or None)
+        plugin_families_widget.setText(str(plugin_item.families or "N/A"))
+
+        row = 0
+
+        content_layout = QtWidgets.QGridLayout(content_widget)
+        content_layout.setContentsMargins(0, 0, 0, 0)
+        content_layout.setColumnStretch(0, 0)
+        content_layout.setColumnStretch(1, 1)
+
+        content_layout.addWidget(plugin_label_widget, row, 0, 1, 2)
+        row += 1
+
+        content_layout.addWidget(plugin_doc_widget, row, 0, 1, 2)
+        row += 1
+
+        content_layout.addWidget(plugin_type_label, row, 0)
+        content_layout.addWidget(plugin_type_widget, row, 1)
+        row += 1
+
+        content_layout.addWidget(plugin_path_label, row, 0)
+        content_layout.addWidget(plugin_path_widget, row, 1)
+        row += 1
+
+        content_layout.addWidget(plugin_families_label, row, 0)
+        content_layout.addWidget(plugin_families_widget, row, 1)
+        row += 1
+
+        main_layout = QtWidgets.QVBoxLayout(self)
+        main_layout.setContentsMargins(0, 0, 0, 0)
+        main_layout.addWidget(content_widget, 0)
+
+
+class PluginsDetailsWidget(QtWidgets.QWidget):
+    def __init__(self, parent):
+        super().__init__(parent)
+
+        scroll_area = QtWidgets.QScrollArea(self)
+        scroll_area.setWidgetResizable(True)
+
+        content_widget = QtWidgets.QWidget(scroll_area)
+
+        scroll_area.setWidget(content_widget)
+
+        content_layout = QtWidgets.QVBoxLayout(content_widget)
+        content_layout.addStretch(1)
+
+        main_layout = QtWidgets.QVBoxLayout(self)
+        main_layout.setContentsMargins(0, 0, 0, 0)
+        main_layout.addWidget(scroll_area, 1)
+
+        self._scroll_area = scroll_area
+        self._content_layout = content_layout
+        self._content_widget = content_widget
+
+        self._widgets_by_plugin_id = {}
+
+        self._is_active = True
+        self._need_refresh = False
+
+        self._report_item = None
+        self._plugin_filter = set()
+        self._plugin_ids = None
+
+    def set_active(self, is_active):
+        if self._is_active is is_active:
+            return
+        self._is_active = is_active
+        self._update_widgets()
+
+    def set_plugin_filter(self, plugin_filter):
+        self._plugin_filter = plugin_filter
+        self._need_refresh = True
+        self._update_widgets()
+
+    def set_report(self, report):
+        self._report_item = report
+        self._plugin_ids = None
+        self._plugin_filter = set()
+        self._need_refresh = True
+        self._update_widgets()
+
+    def _get_plugin_ids(self):
+        if self._plugin_ids is not None:
+            return self._plugin_ids
+
+        # Clear layout and clear widgets
+        while self._content_layout.count():
+            self._content_layout.takeAt(0)
+
+        self._widgets_by_plugin_id.clear()
+
+        plugin_ids = []
+        if self._report_item is not None:
+            plugin_ids = list(self._report_item.plugins_id_order)
+        self._plugin_ids = plugin_ids
+        return plugin_ids
+
+    def _update_widgets(self):
+        if not self._is_active or not self._need_refresh:
+            return
+
+        self._need_refresh = False
+
+        is_new = len(self._widgets_by_plugin_id) == 0
+        for plugin_id in self._get_plugin_ids():
+            widget = self._widgets_by_plugin_id.get(plugin_id)
+            if is_new:
+                plugin_item = self._report_item.plugins_items_by_id[plugin_id]
+                widget = PluginDetailsWidget(plugin_item, self._content_widget)
+                self._widgets_by_plugin_id[plugin_id] = widget
+
+            widget.setVisible(
+                not self._plugin_filter
+                or plugin_id in self._plugin_filter
+            )
+
+            if is_new:
+                self._content_layout.addWidget(widget, 0)
+
+        if is_new:
+            self._content_layout.addStretch(1)
+
+
 class DeselectableTreeView(QtWidgets.QTreeView):
     """A tree view that deselects on clicking on an empty area in the view"""
 
@@ -479,11 +628,16 @@ class PublishReportViewerWidget(QtWidgets.QFrame):
 
         logs_text_widget = DetailsWidget(details_tab_widget)
         plugin_load_report_widget = PluginLoadReportWidget(details_tab_widget)
+        plugins_details_widget = PluginsDetailsWidget(details_tab_widget)
 
         plugin_load_report_widget.set_active(False)
+        plugins_details_widget.set_active(False)
 
         details_tab_widget.addTab(logs_text_widget, "Logs")
-        details_tab_widget.addTab(plugin_load_report_widget, "Crashed plugins")
+        details_tab_widget.addTab(plugins_details_widget, "Plugins Details")
+        details_tab_widget.addTab(
+            plugin_load_report_widget, "Crashed plugins"
+        )
 
         middle_widget = QtWidgets.QWidget(self)
         middle_layout = QtWidgets.QGridLayout(middle_widget)
@@ -524,6 +678,7 @@ class PublishReportViewerWidget(QtWidgets.QFrame):
         self._report_item = None
         self._logs_text_widget = logs_text_widget
         self._plugin_load_report_widget = plugin_load_report_widget
+        self._plugins_details_widget = plugins_details_widget
 
         self._removed_instances_check = removed_instances_check
         self._instances_view = instances_view
@@ -573,6 +728,7 @@ class PublishReportViewerWidget(QtWidgets.QFrame):
         self._plugins_model.set_report(report)
         self._logs_text_widget.set_report(report)
         self._plugin_load_report_widget.set_report(report)
+        self._plugins_details_widget.set_report(report)
 
         self._ignore_selection_changes = False
 
@@ -609,6 +765,7 @@ class PublishReportViewerWidget(QtWidgets.QFrame):
                 plugin_ids.add(index.data(ITEM_ID_ROLE))
 
         self._logs_text_widget.set_plugin_filter(plugin_ids)
+        self._plugins_details_widget.set_plugin_filter(plugin_ids)
 
     def _on_skipped_plugin_check(self):
         self._plugins_proxy.set_ignore_skipped(
