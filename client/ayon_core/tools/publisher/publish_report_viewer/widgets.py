@@ -23,31 +23,72 @@ IS_DETAIL_ITEM_ROLE = QtCore.Qt.UserRole + 3
 
 
 class PluginLoadReportModel(QtGui.QStandardItemModel):
-    def set_report(self, report):
-        parent = self.invisibleRootItem()
-        parent.removeRows(0, parent.rowCount())
+    def __init__(self):
+        super().__init__()
+        self._traceback_by_filepath = {}
+        self._items_by_filepath = {}
+        self._is_active = True
+        self._need_refresh = False
 
+    def set_active(self, is_active):
+        if self._is_active is is_active:
+            return
+        self._is_active = is_active
+        self._update_items()
+
+    def set_report(self, report):
+        self._need_refresh = True
         if report is None:
+            self._traceback_by_filepath.clear()
+            self._update_items()
+            return
+
+        filepaths = set(report.crashed_plugin_paths.keys())
+        to_remove = set(self._traceback_by_filepath) - filepaths
+        for filepath in filepaths:
+            self._traceback_by_filepath[filepath] = (
+                report.crashed_plugin_paths[filepath]
+            )
+
+        for filepath in to_remove:
+            self._traceback_by_filepath.pop(filepath)
+        self._update_items()
+
+    def _update_items(self):
+        if not self._is_active or not self._need_refresh:
+            return
+        parent = self.invisibleRootItem()
+        if not self._traceback_by_filepath:
+            parent.removeRows(0, parent.rowCount())
             return
 
         new_items = []
         new_items_by_filepath = {}
-        for filepath in report.crashed_plugin_paths.keys():
+        to_remove = (
+            set(self._items_by_filepath) - set(self._traceback_by_filepath)
+        )
+        for filepath in self._traceback_by_filepath:
+            if filepath in self._items_by_filepath:
+                continue
             item = QtGui.QStandardItem(filepath)
             new_items.append(item)
             new_items_by_filepath[filepath] = item
+            self._items_by_filepath[filepath] = item
 
-        if not new_items:
-            return
+        if new_items:
+            parent.appendRows(new_items)
 
-        parent.appendRows(new_items)
         for filepath, item in new_items_by_filepath.items():
-            traceback_txt = report.crashed_plugin_paths[filepath]
+            traceback_txt = self._traceback_by_filepath[filepath]
             detail_item = QtGui.QStandardItem()
             detail_item.setData(filepath, FILEPATH_ROLE)
             detail_item.setData(traceback_txt, TRACEBACK_ROLE)
             detail_item.setData(True, IS_DETAIL_ITEM_ROLE)
             item.appendRow(detail_item)
+
+        for filepath in to_remove:
+            item = self._items_by_filepath.pop(filepath)
+            parent.removeRow(item.row())
 
 
 class DetailWidget(QtWidgets.QTextEdit):
@@ -95,10 +136,12 @@ class PluginLoadReportWidget(QtWidgets.QWidget):
         self._model = model
         self._widgets_by_filepath = {}
 
-    def _on_expand(self, index):
-        for row in range(self._model.rowCount(index)):
-            child_index = self._model.index(row, index.column(), index)
-            self._create_widget(child_index)
+    def set_active(self, is_active):
+        self._model.set_active(is_active)
+
+    def set_report(self, report):
+        self._widgets_by_filepath = {}
+        self._model.set_report(report)
 
     def showEvent(self, event):
         super().showEvent(event)
@@ -107,6 +150,11 @@ class PluginLoadReportWidget(QtWidgets.QWidget):
     def resizeEvent(self, event):
         super().resizeEvent(event)
         self._update_widgets_size_hints()
+
+    def _on_expand(self, index):
+        for row in range(self._model.rowCount(index)):
+            child_index = self._model.index(row, index.column(), index)
+            self._create_widget(child_index)
 
     def _update_widgets_size_hints(self):
         for item in self._widgets_by_filepath.values():
@@ -135,10 +183,6 @@ class PluginLoadReportWidget(QtWidgets.QWidget):
         widget = DetailWidget(detail_text, self)
         self._view.setIndexWidget(index, widget)
         self._widgets_by_filepath[filepath] = (widget, index)
-
-    def set_report(self, report):
-        self._widgets_by_filepath = {}
-        self._model.set_report(report)
 
 
 class ZoomPlainText(QtWidgets.QPlainTextEdit):
@@ -229,6 +273,8 @@ class DetailsWidget(QtWidgets.QWidget):
         layout.setContentsMargins(0, 0, 0, 0)
         layout.addWidget(output_widget)
 
+        self._is_active = True
+        self._need_refresh = False
         self._output_widget = output_widget
         self._report_item = None
         self._instance_filter = set()
@@ -237,21 +283,33 @@ class DetailsWidget(QtWidgets.QWidget):
     def clear(self):
         self._output_widget.setPlainText("")
 
+    def set_active(self, is_active):
+        if self._is_active is is_active:
+            return
+        self._is_active = is_active
+        self._update_logs()
+
     def set_report(self, report):
         self._report_item = report
         self._plugin_filter = set()
         self._instance_filter = set()
+        self._need_refresh = True
         self._update_logs()
 
     def set_plugin_filter(self, plugin_filter):
         self._plugin_filter = plugin_filter
+        self._need_refresh = True
         self._update_logs()
 
     def set_instance_filter(self, instance_filter):
         self._instance_filter = instance_filter
+        self._need_refresh = True
         self._update_logs()
 
     def _update_logs(self):
+        if not self._is_active or not self._need_refresh:
+            return
+
         if not self._report_item:
             self._output_widget.setPlainText("")
             return
@@ -422,6 +480,8 @@ class PublishReportViewerWidget(QtWidgets.QFrame):
         logs_text_widget = DetailsWidget(details_tab_widget)
         plugin_load_report_widget = PluginLoadReportWidget(details_tab_widget)
 
+        plugin_load_report_widget.set_active(False)
+
         details_tab_widget.addTab(logs_text_widget, "Logs")
         details_tab_widget.addTab(plugin_load_report_widget, "Crashed plugins")
 
@@ -440,6 +500,7 @@ class PublishReportViewerWidget(QtWidgets.QFrame):
         layout.addWidget(middle_widget, 0)
         layout.addWidget(details_widget, 1)
 
+        details_tab_widget.currentChanged.connect(self._on_tab_change)
         instances_view.selectionModel().selectionChanged.connect(
             self._on_instance_change
         )
@@ -458,6 +519,7 @@ class PublishReportViewerWidget(QtWidgets.QFrame):
         details_popup_btn.clicked.connect(self._on_details_popup)
         details_popup.closed.connect(self._on_popup_close)
 
+        self._current_tab_idx = 0
         self._ignore_selection_changes = False
         self._report_item = None
         self._logs_text_widget = logs_text_widget
@@ -516,6 +578,15 @@ class PublishReportViewerWidget(QtWidgets.QFrame):
 
         self._instances_view.expandAll()
         self._plugins_view.expandAll()
+
+    def _on_tab_change(self, new_idx):
+        if self._current_tab_idx == new_idx:
+            return
+        old_widget = self._details_tab_widget.widget(self._current_tab_idx)
+        new_widget = self._details_tab_widget.widget(new_idx)
+        self._current_tab_idx = new_idx
+        old_widget.set_active(False)
+        new_widget.set_active(True)
 
     def _on_instance_change(self, *_args):
         if self._ignore_selection_changes:
