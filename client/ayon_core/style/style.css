@@ -1239,9 +1239,6 @@ ValidationArtistMessage QLabel {
     font-size: 14pt;
     font-weight: bold;
 }
-#PluginDetailsContent #PluginFormLabel {
-    font-weight: bold;
-}
 
 CreateNextPageOverlay {
     font-size: 32pt;
