@@ -590,7 +590,6 @@ def get_product_name_and_group_from_template(
         host_name,
         product_type,
         variant,
-        project_settings,
         dynamic_data=None):
     """Get product name and group name from template.
 
@@ -604,7 +603,6 @@ def get_product_name_and_group_from_template(
         host_name (str): Host name.
         product_type (str): Product type.
         variant (str): Variant.
-        project_settings (dict): Project settings.
         dynamic_data (dict): Dynamic data (aov, renderlayer, camera, ...).
 
     Returns:
@@ -619,9 +617,8 @@ def get_product_name_and_group_from_template(
         product_type=product_type,
         dynamic_data=dynamic_data,
         variant=variant,
-        project_settings=project_settings,
     )
-    return resulting_product_name, ""
+    return resulting_product_name, f"{product_type}{variant}"
 
 
 def _create_instances_for_aov(instance, skeleton, aov_filter, additional_data,
@@ -706,8 +703,7 @@ def _create_instances_for_aov(instance, skeleton, aov_filter, additional_data,
                 project_name=instance.context.data["projectName"],
                 host_name=instance.context.data["hostName"],
                 product_type=skeleton["productType"],
-                variant=instance.data.get('variant', ''),
-                project_settings=project_settings
+                variant=instance.data.get('variant', source_product_name),
             )
 
         staging = os.path.dirname(expected_filepath)
