@@ -1,7 +1,7 @@
 from math import ceil
 from qtpy import QtWidgets, QtCore, QtGui
 
-from ayon_core.tools.utils import NiceCheckbox, ElideLabel
+from ayon_core.tools.utils import NiceCheckbox, ElideLabel, SeparatorWidget
 
 # from ayon_core.tools.utils import DeselectableTreeView
 from .constants import (
@@ -361,32 +361,46 @@ class PluginDetailsWidget(QtWidgets.QWidget):
 
         plugin_label_widget = QtWidgets.QLabel(content_widget)
         plugin_label_widget.setObjectName("PluginLabel")
-        plugin_label_widget.setTextInteractionFlags(
-            QtCore.Qt.TextBrowserInteraction
-        )
+
+        plugin_doc_widget = QtWidgets.QLabel(content_widget)
+        plugin_doc_widget.setWordWrap(True)
+
+        form_separator = SeparatorWidget(parent=content_widget)
+
+        plugin_families_label = QtWidgets.QLabel("Families:")
+        plugin_families_widget = QtWidgets.QLabel(content_widget)
+        plugin_families_widget.setWordWrap(True)
+
+        plugin_order_label = QtWidgets.QLabel("Order:")
+        plugin_order_widget = QtWidgets.QLabel(content_widget)
+
+        plugin_class_label = QtWidgets.QLabel("Class:")
+        plugin_class_widget = QtWidgets.QLabel(content_widget)
 
         plugin_path_label = QtWidgets.QLabel("File Path:")
         plugin_path_widget = ElideLabel(content_widget)
         plugin_path_widget.set_elide_mode(QtCore.Qt.ElideLeft)
 
-        plugin_families_label = QtWidgets.QLabel("Families:")
-        plugin_families_widget = QtWidgets.QLabel(content_widget)
-        plugin_families_widget.setTextInteractionFlags(
-            QtCore.Qt.TextBrowserInteraction
-        )
-        plugin_families_widget.setWordWrap(True)
-
+        # Set interaction flags
         for label_widget in (
-            plugin_path_label,
+            plugin_label_widget,
+            plugin_families_widget,
+            plugin_order_widget,
+            plugin_class_widget,
+            plugin_doc_widget,
+        ):
+            label_widget.setTextInteractionFlags(
+                QtCore.Qt.TextBrowserInteraction
+            )
+
+        # Change style of form labels
+        for label_widget in (
             plugin_families_label,
+            plugin_order_label,
+            plugin_class_label,
+            plugin_path_label,
         ):
             label_widget.setObjectName("PluginFormLabel")
-
-        plugin_doc_widget = QtWidgets.QLabel(content_widget)
-        plugin_doc_widget.setWordWrap(True)
-        plugin_doc_widget.setTextInteractionFlags(
-            QtCore.Qt.TextBrowserInteraction
-        )
 
         plugin_label = plugin_item.label or plugin_item.name
         if plugin_item.plugin_type:
@@ -394,18 +408,19 @@ class PluginDetailsWidget(QtWidgets.QWidget):
                 plugin_item.plugin_type.capitalize()
             )
         plugin_label_widget.setText(plugin_label)
-        # plugin_type_widget.setText(plugin_item.plugin_type or "N/A")
-        plugin_path_widget.setText(plugin_item.filepath or "N/A")
-        plugin_path_widget.setToolTip(plugin_item.filepath or None)
-        plugin_families_widget.setText(str(plugin_item.families or "N/A"))
         plugin_doc_widget.setText(plugin_item.docstring or "N/A")
-
-        row = 0
+        plugin_families_widget.setText(str(plugin_item.families or "N/A"))
+        plugin_order_widget.setText(str(plugin_item.order or "N/A"))
+        plugin_class_widget.setText(plugin_item.name or "N/A")
+        plugin_path_widget.setText(plugin_item.filepath or "N/A")
+        # Show full path in tooltip
+        plugin_path_widget.setToolTip(plugin_item.filepath or None)
 
         content_layout = QtWidgets.QGridLayout(content_widget)
         content_layout.setContentsMargins(8, 8, 8, 8)
         content_layout.setColumnStretch(0, 0)
         content_layout.setColumnStretch(1, 1)
+        row = 0
 
         content_layout.addWidget(plugin_label_widget, row, 0, 1, 2)
         row += 1
@@ -417,13 +432,18 @@ class PluginDetailsWidget(QtWidgets.QWidget):
         else:
             plugin_doc_widget.setVisible(False)
 
-        content_layout.addWidget(plugin_path_label, row, 0)
-        content_layout.addWidget(plugin_path_widget, row, 1)
+        content_layout.addWidget(form_separator, row, 0, 1, 2)
         row += 1
 
-        content_layout.addWidget(plugin_families_label, row, 0)
-        content_layout.addWidget(plugin_families_widget, row, 1)
-        row += 1
+        for label_widget, value_widget in (
+            (plugin_families_label, plugin_families_widget),
+            (plugin_class_label, plugin_class_widget),
+            (plugin_order_label, plugin_order_widget),
+            (plugin_path_label, plugin_path_widget),
+        ):
+            content_layout.addWidget(label_widget, row, 0)
+            content_layout.addWidget(value_widget, row, 1)
+            row += 1
 
         main_layout = QtWidgets.QVBoxLayout(self)
         main_layout.setContentsMargins(0, 0, 0, 0)
