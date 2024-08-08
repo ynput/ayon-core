@@ -195,14 +195,20 @@ class PublishReportMaker:
             label = plugin.label
 
         plugin_type = "instance" if plugin.__instanceEnabled__ else "context"
-
+        # Get docstring
+        # NOTE we do care only about docstring from the plugin so we can't
+        #   use 'inspect.getdoc' which also looks for docstring in parent
+        #   classes.
+        docstring = getattr(plugin, "__doc__", None)
+        if docstring:
+            docstring = inspect.cleandoc(docstring)
         return {
             "id": plugin.id,
             "name": plugin.__name__,
             "label": label,
             "order": plugin.order,
             "filepath": inspect.getfile(plugin),
-            "docstring": inspect.getdoc(plugin),
+            "docstring": docstring,
             "plugin_type": plugin_type,
             "families": list(plugin.families),
             "targets": list(plugin.targets),
