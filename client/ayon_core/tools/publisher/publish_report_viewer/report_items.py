@@ -13,6 +13,12 @@ class PluginItem:
         self.skipped = plugin_data["skipped"]
         self.passed = plugin_data["passed"]
 
+        # Introduced in report '1.1.0'
+        self.docstring = plugin_data.get("docstring")
+        self.filepath = plugin_data.get("filepath")
+        self.plugin_type = plugin_data.get("plugin_type")
+        self.families = plugin_data.get("families")
+
         errored = False
         for instance_data in plugin_data["instances_data"]:
             for log_item in instance_data["logs"]:
