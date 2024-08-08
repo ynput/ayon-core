@@ -356,46 +356,66 @@ class PluginDetailsWidget(QtWidgets.QWidget):
     def __init__(self, plugin_item, parent):
         super().__init__(parent)
 
-        content_widget = QtWidgets.QWidget(self)
+        content_widget = QtWidgets.QFrame(self)
+        content_widget.setObjectName("PluginDetailsContent")
 
         plugin_label_widget = QtWidgets.QLabel(content_widget)
-
-        plugin_type_label = QtWidgets.QLabel("Plugin type:")
-        plugin_type_widget = QtWidgets.QLabel(content_widget)
+        plugin_label_widget.setObjectName("PluginLabel")
+        plugin_label_widget.setTextInteractionFlags(
+            QtCore.Qt.TextBrowserInteraction
+        )
 
         plugin_path_label = QtWidgets.QLabel("File Path:")
         plugin_path_widget = ElideLabel(content_widget)
-
-        plugin_doc_widget = QtWidgets.QLabel(content_widget)
-        plugin_doc_widget.setWordWrap(True)
+        plugin_path_widget.set_elide_mode(QtCore.Qt.ElideLeft)
 
         plugin_families_label = QtWidgets.QLabel("Families:")
         plugin_families_widget = QtWidgets.QLabel(content_widget)
+        plugin_families_widget.setTextInteractionFlags(
+            QtCore.Qt.TextBrowserInteraction
+        )
         plugin_families_widget.setWordWrap(True)
 
-        plugin_label_widget.setText(plugin_item.label or plugin_item.name)
-        plugin_doc_widget.setText(plugin_item.docstring or "N/A")
-        plugin_type_widget.setText(plugin_item.plugin_type or "N/A")
+        for label_widget in (
+            plugin_path_label,
+            plugin_families_label,
+        ):
+            label_widget.setObjectName("PluginFormLabel")
+
+        plugin_doc_widget = QtWidgets.QLabel(content_widget)
+        plugin_doc_widget.setWordWrap(True)
+        plugin_doc_widget.setTextInteractionFlags(
+            QtCore.Qt.TextBrowserInteraction
+        )
+
+        plugin_label = plugin_item.label or plugin_item.name
+        if plugin_item.plugin_type:
+            plugin_label += " ({})".format(
+                plugin_item.plugin_type.capitalize()
+            )
+        plugin_label_widget.setText(plugin_label)
+        # plugin_type_widget.setText(plugin_item.plugin_type or "N/A")
         plugin_path_widget.setText(plugin_item.filepath or "N/A")
         plugin_path_widget.setToolTip(plugin_item.filepath or None)
         plugin_families_widget.setText(str(plugin_item.families or "N/A"))
+        plugin_doc_widget.setText(plugin_item.docstring or "N/A")
 
         row = 0
 
         content_layout = QtWidgets.QGridLayout(content_widget)
-        content_layout.setContentsMargins(0, 0, 0, 0)
+        content_layout.setContentsMargins(8, 8, 8, 8)
         content_layout.setColumnStretch(0, 0)
         content_layout.setColumnStretch(1, 1)
 
         content_layout.addWidget(plugin_label_widget, row, 0, 1, 2)
         row += 1
 
-        content_layout.addWidget(plugin_doc_widget, row, 0, 1, 2)
-        row += 1
-
-        content_layout.addWidget(plugin_type_label, row, 0)
-        content_layout.addWidget(plugin_type_widget, row, 1)
-        row += 1
+        # Hide docstring if it is empty
+        if plugin_item.docstring:
+            content_layout.addWidget(plugin_doc_widget, row, 0, 1, 2)
+            row += 1
+        else:
+            plugin_doc_widget.setVisible(False)
 
         content_layout.addWidget(plugin_path_label, row, 0)
         content_layout.addWidget(plugin_path_widget, row, 1)
@@ -417,12 +437,19 @@ class PluginsDetailsWidget(QtWidgets.QWidget):
         scroll_area = QtWidgets.QScrollArea(self)
         scroll_area.setWidgetResizable(True)
 
-        content_widget = QtWidgets.QWidget(scroll_area)
+        scroll_content_widget = QtWidgets.QWidget(scroll_area)
 
-        scroll_area.setWidget(content_widget)
+        scroll_area.setWidget(scroll_content_widget)
+
+        content_widget = QtWidgets.QWidget(scroll_content_widget)
 
         content_layout = QtWidgets.QVBoxLayout(content_widget)
-        content_layout.addStretch(1)
+        content_layout.setContentsMargins(0, 0, 0, 0)
+
+        scroll_content_layout = QtWidgets.QVBoxLayout(scroll_content_widget)
+        scroll_content_layout.setContentsMargins(0, 0, 0, 0)
+        scroll_content_layout.addWidget(content_widget, 0)
+        scroll_content_layout.addStretch(1)
 
         main_layout = QtWidgets.QVBoxLayout(self)
         main_layout.setContentsMargins(0, 0, 0, 0)
@@ -433,6 +460,7 @@ class PluginsDetailsWidget(QtWidgets.QWidget):
         self._content_widget = content_widget
 
         self._widgets_by_plugin_id = {}
+        self._stretch_item_index = 0
 
         self._is_active = True
         self._need_refresh = False
@@ -448,15 +476,15 @@ class PluginsDetailsWidget(QtWidgets.QWidget):
         self._update_widgets()
 
     def set_plugin_filter(self, plugin_filter):
-        self._plugin_filter = plugin_filter
         self._need_refresh = True
+        self._plugin_filter = plugin_filter
         self._update_widgets()
 
     def set_report(self, report):
-        self._report_item = report
         self._plugin_ids = None
         self._plugin_filter = set()
         self._need_refresh = True
+        self._report_item = report
         self._update_widgets()
 
     def _get_plugin_ids(self):
@@ -465,7 +493,11 @@ class PluginsDetailsWidget(QtWidgets.QWidget):
 
         # Clear layout and clear widgets
         while self._content_layout.count():
-            self._content_layout.takeAt(0)
+            item = self._content_layout.takeAt(0)
+            widget = item.widget()
+            if widget:
+                widget.setVisible(False)
+                widget.deleteLater()
 
         self._widgets_by_plugin_id.clear()
 
@@ -481,24 +513,18 @@ class PluginsDetailsWidget(QtWidgets.QWidget):
 
         self._need_refresh = False
 
-        is_new = len(self._widgets_by_plugin_id) == 0
         for plugin_id in self._get_plugin_ids():
             widget = self._widgets_by_plugin_id.get(plugin_id)
-            if is_new:
+            if widget is None:
                 plugin_item = self._report_item.plugins_items_by_id[plugin_id]
                 widget = PluginDetailsWidget(plugin_item, self._content_widget)
                 self._widgets_by_plugin_id[plugin_id] = widget
+                self._content_layout.addWidget(widget, 0)
 
             widget.setVisible(
                 not self._plugin_filter
                 or plugin_id in self._plugin_filter
             )
-
-            if is_new:
-                self._content_layout.addWidget(widget, 0)
-
-        if is_new:
-            self._content_layout.addStretch(1)
 
 
 class DeselectableTreeView(QtWidgets.QTreeView):
