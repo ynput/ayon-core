@@ -465,6 +465,7 @@ class PluginsDetailsWidget(QtWidgets.QWidget):
 
         content_layout = QtWidgets.QVBoxLayout(content_widget)
         content_layout.setContentsMargins(0, 0, 0, 0)
+        content_layout.setSpacing(10)
 
         scroll_content_layout = QtWidgets.QVBoxLayout(scroll_content_widget)
         scroll_content_layout.setContentsMargins(0, 0, 0, 0)
