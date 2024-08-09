@@ -700,18 +700,19 @@ def get_ocio_config_views(config_path):
 
 
 def _get_config_path_from_profile_data(
-        data, data_type, template_data) -> dict:
+    profile, profile_type, template_data
+):
     """Get config path from profile data.
 
     Args:
-        data (dict[str, Any]): Profile data.
-        data_type (str): Profile type.
+        profile(dict[str, Any]): Profile data.
+        profile_type (str): Profile type.
         template_data (dict[str, Any]): Template data.
 
     Returns:
         dict[str, str]: Config data with path and template.
     """
-    template = data[data_type]
+    template = profile[profile_type]
     result = StringTemplate.format_strict_template(
         template, template_data
     )
