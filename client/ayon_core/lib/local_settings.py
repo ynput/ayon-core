@@ -30,6 +30,55 @@ import ayon_api
 _PLACEHOLDER = object()
 
 
+def get_launcher_storage_dir(*subdirs: str) -> str:
+    """Get storage directory for launcher.
+
+    Storage directory is used for storing shims, addons, dependencies, etc.
+
+    It is not recommended, but the location can be shared across
+        multiple machines.
+
+    Note:
+        This function should be called at least once on bootstrap.
+
+    Args:
+        *subdirs (str): Subdirectories relative to storage dir.
+
+    Returns:
+        str: Path to storage directory.
+
+    """
+    storage_dir = os.getenv("AYON_LAUNCHER_STORAGE_DIR")
+    if not storage_dir:
+        storage_dir = get_ayon_appdirs()
+
+    return os.path.join(storage_dir, *subdirs)
+
+
+def get_launcher_local_dir(*subdirs: str) -> str:
+    """Get local directory for launcher.
+
+    Local directory is used for storing machine or user specific data.
+
+    The location is user specific.
+
+    Note:
+        This function should be called at least once on bootstrap.
+
+    Args:
+        *subdirs (str): Subdirectories relative to local dir.
+
+    Returns:
+        str: Path to local directory.
+
+    """
+    storage_dir = os.getenv("AYON_LAUNCHER_LOCAL_DIR")
+    if not storage_dir:
+        storage_dir = get_ayon_appdirs()
+
+    return os.path.join(storage_dir, *subdirs)
+
+
 class AYONSecureRegistry:
     """Store information using keyring.
 
