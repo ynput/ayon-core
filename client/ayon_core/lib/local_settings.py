@@ -519,20 +519,14 @@ class JSONSettingRegistry(ASettingRegistry):
 class AYONSettingsRegistry(JSONSettingRegistry):
     """Class handling AYON general settings registry.
 
-    Attributes:
-        vendor (str): Name used for path construction.
-        product (str): Additional name used for path construction.
-
     Args:
         name (Optional[str]): Name of the registry.
     """
 
     def __init__(self, name=None):
-        self.vendor = "Ynput"
-        self.product = "AYON"
         if not name:
             name = "AYON_settings"
-        path = appdirs.user_data_dir(self.product, self.vendor)
+        path = get_launcher_storage_dir()
         super(AYONSettingsRegistry, self).__init__(name, path)
 
 
@@ -578,7 +572,7 @@ def get_local_site_id():
     if site_id:
         return site_id
 
-    site_id_path = get_ayon_appdirs("site_id")
+    site_id_path = get_launcher_local_dir("site_id")
     if os.path.exists(site_id_path):
         with open(site_id_path, "r") as stream:
             site_id = stream.read()
