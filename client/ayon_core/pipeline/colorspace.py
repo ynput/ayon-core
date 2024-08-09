@@ -788,35 +788,27 @@ def _get_global_config_data(
     # TODO decide if this is the right name for representation
     repre_name = "ocioconfig"
 
-    # Backward compatibility for old projects
-    # TODO remove in future 0.4.5 onwards
-    product_name = profile.get("product_name")
-    # TODO: this should be required after backward compatibility is removed
-    fallback_data = None
-    published_product_data = profile.get("published_product")
+    published_product_data = profile["published_product"]
+    product_name = published_product_data["product_name"]
+    fallback_data = published_product_data["fallback"]
 
-    if product_name is None and published_product_data is None:
-        log.warning("Product name or published product is missing.")
+    if product_name == "":
+        log.error(
+            "Colorspace OCIO config path cannot be set. "
+            "Profile is set to published product but `Product name` is empty."
+        )
         return None
-
-    if published_product_data:
-        product_name = published_product_data["product_name"]
-        fallback_data = published_product_data["fallback"]
 
     folder_info = template_data.get("folder")
     if not folder_info:
         log.warning("Folder info is missing.")
 
-        # TODO: this fallback should be required after backward compatibility
-        #  is removed
-        if fallback_data:
-            log.info("Using fallback data for ocio config path.")
-            # in case no product was found we need to use fallback
-            fallback_type = fallback_data["type"]
-            return _get_config_path_from_profile_data(
-                fallback_data, fallback_type, template_data
-            )
-        return None
+        log.info("Using fallback data for ocio config path.")
+        # in case no product was found we need to use fallback
+        fallback_type = fallback_data["type"]
+        return _get_config_path_from_profile_data(
+            fallback_data, fallback_type, template_data
+        )
 
     folder_path = folder_info["path"]
 
@@ -840,18 +832,11 @@ def _get_global_config_data(
     }
 
     if not product_entities_by_name:
-        # TODO: make this required in future 0.4.5 onwards
-        if fallback_data:
-            # in case no product was found we need to use fallback
-            fallback_type = fallback_data["type"]
-            return _get_config_path_from_profile_data(
-                fallback_data, fallback_type, template_data
-            )
-        log.debug(
-            f"No product entities were found for folder '{folder_path}' with"
-            f" product name filter '{product_name}'."
+        # in case no product was found we need to use fallback
+        fallback_type = fallback_data["type"]
+        return _get_config_path_from_profile_data(
+            fallback_data, fallback_type, template_data
         )
-        return None
 
     # Try to use exact match first, otherwise use first available product
     product_entity = product_entities_by_name.get(product_name)
