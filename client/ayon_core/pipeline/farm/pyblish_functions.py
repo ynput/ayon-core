@@ -616,13 +616,18 @@ def get_product_name_and_group_from_template(
         tuple: product name and group name.
 
     """
-
+    # remove 'aov' from data used to format group. See todo comment above
+    # for possible solution.
+    _dynamic_data = deepcopy(dynamic_data) or {}
+    if _dynamic_data["aov"]:
+        del _dynamic_data["aov"]
     resulting_group_name = get_product_name(
         project_name=project_name,
         task_name=task_entity["name"],
         task_type=task_entity["taskType"],
         host_name=host_name,
         product_type=product_type,
+        dynamic_data=_dynamic_data,
         variant=variant,
     )
 
@@ -721,6 +726,7 @@ def _create_instances_for_aov(instance, skeleton, aov_filter, additional_data,
                 host_name=instance.context.data["hostName"],
                 product_type=skeleton["productType"],
                 variant=instance.data.get('variant', source_product_name),
+                dynamic_data=dynamic_data
             )
 
         staging = os.path.dirname(expected_filepath)
