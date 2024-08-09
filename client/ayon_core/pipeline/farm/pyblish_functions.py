@@ -619,7 +619,7 @@ def get_product_name_and_group_from_template(
 
     resulting_group_name = get_product_name(
         project_name=project_name,
-        task_name=task_entity["taskName"],
+        task_name=task_entity["name"],
         task_type=task_entity["taskType"],
         host_name=host_name,
         product_type=product_type,
@@ -628,7 +628,7 @@ def get_product_name_and_group_from_template(
 
     resulting_product_name = get_product_name(
         project_name=project_name,
-        task_name=task_entity["taskName"],
+        task_name=task_entity["name"],
         task_type=task_entity["taskType"],
         host_name=host_name,
         product_type=product_type,
