@@ -699,7 +699,7 @@ def _create_instances_for_aov(instance, skeleton, aov_filter, additional_data,
 
         use_legacy_product_name = True
         try:
-            use_legacy_product_name = project_settings["core"]["tools"]["creator"]["product_name_profiles"]["use_legacy_for_renders"]  # noqa: E501
+            use_legacy_product_name = project_settings["core"]["tools"]["creator"]["use_legacy_product_names_for_renders"]  # noqa: E501
         except KeyError:
             warnings.warn(
                 ("use_legacy_for_renders not found in project settings. "

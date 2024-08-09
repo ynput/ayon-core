@@ -22,13 +22,6 @@ class ProductTypeSmartSelectModel(BaseSettingsModel):
 
 class ProductNameProfile(BaseSettingsModel):
     _layout = "expanded"
-    # TODO: change to False in next releases
-    use_legacy_for_renders: bool = SettingsField(
-        True, title="Use legacy for renders",
-        description="Use product naming logic for renders. "
-                    "This is for backwards compatibility enabled by default."
-                    "When enabled, it will ignore any templates for renders "
-                    "that are set in the product name profiles.")
 
     product_types: list[str] = SettingsField(
         default_factory=list, title="Product types"
@@ -73,6 +66,14 @@ class CreatorToolModel(BaseSettingsModel):
             title="Create Smart Select"
         )
     )
+    # TODO: change to False in next releases
+    use_legacy_product_names_for_renders: bool = SettingsField(
+        True, title="Use legacy product names for renders",
+        description="Use product naming templates for renders. "
+                    "This is for backwards compatibility enabled by default."
+                    "When enabled, it will ignore any templates for renders "
+                    "that are set in the product name profiles.")
+
     product_name_profiles: list[ProductNameProfile] = SettingsField(
         default_factory=list,
         title="Product name profiles"
