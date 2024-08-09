@@ -12,7 +12,6 @@ from uuid import uuid4
 from abc import ABC, abstractmethod
 from typing import Optional
 
-import appdirs
 import ayon_api
 from semver import VersionInfo
 
