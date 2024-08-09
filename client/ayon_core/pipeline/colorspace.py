@@ -705,7 +705,7 @@ def _get_config_path_from_profile_data(
     """Get config path from profile data.
 
     Args:
-        profile(dict[str, Any]): Profile data.
+        profile (dict[str, Any]): Profile data.
         profile_type (str): Profile type.
         template_data (dict[str, Any]): Template data.
 
