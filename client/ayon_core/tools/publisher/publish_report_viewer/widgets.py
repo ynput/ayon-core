@@ -343,11 +343,15 @@ class DetailsPopup(QtWidgets.QDialog):
 
     def showEvent(self, event):
         layout = self.layout()
+        cw_size = self._center_widget.size()
         layout.insertWidget(0, self._center_widget)
-        super().showEvent(event)
         if self._first_show:
             self._first_show = False
-            self.resize(700, 400)
+            self.resize(
+                max(cw_size.width(), 700),
+                max(cw_size.height(), 400)
+            )
+        super().showEvent(event)
 
     def closeEvent(self, event):
         super().closeEvent(event)
