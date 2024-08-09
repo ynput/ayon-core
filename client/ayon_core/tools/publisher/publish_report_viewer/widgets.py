@@ -1,7 +1,13 @@
 from math import ceil
 from qtpy import QtWidgets, QtCore, QtGui
 
-from ayon_core.tools.utils import NiceCheckbox
+from ayon_core.tools.utils import (
+    NiceCheckbox,
+    IconButton,
+    paint_image_with_color,
+)
+from ayon_core.resources import get_image_path
+from ayon_core.style import get_objected_colors
 
 # from ayon_core.tools.utils import DeselectableTreeView
 from .constants import (
@@ -337,11 +343,15 @@ class DetailsPopup(QtWidgets.QDialog):
 
     def showEvent(self, event):
         layout = self.layout()
+        cw_size = self._center_widget.size()
         layout.insertWidget(0, self._center_widget)
-        super().showEvent(event)
         if self._first_show:
             self._first_show = False
-            self.resize(700, 400)
+            self.resize(
+                max(cw_size.width(), 700),
+                max(cw_size.height(), 400)
+            )
+        super().showEvent(event)
 
     def closeEvent(self, event):
         super().closeEvent(event)
@@ -410,12 +420,27 @@ class PublishReportViewerWidget(QtWidgets.QFrame):
 
         details_widget = QtWidgets.QWidget(self)
         details_tab_widget = QtWidgets.QTabWidget(details_widget)
-        details_popup_btn = QtWidgets.QPushButton("PopUp", details_widget)
+
+        btns_widget = QtWidgets.QWidget(details_widget)
+
+        popout_image = QtGui.QImage(get_image_path("popout.png"))
+        popout_color = get_objected_colors("font")
+        popout_icon = QtGui.QIcon(
+            paint_image_with_color(popout_image, popout_color.get_qcolor())
+        )
+        details_popup_btn = IconButton(btns_widget)
+        details_popup_btn.setIcon(popout_icon)
+        details_popup_btn.setToolTip("Pop Out")
+
+        btns_layout = QtWidgets.QHBoxLayout(btns_widget)
+        btns_layout.setContentsMargins(0, 0, 0, 0)
+        btns_layout.addStretch(1)
+        btns_layout.addWidget(details_popup_btn, 0)
 
         details_layout = QtWidgets.QVBoxLayout(details_widget)
         details_layout.setContentsMargins(0, 0, 0, 0)
         details_layout.addWidget(details_tab_widget, 1)
-        details_layout.addWidget(details_popup_btn, 0)
+        details_layout.addWidget(btns_widget, 0)
 
         details_popup = DetailsPopup(self, details_tab_widget)
 
