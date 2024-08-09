@@ -386,9 +386,9 @@ class CollectAnatomyInstanceData(pyblish.api.ContextPlugin):
             ))
 
             # make render layer available in anatomy data
-            render_layer = instance.data.get("renderLayer")
+            render_layer = instance.data.get("renderlayer")
             if render_layer:
-                anatomy_data["renderLayer"] = render_layer
+                anatomy_data["renderlayer"] = render_layer
 
             # make aov name available in anatomy data
             aov = instance.data.get("aov")
