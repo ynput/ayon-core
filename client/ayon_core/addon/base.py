@@ -10,6 +10,7 @@ import threading
 import collections
 from uuid import uuid4
 from abc import ABC, abstractmethod
+from typing import Optional
 
 import appdirs
 import ayon_api
@@ -22,8 +23,6 @@ from ayon_core.settings import get_studio_settings
 from .interfaces import (
     IPluginPaths,
     IHostAddon,
-    ITrayAddon,
-    ITrayService
 )
 
 # Files that will be always ignored on addons import
@@ -64,6 +63,56 @@ MOVED_ADDON_MILESTONE_VERSIONS = {
     "houdini": VersionInfo(0, 3, 0),
     "unreal": VersionInfo(0, 2, 0),
 }
+
+
+class ProcessPreparationError(Exception):
+    """Exception that can be used when process preparation failed.
+
+    The message is shown to user (either as UI dialog or printed). If
+        different error is raised a "generic" error message is shown to user
+        with option to copy error message to clipboard.
+
+    """
+    pass
+
+
+class ProcessContext:
+    """Context of child process.
+
+    Notes:
+        This class is used to pass context to child process. It can be used
+            to use different behavior of addon based on information in
+            the context.
+        The context can be enhanced in future versions.
+
+    Args:
+        addon_name (Optional[str]): Addon name which triggered process.
+        addon_version (Optional[str]): Addon version which triggered process.
+        project_name (Optional[str]): Project name. Can be filled in case
+            process is triggered for specific project. Some addons can have
+            different behavior based on project.
+        headless (Optional[bool]): Is process running in headless mode.
+
+    """
+    def __init__(
+        self,
+        addon_name: Optional[str] = None,
+        addon_version: Optional[str] = None,
+        project_name: Optional[str] = None,
+        headless: Optional[bool] = None,
+        **kwargs,
+    ):
+        if headless is None:
+            # TODO use lib function to get headless mode
+            headless = os.getenv("AYON_HEADLESS_MODE") == "1"
+        self.addon_name: Optional[str] = addon_name
+        self.addon_version: Optional[str] = addon_version
+        self.project_name: Optional[str] = project_name
+        self.headless: bool = headless
+
+        if kwargs:
+            unknown_keys = ", ".join([f'"{key}"' for key in kwargs.keys()])
+            print(f"Unknown keys in ProcessContext: {unknown_keys}")
 
 
 # Inherit from `object` for Python 2 hosts
@@ -237,10 +286,10 @@ def _handle_moved_addons(addon_name, milestone_version, log):
         "client",
     )
     if not os.path.exists(addon_dir):
-        log.error((
-            "Addon '{}' is not be available."
-            " Please update applications addon to '{}' or higher."
-        ).format(addon_name, milestone_version))
+        log.error(
+            f"Addon '{addon_name}' is not available. Please update "
+            f"{addon_name} addon to '{milestone_version}' or higher."
+        )
         return None
 
     log.warning((
@@ -586,7 +635,29 @@ class AYONAddon(ABC):
         Args:
             enabled_addons (list[AYONAddon]): Addons that are enabled.
         """
+        pass
 
+    def ensure_is_process_ready(
+        self, process_context: ProcessContext
+    ):
+        """Make sure addon is prepared for a process.
+
+        This method is called when some action makes sure that addon has set
+        necessary data. For example if user should be logged in
+        and filled credentials in environment variables this method should
+        ask user for credentials.
+
+        Implementation of this method is optional.
+
+        Note:
+            The logic can be similar to logic in tray, but tray does not require
+                to be logged in.
+
+        Args:
+            process_context (ProcessContext): Context of child
+                process.
+
+        """
         pass
 
     def get_global_environments(self):
@@ -923,20 +994,20 @@ class AddonsManager:
         report = {}
         time_start = time.time()
         prev_start_time = time_start
-        enabled_modules = self.get_enabled_addons()
-        self.log.debug("Has {} enabled modules.".format(len(enabled_modules)))
-        for module in enabled_modules:
+        enabled_addons = self.get_enabled_addons()
+        self.log.debug("Has {} enabled addons.".format(len(enabled_addons)))
+        for addon in enabled_addons:
             try:
-                if not is_func_marked(module.connect_with_addons):
-                    module.connect_with_addons(enabled_modules)
+                if not is_func_marked(addon.connect_with_addons):
+                    addon.connect_with_addons(enabled_addons)
 
-                elif hasattr(module, "connect_with_modules"):
+                elif hasattr(addon, "connect_with_modules"):
                     self.log.warning((
                         "DEPRECATION WARNING: Addon '{}' still uses"
                         " 'connect_with_modules' method. Please switch to use"
                         " 'connect_with_addons' method."
-                    ).format(module.name))
-                    module.connect_with_modules(enabled_modules)
+                    ).format(addon.name))
+                    addon.connect_with_modules(enabled_addons)
 
             except Exception:
                 self.log.error(
@@ -945,7 +1016,7 @@ class AddonsManager:
                 )
 
             now = time.time()
-            report[module.__class__.__name__] = now - prev_start_time
+            report[addon.__class__.__name__] = now - prev_start_time
             prev_start_time = now
 
         if self._report is not None:
@@ -1338,185 +1409,3 @@ class AddonsManager:
             " 'get_host_module' please use 'get_host_addon' instead."
         )
         return self.get_host_addon(host_name)
-
-
-class TrayAddonsManager(AddonsManager):
-    # Define order of addons in menu
-    # TODO find better way how to define order
-    addons_menu_order = (
-        "user",
-        "ftrack",
-        "kitsu",
-        "launcher_tool",
-        "avalon",
-        "clockify",
-        "traypublish_tool",
-        "log_viewer",
-    )
-
-    def __init__(self, settings=None):
-        super(TrayAddonsManager, self).__init__(settings, initialize=False)
-
-        self.tray_manager = None
-
-        self.doubleclick_callbacks = {}
-        self.doubleclick_callback = None
-
-    def add_doubleclick_callback(self, addon, callback):
-        """Register double-click callbacks on tray icon.
-
-        Currently, there is no way how to determine which is launched. Name of
-        callback can be defined with `doubleclick_callback` attribute.
-
-        Missing feature how to define default callback.
-
-        Args:
-            addon (AYONAddon): Addon object.
-            callback (FunctionType): Function callback.
-        """
-
-        callback_name = "_".join([addon.name, callback.__name__])
-        if callback_name not in self.doubleclick_callbacks:
-            self.doubleclick_callbacks[callback_name] = callback
-            if self.doubleclick_callback is None:
-                self.doubleclick_callback = callback_name
-            return
-
-        self.log.warning((
-            "Callback with name \"{}\" is already registered."
-        ).format(callback_name))
-
-    def initialize(self, tray_manager, tray_menu):
-        self.tray_manager = tray_manager
-        self.initialize_addons()
-        self.tray_init()
-        self.connect_addons()
-        self.tray_menu(tray_menu)
-
-    def get_enabled_tray_addons(self):
-        """Enabled tray addons.
-
-        Returns:
-            list[AYONAddon]: Enabled addons that inherit from tray interface.
-        """
-
-        return [
-            addon
-            for addon in self.get_enabled_addons()
-            if isinstance(addon, ITrayAddon)
-        ]
-
-    def restart_tray(self):
-        if self.tray_manager:
-            self.tray_manager.restart()
-
-    def tray_init(self):
-        report = {}
-        time_start = time.time()
-        prev_start_time = time_start
-        for addon in self.get_enabled_tray_addons():
-            try:
-                addon._tray_manager = self.tray_manager
-                addon.tray_init()
-                addon.tray_initialized = True
-            except Exception:
-                self.log.warning(
-                    "Addon \"{}\" crashed on `tray_init`.".format(
-                        addon.name
-                    ),
-                    exc_info=True
-                )
-
-            now = time.time()
-            report[addon.__class__.__name__] = now - prev_start_time
-            prev_start_time = now
-
-        if self._report is not None:
-            report[self._report_total_key] = time.time() - time_start
-            self._report["Tray init"] = report
-
-    def tray_menu(self, tray_menu):
-        ordered_addons = []
-        enabled_by_name = {
-            addon.name: addon
-            for addon in self.get_enabled_tray_addons()
-        }
-
-        for name in self.addons_menu_order:
-            addon_by_name = enabled_by_name.pop(name, None)
-            if addon_by_name:
-                ordered_addons.append(addon_by_name)
-        ordered_addons.extend(enabled_by_name.values())
-
-        report = {}
-        time_start = time.time()
-        prev_start_time = time_start
-        for addon in ordered_addons:
-            if not addon.tray_initialized:
-                continue
-
-            try:
-                addon.tray_menu(tray_menu)
-            except Exception:
-                # Unset initialized mark
-                addon.tray_initialized = False
-                self.log.warning(
-                    "Addon \"{}\" crashed on `tray_menu`.".format(
-                        addon.name
-                    ),
-                    exc_info=True
-                )
-            now = time.time()
-            report[addon.__class__.__name__] = now - prev_start_time
-            prev_start_time = now
-
-        if self._report is not None:
-            report[self._report_total_key] = time.time() - time_start
-            self._report["Tray menu"] = report
-
-    def start_addons(self):
-        report = {}
-        time_start = time.time()
-        prev_start_time = time_start
-        for addon in self.get_enabled_tray_addons():
-            if not addon.tray_initialized:
-                if isinstance(addon, ITrayService):
-                    addon.set_service_failed_icon()
-                continue
-
-            try:
-                addon.tray_start()
-            except Exception:
-                self.log.warning(
-                    "Addon \"{}\" crashed on `tray_start`.".format(
-                        addon.name
-                    ),
-                    exc_info=True
-                )
-            now = time.time()
-            report[addon.__class__.__name__] = now - prev_start_time
-            prev_start_time = now
-
-        if self._report is not None:
-            report[self._report_total_key] = time.time() - time_start
-            self._report["Addons start"] = report
-
-    def on_exit(self):
-        for addon in self.get_enabled_tray_addons():
-            if addon.tray_initialized:
-                try:
-                    addon.tray_exit()
-                except Exception:
-                    self.log.warning(
-                        "Addon \"{}\" crashed on `tray_exit`.".format(
-                            addon.name
-                        ),
-                        exc_info=True
-                    )
-
-    # DEPRECATED
-    def get_enabled_tray_modules(self):
-        return self.get_enabled_tray_addons()
-
-    def start_modules(self):
-        self.start_addons()
