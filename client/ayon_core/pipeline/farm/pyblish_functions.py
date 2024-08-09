@@ -597,6 +597,13 @@ def get_product_name_and_group_from_template(
     data provided. It is doing similar work as
     `func::_get_legacy_product_name_and_group` but using templates.
 
+    To get group name, template is called without any dynamic data, so
+    (depending on the template itself) it should be product name without
+    aov.
+
+    Todo:
+        Maybe we should introduce templates for the groups themselves.
+
     Args:
         task_entity (dict): Task entity.
         project_name (str): Project name.
@@ -609,6 +616,16 @@ def get_product_name_and_group_from_template(
         tuple: product name and group name.
 
     """
+
+    resulting_group_name = get_product_name(
+        project_name=project_name,
+        task_name=task_entity["taskName"],
+        task_type=task_entity["taskType"],
+        host_name=host_name,
+        product_type=product_type,
+        variant=variant,
+    )
+
     resulting_product_name = get_product_name(
         project_name=project_name,
         task_name=task_entity["taskName"],
@@ -618,7 +635,7 @@ def get_product_name_and_group_from_template(
         dynamic_data=dynamic_data,
         variant=variant,
     )
-    return resulting_product_name, f"{product_type}{variant}"
+    return resulting_product_name, resulting_group_name
 
 
 def _create_instances_for_aov(instance, skeleton, aov_filter, additional_data,
