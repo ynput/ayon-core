@@ -140,12 +140,6 @@ class VersionComboBox(QtWidgets.QComboBox):
         self.value_changed.emit(self._product_id, value)
 
 
-class EditorInfo:
-    def __init__(self, widget):
-        self.widget = widget
-        self.added = False
-
-
 class VersionDelegate(QtWidgets.QStyledItemDelegate):
     """A delegate that display version integer formatted as version string."""
 
@@ -154,7 +148,7 @@ class VersionDelegate(QtWidgets.QStyledItemDelegate):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        self._editor_by_id: Dict[str, EditorInfo] = {}
+        self._editor_by_id: Dict[str, VersionComboBox] = {}
         self._statuses_filter = None
 
     def displayText(self, value, locale):
@@ -164,8 +158,8 @@ class VersionDelegate(QtWidgets.QStyledItemDelegate):
 
     def set_statuses_filter(self, status_names):
         self._statuses_filter = set(status_names)
-        for info in self._editor_by_id.values():
-            info.widget.set_statuses_filter(status_names)
+        for widget in self._editor_by_id.values():
+            widget.set_statuses_filter(status_names)
 
     def paint(self, painter, option, index):
         fg_color = index.data(QtCore.Qt.ForegroundRole)
@@ -229,10 +223,10 @@ class VersionDelegate(QtWidgets.QStyledItemDelegate):
         editor = VersionComboBox(product_id, parent)
         editor.setProperty("itemId", item_id)
 
-        self._editor_by_id[item_id] = EditorInfo(editor)
-
         editor.value_changed.connect(self._on_editor_change)
         editor.destroyed.connect(self._on_destroy)
+
+        self._editor_by_id[item_id] = editor
 
         return editor
 
@@ -242,11 +236,9 @@ class VersionDelegate(QtWidgets.QStyledItemDelegate):
         # Current value of the index
         versions = index.data(VERSION_NAME_EDIT_ROLE) or []
         version_id = index.data(VERSION_ID_ROLE)
+
         editor.update_versions(versions, version_id)
         editor.set_statuses_filter(self._statuses_filter)
-
-        item_id = editor.property("itemId")
-        self._editor_by_id[item_id].added = True
 
     def setModelData(self, editor, model, index):
         """Apply the integer version back in the model"""

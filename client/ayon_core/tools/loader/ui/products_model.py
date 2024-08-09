@@ -132,7 +132,7 @@ class ProductsModel(QtGui.QStandardItemModel):
 
     def get_product_item_indexes(self):
         return [
-            item.index()
+            self.indexFromItem(item)
             for item in self._items_by_id.values()
         ]
 
@@ -156,16 +156,18 @@ class ProductsModel(QtGui.QStandardItemModel):
         if product_item is None:
             return
 
-        self.setData(
-            product_item.index(), version_id, VERSION_NAME_EDIT_ROLE
-        )
+        index = self.indexFromItem(product_item)
+        self.setData(index, version_id, VERSION_NAME_EDIT_ROLE)
 
     def set_enable_grouping(self, enable_grouping):
         if enable_grouping is self._grouping_enabled:
             return
         self._grouping_enabled = enable_grouping
         # Ignore change if groups are not available
-        self.refresh(self._last_project_name, self._last_folder_ids)
+        self.refresh(
+            self._last_project_name,
+            self._last_folder_ids
+        )
 
     def flags(self, index):
         # Make the version column editable
@@ -454,7 +456,7 @@ class ProductsModel(QtGui.QStandardItemModel):
     def get_last_project_name(self):
         return self._last_project_name
 
-    def refresh(self, project_name, folder_ids, status_names):
+    def refresh(self, project_name, folder_ids):
         self._clear()
 
         self._last_project_name = project_name
@@ -486,17 +488,9 @@ class ProductsModel(QtGui.QStandardItemModel):
         }
         last_version_by_product_id = {}
         for product_item in product_items:
-            all_versions = list(product_item.version_items.values())
-            all_versions.sort()
-            versions = [
-                version_item
-                for version_item in all_versions
-                if status_names is None or version_item.status in status_names
-            ]
-            if versions:
-                last_version = versions[-1]
-            else:
-                last_version = all_versions[-1]
+            versions = list(product_item.version_items.values())
+            versions.sort()
+            last_version = versions[-1]
             last_version_by_product_id[product_item.product_id] = (
                 last_version
             )
@@ -543,10 +537,11 @@ class ProductsModel(QtGui.QStandardItemModel):
             for product_name, product_items in groups.items():
                 group_product_types |= {p.product_type for p in product_items}
                 for product_item in product_items:
-                    group_product_types |= {
+                    group_status_names |= {
                         version_item.status
                         for version_item in product_item.version_items.values()
                     }
+                    group_product_types.add(product_item.product_type)
 
                 if len(product_items) == 1:
                     top_items.append(product_items[0])
@@ -589,13 +584,15 @@ class ProductsModel(QtGui.QStandardItemModel):
                 product_name, product_items = path_info
                 (merged_color_hex, merged_color_qt) = self._get_next_color()
                 merged_color = qtawesome.icon(
-                    "fa.circle", color=merged_color_qt)
+                    "fa.circle", color=merged_color_qt
+                )
                 merged_item = self._get_merged_model_item(
                     product_name, len(product_items), merged_color_hex)
                 merged_item.setData(merged_color, QtCore.Qt.DecorationRole)
                 new_items.append(merged_item)
 
                 merged_product_types = set()
+                merged_status_names = set()
                 new_merged_items = []
                 for product_item in product_items:
                     item = self._get_product_model_item(
@@ -608,9 +605,21 @@ class ProductsModel(QtGui.QStandardItemModel):
                     )
                     new_merged_items.append(item)
                     merged_product_types.add(product_item.product_type)
+                    merged_status_names |= {
+                        version_item.status
+                        for version_item in (
+                            product_item.version_items.values()
+                        )
+                    }
 
                 merged_item.setData(
-                    "|".join(merged_product_types), PRODUCT_TYPE_ROLE)
+                    "|".join(merged_product_types),
+                    PRODUCT_TYPE_ROLE
+                )
+                merged_item.setData(
+                    "|".join(merged_status_names),
+                    STATUS_NAME_FILTER_ROLE
+                )
                 if new_merged_items:
                     merged_item.appendRows(new_merged_items)
 
