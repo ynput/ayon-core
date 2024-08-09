@@ -577,7 +577,7 @@ class BoolDef(AbstractAttrDef):
         return self.default
 
 
-class FileDefItem(object):
+class FileDefItem:
     def __init__(
         self, directory, filenames, frames=None, template=None
     ):

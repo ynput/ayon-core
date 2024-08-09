@@ -22,7 +22,7 @@ class DuplicateDestinationError(ValueError):
     """
 
 
-class FileTransaction(object):
+class FileTransaction:
     """File transaction with rollback options.
 
     The file transaction is a three-step process.
