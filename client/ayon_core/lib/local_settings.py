@@ -563,22 +563,6 @@ class AYONSettingsRegistry(JSONSettingRegistry):
         super(AYONSettingsRegistry, self).__init__(name, path)
 
 
-def _create_local_site_id(registry=None):
-    """Create a local site identifier."""
-    from coolname import generate_slug
-
-    if registry is None:
-        registry = AYONSettingsRegistry()
-
-    new_id = generate_slug(3)
-
-    print("Created local site id \"{}\"".format(new_id))
-
-    registry.set_item("localId", new_id)
-
-    return new_id
-
-
 def get_local_site_id():
     """Get local site identifier.
 
