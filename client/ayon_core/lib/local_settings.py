@@ -3,6 +3,7 @@
 import os
 import json
 import platform
+import warnings
 from datetime import datetime
 from abc import ABC, abstractmethod
 
@@ -30,6 +31,38 @@ import ayon_api
 _PLACEHOLDER = object()
 
 
+def _get_ayon_appdirs(*args):
+    return os.path.join(
+        appdirs.user_data_dir("AYON", "Ynput"),
+        *args
+    )
+
+
+def get_ayon_appdirs(*args):
+    """Local app data directory of AYON client.
+
+    Deprecated:
+        Use 'get_launcher_local_dir' or 'get_launcher_storage_dir' based on
+            use-case. Deprecation added 24/08/09 (0.4.4-dev.1).
+
+    Args:
+        *args (Iterable[str]): Subdirectories/files in local app data dir.
+
+    Returns:
+        str: Path to directory/file in local app data dir.
+
+    """
+    warnings.warn(
+        (
+            "Function 'get_ayon_appdirs' is deprecated. Should be replaced"
+            " with 'get_launcher_local_dir' or 'get_launcher_storage_dir'"
+            " based on use-case."
+        ),
+        DeprecationWarning
+    )
+    return _get_ayon_appdirs(*args)
+
+
 def get_launcher_storage_dir(*subdirs: str) -> str:
     """Get storage directory for launcher.
 
@@ -50,7 +83,7 @@ def get_launcher_storage_dir(*subdirs: str) -> str:
     """
     storage_dir = os.getenv("AYON_LAUNCHER_STORAGE_DIR")
     if not storage_dir:
-        storage_dir = get_ayon_appdirs()
+        storage_dir = _get_ayon_appdirs()
 
     return os.path.join(storage_dir, *subdirs)
 
@@ -74,7 +107,7 @@ def get_launcher_local_dir(*subdirs: str) -> str:
     """
     storage_dir = os.getenv("AYON_LAUNCHER_LOCAL_DIR")
     if not storage_dir:
-        storage_dir = get_ayon_appdirs()
+        storage_dir = _get_ayon_appdirs()
 
     return os.path.join(storage_dir, *subdirs)
 
@@ -544,22 +577,6 @@ def _create_local_site_id(registry=None):
     registry.set_item("localId", new_id)
 
     return new_id
-
-
-def get_ayon_appdirs(*args):
-    """Local app data directory of AYON client.
-
-    Args:
-        *args (Iterable[str]): Subdirectories/files in local app data dir.
-
-    Returns:
-        str: Path to directory/file in local app data dir.
-    """
-
-    return os.path.join(
-        appdirs.user_data_dir("AYON", "Ynput"),
-        *args
-    )
 
 
 def get_local_site_id():
