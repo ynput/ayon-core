@@ -644,7 +644,7 @@ class Creator(BaseCreator):
                 cls._get_default_variant_wrap,
                 cls._set_default_variant_wrap
             )
-        super(Creator, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
 
     @property
     def show_order(self):
