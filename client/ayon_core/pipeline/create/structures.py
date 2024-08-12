@@ -112,10 +112,7 @@ class AttributeValues:
         if key not in self._attr_defs_by_key:
             raise KeyError("Key \"{}\" was not found.".format(key))
 
-        old_value = self._data.get(key)
-        if old_value == value:
-            return
-        self._data[key] = value
+        self.update({key: value})
 
     def __getitem__(self, key):
         if key not in self._attr_defs_by_key:
@@ -142,8 +139,12 @@ class AttributeValues:
             yield key, self._data.get(key)
 
     def update(self, value):
-        for _key, _value in dict(value):
-            self[_key] = _value
+        changes = {}
+        for _key, _value in dict(value).items():
+            if _key in self._data and self._data.get(_key) == _value:
+                continue
+            self._data[_key] = _value
+            changes[_key] = _value
 
     def pop(self, key, default=None):
         value = self._data.pop(key, default)
