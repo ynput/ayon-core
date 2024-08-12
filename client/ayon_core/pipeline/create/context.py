@@ -871,6 +871,7 @@ class CreateContext:
         add_traceback = False
         result = None
         fail_info = None
+        exc_info = None
         success = False
 
         try:
