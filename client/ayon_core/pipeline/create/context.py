@@ -965,9 +965,11 @@ class CreateContext:
         finally:
             self._bulk_counter -= 1
 
-        # Trigger validation if there is no more context manager for bulk
-        #   instance validation
-        if self._bulk_counter == 0:
+            # Trigger validation if there is no more context manager for bulk
+            #   instance validation
+            if self._bulk_counter != 0:
+                return
+
             (
                 self._bulk_instances_to_process,
                 instances_to_validate
