@@ -17,6 +17,8 @@ from .exceptions import (
     CreatorsSaveFailed,
     CreatorsRemoveFailed,
     CreatorsOperationFailed,
+    TaskNotSetError,
+    TemplateFillError,
 )
 from .structures import CreatedInstance
 from .utils import (
@@ -25,7 +27,6 @@ from .utils import (
 )
 
 from .product_name import (
-    TaskNotSetError,
     get_product_name,
     get_product_name_template,
 )
@@ -74,13 +75,14 @@ __all__ = (
     "CreatorsSaveFailed",
     "CreatorsRemoveFailed",
     "CreatorsOperationFailed",
+    "TaskNotSetError",
+    "TemplateFillError",
 
     "CreatedInstance",
 
     "get_last_versions_for_instances",
     "get_next_versions_for_instances",
 
-    "TaskNotSetError",
     "get_product_name",
     "get_product_name_template",
 

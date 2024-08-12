@@ -112,3 +112,16 @@ class CreatorsCreateFailed(CreatorsOperationFailed):
         msg = "Failed to create instances"
         super().__init__(msg, failed_info)
 
+
+class TaskNotSetError(KeyError):
+    def __init__(self, msg=None):
+        if not msg:
+            msg = "Creator's product name template requires task name."
+        super().__init__(msg)
+
+
+class TemplateFillError(Exception):
+    def __init__(self, msg=None):
+        if not msg:
+            msg = "Creator's product name template is missing key value."
+        super().__init__(msg)
