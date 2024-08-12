@@ -3,7 +3,7 @@ import copy
 _EMPTY_VALUE = object()
 
 
-class TrackChangesItem(object):
+class TrackChangesItem:
     """Helper object to track changes in data.
 
     Has access to full old and new data and will create deep copy of them,

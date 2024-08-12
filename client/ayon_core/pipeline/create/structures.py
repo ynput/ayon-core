@@ -16,7 +16,7 @@ from .exceptions import ImmutableKeyError
 from .changes import TrackChangesItem
 
 
-class ConvertorItem(object):
+class ConvertorItem:
     """Item representing convertor plugin.
 
     Args:
@@ -69,7 +69,7 @@ class InstanceMember:
         })
 
 
-class AttributeValues(object):
+class AttributeValues:
     """Container which keep values of Attribute definitions.
 
     Goal is to have one object which hold values of attribute definitions for
@@ -210,7 +210,7 @@ class CreatorAttributeValues(AttributeValues):
 
     def __init__(self, instance, *args, **kwargs):
         self.instance = instance
-        super(CreatorAttributeValues, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
 
 
 class PublishAttributeValues(AttributeValues):
@@ -226,7 +226,7 @@ class PublishAttributeValues(AttributeValues):
 
     def __init__(self, publish_attributes, *args, **kwargs):
         self.publish_attributes = publish_attributes
-        super(PublishAttributeValues, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
 
     @property
     def parent(self):
