@@ -14,9 +14,7 @@ import ayon_api
 
 from ayon_core.settings import get_project_settings
 from ayon_core.lib import is_func_signature_supported
-from ayon_core.lib.attribute_definitions import (
-    get_default_values,
-)
+from ayon_core.lib.attribute_definitions import get_default_values
 from ayon_core.host import IPublishHost, IWorkfileHost
 from ayon_core.pipeline import Anatomy
 from ayon_core.pipeline.plugin_discover import DiscoverResult
