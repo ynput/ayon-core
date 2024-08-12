@@ -373,7 +373,6 @@ class CreateContext:
         self._current_task_entity = task_entity
         return copy.deepcopy(self._current_task_entity)
 
-
     def get_current_workfile_path(self):
         """Workfile path which was opened on context reset.
 
