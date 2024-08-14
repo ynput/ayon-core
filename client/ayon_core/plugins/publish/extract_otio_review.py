@@ -49,7 +49,6 @@ class ExtractOTIOReview(publish.Extractor):
     hosts = ["resolve", "hiero", "flame"]
 
     # plugin default attributes
-    temp_file_head = "tempFile."
     to_width = 1280
     to_height = 720
     output_ext = ".jpg"
@@ -61,6 +60,8 @@ class ExtractOTIOReview(publish.Extractor):
             otio_range_to_frame_range,
             make_sequence_collection
         )
+
+        self.temp_file_head = self._get_unique_file_prefix(instance)
 
         # TODO: convert resulting image sequence to mp4
 
@@ -491,3 +492,19 @@ class ExtractOTIOReview(publish.Extractor):
             out_frame_start = self.used_frames[-1]
 
         return output_path, out_frame_start
+
+    def _get_unique_file_prefix(self, instance):
+        """Creates unique human readable file prefix to differentiate.
+
+        Multiple instances might share same temp folder, this will provide
+        unique prefix for intermediate file for burnins.
+        """
+        folder_path = instance.data["folderPath"]
+        folder_name = folder_path.split("/")[-1]
+        folder_path = folder_path.replace("/", "_").lstrip("_")
+
+        file_prefix = f"{folder_path}_{folder_name}."
+        self.log.debug(f"file_prefix::{file_prefix}")
+
+        return file_prefix
+
