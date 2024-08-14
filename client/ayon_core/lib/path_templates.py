@@ -460,6 +460,30 @@ class FormattingPart:
                 return True
         return False
 
+    @staticmethod
+    def validate_key_is_matched(key):
+        """
+        Finds out how balanced an expression is.
+        With a string containing only brackets.
+
+        >>> is_matched('[]()()(((([])))')
+        False
+        >>> is_matched('[](){{{[]}}}')
+        True
+        """
+        opening = tuple('({[')
+        closing = tuple(')}]')
+        mapping = dict(zip(opening, closing))
+        queue = []
+
+        for letter in key:
+            if letter in opening:
+                queue.append(mapping[letter])
+            elif letter in closing:
+                if not queue or letter != queue.pop():
+                    return False
+        return not queue
+
     def format(self, data, result):
         """Format the formattings string.
 
@@ -470,6 +494,12 @@ class FormattingPart:
         key = self.template[1:-1]
         if key in result.realy_used_values:
             result.add_output(result.realy_used_values[key])
+            return result
+
+        # ensure key is properly formed [({})] properly closed.
+        if not self.validate_key_is_matched(key):
+            result.add_missing_key(key)
+            result.add_output(self.template)            
             return result
 
         # check if key expects subdictionary keys (e.g. project[name])
