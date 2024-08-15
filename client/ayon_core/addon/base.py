@@ -12,12 +12,15 @@ from uuid import uuid4
 from abc import ABC, abstractmethod
 from typing import Optional
 
-import appdirs
 import ayon_api
 from semver import VersionInfo
 
 from ayon_core import AYON_CORE_ROOT
-from ayon_core.lib import Logger, is_dev_mode_enabled
+from ayon_core.lib import (
+    Logger,
+    is_dev_mode_enabled,
+    get_launcher_storage_dir,
+)
 from ayon_core.settings import get_studio_settings
 
 from .interfaces import (
@@ -327,10 +330,7 @@ def _load_ayon_addons(openpype_modules, modules_key, log):
 
     addons_dir = os.environ.get("AYON_ADDONS_DIR")
     if not addons_dir:
-        addons_dir = os.path.join(
-            appdirs.user_data_dir("AYON", "Ynput"),
-            "addons"
-        )
+        addons_dir = get_launcher_storage_dir("addons")
 
     dev_mode_enabled = is_dev_mode_enabled()
     dev_addons_info = {}
