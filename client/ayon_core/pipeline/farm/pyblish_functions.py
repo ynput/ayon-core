@@ -855,12 +855,11 @@ def _collect_expected_files_for_aov(files):
                              "to render, don't know what to do "
                              "with them.")
         return rem[0]
-    else:
-        # but we really expect only one collection.
-        # Nothing else make sense.
-        if len(cols) != 1:
-            raise ValueError("Only one image sequence type is expected.")  # noqa: E501
-        return list(cols[0])
+    # but we really expect only one collection.
+    # Nothing else make sense.
+    if len(cols) != 1:
+        raise ValueError("Only one image sequence type is expected.")  # noqa: E501
+    return list(cols[0])
 
 
 def get_resources(project_name, version_entity, extension=None):
