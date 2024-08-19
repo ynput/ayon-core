@@ -563,7 +563,7 @@ def _get_legacy_product_name_and_group(
     else:
         resulting_group_name = source_product_name
 
-    resulting_product_name = '{}'.format(resulting_group_name)
+    resulting_product_name = resulting_group_name
     camera = dynamic_data.get("camera")
     aov = dynamic_data.get("aov")
     if camera:
