@@ -725,7 +725,7 @@ def _create_instances_for_aov(instance, skeleton, aov_filter, additional_data,
                 project_name=instance.context.data["projectName"],
                 host_name=instance.context.data["hostName"],
                 product_type=skeleton["productType"],
-                variant=instance.data.get('variant', source_product_name),
+                variant=instance.data.get("variant", source_product_name),
                 dynamic_data=dynamic_data
             )
 
