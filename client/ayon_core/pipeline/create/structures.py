@@ -252,9 +252,6 @@ class PublishAttributes:
         self.parent = parent
         self._origin_data = copy.deepcopy(origin_data)
 
-        attr_plugins = attr_plugins or []
-        self.attr_plugins = attr_plugins
-
         self._data = copy.deepcopy(origin_data)
         self._plugin_names_order = []
         self._missing_plugins = []
@@ -325,10 +322,9 @@ class PublishAttributes:
 
     def set_publish_plugins(self, attr_plugins):
         """Set publish plugins attribute definitions."""
-
+        attr_plugins = attr_plugins or []
         self._plugin_names_order = []
         self._missing_plugins = []
-        self.attr_plugins = attr_plugins or []
 
         origin_data = self._origin_data
         data = self._data
