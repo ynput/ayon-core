@@ -475,9 +475,9 @@ class FormattingPart:
             bool: Openings and closing are valid.
 
         """
-        opening = tuple("({[")
-        closing = tuple(")}]")
-        mapping = dict(zip(opening, closing))
+        mapping = dict(zip("({[", ")}]"))
+        opening = set(mapping.keys())
+        closing = set(mapping.values())
         queue = []
 
         for letter in key:
