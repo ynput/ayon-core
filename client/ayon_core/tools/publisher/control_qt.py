@@ -60,9 +60,8 @@ class MainThreadProcess(QtCore.QObject):
             self._timer.stop()
 
     def clear(self):
-        if self._timer.isActive():
-            self._timer.stop()
         self._items_to_process = collections.deque()
+        self.stop()
 
 
 class QtPublisherController(PublisherController):
