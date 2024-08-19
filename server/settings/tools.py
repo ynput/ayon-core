@@ -68,7 +68,8 @@ class CreatorToolModel(BaseSettingsModel):
     )
     # TODO: change to False in next releases
     use_legacy_product_names_for_renders: bool = SettingsField(
-        True, title="Use legacy product names for renders",
+        True,
+        title="Use legacy product names for renders",
         description="Use product naming templates for renders. "
                     "This is for backwards compatibility enabled by default."
                     "When enabled, it will ignore any templates for renders "
