@@ -829,7 +829,9 @@ class PublishModel:
         )
 
         # Plugin iterator
-        self._main_thread_iter: Iterable[partial] = self._default_iterator()
+        self._main_thread_iter: collections.abc.Generator[partial] = (
+            self._default_iterator()
+        )
 
     def reset(self):
         create_context = self._controller.get_create_context()
@@ -898,17 +900,19 @@ class PublishModel:
         # Validations of progress before using iterator
         # - same conditions may be inside iterator but they may be used
         #   only in specific cases (e.g. when it happens for a first time)
-
         if (
-            # There are validation errors and validation is passed
-            # - can't do any progree
-            (
-                self._publish_has_validated
-                and self._publish_has_validation_errors
-            )
             # Any unexpected error happened
             # - everything should stop
-            or self._publish_has_crashed
+            self._publish_has_crashed
+            # Stop if validation is over and validation errors happened
+            #   or publishing should stop at validation
+            or (
+                self._publish_has_validated
+                and (
+                    self._publish_has_validation_errors
+                    or self._publish_up_validation
+                )
+            )
         ):
             item = partial(self.stop_publish)
 
@@ -1074,8 +1078,9 @@ class PublishModel:
 
         Should be replaced by real iterator when 'reset' is called.
 
-        Yields:
-            partial: Function that will be called in main thread.
+        Returns:
+            collections.abc.Generator[partial]: Generator with partial
+                functions that should be called in main thread.
 
         """
         while True:
@@ -1116,18 +1121,6 @@ class PublishModel:
                 self._set_has_validated(
                     plugin.order >= self._validation_order
                 )
-
-            # Stop if plugin is over validation order and process
-            #   should process up to validation.
-            if self._publish_up_validation and self._publish_has_validated:
-                yield partial(self.stop_publish)
-
-            # Stop if validation is over and validation errors happened
-            if (
-                self._publish_has_validated
-                and self.has_validation_errors()
-            ):
-                yield partial(self.stop_publish)
 
             # Add plugin to publish report
             self._publish_report.add_plugin_iter(
