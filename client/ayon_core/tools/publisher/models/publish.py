@@ -829,7 +829,7 @@ class PublishModel:
         )
 
         # Plugin iterator
-        self._main_thread_iter: Iterable[partial] = []
+        self._main_thread_iter: Iterable[partial] = self._default_iterator()
 
     def reset(self):
         create_context = self._controller.get_create_context()
@@ -900,10 +900,9 @@ class PublishModel:
         #   only in specific cases (e.g. when it happens for a first time)
 
         if (
-            self._main_thread_iter is None
             # There are validation errors and validation is passed
             # - can't do any progree
-            or (
+            (
                 self._publish_has_validated
                 and self._publish_has_validation_errors
             )
@@ -1069,6 +1068,18 @@ class PublishModel:
                 "publish.publish_error.changed",
                 {"value": value}
             )
+
+    def _default_iterator(self):
+        """Iterator used on initialization.
+
+        Should be replaced by real iterator when 'reset' is called.
+
+        Yields:
+            partial: Function that will be called in main thread.
+
+        """
+        while True:
+            yield partial(self.stop_publish)
 
     def _start_publish(self):
         """Start or continue in publishing."""
