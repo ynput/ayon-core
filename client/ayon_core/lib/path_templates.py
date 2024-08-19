@@ -463,6 +463,7 @@ class FormattingPart:
     @staticmethod
     def validate_key_is_matched(key):
         """Validate that opening has closing at correct place.
+        Future-proof, only square brackets are currently used in keys.
 
         Example:
             >>> is_matched("[]()()(((([])))")
@@ -471,7 +472,7 @@ class FormattingPart:
             True
 
         Returns:
-            bool: Openings and closinga are valid.
+            bool: Openings and closing are valid.
 
         """
         opening = tuple("({[")
