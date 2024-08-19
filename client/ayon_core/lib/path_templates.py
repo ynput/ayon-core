@@ -474,8 +474,8 @@ class FormattingPart:
             bool: Openings and closinga are valid.
 
         """
-        opening = tuple('({[')
-        closing = tuple(')}]')
+        opening = tuple("({[")
+        closing = tuple(")}]")
         mapping = dict(zip(opening, closing))
         queue = []
 
