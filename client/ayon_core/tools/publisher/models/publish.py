@@ -898,29 +898,24 @@ class PublishModel:
 
     def get_next_process_func(self) -> partial:
         # Validations of progress before using iterator
-        # - same conditions may be inside iterator but they may be used
-        #   only in specific cases (e.g. when it happens for a first time)
+        # Any unexpected error happened
+        # - everything should stop
+        if self._publish_has_crashed:
+            return partial(self.stop_publish)
+
+        # Stop if validation is over and validation errors happened
+        #   or publishing should stop at validation
         if (
-            # Any unexpected error happened
-            # - everything should stop
-            self._publish_has_crashed
-            # Stop if validation is over and validation errors happened
-            #   or publishing should stop at validation
-            or (
-                self._publish_has_validated
-                and (
-                    self._publish_has_validation_errors
-                    or self._publish_up_validation
-                )
+            self._publish_has_validated
+            and (
+                self._publish_has_validation_errors
+                or self._publish_up_validation
             )
         ):
-            item = partial(self.stop_publish)
+            return partial(self.stop_publish)
 
         # Everything is ok so try to get new processing item
-        else:
-            item = next(self._main_thread_iter)
-
-        return item
+        return next(self._main_thread_iter)
 
     def stop_publish(self):
         if self._publish_is_running:
