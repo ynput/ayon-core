@@ -897,6 +897,11 @@ class PublishModel:
             func()
 
     def get_next_process_func(self) -> partial:
+        # Raise error if this function is called when publishing
+        #   is not running
+        if not self._publish_is_running:
+            raise ValueError("Publish is not running")
+
         # Validations of progress before using iterator
         # Any unexpected error happened
         # - everything should stop
