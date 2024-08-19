@@ -585,11 +585,11 @@ def _get_legacy_product_name_and_group(
 
 
 def get_product_name_and_group_from_template(
-        task_entity,
         project_name,
-        host_name,
+        task_entity,
         product_type,
         variant,
+        host_name,
         dynamic_data=None):
     """Get product name and group name from template.
 
