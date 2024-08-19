@@ -4,7 +4,7 @@ import collections
 
 import ayon_api
 
-from ayon_core.lib.local_settings import get_ayon_appdirs
+from ayon_core.lib.local_settings import get_launcher_local_dir
 
 
 FileInfo = collections.namedtuple(
@@ -54,7 +54,7 @@ class ThumbnailsCache:
         """
 
         if self._thumbnails_dir is None:
-            self._thumbnails_dir = get_ayon_appdirs("thumbnails")
+            self._thumbnails_dir = get_launcher_local_dir("thumbnails")
         return self._thumbnails_dir
 
     thumbnails_dir = property(get_thumbnails_dir)
