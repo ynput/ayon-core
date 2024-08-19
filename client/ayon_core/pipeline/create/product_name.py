@@ -182,7 +182,7 @@ def get_product_name(
             fill_pairs[key] = value
 
     try:
-        return StringTemplate.format_template(
+        return StringTemplate.format_strict_template(
             template=template,
             data=prepare_template_data(fill_pairs)
         )
