@@ -462,14 +462,17 @@ class FormattingPart:
 
     @staticmethod
     def validate_key_is_matched(key):
-        """
-        Finds out how balanced an expression is.
-        With a string containing only brackets.
+        """Validate that opening has closing at correct place.
 
-        >>> is_matched('[]()()(((([])))')
-        False
-        >>> is_matched('[](){{{[]}}}')
-        True
+        Example:
+            >>> is_matched("[]()()(((([])))")
+            False
+            >>> is_matched("[](){{{[]}}}")
+            True
+
+        Returns:
+            bool: Openings and closinga are valid.
+
         """
         opening = tuple('({[')
         closing = tuple(')}]')
