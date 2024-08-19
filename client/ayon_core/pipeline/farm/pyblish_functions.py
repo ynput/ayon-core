@@ -679,8 +679,9 @@ def _create_instances_for_aov(instance, skeleton, aov_filter, additional_data,
     for aov, files in expected_files[0].items():
         collected_files = _collect_expected_files_for_aov(files)
 
-        expected_filepath = collected_files[0] \
-            if isinstance(collected_files, (list, tuple)) else collected_files
+        expected_filepath = collected_files
+        if isinstance(collected_files, (list, tuple)):
+            expected_filepath = collected_files[0]
 
         dynamic_data = {
             "aov": aov,
