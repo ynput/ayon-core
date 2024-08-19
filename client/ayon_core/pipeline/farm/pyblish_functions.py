@@ -619,8 +619,7 @@ def get_product_name_and_group_from_template(
     # remove 'aov' from data used to format group. See todo comment above
     # for possible solution.
     _dynamic_data = deepcopy(dynamic_data) or {}
-    if _dynamic_data["aov"]:
-        del _dynamic_data["aov"]
+    _dynamic_data.pop("aov", None)
     resulting_group_name = get_product_name(
         project_name=project_name,
         task_name=task_entity["name"],
