@@ -20,6 +20,7 @@ from ayon_core.lib import (
     Logger,
     is_dev_mode_enabled,
     get_launcher_storage_dir,
+    is_headless_mode_enabled,
 )
 from ayon_core.settings import get_studio_settings
 
@@ -107,8 +108,7 @@ class ProcessContext:
         **kwargs,
     ):
         if headless is None:
-            # TODO use lib function to get headless mode
-            headless = os.getenv("AYON_HEADLESS_MODE") == "1"
+            headless = is_headless_mode_enabled()
         self.addon_name: Optional[str] = addon_name
         self.addon_version: Optional[str] = addon_version
         self.project_name: Optional[str] = project_name
