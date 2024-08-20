@@ -94,7 +94,8 @@ class ProcessContext:
         project_name (Optional[str]): Project name. Can be filled in case
             process is triggered for specific project. Some addons can have
             different behavior based on project.
-        headless (Optional[bool]): Is process running in headless mode.
+        headless (Optional[bool]): Is process running in headless mode. Value
+            is filled with value based on state set in AYON launcher.
 
     """
     def __init__(
