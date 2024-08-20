@@ -94,7 +94,6 @@ def ensure_addons_are_process_context_ready(
     if addons_manager is None:
         addons_manager = AddonsManager()
 
-    exception = None
     message = None
     failed = False
     use_detail = False
@@ -111,13 +110,11 @@ def ensure_addons_are_process_context_ready(
                     addon.ensure_is_process_ready(process_context)
                     addon_failed = False
                 except ProcessPreparationError as exc:
-                    exception = exc
                     message = str(exc)
                     print(f"Addon preparation failed: '{addon.name}'")
                     print(message)
 
-                except BaseException as exc:
-                    exception = exc
+                except BaseException:
                     use_detail = True
                     message = "An unexpected error occurred."
                     formatted_traceback = "".join(traceback.format_exception(
@@ -133,8 +130,6 @@ def ensure_addons_are_process_context_ready(
                     failed = True
                     break
 
-    process_context.set_prepared()
-    process_context.set_exception(exception)
     output_str = output.getvalue()
     # Print stdout/stderr to console as it was redirected
     print(output_str)

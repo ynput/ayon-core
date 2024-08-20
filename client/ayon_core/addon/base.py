@@ -117,47 +117,6 @@ class ProcessContext:
         if kwargs:
             unknown_keys = ", ".join([f'"{key}"' for key in kwargs.keys()])
             print(f"Unknown keys in ProcessContext: {unknown_keys}")
-        self._prepared: bool = False
-        self._exception: Optional[Exception] = None
-
-    def is_prepared(self) -> bool:
-        """Preparation of process finished.
-
-        Returns:
-            bool: Preparation is done.
-        """
-        return self._prepared
-
-    def set_prepared(self):
-        """Mark process as prepared."""
-        self._prepared = True
-
-    def preparation_failed(self) -> bool:
-        """Preparation failed.
-
-        Returns:
-            bool: Preparation failed.
-
-        """
-        return self._exception is not None
-
-    def get_exception(self) -> Optional[Exception]:
-        """Get exception that occurred during preparation.
-
-        Returns:
-            Optional[Exception]: Exception that caused preparation fail.
-
-        """
-        return self._exception
-
-    def set_exception(self, exception: Exception):
-        """Set exception that occurred during preparation.
-
-        Args:
-            exception (Exception): Exception that caused preparation fail.
-
-        """
-        self._exception = exception
 
 
 # Inherit from `object` for Python 2 hosts
