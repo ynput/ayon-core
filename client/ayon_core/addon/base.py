@@ -93,7 +93,7 @@ class ProcessContext:
         addon_version (Optional[str]): Addon version which triggered process.
         project_name (Optional[str]): Project name. Can be filled in case
             process is triggered for specific project. Some addons can have
-            different behavior based on project.
+            different behavior based on project. Value is NOT autofilled.
         headless (Optional[bool]): Is process running in headless mode. Value
             is filled with value based on state set in AYON launcher.
 
