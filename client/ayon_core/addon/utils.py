@@ -152,8 +152,8 @@ def ensure_addons_are_process_context_ready(
 
 
 def ensure_addons_are_process_ready(
-    addon_name: Optional[str] = None,
-    addon_version: Optional[str] = None,
+    addon_name: str,
+    addon_version: str,
     project_name: Optional[str] = None,
     headless: Optional[bool] = None,
     addons_manager: Optional[AddonsManager] = None,
@@ -167,8 +167,8 @@ def ensure_addons_are_process_ready(
         should not be created.
 
     Args:
-        addon_name (Optional[str]): Addon name which triggered process.
-        addon_version (Optional[str]): Addon version which triggered process.
+        addon_name (str): Addon name which triggered process.
+        addon_version (str): Addon version which triggered process.
         project_name (Optional[str]): Project name. Can be filled in case
             process is triggered for specific project. Some addons can have
             different behavior based on project. Value is NOT autofilled.
