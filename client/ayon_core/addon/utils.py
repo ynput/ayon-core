@@ -161,7 +161,7 @@ def ensure_addons_are_process_ready(
     addons_manager: Optional[AddonsManager] = None,
     exit_on_failure: bool = True,
     **kwargs,
-) -> Optional[Exception]:
+) -> ProcessContext:
     """Ensure all enabled addons are ready to be used in the given context.
 
     Call this method only in AYON launcher process and as first thing
@@ -181,6 +181,7 @@ def ensure_addons_are_process_ready(
 
     """
     context: ProcessContext = ProcessContext(**kwargs)
-    return ensure_addons_are_process_context_ready(
+    ensure_addons_are_process_context_ready(
         context, addons_manager, exit_on_failure
     )
+    return context
