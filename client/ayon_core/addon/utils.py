@@ -160,6 +160,7 @@ def ensure_addons_are_process_ready(
     addon_version: str,
     project_name: Optional[str] = None,
     headless: Optional[bool] = None,
+    *,
     addons_manager: Optional[AddonsManager] = None,
     exit_on_failure: bool = True,
     **kwargs,
