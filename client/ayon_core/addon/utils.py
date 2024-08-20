@@ -157,6 +157,10 @@ def ensure_addons_are_process_context_ready(
 
 
 def ensure_addons_are_process_ready(
+    addon_name: Optional[str] = None,
+    addon_version: Optional[str] = None,
+    project_name: Optional[str] = None,
+    headless: Optional[bool] = None,
     addons_manager: Optional[AddonsManager] = None,
     exit_on_failure: bool = True,
     **kwargs,
@@ -168,6 +172,13 @@ def ensure_addons_are_process_ready(
         should not be created.
 
     Args:
+        addon_name (Optional[str]): Addon name which triggered process.
+        addon_version (Optional[str]): Addon version which triggered process.
+        project_name (Optional[str]): Project name. Can be filled in case
+            process is triggered for specific project. Some addons can have
+            different behavior based on project.
+        headless (Optional[bool]): Is process running in headless mode. Value
+            is filled with value based on state set in AYON launcher.
         addons_manager (Optional[AddonsManager]): The addons
             manager to use. If not provided, a new one will be created.
         exit_on_failure (bool, optional): If True, the process will exit
@@ -179,7 +190,13 @@ def ensure_addons_are_process_ready(
             preparation, if any.
 
     """
-    context: ProcessContext = ProcessContext(**kwargs)
+    context: ProcessContext = ProcessContext(
+        addon_name,
+        addon_version,
+        project_name,
+        headless,
+        **kwargs
+    )
     ensure_addons_are_process_context_ready(
         context, addons_manager, exit_on_failure
     )
