@@ -72,7 +72,7 @@ def ensure_addons_are_process_context_ready(
     process_context: ProcessContext,
     addons_manager: Optional[AddonsManager] = None,
     exit_on_failure: bool = True,
-):
+) -> bool:
     """Ensure all enabled addons are ready to be used in the given context.
 
     Call this method only in AYON launcher process and as first thing
@@ -86,6 +86,9 @@ def ensure_addons_are_process_context_ready(
             manager to use. If not provided, a new one will be created.
         exit_on_failure (bool, optional): If True, the process will exit
             if an error occurs. Defaults to True.
+
+    Returns:
+        bool: True if all addons are ready, False otherwise.
 
     """
     if addons_manager is None:
@@ -138,7 +141,7 @@ def ensure_addons_are_process_context_ready(
     if not failed:
         if not process_context.headless:
             _start_tray()
-        return None
+        return True
 
     detail = None
     if use_detail:
@@ -150,6 +153,7 @@ def ensure_addons_are_process_context_ready(
     _handle_error(process_context, message, detail)
     if exit_on_failure:
         sys.exit(1)
+    return False
 
 
 def ensure_addons_are_process_ready(
@@ -160,7 +164,7 @@ def ensure_addons_are_process_ready(
     addons_manager: Optional[AddonsManager] = None,
     exit_on_failure: bool = True,
     **kwargs,
-) -> ProcessContext:
+) -> bool:
     """Ensure all enabled addons are ready to be used in the given context.
 
     Call this method only in AYON launcher process and as first thing
@@ -182,8 +186,7 @@ def ensure_addons_are_process_ready(
         kwargs: The keyword arguments to pass to the ProcessContext.
 
     Returns:
-        ProcessContext: The exception that occurred during the
-            preparation, if any.
+        bool: True if all addons are ready, False otherwise.
 
     """
     context: ProcessContext = ProcessContext(
@@ -193,7 +196,6 @@ def ensure_addons_are_process_ready(
         headless,
         **kwargs
     )
-    ensure_addons_are_process_context_ready(
+    return ensure_addons_are_process_context_ready(
         context, addons_manager, exit_on_failure
     )
-    return context
