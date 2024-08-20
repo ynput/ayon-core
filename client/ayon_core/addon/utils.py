@@ -87,10 +87,6 @@ def ensure_addons_are_process_context_ready(
         exit_on_failure (bool, optional): If True, the process will exit
             if an error occurs. Defaults to True.
 
-    Returns:
-        Optional[Exception]: The exception that occurred during the
-            preparation, if any.
-
     """
     if addons_manager is None:
         addons_manager = AddonsManager()
@@ -186,7 +182,7 @@ def ensure_addons_are_process_ready(
         kwargs: The keyword arguments to pass to the ProcessContext.
 
     Returns:
-        Optional[Exception]: The exception that occurred during the
+        ProcessContext: The exception that occurred during the
             preparation, if any.
 
     """
