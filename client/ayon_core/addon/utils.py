@@ -79,6 +79,10 @@ def ensure_addons_are_process_context_ready(
         to avoid possible clashes with preparation. For example 'QApplication'
         should not be created.
 
+    Todos:
+        Run all preparations and allow to "ignore" failed preparations.
+            Right now single addon can block using certain actions.
+
     Args:
         process_context (ProcessContext): The context in which the
             addons should be prepared.
