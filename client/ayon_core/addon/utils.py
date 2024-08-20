@@ -134,6 +134,8 @@ def ensure_addons_are_process_context_ready(
                     failed = True
                     break
 
+    process_context.set_prepared()
+    process_context.set_exception(exception)
     output_str = output.getvalue()
     # Print stdout/stderr to console as it was redirected
     print(output_str)
