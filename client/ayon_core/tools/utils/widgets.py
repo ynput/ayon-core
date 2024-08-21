@@ -1,4 +1,5 @@
 import logging
+from typing import Optional, List, Set, Any
 
 from qtpy import QtWidgets, QtCore, QtGui
 import qargparse
@@ -11,7 +12,7 @@ from ayon_core.style import (
 )
 from ayon_core.lib.attribute_definitions import AbstractAttrDef
 
-from .lib import get_qta_icon_by_name_and_color
+from .lib import get_qta_icon_by_name_and_color, set_style_property
 
 log = logging.getLogger(__name__)
 
@@ -102,6 +103,157 @@ class PlaceholderLineEdit(QtWidgets.QLineEdit):
                 color
             )
             self.setPalette(filter_palette)
+
+
+class _LocalCache:
+    down_arrow_icon = None
+
+
+def get_down_arrow_icon() -> QtGui.QIcon:
+    if _LocalCache.down_arrow_icon is not None:
+        return _LocalCache.down_arrow_icon
+
+    normal_pixmap = QtGui.QPixmap(
+        get_style_image_path("down_arrow")
+    )
+    on_pixmap = QtGui.QPixmap(
+        get_style_image_path("down_arrow_on")
+    )
+    disabled_pixmap = QtGui.QPixmap(
+        get_style_image_path("down_arrow_disabled")
+    )
+    icon = QtGui.QIcon(normal_pixmap)
+    icon.addPixmap(on_pixmap, QtGui.QIcon.Active)
+    icon.addPixmap(disabled_pixmap, QtGui.QIcon.Disabled)
+    _LocalCache.down_arrow_icon = icon
+    return icon
+
+
+# These are placeholders for adding style
+class HintedLineEditInput(PlaceholderLineEdit):
+    pass
+
+
+class HintedLineEditButton(QtWidgets.QPushButton):
+    pass
+
+
+class HintedLineEdit(QtWidgets.QWidget):
+    SEPARATORS: Set[str] = {"---", "---separator---"}
+    returnPressed = QtCore.Signal()
+    textChanged = QtCore.Signal(str)
+    textEdited = QtCore.Signal(str)
+
+    def __init__(
+        self,
+        options: Optional[List[str]] = None,
+        parent: Optional[QtWidgets.QWidget] = None
+    ):
+        super().__init__(parent)
+
+        text_input = HintedLineEditInput(self)
+        options_button = HintedLineEditButton(self)
+        options_button.setIcon(get_down_arrow_icon())
+
+        main_layout = QtWidgets.QHBoxLayout(self)
+        main_layout.setContentsMargins(0, 0, 0, 0)
+        main_layout.setSpacing(0)
+        main_layout.addWidget(text_input, 1)
+        main_layout.addWidget(options_button, 0)
+
+        # Expand line edit and button vertically so they have same height
+        for widget in (text_input, options_button):
+            w_size_policy = widget.sizePolicy()
+            w_size_policy.setVerticalPolicy(
+                QtWidgets.QSizePolicy.MinimumExpanding)
+            widget.setSizePolicy(w_size_policy)
+
+        # Set size hint of this frame to fixed so size hint height is
+        #   used as fixed height
+        size_policy = self.sizePolicy()
+        size_policy.setVerticalPolicy(QtWidgets.QSizePolicy.Fixed)
+        self.setSizePolicy(size_policy)
+
+        text_input.returnPressed.connect(self.returnPressed)
+        text_input.textChanged.connect(self.textChanged)
+        text_input.textEdited.connect(self.textEdited)
+        options_button.clicked.connect(self._on_options_button_clicked)
+
+        self._text_input = text_input
+        self._options_button = options_button
+        self._options = None
+
+        # Set default state
+        self.set_options(options)
+
+    def text(self) -> str:
+        return self._text_input.text()
+
+    def setText(self, text: str):
+        self._text_input.setText(text)
+
+    def setPlaceholderText(self, text: str):
+        self._text_input.setPlaceholderText(text)
+
+    def placeholderText(self) -> str:
+        return self._text_input.placeholderText()
+
+    def setReadOnly(self, state: bool):
+        self._text_input.setReadOnly(state)
+
+    def setIcon(self, icon: QtGui.QIcon):
+        self._options_button.setIcon(icon)
+
+    def setToolTip(self, text: str):
+        self._text_input.setToolTip(text)
+
+    def set_button_tool_tip(self, text: str):
+        self._options_button.setToolTip(text)
+
+    def set_options(self, options: Optional[List[str]] = None):
+        self._options = options
+        self._options_button.setEnabled(bool(options))
+
+    def sizeHint(self) -> QtCore.QSize:
+        hint = super().sizeHint()
+        tsz = self._text_input.sizeHint()
+        bsz = self._options_button.sizeHint()
+        hint.setHeight(max(tsz.height(), bsz.height()))
+        return hint
+
+    # Adds ability to change style of the widgets
+    # - because style change of the 'HintedLineEdit' may not propagate
+    #   correctly 'HintedLineEditInput' and 'HintedLineEditButton'
+    def set_text_widget_object_name(self, name: str):
+        self._text_input.setObjectName(name)
+
+    def set_text_widget_property(self, name: str, value: Any):
+        set_style_property(self._text_input, name, value)
+
+    def set_button_widget_object_name(self, name: str):
+        self._text_input.setObjectName(name)
+
+    def set_button_widget_property(self, name: str, value: Any):
+        set_style_property(self._options_button, name, value)
+
+    def _on_options_button_clicked(self):
+        if not self._options:
+            return
+
+        menu = QtWidgets.QMenu(self)
+        menu.triggered.connect(self._on_option_action)
+        for option in self._options:
+            if option in self.SEPARATORS:
+                menu.addSeparator()
+            else:
+                menu.addAction(option)
+
+        rect = self._options_button.rect()
+        pos = self._options_button.mapToGlobal(rect.bottomLeft())
+        menu.exec_(pos)
+
+    def _on_option_action(self, action):
+        self.setText(action.text())
 
 
 class ExpandingTextEdit(QtWidgets.QTextEdit):
@@ -206,6 +358,8 @@ class ExpandBtnLabel(QtWidgets.QLabel):
     """Label showing expand icon meant for ExpandBtn."""
     state_changed = QtCore.Signal()
 
+    branch_closed_path = get_style_image_path("branch_closed")
+    branch_open_path = get_style_image_path("branch_open")
 
     def __init__(self, parent):
         super(ExpandBtnLabel, self).__init__(parent)
@@ -216,14 +370,10 @@ class ExpandBtnLabel(QtWidgets.QLabel):
         self._collapsed = True
 
     def _create_collapsed_pixmap(self):
-        return QtGui.QPixmap(
-            get_style_image_path("branch_closed")
-        )
+        return QtGui.QPixmap(self.branch_closed_path)
 
     def _create_expanded_pixmap(self):
-        return QtGui.QPixmap(
-            get_style_image_path("branch_open")
-        )
+        return QtGui.QPixmap(self.branch_open_path)
 
     @property
     def collapsed(self):
@@ -291,15 +441,14 @@ class ExpandBtn(ClickableFrame):
 
 
 class ClassicExpandBtnLabel(ExpandBtnLabel):
+    right_arrow_path = get_style_image_path("right_arrow")
+    down_arrow_path = get_style_image_path("down_arrow")
+
     def _create_collapsed_pixmap(self):
-        return QtGui.QPixmap(
-            get_style_image_path("right_arrow")
-        )
+        return QtGui.QPixmap(self.right_arrow_path)
 
     def _create_expanded_pixmap(self):
-        return QtGui.QPixmap(
-            get_style_image_path("down_arrow")
-        )
+        return QtGui.QPixmap(self.down_arrow_path)
 
 
 class ClassicExpandBtn(ExpandBtn):
