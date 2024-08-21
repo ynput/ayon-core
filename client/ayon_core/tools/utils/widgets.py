@@ -233,21 +233,19 @@ class HintedLineEdit(QtWidgets.QWidget):
             return
 
         menu = QtWidgets.QMenu(self)
+        menu.triggered.connect(self._on_option_action)
         for option in self._options:
             if option in self.SEPARATORS:
                 menu.addSeparator()
-                continue
-            action = menu.addAction(option)
-            action.triggered.connect(self._on_option_action)
+            else:
+                menu.addAction(option)
 
         rect = self._options_button.rect()
         pos = self._options_button.mapToGlobal(rect.bottomLeft())
         menu.exec_(pos)
 
-    def _on_option_action(self):
-        action = self.sender()
-        if action:
-            self.setText(action.text())
+    def _on_option_action(self, action):
+        self.setText(action.text())
 
 
 class ExpandingTextEdit(QtWidgets.QTextEdit):
