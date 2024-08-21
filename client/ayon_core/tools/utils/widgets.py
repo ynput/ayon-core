@@ -1,5 +1,5 @@
 import logging
-from typing import Optional, List
+from typing import Optional, List, Set
 
 from qtpy import QtWidgets, QtCore, QtGui
 import qargparse
@@ -122,6 +122,7 @@ def get_down_arrow_icon() -> QtGui.QIcon:
 
 
 class HintedLineEdit(QtWidgets.QWidget):
+    SEPARATORS: Set[str] = {"---", "---separator---"}
     returnPressed = QtCore.Signal()
     textChanged = QtCore.Signal(str)
     textEdited = QtCore.Signal(str)
@@ -206,6 +207,9 @@ class HintedLineEdit(QtWidgets.QWidget):
 
         menu = QtWidgets.QMenu(self)
         for option in self._options:
+            if option in self.SEPARATORS:
+                menu.addSeparator()
+                continue
             action = menu.addAction(option)
             action.triggered.connect(self._on_option_action)
 
