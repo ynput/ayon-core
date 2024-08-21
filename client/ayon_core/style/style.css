@@ -994,17 +994,6 @@ PixmapButton:disabled {
 #PublishLogConsole {
     font-family: "Noto Sans Mono";
 }
-#VariantInputsWidget QLineEdit {
-    border-bottom-right-radius: 0px;
-    border-top-right-radius: 0px;
-}
-#VariantInputsWidget QToolButton {
-    border-bottom-left-radius: 0px;
-    border-top-left-radius: 0px;
-    padding-top: 0.5em;
-    padding-bottom: 0.5em;
-    width: 0.5em;
-}
 #VariantInput[state="new"], #VariantInput[state="new"]:focus, #VariantInput[state="new"]:hover {
     border-color: {color:publisher:success};
 }
