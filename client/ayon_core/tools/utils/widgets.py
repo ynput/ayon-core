@@ -105,6 +105,102 @@ class PlaceholderLineEdit(QtWidgets.QLineEdit):
             self.setPalette(filter_palette)
 
 
+class ElideLabel(QtWidgets.QLabel):
+    """Label which elide text.
+
+    By default, elide happens on right side. Can be changed with
+    'set_elide_mode' method.
+
+    It is not possible to use other features of QLabel like word wrap or
+    interactive text. This is a simple label which elide text.
+    """
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.setSizePolicy(
+            QtWidgets.QSizePolicy.Expanding,
+            QtWidgets.QSizePolicy.Preferred
+        )
+        # Store text set during init
+        self._text = self.text()
+        # Define initial elide mode
+        self._elide_mode = QtCore.Qt.ElideRight
+        # Make sure that text of QLabel is empty
+        super().setText("")
+
+    def setText(self, text):
+        # Update private text attribute and force update
+        self._text = text
+        self.update()
+
+    def setWordWrap(self, word_wrap):
+        # Word wrap is not supported in 'ElideLabel'
+        if word_wrap:
+            raise ValueError("Word wrap is not supported in 'ElideLabel'.")
+
+    def contextMenuEvent(self, event):
+        menu = self.create_context_menu(event.pos())
+        if menu is None:
+            event.ignore()
+            return
+        event.accept()
+        menu.setAttribute(QtCore.Qt.WA_DeleteOnClose)
+        menu.popup(event.globalPos())
+
+    def create_context_menu(self, pos):
+        if not self._text:
+            return None
+        menu = QtWidgets.QMenu(self)
+
+        # Copy text action
+        copy_action = menu.addAction("Copy")
+        copy_action.setObjectName("edit-copy")
+        icon = QtGui.QIcon.fromTheme("edit-copy")
+        if not icon.isNull():
+            copy_action.setIcon(icon)
+
+        copy_action.triggered.connect(self._on_copy_text)
+        return menu
+
+    def set_set(self, text):
+        self.setText(text)
+
+    def set_elide_mode(self, elide_mode):
+        """Change elide type.
+
+        Args:
+            elide_mode: Possible elide type. Available in 'QtCore.Qt'
+                'ElideLeft', 'ElideRight' and 'ElideMiddle'.
+
+        """
+        if elide_mode == QtCore.Qt.ElideNone:
+            raise ValueError(
+                "Invalid elide type. 'ElideNone' is not supported."
+            )
+
+        if elide_mode not in (
+            QtCore.Qt.ElideLeft,
+            QtCore.Qt.ElideRight,
+            QtCore.Qt.ElideMiddle,
+        ):
+            raise ValueError(f"Unknown value '{elide_mode}'")
+        self._elide_mode = elide_mode
+        self.update()
+
+    def paintEvent(self, event):
+        super().paintEvent(event)
+
+        painter = QtGui.QPainter(self)
+        fm = painter.fontMetrics()
+        elided_line = fm.elidedText(
+            self._text, self._elide_mode, self.width()
+        )
+        painter.drawText(QtCore.QPoint(0, fm.ascent()), elided_line)
+
+    def _on_copy_text(self):
+        clipboard = QtWidgets.QApplication.clipboard()
+        clipboard.setText(self._text)
+
+
 class _LocalCache:
     down_arrow_icon = None
 

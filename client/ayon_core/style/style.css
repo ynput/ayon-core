@@ -1245,6 +1245,15 @@ ValidationArtistMessage QLabel {
     background: transparent;
 }
 
+#PluginDetailsContent {
+    background: {color:bg-inputs};
+    border-radius: 0.2em;
+}
+#PluginDetailsContent #PluginLabel {
+    font-size: 14pt;
+    font-weight: bold;
+}
+
 CreateNextPageOverlay {
     font-size: 32pt;
 }
