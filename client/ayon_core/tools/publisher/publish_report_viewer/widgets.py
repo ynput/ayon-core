@@ -446,9 +446,9 @@ class PluginDetailsWidget(QtWidgets.QWidget):
         if plugin_item.families:
             families = ", ".join(plugin_item.families)
 
-        order = plugin_item.order
-        if order is None:
-            order = "N/A"
+        order = "N/A"
+        if plugin_item.order is not None:
+            order = str(plugin_item.order)
 
         plugin_label_widget.setText(plugin_label)
         plugin_doc_widget.setText(plugin_item.docstring or "N/A")
