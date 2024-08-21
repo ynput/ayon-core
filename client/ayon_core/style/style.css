@@ -740,22 +740,22 @@ OverlayMessageWidget QWidget {
 }
 
 /* Hinted Line Edit */
-#HintedLineEditInput {
+HintedLineEditInput {
     border-radius: 0.2em;
     border-top-right-radius: 0px;
     border-bottom-right-radius: 0px;
     border: 1px solid {color:border};
 }
-#HintedLineEditInput:hover {
+HintedLineEditInput:hover {
     border-color: {color:border-hover};
 }
-#HintedLineEditInput:focus{
+HintedLineEditInput:focus{
     border-color: {color:border-focus};
 }
-#HintedLineEditInput:disabled {
+HintedLineEditInput:disabled {
     background: {color:bg-inputs-disabled};
 }
-#HintedLineEditButton {
+HintedLineEditButton {
     border: none;
     border-radius: 0.2em;
     border-bottom-left-radius: 0px;
