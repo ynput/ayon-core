@@ -442,9 +442,14 @@ class PluginDetailsWidget(QtWidgets.QWidget):
         plugin_families_widget.setText(str(plugin_item.families or "N/A"))
         plugin_path_widget.setText(plugin_item.filepath or "N/A")
         plugin_path_widget.setToolTip(plugin_item.filepath or None)
-        plugin_time_widget.setText(
-            get_pretty_milliseconds(plugin_item.process_time)
-        )
+        if plugin_item.passed:
+            time_label = get_pretty_milliseconds(plugin_item.process_time)
+        elif plugin_item.skipped:
+            time_label = "Skipped plugin"
+        else:
+            time_label = "Not started"
+
+        plugin_time_widget.setText(time_label)
 
         content_layout = QtWidgets.QGridLayout(content_widget)
         content_layout.setContentsMargins(8, 8, 8, 8)
