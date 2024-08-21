@@ -435,6 +435,12 @@ class PluginDetailsWidget(QtWidgets.QWidget):
             plugin_label += " ({})".format(
                 plugin_item.plugin_type.capitalize()
             )
+
+        time_label = "Not started"
+        if plugin_item.passed:
+            time_label = get_pretty_milliseconds(plugin_item.process_time)
+        elif plugin_item.skipped:
+            time_label = "Skipped plugin"
         plugin_label_widget.setText(plugin_label)
         plugin_doc_widget.setText(plugin_item.docstring or "N/A")
         plugin_class_widget.setText(plugin_item.name or "N/A")
@@ -442,13 +448,6 @@ class PluginDetailsWidget(QtWidgets.QWidget):
         plugin_families_widget.setText(str(plugin_item.families or "N/A"))
         plugin_path_widget.setText(plugin_item.filepath or "N/A")
         plugin_path_widget.setToolTip(plugin_item.filepath or None)
-        if plugin_item.passed:
-            time_label = get_pretty_milliseconds(plugin_item.process_time)
-        elif plugin_item.skipped:
-            time_label = "Skipped plugin"
-        else:
-            time_label = "Not started"
-
         plugin_time_widget.setText(time_label)
 
         content_layout = QtWidgets.QGridLayout(content_widget)
