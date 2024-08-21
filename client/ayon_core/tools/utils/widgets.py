@@ -1,4 +1,5 @@
 import logging
+from typing import Optional, List
 
 from qtpy import QtWidgets, QtCore, QtGui
 import qargparse
@@ -102,6 +103,120 @@ class PlaceholderLineEdit(QtWidgets.QLineEdit):
                 color
             )
             self.setPalette(filter_palette)
+
+
+def get_down_arrow_icon() -> QtGui.QIcon:
+    normal_pixmap = QtGui.QPixmap(
+        get_style_image_path("down_arrow")
+    )
+    on_pixmap = QtGui.QPixmap(
+        get_style_image_path("down_arrow_on")
+    )
+    disabled_pixmap = QtGui.QPixmap(
+        get_style_image_path("down_arrow_disabled")
+    )
+    icon = QtGui.QIcon(normal_pixmap)
+    icon.addPixmap(on_pixmap, QtGui.QIcon.Active)
+    icon.addPixmap(disabled_pixmap, QtGui.QIcon.Disabled)
+    return icon
+
+
+class HintedLineEdit(QtWidgets.QWidget):
+    returnPressed = QtCore.Signal()
+    textChanged = QtCore.Signal(str)
+    textEdited = QtCore.Signal(str)
+
+    def __init__(
+        self,
+        options: Optional[List[str]] = None,
+        parent: Optional[QtWidgets.QWidget] = None
+    ):
+        super().__init__(parent)
+
+        text_input = PlaceholderLineEdit(self)
+        options_button = QtWidgets.QPushButton(self)
+
+        text_input.setObjectName("HintedLineEditInput")
+        options_button.setObjectName("HintedLineEditButton")
+        options_button.setIcon(get_down_arrow_icon())
+
+        main_layout = QtWidgets.QHBoxLayout(self)
+        main_layout.setContentsMargins(0, 0, 0, 0)
+        main_layout.setSpacing(0)
+        main_layout.addWidget(text_input, 1)
+        main_layout.addWidget(options_button, 0)
+
+        # Expand line edit and button vertically so they have same height
+        for widget in (text_input, options_button):
+            w_size_policy = widget.sizePolicy()
+            w_size_policy.setVerticalPolicy(
+                QtWidgets.QSizePolicy.MinimumExpanding)
+            widget.setSizePolicy(w_size_policy)
+
+        # Set size hint of this frame to fixed so size hint height is
+        #   used as fixed height
+        size_policy = self.sizePolicy()
+        size_policy.setVerticalPolicy(QtWidgets.QSizePolicy.Fixed)
+        self.setSizePolicy(size_policy)
+
+        text_input.returnPressed.connect(self.returnPressed)
+        text_input.textChanged.connect(self.textChanged)
+        text_input.textEdited.connect(self.textEdited)
+        options_button.clicked.connect(self._on_options_button_clicked)
+
+        self._text_input = text_input
+        self._options_button = options_button
+        self._options = None
+
+        # Set default state
+        self.set_options(options)
+
+    def text(self) -> str:
+        return self._text_input.text()
+
+    def setText(self, text: str):
+        self._text_input.setText(text)
+
+    def setPlaceholderText(self, text: str):
+        self._text_input.setPlaceholderText(text)
+
+    def placeholderText(self) -> str:
+        return self._text_input.placeholderText()
+
+    def setReadOnly(self, state: bool):
+        self._text_input.setReadOnly(state)
+
+    def setIcon(self, icon: QtGui.QIcon):
+        self._options_button.setIcon(icon)
+
+    def set_options(self, options: Optional[List[str]] = None):
+        self._options = options
+        self._options_button.setEnabled(bool(options))
+
+    def sizeHint(self) -> QtCore.QSize:
+        hint = super().sizeHint()
+        tsz = self._text_input.sizeHint()
+        bsz = self._options_button.sizeHint()
+        hint.setHeight(max(tsz.height(), bsz.height()))
+        return hint
+
+    def _on_options_button_clicked(self):
+        if not self._options:
+            return
+
+        menu = QtWidgets.QMenu(self)
+        for option in self._options:
+            action = menu.addAction(option)
+            action.triggered.connect(self._on_option_action)
+
+        rect = self._options_button.rect()
+        pos = self._options_button.mapToGlobal(rect.bottomLeft())
+        menu.exec_(pos)
+
+    def _on_option_action(self):
+        action = self.sender()
+        if action:
+            self.setText(action.text())
 
 
 class ExpandingTextEdit(QtWidgets.QTextEdit):
