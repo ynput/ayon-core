@@ -190,6 +190,12 @@ class HintedLineEdit(QtWidgets.QWidget):
     def setIcon(self, icon: QtGui.QIcon):
         self._options_button.setIcon(icon)
 
+    def setToolTip(self, text: str):
+        self._text_input.setToolTip(text)
+
+    def set_button_tool_tip(self, text: str):
+        self._options_button.setToolTip(text)
+
     def set_options(self, options: Optional[List[str]] = None):
         self._options = options
         self._options_button.setEnabled(bool(options))
