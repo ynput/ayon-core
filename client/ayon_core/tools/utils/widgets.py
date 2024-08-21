@@ -105,7 +105,14 @@ class PlaceholderLineEdit(QtWidgets.QLineEdit):
             self.setPalette(filter_palette)
 
 
+class _LocalCache:
+    down_arrow_icon = None
+
+
 def get_down_arrow_icon() -> QtGui.QIcon:
+    if _LocalCache.down_arrow_icon is not None:
+        return _LocalCache.down_arrow_icon
+
     normal_pixmap = QtGui.QPixmap(
         get_style_image_path("down_arrow")
     )
@@ -118,6 +125,7 @@ def get_down_arrow_icon() -> QtGui.QIcon:
     icon = QtGui.QIcon(normal_pixmap)
     icon.addPixmap(on_pixmap, QtGui.QIcon.Active)
     icon.addPixmap(disabled_pixmap, QtGui.QIcon.Disabled)
+    _LocalCache.down_arrow_icon = icon
     return icon
 
 
@@ -350,6 +358,8 @@ class ExpandBtnLabel(QtWidgets.QLabel):
     """Label showing expand icon meant for ExpandBtn."""
     state_changed = QtCore.Signal()
 
+    branch_closed_path = get_style_image_path("branch_closed")
+    branch_open_path = get_style_image_path("branch_open")
 
     def __init__(self, parent):
         super(ExpandBtnLabel, self).__init__(parent)
@@ -360,14 +370,10 @@ class ExpandBtnLabel(QtWidgets.QLabel):
         self._collapsed = True
 
     def _create_collapsed_pixmap(self):
-        return QtGui.QPixmap(
-            get_style_image_path("branch_closed")
-        )
+        return QtGui.QPixmap(self.branch_closed_path)
 
     def _create_expanded_pixmap(self):
-        return QtGui.QPixmap(
-            get_style_image_path("branch_open")
-        )
+        return QtGui.QPixmap(self.branch_open_path)
 
     @property
     def collapsed(self):
@@ -435,15 +441,14 @@ class ExpandBtn(ClickableFrame):
 
 
 class ClassicExpandBtnLabel(ExpandBtnLabel):
+    right_arrow_path = get_style_image_path("right_arrow")
+    down_arrow_path = get_style_image_path("down_arrow")
+
     def _create_collapsed_pixmap(self):
-        return QtGui.QPixmap(
-            get_style_image_path("right_arrow")
-        )
+        return QtGui.QPixmap(self.right_arrow_path)
 
     def _create_expanded_pixmap(self):
-        return QtGui.QPixmap(
-            get_style_image_path("down_arrow")
-        )
+        return QtGui.QPixmap(self.down_arrow_path)
 
 
 class ClassicExpandBtn(ExpandBtn):
