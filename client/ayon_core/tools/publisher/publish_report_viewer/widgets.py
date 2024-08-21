@@ -817,6 +817,14 @@ class PublishReportViewerWidget(QtWidgets.QFrame):
         else:
             self._plugins_view.expand(index)
 
+    def set_active(self, active):
+        for idx in range(self._details_tab_widget.count()):
+            widget = self._details_tab_widget.widget(idx)
+            widget.set_active(active and idx == self._current_tab_idx)
+
+        if not active:
+            self.close_details_popup()
+
     def set_report_data(self, report_data):
         report = PublishReport(report_data)
         self.set_report(report)
