@@ -591,10 +591,7 @@ class PluginsDetailsWidget(QtWidgets.QWidget):
                 self._widgets_by_plugin_id[plugin_id] = widget
                 self._content_layout.addWidget(widget, 0)
 
-            widget.setVisible(
-                not self._plugin_filter
-                or plugin_id in self._plugin_filter
-            )
+            widget.setVisible(plugin_id in self._plugin_filter)
 
         self._content_widget.setVisible(True)
 
