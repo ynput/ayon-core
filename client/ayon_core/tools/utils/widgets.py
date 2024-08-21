@@ -1,5 +1,5 @@
 import logging
-from typing import Optional, List, Set
+from typing import Optional, List, Set, Any
 
 from qtpy import QtWidgets, QtCore, QtGui
 import qargparse
@@ -12,7 +12,7 @@ from ayon_core.style import (
 )
 from ayon_core.lib.attribute_definitions import AbstractAttrDef
 
-from .lib import get_qta_icon_by_name_and_color
+from .lib import get_qta_icon_by_name_and_color, set_style_property
 
 log = logging.getLogger(__name__)
 
@@ -121,6 +121,7 @@ def get_down_arrow_icon() -> QtGui.QIcon:
     return icon
 
 
+# These are placeholders for adding style
 class HintedLineEditInput(PlaceholderLineEdit):
     pass
 
@@ -211,6 +212,21 @@ class HintedLineEdit(QtWidgets.QWidget):
         bsz = self._options_button.sizeHint()
         hint.setHeight(max(tsz.height(), bsz.height()))
         return hint
+
+    # Adds ability to change style of the widgets
+    # - because style change of the 'HintedLineEdit' may not propagate
+    #   correctly 'HintedLineEditInput' and 'HintedLineEditButton'
+    def set_text_widget_object_name(self, name: str):
+        self._text_input.setObjectName(name)
+
+    def set_text_widget_property(self, name: str, value: Any):
+        set_style_property(self._text_input, name, value)
+
+    def set_button_widget_object_name(self, name: str):
+        self._text_input.setObjectName(name)
+
+    def set_button_widget_property(self, name: str, value: Any):
+        set_style_property(self._options_button, name, value)
 
     def _on_options_button_clicked(self):
         if not self._options:
