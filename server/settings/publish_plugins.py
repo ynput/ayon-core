@@ -562,12 +562,12 @@ class ExtractBurninDef(BaseSettingsModel):
     _isGroup = True
     _layout = "expanded"
     name: str = SettingsField("")
-    TOP_LEFT: str = SettingsField("", topic="Top Left")
-    TOP_CENTERED: str = SettingsField("", topic="Top Centered")
-    TOP_RIGHT: str = SettingsField("", topic="Top Right")
-    BOTTOM_LEFT: str = SettingsField("", topic="Bottom Left")
-    BOTTOM_CENTERED: str = SettingsField("", topic="Bottom Centered")
-    BOTTOM_RIGHT: str = SettingsField("", topic="Bottom Right")
+    TOP_LEFT: str = SettingsField("", title="Top Left")
+    TOP_CENTERED: str = SettingsField("", title="Top Centered")
+    TOP_RIGHT: str = SettingsField("", title="Top Right")
+    BOTTOM_LEFT: str = SettingsField("", title="Bottom Left")
+    BOTTOM_CENTERED: str = SettingsField("", title="Bottom Centered")
+    BOTTOM_RIGHT: str = SettingsField("", title="Bottom Right")
     filter: ExtractBurninDefFilter = SettingsField(
         default_factory=ExtractBurninDefFilter,
         title="Additional filtering"
