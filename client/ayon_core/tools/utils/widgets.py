@@ -121,6 +121,14 @@ def get_down_arrow_icon() -> QtGui.QIcon:
     return icon
 
 
+class HintedLineEditInput(PlaceholderLineEdit):
+    pass
+
+
+class HintedLineEditButton(QtWidgets.QPushButton):
+    pass
+
+
 class HintedLineEdit(QtWidgets.QWidget):
     SEPARATORS: Set[str] = {"---", "---separator---"}
     returnPressed = QtCore.Signal()
@@ -134,11 +142,8 @@ class HintedLineEdit(QtWidgets.QWidget):
     ):
         super().__init__(parent)
 
-        text_input = PlaceholderLineEdit(self)
-        options_button = QtWidgets.QPushButton(self)
-
-        text_input.setObjectName("HintedLineEditInput")
-        options_button.setObjectName("HintedLineEditButton")
+        text_input = HintedLineEditInput(self)
+        options_button = HintedLineEditButton(self)
         options_button.setIcon(get_down_arrow_icon())
 
         main_layout = QtWidgets.QHBoxLayout(self)
