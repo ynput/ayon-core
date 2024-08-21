@@ -578,6 +578,11 @@ class PluginsDetailsWidget(QtWidgets.QWidget):
 
         self._need_refresh = False
 
+        # Hide content widget before updating
+        # - add widgets to layout can happen without recalculating
+        #   the layout and widget size hints
+        self._content_widget.setVisible(False)
+
         for plugin_id in self._get_plugin_ids():
             widget = self._widgets_by_plugin_id.get(plugin_id)
             if widget is None:
@@ -591,6 +596,7 @@ class PluginsDetailsWidget(QtWidgets.QWidget):
                 or plugin_id in self._plugin_filter
             )
 
+        self._content_widget.setVisible(True)
 
 class DeselectableTreeView(QtWidgets.QTreeView):
     """A tree view that deselects on clicking on an empty area in the view"""
