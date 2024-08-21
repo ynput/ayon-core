@@ -505,6 +505,12 @@ class PluginsDetailsWidget(QtWidgets.QWidget):
 
         scroll_area.setWidget(scroll_content_widget)
 
+        empty_label = QtWidgets.QLabel(
+            "<br/><br/>Select plugins to view more information...",
+            scroll_content_widget
+        )
+        empty_label.setAlignment(QtCore.Qt.AlignCenter)
+
         content_widget = QtWidgets.QWidget(scroll_content_widget)
 
         content_layout = QtWidgets.QVBoxLayout(content_widget)
@@ -513,6 +519,7 @@ class PluginsDetailsWidget(QtWidgets.QWidget):
 
         scroll_content_layout = QtWidgets.QVBoxLayout(scroll_content_widget)
         scroll_content_layout.setContentsMargins(0, 0, 0, 0)
+        scroll_content_layout.addWidget(empty_label, 0)
         scroll_content_layout.addWidget(content_widget, 0)
         scroll_content_layout.addStretch(1)
 
@@ -520,7 +527,10 @@ class PluginsDetailsWidget(QtWidgets.QWidget):
         main_layout.setContentsMargins(0, 0, 0, 0)
         main_layout.addWidget(scroll_area, 1)
 
+        content_widget.setVisible(False)
+
         self._scroll_area = scroll_area
+        self._empty_label = empty_label
         self._content_layout = content_layout
         self._content_widget = content_widget
 
@@ -583,6 +593,7 @@ class PluginsDetailsWidget(QtWidgets.QWidget):
         #   the layout and widget size hints
         self._content_widget.setVisible(False)
 
+        any_visible = False
         for plugin_id in self._get_plugin_ids():
             widget = self._widgets_by_plugin_id.get(plugin_id)
             if widget is None:
@@ -591,9 +602,14 @@ class PluginsDetailsWidget(QtWidgets.QWidget):
                 self._widgets_by_plugin_id[plugin_id] = widget
                 self._content_layout.addWidget(widget, 0)
 
-            widget.setVisible(plugin_id in self._plugin_filter)
+            is_visible = plugin_id in self._plugin_filter
+            widget.setVisible(is_visible)
+            if is_visible:
+                any_visible = True
 
-        self._content_widget.setVisible(True)
+        self._content_widget.setVisible(any_visible)
+        self._empty_label.setVisible(not any_visible)
+
 
 class DeselectableTreeView(QtWidgets.QTreeView):
     """A tree view that deselects on clicking on an empty area in the view"""
