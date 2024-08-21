@@ -106,8 +106,8 @@ class ProcessContext:
     """
     def __init__(
         self,
-        addon_name: str = None,
-        addon_version: str = None,
+        addon_name: str,
+        addon_version: str,
         project_name: Optional[str] = None,
         headless: Optional[bool] = None,
         **kwargs,
