@@ -57,7 +57,7 @@ class CollectFramesFixDefModel(BaseSettingsModel):
         True,
         title="Show 'Rewrite latest version' toggle"
     )
-    
+
 
 class ContributionLayersModel(BaseSettingsModel):
     _layout = "compact"
@@ -256,14 +256,25 @@ class ExtractThumbnailModel(BaseSettingsModel):
 
 def _extract_oiio_transcoding_type():
     return [
-        {"value": "colorspace", "label": "Use Colorspace"},
-        {"value": "display", "label": "Use Display&View"}
+        {"value": "use_colorspace", "label": "Use Colorspace"},
+        {"value": "use_display_view", "label": "Use Display&View"}
     ]
 
 
 class OIIOToolArgumentsModel(BaseSettingsModel):
     additional_command_args: list[str] = SettingsField(
         default_factory=list, title="Arguments")
+
+
+class UseColorspaceModel(BaseSettingsModel):
+    _layout = "expanded"
+    colorspace: str = SettingsField("", title="Target Colorspace")
+
+
+class UseDisplayViewModel(BaseSettingsModel):
+    _layout = "expanded"
+    display: str = SettingsField("", title="Target Display")
+    view: str = SettingsField("", title="Target View")
 
 
 class ExtractOIIOTranscodeOutputModel(BaseSettingsModel):
@@ -276,13 +287,20 @@ class ExtractOIIOTranscodeOutputModel(BaseSettingsModel):
     )
     extension: str = SettingsField("", title="Extension")
     transcoding_type: str = SettingsField(
-        "colorspace",
+        "use_colorspace",
         title="Transcoding type",
-        enum_resolver=_extract_oiio_transcoding_type
+        enum_resolver=_extract_oiio_transcoding_type,
+        conditionalEnum=True
     )
-    colorspace: str = SettingsField("", title="Colorspace")
-    display: str = SettingsField("", title="Display")
-    view: str = SettingsField("", title="View")
+    use_colorspace: UseColorspaceModel = SettingsField(
+        title="Use Colorspace",
+        default_factory=UseColorspaceModel
+    )
+    use_display_view: UseDisplayViewModel = SettingsField(
+        title="Use Display&View",
+        default_factory=UseDisplayViewModel
+    )
+
     oiiotool_args: OIIOToolArgumentsModel = SettingsField(
         default_factory=OIIOToolArgumentsModel,
         title="OIIOtool arguments")
@@ -360,7 +378,7 @@ class ExtractReviewFFmpegModel(BaseSettingsModel):
 def extract_review_filter_enum():
     return [
         {
-            "value": "everytime",
+            "value": "everytime",  # codespell:ignore everytime
             "label": "Always"
         },
         {
@@ -382,7 +400,7 @@ class ExtractReviewFilterModel(BaseSettingsModel):
         default_factory=list, title="Custom Tags"
     )
     single_frame_filter: str = SettingsField(
-        "everytime",
+        "everytime",  # codespell:ignore everytime
         description=(
             "Use output <b>always</b> / only if input <b>is 1 frame</b>"
             " image / only if has <b>2+ frames</b> or <b>is video</b>"
@@ -780,7 +798,7 @@ class IntegrateHeroVersionModel(BaseSettingsModel):
 
 class CleanUpModel(BaseSettingsModel):
     _isGroup = True
-    paterns: list[str] = SettingsField(
+    paterns: list[str] = SettingsField(  # codespell:ignore paterns
         default_factory=list,
         title="Patterns (regex)"
     )
@@ -1200,7 +1218,7 @@ DEFAULT_PUBLISH_VALUES = {
         "use_hardlinks": False
     },
     "CleanUp": {
-        "paterns": [],
+        "paterns": [],  # codespell:ignore paterns
         "remove_temp_renders": False
     },
     "CleanUpFarm": {
