@@ -21,8 +21,7 @@ class CollectOtioReview(pyblish.api.InstancePlugin):
 
     label = "Collect OTIO Review"
     order = pyblish.api.CollectorOrder - 0.078
-    families = ["clip"]
-    hosts = ["resolve", "hiero", "flame"]
+    families = ["editorial.otio.review"]
 
     def process(self, instance):
         # Not all hosts can import this module.

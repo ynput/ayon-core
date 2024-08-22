@@ -52,7 +52,8 @@ class ExtractBurnin(publish.Extractor):
         "houdini",
         "max",
         "blender",
-        "unreal"
+        "unreal",
+        "circuit",
     ]
 
     optional = True
