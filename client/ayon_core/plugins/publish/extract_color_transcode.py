@@ -122,12 +122,15 @@ class ExtractOIIOTranscode(publish.Extractor):
                 transcoding_type = output_def["transcoding_type"]
 
                 target_colorspace = view = display = None
-                if transcoding_type == "colorspace":
-                    target_colorspace = (output_def["colorspace"] or
+                # NOTE: we use colorspace_data as the fallback values for the target colorspace.
+                if transcoding_type == "use_colorspace":
+                    # TODO: Should we fallback to the colorspace (which used as source above) ?
+                    #       or should we compute the target colorspace from current view and display ?
+                    target_colorspace = (output_def["use_colorspace"]["colorspace"] or
                                          colorspace_data.get("colorspace"))
-                else:
-                    view = output_def["view"] or colorspace_data.get("view")
-                    display = (output_def["display"] or
+                elif transcoding_type == "use_display_view":
+                    view = output_def["use_display_view"]["view"] or colorspace_data.get("view")
+                    display = (output_def["use_display_view"]["display"] or
                                colorspace_data.get("display"))
 
                 # both could be already collected by DCC,
@@ -192,7 +195,7 @@ class ExtractOIIOTranscode(publish.Extractor):
                     new_repre["files"] = new_repre["files"][0]
 
                 # If the source representation has "review" tag, but its not
-                # part of the output defintion tags, then both the
+                # part of the output definition tags, then both the
                 # representations will be transcoded in ExtractReview and
                 # their outputs will clash in integration.
                 if "review" in repre.get("tags", []):
