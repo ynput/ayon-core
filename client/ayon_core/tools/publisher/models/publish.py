@@ -1129,10 +1129,16 @@ class PublishModel:
             self._publish_progress = idx
 
             # Check if plugin is over validation order
-            if not self._publish_has_validated:
-                self._set_has_validated(
-                    plugin.order >= self._validation_order
-                )
+            if (
+                not self._publish_has_validated
+                and plugin.order >= self._validation_order
+            ):
+                self._set_has_validated(True)
+                if (
+                    self._publish_up_validation
+                    or self._publish_has_validation_errors
+                ):
+                    yield partial(self.stop_publish)
 
             # Add plugin to publish report
             self._publish_report.add_plugin_iter(
