@@ -76,6 +76,8 @@ class QtPublisherController(PublisherController):
         self.register_event_callback(
             "publish.process.stopped", self._qt_on_publish_stop
         )
+        # Capture if '_next_publish_item_process' is in
+        #   '_main_thread_processor' loop
         self._item_process_in_loop = False
 
     def reset(self):
@@ -86,6 +88,8 @@ class QtPublisherController(PublisherController):
     def _start_publish(self, up_validation):
         self._publish_model.set_publish_up_validation(up_validation)
         self._publish_model.start_publish(wait=False)
+        # Make sure '_next_publish_item_process' is only once in
+        #   the '_main_thread_processor' loop
         if not self._item_process_in_loop:
             self._process_main_thread_item(
                 MainThreadItem(self._next_publish_item_process)
@@ -93,6 +97,7 @@ class QtPublisherController(PublisherController):
 
     def _next_publish_item_process(self):
         if not self._publish_model.is_running():
+            # This removes '_next_publish_item_process' from loop
             self._item_process_in_loop = False
             return
 
