@@ -78,6 +78,10 @@ def is_using_ayon_console():
     return "ayon_console" in executable_filename
 
 
+def is_headless_mode_enabled():
+    return os.getenv("AYON_HEADLESS_MODE") == "1"
+
+
 def is_staging_enabled():
     return os.getenv("AYON_USE_STAGING") == "1"
 
