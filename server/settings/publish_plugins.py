@@ -1084,7 +1084,7 @@ DEFAULT_PUBLISH_VALUES = {
                             "output": [
                                 "-pix_fmt yuv420p",
                                 "-crf 18",
-                                "-c:a acc",
+                                "-c:a aac",
                                 "-b:a 192k",
                                 "-g 1",
                                 "-movflags faststart"
