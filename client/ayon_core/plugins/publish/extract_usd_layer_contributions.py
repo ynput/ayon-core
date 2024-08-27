@@ -562,7 +562,7 @@ class ExtractUSDLayerContribution(publish.Extractor):
     label = "Extract USD Layer Contributions (Asset/Shot)"
     order = pyblish.api.ExtractorOrder + 0.45
 
-    use_ayon_entity_uri = True
+    use_ayon_entity_uri = False
 
     def process(self, instance):
 
@@ -724,7 +724,7 @@ class ExtractUSDAssetContribution(publish.Extractor):
     label = "Extract USD Asset/Shot Contributions"
     order = ExtractUSDLayerContribution.order + 0.01
 
-    use_ayon_entity_uri = True
+    use_ayon_entity_uri = False
 
     def process(self, instance):
 
