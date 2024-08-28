@@ -39,11 +39,17 @@ from .creator_plugins import (
     discover_convertor_plugins,
 )
 
-# Import of exceptions that were moved to different file
+# Import of functions and classes that were moved to different file
+# TODO Should be removed in future release - Added 24/08/28, 0.4.3-dev.1
 from .exceptions import (
     ImmutableKeyError,
     CreatorsOperationFailed,
     ConvertorsOperationFailed,
+)  # noqa: F401
+from .structures import (
+    AttributeValues,
+    CreatorAttributeValues,
+    PublishAttributeValues,
 )  # noqa: F401
 
 # Changes of instances and context are send as tuple of 2 information
