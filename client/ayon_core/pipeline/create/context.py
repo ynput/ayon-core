@@ -39,6 +39,13 @@ from .creator_plugins import (
     discover_convertor_plugins,
 )
 
+# Import of exceptions that were moved to different file
+from .exceptions import (
+    ImmutableKeyError,
+    CreatorsOperationFailed,
+    ConvertorsOperationFailed,
+)  # noqa: F401
+
 # Changes of instances and context are send as tuple of 2 information
 UpdateData = collections.namedtuple("UpdateData", ["instance", "changes"])
 _NOT_SET = object()
