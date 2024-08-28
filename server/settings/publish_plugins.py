@@ -562,12 +562,12 @@ class ExtractBurninDef(BaseSettingsModel):
     _isGroup = True
     _layout = "expanded"
     name: str = SettingsField("")
-    TOP_LEFT: str = SettingsField("", topic="Top Left")
-    TOP_CENTERED: str = SettingsField("", topic="Top Centered")
-    TOP_RIGHT: str = SettingsField("", topic="Top Right")
-    BOTTOM_LEFT: str = SettingsField("", topic="Bottom Left")
-    BOTTOM_CENTERED: str = SettingsField("", topic="Bottom Centered")
-    BOTTOM_RIGHT: str = SettingsField("", topic="Bottom Right")
+    TOP_LEFT: str = SettingsField("", title="Top Left")
+    TOP_CENTERED: str = SettingsField("", title="Top Centered")
+    TOP_RIGHT: str = SettingsField("", title="Top Right")
+    BOTTOM_LEFT: str = SettingsField("", title="Bottom Left")
+    BOTTOM_CENTERED: str = SettingsField("", title="Bottom Centered")
+    BOTTOM_RIGHT: str = SettingsField("", title="Bottom Right")
     filter: ExtractBurninDefFilter = SettingsField(
         default_factory=ExtractBurninDefFilter,
         title="Additional filtering"
@@ -964,7 +964,8 @@ DEFAULT_PUBLISH_VALUES = {
                     "nuke",
                     "harmony",
                     "photoshop",
-                    "aftereffects"
+                    "aftereffects",
+                    "fusion"
                 ],
                 "enabled": True,
                 "optional": True,
@@ -1011,7 +1012,8 @@ DEFAULT_PUBLISH_VALUES = {
                         "ext": "png",
                         "tags": [
                             "ftrackreview",
-                            "kitsureview"
+                            "kitsureview",
+                            "webreview"
                         ],
                         "burnins": [],
                         "ffmpeg_args": {
@@ -1051,7 +1053,8 @@ DEFAULT_PUBLISH_VALUES = {
                         "tags": [
                             "burnin",
                             "ftrackreview",
-                            "kitsureview"
+                            "kitsureview",
+                            "webreview"
                         ],
                         "burnins": [],
                         "ffmpeg_args": {
@@ -1063,7 +1066,10 @@ DEFAULT_PUBLISH_VALUES = {
                             "output": [
                                 "-pix_fmt yuv420p",
                                 "-crf 18",
-                                "-intra"
+                                "-c:a aac",
+                                "-b:a 192k",
+                                "-g 1",
+                                "-movflags faststart"
                             ]
                         },
                         "filter": {
