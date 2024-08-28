@@ -5,6 +5,7 @@ import sys
 import code
 import traceback
 from pathlib import Path
+import warnings
 
 import click
 import acre
@@ -18,7 +19,6 @@ from ayon_core.lib import (
     Logger,
 )
 
-from .cli_commands import Commands
 
 
 class AliasedGroup(click.Group):
@@ -43,7 +43,8 @@ class AliasedGroup(click.Group):
               help="Enable debug")
 @click.option("--verbose", expose_value=False,
               help=("Change AYON log level (debug - critical or 0-50)"))
-def main_cli(ctx):
+@click.option("--force", is_flag=True, hidden=True)
+def main_cli(ctx, force):
     """AYON is main command serving as entry point to pipeline system.
 
     It wraps different commands together.
@@ -55,17 +56,24 @@ def main_cli(ctx):
             print(ctx.get_help())
             sys.exit(0)
         else:
-            ctx.invoke(tray)
+            ctx.forward(tray)
 
 
 @main_cli.command()
-def tray():
+@click.option(
+    "--force",
+    is_flag=True,
+    help="Force to start tray and close any existing one.")
+def tray(force):
     """Launch AYON tray.
 
     Default action of AYON command is to launch tray widget to control basic
     aspects of AYON. See documentation for more information.
     """
-    Commands.launch_tray()
+
+    from ayon_core.tools.tray import main
+
+    main(force)
 
 
 @main_cli.group(help="Run command line arguments of AYON addons")
@@ -108,14 +116,25 @@ def extractenvironments(
         This function is deprecated and will be removed in future. Please use
         'addon applications extractenvironments ...' instead.
     """
-    Commands.extractenvironments(
-        output_json_path,
-        project,
-        asset,
-        task,
-        app,
-        envgroup,
-        ctx.obj["addons_manager"]
+    warnings.warn(
+        (
+            "Command 'extractenvironments' is deprecated and will be"
+            " removed in future. Please use"
+            " 'addon applications extractenvironments ...' instead."
+        ),
+        DeprecationWarning
+    )
+
+    addons_manager = ctx.obj["addons_manager"]
+    applications_addon = addons_manager.get_enabled_addon("applications")
+    if applications_addon is None:
+        raise RuntimeError(
+            "Applications addon is not available or enabled."
+        )
+
+    # Please ignore the fact this is using private method
+    applications_addon._cli_extract_environments(
+        output_json_path, project, asset, task, app, envgroup
     )
 
 
@@ -124,15 +143,15 @@ def extractenvironments(
 @click.argument("path", required=True)
 @click.option("-t", "--targets", help="Targets", default=None,
               multiple=True)
-@click.option("-g", "--gui", is_flag=True,
-              help="Show Publish UI", default=False)
-def publish(ctx, path, targets, gui):
+def publish(ctx, path, targets):
     """Start CLI publishing.
 
     Publish collects json from path provided as an argument.
 
     """
-    Commands.publish(path, targets, gui, ctx.obj["addons_manager"])
+    from ayon_core.pipeline.publish import main_cli_publish
+
+    main_cli_publish(path, targets, ctx.obj["addons_manager"])
 
 
 @main_cli.command(context_settings={"ignore_unknown_options": True})
@@ -162,12 +181,10 @@ def contextselection(
     Context is project name, folder path and task name. The result is stored
     into json file which path is passed in first argument.
     """
-    Commands.contextselection(
-        output_path,
-        project,
-        folder,
-        strict
-    )
+    from ayon_core.tools.context_dialog import main
+
+    main(output_path, project, folder, strict)
+
 
 
 @main_cli.command(
