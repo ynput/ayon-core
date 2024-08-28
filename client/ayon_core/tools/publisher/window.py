@@ -687,13 +687,14 @@ class PublisherWindow(QtWidgets.QDialog):
 
     def _on_tab_change(self, old_tab, new_tab):
         if old_tab == "details":
-            self._publish_details_widget.close_details_popup()
+            self._publish_details_widget.set_active(False)
 
         if new_tab == "details":
             self._content_stacked_layout.setCurrentWidget(
                 self._publish_details_widget
             )
             self._update_publish_details_widget()
+            self._publish_details_widget.set_active(True)
 
         elif new_tab == "report":
             self._content_stacked_layout.setCurrentWidget(

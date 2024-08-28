@@ -13,8 +13,11 @@ from typing import (
 
 from ayon_core.lib import AbstractAttrDef
 from ayon_core.host import HostBase
-from ayon_core.pipeline.create import CreateContext, CreatedInstance
-from ayon_core.pipeline.create.context import ConvertorItem
+from ayon_core.pipeline.create import (
+    CreateContext,
+    CreatedInstance,
+    ConvertorItem,
+)
 from ayon_core.tools.common_models import (
     FolderItem,
     TaskItem,
