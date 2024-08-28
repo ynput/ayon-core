@@ -20,7 +20,14 @@ from .exceptions import (
     TaskNotSetError,
     TemplateFillError,
 )
-from .structures import CreatedInstance
+from .structures import (
+    CreatedInstance,
+    ConvertorItem,
+    AttributeValues,
+    CreatorAttributeValues,
+    PublishAttributeValues,
+    PublishAttributes,
+)
 from .utils import (
     get_last_versions_for_instances,
     get_next_versions_for_instances,
@@ -79,6 +86,11 @@ __all__ = (
     "TemplateFillError",
 
     "CreatedInstance",
+    "ConvertorItem",
+    "AttributeValues",
+    "CreatorAttributeValues",
+    "PublishAttributeValues",
+    "PublishAttributes",
 
     "get_last_versions_for_instances",
     "get_next_versions_for_instances",
