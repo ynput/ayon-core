@@ -4,7 +4,10 @@ import os
 from typing import Dict
 
 import pyblish.api
-from pxr import Sdf
+try:
+    from pxr import Sdf
+except ImportError:
+    Sdf = None
 
 from ayon_core.lib import (
     TextDef,
@@ -13,21 +16,24 @@ from ayon_core.lib import (
     UILabelDef,
     EnumDef
 )
-from ayon_core.pipeline.usdlib import (
-    get_or_define_prim_spec,
-    add_ordered_reference,
-    variant_nested_prim_path,
-    setup_asset_layer,
-    add_ordered_sublayer,
-    set_layer_defaults
-)
+try:
+    from ayon_core.pipeline.usdlib import (
+        get_or_define_prim_spec,
+        add_ordered_reference,
+        variant_nested_prim_path,
+        setup_asset_layer,
+        add_ordered_sublayer,
+        set_layer_defaults
+    )
+except ImportError:
+    pass
 from ayon_core.pipeline.entity_uri import (
     construct_ayon_entity_uri,
     parse_ayon_entity_uri
 )
 from ayon_core.pipeline.load.utils import get_representation_path_by_names
 from ayon_core.pipeline.publish.lib import get_instance_expected_output_path
-from ayon_core.pipeline import publish
+from ayon_core.pipeline import publish, KnownPublishError
 
 
 # This global toggle is here mostly for debugging purposes and should usually
@@ -555,6 +561,16 @@ class CollectUSDLayerContributionsHoudiniLook(CollectUSDLayerContributions):
         return defs
 
 
+class ValidateUSDDependencies(pyblish.api.InstancePlugin):
+    families = ["usdLayer"]
+
+    order = pyblish.api.ValidatorOrder
+
+    def process(self, instance):
+        if Sdf is None:
+            raise KnownPublishError("USD library 'Sdf' is not available.")
+
+
 class ExtractUSDLayerContribution(publish.Extractor):
 
     families = ["usdLayer"]
@@ -652,14 +668,14 @@ class ExtractUSDLayerContribution(publish.Extractor):
         )
 
     def remove_previous_reference_contribution(self,
-                                               prim_spec: Sdf.PrimSpec,
+                                               prim_spec: "Sdf.PrimSpec",
                                                instance: pyblish.api.Instance):
         # Remove existing contributions of the same product - ignoring
         # the picked version and representation. We assume there's only ever
         # one version of a product you want to have referenced into a Prim.
         remove_indices = set()
         for index, ref in enumerate(prim_spec.referenceList.prependedItems):
-            ref: Sdf.Reference  # type hint
+            ref: "Sdf.Reference"
 
             uri = ref.customData.get("ayon_uri")
             if uri and self.instance_match_ayon_uri(instance, uri):
@@ -674,8 +690,8 @@ class ExtractUSDLayerContribution(publish.Extractor):
             ]
 
     def add_reference_contribution(self,
-                                   layer: Sdf.Layer,
-                                   prim_path: Sdf.Path,
+                                   layer: "Sdf.Layer",
+                                   prim_path: "Sdf.Path",
                                    filepath: str,
                                    contribution: VariantContribution):
         instance = contribution.instance
