@@ -114,18 +114,19 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
     # the database even if not used by the destination template
     db_representation_context_keys = [
         "project",
-        "asset",
         "hierarchy",
         "folder",
         "task",
         "product",
-        "subset",
-        "family",
         "version",
         "representation",
         "username",
         "user",
-        "output"
+        "output",
+        # OpenPype keys - should be removed
+        "asset",  # folder[name]
+        "subset",  # product[name]
+        "family",  # product[type]
     ]
 
     def process(self, instance):
@@ -742,6 +743,11 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
             #   contain '{frame}' in template -> Do we want support it?
             if not is_udim:
                 repre_context["frame"] = first_index_padded
+
+            # store renderlayer in context if it exists
+            # to be later used for example by delivery templates
+            if instance.data.get("renderlayer"):
+                repre_context["renderlayer"] = instance.data["renderlayer"]
 
             # Update the destination indexes and padding
             dst_collection = clique.assemble(dst_filepaths)[0][0]
