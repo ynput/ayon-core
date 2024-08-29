@@ -588,6 +588,18 @@ DEFAULT_TOOLS_VALUES = {
                 "task_types": [],
                 "task_names": [],
                 "template_name": "tycache"
+            },
+            {
+                "product_types": [
+                    "uasset",
+                    "umap"
+                ],
+                "hosts": [
+                    "unreal"
+                ],
+                "task_types": [],
+                "task_names": [],
+                "template_name": "unrealuasset"
             }
         ],
         "hero_template_name_profiles": [
