@@ -12,12 +12,16 @@ from uuid import uuid4
 from abc import ABC, abstractmethod
 from typing import Optional
 
-import appdirs
 import ayon_api
 from semver import VersionInfo
 
 from ayon_core import AYON_CORE_ROOT
-from ayon_core.lib import Logger, is_dev_mode_enabled
+from ayon_core.lib import (
+    Logger,
+    is_dev_mode_enabled,
+    get_launcher_storage_dir,
+    is_headless_mode_enabled,
+)
 from ayon_core.settings import get_studio_settings
 
 from .interfaces import (
@@ -77,36 +81,41 @@ class ProcessPreparationError(Exception):
 
 
 class ProcessContext:
-    """Context of child process.
+    """Hold context of process that is going to be started.
 
-    Notes:
-        This class is used to pass context to child process. It can be used
-            to use different behavior of addon based on information in
-            the context.
-        The context can be enhanced in future versions.
+    Right now the context is simple, having information about addon that wants
+        to trigger preparation and possibly project name for which it should
+        happen.
+
+    Preparation for process can be required for ayon-core or any other addon.
+        It can be, change of environment variables, or request login to
+        a project management.
+
+    At the moment of creation is 'ProcessContext' only data holder, but that
+        might change in future if there will be need.
 
     Args:
-        addon_name (Optional[str]): Addon name which triggered process.
-        addon_version (Optional[str]): Addon version which triggered process.
+        addon_name (str): Addon name which triggered process.
+        addon_version (str): Addon version which triggered process.
         project_name (Optional[str]): Project name. Can be filled in case
             process is triggered for specific project. Some addons can have
-            different behavior based on project.
-        headless (Optional[bool]): Is process running in headless mode.
+            different behavior based on project. Value is NOT autofilled.
+        headless (Optional[bool]): Is process running in headless mode. Value
+            is filled with value based on state set in AYON launcher.
 
     """
     def __init__(
         self,
-        addon_name: Optional[str] = None,
-        addon_version: Optional[str] = None,
+        addon_name: str,
+        addon_version: str,
         project_name: Optional[str] = None,
         headless: Optional[bool] = None,
         **kwargs,
     ):
         if headless is None:
-            # TODO use lib function to get headless mode
-            headless = os.getenv("AYON_HEADLESS_MODE") == "1"
-        self.addon_name: Optional[str] = addon_name
-        self.addon_version: Optional[str] = addon_version
+            headless = is_headless_mode_enabled()
+        self.addon_name: str = addon_name
+        self.addon_version: str = addon_version
         self.project_name: Optional[str] = project_name
         self.headless: bool = headless
 
@@ -327,10 +336,7 @@ def _load_ayon_addons(openpype_modules, modules_key, log):
 
     addons_dir = os.environ.get("AYON_ADDONS_DIR")
     if not addons_dir:
-        addons_dir = os.path.join(
-            appdirs.user_data_dir("AYON", "Ynput"),
-            "addons"
-        )
+        addons_dir = get_launcher_storage_dir("addons")
 
     dev_mode_enabled = is_dev_mode_enabled()
     dev_addons_info = {}

@@ -744,6 +744,11 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
             if not is_udim:
                 repre_context["frame"] = first_index_padded
 
+            # store renderlayer in context if it exists
+            # to be later used for example by delivery templates
+            if instance.data.get("renderlayer"):
+                repre_context["renderlayer"] = instance.data["renderlayer"]
+
             # Update the destination indexes and padding
             dst_collection = clique.assemble(dst_filepaths)[0][0]
             dst_collection.padding = destination_padding
