@@ -1,6 +1,7 @@
 import inspect
 from abc import ABCMeta
 import pyblish.api
+import pyblish.logic
 from pyblish.plugin import MetaPlugin, ExplicitMetaPlugin
 from ayon_core.lib import BoolDef
 
@@ -114,10 +115,53 @@ class AYONPyblishPluginMixin:
         """Publish attribute definitions.
 
         Attributes available for all families in plugin's `families` attribute.
-        Returns:
-            list<AbstractAttrDef>: Attribute definitions for plugin.
-        """
 
+        Returns:
+            list[AbstractAttrDef]: Attribute definitions for plugin.
+
+        """
+        return []
+
+    @classmethod
+    def get_attribute_defs_for_context(cls, create_context):
+        """Publish attribute definitions for context.
+
+        Attributes available for all families in plugin's `families` attribute.
+
+        Args:
+            create_context (CreateContext): Create context.
+
+        Returns:
+            list[AbstractAttrDef]: Attribute definitions for plugin.
+
+        """
+        if cls.__instanceEnabled__:
+            return []
+        return cls.get_attribute_defs()
+
+    @classmethod
+    def get_attribute_defs_for_instance(cls, create_context, instance):
+        """Publish attribute definitions for an instance.
+
+        Attributes available for all families in plugin's `families` attribute.
+
+
+        Args:
+            create_context (CreateContext): Create context.
+            instance (CreatedInstance): Instance for which attributes are
+                collected.
+
+        Returns:
+            list[AbstractAttrDef]: Attribute definitions for plugin.
+
+        """
+        if not cls.__instanceEnabled__:
+            return []
+
+        for _ in pyblish.logic.plugins_by_families(
+            [cls], [instance.product_type]
+        ):
+            return cls.get_attribute_defs()
         return []
 
     @classmethod
