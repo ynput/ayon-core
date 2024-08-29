@@ -38,7 +38,7 @@ class TemplateUnsolved(Exception):
         )
 
 
-class StringTemplate(object):
+class StringTemplate:
     """String that can be formatted."""
     def __init__(self, template):
         if not isinstance(template, str):
@@ -410,7 +410,7 @@ class TemplatePartResult:
             self._invalid_types[key] = type(value)
 
 
-class FormatObject(object):
+class FormatObject:
     """Object that can be used for formatting.
 
     This is base that is valid for to be used in 'StringTemplate' value.
@@ -460,6 +460,34 @@ class FormattingPart:
                 return True
         return False
 
+    @staticmethod
+    def validate_key_is_matched(key):
+        """Validate that opening has closing at correct place.
+        Future-proof, only square brackets are currently used in keys.
+
+        Example:
+            >>> is_matched("[]()()(((([])))")
+            False
+            >>> is_matched("[](){{{[]}}}")
+            True
+
+        Returns:
+            bool: Openings and closing are valid.
+
+        """
+        mapping = dict(zip("({[", ")}]"))
+        opening = set(mapping.keys())
+        closing = set(mapping.values())
+        queue = []
+
+        for letter in key:
+            if letter in opening:
+                queue.append(mapping[letter])
+            elif letter in closing:
+                if not queue or letter != queue.pop():
+                    return False
+        return not queue
+
     def format(self, data, result):
         """Format the formattings string.
 
@@ -470,6 +498,12 @@ class FormattingPart:
         key = self.template[1:-1]
         if key in result.realy_used_values:
             result.add_output(result.realy_used_values[key])
+            return result
+
+        # ensure key is properly formed [({})] properly closed.
+        if not self.validate_key_is_matched(key):
+            result.add_missing_key(key)
+            result.add_output(self.template)            
             return result
 
         # check if key expects subdictionary keys (e.g. project[name])

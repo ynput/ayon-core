@@ -1,7 +1,6 @@
 import ayon_api
-
+from ayon_core.lib import StringTemplate, filter_profiles, prepare_template_data
 from ayon_core.settings import get_project_settings
-from ayon_core.lib import filter_profiles, prepare_template_data
 
 from .constants import DEFAULT_PRODUCT_TEMPLATE
 from .exceptions import TaskNotSetError, TemplateFillError
@@ -170,7 +169,10 @@ def get_product_name(
             fill_pairs[key] = value
 
     try:
-        return template.format(**prepare_template_data(fill_pairs))
+        return StringTemplate.format_strict_template(
+            template=template,
+            data=prepare_template_data(fill_pairs)
+        )
     except KeyError as exp:
         raise TemplateFillError(
             "Value for {} key is missing in template '{}'."
