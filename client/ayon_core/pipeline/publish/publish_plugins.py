@@ -165,20 +165,16 @@ class AYONPyblishPluginMixin:
         return []
 
     @classmethod
-    def convert_attribute_values(cls, attribute_values):
-        if cls.__name__ not in attribute_values:
-            return attribute_values
+    def convert_attribute_values(cls, create_context, instance):
+        """Convert attribute values for instance.
 
-        plugin_values = attribute_values[cls.__name__]
+        Args:
+            create_context (CreateContext): Create context.
+            instance (CreatedInstance): Instance for which attributes are
+                converted.
 
-        attr_defs = cls.get_attribute_defs()
-        for attr_def in attr_defs:
-            key = attr_def.key
-            if key in plugin_values:
-                plugin_values[key] = attr_def.convert_value(
-                    plugin_values[key]
-                )
-        return attribute_values
+        """
+        return
 
     @staticmethod
     def get_attr_values_from_data_for_plugin(plugin, data):
