@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 import copy
 import collections
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING, Optional, Dict, Any
 
 from abc import ABC, abstractmethod
 
@@ -19,11 +19,12 @@ from .constants import DEFAULT_VARIANT_VALUE
 from .product_name import get_product_name
 from .utils import get_next_versions_for_instances
 from .legacy_create import LegacyCreator
+from .structures import CreatedInstance
 
 if TYPE_CHECKING:
     from ayon_core.lib import AbstractAttrDef
     # Avoid cyclic imports
-    from .context import CreateContext, CreatedInstance, UpdateData  # noqa: F401
+    from .context import CreateContext, UpdateData  # noqa: F401
 
 
 class ProductConvertorPlugin(ABC):
@@ -362,6 +363,18 @@ class BaseCreator(ABC):
             self._log = Logger.get_logger(self.__class__.__name__)
         return self._log
 
+    def _create_instance(
+        self, product_type: str, product_name: str, data: Dict[str, Any]
+    ) -> CreatedInstance:
+        instance = CreatedInstance(
+            product_type,
+            product_name,
+            data,
+            creator=self,
+        )
+        self._add_instance_to_context(instance)
+        return instance
+
     def _add_instance_to_context(self, instance):
         """Helper method to add instance to create context.
 
@@ -550,6 +563,16 @@ class BaseCreator(ABC):
         """
 
         return self.instance_attr_defs
+
+    def get_attr_defs_for_instance(self, instance):
+        """Get attribute definitions for an instance.
+
+        Args:
+            instance (CreatedInstance): Instance for which to get
+                attribute definitions.
+
+        """
+        return self.get_instance_attr_defs()
 
     @property
     def collection_shared_data(self):
