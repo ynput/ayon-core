@@ -6,7 +6,7 @@ import traceback
 import collections
 import inspect
 from contextlib import contextmanager
-from typing import Optional
+from typing import Optional, Dict, Any, Callable
 
 import pyblish.logic
 import pyblish.api
@@ -171,7 +171,6 @@ class CreateContext:
         self.publish_plugins_mismatch_targets = []
         self.publish_plugins = []
         self.plugins_with_defs = []
-        self._attr_plugins_by_product_type = {}
 
         # Helpers for validating context of collected instances
         #   - they can be validation for multiple instances at one time
@@ -564,9 +563,6 @@ class CreateContext:
             publish_plugins_discover
         )
 
-        # Reset publish plugins
-        self._attr_plugins_by_product_type = {}
-
         discover_result = DiscoverResult(pyblish.api.Plugin)
         plugins_with_defs = []
         plugins_by_targets = []
@@ -694,10 +690,28 @@ class CreateContext:
 
         publish_attributes = original_data.get("publish_attributes") or {}
 
-        attr_plugins = self._get_publish_plugins_with_attr_for_context()
         self._publish_attributes = PublishAttributes(
-            self, publish_attributes, attr_plugins
+            self, publish_attributes
         )
+
+        for plugin in self.plugins_with_defs:
+            if is_func_signature_supported(
+                plugin.convert_attribute_values, self, None
+            ):
+                plugin.convert_attribute_values(self, None)
+
+            elif not plugin.__instanceEnabled__:
+                output = plugin.convert_attribute_values(publish_attributes)
+                if output:
+                    publish_attributes.update(output)
+
+        for plugin in self.plugins_with_defs:
+            attr_defs = plugin.get_attribute_defs_for_context(self)
+            if not attr_defs:
+                continue
+            self._publish_attributes.set_publish_plugin_attr_defs(
+                plugin.__name__, attr_defs
+            )
 
     def context_data_to_store(self):
         """Data that should be stored by host function.
@@ -734,11 +748,25 @@ class CreateContext:
             return
 
         self._instances_by_id[instance.id] = instance
+
+        publish_attributes = instance.publish_attributes
         # Prepare publish plugin attributes and set it on instance
-        attr_plugins = self._get_publish_plugins_with_attr_for_product_type(
-            instance.product_type
-        )
-        instance.set_publish_plugins(attr_plugins)
+        for plugin in self.plugins_with_defs:
+            if is_func_signature_supported(
+                plugin.convert_attribute_values, self, instance
+            ):
+                plugin.convert_attribute_values(self, instance)
+
+            elif plugin.__instanceEnabled__:
+                output = plugin.convert_attribute_values(publish_attributes)
+                if output:
+                    publish_attributes.update(output)
+
+        for plugin in self.plugins_with_defs:
+            attr_defs = plugin.get_attribute_defs_for_instance(self, instance)
+            if not attr_defs:
+                continue
+            instance.set_publish_plugin_attr_defs(plugin.__name__, attr_defs)
 
         # Add instance to be validated inside 'bulk_instances_collection'
         #   context manager if is inside bulk
@@ -1308,44 +1336,6 @@ class CreateContext:
 
         if failed_info:
             raise CreatorsRemoveFailed(failed_info)
-
-    def _get_publish_plugins_with_attr_for_product_type(self, product_type):
-        """Publish plugin attributes for passed product type.
-
-        Attribute definitions for specific product type are cached.
-
-        Args:
-            product_type(str): Instance product type for which should be
-                attribute definitions returned.
-        """
-
-        if product_type not in self._attr_plugins_by_product_type:
-            import pyblish.logic
-
-            filtered_plugins = pyblish.logic.plugins_by_families(
-                self.plugins_with_defs, [product_type]
-            )
-            plugins = []
-            for plugin in filtered_plugins:
-                if plugin.__instanceEnabled__:
-                    plugins.append(plugin)
-            self._attr_plugins_by_product_type[product_type] = plugins
-
-        return self._attr_plugins_by_product_type[product_type]
-
-    def _get_publish_plugins_with_attr_for_context(self):
-        """Publish plugins attributes for Context plugins.
-
-        Returns:
-            List[pyblish.api.Plugin]: Publish plugins that have attribute
-                definitions for context.
-        """
-
-        plugins = []
-        for plugin in self.plugins_with_defs:
-            if not plugin.__instanceEnabled__:
-                plugins.append(plugin)
-        return plugins
 
     @property
     def collection_shared_data(self):

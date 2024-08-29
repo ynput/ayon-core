@@ -4,6 +4,7 @@ from uuid import uuid4
 
 from ayon_core.lib.attribute_definitions import (
     UnknownDef,
+    UIDef,
     serialize_attr_defs,
     deserialize_attr_defs,
 )
@@ -248,15 +249,11 @@ class PublishAttributes:
             plugins that may have defined attribute definitions.
     """
 
-    def __init__(self, parent, origin_data, attr_plugins=None):
+    def __init__(self, parent, origin_data):
         self.parent = parent
         self._origin_data = copy.deepcopy(origin_data)
 
         self._data = copy.deepcopy(origin_data)
-        self._plugin_names_order = []
-        self._missing_plugins = []
-
-        self.set_publish_plugins(attr_plugins)
 
     def __getitem__(self, key):
         return self._data[key]
@@ -287,10 +284,9 @@ class PublishAttributes:
         if key not in self._data:
             return default
 
-        if key in self._missing_plugins:
-            self._missing_plugins.remove(key)
-            removed_item = self._data.pop(key)
-            return removed_item.data_to_store()
+        value = self._data[key]
+        if not isinstance(value, AttributeValues):
+            return self._data.pop(key)
 
         value_item = self._data[key]
         # Prepare value to return
@@ -298,12 +294,6 @@ class PublishAttributes:
         # Reset values
         value_item.reset_values()
         return output
-
-    def plugin_names_order(self):
-        """Plugin names order by their 'order' attribute."""
-
-        for name in self._plugin_names_order:
-            yield name
 
     def mark_as_stored(self):
         self._origin_data = copy.deepcopy(self.data_to_store())
@@ -320,40 +310,29 @@ class PublishAttributes:
     def origin_data(self):
         return copy.deepcopy(self._origin_data)
 
-    def set_publish_plugins(self, attr_plugins):
-        """Set publish plugins attribute definitions."""
-        attr_plugins = attr_plugins or []
-        self._plugin_names_order = []
-        self._missing_plugins = []
+    def set_publish_plugin_attr_defs(self, plugin_name, attr_defs):
+        """Set attribute definitions for plugin.
 
-        origin_data = self._origin_data
-        data = self._data
-        self._data = {}
-        added_keys = set()
-        for plugin in attr_plugins:
-            output = plugin.convert_attribute_values(data)
-            if output is not None:
-                data = output
-            attr_defs = plugin.get_attribute_defs()
-            if not attr_defs:
+        Args:
+            plugin_name(str): Name of plugin.
+            attr_defs(Optional[List[AbstractAttrDef]]): Attribute definitions.
+
+        """
+        # TODO what if 'attr_defs' is 'None'?
+        value = self._data.get(plugin_name)
+        if value is None:
+            value = {}
+
+        for attr_def in attr_defs:
+            if isinstance(attr_def, (UIDef, UnknownDef)):
                 continue
+            key = attr_def.key
+            if key in value:
+                value[key] = attr_def.convert_value(value[key])
 
-            key = plugin.__name__
-            added_keys.add(key)
-            self._plugin_names_order.append(key)
-
-            value = data.get(key) or {}
-            orig_value = copy.deepcopy(origin_data.get(key) or {})
-            self._data[key] = PublishAttributeValues(
-                self, attr_defs, value, orig_value
-            )
-
-        for key, value in data.items():
-            if key not in added_keys:
-                self._missing_plugins.append(key)
-                self._data[key] = PublishAttributeValues(
-                    self, [], value, value
-                )
+        self._data[plugin_name] = PublishAttributeValues(
+            self, attr_defs, value, value
+        )
 
     def serialize_attributes(self):
         return {
@@ -361,14 +340,9 @@ class PublishAttributes:
                 plugin_name: attrs_value.get_serialized_attr_defs()
                 for plugin_name, attrs_value in self._data.items()
             },
-            "plugin_names_order": self._plugin_names_order,
-            "missing_plugins": self._missing_plugins
         }
 
     def deserialize_attributes(self, data):
-        self._plugin_names_order = data["plugin_names_order"]
-        self._missing_plugins = data["missing_plugins"]
-
         attr_defs = deserialize_attr_defs(data["attr_defs"])
 
         origin_data = self._origin_data
@@ -386,10 +360,7 @@ class PublishAttributes:
 
         for key, value in data.items():
             if key not in added_keys:
-                self._missing_plugins.append(key)
-                self._data[key] = PublishAttributeValues(
-                    self, [], value, value
-                )
+                self._data[key] = value
 
 
 class CreatedInstance:
@@ -445,7 +416,6 @@ class CreatedInstance:
             creator_identifier = creator.identifier
             group_label = creator.get_group_label()
             creator_label = creator.label
-            creator_attr_defs = creator.get_instance_attr_defs()
 
         self._creator_label = creator_label
         self._group_label = group_label or creator_identifier
@@ -505,6 +475,9 @@ class CreatedInstance:
         # {key: value}
         creator_values = copy.deepcopy(orig_creator_attributes)
 
+        if creator is not None:
+            creator_attr_defs = creator.get_attr_defs_for_instance(self)
+
         self._data["creator_attributes"] = CreatorAttributeValues(
             self,
             list(creator_attr_defs),
@@ -514,9 +487,8 @@ class CreatedInstance:
 
         # Stored publish specific attribute values
         # {<plugin name>: {key: value}}
-        # - must be set using 'set_publish_plugins'
         self._data["publish_attributes"] = PublishAttributes(
-            self, orig_publish_attributes, None
+            self, orig_publish_attributes
         )
         if data:
             self._data.update(data)
@@ -745,18 +717,17 @@ class CreatedInstance:
             product_type, product_name, instance_data, creator
         )
 
-    def set_publish_plugins(self, attr_plugins):
-        """Set publish plugins with attribute definitions.
-
-        This method should be called only from 'CreateContext'.
+    def set_publish_plugin_attr_defs(self, plugin_name, attr_defs):
+        """Set attribute definitions for publish plugin.
 
         Args:
-            attr_plugins (List[pyblish.api.Plugin]): Pyblish plugins which
-                inherit from 'AYONPyblishPluginMixin' and may contain
-                attribute definitions.
-        """
+            plugin_name(str): Name of publish plugin.
+            attr_defs(List[AbstractAttrDef]): Attribute definitions.
 
-        self.publish_attributes.set_publish_plugins(attr_plugins)
+        """
+        self.publish_attributes.set_publish_plugin_attr_defs(
+            plugin_name, attr_defs
+        )
 
     def add_members(self, members):
         """Currently unused method."""
