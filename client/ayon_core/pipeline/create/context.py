@@ -6,7 +6,7 @@ import traceback
 import collections
 import inspect
 from contextlib import contextmanager
-from typing import Optional, Dict, Any, Callable
+from typing import Optional
 
 import pyblish.logic
 import pyblish.api
