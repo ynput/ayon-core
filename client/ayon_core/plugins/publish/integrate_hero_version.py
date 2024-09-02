@@ -265,6 +265,9 @@ class IntegrateHeroVersion(
                 project_name, "version", new_hero_version
             )
 
+        # Store hero entity to 'instance.data'
+        instance.data["heroVersionEntity"] = new_hero_version
+
         # Separate old representations into `to replace` and `to delete`
         old_repres_to_replace = {}
         old_repres_to_delete = {}

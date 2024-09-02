@@ -108,6 +108,20 @@ def run_subprocess(*args, **kwargs):
             | getattr(subprocess, "CREATE_NO_WINDOW", 0)
         )
 
+    # Escape parentheses for bash
+    if (
+        kwargs.get("shell") is True
+        and len(args) == 1
+        and isinstance(args[0], str)
+        and os.getenv("SHELL") in ("/bin/bash", "/bin/sh")
+    ):
+        new_arg = (
+            args[0]
+            .replace("(", "\\(")
+            .replace(")", "\\)")
+        )
+        args = (new_arg, )
+
     # Get environents from kwarg or use current process environments if were
     # not passed.
     env = kwargs.get("env") or os.environ
@@ -179,7 +193,7 @@ def clean_envs_for_ayon_process(env=None):
     return env
 
 
-def run_ayon_launcher_process(*args, **kwargs):
+def run_ayon_launcher_process(*args, add_sys_paths=False, **kwargs):
     """Execute AYON process with passed arguments and wait.
 
     Wrapper for 'run_process' which prepends AYON executable arguments
@@ -208,6 +222,15 @@ def run_ayon_launcher_process(*args, **kwargs):
         # Skip envs that can affect AYON launcher process
         # - fill more if you find more
         env = clean_envs_for_ayon_process(os.environ)
+
+    if add_sys_paths:
+        new_pythonpath = list(sys.path)
+        lookup_set = set(new_pythonpath)
+        for path in (env.get("PYTHONPATH") or "").split(os.pathsep):
+            if path and path not in lookup_set:
+                new_pythonpath.append(path)
+                lookup_set.add(path)
+        env["PYTHONPATH"] = os.pathsep.join(new_pythonpath)
 
     return run_subprocess(args, env=env, **kwargs)
 
