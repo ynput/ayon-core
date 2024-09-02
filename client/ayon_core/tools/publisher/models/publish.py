@@ -17,7 +17,7 @@ from ayon_core.pipeline import (
 from ayon_core.pipeline.plugin_discover import DiscoverResult
 from ayon_core.pipeline.publish import (
     get_publish_instance_label,
-    PublishArtistError,
+    PublishError,
 )
 from ayon_core.tools.publisher.abstract import AbstractPublisherBackend
 
@@ -52,7 +52,7 @@ class PublishErrorInfo:
     @classmethod
     def from_exception(cls, exc) -> "PublishErrorInfo":
         title = "This is not your fault"
-        if isinstance(exc, PublishArtistError):
+        if isinstance(exc, PublishError):
             return cls(
                 exc.description or exc.message,
                 title=exc.title or title,
