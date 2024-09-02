@@ -53,10 +53,6 @@ class PublishErrorInfo:
                 detail=exc.detail,
             )
         title = "This is not your fault"
-        detail = (
-            "Please report the error to your pipeline support"
-            " using one of the options below."
-        )
         if isinstance(exc, KnownPublishError):
             msg = str(exc)
         else:
@@ -64,7 +60,7 @@ class PublishErrorInfo:
                 "Something went wrong. Send report"
                 " to your supervisor or Ynput team."
             )
-        return cls(msg, title, detail)
+        return cls(msg, title)
 
 
 class PublishReportMaker:
