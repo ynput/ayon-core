@@ -51,13 +51,13 @@ class PublishErrorInfo:
 
     @classmethod
     def from_exception(cls, exc) -> "PublishErrorInfo":
+        title = "This is not your fault"
         if isinstance(exc, PublishArtistError):
             return cls(
                 exc.description or exc.message,
-                title=exc.title,
+                title=exc.title or title,
                 detail=exc.detail,
             )
-        title = "This is not your fault"
         if isinstance(exc, KnownPublishError):
             msg = str(exc)
         else:
