@@ -1454,6 +1454,73 @@ class InstancesLogsView(QtWidgets.QFrame):
         self._update_instances()
 
 
+class ErrorDetailWidget(QtWidgets.QWidget):
+    def __init__(self, parent):
+        super().__init__(parent)
+
+        error_detail_top = ClickableFrame(self)
+
+        error_detail_expand_btn = ClassicExpandBtn(error_detail_top)
+        error_detail_expand_label = QtWidgets.QLabel(
+            "Details", error_detail_top)
+
+        line_widget = SeparatorWidget(1, parent=error_detail_top)
+
+        error_detail_top_l = QtWidgets.QHBoxLayout(error_detail_top)
+        error_detail_top_l.setContentsMargins(0, 0, 10, 0)
+        error_detail_top_l.addWidget(error_detail_expand_btn, 0)
+        error_detail_top_l.addWidget(error_detail_expand_label, 0)
+        error_detail_top_l.addWidget(line_widget, 1)
+
+        error_detail_input = ExpandingTextEdit(self)
+        error_detail_input.setObjectName("InfoText")
+        error_detail_input.setTextInteractionFlags(
+            QtCore.Qt.TextBrowserInteraction
+        )
+
+        main_layout = QtWidgets.QVBoxLayout(self)
+        main_layout.setContentsMargins(0, 0, 0, 0)
+        main_layout.addWidget(error_detail_top, 0)
+        main_layout.addWidget(error_detail_input, 0)
+        main_layout.addStretch(1)
+
+        error_detail_top.clicked.connect(self._on_detail_toggle)
+
+        error_detail_input.setVisible(not error_detail_expand_btn.collapsed)
+
+        self._error_detail_top = error_detail_top
+        self._error_detail_expand_btn = error_detail_expand_btn
+        self._error_detail_input = error_detail_input
+
+    def set_detail(self, detail):
+        if not detail:
+            self._set_visible_inputs(False)
+            return
+
+        if commonmark:
+            self._error_detail_input.setHtml(
+                commonmark.commonmark(detail)
+            )
+
+        elif hasattr(self._error_detail_input, "setMarkdown"):
+            self._error_detail_input.setMarkdown(detail)
+
+        else:
+            self._error_detail_input.setText(detail)
+
+        self._set_visible_inputs(True)
+
+    def _set_visible_inputs(self, visible):
+        self._error_detail_top.setVisible(visible)
+        self._error_detail_input.setVisible(visible)
+
+    def _on_detail_toggle(self):
+        self._error_detail_expand_btn.set_collapsed()
+        self._error_detail_input.setVisible(
+            not self._error_detail_expand_btn.collapsed
+        )
+
+
 class CrashWidget(QtWidgets.QWidget):
     """Widget shown when publishing crashes.
 
@@ -1466,20 +1533,16 @@ class CrashWidget(QtWidgets.QWidget):
     ):
         super().__init__(parent)
 
-        main_label = QtWidgets.QLabel("This is not your fault", self)
-        main_label.setAlignment(QtCore.Qt.AlignCenter)
-        main_label.setObjectName("PublishCrashMainLabel")
+        title_label = QtWidgets.QLabel("", self)
+        title_label.setAlignment(QtCore.Qt.AlignCenter)
+        title_label.setObjectName("PublishCrashMainLabel")
 
-        report_label = QtWidgets.QLabel(
-            (
-                "Please report the error to your pipeline support"
-                " using one of the options below."
-            ),
-            self
-        )
-        report_label.setAlignment(QtCore.Qt.AlignCenter)
-        report_label.setWordWrap(True)
-        report_label.setObjectName("PublishCrashReportLabel")
+        description_label = QtWidgets.QLabel("", self)
+        description_label.setAlignment(QtCore.Qt.AlignCenter)
+        description_label.setWordWrap(True)
+        description_label.setObjectName("PublishCrashReportLabel")
+
+        detail_widget = ErrorDetailWidget(self)
 
         btns_widget = QtWidgets.QWidget(self)
         copy_clipboard_btn = QtWidgets.QPushButton(
@@ -1488,6 +1551,8 @@ class CrashWidget(QtWidgets.QWidget):
             "Save to disk", btns_widget)
 
         btns_layout = QtWidgets.QHBoxLayout(btns_widget)
+        btns_layout.setContentsMargins(0, 0, 0, 0)
+        btns_layout.setSpacing(0)
         btns_layout.addStretch(1)
         btns_layout.addWidget(copy_clipboard_btn, 0)
         btns_layout.addSpacing(20)
@@ -1495,18 +1560,37 @@ class CrashWidget(QtWidgets.QWidget):
         btns_layout.addStretch(1)
 
         layout = QtWidgets.QVBoxLayout(self)
-        layout.addStretch(1)
-        layout.addWidget(main_label, 0)
+        layout.setContentsMargins(5, 5, 5, 5)
+        layout.setSpacing(0)
         layout.addSpacing(20)
-        layout.addWidget(report_label, 0)
+        layout.addWidget(title_label, 0)
         layout.addSpacing(20)
+        layout.addWidget(description_label, 0)
+        layout.addSpacing(20)
+        layout.addWidget(detail_widget, 1)
+        layout.addSpacing(10)
         layout.addWidget(btns_widget, 0)
-        layout.addStretch(2)
+        layout.addSpacing(10)
 
         copy_clipboard_btn.clicked.connect(self._on_copy_to_clipboard)
         save_to_disk_btn.clicked.connect(self._on_save_to_disk_click)
 
+        self._title_label = title_label
+        self._description_label = description_label
+        self._detail_widget = detail_widget
         self._controller: AbstractPublisherFrontend = controller
+
+    def update_error_info(self):
+        error_info = self._controller.get_publish_error_info()
+        if error_info is None:
+            self._title_label.setText("Placeholder title")
+            self._description_label.setText("A bug happened if you see this")
+            self._detail_widget.set_detail(None)
+            return
+
+        self._title_label.setText(error_info.title)
+        self._description_label.setText(error_info.description)
+        self._detail_widget.set_detail(error_info.detail)
 
     def _on_copy_to_clipboard(self):
         self._controller.emit_event(
@@ -1517,7 +1601,7 @@ class CrashWidget(QtWidgets.QWidget):
             "export_report.request", {}, "report_page")
 
 
-class ErrorDetailsWidget(QtWidgets.QWidget):
+class PublishFailWidget(QtWidgets.QWidget):
     def __init__(self, parent):
         super().__init__(parent)
 
@@ -1529,35 +1613,7 @@ class ErrorDetailsWidget(QtWidgets.QWidget):
             QtCore.Qt.TextBrowserInteraction
         )
 
-        # Error 'Details' widget -> Collapsible
-        error_details_widget = QtWidgets.QWidget(inputs_widget)
-
-        error_details_top = ClickableFrame(error_details_widget)
-
-        error_details_expand_btn = ClassicExpandBtn(error_details_top)
-        error_details_expand_label = QtWidgets.QLabel(
-            "Details", error_details_top)
-
-        line_widget = SeparatorWidget(1, parent=error_details_top)
-
-        error_details_top_l = QtWidgets.QHBoxLayout(error_details_top)
-        error_details_top_l.setContentsMargins(0, 0, 10, 0)
-        error_details_top_l.addWidget(error_details_expand_btn, 0)
-        error_details_top_l.addWidget(error_details_expand_label, 0)
-        error_details_top_l.addWidget(line_widget, 1)
-
-        error_details_input = ExpandingTextEdit(error_details_widget)
-        error_details_input.setObjectName("InfoText")
-        error_details_input.setTextInteractionFlags(
-            QtCore.Qt.TextBrowserInteraction
-        )
-        error_details_input.setVisible(not error_details_expand_btn.collapsed)
-
-        error_details_layout = QtWidgets.QVBoxLayout(error_details_widget)
-        error_details_layout.setContentsMargins(0, 0, 0, 0)
-        error_details_layout.addWidget(error_details_top, 0)
-        error_details_layout.addWidget(error_details_input, 0)
-        error_details_layout.addStretch(1)
+        error_details_widget = ErrorDetailWidget(inputs_widget)
 
         # Description and Details layout
         inputs_layout = QtWidgets.QVBoxLayout(inputs_widget)
@@ -1570,17 +1626,8 @@ class ErrorDetailsWidget(QtWidgets.QWidget):
         main_layout.setContentsMargins(0, 0, 0, 0)
         main_layout.addWidget(inputs_widget, 1)
 
-        error_details_top.clicked.connect(self._on_detail_toggle)
-
-        self._error_details_widget = error_details_widget
         self._error_description_input = error_description_input
-        self._error_details_expand_btn = error_details_expand_btn
-        self._error_details_input = error_details_input
-
-    def _on_detail_toggle(self):
-        self._error_details_expand_btn.set_collapsed()
-        self._error_details_input.setVisible(
-            not self._error_details_expand_btn.collapsed)
+        self._error_details_widget = error_details_widget
 
     def set_error_item(self, error_item):
         detail = ""
@@ -1589,23 +1636,18 @@ class ErrorDetailsWidget(QtWidgets.QWidget):
             description = error_item.description or description
             detail = error_item.detail or detail
 
+        self._error_details_widget.set_detail(detail)
+
         if commonmark:
             self._error_description_input.setHtml(
                 commonmark.commonmark(description)
             )
-            self._error_details_input.setHtml(
-                commonmark.commonmark(detail)
-            )
 
-        elif hasattr(self._error_details_input, "setMarkdown"):
+        elif hasattr(self._error_description_input, "setMarkdown"):
             self._error_description_input.setMarkdown(description)
-            self._error_details_input.setMarkdown(detail)
 
         else:
             self._error_description_input.setText(description)
-            self._error_details_input.setText(detail)
-
-        self._error_details_widget.setVisible(bool(detail))
 
 
 class ReportsWidget(QtWidgets.QWidget):
@@ -1671,7 +1713,7 @@ class ReportsWidget(QtWidgets.QWidget):
 
         detail_input_scroll = QtWidgets.QScrollArea(pages_widget)
 
-        detail_inputs_widget = ErrorDetailsWidget(detail_input_scroll)
+        detail_inputs_widget = PublishFailWidget(detail_input_scroll)
         detail_inputs_widget.setAttribute(QtCore.Qt.WA_TranslucentBackground)
 
         detail_input_scroll.setWidget(detail_inputs_widget)
@@ -1767,6 +1809,8 @@ class ReportsWidget(QtWidgets.QWidget):
         is_crashed = self._controller.publish_has_crashed()
         self._crash_widget.setVisible(is_crashed)
         self._logs_view.setVisible(not is_crashed)
+
+        self._crash_widget.update_error_info()
 
         # Instance view & logs update
         instance_items = self._get_instance_items()
