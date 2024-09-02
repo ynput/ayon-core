@@ -27,12 +27,17 @@ PLUGIN_ORDER_OFFSET = 0.5
 
 
 class PublishErrorInfo:
-    def __init__(self, description, title, detail):
-        self.description = description
-        self.title = title
-        self.detail = detail
+    def __init__(
+        self,
+        description: str,
+        title: Optional[str],
+        detail: Optional[str]
+    ):
+        self.description: str = description
+        self.title: Optional[str] = title
+        self.detail: Optional[str] = detail
 
-    def __eq__(self, other):
+    def __eq__(self, other: Any) -> bool:
         if not isinstance(other, PublishErrorInfo):
             return False
         return (
@@ -41,11 +46,11 @@ class PublishErrorInfo:
             and self.detail == other.detail
         )
 
-    def __ne__(self, other):
+    def __ne__(self, other: Any) -> bool:
         return not self.__eq__(other)
 
     @classmethod
-    def from_exception(cls, exc):
+    def from_exception(cls, exc) -> "PublishErrorInfo":
         if isinstance(exc, PublishArtistError):
             return cls(
                 exc.description or exc.message,
@@ -60,7 +65,7 @@ class PublishErrorInfo:
                 "Something went wrong. Send report"
                 " to your supervisor or Ynput team."
             )
-        return cls(msg, title)
+        return cls(msg, title, None)
 
 
 class PublishReportMaker:
