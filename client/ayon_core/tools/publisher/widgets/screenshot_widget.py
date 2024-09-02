@@ -159,7 +159,9 @@ class ScreenMarqueeDialog(QtWidgets.QDialog):
         return pos
 
     def _fit_screen_geometry(self):
-        # Compute the union of all screen geometries, and resize to fit.
+        # On macOs it is required to set screen explicitly
+        if hasattr(self, "setScreen"):
+            self.setScreen(self._screen)
         self.setGeometry(self._screen.geometry())
 
 
