@@ -26,7 +26,7 @@ from ayon_core.tools.common_models import (
 )
 
 if TYPE_CHECKING:
-    from .models import CreatorItem
+    from .models import CreatorItem, PublishErrorInfo
 
 
 class CardMessageTypes:
@@ -537,14 +537,13 @@ class AbstractPublisherFrontend(AbstractPublisherCommon):
         pass
 
     @abstractmethod
-    def get_publish_error_msg(self) -> Union[str, None]:
+    def get_publish_error_info(self) -> Union["PublishErrorInfo", None]:
         """Current error message which cause fail of publishing.
 
         Returns:
-            Union[str, None]: Message which will be showed to artist or
-                None.
-        """
+            Union[PublishErrorInfo, None]: Error info or None.
 
+        """
         pass
 
     @abstractmethod

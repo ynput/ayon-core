@@ -493,8 +493,8 @@ class PublisherController(
     def get_publish_progress(self):
         return self._publish_model.get_progress()
 
-    def get_publish_error_msg(self):
-        return self._publish_model.get_error_msg()
+    def get_publish_error_info(self):
+        return self._publish_model.get_error_info()
 
     def get_publish_report(self):
         return self._publish_model.get_publish_report()

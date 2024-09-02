@@ -23,6 +23,40 @@ PUBLISH_EVENT_SOURCE = "publisher.publish.model"
 PLUGIN_ORDER_OFFSET = 0.5
 
 
+class PublishErrorInfo:
+    def __init__(self, description, title, detail):
+        self.description = description
+        self.title = title
+        self.detail = detail
+
+    def __eq__(self, other):
+        if not isinstance(other, PublishErrorInfo):
+            return False
+        return (
+            self.description == other.description
+            and self.title == other.title
+            and self.detail == other.detail
+        )
+
+    def __ne__(self, other):
+        return not self.__eq__(other)
+
+    @classmethod
+    def from_exception(cls, exc):
+        title = "This is not your fault"
+        detail = (
+            "Please report the error to your pipeline support"
+            " using one of the options below."
+        )
+        if isinstance(exc, KnownPublishError):
+            msg = str(exc)
+        else:
+            msg = (
+                "Something went wrong. Send report"
+                " to your supervisor or Ynput team."
+            )
+        return cls(msg, title, detail)
+
 
 class PublishReportMaker:
     """Report for single publishing process.
@@ -801,7 +835,7 @@ class PublishModel:
         self._publish_comment_is_set: bool = False
 
         # Any other exception that happened during publishing
-        self._publish_error_msg: Optional[str] = None
+        self._publish_error_info: Optional[PublishErrorInfo] = None
         # Publishing is in progress
         self._publish_is_running: bool = False
         # Publishing is over validation order
@@ -851,7 +885,7 @@ class PublishModel:
         self._publish_comment_is_set = False
         self._publish_has_started = False
 
-        self._set_publish_error_msg(None)
+        self._set_publish_error_info(None)
         self._set_progress(0)
         self._set_is_running(False)
         self._set_has_validated(False)
@@ -977,8 +1011,8 @@ class PublishModel:
     def get_validation_errors(self) -> PublishValidationErrorsReport:
         return self._publish_validation_errors.create_report()
 
-    def get_error_msg(self) -> Optional[str]:
-        return self._publish_error_msg
+    def get_error_info(self) -> Optional[PublishErrorInfo]:
+        return self._publish_error_info
 
     def set_comment(self, comment: str):
         # Ignore change of comment when publishing started
@@ -1077,9 +1111,9 @@ class PublishModel:
                 {"value": value}
             )
 
-    def _set_publish_error_msg(self, value: Optional[str]):
-        if self._publish_error_msg != value:
-            self._publish_error_msg = value
+    def _set_publish_error_info(self, value: Optional[PublishErrorInfo]):
+        if self._publish_error_info != value:
+            self._publish_error_info = value
             self._emit_event(
                 "publish.publish_error.changed",
                 {"value": value}
@@ -1234,14 +1268,8 @@ class PublishModel:
                 self._add_validation_error(result)
 
             else:
-                if isinstance(exception, KnownPublishError):
-                    msg = str(exception)
-                else:
-                    msg = (
-                        "Something went wrong. Send report"
-                        " to your supervisor or Ynput team."
-                    )
-                self._set_publish_error_msg(msg)
+                error_info = PublishErrorInfo.from_exception(exception)
+                self._set_publish_error_info(error_info)
                 self._set_is_crashed(True)
 
             result["is_validation_error"] = has_validation_error
