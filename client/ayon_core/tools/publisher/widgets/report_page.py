@@ -1486,11 +1486,17 @@ class ErrorDetailWidget(QtWidgets.QWidget):
 
         error_detail_top.clicked.connect(self._on_detail_toggle)
 
-        error_detail_input.setVisible(not error_detail_expand_btn.collapsed)
-
         self._error_detail_top = error_detail_top
         self._error_detail_expand_btn = error_detail_expand_btn
         self._error_detail_input = error_detail_input
+
+    def showEvent(self, event):
+        super().showEvent(event)
+        # Calling this in __init__ does not seem to propagate the visibility
+        #   correctly
+        self._error_detail_input.setVisible(
+            not self._error_detail_expand_btn.collapsed
+        )
 
     def set_detail(self, detail):
         if not detail:
