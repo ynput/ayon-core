@@ -33,7 +33,7 @@ class KnownPublishError(Exception):
     pass
 
 
-class PublishArtistError(Exception):
+class PublishError(Exception):
     """Publishing crashed because of known error.
 
     Message will be shown in UI for artist.
@@ -53,7 +53,7 @@ class PublishArtistError(Exception):
         super().__init__(message)
 
 
-class PublishValidationError(PublishArtistError):
+class PublishValidationError(PublishError):
     """Validation error happened during publishing.
 
     This exception should be used when validation publishing failed.

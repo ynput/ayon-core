@@ -52,7 +52,7 @@ from .load import (
 
 from .publish import (
     KnownPublishError,
-    PublishArtistError,
+    PublishError,
     PublishValidationError,
     PublishXmlValidationError,
     AYONPyblishPluginMixin,
@@ -166,7 +166,7 @@ __all__ = (
 
     # --- Publish ---
     "KnownPublishError",
-    "PublishArtistError",
+    "PublishError",
     "PublishValidationError",
     "PublishXmlValidationError",
     "AYONPyblishPluginMixin",
