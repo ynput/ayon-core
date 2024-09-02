@@ -29,6 +29,10 @@ class KnownPublishError(Exception):
     """Publishing crashed because of known error.
 
     Artist can't affect source of the error.
+
+    Deprecated:
+        Please use `PublishError` instead. Marked as deprecated 24/09/02.
+
     """
     pass
 
