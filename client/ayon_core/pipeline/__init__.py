@@ -51,6 +51,7 @@ from .load import (
 )
 
 from .publish import (
+    PublishArtistError,
     PublishValidationError,
     PublishXmlValidationError,
     KnownPublishError,
@@ -164,6 +165,7 @@ __all__ = (
     "get_repres_contexts",
 
     # --- Publish ---
+    "PublishArtistError",
     "PublishValidationError",
     "PublishXmlValidationError",
     "KnownPublishError",
