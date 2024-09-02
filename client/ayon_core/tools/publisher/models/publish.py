@@ -15,7 +15,10 @@ from ayon_core.pipeline import (
     OptionalPyblishPluginMixin,
 )
 from ayon_core.pipeline.plugin_discover import DiscoverResult
-from ayon_core.pipeline.publish import get_publish_instance_label
+from ayon_core.pipeline.publish import (
+    get_publish_instance_label,
+    PublishArtistError,
+)
 from ayon_core.tools.publisher.abstract import AbstractPublisherBackend
 
 PUBLISH_EVENT_SOURCE = "publisher.publish.model"
@@ -43,6 +46,12 @@ class PublishErrorInfo:
 
     @classmethod
     def from_exception(cls, exc):
+        if isinstance(exc, PublishArtistError):
+            return cls(
+                exc.description or exc.message,
+                title=exc.title,
+                detail=exc.detail,
+            )
         title = "This is not your fault"
         detail = (
             "Please report the error to your pipeline support"
