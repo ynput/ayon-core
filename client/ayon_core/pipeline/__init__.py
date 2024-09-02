@@ -51,10 +51,10 @@ from .load import (
 )
 
 from .publish import (
+    KnownPublishError,
     PublishArtistError,
     PublishValidationError,
     PublishXmlValidationError,
-    KnownPublishError,
     AYONPyblishPluginMixin,
     OpenPypePyblishPluginMixin,
     OptionalPyblishPluginMixin,
@@ -165,10 +165,10 @@ __all__ = (
     "get_repres_contexts",
 
     # --- Publish ---
+    "KnownPublishError",
     "PublishArtistError",
     "PublishValidationError",
     "PublishXmlValidationError",
-    "KnownPublishError",
     "AYONPyblishPluginMixin",
     "OpenPypePyblishPluginMixin",
     "OptionalPyblishPluginMixin",

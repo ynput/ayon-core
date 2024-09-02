@@ -25,6 +25,14 @@ class AbstractMetaContextPlugin(ABCMeta, ExplicitMetaPlugin):
     pass
 
 
+class KnownPublishError(Exception):
+    """Publishing crashed because of known error.
+
+    Artist can't affect source of the error.
+    """
+    pass
+
+
 class PublishArtistError(Exception):
     """Publishing crashed because of known error.
 
@@ -79,15 +87,6 @@ class PublishXmlValidationError(PublishValidationError):
         super(PublishXmlValidationError, self).__init__(
             message, content_obj.title, description, detail
         )
-
-
-class KnownPublishError(Exception):
-    """Publishing crashed because of known error.
-
-    Message will be shown in UI for artist.
-    """
-
-    pass
 
 
 class AYONPyblishPluginMixin:
