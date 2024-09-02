@@ -26,16 +26,6 @@ if TYPE_CHECKING:
     from .context import CreateContext, CreatedInstance, UpdateData  # noqa: F401
 
 
-class CreatorError(Exception):
-    """Should be raised when creator failed because of known issue.
-
-    Message of error should be user readable.
-    """
-
-    def __init__(self, message):
-        super(CreatorError, self).__init__(message)
-
-
 class ProductConvertorPlugin(ABC):
     """Helper for conversion of instances created using legacy creators.
 
@@ -654,7 +644,7 @@ class Creator(BaseCreator):
                 cls._get_default_variant_wrap,
                 cls._set_default_variant_wrap
             )
-        super(Creator, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
 
     @property
     def show_order(self):
