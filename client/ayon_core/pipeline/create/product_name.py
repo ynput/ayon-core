@@ -3,20 +3,7 @@ from ayon_core.lib import StringTemplate, filter_profiles, prepare_template_data
 from ayon_core.settings import get_project_settings
 
 from .constants import DEFAULT_PRODUCT_TEMPLATE
-
-
-class TaskNotSetError(KeyError):
-    def __init__(self, msg=None):
-        if not msg:
-            msg = "Creator's product name template requires task name."
-        super(TaskNotSetError, self).__init__(msg)
-
-
-class TemplateFillError(Exception):
-    def __init__(self, msg=None):
-        if not msg:
-            msg = "Creator's product name template is missing key value."
-        super(TemplateFillError, self).__init__(msg)
+from .exceptions import TaskNotSetError, TemplateFillError
 
 
 def get_product_name_template(
