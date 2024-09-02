@@ -1460,17 +1460,19 @@ class ErrorDetailWidget(QtWidgets.QWidget):
 
         error_detail_top = ClickableFrame(self)
 
+        line_l_widget = SeparatorWidget(1, parent=error_detail_top)
         error_detail_expand_btn = ClassicExpandBtn(error_detail_top)
         error_detail_expand_label = QtWidgets.QLabel(
             "Details", error_detail_top)
 
-        line_widget = SeparatorWidget(1, parent=error_detail_top)
+        line_r_widget = SeparatorWidget(1, parent=error_detail_top)
 
         error_detail_top_l = QtWidgets.QHBoxLayout(error_detail_top)
         error_detail_top_l.setContentsMargins(0, 0, 10, 0)
+        error_detail_top_l.addWidget(line_l_widget, 1)
         error_detail_top_l.addWidget(error_detail_expand_btn, 0)
         error_detail_top_l.addWidget(error_detail_expand_label, 0)
-        error_detail_top_l.addWidget(line_widget, 1)
+        error_detail_top_l.addWidget(line_r_widget, 9)
 
         error_detail_input = ExpandingTextEdit(self)
         error_detail_input.setObjectName("InfoText")
