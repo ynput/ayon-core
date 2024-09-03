@@ -84,7 +84,6 @@ exclude = [
 
 [tool.ruff.lint.per-file-ignores]
 "client/ayon_core/lib/__init__.py" = ["E402"]
-"client/ayon_core/hosts/max/startup/startup.py" = ["E402"]
 
 [tool.ruff.format]
 # Like Black, use double quotes for strings.
