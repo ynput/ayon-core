@@ -4,7 +4,10 @@ import os
 from typing import Dict
 
 import pyblish.api
-from pxr import Sdf
+try:
+    from pxr import Sdf
+except ImportError:
+    Sdf = None
 
 from ayon_core.lib import (
     TextDef,
@@ -13,21 +16,24 @@ from ayon_core.lib import (
     UILabelDef,
     EnumDef
 )
-from ayon_core.pipeline.usdlib import (
-    get_or_define_prim_spec,
-    add_ordered_reference,
-    variant_nested_prim_path,
-    setup_asset_layer,
-    add_ordered_sublayer,
-    set_layer_defaults
-)
+try:
+    from ayon_core.pipeline.usdlib import (
+        get_or_define_prim_spec,
+        add_ordered_reference,
+        variant_nested_prim_path,
+        setup_asset_layer,
+        add_ordered_sublayer,
+        set_layer_defaults
+    )
+except ImportError:
+    pass
 from ayon_core.pipeline.entity_uri import (
     construct_ayon_entity_uri,
     parse_ayon_entity_uri
 )
 from ayon_core.pipeline.load.utils import get_representation_path_by_names
 from ayon_core.pipeline.publish.lib import get_instance_expected_output_path
-from ayon_core.pipeline import publish
+from ayon_core.pipeline import publish, KnownPublishError
 
 
 # This global toggle is here mostly for debugging purposes and should usually
@@ -138,13 +144,14 @@ def get_instance_uri_path(
     folder_path = instance.data["folderPath"]
     product_name = instance.data["productName"]
     project_name = context.data["projectName"]
+    version_name = instance.data["version"]
 
     # Get the layer's published path
     path = construct_ayon_entity_uri(
         project_name=project_name,
         folder_path=folder_path,
         product=product_name,
-        version="latest",
+        version=version_name,
         representation_name="usd"
     )
 
@@ -555,11 +562,23 @@ class CollectUSDLayerContributionsHoudiniLook(CollectUSDLayerContributions):
         return defs
 
 
+class ValidateUSDDependencies(pyblish.api.InstancePlugin):
+    families = ["usdLayer"]
+
+    order = pyblish.api.ValidatorOrder
+
+    def process(self, instance):
+        if Sdf is None:
+            raise KnownPublishError("USD library 'Sdf' is not available.")
+
+
 class ExtractUSDLayerContribution(publish.Extractor):
 
     families = ["usdLayer"]
     label = "Extract USD Layer Contributions (Asset/Shot)"
     order = pyblish.api.ExtractorOrder + 0.45
+
+    use_ayon_entity_uri = False
 
     def process(self, instance):
 
@@ -578,7 +597,8 @@ class ExtractUSDLayerContribution(publish.Extractor):
 
         contributions = instance.data.get("usd_contributions", [])
         for contribution in sorted(contributions, key=attrgetter("order")):
-            path = get_instance_uri_path(contribution.instance)
+            path = get_instance_uri_path(contribution.instance,
+                                         resolve=not self.use_ayon_entity_uri)
             if isinstance(contribution, VariantContribution):
                 # Add contribution as a reference inside a variant
                 self.log.debug(f"Adding variant: {contribution}")
@@ -652,14 +672,14 @@ class ExtractUSDLayerContribution(publish.Extractor):
         )
 
     def remove_previous_reference_contribution(self,
-                                               prim_spec: Sdf.PrimSpec,
+                                               prim_spec: "Sdf.PrimSpec",
                                                instance: pyblish.api.Instance):
         # Remove existing contributions of the same product - ignoring
         # the picked version and representation. We assume there's only ever
         # one version of a product you want to have referenced into a Prim.
         remove_indices = set()
         for index, ref in enumerate(prim_spec.referenceList.prependedItems):
-            ref: Sdf.Reference  # type hint
+            ref: "Sdf.Reference"
 
             uri = ref.customData.get("ayon_uri")
             if uri and self.instance_match_ayon_uri(instance, uri):
@@ -674,8 +694,8 @@ class ExtractUSDLayerContribution(publish.Extractor):
             ]
 
     def add_reference_contribution(self,
-                                   layer: Sdf.Layer,
-                                   prim_path: Sdf.Path,
+                                   layer: "Sdf.Layer",
+                                   prim_path: "Sdf.Path",
                                    filepath: str,
                                    contribution: VariantContribution):
         instance = contribution.instance
@@ -719,6 +739,8 @@ class ExtractUSDAssetContribution(publish.Extractor):
     families = ["usdAsset"]
     label = "Extract USD Asset/Shot Contributions"
     order = ExtractUSDLayerContribution.order + 0.01
+
+    use_ayon_entity_uri = False
 
     def process(self, instance):
 
@@ -795,15 +817,15 @@ class ExtractUSDAssetContribution(publish.Extractor):
             layer_id = layer_instance.data["usd_layer_id"]
             order = layer_instance.data["usd_layer_order"]
 
-            path = get_instance_uri_path(instance=layer_instance)
+            path = get_instance_uri_path(instance=layer_instance,
+                                         resolve=not self.use_ayon_entity_uri)
             add_ordered_sublayer(target_layer,
                                  contribution_path=path,
                                  layer_id=layer_id,
                                  order=order,
                                  # Add the sdf argument metadata which allows
                                  # us to later detect whether another path
-                                 # has the same layer id, so we can replace it
-                                 # it.
+                                 # has the same layer id, so we can replace it.
                                  add_sdf_arguments_metadata=True)
 
         # Save the file

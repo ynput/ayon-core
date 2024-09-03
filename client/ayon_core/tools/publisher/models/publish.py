@@ -172,7 +172,7 @@ class PublishReportMaker:
             "crashed_file_paths": crashed_file_paths,
             "id": uuid.uuid4().hex,
             "created_at": now.isoformat(),
-            "report_version": "1.0.1",
+            "report_version": "1.1.0",
         }
 
     def _add_plugin_data_item(self, plugin: pyblish.api.Plugin):
@@ -194,11 +194,23 @@ class PublishReportMaker:
         if hasattr(plugin, "label"):
             label = plugin.label
 
+        plugin_type = "instance" if plugin.__instanceEnabled__ else "context"
+        # Get docstring
+        # NOTE we do care only about docstring from the plugin so we can't
+        #   use 'inspect.getdoc' which also looks for docstring in parent
+        #   classes.
+        docstring = getattr(plugin, "__doc__", None)
+        if docstring:
+            docstring = inspect.cleandoc(docstring)
         return {
             "id": plugin.id,
             "name": plugin.__name__,
             "label": label,
             "order": plugin.order,
+            "filepath": inspect.getfile(plugin),
+            "docstring": docstring,
+            "plugin_type": plugin_type,
+            "families": list(plugin.families),
             "targets": list(plugin.targets),
             "instances_data": [],
             "actions_data": [],
@@ -829,7 +841,9 @@ class PublishModel:
         )
 
         # Plugin iterator
-        self._main_thread_iter: Iterable[partial] = []
+        self._main_thread_iter: collections.abc.Generator[partial] = (
+            self._default_iterator()
+        )
 
     def reset(self):
         create_context = self._controller.get_create_context()
@@ -895,29 +909,30 @@ class PublishModel:
             func()
 
     def get_next_process_func(self) -> partial:
-        # Validations of progress before using iterator
-        # - same conditions may be inside iterator but they may be used
-        #   only in specific cases (e.g. when it happens for a first time)
+        # Raise error if this function is called when publishing
+        #   is not running
+        if not self._publish_is_running:
+            raise ValueError("Publish is not running")
 
+        # Validations of progress before using iterator
+        # Any unexpected error happened
+        # - everything should stop
+        if self._publish_has_crashed:
+            return partial(self.stop_publish)
+
+        # Stop if validation is over and validation errors happened
+        #   or publishing should stop at validation
         if (
-            self._main_thread_iter is None
-            # There are validation errors and validation is passed
-            # - can't do any progree
-            or (
-                self._publish_has_validated
-                and self._publish_has_validation_errors
+            self._publish_has_validated
+            and (
+                self._publish_has_validation_errors
+                or self._publish_up_validation
             )
-            # Any unexpected error happened
-            # - everything should stop
-            or self._publish_has_crashed
         ):
-            item = partial(self.stop_publish)
+            return partial(self.stop_publish)
 
         # Everything is ok so try to get new processing item
-        else:
-            item = next(self._main_thread_iter)
-
-        return item
+        return next(self._main_thread_iter)
 
     def stop_publish(self):
         if self._publish_is_running:
@@ -1070,6 +1085,19 @@ class PublishModel:
                 {"value": value}
             )
 
+    def _default_iterator(self):
+        """Iterator used on initialization.
+
+        Should be replaced by real iterator when 'reset' is called.
+
+        Returns:
+            collections.abc.Generator[partial]: Generator with partial
+                functions that should be called in main thread.
+
+        """
+        while True:
+            yield partial(self.stop_publish)
+
     def _start_publish(self):
         """Start or continue in publishing."""
         if self._publish_is_running:
@@ -1101,22 +1129,16 @@ class PublishModel:
             self._publish_progress = idx
 
             # Check if plugin is over validation order
-            if not self._publish_has_validated:
-                self._set_has_validated(
-                    plugin.order >= self._validation_order
-                )
-
-            # Stop if plugin is over validation order and process
-            #   should process up to validation.
-            if self._publish_up_validation and self._publish_has_validated:
-                yield partial(self.stop_publish)
-
-            # Stop if validation is over and validation errors happened
             if (
-                self._publish_has_validated
-                and self.has_validation_errors()
+                not self._publish_has_validated
+                and plugin.order >= self._validation_order
             ):
-                yield partial(self.stop_publish)
+                self._set_has_validated(True)
+                if (
+                    self._publish_up_validation
+                    or self._publish_has_validation_errors
+                ):
+                    yield partial(self.stop_publish)
 
             # Add plugin to publish report
             self._publish_report.add_plugin_iter(
