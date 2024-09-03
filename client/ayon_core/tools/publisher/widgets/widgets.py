@@ -1339,7 +1339,7 @@ class CreatorAttrsWidget(QtWidgets.QWidget):
     Attributes are defined on creator so are dynamic. Their look and type is
     based on attribute definitions that are defined in
     `~/ayon_core/lib/attribute_definitions.py` and their widget
-    representation in `~/openpype/tools/attribute_defs/*`.
+    representation in `~/ayon_core/tools/attribute_defs/*`.
 
     Widgets are disabled if context of instance is not valid.
 
