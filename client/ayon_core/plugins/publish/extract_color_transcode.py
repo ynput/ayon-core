@@ -123,15 +123,18 @@ class ExtractOIIOTranscode(publish.Extractor):
 
                 target_colorspace = view = display = None
                 # NOTE: we use colorspace_data as the fallback values for the target colorspace.
-                if transcoding_type == "use_colorspace":
+                if transcoding_type == "colorspace":
                     # TODO: Should we fallback to the colorspace (which used as source above) ?
                     #       or should we compute the target colorspace from current view and display ?
-                    target_colorspace = (output_def["use_colorspace"]["colorspace"] or
+                    target_colorspace = (output_def["colorspace"] or
                                          colorspace_data.get("colorspace"))
-                elif transcoding_type == "use_display_view":
-                    view = output_def["use_display_view"]["view"] or colorspace_data.get("view")
-                    display = (output_def["use_display_view"]["display"] or
-                               colorspace_data.get("display"))
+                elif transcoding_type == "display_view":
+                    display_view = output_def["display_view"]
+                    view = display_view["view"] or colorspace_data.get("view")
+                    display = (
+                        display_view["display"]
+                        or colorspace_data.get("display")
+                    )
 
                 # both could be already collected by DCC,
                 # but could be overwritten when transcoding

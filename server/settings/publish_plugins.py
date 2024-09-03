@@ -267,19 +267,14 @@ class ExtractThumbnailModel(BaseSettingsModel):
 
 def _extract_oiio_transcoding_type():
     return [
-        {"value": "use_colorspace", "label": "Use Colorspace"},
-        {"value": "use_display_view", "label": "Use Display&View"}
+        {"value": "colorspace", "label": "Use Colorspace"},
+        {"value": "display_view", "label": "Use Display&View"}
     ]
 
 
 class OIIOToolArgumentsModel(BaseSettingsModel):
     additional_command_args: list[str] = SettingsField(
         default_factory=list, title="Arguments")
-
-
-class UseColorspaceModel(BaseSettingsModel):
-    _layout = "expanded"
-    colorspace: str = SettingsField("", title="Target Colorspace")
 
 
 class UseDisplayViewModel(BaseSettingsModel):
@@ -298,16 +293,13 @@ class ExtractOIIOTranscodeOutputModel(BaseSettingsModel):
     )
     extension: str = SettingsField("", title="Extension")
     transcoding_type: str = SettingsField(
-        "use_colorspace",
+        "colorspace",
         title="Transcoding type",
         enum_resolver=_extract_oiio_transcoding_type,
         conditionalEnum=True
     )
-    use_colorspace: UseColorspaceModel = SettingsField(
-        title="Use Colorspace",
-        default_factory=UseColorspaceModel
-    )
-    use_display_view: UseDisplayViewModel = SettingsField(
+    colorspace: str = SettingsField("", title="Target Colorspace")
+    display_view: UseDisplayViewModel = SettingsField(
         title="Use Display&View",
         default_factory=UseDisplayViewModel
     )
