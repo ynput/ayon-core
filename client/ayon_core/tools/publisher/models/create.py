@@ -18,7 +18,7 @@ from ayon_core.pipeline.create import (
     CreateContext,
     CreatedInstance,
 )
-from ayon_core.pipeline.create.context import (
+from ayon_core.pipeline.create import (
     CreatorsOperationFailed,
     ConvertorsOperationFailed,
     ConvertorItem,

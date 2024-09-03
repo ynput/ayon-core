@@ -10,8 +10,8 @@ import signal
 import locale
 from typing import Optional, Dict, Tuple, Any
 
-import ayon_api
 import requests
+from ayon_api.utils import get_default_settings_variant
 
 from ayon_core.lib import (
     Logger,
@@ -19,7 +19,7 @@ from ayon_core.lib import (
     run_detached_process,
     get_ayon_username,
 )
-from ayon_core.lib.local_settings import get_ayon_appdirs
+from ayon_core.lib.local_settings import get_launcher_local_dir
 
 
 class TrayState:
@@ -39,7 +39,7 @@ def _get_default_server_url() -> str:
 
 def _get_default_variant() -> str:
     """Get default settings variant."""
-    return ayon_api.get_default_settings_variant()
+    return get_default_settings_variant()
 
 
 def _get_server_and_variant(
@@ -146,7 +146,7 @@ def get_tray_storage_dir() -> str:
         str: Tray storage directory where metadata files are stored.
 
     """
-    return get_ayon_appdirs("tray")
+    return get_launcher_local_dir("tray")
 
 
 def _get_tray_info_filepath(
