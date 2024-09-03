@@ -1900,7 +1900,7 @@ class OverscanCrop:
         string_value = re.sub(r"([ ]+)?px", " ", string_value)
         string_value = re.sub(r"([ ]+)%", "%", string_value)
         # Make sure +/- sign at the beginning of string is next to number
-        string_value = re.sub(r"^([\+\-])[ ]+", "\g<1>", string_value)
+        string_value = re.sub(r"^([\+\-])[ ]+", r"\g<1>", string_value)
         # Make sure +/- sign in the middle has zero spaces before number under
         #   which belongs
         string_value = re.sub(
