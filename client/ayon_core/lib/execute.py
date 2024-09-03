@@ -321,14 +321,12 @@ def path_to_subprocess_arg(path):
 
 
 def get_ayon_launcher_args(*args):
-    """Arguments to run ayon-launcher process.
+    """Arguments to run AYON launcher process.
 
-    Arguments for subprocess when need to spawn new pype process. Which may be
-    needed when new python process for pype scripts must be executed in build
-    pype.
+    Arguments for subprocess when need to spawn new AYON launcher process.
 
     Reasons:
-        Ayon-launcher started from code has different executable set to
+        AYON launcher started from code has different executable set to
             virtual env python and must have path to script as first argument
             which is not needed for built application.
 
@@ -336,7 +334,8 @@ def get_ayon_launcher_args(*args):
         *args (str): Any arguments that will be added after executables.
 
     Returns:
-        list[str]: List of arguments to run ayon-launcher process.
+        list[str]: List of arguments to run AYON launcher process.
+
     """
     executable = os.environ["AYON_EXECUTABLE"]
     launch_args = [executable]
