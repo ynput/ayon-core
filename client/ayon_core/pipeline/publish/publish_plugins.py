@@ -145,7 +145,6 @@ class AYONPyblishPluginMixin:
 
         Attributes available for all families in plugin's `families` attribute.
 
-
         Args:
             create_context (CreateContext): Create context.
             instance (CreatedInstance): Instance for which attributes are
