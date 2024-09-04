@@ -29,6 +29,8 @@ class CopyFile(load.LoaderPlugin):
         data = QtCore.QMimeData()
         url = QtCore.QUrl.fromLocalFile(path)
         data.setUrls([url])
-
+	
         # Set to Clipboard
         clipboard.setMimeData(data)
+
+
