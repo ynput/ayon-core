@@ -51,9 +51,9 @@ class ValidateCurrentSaveFile(pyblish.api.ContextPlugin):
     def get_description(self):
         return inspect.cleandoc("""
             ### File not saved
-            
+
             Your workfile must be saved to continue publishing.
-            
-            The **Save Workfile** action will save it for you with the first 
+
+            The **Save Workfile** action will save it for you with the first
             available workfile version number in your current context.
         """)
