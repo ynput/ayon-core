@@ -57,7 +57,7 @@ class CollectFramesFixDefModel(BaseSettingsModel):
         True,
         title="Show 'Rewrite latest version' toggle"
     )
-    
+
 
 class ContributionLayersModel(BaseSettingsModel):
     _layout = "compact"
