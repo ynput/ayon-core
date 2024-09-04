@@ -19,7 +19,7 @@ from ayon_core.lib import (
     run_detached_process,
     get_ayon_username,
 )
-from ayon_core.lib.local_settings import get_ayon_appdirs
+from ayon_core.lib.local_settings import get_launcher_local_dir
 
 
 class TrayState:
@@ -146,7 +146,7 @@ def get_tray_storage_dir() -> str:
         str: Tray storage directory where metadata files are stored.
 
     """
-    return get_ayon_appdirs("tray")
+    return get_launcher_local_dir("tray")
 
 
 def _get_tray_info_filepath(
@@ -578,7 +578,7 @@ def make_sure_tray_is_running(
     args = get_ayon_launcher_args("tray", "--force")
     if env is None:
         env = os.environ.copy()
-    
+
     # Make sure 'QT_API' is not set
     env.pop("QT_API", None)
 
