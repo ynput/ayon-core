@@ -512,39 +512,28 @@ class AbstractTemplateBuilder(ABC):
                                               process if version is created
 
         """
-        if any(
-            value is None
-            for value in [
-                template_path,
-                keep_placeholders,
-                create_first_version,
-            ]
-        ):
-            template_preset = self.get_template_preset()
-            if template_path is None:
-                template_path = template_preset["path"]
+        # Get default values if not provided
+        if template_path is None or keep_placeholders is None or create_first_version is None:
+            preset = self.get_template_preset()
+            template_path = template_path or preset["path"]
             if keep_placeholders is None:
-                keep_placeholders = template_preset["keep_placeholder"]
+                keep_placeholders = preset["keep_placeholder"]
             if create_first_version is None:
-                create_first_version = template_preset["create_first_version"]
+                create_first_version = preset["create_first_version"]
 
         # check if first version is created
-        created_version_workfile = False
-        if create_first_version:
-            created_version_workfile = self.create_first_workfile_version()
+        created_version_workfile = create_first_version and self.create_first_workfile_version()
 
         # Build the template
         if (
-            create_first_version
-            and workfile_creation_enabled
-            and (created_version_workfile or self.host.get_current_workfile() is None)
+            not self.host.get_current_workfile() or created_version_workfile
         ):
             self.import_template(template_path)
             self.populate_scene_placeholders(
                 level_limit, keep_placeholders)
 
         # save workfile if a workfile was created.
-        if created_version_workfile:
+        if workfile_creation_enabled and created_version_workfile:
             self.save_workfile(created_version_workfile)
 
     def rebuild_template(self):
