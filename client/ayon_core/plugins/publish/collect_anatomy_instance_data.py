@@ -217,9 +217,8 @@ class CollectAnatomyInstanceData(pyblish.api.ContextPlugin):
             joined_paths = ", ".join(
                 ["\"{}\"".format(path) for path in not_found_task_paths]
             )
-            self.log.warning((
-                "Not found task entities with paths \"{}\"."
-            ).format(joined_paths))
+            self.log.warning(
+                f"Not found task entities with paths {joined_paths}.")
 
     def fill_latest_versions(self, context, project_name):
         """Try to find latest version for each instance's product name.
@@ -321,7 +320,7 @@ class CollectAnatomyInstanceData(pyblish.api.ContextPlugin):
                 use_context_version = instance.data["followWorkfileVersion"]
 
             if use_context_version:
-                version_number = context.data("version")
+                version_number = context.data.get("version")
 
             # Even if 'follow_workfile_version' is enabled, it may not be set
             #   because workfile version was not collected to 'context.data'
