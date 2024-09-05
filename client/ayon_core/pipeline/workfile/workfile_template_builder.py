@@ -533,28 +533,19 @@ class AbstractTemplateBuilder(ABC):
         if create_first_version:
             created_version_workfile = self.create_first_workfile_version()
 
-        # if first version is created, import template
-        # and populate placeholders
+        # Build the template
         if (
             create_first_version
             and workfile_creation_enabled
-            and created_version_workfile
+            and (created_version_workfile or self.host.get_current_workfile() is None)
         ):
             self.import_template(template_path)
             self.populate_scene_placeholders(
                 level_limit, keep_placeholders)
 
-            # save workfile after template is populated
+        # save workfile if a workfile was created.
+        if created_version_workfile:
             self.save_workfile(created_version_workfile)
-
-        # ignore process if first workfile is enabled
-        # but a version is already created
-        if workfile_creation_enabled:
-            return
-
-        self.import_template(template_path)
-        self.populate_scene_placeholders(
-            level_limit, keep_placeholders)
 
     def rebuild_template(self):
         """Go through existing placeholders in scene and update them.
