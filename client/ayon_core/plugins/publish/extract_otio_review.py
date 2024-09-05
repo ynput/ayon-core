@@ -61,7 +61,8 @@ class ExtractOTIOReview(publish.Extractor):
             make_sequence_collection
         )
 
-        self.temp_file_head = self._get_unique_file_prefix(instance)
+        # TODO refactore from using instance variable
+        self.temp_file_head = self._get_folder_name_based_prefix(instance)
 
         # TODO: convert resulting image sequence to mp4
 
@@ -493,11 +494,13 @@ class ExtractOTIOReview(publish.Extractor):
 
         return output_path, out_frame_start
 
-    def _get_unique_file_prefix(self, instance):
-        """Creates unique human readable file prefix to differentiate.
+    def _get_folder_name_based_prefix(self, instance):
+        """Creates 'unique' human readable file prefix to differentiate.
 
-        Multiple instances might share same temp folder, this will provide
-        unique prefix for intermediate file for burnins.
+        Multiple instances might share same temp folder, but each instance
+        would be differentiated by asset, eg. folder name.
+
+        It ix expected that there won't be multiple instances for same asset.
         """
         folder_path = instance.data["folderPath"]
         folder_name = folder_path.split("/")[-1]
