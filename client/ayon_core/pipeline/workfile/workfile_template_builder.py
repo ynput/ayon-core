@@ -511,8 +511,10 @@ class AbstractTemplateBuilder(ABC):
                  workfile for an initial version. It will skip saving if
                  a version already exists.
             workfile_creation_enabled (bool): Whether we are creating a new
-                workfile. If False, we assume we just want to build the
-                template in our current scene.
+                workfile. If False, we assume we explicitly want to build the
+                template in our current scene. Otherwise we only build if the
+                current file is not an existing saved workfile but a "new"
+                file.
 
         """
 
@@ -531,7 +533,14 @@ class AbstractTemplateBuilder(ABC):
 
         # Build the template if current workfile is a new unsaved file
         # (that's detected by checking if it returns any current filepath)
-        if not self.host.get_current_workfile():
+        if (
+                # If not a workfile creation, an explicit load template
+                # was requested, so we always want to build the template
+                not workfile_creation_enabled
+                # Or if workfile creation, but we're not in an active file
+                # we still need to build the "new workfile template"
+                or not self.host.get_current_workfile()
+        ):
             self.log.info(f"Building the workfile template: {template_path}")
             self.import_template(template_path)
             self.populate_scene_placeholders(
