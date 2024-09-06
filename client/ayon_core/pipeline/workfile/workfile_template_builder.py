@@ -489,7 +489,7 @@ class AbstractTemplateBuilder(ABC):
         level_limit=None,
         keep_placeholders=None,
         create_first_version=None,
-        workfile_creation_enabled=None
+        workfile_creation_enabled=False
     ):
         """Main callback for building workfile from template path.
 
@@ -510,7 +510,7 @@ class AbstractTemplateBuilder(ABC):
                  When set to True, this option initiates the saving of the
                  workfile for an initial version. It will skip saving if
                  a version already exists.
-            workfile_creation_enabled (Any): Whether we are creating a new
+            workfile_creation_enabled (bool): Whether we are creating a new
                 workfile. If False, we assume we just want to build the
                 template in our current scene.
 
