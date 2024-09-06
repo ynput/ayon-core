@@ -15,7 +15,6 @@ import os
 import re
 import collections
 import copy
-import warnings
 from abc import ABC, abstractmethod
 
 from ayon_api import (
@@ -508,18 +507,11 @@ class AbstractTemplateBuilder(ABC):
                 hosts to decide if they want to remove
                 placeholder after it is used.
             create_first_version (bool): create first version of a workfile
-            workfile_creation_enabled (Any): Deprecated unused variable.
+            workfile_creation_enabled (Any): Whether we are creating a new
+                workfile. If False, we assume we just want to build the
+                template in our current scene.
 
         """
-
-        if workfile_creation_enabled is not None:
-            warnings.warn(
-                (
-                    "Using deprecated argument `workfile_creation_enabled`. "
-                    "It has been removed because it remained unused."
-                ),
-                category=DeprecationWarning
-            )
 
         # Get default values if not provided
         if (
@@ -541,6 +533,12 @@ class AbstractTemplateBuilder(ABC):
             self.import_template(template_path)
             self.populate_scene_placeholders(
                 level_limit, keep_placeholders)
+
+        if not workfile_creation_enabled:
+            # Do not consider saving a first workfile version, if this
+            # is not set to be a "workfile creation". Then we assume
+            # only the template should get build.
+            return
 
         if not create_first_version:
             # Do not save whatsoever
