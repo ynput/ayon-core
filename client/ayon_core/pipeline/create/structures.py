@@ -698,6 +698,17 @@ class CreatedInstance:
 
         return output
 
+    def update_create_attr_defs(self, attr_defs, value=None):
+        if value is not None:
+            value = self._data["creator_attributes"]
+        origin_data = self._data["creator_attributes"].origin_data
+        self._data["creator_attributes"] = CreatorAttributeValues(
+            self,
+            attr_defs,
+            value,
+            origin_data
+        )
+
     @classmethod
     def from_existing(cls, instance_data, creator):
         """Convert instance data from workfile to CreatedInstance.
