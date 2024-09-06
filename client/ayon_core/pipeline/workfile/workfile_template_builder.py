@@ -506,7 +506,10 @@ class AbstractTemplateBuilder(ABC):
             keep_placeholders (bool): Add flag to placeholder data for
                 hosts to decide if they want to remove
                 placeholder after it is used.
-            create_first_version (bool): create first version of a workfile
+            create_first_version (bool): Create first version of a workfile.
+                 When set to True, this option initiates the saving of the
+                 workfile for an initial version. It will skip saving if
+                 a version already exists.
             workfile_creation_enabled (Any): Whether we are creating a new
                 workfile. If False, we assume we just want to build the
                 template in our current scene.
