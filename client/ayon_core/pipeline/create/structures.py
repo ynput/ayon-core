@@ -300,10 +300,12 @@ class PublishAttributes:
 
     def data_to_store(self):
         """Convert attribute values to "data to store"."""
-
         output = {}
         for key, attr_value in self._data.items():
-            output[key] = attr_value.data_to_store()
+            if isinstance(attr_value, AttributeValues):
+                output[key] = attr_value.data_to_store()
+            else:
+                output[key] = attr_value
         return output
 
     @property
