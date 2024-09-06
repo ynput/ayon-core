@@ -521,19 +521,26 @@ class AbstractTemplateBuilder(ABC):
             if create_first_version is None:
                 create_first_version = preset["create_first_version"]
 
-        # check if first version is created
+        # Create, open and return the first workfile version.
+        # This only works if there are no existent files and
+        #  create_first_version is enabled.
         created_version_workfile = create_first_version and self.create_first_workfile_version()
 
-        # Build the template
-        if (
-            not self.host.get_current_workfile() or created_version_workfile
-        ):
+        # # Abort the process if workfile_creation_enabled.
+        # if workfile_creation_enabled:
+        #     return
+
+        # Build the template if the current scene is empty
+        #  or if we have created new file.
+        # which basically avoids any
+        if not self.host.get_current_workfile() or created_version_workfile:
+            self.log.info(f"Building the workfile template: {template_path}")
             self.import_template(template_path)
             self.populate_scene_placeholders(
                 level_limit, keep_placeholders)
 
         # save workfile if a workfile was created.
-        if workfile_creation_enabled and created_version_workfile:
+        if created_version_workfile:
             self.save_workfile(created_version_workfile)
 
     def rebuild_template(self):
@@ -833,11 +840,10 @@ class AbstractTemplateBuilder(ABC):
             keep_placeholder = True
 
         if not path:
-            raise TemplateLoadFailed((
-                "Template path is not set.\n"
-                "Path need to be set in {}\\Template Workfile Build "
-                "Settings\\Profiles"
-            ).format(host_name.title()))
+            self.log.info(
+                "Template path is not set."
+            )
+            return
 
         # Try fill path with environments and anatomy roots
         anatomy = Anatomy(project_name)
