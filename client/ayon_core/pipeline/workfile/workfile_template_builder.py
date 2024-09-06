@@ -15,6 +15,7 @@ import os
 import re
 import collections
 import copy
+import warnings
 from abc import ABC, abstractmethod
 
 from ayon_api import (
@@ -489,7 +490,7 @@ class AbstractTemplateBuilder(ABC):
         level_limit=None,
         keep_placeholders=None,
         create_first_version=None,
-        workfile_creation_enabled=False
+        workfile_creation_enabled=None
     ):
         """Main callback for building workfile from template path.
 
@@ -507,41 +508,49 @@ class AbstractTemplateBuilder(ABC):
                 hosts to decide if they want to remove
                 placeholder after it is used.
             create_first_version (bool): create first version of a workfile
-            workfile_creation_enabled (bool): If True, it might create
-                                              first version but ignore
-                                              process if version is created
+            workfile_creation_enabled (Any): Deprecated unused variable.
 
         """
+
+        if workfile_creation_enabled is not None:
+            warnings.warn(
+                (
+                    "Using deprecated argument `workfile_creation_enabled`. "
+                    "It has been removed because it remained unused."
+                ),
+                category=DeprecationWarning
+            )
+
         # Get default values if not provided
-        if template_path is None or keep_placeholders is None or create_first_version is None:
+        if (
+                template_path is None
+                or keep_placeholders is None
+                or create_first_version is None
+        ):
             preset = self.get_template_preset()
-            template_path = template_path or preset["path"]
+            template_path: str = template_path or preset["path"]
             if keep_placeholders is None:
-                keep_placeholders = preset["keep_placeholder"]
+                keep_placeholders: bool = preset["keep_placeholder"]
             if create_first_version is None:
-                create_first_version = preset["create_first_version"]
+                create_first_version: bool = preset["create_first_version"]
 
-        # Create, open and return the first workfile version.
-        # This only works if there are no existent files and
-        #  create_first_version is enabled.
-        created_version_workfile = create_first_version and self.create_first_workfile_version()
-
-        # # Abort the process if workfile_creation_enabled.
-        # if workfile_creation_enabled:
-        #     return
-
-        # Build the template if the current scene is empty
-        #  or if we have created new file.
-        # which basically avoids any
-        if not self.host.get_current_workfile() or created_version_workfile:
+        # Build the template if current workfile is a new unsaved file
+        # (that's detected by checking if it returns any current filepath)
+        if not self.host.get_current_workfile():
             self.log.info(f"Building the workfile template: {template_path}")
             self.import_template(template_path)
             self.populate_scene_placeholders(
                 level_limit, keep_placeholders)
 
-        # save workfile if a workfile was created.
-        if created_version_workfile:
-            self.save_workfile(created_version_workfile)
+        if not create_first_version:
+            # Do not save whatsoever
+            return
+
+        # If there is no existing workfile, save the first version
+        workfile_path = self.get_first_workfile_version_to_create()
+        if workfile_path:
+            self.log.info("Saving first workfile: %s", workfile_path)
+            self.save_workfile(workfile_path)
 
     def rebuild_template(self):
         """Go through existing placeholders in scene and update them.
@@ -595,7 +604,7 @@ class AbstractTemplateBuilder(ABC):
 
         pass
 
-    def create_first_workfile_version(self):
+    def get_first_workfile_version_to_create(self):
         """
         Create first version of workfile.
 
@@ -605,17 +614,18 @@ class AbstractTemplateBuilder(ABC):
         Args:
             template_path (str): Fullpath for current task and
                 host's template file.
+
+        Return:
+            Optional[str]: Filepath to save to, if we should save.
         """
+        # AYON_LAST_WORKFILE will be set to the last existing workfile OR
+        # if none exist it will be set to the first version.
         last_workfile_path = os.environ.get("AYON_LAST_WORKFILE")
         self.log.info("__ last_workfile_path: {}".format(last_workfile_path))
         if os.path.exists(last_workfile_path):
             # ignore in case workfile existence
             self.log.info("Workfile already exists, skipping creation.")
             return False
-
-        # Create first version
-        self.log.info("Creating first version of workfile.")
-        self.save_workfile(last_workfile_path)
 
         # Confirm creation of first version
         return last_workfile_path
