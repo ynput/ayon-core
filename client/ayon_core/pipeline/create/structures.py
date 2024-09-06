@@ -475,12 +475,13 @@ class CreatedInstance:
         # {key: value}
         creator_values = copy.deepcopy(orig_creator_attributes)
 
-        if creator is not None:
-            creator_attr_defs = creator.get_attr_defs_for_instance(self)
-
+        if creator_attr_defs is None:
+            _creator_attr_defs = []
+        else:
+            _creator_attr_defs = list(creator_attr_defs)
         self._data["creator_attributes"] = CreatorAttributeValues(
             self,
-            list(creator_attr_defs),
+            _creator_attr_defs,
             creator_values,
             orig_creator_attributes
         )
@@ -498,6 +499,12 @@ class CreatedInstance:
 
         self._folder_is_valid = self.has_set_folder
         self._task_is_valid = self.has_set_task
+
+        if creator is not None:
+            creator_attr_defs = creator.get_attr_defs_for_instance(self)
+            self.update_create_attr_defs(
+                creator_attr_defs, creator_values
+            )
 
     def __str__(self):
         return (
