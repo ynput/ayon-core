@@ -561,10 +561,14 @@ class AbstractTemplateBuilder(ABC):
             return
 
         # If there is no existing workfile, save the first version
-        workfile_path = self.get_first_workfile_version_to_create()
-        if workfile_path:
+        workfile_path = self.get_workfile_path()
+        if not os.path.exists(workfile_path):
             self.log.info("Saving first workfile: %s", workfile_path)
             self.save_workfile(workfile_path)
+        else:
+            self.log.info(
+                "A workfile already exists. Skipping save of workfile as "
+                "initial version.")
 
     def rebuild_template(self):
         """Go through existing placeholders in scene and update them.
@@ -618,30 +622,16 @@ class AbstractTemplateBuilder(ABC):
 
         pass
 
-    def get_first_workfile_version_to_create(self):
-        """
-        Create first version of workfile.
-
-        Should load the content of template into scene so
-        'populate_scene_placeholders' can be started.
-
-        Args:
-            template_path (str): Fullpath for current task and
-                host's template file.
+    def get_workfile_path(self):
+        """Return last known workfile path or the first workfile path create.
 
         Return:
-            Optional[str]: Filepath to save to, if we should save.
+            str: Last workfile path, or first version to create if none exist.
         """
         # AYON_LAST_WORKFILE will be set to the last existing workfile OR
         # if none exist it will be set to the first version.
         last_workfile_path = os.environ.get("AYON_LAST_WORKFILE")
         self.log.info("__ last_workfile_path: {}".format(last_workfile_path))
-        if os.path.exists(last_workfile_path):
-            # ignore in case workfile existence
-            self.log.info("Workfile already exists, skipping creation.")
-            return False
-
-        # Confirm creation of first version
         return last_workfile_path
 
     def save_workfile(self, workfile_path):
