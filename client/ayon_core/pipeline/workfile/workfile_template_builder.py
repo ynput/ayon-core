@@ -859,7 +859,7 @@ class AbstractTemplateBuilder(ABC):
                 "Settings\\Profiles"
             ).format(host_name.title()))
 
-        # Try fill path with environments and anatomy roots
+        # Try to fill path with environments and anatomy roots
         anatomy = Anatomy(project_name)
         fill_data = {
             key: value
