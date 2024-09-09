@@ -511,10 +511,11 @@ class AbstractTemplateBuilder(ABC):
                  workfile for an initial version. It will skip saving if
                  a version already exists.
             workfile_creation_enabled (bool): Whether we are creating a new
-                workfile. If False, we assume we explicitly want to build the
-                template in our current scene. Otherwise we only build if the
-                current file is not an existing saved workfile but a "new"
-                file.
+                workfile. When True, we only build if the current file is not
+                an existing saved workfile but a "new" file. When False, the
+                default value, we assume we explicitly want to build the
+                template in our current scene regardless of current scene
+                state.
 
         """
 
