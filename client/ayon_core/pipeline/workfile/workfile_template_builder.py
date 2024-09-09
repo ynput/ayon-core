@@ -520,9 +520,9 @@ class AbstractTemplateBuilder(ABC):
 
         # Get default values if not provided
         if (
-                template_path is None
-                or keep_placeholders is None
-                or create_first_version is None
+            template_path is None
+            or keep_placeholders is None
+            or create_first_version is None
         ):
             preset = self.get_template_preset()
             template_path: str = template_path or preset["path"]
