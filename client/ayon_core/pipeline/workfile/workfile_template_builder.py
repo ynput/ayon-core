@@ -545,14 +545,9 @@ class AbstractTemplateBuilder(ABC):
             self.populate_scene_placeholders(
                 level_limit, keep_placeholders)
 
-        if not workfile_creation_enabled:
-            # Do not consider saving a first workfile version, if this
-            # is not set to be a "workfile creation". Then we assume
-            # only the template should get build.
-            return
-
-        if not create_first_version:
-            # Do not save whatsoever
+        # Do not consider saving a first workfile version, if this is not set
+        # to be a "workfile creation" or `create_first_version` is disabled.
+        if explicit_build_requested or not create_first_version:
             return
 
         # If there is no existing workfile, save the first version
