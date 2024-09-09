@@ -535,8 +535,8 @@ class AbstractTemplateBuilder(ABC):
             if create_first_version is None:
                 create_first_version: bool = preset["create_first_version"]
 
-        # Build the template if current workfile is a new unsaved file
-        # (that's detected by checking if it returns any current filepath)
+        # Build the template if we are explicitly requesting it or if it's
+        # an unsaved "new file".
         if (
                 # If not a workfile creation, an explicit load template
                 # was requested, so we always want to build the template
