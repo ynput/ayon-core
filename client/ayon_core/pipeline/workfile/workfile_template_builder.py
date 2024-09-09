@@ -872,11 +872,7 @@ class AbstractTemplateBuilder(ABC):
             "code": anatomy.project_code,
         }
 
-        result = StringTemplate.format_template(path, fill_data)
-        if result.solved:
-            path = result.normalized()
-
-        path = self.resolve_template_path(path)
+        path = self.resolve_template_path(path, fill_data)
 
         if path and os.path.exists(path):
             self.log.info("Found template at: '{}'".format(path))
@@ -916,21 +912,25 @@ class AbstractTemplateBuilder(ABC):
             "create_first_version": create_first_version
         }
 
-    def resolve_template_path(self, path: str) -> str:
+    def resolve_template_path(self, path, fill_data) -> str:
         """Resolve the template path.
 
         By default, this does nothing except returning the path directly.
-        But, this allows additional resolving over the template path inside
-        a custom AYON integration. Like, in Houdini using
-        `hou.text.expandString`
+
+        This can be overridden in host integrations to perform additional
+        resolving over the template. Like, `hou.text.expandString` in Houdini.
 
         Arguments:
             path (str): The input path.
+            fill_data (dict[str, str]): Data to use for template formatting.
 
         Returns:
             str: The resolved path.
 
         """
+        result = StringTemplate.format_template(path, fill_data)
+        if result.solved:
+            path = result.normalized()
         return path
 
     def emit_event(self, topic, data=None, source=None) -> Event:
