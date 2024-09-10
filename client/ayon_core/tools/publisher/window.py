@@ -913,12 +913,18 @@ class PublisherWindow(QtWidgets.QDialog):
             self._set_footer_enabled(True)
             return
 
+        active_instances_by_id = {
+            instance.id: instance
+            for instance in self._controller.get_instances()
+            if instance["active"]
+        }
+        context_info_by_id = self._controller.get_instances_context_info(
+            active_instances_by_id.keys()
+        )
         all_valid = None
-        for instance in self._controller.get_instances():
-            if not instance["active"]:
-                continue
-
-            if not instance.has_valid_context:
+        for instance_id, instance in active_instances_by_id.items():
+            context_info = context_info_by_id[instance_id]
+            if not context_info.is_valid:
                 all_valid = False
                 break
 
