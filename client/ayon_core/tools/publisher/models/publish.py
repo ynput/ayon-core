@@ -30,6 +30,7 @@ class MessageHandler(logging.Handler):
         self.records = []
 
     def emit(self, record):
+        record.msg = record.getMessage()
         self.records.append(record)
 
 
