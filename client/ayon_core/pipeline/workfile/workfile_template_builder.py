@@ -1519,9 +1519,10 @@ class PlaceholderLoadMixin(object):
         if "asset" in placeholder.data:
             return []
 
-        representation_name = placeholder.data["representation"]
-        if not representation_name:
-            return []
+        representation_names = None
+        representation_name: str = placeholder.data["representation"]
+        if representation_name:
+            representation_names = [representation_name]
 
         project_name = self.builder.project_name
         current_folder_entity = self.builder.current_folder_entity
@@ -1578,7 +1579,7 @@ class PlaceholderLoadMixin(object):
         )
         return list(get_representations(
             project_name,
-            representation_names={representation_name},
+            representation_names=representation_names,
             version_ids=version_ids
         ))
 
