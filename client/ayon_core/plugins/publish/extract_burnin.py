@@ -198,7 +198,7 @@ class ExtractBurnin(publish.Extractor):
         )
         if not burnins_per_repres:
             self.log.debug(
-                "Skipped instance. No representations found matching a burnin"
+                "Skipped instance. No representations found matching a burnin "
                 "definition in: %s", burnin_defs
             )
             return
