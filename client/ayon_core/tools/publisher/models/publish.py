@@ -1,6 +1,7 @@
 import uuid
 import copy
 import inspect
+import logging
 import traceback
 import collections
 from functools import partial
@@ -22,6 +23,14 @@ PUBLISH_EVENT_SOURCE = "publisher.publish.model"
 # Define constant for plugin orders offset
 PLUGIN_ORDER_OFFSET = 0.5
 
+
+class MessageHandler(logging.Handler):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.records = []
+
+    def emit(self, record):
+        self.records.append(record)
 
 
 class PublishReportMaker:
@@ -869,6 +878,9 @@ class PublishModel:
         # - pop the key after first collector using it would be safest option?
         self._publish_context.data["create_context"] = create_context
         publish_plugins = create_context.publish_plugins
+        for plugin in publish_plugins:
+            plugin.log.propagate = False
+
         self._publish_plugins = publish_plugins
         self._publish_plugins_proxy = PublishPluginsProxy(
             publish_plugins
@@ -1219,9 +1231,18 @@ class PublishModel:
         plugin: pyblish.api.Plugin,
         instance: pyblish.api.Instance
     ):
-        result = pyblish.plugin.process(
-            plugin, self._publish_context, instance
-        )
+        handler = MessageHandler()
+        root = logging.getLogger()
+        plugin.log.addHandler(handler)
+        root.addHandler(handler)
+        try:
+            result = pyblish.plugin.process(
+                plugin, self._publish_context, instance
+            )
+            result["records"] = handler.records
+        finally:
+            plugin.log.removeHandler(handler)
+            root.removeHandler(handler)
 
         exception = result.get("error")
         if exception:
