@@ -878,9 +878,6 @@ class PublishModel:
         # - pop the key after first collector using it would be safest option?
         self._publish_context.data["create_context"] = create_context
         publish_plugins = create_context.publish_plugins
-        for plugin in publish_plugins:
-            plugin.log.propagate = False
-
         self._publish_plugins = publish_plugins
         self._publish_plugins_proxy = PublishPluginsProxy(
             publish_plugins
@@ -1233,6 +1230,8 @@ class PublishModel:
     ):
         handler = MessageHandler()
         root = logging.getLogger()
+
+        plugin.log.propagate = False
         plugin.log.addHandler(handler)
         root.addHandler(handler)
         try:
@@ -1241,6 +1240,7 @@ class PublishModel:
             )
             result["records"] = handler.records
         finally:
+            plugin.log.propagate = True
             plugin.log.removeHandler(handler)
             root.removeHandler(handler)
 
