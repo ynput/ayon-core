@@ -1740,11 +1740,8 @@ class ReportsWidget(QtWidgets.QWidget):
         pages_layout.addWidget(crash_widget, 1)
 
         details_layout = QtWidgets.QVBoxLayout(details_widget)
-        margins = details_layout.contentsMargins()
-        margins.setTop(margins.top() * 2)
-        margins.setBottom(margins.bottom() * 2)
-        details_layout.setContentsMargins(margins)
-        details_layout.setSpacing(margins.top())
+        details_layout.setContentsMargins(8, 16, 8, 16)
+        details_layout.setSpacing(8)
         details_layout.addWidget(actions_widget, 0)
         details_layout.addWidget(pages_widget, 1)
 
