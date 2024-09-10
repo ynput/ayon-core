@@ -1182,6 +1182,10 @@ class GlobalAttrsWidget(QtWidgets.QWidget):
         invalid_tasks = False
         folder_paths = []
         for instance in self._current_instances:
+            # Ignore instances that have promised context
+            if instance.has_promised_context:
+                continue
+
             new_variant_value = instance.get("variant")
             new_folder_path = instance.get("folderPath")
             new_task_name = instance.get("task")
@@ -1303,7 +1307,13 @@ class GlobalAttrsWidget(QtWidgets.QWidget):
             editable = False
 
         folder_task_combinations = []
+        context_editable = None
         for instance in instances:
+            if not instance.has_promised_context:
+                context_editable = True
+            elif context_editable is None:
+                context_editable = False
+
             # NOTE I'm not sure how this can even happen?
             if instance.creator_identifier is None:
                 editable = False
@@ -1316,6 +1326,11 @@ class GlobalAttrsWidget(QtWidgets.QWidget):
             folder_task_combinations.append((folder_path, task_name))
             product_names.add(instance.get("productName") or self.unknown_value)
 
+        if not editable:
+            context_editable = False
+        elif context_editable is None:
+            context_editable = True
+
         self.variant_input.set_value(variants)
 
         # Set context of folder widget
@@ -1326,8 +1341,21 @@ class GlobalAttrsWidget(QtWidgets.QWidget):
         self.product_value_widget.set_value(product_names)
 
         self.variant_input.setEnabled(editable)
-        self.folder_value_widget.setEnabled(editable)
-        self.task_value_widget.setEnabled(editable)
+        self.folder_value_widget.setEnabled(context_editable)
+        self.task_value_widget.setEnabled(context_editable)
+
+        if not editable:
+            folder_tooltip = "Select instances to change folder path."
+            task_tooltip = "Select instances to change task name."
+        elif not context_editable:
+            folder_tooltip = "Folder path is defined by Create plugin."
+            task_tooltip = "Task is defined by Create plugin."
+        else:
+            folder_tooltip = "Change folder path of selected instances."
+            task_tooltip = "Change task of selected instances."
+
+        self.folder_value_widget.setToolTip(folder_tooltip)
+        self.task_value_widget.setToolTip(task_tooltip)
 
 
 class CreatorAttrsWidget(QtWidgets.QWidget):
