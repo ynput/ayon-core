@@ -30,10 +30,12 @@ class PublishErrorInfo:
     def __init__(
         self,
         description: str,
+        is_unknown_error: bool,
         title: Optional[str],
-        detail: Optional[str]
+        detail: Optional[str],
     ):
         self.description: str = description
+        self.is_unknown_error = is_unknown_error
         self.title: Optional[str] = title
         self.detail: Optional[str] = detail
 
@@ -42,6 +44,7 @@ class PublishErrorInfo:
             return False
         return (
             self.description == other.description
+            and self.is_unknown_error == other.is_unknown_error
             and self.title == other.title
             and self.detail == other.detail
         )
@@ -55,6 +58,7 @@ class PublishErrorInfo:
         if isinstance(exc, PublishError):
             return cls(
                 exc.description or exc.message,
+                is_unknown_error=False,
                 title=exc.title or title,
                 detail=exc.detail,
             )
@@ -65,7 +69,7 @@ class PublishErrorInfo:
                 "Something went wrong. Send report"
                 " to your supervisor or Ynput team."
             )
-        return cls(msg, title, None)
+        return cls(msg, True, title, None)
 
 
 class PublishReportMaker:
