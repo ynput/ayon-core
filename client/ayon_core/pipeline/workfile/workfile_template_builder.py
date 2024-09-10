@@ -859,7 +859,7 @@ class AbstractTemplateBuilder(ABC):
                 "Settings\\Profiles"
             ).format(host_name.title()))
 
-        # Try fill path with environments and anatomy roots
+        # Try to fill path with environments and anatomy roots
         anatomy = Anatomy(project_name)
         fill_data = {
             key: value
@@ -872,9 +872,7 @@ class AbstractTemplateBuilder(ABC):
             "code": anatomy.project_code,
         }
 
-        result = StringTemplate.format_template(path, fill_data)
-        if result.solved:
-            path = result.normalized()
+        path = self.resolve_template_path(path, fill_data)
 
         if path and os.path.exists(path):
             self.log.info("Found template at: '{}'".format(path))
@@ -913,6 +911,27 @@ class AbstractTemplateBuilder(ABC):
             "keep_placeholder": keep_placeholder,
             "create_first_version": create_first_version
         }
+
+    def resolve_template_path(self, path, fill_data) -> str:
+        """Resolve the template path.
+
+        By default, this does nothing except returning the path directly.
+
+        This can be overridden in host integrations to perform additional
+        resolving over the template. Like, `hou.text.expandString` in Houdini.
+
+        Arguments:
+            path (str): The input path.
+            fill_data (dict[str, str]): Data to use for template formatting.
+
+        Returns:
+            str: The resolved path.
+
+        """
+        result = StringTemplate.format_template(path, fill_data)
+        if result.solved:
+            path = result.normalized()
+        return path
 
     def emit_event(self, topic, data=None, source=None) -> Event:
         return self._event_system.emit(topic, data, source)
@@ -1519,9 +1538,10 @@ class PlaceholderLoadMixin(object):
         if "asset" in placeholder.data:
             return []
 
-        representation_name = placeholder.data["representation"]
-        if not representation_name:
-            return []
+        representation_names = None
+        representation_name: str = placeholder.data["representation"]
+        if representation_name:
+            representation_names = [representation_name]
 
         project_name = self.builder.project_name
         current_folder_entity = self.builder.current_folder_entity
@@ -1578,7 +1598,7 @@ class PlaceholderLoadMixin(object):
         )
         return list(get_representations(
             project_name,
-            representation_names={representation_name},
+            representation_names=representation_names,
             version_ids=version_ids
         ))
 
