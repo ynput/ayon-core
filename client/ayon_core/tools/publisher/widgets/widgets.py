@@ -1206,7 +1206,6 @@ class GlobalAttrsWidget(QtWidgets.QWidget):
 
             except TaskNotSetError:
                 invalid_tasks = True
-                instance.set_task_invalid(True)
                 product_names.add(instance["productName"])
                 continue
 
@@ -1216,11 +1215,9 @@ class GlobalAttrsWidget(QtWidgets.QWidget):
 
             if folder_path is not None:
                 instance["folderPath"] = folder_path
-                instance.set_folder_invalid(False)
 
             if task_name is not None:
                 instance["task"] = task_name or None
-                instance.set_task_invalid(False)
 
             instance["productName"] = new_product_name
 
@@ -1768,9 +1765,16 @@ class ProductAttributesWidget(QtWidgets.QWidget):
         self.bottom_separator = bottom_separator
 
     def _on_instance_context_changed(self):
+        instance_ids = {
+            instance.id
+            for instance in self._current_instances
+        }
+        context_info_by_id = self._controller.get_instances_context_info(
+            instance_ids
+        )
         all_valid = True
-        for instance in self._current_instances:
-            if not instance.has_valid_context:
+        for instance_id, context_info in context_info_by_id.items():
+            if not context_info.is_valid:
                 all_valid = False
                 break
 
@@ -1795,9 +1799,17 @@ class ProductAttributesWidget(QtWidgets.QWidget):
             convertor_identifiers(List[str]): Identifiers of convert items.
         """
 
+        instance_ids = {
+            instance.id
+            for instance in instances
+        }
+        context_info_by_id = self._controller.get_instances_context_info(
+            instance_ids
+        )
+
         all_valid = True
-        for instance in instances:
-            if not instance.has_valid_context:
+        for context_info in context_info_by_id.values():
+            if not context_info.is_valid:
                 all_valid = False
                 break
 
