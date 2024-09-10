@@ -399,7 +399,7 @@ class ExtractBurnin(publish.Extractor):
 
                 add_repre_files_for_cleanup(instance, new_repre)
 
-            # Cleanup temp staging dir after procesisng of output definitions
+            # Cleanup temp staging dir after processing of output definitions
             if do_convert:
                 temp_dir = repre["stagingDir"]
                 shutil.rmtree(temp_dir)
@@ -420,6 +420,11 @@ class ExtractBurnin(publish.Extractor):
                     self.log.debug("Removed: \"{}\"".format(filepath))
 
     def _get_burnin_options(self):
+        """Get the burnin options from `ExtractBurnin` settings.
+
+        Returns:
+            dict[str, Any]: Burnin options.
+        """
         # Prepare burnin options
         burnin_options = copy.deepcopy(self.default_options)
         if self.options:
@@ -696,7 +701,7 @@ class ExtractBurnin(publish.Extractor):
         """Prepare data for representation.
 
         Args:
-            instance (Instance): Currently processed Instance.
+            instance (pyblish.api.Instance): Currently processed Instance.
             repre (dict): Currently processed representation.
             burnin_data (dict): Copy of basic burnin data based on instance
                 data.
@@ -752,9 +757,10 @@ class ExtractBurnin(publish.Extractor):
 
         Args:
             profile (dict): Profile from presets matching current context.
+            instance (pyblish.api.Instance): Publish instance.
 
         Returns:
-            list: Contain all valid output definitions.
+            list[dict[str, Any]]: Contain all valid output definitions.
         """
         filtered_burnin_defs = []
 
@@ -774,8 +780,8 @@ class ExtractBurnin(publish.Extractor):
                 families, families_filters
             ):
                 self.log.debug((
-                    "Skipped burnin definition \"{}\". Family"
-                    " filters ({}) does not match current instance families: {}"
+                    "Skipped burnin definition \"{}\". Family filters ({}) "
+                    "does not match current instance families: {}"
                 ).format(
                     filename_suffix, str(families_filters), str(families)
                 ))
