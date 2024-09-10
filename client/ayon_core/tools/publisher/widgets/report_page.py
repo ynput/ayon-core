@@ -1588,8 +1588,7 @@ class CrashWidget(QtWidgets.QWidget):
         self._detail_widget = detail_widget
         self._controller: AbstractPublisherFrontend = controller
 
-    def update_error_info(self):
-        error_info = self._controller.get_publish_error_info()
+    def update_error_info(self, error_info):
         if error_info is None:
             self._title_label.setText("Placeholder title")
             self._description_label.setText("A bug happened if you see this")
@@ -1799,8 +1798,9 @@ class ReportsWidget(QtWidgets.QWidget):
     def update_data(self):
         view = self._instances_view
         validation_error_mode = False
+        is_crashed = self._controller.publish_has_crashed()
         if (
-            not self._controller.publish_has_crashed()
+            not is_crashed
             and self._controller.publish_has_validation_errors()
         ):
             view = self._validation_error_view
@@ -1811,11 +1811,15 @@ class ReportsWidget(QtWidgets.QWidget):
         self._detail_input_scroll.setVisible(validation_error_mode)
         self._views_layout.setCurrentWidget(view)
 
-        is_crashed = self._controller.publish_has_crashed()
-        self._crash_widget.setVisible(is_crashed)
-        self._logs_view.setVisible(not is_crashed)
+        error_info = self._controller.get_publish_error_info()
+        logs_visible = True
+        if is_crashed and error_info.is_unknown_error:
+            logs_visible = False
 
-        self._crash_widget.update_error_info()
+        self._crash_widget.setVisible(is_crashed)
+        self._logs_view.setVisible(logs_visible)
+
+        self._crash_widget.update_error_info(error_info)
 
         # Instance view & logs update
         instance_items = self._get_instance_items()
