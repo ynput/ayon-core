@@ -503,7 +503,7 @@ class FormattingPart:
         # ensure key is properly formed [({})] properly closed.
         if not self.validate_key_is_matched(key):
             result.add_missing_key(key)
-            result.add_output(self.template)            
+            result.add_output(self.template)
             return result
 
         # check if key expects subdictionary keys (e.g. project[name])
