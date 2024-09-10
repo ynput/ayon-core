@@ -1708,6 +1708,9 @@ class ReportsWidget(QtWidgets.QWidget):
 
         pages_widget = QtWidgets.QWidget(details_widget)
 
+        # Crash information
+        crash_widget = CrashWidget(controller, details_widget)
+
         # Logs view
         logs_view = InstancesLogsView(pages_widget)
 
@@ -1727,16 +1730,13 @@ class ReportsWidget(QtWidgets.QWidget):
         detail_input_scroll.setWidgetResizable(True)
         detail_input_scroll.setViewportMargins(0, 0, 0, 0)
 
-        # Crash information
-        crash_widget = CrashWidget(controller, details_widget)
-
         # Layout pages
         pages_layout = QtWidgets.QHBoxLayout(pages_widget)
         pages_layout.setContentsMargins(0, 0, 0, 0)
+        pages_layout.addWidget(crash_widget, 1)
         pages_layout.addWidget(logs_view, 1)
         pages_layout.addWidget(detail_inputs_spacer, 0)
         pages_layout.addWidget(detail_input_scroll, 1)
-        pages_layout.addWidget(crash_widget, 1)
 
         details_layout = QtWidgets.QVBoxLayout(details_widget)
         details_layout.setContentsMargins(8, 16, 8, 16)
