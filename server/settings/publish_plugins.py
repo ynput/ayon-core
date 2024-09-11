@@ -274,13 +274,30 @@ def _extract_oiio_transcoding_type():
 
 class OIIOToolArgumentsModel(BaseSettingsModel):
     additional_command_args: list[str] = SettingsField(
-        default_factory=list, title="Arguments")
+        default_factory=list,
+        title="Arguments",
+        description="Additional command line arguments for *oiiotool*."
+    )
 
 
 class UseDisplayViewModel(BaseSettingsModel):
     _layout = "expanded"
-    display: str = SettingsField("", title="Target Display")
-    view: str = SettingsField("", title="Target View")
+    display: str = SettingsField(
+        "",
+        title="Target Display",
+        description=(
+            "Display of the target transform. If left empty, the"
+            " source Display value will be used."
+        )
+    )
+    view: str = SettingsField(
+        "",
+        title="Target View",
+        description=(
+            "View of the target transform. If left empty, the"
+            " source View value will be used."
+        )
+    )
 
 
 class ExtractOIIOTranscodeOutputModel(BaseSettingsModel):
@@ -291,14 +308,35 @@ class ExtractOIIOTranscodeOutputModel(BaseSettingsModel):
         description="Output name (no space)",
         regex=r"[a-zA-Z0-9_]([a-zA-Z0-9_\.\-]*[a-zA-Z0-9_])?$",
     )
-    extension: str = SettingsField("", title="Extension")
+    extension: str = SettingsField(
+        "",
+        title="Extension",
+        description=(
+            "Target extension. If left empty, original"
+            " extension is used."
+        ),
+    )
     transcoding_type: str = SettingsField(
         "colorspace",
         title="Transcoding type",
         enum_resolver=_extract_oiio_transcoding_type,
-        conditionalEnum=True
+        conditionalEnum=True,
+        description=(
+            "Select the transcoding type for your output, choosing either "
+            "*Colorspace* or *Display&View* transform."
+            " Only one option can be applied per output definition."
+        ),
     )
-    colorspace: str = SettingsField("", title="Target Colorspace")
+    colorspace: str = SettingsField(
+        "",
+        title="Target Colorspace",
+        description=(
+            "Choose the desired target colorspace, confirming its availability"
+            " in the active OCIO config. If left empty, the"
+            " source colorspace value will be used, resulting in no"
+            " colorspace conversion."
+        )
+    )
     display_view: UseDisplayViewModel = SettingsField(
         title="Use Display&View",
         default_factory=UseDisplayViewModel
@@ -308,9 +346,19 @@ class ExtractOIIOTranscodeOutputModel(BaseSettingsModel):
         default_factory=OIIOToolArgumentsModel,
         title="OIIOtool arguments")
 
-    tags: list[str] = SettingsField(default_factory=list, title="Tags")
+    tags: list[str] = SettingsField(
+        default_factory=list,
+        title="Tags",
+        description=(
+            "Additional tags that will be added to the created representation."
+            "\nAdd *review* tag to create review from the transcoded"
+            " representation instead of the original."
+        )
+    )
     custom_tags: list[str] = SettingsField(
-        default_factory=list, title="Custom Tags"
+        default_factory=list,
+        title="Custom Tags",
+        description="Additional custom tags that will be added to the created representation."
     )
 
 
@@ -338,7 +386,13 @@ class ExtractOIIOTranscodeProfileModel(BaseSettingsModel):
     )
     delete_original: bool = SettingsField(
         True,
-        title="Delete Original Representation"
+        title="Delete Original Representation",
+        description=(
+            "Choose to preserve or remove the original representation.\n"
+            "Keep in mind that if the transcoded representation includes"
+            " a `review` tag, it will take precedence over"
+            " the original for creating reviews."
+        ),
     )
     outputs: list[ExtractOIIOTranscodeOutputModel] = SettingsField(
         default_factory=list,
