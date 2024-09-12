@@ -4,7 +4,7 @@ import collections
 import uuid
 import json
 import copy
-from abc import ABCMeta, abstractmethod, abstractproperty
+from abc import ABCMeta, abstractmethod
 
 import clique
 
