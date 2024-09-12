@@ -844,10 +844,11 @@ class AbstractTemplateBuilder(ABC):
             keep_placeholder = True
 
         if not path:
-            self.log.info(
-                "Template path is not set."
-            )
-            return
+            raise TemplateLoadFailed((
+                "Template path is not set.\n"
+                "Path need to be set in {}\\Template Workfile Build "
+                "Settings\\Profiles"
+            ).format(host_name.title()))
 
         # Try to fill path with environments and anatomy roots
         anatomy = Anatomy(project_name)
