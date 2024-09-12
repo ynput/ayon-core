@@ -115,7 +115,7 @@ class InstanceListItemWidget(QtWidgets.QWidget):
     active_changed = QtCore.Signal(str, bool)
     double_clicked = QtCore.Signal()
 
-    def __init__(self, instance, parent):
+    def __init__(self, instance, context_info, parent):
         super().__init__(parent)
 
         self.instance = instance
@@ -151,7 +151,7 @@ class InstanceListItemWidget(QtWidgets.QWidget):
 
         self._has_valid_context = None
 
-        self._set_valid_property(instance.has_valid_context)
+        self._set_valid_property(context_info.is_valid)
 
     def mouseDoubleClickEvent(self, event):
         widget = self.childAt(event.pos())
@@ -188,12 +188,12 @@ class InstanceListItemWidget(QtWidgets.QWidget):
         if checkbox_value != new_value:
             self._active_checkbox.setChecked(new_value)
 
-    def update_instance(self, instance):
+    def update_instance(self, instance, context_info):
         """Update instance object."""
         self.instance = instance
-        self.update_instance_values()
+        self.update_instance_values(context_info)
 
-    def update_instance_values(self):
+    def update_instance_values(self, context_info):
         """Update instance data propagated to widgets."""
         # Check product name
         label = self.instance.label
@@ -202,7 +202,7 @@ class InstanceListItemWidget(QtWidgets.QWidget):
         # Check active state
         self.set_active(self.instance["active"])
         # Check valid states
-        self._set_valid_property(self.instance.has_valid_context)
+        self._set_valid_property(context_info.is_valid)
 
     def _on_active_change(self):
         new_value = self._active_checkbox.isChecked()
@@ -583,6 +583,8 @@ class InstanceListView(AbstractInstanceView):
 
         self._update_convertor_items_group()
 
+        context_info_by_id = self._controller.get_instances_context_info()
+
         # Prepare instances by their groups
         instances_by_group_name = collections.defaultdict(list)
         group_names = set()
@@ -643,13 +645,15 @@ class InstanceListView(AbstractInstanceView):
                 elif activity != instance["active"]:
                     activity = -1
 
+                context_info = context_info_by_id[instance_id]
+
                 self._group_by_instance_id[instance_id] = group_name
                 # Remove instance id from `to_remove` if already exists and
                 #   trigger update of widget
                 if instance_id in to_remove:
                     to_remove.remove(instance_id)
                     widget = self._widgets_by_id[instance_id]
-                    widget.update_instance(instance)
+                    widget.update_instance(instance, context_info)
                     continue
 
                 # Create new item and store it as new
@@ -695,7 +699,8 @@ class InstanceListView(AbstractInstanceView):
                 group_item.appendRows(new_items)
 
                 for item, instance in new_items_with_instance:
-                    if not instance.has_valid_context:
+                    context_info = context_info_by_id[instance.id]
+                    if not context_info.is_valid:
                         expand_groups.add(group_name)
                     item_index = self._instance_model.index(
                         item.row(),
@@ -704,7 +709,7 @@ class InstanceListView(AbstractInstanceView):
                     )
                     proxy_index = self._proxy_model.mapFromSource(item_index)
                     widget = InstanceListItemWidget(
-                        instance, self._instance_view
+                        instance, context_info, self._instance_view
                     )
                     widget.set_active_toggle_enabled(
                         self._active_toggle_enabled
@@ -870,8 +875,10 @@ class InstanceListView(AbstractInstanceView):
 
     def refresh_instance_states(self):
         """Trigger update of all instances."""
-        for widget in self._widgets_by_id.values():
-            widget.update_instance_values()
+        context_info_by_id = self._controller.get_instances_context_info()
+        for instance_id, widget in self._widgets_by_id.items():
+            context_info = context_info_by_id[instance_id]
+            widget.update_instance_values(context_info)
 
     def _on_active_changed(self, changed_instance_id, new_value):
         selected_instance_ids, _, _ = self.get_selected_items()
