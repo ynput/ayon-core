@@ -220,7 +220,6 @@ class AbstractAttrDef(metaclass=AbstractAttrDefMeta):
 # -----------------------------------------
 
 class UIDef(AbstractAttrDef):
-    type = "ui-def"
     is_value_def = False
 
     def __init__(self, key=None, default=None, *args, **kwargs):
