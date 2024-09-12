@@ -16,7 +16,7 @@ _attr_defs_by_type = {}
 def register_attr_def_class(cls):
     """Register attribute definition.
 
-    Currently are registered definitions used to deserialize data to objects.
+    Currently registered definitions are used to deserialize data to objects.
 
     Attrs:
         cls (AbstractAttrDef): Non-abstract class to be registered with unique
