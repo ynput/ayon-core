@@ -628,7 +628,7 @@ def get_publish_repre_path(instance, repre, only_published=False):
     return None
 
 
-# deprecated: backward compatibility only
+# deprecated: backward compatibility only (2024-09-12)
 # TODO: remove in the future
 def get_custom_staging_dir_info(
     project_name,

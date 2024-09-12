@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+import os
 import copy
 import collections
 from typing import TYPE_CHECKING, Optional
@@ -14,6 +15,7 @@ from ayon_core.pipeline.plugin_discover import (
     deregister_plugin,
     deregister_plugin_path
 )
+from ayon_core.pipeline import get_staging_dir
 
 from .constants import DEFAULT_VARIANT_VALUE
 from .product_name import get_product_name
@@ -781,6 +783,59 @@ class Creator(BaseCreator):
                 for created instance.
         """
         return self.pre_create_attr_defs
+
+    def apply_staging_dir(self, instance):
+        """Apply staging dir with persistence to instance's transient data.
+
+        Method is called on instance creation and on instance update.
+
+        Args:
+            instance (CreatedInstance): Instance for which should be staging
+                dir applied.
+
+        Returns:
+            str: Path to staging dir.
+        """
+        create_ctx = self.create_context
+        product_name = instance.get("productName")
+        product_type = instance.get("productType")
+        folder_path = instance.get("folderPath")
+        if not any([product_name, folder_path]):
+            return None
+
+        version = instance.get("version")
+        if version is not None:
+            formatting_data = {"version": version}
+
+        staging_dir_data = get_staging_dir(
+            create_ctx.host_name,
+            create_ctx.get_current_project_entity(),
+            create_ctx.get_current_folder_entity(),
+            create_ctx.get_current_task_entity(),
+            product_type,
+            product_name,
+            create_ctx.get_current_project_anatomy(),
+            create_ctx.get_current_project_settings(),
+            always_return_path=False,
+            log=self.log,
+            formatting_data=formatting_data,
+        )
+
+        if not staging_dir_data:
+            return None
+
+        staging_dir_path = staging_dir_data["stagingDir"]
+
+        # TODO: not sure if this is necessary
+        # path might be already created by get_staging_dir
+        if not os.path.exists(staging_dir_path):
+            os.makedirs(staging_dir_path)
+
+        instance.transient_data.update(staging_dir_data)
+
+        self.log.info(f"Applied staging dir to instance: {staging_dir_path}")
+
+        return staging_dir_path
 
 
 class HiddenCreator(BaseCreator):
