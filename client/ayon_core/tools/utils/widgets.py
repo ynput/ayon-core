@@ -466,10 +466,10 @@ class ExpandBtnLabel(QtWidgets.QLabel):
         self._collapsed = True
 
     def _create_collapsed_pixmap(self):
-        return QtGui.QPixmap(self.branch_closed_path)
+        return QtGui.QPixmap(self.branch_open_path)
 
     def _create_expanded_pixmap(self):
-        return QtGui.QPixmap(self.branch_open_path)
+        return QtGui.QPixmap(self.branch_closed_path)
 
     @property
     def collapsed(self):
