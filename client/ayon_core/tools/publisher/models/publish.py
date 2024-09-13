@@ -29,14 +29,16 @@ PLUGIN_ORDER_OFFSET = 0.5
 class PublishErrorInfo:
     def __init__(
         self,
-        description: str,
+        message: str,
         is_unknown_error: bool,
-        title: Optional[str],
-        detail: Optional[str],
+        description: Optional[str] = None,
+        title: Optional[str] = None,
+        detail: Optional[str] = None,
     ):
-        self.description: str = description
+        self.message: str = message
         self.is_unknown_error = is_unknown_error
-        self.title: Optional[str] = title
+        self.description: str = description or message
+        self.title: Optional[str] = title or "Unknown error"
         self.detail: Optional[str] = detail
 
     def __eq__(self, other: Any) -> bool:
@@ -54,12 +56,12 @@ class PublishErrorInfo:
 
     @classmethod
     def from_exception(cls, exc) -> "PublishErrorInfo":
-        title = "This is not your fault"
         if isinstance(exc, PublishError):
             return cls(
-                exc.description or exc.message,
-                is_unknown_error=False,
-                title=exc.title or title,
+                exc.message,
+                False,
+                exc.description,
+                title=exc.title,
                 detail=exc.detail,
             )
         if isinstance(exc, KnownPublishError):
@@ -69,7 +71,7 @@ class PublishErrorInfo:
                 "Something went wrong. Send report"
                 " to your supervisor or Ynput team."
             )
-        return cls(msg, True, title, None)
+        return cls(msg, True)
 
 
 class PublishReportMaker:
