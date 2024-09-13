@@ -1282,6 +1282,11 @@ class PublishModel:
                 self._add_validation_error(result)
 
             else:
+                if isinstance(exception, PublishError):
+                    if not exception.title:
+                        exception.title = plugin.label or plugin.__name__
+                    self._add_validation_error(result)
+
                 error_info = PublishErrorInfo.from_exception(exception)
                 self._set_publish_error_info(error_info)
                 self._set_is_crashed(True)
