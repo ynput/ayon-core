@@ -1494,7 +1494,6 @@ class ErrorDetailWidget(QtWidgets.QWidget):
         self._error_detail_expand_btn = error_detail_expand_btn
         self._error_detail_input = error_detail_input
 
-
     def set_detail(self, detail):
         if not detail:
             self._set_visible_inputs(False)
