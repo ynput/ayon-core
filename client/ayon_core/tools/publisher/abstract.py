@@ -543,11 +543,11 @@ class AbstractPublisherFrontend(AbstractPublisherCommon):
         pass
 
     @abstractmethod
-    def get_publish_error_info(self) -> Union["PublishErrorInfo", None]:
+    def get_publish_error_info(self) -> Optional["PublishErrorInfo"]:
         """Current error message which cause fail of publishing.
 
         Returns:
-            Union[PublishErrorInfo, None]: Error info or None.
+            Optional[PublishErrorInfo]: Error info or None.
 
         """
         pass
