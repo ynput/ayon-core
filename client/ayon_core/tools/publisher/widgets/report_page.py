@@ -1539,16 +1539,20 @@ class CrashWidget(QtWidgets.QWidget):
     ):
         super().__init__(parent)
 
-        title_label = QtWidgets.QLabel("", self)
-        title_label.setAlignment(QtCore.Qt.AlignCenter)
-        title_label.setObjectName("PublishCrashMainLabel")
+        main_label = QtWidgets.QLabel("This is not your fault", self)
+        main_label.setAlignment(QtCore.Qt.AlignCenter)
+        main_label.setObjectName("PublishCrashMainLabel")
 
-        description_label = QtWidgets.QLabel("", self)
-        description_label.setAlignment(QtCore.Qt.AlignCenter)
-        description_label.setWordWrap(True)
-        description_label.setObjectName("PublishCrashReportLabel")
-
-        detail_widget = ErrorDetailWidget(self)
+        report_label = QtWidgets.QLabel(
+            (
+                "Please report the error to your pipeline support"
+                " using one of the options below."
+            ),
+            self
+        )
+        report_label.setAlignment(QtCore.Qt.AlignCenter)
+        report_label.setWordWrap(True)
+        report_label.setObjectName("PublishCrashReportLabel")
 
         btns_widget = QtWidgets.QWidget(self)
         copy_clipboard_btn = QtWidgets.QPushButton(
@@ -1569,33 +1573,17 @@ class CrashWidget(QtWidgets.QWidget):
         layout.setContentsMargins(5, 5, 5, 5)
         layout.setSpacing(0)
         layout.addSpacing(20)
-        layout.addWidget(title_label, 0)
+        layout.addWidget(main_label, 0)
         layout.addSpacing(20)
-        layout.addWidget(description_label, 0)
+        layout.addWidget(report_label, 0)
         layout.addSpacing(20)
-        layout.addWidget(detail_widget, 1)
-        layout.addSpacing(10)
         layout.addWidget(btns_widget, 0)
         layout.addSpacing(10)
 
         copy_clipboard_btn.clicked.connect(self._on_copy_to_clipboard)
         save_to_disk_btn.clicked.connect(self._on_save_to_disk_click)
 
-        self._title_label = title_label
-        self._description_label = description_label
-        self._detail_widget = detail_widget
         self._controller: AbstractPublisherFrontend = controller
-
-    def update_error_info(self, error_info):
-        if error_info is None:
-            self._title_label.setText("Placeholder title")
-            self._description_label.setText("A bug happened if you see this")
-            self._detail_widget.set_detail(None)
-            return
-
-        self._title_label.setText(error_info.title)
-        self._description_label.setText(error_info.description)
-        self._detail_widget.set_detail(error_info.detail)
 
     def _on_copy_to_clipboard(self):
         self._controller.emit_event(
@@ -1618,6 +1606,7 @@ class PublishFailWidget(QtWidgets.QWidget):
             QtCore.Qt.TextBrowserInteraction
         )
 
+        # Error 'Details' widget -> Collapsible
         error_details_widget = ErrorDetailWidget(inputs_widget)
 
         # Description and Details layout
@@ -1794,30 +1783,36 @@ class ReportsWidget(QtWidgets.QWidget):
         return instance_items
 
     def update_data(self):
-        view = self._instances_view
-        validation_error_mode = False
         is_crashed = self._controller.publish_has_crashed()
+        error_info = None
+        if is_crashed:
+            error_info = self._controller.get_publish_error_info()
+
+        validation_error_mode = False
         if (
+            error_info is not None
+            and not error_info.is_unknown_error
+        ):
+            validation_error_mode = True
+
+        elif (
             not is_crashed
             and self._controller.publish_has_validation_errors()
         ):
-            view = self._validation_error_view
             validation_error_mode = True
+
+        if validation_error_mode:
+            view = self._validation_error_view
+        else:
+            view = self._instances_view
 
         self._actions_widget.set_visible_mode(validation_error_mode)
         self._detail_inputs_spacer.setVisible(validation_error_mode)
         self._detail_input_scroll.setVisible(validation_error_mode)
         self._views_layout.setCurrentWidget(view)
 
-        error_info = self._controller.get_publish_error_info()
-        logs_visible = True
-        if is_crashed and error_info.is_unknown_error:
-            logs_visible = False
-
-        self._crash_widget.setVisible(is_crashed)
-        self._logs_view.setVisible(logs_visible)
-
-        self._crash_widget.update_error_info(error_info)
+        self._crash_widget.setVisible(not validation_error_mode)
+        self._logs_view.setVisible(validation_error_mode)
 
         # Instance view & logs update
         instance_items = self._get_instance_items()
