@@ -30,7 +30,10 @@ class MessageHandler(logging.Handler):
         self.records = []
 
     def emit(self, record):
-        record.msg = record.getMessage()
+        try:
+            record.msg = record.getMessage()
+        except Exception:
+            record.msg = str(record.msg)
         self.records.append(record)
 
 
