@@ -557,7 +557,7 @@ class AbstractPublisherFrontend(AbstractPublisherCommon):
         pass
 
     @abstractmethod
-    def get_validation_errors(self):
+    def get_publish_errors_report(self):
         pass
 
     @abstractmethod

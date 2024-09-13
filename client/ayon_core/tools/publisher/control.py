@@ -502,8 +502,8 @@ class PublisherController(
     def get_publish_report(self):
         return self._publish_model.get_publish_report()
 
-    def get_validation_errors(self):
-        return self._publish_model.get_validation_errors()
+    def get_publish_errors_report(self):
+        return self._publish_model.get_publish_errors_report()
 
     def set_comment(self, comment):
         """Set comment from ui to pyblish context.
