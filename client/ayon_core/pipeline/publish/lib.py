@@ -696,7 +696,7 @@ def get_instance_staging_dir(instance):
         workfile_name, _ = os.path.splitext(workfile)
         formatting_data["workfile_name"] = workfile_name
 
-    dir_data = get_staging_dir(
+    staging_dir_data = get_staging_dir(
         host_name,
         project_entity,
         folder_entity,
@@ -708,14 +708,14 @@ def get_instance_staging_dir(instance):
         formatting_data=formatting_data,
     )
 
-    staging_dir_path = dir_data["stagingDir"]
+    staging_dir_path = staging_dir_data["stagingDir"]
 
     # TODO: not sure if this is necessary
     # path might be already created by get_staging_dir
     if not os.path.exists(staging_dir_path):
         os.makedirs(staging_dir_path)
 
-    instance.data.update(dir_data)
+    instance.data.update(staging_dir_data)
 
     return staging_dir_path
 

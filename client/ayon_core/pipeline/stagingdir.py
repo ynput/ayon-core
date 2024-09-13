@@ -202,7 +202,7 @@ def get_staging_dir(
     if not staging_dir_config and always_return_path:
         return {
             "stagingDir": get_temp_dir(
-                project_name=project_name,
+                project_name=project_entity["name"],
                 anatomy=anatomy,
                 prefix=kwargs.get("prefix"),
                 suffix=kwargs.get("suffix"),
