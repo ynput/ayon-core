@@ -412,7 +412,12 @@ class PublishFrame(QtWidgets.QWidget):
 
         self._set_main_label("Error happened")
         error_info = self._controller.get_publish_error_info()
-        self._message_label_top.setText(error_info.description)
+
+        error_message = "Unknown error happened"
+        if error_info is not None:
+            error_message = error_info.message
+
+        self._message_label_top.setText(error_message)
 
         self._set_success_property(1)
 
