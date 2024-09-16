@@ -4,6 +4,7 @@ import collections
 import uuid
 import json
 import copy
+import warnings
 from abc import ABCMeta, abstractmethod
 
 import clique
@@ -100,9 +101,13 @@ def _convert_reversed_attr(
                 f" Using '{main_label}' value."
             )
     elif depr_value is not None:
-        print(
-            f"Using deprecated argument '{depr_label}'"
-            f" please use '{main_label}' instead."
+        warnings.warn(
+            (
+                "DEPRECATION WARNING: Using deprecated argument"
+                f" '{depr_label}' please use '{main_label}' instead."
+            ),
+            DeprecationWarning,
+            stacklevel=4,
         )
         main_value = not depr_value
     elif main_value is None:
