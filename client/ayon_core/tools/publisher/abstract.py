@@ -323,6 +323,12 @@ class AbstractPublisherFrontend(AbstractPublisherCommon):
         pass
 
     @abstractmethod
+    def get_instances_context_info(
+        self, instance_ids: Optional[Iterable[str]] = None
+    ):
+        pass
+
+    @abstractmethod
     def get_existing_product_names(self, folder_path: str) -> List[str]:
         pass
 

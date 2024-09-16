@@ -234,16 +234,6 @@ def install_ayon_plugins(project_name=None, host_name=None):
             register_inventory_action_path(path)
 
 
-def install_openpype_plugins(project_name=None, host_name=None):
-    """Install AYON core plugins and make sure the core is initialized.
-
-    Deprecated:
-        Use `install_ayon_plugins` instead.
-
-    """
-    install_ayon_plugins(project_name, host_name)
-
-
 def uninstall_host():
     """Undo all of what `install()` did"""
     host = registered_host()
