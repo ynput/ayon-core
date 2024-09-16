@@ -1472,14 +1472,6 @@ CreateNextPageOverlay {
     border-radius: 5px;
 }
 
-#OpenPypeVersionLabel[state="success"] {
-    color: {color:settings:version-exists};
-}
-
-#OpenPypeVersionLabel[state="warning"] {
-    color: {color:settings:version-not-found};
-}
-
 #ShadowWidget {
     font-size: 36pt;
 }
