@@ -1,5 +1,5 @@
 # Publish
-AYON is using `pyblish` for publishing process which is a little bit extented and modified mainly for UI purposes. OpenPype's (new) publish UI does not allow to enable/disable instances or plugins that can be done during creation part. Also does support actions only for validators after validation exception.
+AYON is using `pyblish` for publishing process which is a little bit extented and modified mainly for UI purposes. AYON's (new) publish UI does not allow to enable/disable instances or plugins that can be done during creation part. Also does support actions only for validators after validation exception.
 
 ## Exceptions
 AYON define few specific exceptions that should be used in publish plugins.
