@@ -7,7 +7,7 @@ class CollectInputRepresentationsToVersions(pyblish.api.ContextPlugin):
     """Converts collected input representations to input versions.
 
     Any data in `instance.data["inputRepresentations"]` gets converted into
-    `instance.data["inputVersions"]` as supported in OpenPype v3.
+    `instance.data["inputVersions"]` as supported in OpenPype.
 
     """
     # This is a ContextPlugin because then we can query the database only once

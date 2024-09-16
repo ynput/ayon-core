@@ -25,13 +25,7 @@ def create_custom_tempdir(project_name, anatomy=None):
     """
     env_tmpdir = os.getenv("AYON_TMPDIR")
     if not env_tmpdir:
-        env_tmpdir = os.getenv("OPENPYPE_TMPDIR")
-        if not env_tmpdir:
-            return
-        print(
-            "DEPRECATION WARNING: Used 'OPENPYPE_TMPDIR' environment"
-            " variable. Please use 'AYON_TMPDIR' instead."
-        )
+        return
 
     custom_tempdir = None
     if "{" in env_tmpdir:
