@@ -237,11 +237,8 @@ class TrayAddonsManager(AddonsManager):
         webserver_url = self.webserver_url
         statics_url = f"{webserver_url}/res"
 
+        # Deprecated
         # TODO stop using these env variables
         # - function 'get_tray_server_url' should be used instead
         os.environ[self.webserver_url_env] = webserver_url
         os.environ["AYON_STATICS_SERVER"] = statics_url
-
-        # Deprecated
-        os.environ["OPENPYPE_WEBSERVER_URL"] = webserver_url
-        os.environ["OPENPYPE_STATICS_SERVER"] = statics_url
