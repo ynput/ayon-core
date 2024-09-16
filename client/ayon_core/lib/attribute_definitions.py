@@ -90,6 +90,26 @@ class AbstractAttrDefMeta(ABCMeta):
         return obj
 
 
+def _convert_reversed_attr(
+    main_value, depr_value, main_label, depr_label, default
+):
+    if main_value is not None and depr_value is not None:
+        if main_value == depr_value:
+            print(
+                f"God invalid '{main_label}' and '{depr_label}' arguments."
+                f" Using '{main_label}' value."
+            )
+    elif depr_value is not None:
+        print(
+            f"Using deprecated argument '{depr_label}'"
+            f" please use '{main_label}' instead."
+        )
+        main_value = not depr_value
+    elif main_value is None:
+        main_value = default
+    return main_value
+
+
 class AbstractAttrDef(metaclass=AbstractAttrDefMeta):
     """Abstraction of attribute definition.
 
@@ -106,12 +126,14 @@ class AbstractAttrDef(metaclass=AbstractAttrDefMeta):
     Args:
         key (str): Under which key will be attribute value stored.
         default (Any): Default value of an attribute.
-        label (str): Attribute label.
-        tooltip (str): Attribute tooltip.
-        is_label_horizontal (bool): UI specific argument. Specify if label is
-            next to value input or ahead.
-        hidden (bool): Will be item hidden (for UI purposes).
-        disabled (bool): Item will be visible but disabled (for UI purposes).
+        label (Optional[str]): Attribute label.
+        tooltip (Optional[str]): Attribute tooltip.
+        is_label_horizontal (Optional[bool]): UI specific argument. Specify
+            if label is next to value input or ahead.
+        visible (Optional[bool]): Item is shown to user (for UI purposes).
+        enabled (Optional[bool]): Item is enabled (for UI purposes).
+        hidden (Optional[bool]): DEPRECATED: Use 'visible' instead.
+        disabled (Optional[bool]): DEPRECATED: Use 'enabled' instead.
     """
 
     type_attributes = []
@@ -125,22 +147,28 @@ class AbstractAttrDef(metaclass=AbstractAttrDefMeta):
         label=None,
         tooltip=None,
         is_label_horizontal=None,
-        hidden=False,
-        disabled=False
+        visible=None,
+        enabled=None,
+        hidden=None,
+        disabled=None,
     ):
         if is_label_horizontal is None:
             is_label_horizontal = True
 
-        if hidden is None:
-            hidden = False
+        enabled = _convert_reversed_attr(
+            enabled, disabled, "enabled", "disabled", True
+        )
+        visible = _convert_reversed_attr(
+            visible, hidden, "visible", "hidden", True
+        )
 
         self.key = key
         self.label = label
         self.tooltip = tooltip
         self.default = default
         self.is_label_horizontal = is_label_horizontal
-        self.hidden = hidden
-        self.disabled = disabled
+        self.visible = visible
+        self.enabled = enabled
         self._id = uuid.uuid4().hex
 
         self.__init__class__ = AbstractAttrDef
@@ -149,14 +177,30 @@ class AbstractAttrDef(metaclass=AbstractAttrDefMeta):
     def id(self):
         return self._id
 
+    @property
+    def hidden(self):
+        return not self.visible
+
+    @hidden.setter
+    def hidden(self, value):
+        self.visible = not value
+
+    @property
+    def disabled(self):
+        return not self.enabled
+
+    @disabled.setter
+    def disabled(self, value):
+        self.enabled = not value
+
     def __eq__(self, other):
         if not isinstance(other, self.__class__):
             return False
         return (
             self.key == other.key
-            and self.hidden == other.hidden
             and self.default == other.default
-            and self.disabled == other.disabled
+            and self.visible == other.visible
+            and self.enabled == other.enabled
         )
 
     def __ne__(self, other):
@@ -198,8 +242,8 @@ class AbstractAttrDef(metaclass=AbstractAttrDefMeta):
             "tooltip": self.tooltip,
             "default": self.default,
             "is_label_horizontal": self.is_label_horizontal,
-            "hidden": self.hidden,
-            "disabled": self.disabled
+            "visible": self.visible,
+            "enabled": self.enabled
         }
         for attr in self.type_attributes:
             data[attr] = getattr(self, attr)
@@ -279,8 +323,8 @@ class HiddenDef(AbstractAttrDef):
 
     def __init__(self, key, default=None, **kwargs):
         kwargs["default"] = default
-        kwargs["hidden"] = True
-        super(HiddenDef, self).__init__(key, **kwargs)
+        kwargs["visible"] = False
+        super().__init__(key, **kwargs)
 
     def convert_value(self, value):
         return value
