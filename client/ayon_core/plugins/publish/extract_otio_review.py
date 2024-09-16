@@ -106,10 +106,19 @@ class ExtractOTIOReview(publish.Extractor):
             media_metadata = otio_media.metadata
 
             # get from media reference metadata source
-            if media_metadata.get("openpype.source.width"):
-                width = int(media_metadata.get("openpype.source.width"))
-            if media_metadata.get("openpype.source.height"):
-                height = int(media_metadata.get("openpype.source.height"))
+            # TODO 'openpype' prefix should be removed (added 24/09/03)
+            # NOTE it looks like it is set only in hiero integration
+            for key in {"ayon.source.width", "openpype.source.width"}:
+                value = media_metadata.get(key)
+                if value is not None:
+                    width = int(value)
+                    break
+
+            for key in {"ayon.source.height", "openpype.source.height"}:
+                value = media_metadata.get(key)
+                if value is not None:
+                    height = int(value)
+                    break
 
             # compare and reset
             if width != self.to_width:
