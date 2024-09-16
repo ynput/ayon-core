@@ -97,7 +97,7 @@ def _convert_reversed_attr(
     if main_value is not None and depr_value is not None:
         if main_value == depr_value:
             print(
-                f"God invalid '{main_label}' and '{depr_label}' arguments."
+                f"Got invalid '{main_label}' and '{depr_label}' arguments."
                 f" Using '{main_label}' value."
             )
     elif depr_value is not None:
