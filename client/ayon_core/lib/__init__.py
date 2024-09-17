@@ -107,7 +107,6 @@ from .transcoding import (
     convert_ffprobe_fps_to_float,
     get_rescaled_command_arguments,
     get_media_mime_type,
-    get_image_info_metadata,
 )
 
 from .plugin_tools import (
@@ -207,7 +206,6 @@ __all__ = [
     "convert_ffprobe_fps_to_float",
     "get_rescaled_command_arguments",
     "get_media_mime_type",
-    "get_image_info_metadata",
 
     "compile_list_of_regexes",
 
