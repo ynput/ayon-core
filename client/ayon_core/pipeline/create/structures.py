@@ -1,6 +1,7 @@
 import copy
 import collections
 from uuid import uuid4
+from typing import Optional
 
 from ayon_core.lib.attribute_definitions import (
     UnknownDef,
@@ -396,6 +397,24 @@ class PublishAttributes:
                 )
 
 
+class InstanceContextInfo:
+    def __init__(
+        self,
+        folder_path: Optional[str],
+        task_name: Optional[str],
+        folder_is_valid: bool,
+        task_is_valid: bool,
+    ):
+        self.folder_path: Optional[str] = folder_path
+        self.task_name: Optional[str] = task_name
+        self.folder_is_valid: bool = folder_is_valid
+        self.task_is_valid: bool = task_is_valid
+
+    @property
+    def is_valid(self) -> bool:
+        return self.folder_is_valid and self.task_is_valid
+
+
 class CreatedInstance:
     """Instance entity with data that will be stored to workfile.
 
@@ -527,9 +546,6 @@ class CreatedInstance:
 
         if not self._data.get("instance_id"):
             self._data["instance_id"] = str(uuid4())
-
-        self._folder_is_valid = self.has_set_folder
-        self._task_is_valid = self.has_set_task
 
     def __str__(self):
         return (
@@ -699,6 +715,17 @@ class CreatedInstance:
     def publish_attributes(self):
         return self._data["publish_attributes"]
 
+    @property
+    def has_promised_context(self) -> bool:
+        """Get context data that are promised to be set by creator.
+
+        Returns:
+            bool: Has context that won't bo validated. Artist can't change
+                value when set to True.
+
+        """
+        return self._transient_data.get("has_promised_context", False)
+
     def data_to_store(self):
         """Collect data that contain json parsable types.
 
@@ -826,46 +853,3 @@ class CreatedInstance:
         obj.publish_attributes.deserialize_attributes(publish_attributes)
 
         return obj
-
-    # Context validation related methods/properties
-    @property
-    def has_set_folder(self):
-        """Folder path is set in data."""
-
-        return "folderPath" in self._data
-
-    @property
-    def has_set_task(self):
-        """Task name is set in data."""
-
-        return "task" in self._data
-
-    @property
-    def has_valid_context(self):
-        """Context data are valid for publishing."""
-
-        return self.has_valid_folder and self.has_valid_task
-
-    @property
-    def has_valid_folder(self):
-        """Folder set in context exists in project."""
-
-        if not self.has_set_folder:
-            return False
-        return self._folder_is_valid
-
-    @property
-    def has_valid_task(self):
-        """Task set in context exists in project."""
-
-        if not self.has_set_task:
-            return False
-        return self._task_is_valid
-
-    def set_folder_invalid(self, invalid):
-        # TODO replace with `set_folder_path`
-        self._folder_is_valid = not invalid
-
-    def set_task_invalid(self, invalid):
-        # TODO replace with `set_task_name`
-        self._task_is_valid = not invalid

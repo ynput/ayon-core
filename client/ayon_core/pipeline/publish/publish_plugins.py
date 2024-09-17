@@ -165,9 +165,6 @@ class AYONPyblishPluginMixin:
         return self.get_attr_values_from_data_for_plugin(self.__class__, data)
 
 
-OpenPypePyblishPluginMixin = AYONPyblishPluginMixin
-
-
 class OptionalPyblishPluginMixin(AYONPyblishPluginMixin):
     """Prepare mixin for optional plugins.
 
