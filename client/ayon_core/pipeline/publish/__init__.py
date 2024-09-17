@@ -13,7 +13,6 @@ from .publish_plugins import (
     PublishXmlValidationError,
     KnownPublishError,
     AYONPyblishPluginMixin,
-    OpenPypePyblishPluginMixin,
     OptionalPyblishPluginMixin,
 
     RepairAction,
@@ -66,7 +65,6 @@ __all__ = (
     "PublishXmlValidationError",
     "KnownPublishError",
     "AYONPyblishPluginMixin",
-    "OpenPypePyblishPluginMixin",
     "OptionalPyblishPluginMixin",
 
     "RepairAction",
