@@ -4,8 +4,8 @@ from pathlib import Path
 from collections import defaultdict
 
 from qtpy import QtWidgets, QtCore, QtGui
-
 from ayon_api import get_representations
+
 from ayon_core.pipeline import load, Anatomy
 from ayon_core import resources, style
 from ayon_core.lib.transcoding import (
@@ -19,8 +19,14 @@ from ayon_core.lib import (
 from ayon_core.pipeline.load import get_representation_path_with_anatomy
 from ayon_core.tools.utils import show_message_dialog
 
-
+OTIO = None
 FRAME_SPLITTER = "__frame_splitter__"
+
+def _import_otio():
+    global OTIO
+    if OTIO is None:
+        import opentimelineio
+        OTIO = opentimelineio
 
 
 class ExportOTIO(load.ProductLoaderPlugin):
@@ -39,6 +45,7 @@ class ExportOTIO(load.ProductLoaderPlugin):
     color = "#d8d8d8"
 
     def load(self, contexts, name=None, namespace=None, options=None):
+        _import_otio()
         try:
             dialog = ExportOTIOOptionsDialog(contexts, self.log)
             dialog.exec_()
@@ -51,8 +58,6 @@ class ExportOTIOOptionsDialog(QtWidgets.QDialog):
 
     def __init__(self, contexts, log=None, parent=None):
         # Not all hosts have OpenTimelineIO available.
-        import opentimelineio as OTIO
-        self.OTIO = OTIO
         self.log = log
 
         super(ExportOTIOOptionsDialog, self).__init__(parent=parent)
@@ -298,23 +303,23 @@ class ExportOTIOOptionsDialog(QtWidgets.QDialog):
 
         first_frame = representation["context"].get("frame")
         if first_frame is None:
-            media_range = self.OTIO.opentime.TimeRange(
-                start_time=self.OTIO.opentime.RationalTime(
+            media_range = OTIO.opentime.TimeRange(
+                start_time=OTIO.opentime.RationalTime(
                     media_start_frame, media_framerate
                 ),
-                duration=self.OTIO.opentime.RationalTime(
+                duration=OTIO.opentime.RationalTime(
                     frames, media_framerate),
             )
-            clip_range = self.OTIO.opentime.TimeRange(
-                start_time=self.OTIO.opentime.RationalTime(
+            clip_range = OTIO.opentime.TimeRange(
+                start_time=OTIO.opentime.RationalTime(
                     clip_start_frame, timeline_framerate
                 ),
-                duration=self.OTIO.opentime.RationalTime(
+                duration=OTIO.opentime.RationalTime(
                     frames, timeline_framerate),
             )
 
             # Use 'repre_path' as single file
-            media_reference = self.OTIO.schema.ExternalReference(
+            media_reference = OTIO.schema.ExternalReference(
                 available_range=media_range,
                 target_url=self.convert_to_uri_or_posix(repre_path),
             )
@@ -339,24 +344,24 @@ class ExportOTIOOptionsDialog(QtWidgets.QDialog):
             frame_str = str(repre_path)[len(file_prefix):][:len(file_suffix)]
             frame_padding = len(frame_str)
 
-            media_range = self.OTIO.opentime.TimeRange(
-                start_time=self.OTIO.opentime.RationalTime(
+            media_range = OTIO.opentime.TimeRange(
+                start_time=OTIO.opentime.RationalTime(
                     media_start_frame, media_framerate
                 ),
-                duration=self.OTIO.opentime.RationalTime(
+                duration=OTIO.opentime.RationalTime(
                     len(repre_files), media_framerate
                 ),
             )
-            clip_range = self.OTIO.opentime.TimeRange(
-                start_time=self.OTIO.opentime.RationalTime(
+            clip_range = OTIO.opentime.TimeRange(
+                start_time=OTIO.opentime.RationalTime(
                     clip_start_frame, timeline_framerate
                 ),
-                duration=self.OTIO.opentime.RationalTime(
+                duration=OTIO.opentime.RationalTime(
                     len(repre_files), timeline_framerate
                 ),
             )
 
-            media_reference = self.OTIO.schema.ImageSequenceReference(
+            media_reference = OTIO.schema.ImageSequenceReference(
                 available_range=media_range,
                 start_frame=int(first_frame),
                 frame_step=1,
@@ -367,7 +372,7 @@ class ExportOTIOOptionsDialog(QtWidgets.QDialog):
                 frame_zero_padding=frame_padding,
             )
 
-        return self.OTIO.schema.Clip(
+        return OTIO.schema.Clip(
             name=name, media_reference=media_reference, source_range=clip_range
         )
 
@@ -387,7 +392,7 @@ class ExportOTIOOptionsDialog(QtWidgets.QDialog):
 
     def get_timecode_start_frame(self, framerate, file_metadata):
         # use otio to convert timecode into frame number
-        timecode_start_frame = self.OTIO.opentime.from_timecode(
+        timecode_start_frame = OTIO.opentime.from_timecode(
             file_metadata["timecode"], framerate)
         return timecode_start_frame.to_frames()
 
@@ -408,13 +413,13 @@ class ExportOTIOOptionsDialog(QtWidgets.QDialog):
             self.create_clip(name, clip_data, timeline_framerate)
             for name, clip_data in clips_data.items()
         ]
-        timeline = self.OTIO.schema.timeline_from_clips(clips)
+        timeline = OTIO.schema.timeline_from_clips(clips)
 
         # set the timeline framerate to the highest framerate
-        timeline.global_start_time = self.OTIO.opentime.RationalTime(
+        timeline.global_start_time = OTIO.opentime.RationalTime(
             0, timeline_framerate)
 
-        self.OTIO.adapters.write_to_file(timeline, output_path)
+        OTIO.adapters.write_to_file(timeline, output_path)
 
 
 def get_image_info_metadata(
