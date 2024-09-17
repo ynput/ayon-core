@@ -108,6 +108,20 @@ def run_subprocess(*args, **kwargs):
             | getattr(subprocess, "CREATE_NO_WINDOW", 0)
         )
 
+    # Escape parentheses for bash
+    if (
+        kwargs.get("shell") is True
+        and len(args) == 1
+        and isinstance(args[0], str)
+        and os.getenv("SHELL") in ("/bin/bash", "/bin/sh")
+    ):
+        new_arg = (
+            args[0]
+            .replace("(", "\\(")
+            .replace(")", "\\)")
+        )
+        args = (new_arg, )
+
     # Get environents from kwarg or use current process environments if were
     # not passed.
     env = kwargs.get("env") or os.environ
@@ -179,7 +193,7 @@ def clean_envs_for_ayon_process(env=None):
     return env
 
 
-def run_ayon_launcher_process(*args, **kwargs):
+def run_ayon_launcher_process(*args, add_sys_paths=False, **kwargs):
     """Execute AYON process with passed arguments and wait.
 
     Wrapper for 'run_process' which prepends AYON executable arguments
@@ -209,27 +223,16 @@ def run_ayon_launcher_process(*args, **kwargs):
         # - fill more if you find more
         env = clean_envs_for_ayon_process(os.environ)
 
+    if add_sys_paths:
+        new_pythonpath = list(sys.path)
+        lookup_set = set(new_pythonpath)
+        for path in (env.get("PYTHONPATH") or "").split(os.pathsep):
+            if path and path not in lookup_set:
+                new_pythonpath.append(path)
+                lookup_set.add(path)
+        env["PYTHONPATH"] = os.pathsep.join(new_pythonpath)
+
     return run_subprocess(args, env=env, **kwargs)
-
-
-def run_openpype_process(*args, **kwargs):
-    """Execute AYON process with passed arguments and wait.
-
-    Wrapper for 'run_process' which prepends AYON executable arguments
-    before passed arguments and define environments if are not passed.
-
-    Values from 'os.environ' are used for environments if are not passed.
-    They are cleaned using 'clean_envs_for_ayon_process' function.
-
-    Example:
-        >>> run_openpype_process("version")
-
-    Args:
-        *args (tuple): AYON cli arguments.
-        **kwargs (dict): Keyword arguments for subprocess.Popen.
-
-    """
-    return run_ayon_launcher_process(*args, **kwargs)
 
 
 def run_detached_process(args, **kwargs):
@@ -318,14 +321,12 @@ def path_to_subprocess_arg(path):
 
 
 def get_ayon_launcher_args(*args):
-    """Arguments to run ayon-launcher process.
+    """Arguments to run AYON launcher process.
 
-    Arguments for subprocess when need to spawn new pype process. Which may be
-    needed when new python process for pype scripts must be executed in build
-    pype.
+    Arguments for subprocess when need to spawn new AYON launcher process.
 
     Reasons:
-        Ayon-launcher started from code has different executable set to
+        AYON launcher started from code has different executable set to
             virtual env python and must have path to script as first argument
             which is not needed for built application.
 
@@ -333,7 +334,8 @@ def get_ayon_launcher_args(*args):
         *args (str): Any arguments that will be added after executables.
 
     Returns:
-        list[str]: List of arguments to run ayon-launcher process.
+        list[str]: List of arguments to run AYON launcher process.
+
     """
     executable = os.environ["AYON_EXECUTABLE"]
     launch_args = [executable]
@@ -391,21 +393,3 @@ def get_linux_launcher_args(*args):
         launch_args.extend(args)
 
     return launch_args
-
-
-def get_openpype_execute_args(*args):
-    """Arguments to run pype command.
-
-    Arguments for subprocess when need to spawn new pype process. Which may be
-    needed when new python process for pype scripts must be executed in build
-    pype.
-
-    ## Why is this needed?
-    Pype executed from code has different executable set to virtual env python
-    and must have path to script as first argument which is not needed for
-    build pype.
-
-    It is possible to pass any arguments that will be added after pype
-    executables.
-    """
-    return get_ayon_launcher_args(*args)
