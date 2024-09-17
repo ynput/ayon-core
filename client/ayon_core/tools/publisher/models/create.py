@@ -306,6 +306,14 @@ class CreateModel:
             for instance_id in instance_ids
         }
 
+    def get_instances_context_info(
+        self, instance_ids: Optional[Iterable[str]] = None
+    ):
+        instances = self.get_instances_by_id(instance_ids).values()
+        return self._create_context.get_instances_context_info(
+            instances
+        )
+
     def get_convertor_items(self) -> Dict[str, ConvertorItem]:
         return self._create_context.convertor_items_by_id
 
