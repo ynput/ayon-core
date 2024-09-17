@@ -18,7 +18,7 @@ from ayon_core.pipeline.create import (
     CreateContext,
     CreatedInstance,
 )
-from ayon_core.pipeline.create.context import (
+from ayon_core.pipeline.create import (
     CreatorsOperationFailed,
     ConvertorsOperationFailed,
     ConvertorItem,
@@ -305,6 +305,14 @@ class CreateModel:
             instance_id: self.get_instance_by_id(instance_id)
             for instance_id in instance_ids
         }
+
+    def get_instances_context_info(
+        self, instance_ids: Optional[Iterable[str]] = None
+    ):
+        instances = self.get_instances_by_id(instance_ids).values()
+        return self._create_context.get_instances_context_info(
+            instances
+        )
 
     def get_convertor_items(self) -> Dict[str, ConvertorItem]:
         return self._create_context.convertor_items_by_id
