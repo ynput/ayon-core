@@ -196,10 +196,6 @@ def get_ayon_qt_app():
     return app
 
 
-def get_openpype_qt_app():
-    return get_ayon_qt_app()
-
-
 def iter_model_rows(model, column=0, include_root=False):
     """Iterate over all row indices in a model"""
     indexes_queue = collections.deque()
