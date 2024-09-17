@@ -67,7 +67,7 @@ class ProductGroupDialog(QtWidgets.QDialog):
         """Update product groups for the preset list available in the dialog"""
         # Update product group picker menu and state
         self._group_picker_menu.clear()
-        for product_group in product_groups:
+        for product_group in sorted(product_groups):
             self._group_picker_menu.addAction(product_group)
         self._group_picker_btn.setEnabled(bool(product_groups))
 
