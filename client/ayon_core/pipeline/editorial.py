@@ -179,7 +179,7 @@ def get_media_range_with_retimes(otio_clip, handle_start, handle_end):
     media_in = available_range.start_time.value
     media_out = available_range.end_time_inclusive().value
 
-    # Ensure image sequence media_ref source and 
+    # Ensure image sequence media_ref source and
     # available range are absolute.
     media_ref = otio_clip.media_reference
     if (
