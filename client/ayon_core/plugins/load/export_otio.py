@@ -1,6 +1,5 @@
 import logging
 import os
-import uuid
 from pathlib import Path
 from collections import defaultdict
 
@@ -118,9 +117,8 @@ class ExportOTIOOptionsDialog(QtWidgets.QDialog):
         repre_name_buttons = []
         for idx, name in enumerate(all_representation_names):
             repre_name_btn = QtWidgets.QPushButton(name, input_widget)
-            col = idx + 1
             input_layout.addWidget(
-                repre_name_btn, row, col,
+                repre_name_btn, row, idx + 1,
                 alignment=QtCore.Qt.AlignCenter
             )
             repre_name_btn.clicked.connect(self._toggle_all)
