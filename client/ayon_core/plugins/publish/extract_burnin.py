@@ -779,12 +779,11 @@ class ExtractBurnin(publish.Extractor):
             if not self.families_filter_validation(
                 families, families_filters
             ):
-                self.log.debug((
-                    "Skipped burnin definition \"{}\". Family filters ({}) "
-                    "does not match current instance families: {}"
-                ).format(
-                    filename_suffix, str(families_filters), str(families)
-                ))
+                self.log.debug(
+                    f"Skipped burnin definition \"{filename_suffix}\"."
+                    f" Family filters ({families_filters}) does not match"
+                    f" current instance families: {families}"
+                )
                 continue
 
             # Burnin values
