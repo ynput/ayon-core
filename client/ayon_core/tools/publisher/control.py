@@ -190,8 +190,14 @@ class PublisherController(
     def get_instances_by_id(self, instance_ids=None):
         return self._create_model.get_instances_by_id(instance_ids)
 
+    def get_instances_context_info(self, instance_ids=None):
+        return self._create_model.get_instances_context_info(instance_ids)
+
     def get_convertor_items(self):
         return self._create_model.get_convertor_items()
+
+    def get_project_entity(self, project_name):
+        return self._projects_model.get_project_entity(project_name)
 
     def get_folder_type_items(self, project_name, sender=None):
         return self._projects_model.get_folder_type_items(

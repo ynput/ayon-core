@@ -19,6 +19,7 @@ from .product_types_widget import ProductTypesView
 from .product_group_dialog import ProductGroupDialog
 from .info_widget import InfoWidget
 from .repres_widget import RepresentationsWidget
+from .statuses_combo import StatusesCombobox
 
 
 class LoadErrorMessageBox(ErrorMessageBox):
@@ -183,6 +184,9 @@ class LoaderWindow(QtWidgets.QWidget):
 
         products_filter_input = PlaceholderLineEdit(products_inputs_widget)
         products_filter_input.setPlaceholderText("Product name filter...")
+
+        product_status_filter_combo = StatusesCombobox(controller, self)
+
         product_group_checkbox = QtWidgets.QCheckBox(
             "Enable grouping", products_inputs_widget)
         product_group_checkbox.setChecked(True)
@@ -192,6 +196,7 @@ class LoaderWindow(QtWidgets.QWidget):
         products_inputs_layout = QtWidgets.QHBoxLayout(products_inputs_widget)
         products_inputs_layout.setContentsMargins(0, 0, 0, 0)
         products_inputs_layout.addWidget(products_filter_input, 1)
+        products_inputs_layout.addWidget(product_status_filter_combo, 1)
         products_inputs_layout.addWidget(product_group_checkbox, 0)
 
         products_wrap_layout = QtWidgets.QVBoxLayout(products_wrap_widget)
@@ -244,6 +249,9 @@ class LoaderWindow(QtWidgets.QWidget):
         )
         products_filter_input.textChanged.connect(
             self._on_product_filter_change
+        )
+        product_status_filter_combo.value_changed.connect(
+            self._on_status_filter_change
         )
         product_group_checkbox.stateChanged.connect(
             self._on_product_group_change
@@ -299,6 +307,7 @@ class LoaderWindow(QtWidgets.QWidget):
         self._product_types_widget = product_types_widget
 
         self._products_filter_input = products_filter_input
+        self._product_status_filter_combo = product_status_filter_combo
         self._product_group_checkbox = product_group_checkbox
         self._products_widget = products_widget
 
@@ -335,6 +344,8 @@ class LoaderWindow(QtWidgets.QWidget):
 
     def closeEvent(self, event):
         super(LoaderWindow, self).closeEvent(event)
+
+        self._product_types_widget.reset_product_types_filter_on_refresh()
 
         self._reset_on_show = True
 
@@ -411,6 +422,10 @@ class LoaderWindow(QtWidgets.QWidget):
 
     def _on_product_filter_change(self, text):
         self._products_widget.set_name_filter(text)
+
+    def _on_status_filter_change(self):
+        status_names = self._product_status_filter_combo.get_value()
+        self._products_widget.set_statuses_filter(status_names)
 
     def _on_product_type_filter_change(self):
         self._products_widget.set_product_type_filter(

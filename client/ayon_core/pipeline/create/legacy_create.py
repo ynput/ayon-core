@@ -14,7 +14,7 @@ from ayon_core.pipeline.constants import AVALON_INSTANCE_ID
 from .product_name import get_product_name
 
 
-class LegacyCreator(object):
+class LegacyCreator:
     """Determine how assets are created"""
     label = None
     product_type = None
@@ -111,6 +111,13 @@ class LegacyCreator(object):
 
         This method can be modified to prefill some values just keep in mind it
         is class method.
+
+        Args:
+            project_name (str): Context's project name.
+            folder_entity (dict[str, Any]): Folder entity.
+            task_entity (dict[str, Any]): Task entity.
+            variant (str): What is entered by user in creator tool.
+            host_name (str): Name of host.
 
         Returns:
             dict: Fill data for product name template.

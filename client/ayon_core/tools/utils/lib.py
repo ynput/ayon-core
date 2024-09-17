@@ -17,7 +17,7 @@ from ayon_core.style import (
 from ayon_core.resources import get_image_path
 from ayon_core.lib import Logger
 
-from .constants import CHECKED_INT, UNCHECKED_INT
+from .constants import CHECKED_INT, UNCHECKED_INT, PARTIALLY_CHECKED_INT
 
 log = Logger.get_logger(__name__)
 
@@ -37,10 +37,10 @@ def checkstate_enum_to_int(state):
     if isinstance(state, int):
         return state
     if state == QtCore.Qt.Checked:
-        return 0
+        return CHECKED_INT
     if state == QtCore.Qt.PartiallyChecked:
-        return 1
-    return 2
+        return PARTIALLY_CHECKED_INT
+    return UNCHECKED_INT
 
 
 def center_window(window):
@@ -194,10 +194,6 @@ def get_ayon_qt_app():
     app = get_qt_app()
     app.setWindowIcon(QtGui.QIcon(get_app_icon_path()))
     return app
-
-
-def get_openpype_qt_app():
-    return get_ayon_qt_app()
 
 
 def iter_model_rows(model, column=0, include_root=False):
@@ -485,7 +481,10 @@ class _IconsCache:
             parts = [icon_type, icon_def["path"]]
 
         elif icon_type in {"awesome-font", "material-symbols"}:
-            parts = [icon_type, icon_def["name"], icon_def["color"]]
+            color = icon_def["color"] or ""
+            if isinstance(color, QtGui.QColor):
+                color = color.name()
+            parts = [icon_type, icon_def["name"] or "", color]
         return "|".join(parts)
 
     @classmethod

@@ -2,8 +2,6 @@ import os
 import re
 import numbers
 
-import six
-
 KEY_PATTERN = re.compile(r"(\{.*?[^{0]*\})")
 KEY_PADDING_PATTERN = re.compile(r"([^:]+)\S+[><]\S+")
 SUB_DICT_PATTERN = re.compile(r"([^\[\]]+)")
@@ -14,7 +12,7 @@ class TemplateUnsolved(Exception):
     """Exception for unsolved template when strict is set to True."""
 
     msg = "Template \"{0}\" is unsolved.{1}{2}"
-    invalid_types_msg = " Keys with invalid DataType: `{0}`."
+    invalid_types_msg = " Keys with invalid data type: `{0}`."
     missing_keys_msg = " Missing keys: \"{0}\"."
 
     def __init__(self, template, missing_keys, invalid_types):
@@ -40,10 +38,10 @@ class TemplateUnsolved(Exception):
         )
 
 
-class StringTemplate(object):
+class StringTemplate:
     """String that can be formatted."""
     def __init__(self, template):
-        if not isinstance(template, six.string_types):
+        if not isinstance(template, str):
             raise TypeError("<{}> argument must be a string, not {}.".format(
                 self.__class__.__name__, str(type(template))
             ))
@@ -63,7 +61,7 @@ class StringTemplate(object):
 
         new_parts = []
         for part in parts:
-            if not isinstance(part, six.string_types):
+            if not isinstance(part, str):
                 new_parts.append(part)
                 continue
 
@@ -113,7 +111,7 @@ class StringTemplate(object):
         """
         result = TemplatePartResult()
         for part in self._parts:
-            if isinstance(part, six.string_types):
+            if isinstance(part, str):
                 result.add_output(part)
             else:
                 part.format(data, result)
@@ -176,7 +174,7 @@ class StringTemplate(object):
                         value = "<>"
                     elif (
                         len(parts) == 1
-                        and isinstance(parts[0], six.string_types)
+                        and isinstance(parts[0], str)
                     ):
                         value = "<{}>".format(parts[0])
                     else:
@@ -200,8 +198,9 @@ class StringTemplate(object):
                 new_parts.extend(tmp_parts[idx])
         return new_parts
 
+
 class TemplateResult(str):
-    """Result of template format with most of information in.
+    """Result of template format with most of the information in.
 
     Args:
         used_values (dict): Dictionary of template filling data with
@@ -299,7 +298,7 @@ class TemplatePartResult:
         self._optional = True
 
     def add_output(self, other):
-        if isinstance(other, six.string_types):
+        if isinstance(other, str):
             self._output += other
 
         elif isinstance(other, TemplatePartResult):
@@ -411,7 +410,7 @@ class TemplatePartResult:
             self._invalid_types[key] = type(value)
 
 
-class FormatObject(object):
+class FormatObject:
     """Object that can be used for formatting.
 
     This is base that is valid for to be used in 'StringTemplate' value.
@@ -457,9 +456,37 @@ class FormattingPart:
             return True
 
         for inh_class in type(value).mro():
-            if inh_class in six.string_types:
+            if inh_class is str:
                 return True
         return False
+
+    @staticmethod
+    def validate_key_is_matched(key):
+        """Validate that opening has closing at correct place.
+        Future-proof, only square brackets are currently used in keys.
+
+        Example:
+            >>> is_matched("[]()()(((([])))")
+            False
+            >>> is_matched("[](){{{[]}}}")
+            True
+
+        Returns:
+            bool: Openings and closing are valid.
+
+        """
+        mapping = dict(zip("({[", ")}]"))
+        opening = set(mapping.keys())
+        closing = set(mapping.values())
+        queue = []
+
+        for letter in key:
+            if letter in opening:
+                queue.append(mapping[letter])
+            elif letter in closing:
+                if not queue or letter != queue.pop():
+                    return False
+        return not queue
 
     def format(self, data, result):
         """Format the formattings string.
@@ -471,6 +498,12 @@ class FormattingPart:
         key = self.template[1:-1]
         if key in result.realy_used_values:
             result.add_output(result.realy_used_values[key])
+            return result
+
+        # ensure key is properly formed [({})] properly closed.
+        if not self.validate_key_is_matched(key):
+            result.add_missing_key(key)
+            result.add_output(self.template)
             return result
 
         # check if key expects subdictionary keys (e.g. project[name])
@@ -568,7 +601,7 @@ class OptionalPart:
     def format(self, data, result):
         new_result = TemplatePartResult(True)
         for part in self._parts:
-            if isinstance(part, six.string_types):
+            if isinstance(part, str):
                 new_result.add_output(part)
             else:
                 part.format(data, new_result)

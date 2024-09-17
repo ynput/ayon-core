@@ -5,6 +5,8 @@ from .widgets import (
     ComboBox,
     CustomTextComboBox,
     PlaceholderLineEdit,
+    ElideLabel,
+    HintedLineEdit,
     ExpandingTextEdit,
     BaseClickableFrame,
     ClickableFrame,
@@ -36,7 +38,6 @@ from .lib import (
     qt_app_context,
     get_qt_app,
     get_ayon_qt_app,
-    get_openpype_qt_app,
     get_qt_icon,
 )
 
@@ -88,6 +89,8 @@ __all__ = (
     "ComboBox",
     "CustomTextComboBox",
     "PlaceholderLineEdit",
+    "ElideLabel",
+    "HintedLineEdit",
     "ExpandingTextEdit",
     "BaseClickableFrame",
     "ClickableFrame",
@@ -118,7 +121,6 @@ __all__ = (
     "qt_app_context",
     "get_qt_app",
     "get_ayon_qt_app",
-    "get_openpype_qt_app",
     "get_qt_icon",
 
     "RecursiveSortFilterProxyModel",
