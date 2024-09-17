@@ -1,7 +1,7 @@
 import pytest
 import logging
 from pathlib import Path
-from ayon_core.lib.transcoding import get_image_info_metadata
+from ayon_core.plugins.load.export_otio import get_image_info_metadata
 
 logger = logging.getLogger('test_transcoding')
 
