@@ -179,6 +179,24 @@ def get_media_range_with_retimes(otio_clip, handle_start, handle_end):
     media_in = available_range.start_time.value
     media_out = available_range.end_time_inclusive().value
 
+    # Ensure image sequence media_ref source and 
+    # available range are absolute.
+    media_ref = otio_clip.media_reference
+    if (
+        hasattr(otio.schema, "ImageSequenceReference") and
+        isinstance(media_ref, otio.schema.ImageSequenceReference) and
+        media_in != media_ref.start_frame
+    ):
+        media_in = media_ref.start_frame
+        media_out += media_ref.start_frame
+        source_range_start = otio.opentime.RationalTime(
+            media_in + source_range.start_time.value,
+        )
+        source_range = otio.opentime.TimeRange(
+            start_time=source_range_start,
+            duration=source_range.duration
+        )
+
     # modifiers
     time_scalar = 1.
     offset_in = 0
@@ -224,38 +242,30 @@ def get_media_range_with_retimes(otio_clip, handle_start, handle_end):
     offset_in *= time_scalar
     offset_out *= time_scalar
 
-    # filip offset if reversed speed
+    # flip offset if reversed speed
     if time_scalar < 0:
-        _offset_in = offset_out
-        _offset_out = offset_in
-        offset_in = _offset_in
-        offset_out = _offset_out
+        offset_in, offset_out = offset_out, offset_in
 
     # scale handles
     handle_start *= abs(time_scalar)
     handle_end *= abs(time_scalar)
 
-    # filip handles if reversed speed
+    # flip handles if reversed speed
     if time_scalar < 0:
-        _handle_start = handle_end
-        _handle_end = handle_start
-        handle_start = _handle_start
-        handle_end = _handle_end
+        handle_start, handle_end = handle_end, handle_start
 
     source_in = source_range.start_time.value
 
-    media_in_trimmed = (
-        media_in + source_in + offset_in)
-    media_out_trimmed = (
-        media_in + source_in + (
+    media_in_trimmed = (source_in + offset_in)
+    media_out_trimmed = ( media_in_trimmed + (
             ((source_range.duration.value - 1) * abs(
                 time_scalar)) + offset_out))
 
     # calculate available handles
     if (media_in_trimmed - media_in) < handle_start:
-        handle_start = (media_in_trimmed - media_in)
+        handle_start = max(0, media_in_trimmed - media_in)
     if (media_out - media_out_trimmed) < handle_end:
-        handle_end = (media_out - media_out_trimmed)
+        handle_end = max(0, media_out - media_out_trimmed)
 
     # create version data
     version_data = {
