@@ -17,23 +17,23 @@ class ProductGroupDialog(QtWidgets.QDialog):
 
         main_label = QtWidgets.QLabel("Group Name", self)
 
-        group_name_input = PlaceholderLineEdit(self)
+        name_widget = QtWidgets.QWidget(self)
+        group_name_input = PlaceholderLineEdit(name_widget)
         group_name_input.setPlaceholderText("Remain blank to ungroup..")
 
-        group_picker_btn = QtWidgets.QPushButton()
+        group_picker_btn = QtWidgets.QPushButton(name_widget)
         group_picker_btn.setFixedWidth(18)
         group_picker_menu = QtWidgets.QMenu(group_picker_btn)
         group_picker_btn.setMenu(group_picker_menu)
 
-        group_btn = QtWidgets.QPushButton("Apply", self)
-        group_btn.setAutoDefault(True)
-        group_btn.setDefault(True)
-
-        name_widget = QtWidgets.QWidget()
         name_layout = QtWidgets.QHBoxLayout(name_widget)
         name_layout.setContentsMargins(0, 0, 0, 0)
         name_layout.addWidget(group_name_input, 1)
         name_layout.addWidget(group_picker_btn, 0)
+
+        group_btn = QtWidgets.QPushButton("Apply", self)
+        group_btn.setAutoDefault(True)
+        group_btn.setDefault(True)
 
         layout = QtWidgets.QVBoxLayout(self)
         layout.addWidget(main_label, 0)
