@@ -4,9 +4,8 @@ import copy
 import json
 import shutil
 import subprocess
-from abc import ABCMeta, abstractmethod
+from abc import ABC, abstractmethod
 
-import six
 import clique
 import speedcopy
 import pyblish.api
@@ -96,7 +95,7 @@ class ExtractReview(pyblish.api.InstancePlugin):
     ]
 
     # Supported extensions
-    image_exts = ["exr", "jpg", "jpeg", "png", "dpx", "tga"]
+    image_exts = ["exr", "jpg", "jpeg", "png", "dpx", "tga", "tiff", "tif"]
     video_exts = ["mov", "mp4"]
     supported_exts = image_exts + video_exts
 
@@ -1661,8 +1660,7 @@ class ExtractReview(pyblish.api.InstancePlugin):
         return vf_back
 
 
-@six.add_metaclass(ABCMeta)
-class _OverscanValue:
+class _OverscanValue(ABC):
     def __repr__(self):
         return "<{}> {}".format(self.__class__.__name__, str(self))
 
@@ -1902,7 +1900,7 @@ class OverscanCrop:
         string_value = re.sub(r"([ ]+)?px", " ", string_value)
         string_value = re.sub(r"([ ]+)%", "%", string_value)
         # Make sure +/- sign at the beginning of string is next to number
-        string_value = re.sub(r"^([\+\-])[ ]+", "\g<1>", string_value)
+        string_value = re.sub(r"^([\+\-])[ ]+", r"\g<1>", string_value)
         # Make sure +/- sign in the middle has zero spaces before number under
         #   which belongs
         string_value = re.sub(

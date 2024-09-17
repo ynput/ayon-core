@@ -8,7 +8,7 @@ from datetime import datetime
 import websocket
 
 from ayon_core.lib import Logger
-from ayon_core.modules.webserver import HostMsgAction
+from ayon_core.tools.tray import HostMsgAction
 
 log = Logger.get_logger(__name__)
 

@@ -13,7 +13,6 @@ from .publish_plugins import (
     PublishXmlValidationError,
     KnownPublishError,
     AYONPyblishPluginMixin,
-    OpenPypePyblishPluginMixin,
     OptionalPyblishPluginMixin,
 
     RepairAction,
@@ -42,6 +41,8 @@ from .lib import (
     get_plugin_settings,
     get_publish_instance_label,
     get_publish_instance_families,
+
+    main_cli_publish,
 )
 
 from .abstract_expected_files import ExpectedFiles
@@ -64,7 +65,6 @@ __all__ = (
     "PublishXmlValidationError",
     "KnownPublishError",
     "AYONPyblishPluginMixin",
-    "OpenPypePyblishPluginMixin",
     "OptionalPyblishPluginMixin",
 
     "RepairAction",
@@ -91,6 +91,8 @@ __all__ = (
     "get_plugin_settings",
     "get_publish_instance_label",
     "get_publish_instance_families",
+
+    "main_cli_publish",
 
     "ExpectedFiles",
 

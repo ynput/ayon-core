@@ -4,9 +4,8 @@ import collections
 import uuid
 import json
 import copy
-from abc import ABCMeta, abstractmethod, abstractproperty
+from abc import ABCMeta, abstractmethod
 
-import six
 import clique
 
 # Global variable which store attribute definitions by type
@@ -17,7 +16,7 @@ _attr_defs_by_type = {}
 def register_attr_def_class(cls):
     """Register attribute definition.
 
-    Currently are registered definitions used to deserialize data to objects.
+    Currently registered definitions are used to deserialize data to objects.
 
     Attrs:
         cls (AbstractAttrDef): Non-abstract class to be registered with unique
@@ -61,7 +60,7 @@ def get_default_values(attribute_definitions):
             for which default values should be collected.
 
     Returns:
-        Dict[str, Any]: Default values for passet attribute definitions.
+        Dict[str, Any]: Default values for passed attribute definitions.
     """
 
     output = {}
@@ -76,13 +75,13 @@ def get_default_values(attribute_definitions):
 
 
 class AbstractAttrDefMeta(ABCMeta):
-    """Metaclass to validate existence of 'key' attribute.
+    """Metaclass to validate the existence of 'key' attribute.
 
-    Each object of `AbstractAttrDef` mus have defined 'key' attribute.
+    Each object of `AbstractAttrDef` must have defined 'key' attribute.
     """
 
-    def __call__(self, *args, **kwargs):
-        obj = super(AbstractAttrDefMeta, self).__call__(*args, **kwargs)
+    def __call__(cls, *args, **kwargs):
+        obj = super(AbstractAttrDefMeta, cls).__call__(*args, **kwargs)
         init_class = getattr(obj, "__init__class__", None)
         if init_class is not AbstractAttrDef:
             raise TypeError("{} super was not called in __init__.".format(
@@ -91,8 +90,7 @@ class AbstractAttrDefMeta(ABCMeta):
         return obj
 
 
-@six.add_metaclass(AbstractAttrDefMeta)
-class AbstractAttrDef(object):
+class AbstractAttrDef(metaclass=AbstractAttrDefMeta):
     """Abstraction of attribute definition.
 
     Each attribute definition must have implemented validation and
@@ -164,7 +162,8 @@ class AbstractAttrDef(object):
     def __ne__(self, other):
         return not self.__eq__(other)
 
-    @abstractproperty
+    @property
+    @abstractmethod
     def type(self):
         """Attribute definition type also used as identifier of class.
 
@@ -217,7 +216,7 @@ class AbstractAttrDef(object):
 
 
 # -----------------------------------------
-# UI attribute definitoins won't hold value
+# UI attribute definitions won't hold value
 # -----------------------------------------
 
 class UIDef(AbstractAttrDef):
@@ -247,7 +246,7 @@ class UILabelDef(UIDef):
 
 
 # ---------------------------------------
-# Attribute defintioins should hold value
+# Attribute definitions should hold value
 # ---------------------------------------
 
 class UnknownDef(AbstractAttrDef):
@@ -313,7 +312,7 @@ class NumberDef(AbstractAttrDef):
     ):
         minimum = 0 if minimum is None else minimum
         maximum = 999999 if maximum is None else maximum
-        # Swap min/max when are passed in opposited order
+        # Swap min/max when are passed in opposite order
         if minimum > maximum:
             maximum, minimum = minimum, maximum
 
@@ -349,7 +348,7 @@ class NumberDef(AbstractAttrDef):
         )
 
     def convert_value(self, value):
-        if isinstance(value, six.string_types):
+        if isinstance(value, str):
             try:
                 value = float(value)
             except Exception:
@@ -366,10 +365,10 @@ class NumberDef(AbstractAttrDef):
 class TextDef(AbstractAttrDef):
     """Text definition.
 
-    Text can have multiline option so endline characters are allowed regex
+    Text can have multiline option so end-line characters are allowed regex
     validation can be applied placeholder for UI purposes and default value.
 
-    Regex validation is not part of attribute implemntentation.
+    Regex validation is not part of attribute implementation.
 
     Args:
         multiline(bool): Text has single or multiline support.
@@ -396,12 +395,12 @@ class TextDef(AbstractAttrDef):
         if multiline is None:
             multiline = False
 
-        elif not isinstance(default, six.string_types):
+        elif not isinstance(default, str):
             raise TypeError((
-                "'default' argument must be a {}, not '{}'"
-            ).format(six.string_types, type(default)))
+                f"'default' argument must be a str, not '{type(default)}'"
+            ))
 
-        if isinstance(regex, six.string_types):
+        if isinstance(regex, str):
             regex = re.compile(regex)
 
         self.multiline = multiline
@@ -418,7 +417,7 @@ class TextDef(AbstractAttrDef):
         )
 
     def convert_value(self, value):
-        if isinstance(value, six.string_types):
+        if isinstance(value, str):
             return value
         return self.default
 
@@ -579,7 +578,7 @@ class BoolDef(AbstractAttrDef):
         return self.default
 
 
-class FileDefItem(object):
+class FileDefItem:
     def __init__(
         self, directory, filenames, frames=None, template=None
     ):
@@ -736,7 +735,7 @@ class FileDefItem(object):
                 else:
                     output.append(item)
 
-            elif isinstance(item, six.string_types):
+            elif isinstance(item, str):
                 str_filepaths.append(item)
             else:
                 raise TypeError(
@@ -844,7 +843,7 @@ class FileDef(AbstractAttrDef):
                 if isinstance(default, dict):
                     FileDefItem.from_dict(default)
 
-                elif isinstance(default, six.string_types):
+                elif isinstance(default, str):
                     default = FileDefItem.from_paths([default.strip()])[0]
 
                 else:
@@ -883,14 +882,14 @@ class FileDef(AbstractAttrDef):
         )
 
     def convert_value(self, value):
-        if isinstance(value, six.string_types) or isinstance(value, dict):
+        if isinstance(value, (str, dict)):
             value = [value]
 
         if isinstance(value, (tuple, list, set)):
             string_paths = []
             dict_items = []
             for item in value:
-                if isinstance(item, six.string_types):
+                if isinstance(item, str):
                     string_paths.append(item.strip())
                 elif isinstance(item, dict):
                     try:
@@ -951,7 +950,8 @@ def deserialize_attr_def(attr_def_data):
     """Deserialize attribute definition from data.
 
     Args:
-        attr_def (Dict[str, Any]): Attribute definition data to deserialize.
+        attr_def_data (Dict[str, Any]): Attribute definition data to
+            deserialize.
     """
 
     attr_type = attr_def_data.pop("type")

@@ -9,6 +9,7 @@ from ayon_core.lib.attribute_definitions import (
 )
 from ayon_core.lib.profiles_filtering import filter_profiles
 from ayon_core.lib.attribute_definitions import UIDef
+from ayon_core.lib import is_func_signature_supported
 from ayon_core.pipeline.create import (
     BaseCreator,
     AutoCreator,
@@ -17,7 +18,7 @@ from ayon_core.pipeline.create import (
     CreateContext,
     CreatedInstance,
 )
-from ayon_core.pipeline.create.context import (
+from ayon_core.pipeline.create import (
     CreatorsOperationFailed,
     ConvertorsOperationFailed,
     ConvertorItem,
@@ -26,6 +27,7 @@ from ayon_core.tools.publisher.abstract import (
     AbstractPublisherBackend,
     CardMessageTypes,
 )
+
 CREATE_EVENT_SOURCE = "publisher.create.model"
 
 
@@ -304,6 +306,14 @@ class CreateModel:
             for instance_id in instance_ids
         }
 
+    def get_instances_context_info(
+        self, instance_ids: Optional[Iterable[str]] = None
+    ):
+        instances = self.get_instances_by_id(instance_ids).values()
+        return self._create_context.get_instances_context_info(
+            instances
+        )
+
     def get_convertor_items(self) -> Dict[str, ConvertorItem]:
         return self._create_context.convertor_items_by_id
 
@@ -356,13 +366,24 @@ class CreateModel:
                 project_name, task_item.task_id
             )
 
-        return creator.get_product_name(
+        project_entity = self._controller.get_project_entity(project_name)
+        args = (
             project_name,
             folder_entity,
             task_entity,
-            variant,
-            instance=instance
+            variant
         )
+        kwargs = {
+            "instance": instance,
+            "project_entity": project_entity,
+        }
+        # Backwards compatibility for 'project_entity' argument
+        # - 'get_product_name' signature changed 24/07/08
+        if not is_func_signature_supported(
+            creator.get_product_name, *args, **kwargs
+        ):
+            kwargs.pop("project_entity")
+        return creator.get_product_name(*args, **kwargs)
 
     def create(
         self,

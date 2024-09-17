@@ -4,7 +4,6 @@ import sys
 import copy
 
 import clique
-import six
 import pyblish.api
 from ayon_api import (
     get_attributes_for_type,
@@ -115,18 +114,19 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
     # the database even if not used by the destination template
     db_representation_context_keys = [
         "project",
-        "asset",
         "hierarchy",
         "folder",
         "task",
         "product",
-        "subset",
-        "family",
         "version",
         "representation",
         "username",
         "user",
-        "output"
+        "output",
+        # OpenPype keys - should be removed
+        "asset",  # folder[name]
+        "subset",  # product[name]
+        "family",  # product[type]
     ]
 
     def process(self, instance):
@@ -160,15 +160,14 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
             # Raise DuplicateDestinationError as KnownPublishError
             # and rollback the transactions
             file_transactions.rollback()
-            six.reraise(KnownPublishError,
-                        KnownPublishError(exc),
-                        sys.exc_info()[2])
-        except Exception:
+            raise KnownPublishError(exc).with_traceback(sys.exc_info()[2])
+
+        except Exception as exc:
             # clean destination
             # todo: preferably we'd also rollback *any* changes to the database
             file_transactions.rollback()
             self.log.critical("Error when registering", exc_info=True)
-            six.reraise(*sys.exc_info())
+            raise exc
 
         # Finalizing can't rollback safely so no use for moving it to
         # the try, except.
@@ -745,6 +744,11 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
             if not is_udim:
                 repre_context["frame"] = first_index_padded
 
+            # store renderlayer in context if it exists
+            # to be later used for example by delivery templates
+            if instance.data.get("renderlayer"):
+                repre_context["renderlayer"] = instance.data["renderlayer"]
+
             # Update the destination indexes and padding
             dst_collection = clique.assemble(dst_filepaths)[0][0]
             dst_collection.padding = destination_padding
@@ -788,11 +792,6 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
             value = template_data.get(key)
             if value is not None:
                 repre_context[key] = value
-
-        # Explicitly store the full list even though template data might
-        # have a different value because it uses just a single udim tile
-        if repre.get("udim"):
-            repre_context["udim"] = repre.get("udim")  # store list
 
         # Use previous representation's id if there is a name match
         existing = existing_repres_by_name.get(repre["name"].lower())

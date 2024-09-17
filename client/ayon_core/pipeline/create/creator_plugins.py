@@ -1,10 +1,9 @@
 # -*- coding: utf-8 -*-
 import copy
 import collections
+from typing import TYPE_CHECKING, Optional
 
-from abc import ABCMeta, abstractmethod
-
-import six
+from abc import ABC, abstractmethod
 
 from ayon_core.settings import get_project_settings
 from ayon_core.lib import Logger
@@ -21,30 +20,24 @@ from .product_name import get_product_name
 from .utils import get_next_versions_for_instances
 from .legacy_create import LegacyCreator
 
-
-class CreatorError(Exception):
-    """Should be raised when creator failed because of known issue.
-
-    Message of error should be user readable.
-    """
-
-    def __init__(self, message):
-        super(CreatorError, self).__init__(message)
+if TYPE_CHECKING:
+    from ayon_core.lib import AbstractAttrDef
+    # Avoid cyclic imports
+    from .context import CreateContext, CreatedInstance, UpdateData  # noqa: F401
 
 
-@six.add_metaclass(ABCMeta)
-class ProductConvertorPlugin(object):
+class ProductConvertorPlugin(ABC):
     """Helper for conversion of instances created using legacy creators.
 
-    Conversion from legacy creators would mean to loose legacy instances,
+    Conversion from legacy creators would mean to lose legacy instances,
     convert them automatically or write a script which must user run. All of
-    these solutions are workign but will happen without asking or user must
+    these solutions are working but will happen without asking or user must
     know about them. This plugin can be used to show legacy instances in
     Publisher and give user ability to run conversion script.
 
     Convertor logic should be very simple. Method 'find_instances' is to
-    look for legacy instances in scene a possibly call
-    pre-implemented 'add_convertor_item'.
+    look for legacy instances in scene and possibly call pre-implemented
+    'add_convertor_item'.
 
     User will have ability to trigger conversion which is executed by calling
     'convert' which should call 'remove_convertor_item' when is done.
@@ -57,7 +50,7 @@ class ProductConvertorPlugin(object):
     can store any information to it's object for conversion purposes.
 
     Args:
-        create_context
+        create_context (CreateContext): Context which initialized the plugin.
     """
 
     _log = None
@@ -122,8 +115,8 @@ class ProductConvertorPlugin(object):
     def collection_shared_data(self):
         """Access to shared data that can be used during 'find_instances'.
 
-        Retruns:
-            Dict[str, Any]: Shared data.
+        Returns:
+            dict[str, Any]: Shared data.
 
         Raises:
             UnavailableSharedData: When called out of collection phase.
@@ -146,11 +139,10 @@ class ProductConvertorPlugin(object):
         self._create_context.remove_convertor_item(self.identifier)
 
 
-@six.add_metaclass(ABCMeta)
-class BaseCreator:
+class BaseCreator(ABC):
     """Plugin that create and modify instance data before publishing process.
 
-    We should maybe find better name as creation is only one part of it's logic
+    We should maybe find better name as creation is only one part of its logic
     and to avoid expectations that it is the same as `avalon.api.Creator`.
 
     Single object should be used for multiple instances instead of single
@@ -158,7 +150,7 @@ class BaseCreator:
     to `self` if it's not Plugin specific.
 
     Args:
-        project_settings (Dict[str, Any]): Project settings.
+        project_settings (dict[str, Any]): Project settings.
         create_context (CreateContext): Context which initialized creator.
         headless (bool): Running in headless mode.
     """
@@ -185,20 +177,20 @@ class BaseCreator:
 
     # Instance attribute definitions that can be changed per instance
     # - returns list of attribute definitions from
-    #       `ayon_core.pipeline.attribute_definitions`
-    instance_attr_defs = []
+    #       `ayon_core.lib.attribute_definitions`
+    instance_attr_defs: "list[AbstractAttrDef]" = []
 
     # Filtering by host name - can be used to be filtered by host name
     # - used on all hosts when set to 'None' for Backwards compatibility
     #   - was added afterwards
     # QUESTION make this required?
-    host_name = None
+    host_name: Optional[str] = None
 
     # Settings auto-apply helpers
     # Root key in project settings (mandatory for auto-apply to work)
-    settings_category = None
+    settings_category: Optional[str] = None
     # Name of plugin in create settings > class name is used if not set
-    settings_name = None
+    settings_name: Optional[str] = None
 
     def __init__(
         self, project_settings, create_context, headless=False
@@ -207,7 +199,7 @@ class BaseCreator:
         self.create_context = create_context
         self.project_settings = project_settings
 
-        # Creator is running in headless mode (without UI elemets)
+        # Creator is running in headless mode (without UI elements)
         # - we may use UI inside processing this attribute should be checked
         self.headless = headless
 
@@ -223,7 +215,7 @@ class BaseCreator:
             plugin_name (str): Name of settings.
 
         Returns:
-            Union[dict[str, Any], None]: Settings values or None.
+            Optional[dict[str, Any]]: Settings values or None.
         """
 
         settings = project_settings.get(category_name)
@@ -296,7 +288,6 @@ class BaseCreator:
                     key, cls_name
                 ))
             setattr(self, key, value)
-
 
     @property
     def identifier(self):
@@ -389,7 +380,7 @@ class BaseCreator:
         """Helper method to remove instance from create context.
 
         Instances must be removed from DCC workfile metadat aand from create
-        context in which plugin is existing at the moment of removement to
+        context in which plugin is existing at the moment of removal to
         propagate the change without restarting create context.
 
         Args:
@@ -441,7 +432,7 @@ class BaseCreator:
         """Store changes of existing instances so they can be recollected.
 
         Args:
-            update_list(List[UpdateData]): Gets list of tuples. Each item
+            update_list (list[UpdateData]): Gets list of tuples. Each item
                 contain changed instance and it's changes.
         """
 
@@ -449,13 +440,13 @@ class BaseCreator:
 
     @abstractmethod
     def remove_instances(self, instances):
-        """Method called on instance removement.
+        """Method called on instance removal.
 
         Can also remove instance metadata from context but should return
         'True' if did so.
 
         Args:
-            instance(List[CreatedInstance]): Instance objects which should be
+            instances (list[CreatedInstance]): Instance objects which should be
                 removed.
         """
 
@@ -480,8 +471,7 @@ class BaseCreator:
     ):
         """Dynamic data for product name filling.
 
-        These may be get dynamically created based on current context of
-        workfile.
+        These may be dynamically created based on current context of workfile.
         """
 
         return {}
@@ -493,7 +483,8 @@ class BaseCreator:
         task_entity,
         variant,
         host_name=None,
-        instance=None
+        instance=None,
+        project_entity=None,
     ):
         """Return product name for passed context.
 
@@ -510,8 +501,9 @@ class BaseCreator:
             instance (Optional[CreatedInstance]): Object of 'CreatedInstance'
                 for which is product name updated. Passed only on product name
                 update.
-        """
+            project_entity (Optional[dict[str, Any]]): Project entity.
 
+        """
         if host_name is None:
             host_name = self.create_context.host_name
 
@@ -537,7 +529,8 @@ class BaseCreator:
             self.product_type,
             variant,
             dynamic_data=dynamic_data,
-            project_settings=self.project_settings
+            project_settings=self.project_settings,
+            project_entity=project_entity,
         )
 
     def get_instance_attr_defs(self):
@@ -552,7 +545,7 @@ class BaseCreator:
         keys/values when plugin attributes change.
 
         Returns:
-            List[AbstractAttrDef]: Attribute definitions that can be tweaked
+            list[AbstractAttrDef]: Attribute definitions that can be tweaked
                 for created instance.
         """
 
@@ -562,8 +555,8 @@ class BaseCreator:
     def collection_shared_data(self):
         """Access to shared data that can be used during creator's collection.
 
-        Retruns:
-            Dict[str, Any]: Shared data.
+        Returns:
+            dict[str, Any]: Shared data.
 
         Raises:
             UnavailableSharedData: When called out of collection phase.
@@ -592,7 +585,7 @@ class BaseCreator:
                 versions.
 
         Returns:
-            Dict[str, int]: Next versions by instance id.
+            dict[str, int]: Next versions by instance id.
         """
 
         return get_next_versions_for_instances(
@@ -651,7 +644,7 @@ class Creator(BaseCreator):
                 cls._get_default_variant_wrap,
                 cls._set_default_variant_wrap
             )
-        super(Creator, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
 
     @property
     def show_order(self):
@@ -711,7 +704,7 @@ class Creator(BaseCreator):
         By default, returns `default_variants` value.
 
         Returns:
-            List[str]: Whisper variants for user input.
+            list[str]: Whisper variants for user input.
         """
 
         return copy.deepcopy(self.default_variants)
@@ -784,7 +777,7 @@ class Creator(BaseCreator):
             updating keys/values when plugin attributes change.
 
         Returns:
-            List[AbstractAttrDef]: Attribute definitions that can be tweaked
+            list[AbstractAttrDef]: Attribute definitions that can be tweaked
                 for created instance.
         """
         return self.pre_create_attr_defs
@@ -803,7 +796,7 @@ class AutoCreator(BaseCreator):
     """
 
     def remove_instances(self, instances):
-        """Skip removement."""
+        """Skip removal."""
         pass
 
 
@@ -916,7 +909,7 @@ def cache_and_get_instances(creator, shared_key, list_instances_func):
             if data were not yet stored under 'shared_key'.
 
     Returns:
-        Dict[str, Dict[str, Any]]: Cached instances by creator identifier from
+        dict[str, dict[str, Any]]: Cached instances by creator identifier from
             result of passed function.
     """
 

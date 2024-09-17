@@ -4,7 +4,9 @@ import inspect
 import copy
 import tempfile
 import xml.etree.ElementTree
+from typing import Optional, Union, List
 
+import ayon_api
 import pyblish.util
 import pyblish.plugin
 import pyblish.api
@@ -15,12 +17,12 @@ from ayon_core.lib import (
     filter_profiles,
 )
 from ayon_core.settings import get_project_settings
+from ayon_core.addon import AddonsManager
 from ayon_core.pipeline import (
     tempdir,
     Anatomy
 )
 from ayon_core.pipeline.plugin_discover import DiscoverResult
-
 from .constants import (
     DEFAULT_PUBLISH_TEMPLATE,
     DEFAULT_HERO_PUBLISH_TEMPLATE,
@@ -377,7 +379,7 @@ def get_plugin_settings(plugin, project_settings, log, category=None):
     plugin_kind = split_path[-2]
 
     # TODO: change after all plugins are moved one level up
-    if category_from_file in ("ayon_core", "openpype"):
+    if category_from_file == "ayon_core":
         category_from_file = "core"
 
     try:
@@ -933,3 +935,158 @@ def get_publish_instance_families(instance):
         families.discard(family)
     output.extend(families)
     return output
+
+
+def get_instance_expected_output_path(
+        instance: pyblish.api.Instance,
+        representation_name: str,
+        ext: Union[str, None],
+        version: Optional[str] = None
+):
+    """Return expected publish filepath for representation in instance
+
+    This does not validate whether the instance has any representation by the
+    given name, extension and/or version.
+
+    Arguments:
+        instance (pyblish.api.Instance): Publish instance
+        representation_name (str): Representation name
+        ext (Union[str, None]): Extension for the file.
+            When None, the `ext` will be set to the representation name.
+        version (Optional[int]): If provided, force it to format to this
+            particular version.
+
+    Returns:
+        str: Resolved path
+
+    """
+
+    if ext is None:
+        ext = representation_name
+    if version is None:
+        version = instance.data["version"]
+
+    context = instance.context
+    anatomy = context.data["anatomy"]
+
+    template_data = copy.deepcopy(instance.data["anatomyData"])
+    template_data.update({
+        "ext": ext,
+        "representation": representation_name,
+        "variant": instance.data.get("variant"),
+        "version": version
+    })
+
+    path_template_obj = anatomy.get_template_item("publish", "default")["path"]
+    template_filled = path_template_obj.format_strict(template_data)
+    return os.path.normpath(template_filled)
+
+
+def main_cli_publish(
+    path: str,
+    targets: Optional[List[str]] = None,
+    addons_manager: Optional[AddonsManager] = None,
+):
+    """Start headless publishing.
+
+    Publish use json from passed path argument.
+
+    Args:
+        path (str): Path to JSON.
+        targets (Optional[List[str]]): List of pyblish targets.
+        addons_manager (Optional[AddonsManager]): Addons manager instance.
+
+    Raises:
+        RuntimeError: When there is no path to process or when executed with
+            list of JSON paths.
+
+    """
+    from ayon_core.pipeline import (
+        install_ayon_plugins,
+        get_global_context,
+    )
+
+    # Register target and host
+    if not isinstance(path, str):
+        raise RuntimeError("Path to JSON must be a string.")
+
+    # Fix older jobs
+    for src_key, dst_key in (
+        ("AVALON_PROJECT", "AYON_PROJECT_NAME"),
+        ("AVALON_ASSET", "AYON_FOLDER_PATH"),
+        ("AVALON_TASK", "AYON_TASK_NAME"),
+        ("AVALON_WORKDIR", "AYON_WORKDIR"),
+        ("AVALON_APP_NAME", "AYON_APP_NAME"),
+        ("AVALON_APP", "AYON_HOST_NAME"),
+    ):
+        if src_key in os.environ and dst_key not in os.environ:
+            os.environ[dst_key] = os.environ[src_key]
+        # Remove old keys, so we're sure they're not used
+        os.environ.pop(src_key, None)
+
+    log = Logger.get_logger("CLI-publish")
+
+    # Make public ayon api behave as other user
+    # - this works only if public ayon api is using service user
+    username = os.environ.get("AYON_USERNAME")
+    if username:
+        # NOTE: ayon-python-api does not have public api function to find
+        #   out if is used service user. So we need to have try > except
+        #   block.
+        con = ayon_api.get_server_api_connection()
+        try:
+            con.set_default_service_username(username)
+        except ValueError:
+            pass
+
+    install_ayon_plugins()
+
+    if addons_manager is None:
+        addons_manager = AddonsManager()
+
+    # TODO validate if this has to happen
+    # - it should happen during 'install_ayon_plugins'
+    publish_paths = addons_manager.collect_plugin_paths()["publish"]
+    for plugin_path in publish_paths:
+        pyblish.api.register_plugin_path(plugin_path)
+
+    applications_addon = addons_manager.get_enabled_addon("applications")
+    if applications_addon is not None:
+        context = get_global_context()
+        env = applications_addon.get_farm_publish_environment_variables(
+            context["project_name"],
+            context["folder_path"],
+            context["task_name"],
+        )
+        os.environ.update(env)
+
+    pyblish.api.register_host("shell")
+
+    if targets:
+        for target in targets:
+            print(f"setting target: {target}")
+            pyblish.api.register_target(target)
+    else:
+        pyblish.api.register_target("farm")
+
+    os.environ["AYON_PUBLISH_DATA"] = path
+    os.environ["HEADLESS_PUBLISH"] = 'true'  # to use in app lib
+
+    log.info("Running publish ...")
+
+    plugins = pyblish.api.discover()
+    print("Using plugins:")
+    for plugin in plugins:
+        print(plugin)
+
+    # Error exit as soon as any error occurs.
+    error_format = ("Failed {plugin.__name__}: "
+                    "{error} -- {error.traceback}")
+
+    for result in pyblish.util.publish_iter():
+        if result["error"]:
+            log.error(error_format.format(**result))
+            # uninstall()
+            sys.exit(1)
+
+    log.info("Publish finished.")

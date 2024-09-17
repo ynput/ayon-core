@@ -22,6 +22,7 @@ from .products_model import (
     VERSION_STATUS_COLOR_ROLE,
     VERSION_STATUS_ICON_ROLE,
     VERSION_THUMBNAIL_ID_ROLE,
+    STATUS_NAME_FILTER_ROLE,
 )
 from .products_delegates import (
     VersionDelegate,
@@ -33,18 +34,31 @@ from .actions_utils import show_actions_menu
 
 class ProductsProxyModel(RecursiveSortFilterProxyModel):
     def __init__(self, parent=None):
-        super(ProductsProxyModel, self).__init__(parent)
+        super().__init__(parent)
 
         self._product_type_filters = {}
+        self._statuses_filter = None
         self._ascending_sort = True
+
+    def get_statuses_filter(self):
+        if self._statuses_filter is None:
+            return None
+        return set(self._statuses_filter)
 
     def set_product_type_filters(self, product_type_filters):
         self._product_type_filters = product_type_filters
         self.invalidateFilter()
 
+    def set_statuses_filter(self, statuses_filter):
+        if self._statuses_filter == statuses_filter:
+            return
+        self._statuses_filter = statuses_filter
+        self.invalidateFilter()
+
     def filterAcceptsRow(self, source_row, source_parent):
         source_model = self.sourceModel()
         index = source_model.index(source_row, 0, source_parent)
+
         product_types_s = source_model.data(index, PRODUCT_TYPE_ROLE)
         product_types = []
         if product_types_s:
@@ -53,8 +67,22 @@ class ProductsProxyModel(RecursiveSortFilterProxyModel):
         for product_type in product_types:
             if not self._product_type_filters.get(product_type, True):
                 return False
-        return super(ProductsProxyModel, self).filterAcceptsRow(
-            source_row, source_parent)
+
+        if not self._accept_row_by_statuses(index):
+            return False
+        return super().filterAcceptsRow(source_row, source_parent)
+
+    def _accept_row_by_statuses(self, index):
+        if self._statuses_filter is None:
+            return True
+        if not self._statuses_filter:
+            return False
+
+        status_s = index.data(STATUS_NAME_FILTER_ROLE)
+        for status in status_s.split("|"):
+            if status in self._statuses_filter:
+                return True
+        return False
 
     def lessThan(self, left, right):
         l_model = left.model()
@@ -74,20 +102,19 @@ class ProductsProxyModel(RecursiveSortFilterProxyModel):
             if not self._ascending_sort:
                 output = not output
             return output
-        return super(ProductsProxyModel, self).lessThan(left, right)
+        return super().lessThan(left, right)
 
     def sort(self, column, order=None):
         if order is None:
             order = QtCore.Qt.AscendingOrder
         self._ascending_sort = order == QtCore.Qt.AscendingOrder
-        super(ProductsProxyModel, self).sort(column, order)
+        super().sort(column, order)
 
 
 class ProductsWidget(QtWidgets.QWidget):
     refreshed = QtCore.Signal()
     merged_products_selection_changed = QtCore.Signal()
     selection_changed = QtCore.Signal()
-    version_changed = QtCore.Signal()
     default_widths = (
         200,  # Product name
         90,   # Product type
@@ -159,11 +186,15 @@ class ProductsWidget(QtWidgets.QWidget):
         products_proxy_model.rowsInserted.connect(self._on_rows_inserted)
         products_proxy_model.rowsMoved.connect(self._on_rows_moved)
         products_model.refreshed.connect(self._on_refresh)
+        products_model.version_changed.connect(self._on_version_change)
         products_view.customContextMenuRequested.connect(
             self._on_context_menu)
-        products_view.selectionModel().selectionChanged.connect(
+        products_view_sel_model = products_view.selectionModel()
+        products_view_sel_model.selectionChanged.connect(
             self._on_selection_change)
-        products_model.version_changed.connect(self._on_version_change)
+        version_delegate.version_changed.connect(
+            self._on_version_delegate_change
+        )
 
         controller.register_event_callback(
             "selection.folders.changed",
@@ -211,9 +242,19 @@ class ProductsWidget(QtWidgets.QWidget):
 
         Args:
             name (str): The string filter.
-        """
 
+        """
         self._products_proxy_model.setFilterFixedString(name)
+
+    def set_statuses_filter(self, status_names):
+        """Set filter of version statuses.
+
+        Args:
+            status_names (list[str]): The list of status names.
+
+        """
+        self._version_delegate.set_statuses_filter(status_names)
+        self._products_proxy_model.set_statuses_filter(status_names)
 
     def set_product_type_filter(self, product_type_filters):
         """
@@ -402,6 +443,9 @@ class ProductsWidget(QtWidgets.QWidget):
 
     def _on_version_change(self):
         self._on_selection_change()
+
+    def _on_version_delegate_change(self, product_id, version_id):
+        self._products_model.set_product_version(product_id, version_id)
 
     def _on_folders_selection_change(self, event):
         project_name = event["project_name"]
