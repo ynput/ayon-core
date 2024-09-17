@@ -1,5 +1,6 @@
 import logging
 import os
+import uuid
 from pathlib import Path
 from collections import defaultdict
 
@@ -60,7 +61,7 @@ class ExportOTIOOptionsDialog(QtWidgets.QDialog):
         # Not all hosts have OpenTimelineIO available.
         self.log = log
 
-        super(ExportOTIOOptionsDialog, self).__init__(parent=parent)
+        super().__init__(parent=parent)
 
         self.setWindowTitle("AYON - Export OTIO")
         icon = QtGui.QIcon(resources.get_ayon_icon_filepath())
@@ -72,139 +73,174 @@ class ExportOTIOOptionsDialog(QtWidgets.QDialog):
             | QtCore.Qt.WindowMinimizeButtonHint
         )
 
-        self.setStyleSheet(style.load_stylesheet())
-
-        input_widget = QtWidgets.QWidget(self)
-        input_layout = QtWidgets.QGridLayout(input_widget)
-
-        self._project_name = contexts[0]["project"]["name"]
-
-        self._version_by_representation_id = {}
-        all_representation_names = set()
-        self._version_path_by_id = {}
-        version_docs_by_id = {
+        project_name = contexts[0]["project"]["name"]
+        versions_by_id = {
             context["version"]["id"]: context["version"]
             for context in contexts
         }
-        repre_docs = list(get_representations(
-            self._project_name, version_ids=set(version_docs_by_id)
+        repre_entities = list(get_representations(
+            project_name, version_ids=set(versions_by_id)
         ))
-        self._version_by_representation_id = {
-            repre_doc["id"]: version_docs_by_id[repre_doc["versionId"]]
-            for repre_doc in repre_docs
+        version_by_representation_id = {
+            repre_entity["id"]: versions_by_id[repre_entity["versionId"]]
+            for repre_entity in repre_entities
         }
-        self._version_path_by_id = {}
+        version_path_by_id = {}
+        representations_by_version_id = {}
         for context in contexts:
             version_id = context["version"]["id"]
-            if version_id in self._version_path_by_id:
+            if version_id in version_path_by_id:
                 continue
-            self._version_path_by_id[version_id] = "/".join([
+            representations_by_version_id[version_id] = []
+            version_path_by_id[version_id] = "/".join([
                 context["folder"]["path"],
                 context["product"]["name"],
                 context["version"]["name"]
             ])
 
-        representations_by_version_id = defaultdict(list)
-        for repre_doc in repre_docs:
-            representations_by_version_id[repre_doc["versionId"]].append(
-                repre_doc
+        for repre_entity in repre_entities:
+            representations_by_version_id[repre_entity["versionId"]].append(
+                repre_entity
             )
 
-        all_representation_names = sorted(set(x["name"] for x in repre_docs))
+        all_representation_names = list(sorted({
+            repo_entity["name"]
+            for repo_entity in repre_entities
+        }))
 
-        input_layout.addWidget(QtWidgets.QLabel("Representations:"), 0, 0)
-        for count, name in enumerate(all_representation_names):
-            widget = QtWidgets.QPushButton(name)
+        input_widget = QtWidgets.QWidget(self)
+        input_layout = QtWidgets.QGridLayout(input_widget)
+        input_layout.setContentsMargins(8, 8, 8, 8)
+
+        row = 0
+        repres_label = QtWidgets.QLabel("Representations:", input_widget)
+        input_layout.addWidget(repres_label, row, 0)
+        repre_name_buttons = []
+        for idx, name in enumerate(all_representation_names):
+            repre_name_btn = QtWidgets.QPushButton(name, input_widget)
+            col = idx + 1
             input_layout.addWidget(
-                widget,
-                0,
-                count + 1,
+                repre_name_btn, row, col,
                 alignment=QtCore.Qt.AlignCenter
             )
-            widget.clicked.connect(self.toggle_all)
+            repre_name_btn.clicked.connect(self._toggle_all)
+            repre_name_buttons.append(repre_name_btn)
 
-        self._representation_widgets = defaultdict(list)
-        row = 1
+        row += 1
+
+        representation_widgets = defaultdict(list)
         items = representations_by_version_id.items()
         for version_id, representations in items:
-            version_path = self._version_path_by_id[version_id]
-            input_layout.addWidget(QtWidgets.QLabel(version_path), row, 0)
+            version_path = version_path_by_id[version_id]
+            label_widget = QtWidgets.QLabel(version_path, input_widget)
+            input_layout.addWidget(label_widget, row, 0)
 
-            representations_by_name = {x["name"]: x for x in representations}
-            group_box = QtWidgets.QGroupBox()
-            layout = QtWidgets.QHBoxLayout()
-            group_box.setLayout(layout)
-            for count, name in enumerate(all_representation_names):
-                if name in representations_by_name.keys():
-                    widget = QtWidgets.QRadioButton()
-                    self._representation_widgets[name].append(
+            repres_by_name = {
+                repre_entity["name"]: repre_entity
+                for repre_entity in representations
+            }
+            radio_group = QtWidgets.QButtonGroup(input_widget)
+            for idx, name in enumerate(all_representation_names):
+                if name in repres_by_name:
+                    widget = QtWidgets.QRadioButton(input_widget)
+                    radio_group.addButton(widget)
+                    representation_widgets[name].append(
                         {
                             "widget": widget,
-                            "representation": representations_by_name[name]
+                            "representation": repres_by_name[name]
                         }
                     )
                 else:
-                    widget = QtWidgets.QLabel("x")
+                    widget = QtWidgets.QLabel("x", input_widget)
 
-                layout.addWidget(widget)
-
-            input_layout.addWidget(
-                group_box, row, 1, 1, len(all_representation_names)
-            )
+                input_layout.addWidget(
+                    widget, row, idx + 1, 1, 1,
+                    alignment=QtCore.Qt.AlignCenter
+                )
 
             row += 1
 
-        export_widget = QtWidgets.QWidget()
-        export_layout = QtWidgets.QVBoxLayout(export_widget)
+        export_widget = QtWidgets.QWidget(self)
 
-        widget = QtWidgets.QWidget()
-        layout = QtWidgets.QHBoxLayout(widget)
+        options_widget = QtWidgets.QWidget(export_widget)
 
-        layout.addWidget(QtWidgets.QLabel("URI paths:"))
-        self.uri_path_format = QtWidgets.QCheckBox()
-        self.uri_path_format.setToolTip(
-            'Use URI paths (file:///) instead of absolute paths. '
-            'This is useful when the OTIO file will be used on Foundry Hiero.'
+        uri_label = QtWidgets.QLabel("URI paths:", options_widget)
+        uri_path_format = QtWidgets.QCheckBox(options_widget)
+        uri_path_format.setToolTip(
+            "Use URI paths (file:///) instead of absolute paths. "
+            "This is useful when the OTIO file will be used on Foundry Hiero."
         )
-        layout.addWidget(self.uri_path_format)
 
-        self.button_output_path = QtWidgets.QPushButton("Output Path:")
-        self.button_output_path.setToolTip(
+        button_output_path = QtWidgets.QPushButton(
+            "Output Path:", options_widget
+        )
+        button_output_path.setToolTip(
             "Click to select the output path for the OTIO file."
         )
-        layout.addWidget(self.button_output_path)
-        self.line_edit_output_path = QtWidgets.QLineEdit(
-            (Path.home() / f"{self._project_name}.otio").as_posix()
+
+        line_edit_output_path = QtWidgets.QLineEdit(
+            (Path.home() / f"{project_name}.otio").as_posix(),
+            options_widget
         )
-        layout.addWidget(self.line_edit_output_path)
 
-        export_layout.addWidget(widget)
+        options_layout = QtWidgets.QHBoxLayout(options_widget)
+        options_layout.setContentsMargins(0, 0, 0, 0)
+        options_layout.addWidget(uri_label)
+        options_layout.addWidget(uri_path_format)
+        options_layout.addWidget(button_output_path)
+        options_layout.addWidget(line_edit_output_path)
 
-        self.button_export = QtWidgets.QPushButton("Export")
-        export_layout.addWidget(self.button_export)
+        button_export = QtWidgets.QPushButton("Export", export_widget)
 
-        layout = QtWidgets.QVBoxLayout(self)
-        layout.addWidget(input_widget)
-        layout.addWidget(export_widget)
+        export_layout = QtWidgets.QVBoxLayout(export_widget)
+        export_layout.setContentsMargins(0, 0, 0, 0)
+        export_layout.addWidget(options_widget, 0)
+        export_layout.addWidget(button_export, 0)
 
-        self.button_export.clicked.connect(self.export)
-        self.button_output_path.clicked.connect(self.set_output_path)
+        main_layout = QtWidgets.QVBoxLayout(self)
+        main_layout.setContentsMargins(8, 8, 8, 8)
+        main_layout.addWidget(input_widget, 0)
+        main_layout.addStretch(1)
+        # TODO add line spacer?
+        main_layout.addSpacing(30)
+        main_layout.addWidget(export_widget, 0)
 
-    def toggle_all(self):
+        button_export.clicked.connect(self._on_export_click)
+        button_output_path.clicked.connect(self._set_output_path)
+
+        self._project_name = project_name
+        self._version_path_by_id = version_path_by_id
+        self._version_by_representation_id = version_by_representation_id
+        self._representation_widgets = representation_widgets
+        self._repre_name_buttons = repre_name_buttons
+
+        self._uri_path_format = uri_path_format
+        self._button_output_path = button_output_path
+        self._line_edit_output_path = line_edit_output_path
+        self._button_export = button_export
+
+        self._first_show = True
+
+    def showEvent(self, event):
+        super().showEvent(event)
+        if self._first_show:
+            self._first_show = False
+            self.setStyleSheet(style.load_stylesheet())
+
+    def _toggle_all(self):
         representation_name = self.sender().text()
         for item in self._representation_widgets[representation_name]:
             item["widget"].setChecked(True)
 
-    def set_output_path(self):
+    def _set_output_path(self):
         file_path, _ = QtWidgets.QFileDialog.getSaveFileName(
             None, "Save OTIO file.", "", "OTIO Files (*.otio)"
         )
         if file_path:
-            self.line_edit_output_path.setText(file_path)
+            self._line_edit_output_path.setText(file_path)
 
-    def export(self):
-        output_path = self.line_edit_output_path.text()
-
+    def _on_export_click(self):
+        output_path = self._line_edit_output_path.text()
         # Validate output path is not empty.
         if not output_path:
             show_message_dialog(
@@ -385,7 +421,7 @@ class ExportOTIOOptionsDialog(QtWidgets.QDialog):
         Returns:
             str: Path as URI or Posix path.
         """
-        if self.uri_path_format.isChecked():
+        if self._uri_path_format.isChecked():
             return path.as_uri()
 
         return path.as_posix()
