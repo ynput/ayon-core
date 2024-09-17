@@ -29,6 +29,9 @@ class MessageHandler(logging.Handler):
         super().__init__(*args, **kwargs)
         self.records = []
 
+    def clear_records(self):
+        self.records = []
+
     def emit(self, record):
         try:
             record.msg = record.getMessage()
@@ -858,6 +861,8 @@ class PublishModel:
             self._default_iterator()
         )
 
+        self._log_handler: MessageHandler = MessageHandler()
+
     def reset(self):
         create_context = self._controller.get_create_context()
         self._publish_up_validation = False
@@ -1232,21 +1237,20 @@ class PublishModel:
         plugin: pyblish.api.Plugin,
         instance: pyblish.api.Instance
     ):
-        handler = MessageHandler()
         root = logging.getLogger()
-
+        self._log_handler.clear_records()
         plugin.log.propagate = False
-        plugin.log.addHandler(handler)
-        root.addHandler(handler)
+        plugin.log.addHandler(self._log_handler)
+        root.addHandler(self._log_handler)
         try:
             result = pyblish.plugin.process(
                 plugin, self._publish_context, instance
             )
-            result["records"] = handler.records
+            result["records"] = self._log_handler.records
         finally:
             plugin.log.propagate = True
-            plugin.log.removeHandler(handler)
-            root.removeHandler(handler)
+            plugin.log.removeHandler(self._log_handler)
+            root.removeHandler(self._log_handler)
 
         exception = result.get("error")
         if exception:
