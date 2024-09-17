@@ -198,8 +198,8 @@ class ExtractBurnin(publish.Extractor):
         )
         if not burnins_per_repres:
             self.log.debug(
-                "Skipped instance. No representations found matching a burnin "
-                "definition in: %s", burnin_defs
+                "Skipped instance. No representations found matching a burnin"
+                " definition in: %s", burnin_defs
             )
             return
 
@@ -424,6 +424,7 @@ class ExtractBurnin(publish.Extractor):
 
         Returns:
             dict[str, Any]: Burnin options.
+
         """
         # Prepare burnin options
         burnin_options = copy.deepcopy(self.default_options)
@@ -761,6 +762,7 @@ class ExtractBurnin(publish.Extractor):
 
         Returns:
             list[dict[str, Any]]: Contain all valid output definitions.
+
         """
         filtered_burnin_defs = []
 
