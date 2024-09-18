@@ -15,6 +15,7 @@ import ayon_api
 
 from ayon_core.settings import get_project_settings
 from ayon_core.lib import is_func_signature_supported
+from ayon_core.lib.events import QueuedEventSystem
 from ayon_core.lib.attribute_definitions import get_default_values
 from ayon_core.host import IPublishHost, IWorkfileHost
 from ayon_core.pipeline import Anatomy
@@ -117,6 +118,7 @@ class CreateContext:
 
         # Prepare attribute for logger (Created on demand in `log` property)
         self._log = None
+        self._event_hub = QueuedEventSystem()
 
         # Publish context plugins attributes and it's values
         self._publish_attributes = PublishAttributes(self, {})
@@ -1422,6 +1424,20 @@ class CreateContext:
 
         if failed_info:
             raise ConvertorsConversionFailed(failed_info)
+
+    def _register_event_callback(self, topic: str, callback: Callable):
+        return self._event_hub.add_callback(topic, callback)
+
+    def _emit_event(
+        self,
+        topic: str,
+        data: Optional[Dict[str, Any]] = None,
+        sender: Optional[str] = None,
+    ):
+        if data is None:
+            data = {}
+        data.setdefault("create_context", self)
+        return self._event_hub.emit(topic, data, sender)
 
     def _remove_instances(self, instances):
         removed_instances = []
