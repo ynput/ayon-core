@@ -914,46 +914,6 @@ class CreateContext:
             _pre_create_data
         )
 
-    def _create_with_unified_error(
-        self, identifier, creator, *args, **kwargs
-    ):
-        error_message = "Failed to run Creator with identifier \"{}\". {}"
-
-        label = None
-        add_traceback = False
-        result = None
-        fail_info = None
-        exc_info = None
-        success = False
-
-        try:
-            # Try to get creator and his label
-            if creator is None:
-                creator = self._get_creator_in_create(identifier)
-            label = getattr(creator, "label", label)
-
-            # Run create
-            result = creator.create(*args, **kwargs)
-            success = True
-
-        except CreatorError:
-            exc_info = sys.exc_info()
-            self.log.warning(error_message.format(identifier, exc_info[1]))
-
-        except:  # noqa: E722
-            add_traceback = True
-            exc_info = sys.exc_info()
-            self.log.warning(
-                error_message.format(identifier, ""),
-                exc_info=True
-            )
-
-        if not success:
-            fail_info = prepare_failed_creator_operation_info(
-                identifier, label, exc_info, add_traceback
-            )
-        return result, fail_info
-
     def create_with_unified_error(self, identifier, *args, **kwargs):
         """Trigger create but raise only one error if anything fails.
 
@@ -1460,3 +1420,43 @@ class CreateContext:
 
         if failed_info:
             raise ConvertorsConversionFailed(failed_info)
+
+    def _create_with_unified_error(
+        self, identifier, creator, *args, **kwargs
+    ):
+        error_message = "Failed to run Creator with identifier \"{}\". {}"
+
+        label = None
+        add_traceback = False
+        result = None
+        fail_info = None
+        exc_info = None
+        success = False
+
+        try:
+            # Try to get creator and his label
+            if creator is None:
+                creator = self._get_creator_in_create(identifier)
+            label = getattr(creator, "label", label)
+
+            # Run create
+            result = creator.create(*args, **kwargs)
+            success = True
+
+        except CreatorError:
+            exc_info = sys.exc_info()
+            self.log.warning(error_message.format(identifier, exc_info[1]))
+
+        except:  # noqa: E722
+            add_traceback = True
+            exc_info = sys.exc_info()
+            self.log.warning(
+                error_message.format(identifier, ""),
+                exc_info=True
+            )
+
+        if not success:
+            fail_info = prepare_failed_creator_operation_info(
+                identifier, label, exc_info, add_traceback
+            )
+        return result, fail_info
