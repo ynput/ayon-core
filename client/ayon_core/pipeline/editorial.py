@@ -183,9 +183,9 @@ def get_media_range_with_retimes(otio_clip, handle_start, handle_end):
     # available range are absolute.
     media_ref = otio_clip.media_reference
     if (
-        hasattr(otio.schema, "ImageSequenceReference") and
-        isinstance(media_ref, otio.schema.ImageSequenceReference) and
-        media_in != media_ref.start_frame
+        hasattr(otio.schema, "ImageSequenceReference")
+        and isinstance(media_ref, otio.schema.ImageSequenceReference)
+        and media_in != media_ref.start_frame
     ):
         media_in = media_ref.start_frame
         media_out += media_ref.start_frame
