@@ -2,7 +2,7 @@ import typing
 
 from qtpy import QtWidgets
 
-from ayon_core.tools.utils import PlaceholderLineEdit
+from ayon_core.tools.utils import HintedLineEdit
 
 if typing.TYPE_CHECKING:
     from ayon_core.tools.loader.control import LoaderController
@@ -17,19 +17,10 @@ class ProductGroupDialog(QtWidgets.QDialog):
 
         main_label = QtWidgets.QLabel("Group Name", self)
 
-        name_widget = QtWidgets.QWidget(self)
-        group_name_input = PlaceholderLineEdit(name_widget)
-        group_name_input.setPlaceholderText("Remain blank to ungroup..")
-
-        group_picker_btn = QtWidgets.QPushButton(name_widget)
-        group_picker_btn.setFixedWidth(18)
-        group_picker_menu = QtWidgets.QMenu(group_picker_btn)
-        group_picker_btn.setMenu(group_picker_menu)
-
-        name_layout = QtWidgets.QHBoxLayout(name_widget)
-        name_layout.setContentsMargins(0, 0, 0, 0)
-        name_layout.addWidget(group_name_input, 1)
-        name_layout.addWidget(group_picker_btn, 0)
+        name_line_edit = HintedLineEdit(parent=self)
+        name_line_edit.setPlaceholderText("Remain blank to ungroup..")
+        name_line_edit.set_button_tool_tip(
+            "Pick from an exiting product group (if any)")
 
         group_btn = QtWidgets.QPushButton("Apply", self)
         group_btn.setAutoDefault(True)
@@ -37,20 +28,18 @@ class ProductGroupDialog(QtWidgets.QDialog):
 
         layout = QtWidgets.QVBoxLayout(self)
         layout.addWidget(main_label, 0)
-        layout.addWidget(name_widget, 0)
+        layout.addWidget(name_line_edit, 0)
         layout.addWidget(group_btn, 0)
 
         group_btn.clicked.connect(self._on_apply_click)
-        group_picker_menu.triggered.connect(self._on_picker_clicked)
+        name_line_edit.returnPressed.connect(self._on_apply_click)
 
         self._project_name = None
         self._product_ids = set()
 
         self._controller: "LoaderController" = controller
         self._group_btn = group_btn
-        self._group_name_input = group_name_input
-        self._group_picker_btn = group_picker_btn
-        self._group_picker_menu = group_picker_menu
+        self._name_line_edit = name_line_edit
 
     def set_product_ids(self, project_name, product_ids):
         self._project_name = project_name
@@ -61,22 +50,10 @@ class ProductGroupDialog(QtWidgets.QDialog):
             project_name=self._controller.get_selected_project_name(),
             folder_ids=self._controller.get_selected_folder_ids()
         )
-        self._set_product_groups(product_groups)
-
-    def _set_product_groups(self, product_groups):
-        """Update product groups for the preset list available in the dialog"""
-        # Update product group picker menu and state
-        self._group_picker_menu.clear()
-        for product_group in sorted(product_groups):
-            self._group_picker_menu.addAction(product_group)
-        self._group_picker_btn.setEnabled(bool(product_groups))
-
-    def _on_picker_clicked(self, action):
-        """Callback when action is clicked in group picker menu"""
-        self._group_name_input.setText(action.text())
+        self._name_line_edit.set_options(list(sorted(product_groups)))
 
     def _on_apply_click(self):
-        group_name = self._group_name_input.text().strip() or None
+        group_name = self._name_line_edit.text().strip() or None
         self._controller.change_products_group(
             self._project_name, self._product_ids, group_name
         )
