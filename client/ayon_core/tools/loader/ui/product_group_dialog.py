@@ -20,7 +20,7 @@ class ProductGroupDialog(QtWidgets.QDialog):
         name_line_edit = HintedLineEdit(parent=self)
         name_line_edit.setPlaceholderText("Remain blank to ungroup..")
         name_line_edit.set_button_tool_tip(
-            "Pick from an exiting product group (if any)")
+            "Pick from an existing product group (if any)")
 
         group_btn = QtWidgets.QPushButton("Apply", self)
         group_btn.setAutoDefault(True)
