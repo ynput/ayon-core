@@ -240,7 +240,8 @@ class LoaderController(BackendLoaderController, FrontendLoaderController):
         )
 
     def get_folder_product_group_names(
-            self, project_name, folder_ids):
+        self, project_name, folder_ids
+    ):
         product_items = self.get_product_items(
             project_name=project_name,
             folder_ids=folder_ids)
