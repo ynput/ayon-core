@@ -938,9 +938,6 @@ class CreateContext:
             raise CreatorsCreateFailed([fail_info])
         return result
 
-    def _remove_instance(self, instance):
-        self._instances_by_id.pop(instance.id, None)
-
     def creator_removed_instance(self, instance: "CreatedInstance"):
         """When creator removes instance context should be acknowledged.
 
@@ -952,7 +949,7 @@ class CreateContext:
                 from scene metadata.
         """
 
-        self._remove_instance(instance)
+        self._remove_instances([instance])
 
     def add_convertor_item(self, convertor_identifier, label):
         self.convertor_items_by_id[convertor_identifier] = ConvertorItem(
@@ -1310,9 +1307,14 @@ class CreateContext:
 
         # Just remove instances from context if creator is not available
         missing_creators = set(instances_by_identifier) - set(self.creators)
+        instances = []
         for identifier in missing_creators:
-            for instance in instances_by_identifier[identifier]:
-                self._remove_instance(instance)
+            instances.extend(
+                instance
+                for instance in instances_by_identifier[identifier]
+            )
+
+        self._remove_instances(instances)
 
         error_message = "Instances removement of creator \"{}\" failed. {}"
         failed_info = []
@@ -1420,6 +1422,11 @@ class CreateContext:
 
         if failed_info:
             raise ConvertorsConversionFailed(failed_info)
+
+    def _remove_instances(self, instances):
+        removed_instances = []
+        for instance in instances:
+            obj = self._instances_by_id.pop(instance.id, None)
 
     def _create_with_unified_error(
         self, identifier, creator, *args, **kwargs
