@@ -503,6 +503,7 @@ class CreateContext:
         self._collection_shared_data = {}
         self._folder_id_by_folder_path = {}
         self._task_names_by_folder_path = {}
+        self._event_hub.clear_callbacks()
 
     def reset_finalization(self):
         """Cleanup of attributes after reset."""
