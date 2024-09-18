@@ -176,26 +176,36 @@ def _sequence_resize(source, length):
 def get_media_range_with_retimes(otio_clip, handle_start, handle_end):
     source_range = otio_clip.source_range
     available_range = otio_clip.available_range()
-    media_in = available_range.start_time.value
-    media_out = available_range.end_time_inclusive().value
 
-    # Ensure image sequence media_ref source and
-    # available range are absolute.
-    media_ref = otio_clip.media_reference
-    if (
-        hasattr(otio.schema, "ImageSequenceReference") and
-        isinstance(media_ref, otio.schema.ImageSequenceReference) and
-        media_in != media_ref.start_frame
-    ):
-        media_in = media_ref.start_frame
-        media_out += media_ref.start_frame
-        source_range_start = otio.opentime.RationalTime(
-            media_in + source_range.start_time.value,
-        )
-        source_range = otio.opentime.TimeRange(
-            start_time=source_range_start,
-            duration=source_range.duration
-        )
+    source_range_rate = source_range.start_time.rate
+    available_range_rate = available_range.start_time.rate
+
+    # Conform source range bounds to available range rate
+    # .e.g. embedded TC of (3600 sec/ 1h), duration 100 frames
+    #
+    # available  |----------------------------------------|  24fps
+    #           86400                                86500
+    #
+    #
+    #                90010                90060 
+    # src        |-----|______duration 2s___|----|        25fps 
+    #           90000                             
+    #
+    #
+    #                86409.6                  86466.8
+    # conformed  |-------|_____duration _2.38s____|-------|  24fps
+    #           86400
+    #
+    # Note that 24fps is slower than 25fps hence extended duration
+    # to preserve media range
+
+    # Compute new source range based on available rate
+    conformed_src_in = source_range.start_time.rescaled_to(available_range_rate)
+    conformed_src_duration = source_range.duration.rescaled_to(available_range_rate)
+    conformed_source_range = otio.opentime.TimeRange(
+        start_time=conformed_src_in,
+        duration=conformed_src_duration
+    )
 
     # modifiers
     time_scalar = 1.
@@ -242,30 +252,58 @@ def get_media_range_with_retimes(otio_clip, handle_start, handle_end):
     offset_in *= time_scalar
     offset_out *= time_scalar
 
-    # flip offset if reversed speed
-    if time_scalar < 0:
-        offset_in, offset_out = offset_out, offset_in
-
     # scale handles
     handle_start *= abs(time_scalar)
     handle_end *= abs(time_scalar)
 
-    # flip handles if reversed speed
+    # flip offset and handles if reversed speed
     if time_scalar < 0:
+        offset_in, offset_out = offset_out, offset_in
         handle_start, handle_end = handle_end, handle_start
 
-    source_in = source_range.start_time.value
+    # compute retimed range
+    media_in_trimmed = conformed_source_range.start_time.value + offset_in
+    media_out_trimmed = media_in_trimmed + (
+            (conformed_source_range.duration.value * abs(
+                time_scalar) + offset_out) - 1)
 
-    media_in_trimmed = (source_in + offset_in)
-    media_out_trimmed = ( media_in_trimmed + (
-            ((source_range.duration.value - 1) * abs(
-                time_scalar)) + offset_out))
+    media_in = available_range.start_time.value
+    media_out = available_range.end_time_inclusive().value
 
-    # calculate available handles
+    # If media source is an image sequence, returned
+    # mediaIn/mediaOut have to correspond
+    # to frame numbers from source sequence.
+    media_ref = otio_clip.media_reference
+    is_input_sequence = (
+        hasattr(otio.schema, "ImageSequenceReference") and
+        isinstance(media_ref, otio.schema.ImageSequenceReference)
+    )
+
+    if is_input_sequence:
+        # preserve discreet frame numbers
+        media_in_trimmed = otio.opentime.RationalTime.from_frames(
+            media_in_trimmed - media_in + media_ref.start_frame,
+            rate=available_range_rate,
+        ).to_frames()
+        media_out_trimmed = otio.opentime.RationalTime.from_frames(
+            media_out_trimmed - media_in + media_ref.start_frame,
+            rate=available_range_rate,
+        ).to_frames()
+
+        media_in = media_ref.start_frame
+        media_out = media_in + available_range.duration.to_frames() - 1
+
+    # adjust available handles if needed
     if (media_in_trimmed - media_in) < handle_start:
         handle_start = max(0, media_in_trimmed - media_in)
     if (media_out - media_out_trimmed) < handle_end:
         handle_end = max(0, media_out - media_out_trimmed)
+
+    # FFmpeg extraction ignores embedded timecode
+    # so substract to get a (mediaIn-mediaOut) range from 0.
+    if not is_input_sequence:
+        media_in_trimmed -= media_in
+        media_out_trimmed -= media_in
 
     # create version data
     version_data = {
@@ -273,16 +311,16 @@ def get_media_range_with_retimes(otio_clip, handle_start, handle_end):
             "retime": True,
             "speed": time_scalar,
             "timewarps": time_warp_nodes,
-            "handleStart": int(round(handle_start)),
-            "handleEnd": int(round(handle_end))
+            "handleStart": int(handle_start),
+            "handleEnd": int(handle_end)
         }
     }
 
     returning_dict = {
         "mediaIn": media_in_trimmed,
         "mediaOut": media_out_trimmed,
-        "handleStart": int(round(handle_start)),
-        "handleEnd": int(round(handle_end)),
+        "handleStart": int(handle_start),
+        "handleEnd": int(handle_end),
         "speed": time_scalar
     }
 
