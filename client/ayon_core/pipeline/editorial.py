@@ -256,8 +256,8 @@ def get_media_range_with_retimes(otio_clip, handle_start, handle_end):
 
     source_in = source_range.start_time.value
 
-    media_in_trimmed = (source_in + offset_in)
-    media_out_trimmed = ( media_in_trimmed + (
+    media_in_trimmed = source_in + offset_in
+    media_out_trimmed = (media_in_trimmed + (
             ((source_range.duration.value - 1) * abs(
                 time_scalar)) + offset_out))
 
