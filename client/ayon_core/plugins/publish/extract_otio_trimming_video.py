@@ -74,9 +74,6 @@ class ExtractOTIOTrimmingVideo(publish.Extractor):
             otio_range (opentime.TimeRange): range to trim to
 
         """
-        # Not all hosts can import this module.
-        from ayon_core.pipeline.editorial import frames_to_seconds
-
         # create path to destination
         output_path = self._get_ffmpeg_output(input_file_path)
 

@@ -176,8 +176,6 @@ def _sequence_resize(source, length):
 def get_media_range_with_retimes(otio_clip, handle_start, handle_end):
     source_range = otio_clip.source_range
     available_range = otio_clip.available_range()
-
-    source_range_rate = source_range.start_time.rate
     available_range_rate = available_range.start_time.rate
 
     # Conform source range bounds to available range rate
@@ -187,9 +185,9 @@ def get_media_range_with_retimes(otio_clip, handle_start, handle_end):
     #           86400                                86500
     #
     #
-    #                90010                90060 
-    # src        |-----|______duration 2s___|----|        25fps 
-    #           90000                             
+    #                90010                90060
+    # src        |-----|______duration 2s___|----|        25fps
+    #           90000
     #
     #
     #                86409.6                  86466.8
