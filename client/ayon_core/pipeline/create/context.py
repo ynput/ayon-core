@@ -1444,6 +1444,19 @@ class CreateContext:
         removed_instances = []
         for instance in instances:
             obj = self._instances_by_id.pop(instance.id, None)
+            if obj is not None:
+                removed_instances.append(instance)
+
+        if not removed_instances:
+            return
+
+        self._emit_event(
+            "instances.removed",
+            {
+                "instances": removed_instances,
+                "create_context": self,
+            }
+        )
 
     def _create_with_unified_error(
         self, identifier, creator, *args, **kwargs
