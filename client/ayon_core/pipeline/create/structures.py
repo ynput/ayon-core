@@ -313,16 +313,24 @@ class PublishAttributes:
     def origin_data(self):
         return copy.deepcopy(self._origin_data)
 
-    def set_publish_plugin_attr_defs(self, plugin_name, attr_defs):
+    def set_publish_plugin_attr_defs(
+        self,
+        plugin_name: str,
+        attr_defs: List[AbstractAttrDef],
+        value: Optional[Dict[str, Any]] = None
+    ):
         """Set attribute definitions for plugin.
 
         Args:
-            plugin_name(str): Name of plugin.
-            attr_defs(Optional[List[AbstractAttrDef]]): Attribute definitions.
+            plugin_name (str): Name of plugin.
+            attr_defs (List[AbstractAttrDef]): Attribute definitions.
+            value (Optional[Dict[str, Any]]): Attribute values.
 
         """
         # TODO what if 'attr_defs' is 'None'?
-        value = self._data.get(plugin_name)
+        if value is None:
+            value = self._data.get(plugin_name)
+
         if value is None:
             value = {}
 
