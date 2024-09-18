@@ -3,27 +3,11 @@
 import os
 import json
 import platform
+import configparser
 import warnings
 from datetime import datetime
 from abc import ABC, abstractmethod
-
-# disable lru cache in Python 2
-try:
-    from functools import lru_cache
-except ImportError:
-    def lru_cache(maxsize):
-        def max_size(func):
-            def wrapper(*args, **kwargs):
-                value = func(*args, **kwargs)
-                return value
-            return wrapper
-        return max_size
-
-# ConfigParser was renamed in python3 to configparser
-try:
-    import configparser
-except ImportError:
-    import ConfigParser as configparser
+from functools import lru_cache
 
 import appdirs
 import ayon_api
@@ -600,11 +584,3 @@ def get_ayon_username():
 
     """
     return ayon_api.get_user()["name"]
-
-
-def get_openpype_username():
-    return get_ayon_username()
-
-
-OpenPypeSecureRegistry = AYONSecureRegistry
-OpenPypeSettingsRegistry = AYONSettingsRegistry

@@ -38,7 +38,7 @@ class TemplateUnsolved(Exception):
         )
 
 
-class StringTemplate(object):
+class StringTemplate:
     """String that can be formatted."""
     def __init__(self, template):
         if not isinstance(template, str):
@@ -410,7 +410,7 @@ class TemplatePartResult:
             self._invalid_types[key] = type(value)
 
 
-class FormatObject(object):
+class FormatObject:
     """Object that can be used for formatting.
 
     This is base that is valid for to be used in 'StringTemplate' value.
@@ -503,7 +503,7 @@ class FormattingPart:
         # ensure key is properly formed [({})] properly closed.
         if not self.validate_key_is_matched(key):
             result.add_missing_key(key)
-            result.add_output(self.template)            
+            result.add_output(self.template)
             return result
 
         # check if key expects subdictionary keys (e.g. project[name])

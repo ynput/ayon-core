@@ -13,8 +13,11 @@ from typing import (
 
 from ayon_core.lib import AbstractAttrDef
 from ayon_core.host import HostBase
-from ayon_core.pipeline.create import CreateContext, CreatedInstance
-from ayon_core.pipeline.create.context import ConvertorItem
+from ayon_core.pipeline.create import (
+    CreateContext,
+    CreatedInstance,
+    ConvertorItem,
+)
 from ayon_core.tools.common_models import (
     FolderItem,
     TaskItem,
@@ -317,6 +320,12 @@ class AbstractPublisherFrontend(AbstractPublisherCommon):
     def get_instances_by_id(
         self, instance_ids: Optional[Iterable[str]] = None
     ) -> Dict[str, Union[CreatedInstance, None]]:
+        pass
+
+    @abstractmethod
+    def get_instances_context_info(
+        self, instance_ids: Optional[Iterable[str]] = None
+    ):
         pass
 
     @abstractmethod
