@@ -7,7 +7,7 @@ import collections
 import inspect
 from contextlib import contextmanager
 import typing
-from typing import Optional, Iterable, Dict
+from typing import Optional, Iterable, Dict, Any, Callable
 
 import pyblish.logic
 import pyblish.api
