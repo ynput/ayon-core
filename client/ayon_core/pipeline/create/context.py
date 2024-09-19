@@ -977,19 +977,22 @@ class CreateContext:
         finally:
             self._bulk_counter -= 1
 
-            # Trigger validation if there is no more context manager for bulk
-            #   instance validation
-            if self._bulk_counter != 0:
-                return
+            self._on_bulk_finished()
 
-            (
-                self._bulk_instances_to_process,
-                instances_to_validate
-            ) = (
-                [],
-                self._bulk_instances_to_process
-            )
-            self.get_instances_context_info(instances_to_validate)
+    def _on_bulk_finished(self):
+        # Trigger validation if there is no more context manager for bulk
+        #   instance validation
+        if self._bulk_counter != 0:
+            return
+
+        (
+            self._bulk_instances_to_process, instances_to_validate
+        ) = (
+            [], self._bulk_instances_to_process
+        )
+
+        # Cache folder and task entities for all instances at once
+        self.get_instances_context_info(instances_to_validate)
 
     def reset_instances(self):
         """Reload instances"""
