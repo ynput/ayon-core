@@ -763,25 +763,6 @@ class CreateContext:
 
         self._instances_by_id[instance.id] = instance
 
-        publish_attributes = instance.publish_attributes
-        # Prepare publish plugin attributes and set it on instance
-        for plugin in self.plugins_with_defs:
-            if is_func_signature_supported(
-                plugin.convert_attribute_values, self, instance
-            ):
-                plugin.convert_attribute_values(self, instance)
-
-            elif plugin.__instanceEnabled__:
-                output = plugin.convert_attribute_values(publish_attributes)
-                if output:
-                    publish_attributes.update(output)
-
-        for plugin in self.plugins_with_defs:
-            attr_defs = plugin.get_attribute_defs_for_instance(self, instance)
-            if not attr_defs:
-                continue
-            instance.set_publish_plugin_attr_defs(plugin.__name__, attr_defs)
-
         # Add instance to be validated inside 'bulk_instances_collection'
         #   context manager if is inside bulk
         with self.bulk_instances_collection():
@@ -993,6 +974,31 @@ class CreateContext:
 
         # Cache folder and task entities for all instances at once
         self.get_instances_context_info(instances_to_validate)
+
+        for instance in instances_to_validate:
+            publish_attributes = instance.publish_attributes
+            # Prepare publish plugin attributes and set it on instance
+            for plugin in self.plugins_with_defs:
+                if is_func_signature_supported(
+                        plugin.convert_attribute_values, self, instance
+                ):
+                    plugin.convert_attribute_values(self, instance)
+
+                elif plugin.__instanceEnabled__:
+                    output = plugin.convert_attribute_values(
+                        publish_attributes)
+                    if output:
+                        publish_attributes.update(output)
+
+            for plugin in self.plugins_with_defs:
+                attr_defs = plugin.get_attribute_defs_for_instance(
+                    self, instance
+                )
+                if not attr_defs:
+                    continue
+                instance.set_publish_plugin_attr_defs(
+                    plugin.__name__, attr_defs
+                )
 
     def reset_instances(self):
         """Reload instances"""
