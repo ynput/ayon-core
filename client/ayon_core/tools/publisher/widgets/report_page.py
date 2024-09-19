@@ -1802,8 +1802,11 @@ class ReportsWidget(QtWidgets.QWidget):
         if is_crashed:
             error_info = self._controller.get_publish_error_info()
 
+        publish_finished = self._controller.publish_has_finished()
         publish_error_mode = False
-        if (
+        if publish_finished:
+            publish_error_mode = False
+        elif (
             error_info is not None
             and not error_info.is_unknown_error
         ):
@@ -1819,14 +1822,15 @@ class ReportsWidget(QtWidgets.QWidget):
             view = self._publish_error_view
         else:
             view = self._instances_view
+        self._views_layout.setCurrentWidget(view)
 
         self._actions_widget.set_visible_mode(publish_error_mode)
         self._detail_inputs_spacer.setVisible(publish_error_mode)
         self._detail_input_scroll.setVisible(publish_error_mode)
-        self._views_layout.setCurrentWidget(view)
 
-        self._crash_widget.setVisible(not publish_error_mode)
-        self._logs_view.setVisible(publish_error_mode)
+        logs_visible = publish_error_mode or publish_finished
+        self._logs_view.setVisible(logs_visible)
+        self._crash_widget.setVisible(not logs_visible)
 
         # Instance view & logs update
         instance_items = self._get_instance_items()
