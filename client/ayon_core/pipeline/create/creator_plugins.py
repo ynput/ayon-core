@@ -364,8 +364,25 @@ class BaseCreator(ABC):
         return self._log
 
     def _create_instance(
-        self, product_type: str, product_name: str, data: Dict[str, Any]
+        self,
+        product_name: str,
+        data: Dict[str, Any],
+        product_type: Optional[str] = None
     ) -> CreatedInstance:
+        """Create instance and add instance to context.
+
+        Args:
+            product_name (str): Product name.
+            data (Dict[str, Any]): Instance data.
+            product_type (Optional[str]): Product type, object attribute
+                'product_type' is used if not passed.
+
+        Returns:
+            CreatedInstance: Created instance.
+
+        """
+        if product_type is None:
+            product_type = self.product_type
         instance = CreatedInstance(
             product_type,
             product_name,
