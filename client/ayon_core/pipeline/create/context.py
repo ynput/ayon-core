@@ -975,6 +975,14 @@ class CreateContext:
         # Cache folder and task entities for all instances at once
         self.get_instances_context_info(instances_to_validate)
 
+        self._emit_event(
+            "instances.added",
+            {
+                "instances": instances_to_validate,
+                "create_context": self,
+            }
+        )
+
         for instance in instances_to_validate:
             publish_attributes = instance.publish_attributes
             # Prepare publish plugin attributes and set it on instance
