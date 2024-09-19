@@ -979,21 +979,39 @@ class CreateContext:
             publish_attributes = instance.publish_attributes
             # Prepare publish plugin attributes and set it on instance
             for plugin in self.plugins_with_defs:
-                if is_func_signature_supported(
+                try:
+                    if is_func_signature_supported(
                         plugin.convert_attribute_values, self, instance
-                ):
-                    plugin.convert_attribute_values(self, instance)
+                    ):
+                        plugin.convert_attribute_values(self, instance)
 
-                elif plugin.__instanceEnabled__:
-                    output = plugin.convert_attribute_values(
-                        publish_attributes)
-                    if output:
-                        publish_attributes.update(output)
+                    elif plugin.__instanceEnabled__:
+                        output = plugin.convert_attribute_values(
+                            publish_attributes
+                        )
+                        if output:
+                            publish_attributes.update(output)
+
+                except Exception:
+                    self.log.error(
+                        "Failed to convert attribute values of"
+                        f" plugin '{plugin.__name__}'",
+                        exc_info=True
+                    )
 
             for plugin in self.plugins_with_defs:
-                attr_defs = plugin.get_attribute_defs_for_instance(
-                    self, instance
-                )
+                attr_defs = None
+                try:
+                    attr_defs = plugin.get_attribute_defs_for_instance(
+                        self, instance
+                    )
+                except Exception:
+                    self.log.error(
+                        "Failed to get attribute definitions"
+                        f" from plugin '{plugin.__name__}'.",
+                        exc_info=True
+                    )
+
                 if not attr_defs:
                     continue
                 instance.set_publish_plugin_attr_defs(
