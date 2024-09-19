@@ -41,14 +41,14 @@ class ProductGroupDialog(QtWidgets.QDialog):
         self._group_btn = group_btn
         self._name_line_edit = name_line_edit
 
-    def set_product_ids(self, project_name, product_ids):
+    def set_product_ids(self, project_name, folder_ids, product_ids):
         self._project_name = project_name
         self._product_ids = product_ids
 
         # Update the product groups
         product_groups = self._controller.get_folder_product_group_names(
-            project_name=self._controller.get_selected_project_name(),
-            folder_ids=self._controller.get_selected_folder_ids()
+            project_name=project_name,
+            folder_ids=folder_ids
         )
         self._name_line_edit.set_options(list(sorted(product_groups)))
 
