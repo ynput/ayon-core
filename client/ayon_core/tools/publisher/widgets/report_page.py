@@ -1797,38 +1797,31 @@ class ReportsWidget(QtWidgets.QWidget):
         return instance_items
 
     def update_data(self):
-        is_crashed = self._controller.publish_has_crashed()
+        has_validation_error = self._controller.publish_has_validation_errors()
+        has_finished = self._controller.publish_has_finished()
+        has_crashed = self._controller.publish_has_crashed()
         error_info = None
-        if is_crashed:
+        if has_crashed:
             error_info = self._controller.get_publish_error_info()
 
-        publish_finished = self._controller.publish_has_finished()
         publish_error_mode = False
-        if publish_finished:
-            publish_error_mode = False
-        elif (
-            error_info is not None
-            and not error_info.is_unknown_error
-        ):
-            publish_error_mode = True
-
-        elif (
-            not is_crashed
-            and self._controller.publish_has_validation_errors()
-        ):
+        if error_info is not None:
+            publish_error_mode = not error_info.is_unknown_error
+        elif has_validation_error:
             publish_error_mode = True
 
         if publish_error_mode:
             view = self._publish_error_view
         else:
             view = self._instances_view
+
         self._views_layout.setCurrentWidget(view)
 
         self._actions_widget.set_visible_mode(publish_error_mode)
         self._detail_inputs_spacer.setVisible(publish_error_mode)
         self._detail_input_scroll.setVisible(publish_error_mode)
 
-        logs_visible = publish_error_mode or publish_finished
+        logs_visible = publish_error_mode or has_finished or not has_crashed
         self._logs_view.setVisible(logs_visible)
         self._crash_widget.setVisible(not logs_visible)
 
