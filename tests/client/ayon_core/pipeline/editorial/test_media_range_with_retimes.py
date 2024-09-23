@@ -85,7 +85,6 @@ def test_movie_retime_effect():
             'handleEnd': 25
         }
     }
-#    import rpdb ; rpdb.Rpdb().set_trace()
     _check_expected_retimed_values(
         "qt_retimed_speed.json",
         expected_data
