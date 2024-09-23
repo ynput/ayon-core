@@ -409,12 +409,7 @@ class CreatedInstance:
         product_name (str): Name of product that will be created.
         data (Dict[str, Any]): Data used for filling product name or override
             data from already existing instance.
-        creator (Union[BaseCreator, None]): Creator responsible for instance.
-        creator_identifier (str): Identifier of creator plugin.
-        creator_label (str): Creator plugin label.
-        group_label (str): Default group label from creator plugin.
-        creator_attr_defs (List[AbstractAttrDef]): Attribute definitions from
-            creator.
+        creator (BaseCreator): Creator responsible for instance.
     """
 
     # Keys that can't be changed or removed from data after loading using
@@ -435,16 +430,12 @@ class CreatedInstance:
         product_type,
         product_name,
         data,
-        creator=None,
-        creator_identifier=None,
-        creator_label=None,
-        group_label=None,
-        creator_attr_defs=None,
+        creator,
     ):
-        if creator is not None:
-            creator_identifier = creator.identifier
-            group_label = creator.get_group_label()
-            creator_label = creator.label
+        self._creator = creator
+        creator_identifier = creator.identifier
+        group_label = creator.get_group_label()
+        creator_label = creator.label
 
         self._creator_label = creator_label
         self._group_label = group_label or creator_identifier
@@ -504,16 +495,7 @@ class CreatedInstance:
         # {key: value}
         creator_values = copy.deepcopy(orig_creator_attributes)
 
-        if creator_attr_defs is None:
-            _creator_attr_defs = []
-        else:
-            _creator_attr_defs = list(creator_attr_defs)
-        self._data["creator_attributes"] = CreatorAttributeValues(
-            self,
-            _creator_attr_defs,
-            creator_values,
-            orig_creator_attributes
-        )
+        self._data["creator_attributes"] = creator_values
 
         # Stored publish specific attribute values
         # {<plugin name>: {key: value}}
@@ -526,11 +508,10 @@ class CreatedInstance:
         if not self._data.get("instance_id"):
             self._data["instance_id"] = str(uuid4())
 
-        if creator is not None:
-            creator_attr_defs = creator.get_attr_defs_for_instance(self)
-            self.update_create_attr_defs(
-                creator_attr_defs, creator_values
-            )
+        creator_attr_defs = creator.get_attr_defs_for_instance(self)
+        self.update_create_attr_defs(
+            creator_attr_defs, creator_values
+        )
 
     def __str__(self):
         return (
