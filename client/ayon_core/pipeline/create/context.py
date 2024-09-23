@@ -960,6 +960,45 @@ class CreateContext:
 
             self._on_bulk_finished()
 
+    def publish_attribute_value_changed(self, plugin_name, value):
+        self._emit_event(
+            "context.values.changed",
+            {
+                "publish_attributes": {plugin_name: value}
+            },
+        )
+
+    # --- instance change callbacks ---
+    def instance_create_attr_defs_changed(self, instance_id):
+        # TODO allow bulk changes
+        self._emit_event(
+            "instances.create.attr.defs.changed",
+            {
+                "instance_ids": [instance_id]
+            }
+        )
+
+    def instance_publish_attr_defs_changed(
+        self, instance_id, plugin_name
+    ):
+        # TODO allow bulk changes
+        self._emit_event(
+            "instances.publish.attr.defs.changed",
+            {
+                plugin_name: [instance_id],
+            }
+        )
+
+    def instance_values_changed(
+        self, instance_id, new_values
+    ):
+        self._emit_event(
+            "instances.values.changed",
+            {
+                instance_id: new_values
+            }
+        )
+
     def _on_bulk_finished(self):
         # Trigger validation if there is no more context manager for bulk
         #   instance validation
