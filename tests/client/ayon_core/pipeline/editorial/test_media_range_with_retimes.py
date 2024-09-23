@@ -133,7 +133,7 @@ def test_img_sequence_with_embedded_tc_and_handles():
     """
     Img sequence clip (embedded timecode 1h)
     available files = 1000-1100
-    source_range =  91046.625-91,120.625 25fps
+    source_range =  91046.625-91120.625 25fps
     """
     expected_data = {
         'mediaIn': 1005,
