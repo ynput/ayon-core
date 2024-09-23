@@ -282,7 +282,7 @@ def get_media_range_with_retimes(otio_clip, handle_start, handle_end):
     )
 
     if is_input_sequence:
-        # preserve discreet frame numbers
+        # preserve discrete frame numbers
         media_in_trimmed = otio.opentime.RationalTime.from_frames(
             media_in_trimmed - media_in + media_ref.start_frame,
             rate=available_range_rate,
