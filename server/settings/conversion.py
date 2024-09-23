@@ -76,7 +76,9 @@ def _convert_oiio_transcode_0_4_5(publish_overrides):
     if "ExtractOIIOTranscode" not in publish_overrides:
         return
 
-    transcode_profiles = publish_overrides["ExtractOIIOTranscode"]["profiles"]
+    transcode_profiles = publish_overrides["ExtractOIIOTranscode"].get("profiles")
+    if not transcode_profiles:
+        return
 
     for profile in transcode_profiles:
         for output in profile["outputs"]:
