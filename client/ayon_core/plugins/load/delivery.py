@@ -17,8 +17,7 @@ from ayon_core.pipeline.load import get_representation_path_with_anatomy
 from ayon_core.pipeline.delivery import (
     get_format_dict,
     check_destination_path,
-    deliver_single_file,
-    deliver_sequence,
+    deliver_single_file
 )
 
 
