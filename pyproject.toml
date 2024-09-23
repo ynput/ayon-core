@@ -23,6 +23,7 @@ ayon-python-api = "^1.0"
 ruff = "^0.3.3"
 pre-commit = "^3.6.2"
 codespell = "^2.2.6"
+semver = "^3.0.2"
 
 
 [tool.ruff]
@@ -113,3 +114,12 @@ quiet-level = 3
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
+
+
+[tool.pytest.ini_options]
+log_cli = true
+log_cli_level = "INFO"
+addopts = "-ra -q"
+testpaths = [
+    "client/ayon_core/tests"
+]
