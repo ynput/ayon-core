@@ -379,7 +379,7 @@ def get_plugin_settings(plugin, project_settings, log, category=None):
     plugin_kind = split_path[-2]
 
     # TODO: change after all plugins are moved one level up
-    if category_from_file in ("ayon_core", "openpype"):
+    if category_from_file == "ayon_core":
         category_from_file = "core"
 
     try:

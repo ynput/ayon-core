@@ -217,20 +217,22 @@ class InstanceGroupWidget(BaseGroupWidget):
     def update_icons(self, group_icons):
         self._group_icons = group_icons
 
-    def update_instance_values(self):
+    def update_instance_values(self, context_info_by_id):
         """Trigger update on instance widgets."""
 
-        for widget in self._widgets_by_id.values():
-            widget.update_instance_values()
+        for instance_id, widget in self._widgets_by_id.items():
+            widget.update_instance_values(context_info_by_id[instance_id])
 
-    def update_instances(self, instances):
+    def update_instances(self, instances, context_info_by_id):
         """Update instances for the group.
 
         Args:
-            instances(list<CreatedInstance>): List of instances in
+            instances (list[CreatedInstance]): List of instances in
                 CreateContext.
-        """
+            context_info_by_id (Dict[str, InstanceContextInfo]): Instance
+                context info by instance id.
 
+        """
         # Store instances by id and by product name
         instances_by_id = {}
         instances_by_product_name = collections.defaultdict(list)
@@ -249,13 +251,14 @@ class InstanceGroupWidget(BaseGroupWidget):
         widget_idx = 1
         for product_names in sorted_product_names:
             for instance in instances_by_product_name[product_names]:
+                context_info = context_info_by_id[instance.id]
                 if instance.id in self._widgets_by_id:
                     widget = self._widgets_by_id[instance.id]
-                    widget.update_instance(instance)
+                    widget.update_instance(instance, context_info)
                 else:
                     group_icon = self._group_icons[instance.creator_identifier]
                     widget = InstanceCardWidget(
-                        instance, group_icon, self
+                        instance, context_info, group_icon, self
                     )
                     widget.selected.connect(self._on_widget_selection)
                     widget.active_changed.connect(self._on_active_changed)
@@ -388,7 +391,7 @@ class ConvertorItemCardWidget(CardWidget):
         self._icon_widget = icon_widget
         self._label_widget = label_widget
 
-    def update_instance_values(self):
+    def update_instance_values(self, context_info):
         pass
 
 
@@ -397,7 +400,7 @@ class InstanceCardWidget(CardWidget):
 
     active_changed = QtCore.Signal(str, bool)
 
-    def __init__(self, instance, group_icon, parent):
+    def __init__(self, instance, context_info, group_icon, parent):
         super().__init__(parent)
 
         self._id = instance.id
@@ -458,7 +461,7 @@ class InstanceCardWidget(CardWidget):
         self._active_checkbox = active_checkbox
         self._expand_btn = expand_btn
 
-        self.update_instance_values()
+        self.update_instance_values(context_info)
 
     def set_active_toggle_enabled(self, enabled):
         self._active_checkbox.setEnabled(enabled)
@@ -480,13 +483,13 @@ class InstanceCardWidget(CardWidget):
         if checkbox_value != new_value:
             self._active_checkbox.setChecked(new_value)
 
-    def update_instance(self, instance):
+    def update_instance(self, instance, context_info):
         """Update instance object and update UI."""
         self.instance = instance
-        self.update_instance_values()
+        self.update_instance_values(context_info)
 
-    def _validate_context(self):
-        valid = self.instance.has_valid_context
+    def _validate_context(self, context_info):
+        valid = context_info.is_valid
         self._icon_widget.setVisible(valid)
         self._context_warning.setVisible(not valid)
 
@@ -519,11 +522,11 @@ class InstanceCardWidget(CardWidget):
             QtCore.Qt.NoTextInteraction
         )
 
-    def update_instance_values(self):
+    def update_instance_values(self, context_info):
         """Update instance data"""
         self._update_product_name()
         self.set_active(self.instance["active"])
-        self._validate_context()
+        self._validate_context(context_info)
 
     def _set_expanded(self, expanded=None):
         if expanded is None:
@@ -694,6 +697,8 @@ class InstanceCardView(AbstractInstanceView):
 
         self._update_convertor_items_group()
 
+        context_info_by_id = self._controller.get_instances_context_info()
+
         # Prepare instances by group and identifiers by group
         instances_by_group = collections.defaultdict(list)
         identifiers_by_group = collections.defaultdict(set)
@@ -747,7 +752,7 @@ class InstanceCardView(AbstractInstanceView):
 
             widget_idx += 1
             group_widget.update_instances(
-                instances_by_group[group_name]
+                instances_by_group[group_name], context_info_by_id
             )
             group_widget.set_active_toggle_enabled(
                 self._active_toggle_enabled
@@ -814,8 +819,9 @@ class InstanceCardView(AbstractInstanceView):
 
     def refresh_instance_states(self):
         """Trigger update of instances on group widgets."""
+        context_info_by_id = self._controller.get_instances_context_info()
         for widget in self._widgets_by_group.values():
-            widget.update_instance_values()
+            widget.update_instance_values(context_info_by_id)
 
     def _on_active_changed(self, group_name, instance_id, value):
         group_widget = self._widgets_by_group[group_name]
