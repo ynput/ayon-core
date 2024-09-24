@@ -320,9 +320,6 @@ class ExtractOTIOReview(publish.Extractor):
         avl_start = avl_range.start_time
         avl_duration = avl_range.duration
 
-        # TODO investigate
-        #self.need_offset = bool(avl_start != 0 and src_start != 0)
-
         # A gap is required before available range
         # range to conform start point.
         if start < avl_start:
@@ -331,9 +328,9 @@ class ExtractOTIOReview(publish.Extractor):
             duration -= gap_duration
 
             # create gap data to disk
-            self._render_seqment(gap=gap_duration.to_frames())
+            self._render_seqment(gap=gap_duration.round().to_frames())
             # generate used frames
-            self._generate_used_frames(gap_duration.to_frames())
+            self._generate_used_frames(gap_duration.round().to_frames())
 
         # A gap is required after available range
         # if media duration is shorter then clip requirement
@@ -345,12 +342,12 @@ class ExtractOTIOReview(publish.Extractor):
 
             # create gap data to disk
             self._render_seqment(
-                gap=gap_duration.to_frames(),
+                gap=gap_duration.round().to_frames(),
                 end_offset=avl_duration.to_frames()
             )
             # generate used frames
             self._generate_used_frames(
-                gap_duration.to_frames(),
+                gap_duration.round().to_frames(),
                 end_offset=avl_duration.to_frames()
             )
 
@@ -492,16 +489,11 @@ class ExtractOTIOReview(publish.Extractor):
 
         padding = "{{:0{}d}}".format(self.padding)
 
-        # create frame offset
-        offset = 0
-#        if self.need_offset:
-#            offset = 1
-
         if end_offset:
             new_frames = list()
             start_frame = self.used_frames[-1]
-            for index in range((end_offset + offset),
-                               (int(end_offset + duration) + offset)):
+            for index in range(end_offset,
+                               (int(end_offset + duration))):
                 seq_number = padding.format(start_frame + index)
                 self.log.debug(
                     "index: `{}` | seq_number: `{}`".format(index, seq_number))
