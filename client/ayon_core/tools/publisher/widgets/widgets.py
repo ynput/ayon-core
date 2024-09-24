@@ -1182,6 +1182,10 @@ class GlobalAttrsWidget(QtWidgets.QWidget):
         invalid_tasks = False
         folder_paths = []
         for instance in self._current_instances:
+            # Ignore instances that have promised context
+            if instance.has_promised_context:
+                continue
+
             new_variant_value = instance.get("variant")
             new_folder_path = instance.get("folderPath")
             new_task_name = instance.get("task")
@@ -1206,7 +1210,6 @@ class GlobalAttrsWidget(QtWidgets.QWidget):
 
             except TaskNotSetError:
                 invalid_tasks = True
-                instance.set_task_invalid(True)
                 product_names.add(instance["productName"])
                 continue
 
@@ -1216,11 +1219,9 @@ class GlobalAttrsWidget(QtWidgets.QWidget):
 
             if folder_path is not None:
                 instance["folderPath"] = folder_path
-                instance.set_folder_invalid(False)
 
             if task_name is not None:
                 instance["task"] = task_name or None
-                instance.set_task_invalid(False)
 
             instance["productName"] = new_product_name
 
@@ -1306,7 +1307,13 @@ class GlobalAttrsWidget(QtWidgets.QWidget):
             editable = False
 
         folder_task_combinations = []
+        context_editable = None
         for instance in instances:
+            if not instance.has_promised_context:
+                context_editable = True
+            elif context_editable is None:
+                context_editable = False
+
             # NOTE I'm not sure how this can even happen?
             if instance.creator_identifier is None:
                 editable = False
@@ -1319,6 +1326,11 @@ class GlobalAttrsWidget(QtWidgets.QWidget):
             folder_task_combinations.append((folder_path, task_name))
             product_names.add(instance.get("productName") or self.unknown_value)
 
+        if not editable:
+            context_editable = False
+        elif context_editable is None:
+            context_editable = True
+
         self.variant_input.set_value(variants)
 
         # Set context of folder widget
@@ -1329,8 +1341,21 @@ class GlobalAttrsWidget(QtWidgets.QWidget):
         self.product_value_widget.set_value(product_names)
 
         self.variant_input.setEnabled(editable)
-        self.folder_value_widget.setEnabled(editable)
-        self.task_value_widget.setEnabled(editable)
+        self.folder_value_widget.setEnabled(context_editable)
+        self.task_value_widget.setEnabled(context_editable)
+
+        if not editable:
+            folder_tooltip = "Select instances to change folder path."
+            task_tooltip = "Select instances to change task name."
+        elif not context_editable:
+            folder_tooltip = "Folder path is defined by Create plugin."
+            task_tooltip = "Task is defined by Create plugin."
+        else:
+            folder_tooltip = "Change folder path of selected instances."
+            task_tooltip = "Change task of selected instances."
+
+        self.folder_value_widget.setToolTip(folder_tooltip)
+        self.task_value_widget.setToolTip(task_tooltip)
 
 
 class CreatorAttrsWidget(QtWidgets.QWidget):
@@ -1339,7 +1364,7 @@ class CreatorAttrsWidget(QtWidgets.QWidget):
     Attributes are defined on creator so are dynamic. Their look and type is
     based on attribute definitions that are defined in
     `~/ayon_core/lib/attribute_definitions.py` and their widget
-    representation in `~/openpype/tools/attribute_defs/*`.
+    representation in `~/ayon_core/tools/attribute_defs/*`.
 
     Widgets are disabled if context of instance is not valid.
 
@@ -1768,9 +1793,16 @@ class ProductAttributesWidget(QtWidgets.QWidget):
         self.bottom_separator = bottom_separator
 
     def _on_instance_context_changed(self):
+        instance_ids = {
+            instance.id
+            for instance in self._current_instances
+        }
+        context_info_by_id = self._controller.get_instances_context_info(
+            instance_ids
+        )
         all_valid = True
-        for instance in self._current_instances:
-            if not instance.has_valid_context:
+        for instance_id, context_info in context_info_by_id.items():
+            if not context_info.is_valid:
                 all_valid = False
                 break
 
@@ -1795,9 +1827,17 @@ class ProductAttributesWidget(QtWidgets.QWidget):
             convertor_identifiers(List[str]): Identifiers of convert items.
         """
 
+        instance_ids = {
+            instance.id
+            for instance in instances
+        }
+        context_info_by_id = self._controller.get_instances_context_info(
+            instance_ids
+        )
+
         all_valid = True
-        for instance in instances:
-            if not instance.has_valid_context:
+        for context_info in context_info_by_id.values():
+            if not context_info.is_valid:
                 all_valid = False
                 break
 

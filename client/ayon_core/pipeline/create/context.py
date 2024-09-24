@@ -6,7 +6,8 @@ import traceback
 import collections
 import inspect
 from contextlib import contextmanager
-from typing import Optional
+import typing
+from typing import Optional, Iterable, Dict
 
 import pyblish.logic
 import pyblish.api
@@ -31,13 +32,15 @@ from .exceptions import (
     HostMissRequiredMethod,
 )
 from .changes import TrackChangesItem
-from .structures import PublishAttributes, ConvertorItem
+from .structures import PublishAttributes, ConvertorItem, InstanceContextInfo
 from .creator_plugins import (
     Creator,
     AutoCreator,
     discover_creator_plugins,
     discover_convertor_plugins,
 )
+if typing.TYPE_CHECKING:
+    from .structures import CreatedInstance
 
 # Import of functions and classes that were moved to different file
 # TODO Should be removed in future release - Added 24/08/28, 0.4.3-dev.1
@@ -183,6 +186,10 @@ class CreateContext:
         # Shared data across creators during collection phase
         self._collection_shared_data = None
 
+        # Context validation cache
+        self._folder_id_by_folder_path = {}
+        self._task_names_by_folder_path = {}
+
         self.thumbnail_paths_by_instance_id = {}
 
         # Trigger reset if was enabled
@@ -202,17 +209,19 @@ class CreateContext:
         """Access to global publish attributes."""
         return self._publish_attributes
 
-    def get_instance_by_id(self, instance_id):
+    def get_instance_by_id(
+        self, instance_id: str
+    ) -> Optional["CreatedInstance"]:
         """Receive instance by id.
 
         Args:
             instance_id (str): Instance id.
 
         Returns:
-            Union[CreatedInstance, None]: Instance or None if instance with
+            Optional[CreatedInstance]: Instance or None if instance with
                 given id is not available.
-        """
 
+        """
         return self._instances_by_id.get(instance_id)
 
     def get_sorted_creators(self, identifiers=None):
@@ -224,8 +233,8 @@ class CreateContext:
 
         Returns:
             List[BaseCreator]: Sorted creator plugins by 'order' value.
-        """
 
+        """
         if identifiers is not None:
             identifiers = set(identifiers)
             creators = [
@@ -491,6 +500,8 @@ class CreateContext:
 
         # Give ability to store shared data for collection phase
         self._collection_shared_data = {}
+        self._folder_id_by_folder_path = {}
+        self._task_names_by_folder_path = {}
 
     def reset_finalization(self):
         """Cleanup of attributes after reset."""
@@ -715,7 +726,7 @@ class CreateContext:
             self._original_context_data, self.context_data_to_store()
         )
 
-    def creator_adds_instance(self, instance):
+    def creator_adds_instance(self, instance: "CreatedInstance"):
         """Creator adds new instance to context.
 
         Instances should be added only from creators.
@@ -942,7 +953,7 @@ class CreateContext:
     def _remove_instance(self, instance):
         self._instances_by_id.pop(instance.id, None)
 
-    def creator_removed_instance(self, instance):
+    def creator_removed_instance(self, instance: "CreatedInstance"):
         """When creator removes instance context should be acknowledged.
 
         If creator removes instance conext should know about it to avoid
@@ -990,7 +1001,7 @@ class CreateContext:
                 [],
                 self._bulk_instances_to_process
             )
-            self.validate_instances_context(instances_to_validate)
+            self.get_instances_context_info(instances_to_validate)
 
     def reset_instances(self):
         """Reload instances"""
@@ -1079,26 +1090,70 @@ class CreateContext:
         if failed_info:
             raise CreatorsCreateFailed(failed_info)
 
-    def validate_instances_context(self, instances=None):
-        """Validate 'folder' and 'task' instance context."""
+    def get_instances_context_info(
+        self, instances: Optional[Iterable["CreatedInstance"]] = None
+    ) -> Dict[str, InstanceContextInfo]:
+        """Validate 'folder' and 'task' instance context.
+
+        Args:
+            instances (Optional[Iterable[CreatedInstance]]): Instances to
+                validate. If not provided all instances are validated.
+
+        Returns:
+            Dict[str, InstanceContextInfo]: Validation results by instance id.
+
+        """
         # Use all instances from context if 'instances' are not passed
         if instances is None:
-            instances = tuple(self._instances_by_id.values())
+            instances = self._instances_by_id.values()
+        instances = tuple(instances)
+        info_by_instance_id = {
+            instance.id: InstanceContextInfo(
+                instance.get("folderPath"),
+                instance.get("task"),
+                False,
+                False,
+            )
+            for instance in instances
+        }
 
         # Skip if instances are empty
-        if not instances:
-            return
+        if not info_by_instance_id:
+            return info_by_instance_id
 
         project_name = self.project_name
 
-        task_names_by_folder_path = {}
+        to_validate = []
+        task_names_by_folder_path = collections.defaultdict(set)
         for instance in instances:
-            folder_path = instance.get("folderPath")
-            task_name = instance.get("task")
-            if folder_path:
-                task_names_by_folder_path[folder_path] = set()
-                if task_name:
-                    task_names_by_folder_path[folder_path].add(task_name)
+            context_info = info_by_instance_id[instance.id]
+            if instance.has_promised_context:
+                context_info.folder_is_valid = True
+                context_info.task_is_valid = True
+                continue
+            # TODO allow context promise
+            folder_path = context_info.folder_path
+            if not folder_path:
+                continue
+
+            if folder_path in self._folder_id_by_folder_path:
+                folder_id = self._folder_id_by_folder_path[folder_path]
+                if folder_id is None:
+                    continue
+                context_info.folder_is_valid = True
+
+            task_name = context_info.task_name
+            if task_name is not None:
+                tasks_cache = self._task_names_by_folder_path.get(folder_path)
+                if tasks_cache is not None:
+                    context_info.task_is_valid = task_name in tasks_cache
+                    continue
+
+            to_validate.append(instance)
+            task_names_by_folder_path[folder_path].add(task_name)
+
+        if not to_validate:
+            return info_by_instance_id
 
         # Backwards compatibility for cases where folder name is set instead
         #   of folder path
@@ -1120,7 +1175,9 @@ class CreateContext:
                 fields={"id", "path"}
             ):
                 folder_id = folder_entity["id"]
-                folder_paths_by_id[folder_id] = folder_entity["path"]
+                folder_path = folder_entity["path"]
+                folder_paths_by_id[folder_id] = folder_path
+                self._folder_id_by_folder_path[folder_path] = folder_id
 
         folder_entities_by_name = collections.defaultdict(list)
         if folder_names:
@@ -1131,8 +1188,10 @@ class CreateContext:
             ):
                 folder_id = folder_entity["id"]
                 folder_name = folder_entity["name"]
-                folder_paths_by_id[folder_id] = folder_entity["path"]
+                folder_path = folder_entity["path"]
+                folder_paths_by_id[folder_id] = folder_path
                 folder_entities_by_name[folder_name].append(folder_entity)
+                self._folder_id_by_folder_path[folder_path] = folder_id
 
         tasks_entities = ayon_api.get_tasks(
             project_name,
@@ -1145,12 +1204,11 @@ class CreateContext:
             folder_id = task_entity["folderId"]
             folder_path = folder_paths_by_id[folder_id]
             task_names_by_folder_path[folder_path].add(task_entity["name"])
+        self._task_names_by_folder_path.update(task_names_by_folder_path)
 
-        for instance in instances:
-            if not instance.has_valid_folder or not instance.has_valid_task:
-                continue
-
+        for instance in to_validate:
             folder_path = instance["folderPath"]
+            task_name = instance.get("task")
             if folder_path and "/" not in folder_path:
                 folder_entities = folder_entities_by_name.get(folder_path)
                 if len(folder_entities) == 1:
@@ -1158,15 +1216,16 @@ class CreateContext:
                     instance["folderPath"] = folder_path
 
             if folder_path not in task_names_by_folder_path:
-                instance.set_folder_invalid(True)
                 continue
+            context_info = info_by_instance_id[instance.id]
+            context_info.folder_is_valid = True
 
-            task_name = instance["task"]
-            if not task_name:
-                continue
-
-            if task_name not in task_names_by_folder_path[folder_path]:
-                instance.set_task_invalid(True)
+            if (
+                not task_name
+                or task_name in task_names_by_folder_path[folder_path]
+            ):
+                context_info.task_is_valid = True
+        return info_by_instance_id
 
     def save_changes(self):
         """Save changes. Update all changed values."""

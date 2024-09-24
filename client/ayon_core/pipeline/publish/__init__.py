@@ -9,11 +9,12 @@ from .publish_plugins import (
     AbstractMetaInstancePlugin,
     AbstractMetaContextPlugin,
 
+    KnownPublishError,
+    PublishError,
     PublishValidationError,
     PublishXmlValidationError,
-    KnownPublishError,
+
     AYONPyblishPluginMixin,
-    OpenPypePyblishPluginMixin,
     OptionalPyblishPluginMixin,
 
     RepairAction,
@@ -62,11 +63,12 @@ __all__ = (
     "AbstractMetaInstancePlugin",
     "AbstractMetaContextPlugin",
 
+    "KnownPublishError",
+    "PublishError",
     "PublishValidationError",
     "PublishXmlValidationError",
-    "KnownPublishError",
+
     "AYONPyblishPluginMixin",
-    "OpenPypePyblishPluginMixin",
     "OptionalPyblishPluginMixin",
 
     "RepairAction",
