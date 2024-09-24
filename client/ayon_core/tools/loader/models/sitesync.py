@@ -588,9 +588,6 @@ class SiteSyncModel:
                     if link["entityType"] != "version":
                         continue
                     entity_id = link["entityId"]
-                    # Skip already found linked version ids
-                    if entity_id in linked_version_ids:
-                        continue
                     linked_version_ids.add(entity_id)
                     versions_to_check.add(entity_id)
 
