@@ -190,6 +190,9 @@ class PublisherController(
     def get_instances_by_id(self, instance_ids=None):
         return self._create_model.get_instances_by_id(instance_ids)
 
+    def get_instances_context_info(self, instance_ids=None):
+        return self._create_model.get_instances_context_info(instance_ids)
+
     def get_convertor_items(self):
         return self._create_model.get_convertor_items()
 
@@ -493,14 +496,14 @@ class PublisherController(
     def get_publish_progress(self):
         return self._publish_model.get_progress()
 
-    def get_publish_error_msg(self):
-        return self._publish_model.get_error_msg()
+    def get_publish_error_info(self):
+        return self._publish_model.get_error_info()
 
     def get_publish_report(self):
         return self._publish_model.get_publish_report()
 
-    def get_validation_errors(self):
-        return self._publish_model.get_validation_errors()
+    def get_publish_errors_report(self):
+        return self._publish_model.get_publish_errors_report()
 
     def set_comment(self, comment):
         """Set comment from ui to pyblish context.

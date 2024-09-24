@@ -70,19 +70,3 @@ def get_ayon_splash_filepath(staging=None):
     else:
         splash_file_name = "AYON_splash.png"
     return get_resource("icons", splash_file_name)
-
-
-def get_openpype_production_icon_filepath():
-    return get_ayon_production_icon_filepath()
-
-
-def get_openpype_staging_icon_filepath():
-    return get_ayon_staging_icon_filepath()
-
-
-def get_openpype_icon_filepath(staging=None):
-    return get_ayon_icon_filepath(staging)
-
-
-def get_openpype_splash_filepath(staging=None):
-    return get_ayon_splash_filepath(staging)

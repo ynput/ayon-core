@@ -49,7 +49,6 @@ class ExtractOTIOReview(publish.Extractor):
     hosts = ["resolve", "hiero", "flame"]
 
     # plugin default attributes
-    temp_file_head = "tempFile."
     to_width = 1280
     to_height = 720
     output_ext = ".jpg"
@@ -61,6 +60,9 @@ class ExtractOTIOReview(publish.Extractor):
             otio_range_to_frame_range,
             make_sequence_collection
         )
+
+        # TODO refactore from using instance variable
+        self.temp_file_head = self._get_folder_name_based_prefix(instance)
 
         # TODO: convert resulting image sequence to mp4
 
@@ -104,10 +106,19 @@ class ExtractOTIOReview(publish.Extractor):
             media_metadata = otio_media.metadata
 
             # get from media reference metadata source
-            if media_metadata.get("openpype.source.width"):
-                width = int(media_metadata.get("openpype.source.width"))
-            if media_metadata.get("openpype.source.height"):
-                height = int(media_metadata.get("openpype.source.height"))
+            # TODO 'openpype' prefix should be removed (added 24/09/03)
+            # NOTE it looks like it is set only in hiero integration
+            for key in {"ayon.source.width", "openpype.source.width"}:
+                value = media_metadata.get(key)
+                if value is not None:
+                    width = int(value)
+                    break
+
+            for key in {"ayon.source.height", "openpype.source.height"}:
+                value = media_metadata.get(key)
+                if value is not None:
+                    height = int(value)
+                    break
 
             # compare and reset
             if width != self.to_width:
@@ -491,3 +502,21 @@ class ExtractOTIOReview(publish.Extractor):
             out_frame_start = self.used_frames[-1]
 
         return output_path, out_frame_start
+
+    def _get_folder_name_based_prefix(self, instance):
+        """Creates 'unique' human readable file prefix to differentiate.
+
+        Multiple instances might share same temp folder, but each instance
+        would be differentiated by asset, eg. folder name.
+
+        It ix expected that there won't be multiple instances for same asset.
+        """
+        folder_path = instance.data["folderPath"]
+        folder_name = folder_path.split("/")[-1]
+        folder_path = folder_path.replace("/", "_").lstrip("_")
+
+        file_prefix = f"{folder_path}_{folder_name}."
+        self.log.debug(f"file_prefix::{file_prefix}")
+
+        return file_prefix
+
