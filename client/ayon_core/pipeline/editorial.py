@@ -277,8 +277,8 @@ def get_media_range_with_retimes(otio_clip, handle_start, handle_end):
     # to frame numbers from source sequence.
     media_ref = otio_clip.media_reference
     is_input_sequence = (
-        hasattr(otio.schema, "ImageSequenceReference") and
-        isinstance(media_ref, otio.schema.ImageSequenceReference)
+        hasattr(otio.schema, "ImageSequenceReference")
+        and isinstance(media_ref, otio.schema.ImageSequenceReference)
     )
 
     if is_input_sequence:
