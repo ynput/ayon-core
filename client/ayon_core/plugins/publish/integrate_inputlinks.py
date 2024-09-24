@@ -101,7 +101,7 @@ class IntegrateInputLinksAYON(pyblish.api.ContextPlugin):
             workfile_instance (pyblish.plugin.Instance): published workfile
             other_instances (list[pyblish.plugin.Instance]): other published
                 instances
-            new_links_by_type (dict[str, list[str]): dictionary collecting new
+            new_links_by_type (dict[str, list[str]]): dictionary collecting new
                 created links by its type
         """
         if workfile_instance is None:
