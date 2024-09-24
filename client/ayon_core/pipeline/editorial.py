@@ -88,7 +88,7 @@ def trim_media_range(media_range, source_range):
 
     """
     rw_media_start = _ot.RationalTime(
-        media_range.start_time.value + source_range.start_time.value,
+        source_range.start_time.value,
         media_range.start_time.rate
     )
     rw_media_duration = _ot.RationalTime(
@@ -171,6 +171,66 @@ def _sequence_resize(source, length):
         low, ratio = divmod(i * step, 1)
         high = low + 1 if ratio > 0 else low
         yield (1 - ratio) * source[int(low)] + ratio * source[int(high)]
+
+
+def is_clip_from_media_sequence(otio_clip):
+    """
+    Args:
+        otio_clip (otio.schema.Clip): The OTIO clip to check.
+
+    Returns:
+        bool. Is the provided clip from an input media sequence ?
+    """
+    media_ref = otio_clip.media_reference
+    metadata = media_ref.metadata
+
+    # OpenTimelineIO 0.13 and newer
+    is_input_sequence = (
+        hasattr(otio.schema, "ImageSequenceReference") and
+        isinstance(media_ref, otio.schema.ImageSequenceReference)
+    )
+
+    # OpenTimelineIO 0.12 and older
+    is_input_sequence_legacy = bool(metadata.get("padding"))
+
+    return is_input_sequence or is_input_sequence_legacy
+
+
+def remap_range_on_file_sequence(otio_clip, in_out_range):
+    """
+    Args:
+        otio_clip (otio.schema.Clip): The OTIO clip to check.
+        in_out_range (tuple[float, float]): The in-out range to remap.
+
+    Returns:
+        tuple(int, int): The remapped range as discrete frame number.
+
+    Raises:
+        ValueError. When the otio_clip or provided range is invalid.
+    """
+    if not is_clip_from_media_sequence(otio_clip):
+        raise ValueError(f"Cannot map on non-file sequence clip {otio_clip}.")
+
+    try:
+        media_in_trimmed, media_out_trimmed = in_out_range
+
+    except ValueError as error:
+        raise ValueError("Invalid in_out_range provided.") from error
+
+    media_ref = otio_clip.media_reference
+    media_in = otio_clip.available_range().start_time.value
+    available_range_rate = otio_clip.available_range().start_time.rate
+
+    frame_in = otio.opentime.RationalTime.from_frames(
+        media_in_trimmed - media_in + media_ref.start_frame,
+        rate=available_range_rate,
+    ).to_frames()
+    frame_out = otio.opentime.RationalTime.from_frames(
+        media_out_trimmed - media_in + media_ref.start_frame,
+        rate=available_range_rate,
+    ).to_frames()
+
+    return frame_in, frame_out
 
 
 def get_media_range_with_retimes(otio_clip, handle_start, handle_end):
@@ -276,22 +336,14 @@ def get_media_range_with_retimes(otio_clip, handle_start, handle_end):
     # mediaIn/mediaOut have to correspond
     # to frame numbers from source sequence.
     media_ref = otio_clip.media_reference
-    is_input_sequence = (
-        hasattr(otio.schema, "ImageSequenceReference") and
-        isinstance(media_ref, otio.schema.ImageSequenceReference)
-    )
+    is_input_sequence = is_clip_from_media_sequence(otio_clip)
 
     if is_input_sequence:
         # preserve discrete frame numbers
-        media_in_trimmed = otio.opentime.RationalTime.from_frames(
-            media_in_trimmed - media_in + media_ref.start_frame,
-            rate=available_range_rate,
-        ).to_frames()
-        media_out_trimmed = otio.opentime.RationalTime.from_frames(
-            media_out_trimmed - media_in + media_ref.start_frame,
-            rate=available_range_rate,
-        ).to_frames()
-
+        media_in_trimmed, media_out_trimmed = remap_range_on_file_sequence(
+            otio_clip,
+            (media_in_trimmed, media_out_trimmed)
+        )
         media_in = media_ref.start_frame
         media_out = media_in + available_range.duration.to_frames() - 1
 
