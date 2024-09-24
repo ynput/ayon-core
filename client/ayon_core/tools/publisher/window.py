@@ -918,8 +918,8 @@ class PublisherWindow(QtWidgets.QDialog):
 
         active_instances_by_id = {
             instance.id: instance
-            for instance in self._controller.get_instances()
-            if instance["active"]
+            for instance in self._controller.get_instance_items()
+            if instance.is_active
         }
         context_info_by_id = self._controller.get_instances_context_info(
             active_instances_by_id.keys()

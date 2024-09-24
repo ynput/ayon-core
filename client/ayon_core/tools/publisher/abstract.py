@@ -15,7 +15,6 @@ from ayon_core.lib import AbstractAttrDef
 from ayon_core.host import HostBase
 from ayon_core.pipeline.create import (
     CreateContext,
-    CreatedInstance,
     ConvertorItem,
 )
 from ayon_core.tools.common_models import (
@@ -26,7 +25,7 @@ from ayon_core.tools.common_models import (
 )
 
 if TYPE_CHECKING:
-    from .models import CreatorItem, PublishErrorInfo
+    from .models import CreatorItem, PublishErrorInfo, InstanceItem
 
 
 class CardMessageTypes:
@@ -307,19 +306,19 @@ class AbstractPublisherFrontend(AbstractPublisherCommon):
         pass
 
     @abstractmethod
-    def get_instances(self) -> List[CreatedInstance]:
+    def get_instance_items(self) -> List["InstanceItem"]:
         """Collected/created instances.
 
         Returns:
-            List[CreatedInstance]: List of created instances.
+            List[InstanceItem]: List of created instances.
 
         """
         pass
 
     @abstractmethod
-    def get_instances_by_id(
+    def get_instance_items_by_id(
         self, instance_ids: Optional[Iterable[str]] = None
-    ) -> Dict[str, Union[CreatedInstance, None]]:
+    ) -> Dict[str, Union["InstanceItem", None]]:
         pass
 
     @abstractmethod
@@ -334,20 +333,36 @@ class AbstractPublisherFrontend(AbstractPublisherCommon):
 
     @abstractmethod
     def get_creator_attribute_definitions(
-        self, instances: List[CreatedInstance]
-    ) -> List[Tuple[AbstractAttrDef, List[CreatedInstance], List[Any]]]:
+        self, instance_ids: List[str]
+    ) -> List[Tuple[AbstractAttrDef, List[str], List[Any]]]:
+        pass
+
+    @abstractmethod
+    def set_instances_create_attr_values(
+        self, instance_ids: Iterable[str], key: str, value: Any
+    ):
         pass
 
     @abstractmethod
     def get_publish_attribute_definitions(
         self,
-        instances: List[CreatedInstance],
+        instance_ids: List[str],
         include_context: bool
     ) -> List[Tuple[
         str,
         List[AbstractAttrDef],
-        Dict[str, List[Tuple[CreatedInstance, Any]]]
+        Dict[str, List[Tuple[str, Any]]]
     ]]:
+        pass
+
+    @abstractmethod
+    def set_instances_publish_attr_values(
+        self,
+        instance_ids: Iterable[str],
+        plugin_name: str,
+        key: str,
+        value: Any
+    ):
         pass
 
     @abstractmethod

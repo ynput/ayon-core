@@ -131,7 +131,7 @@ class InstanceListItemWidget(QtWidgets.QWidget):
         product_name_label.setObjectName("ListViewProductName")
 
         active_checkbox = NiceCheckbox(parent=self)
-        active_checkbox.setChecked(instance["active"])
+        active_checkbox.setChecked(instance.is_active)
 
         layout = QtWidgets.QHBoxLayout(self)
         content_margins = layout.contentsMargins()
@@ -171,19 +171,19 @@ class InstanceListItemWidget(QtWidgets.QWidget):
 
     def is_active(self):
         """Instance is activated."""
-        return self.instance["active"]
+        return self.instance.is_active
 
     def set_active(self, new_value):
         """Change active state of instance and checkbox."""
         checkbox_value = self._active_checkbox.isChecked()
-        instance_value = self.instance["active"]
+        instance_value = self.instance.is_active
         if new_value is None:
             new_value = not instance_value
 
         # First change instance value and them change checkbox
         # - prevent to trigger `active_changed` signal
         if instance_value != new_value:
-            self.instance["active"] = new_value
+            self.instance.is_active = new_value
 
         if checkbox_value != new_value:
             self._active_checkbox.setChecked(new_value)
@@ -200,17 +200,17 @@ class InstanceListItemWidget(QtWidgets.QWidget):
         if label != self._instance_label_widget.text():
             self._instance_label_widget.setText(html_escape(label))
         # Check active state
-        self.set_active(self.instance["active"])
+        self.set_active(self.instance.is_active)
         # Check valid states
         self._set_valid_property(context_info.is_valid)
 
     def _on_active_change(self):
         new_value = self._active_checkbox.isChecked()
-        old_value = self.instance["active"]
+        old_value = self.instance.is_active
         if new_value == old_value:
             return
 
-        self.instance["active"] = new_value
+        self.instance.is_active = new_value
         self.active_changed.emit(self.instance.id, new_value)
 
     def set_active_toggle_enabled(self, enabled):
@@ -639,10 +639,10 @@ class InstanceListView(AbstractInstanceView):
                 instance_id = instance.id
                 # Handle group activity
                 if activity is None:
-                    activity = int(instance["active"])
+                    activity = int(instance.is_active)
                 elif activity == -1:
                     pass
-                elif activity != instance["active"]:
+                elif activity != instance.is_active:
                     activity = -1
 
                 context_info = context_info_by_id[instance_id]
@@ -658,8 +658,8 @@ class InstanceListView(AbstractInstanceView):
 
                 # Create new item and store it as new
                 item = QtGui.QStandardItem()
-                item.setData(instance["productName"], SORT_VALUE_ROLE)
-                item.setData(instance["productName"], GROUP_ROLE)
+                item.setData(instance.product_name, SORT_VALUE_ROLE)
+                item.setData(instance.product_name, GROUP_ROLE)
                 item.setData(instance_id, INSTANCE_ID_ROLE)
                 new_items.append(item)
                 new_items_with_instance.append((item, instance))

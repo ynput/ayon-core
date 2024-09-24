@@ -1186,9 +1186,9 @@ class GlobalAttrsWidget(QtWidgets.QWidget):
             if instance.has_promised_context:
                 continue
 
-            new_variant_value = instance.get("variant")
-            new_folder_path = instance.get("folderPath")
-            new_task_name = instance.get("task")
+            new_variant_value = instance.variant
+            new_folder_path = instance.folder_path
+            new_task_name = instance.task_name
             if variant_value is not None:
                 new_variant_value = variant_value
 
@@ -1210,20 +1210,20 @@ class GlobalAttrsWidget(QtWidgets.QWidget):
 
             except TaskNotSetError:
                 invalid_tasks = True
-                product_names.add(instance["productName"])
+                product_names.add(instance.product_name)
                 continue
 
             product_names.add(new_product_name)
             if variant_value is not None:
-                instance["variant"] = variant_value
+                instance.variant = variant_value
 
             if folder_path is not None:
-                instance["folderPath"] = folder_path
+                instance.folder_path = folder_path
 
             if task_name is not None:
-                instance["task"] = task_name or None
+                instance.task_name = task_name or None
 
-            instance["productName"] = new_product_name
+            instance.product_name = new_product_name
 
         if invalid_tasks:
             self.task_value_widget.set_invalid_empty_task()
@@ -1290,7 +1290,7 @@ class GlobalAttrsWidget(QtWidgets.QWidget):
         """Set currently selected instances.
 
         Args:
-            instances(List[CreatedInstance]): List of selected instances.
+            instances (List[InstanceItem]): List of selected instances.
                 Empty instances tells that nothing or context is selected.
         """
         self._set_btns_visible(False)
@@ -1318,13 +1318,13 @@ class GlobalAttrsWidget(QtWidgets.QWidget):
             if instance.creator_identifier is None:
                 editable = False
 
-            variants.add(instance.get("variant") or self.unknown_value)
-            product_types.add(instance.get("productType") or self.unknown_value)
-            folder_path = instance.get("folderPath") or self.unknown_value
-            task_name = instance.get("task") or ""
+            variants.add(instance.variant or self.unknown_value)
+            product_types.add(instance.product_type or self.unknown_value)
+            folder_path = instance.folder_path or self.unknown_value
+            task_name = instance.task_name or ""
             folder_paths.add(folder_path)
             folder_task_combinations.append((folder_path, task_name))
-            product_names.add(instance.get("productName") or self.unknown_value)
+            product_names.add(instance.product_name or self.unknown_value)
 
         if not editable:
             context_editable = False
@@ -1406,7 +1406,7 @@ class CreatorAttrsWidget(QtWidgets.QWidget):
         ):
             self._content_widget.setEnabled(valid)
 
-    def set_current_instances(self, instances):
+    def set_current_instances(self, instance_ids):
         """Set current instances for which are attribute definitions shown."""
 
         prev_content_widget = self._scroll_area.widget()
@@ -1420,7 +1420,7 @@ class CreatorAttrsWidget(QtWidgets.QWidget):
         self._attr_def_id_to_attr_def = {}
 
         result = self._controller.get_creator_attribute_definitions(
-            instances
+            instance_ids
         )
 
         content_widget = QtWidgets.QWidget(self._scroll_area)
@@ -1432,7 +1432,7 @@ class CreatorAttrsWidget(QtWidgets.QWidget):
         content_layout.setVerticalSpacing(INPUTS_LAYOUT_VSPACING)
 
         row = 0
-        for attr_def, attr_instances, values in result:
+        for attr_def, instance_ids, values in result:
             widget = create_widget_for_attr_def(attr_def, content_widget)
             if attr_def.is_value_def:
                 if len(values) == 1:
@@ -1443,7 +1443,7 @@ class CreatorAttrsWidget(QtWidgets.QWidget):
                     widget.set_value(values, True)
 
             widget.value_changed.connect(self._input_value_changed)
-            self._attr_def_id_to_instances[attr_def.id] = attr_instances
+            self._attr_def_id_to_instances[attr_def.id] = instance_ids
             self._attr_def_id_to_attr_def[attr_def.id] = attr_def
 
             if attr_def.hidden:
@@ -1483,15 +1483,13 @@ class CreatorAttrsWidget(QtWidgets.QWidget):
         self._content_widget = content_widget
 
     def _input_value_changed(self, value, attr_id):
-        instances = self._attr_def_id_to_instances.get(attr_id)
+        instance_ids = self._attr_def_id_to_instances.get(attr_id)
         attr_def = self._attr_def_id_to_attr_def.get(attr_id)
-        if not instances or not attr_def:
+        if not instance_ids or not attr_def:
             return
-
-        for instance in instances:
-            creator_attributes = instance["creator_attributes"]
-            if attr_def.key in creator_attributes:
-                creator_attributes[attr_def.key] = value
+        self._controller.set_instances_create_attr_values(
+            instance_ids, attr_def.key, value
+        )
 
 
 class PublishPluginAttrsWidget(QtWidgets.QWidget):
@@ -1546,7 +1544,7 @@ class PublishPluginAttrsWidget(QtWidgets.QWidget):
         ):
             self._content_widget.setEnabled(valid)
 
-    def set_current_instances(self, instances, context_selected):
+    def set_current_instances(self, instance_ids, context_selected):
         """Set current instances for which are attribute definitions shown."""
 
         prev_content_widget = self._scroll_area.widget()
@@ -1562,7 +1560,7 @@ class PublishPluginAttrsWidget(QtWidgets.QWidget):
         self._attr_def_id_to_plugin_name = {}
 
         result = self._controller.get_publish_attribute_definitions(
-            instances, context_selected
+            instance_ids, context_selected
         )
 
         content_widget = QtWidgets.QWidget(self._scroll_area)
@@ -1648,15 +1646,15 @@ class PublishPluginAttrsWidget(QtWidgets.QWidget):
         self._content_widget = content_widget
 
     def _input_value_changed(self, value, attr_id):
-        instances = self._attr_def_id_to_instances.get(attr_id)
+        instance_ids = self._attr_def_id_to_instances.get(attr_id)
         attr_def = self._attr_def_id_to_attr_def.get(attr_id)
         plugin_name = self._attr_def_id_to_plugin_name.get(attr_id)
-        if not instances or not attr_def or not plugin_name:
+        if not instance_ids or not attr_def or not plugin_name:
             return
 
-        for instance in instances:
-            plugin_val = instance.publish_attributes[plugin_name]
-            plugin_val[attr_def.key] = value
+        self._controller.set_instances_publish_attr_values(
+            instance_ids, plugin_name, attr_def.key, value
+        )
 
 
 class ProductAttributesWidget(QtWidgets.QWidget):
@@ -1821,10 +1819,10 @@ class ProductAttributesWidget(QtWidgets.QWidget):
         """Change currently selected items.
 
         Args:
-            instances(List[CreatedInstance]): List of currently selected
+            instances (List[InstanceItem]): List of currently selected
                 instances.
-            context_selected(bool): Is context selected.
-            convertor_identifiers(List[str]): Identifiers of convert items.
+            context_selected (bool): Is context selected.
+            convertor_identifiers (List[str]): Identifiers of convert items.
         """
 
         instance_ids = {
@@ -1849,9 +1847,9 @@ class ProductAttributesWidget(QtWidgets.QWidget):
 
         self._convert_widget.setVisible(len(s_convertor_identifiers) > 0)
         self.global_attrs_widget.set_current_instances(instances)
-        self.creator_attrs_widget.set_current_instances(instances)
+        self.creator_attrs_widget.set_current_instances(instance_ids)
         self.publish_attrs_widget.set_current_instances(
-            instances, context_selected
+            instance_ids, context_selected
         )
         self.creator_attrs_widget.set_instances_valid(all_valid)
         self.publish_attrs_widget.set_instances_valid(all_valid)
