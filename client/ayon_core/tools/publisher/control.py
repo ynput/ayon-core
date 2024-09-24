@@ -172,23 +172,25 @@ class PublisherController(
         """
         return self._create_model.get_creator_icon(identifier)
 
+    def get_instance_items(self):
+        """Current instances in create context."""
+        return self._create_model.get_instance_items()
+
+    # --- Legacy for TrayPublisher ---
     @property
     def instances(self):
-        """Current instances in create context.
-
-        Deprecated:
-            Use 'get_instances' instead. Kept for backwards compatibility with
-                traypublisher.
-
-        """
-        return self.get_instances()
+        return self.get_instance_items()
 
     def get_instances(self):
-        """Current instances in create context."""
-        return self._create_model.get_instances()
+        return self.get_instance_items()
 
-    def get_instances_by_id(self, instance_ids=None):
-        return self._create_model.get_instances_by_id(instance_ids)
+    def get_instances_by_id(self, *args, **kwargs):
+        return self.get_instance_items_by_id(*args, **kwargs)
+
+    # ---
+
+    def get_instance_items_by_id(self, instance_ids=None):
+        return self._create_model.get_instance_items_by_id(instance_ids)
 
     def get_instances_context_info(self, instance_ids=None):
         return self._create_model.get_instances_context_info(instance_ids)
@@ -365,29 +367,41 @@ class PublisherController(
         if os.path.exists(dirpath):
             shutil.rmtree(dirpath)
 
-    def get_creator_attribute_definitions(self, instances):
+    def get_creator_attribute_definitions(self, instance_ids):
         """Collect creator attribute definitions for multuple instances.
 
         Args:
-            instances(List[CreatedInstance]): List of created instances for
+            instance_ids (List[str]): List of created instances for
                 which should be attribute definitions returned.
 
         """
         return self._create_model.get_creator_attribute_definitions(
-            instances
+            instance_ids
         )
 
-    def get_publish_attribute_definitions(self, instances, include_context):
+    def set_instances_create_attr_values(self, instance_ids, key, value):
+        return self._create_model.set_instances_create_attr_values(
+            instance_ids, key, value
+        )
+
+    def get_publish_attribute_definitions(self, instance_ids, include_context):
         """Collect publish attribute definitions for passed instances.
 
         Args:
-            instances(list<CreatedInstance>): List of created instances for
+            instance_ids (List[str]): List of created instances for
                 which should be attribute definitions returned.
-            include_context(bool): Add context specific attribute definitions.
+            include_context (bool): Add context specific attribute definitions.
 
         """
         return self._create_model.get_publish_attribute_definitions(
-            instances, include_context
+            instance_ids, include_context
+        )
+
+    def set_instances_publish_attr_values(
+        self, instance_ids, plugin_name, key, value
+    ):
+        return self._create_model.set_instances_publish_attr_values(
+            instance_ids, plugin_name, key, value
         )
 
     def get_product_name(

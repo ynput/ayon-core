@@ -192,6 +192,110 @@ class CreatorItem:
         return cls(**data)
 
 
+class InstanceItem:
+    def __init__(
+        self,
+        instance_id: str,
+        creator_identifier: str,
+        label: str,
+        group_label: str,
+        product_type: str,
+        product_name: str,
+        variant: str,
+        folder_path: Optional[str],
+        task_name: Optional[str],
+        is_active: bool,
+        has_promised_context: bool,
+    ):
+        self._instance_id: str = instance_id
+        self._creator_identifier: str = creator_identifier
+        self._label: str = label
+        self._group_label: str = group_label
+        self._product_type: str = product_type
+        self._product_name: str = product_name
+        self._variant: str = variant
+        self._folder_path: Optional[str] = folder_path
+        self._task_name: Optional[str] = task_name
+        self._is_active: bool = is_active
+        self._has_promised_context: bool = has_promised_context
+
+    @property
+    def id(self):
+        return self._instance_id
+
+    @property
+    def creator_identifier(self):
+        return self._creator_identifier
+
+    @property
+    def label(self):
+        return self._label
+
+    @property
+    def group_label(self):
+        return self._group_label
+
+    @property
+    def product_type(self):
+        return self._product_type
+
+    @property
+    def has_promised_context(self):
+        return self._has_promised_context
+
+    def get_variant(self):
+        return self._variant
+
+    def set_variant(self, variant):
+        self._variant = variant
+
+    def get_product_name(self):
+        return self._product_name
+
+    def set_product_name(self, product_name):
+        self._product_name = product_name
+
+    def get_folder_path(self):
+        return self._folder_path
+
+    def set_folder_path(self, folder_path):
+        self._folder_path = folder_path
+
+    def get_task_name(self):
+        return self._task_name
+
+    def set_task_name(self, task_name):
+        self._task_name = task_name
+
+    def get_is_active(self):
+        return self._is_active
+
+    def set_is_active(self, is_active):
+        self._is_active = is_active
+
+    product_name = property(get_product_name, set_product_name)
+    variant = property(get_variant, set_variant)
+    folder_path = property(get_folder_path, set_folder_path)
+    task_name = property(get_task_name, set_task_name)
+    is_active = property(get_is_active, set_is_active)
+
+    @classmethod
+    def from_instance(cls, instance: CreatedInstance):
+        return InstanceItem(
+            instance.id,
+            instance.creator_identifier,
+            instance.label,
+            instance.group_label,
+            instance.product_type,
+            instance.product_name,
+            instance["variant"],
+            instance["folderPath"],
+            instance["task"],
+            instance["active"],
+            instance.has_promised_context,
+        )
+
+
 class CreateModel:
     def __init__(self, controller: AbstractPublisherBackend):
         self._log = None
@@ -287,29 +391,36 @@ class CreateModel:
             return creator_item.icon
         return None
 
-    def get_instances(self) -> List[CreatedInstance]:
+    def get_instance_items(self) -> List[InstanceItem]:
         """Current instances in create context."""
-        return list(self._create_context.instances_by_id.values())
+        return [
+            InstanceItem.from_instance(instance)
+            for instance in self._create_context.instances_by_id.values()
+        ]
 
-    def get_instance_by_id(
+    def get_instance_item_by_id(
         self, instance_id: str
-    ) -> Union[CreatedInstance, None]:
-        return self._create_context.instances_by_id.get(instance_id)
+    ) -> Union[InstanceItem, None]:
+        instance = self._create_context.instances_by_id.get(instance_id)
+        if instance is None:
+            return None
 
-    def get_instances_by_id(
+        return InstanceItem.from_instance(instance)
+
+    def get_instance_items_by_id(
         self, instance_ids: Optional[Iterable[str]] = None
-    ) -> Dict[str, Union[CreatedInstance, None]]:
+    ) -> Dict[str, Union[InstanceItem, None]]:
         if instance_ids is None:
             instance_ids = self._create_context.instances_by_id.keys()
         return {
-            instance_id: self.get_instance_by_id(instance_id)
+            instance_id: self.get_instance_item_by_id(instance_id)
             for instance_id in instance_ids
         }
 
     def get_instances_context_info(
         self, instance_ids: Optional[Iterable[str]] = None
     ):
-        instances = self.get_instances_by_id(instance_ids).values()
+        instances = self._get_instances_by_id(instance_ids).values()
         return self._create_context.get_instances_context_info(
             instances
         )
@@ -341,7 +452,7 @@ class CreateModel:
 
         instance = None
         if instance_id:
-            instance = self.get_instance_by_id(instance_id)
+            instance = self._get_instance_by_id(instance_id)
 
         project_name = self._controller.get_current_project_name()
         folder_item = self._controller.get_folder_item_by_path(
@@ -500,21 +611,30 @@ class CreateModel:
 
         self._on_create_instance_change()
 
+    def set_instances_create_attr_values(self, instance_ids, key, value):
+        # TODO set bulk change context
+        for instance_id in instance_ids:
+            instance = self._get_instance_by_id(instance_id)
+            creator_attributes = instance["creator_attributes"]
+            if key in creator_attributes:
+                creator_attributes[key] = value
+
     def get_creator_attribute_definitions(
-        self, instances: List[CreatedInstance]
-    ) -> List[Tuple[AbstractAttrDef, List[CreatedInstance], List[Any]]]:
+        self, instance_ids: List[str]
+    ) -> List[Tuple[AbstractAttrDef, List[str], List[Any]]]:
         """Collect creator attribute definitions for multuple instances.
 
         Args:
-            instances (List[CreatedInstance]): List of created instances for
+            instance_ids (List[str]): List of created instances for
                 which should be attribute definitions returned.
-        """
 
+        """
         # NOTE it would be great if attrdefs would have hash method implemented
         #   so they could be used as keys in dictionary
         output = []
         _attr_defs = {}
-        for instance in instances:
+        for instance_id in instance_ids:
+            instance = self._get_instance_by_id(instance_id)
             for attr_def in instance.creator_attribute_defs:
                 found_idx = None
                 for idx, _attr_def in _attr_defs.items():
@@ -527,27 +647,39 @@ class CreateModel:
                     value = instance.creator_attributes[attr_def.key]
                 if found_idx is None:
                     idx = len(output)
-                    output.append((attr_def, [instance], [value]))
+                    output.append((attr_def, [instance_id], [value]))
                     _attr_defs[idx] = attr_def
                 else:
                     item = output[found_idx]
-                    item[1].append(instance)
+                    item[1].append(instance_id)
                     item[2].append(value)
         return output
 
+    def set_instances_publish_attr_values(
+        self, instance_ids, plugin_name,  key, value
+    ):
+        # TODO set bulk change context
+        for instance_id in instance_ids:
+            if instance_id is None:
+                instance = self._create_context
+            else:
+                instance = self._get_instance_by_id(instance_id)
+            plugin_val = instance.publish_attributes[plugin_name]
+            plugin_val[key] = value
+
     def get_publish_attribute_definitions(
         self,
-        instances: List[CreatedInstance],
+        instance_ids: List[str],
         include_context: bool
     ) -> List[Tuple[
         str,
         List[AbstractAttrDef],
-        Dict[str, List[Tuple[CreatedInstance, Any]]]
+        Dict[str, List[Tuple[str, Any]]]
     ]]:
         """Collect publish attribute definitions for passed instances.
 
         Args:
-            instances (list[CreatedInstance]): List of created instances for
+            instance_ids (List[str]): List of created instances for
                 which should be attribute definitions returned.
             include_context (bool): Add context specific attribute definitions.
 
@@ -556,12 +688,15 @@ class CreateModel:
         if include_context:
             _tmp_items.append(self._create_context)
 
-        for instance in instances:
-            _tmp_items.append(instance)
+        for instance_id in instance_ids:
+            _tmp_items.append(self._get_instance_by_id(instance_id))
 
         all_defs_by_plugin_name = {}
         all_plugin_values = {}
         for item in _tmp_items:
+            item_id = None
+            if isinstance(item, CreatedInstance):
+                item_id = item.id
             for plugin_name, attr_val in item.publish_attributes.items():
                 attr_defs = attr_val.attr_defs
                 if not attr_defs:
@@ -579,7 +714,7 @@ class CreateModel:
                     attr_values = plugin_values.setdefault(attr_def.key, [])
 
                     value = attr_val[attr_def.key]
-                    attr_values.append((item, value))
+                    attr_values.append((item_id, value))
 
         output = []
         for plugin in self._create_context.plugins_with_defs:
@@ -637,6 +772,21 @@ class CreateModel:
         """All creators loaded in create context."""
 
         return self._create_context.creators
+
+    def _get_instance_by_id(
+        self, instance_id: str
+    ) -> Union[CreatedInstance, None]:
+        return self._create_context.instances_by_id.get(instance_id)
+
+    def _get_instances_by_id(
+        self, instance_ids: Optional[Iterable[str]]
+    ) -> Dict[str, Union[CreatedInstance, None]]:
+        if instance_ids is None:
+            instance_ids = self._create_context.instances_by_id.keys()
+        return {
+            instance_id: self._get_instance_by_id(instance_id)
+            for instance_id in instance_ids
+        }
 
     def _reset_instances(self):
         """Reset create instances."""
