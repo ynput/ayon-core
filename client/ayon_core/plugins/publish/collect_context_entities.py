@@ -53,8 +53,9 @@ class CollectContextEntities(pyblish.api.ContextPlugin):
 
         context.data["folderEntity"] = folder_entity
         context.data["taskEntity"] = task_entity
-
-        folder_attributes = folder_entity["attrib"]
+        context_attributes = (
+            task_entity["attrib"] if task_entity else folder_entity["attrib"]
+        )
 
         # Task type
         task_type = None
@@ -63,12 +64,12 @@ class CollectContextEntities(pyblish.api.ContextPlugin):
 
         context.data["taskType"] = task_type
 
-        frame_start = folder_attributes.get("frameStart")
+        frame_start = context_attributes.get("frameStart")
         if frame_start is None:
             frame_start = 1
             self.log.warning("Missing frame start. Defaulting to 1.")
 
-        frame_end = folder_attributes.get("frameEnd")
+        frame_end = context_attributes.get("frameEnd")
         if frame_end is None:
             frame_end = 2
             self.log.warning("Missing frame end. Defaulting to 2.")
@@ -76,8 +77,8 @@ class CollectContextEntities(pyblish.api.ContextPlugin):
         context.data["frameStart"] = frame_start
         context.data["frameEnd"] = frame_end
 
-        handle_start = folder_attributes.get("handleStart") or 0
-        handle_end = folder_attributes.get("handleEnd") or 0
+        handle_start = context_attributes.get("handleStart") or 0
+        handle_end = context_attributes.get("handleEnd") or 0
 
         context.data["handleStart"] = int(handle_start)
         context.data["handleEnd"] = int(handle_end)
@@ -87,7 +88,7 @@ class CollectContextEntities(pyblish.api.ContextPlugin):
         context.data["frameStartHandle"] = frame_start_h
         context.data["frameEndHandle"] = frame_end_h
 
-        context.data["fps"] = folder_attributes["fps"]
+        context.data["fps"] = context_attributes["fps"]
 
     def _get_folder_entity(self, project_name, folder_path):
         if not folder_path:
