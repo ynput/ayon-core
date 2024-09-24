@@ -185,12 +185,18 @@ class DebugUI(QtWidgets.QDialog):
 
         model = DictChangesModel()
         proxy = QtCore.QSortFilterProxyModel()
+        proxy.setRecursiveFilteringEnabled(True)
         proxy.setSourceModel(model)
         view = QtWidgets.QTreeView()
         view.setModel(proxy)
         view.setSortingEnabled(True)
 
+        filter_field = QtWidgets.QLineEdit()
+        filter_field.setPlaceholderText("Filter keys...")
+        filter_field.textChanged.connect(proxy.setFilterFixedString)
+
         layout.addWidget(text_edit)
+        layout.addWidget(filter_field)
         layout.addWidget(view)
         layout.addWidget(step)
 
@@ -198,6 +204,7 @@ class DebugUI(QtWidgets.QDialog):
 
         self._pause = False
         self.model = model
+        self.filter = filter_field
         self.proxy = proxy
         self.view = view
         self.text = text_edit
