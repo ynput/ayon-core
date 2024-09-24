@@ -97,7 +97,7 @@ class IntegrateInputLinksAYON(pyblish.api.ContextPlugin):
                 instance.data["versionEntity"]["id"],
             )
 
-        loaded_versions = workfile_instance.context.get("loadedVersions")
+        loaded_versions = workfile_instance.context.data.get("loadedVersions")
         if not loaded_versions:
             return
 
