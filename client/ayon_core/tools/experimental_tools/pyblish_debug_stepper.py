@@ -82,8 +82,8 @@ class DictChangesModel(QtGui.QStandardItemModel):
                 index = self.index(row, 0, parent_index)
                 if index.data() == key:
                     item = self.itemFromIndex(index)
-                    type_item = self.itemFromIndex(self.index(row, 1, parent_index))
-                    value_item = self.itemFromIndex(self.index(row, 2, parent_index))
+                    type_item = self.itemFromIndex(self.index(row, 1, parent_index))  # noqa
+                    value_item = self.itemFromIndex(self.index(row, 2, parent_index))  # noqa
                     break
             else:
                 item = QtGui.QStandardItem(key)
@@ -92,13 +92,16 @@ class DictChangesModel(QtGui.QStandardItemModel):
                 parent.appendRow([item, type_item, value_item])
 
             # Key
-            key_color = NEW_KEY_COLOR if key not in previous_data else KEY_COLOR
+            key_color = NEW_KEY_COLOR if key not in previous_data else KEY_COLOR  # noqa
             item.setData(key_color, QtCore.Qt.ForegroundRole)
 
             # Type
             type_str = type(value).__name__
             type_color = VALUE_TYPE_COLOR
-            if key in previous_data and type(previous_data[key]).__name__ != type_str:
+            if (
+                key in previous_data
+                and type(previous_data[key]).__name__ != type_str
+            ):
                 type_color = NEW_VALUE_TYPE_COLOR
 
             type_item.setText(type_str)
@@ -116,23 +119,31 @@ class DictChangesModel(QtGui.QStandardItemModel):
                 if len(value_str) > MAX_VALUE_STR_LEN:
                     value_str = value_str[:MAX_VALUE_STR_LEN] + "..."
                 value_item.setText(value_str)
-                # Preferably this is deferred to only when the data gets requested
-                # since this formatting can be slow for very large data sets like
-                # project settings and system settings
-                # This will also be MUCH MUCH faster if we don't clear the items on each update
-                # but only updated/add/remove changed items so that this also runs much less often
-                value_item.setData(json.dumps(value, default=str, indent=4), QtCore.Qt.ToolTipRole)
 
+                # Preferably this is deferred to only when the data gets
+                # requested since this formatting can be slow for very large
+                # data sets like project settings and system settings
+                # This will also be MUCH faster if we don't clear the
+                # items on each update but only updated/add/remove changed
+                # items so that this also runs much less often
+                value_item.setData(
+                    json.dumps(value, default=str, indent=4),
+                    QtCore.Qt.ToolTipRole
+                )
 
             if isinstance(value, dict):
                 previous_value = previous_data.get(key, {})
                 if previous_data.get(key) != value:
                     # Update children if the value is not the same as before
-                    self._update_recursive(value, parent=item, previous_data=previous_value)
+                    self._update_recursive(value,
+                                           parent=item,
+                                           previous_data=previous_value)
                 else:
-                    # TODO: Ensure all children are updated to be not marked as 'changed'
-                    #   in the most optimal way possible
-                    self._update_recursive(value, parent=item, previous_data=previous_value)
+                    # TODO: Ensure all children are updated to be not marked
+                    #  as 'changed' in the most optimal way possible
+                    self._update_recursive(value,
+                                           parent=item,
+                                           previous_data=previous_value)
 
         self._data = data
 
@@ -195,8 +206,6 @@ class DebugUI(QtWidgets.QDialog):
 
         self._previous_data = {}
 
-
-
     def _set_window_title(self, plugin=None):
         title = "Pyblish Debug Stepper"
         if plugin is not None:
@@ -227,7 +236,7 @@ class DebugUI(QtWidgets.QDialog):
 
         self._set_window_title(plugin=result["plugin"])
 
-        print(10*"<" ,result["plugin"].__name__, 10*">")
+        print(10*"<", result["plugin"].__name__, 10*">")
 
         plugin_order = result["plugin"].order
         plugin_name = result["plugin"].__name__
