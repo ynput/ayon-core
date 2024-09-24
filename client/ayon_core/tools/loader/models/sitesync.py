@@ -1,6 +1,9 @@
 import collections
 
-from ayon_api import get_representations, get_versions_links
+from ayon_api import (
+    get_representations,
+    get_versions_links,
+)
 
 from ayon_core.lib import Logger, NestedCacheItem
 from ayon_core.addon import AddonsManager
