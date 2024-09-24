@@ -165,9 +165,9 @@ class DebugUI(QtWidgets.QDialog):
         text_edit = QtWidgets.QTextEdit()
         text_edit.setFixedHeight(65)
         font = QtGui.QFont("NONEXISTENTFONT")
-        font.setStyleHint(font.TypeWriter)
+        font.setStyleHint(QtGui.QFont.TypeWriter)
         text_edit.setFont(font)
-        text_edit.setLineWrapMode(text_edit.NoWrap)
+        text_edit.setLineWrapMode(QtWidgets.QTextEdit.NoWrap)
 
         step = QtWidgets.QPushButton("Step")
         step.setEnabled(False)
