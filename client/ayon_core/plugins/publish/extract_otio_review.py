@@ -320,8 +320,8 @@ class ExtractOTIOReview(publish.Extractor):
         avl_start = avl_range.start_time
         avl_duration = avl_range.duration
 
-        # A gap is required before available range
-        # range to conform start point.
+        # An additional gap is required before the available
+        # range to conform source start point and head handles.
         if start < avl_start:
             gap_duration = avl_start - start
             start = avl_start
@@ -332,8 +332,9 @@ class ExtractOTIOReview(publish.Extractor):
             # generate used frames
             self._generate_used_frames(gap_duration.round().to_frames())
 
-        # A gap is required after available range
-        # if media duration is shorter then clip requirement
+        # An additional gap is required after the available
+        # range to conform to source end point + tail handles
+        # (media duration is shorter then clip requirement).
         end_point = start + duration
         avl_end_point = avl_range.end_time_exclusive()
         if end_point > avl_end_point:
