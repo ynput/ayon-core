@@ -512,18 +512,19 @@ class SiteSyncModel:
             "reference"
         )
         for link_repre_id in links:
-            try:
+            if not self._sitesync_addon.is_representation_on_site(
+                project_name,
+                link_repre_id,
+                site_name
+            ):
                 print("Adding {} to linked representation: {}".format(
                     site_name, link_repre_id))
                 self._sitesync_addon.add_site(
                     project_name,
                     link_repre_id,
                     site_name,
-                    force=False
+                    force=True
                 )
-            except Exception:
-                # do not add/reset working site for references
-                log.debug("Site present", exc_info=True)
 
     def _get_linked_representation_id(
         self,
