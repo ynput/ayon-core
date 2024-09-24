@@ -578,7 +578,7 @@ class SiteSyncModel:
                 project_name,
                 versions_to_check,
                 link_types=link_types,
-                link_direction="out")
+                link_direction="in")  # looking for 'in'puts for version
 
             versions_to_check = set()
             for links in versions_links.values():
