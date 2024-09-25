@@ -158,9 +158,9 @@ def test_movie_with_embedded_tc_no_gap_handles():
     assert calls == expected
 
 
-def test_movie_tail_gap_handles():
+def test_short_movie_head_gap_handles():
     """
-    Qt movie clip (embedded timecode 1h/24fps)
+    Qt movie clip.
     available_range = 0-30822 25fps
     source_range = 0-50 24fps
     """
@@ -175,6 +175,29 @@ def test_movie_tail_gap_handles():
         # duration = 50fr (source) + 10fr (tail handle) = 60 fr = 2.4s
         "/path/to/ffmpeg -ss 0.0 -t 2.4 -i C:\\data\\movie.mp4 -start_number 1001 "
         "C:/result/output.%03d.jpg"
+    ]
+
+    assert calls == expected
+
+
+def test_short_movie_tail_gap_handles():
+    """
+    Qt movie clip.
+    available_range = 0-101 24fps
+    source_range = 35-101 24fps
+    """
+    calls = run_process("qt_handle_tail_review.json")
+
+    expected = [
+        # 10 tail black frames generated from gap (1067-1076)
+        "/path/to/ffmpeg -t 0.4166666666666667 -r 24.0 -f lavfi -i "
+        "color=c=black:s=1280x720 -tune stillimage -start_number 1067 "
+        "C:/result/output.%03d.jpg",
+
+        # 10 head frames + source range
+        # duration = 10fr (head handle) + 66fr (source) = 76fr = 3.16s
+        "/path/to/ffmpeg -ss 1.0416666666666667 -t 3.1666666666666665 -i "
+        "C:\\data\\qt_no_tc_24fps.mov -start_number 991 C:/result/output.%03d.jpg"
     ]
 
     assert calls == expected

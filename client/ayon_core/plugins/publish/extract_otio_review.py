@@ -344,12 +344,12 @@ class ExtractOTIOReview(publish.Extractor):
             # create gap data to disk
             self._render_seqment(
                 gap=gap_duration.round().to_frames(),
-                end_offset=avl_duration.to_frames()
+                end_offset=duration.to_frames()
             )
             # generate used frames
             self._generate_used_frames(
                 gap_duration.round().to_frames(),
-                end_offset=avl_duration.to_frames()
+                end_offset=duration.to_frames()
             )
 
         # return correct trimmed range
