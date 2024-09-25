@@ -788,6 +788,11 @@ def _create_instances_for_aov(instance, skeleton, aov_filter, additional_data,
                 colorspace = product.colorspace
                 break
 
+        if isinstance(files, (list, tuple)):
+            files = [os.path.basename(f) for f in files]
+        else:
+            files = os.path.basename(files)
+
         rep = {
             "name": ext,
             "ext": ext,
