@@ -285,7 +285,7 @@ class PublishAttributes:
 
         value = self._data[key]
         if not isinstance(value, AttributeValues):
-            self._parent.publish_attribute_value_changed(key, None)
+            self.attribute_value_changed(key, None)
             return self._data.pop(key)
 
         value_item = self._data[key]
@@ -293,7 +293,7 @@ class PublishAttributes:
         output = value_item.data_to_store()
         # Reset values
         value_item.reset_values()
-        self._parent.publish_attribute_value_changed(
+        self.attribute_value_changed(
             key, value_item.data_to_store()
         )
         return output
