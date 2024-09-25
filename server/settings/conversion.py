@@ -106,7 +106,7 @@ def _convert_validate_version_0_3_3(publish_overrides):
     validate_version["plugin_state_profiles"] = [profile]
 
 
-def _conver_publish_plugins(overrides):
+def _convert_publish_plugins(overrides):
     if "publish" not in overrides:
         return
     _convert_validate_version_0_3_3(overrides["publish"])
@@ -118,5 +118,5 @@ def convert_settings_overrides(
 ) -> dict[str, Any]:
     _convert_imageio_configs_0_3_1(overrides)
     _convert_imageio_configs_0_4_5(overrides)
-    _conver_publish_plugins(overrides)
+    _convert_publish_plugins(overrides)
     return overrides
