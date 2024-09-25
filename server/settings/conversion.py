@@ -4,8 +4,8 @@ from typing import Any
 from .publish_plugins import DEFAULT_PUBLISH_VALUES
 
 
-def _convert_imageio_configs_0_4_4(overrides):
-    """Imageio config settings did change to profiles since 0.4.4."""
+def _convert_imageio_configs_0_4_5(overrides):
+    """Imageio config settings did change to profiles since 0.4.5."""
     imageio_overrides = overrides.get("imageio") or {}
 
     # make sure settings are already converted to profiles
@@ -119,6 +119,6 @@ def convert_settings_overrides(
     overrides: dict[str, Any],
 ) -> dict[str, Any]:
     _convert_imageio_configs_0_3_1(overrides)
-    _convert_imageio_configs_0_4_4(overrides)
+    _convert_imageio_configs_0_4_5(overrides)
     _conver_publish_plugins(overrides)
     return overrides
