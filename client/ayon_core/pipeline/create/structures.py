@@ -701,7 +701,7 @@ class CreatedInstance:
                 value when set to True.
 
         """
-        return self._data.get("has_promised_context", False)
+        return self._transient_data.get("has_promised_context", False)
 
     def data_to_store(self):
         """Collect data that contain json parsable types.

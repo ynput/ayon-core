@@ -26,27 +26,52 @@ class AbstractMetaContextPlugin(ABCMeta, ExplicitMetaPlugin):
     pass
 
 
-class PublishValidationError(Exception):
-    """Validation error happened during publishing.
+class KnownPublishError(Exception):
+    """Publishing crashed because of known error.
 
-    This exception should be used when validation publishing failed.
+    Artist can't affect source of the error.
 
-    Has additional UI specific attributes that may be handy for artist.
+    Deprecated:
+        Please use `PublishError` instead. Marked as deprecated 24/09/02.
+
+    """
+    pass
+
+
+class PublishError(Exception):
+    """Publishing crashed because of known error.
+
+    Message will be shown in UI for artist.
 
     Args:
-        message(str): Message of error. Short explanation an issue.
-        title(str): Title showed in UI. All instances are grouped under
-            single title.
-        description(str): Detailed description of an error. It is possible
-            to use Markdown syntax.
-    """
+        message (str): Message of error. Short explanation an issue.
+        title (Optional[str]): Title showed in UI.
+        description (Optional[str]): Detailed description of an error.
+            It is possible to use Markdown syntax.
 
+    """
     def __init__(self, message, title=None, description=None, detail=None):
         self.message = message
         self.title = title
         self.description = description or message
         self.detail = detail
-        super(PublishValidationError, self).__init__(message)
+        super().__init__(message)
+
+
+class PublishValidationError(PublishError):
+    """Validation error happened during publishing.
+
+    This exception should be used when validation publishing failed.
+
+    Publishing does not stop during validation order if this
+        exception is raised.
+
+    Has additional UI specific attributes that may be handy for artist.
+
+    Argument 'title' is used to group errors.
+
+    """
+    pass
 
 
 class PublishXmlValidationError(PublishValidationError):
@@ -67,15 +92,6 @@ class PublishXmlValidationError(PublishValidationError):
         super(PublishXmlValidationError, self).__init__(
             message, content_obj.title, description, detail
         )
-
-
-class KnownPublishError(Exception):
-    """Publishing crashed because of known error.
-
-    Message will be shown in UI for artist.
-    """
-
-    pass
 
 
 class AYONPyblishPluginMixin:
