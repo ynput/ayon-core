@@ -85,7 +85,7 @@ def _ocio_built_in_paths():
 
 class FallbackProductModel(BaseSettingsModel):
     _layout = "expanded"
-    type: str = SettingsField(
+    fallback_type: str = SettingsField(
         title="Fallback config type",
         enum_resolver=_fallback_ocio_config_profile_types,
         conditionalEnum=True,
@@ -347,7 +347,7 @@ DEFAULT_VALUES = {
                 "published_product": {
                     "product_name": "",
                     "fallback": {
-                        "type": "builtin_path",
+                        "fallback_type": "builtin_path",
                         "builtin_path": "ACES 1.2",
                         "custom_path": ""
                     }
