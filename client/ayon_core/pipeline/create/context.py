@@ -7,7 +7,16 @@ import collections
 import inspect
 from contextlib import contextmanager
 import typing
-from typing import Optional, Iterable, Dict, Any, Callable
+from typing import (
+    Optional,
+    Iterable,
+    Tuple,
+    List,
+    Dict,
+    Any,
+    Callable,
+    Union,
+)
 
 import pyblish.logic
 import pyblish.api
@@ -90,6 +99,38 @@ def prepare_failed_creator_operation_info(
         "message": str(exc_value),
         "traceback": formatted_traceback
     }
+
+
+class BulkInfo:
+    def __init__(self):
+        self._count = 0
+        self._data = []
+        self._sender = None
+
+    def __bool__(self):
+        return self._count == 0
+
+    def get_sender(self):
+        return self._sender
+
+    def set_sender(self, sender):
+        if sender is not None:
+            self._sender = sender
+
+    def increase(self):
+        self._count += 1
+
+    def decrease(self):
+        self._count -= 1
+
+    def append(self, item):
+        self._data.append(item)
+
+    def pop_data(self):
+        data = self._data
+        self._data = []
+        self._sender = None
+        return data
 
 
 class CreateContext:
@@ -181,8 +222,17 @@ class CreateContext:
         #   - they can be validation for multiple instances at one time
         #       using context manager which will trigger validation
         #       after leaving of last context manager scope
-        self._bulk_counter = 0
-        self._bulk_instances_to_process = []
+        self._bulk_info = {
+            # Collect instances
+            "collect": BulkInfo(),
+            # Change values of instances or create context
+            "change": BulkInfo(),
+            # Create attribute definitions changed
+            "create_attrs_change": BulkInfo(),
+            # Publish attribute definitions changed
+            "publish_attrs_change": BulkInfo(),
+        }
+        self._bulk_order = []
 
         # Shared data across creators during collection phase
         self._collection_shared_data = None
@@ -765,8 +815,8 @@ class CreateContext:
 
         # Add instance to be validated inside 'bulk_instances_collection'
         #   context manager if is inside bulk
-        with self.bulk_instances_collection():
-            self._bulk_instances_to_process.append(instance)
+        with self.bulk_instances_collection() as bulk_info:
+            bulk_info.append(instance)
 
     def _get_creator_in_create(self, identifier):
         """Creator by identifier with unified error.
@@ -944,72 +994,98 @@ class CreateContext:
         self.convertor_items_by_id.pop(convertor_identifier, None)
 
     @contextmanager
-    def bulk_instances_collection(self):
-        """Validate context of instances in bulk.
+    def bulk_instances_collection(self, sender=None):
+        with self._bulk_context("collect", sender) as bulk_info:
+            yield bulk_info
 
-        This can be used for single instance or for adding multiple instances
-            which is helpfull on reset.
+    @contextmanager
+    def bulk_value_changes(self, sender=None):
+        with self._bulk_context("change", sender) as bulk_info:
+            yield bulk_info
 
-        Should not be executed from multiple threads.
-        """
-        self._bulk_counter += 1
-        try:
-            yield
-        finally:
-            self._bulk_counter -= 1
+    @contextmanager
+    def bulk_create_attr_defs_change(self, sender=None):
+        with self._bulk_context("create_attrs_change", sender) as bulk_info:
+            yield bulk_info
 
-            self._on_bulk_finished()
-
-    def publish_attribute_value_changed(self, plugin_name, value):
-        self._emit_event(
-            "context.values.changed",
-            {
-                "publish_attributes": {plugin_name: value}
-            },
-        )
+    @contextmanager
+    def bulk_publish_attr_defs_change(self, sender=None):
+        with self._bulk_context("publish_attrs_change", sender) as bulk_info:
+            yield bulk_info
 
     # --- instance change callbacks ---
     def instance_create_attr_defs_changed(self, instance_id):
-        # TODO allow bulk changes
-        self._emit_event(
-            "instances.create.attr.defs.changed",
-            {
-                "instance_ids": [instance_id]
-            }
-        )
+        with self.bulk_create_attr_defs_change() as bulk_item:
+            bulk_item.append(instance_id)
 
     def instance_publish_attr_defs_changed(
         self, instance_id, plugin_name
     ):
-        # TODO allow bulk changes
-        self._emit_event(
-            "instances.publish.attr.defs.changed",
-            {
-                plugin_name: [instance_id],
-            }
-        )
+        with self.bulk_publish_attr_defs_change() as bulk_item:
+            bulk_item.append((instance_id, plugin_name))
 
     def instance_values_changed(
         self, instance_id, new_values
     ):
-        self._emit_event(
-            "instances.values.changed",
+        with self.bulk_value_changes() as bulk_item:
+            bulk_item.append((instance_id, new_values))
+
+    # --- context change callbacks ---
+    def publish_attribute_value_changed(self, plugin_name, value):
+        self.instance_values_changed(
+            None,
             {
-                instance_id: new_values
-            }
+                "publish_attributes": {
+                    plugin_name: value,
+                },
+            },
         )
 
-    def _on_bulk_finished(self):
-        # Trigger validation if there is no more context manager for bulk
-        #   instance validation
-        if self._bulk_counter != 0:
+    @contextmanager
+    def _bulk_context(self, key, sender):
+        bulk_info = self._bulk_info[key]
+        bulk_info.set_sender(sender)
+
+        bulk_info.increase()
+        if key not in self._bulk_order:
+            self._bulk_order.append(key
+)
+        try:
+            yield bulk_info
+        finally:
+            bulk_info.decrease()
+            if bulk_info:
+                self._bulk_finished(key)
+
+    def _bulk_finished(self, key):
+        if self._bulk_order[0] != key:
             return
 
-        (
-            self._bulk_instances_to_process, instances_to_validate
-        ) = (
-            [], self._bulk_instances_to_process
-        )
+        self._bulk_finish(key)
+        self._bulk_order.pop(0)
+
+        for key in tuple(self._bulk_order):
+            if not self._bulk_info[key]:
+                return
+            self._bulk_finish(key)
+            self._bulk_order.pop(0)
+
+    def _bulk_finish(self, key):
+        bulk_info = self._bulk_info[key]
+        sender = bulk_info.get_sender()
+        data = bulk_info.pop_data()
+        if key == "collect":
+            self._bulk_instances_collection(data, sender)
+        elif key == "change":
+            self._bulk_values_change(data, sender)
+        elif key == "create_attrs_change":
+            self._bulk_create_attrs_change(data, sender)
+        elif key == "publish_attrs_change":
+            self._bulk_publish_attrs_change(data, sender)
+
+    def _bulk_instances_collection(self, instances_to_validate, sender):
+        if not instances_to_validate:
+            return
 
         # Cache folder and task entities for all instances at once
         self.get_instances_context_info(instances_to_validate)
@@ -1019,7 +1095,8 @@ class CreateContext:
             {
                 "instances": instances_to_validate,
                 "create_context": self,
-            }
+            },
+            sender,
         )
 
         for instance in instances_to_validate:
@@ -1064,6 +1141,76 @@ class CreateContext:
                 instance.set_publish_plugin_attr_defs(
                     plugin.__name__, attr_defs
                 )
+
+    def _bulk_values_change(
+        self,
+        changes: Tuple[Union[str, None], Dict[str, Any]],
+        sender: Optional[str],
+    ):
+        if not changes:
+            return
+        event_data = {}
+        for item_id, item_changes in changes:
+            item_values = event_data.setdefault(item_id, {})
+            if "creator_attributes" in item_changes:
+                current_value = item_values.setdefault(
+                    "creator_attributes", {}
+                )
+                current_value.update(
+                    item_changes.pop("creator_attributes")
+                )
+
+            if "publish_attributes" in item_changes:
+                current_publish = item_values.setdefault(
+                    "publish_attributes", {}
+                )
+                for plugin_name, plugin_value in item_changes.pop(
+                    "publish_attributes"
+                ).items():
+                    plugin_changes = current_publish.setdefault(
+                        plugin_name, {}
+                    )
+                    plugin_changes.update(plugin_value)
+
+            item_values.update(item_changes)
+
+        self._emit_event(
+            "values.changed",
+            event_data,
+            sender
+        )
+
+    def _bulk_create_attrs_change(
+        self, data: List[str], sender: Optional[str]
+    ):
+        if not data:
+            return
+
+        self._emit_event(
+            "create.attr.defs.changed",
+            {
+                "instance_ids": set(data)
+            },
+            sender,
+        )
+
+    def _bulk_publish_attrs_change(
+        self,
+        attr_info: Tuple[str, Union[str, None]],
+        sender: Optional[str],
+    ):
+        if not attr_info:
+            return
+        event_data = {}
+        for plugin_name, instance_id in attr_info:
+            instance_ids = event_data.setdefault(plugin_name, set())
+            instance_ids.add(instance_id)
+
+        self._emit_event(
+            "publish.attr.defs.changed",
+            event_data,
+            sender,
+        )
 
     def reset_instances(self):
         """Reload instances"""
@@ -1415,6 +1562,9 @@ class CreateContext:
                 self.log.warning(
                     error_message.format(identifier, exc_info[1])
                 )
+
+            except (KeyboardInterrupt, SystemExit):
+                raise
 
             except:  # noqa: E722
                 failed = True

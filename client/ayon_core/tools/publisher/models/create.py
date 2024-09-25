@@ -612,12 +612,12 @@ class CreateModel:
         self._on_create_instance_change()
 
     def set_instances_create_attr_values(self, instance_ids, key, value):
-        # TODO set bulk change context
-        for instance_id in instance_ids:
-            instance = self._get_instance_by_id(instance_id)
-            creator_attributes = instance["creator_attributes"]
-            if key in creator_attributes:
-                creator_attributes[key] = value
+        with self._create_context.bulk_value_changes(CREATE_EVENT_SOURCE):
+            for instance_id in instance_ids:
+                instance = self._get_instance_by_id(instance_id)
+                creator_attributes = instance["creator_attributes"]
+                if key in creator_attributes:
+                    creator_attributes[key] = value
 
     def get_creator_attribute_definitions(
         self, instance_ids: List[str]
@@ -658,14 +658,14 @@ class CreateModel:
     def set_instances_publish_attr_values(
         self, instance_ids, plugin_name,  key, value
     ):
-        # TODO set bulk change context
-        for instance_id in instance_ids:
-            if instance_id is None:
-                instance = self._create_context
-            else:
-                instance = self._get_instance_by_id(instance_id)
-            plugin_val = instance.publish_attributes[plugin_name]
-            plugin_val[key] = value
+        with self._create_context.bulk_value_changes(CREATE_EVENT_SOURCE):
+            for instance_id in instance_ids:
+                if instance_id is None:
+                    instance = self._create_context
+                else:
+                    instance = self._get_instance_by_id(instance_id)
+                plugin_val = instance.publish_attributes[plugin_name]
+                plugin_val[key] = value
 
     def get_publish_attribute_definitions(
         self,
@@ -792,7 +792,9 @@ class CreateModel:
         """Reset create instances."""
 
         self._create_context.reset_context_data()
-        with self._create_context.bulk_instances_collection():
+        with self._create_context.bulk_instances_collection(
+            CREATE_EVENT_SOURCE
+        ):
             try:
                 self._create_context.reset_instances()
             except CreatorsOperationFailed as exc:
