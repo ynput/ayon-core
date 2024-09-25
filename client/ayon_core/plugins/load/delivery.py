@@ -17,8 +17,7 @@ from ayon_core.pipeline.load import get_representation_path_with_anatomy
 from ayon_core.pipeline.delivery import (
     get_format_dict,
     check_destination_path,
-    deliver_single_file,
-    deliver_sequence,
+    deliver_single_file
 )
 
 
@@ -231,51 +230,39 @@ class DeliveryOptionsDialog(QtWidgets.QDialog):
                 self.log
             ]
 
-            if repre.get("files"):
-                src_paths = []
-                for repre_file in repre["files"]:
-                    src_path = self.anatomy.fill_root(repre_file["path"])
-                    src_paths.append(src_path)
-                sources_and_frames = collect_frames(src_paths)
+            src_paths = []
+            for repre_file in repre["files"]:
+                src_path = self.anatomy.fill_root(repre_file["path"])
+                src_paths.append(src_path)
+            sources_and_frames = collect_frames(src_paths)
 
-                frames = set(sources_and_frames.values())
-                frames.discard(None)
-                first_frame = None
-                if frames:
-                    first_frame = min(frames)
+            frames = set(sources_and_frames.values())
+            frames.discard(None)
+            first_frame = None
+            if frames:
+                first_frame = min(frames)
 
-                for src_path, frame in sources_and_frames.items():
-                    args[0] = src_path
-                    # Renumber frames
-                    if renumber_frame and frame is not None:
-                        # Calculate offset between
-                        # first frame and current frame
-                        # - '0' for first frame
-                        offset = frame_offset - int(first_frame)
-                        # Add offset to new frame start
-                        dst_frame = int(frame) + offset
-                        if dst_frame < 0:
-                            msg = "Renumber frame has a smaller number than original frame"     # noqa
-                            report_items[msg].append(src_path)
-                            self.log.warning("{} <{}>".format(
-                                msg, dst_frame))
-                            continue
-                        frame = dst_frame
+            for src_path, frame in sources_and_frames.items():
+                args[0] = src_path
+                # Renumber frames
+                if renumber_frame and frame is not None:
+                    # Calculate offset between
+                    # first frame and current frame
+                    # - '0' for first frame
+                    offset = frame_offset - int(first_frame)
+                    # Add offset to new frame start
+                    dst_frame = int(frame) + offset
+                    if dst_frame < 0:
+                        msg = "Renumber frame has a smaller number than original frame"     # noqa
+                        report_items[msg].append(src_path)
+                        self.log.warning("{} <{}>".format(
+                            msg, dst_frame))
+                        continue
+                    frame = dst_frame
 
-                    if frame is not None:
-                        anatomy_data["frame"] = frame
-                    new_report_items, uploaded = deliver_single_file(*args)
-                    report_items.update(new_report_items)
-                    self._update_progress(uploaded)
-            else:  # fallback for Pype2 and representations without files
-                frame = repre["context"].get("frame")
-                if frame:
-                    repre["context"]["frame"] = len(str(frame)) * "#"
-
-                if not frame:
-                    new_report_items, uploaded = deliver_single_file(*args)
-                else:
-                    new_report_items, uploaded = deliver_sequence(*args)
+                if frame is not None:
+                    anatomy_data["frame"] = frame
+                new_report_items, uploaded = deliver_single_file(*args)
                 report_items.update(new_report_items)
                 self._update_progress(uploaded)
 
