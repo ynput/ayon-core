@@ -87,7 +87,7 @@ def _convert_oiio_transcode_0_4_5(publish_overrides):
 
         for output in outputs :
             # Already new settings
-            if "display" not in output and "view" not in output:
+            if "display_view" in output:
                 break
 
             # Fix 'display' -> 'display_view' in 'transcoding_type'
