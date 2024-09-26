@@ -783,6 +783,23 @@ class CreateContext:
                 plugin.__name__, attr_defs
             )
 
+    def listen_to_added_instances(self, callback):
+        self._event_hub.add_callback(INSTANCE_ADDED_TOPIC, callback)
+
+    def listen_to_removed_instances(self, callback):
+        self._event_hub.add_callback(INSTANCE_REMOVED_TOPIC, callback)
+
+    def listen_to_value_changes(self, callback):
+        self._event_hub.add_callback(VALUE_CHANGED_TOPIC, callback)
+
+    def listen_to_create_attr_defs_change(self, callback):
+        self._event_hub.add_callback(CREATE_ATTR_DEFS_CHANGED_TOPIC, callback)
+
+    def listen_to_publish_attr_defs_change(self, callback):
+        self._event_hub.add_callback(
+            PUBLISH_ATTR_DEFS_CHANGED_TOPIC, callback
+        )
+
     def context_data_to_store(self):
         """Data that should be stored by host function.
 
