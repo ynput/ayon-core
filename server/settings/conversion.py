@@ -81,21 +81,25 @@ def _convert_oiio_transcode_0_4_5(publish_overrides):
         return
 
     for profile in transcode_profiles:
-        for output in profile["outputs"]:
-            transcode_type = output["transcoding_type"]
+        outputs = profile.get("outputs")
+        if outputs is None:
+            return
+
+        for output in outputs :
+            # Already new settings
+            if "display" not in output and "view" not in output:
+                break
+
+            # Fix 'display' -> 'display_view' in 'transcoding_type'
+            transcode_type = output.get("transcoding_type")
             if transcode_type == "display":
                 output["transcoding_type"] = "display_view"
-            # Already new settings
-            if "display_view" in output:
-                continue
-
-            output["display_view"] = {}
-            if output["display"]:
-                output["display_view"].update({"display": output["display"]})
-                output.pop("display")
-            if output["view"]:
-                output["display_view"].update({"view": output["view"]})
-                output.pop("view")
+            
+            # Convert 'display' and 'view' to new values
+            output["display_view"] = {
+                "display": output.pop("display", ""),
+                "view": output.pop("view", ""),
+            }
 
 
 def _conver_publish_plugins(overrides):
