@@ -362,6 +362,25 @@ class CreateModel:
         self._creator_items = None
 
         self._reset_instances()
+
+        self._emit_event("create.model.reset")
+
+        self._create_context.listen_to_added_instances(
+            self._cc_added_instance
+        )
+        self._create_context.listen_to_removed_instances(
+            self._cc_removed_instance
+        )
+        self._create_context.listen_to_value_changes(
+            self._cc_value_changed
+        )
+        self._create_context.listen_to_create_attr_defs_change(
+            self._cc_create_attr_changed
+        )
+        self._create_context.listen_to_publish_attr_defs_change(
+            self._cc_publish_attr_changed
+        )
+
         self._create_context.reset_finalization()
 
     def get_creator_items(self) -> Dict[str, CreatorItem]:
@@ -521,7 +540,6 @@ class CreateModel:
                 }
             )
 
-        self._on_create_instance_change()
         return success
 
     def trigger_convertor_items(self, convertor_identifiers: List[str]):
@@ -608,8 +626,6 @@ class CreateModel:
         # QUESTION Expect that instances are really removed? In that case reset
         #    is not required.
         self._remove_instances_from_context(instance_ids)
-
-        self._on_create_instance_change()
 
     def set_instances_create_attr_values(self, instance_ids, key, value):
         with self._create_context.bulk_value_changes(CREATE_EVENT_SOURCE):
@@ -792,9 +808,7 @@ class CreateModel:
         """Reset create instances."""
 
         self._create_context.reset_context_data()
-        with self._create_context.bulk_instances_collection(
-            CREATE_EVENT_SOURCE
-        ):
+        with self._create_context.bulk_instances_collection():
             try:
                 self._create_context.reset_instances()
             except CreatorsOperationFailed as exc:
@@ -829,8 +843,6 @@ class CreateModel:
                     }
                 )
 
-        self._on_create_instance_change()
-
     def _remove_instances_from_context(self, instance_ids: List[str]):
         instances_by_id = self._create_context.instances_by_id
         instances = [
@@ -847,9 +859,6 @@ class CreateModel:
                     "failed_info": exc.failed_info
                 }
             )
-
-    def _on_create_instance_change(self):
-        self._emit_event("instances.refresh.finished")
 
     def _collect_creator_items(self) -> Dict[str, CreatorItem]:
         # TODO add crashed initialization of create plugins to report
@@ -871,6 +880,63 @@ class CreateModel:
                 )
 
         return output
+
+    def _cc_added_instance(self, event):
+        instance_ids = {
+            instance.id
+            for instance in event.data["instances"]
+        }
+        self._emit_event(
+            "create.context.added.instance",
+            {"instance_ids": instance_ids},
+        )
+
+    def _cc_removed_instance(self, event):
+        instance_ids = {
+            instance.id
+            for instance in event.data["instances"]
+        }
+        self._emit_event(
+            "create.context.removed.instance",
+            {"instance_ids": instance_ids},
+        )
+
+    def _cc_value_changed(self, event):
+        if event.source != CREATE_EVENT_SOURCE:
+            return
+
+        instance_ids = {
+            item["instance"].id
+            for item in event.data["changes"]
+        }
+        self._emit_event(
+            "create.context.value.changed",
+            {"instance_ids": instance_ids},
+        )
+
+    def _cc_create_attr_changed(self, event):
+        if event.source != CREATE_EVENT_SOURCE:
+            return
+        instance_ids = {
+            instance.id
+            for instance in event.data["instances"]
+        }
+        self._emit_event(
+            "create.context.create.attrs.changed",
+            {"instance_ids": instance_ids},
+        )
+
+    def _cc_publish_attr_changed(self, event):
+        if event.source != CREATE_EVENT_SOURCE:
+            return
+        event_data = {
+            instance_id: instance_data["plugin_names"]
+            for instance_id, instance_data in event.data.items()
+        }
+        self._emit_event(
+            "create.context.publish.attrs.changed",
+            event_data,
+        )
 
     def _get_allowed_creators_pattern(self) -> Union[Pattern, None]:
         """Provide regex pattern for configured creator labels in this context
