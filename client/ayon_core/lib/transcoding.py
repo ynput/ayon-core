@@ -1152,9 +1152,7 @@ def convert_colorspace(
         input_arg, input_path,
         # Tell oiiotool which channels should be put to top stack
         #   (and output)
-        "--ch", channels_arg,
-        # Use first subimage
-        "--subimage", "0"
+        "--ch", channels_arg
     ])
 
     if all([target_colorspace, view, display]):
@@ -1168,12 +1166,12 @@ def convert_colorspace(
         oiio_cmd.extend(additional_command_args)
 
     if target_colorspace:
-        oiio_cmd.extend(["--colorconvert",
+        oiio_cmd.extend(["--colorconvert:subimages=0",
                          source_colorspace,
                          target_colorspace])
     if view and display:
         oiio_cmd.extend(["--iscolorspace", source_colorspace])
-        oiio_cmd.extend(["--ociodisplay", display, view])
+        oiio_cmd.extend(["--ociodisplay:subimages=0", display, view])
 
     oiio_cmd.extend(["-o", output_path])
 
