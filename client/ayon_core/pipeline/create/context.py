@@ -69,6 +69,12 @@ from .structures import (
 UpdateData = collections.namedtuple("UpdateData", ["instance", "changes"])
 _NOT_SET = object()
 
+INSTANCE_ADDED_TOPIC = "instances.added"
+INSTANCE_REMOVED_TOPIC = "instances.removed"
+VALUE_CHANGED_TOPIC = "values.changed"
+CREATE_ATTR_DEFS_CHANGED_TOPIC = "create.attr.defs.changed"
+PUBLISH_ATTR_DEFS_CHANGED_TOPIC = "publish.attr.defs.changed"
+
 
 def prepare_failed_convertor_operation_info(identifier, exc_info):
     exc_type, exc_value, exc_traceback = exc_info
@@ -1091,7 +1097,7 @@ class CreateContext:
         self.get_instances_context_info(instances_to_validate)
 
         self._emit_event(
-            "instances.added",
+            INSTANCE_ADDED_TOPIC,
             {
                 "instances": instances_to_validate,
                 "create_context": self,
@@ -1175,7 +1181,7 @@ class CreateContext:
             item_values.update(item_changes)
 
         self._emit_event(
-            "values.changed",
+            VALUE_CHANGED_TOPIC,
             event_data,
             sender
         )
@@ -1187,7 +1193,7 @@ class CreateContext:
             return
 
         self._emit_event(
-            "create.attr.defs.changed",
+            CREATE_ATTR_DEFS_CHANGED_TOPIC,
             {
                 "instance_ids": set(data)
             },
@@ -1207,7 +1213,7 @@ class CreateContext:
             instance_ids.add(instance_id)
 
         self._emit_event(
-            "publish.attr.defs.changed",
+            PUBLISH_ATTR_DEFS_CHANGED_TOPIC,
             event_data,
             sender,
         )
@@ -1519,11 +1525,11 @@ class CreateContext:
             creator are just removed from context.
 
         Args:
-            instances(List[CreatedInstance]): Instances that should be removed.
+            instances (List[CreatedInstance]): Instances that should be removed.
                 Remove logic is done using creator, which may require to
                 do other cleanup than just remove instance from context.
-        """
 
+        """
         instances_by_identifier = collections.defaultdict(list)
         for instance in instances:
             identifier = instance.creator_identifier
@@ -1675,7 +1681,7 @@ class CreateContext:
             return
 
         self._emit_event(
-            "instances.removed",
+            INSTANCE_REMOVED_TOPIC,
             {
                 "instances": removed_instances,
                 "create_context": self,
