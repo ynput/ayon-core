@@ -94,7 +94,7 @@ def _convert_oiio_transcode_0_4_5(publish_overrides):
             transcode_type = output.get("transcoding_type")
             if transcode_type == "display":
                 output["transcoding_type"] = "display_view"
-            
+
             # Convert 'display' and 'view' to new values
             output["display_view"] = {
                 "display": output.pop("display", ""),
