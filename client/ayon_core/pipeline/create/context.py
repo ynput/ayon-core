@@ -1518,7 +1518,7 @@ class CreateContext:
         if failed_info:
             raise CreatorsSaveFailed(failed_info)
 
-    def remove_instances(self, instances):
+    def remove_instances(self, instances, sender=None):
         """Remove instances from context.
 
         All instances that don't have creator identifier leading to existing
@@ -1528,6 +1528,7 @@ class CreateContext:
             instances (List[CreatedInstance]): Instances that should be removed.
                 Remove logic is done using creator, which may require to
                 do other cleanup than just remove instance from context.
+            sender (Optional[str]): Sender of the event.
 
         """
         instances_by_identifier = collections.defaultdict(list)
@@ -1544,7 +1545,7 @@ class CreateContext:
                 for instance in instances_by_identifier[identifier]
             )
 
-        self._remove_instances(instances)
+        self._remove_instances(instances, sender)
 
         error_message = "Instances removement of creator \"{}\" failed. {}"
         failed_info = []
@@ -1670,7 +1671,7 @@ class CreateContext:
         data.setdefault("create_context", self)
         return self._event_hub.emit(topic, data, sender)
 
-    def _remove_instances(self, instances):
+    def _remove_instances(self, instances, sender=None):
         removed_instances = []
         for instance in instances:
             obj = self._instances_by_id.pop(instance.id, None)
@@ -1685,7 +1686,8 @@ class CreateContext:
             {
                 "instances": removed_instances,
                 "create_context": self,
-            }
+            },
+            sender,
         )
 
     def _create_with_unified_error(
