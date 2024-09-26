@@ -902,21 +902,22 @@ class CreateModel:
         )
 
     def _cc_value_changed(self, event):
-        if event.source != CREATE_EVENT_SOURCE:
+        if event.source == CREATE_EVENT_SOURCE:
             return
 
-        instance_ids = {
-            item["instance"].id
-            for item in event.data["changes"]
-        }
+        instance_changes = {}
+        for item in event.data["changes"]:
+            instance_id = None
+            if item["instance"]:
+                instance_id = item["instance"].id
+            instance_changes[instance_id] = item["changes"]
+
         self._emit_event(
             "create.context.value.changed",
-            {"instance_ids": instance_ids},
+            {"instance_changes": instance_changes},
         )
 
     def _cc_create_attr_changed(self, event):
-        if event.source != CREATE_EVENT_SOURCE:
-            return
         instance_ids = {
             instance.id
             for instance in event.data["instances"]
@@ -927,11 +928,10 @@ class CreateModel:
         )
 
     def _cc_publish_attr_changed(self, event):
-        if event.source != CREATE_EVENT_SOURCE:
-            return
+        instance_changes = event.data["instance_changes"]
         event_data = {
             instance_id: instance_data["plugin_names"]
-            for instance_id, instance_data in event.data.items()
+            for instance_id, instance_data in instance_changes.items()
         }
         self._emit_event(
             "create.context.publish.attrs.changed",

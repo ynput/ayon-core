@@ -132,6 +132,10 @@ class BulkInfo:
     def append(self, item):
         self._data.append(item)
 
+    def get_data(self):
+        """Use this method for read-only."""
+        return self._data
+
     def pop_data(self):
         data = self._data
         self._data = []
@@ -898,8 +902,8 @@ class CreateContext:
 
         Raises:
             CreatorError: If creator was not found or folder is empty.
-        """
 
+        """
         creator = self._get_creator_in_create(creator_identifier)
 
         project_name = self.project_name
@@ -965,11 +969,12 @@ class CreateContext:
                 active = bool(active)
             instance_data["active"] = active
 
-        return creator.create(
-            product_name,
-            instance_data,
-            _pre_create_data
-        )
+        with self.bulk_instances_collection():
+            return creator.create(
+                product_name,
+                instance_data,
+                _pre_create_data
+            )
 
     def create_with_unified_error(self, identifier, *args, **kwargs):
         """Trigger create but raise only one error if anything fails.
@@ -986,8 +991,8 @@ class CreateContext:
             CreatorsCreateFailed: When creation fails due to any possible
                 reason. If anything goes wrong this is only possible exception
                 the method should raise.
-        """
 
+        """
         result, fail_info = self._create_with_unified_error(
             identifier, None, *args, **kwargs
         )
@@ -1021,6 +1026,50 @@ class CreateContext:
         with self._bulk_context("collect", sender) as bulk_info:
             yield bulk_info
 
+            # Set publish attributes before bulk context is exited
+            for instance in bulk_info.get_data():
+                publish_attributes = instance.publish_attributes
+                # Prepare publish plugin attributes and set it on instance
+                for plugin in self.plugins_with_defs:
+                    try:
+                        if is_func_signature_supported(
+                            plugin.convert_attribute_values, self, instance
+                        ):
+                            plugin.convert_attribute_values(self, instance)
+
+                        elif plugin.__instanceEnabled__:
+                            output = plugin.convert_attribute_values(
+                                publish_attributes
+                            )
+                            if output:
+                                publish_attributes.update(output)
+
+                    except Exception:
+                        self.log.error(
+                            "Failed to convert attribute values of"
+                            f" plugin '{plugin.__name__}'",
+                            exc_info=True
+                        )
+
+                for plugin in self.plugins_with_defs:
+                    attr_defs = None
+                    try:
+                        attr_defs = plugin.get_attribute_defs_for_instance(
+                            self, instance
+                        )
+                    except Exception:
+                        self.log.error(
+                            "Failed to get attribute definitions"
+                            f" from plugin '{plugin.__name__}'.",
+                            exc_info=True
+                        )
+
+                    if not attr_defs:
+                        continue
+                    instance.set_publish_plugin_attr_defs(
+                        plugin.__name__, attr_defs
+                    )
+
     @contextmanager
     def bulk_value_changes(self, sender=None):
         with self._bulk_context("change", sender) as bulk_info:
@@ -1037,21 +1086,38 @@ class CreateContext:
             yield bulk_info
 
     # --- instance change callbacks ---
+    def _is_instance_events_ready(self, instance_id):
+        # Context is ready
+        if instance_id is None:
+            return True
+        # Instance is not in yet in context
+        if instance_id not in self._instances_by_id:
+            return False
+
+        # Instance in 'collect' bulk will be ignored
+        for instance in self._bulk_info["collect"].get_data():
+            if instance.id == instance_id:
+                return False
+        return True
+
     def instance_create_attr_defs_changed(self, instance_id):
-        with self.bulk_create_attr_defs_change() as bulk_item:
-            bulk_item.append(instance_id)
+        if self._is_instance_events_ready(instance_id):
+            with self.bulk_create_attr_defs_change() as bulk_item:
+                bulk_item.append(instance_id)
 
     def instance_publish_attr_defs_changed(
         self, instance_id, plugin_name
     ):
-        with self.bulk_publish_attr_defs_change() as bulk_item:
-            bulk_item.append((instance_id, plugin_name))
+        if self._is_instance_events_ready(instance_id):
+            with self.bulk_publish_attr_defs_change() as bulk_item:
+                bulk_item.append((instance_id, plugin_name))
 
     def instance_values_changed(
         self, instance_id, new_values
     ):
-        with self.bulk_value_changes() as bulk_item:
-            bulk_item.append((instance_id, new_values))
+        if self._is_instance_events_ready(instance_id):
+            with self.bulk_value_changes() as bulk_item:
+                bulk_item.append((instance_id, new_values))
 
     # --- context change callbacks ---
     def publish_attribute_value_changed(self, plugin_name, value):
@@ -1117,53 +1183,9 @@ class CreateContext:
             INSTANCE_ADDED_TOPIC,
             {
                 "instances": instances_to_validate,
-                "create_context": self,
             },
             sender,
         )
-
-        for instance in instances_to_validate:
-            publish_attributes = instance.publish_attributes
-            # Prepare publish plugin attributes and set it on instance
-            for plugin in self.plugins_with_defs:
-                try:
-                    if is_func_signature_supported(
-                        plugin.convert_attribute_values, self, instance
-                    ):
-                        plugin.convert_attribute_values(self, instance)
-
-                    elif plugin.__instanceEnabled__:
-                        output = plugin.convert_attribute_values(
-                            publish_attributes
-                        )
-                        if output:
-                            publish_attributes.update(output)
-
-                except Exception:
-                    self.log.error(
-                        "Failed to convert attribute values of"
-                        f" plugin '{plugin.__name__}'",
-                        exc_info=True
-                    )
-
-            for plugin in self.plugins_with_defs:
-                attr_defs = None
-                try:
-                    attr_defs = plugin.get_attribute_defs_for_instance(
-                        self, instance
-                    )
-                except Exception:
-                    self.log.error(
-                        "Failed to get attribute definitions"
-                        f" from plugin '{plugin.__name__}'.",
-                        exc_info=True
-                    )
-
-                if not attr_defs:
-                    continue
-                instance.set_publish_plugin_attr_defs(
-                    plugin.__name__, attr_defs
-                )
 
     def _bulk_values_change(
         self,
@@ -1172,9 +1194,9 @@ class CreateContext:
     ):
         if not changes:
             return
-        event_data = {}
+        item_data_by_id = {}
         for item_id, item_changes in changes:
-            item_values = event_data.setdefault(item_id, {})
+            item_values = item_data_by_id.setdefault(item_id, {})
             if "creator_attributes" in item_changes:
                 current_value = item_values.setdefault(
                     "creator_attributes", {}
@@ -1197,6 +1219,18 @@ class CreateContext:
 
             item_values.update(item_changes)
 
+        event_changes = []
+        for item_id, item_changes in item_data_by_id.items():
+            instance = self.get_instance_by_id(item_id)
+            event_changes.append({
+                "instance": instance,
+                "changes": item_changes,
+            })
+
+        event_data = {
+            "changes": event_changes,
+        }
+
         self._emit_event(
             VALUE_CHANGED_TOPIC,
             event_data,
@@ -1204,15 +1238,19 @@ class CreateContext:
         )
 
     def _bulk_create_attrs_change(
-        self, data: List[str], sender: Optional[str]
+        self, instance_ids: List[str], sender: Optional[str]
     ):
-        if not data:
+        if not instance_ids:
             return
 
+        instances = [
+            self.get_instance_by_id(instance_id)
+            for instance_id in set(instance_ids)
+        ]
         self._emit_event(
             CREATE_ATTR_DEFS_CHANGED_TOPIC,
             {
-                "instance_ids": set(data)
+                "instances": instances,
             },
             sender,
         )
@@ -1224,14 +1262,23 @@ class CreateContext:
     ):
         if not attr_info:
             return
-        event_data = {}
-        for plugin_name, instance_id in attr_info:
-            instance_ids = event_data.setdefault(plugin_name, set())
-            instance_ids.add(instance_id)
+
+        instance_changes = {}
+        for instance_id, plugin_name in attr_info:
+            instance_data = instance_changes.setdefault(
+                instance_id,
+                {
+                    "instance": None,
+                    "plugin_names": set(),
+                }
+            )
+            instance = self.get_instance_by_id(instance_id)
+            instance_data["instance"] = instance
+            instance_data["plugin_names"].add(plugin_name)
 
         self._emit_event(
             PUBLISH_ATTR_DEFS_CHANGED_TOPIC,
-            event_data,
+            {"instance_changes": instance_changes},
             sender,
         )
 
@@ -1702,7 +1749,6 @@ class CreateContext:
             INSTANCE_REMOVED_TOPIC,
             {
                 "instances": removed_instances,
-                "create_context": self,
             },
             sender,
         )
@@ -1726,7 +1772,8 @@ class CreateContext:
             label = getattr(creator, "label", label)
 
             # Run create
-            result = creator.create(*args, **kwargs)
+            with self.bulk_instances_collection():
+                result = creator.create(*args, **kwargs)
             success = True
 
         except CreatorError:
