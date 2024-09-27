@@ -252,6 +252,9 @@ class HostToolsHelper:
             if tab:
                 window.set_current_tab(tab)
             window.make_sure_is_visible()
+            window.raise_()
+            window.activateWindow()
+            window.showNormal()
 
     def get_tool_by_name(self, tool_name, parent=None, *args, **kwargs):
         """Show tool by it's name.
