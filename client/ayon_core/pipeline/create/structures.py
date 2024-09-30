@@ -735,7 +735,7 @@ class CreatedInstance:
         return output
 
     def update_create_attr_defs(self, attr_defs, value=None):
-        if value is not None:
+        if value is None:
             value = self._data["creator_attributes"]
 
         if isinstance(value, AttributeValues):
@@ -744,7 +744,7 @@ class CreatedInstance:
         if isinstance(self._data["creator_attributes"], AttributeValues):
             origin_data = self._data["creator_attributes"].origin_data
         else:
-            origin_data = self._data["creator_attributes"]
+            origin_data = copy.deepcopy(self._data["creator_attributes"])
         self._data["creator_attributes"] = CreatorAttributeValues(
             self,
             "creator_attributes",
