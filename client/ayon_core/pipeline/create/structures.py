@@ -113,7 +113,10 @@ class AttributeValues:
         self._data = {}
         for attr_def in attr_defs:
             value = values.get(attr_def.key)
-            if value is not None:
+            if value is None:
+                continue
+            converted_value = attr_def.convert_value(value)
+            if converted_value == value:
                 self._data[attr_def.key] = value
 
     def __setitem__(self, key, value):
@@ -338,13 +341,6 @@ class PublishAttributes:
 
         if value is None:
             value = {}
-
-        for attr_def in attr_defs:
-            if isinstance(attr_def, (UIDef, UnknownDef)):
-                continue
-            key = attr_def.key
-            if key in value:
-                value[key] = attr_def.convert_value(value[key])
 
         self._data[plugin_name] = PublishAttributeValues(
             self, plugin_name, attr_defs, value, value
