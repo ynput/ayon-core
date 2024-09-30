@@ -255,7 +255,7 @@ function Write-Help {
     Write-Info -Text "  ruff-check                    ", "Run Ruff check for the repository" -Color White, Cyan
     Write-Info -Text "  ruff-fix                      ", "Run Ruff fix for the repository" -Color White, Cyan
     Write-Info -Text "  codespell                     ", "Run codespell check for the repository" -Color White, Cyan
-    Write-Info -Text "  run                           ", "Run the repository" -Color White, Cyan
+    Write-Info -Text "  run                           ", "Run a poetry command in the repository environment" -Color White, Cyan
     Write-Host ""
 }
 

@@ -157,7 +157,7 @@ default_help() {
   echo -e "  ${BWhite}ruff-check${RST}      ${BCyan}Run Ruff check for the repository${RST}"
   echo -e "  ${BWhite}ruff-fix${RST}        ${BCyan}Run Ruff fix for the repository${RST}"
   echo -e "  ${BWhite}codespell${RST}       ${BCyan}Run codespell check for the repository${RST}"
-  echo -e "  ${BWhite}run${RST}             ${BCyan}Run the repository${RST}"
+  echo -e "  ${BWhite}run${RST}             ${BCyan}Run a poetry command in the repository environment${RST}"
   echo ""
 }
 
