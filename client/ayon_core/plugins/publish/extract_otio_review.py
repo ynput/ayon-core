@@ -113,13 +113,16 @@ class ExtractOTIOReview(publish.Extractor):
             # get from media reference metadata source
             # TODO 'openpype' prefix should be removed (added 24/09/03)
             # NOTE it looks like it is set only in hiero integration
-            for variable, key in zip(variables, keys):
+            res_data = {"width": self.to_width, "height": self.to_height}
+            for key in res_data:
                 for meta_prefix in ("ayon.source.", "openpype.source."):
                     meta_key = f"{meta_prefix}.{key}"
-                    if media_metadata.get(meta_key):
-                        variable = media_metadata[meta_key]
+                    value = media_metadata.get(meta_key)
+                    if value is not None:
+                        res_data[key] = value
                         break
 
+            self.to_width, self.to_height = res_data["width"], res_data["height"]
             self.log.debug("> self.to_width x self.to_height: {} x {}".format(
                 self.to_width, self.to_height
             ))
