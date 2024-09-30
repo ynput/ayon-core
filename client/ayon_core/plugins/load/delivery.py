@@ -17,8 +17,7 @@ from ayon_core.pipeline.load import get_representation_path_with_anatomy
 from ayon_core.pipeline.delivery import (
     get_format_dict,
     check_destination_path,
-    deliver_single_file,
-    deliver_sequence,
+    deliver_single_file
 )
 
 
@@ -235,63 +234,51 @@ class DeliveryOptionsDialog(QtWidgets.QDialog):
             #  that are published along with the publish, because those should
             #  not adhere to the template directly but are ingested in a
             #  customized way. For example, maya look textures or any publish
-            #  that directly adds files into `instance.data["transfers"]`.
-            if repre.get("files"):
-                src_paths = []
-                for repre_file in repre["files"]:
-                    src_path = self.anatomy.fill_root(repre_file["path"])
-                    src_paths.append(src_path)
-                sources_and_frames = collect_frames(src_paths)
+            #  that directly adds files into `instance.data["transfers"]`
+            src_paths = []
+            for repre_file in repre["files"]:
+                src_path = self.anatomy.fill_root(repre_file["path"])
+                src_paths.append(src_path)
+            sources_and_frames = collect_frames(src_paths)
 
-                frames = set(sources_and_frames.values())
-                frames.discard(None)
-                first_frame = None
-                if frames:
-                    first_frame = min(frames)
+            frames = set(sources_and_frames.values())
+            frames.discard(None)
+            first_frame = None
+            if frames:
+                first_frame = min(frames)
 
-                for src_path, frame in sources_and_frames.items():
-                    args[0] = src_path
-                    # Renumber frames
-                    if renumber_frame and frame is not None:
-                        # Calculate offset between
-                        # first frame and current frame
-                        # - '0' for first frame
-                        offset = frame_offset - int(first_frame)
-                        # Add offset to new frame start
-                        dst_frame = int(frame) + offset
-                        if dst_frame < 0:
-                            msg = "Renumber frame has a smaller number than original frame"     # noqa
-                            report_items[msg].append(src_path)
-                            self.log.warning("{} <{}>".format(
-                                msg, dst_frame))
-                            continue
-                        frame = dst_frame
+            for src_path, frame in sources_and_frames.items():
+                args[0] = src_path
+                # Renumber frames
+                if renumber_frame and frame is not None:
+                    # Calculate offset between
+                    # first frame and current frame
+                    # - '0' for first frame
+                    offset = frame_offset - int(first_frame)
+                    # Add offset to new frame start
+                    dst_frame = int(frame) + offset
+                    if dst_frame < 0:
+                        msg = "Renumber frame has a smaller number than original frame"     # noqa
+                        report_items[msg].append(src_path)
+                        self.log.warning("{} <{}>".format(
+                            msg, dst_frame))
+                        continue
+                    frame = dst_frame
 
-                    if frame is not None:
-                        if repre["context"].get("frame"):
-                            anatomy_data["frame"] = frame
-                        elif repre["context"].get("udim"):
-                            anatomy_data["udim"] = frame
-                        else:
-                            # Fallback
-                            self.log.warning(
-                                "Representation context has no frame or udim"
-                                " data. Supplying sequence frame to '{frame}'"
-                                " formatting data."
-                            )
-                            anatomy_data["frame"] = frame
-                    new_report_items, uploaded = deliver_single_file(*args)
-                    report_items.update(new_report_items)
-                    self._update_progress(uploaded)
-            else:  # fallback for Pype2 and representations without files
-                frame = repre["context"].get("frame")
-                if frame:
-                    repre["context"]["frame"] = len(str(frame)) * "#"
-
-                if not frame:
-                    new_report_items, uploaded = deliver_single_file(*args)
-                else:
-                    new_report_items, uploaded = deliver_sequence(*args)
+                if frame is not None:
+                    if repre["context"].get("frame"):
+                        anatomy_data["frame"] = frame
+                    elif repre["context"].get("udim"):
+                        anatomy_data["udim"] = frame
+                    else:
+                        # Fallback
+                        self.log.warning(
+                            "Representation context has no frame or udim"
+                            " data. Supplying sequence frame to '{frame}'"
+                            " formatting data."
+                        )
+                        anatomy_data["frame"] = frame
+                new_report_items, uploaded = deliver_single_file(*args)
                 report_items.update(new_report_items)
                 self._update_progress(uploaded)
 
