@@ -9,6 +9,7 @@ AVALON_INSTANCE_ID = "pyblish.avalon.instance"
 HOST_WORKFILE_EXTENSIONS = {
     "blender": [".blend"],
     "celaction": [".scn"],
+    "cinema4d": [".c4d"],
     "tvpaint": [".tvpp"],
     "fusion": [".comp"],
     "harmony": [".zip"],
