@@ -9,7 +9,14 @@ from ayon_api import (
 
 
 class IntegrateInputLinksAYON(pyblish.api.ContextPlugin):
-    """Connecting version level dependency links"""
+    """Connecting version level dependency links
+
+    Handles links:
+        - generative - what gets produced from workfile
+        - reference - what was loaded into workfile
+
+    It expects workfile instance is being published.
+    """
 
     order = pyblish.api.IntegratorOrder + 0.2
     label = "Connect Dependency InputLinks AYON"
@@ -47,6 +54,11 @@ class IntegrateInputLinksAYON(pyblish.api.ContextPlugin):
         self.create_links_on_server(context, new_links_by_type)
 
     def split_instances(self, context):
+        """Separates published instances into workfile and other
+
+        Returns:
+            (tuple(pyblish.plugin.Instance), list(pyblish.plugin.Instance))
+        """
         workfile_instance = None
         other_instances = []
 
@@ -83,6 +95,15 @@ class IntegrateInputLinksAYON(pyblish.api.ContextPlugin):
     def create_workfile_links(
         self, workfile_instance, other_instances, new_links_by_type
     ):
+        """Adds links (generative and reference) for workfile.
+
+        Args:
+            workfile_instance (pyblish.plugin.Instance): published workfile
+            other_instances (list[pyblish.plugin.Instance]): other published
+                instances
+            new_links_by_type (dict[str, list[str]]): dictionary collecting new
+                created links by its type
+        """
         if workfile_instance is None:
             self.log.warn("No workfile in this publish session.")
             return
@@ -97,7 +118,7 @@ class IntegrateInputLinksAYON(pyblish.api.ContextPlugin):
                 instance.data["versionEntity"]["id"],
             )
 
-        loaded_versions = workfile_instance.context.get("loadedVersions")
+        loaded_versions = workfile_instance.context.data.get("loadedVersions")
         if not loaded_versions:
             return
 
