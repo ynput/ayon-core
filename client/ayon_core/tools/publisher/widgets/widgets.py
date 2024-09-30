@@ -1386,6 +1386,11 @@ class CreatorAttrsWidget(QtWidgets.QWidget):
         main_layout.setSpacing(0)
         main_layout.addWidget(scroll_area, 1)
 
+        controller.register_event_callback(
+            "create.context.create.attrs.changed",
+            self._on_instance_attr_defs_change
+        )
+
         self._main_layout = main_layout
 
         self._controller: AbstractPublisherFrontend = controller
@@ -1393,6 +1398,7 @@ class CreatorAttrsWidget(QtWidgets.QWidget):
 
         self._attr_def_id_to_instances = {}
         self._attr_def_id_to_attr_def = {}
+        self._current_instance_ids = set()
 
         # To store content of scroll area to prevent garbage collection
         self._content_widget = None
@@ -1409,6 +1415,7 @@ class CreatorAttrsWidget(QtWidgets.QWidget):
     def set_current_instances(self, instance_ids):
         """Set current instances for which are attribute definitions shown."""
 
+        self._current_instance_ids = set(instance_ids)
         prev_content_widget = self._scroll_area.widget()
         if prev_content_widget:
             self._scroll_area.takeWidget()
@@ -1481,6 +1488,16 @@ class CreatorAttrsWidget(QtWidgets.QWidget):
 
         self._scroll_area.setWidget(content_widget)
         self._content_widget = content_widget
+
+    def _on_instance_attr_defs_change(self, event):
+        update = False
+        for instance_id in event.data["instance_ids"]:
+            if instance_id in self._current_instance_ids:
+                update = True
+                break
+
+        if update:
+            self.set_current_instances(self._current_instance_ids)
 
     def _input_value_changed(self, value, attr_id):
         instance_ids = self._attr_def_id_to_instances.get(attr_id)
