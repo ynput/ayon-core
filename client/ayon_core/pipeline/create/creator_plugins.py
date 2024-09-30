@@ -205,6 +205,7 @@ class BaseCreator(ABC):
         self.headless = headless
 
         self.apply_settings(project_settings)
+        self.register_callbacks()
 
     @staticmethod
     def _get_settings_values(project_settings, category_name, plugin_name):
@@ -289,6 +290,14 @@ class BaseCreator(ABC):
                     key, cls_name
                 ))
             setattr(self, key, value)
+
+    def register_callbacks(self):
+        """Register callbacks for creator.
+
+        Default implementation does nothing. It can be overridden to register
+        callbacks for creator.
+        """
+        pass
 
     @property
     def identifier(self):
