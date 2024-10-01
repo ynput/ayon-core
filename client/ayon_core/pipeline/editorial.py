@@ -190,7 +190,7 @@ def get_media_range_with_retimes(otio_clip, handle_start, handle_end):
     # Temporary.
     # Some AYON custom OTIO exporter were implemented with relative
     # source range for image sequence. Following code maintain
-    # backward-compatibility by adjusting available range 
+    # backward-compatibility by adjusting available range
     # while we are updating those.
     if (
         is_input_sequence
