@@ -215,7 +215,7 @@ class PublishPluginAttrsWidget(QtWidgets.QWidget):
             self._on_instance_value_change
         )
 
-        self._instance_ids = set()
+        self._current_instance_ids = set()
         self._context_selected = False
 
         self._main_layout = main_layout
@@ -241,7 +241,7 @@ class PublishPluginAttrsWidget(QtWidgets.QWidget):
     def set_current_instances(self, instance_ids, context_selected):
         """Set current instances for which are attribute definitions shown."""
 
-        self._instance_ids = set(instance_ids)
+        self._current_instance_ids = set(instance_ids)
         self._context_selected = context_selected
         self._refresh_content()
 
@@ -259,7 +259,7 @@ class PublishPluginAttrsWidget(QtWidgets.QWidget):
         self._attr_def_id_to_plugin_name = {}
 
         result = self._controller.get_publish_attribute_definitions(
-            self._instance_ids, self._context_selected
+            self._current_instance_ids, self._context_selected
         )
 
         content_widget = QtWidgets.QWidget(self._scroll_area)
@@ -359,7 +359,7 @@ class PublishPluginAttrsWidget(QtWidgets.QWidget):
         for instance_id in event.data:
             if (
                 instance_id is None and self._context_selected
-                or instance_id in self._instance_ids
+                or instance_id in self._current_instance_ids
             ):
                 self._refresh_content()
                 break
