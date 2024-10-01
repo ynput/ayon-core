@@ -119,7 +119,7 @@ class ProductInfoWidget(QtWidgets.QWidget):
         layout.addWidget(bottom_widget, 1)
 
         self._convertor_identifiers = None
-        self._current_instances = None
+        self._current_instances = []
         self._context_selected = False
         self._all_instances_valid = True
 
@@ -131,7 +131,8 @@ class ProductInfoWidget(QtWidgets.QWidget):
         thumbnail_widget.thumbnail_cleared.connect(self._on_thumbnail_clear)
 
         controller.register_event_callback(
-            "instance.thumbnail.changed", self._on_thumbnail_changed
+            "instance.thumbnail.changed",
+            self._on_thumbnail_changed
         )
 
         self._controller: AbstractPublisherFrontend = controller
@@ -157,11 +158,18 @@ class ProductInfoWidget(QtWidgets.QWidget):
                 instances.
             context_selected (bool): Is context selected.
             convertor_identifiers (List[str]): Identifiers of convert items.
-        """
 
+        """
+        s_convertor_identifiers = set(convertor_identifiers)
+        self._current_instances = instances
+        self._context_selected = context_selected
+        self._convertor_identifiers = s_convertor_identifiers
+        self._refresh_instances()
+
+    def _refresh_instances(self):
         instance_ids = {
             instance.id
-            for instance in instances
+            for instance in self._current_instances
         }
         context_info_by_id = self._controller.get_instances_context_info(
             instance_ids
@@ -173,17 +181,15 @@ class ProductInfoWidget(QtWidgets.QWidget):
                 all_valid = False
                 break
 
-        s_convertor_identifiers = set(convertor_identifiers)
-        self._convertor_identifiers = s_convertor_identifiers
-        self._current_instances = instances
-        self._context_selected = context_selected
         self._all_instances_valid = all_valid
 
-        self._convert_widget.setVisible(len(s_convertor_identifiers) > 0)
-        self.global_attrs_widget.set_current_instances(instances)
+        self._convert_widget.setVisible(len(self._convertor_identifiers) > 0)
+        self.global_attrs_widget.set_current_instances(
+            self._current_instances
+        )
         self.creator_attrs_widget.set_current_instances(instance_ids)
         self.publish_attrs_widget.set_current_instances(
-            instance_ids, context_selected
+            instance_ids, self._context_selected
         )
         self.creator_attrs_widget.set_instances_valid(all_valid)
         self.publish_attrs_widget.set_instances_valid(all_valid)
