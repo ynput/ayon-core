@@ -147,29 +147,6 @@ class ProductInfoWidget(QtWidgets.QWidget):
         self.top_bottom = top_bottom
         self.bottom_separator = bottom_separator
 
-    def _on_instance_context_changed(self):
-        instance_ids = {
-            instance.id
-            for instance in self._current_instances
-        }
-        context_info_by_id = self._controller.get_instances_context_info(
-            instance_ids
-        )
-        all_valid = True
-        for instance_id, context_info in context_info_by_id.items():
-            if not context_info.is_valid:
-                all_valid = False
-                break
-
-        self._all_instances_valid = all_valid
-        self.creator_attrs_widget.set_instances_valid(all_valid)
-        self.publish_attrs_widget.set_instances_valid(all_valid)
-
-        self.instance_context_changed.emit()
-
-    def _on_convert_click(self):
-        self.convert_requested.emit()
-
     def set_current_instances(
         self, instances, context_selected, convertor_identifiers
     ):
@@ -212,6 +189,29 @@ class ProductInfoWidget(QtWidgets.QWidget):
         self.publish_attrs_widget.set_instances_valid(all_valid)
 
         self._update_thumbnails()
+
+    def _on_instance_context_changed(self):
+        instance_ids = {
+            instance.id
+            for instance in self._current_instances
+        }
+        context_info_by_id = self._controller.get_instances_context_info(
+            instance_ids
+        )
+        all_valid = True
+        for instance_id, context_info in context_info_by_id.items():
+            if not context_info.is_valid:
+                all_valid = False
+                break
+
+        self._all_instances_valid = all_valid
+        self.creator_attrs_widget.set_instances_valid(all_valid)
+        self.publish_attrs_widget.set_instances_valid(all_valid)
+
+        self.instance_context_changed.emit()
+
+    def _on_convert_click(self):
+        self.convert_requested.emit()
 
     def _on_thumbnail_create(self, path):
         instance_ids = [
