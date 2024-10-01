@@ -265,6 +265,11 @@ class AbstractPublisherFrontend(AbstractPublisherCommon):
         """
         pass
 
+    @abstractmethod
+    def get_folder_id_from_path(self, folder_path: str) -> Optional[str]:
+        """Get folder id from folder path."""
+        pass
+
     # --- Create ---
     @abstractmethod
     def get_creator_items(self) -> Dict[str, "CreatorItem"]:
@@ -272,6 +277,21 @@ class AbstractPublisherFrontend(AbstractPublisherCommon):
 
         Returns:
             Dict[str, CreatorItem]: Creator items that will be shown to user.
+
+        """
+        pass
+
+    @abstractmethod
+    def get_creator_item_by_id(
+        self, identifier: str
+    ) -> Optional["CreatorItem"]:
+        """Get creator item by identifier.
+
+        Args:
+            identifier (str): Create plugin identifier.
+
+        Returns:
+            Optional[CreatorItem]: Creator item or None.
 
         """
         pass

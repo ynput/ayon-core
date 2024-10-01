@@ -374,6 +374,9 @@ class CreateModel:
         self._create_context.listen_to_value_changes(
             self._cc_value_changed
         )
+        self._create_context.listen_to_pre_create_attr_defs_change(
+            self._cc_pre_create_attr_changed
+        )
         self._create_context.listen_to_create_attr_defs_change(
             self._cc_create_attr_changed
         )
@@ -386,7 +389,7 @@ class CreateModel:
     def get_creator_items(self) -> Dict[str, CreatorItem]:
         """Creators that can be shown in create dialog."""
         if self._creator_items is None:
-            self._creator_items = self._collect_creator_items()
+            self._refresh_creator_items()
         return self._creator_items
 
     def get_creator_item_by_id(
@@ -883,6 +886,21 @@ class CreateModel:
 
         return output
 
+    def _refresh_creator_items(self, identifiers=None):
+        if identifiers is None:
+            self._creator_items = self._collect_creator_items()
+            return
+
+        for identifier in identifiers:
+            if identifier not in self._creator_items:
+                continue
+            creator = self._create_context.creators.get(identifier)
+            if creator is None:
+                continue
+            self._creator_items[identifier] = (
+                CreatorItem.from_creator(creator)
+            )
+
     def _cc_added_instance(self, event):
         instance_ids = {
             instance.id
@@ -917,6 +935,14 @@ class CreateModel:
         self._emit_event(
             "create.context.value.changed",
             {"instance_changes": instance_changes},
+        )
+
+    def _cc_pre_create_attr_changed(self, event):
+        identifiers = event["identifiers"]
+        self._refresh_creator_items(identifiers)
+        self._emit_event(
+            "create.context.pre.create.attrs.changed",
+            {"identifiers": identifiers},
         )
 
     def _cc_create_attr_changed(self, event):
