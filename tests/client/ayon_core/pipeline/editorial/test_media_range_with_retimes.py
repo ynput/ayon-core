@@ -146,3 +146,23 @@ def test_img_sequence_with_embedded_tc_and_handles():
         "img_seq_embedded_tc.json",
         expected_data
     )
+
+
+def test_img_sequence_relative_source_range():
+    """
+    Img sequence clip (embedded timecode 1h)
+    available files = 1000-1100
+    source_range =  fps
+    """
+    expected_data = {
+        'mediaIn': 1000,
+        'mediaOut': 1098,
+        'handleStart': 0,
+        'handleEnd': 2,
+        'speed': 1.0
+    }
+
+    _check_expected_retimed_values(
+        "legacy_img_sequence.json",
+        expected_data
+    )
