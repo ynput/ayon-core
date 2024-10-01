@@ -3,7 +3,6 @@ from .constants import (
     AVALON_INSTANCE_ID,
     AYON_CONTAINER_ID,
     AYON_INSTANCE_ID,
-    HOST_WORKFILE_EXTENSIONS,
 )
 
 from .anatomy import Anatomy
@@ -114,7 +113,6 @@ __all__ = (
     "AVALON_INSTANCE_ID",
     "AYON_CONTAINER_ID",
     "AYON_INSTANCE_ID",
-    "HOST_WORKFILE_EXTENSIONS",
 
     # --- Anatomy ---
     "Anatomy",
