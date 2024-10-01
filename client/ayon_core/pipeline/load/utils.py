@@ -521,7 +521,7 @@ def update_container(container, version=-1):
         # The representation name is not found in the new version.
         # Allow updating to a 'matching' representation if the loader
         # has defined compatible update conversions
-        mapping = Loader.update_allowed_representation_switches()
+        mapping = Loader().update_allowed_representation_switches()
         switch_repre_names = mapping.get(repre_name)
         if switch_repre_names:
             representations = ayon_api.get_representations(
