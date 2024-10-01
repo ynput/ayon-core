@@ -195,6 +195,11 @@ class PublisherController(
     def get_instances_context_info(self, instance_ids=None):
         return self._create_model.get_instances_context_info(instance_ids)
 
+    def set_instances_context_info(self, changes_by_instance_id):
+        return self._create_model.set_instances_context_info(
+            changes_by_instance_id
+        )
+
     def get_convertor_items(self):
         return self._create_model.get_convertor_items()
 
