@@ -19,7 +19,8 @@ class OCIOEnvHook(PreLaunchHook):
         "nuke",
         "hiero",
         "resolve",
-        "openrv"
+        "openrv",
+        "cinema4d"
     }
     launch_types = set()
 
