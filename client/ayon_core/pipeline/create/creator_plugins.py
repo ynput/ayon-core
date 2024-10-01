@@ -831,6 +831,16 @@ class Creator(BaseCreator):
         """
         return self.pre_create_attr_defs
 
+    def _pre_create_attr_defs_changed(self):
+        """Called when pre-create attribute definitions change.
+
+        Create plugin can call this method when knows that
+            'get_pre_create_attr_defs' should be called again.
+        """
+        self.create_context.create_plugin_pre_create_attr_defs_changed(
+            self.identifier
+        )
+
 
 class HiddenCreator(BaseCreator):
     @abstractmethod

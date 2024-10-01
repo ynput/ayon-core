@@ -72,6 +72,7 @@ _NOT_SET = object()
 INSTANCE_ADDED_TOPIC = "instances.added"
 INSTANCE_REMOVED_TOPIC = "instances.removed"
 VALUE_CHANGED_TOPIC = "values.changed"
+PRE_CREATE_ATTR_DEFS_CHANGED_TOPIC = "pre.create.attr.defs.changed"
 CREATE_ATTR_DEFS_CHANGED_TOPIC = "create.attr.defs.changed"
 PUBLISH_ATTR_DEFS_CHANGED_TOPIC = "publish.attr.defs.changed"
 
@@ -233,11 +234,14 @@ class CreateContext:
         #       using context manager which will trigger validation
         #       after leaving of last context manager scope
         self._bulk_info = {
-            # Collect instances
+            # Added instances
             "add": BulkInfo(),
+            # Removed instances
             "remove": BulkInfo(),
             # Change values of instances or create context
             "change": BulkInfo(),
+            # Pre create attribute definitions changed
+            "pre_create_attrs_change": BulkInfo(),
             # Create attribute definitions changed
             "create_attrs_change": BulkInfo(),
             # Publish attribute definitions changed
@@ -538,7 +542,7 @@ class CreateContext:
         """Cleanup thumbnail paths.
 
         Remove all thumbnail filepaths that are empty or lead to files which
-        does not exists or of instances that are not available anymore.
+        does not exist or of instances that are not available anymore.
         """
 
         invalid = set()
@@ -1089,6 +1093,11 @@ class CreateContext:
             yield bulk_info
 
     @contextmanager
+    def bulk_pre_create_attr_defs_change(self, sender=None):
+        with self._bulk_context("pre_create_attrs_change", sender) as bulk_info:
+            yield bulk_info
+
+    @contextmanager
     def bulk_create_attr_defs_change(self, sender=None):
         with self._bulk_context("create_attrs_change", sender) as bulk_info:
             yield bulk_info
@@ -1099,41 +1108,78 @@ class CreateContext:
             yield bulk_info
 
     # --- instance change callbacks ---
-    def _is_instance_events_ready(self, instance_id):
-        # Context is ready
-        if instance_id is None:
-            return True
-        # Instance is not in yet in context
-        if instance_id not in self._instances_by_id:
-            return False
+    def create_plugin_pre_create_attr_defs_changed(self, identifier: str):
+        """Create plugin pre-create attributes changed.
 
-        # Instance in 'collect' bulk will be ignored
-        for instance in self._bulk_info["add"].get_data():
-            if instance.id == instance_id:
-                return False
-        return True
+        Triggered by 'Creator'.
 
-    def instance_create_attr_defs_changed(self, instance_id):
+        Args:
+            identifier (str): Create plugin identifier.
+
+        """
+        with self.bulk_pre_create_attr_defs_change() as bulk_item:
+            bulk_item.append(identifier)
+
+    def instance_create_attr_defs_changed(self, instance_id: str):
+        """Instance attribute definitions changed.
+
+        Triggered by instance 'CreatorAttributeValues' on instance.
+
+        Args:
+            instance_id (str): Instance id.
+
+        """
         if self._is_instance_events_ready(instance_id):
             with self.bulk_create_attr_defs_change() as bulk_item:
                 bulk_item.append(instance_id)
 
     def instance_publish_attr_defs_changed(
-        self, instance_id, plugin_name
+        self, instance_id: Optional[str], plugin_name: str
     ):
+        """Instance attribute definitions changed.
+
+        Triggered by instance 'PublishAttributeValues' on instance.
+
+        Args:
+            instance_id (Optional[str]): Instance id or None for context.
+            plugin_name (str): Plugin name which attribute definitions were
+                changed.
+
+        """
         if self._is_instance_events_ready(instance_id):
             with self.bulk_publish_attr_defs_change() as bulk_item:
                 bulk_item.append((instance_id, plugin_name))
 
     def instance_values_changed(
-        self, instance_id, new_values
+        self, instance_id: Optional[str], new_values: Dict[str, Any]
     ):
+        """Instance value changed.
+
+        Triggered by `CreatedInstance, 'CreatorAttributeValues'
+            or 'PublishAttributeValues' on instance.
+
+        Args:
+            instance_id (Optional[str]): Instance id or None for context.
+            new_values (Dict[str, Any]): Changed values.
+
+        """
         if self._is_instance_events_ready(instance_id):
             with self.bulk_value_changes() as bulk_item:
                 bulk_item.append((instance_id, new_values))
 
     # --- context change callbacks ---
-    def publish_attribute_value_changed(self, plugin_name, value):
+    def publish_attribute_value_changed(
+        self, plugin_name: str, value: Dict[str, Any]
+    ):
+        """Context publish attribute values changed.
+
+        Triggered by instance 'PublishAttributeValues' on context.
+
+        Args:
+            plugin_name (str): Plugin name which changed value.
+            value (Dict[str, Any]): Changed values.
+
+        """
         self.instance_values_changed(
             None,
             {
@@ -1141,172 +1187,6 @@ class CreateContext:
                     plugin_name: value,
                 },
             },
-        )
-
-    @contextmanager
-    def _bulk_context(self, key, sender):
-        bulk_info = self._bulk_info[key]
-        bulk_info.set_sender(sender)
-
-        bulk_info.increase()
-        if key not in self._bulk_order:
-            self._bulk_order.append(key)
-        try:
-            yield bulk_info
-        finally:
-            bulk_info.decrease()
-            if bulk_info:
-                self._bulk_finished(key)
-
-    def _bulk_finished(self, key):
-        if self._bulk_order[0] != key:
-            return
-
-        self._bulk_order.pop(0)
-        self._bulk_finish(key)
-
-        while self._bulk_order:
-            key = self._bulk_order[0]
-            if not self._bulk_info[key]:
-                break
-            self._bulk_order.pop(0)
-            self._bulk_finish(key)
-
-    def _bulk_finish(self, key):
-        bulk_info = self._bulk_info[key]
-        sender = bulk_info.get_sender()
-        data = bulk_info.pop_data()
-        if key == "add":
-            self._bulk_add_instances_finished(data, sender)
-        elif key == "remove":
-            self._bulk_remove_instances_finished(data, sender)
-        elif key == "change":
-            self._bulk_values_change_finished(data, sender)
-        elif key == "create_attrs_change":
-            self._bulk_create_attrs_change_finished(data, sender)
-        elif key == "publish_attrs_change":
-            self._bulk_publish_attrs_change_finished(data, sender)
-
-    def _bulk_add_instances_finished(self, instances_to_validate, sender):
-        if not instances_to_validate:
-            return
-
-        # Cache folder and task entities for all instances at once
-        self.get_instances_context_info(instances_to_validate)
-
-        self._emit_event(
-            INSTANCE_ADDED_TOPIC,
-            {
-                "instances": instances_to_validate,
-            },
-            sender,
-        )
-
-    def _bulk_remove_instances_finished(self, instances_to_remove, sender):
-        if not instances_to_remove:
-            return
-
-        self._emit_event(
-            INSTANCE_REMOVED_TOPIC,
-            {
-                "instances": instances_to_remove,
-            },
-            sender,
-        )
-
-    def _bulk_values_change_finished(
-        self,
-        changes: Tuple[Union[str, None], Dict[str, Any]],
-        sender: Optional[str],
-    ):
-        if not changes:
-            return
-        item_data_by_id = {}
-        for item_id, item_changes in changes:
-            item_values = item_data_by_id.setdefault(item_id, {})
-            if "creator_attributes" in item_changes:
-                current_value = item_values.setdefault(
-                    "creator_attributes", {}
-                )
-                current_value.update(
-                    item_changes.pop("creator_attributes")
-                )
-
-            if "publish_attributes" in item_changes:
-                current_publish = item_values.setdefault(
-                    "publish_attributes", {}
-                )
-                for plugin_name, plugin_value in item_changes.pop(
-                    "publish_attributes"
-                ).items():
-                    plugin_changes = current_publish.setdefault(
-                        plugin_name, {}
-                    )
-                    plugin_changes.update(plugin_value)
-
-            item_values.update(item_changes)
-
-        event_changes = []
-        for item_id, item_changes in item_data_by_id.items():
-            instance = self.get_instance_by_id(item_id)
-            event_changes.append({
-                "instance": instance,
-                "changes": item_changes,
-            })
-
-        event_data = {
-            "changes": event_changes,
-        }
-
-        self._emit_event(
-            VALUE_CHANGED_TOPIC,
-            event_data,
-            sender
-        )
-
-    def _bulk_create_attrs_change_finished(
-        self, instance_ids: List[str], sender: Optional[str]
-    ):
-        if not instance_ids:
-            return
-
-        instances = [
-            self.get_instance_by_id(instance_id)
-            for instance_id in set(instance_ids)
-        ]
-        self._emit_event(
-            CREATE_ATTR_DEFS_CHANGED_TOPIC,
-            {
-                "instances": instances,
-            },
-            sender,
-        )
-
-    def _bulk_publish_attrs_change_finished(
-        self,
-        attr_info: Tuple[str, Union[str, None]],
-        sender: Optional[str],
-    ):
-        if not attr_info:
-            return
-
-        instance_changes = {}
-        for instance_id, plugin_name in attr_info:
-            instance_data = instance_changes.setdefault(
-                instance_id,
-                {
-                    "instance": None,
-                    "plugin_names": set(),
-                }
-            )
-            instance = self.get_instance_by_id(instance_id)
-            instance_data["instance"] = instance
-            instance_data["plugin_names"].add(plugin_name)
-
-        self._emit_event(
-            PUBLISH_ATTR_DEFS_CHANGED_TOPIC,
-            {"instance_changes": instance_changes},
-            sender,
         )
 
     def reset_instances(self):
@@ -1809,3 +1689,207 @@ class CreateContext:
                 identifier, label, exc_info, add_traceback
             )
         return result, fail_info
+
+    def _is_instance_events_ready(self, instance_id: Optional[str]) -> bool:
+        # Context is ready
+        if instance_id is None:
+            return True
+        # Instance is not in yet in context
+        if instance_id not in self._instances_by_id:
+            return False
+
+        # Instance in 'collect' bulk will be ignored
+        for instance in self._bulk_info["add"].get_data():
+            if instance.id == instance_id:
+                return False
+        return True
+
+    @contextmanager
+    def _bulk_context(self, key: str, sender: Optional[str]):
+        bulk_info = self._bulk_info[key]
+        bulk_info.set_sender(sender)
+
+        bulk_info.increase()
+        if key not in self._bulk_order:
+            self._bulk_order.append(key)
+        try:
+            yield bulk_info
+        finally:
+            bulk_info.decrease()
+            if bulk_info:
+                self._bulk_finished(key)
+
+    def _bulk_finished(self, key: str):
+        if self._bulk_order[0] != key:
+            return
+
+        self._bulk_order.pop(0)
+        self._bulk_finish(key)
+
+        while self._bulk_order:
+            key = self._bulk_order[0]
+            if not self._bulk_info[key]:
+                break
+            self._bulk_order.pop(0)
+            self._bulk_finish(key)
+
+    def _bulk_finish(self, key: str):
+        bulk_info = self._bulk_info[key]
+        sender = bulk_info.get_sender()
+        data = bulk_info.pop_data()
+        if key == "add":
+            self._bulk_add_instances_finished(data, sender)
+        elif key == "remove":
+            self._bulk_remove_instances_finished(data, sender)
+        elif key == "change":
+            self._bulk_values_change_finished(data, sender)
+        elif key == "pre_create_attrs_change":
+            self._bulk_pre_create_attrs_change_finished(data, sender)
+        elif key == "create_attrs_change":
+            self._bulk_create_attrs_change_finished(data, sender)
+        elif key == "publish_attrs_change":
+            self._bulk_publish_attrs_change_finished(data, sender)
+
+    def _bulk_add_instances_finished(
+        self,
+        instances_to_validate: List["CreatedInstance"],
+        sender: Optional[str]
+    ):
+        if not instances_to_validate:
+            return
+
+        # Cache folder and task entities for all instances at once
+        self.get_instances_context_info(instances_to_validate)
+
+        self._emit_event(
+            INSTANCE_ADDED_TOPIC,
+            {
+                "instances": instances_to_validate,
+            },
+            sender,
+        )
+
+    def _bulk_remove_instances_finished(
+        self,
+        instances_to_remove: List["CreatedInstance"],
+        sender: Optional[str]
+    ):
+        if not instances_to_remove:
+            return
+
+        self._emit_event(
+            INSTANCE_REMOVED_TOPIC,
+            {
+                "instances": instances_to_remove,
+            },
+            sender,
+        )
+
+    def _bulk_values_change_finished(
+        self,
+        changes: Tuple[Union[str, None], Dict[str, Any]],
+        sender: Optional[str],
+    ):
+        if not changes:
+            return
+        item_data_by_id = {}
+        for item_id, item_changes in changes:
+            item_values = item_data_by_id.setdefault(item_id, {})
+            if "creator_attributes" in item_changes:
+                current_value = item_values.setdefault(
+                    "creator_attributes", {}
+                )
+                current_value.update(
+                    item_changes.pop("creator_attributes")
+                )
+
+            if "publish_attributes" in item_changes:
+                current_publish = item_values.setdefault(
+                    "publish_attributes", {}
+                )
+                for plugin_name, plugin_value in item_changes.pop(
+                    "publish_attributes"
+                ).items():
+                    plugin_changes = current_publish.setdefault(
+                        plugin_name, {}
+                    )
+                    plugin_changes.update(plugin_value)
+
+            item_values.update(item_changes)
+
+        event_changes = []
+        for item_id, item_changes in item_data_by_id.items():
+            instance = self.get_instance_by_id(item_id)
+            event_changes.append({
+                "instance": instance,
+                "changes": item_changes,
+            })
+
+        event_data = {
+            "changes": event_changes,
+        }
+
+        self._emit_event(
+            VALUE_CHANGED_TOPIC,
+            event_data,
+            sender
+        )
+
+    def _bulk_pre_create_attrs_change_finished(
+        self, identifiers: List[str], sender: Optional[str]
+    ):
+        if not identifiers:
+            return
+        identifiers = list(set(identifiers))
+        self._emit_event(
+            PRE_CREATE_ATTR_DEFS_CHANGED_TOPIC,
+            {
+                "identifiers": identifiers,
+            },
+            sender,
+        )
+
+    def _bulk_create_attrs_change_finished(
+        self, instance_ids: List[str], sender: Optional[str]
+    ):
+        if not instance_ids:
+            return
+
+        instances = [
+            self.get_instance_by_id(instance_id)
+            for instance_id in set(instance_ids)
+        ]
+        self._emit_event(
+            CREATE_ATTR_DEFS_CHANGED_TOPIC,
+            {
+                "instances": instances,
+            },
+            sender,
+        )
+
+    def _bulk_publish_attrs_change_finished(
+        self,
+        attr_info: Tuple[str, Union[str, None]],
+        sender: Optional[str],
+    ):
+        if not attr_info:
+            return
+
+        instance_changes = {}
+        for instance_id, plugin_name in attr_info:
+            instance_data = instance_changes.setdefault(
+                instance_id,
+                {
+                    "instance": None,
+                    "plugin_names": set(),
+                }
+            )
+            instance = self.get_instance_by_id(instance_id)
+            instance_data["instance"] = instance
+            instance_data["plugin_names"].add(plugin_name)
+
+        self._emit_event(
+            PUBLISH_ATTR_DEFS_CHANGED_TOPIC,
+            {"instance_changes": instance_changes},
+            sender,
+        )
