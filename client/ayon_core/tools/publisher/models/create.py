@@ -526,9 +526,10 @@ class CreateModel:
 
         success = True
         try:
-            self._create_context.create_with_unified_error(
-                creator_identifier, product_name, instance_data, options
-            )
+            with self._create_context.bulk_add_instances():
+                self._create_context.create_with_unified_error(
+                    creator_identifier, product_name, instance_data, options
+                )
 
         except CreatorsOperationFailed as exc:
             success = False
@@ -661,6 +662,7 @@ class CreateModel:
                 value = None
                 if attr_def.is_value_def:
                     value = instance.creator_attributes[attr_def.key]
+
                 if found_idx is None:
                     idx = len(output)
                     output.append((attr_def, [instance_id], [value]))
