@@ -234,7 +234,7 @@ class CreateContext:
         #       after leaving of last context manager scope
         self._bulk_info = {
             # Collect instances
-            "collect": BulkInfo(),
+            "add": BulkInfo(),
             "remove": BulkInfo(),
             # Change values of instances or create context
             "change": BulkInfo(),
@@ -527,7 +527,7 @@ class CreateContext:
         self.reset_plugins(discover_publish_plugins)
         self.reset_context_data()
 
-        with self.bulk_instances_collection():
+        with self.bulk_add_instances():
             self.reset_instances()
             self.find_convertor_items()
             self.execute_autocreators()
@@ -841,9 +841,9 @@ class CreateContext:
 
         self._instances_by_id[instance.id] = instance
 
-        # Add instance to be validated inside 'bulk_instances_collection'
+        # Add instance to be validated inside 'bulk_add_instances'
         #   context manager if is inside bulk
-        with self.bulk_instances_collection() as bulk_info:
+        with self.bulk_add_instances() as bulk_info:
             bulk_info.append(instance)
 
     def _get_creator_in_create(self, identifier):
@@ -970,7 +970,7 @@ class CreateContext:
                 active = bool(active)
             instance_data["active"] = active
 
-        with self.bulk_instances_collection():
+        with self.bulk_add_instances():
             return creator.create(
                 product_name,
                 instance_data,
@@ -1023,8 +1023,8 @@ class CreateContext:
         self.convertor_items_by_id.pop(convertor_identifier, None)
 
     @contextmanager
-    def bulk_instances_collection(self, sender=None):
-        with self._bulk_context("collect", sender) as bulk_info:
+    def bulk_add_instances(self, sender=None):
+        with self._bulk_context("add", sender) as bulk_info:
             yield bulk_info
 
             # Set publish attributes before bulk context is exited
@@ -1072,6 +1072,13 @@ class CreateContext:
                     )
 
     @contextmanager
+    def bulk_instances_collection(self, sender=None):
+        """DEPRECATED use 'bulk_add_instances' instead."""
+        # TODO add warning
+        with self.bulk_add_instances(sender) as bulk_info:
+            yield bulk_info
+
+    @contextmanager
     def bulk_remove_instances(self, sender=None):
         with self._bulk_context("remove", sender) as bulk_info:
             yield bulk_info
@@ -1101,7 +1108,7 @@ class CreateContext:
             return False
 
         # Instance in 'collect' bulk will be ignored
-        for instance in self._bulk_info["collect"].get_data():
+        for instance in self._bulk_info["add"].get_data():
             if instance.id == instance_id:
                 return False
         return True
@@ -1169,8 +1176,8 @@ class CreateContext:
         bulk_info = self._bulk_info[key]
         sender = bulk_info.get_sender()
         data = bulk_info.pop_data()
-        if key == "collect":
-            self._bulk_instances_collection(data, sender)
+        if key == "add":
+            self._bulk_add_instances_finished(data, sender)
         elif key == "remove":
             self._bulk_remove_instances_finished(data, sender)
         elif key == "change":
@@ -1180,7 +1187,7 @@ class CreateContext:
         elif key == "publish_attrs_change":
             self._bulk_publish_attrs_change(data, sender)
 
-    def _bulk_instances_collection(self, instances_to_validate, sender):
+    def _bulk_add_instances_finished(self, instances_to_validate, sender):
         if not instances_to_validate:
             return
 
@@ -1781,7 +1788,7 @@ class CreateContext:
             label = getattr(creator, "label", label)
 
             # Run create
-            with self.bulk_instances_collection():
+            with self.bulk_add_instances():
                 result = creator.create(*args, **kwargs)
             success = True
 
