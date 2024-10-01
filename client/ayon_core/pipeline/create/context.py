@@ -801,6 +801,11 @@ class CreateContext:
     def listen_to_value_changes(self, callback):
         self._event_hub.add_callback(VALUE_CHANGED_TOPIC, callback)
 
+    def listen_to_pre_create_attr_defs_change(self, callback):
+        self._event_hub.add_callback(
+            PRE_CREATE_ATTR_DEFS_CHANGED_TOPIC, callback
+        )
+
     def listen_to_create_attr_defs_change(self, callback):
         self._event_hub.add_callback(CREATE_ATTR_DEFS_CHANGED_TOPIC, callback)
 
