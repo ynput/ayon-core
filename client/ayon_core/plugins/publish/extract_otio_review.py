@@ -133,6 +133,22 @@ class ExtractOTIOReview(publish.Extractor):
                 start = src_range.start_time.rescaled_to(self.actual_fps)
                 duration = src_range.duration.rescaled_to(self.actual_fps)
 
+                # Temporary.
+                # Some AYON custom OTIO exporter were implemented with relative
+                # source range for image sequence. Following code maintain
+                # backward-compatibility by adjusting available range
+                # while we are updating those.
+                media_ref = r_otio_cl.media_reference
+                if (
+                    is_clip_from_media_sequence(r_otio_cl)
+                    and available_range.start_time.to_frames() == media_ref.start_frame
+                    and src_range.start_time.to_frames() < media_ref.start_frame
+                ):
+                    available_range = otio.opentime.TimeRange(
+                        otio.opentime.RationalTime(0, rate=self.actual_fps),
+                        available_range.duration,
+                    )
+
             # Gap: no media, generate range based on source range
             else:
                 available_range = processing_range = None                

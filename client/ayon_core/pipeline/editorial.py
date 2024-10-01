@@ -218,8 +218,22 @@ def remap_range_on_file_sequence(otio_clip, in_out_range):
         raise ValueError("Invalid in_out_range provided.") from error
 
     media_ref = otio_clip.media_reference
-    media_in = otio_clip.available_range().start_time.value
-    available_range_rate = otio_clip.available_range().start_time.rate
+    available_range = otio_clip.available_range()
+    source_range = otio_clip.source_range
+    available_range_rate = available_range.start_time.rate
+    media_in = available_range.start_time.value
+
+    # Temporary.
+    # Some AYON custom OTIO exporter were implemented with relative
+    # source range for image sequence. Following code maintain
+    # backward-compatibility by adjusting media_in
+    # while we are updating those.
+    if (
+        is_clip_from_media_sequence(otio_clip)
+        and otio_clip.available_range().start_time.to_frames() == media_ref.start_frame
+        and source_range.start_time.to_frames() < media_ref.start_frame
+    ):
+        media_in = 0
 
     frame_in = otio.opentime.RationalTime.from_frames(
         media_in_trimmed - media_in + media_ref.start_frame,
@@ -237,6 +251,27 @@ def get_media_range_with_retimes(otio_clip, handle_start, handle_end):
     source_range = otio_clip.source_range
     available_range = otio_clip.available_range()
     available_range_rate = available_range.start_time.rate
+
+    # If media source is an image sequence, returned
+    # mediaIn/mediaOut have to correspond
+    # to frame numbers from source sequence.
+    media_ref = otio_clip.media_reference
+    is_input_sequence = is_clip_from_media_sequence(otio_clip)
+
+    # Temporary.
+    # Some AYON custom OTIO exporter were implemented with relative
+    # source range for image sequence. Following code maintain
+    # backward-compatibility by adjusting available range
+    # while we are updating those.
+    if (
+        is_input_sequence
+        and available_range.start_time.to_frames() == media_ref.start_frame
+        and source_range.start_time.to_frames() < media_ref.start_frame
+    ):
+        available_range = _ot.TimeRange(
+            _ot.RationalTime(0, rate=available_range_rate),
+            available_range.duration,
+        )
 
     # Conform source range bounds to available range rate
     # .e.g. embedded TC of (3600 sec/ 1h), duration 100 frames
@@ -335,9 +370,6 @@ def get_media_range_with_retimes(otio_clip, handle_start, handle_end):
     # If media source is an image sequence, returned
     # mediaIn/mediaOut have to correspond
     # to frame numbers from source sequence.
-    media_ref = otio_clip.media_reference
-    is_input_sequence = is_clip_from_media_sequence(otio_clip)
-
     if is_input_sequence:
         # preserve discrete frame numbers
         media_in_trimmed, media_out_trimmed = remap_range_on_file_sequence(
