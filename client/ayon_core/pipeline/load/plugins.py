@@ -242,6 +242,26 @@ class LoaderPlugin(list):
         if hasattr(self, "_fname"):
             return self._fname
 
+    def update_allowed_representation_switches(self):
+        """Return a mapping from source representation names to ordered
+        destination representation names to which switching is allowed if
+        the source representation name does not exist for the new version.
+
+        For example, to allow an automated switch on update from representation
+        `ma` to `mb` or `abc` if the new version does not have a `ma`
+        representation you can return:
+            {"ma": ["mb", "abc"]}
+
+        The order of the names in the returned values is important, because
+        if `ma` is missing and both of the replacement representations are
+        present than the first one will be chosen.
+
+        Returns:
+            Dict[str, List[str]]: Mapping from representation names to allowed
+                alias representation names switching to is allowed on update.
+        """
+        return {}
+
 
 class ProductLoaderPlugin(LoaderPlugin):
     """Load product into host application
