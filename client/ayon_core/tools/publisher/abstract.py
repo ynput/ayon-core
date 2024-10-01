@@ -348,6 +348,12 @@ class AbstractPublisherFrontend(AbstractPublisherCommon):
         pass
 
     @abstractmethod
+    def set_instances_context_info(
+        self, changes_by_instance_id: Dict[str, Dict[str, Any]]
+    ):
+        pass
+
+    @abstractmethod
     def get_existing_product_names(self, folder_path: str) -> List[str]:
         pass
 

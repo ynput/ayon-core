@@ -447,6 +447,13 @@ class CreateModel:
             instances
         )
 
+    def set_instances_context_info(self, changes_by_instance_id):
+        with self._create_context.bulk_value_changes(CREATE_EVENT_SOURCE):
+            for instance_id, changes in changes_by_instance_id.items():
+                instance = self._get_instance_by_id(instance_id)
+                for key, value in changes.items():
+                    instance[key] = value
+
     def get_convertor_items(self) -> Dict[str, ConvertorItem]:
         return self._create_context.convertor_items_by_id
 
