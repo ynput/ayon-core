@@ -808,7 +808,7 @@ class CreateModel:
         """Reset create instances."""
 
         self._create_context.reset_context_data()
-        with self._create_context.bulk_instances_collection():
+        with self._create_context.bulk_add_instances():
             try:
                 self._create_context.reset_instances()
             except CreatorsOperationFailed as exc:
