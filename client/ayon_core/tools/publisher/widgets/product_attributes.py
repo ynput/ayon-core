@@ -41,6 +41,10 @@ class CreatorAttrsWidget(QtWidgets.QWidget):
             "create.context.create.attrs.changed",
             self._on_instance_attr_defs_change
         )
+        controller.register_event_callback(
+            "create.context.value.changed",
+            self._on_instance_value_change
+        )
 
         self._main_layout = main_layout
 
@@ -67,6 +71,9 @@ class CreatorAttrsWidget(QtWidgets.QWidget):
         """Set current instances for which are attribute definitions shown."""
 
         self._current_instance_ids = set(instance_ids)
+        self._refresh_content()
+
+    def _refresh_content(self):
         prev_content_widget = self._scroll_area.widget()
         if prev_content_widget:
             self._scroll_area.takeWidget()
@@ -78,7 +85,7 @@ class CreatorAttrsWidget(QtWidgets.QWidget):
         self._attr_def_id_to_attr_def = {}
 
         result = self._controller.get_creator_attribute_definitions(
-            instance_ids
+            self._current_instance_ids
         )
 
         content_widget = QtWidgets.QWidget(self._scroll_area)
@@ -141,14 +148,21 @@ class CreatorAttrsWidget(QtWidgets.QWidget):
         self._content_widget = content_widget
 
     def _on_instance_attr_defs_change(self, event):
-        update = False
         for instance_id in event.data["instance_ids"]:
             if instance_id in self._current_instance_ids:
-                update = True
+                self._refresh_content()
                 break
 
-        if update:
-            self.set_current_instances(self._current_instance_ids)
+    def _on_instance_value_change(self, event):
+        # TODO try to find more optimized way to update values instead of
+        #     force refresh of all of them.
+        for instance_id, changes in event["instance_changes"].items():
+            if (
+                instance_id in self._current_instance_ids
+                and "creator_attributes" not in changes
+            ):
+                self._refresh_content()
+                break
 
     def _input_value_changed(self, value, attr_id):
         instance_ids = self._attr_def_id_to_instances.get(attr_id)
@@ -161,9 +175,9 @@ class CreatorAttrsWidget(QtWidgets.QWidget):
 
 
 class PublishPluginAttrsWidget(QtWidgets.QWidget):
-    """Widget showing publsish plugin attributes for selected instances.
+    """Widget showing publish plugin attributes for selected instances.
 
-    Attributes are defined on publish plugins. Publihs plugin may define
+    Attributes are defined on publish plugins. Publish plugin may define
     attribute definitions but must inherit `AYONPyblishPluginMixin`
     (~/ayon_core/pipeline/publish). At the moment requires to implement
     `get_attribute_defs` and `convert_attribute_values` class methods.
@@ -192,6 +206,18 @@ class PublishPluginAttrsWidget(QtWidgets.QWidget):
         main_layout.setSpacing(0)
         main_layout.addWidget(scroll_area, 1)
 
+        controller.register_event_callback(
+            "create.context.publish.attrs.changed",
+            self._on_instance_attr_defs_change
+        )
+        controller.register_event_callback(
+            "create.context.value.changed",
+            self._on_instance_value_change
+        )
+
+        self._instance_ids = set()
+        self._context_selected = False
+
         self._main_layout = main_layout
 
         self._controller: AbstractPublisherFrontend = controller
@@ -215,6 +241,11 @@ class PublishPluginAttrsWidget(QtWidgets.QWidget):
     def set_current_instances(self, instance_ids, context_selected):
         """Set current instances for which are attribute definitions shown."""
 
+        self._instance_ids = set(instance_ids)
+        self._context_selected = context_selected
+        self._refresh_content()
+
+    def _refresh_content(self):
         prev_content_widget = self._scroll_area.widget()
         if prev_content_widget:
             self._scroll_area.takeWidget()
@@ -228,7 +259,7 @@ class PublishPluginAttrsWidget(QtWidgets.QWidget):
         self._attr_def_id_to_plugin_name = {}
 
         result = self._controller.get_publish_attribute_definitions(
-            instance_ids, context_selected
+            self._instance_ids, self._context_selected
         )
 
         content_widget = QtWidgets.QWidget(self._scroll_area)
@@ -253,8 +284,8 @@ class PublishPluginAttrsWidget(QtWidgets.QWidget):
                 )
                 hidden_widget = attr_def.hidden
                 # Hide unknown values of publish plugins
-                # - The keys in most of cases does not represent what would
-                #   label represent
+                # - The keys in most of the cases does not represent what
+                #    would label represent
                 if isinstance(attr_def, UnknownDef):
                     widget.setVisible(False)
                     hidden_widget = True
@@ -323,3 +354,23 @@ class PublishPluginAttrsWidget(QtWidgets.QWidget):
         self._controller.set_instances_publish_attr_values(
             instance_ids, plugin_name, attr_def.key, value
         )
+
+    def _on_instance_attr_defs_change(self, event):
+        for instance_id in event.data:
+            if (
+                instance_id is None and self._context_selected
+                or instance_id in self._instance_ids
+            ):
+                self._refresh_content()
+                break
+
+    def _on_instance_value_change(self, event):
+        # TODO try to find more optimized way to update values instead of
+        #     force refresh of all of them.
+        for instance_id, changes in event["instance_changes"].items():
+            if (
+                instance_id in self._current_instance_ids
+                and "publish_attributes" not in changes
+            ):
+                self._refresh_content()
+                break
