@@ -6,12 +6,12 @@ from .border_label_widget import BorderedLabelWidget
 from .card_view_widgets import InstanceCardView
 from .list_view_widgets import InstanceListView
 from .widgets import (
-    ProductAttributesWidget,
     CreateInstanceBtn,
     RemoveInstanceBtn,
     ChangeViewBtn,
 )
 from .create_widget import CreateWidget
+from .product_info import ProductInfoWidget
 
 
 class OverviewWidget(QtWidgets.QFrame):
@@ -61,7 +61,7 @@ class OverviewWidget(QtWidgets.QFrame):
         product_attributes_wrap = BorderedLabelWidget(
             "Publish options", product_content_widget
         )
-        product_attributes_widget = ProductAttributesWidget(
+        product_attributes_widget = ProductInfoWidget(
             controller, product_attributes_wrap
         )
         product_attributes_wrap.set_center_widget(product_attributes_widget)
