@@ -567,7 +567,7 @@ class CollectUSDLayerContributionsHoudiniLook(CollectUSDLayerContributions):
 class CollectUSDLayerContributionsMayaRig(CollectUSDLayerContributions):
     """
     This is solely here to expose the attribute definitions for the
-    Houdini "look" family.
+    Maya "rig" family.
     """
     # TODO: Improve how this is built for the rig family
     hosts = ["maya"]
