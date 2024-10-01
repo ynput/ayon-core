@@ -107,9 +107,6 @@ class ExtractOTIOReview(publish.Extractor):
             otio_media = r_otio_cl.media_reference
             media_metadata = otio_media.metadata
 
-            variables = (self.to_width, self.to_height)
-            keys = ("width", "height")
-
             # get from media reference metadata source
             # TODO 'openpype' prefix should be removed (added 24/09/03)
             # NOTE it looks like it is set only in hiero integration
