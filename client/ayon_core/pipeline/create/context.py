@@ -1004,7 +1004,7 @@ class CreateContext:
     def creator_removed_instance(self, instance: "CreatedInstance"):
         """When creator removes instance context should be acknowledged.
 
-        If creator removes instance conext should know about it to avoid
+        If creator removes instance context should know about it to avoid
         possible issues in the session.
 
         Args:
