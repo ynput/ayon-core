@@ -668,9 +668,9 @@ class CreateModel:
                     output.append((attr_def, [instance_id], [value]))
                     _attr_defs[idx] = attr_def
                 else:
-                    item = output[found_idx]
-                    item[1].append(instance_id)
-                    item[2].append(value)
+                    _, ids, values = output[found_idx]
+                    ids.append(instance_id)
+                    values.append(value)
         return output
 
     def set_instances_publish_attr_values(
