@@ -1162,14 +1162,15 @@ class CreateContext:
         if self._bulk_order[0] != key:
             return
 
-        self._bulk_finish(key)
         self._bulk_order.pop(0)
+        self._bulk_finish(key)
 
-        for key in tuple(self._bulk_order):
+        while self._bulk_order:
+            key = self._bulk_order[0]
             if not self._bulk_info[key]:
-                return
-            self._bulk_finish(key)
+                break
             self._bulk_order.pop(0)
+            self._bulk_finish(key)
 
     def _bulk_finish(self, key):
         bulk_info = self._bulk_info[key]
