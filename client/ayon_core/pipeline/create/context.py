@@ -1180,11 +1180,11 @@ class CreateContext:
         elif key == "remove":
             self._bulk_remove_instances_finished(data, sender)
         elif key == "change":
-            self._bulk_values_change(data, sender)
+            self._bulk_values_change_finished(data, sender)
         elif key == "create_attrs_change":
-            self._bulk_create_attrs_change(data, sender)
+            self._bulk_create_attrs_change_finished(data, sender)
         elif key == "publish_attrs_change":
-            self._bulk_publish_attrs_change(data, sender)
+            self._bulk_publish_attrs_change_finished(data, sender)
 
     def _bulk_add_instances_finished(self, instances_to_validate, sender):
         if not instances_to_validate:
@@ -1213,7 +1213,7 @@ class CreateContext:
             sender,
         )
 
-    def _bulk_values_change(
+    def _bulk_values_change_finished(
         self,
         changes: Tuple[Union[str, None], Dict[str, Any]],
         sender: Optional[str],
@@ -1263,7 +1263,7 @@ class CreateContext:
             sender
         )
 
-    def _bulk_create_attrs_change(
+    def _bulk_create_attrs_change_finished(
         self, instance_ids: List[str], sender: Optional[str]
     ):
         if not instance_ids:
@@ -1281,7 +1281,7 @@ class CreateContext:
             sender,
         )
 
-    def _bulk_publish_attrs_change(
+    def _bulk_publish_attrs_change_finished(
         self,
         attr_info: Tuple[str, Union[str, None]],
         sender: Optional[str],
