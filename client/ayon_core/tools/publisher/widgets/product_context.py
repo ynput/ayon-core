@@ -632,7 +632,7 @@ class GlobalAttrsWidget(QtWidgets.QWidget):
         super().__init__(parent)
 
         self._controller: AbstractPublisherFrontend = controller
-        self._current_instances = []
+        self._current_instances_by_id = {}
 
         variant_input = VariantInputWidget(self)
         folder_value_widget = FoldersFields(controller, self)
@@ -678,6 +678,11 @@ class GlobalAttrsWidget(QtWidgets.QWidget):
         submit_btn.clicked.connect(self._on_submit)
         cancel_btn.clicked.connect(self._on_cancel)
 
+        controller.register_event_callback(
+            "create.context.value.changed",
+            self._on_instance_value_change
+        )
+
         self.variant_input = variant_input
         self.folder_value_widget = folder_value_widget
         self.task_value_widget = task_value_widget
@@ -704,21 +709,26 @@ class GlobalAttrsWidget(QtWidgets.QWidget):
         product_names = set()
         invalid_tasks = False
         folder_paths = []
-        for instance in self._current_instances:
+        changes_by_id = {}
+        for instance in self._current_instances_by_id.values():
             # Ignore instances that have promised context
             if instance.has_promised_context:
                 continue
 
+            instance_changes = {}
             new_variant_value = instance.variant
             new_folder_path = instance.folder_path
             new_task_name = instance.task_name
             if variant_value is not None:
+                instance_changes["variant"] = variant_value
                 new_variant_value = variant_value
 
             if folder_path is not None:
+                instance_changes["folderPath"] = folder_path
                 new_folder_path = folder_path
 
             if task_name is not None:
+                instance_changes["task"] = task_name
                 new_task_name = task_name
 
             folder_paths.append(new_folder_path)
@@ -747,6 +757,9 @@ class GlobalAttrsWidget(QtWidgets.QWidget):
                 instance.task_name = task_name or None
 
             instance.product_name = new_product_name
+            if instance.product_name != new_product_name:
+                instance_changes["productName"] = new_product_name
+            changes_by_id[instance.id] = instance_changes
 
         if invalid_tasks:
             self.task_value_widget.set_invalid_empty_task()
@@ -765,6 +778,7 @@ class GlobalAttrsWidget(QtWidgets.QWidget):
         if task_name is not None:
             self.task_value_widget.confirm_value(folder_paths)
 
+        self._controller.set_instances_context_info(changes_by_id)
         self.instance_context_changed.emit()
 
     def _on_cancel(self):
@@ -818,20 +832,25 @@ class GlobalAttrsWidget(QtWidgets.QWidget):
         """
         self._set_btns_visible(False)
 
-        self._current_instances = instances
+        self._current_instances_by_id = {
+            instance.id: instance
+            for instance in instances
+        }
+        self._refresh_content()
 
+    def _refresh_content(self):
         folder_paths = set()
         variants = set()
         product_types = set()
         product_names = set()
 
         editable = True
-        if len(instances) == 0:
+        if len(self._current_instances_by_id) == 0:
             editable = False
 
         folder_task_combinations = []
         context_editable = None
-        for instance in instances:
+        for instance in self._current_instances_by_id.values():
             if not instance.has_promised_context:
                 context_editable = True
             elif context_editable is None:
@@ -879,3 +898,31 @@ class GlobalAttrsWidget(QtWidgets.QWidget):
 
         self.folder_value_widget.setToolTip(folder_tooltip)
         self.task_value_widget.setToolTip(task_tooltip)
+
+    def _on_instance_value_change(self, event):
+        if not self._current_instances_by_id:
+            return
+
+        changed = False
+        for instance_id, changes in event["instance_changes"].items():
+            instance = self._current_instances_by_id.get(instance_id)
+            if instance is None:
+                continue
+
+            for key, attr_name in (
+                ("folderPath", "folder_path"),
+                ("task", "task_name"),
+                ("variant", "variant"),
+                ("productType", "product_type"),
+                ("productName", "product_name"),
+            ):
+                if key in changes:
+                    setattr(instance, attr_name, changes[key])
+                    changed = True
+                    break
+            if changed:
+                break
+
+        if changed:
+            self._refresh_content()
+            self.instance_context_changed.emit()
