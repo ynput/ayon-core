@@ -235,6 +235,7 @@ class CreateContext:
         self._bulk_info = {
             # Collect instances
             "collect": BulkInfo(),
+            "remove": BulkInfo(),
             # Change values of instances or create context
             "change": BulkInfo(),
             # Create attribute definitions changed
@@ -1071,6 +1072,11 @@ class CreateContext:
                     )
 
     @contextmanager
+    def bulk_remove_instances(self, sender=None):
+        with self._bulk_context("remove", sender) as bulk_info:
+            yield bulk_info
+
+    @contextmanager
     def bulk_value_changes(self, sender=None):
         with self._bulk_context("change", sender) as bulk_info:
             yield bulk_info
@@ -1165,6 +1171,8 @@ class CreateContext:
         data = bulk_info.pop_data()
         if key == "collect":
             self._bulk_instances_collection(data, sender)
+        elif key == "remove":
+            self._bulk_remove_instances_finished(data, sender)
         elif key == "change":
             self._bulk_values_change(data, sender)
         elif key == "create_attrs_change":
@@ -1183,6 +1191,18 @@ class CreateContext:
             INSTANCE_ADDED_TOPIC,
             {
                 "instances": instances_to_validate,
+            },
+            sender,
+        )
+
+    def _bulk_remove_instances_finished(self, instances_to_remove, sender):
+        if not instances_to_remove:
+            return
+
+        self._emit_event(
+            INSTANCE_REMOVED_TOPIC,
+            {
+                "instances": instances_to_remove,
             },
             sender,
         )
@@ -1736,22 +1756,11 @@ class CreateContext:
         return self._event_hub.emit(topic, data, sender)
 
     def _remove_instances(self, instances, sender=None):
-        removed_instances = []
-        for instance in instances:
-            obj = self._instances_by_id.pop(instance.id, None)
-            if obj is not None:
-                removed_instances.append(instance)
-
-        if not removed_instances:
-            return
-
-        self._emit_event(
-            INSTANCE_REMOVED_TOPIC,
-            {
-                "instances": removed_instances,
-            },
-            sender,
-        )
+        with self.bulk_remove_instances(sender) as bulk_info:
+            for instance in instances:
+                obj = self._instances_by_id.pop(instance.id, None)
+                if obj is not None:
+                    bulk_info.append(obj)
 
     def _create_with_unified_error(
         self, identifier, creator, *args, **kwargs
