@@ -178,6 +178,30 @@ def get_media_range_with_retimes(otio_clip, handle_start, handle_end):
     available_range = otio_clip.available_range()
     available_range_rate = available_range.start_time.rate
 
+    # If media source is an image sequence, returned
+    # mediaIn/mediaOut have to correspond
+    # to frame numbers from source sequence.
+    media_ref = otio_clip.media_reference
+    is_input_sequence = (
+        hasattr(otio.schema, "ImageSequenceReference")
+        and isinstance(media_ref, otio.schema.ImageSequenceReference)
+    )
+
+    # Temporary.
+    # Some AYON custom OTIO exporter were implemented with relative
+    # source range for image sequence. Following code maintain
+    # backward-compatibility by adjusting available range 
+    # while we are updating those.
+    if (
+        is_input_sequence
+        and available_range.start_time.to_frames() == media_ref.start_frame
+        and source_range.start_time.to_frames() < media_ref.start_frame
+    ):
+        available_range = _ot.TimeRange(
+            _ot.RationalTime(0, rate=available_range_rate),
+            available_range.duration,
+        )
+
     # Conform source range bounds to available range rate
     # .e.g. embedded TC of (3600 sec/ 1h), duration 100 frames
     #
@@ -271,15 +295,6 @@ def get_media_range_with_retimes(otio_clip, handle_start, handle_end):
 
     media_in = available_range.start_time.value
     media_out = available_range.end_time_inclusive().value
-
-    # If media source is an image sequence, returned
-    # mediaIn/mediaOut have to correspond
-    # to frame numbers from source sequence.
-    media_ref = otio_clip.media_reference
-    is_input_sequence = (
-        hasattr(otio.schema, "ImageSequenceReference")
-        and isinstance(media_ref, otio.schema.ImageSequenceReference)
-    )
 
     if is_input_sequence:
         # preserve discrete frame numbers
