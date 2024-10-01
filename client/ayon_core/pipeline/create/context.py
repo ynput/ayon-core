@@ -1150,8 +1150,7 @@ class CreateContext:
 
         bulk_info.increase()
         if key not in self._bulk_order:
-            self._bulk_order.append(key
-)
+            self._bulk_order.append(key)
         try:
             yield bulk_info
         finally:
