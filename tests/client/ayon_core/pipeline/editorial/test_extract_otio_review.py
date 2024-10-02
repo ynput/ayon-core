@@ -1,11 +1,10 @@
 import mock
 import os
-import pytest
+import pytest  # noqa
 from typing import NamedTuple
 
 import opentimelineio as otio
 
-import ayon_core.lib
 from ayon_core.plugins.publish import extract_otio_review
 
 
@@ -19,7 +18,7 @@ class MockInstance():
     """ Mock pyblish instance for testing purpose.
     """
     def __init__(self, data: dict):
-        self.data = data 
+        self.data = data
         self.context = self
 
 
@@ -34,7 +33,7 @@ class CaptureFFmpegCalls():
         self.calls.append(" ".join(ffmpeg_args_list))
         return True
 
-    def get_fmpeg_executable(self, _):
+    def get_ffmpeg_executable(self, _):
         return ["/path/to/ffmpeg"]
 
 
@@ -48,20 +47,23 @@ def run_process(file_name: str):
     # Prepare dummy instance and capture call object
     capture_call = CaptureFFmpegCalls()
     processor = extract_otio_review.ExtractOTIOReview()
-    instance = MockInstance({
-        "otioReviewClips": [clip],
-        "handleStart": 10,
-        "handleEnd": 10,
-        "workfileFrameStart": 1001,
-        "folderPath": "/dummy/path",
-        "anatomy": NamedTuple("Anatomy", [('project_name', "test_project")])
-    })
+    Anatomy = NamedTuple("Anatomy", [("project_name")])
+    instance = MockInstance(
+        {
+            "otioReviewClips": [clip],
+            "handleStart": 10,
+            "handleEnd": 10,
+            "workfileFrameStart": 1001,
+            "folderPath": "/dummy/path",
+            "anatomy": Anatomy("test_project"),
+        }
+    )
 
     # Mock calls to extern and run plugins.
     with mock.patch.object(
         extract_otio_review,
         "get_ffmpeg_tool_args",
-        side_effect=capture_call.get_fmpeg_executable,
+        side_effect=capture_call.get_ffmpeg_executable,
     ):
         with mock.patch.object(
             extract_otio_review,

@@ -57,13 +57,12 @@ class ExtractOTIOReview(publish.Extractor):
         # Not all hosts can import these modules.
         import opentimelineio as otio
         from ayon_core.pipeline.editorial import (
-            otio_range_to_frame_range,
             make_sequence_collection,
             remap_range_on_file_sequence,
             is_clip_from_media_sequence
         )
 
-        # TODO refactore from using instance variable
+        # TODO refactor from using instance variable
         self.temp_file_head = self._get_folder_name_based_prefix(instance)
 
         # TODO: convert resulting image sequence to mp4
@@ -75,8 +74,8 @@ class ExtractOTIOReview(publish.Extractor):
         otio_review_clips = instance.data["otioReviewClips"]
 
         # add plugin wide attributes
-        self.representation_files = list()
-        self.used_frames = list()
+        self.representation_files = []
+        self.used_frames = []
         self.workfile_start = int(instance.data.get(
             "workfileFrameStart", 1001)) - handle_start
         self.padding = len(str(self.workfile_start))
@@ -101,9 +100,7 @@ class ExtractOTIOReview(publish.Extractor):
         for index, r_otio_cl in enumerate(otio_review_clips):
             # QUESTION: what if transition on clip?
 
-            # check if resolution is the same
-            width = self.to_width
-            height = self.to_height
+            # check if resolution is the same as source
             otio_media = r_otio_cl.media_reference
             media_metadata = otio_media.metadata
 
@@ -151,7 +148,7 @@ class ExtractOTIOReview(publish.Extractor):
 
             # Gap: no media, generate range based on source range
             else:
-                available_range = processing_range = None                
+                available_range = processing_range = None
                 self.actual_fps = src_range.duration.rate
                 start = src_range.start_time
                 duration = src_range.duration
@@ -216,7 +213,7 @@ class ExtractOTIOReview(publish.Extractor):
                         collection.indexes.update(
                             [i for i in range(first, (last + 1))])
                         # render segment
-                        self._render_seqment(
+                        self._render_segment(
                             sequence=[dirname, collection, input_fps])
                         # generate used frames
                         self._generate_used_frames(
@@ -230,7 +227,7 @@ class ExtractOTIOReview(publish.Extractor):
                         dir_path, collection = collection_data
 
                         # render segment
-                        self._render_seqment(
+                        self._render_segment(
                             sequence=[dir_path, collection, input_fps])
                         # generate used frames
                         self._generate_used_frames(
@@ -252,7 +249,7 @@ class ExtractOTIOReview(publish.Extractor):
                         duration=processing_range.duration,
                     )
                     # render video file to sequence
-                    self._render_seqment(
+                    self._render_segment(
                         video=[path, extract_range])
                     # generate used frames
                     self._generate_used_frames(
@@ -261,7 +258,7 @@ class ExtractOTIOReview(publish.Extractor):
             # QUESTION: what if nested track composition is in place?
             else:
                 # at last process a Gap
-                self._render_seqment(gap=duration)
+                self._render_segment(gap=duration)
                 # generate used frames
                 self._generate_used_frames(duration)
 
@@ -334,7 +331,6 @@ class ExtractOTIOReview(publish.Extractor):
         )
 
         avl_start = avl_range.start_time
-        avl_duration = avl_range.duration
 
         # An additional gap is required before the available
         # range to conform source start point and head handles.
@@ -344,7 +340,7 @@ class ExtractOTIOReview(publish.Extractor):
             duration -= gap_duration
 
             # create gap data to disk
-            self._render_seqment(gap=gap_duration.round().to_frames())
+            self._render_segment(gap=gap_duration.round().to_frames())
             # generate used frames
             self._generate_used_frames(gap_duration.round().to_frames())
 
@@ -358,7 +354,7 @@ class ExtractOTIOReview(publish.Extractor):
             duration -= gap_duration
 
             # create gap data to disk
-            self._render_seqment(
+            self._render_segment(
                 gap=gap_duration.round().to_frames(),
                 end_offset=duration.to_frames()
             )
@@ -377,10 +373,10 @@ class ExtractOTIOReview(publish.Extractor):
             )
         )
 
-    def _render_seqment(self, sequence=None,
+    def _render_segment(self, sequence=None,
                         video=None, gap=None, end_offset=None):
         """
-        Render seqment into image sequence frames.
+        Render segment into image sequence frames.
 
         Using ffmpeg to convert compatible video and image source
         to defined image sequence format.
@@ -416,18 +412,24 @@ class ExtractOTIOReview(publish.Extractor):
             input_path = os.path.join(input_dir, input_file)
             input_extension = os.path.splitext(input_path)[-1]
 
-            # form command for rendering sequence files
-            # (need to explicit set the input frame range 
-            # if case input sequence has framerate metadata
-            # to preserve frame range and avoid silent dropped
-            # frames caused by input mismatch with FFmpeg default
-            # rate 25.0 fps) more info refer to FFmpeg image2 demuxer
-            #
-            # Implicit 
-            # [Input 100 frames (24fps from metadata)] -> [Demuxer video 25fps] -> [Output 98 frames, dropped 2] 
-            #
-            # Explicit with "-framerate"
-            # [Input 100 frames (24fps from metadata)] -> [Demuxer video 24fps] -> [Output 100 frames]
+            """
+            Form Command for Rendering Sequence Files
+
+            To explicitly set the input frame range and preserve the frame
+            range, avoid silent dropped frames caused by input mismatch
+            with FFmpeg's default rate of 25.0 fps. For more info,
+            refer to the FFmpeg image2 demuxer.
+
+            Implicit:
+                - Input: 100 frames (24fps from metadata)
+                - Demuxer: video 25fps
+                - Output: 98 frames, dropped 2
+
+            Explicit with "-framerate":
+                - Input: 100 frames (24fps from metadata)
+                - Demuxer: video 24fps
+                - Output: 100 frames, no dropped frames
+            """
 
             command.extend([
                 "-start_number", str(in_frame_start),
@@ -566,4 +568,3 @@ class ExtractOTIOReview(publish.Extractor):
         self.log.debug(f"file_prefix::{file_prefix}")
 
         return file_prefix
-
