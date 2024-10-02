@@ -633,6 +633,7 @@ class GlobalAttrsWidget(QtWidgets.QWidget):
 
         self._controller: AbstractPublisherFrontend = controller
         self._current_instances_by_id = {}
+        self._invalid_task_item_ids = set()
 
         variant_input = VariantInputWidget(self)
         folder_value_widget = FoldersFields(controller, self)
@@ -728,8 +729,8 @@ class GlobalAttrsWidget(QtWidgets.QWidget):
                 new_folder_path = folder_path
 
             if task_name is not None:
-                instance_changes["task"] = task_name
-                new_task_name = task_name
+                instance_changes["task"] = task_name or None
+                new_task_name = task_name or None
 
             folder_paths.append(new_folder_path)
             try:
@@ -740,8 +741,10 @@ class GlobalAttrsWidget(QtWidgets.QWidget):
                     new_folder_path,
                     item.id,
                 )
+                self._invalid_task_item_ids.discard(item.id)
 
             except TaskNotSetError:
+                self._invalid_task_item_ids.add(item.id)
                 invalid_tasks = True
                 product_names.add(item.product_name)
                 continue
@@ -749,7 +752,9 @@ class GlobalAttrsWidget(QtWidgets.QWidget):
             product_names.add(new_product_name)
             if item.product_name != new_product_name:
                 instance_changes["productName"] = new_product_name
-            changes_by_id[item.id] = instance_changes
+
+            if instance_changes:
+                changes_by_id[item.id] = instance_changes
 
         if invalid_tasks:
             self.task_value_widget.set_invalid_empty_task()
@@ -769,6 +774,7 @@ class GlobalAttrsWidget(QtWidgets.QWidget):
             self.task_value_widget.confirm_value(folder_paths)
 
         self._controller.set_instances_context_info(changes_by_id)
+        self._refresh_items()
         self.instance_context_changed.emit()
 
     def _on_cancel(self):
@@ -826,6 +832,7 @@ class GlobalAttrsWidget(QtWidgets.QWidget):
             instance.id: instance
             for instance in instances
         }
+        self._invalid_task_item_ids = set()
         self._refresh_content()
 
     def _refresh_items(self):
@@ -846,11 +853,14 @@ class GlobalAttrsWidget(QtWidgets.QWidget):
 
         folder_task_combinations = []
         context_editable = None
+        invalid_tasks = False
         for item in self._current_instances_by_id.values():
             if not item.has_promised_context:
                 context_editable = True
             elif context_editable is None:
                 context_editable = False
+                if item.id in self._invalid_task_item_ids:
+                    invalid_tasks = True
 
             # NOTE I'm not sure how this can even happen?
             if item.creator_identifier is None:
@@ -882,6 +892,9 @@ class GlobalAttrsWidget(QtWidgets.QWidget):
         self.folder_value_widget.setEnabled(context_editable)
         self.task_value_widget.setEnabled(context_editable)
 
+        if invalid_tasks:
+            self.task_value_widget.set_invalid_empty_task()
+
         if not editable:
             folder_tooltip = "Select instances to change folder path."
             task_tooltip = "Select instances to change task name."
@@ -905,11 +918,11 @@ class GlobalAttrsWidget(QtWidgets.QWidget):
                 continue
 
             for key, attr_name in (
-                ("folderPath", "folder_path"),
-                ("task", "task_name"),
-                ("variant", "variant"),
-                ("productType", "product_type"),
-                ("productName", "product_name"),
+                "folderPath",
+                "task",
+                "variant",
+                "productType",
+                "productName",
             ):
                 if key in changes:
                     changed = True
