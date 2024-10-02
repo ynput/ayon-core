@@ -329,6 +329,20 @@ class ExtractOTIOReview(publish.Extractor):
             trim_media_range,
         )
 
+        def _round_to_frame(rational_time):
+            """ Handle rounding duration to frame.
+            """
+            # OpentimelineIO >= 0.16.0
+            try:
+                return rational_time.round().to_frames()
+
+            # OpentimelineIO < 0.16.0
+            except AttributeError:
+                return otio.opentime.RationalTime(
+                    round(rational_time.value),
+                    rate=rational_time.rate,
+                ).to_frames()
+
         avl_start = avl_range.start_time
 
         # An additional gap is required before the available
@@ -337,11 +351,12 @@ class ExtractOTIOReview(publish.Extractor):
             gap_duration = avl_start - start
             start = avl_start
             duration -= gap_duration
+            gap_duration = _round_to_frame(gap_duration)
 
             # create gap data to disk
-            self._render_segment(gap=gap_duration.round().to_frames())
+            self._render_segment(gap=gap_duration)
             # generate used frames
-            self._generate_used_frames(gap_duration.round().to_frames())
+            self._generate_used_frames(gap_duration)
 
         # An additional gap is required after the available
         # range to conform to source end point + tail handles
@@ -351,15 +366,16 @@ class ExtractOTIOReview(publish.Extractor):
         if end_point > avl_end_point:
             gap_duration = end_point - avl_end_point
             duration -= gap_duration
+            gap_duration = _round_to_frame(gap_duration)
 
             # create gap data to disk
             self._render_segment(
-                gap=gap_duration.round().to_frames(),
+                gap=gap_duration,
                 end_offset=duration.to_frames()
             )
             # generate used frames
             self._generate_used_frames(
-                gap_duration.round().to_frames(),
+                gap_duration,
                 end_offset=duration.to_frames()
             )
 
