@@ -699,6 +699,34 @@ def get_ocio_config_views(config_path):
     )
 
 
+def _get_config_path_from_profile_data(
+    profile, profile_type, template_data
+):
+    """Get config path from profile data.
+
+    Args:
+        profile (dict[str, Any]): Profile data.
+        profile_type (str): Profile type.
+        template_data (dict[str, Any]): Template data.
+
+    Returns:
+        dict[str, str]: Config data with path and template.
+    """
+    template = profile[profile_type]
+    result = StringTemplate.format_strict_template(
+        template, template_data
+    )
+    normalized_path = str(result.normalized())
+    if not os.path.exists(normalized_path):
+        log.warning(f"Path was not found '{normalized_path}'.")
+        return None
+
+    return {
+        "path": normalized_path,
+        "template": template
+    }
+
+
 def _get_global_config_data(
     project_name,
     host_name,
@@ -717,7 +745,7 @@ def _get_global_config_data(
     2. Custom path to ocio config.
     3. Path to 'ocioconfig' representation on product. Name of product can be
         defined in settings. Product name can be regex but exact match is
-        always preferred.
+        always preferred. Fallback can be defined in case no product is found.
 
     None is returned when no profile is found, when path
 
@@ -755,30 +783,36 @@ def _get_global_config_data(
 
     profile_type = profile["type"]
     if profile_type in ("builtin_path", "custom_path"):
-        template = profile[profile_type]
-        result = StringTemplate.format_strict_template(
-            template, template_data
-        )
-        normalized_path = str(result.normalized())
-        if not os.path.exists(normalized_path):
-            log.warning(f"Path was not found '{normalized_path}'.")
-            return None
-
-        return {
-            "path": normalized_path,
-            "template": template
-        }
+        return _get_config_path_from_profile_data(
+            profile, profile_type, template_data)
 
     # TODO decide if this is the right name for representation
     repre_name = "ocioconfig"
 
+    published_product_data = profile["published_product"]
+    product_name = published_product_data["product_name"]
+    fallback_data = published_product_data["fallback"]
+
+    if product_name == "":
+        log.error(
+            "Colorspace OCIO config path cannot be set. "
+            "Profile is set to published product but `Product name` is empty."
+        )
+        return None
+
     folder_info = template_data.get("folder")
     if not folder_info:
         log.warning("Folder info is missing.")
-        return None
+
+        log.info("Using fallback data for ocio config path.")
+        # in case no product was found we need to use fallback
+        fallback_type = fallback_data["fallback_type"]
+        return _get_config_path_from_profile_data(
+            fallback_data, fallback_type, template_data
+        )
+
     folder_path = folder_info["path"]
 
-    product_name = profile["product_name"]
     if folder_id is None:
         folder_entity = ayon_api.get_folder_by_path(
             project_name, folder_path, fields={"id"}
@@ -797,12 +831,13 @@ def _get_global_config_data(
             fields={"id", "name"}
         )
     }
+
     if not product_entities_by_name:
-        log.debug(
-            f"No product entities were found for folder '{folder_path}' with"
-            f" product name filter '{product_name}'."
+        # in case no product was found we need to use fallback
+        fallback_type = fallback_data["type"]
+        return _get_config_path_from_profile_data(
+            fallback_data, fallback_type, template_data
         )
-        return None
 
     # Try to use exact match first, otherwise use first available product
     product_entity = product_entities_by_name.get(product_name)
@@ -837,6 +872,7 @@ def _get_global_config_data(
 
     path = get_representation_path_with_anatomy(repre_entity, anatomy)
     template = repre_entity["attrib"]["template"]
+
     return {
         "path": path,
         "template": template,
