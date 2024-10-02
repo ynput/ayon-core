@@ -16,7 +16,7 @@ def _convert_imageio_configs_0_4_5(overrides):
     for profile in ocio_config_profiles:
         if profile.get("type") != "product_name":
             continue
-    
+
         profile["type"] = "published_product"
         profile["published_product"] = {
             "product_name": profile.pop("product_name"),
@@ -94,10 +94,43 @@ def _convert_validate_version_0_3_3(publish_overrides):
     validate_version["plugin_state_profiles"] = [profile]
 
 
+def _convert_oiio_transcode_0_4_5(publish_overrides):
+    """ExtractOIIOTranscode plugin changed in 0.4.5."""
+    if "ExtractOIIOTranscode" not in publish_overrides:
+        return
+
+    transcode_profiles = publish_overrides["ExtractOIIOTranscode"].get(
+        "profiles")
+    if not transcode_profiles:
+        return
+
+    for profile in transcode_profiles:
+        outputs = profile.get("outputs")
+        if outputs is None:
+            return
+
+        for output in outputs:
+            # Already new settings
+            if "display_view" in output:
+                break
+
+            # Fix 'display' -> 'display_view' in 'transcoding_type'
+            transcode_type = output.get("transcoding_type")
+            if transcode_type == "display":
+                output["transcoding_type"] = "display_view"
+
+            # Convert 'display' and 'view' to new values
+            output["display_view"] = {
+                "display": output.pop("display", ""),
+                "view": output.pop("view", ""),
+            }
+
+
 def _convert_publish_plugins(overrides):
     if "publish" not in overrides:
         return
     _convert_validate_version_0_3_3(overrides["publish"])
+    _convert_oiio_transcode_0_4_5(overrides["publish"])
 
 
 def convert_settings_overrides(
