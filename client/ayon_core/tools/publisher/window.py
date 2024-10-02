@@ -439,9 +439,12 @@ class PublisherWindow(QtWidgets.QDialog):
     def make_sure_is_visible(self):
         if self._window_is_visible:
             self.setWindowState(QtCore.Qt.WindowActive)
-
         else:
             self.show()
+
+        self.raise_()
+        self.activateWindow()
+        self.showNormal()
 
     def showEvent(self, event):
         self._window_is_visible = True
