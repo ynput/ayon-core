@@ -14,29 +14,18 @@ def _convert_imageio_configs_0_4_5(overrides):
 
     ocio_config_profiles = imageio_overrides["ocio_config_profiles"]
 
-    for inx, profile in enumerate(ocio_config_profiles):
-        if profile["type"] != "product_name":
+    for profile in ocio_config_profiles:
+        if profile.get("type") != "product_name":
             continue
-
-        # create new profile
-        new_profile = {
-            "type": "published_product",
-            "published_product": {
-                "product_name": profile["product_name"],
-                "fallback": {
-                    "type": "builtin_path",
-                    "builtin_path": "{BUILTIN_OCIO_ROOT}/aces_1.2/config.ocio",
-                },
+    
+        profile["type"] = "published_product"
+        profile["published_product"] = {
+            "product_name": profile.pop("product_name"),
+            "fallback": {
+                "type": "builtin_path",
+                "builtin_path": "{BUILTIN_OCIO_ROOT}/aces_1.2/config.ocio",
             },
-            "host_names": profile["host_names"],
-            "task_names": profile["task_names"],
-            "task_types": profile["task_types"],
-            "custom_path": profile["custom_path"],
-            "builtin_path": profile["builtin_path"],
         }
-
-        # replace old profile with new profile
-        ocio_config_profiles[inx] = new_profile
 
 
 def _convert_imageio_configs_0_3_1(overrides):
