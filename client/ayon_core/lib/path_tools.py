@@ -81,7 +81,10 @@ def collect_frames(files):
         dict: {'/folder/product_v001.0001.png': '0001', ....}
     """
 
-    patterns = [clique.PATTERNS["frames"]]
+    # clique.PATTERNS["frames"] supports only `.1001.exr` not `_1001.exr` so
+    # we use a customized pattern.
+    pattern = "[_.](?P<index>(?P<padding>0*)\\d+)\\.\\D+\\d?$"
+    patterns = [pattern]
     collections, remainder = clique.assemble(
         files, minimum_items=1, patterns=patterns)
 
