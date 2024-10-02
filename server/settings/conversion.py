@@ -9,10 +9,9 @@ def _convert_imageio_configs_0_4_5(overrides):
     imageio_overrides = overrides.get("imageio") or {}
 
     # make sure settings are already converted to profiles
-    if "ocio_config_profiles" not in imageio_overrides:
+    ocio_config_profiles = imageio_overrides.get("ocio_config_profiles")
+    if not ocio_config_profiles:
         return
-
-    ocio_config_profiles = imageio_overrides["ocio_config_profiles"]
 
     for profile in ocio_config_profiles:
         if profile.get("type") != "product_name":
