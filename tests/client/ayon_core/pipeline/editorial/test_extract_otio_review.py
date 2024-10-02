@@ -47,7 +47,7 @@ def run_process(file_name: str):
     # Prepare dummy instance and capture call object
     capture_call = CaptureFFmpegCalls()
     processor = extract_otio_review.ExtractOTIOReview()
-    Anatomy = NamedTuple("Anatomy", [("project_name")])
+    Anatomy = NamedTuple("Anatomy", project_name=str)
     instance = MockInstance(
         {
             "otioReviewClips": [clip],
