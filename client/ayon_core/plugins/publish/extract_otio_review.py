@@ -100,30 +100,30 @@ class ExtractOTIOReview(publish.Extractor):
         for index, r_otio_cl in enumerate(otio_review_clips):
             # QUESTION: what if transition on clip?
 
-            # check if resolution is the same as source
-            otio_media = r_otio_cl.media_reference
-            media_metadata = otio_media.metadata
-
-            # get from media reference metadata source
-            # TODO 'openpype' prefix should be removed (added 24/09/03)
-            # NOTE it looks like it is set only in hiero integration
-            res_data = {"width": self.to_width, "height": self.to_height}
-            for key in res_data:
-                for meta_prefix in ("ayon.source.", "openpype.source."):
-                    meta_key = f"{meta_prefix}.{key}"
-                    value = media_metadata.get(meta_key)
-                    if value is not None:
-                        res_data[key] = value
-                        break
-
-            self.to_width, self.to_height = res_data["width"], res_data["height"]
-            self.log.debug("> self.to_width x self.to_height: {} x {}".format(
-                self.to_width, self.to_height
-            ))
-
             # Clip: compute process range from available media range.
             src_range = r_otio_cl.source_range
             if isinstance(r_otio_cl, otio.schema.Clip):
+                # check if resolution is the same as source
+                media_ref = r_otio_cl.media_reference
+                media_metadata = media_ref.metadata
+
+                # get from media reference metadata source
+                # TODO 'openpype' prefix should be removed (added 24/09/03)
+                # NOTE it looks like it is set only in hiero integration
+                res_data = {"width": self.to_width, "height": self.to_height}
+                for key in res_data:
+                    for meta_prefix in ("ayon.source.", "openpype.source."):
+                        meta_key = f"{meta_prefix}.{key}"
+                        value = media_metadata.get(meta_key)
+                        if value is not None:
+                            res_data[key] = value
+                            break
+
+                self.to_width, self.to_height = res_data["width"], res_data["height"]
+                self.log.debug("> self.to_width x self.to_height: {} x {}".format(
+                    self.to_width, self.to_height
+                ))
+
                 available_range = r_otio_cl.available_range()
                 processing_range = None
                 self.actual_fps = available_range.duration.rate
@@ -135,7 +135,6 @@ class ExtractOTIOReview(publish.Extractor):
                 # source range for image sequence. Following code maintain
                 # backward-compatibility by adjusting available range
                 # while we are updating those.
-                media_ref = r_otio_cl.media_reference
                 if (
                     is_clip_from_media_sequence(r_otio_cl)
                     and available_range.start_time.to_frames() == media_ref.start_frame
@@ -154,11 +153,11 @@ class ExtractOTIOReview(publish.Extractor):
                 duration = src_range.duration
 
             # Create handle offsets.
-            handle_start = otio.opentime.RationalTime(
+            clip_handle_start = otio.opentime.RationalTime(
                 handle_start,
                 rate=self.actual_fps,
             )
-            handle_end = otio.opentime.RationalTime(
+            clip_handle_end = otio.opentime.RationalTime(
                 handle_end,
                 rate=self.actual_fps,
             )
@@ -166,16 +165,16 @@ class ExtractOTIOReview(publish.Extractor):
             # reframing handles conditions
             if (len(otio_review_clips) > 1) and (index == 0):
                 # more clips | first clip reframing with handle
-                start -= handle_start
-                duration += handle_start
+                start -= clip_handle_start
+                duration += clip_handle_start
             elif len(otio_review_clips) > 1 \
                     and (index == len(otio_review_clips) - 1):
                 # more clips | last clip reframing with handle
-                duration += handle_end
+                duration += clip_handle_end
             elif len(otio_review_clips) == 1:
                 # one clip | add both handles
-                start -= handle_start
-                duration += (handle_start + handle_end)
+                start -= clip_handle_start
+                duration += (clip_handle_start + clip_handle_end)
 
             if available_range:
                 processing_range = self._trim_available_range(
@@ -258,9 +257,9 @@ class ExtractOTIOReview(publish.Extractor):
             # QUESTION: what if nested track composition is in place?
             else:
                 # at last process a Gap
-                self._render_segment(gap=duration)
+                self._render_segment(gap=duration.to_frames())
                 # generate used frames
-                self._generate_used_frames(duration)
+                self._generate_used_frames(duration.to_frames())
 
         # creating and registering representation
         representation = self._create_representation(start, duration)

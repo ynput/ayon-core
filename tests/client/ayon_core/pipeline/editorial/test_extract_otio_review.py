@@ -37,27 +37,31 @@ class CaptureFFmpegCalls():
         return ["/path/to/ffmpeg"]
 
 
-def run_process(file_name: str):
+def run_process(file_name: str, instance_data: dict = None):
     """
     """
-    # Get OTIO review data from serialized file_name
-    file_path = os.path.join(_RESOURCE_DIR, file_name)
-    clip = otio.schema.Clip.from_json_file(file_path)
-
     # Prepare dummy instance and capture call object
     capture_call = CaptureFFmpegCalls()
     processor = extract_otio_review.ExtractOTIOReview()
     Anatomy = NamedTuple("Anatomy", project_name=str)
-    instance = MockInstance(
-        {
+
+    if not instance_data:
+        # Get OTIO review data from serialized file_name
+        file_path = os.path.join(_RESOURCE_DIR, file_name)
+        clip = otio.schema.Clip.from_json_file(file_path)
+
+        instance_data = {
             "otioReviewClips": [clip],
             "handleStart": 10,
             "handleEnd": 10,
             "workfileFrameStart": 1001,
-            "folderPath": "/dummy/path",
-            "anatomy": Anatomy("test_project"),
         }
-    )
+
+    instance_data.update({
+        "folderPath": "/dummy/path",
+        "anatomy": Anatomy("test_project"),
+    })
+    instance = MockInstance(instance_data)
 
     # Mock calls to extern and run plugins.
     with mock.patch.object(
@@ -73,9 +77,14 @@ def run_process(file_name: str):
             with mock.patch.object(
                 processor,
                 "_get_folder_name_based_prefix",
-                return_value="C:/result/output."
+                return_value="output."
             ):
-                processor.process(instance)
+                with mock.patch.object(
+                    processor,
+                    "staging_dir",
+                    return_value="C:/result/"
+                ):            
+                    processor.process(instance)
 
     # return all calls made to ffmpeg subprocess
     return capture_call.calls
@@ -103,7 +112,7 @@ def test_image_sequence_with_embedded_tc_and_handles_out_of_range():
 
         # Report from source exr (1001-1101) with enforce framerate
         "/path/to/ffmpeg -start_number 1000 -framerate 24.0 -i "
-        "C:\\exr_embedded_tc\\output.%04d.exr -start_number 1001 "
+        f"C:\\exr_embedded_tc{os.sep}output.%04d.exr -start_number 1001 "
         "C:/result/output.%03d.jpg"
     ]
 
@@ -133,7 +142,7 @@ def test_image_sequence_and_handles_out_of_range():
         # 1001-1095 = source range conformed to 25fps
         # 1096-1096 = additional 1 tail frames
         "/path/to/ffmpeg -start_number 1000 -framerate 25.0 -i "
-        "C:\\tif_seq\\output.%04d.tif -start_number 996 C:/result/output.%03d.jpg"
+        f"C:\\tif_seq{os.sep}output.%04d.tif -start_number 996 C:/result/output.%03d.jpg"
     ]
 
     assert calls == expected
@@ -200,6 +209,122 @@ def test_short_movie_tail_gap_handles():
         # duration = 10fr (head handle) + 66fr (source) = 76fr = 3.16s
         "/path/to/ffmpeg -ss 1.0416666666666667 -t 3.1666666666666665 -i "
         "C:\\data\\qt_no_tc_24fps.mov -start_number 991 C:/result/output.%03d.jpg"
+    ]
+
+    assert calls == expected
+
+def test_multiple_review_clips_no_gap():
+    """
+    Use multiple review clips (image sequence).
+    Timeline 25fps
+    """
+    file_path = os.path.join(_RESOURCE_DIR, "multiple_review_clips.json")
+    clips = otio.schema.Track.from_json_file(file_path)
+    instance_data = {
+        "otioReviewClips": clips,
+        "handleStart": 10,
+        "handleEnd": 10,
+        "workfileFrameStart": 1001,
+    }
+
+    calls = run_process(
+        None,
+        instance_data=instance_data
+    )
+
+    expected = [
+        # 10 head black frames generated from gap (991-1000)    
+        '/path/to/ffmpeg -t 0.4 -r 25.0 -f lavfi -i color=c=black:s=1280x720 -tune '
+        'stillimage -start_number 991 C:/result/output.%03d.jpg',
+
+        # Alternance 25fps tiff sequence and 24fps exr sequence for 100 frames each 
+        '/path/to/ffmpeg -start_number 1000 -framerate 25.0 -i '
+        f'C:\\no_tc{os.sep}output.%04d.tif '
+        '-start_number 1001 C:/result/output.%03d.jpg',
+
+        '/path/to/ffmpeg -start_number 1000 -framerate 24.0 -i '
+        f'C:\\with_tc{os.sep}output.%04d.exr '
+        '-start_number 1102 C:/result/output.%03d.jpg',
+
+        '/path/to/ffmpeg -start_number 1000 -framerate 25.0 -i '
+        f'C:\\no_tc{os.sep}output.%04d.tif '
+        '-start_number 1199 C:/result/output.%03d.jpg',
+
+        '/path/to/ffmpeg -start_number 1000 -framerate 24.0 -i '
+        f'C:\\with_tc{os.sep}output.%04d.exr '
+        '-start_number 1300 C:/result/output.%03d.jpg',
+
+        # Repeated 25fps tiff sequence multiple times till the end 
+        '/path/to/ffmpeg -start_number 1000 -framerate 25.0 -i '
+        f'C:\\no_tc{os.sep}output.%04d.tif '
+        '-start_number 1397 C:/result/output.%03d.jpg',
+
+        '/path/to/ffmpeg -start_number 1000 -framerate 25.0 -i '
+        f'C:\\no_tc{os.sep}output.%04d.tif '
+        '-start_number 1498 C:/result/output.%03d.jpg',
+
+        '/path/to/ffmpeg -start_number 1000 -framerate 25.0 -i '
+        f'C:\\no_tc{os.sep}output.%04d.tif '
+        '-start_number 1599 C:/result/output.%03d.jpg',
+
+        '/path/to/ffmpeg -start_number 1000 -framerate 25.0 -i '
+        f'C:\\no_tc{os.sep}output.%04d.tif '
+        '-start_number 1700 C:/result/output.%03d.jpg',
+
+        '/path/to/ffmpeg -start_number 1000 -framerate 25.0 -i '
+        f'C:\\no_tc{os.sep}output.%04d.tif '
+        '-start_number 1801 C:/result/output.%03d.jpg',
+
+        '/path/to/ffmpeg -start_number 1000 -framerate 25.0 -i '
+        f'C:\\no_tc{os.sep}output.%04d.tif '
+        '-start_number 1902 C:/result/output.%03d.jpg',
+
+        '/path/to/ffmpeg -start_number 1000 -framerate 25.0 -i '
+        f'C:\\no_tc{os.sep}output.%04d.tif '
+        '-start_number 2003 C:/result/output.%03d.jpg',
+
+        '/path/to/ffmpeg -start_number 1000 -framerate 25.0 -i '
+        f'C:\\no_tc{os.sep}output.%04d.tif '
+        '-start_number 2104 C:/result/output.%03d.jpg',
+
+        '/path/to/ffmpeg -start_number 1000 -framerate 25.0 -i '
+        f'C:\\no_tc{os.sep}output.%04d.tif '
+        '-start_number 2205 C:/result/output.%03d.jpg'
+    ]
+
+    assert calls == expected    
+
+def test_multiple_review_clips_with_gap():
+    """
+    Use multiple review clips (image sequence) with gap.
+    Timeline 24fps
+    """
+    file_path = os.path.join(_RESOURCE_DIR, "multiple_review_clips_gap.json")
+    clips = otio.schema.Track.from_json_file(file_path)
+    instance_data = {
+        "otioReviewClips": clips,
+        "handleStart": 10,
+        "handleEnd": 10,
+        "workfileFrameStart": 1001,
+    }
+
+    calls = run_process(
+        None,
+        instance_data=instance_data
+    )
+
+    expected = [
+    # Gap on review track (12 frames)
+    '/path/to/ffmpeg -t 0.5 -r 24.0 -f lavfi -i color=c=black:s=1280x720 -tune '
+    'stillimage -start_number 991 C:/result/output.%03d.jpg',
+
+    '/path/to/ffmpeg -start_number 1000 -framerate 24.0 -i '
+    f'C:\\with_tc{os.sep}output.%04d.exr '
+    '-start_number 1003 C:/result/output.%03d.jpg',
+
+    '/path/to/ffmpeg -start_number 1000 -framerate 24.0 -i '
+    f'C:\\with_tc{os.sep}output.%04d.exr '
+    '-start_number 1091 C:/result/output.%03d.jpg'
     ]
 
     assert calls == expected
