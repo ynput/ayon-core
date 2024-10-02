@@ -521,6 +521,9 @@ class AbstractTemplateBuilder(ABC):
                 scene state.
 
         """
+        # More accurate variable name
+        # - logic related to workfile creation should be moved out in future
+        explicit_build_requested = not workfile_creation_enabled
 
         # Get default values if not provided
         if (
@@ -538,7 +541,6 @@ class AbstractTemplateBuilder(ABC):
         # Build the template if we are explicitly requesting it or if it's
         # an unsaved "new file".
         is_new_file = not self.host.get_current_workfile()
-        explicit_build_requested = not workfile_creation_enabled
         if is_new_file or explicit_build_requested:
             self.log.info(f"Building the workfile template: {template_path}")
             self.import_template(template_path)
