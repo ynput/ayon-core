@@ -99,7 +99,8 @@ def _convert_oiio_transcode_0_4_5(publish_overrides):
     if "ExtractOIIOTranscode" not in publish_overrides:
         return
 
-    transcode_profiles = publish_overrides["ExtractOIIOTranscode"].get("profiles")
+    transcode_profiles = publish_overrides["ExtractOIIOTranscode"].get(
+        "profiles")
     if not transcode_profiles:
         return
 
@@ -108,7 +109,7 @@ def _convert_oiio_transcode_0_4_5(publish_overrides):
         if outputs is None:
             return
 
-        for output in outputs :
+        for output in outputs:
             # Already new settings
             if "display_view" in output:
                 break
