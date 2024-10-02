@@ -710,15 +710,15 @@ class GlobalAttrsWidget(QtWidgets.QWidget):
         invalid_tasks = False
         folder_paths = []
         changes_by_id = {}
-        for instance in self._current_instances_by_id.values():
+        for item in self._current_instances_by_id.values():
             # Ignore instances that have promised context
-            if instance.has_promised_context:
+            if item.has_promised_context:
                 continue
 
             instance_changes = {}
-            new_variant_value = instance.variant
-            new_folder_path = instance.folder_path
-            new_task_name = instance.task_name
+            new_variant_value = item.variant
+            new_folder_path = item.folder_path
+            new_task_name = item.task_name
             if variant_value is not None:
                 instance_changes["variant"] = variant_value
                 new_variant_value = variant_value
@@ -734,32 +734,22 @@ class GlobalAttrsWidget(QtWidgets.QWidget):
             folder_paths.append(new_folder_path)
             try:
                 new_product_name = self._controller.get_product_name(
-                    instance.creator_identifier,
+                    item.creator_identifier,
                     new_variant_value,
                     new_task_name,
                     new_folder_path,
-                    instance.id,
+                    item.id,
                 )
 
             except TaskNotSetError:
                 invalid_tasks = True
-                product_names.add(instance.product_name)
+                product_names.add(item.product_name)
                 continue
 
             product_names.add(new_product_name)
-            if variant_value is not None:
-                instance.variant = variant_value
-
-            if folder_path is not None:
-                instance.folder_path = folder_path
-
-            if task_name is not None:
-                instance.task_name = task_name or None
-
-            instance.product_name = new_product_name
-            if instance.product_name != new_product_name:
+            if item.product_name != new_product_name:
                 instance_changes["productName"] = new_product_name
-            changes_by_id[instance.id] = instance_changes
+            changes_by_id[item.id] = instance_changes
 
         if invalid_tasks:
             self.task_value_widget.set_invalid_empty_task()
@@ -838,6 +828,12 @@ class GlobalAttrsWidget(QtWidgets.QWidget):
         }
         self._refresh_content()
 
+    def _refresh_items(self):
+        instance_ids = set(self._current_instances_by_id.keys())
+        self._current_instances_by_id = (
+            self._controller.get_instance_items_by_id(instance_ids)
+        )
+
     def _refresh_content(self):
         folder_paths = set()
         variants = set()
@@ -850,23 +846,23 @@ class GlobalAttrsWidget(QtWidgets.QWidget):
 
         folder_task_combinations = []
         context_editable = None
-        for instance in self._current_instances_by_id.values():
-            if not instance.has_promised_context:
+        for item in self._current_instances_by_id.values():
+            if not item.has_promised_context:
                 context_editable = True
             elif context_editable is None:
                 context_editable = False
 
             # NOTE I'm not sure how this can even happen?
-            if instance.creator_identifier is None:
+            if item.creator_identifier is None:
                 editable = False
 
-            variants.add(instance.variant or self.unknown_value)
-            product_types.add(instance.product_type or self.unknown_value)
-            folder_path = instance.folder_path or self.unknown_value
-            task_name = instance.task_name or ""
+            variants.add(item.variant or self.unknown_value)
+            product_types.add(item.product_type or self.unknown_value)
+            folder_path = item.folder_path or self.unknown_value
+            task_name = item.task_name or ""
             folder_paths.add(folder_path)
             folder_task_combinations.append((folder_path, task_name))
-            product_names.add(instance.product_name or self.unknown_value)
+            product_names.add(item.product_name or self.unknown_value)
 
         if not editable:
             context_editable = False
@@ -905,8 +901,7 @@ class GlobalAttrsWidget(QtWidgets.QWidget):
 
         changed = False
         for instance_id, changes in event["instance_changes"].items():
-            instance = self._current_instances_by_id.get(instance_id)
-            if instance is None:
+            if instance_id not in self._current_instances_by_id:
                 continue
 
             for key, attr_name in (
@@ -917,12 +912,12 @@ class GlobalAttrsWidget(QtWidgets.QWidget):
                 ("productName", "product_name"),
             ):
                 if key in changes:
-                    setattr(instance, attr_name, changes[key])
                     changed = True
                     break
             if changed:
                 break
 
         if changed:
+            self._refresh_items()
             self._refresh_content()
             self.instance_context_changed.emit()
