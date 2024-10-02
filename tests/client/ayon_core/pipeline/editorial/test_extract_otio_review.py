@@ -83,7 +83,7 @@ def run_process(file_name: str, instance_data: dict = None):
                     processor,
                     "staging_dir",
                     return_value="C:/result/"
-                ):            
+                ):
                     processor.process(instance)
 
     # return all calls made to ffmpeg subprocess
@@ -233,11 +233,11 @@ def test_multiple_review_clips_no_gap():
     )
 
     expected = [
-        # 10 head black frames generated from gap (991-1000)    
+        # 10 head black frames generated from gap (991-1000)
         '/path/to/ffmpeg -t 0.4 -r 25.0 -f lavfi -i color=c=black:s=1280x720 -tune '
         'stillimage -start_number 991 C:/result/output.%03d.jpg',
 
-        # Alternance 25fps tiff sequence and 24fps exr sequence for 100 frames each 
+        # Alternance 25fps tiff sequence and 24fps exr sequence for 100 frames each
         '/path/to/ffmpeg -start_number 1000 -framerate 25.0 -i '
         f'C:\\no_tc{os.sep}output.%04d.tif '
         '-start_number 1001 C:/result/output.%03d.jpg',
@@ -254,7 +254,7 @@ def test_multiple_review_clips_no_gap():
         f'C:\\with_tc{os.sep}output.%04d.exr '
         '-start_number 1300 C:/result/output.%03d.jpg',
 
-        # Repeated 25fps tiff sequence multiple times till the end 
+        # Repeated 25fps tiff sequence multiple times till the end
         '/path/to/ffmpeg -start_number 1000 -framerate 25.0 -i '
         f'C:\\no_tc{os.sep}output.%04d.tif '
         '-start_number 1397 C:/result/output.%03d.jpg',
@@ -292,7 +292,7 @@ def test_multiple_review_clips_no_gap():
         '-start_number 2205 C:/result/output.%03d.jpg'
     ]
 
-    assert calls == expected    
+    assert calls == expected
 
 def test_multiple_review_clips_with_gap():
     """
