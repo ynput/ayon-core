@@ -1118,39 +1118,39 @@ ValidationArtistMessage QLabel {
     font-weight: bold;
 }
 
-#ValidationActionButton {
+#PublishActionButton {
     border-radius: 0.2em;
     padding: 4px 6px 4px 6px;
     background: {color:bg-buttons};
 }
 
-#ValidationActionButton:hover {
+#PublishActionButton:hover {
     background: {color:bg-buttons-hover};
     color: {color:font-hover};
 }
 
-#ValidationActionButton:disabled {
+#PublishActionButton:disabled {
     background: {color:bg-buttons-disabled};
 }
 
-#ValidationErrorTitleFrame {
+#PublishErrorTitleFrame {
     border-radius: 0.2em;
     background: {color:bg-buttons};
 }
 
-#ValidationErrorTitleFrame:hover {
+#PublishErrorTitleFrame:hover {
     background: {color:bg-buttons-hover};
 }
 
-#ValidationErrorTitleFrame[selected="1"] {
+#PublishErrorTitleFrame[selected="1"] {
     background: {color:bg-view-selection};
 }
 
-#ValidationErrorInstanceList {
+#PublishErrorInstanceList {
     border-radius: 0;
 }
 
-#ValidationErrorInstanceList::item {
+#PublishErrorInstanceList::item {
     border-bottom: 1px solid {color:border};
     border-left: 1px solid {color:border};
 }
@@ -1470,14 +1470,6 @@ CreateNextPageOverlay {
 #DictAsWidgetBody[show_borders="1"] {
     border: 1px solid #4e5254;
     border-radius: 5px;
-}
-
-#OpenPypeVersionLabel[state="success"] {
-    color: {color:settings:version-exists};
-}
-
-#OpenPypeVersionLabel[state="warning"] {
-    color: {color:settings:version-not-found};
 }
 
 #ShadowWidget {

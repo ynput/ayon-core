@@ -7,13 +7,10 @@ from .local_settings import (
     JSONSettingRegistry,
     AYONSecureRegistry,
     AYONSettingsRegistry,
-    OpenPypeSecureRegistry,
-    OpenPypeSettingsRegistry,
     get_launcher_local_dir,
     get_launcher_storage_dir,
     get_local_site_id,
     get_ayon_username,
-    get_openpype_username,
 )
 from .ayon_connection import initialize_ayon_connection
 from .cache import (
@@ -59,13 +56,11 @@ from .env_tools import (
 from .terminal import Terminal
 from .execute import (
     get_ayon_launcher_args,
-    get_openpype_execute_args,
     get_linux_launcher_args,
     execute,
     run_subprocess,
     run_detached_process,
     run_ayon_launcher_process,
-    run_openpype_process,
     path_to_subprocess_arg,
     CREATE_NO_WINDOW
 )
@@ -145,13 +140,10 @@ __all__ = [
     "JSONSettingRegistry",
     "AYONSecureRegistry",
     "AYONSettingsRegistry",
-    "OpenPypeSecureRegistry",
-    "OpenPypeSettingsRegistry",
     "get_launcher_local_dir",
     "get_launcher_storage_dir",
     "get_local_site_id",
     "get_ayon_username",
-    "get_openpype_username",
 
     "initialize_ayon_connection",
 
@@ -162,13 +154,11 @@ __all__ = [
     "register_event_callback",
 
     "get_ayon_launcher_args",
-    "get_openpype_execute_args",
     "get_linux_launcher_args",
     "execute",
     "run_subprocess",
     "run_detached_process",
     "run_ayon_launcher_process",
-    "run_openpype_process",
     "path_to_subprocess_arg",
     "CREATE_NO_WINDOW",
 

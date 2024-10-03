@@ -217,9 +217,8 @@ class CollectAnatomyInstanceData(pyblish.api.ContextPlugin):
             joined_paths = ", ".join(
                 ["\"{}\"".format(path) for path in not_found_task_paths]
             )
-            self.log.warning((
-                "Not found task entities with paths \"{}\"."
-            ).format(joined_paths))
+            self.log.warning(
+                f"Not found task entities with paths {joined_paths}.")
 
     def fill_latest_versions(self, context, project_name):
         """Try to find latest version for each instance's product name.

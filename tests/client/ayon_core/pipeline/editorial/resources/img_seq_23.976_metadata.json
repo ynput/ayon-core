@@ -1,0 +1,255 @@
+{
+    "OTIO_SCHEMA": "Clip.2",
+    "metadata": {
+        "active": true,
+        "applieswhole": 1,
+        "asset": "sh020",
+        "audio": true,
+        "families": [
+            "clip"
+        ],
+        "family": "plate",
+        "handleEnd": 8,
+        "handleStart": 0,
+        "heroTrack": true,
+        "hierarchy": "shots/sq001",
+        "hierarchyData": {
+            "episode": "ep01",
+            "folder": "shots",
+            "sequence": "sq001",
+            "shot": "sh020",
+            "track": "reference"
+        },
+        "hiero_source_type": "TrackItem",
+        "id": "pyblish.avalon.instance",
+        "label": "openpypeData",
+        "note": "OpenPype data container",
+        "parents": [
+            {
+                "entity_name": "shots",
+                "entity_type": "folder"
+            },
+            {
+                "entity_name": "sq001",
+                "entity_type": "sequence"
+            }
+        ],
+        "publish": true,
+        "reviewTrack": null,
+        "sourceResolution": false,
+        "subset": "plateP01",
+        "variant": "Main",
+        "workfileFrameStart": 1001
+    },
+    "name": "sh020",
+    "source_range": {
+        "OTIO_SCHEMA": "TimeRange.1",
+        "duration": {
+            "OTIO_SCHEMA": "RationalTime.1",
+            "rate": 23.976024627685547,
+            "value": 51.0
+        },
+        "start_time": {
+            "OTIO_SCHEMA": "RationalTime.1",
+            "rate": 23.976024627685547,
+            "value": 0.0
+        }
+    },
+    "effects": [],
+    "markers": [
+        {
+            "OTIO_SCHEMA": "Marker.2",
+            "metadata": {
+                "active": true,
+                "applieswhole": 1,
+                "asset": "sh020",
+                "audio": true,
+                "families": [
+                    "clip"
+                ],
+                "family": "plate",
+                "handleEnd": 8,
+                "handleStart": 0,
+                "heroTrack": true,
+                "hierarchy": "shots/sq001",
+                "hierarchyData": {
+                    "episode": "ep01",
+                    "folder": "shots",
+                    "sequence": "sq001",
+                    "shot": "sh020",
+                    "track": "reference"
+                },
+                "hiero_source_type": "TrackItem",
+                "id": "pyblish.avalon.instance",
+                "label": "openpypeData",
+                "note": "OpenPype data container",
+                "parents": [
+                    {
+                        "entity_name": "shots",
+                        "entity_type": "folder"
+                    },
+                    {
+                        "entity_name": "sq001",
+                        "entity_type": "sequence"
+                    }
+                ],
+                "publish": true,
+                "reviewTrack": null,
+                "sourceResolution": false,
+                "subset": "plateP01",
+                "variant": "Main",
+                "workfileFrameStart": 1001
+            },
+            "name": "openpypeData",
+            "color": "RED",
+            "marked_range": {
+                "OTIO_SCHEMA": "TimeRange.1",
+                "duration": {
+                    "OTIO_SCHEMA": "RationalTime.1",
+                    "rate": 23.976024627685547,
+                    "value": 0.0
+                },
+                "start_time": {
+                    "OTIO_SCHEMA": "RationalTime.1",
+                    "rate": 23.976024627685547,
+                    "value": 0.0
+                }
+            }
+        },
+        {
+            "OTIO_SCHEMA": "Marker.2",
+            "metadata": {
+                "applieswhole": 1,
+                "family": "task",
+                "hiero_source_type": "TrackItem",
+                "label": "comp",
+                "note": "Compositing",
+                "type": "Compositing"
+            },
+            "name": "comp",
+            "color": "RED",
+            "marked_range": {
+                "OTIO_SCHEMA": "TimeRange.1",
+                "duration": {
+                    "OTIO_SCHEMA": "RationalTime.1",
+                    "rate": 23.976024627685547,
+                    "value": 0.0
+                },
+                "start_time": {
+                    "OTIO_SCHEMA": "RationalTime.1",
+                    "rate": 23.976024627685547,
+                    "value": 0.0
+                }
+            }
+        }
+    ],
+    "enabled": true,
+    "media_references": {
+        "DEFAULT_MEDIA": {
+            "OTIO_SCHEMA": "ImageSequenceReference.1",
+            "metadata": {
+                "clip.properties.blendfunc": "0",
+                "clip.properties.colourspacename": "default",
+                "clip.properties.domainroot": "",
+                "clip.properties.enabled": "1",
+                "clip.properties.expanded": "1",
+                "clip.properties.opacity": "1",
+                "clip.properties.valuesource": "",
+                "foundry.source.audio": "",
+                "foundry.source.bitmapsize": "0",
+                "foundry.source.bitsperchannel": "0",
+                "foundry.source.channelformat": "integer",
+                "foundry.source.colourtransform": "ACES - ACES2065-1",
+                "foundry.source.duration": "59",
+                "foundry.source.filename": "MER_sq001_sh020_P01.%04d.exr 997-1055",
+                "foundry.source.filesize": "",
+                "foundry.source.fragments": "59",
+                "foundry.source.framerate": "23.98",
+                "foundry.source.fullpath": "",
+                "foundry.source.height": "1080",
+                "foundry.source.layers": "colour",
+                "foundry.source.path": "C:/projects/AY01_VFX_demo/resources/plates/MER_sq001_sh020_P01/MER_sq001_sh020_P01.%04d.exr 997-1055",
+                "foundry.source.pixelAspect": "1",
+                "foundry.source.pixelAspectRatio": "",
+                "foundry.source.pixelformat": "RGBA (Float16)  Open Color IO space: 11",
+                "foundry.source.reelID": "",
+                "foundry.source.resolution": "",
+                "foundry.source.samplerate": "Invalid",
+                "foundry.source.shortfilename": "MER_sq001_sh020_P01.%04d.exr 997-1055",
+                "foundry.source.shot": "",
+                "foundry.source.shotDate": "",
+                "foundry.source.startTC": "",
+                "foundry.source.starttime": "997",
+                "foundry.source.timecode": "172800",
+                "foundry.source.umid": "1bf7437a-b446-440c-07c5-7cae7acf4f5e",
+                "foundry.source.umidOriginator": "foundry.source.umid",
+                "foundry.source.width": "1920",
+                "foundry.timeline.autodiskcachemode": "Manual",
+                "foundry.timeline.colorSpace": "ACES - ACES2065-1",
+                "foundry.timeline.duration": "59",
+                "foundry.timeline.framerate": "23.98",
+                "foundry.timeline.outputformat": "",
+                "foundry.timeline.poster": "0",
+                "foundry.timeline.posterLayer": "colour",
+                "foundry.timeline.readParams": "AAAAAQAAAAAAAAAFAAAACmNvbG9yc3BhY2UAAAAFaW50MzIAAAAMAAAAC2VkZ2VfcGl4ZWxzAAAABWludDMyAAAAAAAAABFpZ25vcmVfcGFydF9uYW1lcwAAAARib29sAAAAAAhub3ByZWZpeAAAAARib29sAAAAAB5vZmZzZXRfbmVnYXRpdmVfZGlzcGxheV93aW5kb3cAAAAEYm9vbAE=",
+                "foundry.timeline.samplerate": "Invalid",
+                "isSequence": true,
+                "media.exr.channels": "B:{1 0 1 1},G:{1 0 1 1},R:{1 0 1 1}",
+                "media.exr.compression": "8",
+                "media.exr.compressionName": "DWAA",
+                "media.exr.dataWindow": "0,0,1919,1079",
+                "media.exr.displayWindow": "0,0,1919,1079",
+                "media.exr.dwaCompressionLevel": "90",
+                "media.exr.lineOrder": "0",
+                "media.exr.pixelAspectRatio": "1",
+                "media.exr.screenWindowCenter": "0,0",
+                "media.exr.screenWindowWidth": "1",
+                "media.exr.type": "scanlineimage",
+                "media.exr.version": "1",
+                "media.input.bitsperchannel": "16-bit half float",
+                "media.input.ctime": "2022-04-21 11:56:03",
+                "media.input.filename": "C:/projects/AY01_VFX_demo/resources/plates/MER_sq001_sh020_P01/MER_sq001_sh020_P01.0997.exr",
+                "media.input.filereader": "exr",
+                "media.input.filesize": "1235182",
+                "media.input.frame": "1",
+                "media.input.frame_rate": "23.976",
+                "media.input.height": "1080",
+                "media.input.mtime": "2022-03-06 10:14:41",
+                "media.input.timecode": "02:00:00:00",
+                "media.input.width": "1920",
+                "media.nuke.full_layer_names": "0",
+                "media.nuke.node_hash": "ffffffffffffffff",
+                "media.nuke.version": "12.2v3",
+                "openpype.source.colourtransform": "ACES - ACES2065-1",
+                "openpype.source.height": 1080,
+                "openpype.source.pixelAspect": 1.0,
+                "openpype.source.width": 1920,
+                "padding": 4
+            },
+            "name": "",
+            "available_range": {
+                "OTIO_SCHEMA": "TimeRange.1",
+                "duration": {
+                    "OTIO_SCHEMA": "RationalTime.1",
+                    "rate": 23.976,
+                    "value": 59.0
+                },
+                "start_time": {
+                    "OTIO_SCHEMA": "RationalTime.1",
+                    "rate": 23.976,
+                    "value": 997.0
+                }
+            },
+            "available_image_bounds": null,
+            "target_url_base": "C:/projects/AY01_VFX_demo/resources/plates/MER_sq001_sh020_P01\\",
+            "name_prefix": "MER_sq001_sh020_P01.",
+            "name_suffix": ".exr",
+            "start_frame": 997,
+            "frame_step": 1,
+            "rate": 23.976,
+            "frame_zero_padding": 4,
+            "missing_frame_policy": "error"
+        }
+    },
+    "active_media_reference_key": "DEFAULT_MEDIA"
+}
