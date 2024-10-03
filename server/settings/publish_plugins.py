@@ -268,13 +268,36 @@ class ExtractThumbnailModel(BaseSettingsModel):
 def _extract_oiio_transcoding_type():
     return [
         {"value": "colorspace", "label": "Use Colorspace"},
-        {"value": "display", "label": "Use Display&View"}
+        {"value": "display_view", "label": "Use Display&View"}
     ]
 
 
 class OIIOToolArgumentsModel(BaseSettingsModel):
     additional_command_args: list[str] = SettingsField(
-        default_factory=list, title="Arguments")
+        default_factory=list,
+        title="Arguments",
+        description="Additional command line arguments for *oiiotool*."
+    )
+
+
+class UseDisplayViewModel(BaseSettingsModel):
+    _layout = "expanded"
+    display: str = SettingsField(
+        "",
+        title="Target Display",
+        description=(
+            "Display of the target transform. If left empty, the"
+            " source Display value will be used."
+        )
+    )
+    view: str = SettingsField(
+        "",
+        title="Target View",
+        description=(
+            "View of the target transform. If left empty, the"
+            " source View value will be used."
+        )
+    )
 
 
 class ExtractOIIOTranscodeOutputModel(BaseSettingsModel):
@@ -285,22 +308,57 @@ class ExtractOIIOTranscodeOutputModel(BaseSettingsModel):
         description="Output name (no space)",
         regex=r"[a-zA-Z0-9_]([a-zA-Z0-9_\.\-]*[a-zA-Z0-9_])?$",
     )
-    extension: str = SettingsField("", title="Extension")
+    extension: str = SettingsField(
+        "",
+        title="Extension",
+        description=(
+            "Target extension. If left empty, original"
+            " extension is used."
+        ),
+    )
     transcoding_type: str = SettingsField(
         "colorspace",
         title="Transcoding type",
-        enum_resolver=_extract_oiio_transcoding_type
+        enum_resolver=_extract_oiio_transcoding_type,
+        conditionalEnum=True,
+        description=(
+            "Select the transcoding type for your output, choosing either "
+            "*Colorspace* or *Display&View* transform."
+            " Only one option can be applied per output definition."
+        ),
     )
-    colorspace: str = SettingsField("", title="Colorspace")
-    display: str = SettingsField("", title="Display")
-    view: str = SettingsField("", title="View")
+    colorspace: str = SettingsField(
+        "",
+        title="Target Colorspace",
+        description=(
+            "Choose the desired target colorspace, confirming its availability"
+            " in the active OCIO config. If left empty, the"
+            " source colorspace value will be used, resulting in no"
+            " colorspace conversion."
+        )
+    )
+    display_view: UseDisplayViewModel = SettingsField(
+        title="Use Display&View",
+        default_factory=UseDisplayViewModel
+    )
+
     oiiotool_args: OIIOToolArgumentsModel = SettingsField(
         default_factory=OIIOToolArgumentsModel,
         title="OIIOtool arguments")
 
-    tags: list[str] = SettingsField(default_factory=list, title="Tags")
+    tags: list[str] = SettingsField(
+        default_factory=list,
+        title="Tags",
+        description=(
+            "Additional tags that will be added to the created representation."
+            "\nAdd *review* tag to create review from the transcoded"
+            " representation instead of the original."
+        )
+    )
     custom_tags: list[str] = SettingsField(
-        default_factory=list, title="Custom Tags"
+        default_factory=list,
+        title="Custom Tags",
+        description="Additional custom tags that will be added to the created representation."
     )
 
 
@@ -328,7 +386,13 @@ class ExtractOIIOTranscodeProfileModel(BaseSettingsModel):
     )
     delete_original: bool = SettingsField(
         True,
-        title="Delete Original Representation"
+        title="Delete Original Representation",
+        description=(
+            "Choose to preserve or remove the original representation.\n"
+            "Keep in mind that if the transcoded representation includes"
+            " a `review` tag, it will take precedence over"
+            " the original for creating reviews."
+        ),
     )
     outputs: list[ExtractOIIOTranscodeOutputModel] = SettingsField(
         default_factory=list,
@@ -371,7 +435,7 @@ class ExtractReviewFFmpegModel(BaseSettingsModel):
 def extract_review_filter_enum():
     return [
         {
-            "value": "everytime",
+            "value": "everytime",  # codespell:ignore everytime
             "label": "Always"
         },
         {
@@ -393,7 +457,7 @@ class ExtractReviewFilterModel(BaseSettingsModel):
         default_factory=list, title="Custom Tags"
     )
     single_frame_filter: str = SettingsField(
-        "everytime",
+        "everytime",  # codespell:ignore everytime
         description=(
             "Use output <b>always</b> / only if input <b>is 1 frame</b>"
             " image / only if has <b>2+ frames</b> or <b>is video</b>"
@@ -791,7 +855,7 @@ class IntegrateHeroVersionModel(BaseSettingsModel):
 
 class CleanUpModel(BaseSettingsModel):
     _isGroup = True
-    paterns: list[str] = SettingsField(
+    paterns: list[str] = SettingsField(  # codespell:ignore paterns
         default_factory=list,
         title="Patterns (regex)"
     )
@@ -1225,7 +1289,7 @@ DEFAULT_PUBLISH_VALUES = {
         "use_hardlinks": False
     },
     "CleanUp": {
-        "paterns": [],
+        "paterns": [],  # codespell:ignore paterns
         "remove_temp_renders": False
     },
     "CleanUpFarm": {
