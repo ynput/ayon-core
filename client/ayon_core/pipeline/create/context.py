@@ -667,6 +667,9 @@ class CreateContext:
                 if plugin not in plugins_by_targets
             ]
 
+        for plugin in plugins_with_defs:
+            plugin.register_create_context_callbacks(self)
+
         self.publish_plugins_mismatch_targets = plugins_mismatch_targets
         self.publish_discover_result = discover_result
         self.publish_plugins = plugins_by_targets
