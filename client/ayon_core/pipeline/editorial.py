@@ -293,7 +293,7 @@ def get_media_range_with_retimes(otio_clip, handle_start, handle_end):
     # to preserve media range
 
     # Compute new source range based on available rate.
-    # NSTC compatibility might introduce floating rates, when these are
+    # NTSC compatibility might introduce floating rates, when these are
     # not exactly the same (23.976 vs 23.976024627685547)
     # this will cause precision issue in computation.
     # Round to 2 decimals for comparison.
