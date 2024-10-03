@@ -667,6 +667,7 @@ class CreateContext:
                 if plugin not in plugins_by_targets
             ]
 
+        # Register create context callbacks
         for plugin in plugins_with_defs:
             if not inspect.ismethod(plugin.register_create_context_callbacks):
                 self.log.warning(
@@ -810,23 +811,171 @@ class CreateContext:
             )
 
     def listen_to_added_instances(self, callback):
-        self._event_hub.add_callback(INSTANCE_ADDED_TOPIC, callback)
+        """Register callback for added instances.
+
+        Event is triggered when instances are already available in context
+            and have set create/publish attribute definitions.
+
+        Data structure of event::
+
+            ```python
+            {
+                "instances": [CreatedInstance, ...]
+            }
+            ```
+
+        Args:
+            callback (Callable): Callback function that will be called when
+                instances are added to context.
+
+        Returns:
+            EventCallback: Created callback object which can be used to
+                stop listening.
+
+        """
+        return self._event_hub.add_callback(INSTANCE_ADDED_TOPIC, callback)
 
     def listen_to_removed_instances(self, callback):
+        """Register callback for removed instances.
+
+        Event is triggered when instances are already removed from context.
+
+        Data structure of event::
+
+            ```python
+            {
+                "instances": [CreatedInstance, ...]
+            }
+            ```
+
+        Args:
+            callback (Callable): Callback function that will be called when
+                instances are removed from context.
+
+        Returns:
+            EventCallback: Created callback object which can be used to
+                stop listening.
+
+        """
         self._event_hub.add_callback(INSTANCE_REMOVED_TOPIC, callback)
 
     def listen_to_value_changes(self, callback):
+        """Register callback to listen value changes.
+
+        Event is triggered when any value changes on any instance or
+            context data.
+
+        Data structure of event::
+
+            ```python
+            {
+                "changes": [
+                    {
+                        "instance": CreatedInstance,
+                        "changes": {
+                            "folderPath": "/new/folder/path",
+                            "creator_attributes": {
+                                "attr_1": "value_1"
+                            }
+                        }
+                    }
+                ]
+            }
+            ```
+
+        Args:
+            callback (Callable): Callback function that will be called when
+                value changed.
+
+        Returns:
+            EventCallback: Created callback object which can be used to
+                stop listening.
+
+        """
         self._event_hub.add_callback(VALUE_CHANGED_TOPIC, callback)
 
     def listen_to_pre_create_attr_defs_change(self, callback):
+        """Register callback to listen pre-create attribute changes.
+
+        Create plugin can trigger refresh of pre-create attributes. Usage of
+            this event is mainly for publisher UI.
+
+        Data structure of event::
+
+            ```python
+            {
+                "identifiers": ["create_plugin_identifier"]
+            }
+            ```
+
+        Args:
+            callback (Callable): Callback function that will be called when
+                pre-create attributes should be refreshed.
+
+        Returns:
+            EventCallback: Created callback object which can be used to
+                stop listening.
+
+        """
         self._event_hub.add_callback(
             PRE_CREATE_ATTR_DEFS_CHANGED_TOPIC, callback
         )
 
     def listen_to_create_attr_defs_change(self, callback):
+        """Register callback to listen create attribute changes.
+
+        Create plugin changed attribute definitions of instance.
+
+        Data structure of event::
+
+            ```python
+            {
+                "instances": [CreatedInstance, ...]
+            }
+            ```
+
+        Args:
+            callback (Callable): Callback function that will be called when
+                create attributes changed.
+
+        Returns:
+            EventCallback: Created callback object which can be used to
+                stop listening.
+
+        """
         self._event_hub.add_callback(CREATE_ATTR_DEFS_CHANGED_TOPIC, callback)
 
     def listen_to_publish_attr_defs_change(self, callback):
+        """Register callback to listen publish attribute changes.
+
+        Publish plugin changed attribute definitions of instance of context.
+
+        Data structure of event::
+
+            ```python
+            {
+                "instance_changes": {
+                    None: {
+                        "instance": None,
+                        "plugin_names": {"PluginA"},
+                    }
+                    "<instance_id>": {
+                        "instance": CreatedInstance,
+                        "plugin_names": {"PluginB", "PluginC"},
+                    }
+                }
+            }
+            ```
+
+        Args:
+            callback (Callable): Callback function that will be called when
+                publish attributes changed.
+
+        Returns:
+            EventCallback: Created callback object which can be used to
+                stop listening.
+
+        """
         self._event_hub.add_callback(
             PUBLISH_ATTR_DEFS_CHANGED_TOPIC, callback
         )
