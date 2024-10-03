@@ -166,3 +166,24 @@ def test_img_sequence_relative_source_range():
         "legacy_img_sequence.json",
         expected_data
     )
+
+def test_img_sequence_conform_to_23_976fps():
+    """
+    Img sequence clip
+    available files = 997-1047 23.976fps
+    source_range =  997-1055 23.976024627685547fps
+    """
+    expected_data = {
+        'mediaIn': 997,
+        'mediaOut': 1047,
+        'handleStart': 0,
+        'handleEnd': 8,
+        'speed': 1.0
+    }
+
+    _check_expected_retimed_values(
+        "img_seq_23.976_metadata.json",
+        expected_data,
+        handle_start=0,
+        handle_end=8,
+    )
