@@ -127,6 +127,27 @@ class AYONPyblishPluginMixin:
     #         callback(self)
 
     @classmethod
+    def register_create_context_callbacks(cls, create_context):
+        """Register callbacks for create context.
+
+        It is possible to register callbacks listening to changes happened
+        in create context.
+
+        Methods available on create context:
+        - listen_to_added_instances
+        - listen_to_removed_instances
+        - listen_to_value_changes
+        - listen_to_pre_create_attr_defs_change
+        - listen_to_create_attr_defs_change
+        - listen_to_publish_attr_defs_change
+
+        Args:
+            create_context (CreateContext): Create context.
+
+        """
+        pass
+
+    @classmethod
     def get_attribute_defs(cls):
         """Publish attribute definitions.
 
