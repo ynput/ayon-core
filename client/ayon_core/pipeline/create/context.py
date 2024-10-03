@@ -668,7 +668,21 @@ class CreateContext:
             ]
 
         for plugin in plugins_with_defs:
-            plugin.register_create_context_callbacks(self)
+            if not inspect.ismethod(plugin.register_create_context_callbacks):
+                self.log.warning(
+                    f"Plugin {plugin.__name__} does not have"
+                    f" 'register_create_context_callbacks'"
+                    f" defined as class method."
+                )
+                continue
+            try:
+                plugin.register_create_context_callbacks(self)
+            except Exception:
+                self.log.error(
+                    f"Failed to register callbacks for plugin"
+                    f" {plugin.__name__}.",
+                    exc_info=True
+                )
 
         self.publish_plugins_mismatch_targets = plugins_mismatch_targets
         self.publish_discover_result = discover_result
