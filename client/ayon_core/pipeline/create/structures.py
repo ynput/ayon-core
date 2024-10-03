@@ -734,6 +734,17 @@ class CreatedInstance:
         return output
 
     def update_create_attr_defs(self, attr_defs, value=None):
+        """Create plugin updates create attribute definitions.
+
+        Method called by create plugin when attribute definitions should
+            be changed.
+
+        Args:
+            attr_defs (List[AbstractAttrDef]): Attribute definitions.
+            value (Optional[Dict[str, Any]]): Values of attribute definitions.
+                Current values are used if not passed in.
+
+        """
         if value is None:
             value = self._data["creator_attributes"]
 
@@ -780,6 +791,13 @@ class CreatedInstance:
         )
 
     def attribute_value_changed(self, key, changes):
+        """A value changed.
+
+        Args:
+            key (str): Key of attribute values.
+            changes (Dict[str, Any]): Changes in values.
+
+        """
         self._create_context.instance_values_changed(self.id, {key: changes})
 
     def set_publish_plugin_attr_defs(self, plugin_name, attr_defs):
@@ -798,6 +816,13 @@ class CreatedInstance:
         )
 
     def publish_attribute_value_changed(self, plugin_name, value):
+        """Method called from PublishAttributes.
+
+        Args:
+            plugin_name (str): Plugin name.
+            value (Dict[str, Any]): Changes in values for the plugin.
+
+        """
         self._create_context.instance_values_changed(
             self.id,
             {
@@ -816,4 +841,10 @@ class CreatedInstance:
 
     @property
     def _create_context(self):
+        """Get create context.
+
+        Returns:
+            CreateContext: Context object which wraps object.
+
+        """
         return self._creator.create_context
