@@ -1,27 +1,96 @@
 import uuid
 import copy
 import inspect
+import logging
 import traceback
 import collections
+from contextlib import contextmanager
 from functools import partial
 from typing import Optional, Dict, List, Union, Any, Iterable
 
 import arrow
 import pyblish.plugin
 
+from ayon_core.lib import env_value_to_bool
 from ayon_core.pipeline import (
     PublishValidationError,
     KnownPublishError,
     OptionalPyblishPluginMixin,
 )
 from ayon_core.pipeline.plugin_discover import DiscoverResult
-from ayon_core.pipeline.publish import get_publish_instance_label
+from ayon_core.pipeline.publish import (
+    get_publish_instance_label,
+    PublishError,
+)
 from ayon_core.tools.publisher.abstract import AbstractPublisherBackend
 
 PUBLISH_EVENT_SOURCE = "publisher.publish.model"
 # Define constant for plugin orders offset
 PLUGIN_ORDER_OFFSET = 0.5
 
+
+class MessageHandler(logging.Handler):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.records = []
+
+    def clear_records(self):
+        self.records = []
+
+    def emit(self, record):
+        try:
+            record.msg = record.getMessage()
+        except Exception:
+            record.msg = str(record.msg)
+        self.records.append(record)
+
+
+class PublishErrorInfo:
+    def __init__(
+        self,
+        message: str,
+        is_unknown_error: bool,
+        description: Optional[str] = None,
+        title: Optional[str] = None,
+        detail: Optional[str] = None,
+    ):
+        self.message: str = message
+        self.is_unknown_error = is_unknown_error
+        self.description: str = description or message
+        self.title: Optional[str] = title or "Unknown error"
+        self.detail: Optional[str] = detail
+
+    def __eq__(self, other: Any) -> bool:
+        if not isinstance(other, PublishErrorInfo):
+            return False
+        return (
+            self.description == other.description
+            and self.is_unknown_error == other.is_unknown_error
+            and self.title == other.title
+            and self.detail == other.detail
+        )
+
+    def __ne__(self, other: Any) -> bool:
+        return not self.__eq__(other)
+
+    @classmethod
+    def from_exception(cls, exc) -> "PublishErrorInfo":
+        if isinstance(exc, PublishError):
+            return cls(
+                exc.message,
+                False,
+                exc.description,
+                title=exc.title,
+                detail=exc.detail,
+            )
+        if isinstance(exc, KnownPublishError):
+            msg = str(exc)
+        else:
+            msg = (
+                "Something went wrong. Send report"
+                " to your supervisor or Ynput team."
+            )
+        return cls(msg, True)
 
 
 class PublishReportMaker:
@@ -479,10 +548,10 @@ class PublishPluginsProxy:
         )
 
 
-class ValidationErrorItem:
-    """Data driven validation error item.
+class PublishErrorItem:
+    """Data driven publish error item.
 
-    Prepared data container with information about validation error and it's
+    Prepared data container with information about publish error and it's
     source plugin.
 
     Can be converted to raw data and recreated should be used for controller
@@ -490,11 +559,11 @@ class ValidationErrorItem:
 
     Args:
         instance_id (Optional[str]): Pyblish instance id to which is
-            validation error connected.
+            publish error connected.
         instance_label (Optional[str]): Prepared instance label.
-        plugin_id (str): Pyblish plugin id which triggered the validation
+        plugin_id (str): Pyblish plugin id which triggered the publish
             error. Id is generated using 'PublishPluginsProxy'.
-        context_validation (bool): Error happened on context.
+        is_context_plugin (bool): Error happened on context.
         title (str): Error title.
         description (str): Error description.
         detail (str): Error detail.
@@ -505,7 +574,8 @@ class ValidationErrorItem:
         instance_id: Optional[str],
         instance_label: Optional[str],
         plugin_id: str,
-        context_validation: bool,
+        is_context_plugin: bool,
+        is_validation_error: bool,
         title: str,
         description: str,
         detail: str
@@ -513,7 +583,8 @@ class ValidationErrorItem:
         self.instance_id: Optional[str] = instance_id
         self.instance_label: Optional[str] = instance_label
         self.plugin_id: str = plugin_id
-        self.context_validation: bool = context_validation
+        self.is_context_plugin: bool = is_context_plugin
+        self.is_validation_error: bool = is_validation_error
         self.title: str = title
         self.description: str = description
         self.detail: str = detail
@@ -529,7 +600,8 @@ class ValidationErrorItem:
             "instance_id": self.instance_id,
             "instance_label": self.instance_label,
             "plugin_id": self.plugin_id,
-            "context_validation": self.context_validation,
+            "is_context_plugin": self.is_context_plugin,
+            "is_validation_error": self.is_validation_error,
             "title": self.title,
             "description": self.description,
             "detail": self.detail,
@@ -539,13 +611,13 @@ class ValidationErrorItem:
     def from_result(
         cls,
         plugin_id: str,
-        error: PublishValidationError,
+        error: PublishError,
         instance: Union[pyblish.api.Instance, None]
     ):
         """Create new object based on resukt from controller.
 
         Returns:
-            ValidationErrorItem: New object with filled data.
+            PublishErrorItem: New object with filled data.
         """
 
         instance_label = None
@@ -561,6 +633,7 @@ class ValidationErrorItem:
             instance_label,
             plugin_id,
             instance is None,
+            isinstance(error, PublishValidationError),
             error.title,
             error.description,
             error.detail,
@@ -571,11 +644,11 @@ class ValidationErrorItem:
         return cls(**data)
 
 
-class PublishValidationErrorsReport:
-    """Publish validation errors report that can be parsed to raw data.
+class PublishErrorsReport:
+    """Publish errors report that can be parsed to raw data.
 
     Args:
-        error_items (List[ValidationErrorItem]): List of validation errors.
+        error_items (List[PublishErrorItem]): List of publish errors.
         plugin_action_items (Dict[str, List[PublishPluginActionItem]]): Action
             items by plugin id.
 
@@ -584,7 +657,7 @@ class PublishValidationErrorsReport:
         self._error_items = error_items
         self._plugin_action_items = plugin_action_items
 
-    def __iter__(self) -> Iterable[ValidationErrorItem]:
+    def __iter__(self) -> Iterable[PublishErrorItem]:
         for item in self._error_items:
             yield item
 
@@ -658,7 +731,7 @@ class PublishValidationErrorsReport:
     @classmethod
     def from_data(
         cls, data: Dict[str, Any]
-    ) -> "PublishValidationErrorsReport":
+    ) -> "PublishErrorsReport":
         """Recreate object from data.
 
         Args:
@@ -666,11 +739,11 @@ class PublishValidationErrorsReport:
                 using 'to_data' method.
 
         Returns:
-            PublishValidationErrorsReport: New object based on data.
+            PublishErrorsReport: New object based on data.
         """
 
         error_items = [
-            ValidationErrorItem.from_data(error_item)
+            PublishErrorItem.from_data(error_item)
             for error_item in data["error_items"]
         ]
         plugin_action_items = {}
@@ -682,12 +755,12 @@ class PublishValidationErrorsReport:
         return cls(error_items, plugin_action_items)
 
 
-class PublishValidationErrors:
-    """Object to keep track about validation errors by plugin."""
+class PublishErrors:
+    """Object to keep track about publish errors by plugin."""
 
     def __init__(self):
         self._plugins_proxy: Union[PublishPluginsProxy, None] = None
-        self._error_items: List[ValidationErrorItem] = []
+        self._error_items: List[PublishErrorItem] = []
         self._plugin_action_items: Dict[
             str, List[PublishPluginActionItem]
         ] = {}
@@ -713,29 +786,29 @@ class PublishValidationErrors:
         self._error_items = []
         self._plugin_action_items = {}
 
-    def create_report(self) -> PublishValidationErrorsReport:
+    def create_report(self) -> PublishErrorsReport:
         """Create report based on currently existing errors.
 
         Returns:
-            PublishValidationErrorsReport: Validation error report with all
+            PublishErrorsReport: Publish error report with all
                 error information and publish plugin action items.
         """
 
-        return PublishValidationErrorsReport(
+        return PublishErrorsReport(
             self._error_items, self._plugin_action_items
         )
 
     def add_error(
         self,
         plugin: pyblish.api.Plugin,
-        error: PublishValidationError,
+        error: PublishError,
         instance: Union[pyblish.api.Instance, None]
     ):
         """Add error from pyblish result.
 
         Args:
             plugin (pyblish.api.Plugin): Plugin which triggered error.
-            error (PublishValidationError): Validation error.
+            error (PublishError): Publish error.
             instance (Union[pyblish.api.Instance, None]): Instance on which was
                 error raised or None if was raised on context.
         """
@@ -750,7 +823,7 @@ class PublishValidationErrors:
             error.title = plugin_label
 
         self._error_items.append(
-            ValidationErrorItem.from_result(plugin_id, error, instance)
+            PublishErrorItem.from_result(plugin_id, error, instance)
         )
         if plugin_id in self._plugin_action_items:
             return
@@ -796,12 +869,16 @@ class PublishModel:
     def __init__(self, controller: AbstractPublisherBackend):
         self._controller = controller
 
+        self._log_to_console: bool = env_value_to_bool(
+            "AYON_PUBLISHER_PRINT_LOGS", default=False
+        )
+
         # Publishing should stop at validation stage
         self._publish_up_validation: bool = False
         self._publish_comment_is_set: bool = False
 
         # Any other exception that happened during publishing
-        self._publish_error_msg: Optional[str] = None
+        self._publish_error_info: Optional[PublishErrorInfo] = None
         # Publishing is in progress
         self._publish_is_running: bool = False
         # Publishing is over validation order
@@ -824,10 +901,8 @@ class PublishModel:
         self._publish_context = None
         # Pyblish report
         self._publish_report: PublishReportMaker = PublishReportMaker()
-        # Store exceptions of validation error
-        self._publish_validation_errors: PublishValidationErrors = (
-            PublishValidationErrors()
-        )
+        # Store exceptions of publish error
+        self._publish_errors: PublishErrors = PublishErrors()
 
         # This information is not much important for controller but for widget
         #   which can change (and set) the comment.
@@ -845,13 +920,21 @@ class PublishModel:
             self._default_iterator()
         )
 
+        self._log_handler: MessageHandler = MessageHandler()
+
     def reset(self):
+        # Allow to change behavior during process lifetime
+        self._log_to_console = env_value_to_bool(
+            "AYON_PUBLISHER_PRINT_LOGS", default=False
+        )
+
         create_context = self._controller.get_create_context()
+
         self._publish_up_validation = False
         self._publish_comment_is_set = False
         self._publish_has_started = False
 
-        self._set_publish_error_msg(None)
+        self._set_publish_error_info(None)
         self._set_progress(0)
         self._set_is_running(False)
         self._set_has_validated(False)
@@ -881,7 +964,7 @@ class PublishModel:
         )
         for plugin in create_context.publish_plugins_mismatch_targets:
             self._publish_report.set_plugin_skipped(plugin.id)
-        self._publish_validation_errors.reset(self._publish_plugins_proxy)
+        self._publish_errors.reset(self._publish_plugins_proxy)
 
         self._set_max_progress(len(publish_plugins))
 
@@ -974,11 +1057,11 @@ class PublishModel:
             self._publish_context
         )
 
-    def get_validation_errors(self) -> PublishValidationErrorsReport:
-        return self._publish_validation_errors.create_report()
+    def get_publish_errors_report(self) -> PublishErrorsReport:
+        return self._publish_errors.create_report()
 
-    def get_error_msg(self) -> Optional[str]:
-        return self._publish_error_msg
+    def get_error_info(self) -> Optional[PublishErrorInfo]:
+        return self._publish_error_info
 
     def set_comment(self, comment: str):
         # Ignore change of comment when publishing started
@@ -1077,9 +1160,9 @@ class PublishModel:
                 {"value": value}
             )
 
-    def _set_publish_error_msg(self, value: Optional[str]):
-        if self._publish_error_msg != value:
-            self._publish_error_msg = value
+    def _set_publish_error_info(self, value: Optional[PublishErrorInfo]):
+        if self._publish_error_info != value:
+            self._publish_error_info = value
             self._emit_event(
                 "publish.publish_error.changed",
                 {"value": value}
@@ -1214,43 +1297,68 @@ class PublishModel:
         self._set_progress(self._publish_max_progress)
         yield partial(self.stop_publish)
 
+    @contextmanager
+    def _log_manager(self, plugin: pyblish.api.Plugin):
+        root = logging.getLogger()
+        if not self._log_to_console:
+            plugin.log.propagate = False
+            plugin.log.addHandler(self._log_handler)
+            root.addHandler(self._log_handler)
+
+        try:
+            if self._log_to_console:
+                yield None
+            else:
+                yield self._log_handler
+
+        finally:
+            if not self._log_to_console:
+                plugin.log.propagate = True
+                plugin.log.removeHandler(self._log_handler)
+                root.removeHandler(self._log_handler)
+            self._log_handler.clear_records()
+
     def _process_and_continue(
         self,
         plugin: pyblish.api.Plugin,
         instance: pyblish.api.Instance
     ):
-        result = pyblish.plugin.process(
-            plugin, self._publish_context, instance
-        )
+        with self._log_manager(plugin) as log_handler:
+            result = pyblish.plugin.process(
+                plugin, self._publish_context, instance
+            )
+            if log_handler is not None:
+                result["records"] = log_handler.records
 
         exception = result.get("error")
         if exception:
-            has_validation_error = False
             if (
                 isinstance(exception, PublishValidationError)
                 and not self._publish_has_validated
             ):
-                has_validation_error = True
+                result["is_validation_error"] = True
                 self._add_validation_error(result)
 
             else:
-                if isinstance(exception, KnownPublishError):
-                    msg = str(exception)
-                else:
-                    msg = (
-                        "Something went wrong. Send report"
-                        " to your supervisor or Ynput team."
-                    )
-                self._set_publish_error_msg(msg)
+                if isinstance(exception, PublishError):
+                    if not exception.title:
+                        exception.title = plugin.label or plugin.__name__
+                    self._add_publish_error_to_report(result)
+
+                error_info = PublishErrorInfo.from_exception(exception)
+                self._set_publish_error_info(error_info)
                 self._set_is_crashed(True)
 
-            result["is_validation_error"] = has_validation_error
+                result["is_validation_error"] = False
 
         self._publish_report.add_result(plugin.id, result)
 
     def _add_validation_error(self, result: Dict[str, Any]):
         self._set_has_validation_errors(True)
-        self._publish_validation_errors.add_error(
+        self._add_publish_error_to_report(result)
+
+    def _add_publish_error_to_report(self, result: Dict[str, Any]):
+        self._publish_errors.add_error(
             result["plugin"],
             result["error"],
             result["instance"]

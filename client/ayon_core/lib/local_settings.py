@@ -584,11 +584,3 @@ def get_ayon_username():
 
     """
     return ayon_api.get_user()["name"]
-
-
-def get_openpype_username():
-    return get_ayon_username()
-
-
-OpenPypeSecureRegistry = AYONSecureRegistry
-OpenPypeSettingsRegistry = AYONSettingsRegistry

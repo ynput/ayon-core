@@ -777,7 +777,7 @@ class ProjectPushItemProcess:
         task_info = copy.deepcopy(task_info)
         task_info["name"] = dst_task_name
         # Fill rest of task information based on task type
-        task_type_name = task_info["type"]
+        task_type_name = task_info["taskType"]
         task_types_by_name = {
             task_type["name"]: task_type
             for task_type in self._project_entity["taskTypes"]
@@ -821,7 +821,7 @@ class ProjectPushItemProcess:
         task_name = task_type = None
         if task_info:
             task_name = task_info["name"]
-            task_type = task_info["type"]
+            task_type = task_info["taskType"]
 
         product_name = get_product_name(
             self._item.dst_project_name,
@@ -905,7 +905,7 @@ class ProjectPushItemProcess:
                     project_name,
                     self.host_name,
                     task_name=self._task_info["name"],
-                    task_type=self._task_info["type"],
+                    task_type=self._task_info["taskType"],
                     product_type=product_type,
                     product_name=product_entity["name"]
                 )
@@ -959,7 +959,7 @@ class ProjectPushItemProcess:
         formatting_data = get_template_data(
             self._project_entity,
             self._folder_entity,
-            self._task_info.get("name"),
+            self._task_info,
             self.host_name
         )
         formatting_data.update({
