@@ -6,7 +6,6 @@ from typing import Optional, Dict, List, Any
 from ayon_core.lib.attribute_definitions import (
     AbstractAttrDef,
     UnknownDef,
-    UIDef,
     serialize_attr_defs,
     deserialize_attr_defs,
 )
