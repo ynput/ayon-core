@@ -506,55 +506,61 @@ class AbstractTemplateBuilder(ABC):
             keep_placeholders (bool): Add flag to placeholder data for
                 hosts to decide if they want to remove
                 placeholder after it is used.
-            create_first_version (bool): create first version of a workfile
-            workfile_creation_enabled (bool): If True, it might create
-                                              first version but ignore
-                                              process if version is created
+            create_first_version (bool): Create first version of a workfile.
+                 When set to True, this option initiates the saving of the
+                 workfile for an initial version. It will skip saving if
+                 a version already exists.
+            workfile_creation_enabled (bool): Whether the call is part of
+                creating a new workfile.
+                When True, we only build if the current file is not
+                an existing saved workfile but a "new" file. Basically when
+                enabled we assume the user tries to load it only into a
+                "New File" (unsaved empty workfile).
+                When False, the default value, we assume we explicitly want to
+                build the template in our current scene regardless of current
+                scene state.
 
         """
-        if any(
-            value is None
-            for value in [
-                template_path,
-                keep_placeholders,
-                create_first_version,
-            ]
-        ):
-            template_preset = self.get_template_preset()
-            if template_path is None:
-                template_path = template_preset["path"]
-            if keep_placeholders is None:
-                keep_placeholders = template_preset["keep_placeholder"]
-            if create_first_version is None:
-                create_first_version = template_preset["create_first_version"]
+        # More accurate variable name
+        # - logic related to workfile creation should be moved out in future
+        explicit_build_requested = not workfile_creation_enabled
 
-        # check if first version is created
-        created_version_workfile = False
-        if create_first_version:
-            created_version_workfile = self.create_first_workfile_version()
-
-        # if first version is created, import template
-        # and populate placeholders
+        # Get default values if not provided
         if (
-            create_first_version
-            and workfile_creation_enabled
-            and created_version_workfile
+            template_path is None
+            or keep_placeholders is None
+            or create_first_version is None
         ):
+            preset = self.get_template_preset()
+            template_path: str = template_path or preset["path"]
+            if keep_placeholders is None:
+                keep_placeholders: bool = preset["keep_placeholder"]
+            if create_first_version is None:
+                create_first_version: bool = preset["create_first_version"]
+
+        # Build the template if we are explicitly requesting it or if it's
+        # an unsaved "new file".
+        is_new_file = not self.host.get_current_workfile()
+        if is_new_file or explicit_build_requested:
+            self.log.info(f"Building the workfile template: {template_path}")
             self.import_template(template_path)
             self.populate_scene_placeholders(
                 level_limit, keep_placeholders)
 
-            # save workfile after template is populated
-            self.save_workfile(created_version_workfile)
-
-        # ignore process if first workfile is enabled
-        # but a version is already created
-        if workfile_creation_enabled:
+        # Do not consider saving a first workfile version, if this is not set
+        # to be a "workfile creation" or `create_first_version` is disabled.
+        if explicit_build_requested or not create_first_version:
             return
 
-        self.import_template(template_path)
-        self.populate_scene_placeholders(
-            level_limit, keep_placeholders)
+        # If there is no existing workfile, save the first version
+        workfile_path = self.get_workfile_path()
+        if not os.path.exists(workfile_path):
+            self.log.info("Saving first workfile: %s", workfile_path)
+            self.save_workfile(workfile_path)
+        else:
+            self.log.info(
+                "A workfile already exists. Skipping save of workfile as "
+                "initial version.")
 
     def rebuild_template(self):
         """Go through existing placeholders in scene and update them.
@@ -608,29 +614,16 @@ class AbstractTemplateBuilder(ABC):
 
         pass
 
-    def create_first_workfile_version(self):
-        """
-        Create first version of workfile.
+    def get_workfile_path(self):
+        """Return last known workfile path or the first workfile path create.
 
-        Should load the content of template into scene so
-        'populate_scene_placeholders' can be started.
-
-        Args:
-            template_path (str): Fullpath for current task and
-                host's template file.
+        Return:
+            str: Last workfile path, or first version to create if none exist.
         """
+        # AYON_LAST_WORKFILE will be set to the last existing workfile OR
+        # if none exist it will be set to the first version.
         last_workfile_path = os.environ.get("AYON_LAST_WORKFILE")
         self.log.info("__ last_workfile_path: {}".format(last_workfile_path))
-        if os.path.exists(last_workfile_path):
-            # ignore in case workfile existence
-            self.log.info("Workfile already exists, skipping creation.")
-            return False
-
-        # Create first version
-        self.log.info("Creating first version of workfile.")
-        self.save_workfile(last_workfile_path)
-
-        # Confirm creation of first version
         return last_workfile_path
 
     def save_workfile(self, workfile_path):
