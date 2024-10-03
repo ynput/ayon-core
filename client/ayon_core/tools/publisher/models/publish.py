@@ -1,14 +1,17 @@
 import uuid
 import copy
 import inspect
+import logging
 import traceback
 import collections
+from contextlib import contextmanager
 from functools import partial
 from typing import Optional, Dict, List, Union, Any, Iterable
 
 import arrow
 import pyblish.plugin
 
+from ayon_core.lib import env_value_to_bool
 from ayon_core.pipeline import (
     PublishValidationError,
     KnownPublishError,
@@ -24,6 +27,22 @@ from ayon_core.tools.publisher.abstract import AbstractPublisherBackend
 PUBLISH_EVENT_SOURCE = "publisher.publish.model"
 # Define constant for plugin orders offset
 PLUGIN_ORDER_OFFSET = 0.5
+
+
+class MessageHandler(logging.Handler):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.records = []
+
+    def clear_records(self):
+        self.records = []
+
+    def emit(self, record):
+        try:
+            record.msg = record.getMessage()
+        except Exception:
+            record.msg = str(record.msg)
+        self.records.append(record)
 
 
 class PublishErrorInfo:
@@ -850,6 +869,10 @@ class PublishModel:
     def __init__(self, controller: AbstractPublisherBackend):
         self._controller = controller
 
+        self._log_to_console: bool = env_value_to_bool(
+            "AYON_PUBLISHER_PRINT_LOGS", default=False
+        )
+
         # Publishing should stop at validation stage
         self._publish_up_validation: bool = False
         self._publish_comment_is_set: bool = False
@@ -897,8 +920,16 @@ class PublishModel:
             self._default_iterator()
         )
 
+        self._log_handler: MessageHandler = MessageHandler()
+
     def reset(self):
+        # Allow to change behavior during process lifetime
+        self._log_to_console = env_value_to_bool(
+            "AYON_PUBLISHER_PRINT_LOGS", default=False
+        )
+
         create_context = self._controller.get_create_context()
+
         self._publish_up_validation = False
         self._publish_comment_is_set = False
         self._publish_has_started = False
@@ -1266,14 +1297,38 @@ class PublishModel:
         self._set_progress(self._publish_max_progress)
         yield partial(self.stop_publish)
 
+    @contextmanager
+    def _log_manager(self, plugin: pyblish.api.Plugin):
+        root = logging.getLogger()
+        if not self._log_to_console:
+            plugin.log.propagate = False
+            plugin.log.addHandler(self._log_handler)
+            root.addHandler(self._log_handler)
+
+        try:
+            if self._log_to_console:
+                yield None
+            else:
+                yield self._log_handler
+
+        finally:
+            if not self._log_to_console:
+                plugin.log.propagate = True
+                plugin.log.removeHandler(self._log_handler)
+                root.removeHandler(self._log_handler)
+            self._log_handler.clear_records()
+
     def _process_and_continue(
         self,
         plugin: pyblish.api.Plugin,
         instance: pyblish.api.Instance
     ):
-        result = pyblish.plugin.process(
-            plugin, self._publish_context, instance
-        )
+        with self._log_manager(plugin) as log_handler:
+            result = pyblish.plugin.process(
+                plugin, self._publish_context, instance
+            )
+            if log_handler is not None:
+                result["records"] = log_handler.records
 
         exception = result.get("error")
         if exception:
