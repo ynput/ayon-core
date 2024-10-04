@@ -301,6 +301,11 @@ class CoreSettings(BaseSettingsModel):
         "{}",
         widget="textarea",
         title="Project folder structure",
+        description=(
+            "Defines project folders to create on 'Create project folders'."
+            " When empty, the action will be hidden from users in the"
+            " launcher because there is nothing to create."
+        ),
         section="---"
     )
     project_environments: str = SettingsField(
