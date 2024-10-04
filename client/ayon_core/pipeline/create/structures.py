@@ -512,7 +512,7 @@ class CreatedInstance:
             self._data["instance_id"] = str(uuid4())
 
         creator_attr_defs = creator.get_attr_defs_for_instance(self)
-        self.update_create_attr_defs(
+        self.set_create_attr_defs(
             creator_attr_defs, creator_values
         )
 
