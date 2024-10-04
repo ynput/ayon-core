@@ -1002,6 +1002,21 @@ class CreateContext:
             self._original_context_data, self.context_data_to_store()
         )
 
+    def set_context_publish_plugin_attr_defs(self, plugin_name, attr_defs):
+        """Set attribute definitions for CreateContext publish plugin.
+
+        Args:
+            plugin_name(str): Name of publish plugin.
+            attr_defs(List[AbstractAttrDef]): Attribute definitions.
+
+        """
+        self.publish_attributes.set_publish_plugin_attr_defs(
+            plugin_name, attr_defs
+        )
+        self.instance_publish_attr_defs_changed(
+            None, plugin_name
+        )
+
     def creator_adds_instance(self, instance: "CreatedInstance"):
         """Creator adds new instance to context.
 
