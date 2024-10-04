@@ -810,7 +810,7 @@ class CreateContext:
                 plugin.__name__, attr_defs
             )
 
-    def listen_to_added_instances(self, callback):
+    def add_instances_added_callback(self, callback):
         """Register callback for added instances.
 
         Event is triggered when instances are already available in context
@@ -836,7 +836,7 @@ class CreateContext:
         """
         return self._event_hub.add_callback(INSTANCE_ADDED_TOPIC, callback)
 
-    def listen_to_removed_instances(self, callback):
+    def add_instances_removed_callback (self, callback):
         """Register callback for removed instances.
 
         Event is triggered when instances are already removed from context.
@@ -861,7 +861,7 @@ class CreateContext:
         """
         self._event_hub.add_callback(INSTANCE_REMOVED_TOPIC, callback)
 
-    def listen_to_value_changes(self, callback):
+    def add_value_changed_callback(self, callback):
         """Register callback to listen value changes.
 
         Event is triggered when any value changes on any instance or
@@ -897,7 +897,7 @@ class CreateContext:
         """
         self._event_hub.add_callback(VALUE_CHANGED_TOPIC, callback)
 
-    def listen_to_pre_create_attr_defs_change(self, callback):
+    def add_pre_create_attr_defs_change_callback (self, callback):
         """Register callback to listen pre-create attribute changes.
 
         Create plugin can trigger refresh of pre-create attributes. Usage of
@@ -925,7 +925,7 @@ class CreateContext:
             PRE_CREATE_ATTR_DEFS_CHANGED_TOPIC, callback
         )
 
-    def listen_to_create_attr_defs_change(self, callback):
+    def add_create_attr_defs_change_callback (self, callback):
         """Register callback to listen create attribute changes.
 
         Create plugin changed attribute definitions of instance.
@@ -950,7 +950,7 @@ class CreateContext:
         """
         self._event_hub.add_callback(CREATE_ATTR_DEFS_CHANGED_TOPIC, callback)
 
-    def listen_to_publish_attr_defs_change(self, callback):
+    def add_publish_attr_defs_change_callback (self, callback):
         """Register callback to listen publish attribute changes.
 
         Publish plugin changed attribute definitions of instance of context.
