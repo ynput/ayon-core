@@ -365,22 +365,22 @@ class CreateModel:
 
         self._emit_event("create.model.reset")
 
-        self._create_context.listen_to_added_instances(
+        self._create_context.add_instances_added_callback(
             self._cc_added_instance
         )
-        self._create_context.listen_to_removed_instances(
+        self._create_context.add_instances_removed_callback (
             self._cc_removed_instance
         )
-        self._create_context.listen_to_value_changes(
+        self._create_context.add_value_changed_callback(
             self._cc_value_changed
         )
-        self._create_context.listen_to_pre_create_attr_defs_change(
+        self._create_context.add_pre_create_attr_defs_change_callback (
             self._cc_pre_create_attr_changed
         )
-        self._create_context.listen_to_create_attr_defs_change(
+        self._create_context.add_create_attr_defs_change_callback (
             self._cc_create_attr_changed
         )
-        self._create_context.listen_to_publish_attr_defs_change(
+        self._create_context.add_publish_attr_defs_change_callback (
             self._cc_publish_attr_changed
         )
 

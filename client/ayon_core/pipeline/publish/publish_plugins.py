@@ -134,12 +134,12 @@ class AYONPyblishPluginMixin:
         in create context.
 
         Methods available on create context:
-        - listen_to_added_instances
-        - listen_to_removed_instances
-        - listen_to_value_changes
-        - listen_to_pre_create_attr_defs_change
-        - listen_to_create_attr_defs_change
-        - listen_to_publish_attr_defs_change
+        - add_instances_added_callback
+        - add_instances_removed_callback
+        - add_value_changed_callback
+        - add_pre_create_attr_defs_change_callback
+        - add_create_attr_defs_change_callback
+        - add_publish_attr_defs_change_callback
 
         Args:
             create_context (CreateContext): Create context.
