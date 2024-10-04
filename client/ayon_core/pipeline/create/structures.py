@@ -736,7 +736,7 @@ class CreatedInstance:
 
         return output
 
-    def update_create_attr_defs(self, attr_defs, value=None):
+    def set_create_attr_defs(self, attr_defs, value=None):
         """Create plugin updates create attribute definitions.
 
         Method called by create plugin when attribute definitions should
