@@ -1251,7 +1251,7 @@ class CreateContext:
                 for plugin in self.plugins_with_defs:
                     attr_defs = None
                     try:
-                        attr_defs = plugin.get_attribute_defs_for_instance(
+                        attr_defs = plugin.get_attr_defs_for_instance(
                             self, instance
                         )
                     except Exception:
