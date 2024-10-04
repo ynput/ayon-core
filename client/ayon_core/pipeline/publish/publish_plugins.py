@@ -160,7 +160,7 @@ class AYONPyblishPluginMixin:
         return []
 
     @classmethod
-    def get_attribute_defs_for_context(cls, create_context):
+    def get_attr_defs_for_context (cls, create_context):
         """Publish attribute definitions for context.
 
         Attributes available for all families in plugin's `families` attribute.
