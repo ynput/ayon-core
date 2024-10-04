@@ -271,6 +271,9 @@ class PublishAttributes:
     def items(self):
         return self._data.items()
 
+    def get(self, key, default=None):
+        return self._data.get(key, default)
+
     def pop(self, key, default=None):
         """Remove or reset value for plugin.
 
