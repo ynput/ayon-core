@@ -303,8 +303,12 @@ class CoreSettings(BaseSettingsModel):
         title="Project folder structure",
         description=(
             "Defines project folders to create on 'Create project folders'."
-            " When empty, the action will be hidden from users in the"
-            " launcher because there is nothing to create."
+            "\n\n"
+            "- In the launcher, this only creates the folders on disk and "
+            " when the setting is empty it will be hidden from users in the"
+            " launcher.\n"
+            "- In `ayon-ftrack` this will create the folders on disk **and**"
+            " will also create ftrack entities. It is never hidden there."
         ),
         section="---"
     )
