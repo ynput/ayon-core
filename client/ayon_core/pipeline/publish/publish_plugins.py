@@ -188,8 +188,11 @@ class AYONPyblishPluginMixin:
             bool: True if instance matches plugin families.
 
         """
+        if instance is None:
+            return not cls.__instanceEnabled__
+
         if not cls.__instanceEnabled__:
-            return instance is None
+            return False
 
         for _ in pyblish.logic.plugins_by_families(
             [cls], [instance.product_type]
