@@ -803,7 +803,7 @@ class CreateContext:
                     publish_attributes.update(output)
 
         for plugin in self.plugins_with_defs:
-            attr_defs = plugin.get_attribute_defs_for_context(self)
+            attr_defs = plugin.get_attr_defs_for_context (self)
             if not attr_defs:
                 continue
             self._publish_attributes.set_publish_plugin_attr_defs(
