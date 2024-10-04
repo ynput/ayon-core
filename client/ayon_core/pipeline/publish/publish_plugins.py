@@ -181,14 +181,15 @@ class AYONPyblishPluginMixin:
         """Check if instance matches families.
 
         Args:
-            instance (CreatedInstance): Instance to check.
+            instance (Optional[CreatedInstance]): Instance to check. Or None
+                for context.
 
         Returns:
             bool: True if instance matches plugin families.
 
         """
         if not cls.__instanceEnabled__:
-            return False
+            return instance is None
 
         for _ in pyblish.logic.plugins_by_families(
             [cls], [instance.product_type]
