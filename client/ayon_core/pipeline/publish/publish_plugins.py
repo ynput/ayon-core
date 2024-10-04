@@ -177,6 +177,26 @@ class AYONPyblishPluginMixin:
         return cls.get_attribute_defs()
 
     @classmethod
+    def instance_matches_plugin_families(cls, instance):
+        """Check if instance matches families.
+
+        Args:
+            instance (CreatedInstance): Instance to check.
+
+        Returns:
+            bool: True if instance matches plugin families.
+
+        """
+        if not cls.__instanceEnabled__:
+            return False
+
+        for _ in pyblish.logic.plugins_by_families(
+            [cls], [instance.product_type]
+        ):
+            return True
+        return False
+
+    @classmethod
     def get_attribute_defs_for_instance(cls, create_context, instance):
         """Publish attribute definitions for an instance.
 
@@ -191,14 +211,9 @@ class AYONPyblishPluginMixin:
             list[AbstractAttrDef]: Attribute definitions for plugin.
 
         """
-        if not cls.__instanceEnabled__:
+        if not cls.instance_matches_plugin_families(instance):
             return []
-
-        for _ in pyblish.logic.plugins_by_families(
-            [cls], [instance.product_type]
-        ):
-            return cls.get_attribute_defs()
-        return []
+        return cls.get_attribute_defs()
 
     @classmethod
     def convert_attribute_values(cls, create_context, instance):
