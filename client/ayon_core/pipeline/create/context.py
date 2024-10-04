@@ -820,7 +820,8 @@ class CreateContext:
 
             ```python
             {
-                "instances": [CreatedInstance, ...]
+                "instances": [CreatedInstance, ...],
+                "create_context": CreateContext
             }
             ```
 
@@ -844,7 +845,8 @@ class CreateContext:
 
             ```python
             {
-                "instances": [CreatedInstance, ...]
+                "instances": [CreatedInstance, ...],
+                "create_context": CreateContext
             }
             ```
 
@@ -879,7 +881,8 @@ class CreateContext:
                             }
                         }
                     }
-                ]
+                ],
+                "create_context": CreateContext
             }
             ```
 
@@ -904,7 +907,8 @@ class CreateContext:
 
             ```python
             {
-                "identifiers": ["create_plugin_identifier"]
+                "identifiers": ["create_plugin_identifier"],
+                "create_context": CreateContext
             }
             ```
 
@@ -930,7 +934,8 @@ class CreateContext:
 
             ```python
             {
-                "instances": [CreatedInstance, ...]
+                "instances": [CreatedInstance, ...],
+                "create_context": CreateContext
             }
             ```
 
@@ -963,7 +968,8 @@ class CreateContext:
                         "instance": CreatedInstance,
                         "plugin_names": {"PluginB", "PluginC"},
                     }
-                }
+                },
+                "create_context": CreateContext
             }
             ```
 
