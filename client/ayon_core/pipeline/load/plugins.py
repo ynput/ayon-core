@@ -242,6 +242,26 @@ class LoaderPlugin(list):
         if hasattr(self, "_fname"):
             return self._fname
 
+    @classmethod
+    def get_representation_name_aliases(cls, representation_name: str):
+        """Return representation names to which switching is allowed from
+        the input representation name, like an alias replacement of the input
+        `representation_name`.
+
+        For example, to allow an automated switch on update from representation
+        `ma` to `mb` or `abc`, then when `representation_name` is `ma` return:
+            ["mb", "abc"]
+
+        The order of the names in the returned representation names is
+        important, because the first one existing under the new version will
+        be chosen.
+
+        Returns:
+            List[str]: Representation names switching to is allowed on update
+              if the input representation name is not found on the new version.
+        """
+        return []
+
 
 class ProductLoaderPlugin(LoaderPlugin):
     """Load product into host application

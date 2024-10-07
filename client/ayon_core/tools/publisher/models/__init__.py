@@ -1,5 +1,5 @@
 from .create import CreateModel, CreatorItem
-from .publish import PublishModel
+from .publish import PublishModel, PublishErrorInfo
 
 
 __all__ = (
@@ -7,4 +7,5 @@ __all__ = (
     "CreatorItem",
 
     "PublishModel",
+    "PublishErrorInfo",
 )
