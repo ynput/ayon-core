@@ -230,6 +230,11 @@ class DeliveryOptionsDialog(QtWidgets.QDialog):
                 self.log
             ]
 
+            # TODO: This will currently incorrectly detect 'resources'
+            #  that are published along with the publish, because those should
+            #  not adhere to the template directly but are ingested in a
+            #  customized way. For example, maya look textures or any publish
+            #  that directly adds files into `instance.data["transfers"]`
             src_paths = []
             for repre_file in repre["files"]:
                 src_path = self.anatomy.fill_root(repre_file["path"])
@@ -261,7 +266,18 @@ class DeliveryOptionsDialog(QtWidgets.QDialog):
                     frame = dst_frame
 
                 if frame is not None:
-                    anatomy_data["frame"] = frame
+                    if repre["context"].get("frame"):
+                        anatomy_data["frame"] = frame
+                    elif repre["context"].get("udim"):
+                        anatomy_data["udim"] = frame
+                    else:
+                        # Fallback
+                        self.log.warning(
+                            "Representation context has no frame or udim"
+                            " data. Supplying sequence frame to '{frame}'"
+                            " formatting data."
+                        )
+                        anatomy_data["frame"] = frame
                 new_report_items, uploaded = deliver_single_file(*args)
                 report_items.update(new_report_items)
                 self._update_progress(uploaded)

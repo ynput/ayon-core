@@ -132,7 +132,10 @@ def install_host(host):
 
     def modified_emit(obj, record):
         """Method replacing `emit` in Pyblish's MessageHandler."""
-        record.msg = record.getMessage()
+        try:
+            record.msg = record.getMessage()
+        except Exception:
+            record.msg = str(record.msg)
         obj.records.append(record)
 
     MessageHandler.emit = modified_emit
