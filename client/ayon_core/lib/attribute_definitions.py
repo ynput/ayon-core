@@ -6,6 +6,7 @@ import json
 import copy
 import warnings
 from abc import ABCMeta, abstractmethod
+from typing import Any, Optional
 
 import clique
 
@@ -147,15 +148,15 @@ class AbstractAttrDef(metaclass=AbstractAttrDefMeta):
 
     def __init__(
         self,
-        key,
-        default,
-        label=None,
-        tooltip=None,
-        is_label_horizontal=None,
-        visible=None,
-        enabled=None,
-        hidden=None,
-        disabled=None,
+        key: str,
+        default: Any,
+        label: Optional[str] = None,
+        tooltip: Optional[str] = None,
+        is_label_horizontal: Optional[bool] = None,
+        visible: Optional[bool] = None,
+        enabled: Optional[bool] = None,
+        hidden: Optional[bool] = None,
+        disabled: Optional[bool] = None,
     ):
         if is_label_horizontal is None:
             is_label_horizontal = True
@@ -167,35 +168,35 @@ class AbstractAttrDef(metaclass=AbstractAttrDefMeta):
             visible, hidden, "visible", "hidden", True
         )
 
-        self.key = key
-        self.label = label
-        self.tooltip = tooltip
-        self.default = default
-        self.is_label_horizontal = is_label_horizontal
-        self.visible = visible
-        self.enabled = enabled
-        self._id = uuid.uuid4().hex
+        self.key: str = key
+        self.label: Optional[str] = label
+        self.tooltip: Optional[str] = tooltip
+        self.default: Any = default
+        self.is_label_horizontal: bool = is_label_horizontal
+        self.visible: bool = visible
+        self.enabled: bool = enabled
+        self._id: str = uuid.uuid4().hex
 
         self.__init__class__ = AbstractAttrDef
 
     @property
-    def id(self):
+    def id(self) -> str:
         return self._id
 
     @property
-    def hidden(self):
+    def hidden(self) -> bool:
         return not self.visible
 
     @hidden.setter
-    def hidden(self, value):
+    def hidden(self, value: bool):
         self.visible = not value
 
     @property
-    def disabled(self):
+    def disabled(self) -> bool:
         return not self.enabled
 
     @disabled.setter
-    def disabled(self, value):
+    def disabled(self, value: bool):
         self.enabled = not value
 
     def __eq__(self, other):
@@ -213,7 +214,7 @@ class AbstractAttrDef(metaclass=AbstractAttrDefMeta):
 
     @property
     @abstractmethod
-    def type(self):
+    def type(self) -> str:
         """Attribute definition type also used as identifier of class.
 
         Returns:
@@ -286,7 +287,7 @@ class UILabelDef(UIDef):
     type = "label"
 
     def __init__(self, label, key=None):
-        super(UILabelDef, self).__init__(label=label, key=key)
+        super().__init__(label=label, key=key)
 
     def __eq__(self, other):
         if not super(UILabelDef, self).__eq__(other):
@@ -309,7 +310,7 @@ class UnknownDef(AbstractAttrDef):
 
     def __init__(self, key, default=None, **kwargs):
         kwargs["default"] = default
-        super(UnknownDef, self).__init__(key, **kwargs)
+        super().__init__(key, **kwargs)
 
     def convert_value(self, value):
         return value
@@ -539,7 +540,7 @@ class EnumDef(AbstractAttrDef):
         return list(self._item_values.intersection(value))
 
     def serialize(self):
-        data = super(EnumDef, self).serialize()
+        data = super().serialize()
         data["items"] = copy.deepcopy(self.items)
         data["multiselection"] = self.multiselection
         return data
@@ -619,7 +620,7 @@ class BoolDef(AbstractAttrDef):
     def __init__(self, key, default=None, **kwargs):
         if default is None:
             default = False
-        super(BoolDef, self).__init__(key, default=default, **kwargs)
+        super().__init__(key, default=default, **kwargs)
 
     def convert_value(self, value):
         if isinstance(value, bool):
