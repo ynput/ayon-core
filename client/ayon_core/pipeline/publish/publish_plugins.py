@@ -1,6 +1,7 @@
 import inspect
 from abc import ABCMeta
 import typing
+from typing import Optional
 
 import pyblish.api
 import pyblish.logic
@@ -133,7 +134,9 @@ class AYONPyblishPluginMixin:
     #         callback(self)
 
     @classmethod
-    def register_create_context_callbacks(cls, create_context):
+    def register_create_context_callbacks(
+        cls, create_context: "CreateContext"
+    ):
         """Register callbacks for create context.
 
         It is possible to register callbacks listening to changes happened
@@ -166,7 +169,7 @@ class AYONPyblishPluginMixin:
         return []
 
     @classmethod
-    def get_attr_defs_for_context (cls, create_context):
+    def get_attr_defs_for_context(cls, create_context: "CreateContext"):
         """Publish attribute definitions for context.
 
         Attributes available for all families in plugin's `families` attribute.
@@ -183,7 +186,9 @@ class AYONPyblishPluginMixin:
         return cls.get_attribute_defs()
 
     @classmethod
-    def instance_matches_plugin_families(cls, instance):
+    def instance_matches_plugin_families(
+        cls, instance: Optional["CreatedInstance"]
+    ):
         """Check if instance matches families.
 
         Args:
@@ -207,7 +212,9 @@ class AYONPyblishPluginMixin:
         return False
 
     @classmethod
-    def get_attr_defs_for_instance(cls, create_context, instance):
+    def get_attr_defs_for_instance(
+        cls, create_context: "CreateContext", instance: "CreatedInstance"
+    ):
         """Publish attribute definitions for an instance.
 
         Attributes available for all families in plugin's `families` attribute.
@@ -226,7 +233,9 @@ class AYONPyblishPluginMixin:
         return cls.get_attribute_defs()
 
     @classmethod
-    def convert_attribute_values(cls, create_context, instance):
+    def convert_attribute_values(
+        cls, create_context: "CreateContext", instance: "CreatedInstance"
+    ):
         """Convert attribute values for instance.
 
         Args:
