@@ -28,7 +28,8 @@ class AddLastWorkfileToLaunchArgs(PreLaunchHook):
         "substancepainter",
         "aftereffects",
         "wrap",
-        "openrv"
+        "openrv",
+        "cinema4d"
     }
     launch_types = {LaunchTypes.local}
 
