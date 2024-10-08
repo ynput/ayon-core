@@ -199,18 +199,31 @@ class AbstractAttrDef(metaclass=AbstractAttrDefMeta):
     def disabled(self, value: bool):
         self.enabled = not value
 
-    def __eq__(self, other):
-        if not isinstance(other, self.__class__):
+    def __eq__(self, other: Any) -> bool:
+        return self.compare_to_def(other)
+
+    def __ne__(self, other: Any) -> bool:
+        return not self.compare_to_def(other)
+
+    def compare_to_def(
+        self,
+        other: Any,
+        ignore_default: Optional[bool] = False,
+        ignore_enabled: Optional[bool] = False,
+        ignore_visible: Optional[bool] = False,
+    ) -> bool:
+        if not isinstance(other, self.__class__) or self.key != other.key:
+            return False
+        if not self._custom_def_compare(other):
             return False
         return (
-            self.key == other.key
-            and self.default == other.default
-            and self.visible == other.visible
-            and self.enabled == other.enabled
+            (ignore_default or self.default == other.default)
+            and (ignore_visible or self.visible == other.visible)
+            and (ignore_enabled or self.enabled == other.enabled)
         )
 
-    def __ne__(self, other):
-        return not self.__eq__(other)
+    def _custom_def_compare(self, other: "AbstractAttrDef") -> bool:
+        return True
 
     @property
     @abstractmethod
@@ -289,9 +302,7 @@ class UILabelDef(UIDef):
     def __init__(self, label, key=None):
         super().__init__(label=label, key=key)
 
-    def __eq__(self, other):
-        if not super(UILabelDef, self).__eq__(other):
-            return False
+    def _custom_def_compare(self, other: "UILabelDef") -> bool:
         return self.label == other.label
 
 
@@ -387,10 +398,7 @@ class NumberDef(AbstractAttrDef):
         self.maximum = maximum
         self.decimals = 0 if decimals is None else decimals
 
-    def __eq__(self, other):
-        if not super(NumberDef, self).__eq__(other):
-            return False
-
+    def _custom_def_compare(self, other: "NumberDef") -> bool:
         return (
             self.decimals == other.decimals
             and self.maximum == other.maximum
@@ -457,10 +465,8 @@ class TextDef(AbstractAttrDef):
         self.placeholder = placeholder
         self.regex = regex
 
-    def __eq__(self, other):
-        if not super(TextDef, self).__eq__(other):
-            return False
 
+    def _custom_def_compare(self, other: "TextDef") -> bool:
         return (
             self.multiline == other.multiline
             and self.regex == other.regex
@@ -514,16 +520,13 @@ class EnumDef(AbstractAttrDef):
         elif default not in item_values:
             default = next(iter(item_values), None)
 
-        super(EnumDef, self).__init__(key, default=default, **kwargs)
+        super().__init__(key, default=default, **kwargs)
 
         self.items = items
         self._item_values = item_values_set
         self.multiselection = multiselection
 
-    def __eq__(self, other):
-        if not super(EnumDef, self).__eq__(other):
-            return False
-
+    def _custom_def_compare(self, other: "EnumDef") -> bool:
         return (
             self.items == other.items
             and self.multiselection == other.multiselection
