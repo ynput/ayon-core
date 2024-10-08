@@ -32,17 +32,20 @@ PLUGIN_ORDER_OFFSET = 0.5
 class MessageHandler(logging.Handler):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.records = []
+        self._records = []
 
     def clear_records(self):
-        self.records = []
+        self._records = []
 
     def emit(self, record):
         try:
             record.msg = record.getMessage()
         except Exception:
             record.msg = str(record.msg)
-        self.records.append(record)
+        self._records.append(record)
+
+    def get_records(self):
+        return self._records
 
 
 class PublishErrorInfo:
@@ -1328,7 +1331,18 @@ class PublishModel:
                 plugin, self._publish_context, instance
             )
             if log_handler is not None:
-                result["records"] = log_handler.records
+                records = log_handler.get_records()
+                exception = result.get("error")
+                if exception is not None and records:
+                    last_record = records[-1]
+                    if (
+                        last_record.name == "pyblish.plugin"
+                        and last_record.levelno == logging.ERROR
+                    ):
+                        # Remove last record made by pyblish
+                        # - `log.exception(formatted_traceback)`
+                        records.pop(-1)
+                result["records"] = records
 
         exception = result.get("error")
         if exception:
