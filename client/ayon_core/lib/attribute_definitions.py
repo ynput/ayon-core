@@ -295,7 +295,7 @@ class UIDef(AbstractAttrDef):
     is_value_def = False
 
     def __init__(self, key=None, default=None, *args, **kwargs):
-        super(UIDef, self).__init__(key, default, *args, **kwargs)
+        super().__init__(key, default, *args, **kwargs)
 
     def convert_value(self, value):
         return value
@@ -401,7 +401,7 @@ class NumberDef(AbstractAttrDef):
         elif default > maximum:
             default = maximum
 
-        super(NumberDef, self).__init__(key, default=default, **kwargs)
+        super().__init__(key, default=default, **kwargs)
 
         self.minimum = minimum
         self.maximum = maximum
@@ -457,7 +457,7 @@ class TextDef(AbstractAttrDef):
         if default is None:
             default = ""
 
-        super(TextDef, self).__init__(key, default=default, **kwargs)
+        super().__init__(key, default=default, **kwargs)
 
         if multiline is None:
             multiline = False
@@ -486,7 +486,7 @@ class TextDef(AbstractAttrDef):
         return self.default
 
     def serialize(self):
-        data = super(TextDef, self).serialize()
+        data = super().serialize()
         data["regex"] = self.regex.pattern
         data["multiline"] = self.multiline
         data["placeholder"] = self.placeholder
@@ -931,10 +931,10 @@ class FileDef(AbstractAttrDef):
         self.extensions = set(extensions)
         self.allow_sequences = allow_sequences
         self.extensions_label = extensions_label
-        super(FileDef, self).__init__(key, default=default, **kwargs)
+        super().__init__(key, default=default, **kwargs)
 
     def __eq__(self, other):
-        if not super(FileDef, self).__eq__(other):
+        if not super().__eq__(other):
             return False
 
         return (
