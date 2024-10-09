@@ -183,6 +183,11 @@ class AbstractAttrDef(metaclass=AbstractAttrDefMeta):
     def id(self) -> str:
         return self._id
 
+    def clone(self):
+        data = self.serialize()
+        data.pop("type")
+        return self.deserialize(data)
+
     @property
     def hidden(self) -> bool:
         return not self.visible
@@ -275,6 +280,9 @@ class AbstractAttrDef(metaclass=AbstractAttrDefMeta):
 
         Data can be received using 'serialize' method.
         """
+        if "type" in data:
+            data = dict(data)
+            data.pop("type")
 
         return cls(**data)
 
