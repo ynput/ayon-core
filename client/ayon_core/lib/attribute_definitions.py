@@ -211,10 +211,11 @@ class AbstractAttrDef(metaclass=AbstractAttrDefMeta):
         ignore_default: Optional[bool] = False,
         ignore_enabled: Optional[bool] = False,
         ignore_visible: Optional[bool] = False,
+        ignore_def_type_compare: Optional[bool] = False,
     ) -> bool:
         if not isinstance(other, self.__class__) or self.key != other.key:
             return False
-        if not self._custom_def_compare(other):
+        if not ignore_def_type_compare and not self._def_type_compare(other):
             return False
         return (
             (ignore_default or self.default == other.default)
@@ -222,7 +223,7 @@ class AbstractAttrDef(metaclass=AbstractAttrDefMeta):
             and (ignore_enabled or self.enabled == other.enabled)
         )
 
-    def _custom_def_compare(self, other: "AbstractAttrDef") -> bool:
+    def _def_type_compare(self, other: "AbstractAttrDef") -> bool:
         return True
 
     @property
@@ -398,7 +399,7 @@ class NumberDef(AbstractAttrDef):
         self.maximum = maximum
         self.decimals = 0 if decimals is None else decimals
 
-    def _custom_def_compare(self, other: "NumberDef") -> bool:
+    def _def_type_compare(self, other: "NumberDef") -> bool:
         return (
             self.decimals == other.decimals
             and self.maximum == other.maximum
@@ -465,8 +466,7 @@ class TextDef(AbstractAttrDef):
         self.placeholder = placeholder
         self.regex = regex
 
-
-    def _custom_def_compare(self, other: "TextDef") -> bool:
+    def _def_type_compare(self, other: "TextDef") -> bool:
         return (
             self.multiline == other.multiline
             and self.regex == other.regex
@@ -526,7 +526,7 @@ class EnumDef(AbstractAttrDef):
         self._item_values = item_values_set
         self.multiselection = multiselection
 
-    def _custom_def_compare(self, other: "EnumDef") -> bool:
+    def _def_type_compare(self, other: "EnumDef") -> bool:
         return (
             self.items == other.items
             and self.multiselection == other.multiselection
