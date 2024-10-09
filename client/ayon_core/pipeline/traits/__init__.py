@@ -1,7 +1,8 @@
 """Trait classes for the pipeline."""
-from .trait import TraitBase
+from .content import Compressed, FileLocation, RootlessLocation
+from .three_dimensional import Spatial
+from .trait import TraitBase, TraitsData
 from .two_dimensional import (
-    Compressed,
     Deep,
     Image,
     Overscan,
@@ -12,6 +13,10 @@ from .two_dimensional import (
 __all__ = [
     # base
     "TraitBase",
+    "TraitsData",
+    # content
+    "FileLocation",
+    "RootlessLocation",
     # two-dimensional
     "Image",
     "PixelBased",
@@ -19,4 +24,6 @@ __all__ = [
     "Deep",
     "Compressed",
     "Overscan",
+    # three-dimensional
+    "Spatial",
 ]

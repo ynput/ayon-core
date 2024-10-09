@@ -1,4 +1,6 @@
 """Two-dimensional image traits."""
+from typing import ClassVar
+
 from pydantic import Field
 
 from .trait import TraitBase
@@ -13,9 +15,9 @@ class Spatial(TraitBase):
         meters_per_unit (float): Meters per unit.
 
     """
-    id: str = "ayon.content.Spatial.v1"
-    name: str = "Spatial"
-    description = "Spatial trait model."
+    id: ClassVar[str] = "ayon.3d.Spatial.v1"
+    name: ClassVar[str] = "Spatial"
+    description: ClassVar[str] = "Spatial trait model."
     up_axis: str = Field(..., title="Up axis")
     handedness: str = Field(..., title="Handedness")
     meters_per_unit: float = Field(..., title="Meters per unit")
