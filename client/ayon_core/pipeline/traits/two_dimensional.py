@@ -1,4 +1,6 @@
 """Two-dimensional image traits."""
+from typing import ClassVar
+
 from pydantic import Field
 
 from .trait import TraitBase
@@ -16,9 +18,9 @@ class Image(TraitBase):
 
     """
 
-    name: str = "Image"
-    description = "Image Trait"
-    id: str = "ayon.content.Image.v1"
+    name: ClassVar[str] = "Image"
+    description: ClassVar[str] = "Image Trait"
+    id: ClassVar[str] = "ayon.2d.Image.v1"
 
 
 class PixelBased(TraitBase):
@@ -36,9 +38,9 @@ class PixelBased(TraitBase):
 
     """
 
-    name: str = "PixelBased"
-    description = "PixelBased Trait Model"
-    id: str = "ayon.content.PixelBased.v1"
+    name: ClassVar[str] = "PixelBased"
+    description: ClassVar[str] = "PixelBased Trait Model"
+    id: ClassVar[str] = "ayon.2d.PixelBased.v1"
     display_window_width: int = Field(..., title="Display Window Width")
     display_window_height: int = Field(..., title="Display Window Height")
     pixel_aspect_ratio: float = Field(..., title="Pixel Aspect Ratio")
@@ -49,7 +51,7 @@ class Planar(TraitBase):
 
     This model represents an Image with planar configuration.
 
-    Todo (antirotor): Is this really a planar configuration? As with
+    TODO (antirotor): Is this really a planar configuration? As with
         bitplanes and everything? If it serves as differentiator for
         Deep images, should it be named differently? Like Raster?
 
@@ -61,9 +63,9 @@ class Planar(TraitBase):
 
     """
 
-    name: str = "Planar"
-    description = "Planar Trait Model"
-    id: str = "ayon.content.Planar.v1"
+    name: ClassVar[str] = "Planar"
+    description: ClassVar[str] = "Planar Trait Model"
+    id: ClassVar[str] = "ayon.2d.Planar.v1"
     planar_configuration: str = Field(..., title="Planar-based Image")
 
 
@@ -80,29 +82,13 @@ class Deep(TraitBase):
 
     """
 
-    name: str = "Deep"
-    description = "Deep Trait Model"
-    id: str = "ayon.content.Deep.v1"
+    name: ClassVar[str] = "Deep"
+    description: ClassVar[str] = "Deep Trait Model"
+    id: ClassVar[str] = "ayon.2d.Deep.v1"
     deep_data_type: str = Field(..., title="Deep Data Type")
 
 
-class Compressed(TraitBase):
-    """Compressed trait model.
 
-    This model represents a compressed image trait.
-
-    Attributes:
-        name (str): Trait name.
-        description (str): Trait description.
-        id (str): id should be namespaced trait name with version
-        compression_type (str): Compression type.
-
-    """
-
-    name: str = "Compressed"
-    description = "Compressed Trait"
-    id: str = "ayon.content.Compressed.v1"
-    compression_type: str = Field(..., title="Compression Type")
 
 
 class Overscan(TraitBase):
@@ -121,9 +107,9 @@ class Overscan(TraitBase):
 
     """
 
-    name: str = "Overscan"
-    description = "Overscan Trait"
-    id: str = "ayon.content.Overscan.v1"
+    name: ClassVar[str] = "Overscan"
+    description: ClassVar[str] = "Overscan Trait"
+    id: ClassVar[str] = "ayon.2d.Overscan.v1"
     left: int = Field(..., title="Left Overscan")
     right: int = Field(..., title="Right Overscan")
     top: int = Field(..., title="Top Overscan")
