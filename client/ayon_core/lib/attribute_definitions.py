@@ -228,8 +228,21 @@ class AbstractAttrDef(metaclass=AbstractAttrDefMeta):
             and (ignore_enabled or self.enabled == other.enabled)
         )
 
-    def _def_type_compare(self, other: "AbstractAttrDef") -> bool:
-        return True
+    @abstractmethod
+    def is_value_valid(self, value: Any) -> bool:
+        """Check if value is valid.
+
+        This should return False if value is not valid based
+            on definition type.
+
+        Args:
+            value (Any): Value to validate based on definition type.
+
+        Returns:
+            bool: True if value is valid.
+
+        """
+        pass
 
     @property
     @abstractmethod
@@ -286,6 +299,9 @@ class AbstractAttrDef(metaclass=AbstractAttrDefMeta):
 
         return cls(**data)
 
+    def _def_type_compare(self, other: "AbstractAttrDef") -> bool:
+        return True
+
 
 # -----------------------------------------
 # UI attribute definitions won't hold value
@@ -296,6 +312,9 @@ class UIDef(AbstractAttrDef):
 
     def __init__(self, key=None, default=None, *args, **kwargs):
         super().__init__(key, default, *args, **kwargs)
+
+    def is_value_valid(self, value: Any) -> bool:
+        return True
 
     def convert_value(self, value):
         return value
@@ -332,6 +351,9 @@ class UnknownDef(AbstractAttrDef):
         kwargs["default"] = default
         super().__init__(key, **kwargs)
 
+    def is_value_valid(self, value: Any) -> bool:
+        return True
+
     def convert_value(self, value):
         return value
 
@@ -351,6 +373,9 @@ class HiddenDef(AbstractAttrDef):
         kwargs["default"] = default
         kwargs["visible"] = False
         super().__init__(key, **kwargs)
+
+    def is_value_valid(self, value: Any) -> bool:
+        return True
 
     def convert_value(self, value):
         return value
@@ -407,12 +432,15 @@ class NumberDef(AbstractAttrDef):
         self.maximum = maximum
         self.decimals = 0 if decimals is None else decimals
 
-    def _def_type_compare(self, other: "NumberDef") -> bool:
-        return (
-            self.decimals == other.decimals
-            and self.maximum == other.maximum
-            and self.maximum == other.maximum
-        )
+    def is_value_valid(self, value: Any) -> bool:
+        if self.decimals == 0:
+            if not isinstance(value, int):
+                return False
+        elif not isinstance(value, float):
+            return False
+        if self.minimum > value > self.maximum:
+            return False
+        return True
 
     def convert_value(self, value):
         if isinstance(value, str):
@@ -427,6 +455,13 @@ class NumberDef(AbstractAttrDef):
         if self.decimals == 0:
             return int(value)
         return round(float(value), self.decimals)
+
+    def _def_type_compare(self, other: "NumberDef") -> bool:
+        return (
+            self.decimals == other.decimals
+            and self.maximum == other.maximum
+            and self.maximum == other.maximum
+        )
 
 
 class TextDef(AbstractAttrDef):
@@ -474,11 +509,12 @@ class TextDef(AbstractAttrDef):
         self.placeholder = placeholder
         self.regex = regex
 
-    def _def_type_compare(self, other: "TextDef") -> bool:
-        return (
-            self.multiline == other.multiline
-            and self.regex == other.regex
-        )
+    def is_value_valid(self, value: Any) -> bool:
+        if not isinstance(value, str):
+            return False
+        if self.regex and not self.regex.match(value):
+            return False
+        return True
 
     def convert_value(self, value):
         if isinstance(value, str):
@@ -491,6 +527,12 @@ class TextDef(AbstractAttrDef):
         data["multiline"] = self.multiline
         data["placeholder"] = self.placeholder
         return data
+
+    def _def_type_compare(self, other: "TextDef") -> bool:
+        return (
+            self.multiline == other.multiline
+            and self.regex == other.regex
+        )
 
 
 class EnumDef(AbstractAttrDef):
@@ -536,12 +578,6 @@ class EnumDef(AbstractAttrDef):
         self._item_values = item_values_set
         self.multiselection = multiselection
 
-    def _def_type_compare(self, other: "EnumDef") -> bool:
-        return (
-            self.items == other.items
-            and self.multiselection == other.multiselection
-        )
-
     def convert_value(self, value):
         if not self.multiselection:
             if value in self._item_values:
@@ -551,6 +587,17 @@ class EnumDef(AbstractAttrDef):
         if value is None:
             return copy.deepcopy(self.default)
         return list(self._item_values.intersection(value))
+
+    def is_value_valid(self, value: Any) -> bool:
+        """Check if item is available in possible values."""
+        if isinstance(value, list):
+            if not self.multiselection:
+                return False
+            return all(value in self._item_values for value in value)
+
+        if self.multiselection:
+            return False
+        return value in self._item_values
 
     def serialize(self):
         data = super().serialize()
@@ -620,6 +667,12 @@ class EnumDef(AbstractAttrDef):
 
         return output
 
+    def _def_type_compare(self, other: "EnumDef") -> bool:
+        return (
+            self.items == other.items
+            and self.multiselection == other.multiselection
+        )
+
 
 class BoolDef(AbstractAttrDef):
     """Boolean representation.
@@ -634,6 +687,9 @@ class BoolDef(AbstractAttrDef):
         if default is None:
             default = False
         super().__init__(key, default=default, **kwargs)
+
+    def is_value_valid(self, value: Any) -> bool:
+        return isinstance(value, bool)
 
     def convert_value(self, value):
         if isinstance(value, bool):
@@ -943,6 +999,29 @@ class FileDef(AbstractAttrDef):
             and self.extensions == other.extensions
             and self.allow_sequences == other.allow_sequences
         )
+
+    def is_value_valid(self, value: Any) -> bool:
+        if self.single_item:
+            if not isinstance(value, dict):
+                return False
+            try:
+                FileDefItem.from_dict(value)
+                return True
+            except (ValueError, KeyError):
+                return False
+
+        if not isinstance(value, list):
+            return False
+
+        for item in value:
+            if not isinstance(item, dict):
+                return False
+
+            try:
+                FileDefItem.from_dict(item)
+            except (ValueError, KeyError):
+                return False
+        return True
 
     def convert_value(self, value):
         if isinstance(value, (str, dict)):
