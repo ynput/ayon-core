@@ -717,8 +717,16 @@ class CreateModel:
             for instance_id in instance_ids:
                 instance = self._get_instance_by_id(instance_id)
                 creator_attributes = instance["creator_attributes"]
-                if key in creator_attributes:
-                    creator_attributes[key] = value
+                attr_def = creator_attributes.get_attr_def(key)
+                if (
+                    attr_def is None
+                    or not attr_def.is_value_def
+                    or not attr_def.visible
+                    or not attr_def.enabled
+                    or not attr_def.is_value_valid(value)
+                ):
+                    continue
+                creator_attributes[key] = value
 
     def get_creator_attribute_definitions(
         self, instance_ids: List[str]
