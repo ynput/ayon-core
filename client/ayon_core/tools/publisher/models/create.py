@@ -333,10 +333,18 @@ def merge_attr_defs(attr_defs: List[List[AbstractAttrDef]]):
     for instance_attr_defs in attr_defs:
         idx = 0
         for attr_idx, attr_def in enumerate(instance_attr_defs):
+            # QUESTION should we merge NumberDef too? Use lowest min and
+            #   biggest max...
             is_enum = isinstance(attr_def, EnumDef)
             match_idx = None
             match_attr = None
             for union_idx, union_def in enumerate(defs_union):
+                if is_enum and (
+                    not isinstance(union_def, EnumDef)
+                    or union_def.multiselection != attr_def.multiselection
+                ):
+                    continue
+
                 if (
                     attr_def.compare_to_def(
                         union_def,
@@ -759,6 +767,18 @@ class CreateModel:
                 else:
                     instance = self._get_instance_by_id(instance_id)
                 plugin_val = instance.publish_attributes[plugin_name]
+                attr_def = plugin_val.get_attr_def(key)
+                # Ignore if attribute is not available or enabled/visible
+                #   on the instance, or the value is not valid for definition
+                if (
+                    attr_def is None
+                    or not attr_def.is_value_def
+                    or not attr_def.visible
+                    or not attr_def.enabled
+                    or not attr_def.is_value_valid(value)
+                ):
+                    continue
+
                 plugin_val[key] = value
 
     def get_publish_attribute_definitions(
