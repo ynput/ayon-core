@@ -13,6 +13,7 @@ readme = "README.md"
 [tool.poetry.dependencies]
 python = ">=3.9.1,<3.10"
 pydantic = "^2.9.2"
+typing-extensions=">=3.9.1,<3.10.0"
 pre-commit = "^4.0.0"
 
 
@@ -73,7 +74,20 @@ target-version = "py39"
 pydocstyle.convention = "google"
 # Enable Pyflakes (`F`) and a subset of the pycodestyle (`E`)  codes by default.
 select = ["ALL"]
-ignore = ["PTH", "ANN101", "ANN102", "ANN204", "COM812", "S603", "ERA001", "TRY003", "UP007", "ARG002"]
+ignore = [
+    "PTH",
+    "ANN101",
+    "ANN102",
+    "ANN204",
+    "COM812",
+    "S603",
+    "ERA001",
+    "TRY003",
+    "UP006",  # support for older python version (type vs. Type)
+    "UP007",  # ..^
+    "UP035",  # ..
+    "ARG002"
+]
 
 # Allow fix for all enabled rules (when `--fix`) is provided.
 fixable = ["ALL"]
@@ -89,6 +103,7 @@ exclude = [
 
 [tool.ruff.lint.per-file-ignores]
 "client/ayon_core/lib/__init__.py" = ["E402"]
+"tests/*.py" = ["S101"]
 
 [tool.ruff.format]
 # Like Black, use double quotes for strings.
