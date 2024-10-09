@@ -566,6 +566,10 @@ class EventSystem:
 
         self._process_event(event)
 
+    def clear_callbacks(self):
+        """Clear all registered callbacks."""
+        self._registered_callbacks = []
+
     def _process_event(self, event):
         """Process event topic and trigger callbacks.
 

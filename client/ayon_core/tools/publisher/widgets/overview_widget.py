@@ -6,12 +6,12 @@ from .border_label_widget import BorderedLabelWidget
 from .card_view_widgets import InstanceCardView
 from .list_view_widgets import InstanceListView
 from .widgets import (
-    ProductAttributesWidget,
     CreateInstanceBtn,
     RemoveInstanceBtn,
     ChangeViewBtn,
 )
 from .create_widget import CreateWidget
+from .product_info import ProductInfoWidget
 
 
 class OverviewWidget(QtWidgets.QFrame):
@@ -61,7 +61,7 @@ class OverviewWidget(QtWidgets.QFrame):
         product_attributes_wrap = BorderedLabelWidget(
             "Publish options", product_content_widget
         )
-        product_attributes_widget = ProductAttributesWidget(
+        product_attributes_widget = ProductInfoWidget(
             controller, product_attributes_wrap
         )
         product_attributes_wrap.set_center_widget(product_attributes_widget)
@@ -152,7 +152,16 @@ class OverviewWidget(QtWidgets.QFrame):
             "publish.reset.finished", self._on_publish_reset
         )
         controller.register_event_callback(
-            "instances.refresh.finished", self._on_instances_refresh
+            "create.model.reset",
+            self._on_create_model_reset
+        )
+        controller.register_event_callback(
+            "create.context.added.instance",
+            self._on_instances_added
+        )
+        controller.register_event_callback(
+            "create.context.removed.instance",
+            self._on_instances_removed
         )
 
         self._product_content_widget = product_content_widget
@@ -436,6 +445,12 @@ class OverviewWidget(QtWidgets.QFrame):
         # Force to change instance and refresh details
         self._on_product_change()
 
+        # Give a change to process Resize Request
+        QtWidgets.QApplication.processEvents()
+        # Trigger update geometry of
+        widget = self._product_views_layout.currentWidget()
+        widget.updateGeometry()
+
     def _on_publish_start(self):
         """Publish started."""
 
@@ -461,13 +476,11 @@ class OverviewWidget(QtWidgets.QFrame):
             self._controller.is_host_valid()
         )
 
-    def _on_instances_refresh(self):
-        """Controller refreshed instances."""
-
+    def _on_create_model_reset(self):
         self._refresh_instances()
 
-        # Give a change to process Resize Request
-        QtWidgets.QApplication.processEvents()
-        # Trigger update geometry of
-        widget = self._product_views_layout.currentWidget()
-        widget.updateGeometry()
+    def _on_instances_added(self):
+        self._refresh_instances()
+
+    def _on_instances_removed(self):
+        self._refresh_instances()

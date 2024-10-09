@@ -6,6 +6,7 @@ import json
 import copy
 import warnings
 from abc import ABCMeta, abstractmethod
+from typing import Any, Optional
 
 import clique
 
@@ -147,15 +148,15 @@ class AbstractAttrDef(metaclass=AbstractAttrDefMeta):
 
     def __init__(
         self,
-        key,
-        default,
-        label=None,
-        tooltip=None,
-        is_label_horizontal=None,
-        visible=None,
-        enabled=None,
-        hidden=None,
-        disabled=None,
+        key: str,
+        default: Any,
+        label: Optional[str] = None,
+        tooltip: Optional[str] = None,
+        is_label_horizontal: Optional[bool] = None,
+        visible: Optional[bool] = None,
+        enabled: Optional[bool] = None,
+        hidden: Optional[bool] = None,
+        disabled: Optional[bool] = None,
     ):
         if is_label_horizontal is None:
             is_label_horizontal = True
@@ -167,53 +168,85 @@ class AbstractAttrDef(metaclass=AbstractAttrDefMeta):
             visible, hidden, "visible", "hidden", True
         )
 
-        self.key = key
-        self.label = label
-        self.tooltip = tooltip
-        self.default = default
-        self.is_label_horizontal = is_label_horizontal
-        self.visible = visible
-        self.enabled = enabled
-        self._id = uuid.uuid4().hex
+        self.key: str = key
+        self.label: Optional[str] = label
+        self.tooltip: Optional[str] = tooltip
+        self.default: Any = default
+        self.is_label_horizontal: bool = is_label_horizontal
+        self.visible: bool = visible
+        self.enabled: bool = enabled
+        self._id: str = uuid.uuid4().hex
 
         self.__init__class__ = AbstractAttrDef
 
     @property
-    def id(self):
+    def id(self) -> str:
         return self._id
 
+    def clone(self):
+        data = self.serialize()
+        data.pop("type")
+        return self.deserialize(data)
+
     @property
-    def hidden(self):
+    def hidden(self) -> bool:
         return not self.visible
 
     @hidden.setter
-    def hidden(self, value):
+    def hidden(self, value: bool):
         self.visible = not value
 
     @property
-    def disabled(self):
+    def disabled(self) -> bool:
         return not self.enabled
 
     @disabled.setter
-    def disabled(self, value):
+    def disabled(self, value: bool):
         self.enabled = not value
 
-    def __eq__(self, other):
-        if not isinstance(other, self.__class__):
+    def __eq__(self, other: Any) -> bool:
+        return self.compare_to_def(other)
+
+    def __ne__(self, other: Any) -> bool:
+        return not self.compare_to_def(other)
+
+    def compare_to_def(
+        self,
+        other: Any,
+        ignore_default: Optional[bool] = False,
+        ignore_enabled: Optional[bool] = False,
+        ignore_visible: Optional[bool] = False,
+        ignore_def_type_compare: Optional[bool] = False,
+    ) -> bool:
+        if not isinstance(other, self.__class__) or self.key != other.key:
+            return False
+        if not ignore_def_type_compare and not self._def_type_compare(other):
             return False
         return (
-            self.key == other.key
-            and self.default == other.default
-            and self.visible == other.visible
-            and self.enabled == other.enabled
+            (ignore_default or self.default == other.default)
+            and (ignore_visible or self.visible == other.visible)
+            and (ignore_enabled or self.enabled == other.enabled)
         )
 
-    def __ne__(self, other):
-        return not self.__eq__(other)
+    @abstractmethod
+    def is_value_valid(self, value: Any) -> bool:
+        """Check if value is valid.
+
+        This should return False if value is not valid based
+            on definition type.
+
+        Args:
+            value (Any): Value to validate based on definition type.
+
+        Returns:
+            bool: True if value is valid.
+
+        """
+        pass
 
     @property
     @abstractmethod
-    def type(self):
+    def type(self) -> str:
         """Attribute definition type also used as identifier of class.
 
         Returns:
@@ -260,8 +293,14 @@ class AbstractAttrDef(metaclass=AbstractAttrDefMeta):
 
         Data can be received using 'serialize' method.
         """
+        if "type" in data:
+            data = dict(data)
+            data.pop("type")
 
         return cls(**data)
+
+    def _def_type_compare(self, other: "AbstractAttrDef") -> bool:
+        return True
 
 
 # -----------------------------------------
@@ -272,7 +311,10 @@ class UIDef(AbstractAttrDef):
     is_value_def = False
 
     def __init__(self, key=None, default=None, *args, **kwargs):
-        super(UIDef, self).__init__(key, default, *args, **kwargs)
+        super().__init__(key, default, *args, **kwargs)
+
+    def is_value_valid(self, value: Any) -> bool:
+        return True
 
     def convert_value(self, value):
         return value
@@ -286,11 +328,9 @@ class UILabelDef(UIDef):
     type = "label"
 
     def __init__(self, label, key=None):
-        super(UILabelDef, self).__init__(label=label, key=key)
+        super().__init__(label=label, key=key)
 
-    def __eq__(self, other):
-        if not super(UILabelDef, self).__eq__(other):
-            return False
+    def _def_type_compare(self, other: "UILabelDef") -> bool:
         return self.label == other.label
 
 
@@ -309,7 +349,10 @@ class UnknownDef(AbstractAttrDef):
 
     def __init__(self, key, default=None, **kwargs):
         kwargs["default"] = default
-        super(UnknownDef, self).__init__(key, **kwargs)
+        super().__init__(key, **kwargs)
+
+    def is_value_valid(self, value: Any) -> bool:
+        return True
 
     def convert_value(self, value):
         return value
@@ -330,6 +373,9 @@ class HiddenDef(AbstractAttrDef):
         kwargs["default"] = default
         kwargs["visible"] = False
         super().__init__(key, **kwargs)
+
+    def is_value_valid(self, value: Any) -> bool:
+        return True
 
     def convert_value(self, value):
         return value
@@ -380,21 +426,21 @@ class NumberDef(AbstractAttrDef):
         elif default > maximum:
             default = maximum
 
-        super(NumberDef, self).__init__(key, default=default, **kwargs)
+        super().__init__(key, default=default, **kwargs)
 
         self.minimum = minimum
         self.maximum = maximum
         self.decimals = 0 if decimals is None else decimals
 
-    def __eq__(self, other):
-        if not super(NumberDef, self).__eq__(other):
+    def is_value_valid(self, value: Any) -> bool:
+        if self.decimals == 0:
+            if not isinstance(value, int):
+                return False
+        elif not isinstance(value, float):
             return False
-
-        return (
-            self.decimals == other.decimals
-            and self.maximum == other.maximum
-            and self.maximum == other.maximum
-        )
+        if self.minimum > value > self.maximum:
+            return False
+        return True
 
     def convert_value(self, value):
         if isinstance(value, str):
@@ -409,6 +455,13 @@ class NumberDef(AbstractAttrDef):
         if self.decimals == 0:
             return int(value)
         return round(float(value), self.decimals)
+
+    def _def_type_compare(self, other: "NumberDef") -> bool:
+        return (
+            self.decimals == other.decimals
+            and self.maximum == other.maximum
+            and self.maximum == other.maximum
+        )
 
 
 class TextDef(AbstractAttrDef):
@@ -439,7 +492,7 @@ class TextDef(AbstractAttrDef):
         if default is None:
             default = ""
 
-        super(TextDef, self).__init__(key, default=default, **kwargs)
+        super().__init__(key, default=default, **kwargs)
 
         if multiline is None:
             multiline = False
@@ -456,14 +509,12 @@ class TextDef(AbstractAttrDef):
         self.placeholder = placeholder
         self.regex = regex
 
-    def __eq__(self, other):
-        if not super(TextDef, self).__eq__(other):
+    def is_value_valid(self, value: Any) -> bool:
+        if not isinstance(value, str):
             return False
-
-        return (
-            self.multiline == other.multiline
-            and self.regex == other.regex
-        )
+        if self.regex and not self.regex.match(value):
+            return False
+        return True
 
     def convert_value(self, value):
         if isinstance(value, str):
@@ -471,9 +522,17 @@ class TextDef(AbstractAttrDef):
         return self.default
 
     def serialize(self):
-        data = super(TextDef, self).serialize()
+        data = super().serialize()
         data["regex"] = self.regex.pattern
+        data["multiline"] = self.multiline
+        data["placeholder"] = self.placeholder
         return data
+
+    def _def_type_compare(self, other: "TextDef") -> bool:
+        return (
+            self.multiline == other.multiline
+            and self.regex == other.regex
+        )
 
 
 class EnumDef(AbstractAttrDef):
@@ -513,20 +572,11 @@ class EnumDef(AbstractAttrDef):
         elif default not in item_values:
             default = next(iter(item_values), None)
 
-        super(EnumDef, self).__init__(key, default=default, **kwargs)
+        super().__init__(key, default=default, **kwargs)
 
         self.items = items
         self._item_values = item_values_set
         self.multiselection = multiselection
-
-    def __eq__(self, other):
-        if not super(EnumDef, self).__eq__(other):
-            return False
-
-        return (
-            self.items == other.items
-            and self.multiselection == other.multiselection
-        )
 
     def convert_value(self, value):
         if not self.multiselection:
@@ -538,8 +588,19 @@ class EnumDef(AbstractAttrDef):
             return copy.deepcopy(self.default)
         return list(self._item_values.intersection(value))
 
+    def is_value_valid(self, value: Any) -> bool:
+        """Check if item is available in possible values."""
+        if isinstance(value, list):
+            if not self.multiselection:
+                return False
+            return all(value in self._item_values for value in value)
+
+        if self.multiselection:
+            return False
+        return value in self._item_values
+
     def serialize(self):
-        data = super(EnumDef, self).serialize()
+        data = super().serialize()
         data["items"] = copy.deepcopy(self.items)
         data["multiselection"] = self.multiselection
         return data
@@ -606,6 +667,12 @@ class EnumDef(AbstractAttrDef):
 
         return output
 
+    def _def_type_compare(self, other: "EnumDef") -> bool:
+        return (
+            self.items == other.items
+            and self.multiselection == other.multiselection
+        )
+
 
 class BoolDef(AbstractAttrDef):
     """Boolean representation.
@@ -619,7 +686,10 @@ class BoolDef(AbstractAttrDef):
     def __init__(self, key, default=None, **kwargs):
         if default is None:
             default = False
-        super(BoolDef, self).__init__(key, default=default, **kwargs)
+        super().__init__(key, default=default, **kwargs)
+
+    def is_value_valid(self, value: Any) -> bool:
+        return isinstance(value, bool)
 
     def convert_value(self, value):
         if isinstance(value, bool):
@@ -917,10 +987,10 @@ class FileDef(AbstractAttrDef):
         self.extensions = set(extensions)
         self.allow_sequences = allow_sequences
         self.extensions_label = extensions_label
-        super(FileDef, self).__init__(key, default=default, **kwargs)
+        super().__init__(key, default=default, **kwargs)
 
     def __eq__(self, other):
-        if not super(FileDef, self).__eq__(other):
+        if not super().__eq__(other):
             return False
 
         return (
@@ -929,6 +999,29 @@ class FileDef(AbstractAttrDef):
             and self.extensions == other.extensions
             and self.allow_sequences == other.allow_sequences
         )
+
+    def is_value_valid(self, value: Any) -> bool:
+        if self.single_item:
+            if not isinstance(value, dict):
+                return False
+            try:
+                FileDefItem.from_dict(value)
+                return True
+            except (ValueError, KeyError):
+                return False
+
+        if not isinstance(value, list):
+            return False
+
+        for item in value:
+            if not isinstance(item, dict):
+                return False
+
+            try:
+                FileDefItem.from_dict(item)
+            except (ValueError, KeyError):
+                return False
+        return True
 
     def convert_value(self, value):
         if isinstance(value, (str, dict)):
