@@ -148,6 +148,9 @@ class AttributeValues:
         for key in self._attr_defs_by_key.keys():
             yield key, self._data.get(key)
 
+    def get_attr_def(self, key, default=None):
+        return self._attr_defs_by_key.get(key, default)
+
     def update(self, value):
         changes = {}
         for _key, _value in dict(value).items():
