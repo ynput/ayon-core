@@ -6,6 +6,7 @@ from ayon_core.lib.attribute_definitions import (
     serialize_attr_defs,
     deserialize_attr_defs,
     AbstractAttrDef,
+    EnumDef,
 )
 from ayon_core.lib.profiles_filtering import filter_profiles
 from ayon_core.lib.attribute_definitions import UIDef
@@ -294,6 +295,71 @@ class InstanceItem:
             instance["active"],
             instance.has_promised_context,
         )
+
+
+def _merge_attr_defs(
+    attr_def_src: AbstractAttrDef, attr_def_new: AbstractAttrDef
+) -> Optional[AbstractAttrDef]:
+    if not attr_def_src.enabled and attr_def_new.enabled:
+        attr_def_src.enabled = True
+    if not attr_def_src.visible and attr_def_new.visible:
+        attr_def_src.visible = True
+
+    if not isinstance(attr_def_src, EnumDef):
+        return None
+    if attr_def_src.items == attr_def_new.items:
+        return None
+
+    src_item_values = {
+        item["value"]
+        for item in attr_def_src
+    }
+    for item in attr_def_new.items:
+        if item["value"] not in src_item_values:
+            attr_def_src.items.append(item)
+
+
+def merge_attr_defs(attr_defs: List[List[AbstractAttrDef]]):
+    if not attr_defs:
+        return []
+    if len(attr_defs) == 1:
+        return attr_defs[0]
+
+    # Pop first and create clone of attribute definitions
+    defs_union: List[AbstractAttrDef] = [
+        attr_def.clone()
+        for attr_def in attr_defs.pop(0)
+    ]
+    for instance_attr_defs in attr_defs:
+        idx = 0
+        for attr_idx, attr_def in enumerate(instance_attr_defs):
+            is_enum = isinstance(attr_def, EnumDef)
+            match_idx = None
+            match_attr = None
+            for union_idx, union_def in enumerate(defs_union):
+                if (
+                    attr_def.compare_to_def(
+                        union_def,
+                        ignore_default=True,
+                        ignore_enabled=True,
+                        ignore_visible=True,
+                        ignore_def_type_compare=is_enum
+                    )
+                ):
+                    match_idx = union_idx
+                    match_attr = union_def
+                    break
+
+            if match_attr is not None:
+                new_attr_def = _merge_attr_defs(match_attr, attr_def)
+                if new_attr_def is not None:
+                    defs_union[match_idx] = new_attr_def
+                idx = match_idx + 1
+                continue
+
+            defs_union.insert(idx, attr_def.clone())
+            idx += 1
+    return defs_union
 
 
 class CreateModel:
@@ -729,9 +795,10 @@ class CreateModel:
                 attr_defs = attr_val.attr_defs
                 if not attr_defs:
                     continue
-
-                if plugin_name not in all_defs_by_plugin_name:
-                    all_defs_by_plugin_name[plugin_name] = attr_val.attr_defs
+                plugin_attr_defs = all_defs_by_plugin_name.setdefault(
+                    plugin_name, []
+                )
+                plugin_attr_defs.append(attr_defs)
 
                 plugin_values = all_plugin_values.setdefault(plugin_name, {})
 
@@ -744,6 +811,10 @@ class CreateModel:
                     value = attr_val[attr_def.key]
                     attr_values.append((item_id, value))
 
+        attr_defs_by_plugin_name = {}
+        for plugin_name, attr_defs in all_defs_by_plugin_name.items():
+            attr_defs_by_plugin_name[plugin_name] = merge_attr_defs(attr_defs)
+
         output = []
         for plugin in self._create_context.plugins_with_defs:
             plugin_name = plugin.__name__
@@ -751,7 +822,7 @@ class CreateModel:
                 continue
             output.append((
                 plugin_name,
-                all_defs_by_plugin_name[plugin_name],
+                attr_defs_by_plugin_name[plugin_name],
                 all_plugin_values
             ))
         return output
