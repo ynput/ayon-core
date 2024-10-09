@@ -312,7 +312,7 @@ def _merge_attr_defs(
 
     src_item_values = {
         item["value"]
-        for item in attr_def_src
+        for item in attr_def_src.items
     }
     for item in attr_def_new.items:
         if item["value"] not in src_item_values:
