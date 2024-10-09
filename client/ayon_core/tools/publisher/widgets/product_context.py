@@ -917,7 +917,7 @@ class GlobalAttrsWidget(QtWidgets.QWidget):
             if instance_id not in self._current_instances_by_id:
                 continue
 
-            for key, attr_name in (
+            for key in (
                 "folderPath",
                 "task",
                 "variant",
