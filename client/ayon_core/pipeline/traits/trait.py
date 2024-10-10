@@ -1,4 +1,4 @@
-"""Defines the base trait model."""
+"""Defines the base trait model and representation."""
 from __future__ import annotations
 
 import inspect
@@ -16,6 +16,9 @@ class TraitBase(ABC, BaseModel):
     """Base trait model.
 
     This model must be used as a base for all trait models.
+    It is using Pydantic BaseModel for serialization and validation.
+    ``id``, ``name``, and ``description`` are abstract attributes that must be
+    implemented in the derived classes.
 
     """
 
@@ -45,10 +48,15 @@ class TraitBase(ABC, BaseModel):
 
 
 
-class TraitsData:
-    """Traits data container.
+class Representation:
+    """Representation of products.
 
-    This model represents the data of a trait.
+    Representation defines collection of individual properties that describe
+    the specific "form" of the product. Each property is represented by a
+    trait therefore the Representation is a collection of traits.
+
+    It holds methods to add, remove, get, and check for the existence of a
+    trait in the representation. It also provides a method to get all the
 
     """
     _data: dict
@@ -90,8 +98,8 @@ class TraitsData:
         return None
 
 
-    def add(self, trait: TraitBase, *, exists_ok: bool=False) -> None:
-        """Add a trait to the data.
+    def add_trait(self, trait: TraitBase, *, exists_ok: bool=False) -> None:
+        """Add a trait to the Representation.
 
         Args:
             trait (TraitBase): Trait to add.
@@ -111,9 +119,22 @@ class TraitsData:
             raise ValueError(error_msg)
         self._data[trait.id] = trait
 
-    def remove(self,
-               trait_id: Optional[str],
-               trait: Optional[Type[TraitBase]]) -> None:
+    def add_traits(
+            self, traits: list[TraitBase], *, exists_ok: bool=False) -> None:
+        """Add a list of traits to the Representation.
+
+        Args:
+            traits (list[TraitBase]): List of traits to add.
+            exists_ok (bool, optional): If True, do not raise an error if the
+                trait already exists. Defaults to False.
+
+        """
+        for trait in traits:
+            self.add_trait(trait, exists_ok=exists_ok)
+
+    def remove_trait(self,
+                     trait_id: Optional[str]=None,
+                     trait: Optional[Type[TraitBase]]=None) -> None:
         """Remove a trait from the data.
 
         Args:
@@ -125,6 +146,23 @@ class TraitsData:
             self._data.pop(trait_id)
         elif trait:
             self._data.pop(trait.id)
+
+    def remove_traits(self,
+                        trait_ids: Optional[list[str]]=None,
+                        traits: Optional[list[Type[TraitBase]]]=None) -> None:
+        """Remove a list of traits from the Representation.
+
+        Args:
+            trait_ids (list[str], optional): List of trait IDs.
+            traits (list[TraitBase], optional): List of trait classes.
+
+        """
+        if trait_ids:
+            for trait_id in trait_ids:
+                self.remove_trait(trait_id=trait_id)
+        elif traits:
+            for trait in traits:
+                self.remove_trait(trait=trait)
 
     def has_trait(self,
                   trait_id: Optional[str]=None,
@@ -143,10 +181,34 @@ class TraitsData:
             trait_id = trait.id
         return hasattr(self, trait_id)
 
-    def get(self,
-            trait_id: Optional[str]=None,
-            trait: Optional[Type[TraitBase]]=None) -> Union[TraitBase, None]:
-        """Get a trait from the data.
+    def has_traits(self,
+                   trait_ids: Optional[list[str]]=None,
+                   traits: Optional[list[Type[TraitBase]]]=None) -> bool:
+        """Check if the traits exist.
+
+        Args:
+            trait_ids (list[str], optional): List of trait IDs.
+            traits (list[TraitBase], optional): List of trait classes.
+
+        Returns:
+            bool: True if all traits exist, False otherwise.
+
+        """
+        if trait_ids:
+            for trait_id in trait_ids:
+                if not self.has_trait(trait_id=trait_id):
+                    return False
+        elif traits:
+            for trait in traits:
+                if not self.has_trait(trait=trait):
+                    return False
+        return True
+
+    def get_trait(self,
+                  trait_id: Optional[str]=None,
+                  trait: Optional[Type[TraitBase]]=None
+    ) -> Union[TraitBase, None]:
+        """Get a trait from the representation.
 
         Args:
             trait_id (str, optional): Trait ID.
@@ -173,11 +235,33 @@ class TraitsData:
 
         return self._data[trait_id] if self._data.get(trait_id) else None
 
-    def as_dict(self) -> dict:
-        """Return the data as a dictionary.
+    def get_traits(self,
+                     trait_ids: Optional[list[str]]=None,
+                     traits: Optional[list[Type[TraitBase]]]=None) -> dict:
+          """Get a list of traits from the representation.
+
+          Args:
+                trait_ids (list[str], optional): List of trait IDs.
+                traits (list[TraitBase], optional): List of trait classes.
+
+          Returns:
+                dict: Dictionary of traits.
+
+          """
+          result = {}
+          if trait_ids:
+                for trait_id in trait_ids:
+                 result[trait_id] = self.get_trait(trait_id=trait_id)
+          elif traits:
+                for trait in traits:
+                 result[trait.id] = self.get_trait(trait=trait)
+          return result
+
+    def traits_as_dict(self) -> dict:
+        """Return the traits from Representation data as a dictionary.
 
         Returns:
-            dict: Data dictionary.
+            dict: Traits data dictionary.
 
         """
         result = OrderedDict()
@@ -197,4 +281,4 @@ class TraitsData:
         self._data = {}
         if traits:
             for trait in traits:
-                self.add(trait)
+                self.add_trait(trait)
