@@ -9,11 +9,11 @@ from ayon_core.pipeline.traits import (
     Image,
     PixelBased,
     Planar,
+    Representation,
     TraitBase,
-    TraitsData,
 )
 
-TRAITS_DATA = {
+REPRESENTATION_DATA = {
         FileLocation.id: {
             "file_path": Path("/path/to/file"),
             "file_size": 1024,
@@ -32,52 +32,74 @@ TRAITS_DATA = {
 
 
 @pytest.fixture()
-def traits_data() -> TraitsData:
+def representation() -> Representation:
     """Return a traits data instance."""
-    return TraitsData(traits=[
-        FileLocation(**TRAITS_DATA[FileLocation.id]),
+    return Representation(traits=[
+        FileLocation(**REPRESENTATION_DATA[FileLocation.id]),
         Image(),
-        PixelBased(**TRAITS_DATA[PixelBased.id]),
-        Planar(**TRAITS_DATA[Planar.id]),
+        PixelBased(**REPRESENTATION_DATA[PixelBased.id]),
+        Planar(**REPRESENTATION_DATA[Planar.id]),
     ])
 
-def test_traits_data(traits_data: TraitsData) -> None:
+def test_representation_traits(representation: Representation) -> None:
     """Test setting and getting traits."""
-    assert len(traits_data) == len(TRAITS_DATA)
-    assert traits_data.get(trait_id=FileLocation.id)
-    assert traits_data.get(trait_id=Image.id)
-    assert traits_data.get(trait_id=PixelBased.id)
-    assert traits_data.get(trait_id=Planar.id)
+    assert len(representation) == len(REPRESENTATION_DATA)
+    assert representation.get_trait(trait_id=FileLocation.id)
+    assert representation.get_trait(trait_id=Image.id)
+    assert representation.get_trait(trait_id=PixelBased.id)
+    assert representation.get_trait(trait_id=Planar.id)
 
-    assert traits_data.get(trait=FileLocation)
-    assert traits_data.get(trait=Image)
-    assert traits_data.get(trait=PixelBased)
-    assert traits_data.get(trait=Planar)
+    assert representation.get_trait(trait=FileLocation)
+    assert representation.get_trait(trait=Image)
+    assert representation.get_trait(trait=PixelBased)
+    assert representation.get_trait(trait=Planar)
 
-    assert issubclass(type(traits_data.get(trait=FileLocation)), TraitBase)
+    assert issubclass(
+        type(representation.get_trait(trait=FileLocation)), TraitBase)
 
-    assert traits_data.get(
-        trait=FileLocation) == traits_data.get(trait_id=FileLocation.id)
-    assert traits_data.get(
-        trait=Image) == traits_data.get(trait_id=Image.id)
-    assert traits_data.get(
-        trait=PixelBased) == traits_data.get(trait_id=PixelBased.id)
-    assert traits_data.get(
-        trait=Planar) == traits_data.get(trait_id=Planar.id)
+    assert representation.get_trait(
+        trait=FileLocation) == representation.get_trait(
+            trait_id=FileLocation.id)
+    assert representation.get_trait(
+        trait=Image) == representation.get_trait(
+            trait_id=Image.id)
+    assert representation.get_trait(
+        trait=PixelBased) == representation.get_trait(
+            trait_id=PixelBased.id)
+    assert representation.get_trait(
+        trait=Planar) == representation.get_trait(
+            trait_id=Planar.id)
 
-    assert traits_data.get(trait_id="ayon.2d.Image.v1")
-    assert traits_data.get(trait_id="ayon.2d.PixelBased.v1")
-    assert traits_data.get(trait_id="ayon.2d.Planar.v1")
+    assert representation.get_trait(trait_id="ayon.2d.Image.v1")
+    assert representation.get_trait(trait_id="ayon.2d.PixelBased.v1")
+    assert representation.get_trait(trait_id="ayon.2d.Planar.v1")
 
-    assert traits_data.get(
+    assert representation.get_trait(
         trait_id="ayon.2d.PixelBased.v1").display_window_width == \
-           TRAITS_DATA[PixelBased.id]["display_window_width"]
-    assert traits_data.get(
+           REPRESENTATION_DATA[PixelBased.id]["display_window_width"]
+    assert representation.get_trait(
         trait=PixelBased).display_window_height == \
-           TRAITS_DATA[PixelBased.id]["display_window_height"]
+           REPRESENTATION_DATA[PixelBased.id]["display_window_height"]
+
+def test_getting_traits_data(representation: Representation) -> None:
+    """Test getting a batch of traits."""
+    result = representation.get_traits(
+        trait_ids=[FileLocation.id, Image.id, PixelBased.id, Planar.id])
+    assert result == {
+         "ayon.2d.Image.v1": Image(),
+         "ayon.2d.PixelBased.v1": PixelBased(
+             display_window_width=1920,
+             display_window_height=1080,
+             pixel_aspect_ratio=1.0),
+         "ayon.2d.Planar.v1": Planar(planar_configuration="RGB"),
+         "ayon.content.FileLocation.v1": FileLocation(
+             file_path=Path("/path/to/file"),
+             file_size=1024,
+             file_hash=None)
+    }
 
 
-def test_traits_data_to_dict(traits_data: TraitsData) -> None:
+def test_traits_data_to_dict(representation: Representation) -> None:
     """Test converting traits data to dictionary."""
-    result = traits_data.as_dict()
-    assert result == TRAITS_DATA
+    result = representation.traits_as_dict()
+    assert result == REPRESENTATION_DATA
