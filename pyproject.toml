@@ -86,7 +86,8 @@ ignore = [
     "UP006",  # support for older python version (type vs. Type)
     "UP007",  # ..^
     "UP035",  # ..
-    "ARG002"
+    "ARG002",
+    "INP001", # add `__init__.py` to namespaced package
 ]
 
 # Allow fix for all enabled rules (when `--fix`) is provided.
