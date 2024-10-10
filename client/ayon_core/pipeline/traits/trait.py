@@ -4,6 +4,7 @@ from __future__ import annotations
 import inspect
 import sys
 from abc import ABC, abstractmethod
+from collections import OrderedDict
 from functools import lru_cache
 from typing import ClassVar, Optional, Type, Union
 
@@ -179,11 +180,13 @@ class TraitsData:
             dict: Data dictionary.
 
         """
-        result = {
-            trait_id: dict(sorted(trait.dict()))
-            for trait_id, trait in self._data.items()
-        }
-        return dict(sorted(result))
+        result = OrderedDict()
+        for trait_id, trait in self._data.items():
+            if not trait or not trait_id:
+                continue
+            result[trait_id] = OrderedDict(trait.dict())
+
+        return result
 
     def __len__(self):
         """Return the length of the data."""

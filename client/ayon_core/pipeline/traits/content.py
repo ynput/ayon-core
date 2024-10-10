@@ -1,14 +1,13 @@
 """Content traits for the pipeline."""
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, ClassVar, Optional
+# TCH003 is there because Path in TYPECHECKING will fail in tests
+from pathlib import Path  # noqa: TCH003
+from typing import ClassVar, Optional
 
 from pydantic import Field
 
 from .trait import TraitBase
-
-if TYPE_CHECKING:
-    from pathlib import Path
 
 
 class MimeType(TraitBase):
