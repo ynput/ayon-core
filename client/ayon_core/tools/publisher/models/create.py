@@ -371,6 +371,8 @@ def merge_attr_defs(attr_defs: List[List[AbstractAttrDef]]):
 
 
 class CreateModel:
+    _CONTEXT_KEYS = {"folderPath", "task", "variant", "productName"}
+
     def __init__(self, controller: AbstractPublisherBackend):
         self._log = None
         self._controller: AbstractPublisherBackend = controller
@@ -527,6 +529,12 @@ class CreateModel:
                 instance = self._get_instance_by_id(instance_id)
                 for key, value in changes.items():
                     instance[key] = value
+        self._emit_event(
+            "create.model.instances.context.changed",
+            {
+                "instance_ids": list(changes_by_instance_id.keys())
+            }
+        )
 
     def get_convertor_items(self) -> Dict[str, ConvertorItem]:
         return self._create_context.convertor_items_by_id
@@ -1032,16 +1040,28 @@ class CreateModel:
             return
 
         instance_changes = {}
+        context_changed_ids = set()
         for item in event.data["changes"]:
             instance_id = None
             if item["instance"]:
                 instance_id = item["instance"].id
-            instance_changes[instance_id] = item["changes"]
+            changes = item["changes"]
+            instance_changes[instance_id] = changes
+            if instance_id is None:
+                continue
+
+            if self._CONTEXT_KEYS.intersection(set(changes)):
+                context_changed_ids.add(instance_id)
 
         self._emit_event(
             "create.context.value.changed",
             {"instance_changes": instance_changes},
         )
+        if context_changed_ids:
+            self._emit_event(
+                "create.model.instances.context.changed",
+                {"instance_ids": list(context_changed_ids)},
+            )
 
     def _cc_pre_create_attr_changed(self, event):
         identifiers = event["identifiers"]
