@@ -35,7 +35,27 @@ class PublisherController(
     Known topics:
         "show.detailed.help" - Detailed help requested (UI related).
         "show.card.message" - Show card message request (UI related).
-        "instances.refresh.finished" - Instances are refreshed.
+        # --- Create model ---
+        "create.model.reset" - Reset of create model.
+        "instances.create.failed" - Creation failed.
+        "convertors.convert.failed" - Convertor failed.
+        "instances.save.failed" - Save failed.
+        "instance.thumbnail.changed" - Thumbnail changed.
+        "instances.collection.failed" - Collection of instances failed.
+        "convertors.find.failed" - Convertor find failed.
+        "instances.create.failed" - Create instances failed.
+        "instances.remove.failed" - Remove instances failed.
+        "create.context.added.instance" - Create instance added to context.
+        "create.context.value.changed" - Create instance or context value
+            changed.
+        "create.context.pre.create.attrs.changed" - Pre create attributes
+            changed.
+        "create.context.create.attrs.changed" - Create attributes changed.
+        "create.context.publish.attrs.changed" - Publish attributes changed.
+        "create.context.removed.instance" - Instance removed from context.
+        "create.model.instances.context.changed" - Instances changed context.
+            like folder, task or variant.
+        # --- Publish model ---
         "plugins.refresh.finished" - Plugins refreshed.
         "publish.reset.finished" - Reset finished.
         "controller.reset.started" - Controller reset started.
