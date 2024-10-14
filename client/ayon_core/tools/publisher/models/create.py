@@ -371,7 +371,13 @@ def merge_attr_defs(attr_defs: List[List[AbstractAttrDef]]):
 
 
 class CreateModel:
-    _CONTEXT_KEYS = {"folderPath", "task", "variant", "productName"}
+    _CONTEXT_KEYS = {
+        "active",
+        "folderPath",
+        "task",
+        "variant",
+        "productName",
+    }
 
     def __init__(self, controller: AbstractPublisherBackend):
         self._log = None
