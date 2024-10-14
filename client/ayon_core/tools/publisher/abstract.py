@@ -3,6 +3,7 @@ from typing import (
     Optional,
     Dict,
     List,
+    Set,
     Tuple,
     Any,
     Callable,
@@ -350,6 +351,12 @@ class AbstractPublisherFrontend(AbstractPublisherCommon):
     @abstractmethod
     def set_instances_context_info(
         self, changes_by_instance_id: Dict[str, Dict[str, Any]]
+    ):
+        pass
+
+    @abstractmethod
+    def set_instances_active_state(
+        self, active_state_by_id: Dict[str, bool]
     ):
         pass
 
