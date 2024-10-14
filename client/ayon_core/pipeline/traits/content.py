@@ -7,7 +7,7 @@ from typing import ClassVar, Optional
 
 from pydantic import Field
 
-from .trait import TraitBase
+from .trait import Representation, TraitBase
 
 
 class MimeType(TraitBase):
@@ -86,3 +86,30 @@ class Compressed(TraitBase):
     description: ClassVar[str] = "Compressed Trait"
     id: ClassVar[str] = "ayon.content.Compressed.v1"
     compression_type: str = Field(..., title="Compression Type")
+
+
+class Bundle(TraitBase):
+    """Bundle trait model.
+
+    This model list of independent Representation traits
+    that are bundled together. This is useful for representing
+    a collection of representations that are part of a single
+    entity.
+
+    Attributes:
+        name (str): Trait name.
+        description (str): Trait description.
+        id (str): id should be namespaced trait name with version
+        items (list[list[TraitBase]]): List of representations.
+
+    """
+
+    name: ClassVar[str] = "Bundle"
+    description: ClassVar[str] = "Bundle Trait"
+    id: ClassVar[str] = "ayon.content.Bundle.v1"
+    items: list[list[TraitBase]] = Field(
+        ..., title="Bundles of traits")
+
+    def to_representation(self) -> Representation:
+        """Convert to a representation."""
+        return Representation(traits=self.items)

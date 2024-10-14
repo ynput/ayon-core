@@ -132,130 +132,197 @@ class Representation:
         for trait in traits:
             self.add_trait(trait, exists_ok=exists_ok)
 
-    def remove_trait(self,
-                     trait_id: Optional[str]=None,
-                     trait: Optional[Type[TraitBase]]=None) -> None:
+    def remove_trait(self, trait: Type[TraitBase]) -> None:
         """Remove a trait from the data.
 
         Args:
-            trait_id (str, optional): Trait ID.
             trait (TraitBase, optional): Trait class.
 
-        """
-        if trait_id:
-            self._data.pop(trait_id)
-        elif trait:
-            self._data.pop(trait.id)
+        Raises:
+            ValueError: If the trait is not found.
 
-    def remove_traits(self,
-                        trait_ids: Optional[list[str]]=None,
-                        traits: Optional[list[Type[TraitBase]]]=None) -> None:
+        """
+        try:
+            self._data.pop(trait.id)
+        except KeyError as e:
+            error_msg = f"Trait with ID {trait.id} not found."
+            raise ValueError(error_msg) from e
+
+    def remove_trait_by_id(self, trait_id: str) -> None:
+        """Remove a trait from the data by its ID.
+
+        Args:
+            trait_id (str): Trait ID.
+
+        Raises:
+            ValueError: If the trait is not found.
+
+        """
+        try:
+            self._data.pop(trait_id)
+        except KeyError as e:
+            error_msg = f"Trait with ID {trait_id} not found."
+            raise ValueError(error_msg) from e
+
+    def remove_traits(self, traits: list[Type[TraitBase]]) -> None:
         """Remove a list of traits from the Representation.
+
+        If no trait IDs or traits are provided, all traits will be removed.
+
+        Args:
+            traits (list[TraitBase]): List of trait classes.
+
+        """
+        if not traits:
+            self._data = {}
+            return
+
+        for trait in traits:
+            self.remove_trait(trait)
+
+    def remove_traits_by_id(self, trait_ids: list[str]) -> None:
+        """Remove a list of traits from the Representation by their ID.
+
+        If no trait IDs or traits are provided, all traits will be removed.
 
         Args:
             trait_ids (list[str], optional): List of trait IDs.
-            traits (list[TraitBase], optional): List of trait classes.
 
         """
-        if trait_ids:
-            for trait_id in trait_ids:
-                self.remove_trait(trait_id=trait_id)
-        elif traits:
-            for trait in traits:
-                self.remove_trait(trait=trait)
+        for trait_id in trait_ids:
+            self.remove_trait_by_id(trait_id)
 
-    def has_trait(self,
-                  trait_id: Optional[str]=None,
-                  trait: Optional[Type[TraitBase]]=None) -> bool:
-        """Check if the trait exists.
+
+    def has_traits(self) -> bool:
+        """Check if the Representation has any traits.
+
+        Returns:
+            bool: True if the Representation has any traits, False otherwise.
+
+        """
+        return bool(self._data)
+
+    def contains_trait(self, trait: Type[TraitBase]) -> bool:
+        """Check if the trait exists in the Representation.
 
         Args:
-            trait_id (str, optional): Trait ID.
-            trait (TraitBase, optional): Trait class.
+            trait (TraitBase): Trait class.
 
         Returns:
             bool: True if the trait exists, False otherwise.
 
         """
-        if not trait_id:
-            trait_id = trait.id
-        return hasattr(self, trait_id)
+        return bool(self._data.get(trait.id))
 
-    def has_traits(self,
-                   trait_ids: Optional[list[str]]=None,
-                   traits: Optional[list[Type[TraitBase]]]=None) -> bool:
+    def contains_trait_by_id(self, trait_id: str) -> bool:
+        """Check if the trait exists using trait id.
+
+        Args:
+            trait_id (str): Trait ID.
+
+        Returns:
+            bool: True if the trait exists, False otherwise.
+
+        """
+        return  bool(self._data.get(trait_id))
+
+    def contains_traits(self, traits: list[Type[TraitBase]]) -> bool:
         """Check if the traits exist.
 
         Args:
-            trait_ids (list[str], optional): List of trait IDs.
             traits (list[TraitBase], optional): List of trait classes.
 
         Returns:
             bool: True if all traits exist, False otherwise.
 
         """
-        if trait_ids:
-            for trait_id in trait_ids:
-                if not self.has_trait(trait_id=trait_id):
-                    return False
-        elif traits:
-            for trait in traits:
-                if not self.has_trait(trait=trait):
-                    return False
-        return True
+        return all(self.contains_trait(trait=trait) for trait in traits)
 
-    def get_trait(self,
-                  trait_id: Optional[str]=None,
-                  trait: Optional[Type[TraitBase]]=None
-    ) -> Union[TraitBase, None]:
+    def contains_traits_by_id(self, trait_ids: list[str]) -> bool:
+        """Check if the traits exist by id.
+
+        If no trait IDs or traits are provided, it will check if the
+        representation has any traits.
+
+        Args:
+            trait_ids (list[str]): List of trait IDs.
+
+        Returns:
+            bool: True if all traits exist, False otherwise.
+
+        """
+        return all(
+            self.contains_trait_by_id(trait_id) for trait_id in trait_ids
+        )
+
+    def get_trait(self, trait: Type[TraitBase]) -> Union[TraitBase, None]:
         """Get a trait from the representation.
 
         Args:
-            trait_id (str, optional): Trait ID.
             trait (TraitBase, optional): Trait class.
 
         Returns:
             TraitBase: Trait instance.
 
         """
-        trait_class = None
-        if trait_id:
-            trait_class = self._get_trait_class(trait_id)
-            if not trait_class:
-                error_msg = f"Trait model with ID {trait_id} not found."
-                raise ValueError(error_msg)
+        return self._data[trait.id] if self._data.get(trait.id) else None
 
-        if trait:
-            trait_class = trait
-            trait_id = trait.id
+    def get_trait_by_id(self, trait_id: str) -> Union[TraitBase, None]:
+        """Get a trait from the representation by id.
 
-        if not trait_class and not trait_id:
-            error_msg = "Trait ID or Trait class is required"
+        Args:
+            trait_id (str): Trait ID.
+
+        Returns:
+            TraitBase: Trait instance.
+
+        """
+        trait_class = self._get_trait_class(trait_id)
+        if not trait_class:
+            error_msg = f"Trait model with ID {trait_id} not found."
             raise ValueError(error_msg)
 
         return self._data[trait_id] if self._data.get(trait_id) else None
 
     def get_traits(self,
-                     trait_ids: Optional[list[str]]=None,
                      traits: Optional[list[Type[TraitBase]]]=None) -> dict:
-          """Get a list of traits from the representation.
+        """Get a list of traits from the representation.
 
-          Args:
-                trait_ids (list[str], optional): List of trait IDs.
-                traits (list[TraitBase], optional): List of trait classes.
+        If no trait IDs or traits are provided, all traits will be returned.
 
-          Returns:
-                dict: Dictionary of traits.
+        Args:
+            traits (list[TraitBase], optional): List of trait classes.
 
-          """
-          result = {}
-          if trait_ids:
-                for trait_id in trait_ids:
-                 result[trait_id] = self.get_trait(trait_id=trait_id)
-          elif traits:
-                for trait in traits:
-                 result[trait.id] = self.get_trait(trait=trait)
-          return result
+        Returns:
+            dict: Dictionary of traits.
+
+        """
+        result = {}
+        if not traits:
+            for trait_id in self._data:
+                result[trait_id] = self.get_trait_by_id(trait_id=trait_id)
+            return result
+
+        for trait in traits:
+             result[trait.id] = self.get_trait(trait=trait)
+        return result
+
+    def get_traits_by_ids(self, trait_ids: list[str]) -> dict:
+        """Get a list of traits from the representation by their id.
+
+        If no trait IDs or traits are provided, all traits will be returned.
+
+        Args:
+            trait_ids (list[str]): List of trait IDs.
+
+        Returns:
+            dict: Dictionary of traits.
+
+        """
+        return {
+            trait_id: self.get_trait_by_id(trait_id)
+            for trait_id in trait_ids
+        }
 
     def traits_as_dict(self) -> dict:
         """Return the traits from Representation data as a dictionary.
@@ -276,7 +343,7 @@ class Representation:
         """Return the length of the data."""
         return len(self._data)
 
-    def __init__(self, traits: Optional[list[TraitBase]]):
+    def __init__(self, traits: Optional[list[TraitBase]]=None):
         """Initialize the data."""
         self._data = {}
         if traits:
