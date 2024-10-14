@@ -191,9 +191,9 @@ class InstanceListItemWidget(QtWidgets.QWidget):
     def update_instance(self, instance, context_info):
         """Update instance object."""
         self.instance = instance
-        self.update_instance_values(context_info)
+        self._update_instance_values(context_info)
 
-    def update_instance_values(self, context_info):
+    def _update_instance_values(self, context_info):
         """Update instance data propagated to widgets."""
         # Check product name
         label = self.instance.label
@@ -873,12 +873,21 @@ class InstanceListView(AbstractInstanceView):
             widget = self._group_widgets.pop(group_name)
             widget.deleteLater()
 
-    def refresh_instance_states(self):
+    def refresh_instance_states(self, instance_ids=None):
         """Trigger update of all instances."""
+        if instance_ids is not None:
+            instance_ids = set(instance_ids)
         context_info_by_id = self._controller.get_instances_context_info()
+        instance_items_by_id = self._controller.get_instance_items_by_id(
+            instance_ids
+        )
         for instance_id, widget in self._widgets_by_id.items():
-            context_info = context_info_by_id[instance_id]
-            widget.update_instance_values(context_info)
+            if instance_ids is not None and instance_id not in instance_ids:
+                continue
+            widget.update_instance(
+                instance_items_by_id[instance_id],
+                context_info_by_id[instance_id],
+            )
 
     def _on_active_changed(self, changed_instance_id, new_value):
         selected_instance_ids, _, _ = self.get_selected_items()

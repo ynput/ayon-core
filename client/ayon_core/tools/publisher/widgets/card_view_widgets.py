@@ -22,6 +22,7 @@ Only one item can be selected at a time.
 
 import re
 import collections
+from typing import Dict
 
 from qtpy import QtWidgets, QtCore
 
@@ -217,11 +218,18 @@ class InstanceGroupWidget(BaseGroupWidget):
     def update_icons(self, group_icons):
         self._group_icons = group_icons
 
-    def update_instance_values(self, context_info_by_id):
+    def update_instance_values(
+        self, context_info_by_id, instance_items_by_id, instance_ids
+    ):
         """Trigger update on instance widgets."""
 
         for instance_id, widget in self._widgets_by_id.items():
-            widget.update_instance_values(context_info_by_id[instance_id])
+            if instance_ids is not None and instance_id not in instance_ids:
+                continue
+            widget.update_instance(
+                instance_items_by_id[instance_id],
+                context_info_by_id[instance_id]
+            )
 
     def update_instances(self, instances, context_info_by_id):
         """Update instances for the group.
@@ -391,9 +399,6 @@ class ConvertorItemCardWidget(CardWidget):
         self._icon_widget = icon_widget
         self._label_widget = label_widget
 
-    def update_instance_values(self, context_info):
-        pass
-
 
 class InstanceCardWidget(CardWidget):
     """Card widget representing instance."""
@@ -461,7 +466,7 @@ class InstanceCardWidget(CardWidget):
         self._active_checkbox = active_checkbox
         self._expand_btn = expand_btn
 
-        self.update_instance_values(context_info)
+        self._update_instance_context(context_info)
 
     def set_active_toggle_enabled(self, enabled):
         self._active_checkbox.setEnabled(enabled)
@@ -486,7 +491,7 @@ class InstanceCardWidget(CardWidget):
     def update_instance(self, instance, context_info):
         """Update instance object and update UI."""
         self.instance = instance
-        self.update_instance_values(context_info)
+        self._update_instance_context(context_info)
 
     def _validate_context(self, context_info):
         valid = context_info.is_valid
@@ -522,7 +527,7 @@ class InstanceCardWidget(CardWidget):
             QtCore.Qt.NoTextInteraction
         )
 
-    def update_instance_values(self, context_info):
+    def _update_instance_context(self, context_info):
         """Update instance data"""
         self._update_product_name()
         self.set_active(self.instance.is_active)
@@ -596,7 +601,7 @@ class InstanceCardView(AbstractInstanceView):
         self._context_widget = None
         self._convertor_items_group = None
         self._active_toggle_enabled = True
-        self._widgets_by_group = {}
+        self._widgets_by_group: Dict[str, InstanceGroupWidget] = {}
         self._ordered_groups = []
 
         self._explicitly_selected_instance_ids = []
@@ -702,7 +707,7 @@ class InstanceCardView(AbstractInstanceView):
         # Prepare instances by group and identifiers by group
         instances_by_group = collections.defaultdict(list)
         identifiers_by_group = collections.defaultdict(set)
-        for instance in self._controller.get_instances():
+        for instance in self._controller.get_instance_items():
             group_name = instance.group_label
             instances_by_group[group_name].append(instance)
             identifiers_by_group[group_name].add(
@@ -817,11 +822,18 @@ class InstanceCardView(AbstractInstanceView):
 
         self._convertor_items_group.update_items(convertor_items)
 
-    def refresh_instance_states(self):
+    def refresh_instance_states(self, instance_ids=None):
         """Trigger update of instances on group widgets."""
+        if instance_ids is not None:
+            instance_ids = set(instance_ids)
         context_info_by_id = self._controller.get_instances_context_info()
+        instance_items_by_id = self._controller.get_instance_items_by_id(
+            instance_ids
+        )
         for widget in self._widgets_by_group.values():
-            widget.update_instance_values(context_info_by_id)
+            widget.update_instance_values(
+                context_info_by_id, instance_items_by_id, instance_ids
+            )
 
     def _on_active_changed(self, group_name, instance_id, value):
         group_widget = self._widgets_by_group[group_name]
