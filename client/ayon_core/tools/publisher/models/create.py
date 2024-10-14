@@ -1,6 +1,16 @@
 import logging
 import re
-from typing import Union, List, Dict, Tuple, Any, Optional, Iterable, Pattern
+from typing import (
+    Union,
+    List,
+    Dict,
+    Set,
+    Tuple,
+    Any,
+    Optional,
+    Iterable,
+    Pattern,
+)
 
 from ayon_core.lib.attribute_definitions import (
     serialize_attr_defs,
@@ -542,6 +552,21 @@ class CreateModel:
             }
         )
 
+    def set_instances_active_state(
+        self, active_state_by_id: Dict[str, bool]
+    ):
+        with self._create_context.bulk_value_changes(CREATE_EVENT_SOURCE):
+            for instance_id, active in active_state_by_id.items():
+                instance = self._create_context.get_instance_by_id(instance_id)
+                instance["active"] = active
+
+        self._emit_event(
+            "create.model.instances.context.changed",
+            {
+                "instance_ids": set(active_state_by_id.keys())
+            }
+        )
+
     def get_convertor_items(self) -> Dict[str, ConvertorItem]:
         return self._create_context.convertor_items_by_id
 
@@ -896,8 +921,12 @@ class CreateModel:
             }
         )
 
-    def _emit_event(self, topic: str, data: Optional[Dict[str, Any]] = None):
-        self._controller.emit_event(topic, data)
+    def _emit_event(
+        self,
+        topic: str,
+        data: Optional[Dict[str, Any]] = None
+    ):
+        self._controller.emit_event(topic, data, CREATE_EVENT_SOURCE)
 
     def _get_current_project_settings(self) -> Dict[str, Any]:
         """Current project settings.

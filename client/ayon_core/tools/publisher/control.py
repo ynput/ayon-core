@@ -220,6 +220,9 @@ class PublisherController(
             changes_by_instance_id
         )
 
+    def set_instances_active_state(self, active_state_by_id):
+        self._create_model.set_instances_active_state(active_state_by_id)
+
     def get_convertor_items(self):
         return self._create_model.get_convertor_items()
 
