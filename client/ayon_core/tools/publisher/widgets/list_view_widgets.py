@@ -118,7 +118,7 @@ class InstanceListItemWidget(QtWidgets.QWidget):
     def __init__(self, instance, context_info, parent):
         super().__init__(parent)
 
-        self.instance = instance
+        self._instance_id = instance.id
 
         instance_label = instance.label
         if instance_label is None:
@@ -171,47 +171,34 @@ class InstanceListItemWidget(QtWidgets.QWidget):
 
     def is_active(self):
         """Instance is activated."""
-        return self.instance.is_active
+        return self._active_checkbox.isChecked()
 
     def set_active(self, new_value):
         """Change active state of instance and checkbox."""
-        checkbox_value = self._active_checkbox.isChecked()
-        instance_value = self.instance.is_active
+        old_value = self.is_active()
         if new_value is None:
-            new_value = not instance_value
+            new_value = not old_value
 
-        # First change instance value and them change checkbox
-        # - prevent to trigger `active_changed` signal
-        if instance_value != new_value:
-            self.instance.is_active = new_value
-
-        if checkbox_value != new_value:
+        if new_value != old_value:
+            self._active_checkbox.blockSignals(True)
             self._active_checkbox.setChecked(new_value)
+            self._active_checkbox.blockSignals(False)
 
     def update_instance(self, instance, context_info):
         """Update instance object."""
-        self.instance = instance
-        self._update_instance_values(context_info)
-
-    def _update_instance_values(self, context_info):
-        """Update instance data propagated to widgets."""
         # Check product name
-        label = self.instance.label
+        label = instance.label
         if label != self._instance_label_widget.text():
             self._instance_label_widget.setText(html_escape(label))
         # Check active state
-        self.set_active(self.instance.is_active)
+        self.set_active(instance.is_active)
         # Check valid states
         self._set_valid_property(context_info.is_valid)
 
     def _on_active_change(self):
-        new_value = self._active_checkbox.isChecked()
-        old_value = self.instance.is_active
-        if new_value == old_value:
-            return
-
-        self.instance.is_active = new_value
-        self.active_changed.emit(self.instance.id, new_value)
+        self.active_changed.emit(
+            self._instance_id, self._active_checkbox.isChecked()
+        )
 
     def set_active_toggle_enabled(self, enabled):
         self._active_checkbox.setEnabled(enabled)
@@ -892,20 +879,21 @@ class InstanceListView(AbstractInstanceView):
     def _on_active_changed(self, changed_instance_id, new_value):
         selected_instance_ids, _, _ = self.get_selected_items()
 
-        selected_ids = set()
+        active_by_id = {}
         found = False
         for instance_id in selected_instance_ids:
-            selected_ids.add(instance_id)
+            active_by_id[instance_id] = new_value
             if not found and instance_id == changed_instance_id:
                 found = True
 
         if not found:
-            selected_ids = set()
-            selected_ids.add(changed_instance_id)
+            active_by_id = {changed_instance_id: new_value}
 
-        self._change_active_instances(selected_ids, new_value)
+        self._controller.set_instances_active_state(active_by_id)
+
+        self._change_active_instances(active_by_id, new_value)
         group_names = set()
-        for instance_id in selected_ids:
+        for instance_id in active_by_id:
             group_name = self._group_by_instance_id.get(instance_id)
             if group_name is not None:
                 group_names.add(group_name)
@@ -917,15 +905,10 @@ class InstanceListView(AbstractInstanceView):
         if not instance_ids:
             return
 
-        changed_ids = set()
         for instance_id in instance_ids:
             widget = self._widgets_by_id.get(instance_id)
             if widget:
-                changed_ids.add(instance_id)
                 widget.set_active(new_value)
-
-        if changed_ids:
-            self.active_changed.emit()
 
     def _on_selection_change(self, *_args):
         self.selection_changed.emit()
@@ -965,14 +948,16 @@ class InstanceListView(AbstractInstanceView):
         if not group_item:
             return
 
-        instance_ids = set()
+        active_by_id = {}
         for row in range(group_item.rowCount()):
             item = group_item.child(row)
             instance_id = item.data(INSTANCE_ID_ROLE)
             if instance_id is not None:
-                instance_ids.add(instance_id)
+                active_by_id[instance_id] = active
 
-        self._change_active_instances(instance_ids, active)
+        self._controller.set_instances_active_state(active_by_id)
+
+        self._change_active_instances(active_by_id, active)
 
         proxy_index = self._proxy_model.mapFromSource(group_item.index())
         if not self._instance_view.isExpanded(proxy_index):
