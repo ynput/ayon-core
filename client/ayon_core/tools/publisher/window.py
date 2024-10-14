@@ -253,12 +253,6 @@ class PublisherWindow(QtWidgets.QDialog):
 
         help_btn.clicked.connect(self._on_help_click)
         tabs_widget.tab_changed.connect(self._on_tab_change)
-        overview_widget.active_changed.connect(
-            self._on_context_or_active_change
-        )
-        overview_widget.instance_context_changed.connect(
-            self._on_context_or_active_change
-        )
         overview_widget.create_requested.connect(
             self._on_create_request
         )
