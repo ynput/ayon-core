@@ -110,7 +110,7 @@ class ListItemDelegate(QtWidgets.QStyledItemDelegate):
 class InstanceListItemWidget(QtWidgets.QWidget):
     """Widget with instance info drawn over delegate paint.
 
-    This is required to be able use custom checkbox on custom place.
+    This is required to be able to use custom checkbox on custom place.
     """
     active_changed = QtCore.Signal(str, bool)
     double_clicked = QtCore.Signal()
@@ -245,8 +245,8 @@ class ListContextWidget(QtWidgets.QFrame):
 class InstanceListGroupWidget(QtWidgets.QFrame):
     """Widget representing group of instances.
 
-    Has collapse/expand indicator, label of group and checkbox modifying all of
-    it's children.
+    Has collapse/expand indicator, label of group and checkbox modifying all
+    of its children.
     """
     expand_changed = QtCore.Signal(str, bool)
     toggle_requested = QtCore.Signal(str, int)
@@ -392,7 +392,7 @@ class InstanceTreeView(QtWidgets.QTreeView):
     def _mouse_press(self, event):
         """Store index of pressed group.
 
-        This is to be able change state of group and process mouse
+        This is to be able to change state of group and process mouse
         "double click" as 2x "single click".
         """
         if event.button() != QtCore.Qt.LeftButton:
@@ -588,7 +588,7 @@ class InstanceListView(AbstractInstanceView):
         # Prepare instances by their groups
         instances_by_group_name = collections.defaultdict(list)
         group_names = set()
-        for instance in self._controller.get_instances():
+        for instance in self._controller.get_instance_items():
             group_label = instance.group_label
             group_names.add(group_label)
             instances_by_group_name[group_label].append(instance)
@@ -612,7 +612,7 @@ class InstanceListView(AbstractInstanceView):
             # Mapping of existing instances under group item
             existing_mapping = {}
 
-            # Get group index to be able get children indexes
+            # Get group index to be able to get children indexes
             group_index = self._instance_model.index(
                 group_item.row(), group_item.column()
             )
