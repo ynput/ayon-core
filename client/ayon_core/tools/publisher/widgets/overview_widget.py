@@ -15,7 +15,6 @@ from .product_info import ProductInfoWidget
 
 
 class OverviewWidget(QtWidgets.QFrame):
-    active_changed = QtCore.Signal()
     create_requested = QtCore.Signal()
     convert_requested = QtCore.Signal()
     publish_tab_requested = QtCore.Signal()
@@ -124,13 +123,6 @@ class OverviewWidget(QtWidgets.QFrame):
         )
         product_view_cards.double_clicked.connect(
             self.publish_tab_requested
-        )
-        # Active instances changed
-        product_list_view.active_changed.connect(
-            self._on_active_changed
-        )
-        product_view_cards.active_changed.connect(
-            self._on_active_changed
         )
         # Instance context has changed
         product_attributes_widget.convert_requested.connect(
@@ -311,11 +303,6 @@ class OverviewWidget(QtWidgets.QFrame):
         self._product_attributes_widget.set_current_instances(
             instances, context_selected, convertor_identifiers
         )
-
-    def _on_active_changed(self):
-        if self._refreshing_instances:
-            return
-        self.active_changed.emit()
 
     def _on_change_anim(self, value):
         self._create_widget.setVisible(True)
