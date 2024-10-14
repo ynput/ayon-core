@@ -32,6 +32,9 @@ REPRESENTATION_DATA = {
         },
     }
 
+class InvalidTrait:
+    """Invalid trait class."""
+    foo = "bar"
 
 @pytest.fixture()
 def representation() -> Representation:
@@ -46,12 +49,16 @@ def representation() -> Representation:
 def test_representation_errors(representation: Representation) -> None:
     """Test errors in representation."""
     with pytest.raises(ValueError,
-                       match="Trait ID or Trait class is required"):
-        representation.get_trait()
+                       match="Invalid trait .* - ID is required."):
+        representation.add_trait(InvalidTrait())
 
     with pytest.raises(ValueError,
-                       match="Trait ID or Trait class is required"):
-        representation.contains_trait()
+                       match=f"Trait with ID {Image.id} already exists."):
+        representation.add_trait(Image())
+
+    with pytest.raises(ValueError,
+                       match="Trait with ID .* not found."):
+        representation.remove_trait_by_id("foo")
 
 def test_representation_traits(representation: Representation) -> None:
     """Test setting and getting traits."""
