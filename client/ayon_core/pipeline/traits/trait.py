@@ -111,7 +111,7 @@ class Representation:
                 exists.
 
         """
-        if not trait.id:
+        if not hasattr(trait, "id"):
             error_msg = f"Invalid trait {trait} - ID is required."
             raise ValueError(error_msg)
         if trait.id in self._data and not exists_ok:
