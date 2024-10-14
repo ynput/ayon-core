@@ -16,7 +16,6 @@ from .product_info import ProductInfoWidget
 
 class OverviewWidget(QtWidgets.QFrame):
     active_changed = QtCore.Signal()
-    instance_context_changed = QtCore.Signal()
     create_requested = QtCore.Signal()
     convert_requested = QtCore.Signal()
     publish_tab_requested = QtCore.Signal()
@@ -134,9 +133,6 @@ class OverviewWidget(QtWidgets.QFrame):
             self._on_active_changed
         )
         # Instance context has changed
-        product_attributes_widget.instance_context_changed.connect(
-            self._on_instance_context_change
-        )
         product_attributes_widget.convert_requested.connect(
             self._on_convert_requested
         )
@@ -162,6 +158,10 @@ class OverviewWidget(QtWidgets.QFrame):
         controller.register_event_callback(
             "create.context.removed.instance",
             self._on_instances_removed
+        )
+        controller.register_event_callback(
+            "create.model.instances.context.changed",
+            self._on_instance_context_change
         )
 
         self._product_content_widget = product_content_widget
@@ -362,7 +362,7 @@ class OverviewWidget(QtWidgets.QFrame):
             self._current_state == "publish"
         )
 
-    def _on_instance_context_change(self):
+    def _on_instance_context_change(self, event):
         current_idx = self._product_views_layout.currentIndex()
         for idx in range(self._product_views_layout.count()):
             if idx == current_idx:
@@ -372,9 +372,7 @@ class OverviewWidget(QtWidgets.QFrame):
                 widget.set_refreshed(False)
 
         current_widget = self._product_views_layout.widget(current_idx)
-        current_widget.refresh_instance_states()
-
-        self.instance_context_changed.emit()
+        current_widget.refresh_instance_states(event["instance_ids"])
 
     def _on_convert_requested(self):
         self.convert_requested.emit()
