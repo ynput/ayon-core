@@ -1,23 +1,22 @@
-import copy
 import platform
 from collections import defaultdict
 
 import ayon_api
 from qtpy import QtWidgets, QtCore, QtGui
 
-from ayon_core.pipeline import load, Anatomy
 from ayon_core import resources, style
-
 from ayon_core.lib import (
     format_file_size,
     collect_frames,
     get_datetime_data,
 )
+from ayon_core.pipeline import load, Anatomy
 from ayon_core.pipeline.load import get_representation_path_with_anatomy
 from ayon_core.pipeline.delivery import (
     get_format_dict,
     check_destination_path,
-    deliver_single_file
+    deliver_single_file,
+    get_representations_template_data,
 )
 
 

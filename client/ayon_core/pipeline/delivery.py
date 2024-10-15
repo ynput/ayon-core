@@ -4,14 +4,13 @@ import copy
 import shutil
 import glob
 import collections
-from typing import List, Dict, Any, Iterable
+from typing import Dict, Any, Iterable
 
 import clique
 import ayon_api
 
 from ayon_core.lib import create_hard_link
 
-from .anatomy import Anatomy
 from .template_data import (
     get_general_template_data,
     get_folder_template_data,
