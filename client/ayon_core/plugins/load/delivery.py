@@ -350,8 +350,8 @@ class DeliveryOptionsDialog(QtWidgets.QDialog):
     def _get_selected_repres(self):
         """Returns list of representation names filtered from checkboxes."""
         selected_repres = []
-        for repre_name, chckbox in self._representation_checkboxes.items():
-            if chckbox.isChecked():
+        for repre_name, checkbox in self._representation_checkboxes.items():
+            if checkbox.isChecked():
                 selected_repres.append(repre_name)
 
         return selected_repres
