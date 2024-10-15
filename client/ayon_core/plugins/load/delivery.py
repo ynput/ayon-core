@@ -16,7 +16,7 @@ from ayon_core.pipeline.delivery import (
     get_format_dict,
     check_destination_path,
     deliver_single_file,
-    get_representations_template_data,
+    get_representations_delivery_template_data,
 )
 
 
@@ -206,8 +206,10 @@ class DeliveryOptionsDialog(QtWidgets.QDialog):
                 filtered_repres.append(repre)
                 repre_ids.add(repre["id"])
 
-        template_data_by_repre_id = get_representations_template_data(
-            self.anatomy.project_name, repre_ids
+        template_data_by_repre_id = (
+            get_representations_delivery_template_data(
+                self.anatomy.project_name, repre_ids
+            )
         )
         for repre in filtered_repres:
             repre_path = get_representation_path_with_anatomy(
