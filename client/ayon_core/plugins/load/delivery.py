@@ -200,20 +200,29 @@ class DeliveryOptionsDialog(QtWidgets.QDialog):
         format_dict = get_format_dict(self.anatomy, self.root_line_edit.text())
         renumber_frame = self.renumber_frame.isChecked()
         frame_offset = self.first_frame_start.value()
+        filtered_repres = []
+        repre_ids = set()
         for repre in self._representations:
-            if repre["name"] not in selected_repres:
-                continue
+            if repre["name"] in selected_repres:
+                filtered_repres.append(repre)
+                repre_ids.add(repre["id"])
 
+        template_data_by_repre_id = get_representations_template_data(
+            self.anatomy.project_name, repre_ids
+        )
+        for repre in filtered_repres:
             repre_path = get_representation_path_with_anatomy(
                 repre, self.anatomy
             )
 
-            anatomy_data = copy.deepcopy(repre["context"])
-            new_report_items = check_destination_path(repre["id"],
-                                                      self.anatomy,
-                                                      anatomy_data,
-                                                      datetime_data,
-                                                      template_name)
+            template_data = template_data_by_repre_id[repre["id"]]
+            new_report_items = check_destination_path(
+                repre["id"],
+                self.anatomy,
+                template_data,
+                datetime_data,
+                template_name
+            )
 
             report_items.update(new_report_items)
             if new_report_items:
@@ -224,7 +233,7 @@ class DeliveryOptionsDialog(QtWidgets.QDialog):
                 repre,
                 self.anatomy,
                 template_name,
-                anatomy_data,
+                template_data,
                 format_dict,
                 report_items,
                 self.log
@@ -267,9 +276,9 @@ class DeliveryOptionsDialog(QtWidgets.QDialog):
 
                 if frame is not None:
                     if repre["context"].get("frame"):
-                        anatomy_data["frame"] = frame
+                        template_data["frame"] = frame
                     elif repre["context"].get("udim"):
-                        anatomy_data["udim"] = frame
+                        template_data["udim"] = frame
                     else:
                         # Fallback
                         self.log.warning(
@@ -277,7 +286,7 @@ class DeliveryOptionsDialog(QtWidgets.QDialog):
                             " data. Supplying sequence frame to '{frame}'"
                             " formatting data."
                         )
-                        anatomy_data["frame"] = frame
+                        template_data["frame"] = frame
                 new_report_items, uploaded = deliver_single_file(*args)
                 report_items.update(new_report_items)
                 self._update_progress(uploaded)
