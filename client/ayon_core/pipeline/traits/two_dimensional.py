@@ -114,3 +114,22 @@ class Overscan(TraitBase):
     right: int = Field(..., title="Right Overscan")
     top: int = Field(..., title="Top Overscan")
     bottom: int = Field(..., title="Bottom Overscan")
+
+
+class UDIM(TraitBase):
+    """UDIM trait model.
+
+    This model represents a UDIM trait.
+
+    Attributes:
+        name (str): Trait name.
+        description (str): Trait description.
+        id (str): id should be namespaced trait name with version
+        udim (int): UDIM value.
+
+    """
+
+    name: ClassVar[str] = "UDIM"
+    description: ClassVar[str] = "UDIM Trait"
+    id: ClassVar[str] = "ayon.2d.UDIM.v1"
+    udim: int = Field(..., title="UDIM")

@@ -60,6 +60,8 @@ class Sequence(Clip):
         frame_padding (int): Frame padding.
         frame_regex (str): Frame regex - regular expression to match
             frame numbers.
+        frame_list (str): Frame list specification of frames. This takes
+            string like "1-10,20-30,40-50" etc.
 
     """
     name: ClassVar[str] = "Sequence"
@@ -70,6 +72,7 @@ class Sequence(Clip):
         GapPolicy.forbidden, title="Gaps Policy")
     frame_padding: int = Field(..., title="Frame Padding")
     frame_regex: str = Field(..., title="Frame Regex")
+    frame_list: str = Field(..., title="Frame List")
 
 
 # Do we need one for drop and non-drop frame?
