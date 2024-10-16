@@ -6,11 +6,13 @@ from .content import (
     MimeType,
     RootlessLocation,
 )
-from .meta import Tagged
+from .lifecycle import Persistent, Transient
+from .meta import Tagged, TemplatePath
 from .three_dimensional import Spatial
 from .time import Clip, GapPolicy, Sequence, SMPTETimecode
 from .trait import Representation, TraitBase
 from .two_dimensional import (
+    UDIM,
     Deep,
     Image,
     Overscan,
@@ -30,8 +32,13 @@ __all__ = [
     "MimeType",
     "RootlessLocation",
 
+    # life cycle
+    "Persistent",
+    "Transient",
+
     # meta
     "Tagged",
+    "TemplatePath",
 
     # two-dimensional
     "Compressed",
@@ -40,6 +47,7 @@ __all__ = [
     "Overscan",
     "PixelBased",
     "Planar",
+    "UDIM",
 
     # three-dimensional
     "Spatial",
