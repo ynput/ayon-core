@@ -940,6 +940,10 @@ class PublishPuginsModel(BaseSettingsModel):
         default_factory=AyonEntityURIModel,
         title="Extract USD Layer Contribution",
     )
+    USDOutputProcessorRemapToRelativePaths: ValidateBaseModel = SettingsField(
+        default_factory=ValidateBaseModel,
+        title="Process USD files to use relative paths"
+    )
     PreIntegrateThumbnails: PreIntegrateThumbnailsModel = SettingsField(
         default_factory=PreIntegrateThumbnailsModel,
         title="Override Integrate Thumbnail Representations"
@@ -1255,6 +1259,11 @@ DEFAULT_PUBLISH_VALUES = {
     },
     "ExtractUSDLayerContribution": {
         "use_ayon_entity_uri": False,
+    },
+    "USDOutputProcessorRemapToRelativePaths": {
+        "enabled": False,
+        "optional": False,
+        "active": True,
     },
     "PreIntegrateThumbnails": {
         "enabled": True,
