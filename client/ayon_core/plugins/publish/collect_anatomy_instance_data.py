@@ -417,8 +417,10 @@ class CollectAnatomyInstanceData(pyblish.api.ContextPlugin):
             anatomy_data["hierarchy"] = hierarchy
 
             parent_name = project_entity["name"]
+            parents = []
             if hierarchy:
-                parent_name = hierarchy.split("/")[-1]
+                parents = hierarchy.split("/")
+                parent_name = parents[-1]
 
             folder_name = instance.data["folderPath"].split("/")[-1]
             anatomy_data.update({
@@ -432,6 +434,7 @@ class CollectAnatomyInstanceData(pyblish.api.ContextPlugin):
                     #   Using 'Shot' is current default behavior of editorial
                     #   (or 'newHierarchyIntegration') publishing.
                     "type": "Shot",
+                    "parents": parents,
                 },
             })
 
