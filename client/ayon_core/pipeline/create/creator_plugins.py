@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 import copy
 import collections
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING, Optional, Dict, Any
 
 from abc import ABC, abstractmethod
 
@@ -19,11 +19,12 @@ from .constants import DEFAULT_VARIANT_VALUE
 from .product_name import get_product_name
 from .utils import get_next_versions_for_instances
 from .legacy_create import LegacyCreator
+from .structures import CreatedInstance
 
 if TYPE_CHECKING:
     from ayon_core.lib import AbstractAttrDef
     # Avoid cyclic imports
-    from .context import CreateContext, CreatedInstance, UpdateData  # noqa: F401
+    from .context import CreateContext, UpdateData  # noqa: F401
 
 
 class ProductConvertorPlugin(ABC):
@@ -204,6 +205,7 @@ class BaseCreator(ABC):
         self.headless = headless
 
         self.apply_settings(project_settings)
+        self.register_callbacks()
 
     @staticmethod
     def _get_settings_values(project_settings, category_name, plugin_name):
@@ -289,6 +291,14 @@ class BaseCreator(ABC):
                 ))
             setattr(self, key, value)
 
+    def register_callbacks(self):
+        """Register callbacks for creator.
+
+        Default implementation does nothing. It can be overridden to register
+        callbacks for creator.
+        """
+        pass
+
     @property
     def identifier(self):
         """Identifier of creator (must be unique).
@@ -361,6 +371,35 @@ class BaseCreator(ABC):
         if self._log is None:
             self._log = Logger.get_logger(self.__class__.__name__)
         return self._log
+
+    def _create_instance(
+        self,
+        product_name: str,
+        data: Dict[str, Any],
+        product_type: Optional[str] = None
+    ) -> CreatedInstance:
+        """Create instance and add instance to context.
+
+        Args:
+            product_name (str): Product name.
+            data (Dict[str, Any]): Instance data.
+            product_type (Optional[str]): Product type, object attribute
+                'product_type' is used if not passed.
+
+        Returns:
+            CreatedInstance: Created instance.
+
+        """
+        if product_type is None:
+            product_type = self.product_type
+        instance = CreatedInstance(
+            product_type,
+            product_name,
+            data,
+            creator=self,
+        )
+        self._add_instance_to_context(instance)
+        return instance
 
     def _add_instance_to_context(self, instance):
         """Helper method to add instance to create context.
@@ -550,6 +589,16 @@ class BaseCreator(ABC):
         """
 
         return self.instance_attr_defs
+
+    def get_attr_defs_for_instance(self, instance):
+        """Get attribute definitions for an instance.
+
+        Args:
+            instance (CreatedInstance): Instance for which to get
+                attribute definitions.
+
+        """
+        return self.get_instance_attr_defs()
 
     @property
     def collection_shared_data(self):
@@ -781,6 +830,16 @@ class Creator(BaseCreator):
                 for created instance.
         """
         return self.pre_create_attr_defs
+
+    def _pre_create_attr_defs_changed(self):
+        """Called when pre-create attribute definitions change.
+
+        Create plugin can call this method when knows that
+            'get_pre_create_attr_defs' should be called again.
+        """
+        self.create_context.create_plugin_pre_create_attr_defs_changed(
+            self.identifier
+        )
 
 
 class HiddenCreator(BaseCreator):
