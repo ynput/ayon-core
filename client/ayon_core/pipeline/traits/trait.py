@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import inspect
 import sys
+import uuid
 from abc import ABC, abstractmethod
 from collections import OrderedDict
 from functools import lru_cache
@@ -58,10 +59,16 @@ class Representation:
     It holds methods to add, remove, get, and check for the existence of a
     trait in the representation. It also provides a method to get all the
 
+    Arguments:
+        name (str): Representation name. Must be unique within instance.
+        representation_id (str): Representation ID.
+
     """
     _data: dict
     _module_blacklist: ClassVar[list[str]] = [
         "_", "builtins", "pydantic"]
+    name: str
+    representation_id: str
 
     @lru_cache(maxsize=64)  # noqa: B019
     def _get_trait_class(self, trait_id: str) -> Union[Type[TraitBase], None]:
@@ -343,8 +350,20 @@ class Representation:
         """Return the length of the data."""
         return len(self._data)
 
-    def __init__(self, traits: Optional[list[TraitBase]]=None):
-        """Initialize the data."""
+    def __init__(
+            self,
+            name: str,
+            representation_id: Optional[str]=None,
+            traits: Optional[list[TraitBase]]=None):
+        """Initialize the data.
+
+        Args:
+            name (str): Representation name. Must be unique within instance.
+            representation_id (str, optional): Representation ID.
+            traits (list[TraitBase], optional): List of traits.
+        """
+        self.name = name
+        self.representation_id = representation_id or uuid.uuid4().hex
         self._data = {}
         if traits:
             for trait in traits:

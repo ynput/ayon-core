@@ -39,7 +39,7 @@ class InvalidTrait:
 @pytest.fixture()
 def representation() -> Representation:
     """Return a traits data instance."""
-    return Representation(traits=[
+    return Representation(name="test", traits=[
         FileLocation(**REPRESENTATION_DATA[FileLocation.id]),
         Image(),
         PixelBased(**REPRESENTATION_DATA[PixelBased.id]),
@@ -111,7 +111,7 @@ def test_representation_traits(representation: Representation) -> None:
               repre_dict
 
     assert representation.has_traits() is True
-    empty_representation = Representation(traits=[])
+    empty_representation = Representation(name="test", traits=[])
     assert empty_representation.has_traits() is False
 
     assert representation.contains_trait(trait=FileLocation) is True
@@ -205,7 +205,7 @@ def test_bundles() -> None:
         MimeType(mime_type="image/tiff"),
     ]
     bundle = Bundle(items=[diffuse_texture, bump_texture])
-    representation = Representation(traits=[bundle])
+    representation = Representation(name="test_bundle", traits=[bundle])
 
     if representation.contains_trait(trait=Bundle):
         assert representation.get_trait(trait=Bundle).items == [
@@ -213,7 +213,7 @@ def test_bundles() -> None:
         ]
 
     for item in representation.get_trait(trait=Bundle).items:
-        sub_representation = Representation(traits=item)
+        sub_representation = Representation(name="test", traits=item)
         assert sub_representation.contains_trait(trait=Image)
         assert sub_representation.get_trait(trait=MimeType).mime_type in [
             "image/jpeg", "image/tiff"

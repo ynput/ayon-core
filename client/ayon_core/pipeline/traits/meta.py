@@ -41,4 +41,4 @@ class TemplatePath(TraitBase):
     description: ClassVar[str] = "Template Path Trait Model"
     id: ClassVar[str] = "ayon.meta.TemplatePath.v1"
     template: str = Field(..., title="Template Path")
-    data: dict[str] = Field(..., title="Formatting Data")
+    data: dict = Field(..., title="Formatting Data")
