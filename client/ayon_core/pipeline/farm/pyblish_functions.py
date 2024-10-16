@@ -788,15 +788,15 @@ def _create_instances_for_aov(instance, skeleton, aov_filter, additional_data,
                 colorspace = product.colorspace
                 break
 
-        if isinstance(files, (list, tuple)):
-            files = [os.path.basename(f) for f in files]
+        if isinstance(collected_files, (list, tuple)):
+            collected_files = [os.path.basename(f) for f in collected_files]
         else:
-            files = os.path.basename(files)
+            collected_files = os.path.basename(collected_files)
 
         rep = {
             "name": ext,
             "ext": ext,
-            "files": files,
+            "files": collected_files,
             "frameStart": int(skeleton["frameStartHandle"]),
             "frameEnd": int(skeleton["frameEndHandle"]),
             # If expectedFile are absolute, we need only filenames
