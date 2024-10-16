@@ -6,6 +6,7 @@ from .content import (
     MimeType,
     RootlessLocation,
 )
+from .meta import Tagged
 from .three_dimensional import Spatial
 from .time import Clip, GapPolicy, Sequence, SMPTETimecode
 from .trait import Representation, TraitBase
@@ -28,6 +29,9 @@ __all__ = [
     "FileLocation",
     "MimeType",
     "RootlessLocation",
+
+    # meta
+    "Tagged",
 
     # two-dimensional
     "Compressed",
