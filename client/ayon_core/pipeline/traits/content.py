@@ -48,7 +48,7 @@ class FileLocation(TraitBase):
     id: ClassVar[str] = "ayon.content.FileLocation.v1"
     file_path: Path = Field(..., title="File Path")
     file_size: int = Field(..., title="File Size")
-    file_hash: Optional[str] = Field(..., title="File Hash")
+    file_hash: Optional[str] = Field(None, title="File Hash")
 
 class RootlessLocation(TraitBase):
     """RootlessLocation trait model.
