@@ -1,6 +1,8 @@
 """Temporal (time related) traits."""
+from __future__ import annotations
+
 from enum import Enum, auto
-from typing import ClassVar
+from typing import ClassVar, Optional
 
 from pydantic import Field
 
@@ -41,8 +43,8 @@ class Clip(TraitBase):
     id: ClassVar[str] = "ayon.time.Clip.v1"
     frame_start: int = Field(..., title="Frame Start")
     frame_end: int = Field(..., title="Frame End")
-    frame_start_handle: int = Field(..., title="Frame Start Handle")
-    frame_end_handle: int = Field(..., title="Frame End Handle")
+    frame_start_handle: Optional[int] = Field(0, title="Frame Start Handle")
+    frame_end_handle: Optional[int] = Field(0, title="Frame End Handle")
 
 class Sequence(Clip):
     """Sequence trait model.
@@ -67,12 +69,12 @@ class Sequence(Clip):
     name: ClassVar[str] = "Sequence"
     description: ClassVar[str] = "Sequence Trait Model"
     id: ClassVar[str] = "ayon.time.Sequence.v1"
-    step: int = Field(..., title="Step")
+    step: Optional[int] = Field(1, title="Step")
     gaps_policy: GapPolicy = Field(
         GapPolicy.forbidden, title="Gaps Policy")
     frame_padding: int = Field(..., title="Frame Padding")
     frame_regex: str = Field(..., title="Frame Regex")
-    frame_list: str = Field(..., title="Frame List")
+    frame_list: Optional[str] = Field(None, title="Frame List")
 
 
 # Do we need one for drop and non-drop frame?
