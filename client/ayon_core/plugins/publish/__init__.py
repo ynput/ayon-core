@@ -1,0 +1,1 @@
+"""AYON Core publish plugins."""
