@@ -34,11 +34,12 @@ def single_file(tmp_path_factory: pytest.TempPathFactory) -> Path:
         f.write(base64.b64decode(PNG_FILE_B64))
     return filename
 
+@pytest.fixture(scope="session")
 def sequence_files(tmp_path_factory: pytest.TempPathFactory) -> list[Path]:
     """Return a sequence of temporary image files."""
     files = []
     for i in range(SEQUENCE_LENGTH):
-        filename = tmp_path_factory.mktemp("sequence") / f"img{i:04d}.png"
+        filename = tmp_path_factory.mktemp("sequence") / f"img.{i:04d}.png"
         with open(filename, "wb") as f:
             f.write(base64.b64decode(PNG_FILE_B64))
         files.append(filename)
@@ -71,7 +72,7 @@ def mock_context(
                 frame_end=SEQUENCE_LENGTH,
                 frame_padding=4,
                 gaps_policy=GapPolicy.forbidden,
-                frame_regex=r"img(\d{4}).png",
+                frame_regex=r"^img\.(\d{4})\.png$",
                 step=1,
                 frame_start_handle=0,
                 frame_end_handle=0,
