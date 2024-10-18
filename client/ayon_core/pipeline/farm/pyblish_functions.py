@@ -7,7 +7,7 @@ from copy import deepcopy
 import attr
 import ayon_api
 import clique
-from ayon_core.lib import Logger
+from ayon_core.lib import Logger, collect_frames
 from ayon_core.pipeline import get_current_project_name, get_representation_path
 from ayon_core.pipeline.create import get_product_name
 from ayon_core.pipeline.farm.patterning import match_aov_pattern
@@ -295,11 +295,17 @@ def _add_review_families(families):
     return families
 
 
-def prepare_representations(skeleton_data, exp_files, anatomy, aov_filter,
-                            skip_integration_repre_list,
-                            do_not_add_review,
-                            context,
-                            color_managed_plugin):
+def prepare_representations(
+    skeleton_data,
+    exp_files,
+    anatomy,
+    aov_filter,
+    skip_integration_repre_list,
+    do_not_add_review,
+    context,
+    color_managed_plugin,
+    frames_to_render
+):
     """Create representations for file sequences.
 
     This will return representations of expected files if they are not
@@ -315,6 +321,8 @@ def prepare_representations(skeleton_data, exp_files, anatomy, aov_filter,
         skip_integration_repre_list (list): exclude specific extensions,
         do_not_add_review (bool): explicitly skip review
         color_managed_plugin (publish.ColormanagedPyblishPluginMixin)
+        frames_to_render (str): implicit or explicit range of frames to render
+            this value is sent to Deadline in JobInfo.Frames
     Returns:
         list of representations
 
@@ -324,6 +332,8 @@ def prepare_representations(skeleton_data, exp_files, anatomy, aov_filter,
     collections, remainders = clique.assemble(exp_files)
 
     log = Logger.get_logger("farm_publishing")
+
+    frames_to_render = _get_real_frames_to_render(frames_to_render)
 
     # create representation for every collected sequence
     for collection in collections:
@@ -361,18 +371,21 @@ def prepare_representations(skeleton_data, exp_files, anatomy, aov_filter,
                 " This may cause issues on farm."
             ).format(staging))
 
-        frame_start = int(skeleton_data.get("frameStartHandle"))
+        frame_start = int(frames_to_render[0])
+        frame_end = int(frames_to_render[-1])
         if skeleton_data.get("slate"):
             frame_start -= 1
+
+        files = _get_real_files_to_rendered(collection, frames_to_render)
 
         # explicitly disable review by user
         preview = preview and not do_not_add_review
         rep = {
             "name": ext,
             "ext": ext,
-            "files": [os.path.basename(f) for f in list(collection)],
+            "files": files,
             "frameStart": frame_start,
-            "frameEnd": int(skeleton_data.get("frameEndHandle")),
+            "frameEnd": frame_end,
             # If expectedFile are absolute, we need only filenames
             "stagingDir": staging,
             "fps": skeleton_data.get("fps"),
@@ -413,10 +426,13 @@ def prepare_representations(skeleton_data, exp_files, anatomy, aov_filter,
                 " This may cause issues on farm."
             ).format(staging))
 
+        files = _get_real_files_to_rendered(
+            [os.path.basename(remainder)], frames_to_render)
+
         rep = {
             "name": ext,
             "ext": ext,
-            "files": os.path.basename(remainder),
+            "files": files[0],
             "stagingDir": staging,
         }
 
@@ -451,6 +467,49 @@ def prepare_representations(skeleton_data, exp_files, anatomy, aov_filter,
         )
 
     return representations
+
+
+def _get_real_frames_to_render(frames):
+    """Returns list of frames that should be rendered.
+
+    Artists could want to selectively render only particular frames
+    """
+    frames_to_render = []
+    for frame in frames.split(","):
+        if "-" in frame:
+            splitted = frame.split("-")
+            frames_to_render.extend(range(int(splitted[0]), int(splitted[1])))
+        else:
+            frames_to_render.append(frame)
+    return [str(frame_to_render) for frame_to_render in frames_to_render]
+
+
+def _get_real_files_to_rendered(collection, frames_to_render):
+    """Use expected files based on real frames_to_render.
+
+    Artists might explicitly set frames they want to render via Publisher UI.
+    This uses this value to filter out files
+    Args:
+        frames_to_render (list): of str '1001'
+    """
+    files = [os.path.basename(f) for f in list(collection)]
+    file_name, extracted_frame = list(collect_frames(files).items())[0]
+    if extracted_frame:
+        found_frame_pattern_length = len(extracted_frame)
+        normalized_frames_to_render = set()
+        for frame_to_render in frames_to_render:
+            normalized_frames_to_render.add(
+                str(frame_to_render).zfill(found_frame_pattern_length)
+            )
+
+        filtered_files = []
+        for file_name in files:
+            if any(frame in file_name
+                   for frame in normalized_frames_to_render):
+                filtered_files.append(file_name)
+
+        files = filtered_files
+    return files
 
 
 def create_instances_for_aov(instance, skeleton, aov_filter,
