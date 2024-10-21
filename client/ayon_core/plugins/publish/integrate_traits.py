@@ -51,7 +51,12 @@ class IntegrateTraits(pyblish.api.InstancePlugin):
                 "Instance has no persistent representations. Skipping")
             return
 
+        # 3) get anatomy template name
         # template_name = self.get_template_name(instance)
+
+        # 4) initialize OperationsSession()
+        # for now we'll skip this step right now as there is some
+        # old representation style code that needs to be updated.z
 
     @staticmethod
     def filter_lifecycle(
