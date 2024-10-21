@@ -27,6 +27,7 @@ from ayon_core.pipeline.create import (
     Creator,
     CreateContext,
     CreatedInstance,
+    AttributeValues,
 )
 from ayon_core.pipeline.create import (
     CreatorsOperationFailed,
@@ -857,7 +858,10 @@ class CreateModel:
             item_id = None
             if isinstance(item, CreatedInstance):
                 item_id = item.id
+
             for plugin_name, attr_val in item.publish_attributes.items():
+                if not isinstance(attr_val, AttributeValues):
+                    continue
                 attr_defs = attr_val.attr_defs
                 if not attr_defs:
                     continue
