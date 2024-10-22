@@ -162,7 +162,7 @@ class AYONMenuModel(BaseSettingsModel):
     version_up_current_workfile: bool = SettingsField(
         False,
         title="Version Up Workfile",
-        description="Add 'Version Up Workfile' to AYON menu"
+        description="Adds tool for 'incremental save' to the AYON menu"
     )
 
 
@@ -335,19 +335,23 @@ class GlobalToolsModel(BaseSettingsModel):
     )
     creator: CreatorToolModel = SettingsField(
         default_factory=CreatorToolModel,
-        title="Creator"
+        title="Creator",
+        description="Configure various aspects for publish instances",
     )
     Workfiles: WorkfilesToolModel = SettingsField(
         default_factory=WorkfilesToolModel,
-        title="Workfiles"
+        title="Workfiles",
+        description="Configure workfiles and related tools and its behaviour",
     )
     loader: LoaderToolModel = SettingsField(
         default_factory=LoaderToolModel,
-        title="Loader"
+        title="Loader",
+        description="Allows to filter loader types by product type",
     )
     publish: PublishToolModel = SettingsField(
         default_factory=PublishToolModel,
-        title="Publish"
+        title="Publish",
+        description="Configure publishing templates and staging/work folders used",
     )
 
 

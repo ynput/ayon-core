@@ -171,7 +171,8 @@ class CoreImageIOConfigProfilesModel(BaseSettingsModel):
 class CoreImageIOBaseModel(BaseSettingsModel):
     activate_global_color_management: bool = SettingsField(
         False,
-        title="Enable Color Management"
+        title="Enable Color Management",
+        description="When enabled, global color management been activated for all hosts available.",
     )
     ocio_config_profiles: list[CoreImageIOConfigProfilesModel] = SettingsField(
         default_factory=list, title="OCIO config profiles"
@@ -276,31 +277,38 @@ class CoreSettings(BaseSettingsModel):
     disk_mapping: DiskMappingModel = SettingsField(
         default_factory=DiskMappingModel,
         title="Disk mapping",
+        description="Map virtual disk(s) on artist's machine for AYON when running",
     )
     tools: GlobalToolsModel = SettingsField(
         default_factory=GlobalToolsModel,
-        title="Tools"
+        title="Tools",
+        description="Configure basic aspects for workfiles, products, and publishing",
     )
     version_start_category: VersionStartCategoryModel = SettingsField(
         default_factory=VersionStartCategoryModel,
-        title="Version start"
+        title="Version start",
+        description="Configure versioning for products using profiles",
     )
     imageio: CoreImageIOBaseModel = SettingsField(
         default_factory=CoreImageIOBaseModel,
-        title="Color Management (ImageIO)"
+        title="Color Management (ImageIO)",
+        description="Enable global color management and configure OCIO",
     )
     publish: PublishPuginsModel = SettingsField(
         default_factory=PublishPuginsModel,
-        title="Publish plugins"
+        title="Publish plugins",
+        description="Configure various aspects of publishing process and components",
     )
     project_plugins: MultiplatformPathListModel = SettingsField(
         default_factory=MultiplatformPathListModel,
         title="Additional Project Plugin Paths",
+        description="(DEPRECATED!) Configure file paths to arbitrary publish plugins",
     )
     project_folder_structure: str = SettingsField(
         "{}",
         widget="textarea",
         title="Project folder structure",
+        description="Lists non-Ayon folders to be created via web action",
         section="---"
     )
     project_environments: str = SettingsField(
