@@ -1468,7 +1468,7 @@ class CreateContext:
         if failed_info:
             raise CreatorsCreateFailed(failed_info)
 
-    def get_instances_task_type(
+    def get_instances_task_types(
         self, instances: Optional[Iterable["CreatedInstance"]] = None
     ) -> Dict[str, Optional[str]]:
         """Helper function to get task type of task on instance.
