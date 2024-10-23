@@ -277,7 +277,7 @@ class CoreSettings(BaseSettingsModel):
     disk_mapping: DiskMappingModel = SettingsField(
         default_factory=DiskMappingModel,
         title="Disk mapping",
-        description="Map virtual disk(s) on artist's machine for AYON when running",
+        description="Map a (network) drive to artist's machine for AYON when running",
     )
     tools: GlobalToolsModel = SettingsField(
         default_factory=GlobalToolsModel,
