@@ -354,6 +354,12 @@ class AbstractPublisherFrontend(AbstractPublisherCommon):
         pass
 
     @abstractmethod
+    def set_instances_active_state(
+        self, active_state_by_id: Dict[str, bool]
+    ):
+        pass
+
+    @abstractmethod
     def get_existing_product_names(self, folder_path: str) -> List[str]:
         pass
 

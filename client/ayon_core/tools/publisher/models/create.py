@@ -1,11 +1,21 @@
 import logging
 import re
-from typing import Union, List, Dict, Tuple, Any, Optional, Iterable, Pattern
+from typing import (
+    Union,
+    List,
+    Dict,
+    Tuple,
+    Any,
+    Optional,
+    Iterable,
+    Pattern,
+)
 
 from ayon_core.lib.attribute_definitions import (
     serialize_attr_defs,
     deserialize_attr_defs,
     AbstractAttrDef,
+    EnumDef,
 )
 from ayon_core.lib.profiles_filtering import filter_profiles
 from ayon_core.lib.attribute_definitions import UIDef
@@ -17,6 +27,7 @@ from ayon_core.pipeline.create import (
     Creator,
     CreateContext,
     CreatedInstance,
+    AttributeValues,
 )
 from ayon_core.pipeline.create import (
     CreatorsOperationFailed,
@@ -296,7 +307,88 @@ class InstanceItem:
         )
 
 
+def _merge_attr_defs(
+    attr_def_src: AbstractAttrDef, attr_def_new: AbstractAttrDef
+) -> Optional[AbstractAttrDef]:
+    if not attr_def_src.enabled and attr_def_new.enabled:
+        attr_def_src.enabled = True
+    if not attr_def_src.visible and attr_def_new.visible:
+        attr_def_src.visible = True
+
+    if not isinstance(attr_def_src, EnumDef):
+        return None
+    if attr_def_src.items == attr_def_new.items:
+        return None
+
+    src_item_values = {
+        item["value"]
+        for item in attr_def_src.items
+    }
+    for item in attr_def_new.items:
+        if item["value"] not in src_item_values:
+            attr_def_src.items.append(item)
+
+
+def merge_attr_defs(attr_defs: List[List[AbstractAttrDef]]):
+    if not attr_defs:
+        return []
+    if len(attr_defs) == 1:
+        return attr_defs[0]
+
+    # Pop first and create clone of attribute definitions
+    defs_union: List[AbstractAttrDef] = [
+        attr_def.clone()
+        for attr_def in attr_defs.pop(0)
+    ]
+    for instance_attr_defs in attr_defs:
+        idx = 0
+        for attr_idx, attr_def in enumerate(instance_attr_defs):
+            # QUESTION should we merge NumberDef too? Use lowest min and
+            #   biggest max...
+            is_enum = isinstance(attr_def, EnumDef)
+            match_idx = None
+            match_attr = None
+            for union_idx, union_def in enumerate(defs_union):
+                if is_enum and (
+                    not isinstance(union_def, EnumDef)
+                    or union_def.multiselection != attr_def.multiselection
+                ):
+                    continue
+
+                if (
+                    attr_def.compare_to_def(
+                        union_def,
+                        ignore_default=True,
+                        ignore_enabled=True,
+                        ignore_visible=True,
+                        ignore_def_type_compare=is_enum
+                    )
+                ):
+                    match_idx = union_idx
+                    match_attr = union_def
+                    break
+
+            if match_attr is not None:
+                new_attr_def = _merge_attr_defs(match_attr, attr_def)
+                if new_attr_def is not None:
+                    defs_union[match_idx] = new_attr_def
+                idx = match_idx + 1
+                continue
+
+            defs_union.insert(idx, attr_def.clone())
+            idx += 1
+    return defs_union
+
+
 class CreateModel:
+    _CONTEXT_KEYS = {
+        "active",
+        "folderPath",
+        "task",
+        "variant",
+        "productName",
+    }
+
     def __init__(self, controller: AbstractPublisherBackend):
         self._log = None
         self._controller: AbstractPublisherBackend = controller
@@ -453,6 +545,27 @@ class CreateModel:
                 instance = self._get_instance_by_id(instance_id)
                 for key, value in changes.items():
                     instance[key] = value
+        self._emit_event(
+            "create.model.instances.context.changed",
+            {
+                "instance_ids": list(changes_by_instance_id.keys())
+            }
+        )
+
+    def set_instances_active_state(
+        self, active_state_by_id: Dict[str, bool]
+    ):
+        with self._create_context.bulk_value_changes(CREATE_EVENT_SOURCE):
+            for instance_id, active in active_state_by_id.items():
+                instance = self._create_context.get_instance_by_id(instance_id)
+                instance["active"] = active
+
+        self._emit_event(
+            "create.model.instances.context.changed",
+            {
+                "instance_ids": set(active_state_by_id.keys())
+            }
+        )
 
     def get_convertor_items(self) -> Dict[str, ConvertorItem]:
         return self._create_context.convertor_items_by_id
@@ -643,8 +756,16 @@ class CreateModel:
             for instance_id in instance_ids:
                 instance = self._get_instance_by_id(instance_id)
                 creator_attributes = instance["creator_attributes"]
-                if key in creator_attributes:
-                    creator_attributes[key] = value
+                attr_def = creator_attributes.get_attr_def(key)
+                if (
+                    attr_def is None
+                    or not attr_def.is_value_def
+                    or not attr_def.visible
+                    or not attr_def.enabled
+                    or not attr_def.is_value_valid(value)
+                ):
+                    continue
+                creator_attributes[key] = value
 
     def get_creator_attribute_definitions(
         self, instance_ids: List[str]
@@ -693,6 +814,18 @@ class CreateModel:
                 else:
                     instance = self._get_instance_by_id(instance_id)
                 plugin_val = instance.publish_attributes[plugin_name]
+                attr_def = plugin_val.get_attr_def(key)
+                # Ignore if attribute is not available or enabled/visible
+                #   on the instance, or the value is not valid for definition
+                if (
+                    attr_def is None
+                    or not attr_def.is_value_def
+                    or not attr_def.visible
+                    or not attr_def.enabled
+                    or not attr_def.is_value_valid(value)
+                ):
+                    continue
+
                 plugin_val[key] = value
 
     def get_publish_attribute_definitions(
@@ -725,13 +858,17 @@ class CreateModel:
             item_id = None
             if isinstance(item, CreatedInstance):
                 item_id = item.id
+
             for plugin_name, attr_val in item.publish_attributes.items():
+                if not isinstance(attr_val, AttributeValues):
+                    continue
                 attr_defs = attr_val.attr_defs
                 if not attr_defs:
                     continue
-
-                if plugin_name not in all_defs_by_plugin_name:
-                    all_defs_by_plugin_name[plugin_name] = attr_val.attr_defs
+                plugin_attr_defs = all_defs_by_plugin_name.setdefault(
+                    plugin_name, []
+                )
+                plugin_attr_defs.append(attr_defs)
 
                 plugin_values = all_plugin_values.setdefault(plugin_name, {})
 
@@ -744,6 +881,10 @@ class CreateModel:
                     value = attr_val[attr_def.key]
                     attr_values.append((item_id, value))
 
+        attr_defs_by_plugin_name = {}
+        for plugin_name, attr_defs in all_defs_by_plugin_name.items():
+            attr_defs_by_plugin_name[plugin_name] = merge_attr_defs(attr_defs)
+
         output = []
         for plugin in self._create_context.plugins_with_defs:
             plugin_name = plugin.__name__
@@ -751,7 +892,7 @@ class CreateModel:
                 continue
             output.append((
                 plugin_name,
-                all_defs_by_plugin_name[plugin_name],
+                attr_defs_by_plugin_name[plugin_name],
                 all_plugin_values
             ))
         return output
@@ -783,8 +924,12 @@ class CreateModel:
             }
         )
 
-    def _emit_event(self, topic: str, data: Optional[Dict[str, Any]] = None):
-        self._controller.emit_event(topic, data)
+    def _emit_event(
+        self,
+        topic: str,
+        data: Optional[Dict[str, Any]] = None
+    ):
+        self._controller.emit_event(topic, data, CREATE_EVENT_SOURCE)
 
     def _get_current_project_settings(self) -> Dict[str, Any]:
         """Current project settings.
@@ -933,16 +1078,28 @@ class CreateModel:
             return
 
         instance_changes = {}
+        context_changed_ids = set()
         for item in event.data["changes"]:
             instance_id = None
             if item["instance"]:
                 instance_id = item["instance"].id
-            instance_changes[instance_id] = item["changes"]
+            changes = item["changes"]
+            instance_changes[instance_id] = changes
+            if instance_id is None:
+                continue
+
+            if self._CONTEXT_KEYS.intersection(set(changes)):
+                context_changed_ids.add(instance_id)
 
         self._emit_event(
             "create.context.value.changed",
             {"instance_changes": instance_changes},
         )
+        if context_changed_ids:
+            self._emit_event(
+                "create.model.instances.context.changed",
+                {"instance_ids": list(context_changed_ids)},
+            )
 
     def _cc_pre_create_attr_changed(self, event):
         identifiers = event["identifiers"]

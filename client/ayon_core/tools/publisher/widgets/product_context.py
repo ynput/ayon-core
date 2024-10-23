@@ -621,7 +621,6 @@ class GlobalAttrsWidget(QtWidgets.QWidget):
     product name: [   immutable  ]
                      [Submit] [Cancel]
     """
-    instance_context_changed = QtCore.Signal()
 
     multiselection_text = "< Multiselection >"
     unknown_value = "N/A"
@@ -775,7 +774,6 @@ class GlobalAttrsWidget(QtWidgets.QWidget):
 
         self._controller.set_instances_context_info(changes_by_id)
         self._refresh_items()
-        self.instance_context_changed.emit()
 
     def _on_cancel(self):
         """Cancel changes and set back to their irigin value."""
@@ -917,7 +915,7 @@ class GlobalAttrsWidget(QtWidgets.QWidget):
             if instance_id not in self._current_instances_by_id:
                 continue
 
-            for key, attr_name in (
+            for key in (
                 "folderPath",
                 "task",
                 "variant",
@@ -933,4 +931,3 @@ class GlobalAttrsWidget(QtWidgets.QWidget):
         if changed:
             self._refresh_items()
             self._refresh_content()
-            self.instance_context_changed.emit()
