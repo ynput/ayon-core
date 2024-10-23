@@ -111,7 +111,7 @@ class CreatorAttrsWidget(QtWidgets.QWidget):
             self._attr_def_id_to_instances[attr_def.id] = instance_ids
             self._attr_def_id_to_attr_def[attr_def.id] = attr_def
 
-            if attr_def.hidden:
+            if not attr_def.visible:
                 continue
 
             expand_cols = 2
@@ -282,15 +282,15 @@ class PublishPluginAttrsWidget(QtWidgets.QWidget):
                 widget = create_widget_for_attr_def(
                     attr_def, content_widget
                 )
-                hidden_widget = attr_def.hidden
+                visible_widget = attr_def.visible
                 # Hide unknown values of publish plugins
                 # - The keys in most of the cases does not represent what
                 #    would label represent
                 if isinstance(attr_def, UnknownDef):
                     widget.setVisible(False)
-                    hidden_widget = True
+                    visible_widget = False
 
-                if not hidden_widget:
+                if visible_widget:
                     expand_cols = 2
                     if attr_def.is_value_def and attr_def.is_label_horizontal:
                         expand_cols = 1
