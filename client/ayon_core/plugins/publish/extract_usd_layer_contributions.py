@@ -464,16 +464,12 @@ class CollectUSDLayerContributions(pyblish.api.InstancePlugin,
             return []
 
         # Attributes logic
-        disabled = False
         publish_attributes = instance["publish_attributes"].get(
             cls.__name__, {})
 
-        enabled = publish_attributes.get("contribution_enabled", True)
-        variant_enabled = enabled and publish_attributes.get(
+        visible = publish_attributes.get("contribution_enabled", True)
+        variant_visible = visible and publish_attributes.get(
             "contribution_apply_as_variant", True)
-
-        disabled = not enabled
-        variant_disabled = not variant_enabled
 
         return [
             UISeparatorDef("usd_container_settings1"),
@@ -500,7 +496,7 @@ class CollectUSDLayerContributions(pyblish.api.InstancePlugin,
                         "department layer."
                     ),
                     default="usdAsset",
-                    hidden=disabled),
+                    visible=visible),
             EnumDef("contribution_target_product_init",
                     label="Initialize as",
                     tooltip=(
@@ -512,7 +508,7 @@ class CollectUSDLayerContributions(pyblish.api.InstancePlugin,
                     ),
                     items=["asset", "shot"],
                     default="asset",
-                    hidden=disabled),
+                    visible=visible),
 
             # Asset layer, e.g. model.usd, look.usd, rig.usd
             EnumDef("contribution_layer",
@@ -525,7 +521,7 @@ class CollectUSDLayerContributions(pyblish.api.InstancePlugin,
                     ),
                     items=list(cls.contribution_layers.keys()),
                     default="model",
-                    hidden=disabled),
+                    visible=visible),
             BoolDef("contribution_apply_as_variant",
                     label="Add as variant",
                     tooltip=(
@@ -537,15 +533,15 @@ class CollectUSDLayerContributions(pyblish.api.InstancePlugin,
                         "instead."
                     ),
                     default=True,
-                    hidden=disabled),
+                    visible=visible),
             TextDef("contribution_variant_set_name",
                     label="Variant Set Name",
                     default="{layer}",
-                    hidden=variant_disabled),
+                    visible=variant_visible),
             TextDef("contribution_variant",
                     label="Variant Name",
                     default="{variant}",
-                    hidden=variant_disabled),
+                    visible=variant_visible),
             BoolDef("contribution_variant_is_default",
                     label="Set as default variant selection",
                     tooltip=(
@@ -557,7 +553,7 @@ class CollectUSDLayerContributions(pyblish.api.InstancePlugin,
                         "for the same variant set have this enabled."
                     ),
                     default=False,
-                    hidden=variant_disabled),
+                    visible=variant_visible),
             UISeparatorDef("usd_container_settings3"),
         ]
 
