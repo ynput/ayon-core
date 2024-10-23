@@ -26,7 +26,6 @@ class ProductInfoWidget(QtWidgets.QWidget):
     │             │   attributes    │
     └───────────────────────────────┘
     """
-    instance_context_changed = QtCore.Signal()
     convert_requested = QtCore.Signal()
 
     def __init__(
@@ -123,13 +122,14 @@ class ProductInfoWidget(QtWidgets.QWidget):
         self._context_selected = False
         self._all_instances_valid = True
 
-        global_attrs_widget.instance_context_changed.connect(
-            self._on_instance_context_changed
-        )
         convert_btn.clicked.connect(self._on_convert_click)
         thumbnail_widget.thumbnail_created.connect(self._on_thumbnail_create)
         thumbnail_widget.thumbnail_cleared.connect(self._on_thumbnail_clear)
 
+        controller.register_event_callback(
+            "create.model.instances.context.changed",
+            self._on_instance_context_change
+        )
         controller.register_event_callback(
             "instance.thumbnail.changed",
             self._on_thumbnail_changed
@@ -196,7 +196,7 @@ class ProductInfoWidget(QtWidgets.QWidget):
 
         self._update_thumbnails()
 
-    def _on_instance_context_changed(self):
+    def _on_instance_context_change(self):
         instance_ids = {
             instance.id
             for instance in self._current_instances
@@ -213,8 +213,6 @@ class ProductInfoWidget(QtWidgets.QWidget):
         self._all_instances_valid = all_valid
         self.creator_attrs_widget.set_instances_valid(all_valid)
         self.publish_attrs_widget.set_instances_valid(all_valid)
-
-        self.instance_context_changed.emit()
 
     def _on_convert_click(self):
         self.convert_requested.emit()

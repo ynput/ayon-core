@@ -298,7 +298,6 @@ class ChangeViewBtn(PublishIconBtn):
 class AbstractInstanceView(QtWidgets.QWidget):
     """Abstract class for instance view in creation part."""
     selection_changed = QtCore.Signal()
-    active_changed = QtCore.Signal()
     # Refreshed attribute is not changed by view itself
     # - widget which triggers `refresh` is changing the state
     # TODO store that information in widget which cares about refreshing

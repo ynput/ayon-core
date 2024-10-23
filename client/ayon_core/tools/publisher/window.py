@@ -253,12 +253,6 @@ class PublisherWindow(QtWidgets.QDialog):
 
         help_btn.clicked.connect(self._on_help_click)
         tabs_widget.tab_changed.connect(self._on_tab_change)
-        overview_widget.active_changed.connect(
-            self._on_context_or_active_change
-        )
-        overview_widget.instance_context_changed.connect(
-            self._on_context_or_active_change
-        )
         overview_widget.create_requested.connect(
             self._on_create_request
         )
@@ -281,7 +275,19 @@ class PublisherWindow(QtWidgets.QDialog):
         )
 
         controller.register_event_callback(
-            "instances.refresh.finished", self._on_instances_refresh
+            "create.model.reset", self._on_create_model_reset
+        )
+        controller.register_event_callback(
+            "create.context.added.instance",
+            self._event_callback_validate_instances
+        )
+        controller.register_event_callback(
+            "create.context.removed.instance",
+            self._event_callback_validate_instances
+        )
+        controller.register_event_callback(
+            "create.model.instances.context.changed",
+            self._event_callback_validate_instances
         )
         controller.register_event_callback(
             "publish.reset.finished", self._on_publish_reset
@@ -936,12 +942,15 @@ class PublisherWindow(QtWidgets.QDialog):
 
         self._set_footer_enabled(bool(all_valid))
 
-    def _on_instances_refresh(self):
+    def _on_create_model_reset(self):
         self._validate_create_instances()
 
         context_title = self._controller.get_context_title()
         self.set_context_label(context_title)
         self._update_publish_details_widget()
+
+    def _event_callback_validate_instances(self, _event):
+        self._validate_create_instances()
 
     def _set_comment_input_visiblity(self, visible):
         self._comment_input.setVisible(visible)
