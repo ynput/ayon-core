@@ -254,7 +254,7 @@ class CreateContext:
 
         # Context validation cache
         self._folder_id_by_folder_path = {}
-        self._task_infos_by_folder_path = {}
+        self._task_names_by_folder_path = {}
 
         self.thumbnail_paths_by_instance_id = {}
 
@@ -567,7 +567,7 @@ class CreateContext:
         # Give ability to store shared data for collection phase
         self._collection_shared_data = {}
         self._folder_id_by_folder_path = {}
-        self._task_infos_by_folder_path = {}
+        self._task_names_by_folder_path = {}
         self._event_hub.clear_callbacks()
 
     def reset_finalization(self):
@@ -1561,7 +1561,7 @@ class CreateContext:
 
             task_name = context_info.task_name
             if task_name is not None:
-                tasks_cache = self._task_infos_by_folder_path.get(folder_path)
+                tasks_cache = self._task_names_by_folder_path.get(folder_path)
                 if tasks_cache is not None:
                     context_info.task_is_valid = task_name in tasks_cache
                     continue
@@ -1613,17 +1613,16 @@ class CreateContext:
         tasks_entities = ayon_api.get_tasks(
             project_name,
             folder_ids=folder_paths_by_id.keys(),
-            fields={"name", "folderId", "taskType"}
+            fields={"name", "folderId"}
         )
 
-        task_infos_by_folder_path = collections.defaultdict(dict)
+        task_names_by_folder_path = collections.defaultdict(set)
         for task_entity in tasks_entities:
             folder_id = task_entity["folderId"]
             folder_path = folder_paths_by_id[folder_id]
-            task_infos_by_folder_path[folder_path][task_entity["name"]] = {
-                "task_type": task_entity["taskType"],
-            }
-        self._task_infos_by_folder_path.update(task_infos_by_folder_path)
+            task_names_by_folder_path[folder_path].add(task_entity["name"])
+
+        self._task_names_by_folder_path.update(task_names_by_folder_path)
 
         for instance in to_validate:
             folder_path = instance["folderPath"]
