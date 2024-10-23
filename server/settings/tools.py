@@ -162,7 +162,7 @@ class AYONMenuModel(BaseSettingsModel):
     version_up_current_workfile: bool = SettingsField(
         False,
         title="Version Up Workfile",
-        description="Adds tool for 'incremental save' to the AYON menu"
+        description="Adds menu item for 'incremental save' to the AYON menu"
     )
 
 
