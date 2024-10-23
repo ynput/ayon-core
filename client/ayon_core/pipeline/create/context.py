@@ -254,7 +254,7 @@ class CreateContext:
 
         # Context validation cache
         self._folder_id_by_folder_path = {}
-        self._task_names_by_folder_path = {}
+        self._task_infos_by_folder_path = {}
 
         self.thumbnail_paths_by_instance_id = {}
 
@@ -567,7 +567,7 @@ class CreateContext:
         # Give ability to store shared data for collection phase
         self._collection_shared_data = {}
         self._folder_id_by_folder_path = {}
-        self._task_names_by_folder_path = {}
+        self._task_infos_by_folder_path = {}
         self._event_hub.clear_callbacks()
 
     def reset_finalization(self):
@@ -1468,6 +1468,42 @@ class CreateContext:
         if failed_info:
             raise CreatorsCreateFailed(failed_info)
 
+    def get_instances_task_type(
+        self, instances: Optional[Iterable["CreatedInstance"]] = None
+    ) -> Dict[str, Optional[str]]:
+        """Helper function to get task type of task on instance.
+
+        Based on context set on instance (using 'folderPath' and 'task') tries
+            to find task type.
+
+        Task type is 'None' if task is not set or is not valid, and
+        is always 'None' for instances with promised context.
+
+        Args:
+            instances (Optional[Iterable[CreatedInstance]]): Instances to
+                get task type. If not provided all instances are used.
+
+        Returns:
+            Dict[str, Optional[str]]: Task type by instance id.
+
+        """
+        context_infos = self.get_instances_context_info(instances)
+        output = {}
+        for instance_id, context_info in context_infos.items():
+            folder_path = context_info.folder_path
+            task_name = context_info.task_name
+            if not task_name or not folder_path:
+                output[instance_id] = None
+                continue
+            task_info = (
+                self._task_infos_by_folder_path.get(folder_path) or {}
+            ).get(task_name)
+            task_type = None
+            if task_info is not None:
+                task_type = task_info["task_type"]
+            output[instance_id] = task_type
+        return output
+
     def get_instances_context_info(
         self, instances: Optional[Iterable["CreatedInstance"]] = None
     ) -> Dict[str, InstanceContextInfo]:
@@ -1508,6 +1544,7 @@ class CreateContext:
             if instance.has_promised_context:
                 context_info.folder_is_valid = True
                 context_info.task_is_valid = True
+                # NOTE missing task type
                 continue
             # TODO allow context promise
             folder_path = context_info.folder_path
@@ -1522,7 +1559,7 @@ class CreateContext:
 
             task_name = context_info.task_name
             if task_name is not None:
-                tasks_cache = self._task_names_by_folder_path.get(folder_path)
+                tasks_cache = self._task_infos_by_folder_path.get(folder_path)
                 if tasks_cache is not None:
                     context_info.task_is_valid = task_name in tasks_cache
                     continue
@@ -1574,15 +1611,17 @@ class CreateContext:
         tasks_entities = ayon_api.get_tasks(
             project_name,
             folder_ids=folder_paths_by_id.keys(),
-            fields={"name", "folderId"}
+            fields={"name", "folderId", "taskType"}
         )
 
-        task_names_by_folder_path = collections.defaultdict(set)
+        task_infos_by_folder_path = collections.defaultdict(dict)
         for task_entity in tasks_entities:
             folder_id = task_entity["folderId"]
             folder_path = folder_paths_by_id[folder_id]
-            task_names_by_folder_path[folder_path].add(task_entity["name"])
-        self._task_names_by_folder_path.update(task_names_by_folder_path)
+            task_infos_by_folder_path[folder_path][task_entity["name"]] = {
+                "task_type": task_entity["taskType"],
+            }
+        self._task_infos_by_folder_path.update(task_infos_by_folder_path)
 
         for instance in to_validate:
             folder_path = instance["folderPath"]
@@ -1593,15 +1632,16 @@ class CreateContext:
                     folder_path = folder_entities[0]["path"]
                     instance["folderPath"] = folder_path
 
-            if folder_path not in task_names_by_folder_path:
+            if folder_path not in task_infos_by_folder_path:
                 continue
             context_info = info_by_instance_id[instance.id]
             context_info.folder_is_valid = True
 
             if (
                 not task_name
-                or task_name in task_names_by_folder_path[folder_path]
+                or task_name in task_infos_by_folder_path[folder_path]
             ):
+                task_info = task_infos_by_folder_path[folder_path]
                 context_info.task_is_valid = True
         return info_by_instance_id
 
