@@ -1490,17 +1490,19 @@ class CreateContext:
         context_infos = self.get_instances_context_info(instances)
         output = {}
         for instance_id, context_info in context_infos.items():
-            folder_path = context_info.folder_path
             task_name = context_info.task_name
-            if not task_name or not folder_path:
+            if not task_name or not context_info.is_valid:
                 output[instance_id] = None
                 continue
-            task_info = (
-                self._task_infos_by_folder_path.get(folder_path) or {}
-            ).get(task_name)
+
             task_type = None
-            if task_info is not None:
-                task_type = task_info["task_type"]
+            tasks_cache = self._task_infos_by_folder_path.get(
+                context_info.folder_path
+            )
+            if tasks_cache is not None:
+                task_info = tasks_cache.get(task_name)
+                if task_info is not None:
+                    task_type = task_info["task_type"]
             output[instance_id] = task_type
         return output
 
