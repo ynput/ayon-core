@@ -12,6 +12,7 @@ from typing import (
     Iterable,
     Tuple,
     List,
+    Set,
     Dict,
     Any,
     Callable,
@@ -252,8 +253,11 @@ class CreateContext:
         # Shared data across creators during collection phase
         self._collection_shared_data = None
 
-        # Context validation cache
+        # Entities cache
+        self._folder_entities_by_id = {}
+        self._task_entities_by_id = {}
         self._folder_id_by_folder_path = {}
+        self._task_ids_by_folder_path = {}
         self._task_names_by_folder_path = {}
 
         self.thumbnail_paths_by_instance_id = {}
@@ -356,12 +360,12 @@ class CreateContext:
         return self._host_is_valid
 
     @property
-    def host_name(self):
+    def host_name(self) -> str:
         if hasattr(self.host, "name"):
             return self.host.name
         return os.environ["AYON_HOST_NAME"]
 
-    def get_current_project_name(self):
+    def get_current_project_name(self) -> Optional[str]:
         """Project name which was used as current context on context reset.
 
         Returns:
@@ -370,7 +374,7 @@ class CreateContext:
 
         return self._current_project_name
 
-    def get_current_folder_path(self):
+    def get_current_folder_path(self) -> Optional[str]:
         """Folder path which was used as current context on context reset.
 
         Returns:
@@ -379,7 +383,7 @@ class CreateContext:
 
         return self._current_folder_path
 
-    def get_current_task_name(self):
+    def get_current_task_name(self) -> Optional[str]:
         """Task name which was used as current context on context reset.
 
         Returns:
@@ -388,7 +392,7 @@ class CreateContext:
 
         return self._current_task_name
 
-    def get_current_task_type(self):
+    def get_current_task_type(self) -> Optional[str]:
         """Task type which was used as current context on context reset.
 
         Returns:
@@ -403,7 +407,7 @@ class CreateContext:
             self._current_task_type = task_type
         return self._current_task_type
 
-    def get_current_project_entity(self):
+    def get_current_project_entity(self) -> Optional[Dict[str, Any]]:
         """Project entity for current context project.
 
         Returns:
@@ -419,26 +423,21 @@ class CreateContext:
         self._current_project_entity = project_entity
         return copy.deepcopy(self._current_project_entity)
 
-    def get_current_folder_entity(self):
+    def get_current_folder_entity(self) -> Optional[Dict[str, Any]]:
         """Folder entity for current context folder.
 
         Returns:
-            Union[dict[str, Any], None]: Folder entity.
+            Optional[dict[str, Any]]: Folder entity.
 
         """
         if self._current_folder_entity is not _NOT_SET:
             return copy.deepcopy(self._current_folder_entity)
-        folder_entity = None
+
         folder_path = self.get_current_folder_path()
-        if folder_path:
-            project_name = self.get_current_project_name()
-            folder_entity = ayon_api.get_folder_by_path(
-                project_name, folder_path
-            )
-        self._current_folder_entity = folder_entity
+        self._current_folder_entity = self.get_folder_entity(folder_path)
         return copy.deepcopy(self._current_folder_entity)
 
-    def get_current_task_entity(self):
+    def get_current_task_entity(self) -> Optional[Dict[str, Any]]:
         """Task entity for current context task.
 
         Returns:
@@ -447,18 +446,12 @@ class CreateContext:
         """
         if self._current_task_entity is not _NOT_SET:
             return copy.deepcopy(self._current_task_entity)
-        task_entity = None
+
+        folder_path = self.get_current_folder_path()
         task_name = self.get_current_task_name()
-        if task_name:
-            folder_entity = self.get_current_folder_entity()
-            if folder_entity:
-                project_name = self.get_current_project_name()
-                task_entity = ayon_api.get_task_by_name(
-                    project_name,
-                    folder_id=folder_entity["id"],
-                    task_name=task_name
-                )
-        self._current_task_entity = task_entity
+        self._current_task_entity = self.get_task_entity(
+            folder_path, task_name
+        )
         return copy.deepcopy(self._current_task_entity)
 
     def get_current_workfile_path(self):
@@ -566,8 +559,14 @@ class CreateContext:
 
         # Give ability to store shared data for collection phase
         self._collection_shared_data = {}
+
+        self._folder_entities_by_id = {}
+        self._task_entities_by_id = {}
+
         self._folder_id_by_folder_path = {}
+        self._task_ids_by_folder_path = {}
         self._task_names_by_folder_path = {}
+
         self._event_hub.clear_callbacks()
 
     def reset_finalization(self):
@@ -1468,42 +1467,265 @@ class CreateContext:
         if failed_info:
             raise CreatorsCreateFailed(failed_info)
 
-    def get_instances_task_types(
+    def get_folder_entities(self, folder_paths: Iterable[str]):
+        """Get folder entities by paths.
+
+        Args:
+            folder_paths (Iterable[str]): Folder paths.
+
+        Returns:
+            Dict[str, Optional[Dict[str, Any]]]: Folder entities by path.
+
+        """
+        output = {
+            folder_path: None
+            for folder_path in folder_paths
+            if folder_path is not None
+        }
+        remainders = set()
+        for folder_path in output:
+            # Skip empty/invalid folder paths
+            if folder_path is None or "/" not in folder_path:
+                continue
+
+            if folder_path not in self._folder_id_by_folder_path:
+                remainders.add(folder_path)
+                continue
+
+            folder_id = self._folder_id_by_folder_path.get(folder_path)
+            if not folder_id:
+                output[folder_path] = None
+                continue
+
+            folder_entity = self._folder_entities_by_id.get(folder_id)
+            if folder_entity:
+                output[folder_path] = folder_entity
+            else:
+                remainders.add(folder_path)
+
+        if not remainders:
+            return output
+
+        folder_paths_by_id = {}
+        for folder_entity in ayon_api.get_folders(
+            self.project_name,
+            folder_paths=remainders,
+        ):
+            folder_id = folder_entity["id"]
+            folder_path = folder_entity["path"]
+            folder_paths_by_id[folder_id] = folder_path
+            output[folder_path] = folder_entity
+            self._folder_entities_by_id[folder_id] = folder_entity
+            self._folder_id_by_folder_path[folder_path] = folder_id
+
+        return output
+
+    def get_task_entities(
+        self,
+        task_names_by_folder_paths: Dict[str, Set[str]]
+    ) -> Dict[str, Dict[str, Optional[Dict[str, Any]]]]:
+        """Get task entities by folder path and task name.
+
+        Entities are cached until reset.
+
+        Args:
+            task_names_by_folder_paths (Dict[str, Set[str]]): Task names by
+                folder path.
+
+        Returns:
+            Dict[str, Dict[str, Dict[str, Any]]]: Task entities by folder path
+                and task name.
+
+        """
+        output = {}
+        for folder_path, task_names in task_names_by_folder_paths.items():
+            if folder_path is None:
+                continue
+            output[folder_path] = {
+                task_name: None
+                for task_name in task_names
+                if task_name is not None
+            }
+
+        missing_folder_paths = set()
+        for folder_path, output_task_entities_by_name in output.items():
+            if not output_task_entities_by_name:
+                continue
+
+            if folder_path not in self._task_ids_by_folder_path:
+                missing_folder_paths.add(folder_path)
+                continue
+
+            all_tasks_filled = True
+            task_ids = self._task_ids_by_folder_path[folder_path]
+            task_entities_by_name = {}
+            for task_id in task_ids:
+                task_entity = self._task_entities_by_id.get(task_id)
+                if task_entity is None:
+                    all_tasks_filled = False
+                    continue
+                task_entities_by_name[task_entity["name"]] = task_entity
+
+            any_missing = False
+            for task_name in set(output_task_entities_by_name):
+                task_entity = task_entities_by_name.get(task_name)
+                if task_entity is None:
+                    any_missing = True
+                    continue
+
+                output_task_entities_by_name[task_name] = task_entity
+
+            if any_missing and not all_tasks_filled:
+                missing_folder_paths.add(folder_path)
+
+        if not missing_folder_paths:
+            return output
+
+        folder_entities_by_path = self.get_folder_entities(
+            missing_folder_paths
+        )
+        folder_ids = set()
+        for folder_path, folder_entity in folder_entities_by_path.items():
+            if folder_entity is not None:
+                folder_ids.add(folder_entity["id"])
+
+        if not folder_ids:
+            return output
+
+        task_entities_by_parent_id = collections.defaultdict(list)
+        for task_entity in ayon_api.get_tasks(
+            self.project_name,
+            folder_ids=folder_ids
+        ):
+            folder_id = task_entity["folderId"]
+            task_entities_by_parent_id[folder_id].append(task_entity)
+
+        for folder_id, task_entities in task_entities_by_parent_id.items():
+            folder_path = self._folder_id_by_folder_path.get(folder_id)
+            task_ids = set()
+            task_names = set()
+            for task_entity in task_entities:
+                task_id = task_entity["id"]
+                task_name = task_entity["name"]
+                task_ids.add(task_id)
+                task_names.add(task_name)
+                self._task_entities_by_id[task_id] = task_entity
+
+                output[folder_path][task_name] = task_entity
+            self._task_ids_by_folder_path[folder_path] = task_ids
+            self._task_names_by_folder_path[folder_path] = task_names
+
+        return output
+
+    def get_folder_entity(
+        self,
+        folder_path: Optional[str],
+    ) -> Optional[Dict[str, Any]]:
+        """Get folder entity by path.
+
+        Entities are cached until reset.
+
+        Args:
+            folder_path (Optional[str]): Folder path.
+
+        Returns:
+            Optional[Dict[str, Any]]: Folder entity.
+
+        """
+        if not folder_path:
+            return None
+        return self.get_folder_entities([folder_path]).get(folder_path)
+
+    def get_task_entity(
+        self,
+        folder_path: Optional[str],
+        task_name: Optional[str],
+    ) -> Optional[Dict[str, Any]]:
+        """Get task entity by name and folder path.
+
+        Entities are cached until reset.
+
+        Args:
+            folder_path (Optional[str]): Folder path.
+            task_name (Optional[str]): Task name.
+
+        Returns:
+            Optional[Dict[str, Any]]: Task entity.
+
+        """
+        if not folder_path or not task_name:
+            return None
+
+        output = self.get_task_entities({folder_path: {task_name}})
+        return output.get(folder_path, {}).get(task_name)
+
+    def get_instances_folder_entities(
         self, instances: Optional[Iterable["CreatedInstance"]] = None
-    ) -> Dict[str, Optional[str]]:
-        """Helper function to get task type of task on instance.
+    ) -> Dict[str, Optional[Dict[str, Any]]]:
+        if instances is None:
+            instances = self._instances_by_id.values()
+        instances = list(instances)
+        output = {
+            instance.id: None
+            for instance in instances
+        }
+        if not instances:
+            return output
 
-        Based on context set on instance (using 'folderPath' and 'task') tries
-            to find task type.
+        folder_paths = {
+            instance.get("folderPath")
+            for instance in instances
+        }
+        folder_entities_by_path = self.get_folder_entities(folder_paths)
+        for instance in instances:
+            folder_path = instance.get("folderPath")
+            output[instance.id] = folder_entities_by_path.get(folder_path)
+        return output
 
-        Task type is 'None' if task is not set or is not valid, and
-        is always 'None' for instances with promised context.
+    def get_instances_task_entities(
+        self, instances: Optional[Iterable["CreatedInstance"]] = None
+    ):
+        """Get task entities for instances.
 
         Args:
             instances (Optional[Iterable[CreatedInstance]]): Instances to
-                get task type. If not provided all instances are used.
+                get task entities. If not provided all instances are used.
 
         Returns:
-            Dict[str, Optional[str]]: Task type by instance id.
+            Dict[str, Optional[Dict[str, Any]]]: Task entity by instance id.
 
         """
-        context_infos = self.get_instances_context_info(instances)
-        output = {}
-        for instance_id, context_info in context_infos.items():
-            task_name = context_info.task_name
-            if not task_name or not context_info.is_valid:
-                output[instance_id] = None
-                continue
+        if instances is None:
+            instances = self._instances_by_id.values()
+        instances = list(instances)
 
-            task_type = None
-            tasks_cache = self._task_infos_by_folder_path.get(
-                context_info.folder_path
+        output = {
+            instance.id: None
+            for instance in instances
+        }
+        if not instances:
+            return output
+
+        filtered_instances = []
+        task_names_by_folder_path = collections.defaultdict(set)
+        for instance in instances:
+            folder_path = instance.get("folderPath")
+            task_name = instance.get("task")
+            if not folder_path or not task_name:
+                continue
+            filtered_instances.append(instance)
+            task_names_by_folder_path[folder_path].add(task_name)
+
+        task_entities_by_folder_path = self.get_task_entities(
+            task_names_by_folder_path
+        )
+        for instance in filtered_instances:
+            folder_path = instance["folderPath"]
+            task_name = instance["task"]
+            output[instance.id] = (
+                task_entities_by_folder_path[folder_path][task_name]
             )
-            if tasks_cache is not None:
-                task_info = tasks_cache.get(task_name)
-                if task_info is not None:
-                    task_type = task_info["task_type"]
-            output[instance_id] = task_type
+
         return output
 
     def get_instances_context_info(
@@ -1574,75 +1796,79 @@ class CreateContext:
 
         # Backwards compatibility for cases where folder name is set instead
         #   of folder path
-        folder_names = set()
         folder_paths = set()
-        for folder_path in task_names_by_folder_path.keys():
+        task_names_by_folder_name = {}
+        task_names_by_folder_path_clean = {}
+        for folder_path, task_names in task_names_by_folder_path.items():
             if folder_path is None:
-                pass
-            elif "/" in folder_path:
-                folder_paths.add(folder_path)
-            else:
-                folder_names.add(folder_path)
+                continue
 
-        folder_paths_by_id = {}
-        if folder_paths:
+            clean_task_names = {
+                task_name
+                for task_name in task_names
+                if task_name
+            }
+
+            if "/" not in folder_path:
+                task_names_by_folder_name[folder_path] = clean_task_names
+                continue
+
+            folder_paths.add(folder_path)
+            if not clean_task_names:
+                continue
+
+            task_names_by_folder_path_clean[folder_path] = clean_task_names
+
+        folder_paths_by_name = collections.defaultdict(list)
+        if task_names_by_folder_name:
             for folder_entity in ayon_api.get_folders(
                 project_name,
-                folder_paths=folder_paths,
-                fields={"id", "path"}
+                folder_names=task_names_by_folder_name.keys(),
+                fields={"name", "path"}
             ):
-                folder_id = folder_entity["id"]
-                folder_path = folder_entity["path"]
-                folder_paths_by_id[folder_id] = folder_path
-                self._folder_id_by_folder_path[folder_path] = folder_id
-
-        folder_entities_by_name = collections.defaultdict(list)
-        if folder_names:
-            for folder_entity in ayon_api.get_folders(
-                project_name,
-                folder_names=folder_names,
-                fields={"id", "name", "path"}
-            ):
-                folder_id = folder_entity["id"]
                 folder_name = folder_entity["name"]
                 folder_path = folder_entity["path"]
-                folder_paths_by_id[folder_id] = folder_path
-                folder_entities_by_name[folder_name].append(folder_entity)
-                self._folder_id_by_folder_path[folder_path] = folder_id
+                folder_paths_by_name[folder_name].append(folder_path)
 
-        tasks_entities = ayon_api.get_tasks(
-            project_name,
-            folder_ids=folder_paths_by_id.keys(),
-            fields={"name", "folderId"}
+        folder_path_by_name = {}
+        for folder_name, paths in folder_paths_by_name.items():
+            if len(paths) != 1:
+                continue
+            path = paths[0]
+            folder_path_by_name[folder_name] = path
+            folder_paths.add(path)
+            clean_task_names = task_names_by_folder_name[folder_name]
+            if not clean_task_names:
+                continue
+            folder_task_names = task_names_by_folder_path_clean.setdefault(
+                path, set()
+            )
+            folder_task_names |= clean_task_names
+
+        folder_entities_by_path = self.get_folder_entities(folder_paths)
+        task_entities_by_folder_path = self.get_task_entities(
+            task_names_by_folder_path_clean
         )
-
-        task_names_by_folder_path = collections.defaultdict(set)
-        for task_entity in tasks_entities:
-            folder_id = task_entity["folderId"]
-            folder_path = folder_paths_by_id[folder_id]
-            task_names_by_folder_path[folder_path].add(task_entity["name"])
-
-        self._task_names_by_folder_path.update(task_names_by_folder_path)
 
         for instance in to_validate:
             folder_path = instance["folderPath"]
             task_name = instance.get("task")
             if folder_path and "/" not in folder_path:
-                folder_entities = folder_entities_by_name.get(folder_path)
-                if len(folder_entities) == 1:
-                    folder_path = folder_entities[0]["path"]
-                    instance["folderPath"] = folder_path
+                new_folder_path = folder_path_by_name.get(folder_path)
+                if new_folder_path:
+                    folder_path = new_folder_path
+                    instance["folderPath"] = new_folder_path
 
-            if folder_path not in task_infos_by_folder_path:
+            folder_entity = folder_entities_by_path.get(folder_path)
+            if not folder_entity:
                 continue
             context_info = info_by_instance_id[instance.id]
             context_info.folder_is_valid = True
 
             if (
                 not task_name
-                or task_name in task_infos_by_folder_path[folder_path]
+                or task_name in task_entities_by_folder_path[folder_path]
             ):
-                task_info = task_infos_by_folder_path[folder_path]
                 context_info.task_is_valid = True
         return info_by_instance_id
 
