@@ -287,7 +287,7 @@ class CoreSettings(BaseSettingsModel):
     version_start_category: VersionStartCategoryModel = SettingsField(
         default_factory=VersionStartCategoryModel,
         title="Version start",
-        description="Configure versioning for products using profiles",
+        description="Configure the first version to use for new products using profiles",
     )
     imageio: CoreImageIOBaseModel = SettingsField(
         default_factory=CoreImageIOBaseModel,
