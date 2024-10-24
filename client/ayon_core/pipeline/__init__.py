@@ -3,7 +3,6 @@ from .constants import (
     AVALON_INSTANCE_ID,
     AYON_CONTAINER_ID,
     AYON_INSTANCE_ID,
-    HOST_WORKFILE_EXTENSIONS,
 )
 
 from .anatomy import Anatomy
@@ -51,9 +50,10 @@ from .load import (
 )
 
 from .publish import (
+    KnownPublishError,
+    PublishError,
     PublishValidationError,
     PublishXmlValidationError,
-    KnownPublishError,
     AYONPyblishPluginMixin,
     OptionalPyblishPluginMixin,
 )
@@ -113,7 +113,6 @@ __all__ = (
     "AVALON_INSTANCE_ID",
     "AYON_CONTAINER_ID",
     "AYON_INSTANCE_ID",
-    "HOST_WORKFILE_EXTENSIONS",
 
     # --- Anatomy ---
     "Anatomy",
@@ -162,9 +161,10 @@ __all__ = (
     "get_repres_contexts",
 
     # --- Publish ---
+    "KnownPublishError",
+    "PublishError",
     "PublishValidationError",
     "PublishXmlValidationError",
-    "KnownPublishError",
     "AYONPyblishPluginMixin",
     "OptionalPyblishPluginMixin",
 

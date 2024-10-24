@@ -505,21 +505,6 @@ def update_container(container, version=-1):
         project_name, product_entity["folderId"]
     )
 
-    repre_name = current_representation["name"]
-    new_representation = ayon_api.get_representation_by_name(
-        project_name, repre_name, new_version["id"]
-    )
-    if new_representation is None:
-        raise ValueError(
-            "Representation '{}' wasn't found on requested version".format(
-                repre_name
-            )
-        )
-
-    path = get_representation_path(new_representation)
-    if not path or not os.path.exists(path):
-        raise ValueError("Path {} doesn't exist".format(path))
-
     # Run update on the Loader for this container
     Loader = _get_container_loader(container)
     if not Loader:
@@ -527,6 +512,39 @@ def update_container(container, version=-1):
             "Can't update container because loader '{}' was not found."
             .format(container.get("loader"))
         )
+
+    repre_name = current_representation["name"]
+    new_representation = ayon_api.get_representation_by_name(
+        project_name, repre_name, new_version["id"]
+    )
+    if new_representation is None:
+        # The representation name is not found in the new version.
+        # Allow updating to a 'matching' representation if the loader
+        # has defined compatible update conversions
+        repre_name_aliases = Loader.get_representation_name_aliases(repre_name)
+        if repre_name_aliases:
+            representations = ayon_api.get_representations(
+                project_name,
+                representation_names=repre_name_aliases,
+                version_ids=[new_version["id"]])
+            representations_by_name = {
+                repre["name"]: repre for repre in representations
+            }
+            for name in repre_name_aliases:
+                if name in representations_by_name:
+                    new_representation = representations_by_name[name]
+                    break
+
+        if new_representation is None:
+            raise ValueError(
+                "Representation '{}' wasn't found on requested version".format(
+                    repre_name
+                )
+            )
+
+    path = get_representation_path(new_representation)
+    if not path or not os.path.exists(path):
+        raise ValueError("Path {} doesn't exist".format(path))
     project_entity = ayon_api.get_project(project_name)
     context = {
         "project": project_entity,
