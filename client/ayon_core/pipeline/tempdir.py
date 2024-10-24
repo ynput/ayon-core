@@ -23,24 +23,21 @@ def get_temp_dir(
     Template formatting is supported also with optional keys. Folder is
     created in case it doesn't exists.
 
-    Available anatomy formatting keys:
-        - root[work | <root name key>]
-        - project[name | code]
-
     Note:
         Staging dir does not have to be necessarily in tempdir so be careful
         about its usage.
 
     Args:
-        project_name (str)[optional]: Name of project.
-        anatomy (openpype.pipeline.Anatomy)[optional]: Anatomy object.
-        make_local (bool)[optional]: If True, temp dir will be created in
+        project_name (str): Name of project.
+        anatomy (Optional[Anatomy]): Project Anatomy object.
+        suffix (Optional[str]): Suffix for tempdir.
+        prefix (Optional[str]): Prefix for tempdir.
+        make_local (Optional[bool]): If True, temp dir will be created in
             local tempdir.
-        suffix (str)[optional]: Suffix for tempdir.
-        prefix (str)[optional]: Prefix for tempdir.
 
     Returns:
         str: Path to staging dir of instance.
+
     """
     prefix = prefix or "ay_tmp_"
     suffix = suffix or ""
