@@ -37,6 +37,7 @@ class ExtractThumbnail(pyblish.api.InstancePlugin):
         "substancepainter",
         "nuke",
         "aftereffects",
+        "unreal",
         "circuit",
     ]
     enabled = False
