@@ -800,7 +800,7 @@ class Creator(BaseCreator):
         product_name = instance.get("productName")
         product_type = instance.get("productType")
         folder_path = instance.get("folderPath")
-        if not any([product_name, folder_path]):
+        if not product_name or not folder_path:
             return None
 
         version = instance.get("version")
