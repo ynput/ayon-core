@@ -137,11 +137,13 @@ __all__ = (
     "HiddenCreator",
     "CreatedInstance",
     "CreatorError",
+
     "CreatorError",
 
     # - legacy creation
     "LegacyCreator",
     "legacy_create",
+
     "discover_creator_plugins",
     "discover_legacy_creator_plugins",
     "register_creator_plugin",
@@ -154,15 +156,18 @@ __all__ = (
     "IncompatibleLoaderError",
     "LoaderPlugin",
     "ProductLoaderPlugin",
+
     "discover_loader_plugins",
     "register_loader_plugin",
     "deregister_loader_plugin_path",
     "register_loader_plugin_path",
     "deregister_loader_plugin",
+
     "load_container",
     "remove_container",
     "update_container",
     "switch_container",
+
     "loaders_from_representation",
     "get_representation_path",
     "get_representation_context",
@@ -179,9 +184,11 @@ __all__ = (
     # --- Actions ---
     "LauncherAction",
     "InventoryAction",
+
     "discover_launcher_actions",
     "register_launcher_action",
     "register_launcher_action_path",
+
     "discover_inventory_actions",
     "register_inventory_action",
     "register_inventory_action_path",
@@ -194,12 +201,15 @@ __all__ = (
     "install_host",
     "uninstall_host",
     "is_installed",
+
     "register_root",
     "registered_root",
+
     "register_host",
     "registered_host",
     "deregister_host",
     "get_process_id",
+
     "get_global_context",
     "get_current_context",
     "get_current_host_name",
