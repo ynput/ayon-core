@@ -2,7 +2,7 @@ import os
 import sys
 import inspect
 import copy
-import tempfile
+import warnings
 import xml.etree.ElementTree
 from typing import Optional, Union, List
 
@@ -18,15 +18,11 @@ from ayon_core.lib import (
 )
 from ayon_core.settings import get_project_settings
 from ayon_core.addon import AddonsManager
-from ayon_core.pipeline import (
-    tempdir,
-    Anatomy
-)
+from ayon_core.pipeline import get_staging_dir_info
 from ayon_core.pipeline.plugin_discover import DiscoverResult
 from .constants import (
     DEFAULT_PUBLISH_TEMPLATE,
     DEFAULT_HERO_PUBLISH_TEMPLATE,
-    TRANSIENT_DIR_TEMPLATE
 )
 
 
@@ -581,58 +577,6 @@ def context_plugin_should_run(plugin, context):
     return False
 
 
-def get_instance_staging_dir(instance):
-    """Unified way how staging dir is stored and created on instances.
-
-    First check if 'stagingDir' is already set in instance data.
-    In case there already is new tempdir will not be created.
-
-    It also supports `AYON_TMPDIR`, so studio can define own temp
-    shared repository per project or even per more granular context.
-    Template formatting is supported also with optional keys. Folder is
-    created in case it doesn't exists.
-
-    Available anatomy formatting keys:
-        - root[work | <root name key>]
-        - project[name | code]
-
-    Note:
-        Staging dir does not have to be necessarily in tempdir so be careful
-        about its usage.
-
-    Args:
-        instance (pyblish.lib.Instance): Instance for which we want to get
-            staging dir.
-
-    Returns:
-        str: Path to staging dir of instance.
-    """
-    staging_dir = instance.data.get('stagingDir')
-    if staging_dir:
-        return staging_dir
-
-    anatomy = instance.context.data.get("anatomy")
-
-    # get customized tempdir path from `AYON_TMPDIR` env var
-    custom_temp_dir = tempdir.create_custom_tempdir(
-        anatomy.project_name, anatomy)
-
-    if custom_temp_dir:
-        staging_dir = os.path.normpath(
-            tempfile.mkdtemp(
-                prefix="pyblish_tmp_",
-                dir=custom_temp_dir
-            )
-        )
-    else:
-        staging_dir = os.path.normpath(
-            tempfile.mkdtemp(prefix="pyblish_tmp_")
-        )
-    instance.data['stagingDir'] = staging_dir
-
-    return staging_dir
-
-
 def get_publish_repre_path(instance, repre, only_published=False):
     """Get representation path that can be used for integration.
 
@@ -685,6 +629,8 @@ def get_publish_repre_path(instance, repre, only_published=False):
     return None
 
 
+# deprecated: backward compatibility only (2024-09-12)
+# TODO: remove in the future
 def get_custom_staging_dir_info(
     project_name,
     host_name,
@@ -694,67 +640,91 @@ def get_custom_staging_dir_info(
     product_name,
     project_settings=None,
     anatomy=None,
-    log=None
+    log=None,
 ):
-    """Checks profiles if context should use special custom dir as staging.
+    from ayon_core.pipeline.stagingdir import get_staging_dir_config
+    warnings.warn(
+        (
+            "Function 'get_custom_staging_dir_info' in"
+            " 'ayon_core.pipeline.publish' is deprecated. Please use"
+            " 'get_custom_staging_dir_info'"
+            " in 'ayon_core.pipeline.stagingdir'."
+        ),
+        DeprecationWarning,
+    )
+    tr_data = get_staging_dir_config(
+        host_name,
+        project_name,
+        task_type,
+        task_name,
+        product_type,
+        product_name,
+        project_settings=project_settings,
+        anatomy=anatomy,
+        log=log,
+    )
 
-    Args:
-        project_name (str)
-        host_name (str)
-        product_type (str)
-        task_name (str)
-        task_type (str)
-        product_name (str)
-        project_settings(Dict[str, Any]): Prepared project settings.
-        anatomy (Dict[str, Any])
-        log (Logger) (optional)
+    if not tr_data:
+        return None, None
+
+    return tr_data["template"], tr_data["persistence"]
+
+
+def get_instance_staging_dir(instance):
+    """Unified way how staging dir is stored and created on instances.
+
+    First check if 'stagingDir' is already set in instance data.
+    In case there already is new tempdir will not be created.
 
     Returns:
-        (tuple)
-    Raises:
-        ValueError - if misconfigured template should be used
+        str: Path to staging dir
     """
-    settings = project_settings or get_project_settings(project_name)
-    custom_staging_dir_profiles = (settings["core"]
-                                           ["tools"]
-                                           ["publish"]
-                                           ["custom_staging_dir_profiles"])
-    if not custom_staging_dir_profiles:
-        return None, None
+    staging_dir = instance.data.get("stagingDir")
 
-    if not log:
-        log = Logger.get_logger("get_custom_staging_dir_info")
+    if staging_dir:
+        return staging_dir
 
-    filtering_criteria = {
-        "hosts": host_name,
-        "families": product_type,
-        "task_names": task_name,
-        "task_types": task_type,
-        "subsets": product_name
-    }
-    profile = filter_profiles(custom_staging_dir_profiles,
-                              filtering_criteria,
-                              logger=log)
+    anatomy_data = instance.data["anatomyData"]
+    template_data = copy.deepcopy(anatomy_data)
 
-    if not profile or not profile["active"]:
-        return None, None
+    product_type = instance.data["productType"]
+    product_name = instance.data["productName"]
 
-    if not anatomy:
-        anatomy = Anatomy(project_name)
+    # context data based variables
+    project_entity = instance.context.data["projectEntity"]
+    folder_entity = instance.context.data["folderEntity"]
+    task_entity = instance.context.data["taskEntity"]
+    host_name = instance.context.data["hostName"]
+    project_settings = instance.context.data["project_settings"]
+    anatomy = instance.context.data["anatomy"]
+    current_file = instance.context.data.get("currentFile")
 
-    template_name = profile["template_name"] or TRANSIENT_DIR_TEMPLATE
+    # add current file as workfile name into formatting data
+    if current_file:
+        workfile = os.path.basename(current_file)
+        workfile_name, _ = os.path.splitext(workfile)
+        template_data["workfile_name"] = workfile_name
 
-    custom_staging_dir = anatomy.get_template_item(
-        "staging", template_name, "directory", default=None
+    staging_dir_info = get_staging_dir_info(
+        host_name,
+        project_entity,
+        folder_entity,
+        task_entity,
+        product_type,
+        product_name,
+        anatomy,
+        project_settings=project_settings,
+        template_data=template_data,
     )
-    if custom_staging_dir is None:
-        raise ValueError((
-            "Anatomy of project \"{}\" does not have set"
-            " \"{}\" template key!"
-        ).format(project_name, template_name))
-    is_persistent = profile["custom_staging_dir_persistent"]
 
-    return custom_staging_dir.template, is_persistent
+    staging_dir_path = staging_dir_info["stagingDir"]
+
+    # path might be already created by get_staging_dir_info
+    os.makedirs(staging_dir_path, exist_ok=True)
+
+    instance.data.update(staging_dir_info)
+
+    return staging_dir_path
 
 
 def get_published_workfile_instance(context):

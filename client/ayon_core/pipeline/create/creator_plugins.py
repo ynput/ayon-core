@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+import os
 import copy
 import collections
 from typing import TYPE_CHECKING, Optional, Dict, Any
@@ -14,6 +15,7 @@ from ayon_core.pipeline.plugin_discover import (
     deregister_plugin,
     deregister_plugin_path
 )
+from ayon_core.pipeline import get_staging_dir_info
 
 from .constants import DEFAULT_VARIANT_VALUE
 from .product_name import get_product_name
@@ -830,6 +832,59 @@ class Creator(BaseCreator):
                 for created instance.
         """
         return self.pre_create_attr_defs
+
+    def apply_staging_dir(self, instance):
+        """Apply staging dir with persistence to instance's transient data.
+
+        Method is called on instance creation and on instance update.
+
+        Args:
+            instance (CreatedInstance): Instance for which should be staging
+                dir applied.
+
+        Returns:
+            Optional[str]: Staging dir path or None if not applied.
+        """
+        create_ctx = self.create_context
+        product_name = instance.get("productName")
+        product_type = instance.get("productType")
+        folder_path = instance.get("folderPath")
+
+        # this can only work if product name and folder path are available
+        if not product_name or not folder_path:
+            return
+
+        version = instance.get("version")
+        if version is not None:
+            template_data = {"version": version}
+
+        staging_dir_info = get_staging_dir_info(
+            create_ctx.host_name,
+            create_ctx.get_current_project_entity(),
+            create_ctx.get_current_folder_entity(),
+            create_ctx.get_current_task_entity(),
+            product_type,
+            product_name,
+            create_ctx.get_current_project_anatomy(),
+            create_ctx.get_current_project_settings(),
+            always_return_path=False,
+            logger=self.log,
+            template_data=template_data,
+        )
+
+        if not staging_dir_info:
+            return
+
+        staging_dir_path = staging_dir_info["stagingDir"]
+
+        # path might be already created by get_staging_dir_info
+        os.makedirs(staging_dir_path, exist_ok=True)
+
+        instance.transient_data.update(staging_dir_info)
+
+        self.log.info(f"Applied staging dir to instance: {staging_dir_path}")
+
+        return staging_dir_path
 
     def _pre_create_attr_defs_changed(self):
         """Called when pre-create attribute definitions change.
