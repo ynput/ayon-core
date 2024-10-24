@@ -721,8 +721,7 @@ def get_instance_staging_dir(instance):
 
     # TODO: not sure if this is necessary
     # path might be already created by get_staging_dir
-    if not os.path.exists(staging_dir_path):
-        os.makedirs(staging_dir_path)
+    os.makedirs(staging_dir_path, exist_ok=True)
 
     instance.data.update(staging_dir_data)
 

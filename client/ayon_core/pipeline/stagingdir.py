@@ -1,9 +1,9 @@
 from ayon_core.lib import Logger, filter_profiles, StringTemplate
 from ayon_core.settings import get_project_settings
-from .anatomy import Anatomy
-from .tempdir import get_temp_dir
 from ayon_core.pipeline.template_data import get_template_data
 
+from .anatomy import Anatomy
+from .tempdir import get_temp_dir
 
 STAGING_DIR_TEMPLATES = "staging"
 
@@ -34,8 +34,10 @@ def get_staging_dir_config(
 
     Returns:
         Dict or None: Data with directory template and is_persistent or None
+
     Raises:
         ValueError - if misconfigured template should be used
+
     """
     settings = project_settings or get_project_settings(project_name)
 
@@ -91,14 +93,6 @@ def _validate_template_name(project_name, template_name, anatomy):
     Raises:
         ValueError - if misconfigured template
     """
-    # TODO: only for backward compatibility of anatomy for older projects
-    if STAGING_DIR_TEMPLATES not in anatomy.templates:
-        raise ValueError(
-            (
-                'Anatomy of project "{}" does not have set' ' "{}" template section!'
-            ).format(project_name, template_name)
-        )
-
     if template_name not in anatomy.templates[STAGING_DIR_TEMPLATES]:
         raise ValueError(
             (
@@ -147,9 +141,9 @@ def get_staging_dir(
             template.
 
     Returns:
-        Dict[str, Any]: Staging dir data
-    """
+        Optional[Dict[str, Any]]: Staging dir data
 
+    """
     log = kwargs.get("log") or Logger.get_logger("get_staging_dir")
     always_return_path = kwargs.get("always_return_path")
 
@@ -209,7 +203,7 @@ def get_staging_dir(
             ),
             "stagingDir_persistent": False,
         }
-    elif not staging_dir_config:
+    if not staging_dir_config:
         return None
 
     return {
