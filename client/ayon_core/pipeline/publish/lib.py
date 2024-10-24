@@ -642,7 +642,15 @@ def get_custom_staging_dir_info(
     log=None,
 ):
     from ayon_core.pipeline.stagingdir import get_staging_dir_config
-
+    warnings.warn(
+        (
+            "Function 'get_custom_staging_dir_info' in"
+            " 'ayon_core.pipeline.publish' is deprecated. Please use"
+            " 'get_custom_staging_dir_info'"
+            " in 'ayon_core.pipeline.stagingdir'."
+        ),
+        DeprecationWarning,
+    )
     tr_data = get_staging_dir_config(
         host_name,
         project_name,
