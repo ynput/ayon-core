@@ -15,7 +15,7 @@ from ayon_core.pipeline.plugin_discover import (
     deregister_plugin,
     deregister_plugin_path
 )
-from ayon_core.pipeline import get_staging_dir
+from ayon_core.pipeline import get_staging_dir_info
 
 from .constants import DEFAULT_VARIANT_VALUE
 from .product_name import get_product_name
@@ -805,9 +805,9 @@ class Creator(BaseCreator):
 
         version = instance.get("version")
         if version is not None:
-            formatting_data = {"version": version}
+            template_data = {"version": version}
 
-        staging_dir_data = get_staging_dir(
+        staging_dir_info = get_staging_dir_info(
             create_ctx.host_name,
             create_ctx.get_current_project_entity(),
             create_ctx.get_current_folder_entity(),
@@ -817,20 +817,20 @@ class Creator(BaseCreator):
             create_ctx.get_current_project_anatomy(),
             create_ctx.get_current_project_settings(),
             always_return_path=False,
-            log=self.log,
-            formatting_data=formatting_data,
+            logger=self.log,
+            template_data=template_data,
         )
 
-        if not staging_dir_data:
+        if not staging_dir_info:
             return None
 
-        staging_dir_path = staging_dir_data["stagingDir"]
+        staging_dir_path = staging_dir_info["stagingDir"]
 
         # TODO: not sure if this is necessary
-        # path might be already created by get_staging_dir
+        # path might be already created by get_staging_dir_info
         os.makedirs(staging_dir_path, exist_ok=True)
 
-        instance.transient_data.update(staging_dir_data)
+        instance.transient_data.update(staging_dir_info)
 
         self.log.info(f"Applied staging dir to instance: {staging_dir_path}")
 

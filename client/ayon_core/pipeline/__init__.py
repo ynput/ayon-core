@@ -10,7 +10,7 @@ from .anatomy import Anatomy
 
 from .tempdir import get_temp_dir
 
-from .stagingdir import get_staging_dir
+from .stagingdir import get_staging_dir_info
 
 from .create import (
     BaseCreator,
@@ -128,7 +128,7 @@ __all__ = (
     "get_temp_dir",
 
     # --- Staging dir ---
-    "get_staging_dir",
+    "get_staging_dir_info",
 
     # --- Create ---
     "BaseCreator",
