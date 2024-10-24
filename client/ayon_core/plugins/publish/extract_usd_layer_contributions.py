@@ -238,7 +238,7 @@ def add_representation(instance, name,
 
 
 class CollectUSDLayerContributions(pyblish.api.InstancePlugin,
-                                   publish.OpenPypePyblishPluginMixin):
+                                   publish.AYONPyblishPluginMixin):
     """Collect the USD Layer Contributions and create dependent instances.
 
     Our contributions go to the layer

@@ -15,5 +15,3 @@ class CollectAddons(pyblish.api.ContextPlugin):
         manager = AddonsManager()
         context.data["ayonAddonsManager"] = manager
         context.data["ayonAddons"] = manager.addons_by_name
-        # Backwards compatibility - remove
-        context.data["openPypeModules"] = manager.addons_by_name

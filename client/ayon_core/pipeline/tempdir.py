@@ -90,7 +90,7 @@ def _create_custom_tempdir(project_name, anatomy=None):
         "AYON_TMPDIR",
     )
     if not env_tmpdir:
-        return None
+        return
 
     custom_tempdir = None
     if "{" in env_tmpdir:

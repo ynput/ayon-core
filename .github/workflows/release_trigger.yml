@@ -1,0 +1,12 @@
+name: 🚀 Release Trigger
+
+on:
+  workflow_dispatch:
+
+jobs:
+  call-release-trigger:
+    uses: ynput/ops-repo-automation/.github/workflows/release_trigger.yml@main
+    secrets:
+      token: ${{ secrets.YNPUT_BOT_TOKEN }}
+      email: ${{ secrets.CI_EMAIL }}
+      user: ${{ secrets.CI_USER }}
