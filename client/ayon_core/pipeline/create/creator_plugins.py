@@ -843,14 +843,16 @@ class Creator(BaseCreator):
                 dir applied.
 
         Returns:
-            str: Path to staging dir.
+            Optional[str]: Staging dir path or None if not applied.
         """
         create_ctx = self.create_context
         product_name = instance.get("productName")
         product_type = instance.get("productType")
         folder_path = instance.get("folderPath")
+
+        # this can only work if product name and folder path are available
         if not product_name or not folder_path:
-            return None
+            return
 
         version = instance.get("version")
         if version is not None:
@@ -871,7 +873,7 @@ class Creator(BaseCreator):
         )
 
         if not staging_dir_info:
-            return None
+            return
 
         staging_dir_path = staging_dir_info["stagingDir"]
 
