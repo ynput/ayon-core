@@ -600,6 +600,10 @@ class CollectUSDLayerContributionsHoudiniLook(CollectUSDLayerContributions):
 
     @classmethod
     def get_attr_defs_for_instance(cls, create_context, instance):
+        # Filtering of instance, if needed, can be customized
+        if not cls.instance_matches_plugin_families(instance):
+            return []
+
         defs = super().get_attr_defs_for_instance(create_context, instance)
 
         # Update default for department layer to look
