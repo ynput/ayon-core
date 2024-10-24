@@ -169,8 +169,6 @@ def get_staging_dir_info(
     ctx_data = get_template_data(
         project_entity, folder_entity, task_entity, host_name
     )
-    # add roots to ctx_data
-    ctx_data["root"] = anatomy.roots
 
     # add additional data
     ctx_data.update({
@@ -178,7 +176,7 @@ def get_staging_dir_info(
             "type": product_type,
             "name": product_name
         },
-        "host": host_name,
+        "root": anatomy.roots
     })
 
     # add additional template formatting data
