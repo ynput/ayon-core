@@ -18,7 +18,7 @@ from ayon_core.lib import (
 )
 from ayon_core.settings import get_project_settings
 from ayon_core.addon import AddonsManager
-from ayon_core.pipeline import get_staging_dir
+from ayon_core.pipeline import get_staging_dir_info
 from ayon_core.pipeline.plugin_discover import DiscoverResult
 from .constants import (
     DEFAULT_PUBLISH_TEMPLATE,
@@ -685,7 +685,7 @@ def get_instance_staging_dir(instance):
         return staging_dir
 
     anatomy_data = instance.data["anatomyData"]
-    formatting_data = copy.deepcopy(anatomy_data)
+    template_data = copy.deepcopy(anatomy_data)
 
     product_type = instance.data["productType"]
     product_name = instance.data["productName"]
@@ -703,9 +703,9 @@ def get_instance_staging_dir(instance):
     if current_file:
         workfile = os.path.basename(current_file)
         workfile_name, _ = os.path.splitext(workfile)
-        formatting_data["workfile_name"] = workfile_name
+        template_data["workfile_name"] = workfile_name
 
-    staging_dir_data = get_staging_dir(
+    staging_dir_info = get_staging_dir_info(
         host_name,
         project_entity,
         folder_entity,
@@ -714,16 +714,15 @@ def get_instance_staging_dir(instance):
         product_name,
         anatomy,
         project_settings=project_settings,
-        formatting_data=formatting_data,
+        template_data=template_data,
     )
 
-    staging_dir_path = staging_dir_data["stagingDir"]
+    staging_dir_path = staging_dir_info["stagingDir"]
 
-    # TODO: not sure if this is necessary
-    # path might be already created by get_staging_dir
+    # path might be already created by get_staging_dir_info
     os.makedirs(staging_dir_path, exist_ok=True)
 
-    instance.data.update(staging_dir_data)
+    instance.data.update(staging_dir_info)
 
     return staging_dir_path
 

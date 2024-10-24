@@ -10,29 +10,25 @@ from ayon_core.pipeline import Anatomy
 
 
 def get_temp_dir(
-    project_name=None, anatomy=None, prefix=None, suffix=None, make_local=False
+    project_name, anatomy=None, prefix=None, suffix=None, use_local_temp=False
 ):
     """Get temporary dir path.
 
-    If `make_local` is set, tempdir will be created in local tempdir.
+    If `use_local_temp` is set, tempdir will be created in local tempdir.
     If `anatomy` is not set, default anatomy will be used.
     If `prefix` or `suffix` is not set, default values will be used.
 
-    It also supports `OPENPYPE_TMPDIR`, so studio can define own temp
+    It also supports `AYON_TMPDIR`, so studio can define own temp
     shared repository per project or even per more granular context.
     Template formatting is supported also with optional keys. Folder is
     created in case it doesn't exists.
-
-    Note:
-        Staging dir does not have to be necessarily in tempdir so be careful
-        about its usage.
 
     Args:
         project_name (str): Name of project.
         anatomy (Optional[Anatomy]): Project Anatomy object.
         suffix (Optional[str]): Suffix for tempdir.
         prefix (Optional[str]): Prefix for tempdir.
-        make_local (Optional[bool]): If True, temp dir will be created in
+        use_local_temp (Optional[bool]): If True, temp dir will be created in
             local tempdir.
 
     Returns:
@@ -42,7 +38,7 @@ def get_temp_dir(
     prefix = prefix or "ay_tmp_"
     suffix = suffix or ""
 
-    if make_local:
+    if use_local_temp:
         return _create_local_staging_dir(prefix, suffix)
 
     # make sure anatomy is set
@@ -55,19 +51,20 @@ def get_temp_dir(
     return _create_local_staging_dir(prefix, suffix, custom_temp_dir)
 
 
-def _create_local_staging_dir(prefix, suffix, dir=None):
+def _create_local_staging_dir(prefix, suffix, dirpath=None):
     """Create local staging dir
 
     Args:
         prefix (str): prefix for tempdir
         suffix (str): suffix for tempdir
+        dirpath (Optional[str]): path to tempdir
 
     Returns:
         str: path to tempdir
     """
     # use pathlib for creating tempdir
     staging_dir = Path(tempfile.mkdtemp(
-        prefix=prefix, suffix=suffix, dir=dir
+        prefix=prefix, suffix=suffix, dir=dirpath
     ))
 
     return staging_dir.as_posix()
@@ -89,31 +86,27 @@ def _create_custom_tempdir(project_name, anatomy=None):
     Returns:
         str | None: formatted path or None
     """
-    env_tmpdir = os.getenv("AYON_TMPDIR")
+    env_tmpdir = os.getenv(
+        "AYON_TMPDIR",
+    )
     if not env_tmpdir:
-        env_tmpdir = os.getenv("OPENPYPE_TMPDIR")
-        if not env_tmpdir:
-            return
-        print(
-            "DEPRECATION WARNING: Used 'OPENPYPE_TMPDIR' environment"
-            " variable. Please use 'AYON_TMPDIR' instead."
-        )
+        return None
 
     custom_tempdir = None
     if "{" in env_tmpdir:
         if anatomy is None:
             anatomy = Anatomy(project_name)
         # create base formate data
-        template_formatting_data = {
+        template_data = {
             "root": anatomy.roots,
             "project": {
                 "name": anatomy.project_name,
                 "code": anatomy.project_code,
-            }
+            },
         }
         # path is anatomy template
         custom_tempdir = StringTemplate.format_template(
-            env_tmpdir, template_formatting_data)
+            env_tmpdir, template_data)
 
         custom_tempdir_path = Path(custom_tempdir)
 

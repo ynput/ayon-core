@@ -102,7 +102,7 @@ def _validate_template_name(project_name, template_name, anatomy):
         )
 
 
-def get_staging_dir(
+def get_staging_dir_info(
     host_name,
     project_entity,
     folder_entity,
@@ -111,9 +111,13 @@ def get_staging_dir(
     product_name,
     anatomy,
     project_settings=None,
+    template_data=None,
+    always_return_path=None,
+    force_tmp_dir=None,
+    logger=None,
     **kwargs
 ):
-    """Get staging dir data.
+    """Get staging dir info data.
 
     If `force_temp` is set, staging dir will be created as tempdir.
     If `always_get_some_dir` is set, staging dir will be created as tempdir if
@@ -129,29 +133,31 @@ def get_staging_dir(
         product_name (str): Name of product.
         anatomy (ayon_core.pipeline.Anatomy): Anatomy object.
         project_settings (Optional[Dict[str, Any]]): Prepared project settings.
+        template_data (Optional[Dict[str, Any]]): Data for formatting staging
+            dir template.
+        always_return_path (Optional[bool]): If True, staging dir will be
+            created as tempdir if no staging dir profile is found. Input value
+            False will return None if no staging dir profile is found.
+        force_tmp_dir (Optional[bool]): If True, staging dir will be created as
+            tempdir.
+        logger (Optional[logging.Logger]): Logger instance.
         **kwargs: Arbitrary keyword arguments. See below.
 
     Keyword Arguments:
-        force_temp (bool): If True, staging dir will be created as tempdir.
-        always_return_path (bool): If True, staging dir will be created as
-            tempdir if no staging dir profile is found.
         prefix (str): Prefix for staging dir.
         suffix (str): Suffix for staging dir.
-        formatting_data (Dict[str, Any]): Data for formatting staging dir
-            template.
 
     Returns:
-        Optional[Dict[str, Any]]: Staging dir data
+        Optional[Dict[str, Any]]: Staging dir info data
 
     """
-    log = kwargs.get("log") or Logger.get_logger("get_staging_dir")
-    always_return_path = kwargs.get("always_return_path")
+    log = logger or Logger.get_logger("get_staging_dir_info")
 
     # make sure always_return_path is set to true by default
     if always_return_path is None:
         always_return_path = True
 
-    if kwargs.get("force_temp"):
+    if force_tmp_dir:
         return get_temp_dir(
             project_name=project_entity["name"],
             anatomy=anatomy,
@@ -175,9 +181,9 @@ def get_staging_dir(
         "host": host_name,
     })
 
-    # add additional data from kwargs
-    if kwargs.get("formatting_data"):
-        ctx_data.update(kwargs.get("formatting_data"))
+    # add additional template formatting data
+    if template_data:
+        ctx_data.update(template_data)
 
     # get staging dir config
     staging_dir_config = get_staging_dir_config(
