@@ -132,6 +132,10 @@ class AttributeValues:
     def __contains__(self, key):
         return key in self._attr_defs_by_key
 
+    def __iter__(self):
+        for key in self._attr_defs_by_key:
+            yield key
+
     def get(self, key, default=None):
         if key in self._attr_defs_by_key:
             return self[key]
