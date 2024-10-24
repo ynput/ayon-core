@@ -172,7 +172,7 @@ class CoreImageIOBaseModel(BaseSettingsModel):
     activate_global_color_management: bool = SettingsField(
         False,
         title="Enable Color Management",
-        description="When enabled, global color management been activated for all hosts available.",
+        description="When enabled, global color management using OpenColorIO will be enabled for all hosts available. With this enabled the `OCIO` environment variable will automatically be supplied to any OCIO supporting host.",
     )
     ocio_config_profiles: list[CoreImageIOConfigProfilesModel] = SettingsField(
         default_factory=list, title="OCIO config profiles"
