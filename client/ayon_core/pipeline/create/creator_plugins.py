@@ -828,8 +828,7 @@ class Creator(BaseCreator):
 
         # TODO: not sure if this is necessary
         # path might be already created by get_staging_dir
-        if not os.path.exists(staging_dir_path):
-            os.makedirs(staging_dir_path)
+        os.makedirs(staging_dir_path, exist_ok=True)
 
         instance.transient_data.update(staging_dir_data)
 
