@@ -1696,17 +1696,17 @@ def resolve_colorspace_config_template(
     )
 
     builtin_tried = False
-    # Collect custom paths for last step
-    custom_paths = []
-    # Add host path to custom paths
+    # Collect custom templates for last step
+    custom_templates = []
+    # Add host path to custom templates
     host_path = imageio_host.get("ocio_config", {}).get("filepath")
     if host_path:
-        custom_paths.append(host_path)
+        custom_templates.append(host_path)
 
     for profile in imageio_global["ocio_config_profiles"]:
         profile_type = profile["type"]
         if profile_type == "custom_path":
-            custom_paths.append(profile["custom_path"])
+            custom_templates.append(profile["custom_path"])
             continue
 
         # Try to resolve builtin path (only once)
@@ -1729,21 +1729,21 @@ def resolve_colorspace_config_template(
     if success:
         return rootless_path
 
-    # Try to fill custom paths only with 'os.environ'
-    failed_custom_paths = []
-    for custom_path in custom_paths:
+    # Try to fill custom templates only with 'os.environ'
+    failed_custom_templates = []
+    for custom_template in custom_templates:
         try:
-            path = custom_path.format(**os.environ)
+            path = custom_template.format(**os.environ)
         except Exception:
-            failed_custom_paths.append(custom_path)
+            failed_custom_templates.append(custom_template)
             continue
 
         if os.path.realpath(path) == os.path.realpath(config_path):
-            return custom_path
+            return custom_template
 
-    # If none of custom paths formatting failed it means we don't need to try
-    #   with entities template data.
-    if not failed_custom_paths:
+    # If none of custom templates formatting failed it means we don't need to
+    #   try with entities template data.
+    if not failed_custom_templates:
         raise ValueError("Failed to resolve OCIO config template.")
 
     # Prepare all entities for template data
@@ -1766,13 +1766,13 @@ def resolve_colorspace_config_template(
     )
     template_data.update(os.environ.items())
 
-    # Try to fill custom paths with template data passed to function
-    for custom_path in failed_custom_paths:
+    # Try to fill custom templates with template data passed to function
+    for custom_template in failed_custom_templates:
         try:
-            path = custom_path.format(**template_data)
+            path = custom_template.format(**template_data)
         except Exception:
             continue
         if os.path.realpath(path) == os.path.realpath(config_path):
-            return custom_path
+            return custom_template
 
     raise ValueError("Failed to resolve OCIO config template.")
