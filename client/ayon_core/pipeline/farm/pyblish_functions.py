@@ -8,10 +8,14 @@ import attr
 import ayon_api
 import clique
 from ayon_core.lib import Logger
-from ayon_core.pipeline import get_current_project_name, get_representation_path
+from ayon_core.pipeline import (
+    get_current_project_name,
+    get_representation_path,
+)
 from ayon_core.pipeline.create import get_product_name
 from ayon_core.pipeline.farm.patterning import match_aov_pattern
 from ayon_core.pipeline.publish import KnownPublishError
+from ayon_core.pipeline.colorspace import resolve_colorspace_config_template
 
 
 @attr.s
@@ -485,14 +489,26 @@ def create_instances_for_aov(instance, skeleton, aov_filter,
     }
 
     # Get templated path from absolute config path.
-    anatomy = instance.context.data["anatomy"]
+    context = instance.context
     colorspace_template = instance.data["colorspaceConfig"]
     try:
-        additional_color_data["colorspaceTemplate"] = remap_source(
-            colorspace_template, anatomy)
+        colorspace_template = resolve_colorspace_config_template(
+            colorspace_template,
+            context.data["projectName"],
+            instance.data.get("folderPath"),
+            instance.data.get("task"),
+            context.data["hostname"],
+            project_settings=context.data["project_settings"] ,
+            anatomy=context.data["anatomy"],
+            project_entity=context.data["projectEntity"],
+            folder_entity=instance.data.get("folderEntity"),
+            task_entity=instance.data.get("taskEntity"),
+        )
+
     except ValueError as e:
         log.warning(e)
-        additional_color_data["colorspaceTemplate"] = colorspace_template
+
+    additional_color_data["colorspaceTemplate"] = colorspace_template
 
     # if there are product to attach to and more than one AOV,
     # we cannot proceed.
