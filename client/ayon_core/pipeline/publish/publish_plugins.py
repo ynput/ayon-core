@@ -205,9 +205,9 @@ class AYONPyblishPluginMixin:
         if not cls.__instanceEnabled__:
             return False
 
-        for _ in pyblish.logic.plugins_by_families(
-            [cls], [instance.product_type]
-        ):
+        families = [instance.product_type]
+        families.extend(instance.data.get("families", []))
+        for _ in pyblish.logic.plugins_by_families([cls], families):
             return True
         return False
 
