@@ -1709,10 +1709,11 @@ def resolve_colorspace_config_template(
             custom_paths.append(profile["custom_path"])
             continue
 
-        #
+        # Try to resolve builtin path (only once)
         if profile_type != "builtin_path" or builtin_tried:
             continue
 
+        builtin_tried = True
         template = profile["builtin_path"]
         try:
             path = template.format(**os.environ)
