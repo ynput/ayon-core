@@ -879,7 +879,7 @@ def _get_global_config_data(
     }
 
 
-def _is_host_ocio_enabled_n_overriden(host_name, project_settings):
+def _is_host_ocio_enabled_n_overridden(host_name, project_settings):
     imageio_global, imageio_host = _get_imageio_settings(
         project_settings, host_name
     )
@@ -955,7 +955,7 @@ def get_imageio_config_preset(
     if not project_settings:
         project_settings = get_project_settings(project_name)
 
-    is_enabled, override_global_config = _is_host_ocio_enabled_n_overriden(
+    is_enabled, override_global_config = _is_host_ocio_enabled_n_overridden(
         host_name, project_settings
     )
     if not is_enabled:
