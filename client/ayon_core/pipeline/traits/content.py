@@ -113,3 +113,23 @@ class Bundle(TraitBase):
     def to_representation(self) -> Representation:
         """Convert to a representation."""
         return Representation(traits=self.items)
+
+
+class Fragment(TraitBase):
+    """Fragment trait model.
+
+    This model represents a fragment trait. A fragment is a part of
+    a larger entity that is represented by a representation.
+
+    Attributes:
+        name (str): Trait name.
+        description (str): Trait description.
+        id (str): id should be namespaced trait name with version
+        parent (str): Parent representation id.
+
+    """
+
+    name: ClassVar[str] = "Fragment"
+    description: ClassVar[str] = "Fragment Trait"
+    id: ClassVar[str] = "ayon.content.Fragment.v1"
+    parent: str = Field(..., title="Parent Representation Id")
