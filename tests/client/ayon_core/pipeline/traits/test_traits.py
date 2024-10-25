@@ -14,6 +14,7 @@ from ayon_core.pipeline.traits import (
     Representation,
     TraitBase,
 )
+from pipeline.traits import Overscan
 
 REPRESENTATION_DATA = {
         FileLocation.id: {
@@ -31,6 +32,15 @@ REPRESENTATION_DATA = {
             "planar_configuration": "RGB",
         },
     }
+
+class UpgradedImage(Image):
+    """Upgraded image class."""
+    id = "ayon.2d.Image.v2"
+
+    @classmethod
+    def upgrade(cls, data: dict) -> UpgradedImage:  # noqa: ARG003
+        """Upgrade the trait."""
+        return cls()
 
 class InvalidTrait:
     """Invalid trait class."""
@@ -62,6 +72,8 @@ def test_representation_errors(representation: Representation) -> None:
 
 def test_representation_traits(representation: Representation) -> None:
     """Test setting and getting traits."""
+    assert representation.get_trait_by_id("ayon.2d.PixelBased").version == 1
+
     assert len(representation) == len(REPRESENTATION_DATA)
     assert representation.get_trait_by_id(FileLocation.id)
     assert representation.get_trait_by_id(Image.id)
@@ -152,6 +164,7 @@ def test_trait_removing(representation: Representation) -> None:
         representation.remove_trait(Image)
 
 
+
 def test_getting_traits_data(representation: Representation) -> None:
     """Test getting a batch of traits."""
     result = representation.get_traits_by_ids(
@@ -218,3 +231,80 @@ def test_bundles() -> None:
         assert sub_representation.get_trait(trait=MimeType).mime_type in [
             "image/jpeg", "image/tiff"
         ]
+
+def test_get_version_from_id() -> None:
+    """Test getting version from trait ID."""
+    assert Image().version == 1
+
+    class TestOverscan(Overscan):
+        id = "ayon.2d.Overscan.v2"
+
+    assert TestOverscan(
+        left=0,
+        right=0,
+        top=0,
+        bottom=0
+    ).version == 2
+
+    class TestMimeType(MimeType):
+        id = "ayon.content.MimeType"
+
+    assert TestMimeType(mime_type="foo/bar").version is None
+
+
+def test_from_dict() -> None:
+    """Test creating representation from dictionary."""
+    traits_data = {
+        "ayon.content.FileLocation.v1": {
+            "file_path": "/path/to/file",
+            "file_size": 1024,
+            "file_hash": None,
+        },
+        "ayon.2d.Image.v1": {},
+    }
+
+    representation = Representation.from_dict(
+        "test", trait_data=traits_data)
+
+    assert len(representation) == 2
+    assert representation.get_trait_by_id("ayon.content.FileLocation.v1")
+    assert representation.get_trait_by_id("ayon.2d.Image.v1")
+
+    traits_data = {
+        "ayon.content.FileLocation.v999": {
+            "file_path": "/path/to/file",
+            "file_size": 1024,
+            "file_hash": None,
+        },
+    }
+
+    with pytest.raises(ValueError, match="Trait model with ID .* not found."):
+        representation = Representation.from_dict(
+            "test", trait_data=traits_data)
+
+    traits_data = {
+        "ayon.content.FileLocation": {
+            "file_path": "/path/to/file",
+            "file_size": 1024,
+            "file_hash": None,
+        },
+    }
+
+    representation = Representation.from_dict(
+        "test", trait_data=traits_data)
+
+    assert len(representation) == 1
+    assert representation.get_trait_by_id("ayon.content.FileLocation.v1")
+
+    # this won't work right now because we would need to somewhat mock
+    # the import
+    """
+    from .lib import NewTestTrait
+
+    traits_data = {
+        "ayon.test.NewTestTrait.v1": {},
+    }
+
+    representation = Representation.from_dict(
+        "test", trait_data=traits_data)
+    """
