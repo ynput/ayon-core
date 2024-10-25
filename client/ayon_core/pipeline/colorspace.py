@@ -879,6 +879,42 @@ def _get_global_config_data(
     }
 
 
+def _is_host_ocio_enabled_n_overriden(host_name, project_settings):
+    imageio_global, imageio_host = _get_imageio_settings(
+        project_settings, host_name
+    )
+    # Global color management must be enabled to be able to use host settings
+    if not imageio_global["activate_global_color_management"]:
+        log.info("Colorspace management is disabled globally.")
+        return False, False
+
+    # Host 'ocio_config' is optional
+    host_ocio_config = imageio_host.get("ocio_config") or {}
+    # TODO remove
+    #  - backward compatibility when host settings had only 'enabled' flag
+    #      the flag was split into 'activate_global_color_management'
+    #      and 'override_global_config'
+    host_ocio_config_enabled = host_ocio_config.get("enabled", False)
+
+    # Check if host settings group is having 'activate_host_color_management'
+    # - if it does not have activation key then default it to True so it uses
+    #       global settings
+    activate_host_color_management = imageio_host.get(
+        "activate_host_color_management"
+    )
+    if activate_host_color_management is None:
+        activate_host_color_management = host_ocio_config_enabled
+
+    # Get config path from core or host settings
+    #  - based on override flag in host settings
+    # TODO: in future rewrite this to be more explicit
+    override_global_config = host_ocio_config.get("override_global_config")
+    if override_global_config is None:
+        override_global_config = host_ocio_config_enabled
+
+    return activate_host_color_management, override_global_config
+
+
 def get_imageio_config_preset(
     project_name,
     folder_path,
@@ -919,39 +955,21 @@ def get_imageio_config_preset(
     if not project_settings:
         project_settings = get_project_settings(project_name)
 
-    # Get colorspace settings
-    imageio_global, imageio_host = _get_imageio_settings(
-        project_settings, host_name
+    is_enabled, override_global_config = _is_host_ocio_enabled_n_overriden(
+        host_name, project_settings
     )
-    # Global color management must be enabled to be able to use host settings
-    if not imageio_global["activate_global_color_management"]:
-        log.info("Colorspace management is disabled globally.")
-        return {}
-
-    # Host 'ocio_config' is optional
-    host_ocio_config = imageio_host.get("ocio_config") or {}
-    # TODO remove
-    #  - backward compatibility when host settings had only 'enabled' flag
-    #      the flag was split into 'activate_global_color_management'
-    #      and 'override_global_config'
-    host_ocio_config_enabled = host_ocio_config.get("enabled", False)
-
-    # Check if host settings group is having 'activate_host_color_management'
-    # - if it does not have activation key then default it to True so it uses
-    #       global settings
-    activate_host_color_management = imageio_host.get(
-        "activate_host_color_management"
-    )
-    if activate_host_color_management is None:
-        activate_host_color_management = host_ocio_config_enabled
-
-    if not activate_host_color_management:
+    if not is_enabled:
         # if host settings are disabled return False because
         # it is expected that no colorspace management is needed
         log.info(
             f"Colorspace management for host '{host_name}' is disabled."
         )
         return {}
+
+    # Get colorspace settings
+    imageio_global, imageio_host = _get_imageio_settings(
+        project_settings, host_name
+    )
 
     project_entity = None
     if anatomy is None:
@@ -993,14 +1011,12 @@ def get_imageio_config_preset(
     # Add environment variables to template data
     template_data.update(env)
 
-    # Get config path from core or host settings
-    #  - based on override flag in host settings
-    # TODO: in future rewrite this to be more explicit
-    override_global_config = host_ocio_config.get("override_global_config")
-    if override_global_config is None:
-        override_global_config = host_ocio_config_enabled
-
-    if not override_global_config:
+    if override_global_config:
+        host_ocio_config = imageio_host["ocio_config"]
+        config_data = _get_host_config_data(
+            host_ocio_config["filepath"], template_data
+        )
+    else:
         config_data = _get_global_config_data(
             project_name,
             host_name,
@@ -1009,10 +1025,6 @@ def get_imageio_config_preset(
             imageio_global,
             folder_id,
             log,
-        )
-    else:
-        config_data = _get_host_config_data(
-            host_ocio_config["filepath"], template_data
         )
 
     if not config_data:
@@ -1637,3 +1649,129 @@ def get_imageio_config(
         template_data=anatomy_data,
         env=env,
     )
+
+
+def resolve_colorspace_config_template(
+    config_path,
+    project_name,
+    folder_path,
+    task_name,
+    host_name,
+    project_settings=None,
+    anatomy=None,
+    project_entity=None,
+    folder_entity=None,
+    task_entity=None,
+):
+    """Try to resolve possible OCIO template.
+
+    First look if the config path is built-in, then try to use functionality
+    of anatomy to find rootless path ('find_root_template_from_path') and
+    last option is to use custom paths.
+
+    Args:
+        config_path (str): Path to OCIO config.
+        project_name (str): Project name.
+        folder_path (Optional[str]): Folder path.
+        task_name (Optional[str]): Task name.
+        host_name (str): Host name.
+        project_settings (Optional[Dict[str, Any]]): Project settings.
+        anatomy (Optional[Anatomy]): Project anatomy object.
+        project_entity (Optional[Dict[str, Any]]): Project entity data.
+        folder_entity (Optional[Dict[str, Any]]): Folder entity data.
+        task_entity (Optional[Dict[str, Any]]): Task entity data.
+
+    Returns:
+        str: Resolved template for OCIO config path.
+
+    Raises:
+        ValueError: Failed to resolve OCIO config template.
+
+    """
+    if project_settings is None:
+        project_settings = get_project_settings(project_name)
+
+    imageio_global, imageio_host = _get_imageio_settings(
+        project_settings, host_name
+    )
+
+    builtin_tried = False
+    # Collect custom paths for last step
+    custom_paths = []
+    # Add host path to custom paths
+    host_path = imageio_host.get("ocio_config", {}).get("filepath")
+    if host_path:
+        custom_paths.append(host_path)
+
+    for profile in imageio_global["ocio_config_profiles"]:
+        profile_type = profile["type"]
+        if profile_type == "custom_path":
+            custom_paths.append(profile["custom_path"])
+            continue
+
+        #
+        if profile_type != "builtin_path" or builtin_tried:
+            continue
+
+        template = profile["builtin_path"]
+        try:
+            path = template.format(**os.environ)
+        except Exception:
+            continue
+        if os.path.realpath(path) == os.path.realpath(config_path):
+            return template
+
+    if anatomy is None:
+        anatomy = Anatomy(project_name)
+
+    success, rootless_path = anatomy.find_root_template_from_path(config_path)
+    if success:
+        return rootless_path
+
+    # Try to fill custom paths only with 'os.environ'
+    failed_custom_paths = []
+    for custom_path in custom_paths:
+        try:
+            path = custom_path.format(**os.environ)
+        except Exception:
+            failed_custom_paths.append(custom_path)
+            continue
+
+        if os.path.realpath(path) == os.path.realpath(config_path):
+            return custom_path
+
+    # If none of custom paths formatting failed it means we don't need to try
+    #   with entities template data.
+    if not failed_custom_paths:
+        raise ValueError("Failed to resolve OCIO config template.")
+
+    # Prepare all entities for template data
+    if project_entity is None:
+        project_entity = ayon_api.get_project(project_name)
+    if folder_path and not folder_entity:
+        folder_entity = ayon_api.get_folder_by_path(
+            project_name, folder_path
+        )
+    if task_name and folder_entity and not task_entity:
+        task_entity = ayon_api.get_task_by_name(
+            project_name, folder_entity["id"], task_name
+        )
+    template_data = get_template_data(
+        project_entity,
+        folder_entity,
+        task_entity,
+        host_name,
+        project_settings,
+    )
+    template_data.update(os.environ.items())
+
+    # Try to fill custom paths with template data passed to function
+    for custom_path in failed_custom_paths:
+        try:
+            path = custom_path.format(**template_data)
+        except Exception:
+            continue
+        if os.path.realpath(path) == os.path.realpath(config_path):
+            return custom_path
+
+    raise ValueError("Failed to resolve OCIO config template.")
