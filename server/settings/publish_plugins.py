@@ -459,8 +459,8 @@ class ExtractReviewFilterModel(BaseSettingsModel):
     single_frame_filter: str = SettingsField(
         "everytime",  # codespell:ignore everytime
         description=(
-            "Use output <b>always</b> / only if input <b>is 1 frame</b>"
-            " image / only if has <b>2+ frames</b> or <b>is video</b>"
+            "Use output **always** / only if input **is 1 frame**"
+            " image / only if has **2+ frames** or **is video**"
         ),
         enum_resolver=extract_review_filter_enum
     )

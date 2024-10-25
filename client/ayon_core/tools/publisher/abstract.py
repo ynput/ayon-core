@@ -15,7 +15,6 @@ from ayon_core.lib import AbstractAttrDef
 from ayon_core.host import HostBase
 from ayon_core.pipeline.create import (
     CreateContext,
-    CreatedInstance,
     ConvertorItem,
 )
 from ayon_core.tools.common_models import (
@@ -26,7 +25,7 @@ from ayon_core.tools.common_models import (
 )
 
 if TYPE_CHECKING:
-    from .models import CreatorItem, PublishErrorInfo
+    from .models import CreatorItem, PublishErrorInfo, InstanceItem
 
 
 class CardMessageTypes:
@@ -78,7 +77,7 @@ class AbstractPublisherCommon(ABC):
         in future e.g. different message timeout or type (color).
 
         Args:
-            message (str): Message that will be showed.
+            message (str): Message that will be shown.
             message_type (Optional[str]): Message type.
         """
 
@@ -203,7 +202,7 @@ class AbstractPublisherFrontend(AbstractPublisherCommon):
     def is_host_valid(self) -> bool:
         """Host is valid for creation part.
 
-        Host must have implemented certain functionality to be able create
+        Host must have implemented certain functionality to be able to create
             in Publisher tool.
 
         Returns:
@@ -266,6 +265,11 @@ class AbstractPublisherFrontend(AbstractPublisherCommon):
         """
         pass
 
+    @abstractmethod
+    def get_folder_id_from_path(self, folder_path: str) -> Optional[str]:
+        """Get folder id from folder path."""
+        pass
+
     # --- Create ---
     @abstractmethod
     def get_creator_items(self) -> Dict[str, "CreatorItem"]:
@@ -273,6 +277,21 @@ class AbstractPublisherFrontend(AbstractPublisherCommon):
 
         Returns:
             Dict[str, CreatorItem]: Creator items that will be shown to user.
+
+        """
+        pass
+
+    @abstractmethod
+    def get_creator_item_by_id(
+        self, identifier: str
+    ) -> Optional["CreatorItem"]:
+        """Get creator item by identifier.
+
+        Args:
+            identifier (str): Create plugin identifier.
+
+        Returns:
+            Optional[CreatorItem]: Creator item or None.
 
         """
         pass
@@ -307,19 +326,19 @@ class AbstractPublisherFrontend(AbstractPublisherCommon):
         pass
 
     @abstractmethod
-    def get_instances(self) -> List[CreatedInstance]:
+    def get_instance_items(self) -> List["InstanceItem"]:
         """Collected/created instances.
 
         Returns:
-            List[CreatedInstance]: List of created instances.
+            List[InstanceItem]: List of created instances.
 
         """
         pass
 
     @abstractmethod
-    def get_instances_by_id(
+    def get_instance_items_by_id(
         self, instance_ids: Optional[Iterable[str]] = None
-    ) -> Dict[str, Union[CreatedInstance, None]]:
+    ) -> Dict[str, Union["InstanceItem", None]]:
         pass
 
     @abstractmethod
@@ -329,25 +348,53 @@ class AbstractPublisherFrontend(AbstractPublisherCommon):
         pass
 
     @abstractmethod
+    def set_instances_context_info(
+        self, changes_by_instance_id: Dict[str, Dict[str, Any]]
+    ):
+        pass
+
+    @abstractmethod
+    def set_instances_active_state(
+        self, active_state_by_id: Dict[str, bool]
+    ):
+        pass
+
+    @abstractmethod
     def get_existing_product_names(self, folder_path: str) -> List[str]:
         pass
 
     @abstractmethod
     def get_creator_attribute_definitions(
-        self, instances: List[CreatedInstance]
-    ) -> List[Tuple[AbstractAttrDef, List[CreatedInstance], List[Any]]]:
+        self, instance_ids: Iterable[str]
+    ) -> List[Tuple[AbstractAttrDef, List[str], List[Any]]]:
+        pass
+
+    @abstractmethod
+    def set_instances_create_attr_values(
+        self, instance_ids: Iterable[str], key: str, value: Any
+    ):
         pass
 
     @abstractmethod
     def get_publish_attribute_definitions(
         self,
-        instances: List[CreatedInstance],
+        instance_ids: Iterable[str],
         include_context: bool
     ) -> List[Tuple[
         str,
         List[AbstractAttrDef],
-        Dict[str, List[Tuple[CreatedInstance, Any]]]
+        Dict[str, List[Tuple[str, Any]]]
     ]]:
+        pass
+
+    @abstractmethod
+    def set_instances_publish_attr_values(
+        self,
+        instance_ids: Iterable[str],
+        plugin_name: str,
+        key: str,
+        value: Any
+    ):
         pass
 
     @abstractmethod
@@ -383,7 +430,7 @@ class AbstractPublisherFrontend(AbstractPublisherCommon):
     ):
         """Trigger creation by creator identifier.
 
-        Should also trigger refresh of instanes.
+        Should also trigger refresh of instances.
 
         Args:
             creator_identifier (str): Identifier of Creator plugin.
@@ -446,8 +493,8 @@ class AbstractPublisherFrontend(AbstractPublisherCommon):
         """Trigger pyblish action on a plugin.
 
         Args:
-            plugin_id (str): Id of publish plugin.
-            action_id (str): Id of publish action.
+            plugin_id (str): Publish plugin id.
+            action_id (str): Publish action id.
         """
 
         pass
@@ -586,7 +633,7 @@ class AbstractPublisherFrontend(AbstractPublisherCommon):
 
     @abstractmethod
     def get_thumbnail_temp_dir_path(self) -> str:
-        """Return path to directory where thumbnails can be temporary stored.
+        """Path to directory where thumbnails can be temporarily stored.
 
         Returns:
             str: Path to a directory.
