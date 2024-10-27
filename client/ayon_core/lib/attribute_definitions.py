@@ -523,7 +523,10 @@ class TextDef(AbstractAttrDef):
 
     def serialize(self):
         data = super().serialize()
-        data["regex"] = self.regex.pattern
+        regex = None
+        if self.regex is not None:
+            regex = self.regex.pattern
+        data["regex"] = regex
         data["multiline"] = self.multiline
         data["placeholder"] = self.placeholder
         return data
