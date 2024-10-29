@@ -384,7 +384,7 @@ def get_representations_delivery_template_data(
 
         template_data = repre_entity["context"]
         # Bug in 'ayon_api', 'get_representations_hierarchy' did not fully
-        #   convert representation entity. Fixed in 'ayon_api' 1.0.10 .
+        #   convert representation entity. Fixed in 'ayon_api' 1.0.10.
         if isinstance(template_data, str):
             con = ayon_api.get_server_api_connection()
             repre_entity = con._representation_conversion(repre_entity)
