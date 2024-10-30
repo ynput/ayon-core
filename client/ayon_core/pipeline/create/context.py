@@ -1478,11 +1478,11 @@ class CreateContext:
         output = {
             folder_path: None
             for folder_path in folder_paths
-            if folder_path is not None
         }
         remainder_paths = set()
         for folder_path in output:
-            # Skip empty/invalid folder paths
+            # Skip invalid folder paths (e.g. if only folder name
+            #   is passed in)
             if "/" not in folder_path:
                 continue
 
@@ -1505,7 +1505,7 @@ class CreateContext:
             output[folder_path] = folder_entity
             self._folder_entities_by_path[folder_path] = folder_entity
 
-        # Cache empty folders
+        # Cache empty folder entities
         for path in remainder_paths - found_paths:
             self._folder_entities_by_path[path] = None
 
