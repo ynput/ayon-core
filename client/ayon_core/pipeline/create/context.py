@@ -254,9 +254,8 @@ class CreateContext:
         self._collection_shared_data = None
 
         # Entities cache
-        self._folder_entities_by_id = {}
+        self._folder_entities_by_path = {}
         self._task_entities_by_id = {}
-        self._folder_id_by_folder_path = {}
         self._task_ids_by_folder_path = {}
         self._task_names_by_folder_path = {}
 
@@ -560,10 +559,9 @@ class CreateContext:
         # Give ability to store shared data for collection phase
         self._collection_shared_data = {}
 
-        self._folder_entities_by_id = {}
+        self._folder_entities_by_path = {}
         self._task_entities_by_id = {}
 
-        self._folder_id_by_folder_path = {}
         self._task_ids_by_folder_path = {}
         self._task_names_by_folder_path = {}
 
@@ -1485,38 +1483,31 @@ class CreateContext:
         remainder_paths = set()
         for folder_path in output:
             # Skip empty/invalid folder paths
-            if folder_path is None or "/" not in folder_path:
+            if "/" not in folder_path:
                 continue
 
-            if folder_path not in self._folder_id_by_folder_path:
+            if folder_path not in self._folder_entities_by_path:
                 remainder_paths.add(folder_path)
                 continue
 
-            folder_id = self._folder_id_by_folder_path.get(folder_path)
-            if not folder_id:
-                output[folder_path] = None
-                continue
-
-            folder_entity = self._folder_entities_by_id.get(folder_id)
-            if folder_entity:
-                output[folder_path] = folder_entity
-            else:
-                remainder_paths.add(folder_path)
+            output[folder_path] = self._folder_entities_by_path[folder_path]
 
         if not remainder_paths:
             return output
 
-        folder_paths_by_id = {}
+        found_paths = set()
         for folder_entity in ayon_api.get_folders(
             self.project_name,
             folder_paths=remainder_paths,
         ):
-            folder_id = folder_entity["id"]
             folder_path = folder_entity["path"]
-            folder_paths_by_id[folder_id] = folder_path
+            found_paths.add(folder_path)
             output[folder_path] = folder_entity
-            self._folder_entities_by_id[folder_id] = folder_entity
-            self._folder_id_by_folder_path[folder_path] = folder_id
+            self._folder_entities_by_path[folder_path] = folder_entity
+
+        # Cache empty folders
+        for path in remainder_paths - found_paths:
+            self._folder_entities_by_path[path] = None
 
         return output
 
@@ -1775,9 +1766,9 @@ class CreateContext:
             if not folder_path:
                 continue
 
-            if folder_path in self._folder_id_by_folder_path:
-                folder_id = self._folder_id_by_folder_path[folder_path]
-                if folder_id is None:
+            if folder_path in self._folder_entities_by_path:
+                folder_entity = self._folder_entities_by_path[folder_path]
+                if folder_entity is None:
                     continue
                 context_info.folder_is_valid = True
 
