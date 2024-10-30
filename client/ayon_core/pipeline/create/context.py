@@ -1666,6 +1666,7 @@ class CreateContext:
             instance.get("folderPath")
             for instance in instances
         }
+        folder_paths.discard(None)
         folder_entities_by_path = self.get_folder_entities(folder_paths)
         for instance in instances:
             folder_path = instance.get("folderPath")
