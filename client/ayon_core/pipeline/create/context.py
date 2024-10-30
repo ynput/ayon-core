@@ -1481,9 +1481,8 @@ class CreateContext:
         }
         remainder_paths = set()
         for folder_path in output:
-            # Skip invalid folder paths (e.g. if only folder name
-            #   is passed in)
-            if "/" not in folder_path:
+            # Skip invalid folder paths (folder name or empty path)
+            if not folder_path or "/" not in folder_path:
                 continue
 
             if folder_path not in self._folder_entities_by_path:
