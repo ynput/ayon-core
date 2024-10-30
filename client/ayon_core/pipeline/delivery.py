@@ -410,7 +410,7 @@ def get_representations_delivery_template_data(
         })
         _merge_data(template_data, repre_entity["context"])
 
-        # Remove roots from temlate data to auto-fill them with anatomy data
+        # Remove roots from template data to auto-fill them with anatomy data
         template_data.pop("root")
 
         output[repre_id] = template_data
