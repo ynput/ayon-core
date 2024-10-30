@@ -383,6 +383,13 @@ def get_representations_delivery_template_data(
             continue
 
         template_data = repre_entity["context"]
+        # Bug in 'ayon_api', 'get_representations_hierarchy' did not fully
+        #   convert representation entity. Fixed in 'ayon_api' 1.0.10.
+        if isinstance(template_data, str):
+            con = ayon_api.get_server_api_connection()
+            repre_entity = con._representation_conversion(repre_entity)
+            template_data = repre_entity["context"]
+
         template_data.update(copy.deepcopy(general_template_data))
         template_data.update(get_folder_template_data(
             repre_hierarchy.folder, project_name
@@ -402,5 +409,9 @@ def get_representations_delivery_template_data(
             "version": version_entity["version"],
         })
         _merge_data(template_data, repre_entity["context"])
+
+        # Remove roots from template data to auto-fill them with anatomy data
+        template_data.pop("root", None)
+
         output[repre_id] = template_data
     return output
