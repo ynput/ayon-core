@@ -1482,14 +1482,14 @@ class CreateContext:
             for folder_path in folder_paths
             if folder_path is not None
         }
-        remainders = set()
+        remainder_paths = set()
         for folder_path in output:
             # Skip empty/invalid folder paths
             if folder_path is None or "/" not in folder_path:
                 continue
 
             if folder_path not in self._folder_id_by_folder_path:
-                remainders.add(folder_path)
+                remainder_paths.add(folder_path)
                 continue
 
             folder_id = self._folder_id_by_folder_path.get(folder_path)
@@ -1501,15 +1501,15 @@ class CreateContext:
             if folder_entity:
                 output[folder_path] = folder_entity
             else:
-                remainders.add(folder_path)
+                remainder_paths.add(folder_path)
 
-        if not remainders:
+        if not remainder_paths:
             return output
 
         folder_paths_by_id = {}
         for folder_entity in ayon_api.get_folders(
             self.project_name,
-            folder_paths=remainders,
+            folder_paths=remainder_paths,
         ):
             folder_id = folder_entity["id"]
             folder_path = folder_entity["path"]
@@ -1584,24 +1584,24 @@ class CreateContext:
         folder_entities_by_path = self.get_folder_entities(
             missing_folder_paths
         )
-        folder_ids = set()
+        folder_path_by_id = {}
         for folder_path, folder_entity in folder_entities_by_path.items():
             if folder_entity is not None:
-                folder_ids.add(folder_entity["id"])
+                folder_path_by_id[folder_entity["id"]] = folder_path
 
-        if not folder_ids:
+        if not folder_path_by_id:
             return output
 
         task_entities_by_parent_id = collections.defaultdict(list)
         for task_entity in ayon_api.get_tasks(
             self.project_name,
-            folder_ids=folder_ids
+            folder_ids=folder_path_by_id.keys()
         ):
             folder_id = task_entity["folderId"]
             task_entities_by_parent_id[folder_id].append(task_entity)
 
         for folder_id, task_entities in task_entities_by_parent_id.items():
-            folder_path = self._folder_id_by_folder_path.get(folder_id)
+            folder_path = folder_path_by_id[folder_id]
             task_ids = set()
             task_names = set()
             for task_entity in task_entities:
