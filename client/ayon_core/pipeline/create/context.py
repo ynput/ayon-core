@@ -1584,24 +1584,24 @@ class CreateContext:
         folder_entities_by_path = self.get_folder_entities(
             missing_folder_paths
         )
-        folder_ids = set()
+        folder_path_by_id = {}
         for folder_path, folder_entity in folder_entities_by_path.items():
             if folder_entity is not None:
-                folder_ids.add(folder_entity["id"])
+                folder_path_by_id[folder_entity["id"]] = folder_path
 
-        if not folder_ids:
+        if not folder_path_by_id:
             return output
 
         task_entities_by_parent_id = collections.defaultdict(list)
         for task_entity in ayon_api.get_tasks(
             self.project_name,
-            folder_ids=folder_ids
+            folder_ids=folder_path_by_id.keys()
         ):
             folder_id = task_entity["folderId"]
             task_entities_by_parent_id[folder_id].append(task_entity)
 
         for folder_id, task_entities in task_entities_by_parent_id.items():
-            folder_path = self._folder_id_by_folder_path.get(folder_id)
+            folder_path = folder_path_by_id[folder_id]
             task_ids = set()
             task_names = set()
             for task_entity in task_entities:
