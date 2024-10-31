@@ -23,6 +23,7 @@ class GapPolicy(Enum):
     hold = auto()
     black = auto()
 
+
 class Clip(TraitBase):
     """Clip trait model.
 
