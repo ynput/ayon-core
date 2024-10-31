@@ -38,31 +38,7 @@ def create_hard_link(src_path, dst_path):
         dst_path(str): Full path to a file where a link of source will be
             added.
     """
-    # Use `os.link` if is available
-    #   - should be for all platforms with newer python versions
-    if hasattr(os, "link"):
-        os.link(src_path, dst_path)
-        return
-
-    # Windows implementation of hardlinks
-    #   - used in Python 2
-    if platform.system().lower() == "windows":
-        import ctypes
-        from ctypes.wintypes import BOOL
-        CreateHardLink = ctypes.windll.kernel32.CreateHardLinkW
-        CreateHardLink.argtypes = [
-            ctypes.c_wchar_p, ctypes.c_wchar_p, ctypes.c_void_p
-        ]
-        CreateHardLink.restype = BOOL
-
-        res = CreateHardLink(dst_path, src_path, None)
-        if res == 0:
-            raise ctypes.WinError()
-        return
-    # Raises not implemented error if gets here
-    raise NotImplementedError(
-        "Implementation of hardlink for current environment is missing."
-    )
+    os.link(src_path, dst_path)
 
 
 def collect_frames(files):
