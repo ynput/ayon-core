@@ -39,7 +39,7 @@ class LogStreamHandler(logging.StreamHandler):
         self.enabled = False
 
     def emit(self, record):
-        if not self.enabled:
+        if not self.enabled or self.stream is None:
             return
         try:
             msg = self.format(record)
