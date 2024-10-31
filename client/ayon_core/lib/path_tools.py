@@ -1,7 +1,6 @@
 import os
 import re
 import logging
-import platform
 
 import clique
 
