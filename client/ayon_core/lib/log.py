@@ -25,21 +25,21 @@ class LogStreamHandler(logging.StreamHandler):
         self.enabled = True
 
     def enable(self):
-        """ Enable StreamHandler
+        """Enable StreamHandler
 
-            Used to silence output
+        Make StreamHandler output again
         """
         self.enabled = True
 
     def disable(self):
-        """ Disable StreamHandler
+        """Disable StreamHandler
 
-            Make StreamHandler output again
+        Used to silence output
         """
         self.enabled = False
 
     def emit(self, record):
-        if not self.enable:
+        if not self.enabled:
             return
         try:
             msg = self.format(record)
