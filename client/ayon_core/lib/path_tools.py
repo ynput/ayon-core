@@ -196,7 +196,7 @@ def get_last_version_from_path(path_dir, filter):
         filtered_files.append(file)
 
     if filtered_files:
-        sorted(filtered_files)
+        filtered_files.sort()
         return filtered_files[-1]
 
     return None
