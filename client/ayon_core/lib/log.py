@@ -45,8 +45,6 @@ class LogStreamHandler(logging.StreamHandler):
             msg = self.format(record)
             msg = Terminal.log(msg)
             stream = self.stream
-            if stream is None:
-                return
             stream.write(f"{msg}\n")
             self.flush()
         except (KeyboardInterrupt, SystemExit):
