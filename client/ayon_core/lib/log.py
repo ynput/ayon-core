@@ -1,6 +1,5 @@
 import os
 import sys
-import uuid
 import getpass
 import logging
 import platform
@@ -119,8 +118,6 @@ class Logger:
     process_data = None
     # Cached process name or ability to set different process name
     _process_name = None
-    # TODO Remove 'mongo_process_id' in 1.x.x
-    mongo_process_id = uuid.uuid4().hex
 
     @classmethod
     def get_logger(cls, name=None):
