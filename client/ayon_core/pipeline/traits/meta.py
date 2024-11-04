@@ -9,7 +9,11 @@ from .trait import TraitBase
 class Tagged(TraitBase):
     """Tagged trait model.
 
-    This model represents a tagged trait.
+    This trait can hold list of tags.
+
+    Example::
+
+        Tagged(tags=["tag1", "tag2"])
 
     Attributes:
         name (str): Trait name.
@@ -28,12 +32,17 @@ class TemplatePath(TraitBase):
     """TemplatePath trait model.
 
     This model represents a template path with formatting data.
+    Template path can be Anatomy template and data is used to format it.
+
+    Example::
+
+        TemplatePath(template="path/{key}/file", data={"key": "to"})
 
     Attributes:
         name (str): Trait name.
         description (str): Trait description.
         id (str): id should be namespaced trait name with version
-        template_path (str): Template path.
+        template (str): Template path.
         data (dict[str]): Formatting data.
     """
 
