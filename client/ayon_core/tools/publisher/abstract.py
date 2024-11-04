@@ -366,7 +366,7 @@ class AbstractPublisherFrontend(AbstractPublisherCommon):
     @abstractmethod
     def get_creator_attribute_definitions(
         self, instance_ids: Iterable[str]
-    ) -> List[Tuple[AbstractAttrDef, List[str], List[Any]]]:
+    ) -> List[Tuple[AbstractAttrDef, Dict[str, Dict[str, Any]]]]:
         pass
 
     @abstractmethod

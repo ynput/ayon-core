@@ -769,7 +769,7 @@ class CreateModel:
 
     def get_creator_attribute_definitions(
         self, instance_ids: List[str]
-    ) -> List[Tuple[AbstractAttrDef, List[str], List[Any]]]:
+    ) -> List[Tuple[AbstractAttrDef, Dict[str, Dict[str, Any]]]]:
         """Collect creator attribute definitions for multuple instances.
 
         Args:
@@ -796,12 +796,23 @@ class CreateModel:
 
                 if found_idx is None:
                     idx = len(output)
-                    output.append((attr_def, [instance_id], [value]))
+                    output.append((
+                        attr_def,
+                        {
+                            instance_id: {
+                                "value": value,
+                                "default": attr_def.default
+                            }
+                        }
+                    ))
                     _attr_defs[idx] = attr_def
                 else:
-                    _, ids, values = output[found_idx]
-                    ids.append(instance_id)
-                    values.append(value)
+                    _, info_by_id = output[found_idx]
+                    info_by_id[instance_id] = {
+                        "value": value,
+                        "default": attr_def.default
+                    }
+
         return output
 
     def set_instances_publish_attr_values(
