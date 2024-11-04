@@ -1,12 +1,31 @@
+from typing import Dict
+
 from qtpy import QtWidgets, QtCore
 
 from ayon_core.lib.attribute_definitions import UnknownDef
+from ayon_core.tools.utils import set_style_property
 from ayon_core.tools.attribute_defs import create_widget_for_attr_def
 from ayon_core.tools.publisher.abstract import AbstractPublisherFrontend
 from ayon_core.tools.publisher.constants import (
     INPUTS_LAYOUT_HSPACING,
     INPUTS_LAYOUT_VSPACING,
 )
+
+
+def _set_label_overriden(label: QtWidgets.QLabel, overriden: bool):
+    set_style_property(
+        label,
+        "overriden",
+        "1" if overriden else ""
+    )
+
+
+class _CreateAttrDefInfo:
+    def __init__(self, attr_def, instance_ids, defaults, label_widget):
+        self.attr_def = attr_def
+        self.instance_ids = instance_ids
+        self.defaults = defaults
+        self.label_widget = label_widget
 
 
 class CreatorAttrsWidget(QtWidgets.QWidget):
@@ -51,8 +70,7 @@ class CreatorAttrsWidget(QtWidgets.QWidget):
         self._controller: AbstractPublisherFrontend = controller
         self._scroll_area = scroll_area
 
-        self._attr_def_id_to_instances = {}
-        self._attr_def_id_to_attr_def = {}
+        self._attr_def_info_by_id: Dict[str, _CreateAttrDefInfo] = {}
         self._current_instance_ids = set()
 
         # To store content of scroll area to prevent garbage collection
@@ -81,8 +99,7 @@ class CreatorAttrsWidget(QtWidgets.QWidget):
             prev_content_widget.deleteLater()
 
         self._content_widget = None
-        self._attr_def_id_to_instances = {}
-        self._attr_def_id_to_attr_def = {}
+        self._attr_def_info_by_id = {}
 
         result = self._controller.get_creator_attribute_definitions(
             self._current_instance_ids
@@ -97,9 +114,20 @@ class CreatorAttrsWidget(QtWidgets.QWidget):
         content_layout.setVerticalSpacing(INPUTS_LAYOUT_VSPACING)
 
         row = 0
-        for attr_def, instance_ids, values in result:
+        for attr_def, info_by_id in result:
             widget = create_widget_for_attr_def(attr_def, content_widget)
+            default_values = set()
             if attr_def.is_value_def:
+                default_values = []
+                values = []
+                for item in info_by_id.values():
+                    values.append(item["value"])
+                    # 'set' cannot be used for default values because they can
+                    #    be unhashable types, e.g. 'list'.
+                    default = item["default"]
+                    if default not in default_values:
+                        default_values.append(default)
+
                 if len(values) == 1:
                     value = values[0]
                     if value is not None:
@@ -108,8 +136,10 @@ class CreatorAttrsWidget(QtWidgets.QWidget):
                     widget.set_value(values, True)
 
             widget.value_changed.connect(self._input_value_changed)
-            self._attr_def_id_to_instances[attr_def.id] = instance_ids
-            self._attr_def_id_to_attr_def[attr_def.id] = attr_def
+            attr_def_info = _CreateAttrDefInfo(
+                attr_def, list(info_by_id), default_values, None
+            )
+            self._attr_def_info_by_id[attr_def.id] = attr_def_info
 
             if not attr_def.visible:
                 continue
@@ -121,8 +151,14 @@ class CreatorAttrsWidget(QtWidgets.QWidget):
             col_num = 2 - expand_cols
 
             label = None
+            is_overriden = False
             if attr_def.is_value_def:
+                is_overriden = any(
+                    item["value"] != item["default"]
+                    for item in info_by_id.values()
+                )
                 label = attr_def.label or attr_def.key
+
             if label:
                 label_widget = QtWidgets.QLabel(label, self)
                 tooltip = attr_def.tooltip
@@ -138,6 +174,8 @@ class CreatorAttrsWidget(QtWidgets.QWidget):
                 )
                 if not attr_def.is_label_horizontal:
                     row += 1
+                attr_def_info.label_widget = label_widget
+                _set_label_overriden(label_widget, is_overriden)
 
             content_layout.addWidget(
                 widget, row, col_num, 1, expand_cols
@@ -165,12 +203,19 @@ class CreatorAttrsWidget(QtWidgets.QWidget):
                 break
 
     def _input_value_changed(self, value, attr_id):
-        instance_ids = self._attr_def_id_to_instances.get(attr_id)
-        attr_def = self._attr_def_id_to_attr_def.get(attr_id)
-        if not instance_ids or not attr_def:
+        attr_def_info = self._attr_def_info_by_id.get(attr_id)
+        if attr_def_info is None:
             return
+
+        if attr_def_info.label_widget is not None:
+            defaults = attr_def_info.defaults
+            is_overriden = len(defaults) != 1 or value not in defaults
+            _set_label_overriden(attr_def_info.label_widget, is_overriden)
+
         self._controller.set_instances_create_attr_values(
-            instance_ids, attr_def.key, value
+            attr_def_info.instance_ids,
+            attr_def_info.attr_def.key,
+            value
         )
 
 
