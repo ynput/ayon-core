@@ -383,7 +383,7 @@ class AbstractPublisherFrontend(AbstractPublisherCommon):
     ) -> List[Tuple[
         str,
         List[AbstractAttrDef],
-        Dict[str, List[Tuple[str, Any]]]
+        Dict[str, List[Tuple[str, Any, Any]]]
     ]]:
         pass
 
