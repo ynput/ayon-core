@@ -1,15 +1,26 @@
 """Trait classes for the pipeline."""
+from .color import ColorManaged
 from .content import (
     Bundle,
     Compressed,
     FileLocation,
+    Fragment,
+    LocatableContent,
     MimeType,
     RootlessLocation,
 )
+from .cryptography import DigitallySigned, GPGSigned
 from .lifecycle import Persistent, Transient
 from .meta import Tagged, TemplatePath
-from .three_dimensional import Spatial
-from .time import Clip, GapPolicy, Sequence, SMPTETimecode
+from .three_dimensional import Geometry, IESProfile, Lighting, Shader, Spatial
+from .time import (
+    FrameRanged,
+    GapPolicy,
+    Handles,
+    Sequence,
+    SMPTETimecode,
+    Static,
+)
 from .trait import Representation, TraitBase
 from .two_dimensional import (
     UDIM,
@@ -31,6 +42,15 @@ __all__ = [
     "FileLocation",
     "MimeType",
     "RootlessLocation",
+    "Fragment",
+    "LocatableContent",
+
+    # color
+    "ColorManaged",
+
+    # cryptography
+    "DigitallySigned",
+    "GPGSigned",
 
     # life cycle
     "Persistent",
@@ -50,10 +70,16 @@ __all__ = [
     "UDIM",
 
     # three-dimensional
+    "Geometry",
+    "IESProfile",
+    "Lighting",
+    "Shader",
     "Spatial",
 
     # time
-    "Clip",
+    "FrameRanged",
+    "Static",
+    "Handles",
     "GapPolicy",
     "Sequence",
     "SMPTETimecode",
