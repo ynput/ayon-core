@@ -478,7 +478,8 @@ def _get_real_frames_to_render(frames):
     for frame in frames.split(","):
         if "-" in frame:
             splitted = frame.split("-")
-            frames_to_render.extend(range(int(splitted[0]), int(splitted[1])))
+            frames_to_render.extend(
+                range(int(splitted[0]), int(splitted[1])+1))
         else:
             frames_to_render.append(frame)
     return [str(frame_to_render) for frame_to_render in frames_to_render]
