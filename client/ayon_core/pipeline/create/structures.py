@@ -1,9 +1,10 @@
 import copy
 import collections
 from uuid import uuid4
-from typing import Optional
+from typing import Optional, Dict, List, Any
 
 from ayon_core.lib.attribute_definitions import (
+    AbstractAttrDef,
     UnknownDef,
     serialize_attr_defs,
     deserialize_attr_defs,
@@ -79,12 +80,17 @@ class AttributeValues:
     Has dictionary like methods. Not all of them are allowed all the time.
 
     Args:
-        attr_defs(AbstractAttrDef): Definitions of value type and properties.
-        values(dict): Values after possible conversion.
-        origin_data(dict): Values loaded from host before conversion.
-    """
+        parent (Union[CreatedInstance, PublishAttributes]): Parent object.
+        key (str): Key of attribute values.
+        attr_defs (List[AbstractAttrDef]): Definitions of value type
+            and properties.
+        values (dict): Values after possible conversion.
+        origin_data (dict): Values loaded from host before conversion.
 
-    def __init__(self, attr_defs, values, origin_data=None):
+    """
+    def __init__(self, parent, key, attr_defs, values, origin_data=None):
+        self._parent = parent
+        self._key = key
         if origin_data is None:
             origin_data = copy.deepcopy(values)
         self._origin_data = origin_data
@@ -106,7 +112,10 @@ class AttributeValues:
         self._data = {}
         for attr_def in attr_defs:
             value = values.get(attr_def.key)
-            if value is not None:
+            if value is None:
+                continue
+            converted_value = attr_def.convert_value(value)
+            if converted_value == value:
                 self._data[attr_def.key] = value
 
     def __setitem__(self, key, value):
@@ -122,6 +131,10 @@ class AttributeValues:
 
     def __contains__(self, key):
         return key in self._attr_defs_by_key
+
+    def __iter__(self):
+        for key in self._attr_defs_by_key:
+            yield key
 
     def get(self, key, default=None):
         if key in self._attr_defs_by_key:
@@ -139,6 +152,9 @@ class AttributeValues:
         for key in self._attr_defs_by_key.keys():
             yield key, self._data.get(key)
 
+    def get_attr_def(self, key, default=None):
+        return self._attr_defs_by_key.get(key, default)
+
     def update(self, value):
         changes = {}
         for _key, _value in dict(value).items():
@@ -147,7 +163,11 @@ class AttributeValues:
             self._data[_key] = _value
             changes[_key] = _value
 
+        if changes:
+            self._parent.attribute_value_changed(self._key, changes)
+
     def pop(self, key, default=None):
+        has_key = key in self._data
         value = self._data.pop(key, default)
         # Remove attribute definition if is 'UnknownDef'
         # - gives option to get rid of unknown values
@@ -155,6 +175,8 @@ class AttributeValues:
         if isinstance(attr_def, UnknownDef):
             self._attr_defs_by_key.pop(key)
             self._attr_defs.remove(attr_def)
+        elif has_key:
+            self._parent.attribute_value_changed(self._key, {key: None})
         return value
 
     def reset_values(self):
@@ -204,15 +226,11 @@ class AttributeValues:
 
 
 class CreatorAttributeValues(AttributeValues):
-    """Creator specific attribute values of an instance.
+    """Creator specific attribute values of an instance."""
 
-    Args:
-        instance (CreatedInstance): Instance for which are values hold.
-    """
-
-    def __init__(self, instance, *args, **kwargs):
-        self.instance = instance
-        super().__init__(*args, **kwargs)
+    @property
+    def instance(self):
+        return self._parent
 
 
 class PublishAttributeValues(AttributeValues):
@@ -220,19 +238,11 @@ class PublishAttributeValues(AttributeValues):
 
     Values are for single plugin which can be on `CreatedInstance`
     or context values stored on `CreateContext`.
-
-    Args:
-        publish_attributes(PublishAttributes): Wrapper for multiple publish
-            attributes is used as parent object.
     """
 
-    def __init__(self, publish_attributes, *args, **kwargs):
-        self.publish_attributes = publish_attributes
-        super().__init__(*args, **kwargs)
-
     @property
-    def parent(self):
-        return self.publish_attributes.parent
+    def publish_attributes(self):
+        return self._parent
 
 
 class PublishAttributes:
@@ -245,22 +255,13 @@ class PublishAttributes:
         parent(CreatedInstance, CreateContext): Parent for which will be
             data stored and from which are data loaded.
         origin_data(dict): Loaded data by plugin class name.
-        attr_plugins(Union[List[pyblish.api.Plugin], None]): List of publish
-            plugins that may have defined attribute definitions.
-    """
 
-    def __init__(self, parent, origin_data, attr_plugins=None):
-        self.parent = parent
+    """
+    def __init__(self, parent, origin_data):
+        self._parent = parent
         self._origin_data = copy.deepcopy(origin_data)
 
-        attr_plugins = attr_plugins or []
-        self.attr_plugins = attr_plugins
-
         self._data = copy.deepcopy(origin_data)
-        self._plugin_names_order = []
-        self._missing_plugins = []
-
-        self.set_publish_plugins(attr_plugins)
 
     def __getitem__(self, key):
         return self._data[key]
@@ -277,6 +278,9 @@ class PublishAttributes:
     def items(self):
         return self._data.items()
 
+    def get(self, key, default=None):
+        return self._data.get(key, default)
+
     def pop(self, key, default=None):
         """Remove or reset value for plugin.
 
@@ -291,74 +295,65 @@ class PublishAttributes:
         if key not in self._data:
             return default
 
-        if key in self._missing_plugins:
-            self._missing_plugins.remove(key)
-            removed_item = self._data.pop(key)
-            return removed_item.data_to_store()
+        value = self._data[key]
+        if not isinstance(value, AttributeValues):
+            self.attribute_value_changed(key, None)
+            return self._data.pop(key)
 
         value_item = self._data[key]
         # Prepare value to return
         output = value_item.data_to_store()
         # Reset values
         value_item.reset_values()
+        self.attribute_value_changed(
+            key, value_item.data_to_store()
+        )
         return output
-
-    def plugin_names_order(self):
-        """Plugin names order by their 'order' attribute."""
-
-        for name in self._plugin_names_order:
-            yield name
 
     def mark_as_stored(self):
         self._origin_data = copy.deepcopy(self.data_to_store())
 
     def data_to_store(self):
         """Convert attribute values to "data to store"."""
-
         output = {}
         for key, attr_value in self._data.items():
-            output[key] = attr_value.data_to_store()
+            if isinstance(attr_value, AttributeValues):
+                output[key] = attr_value.data_to_store()
+            else:
+                output[key] = attr_value
         return output
 
     @property
     def origin_data(self):
         return copy.deepcopy(self._origin_data)
 
-    def set_publish_plugins(self, attr_plugins):
-        """Set publish plugins attribute definitions."""
+    def attribute_value_changed(self, key, changes):
+        self._parent.publish_attribute_value_changed(key,  changes)
 
-        self._plugin_names_order = []
-        self._missing_plugins = []
-        self.attr_plugins = attr_plugins or []
+    def set_publish_plugin_attr_defs(
+        self,
+        plugin_name: str,
+        attr_defs: List[AbstractAttrDef],
+        value: Optional[Dict[str, Any]] = None
+    ):
+        """Set attribute definitions for plugin.
 
-        origin_data = self._origin_data
-        data = self._data
-        self._data = {}
-        added_keys = set()
-        for plugin in attr_plugins:
-            output = plugin.convert_attribute_values(data)
-            if output is not None:
-                data = output
-            attr_defs = plugin.get_attribute_defs()
-            if not attr_defs:
-                continue
+        Args:
+            plugin_name (str): Name of plugin.
+            attr_defs (List[AbstractAttrDef]): Attribute definitions.
+            value (Optional[Dict[str, Any]]): Attribute values.
 
-            key = plugin.__name__
-            added_keys.add(key)
-            self._plugin_names_order.append(key)
+        """
+        # TODO what if 'attr_defs' is 'None'?
+        if value is None:
+            value = self._data.get(plugin_name)
 
-            value = data.get(key) or {}
-            orig_value = copy.deepcopy(origin_data.get(key) or {})
-            self._data[key] = PublishAttributeValues(
-                self, attr_defs, value, orig_value
-            )
+        if value is None:
+            value = {}
 
-        for key, value in data.items():
-            if key not in added_keys:
-                self._missing_plugins.append(key)
-                self._data[key] = PublishAttributeValues(
-                    self, [], value, value
-                )
+        self._data[plugin_name] = PublishAttributeValues(
+            self, plugin_name, attr_defs, value, value
+        )
 
     def serialize_attributes(self):
         return {
@@ -366,14 +361,9 @@ class PublishAttributes:
                 plugin_name: attrs_value.get_serialized_attr_defs()
                 for plugin_name, attrs_value in self._data.items()
             },
-            "plugin_names_order": self._plugin_names_order,
-            "missing_plugins": self._missing_plugins
         }
 
     def deserialize_attributes(self, data):
-        self._plugin_names_order = data["plugin_names_order"]
-        self._missing_plugins = data["missing_plugins"]
-
         attr_defs = deserialize_attr_defs(data["attr_defs"])
 
         origin_data = self._origin_data
@@ -386,15 +376,12 @@ class PublishAttributes:
             value = data.get(plugin_name) or {}
             orig_value = copy.deepcopy(origin_data.get(plugin_name) or {})
             self._data[plugin_name] = PublishAttributeValues(
-                self, attr_defs, value, orig_value
+                self, plugin_name, attr_defs, value, orig_value
             )
 
         for key, value in data.items():
             if key not in added_keys:
-                self._missing_plugins.append(key)
-                self._data[key] = PublishAttributeValues(
-                    self, [], value, value
-                )
+                self._data[key] = value
 
 
 class InstanceContextInfo:
@@ -432,12 +419,7 @@ class CreatedInstance:
         product_name (str): Name of product that will be created.
         data (Dict[str, Any]): Data used for filling product name or override
             data from already existing instance.
-        creator (Union[BaseCreator, None]): Creator responsible for instance.
-        creator_identifier (str): Identifier of creator plugin.
-        creator_label (str): Creator plugin label.
-        group_label (str): Default group label from creator plugin.
-        creator_attr_defs (List[AbstractAttrDef]): Attribute definitions from
-            creator.
+        creator (BaseCreator): Creator responsible for instance.
     """
 
     # Keys that can't be changed or removed from data after loading using
@@ -458,17 +440,12 @@ class CreatedInstance:
         product_type,
         product_name,
         data,
-        creator=None,
-        creator_identifier=None,
-        creator_label=None,
-        group_label=None,
-        creator_attr_defs=None,
+        creator,
     ):
-        if creator is not None:
-            creator_identifier = creator.identifier
-            group_label = creator.get_group_label()
-            creator_label = creator.label
-            creator_attr_defs = creator.get_instance_attr_defs()
+        self._creator = creator
+        creator_identifier = creator.identifier
+        group_label = creator.get_group_label()
+        creator_label = creator.label
 
         self._creator_label = creator_label
         self._group_label = group_label or creator_identifier
@@ -528,24 +505,23 @@ class CreatedInstance:
         # {key: value}
         creator_values = copy.deepcopy(orig_creator_attributes)
 
-        self._data["creator_attributes"] = CreatorAttributeValues(
-            self,
-            list(creator_attr_defs),
-            creator_values,
-            orig_creator_attributes
-        )
+        self._data["creator_attributes"] = creator_values
 
         # Stored publish specific attribute values
         # {<plugin name>: {key: value}}
-        # - must be set using 'set_publish_plugins'
         self._data["publish_attributes"] = PublishAttributes(
-            self, orig_publish_attributes, None
+            self, orig_publish_attributes
         )
         if data:
             self._data.update(data)
 
         if not self._data.get("instance_id"):
             self._data["instance_id"] = str(uuid4())
+
+        creator_attr_defs = creator.get_attr_defs_for_instance(self)
+        self.set_create_attr_defs(
+            creator_attr_defs, creator_values
+        )
 
     def __str__(self):
         return (
@@ -566,12 +542,19 @@ class CreatedInstance:
 
     def __setitem__(self, key, value):
         # Validate immutable keys
-        if key not in self.__immutable_keys:
-            self._data[key] = value
-
-        elif value != self._data.get(key):
+        if key in self.__immutable_keys:
+            if value == self._data.get(key):
+                return
             # Raise exception if key is immutable and value has changed
             raise ImmutableKeyError(key)
+
+        if key in self._data and self._data[key] == value:
+            return
+
+        self._data[key] = value
+        self._create_context.instance_values_changed(
+            self.id, {key: value}
+        )
 
     def get(self, key, default=None):
         return self._data.get(key, default)
@@ -581,7 +564,13 @@ class CreatedInstance:
         if key in self.__immutable_keys:
             raise ImmutableKeyError(key)
 
-        self._data.pop(key, *args, **kwargs)
+        has_key = key in self._data
+        output = self._data.pop(key, *args, **kwargs)
+        if has_key:
+            self._create_context.instance_values_changed(
+                self.id, {key: None}
+            )
+        return output
 
     def keys(self):
         return self._data.keys()
@@ -628,7 +617,7 @@ class CreatedInstance:
 
     @property
     def creator_label(self):
-        return self._creator_label or self.creator_identifier
+        return self._creator.label or self.creator_identifier
 
     @property
     def id(self):
@@ -745,10 +734,45 @@ class CreatedInstance:
                 continue
             output[key] = value
 
-        output["creator_attributes"] = self.creator_attributes.data_to_store()
+        if isinstance(self.creator_attributes, AttributeValues):
+            creator_attributes = self.creator_attributes.data_to_store()
+        else:
+            creator_attributes = copy.deepcopy(self.creator_attributes)
+        output["creator_attributes"] = creator_attributes
         output["publish_attributes"] = self.publish_attributes.data_to_store()
 
         return output
+
+    def set_create_attr_defs(self, attr_defs, value=None):
+        """Create plugin updates create attribute definitions.
+
+        Method called by create plugin when attribute definitions should
+            be changed.
+
+        Args:
+            attr_defs (List[AbstractAttrDef]): Attribute definitions.
+            value (Optional[Dict[str, Any]]): Values of attribute definitions.
+                Current values are used if not passed in.
+
+        """
+        if value is None:
+            value = self._data["creator_attributes"]
+
+        if isinstance(value, AttributeValues):
+            value = value.data_to_store()
+
+        if isinstance(self._data["creator_attributes"], AttributeValues):
+            origin_data = self._data["creator_attributes"].origin_data
+        else:
+            origin_data = copy.deepcopy(self._data["creator_attributes"])
+        self._data["creator_attributes"] = CreatorAttributeValues(
+            self,
+            "creator_attributes",
+            attr_defs,
+            value,
+            origin_data
+        )
+        self._create_context.instance_create_attr_defs_changed(self.id)
 
     @classmethod
     def from_existing(cls, instance_data, creator):
@@ -776,18 +800,47 @@ class CreatedInstance:
             product_type, product_name, instance_data, creator
         )
 
-    def set_publish_plugins(self, attr_plugins):
-        """Set publish plugins with attribute definitions.
-
-        This method should be called only from 'CreateContext'.
+    def attribute_value_changed(self, key, changes):
+        """A value changed.
 
         Args:
-            attr_plugins (List[pyblish.api.Plugin]): Pyblish plugins which
-                inherit from 'AYONPyblishPluginMixin' and may contain
-                attribute definitions.
-        """
+            key (str): Key of attribute values.
+            changes (Dict[str, Any]): Changes in values.
 
-        self.publish_attributes.set_publish_plugins(attr_plugins)
+        """
+        self._create_context.instance_values_changed(self.id, {key: changes})
+
+    def set_publish_plugin_attr_defs(self, plugin_name, attr_defs):
+        """Set attribute definitions for publish plugin.
+
+        Args:
+            plugin_name(str): Name of publish plugin.
+            attr_defs(List[AbstractAttrDef]): Attribute definitions.
+
+        """
+        self.publish_attributes.set_publish_plugin_attr_defs(
+            plugin_name, attr_defs
+        )
+        self._create_context.instance_publish_attr_defs_changed(
+            self.id, plugin_name
+        )
+
+    def publish_attribute_value_changed(self, plugin_name, value):
+        """Method called from PublishAttributes.
+
+        Args:
+            plugin_name (str): Plugin name.
+            value (Dict[str, Any]): Changes in values for the plugin.
+
+        """
+        self._create_context.instance_values_changed(
+            self.id,
+            {
+                "publish_attributes": {
+                    plugin_name: value,
+                },
+            },
+        )
 
     def add_members(self, members):
         """Currently unused method."""
@@ -796,60 +849,12 @@ class CreatedInstance:
             if member not in self._members:
                 self._members.append(member)
 
-    def serialize_for_remote(self):
-        """Serialize object into data to be possible recreated object.
+    @property
+    def _create_context(self):
+        """Get create context.
 
         Returns:
-            Dict[str, Any]: Serialized data.
+            CreateContext: Context object which wraps object.
+
         """
-
-        creator_attr_defs = self.creator_attributes.get_serialized_attr_defs()
-        publish_attributes = self.publish_attributes.serialize_attributes()
-        return {
-            "data": self.data_to_store(),
-            "orig_data": self.origin_data,
-            "creator_attr_defs": creator_attr_defs,
-            "publish_attributes": publish_attributes,
-            "creator_label": self._creator_label,
-            "group_label": self._group_label,
-        }
-
-    @classmethod
-    def deserialize_on_remote(cls, serialized_data):
-        """Convert instance data to CreatedInstance.
-
-        This is fake instance in remote process e.g. in UI process. The creator
-        is not a full creator and should not be used for calling methods when
-        instance is created from this method (matters on implementation).
-
-        Args:
-            serialized_data (Dict[str, Any]): Serialized data for remote
-                recreating. Should contain 'data' and 'orig_data'.
-        """
-
-        instance_data = copy.deepcopy(serialized_data["data"])
-        creator_identifier = instance_data["creator_identifier"]
-
-        product_type = instance_data["productType"]
-        product_name = instance_data.get("productName", None)
-
-        creator_label = serialized_data["creator_label"]
-        group_label = serialized_data["group_label"]
-        creator_attr_defs = deserialize_attr_defs(
-            serialized_data["creator_attr_defs"]
-        )
-        publish_attributes = serialized_data["publish_attributes"]
-
-        obj = cls(
-            product_type,
-            product_name,
-            instance_data,
-            creator_identifier=creator_identifier,
-            creator_label=creator_label,
-            group_label=group_label,
-            creator_attr_defs=creator_attr_defs
-        )
-        obj._orig_data = serialized_data["orig_data"]
-        obj.publish_attributes.deserialize_attributes(publish_attributes)
-
-        return obj
+        return self._creator.create_context
