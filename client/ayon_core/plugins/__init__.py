@@ -1,1 +1,0 @@
-"""AYON Core plugins."""
