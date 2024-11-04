@@ -846,7 +846,7 @@ class CreateModel:
     ) -> List[Tuple[
         str,
         List[AbstractAttrDef],
-        Dict[str, List[Tuple[str, Any]]]
+        Dict[str, List[Tuple[str, Any, Any]]]
     ]]:
         """Collect publish attribute definitions for passed instances.
 
@@ -876,21 +876,21 @@ class CreateModel:
                 attr_defs = attr_val.attr_defs
                 if not attr_defs:
                     continue
+
                 plugin_attr_defs = all_defs_by_plugin_name.setdefault(
                     plugin_name, []
                 )
-                plugin_attr_defs.append(attr_defs)
-
                 plugin_values = all_plugin_values.setdefault(plugin_name, {})
+
+                plugin_attr_defs.append(attr_defs)
 
                 for attr_def in attr_defs:
                     if isinstance(attr_def, UIDef):
                         continue
-
                     attr_values = plugin_values.setdefault(attr_def.key, [])
-
-                    value = attr_val[attr_def.key]
-                    attr_values.append((item_id, value))
+                    attr_values.append(
+                        (item_id, attr_val[attr_def.key], attr_def.default)
+                    )
 
         attr_defs_by_plugin_name = {}
         for plugin_name, attr_defs in all_defs_by_plugin_name.items():
@@ -904,7 +904,7 @@ class CreateModel:
             output.append((
                 plugin_name,
                 attr_defs_by_plugin_name[plugin_name],
-                all_plugin_values
+                all_plugin_values[plugin_name],
             ))
         return output
 
