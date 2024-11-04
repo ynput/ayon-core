@@ -116,9 +116,8 @@ class CreatorAttrsWidget(QtWidgets.QWidget):
         row = 0
         for attr_def, info_by_id in result:
             widget = create_widget_for_attr_def(attr_def, content_widget)
-            default_values = set()
+            default_values = []
             if attr_def.is_value_def:
-                default_values = []
                 values = []
                 for item in info_by_id.values():
                     values.append(item["value"])
