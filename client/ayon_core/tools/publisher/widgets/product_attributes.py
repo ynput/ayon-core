@@ -1,8 +1,9 @@
-from typing import Dict
+import typing
+from typing import Dict, List, Any
 
 from qtpy import QtWidgets, QtCore
 
-from ayon_core.lib.attribute_definitions import UnknownDef
+from ayon_core.lib.attribute_definitions import AbstractAttrDef, UnknownDef
 from ayon_core.tools.utils import set_style_property
 from ayon_core.tools.attribute_defs import create_widget_for_attr_def
 from ayon_core.tools.publisher.abstract import AbstractPublisherFrontend
@@ -10,6 +11,9 @@ from ayon_core.tools.publisher.constants import (
     INPUTS_LAYOUT_HSPACING,
     INPUTS_LAYOUT_VSPACING,
 )
+
+if typing.TYPE_CHECKING:
+    from typing import Union
 
 
 def _set_label_overriden(label: QtWidgets.QLabel, overriden: bool):
@@ -23,6 +27,22 @@ def _set_label_overriden(label: QtWidgets.QLabel, overriden: bool):
 class _CreateAttrDefInfo:
     def __init__(self, attr_def, instance_ids, defaults, label_widget):
         self.attr_def = attr_def
+        self.instance_ids = instance_ids
+        self.defaults = defaults
+        self.label_widget = label_widget
+
+
+class _PublishAttrDefInfo:
+    def __init__(
+        self,
+        attr_def: AbstractAttrDef,
+        plugin_name: str,
+        instance_ids: List["Union[str, None]"],
+        defaults: List[Any],
+        label_widget: "Union[None, QtWidgets.QLabel]",
+    ):
+        self.attr_def = attr_def
+        self.plugin_name = plugin_name
         self.instance_ids = instance_ids
         self.defaults = defaults
         self.label_widget = label_widget
@@ -267,9 +287,7 @@ class PublishPluginAttrsWidget(QtWidgets.QWidget):
         self._controller: AbstractPublisherFrontend = controller
         self._scroll_area = scroll_area
 
-        self._attr_def_id_to_instances = {}
-        self._attr_def_id_to_attr_def = {}
-        self._attr_def_id_to_plugin_name = {}
+        self._attr_def_info_by_id: Dict[str, _PublishAttrDefInfo] = {}
 
         # Store content of scroll area to prevent garbage collection
         self._content_widget = None
@@ -298,9 +316,7 @@ class PublishPluginAttrsWidget(QtWidgets.QWidget):
 
         self._content_widget = None
 
-        self._attr_def_id_to_instances = {}
-        self._attr_def_id_to_attr_def = {}
-        self._attr_def_id_to_plugin_name = {}
+        self._attr_def_info_by_id = {}
 
         result = self._controller.get_publish_attribute_definitions(
             self._current_instance_ids, self._context_selected
@@ -319,9 +335,7 @@ class PublishPluginAttrsWidget(QtWidgets.QWidget):
         content_layout.addStretch(1)
 
         row = 0
-        for plugin_name, attr_defs, all_plugin_values in result:
-            plugin_values = all_plugin_values[plugin_name]
-
+        for plugin_name, attr_defs, plugin_values in result:
             for attr_def in attr_defs:
                 widget = create_widget_for_attr_def(
                     attr_def, content_widget
@@ -334,6 +348,7 @@ class PublishPluginAttrsWidget(QtWidgets.QWidget):
                     widget.setVisible(False)
                     visible_widget = False
 
+                label_widget = None
                 if visible_widget:
                     expand_cols = 2
                     if attr_def.is_value_def and attr_def.is_label_horizontal:
@@ -368,35 +383,58 @@ class PublishPluginAttrsWidget(QtWidgets.QWidget):
 
                 widget.value_changed.connect(self._input_value_changed)
 
-                attr_values = plugin_values[attr_def.key]
-                multivalue = len(attr_values) > 1
+                instance_ids = []
                 values = []
-                instances = []
-                for instance, value in attr_values:
+                default_values = []
+                is_overriden = False
+                for (instance_id, value, default_value) in (
+                    plugin_values.get(attr_def.key, [])
+                ):
+                    instance_ids.append(instance_id)
                     values.append(value)
-                    instances.append(instance)
+                    if not is_overriden and value != default_value:
+                        is_overriden = True
+                    # 'set' cannot be used for default values because they can
+                    #    be unhashable types, e.g. 'list'.
+                    if default_value not in default_values:
+                        default_values.append(default_value)
 
-                self._attr_def_id_to_attr_def[attr_def.id] = attr_def
-                self._attr_def_id_to_instances[attr_def.id] = instances
-                self._attr_def_id_to_plugin_name[attr_def.id] = plugin_name
+                multivalue = len(values) > 1
+
+                self._attr_def_info_by_id[attr_def.id] = _PublishAttrDefInfo(
+                    attr_def,
+                    plugin_name,
+                    instance_ids,
+                    default_values,
+                    label_widget,
+                )
 
                 if multivalue:
                     widget.set_value(values, multivalue)
                 else:
                     widget.set_value(values[0])
 
+                if label_widget is not None:
+                    _set_label_overriden(label_widget, is_overriden)
+
         self._scroll_area.setWidget(content_widget)
         self._content_widget = content_widget
 
     def _input_value_changed(self, value, attr_id):
-        instance_ids = self._attr_def_id_to_instances.get(attr_id)
-        attr_def = self._attr_def_id_to_attr_def.get(attr_id)
-        plugin_name = self._attr_def_id_to_plugin_name.get(attr_id)
-        if not instance_ids or not attr_def or not plugin_name:
+        attr_def_info = self._attr_def_info_by_id.get(attr_id)
+        if attr_def_info is None:
             return
 
+        if attr_def_info.label_widget is not None:
+            defaults = attr_def_info.defaults
+            is_overriden = len(defaults) != 1 or value not in defaults
+            _set_label_overriden(attr_def_info.label_widget, is_overriden)
+
         self._controller.set_instances_publish_attr_values(
-            instance_ids, plugin_name, attr_def.key, value
+            attr_def_info.instance_ids,
+            attr_def_info.plugin_name,
+            attr_def_info.attr_def.key,
+            value
         )
 
     def _on_instance_attr_defs_change(self, event):
