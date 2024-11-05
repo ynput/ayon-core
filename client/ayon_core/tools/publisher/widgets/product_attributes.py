@@ -4,8 +4,10 @@ from typing import Dict, List, Any
 from qtpy import QtWidgets, QtCore
 
 from ayon_core.lib.attribute_definitions import AbstractAttrDef, UnknownDef
-from ayon_core.tools.utils import set_style_property
-from ayon_core.tools.attribute_defs import create_widget_for_attr_def
+from ayon_core.tools.attribute_defs import (
+    create_widget_for_attr_def,
+    AttributeDefinitionsLabel,
+)
 from ayon_core.tools.publisher.abstract import AbstractPublisherFrontend
 from ayon_core.tools.publisher.constants import (
     INPUTS_LAYOUT_HSPACING,
@@ -16,14 +18,6 @@ if typing.TYPE_CHECKING:
     from typing import Union
 
 
-def _set_label_overriden(label: QtWidgets.QLabel, overriden: bool):
-    set_style_property(
-        label,
-        "overriden",
-        "1" if overriden else ""
-    )
-
-
 class _CreateAttrDefInfo:
     """Helper class to store information about create attribute definition."""
     def __init__(
@@ -31,12 +25,14 @@ class _CreateAttrDefInfo:
         attr_def: AbstractAttrDef,
         instance_ids: List["Union[str, None]"],
         defaults: List[Any],
-        label_widget: "Union[None, QtWidgets.QLabel]",
+        label_widget: "Union[AttributeDefinitionsLabel, None]",
     ):
         self.attr_def: AbstractAttrDef = attr_def
         self.instance_ids: List["Union[str, None]"] = instance_ids
         self.defaults: List[Any] = defaults
-        self.label_widget: "Union[None, QtWidgets.QLabel]" = label_widget
+        self.label_widget: "Union[AttributeDefinitionsLabel, None]" = (
+            label_widget
+        )
 
 
 class _PublishAttrDefInfo:
@@ -47,13 +43,15 @@ class _PublishAttrDefInfo:
         plugin_name: str,
         instance_ids: List["Union[str, None]"],
         defaults: List[Any],
-        label_widget: "Union[None, QtWidgets.QLabel]",
+        label_widget: "Union[AttributeDefinitionsLabel, None]",
     ):
         self.attr_def: AbstractAttrDef = attr_def
         self.plugin_name: str = plugin_name
         self.instance_ids: List["Union[str, None]"] = instance_ids
         self.defaults: List[Any] = defaults
-        self.label_widget: "Union[None, QtWidgets.QLabel]" = label_widget
+        self.label_widget: "Union[AttributeDefinitionsLabel, None]" = (
+            label_widget
+        )
 
 
 class CreatorAttrsWidget(QtWidgets.QWidget):
@@ -187,7 +185,9 @@ class CreatorAttrsWidget(QtWidgets.QWidget):
                 label = attr_def.label or attr_def.key
 
             if label:
-                label_widget = QtWidgets.QLabel(label, self)
+                label_widget = AttributeDefinitionsLabel(
+                    attr_def.id, label, self
+                )
                 tooltip = attr_def.tooltip
                 if tooltip:
                     label_widget.setToolTip(tooltip)
@@ -202,7 +202,7 @@ class CreatorAttrsWidget(QtWidgets.QWidget):
                 if not attr_def.is_label_horizontal:
                     row += 1
                 attr_def_info.label_widget = label_widget
-                _set_label_overriden(label_widget, is_overriden)
+                label_widget.set_overridden(is_overriden)
 
             content_layout.addWidget(
                 widget, row, col_num, 1, expand_cols
@@ -237,7 +237,7 @@ class CreatorAttrsWidget(QtWidgets.QWidget):
         if attr_def_info.label_widget is not None:
             defaults = attr_def_info.defaults
             is_overriden = len(defaults) != 1 or value not in defaults
-            _set_label_overriden(attr_def_info.label_widget, is_overriden)
+            attr_def_info.label_widget.set_overridden(is_overriden)
 
         self._controller.set_instances_create_attr_values(
             attr_def_info.instance_ids,
@@ -367,7 +367,9 @@ class PublishPluginAttrsWidget(QtWidgets.QWidget):
                     if attr_def.is_value_def:
                         label = attr_def.label or attr_def.key
                     if label:
-                        label_widget = QtWidgets.QLabel(label, content_widget)
+                        label_widget = AttributeDefinitionsLabel(
+                            attr_def.id, label, content_widget
+                        )
                         tooltip = attr_def.tooltip
                         if tooltip:
                             label_widget.setToolTip(tooltip)
@@ -423,7 +425,7 @@ class PublishPluginAttrsWidget(QtWidgets.QWidget):
                     widget.set_value(values[0])
 
                 if label_widget is not None:
-                    _set_label_overriden(label_widget, is_overriden)
+                    label_widget.set_overridden(is_overriden)
 
         self._scroll_area.setWidget(content_widget)
         self._content_widget = content_widget
@@ -436,7 +438,7 @@ class PublishPluginAttrsWidget(QtWidgets.QWidget):
         if attr_def_info.label_widget is not None:
             defaults = attr_def_info.defaults
             is_overriden = len(defaults) != 1 or value not in defaults
-            _set_label_overriden(attr_def_info.label_widget, is_overriden)
+            attr_def_info.label_widget.set_overridden(is_overriden)
 
         self._controller.set_instances_publish_attr_values(
             attr_def_info.instance_ids,
