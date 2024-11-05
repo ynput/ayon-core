@@ -40,6 +40,7 @@ from ayon_core.tools.publisher.abstract import (
 )
 
 CREATE_EVENT_SOURCE = "publisher.create.model"
+_DEFAULT_VALUE = object()
 
 
 class CreatorType:
@@ -752,20 +753,12 @@ class CreateModel:
         self._remove_instances_from_context(instance_ids)
 
     def set_instances_create_attr_values(self, instance_ids, key, value):
-        with self._create_context.bulk_value_changes(CREATE_EVENT_SOURCE):
-            for instance_id in instance_ids:
-                instance = self._get_instance_by_id(instance_id)
-                creator_attributes = instance["creator_attributes"]
-                attr_def = creator_attributes.get_attr_def(key)
-                if (
-                    attr_def is None
-                    or not attr_def.is_value_def
-                    or not attr_def.visible
-                    or not attr_def.enabled
-                    or not attr_def.is_value_valid(value)
-                ):
-                    continue
-                creator_attributes[key] = value
+        self._set_instances_create_attr_values(instance_ids, key, value)
+
+    def revert_instances_create_attr_values(self, instance_ids, key):
+        self._set_instances_create_attr_values(
+            instance_ids, key, _DEFAULT_VALUE
+        )
 
     def get_creator_attribute_definitions(
         self, instance_ids: List[str]
@@ -816,28 +809,18 @@ class CreateModel:
         return output
 
     def set_instances_publish_attr_values(
-        self, instance_ids, plugin_name,  key, value
+        self, instance_ids, plugin_name, key, value
     ):
-        with self._create_context.bulk_value_changes(CREATE_EVENT_SOURCE):
-            for instance_id in instance_ids:
-                if instance_id is None:
-                    instance = self._create_context
-                else:
-                    instance = self._get_instance_by_id(instance_id)
-                plugin_val = instance.publish_attributes[plugin_name]
-                attr_def = plugin_val.get_attr_def(key)
-                # Ignore if attribute is not available or enabled/visible
-                #   on the instance, or the value is not valid for definition
-                if (
-                    attr_def is None
-                    or not attr_def.is_value_def
-                    or not attr_def.visible
-                    or not attr_def.enabled
-                    or not attr_def.is_value_valid(value)
-                ):
-                    continue
+        self._set_instances_publish_attr_values(
+            instance_ids, plugin_name, key, value
+        )
 
-                plugin_val[key] = value
+    def revert_instances_publish_attr_values(
+        self, instance_ids, plugin_name, key
+    ):
+        self._set_instances_publish_attr_values(
+            instance_ids, plugin_name, key, _DEFAULT_VALUE
+        )
 
     def get_publish_attribute_definitions(
         self,
@@ -1063,6 +1046,53 @@ class CreateModel:
             self._creator_items[identifier] = (
                 CreatorItem.from_creator(creator)
             )
+
+    def _set_instances_create_attr_values(self, instance_ids, key, value):
+        with self._create_context.bulk_value_changes(CREATE_EVENT_SOURCE):
+            for instance_id in instance_ids:
+                instance = self._get_instance_by_id(instance_id)
+                creator_attributes = instance["creator_attributes"]
+                attr_def = creator_attributes.get_attr_def(key)
+                if (
+                    attr_def is None
+                    or not attr_def.is_value_def
+                    or not attr_def.visible
+                    or not attr_def.enabled
+                ):
+                    continue
+
+                if value is _DEFAULT_VALUE:
+                    creator_attributes[key] = attr_def.default
+
+                elif attr_def.is_value_valid(value):
+                    creator_attributes[key] = value
+
+    def _set_instances_publish_attr_values(
+        self, instance_ids, plugin_name, key, value
+    ):
+        with self._create_context.bulk_value_changes(CREATE_EVENT_SOURCE):
+            for instance_id in instance_ids:
+                if instance_id is None:
+                    instance = self._create_context
+                else:
+                    instance = self._get_instance_by_id(instance_id)
+                plugin_val = instance.publish_attributes[plugin_name]
+                attr_def = plugin_val.get_attr_def(key)
+                # Ignore if attribute is not available or enabled/visible
+                #   on the instance, or the value is not valid for definition
+                if (
+                    attr_def is None
+                    or not attr_def.is_value_def
+                    or not attr_def.visible
+                    or not attr_def.enabled
+                ):
+                    continue
+
+                if value is _DEFAULT_VALUE:
+                    plugin_val[key] = attr_def.default
+
+                elif attr_def.is_value_valid(value):
+                    plugin_val[key] = value
 
     def _cc_added_instance(self, event):
         instance_ids = {
