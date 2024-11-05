@@ -20,10 +20,13 @@ from ayon_core.tools.utils import (
     FocusSpinBox,
     FocusDoubleSpinBox,
     MultiSelectionComboBox,
+    set_style_property,
 )
 from ayon_core.tools.utils import NiceCheckbox
 
 from .files_widget import FilesWidget
+
+_REVERT_TO_DEFAULT_LABEL = "Revert to default"
 
 
 def create_widget_for_attr_def(attr_def, parent=None):
@@ -72,6 +75,52 @@ def _create_widget_for_attr_def(attr_def, parent=None):
     raise ValueError("Unknown attribute definition \"{}\"".format(
         str(type(attr_def))
     ))
+
+
+class AttributeDefinitionsLabel(QtWidgets.QLabel):
+    """Label related to value attribute definition.
+
+    Label is used to show attribute definition label and to show if value
+    is overridden.
+
+    Label can be right-clicked to revert value to default.
+    """
+    revert_to_default_requested = QtCore.Signal(str)
+
+    def __init__(
+        self,
+        attr_id: str,
+        label: str,
+        parent: QtWidgets.QWidget,
+    ):
+        super().__init__(label, parent)
+
+        self._attr_id = attr_id
+        self._overridden = False
+        self.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
+
+        self.customContextMenuRequested.connect(self._on_context_menu)
+
+    def set_overridden(self, overridden: bool):
+        if self._overridden == overridden:
+            return
+        self._overridden = overridden
+        set_style_property(
+            self,
+            "overridden",
+            "1" if overridden else ""
+        )
+
+    def _on_context_menu(self, point: QtCore.QPoint):
+        menu = QtWidgets.QMenu(self)
+        action = QtWidgets.QAction(menu)
+        action.setText(_REVERT_TO_DEFAULT_LABEL)
+        action.triggered.connect(self._request_revert_to_default)
+        menu.addAction(action)
+        menu.exec_(self.mapToGlobal(point))
+
+    def _request_revert_to_default(self):
+        self.revert_to_default_requested.emit(self._attr_id)
 
 
 class AttributeDefinitionsWidget(QtWidgets.QWidget):
