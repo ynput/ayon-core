@@ -141,7 +141,9 @@ class CreatorAttrsWidget(QtWidgets.QWidget):
 
         row = 0
         for attr_def, info_by_id in result:
-            widget = create_widget_for_attr_def(attr_def, content_widget)
+            widget = create_widget_for_attr_def(
+                attr_def, content_widget, handle_revert_to_default=False
+            )
             default_values = []
             if attr_def.is_value_def:
                 values = []
@@ -161,6 +163,9 @@ class CreatorAttrsWidget(QtWidgets.QWidget):
                     widget.set_value(values, True)
 
             widget.value_changed.connect(self._input_value_changed)
+            widget.revert_to_default_requested.connect(
+                self._on_request_revert_to_default
+            )
             attr_def_info = _CreateAttrDefInfo(
                 attr_def, list(info_by_id), default_values, None
             )
@@ -203,6 +208,9 @@ class CreatorAttrsWidget(QtWidgets.QWidget):
                     row += 1
                 attr_def_info.label_widget = label_widget
                 label_widget.set_overridden(is_overriden)
+                label_widget.revert_to_default_requested.connect(
+                    self._on_request_revert_to_default
+                )
 
             content_layout.addWidget(
                 widget, row, col_num, 1, expand_cols
@@ -243,6 +251,15 @@ class CreatorAttrsWidget(QtWidgets.QWidget):
             attr_def_info.instance_ids,
             attr_def_info.attr_def.key,
             value
+        )
+
+    def _on_request_revert_to_default(self, attr_id):
+        attr_def_info = self._attr_def_info_by_id.get(attr_id)
+        if attr_def_info is None:
+            return
+        self._controller.revert_instances_create_attr_values(
+            attr_def_info.instance_ids,
+            attr_def_info.attr_def.key,
         )
 
 
@@ -346,7 +363,7 @@ class PublishPluginAttrsWidget(QtWidgets.QWidget):
         for plugin_name, attr_defs, plugin_values in result:
             for attr_def in attr_defs:
                 widget = create_widget_for_attr_def(
-                    attr_def, content_widget
+                    attr_def, content_widget, handle_revert_to_default=False
                 )
                 visible_widget = attr_def.visible
                 # Hide unknown values of publish plugins
@@ -370,6 +387,9 @@ class PublishPluginAttrsWidget(QtWidgets.QWidget):
                         label_widget = AttributeDefinitionsLabel(
                             attr_def.id, label, content_widget
                         )
+                        label_widget.revert_to_default_requested.connect(
+                            self._on_request_revert_to_default
+                        )
                         tooltip = attr_def.tooltip
                         if tooltip:
                             label_widget.setToolTip(tooltip)
@@ -392,6 +412,9 @@ class PublishPluginAttrsWidget(QtWidgets.QWidget):
                     continue
 
                 widget.value_changed.connect(self._input_value_changed)
+                widget.revert_to_default_requested.connect(
+                    self._on_request_revert_to_default
+                )
 
                 instance_ids = []
                 values = []
@@ -445,6 +468,17 @@ class PublishPluginAttrsWidget(QtWidgets.QWidget):
             attr_def_info.plugin_name,
             attr_def_info.attr_def.key,
             value
+        )
+
+    def _on_request_revert_to_default(self, attr_id):
+        attr_def_info = self._attr_def_info_by_id.get(attr_id)
+        if attr_def_info is None:
+            return
+
+        self._controller.revert_instances_publish_attr_values(
+            attr_def_info.instance_ids,
+            attr_def_info.plugin_name,
+            attr_def_info.attr_def.key,
         )
 
     def _on_instance_attr_defs_change(self, event):
