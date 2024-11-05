@@ -9,7 +9,7 @@ from .trait import TraitBase
 class Image(TraitBase):
     """Image trait model.
 
-    This model represents an image trait.
+    Type trait model for image.
 
     Attributes:
         name (str): Trait name.
@@ -26,7 +26,7 @@ class Image(TraitBase):
 class PixelBased(TraitBase):
     """PixelBased trait model.
 
-    This model represents a pixel based trait.
+    Pixel related trait for image data.
 
     Attributes:
         name (str): Trait name.
@@ -51,9 +51,10 @@ class Planar(TraitBase):
 
     This model represents an Image with planar configuration.
 
-    TODO (antirotor): Is this really a planar configuration? As with
-        bitplanes and everything? If it serves as differentiator for
-        Deep images, should it be named differently? Like Raster?
+    Todo:
+        * (antirotor): Is this really a planar configuration? As with
+            bitplanes and everything? If it serves as differentiator for
+            Deep images, should it be named differently? Like Raster?
 
     Attributes:
         name (str): Trait name.
@@ -72,29 +73,25 @@ class Planar(TraitBase):
 class Deep(TraitBase):
     """Deep trait model.
 
-    This model represents a deep image trait.
+    Type trait model for deep EXR images.
 
     Attributes:
         name (str): Trait name.
         description (str): Trait description.
         id (str): id should be namespaced trait name with version
-        deep_data_type (str): Deep data type.
 
     """
 
     name: ClassVar[str] = "Deep"
     description: ClassVar[str] = "Deep Trait Model"
     id: ClassVar[str] = "ayon.2d.Deep.v1"
-    deep_data_type: str = Field(..., title="Deep Data Type")
-
-
-
 
 
 class Overscan(TraitBase):
     """Overscan trait model.
 
-    This model represents an overscan (or underscan) trait.
+    This model represents an overscan (or underscan) trait. Defines the
+    extra pixels around the image.
 
     Attributes:
         name (str): Trait name.

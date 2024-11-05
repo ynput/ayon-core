@@ -16,7 +16,6 @@ from ayon_api.operations import (
     # new_representation_entity,
     new_version_entity,
 )
-
 from ayon_core.pipeline.publish import (
     get_publish_template_name,
 )
