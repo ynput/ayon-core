@@ -26,12 +26,11 @@ from ayon_core.tools.utils import (
 )
 from ayon_core.tools.utils import NiceCheckbox
 
+from ._constants import REVERT_TO_DEFAULT_LABEL
 from .files_widget import FilesWidget
 
 if typing.TYPE_CHECKING:
     from typing import Union
-
-_REVERT_TO_DEFAULT_LABEL = "Revert to default"
 
 
 def create_widget_for_attr_def(
@@ -133,7 +132,7 @@ class AttributeDefinitionsLabel(QtWidgets.QLabel):
     def _on_context_menu(self, point: QtCore.QPoint):
         menu = QtWidgets.QMenu(self)
         action = QtWidgets.QAction(menu)
-        action.setText(_REVERT_TO_DEFAULT_LABEL)
+        action.setText(REVERT_TO_DEFAULT_LABEL)
         action.triggered.connect(self._request_revert_to_default)
         menu.addAction(action)
         menu.exec_(self.mapToGlobal(point))
@@ -393,6 +392,9 @@ class NumberAttrWidget(_BaseAttrDefWidget):
         else:
             input_widget = FocusSpinBox(self)
 
+        # Override context menu event to add revert to default action
+        input_widget.contextMenuEvent = self._input_widget_context_event
+
         if self.attr_def.tooltip:
             input_widget.setToolTip(self.attr_def.tooltip)
 
@@ -429,6 +431,16 @@ class NumberAttrWidget(_BaseAttrDefWidget):
         ):
             self._set_multiselection_visible(True)
         return False
+
+    def _input_widget_context_event(self, event):
+        line_edit = self._input_widget.lineEdit()
+        menu = line_edit.createStandardContextMenu()
+        menu.setAttribute(QtCore.Qt.WA_DeleteOnClose)
+        action = QtWidgets.QAction(menu)
+        action.setText(REVERT_TO_DEFAULT_LABEL)
+        action.triggered.connect(self.revert_to_default_value)
+        menu.addAction(action)
+        menu.popup(event.globalPos())
 
     def current_value(self):
         return self._input_widget.value()
@@ -495,6 +507,9 @@ class TextAttrWidget(_BaseAttrDefWidget):
         else:
             input_widget = QtWidgets.QLineEdit(self)
 
+        # Override context menu event to add revert to default action
+        input_widget.contextMenuEvent = self._input_widget_context_event
+
         if (
             self.attr_def.placeholder
             and hasattr(input_widget, "setPlaceholderText")
@@ -515,6 +530,15 @@ class TextAttrWidget(_BaseAttrDefWidget):
         self._input_widget = input_widget
 
         self.main_layout.addWidget(input_widget, 0)
+
+    def _input_widget_context_event(self, event):
+        menu = self._input_widget.createStandardContextMenu()
+        menu.setAttribute(QtCore.Qt.WA_DeleteOnClose)
+        action = QtWidgets.QAction(menu)
+        action.setText(REVERT_TO_DEFAULT_LABEL)
+        action.triggered.connect(self.revert_to_default_value)
+        menu.addAction(action)
+        menu.popup(event.globalPos())
 
     def _on_value_change(self):
         if self.multiline:
@@ -567,6 +591,20 @@ class BoolAttrWidget(_BaseAttrDefWidget):
 
         self.main_layout.addWidget(input_widget, 0)
         self.main_layout.addStretch(1)
+
+        self.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
+        self.customContextMenuRequested.connect(self._on_context_menu)
+
+    def _on_context_menu(self, pos):
+        self._menu = QtWidgets.QMenu(self)
+
+        action = QtWidgets.QAction(self._menu)
+        action.setText(REVERT_TO_DEFAULT_LABEL)
+        action.triggered.connect(self.revert_to_default_value)
+        self._menu.addAction(action)
+
+        global_pos = self.mapToGlobal(pos)
+        self._menu.exec_(global_pos)
 
     def _on_value_change(self):
         new_value = self._input_widget.isChecked()
@@ -630,6 +668,20 @@ class EnumAttrWidget(_BaseAttrDefWidget):
         self._input_widget = input_widget
 
         self.main_layout.addWidget(input_widget, 0)
+
+        input_widget.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
+        input_widget.customContextMenuRequested.connect(self._on_context_menu)
+
+    def _on_context_menu(self, pos):
+        menu = QtWidgets.QMenu(self)
+
+        action = QtWidgets.QAction(menu)
+        action.setText(REVERT_TO_DEFAULT_LABEL)
+        action.triggered.connect(self.revert_to_default_value)
+        menu.addAction(action)
+
+        global_pos = self.mapToGlobal(pos)
+        menu.exec_(global_pos)
 
     def _on_value_change(self):
         new_value = self.current_value()
