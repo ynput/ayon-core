@@ -1,4 +1,6 @@
 import copy
+import typing
+from typing import Optional
 
 from qtpy import QtWidgets, QtCore
 
@@ -26,11 +28,20 @@ from ayon_core.tools.utils import NiceCheckbox
 
 from .files_widget import FilesWidget
 
+if typing.TYPE_CHECKING:
+    from typing import Union
+
 _REVERT_TO_DEFAULT_LABEL = "Revert to default"
 
 
-def create_widget_for_attr_def(attr_def, parent=None):
-    widget = _create_widget_for_attr_def(attr_def, parent)
+def create_widget_for_attr_def(
+    attr_def: AbstractAttrDef,
+    parent: Optional[QtWidgets.QWidget] = None,
+    handle_revert_to_default: Optional[bool] = True,
+):
+    widget = _create_widget_for_attr_def(
+        attr_def, parent, handle_revert_to_default
+    )
     if not attr_def.visible:
         widget.setVisible(False)
 
@@ -39,42 +50,50 @@ def create_widget_for_attr_def(attr_def, parent=None):
     return widget
 
 
-def _create_widget_for_attr_def(attr_def, parent=None):
+def _create_widget_for_attr_def(
+    attr_def: AbstractAttrDef,
+    parent: "Union[QtWidgets.QWidget, None]",
+    handle_revert_to_default: bool,
+):
     if not isinstance(attr_def, AbstractAttrDef):
         raise TypeError("Unexpected type \"{}\" expected \"{}\"".format(
             str(type(attr_def)), AbstractAttrDef
         ))
 
+    cls = None
     if isinstance(attr_def, NumberDef):
-        return NumberAttrWidget(attr_def, parent)
+        cls = NumberAttrWidget
 
-    if isinstance(attr_def, TextDef):
-        return TextAttrWidget(attr_def, parent)
+    elif isinstance(attr_def, TextDef):
+        cls = TextAttrWidget
 
-    if isinstance(attr_def, EnumDef):
-        return EnumAttrWidget(attr_def, parent)
+    elif isinstance(attr_def, EnumDef):
+        cls = EnumAttrWidget
 
-    if isinstance(attr_def, BoolDef):
-        return BoolAttrWidget(attr_def, parent)
+    elif isinstance(attr_def, BoolDef):
+        cls = BoolAttrWidget
 
-    if isinstance(attr_def, UnknownDef):
-        return UnknownAttrWidget(attr_def, parent)
+    elif isinstance(attr_def, UnknownDef):
+        cls = UnknownAttrWidget
 
-    if isinstance(attr_def, HiddenDef):
-        return HiddenAttrWidget(attr_def, parent)
+    elif isinstance(attr_def, HiddenDef):
+        cls = HiddenAttrWidget
 
-    if isinstance(attr_def, FileDef):
-        return FileAttrWidget(attr_def, parent)
+    elif isinstance(attr_def, FileDef):
+        cls = FileAttrWidget
 
-    if isinstance(attr_def, UISeparatorDef):
-        return SeparatorAttrWidget(attr_def, parent)
+    elif isinstance(attr_def, UISeparatorDef):
+        cls = SeparatorAttrWidget
 
-    if isinstance(attr_def, UILabelDef):
-        return LabelAttrWidget(attr_def, parent)
+    elif isinstance(attr_def, UILabelDef):
+        cls = LabelAttrWidget
 
-    raise ValueError("Unknown attribute definition \"{}\"".format(
-        str(type(attr_def))
-    ))
+    if cls is None:
+        raise ValueError("Unknown attribute definition \"{}\"".format(
+            str(type(attr_def))
+        ))
+
+    return cls(attr_def, parent, handle_revert_to_default)
 
 
 class AttributeDefinitionsLabel(QtWidgets.QLabel):
