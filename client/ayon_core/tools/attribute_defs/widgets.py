@@ -151,16 +151,18 @@ class AttributeDefinitionsWidget(QtWidgets.QWidget):
     """
 
     def __init__(self, attr_defs=None, parent=None):
-        super(AttributeDefinitionsWidget, self).__init__(parent)
+        super().__init__(parent)
 
-        self._widgets = []
+        self._widgets_by_id = {}
+        self._labels_by_id = {}
         self._current_keys = set()
 
         self.set_attr_defs(attr_defs)
 
     def clear_attr_defs(self):
         """Remove all existing widgets and reset layout if needed."""
-        self._widgets = []
+        self._widgets_by_id = {}
+        self._labels_by_id = {}
         self._current_keys = set()
 
         layout = self.layout()
@@ -202,6 +204,7 @@ class AttributeDefinitionsWidget(QtWidgets.QWidget):
                 self._current_keys.add(attr_def.key)
             widget = create_widget_for_attr_def(attr_def, self)
             self._widgets.append(widget)
+            self._widgets_by_id[attr_def.id] = widget
 
             if not attr_def.visible:
                 continue
@@ -213,7 +216,13 @@ class AttributeDefinitionsWidget(QtWidgets.QWidget):
             col_num = 2 - expand_cols
 
             if attr_def.is_value_def and attr_def.label:
-                label_widget = QtWidgets.QLabel(attr_def.label, self)
+                label_widget = AttributeDefinitionsLabel(
+                    attr_def.id, attr_def.label, self
+                )
+                label_widget.revert_to_default_requested.connect(
+                    self._on_revert_request
+                )
+                self._labels_by_id[attr_def.id] = label_widget
                 tooltip = attr_def.tooltip
                 if tooltip:
                     label_widget.setToolTip(tooltip)
@@ -228,6 +237,9 @@ class AttributeDefinitionsWidget(QtWidgets.QWidget):
                 if not attr_def.is_label_horizontal:
                     row += 1
 
+            if attr_def.is_value_def:
+                widget.value_changed.connect(self._on_value_change)
+
             layout.addWidget(
                 widget, row, col_num, 1, expand_cols
             )
@@ -236,7 +248,7 @@ class AttributeDefinitionsWidget(QtWidgets.QWidget):
     def set_value(self, value):
         new_value = copy.deepcopy(value)
         unused_keys = set(new_value.keys())
-        for widget in self._widgets:
+        for widget in self._widgets_by_id.values():
             attr_def = widget.attr_def
             if attr_def.key not in new_value:
                 continue
@@ -249,12 +261,25 @@ class AttributeDefinitionsWidget(QtWidgets.QWidget):
 
     def current_value(self):
         output = {}
-        for widget in self._widgets:
+        for widget in self._widgets_by_id.values():
             attr_def = widget.attr_def
             if not isinstance(attr_def, UIDef):
                 output[attr_def.key] = widget.current_value()
 
         return output
+
+    def _on_revert_request(self, attr_id):
+        widget = self._widgets_by_id.get(attr_id)
+        if widget is not None:
+            widget.set_value(widget.attr_def.default)
+
+    def _on_value_change(self, value, attr_id):
+        widget = self._widgets_by_id.get(attr_id)
+        if widget is None:
+            return
+        label = self._labels_by_id.get(attr_id)
+        if label is not None:
+            label.set_overridden(value != widget.attr_def.default)
 
 
 class _BaseAttrDefWidget(QtWidgets.QWidget):
