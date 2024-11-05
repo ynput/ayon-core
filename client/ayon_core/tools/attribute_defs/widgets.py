@@ -811,9 +811,24 @@ class FileAttrWidget(_BaseAttrDefWidget):
 
         self.main_layout.addWidget(input_widget, 0)
 
+        input_widget.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
+        input_widget.customContextMenuRequested.connect(self._on_context_menu)
+        input_widget.revert_requested.connect(self.revert_to_default_value)
+
     def _on_value_change(self):
         new_value = self.current_value()
         self.value_changed.emit(new_value, self.attr_def.id)
+
+    def _on_context_menu(self, pos):
+        menu = QtWidgets.QMenu(self)
+
+        action = QtWidgets.QAction(menu)
+        action.setText(REVERT_TO_DEFAULT_LABEL)
+        action.triggered.connect(self.revert_to_default_value)
+        menu.addAction(action)
+
+        global_pos = self.mapToGlobal(pos)
+        menu.exec_(global_pos)
 
     def current_value(self):
         return self._input_widget.current_value()
