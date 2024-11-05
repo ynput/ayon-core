@@ -25,14 +25,22 @@ def _set_label_overriden(label: QtWidgets.QLabel, overriden: bool):
 
 
 class _CreateAttrDefInfo:
-    def __init__(self, attr_def, instance_ids, defaults, label_widget):
-        self.attr_def = attr_def
-        self.instance_ids = instance_ids
-        self.defaults = defaults
-        self.label_widget = label_widget
+    """Helper class to store information about create attribute definition."""
+    def __init__(
+        self,
+        attr_def: AbstractAttrDef,
+        instance_ids: List["Union[str, None]"],
+        defaults: List[Any],
+        label_widget: "Union[None, QtWidgets.QLabel]",
+    ):
+        self.attr_def: AbstractAttrDef = attr_def
+        self.instance_ids: List["Union[str, None]"] = instance_ids
+        self.defaults: List[Any] = defaults
+        self.label_widget: "Union[None, QtWidgets.QLabel]" = label_widget
 
 
 class _PublishAttrDefInfo:
+    """Helper class to store information about publish attribute definition."""
     def __init__(
         self,
         attr_def: AbstractAttrDef,
@@ -41,11 +49,11 @@ class _PublishAttrDefInfo:
         defaults: List[Any],
         label_widget: "Union[None, QtWidgets.QLabel]",
     ):
-        self.attr_def = attr_def
-        self.plugin_name = plugin_name
-        self.instance_ids = instance_ids
-        self.defaults = defaults
-        self.label_widget = label_widget
+        self.attr_def: AbstractAttrDef = attr_def
+        self.plugin_name: str = plugin_name
+        self.instance_ids: List["Union[str, None]"] = instance_ids
+        self.defaults: List[Any] = defaults
+        self.label_widget: "Union[None, QtWidgets.QLabel]" = label_widget
 
 
 class CreatorAttrsWidget(QtWidgets.QWidget):
