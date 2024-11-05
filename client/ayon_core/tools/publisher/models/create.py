@@ -769,7 +769,7 @@ class CreateModel:
 
     def get_creator_attribute_definitions(
         self, instance_ids: List[str]
-    ) -> List[Tuple[AbstractAttrDef, List[str], List[Any]]]:
+    ) -> List[Tuple[AbstractAttrDef, Dict[str, Dict[str, Any]]]]:
         """Collect creator attribute definitions for multuple instances.
 
         Args:
@@ -796,12 +796,23 @@ class CreateModel:
 
                 if found_idx is None:
                     idx = len(output)
-                    output.append((attr_def, [instance_id], [value]))
+                    output.append((
+                        attr_def,
+                        {
+                            instance_id: {
+                                "value": value,
+                                "default": attr_def.default
+                            }
+                        }
+                    ))
                     _attr_defs[idx] = attr_def
                 else:
-                    _, ids, values = output[found_idx]
-                    ids.append(instance_id)
-                    values.append(value)
+                    _, info_by_id = output[found_idx]
+                    info_by_id[instance_id] = {
+                        "value": value,
+                        "default": attr_def.default
+                    }
+
         return output
 
     def set_instances_publish_attr_values(
@@ -835,7 +846,7 @@ class CreateModel:
     ) -> List[Tuple[
         str,
         List[AbstractAttrDef],
-        Dict[str, List[Tuple[str, Any]]]
+        Dict[str, List[Tuple[str, Any, Any]]]
     ]]:
         """Collect publish attribute definitions for passed instances.
 
@@ -865,21 +876,21 @@ class CreateModel:
                 attr_defs = attr_val.attr_defs
                 if not attr_defs:
                     continue
+
                 plugin_attr_defs = all_defs_by_plugin_name.setdefault(
                     plugin_name, []
                 )
-                plugin_attr_defs.append(attr_defs)
-
                 plugin_values = all_plugin_values.setdefault(plugin_name, {})
+
+                plugin_attr_defs.append(attr_defs)
 
                 for attr_def in attr_defs:
                     if isinstance(attr_def, UIDef):
                         continue
-
                     attr_values = plugin_values.setdefault(attr_def.key, [])
-
-                    value = attr_val[attr_def.key]
-                    attr_values.append((item_id, value))
+                    attr_values.append(
+                        (item_id, attr_val[attr_def.key], attr_def.default)
+                    )
 
         attr_defs_by_plugin_name = {}
         for plugin_name, attr_defs in all_defs_by_plugin_name.items():
@@ -893,7 +904,7 @@ class CreateModel:
             output.append((
                 plugin_name,
                 attr_defs_by_plugin_name[plugin_name],
-                all_plugin_values
+                all_plugin_values[plugin_name],
             ))
         return output
 
