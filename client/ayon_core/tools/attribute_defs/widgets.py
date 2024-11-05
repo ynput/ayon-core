@@ -241,11 +241,18 @@ class AttributeDefinitionsWidget(QtWidgets.QWidget):
 class _BaseAttrDefWidget(QtWidgets.QWidget):
     # Type 'object' may not work with older PySide versions
     value_changed = QtCore.Signal(object, str)
+    revert_to_default_requested = QtCore.Signal(str)
 
-    def __init__(self, attr_def, parent):
-        super(_BaseAttrDefWidget, self).__init__(parent)
+    def __init__(
+        self,
+        attr_def: AbstractAttrDef,
+        parent: "Union[QtWidgets.QWidget, None]",
+        handle_revert_to_default: Optional[bool] = True,
+    ):
+        super().__init__(parent)
 
-        self.attr_def = attr_def
+        self.attr_def: AbstractAttrDef = attr_def
+        self._handle_revert_to_default: bool = handle_revert_to_default
 
         main_layout = QtWidgets.QHBoxLayout(self)
         main_layout.setContentsMargins(0, 0, 0, 0)
@@ -253,6 +260,15 @@ class _BaseAttrDefWidget(QtWidgets.QWidget):
         self.main_layout = main_layout
 
         self._ui_init()
+
+    def revert_to_default_value(self):
+        if not self.attr_def.is_value_def:
+            return
+
+        if self._handle_revert_to_default:
+            self.set_value(self.attr_def.default)
+        else:
+            self.revert_to_default_requested.emit(self.attr_def.id)
 
     def _ui_init(self):
         raise NotImplementedError(
