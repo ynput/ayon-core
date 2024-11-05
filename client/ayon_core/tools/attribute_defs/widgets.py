@@ -364,7 +364,7 @@ class ClickableLineEdit(QtWidgets.QLineEdit):
     clicked = QtCore.Signal()
 
     def __init__(self, text, parent):
-        super(ClickableLineEdit, self).__init__(parent)
+        super().__init__(parent)
         self.setText(text)
         self.setReadOnly(True)
 
@@ -373,7 +373,7 @@ class ClickableLineEdit(QtWidgets.QLineEdit):
     def mousePressEvent(self, event):
         if event.button() == QtCore.Qt.LeftButton:
             self._mouse_pressed = True
-        super(ClickableLineEdit, self).mousePressEvent(event)
+        super().mousePressEvent(event)
 
     def mouseReleaseEvent(self, event):
         if self._mouse_pressed:
@@ -381,7 +381,7 @@ class ClickableLineEdit(QtWidgets.QLineEdit):
             if self.rect().contains(event.pos()):
                 self.clicked.emit()
 
-        super(ClickableLineEdit, self).mouseReleaseEvent(event)
+        super().mouseReleaseEvent(event)
 
 
 class NumberAttrWidget(_BaseAttrDefWidget):
@@ -596,7 +596,7 @@ class BoolAttrWidget(_BaseAttrDefWidget):
 class EnumAttrWidget(_BaseAttrDefWidget):
     def __init__(self, *args, **kwargs):
         self._multivalue = False
-        super(EnumAttrWidget, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
 
     @property
     def multiselection(self):
@@ -723,7 +723,7 @@ class HiddenAttrWidget(_BaseAttrDefWidget):
     def setVisible(self, visible):
         if visible:
             visible = False
-        super(HiddenAttrWidget, self).setVisible(visible)
+        super().setVisible(visible)
 
     def current_value(self):
         if self._multivalue:
