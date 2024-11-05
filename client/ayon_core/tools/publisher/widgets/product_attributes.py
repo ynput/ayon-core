@@ -261,6 +261,7 @@ class CreatorAttrsWidget(QtWidgets.QWidget):
             attr_def_info.instance_ids,
             attr_def_info.attr_def.key,
         )
+        self._refresh_content()
 
 
 class PublishPluginAttrsWidget(QtWidgets.QWidget):
@@ -480,6 +481,7 @@ class PublishPluginAttrsWidget(QtWidgets.QWidget):
             attr_def_info.plugin_name,
             attr_def_info.attr_def.key,
         )
+        self._refresh_content()
 
     def _on_instance_attr_defs_change(self, event):
         for instance_id in event.data:
