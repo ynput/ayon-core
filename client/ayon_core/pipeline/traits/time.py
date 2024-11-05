@@ -12,6 +12,8 @@ from .trait import TraitBase
 class GapPolicy(Enum):
     """Gap policy enumeration.
 
+    This type defines how to handle gaps in sequence.
+
     Attributes:
         forbidden (int): Gaps are forbidden.
         missing (int): Gaps are interpreted as missing frames.
@@ -23,11 +25,12 @@ class GapPolicy(Enum):
     hold = auto()
     black = auto()
 
+class FrameRanged(TraitBase):
+    """Frame ranged trait model.
 
-class Clip(TraitBase):
-    """Clip trait model.
+    Model representing a frame ranged trait.
 
-    Model representing a clip trait.
+    Sync with OpenAssetIO MediaCreation Traits.
 
     Attributes:
         name (str): Trait name.
@@ -35,6 +38,37 @@ class Clip(TraitBase):
         id (str): id should be namespaced trait name with version
         frame_start (int): Frame start.
         frame_end (int): Frame end.
+        frame_in (int): Frame in.
+        frame_out (int): Frame out.
+        frames_per_second (int): Frames per second.
+        step (int): Step.
+
+    """
+    name: ClassVar[str] = "FrameRanged"
+    description: ClassVar[str] = "Frame Ranged Trait"
+    id: ClassVar[str] = "ayon.time.FrameRanged.v1"
+    frame_start: int = Field(
+        ..., title="Start Frame", alias="start_frame")
+    frame_end: int = Field(
+        ..., title="Frame Start", alias="end_frame")
+    frame_in: int = Field(..., title="In Frame", alias="in_frame")
+    frame_out: int = Field(..., title="Out Frame", alias="out_frame")
+    frames_per_second: int = Field(
+        ..., title="Frames Per Second", alias="fps")
+    step: Optional[int] = Field(1, title="Step")
+
+
+class Handles(TraitBase):
+    """Handles trait model.
+
+    Handles define the range of frames that are included or excluded
+    from the sequence.
+
+    Attributes:
+        name (str): Trait name.
+        description (str): Trait description.
+        id (str): id should be namespaced trait name with version
+        inclusive (bool): Handles are inclusive.
         frame_start_handle (int): Frame start handle.
         frame_end_handle (int): Frame end handle.
 
@@ -42,22 +76,24 @@ class Clip(TraitBase):
     name: ClassVar[str] = "Clip"
     description: ClassVar[str] = "Clip Trait"
     id: ClassVar[str] = "ayon.time.Clip.v1"
-    frame_start: int = Field(..., title="Frame Start")
-    frame_end: int = Field(..., title="Frame End")
-    frame_start_handle: Optional[int] = Field(0, title="Frame Start Handle")
-    frame_end_handle: Optional[int] = Field(0, title="Frame End Handle")
+    inclusive: Optional[bool] = Field(
+        False, title="Handles are inclusive")  # noqa: FBT003
+    frame_start_handle: Optional[int] = Field(
+        0, title="Frame Start Handle")
+    frame_end_handle: Optional[int] = Field(
+        0, title="Frame End Handle")
 
-class Sequence(Clip):
+class Sequence(FrameRanged, Handles):
     """Sequence trait model.
 
-    This model represents a sequence trait. Based on the Clip trait,
-    adding handling for steps, gaps policy and frame padding.
+    This model represents a sequence trait. Based on the FrameRanged trait
+    and Handles, adding support for gaps policy, frame padding and frame
+    list specification. Regex is used to match frame numbers.
 
     Attributes:
         name (str): Trait name.
         description (str): Trait description.
         id (str): id should be namespaced trait name with version
-        step (int): Frame step.
         gaps_policy (GapPolicy): Gaps policy - how to handle gaps in
             sequence.
         frame_padding (int): Frame padding.
@@ -70,7 +106,6 @@ class Sequence(Clip):
     name: ClassVar[str] = "Sequence"
     description: ClassVar[str] = "Sequence Trait Model"
     id: ClassVar[str] = "ayon.time.Sequence.v1"
-    step: Optional[int] = Field(1, title="Step")
     gaps_policy: GapPolicy = Field(
         GapPolicy.forbidden, title="Gaps Policy")
     frame_padding: int = Field(..., title="Frame Padding")
@@ -80,8 +115,19 @@ class Sequence(Clip):
 
 # Do we need one for drop and non-drop frame?
 class SMPTETimecode(TraitBase):
-    """Timecode trait model."""
+    """SMPTE Timecode trait model."""
     name: ClassVar[str] = "Timecode"
     description: ClassVar[str] = "SMPTE Timecode Trait"
     id: ClassVar[str] = "ayon.time.SMPTETimecode.v1"
     timecode: str = Field(..., title="SMPTE Timecode HH:MM:SS:FF")
+
+
+class Static(TraitBase):
+    """Static time trait.
+
+    Used to define static time (single frame).
+
+    """
+    name: ClassVar[str] = "Static"
+    description: ClassVar[str] = "Static Time Trait"
+    id: ClassVar[str] = "ayon.time.Static.v1"
