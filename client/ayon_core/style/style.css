@@ -44,6 +44,10 @@ QLabel {
     background: transparent;
 }
 
+QLabel[overriden="1"] {
+    color: {color:font-overridden};
+}
+
 /* Inputs */
 QAbstractSpinBox, QLineEdit, QPlainTextEdit, QTextEdit {
     border: 1px solid {color:border};
