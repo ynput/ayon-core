@@ -966,7 +966,9 @@ class FileDef(AbstractAttrDef):
                     FileDefItem.from_dict(default)
 
                 elif isinstance(default, str):
-                    default = FileDefItem.from_paths([default.strip()])[0]
+                    default = FileDefItem.from_paths(
+                        [default.strip()], allow_sequences
+                    )[0]
 
                 else:
                     raise TypeError((
@@ -1044,7 +1046,9 @@ class FileDef(AbstractAttrDef):
                         pass
 
             if string_paths:
-                file_items = FileDefItem.from_paths(string_paths)
+                file_items = FileDefItem.from_paths(
+                    string_paths, self.allow_sequences
+                )
                 dict_items.extend([
                     file_item.to_dict()
                     for file_item in file_items
