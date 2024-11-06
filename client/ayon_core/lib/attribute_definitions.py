@@ -279,6 +279,8 @@ class AbstractAttrDef(metaclass=AbstractAttrDefMeta):
         return True
 
 
+AttrDefType = TypeVar("AttrDefType", bound=AbstractAttrDef)
+
 # -----------------------------------------
 # UI attribute definitions won't hold value
 # -----------------------------------------
@@ -1088,13 +1090,13 @@ class FileDef(AbstractAttrDef):
         return []
 
 
-def register_attr_def_class(cls):
+def register_attr_def_class(cls: AttrDefType):
     """Register attribute definition.
 
     Currently registered definitions are used to deserialize data to objects.
 
     Attrs:
-        cls (AbstractAttrDef): Non-abstract class to be registered with unique
+        cls (AttrDefType): Non-abstract class to be registered with unique
             'type' attribute.
 
     Raises:
@@ -1106,11 +1108,13 @@ def register_attr_def_class(cls):
     _attr_defs_by_type[cls.type] = cls
 
 
-def get_attributes_keys(attribute_definitions):
+def get_attributes_keys(
+    attribute_definitions: List[AttrDefType]
+) -> Set[str]:
     """Collect keys from list of attribute definitions.
 
     Args:
-        attribute_definitions (List[AbstractAttrDef]): Objects of attribute
+        attribute_definitions (List[AttrDefType]): Objects of attribute
             definitions.
 
     Returns:
@@ -1127,11 +1131,13 @@ def get_attributes_keys(attribute_definitions):
     return keys
 
 
-def get_default_values(attribute_definitions):
+def get_default_values(
+    attribute_definitions: List[AttrDefType]
+) -> Dict[str, Any]:
     """Receive default values for attribute definitions.
 
     Args:
-        attribute_definitions (List[AbstractAttrDef]): Attribute definitions
+        attribute_definitions (List[AttrDefType]): Attribute definitions
             for which default values should be collected.
 
     Returns:
@@ -1149,11 +1155,11 @@ def get_default_values(attribute_definitions):
     return output
 
 
-def serialize_attr_def(attr_def):
+def serialize_attr_def(attr_def: AttrDefType) -> Dict[str, Any]:
     """Serialize attribute definition to data.
 
     Args:
-        attr_def (AbstractAttrDef): Attribute definition to serialize.
+        attr_def (AttrDefType): Attribute definition to serialize.
 
     Returns:
         Dict[str, Any]: Serialized data.
@@ -1162,11 +1168,13 @@ def serialize_attr_def(attr_def):
     return attr_def.serialize()
 
 
-def serialize_attr_defs(attr_defs):
+def serialize_attr_defs(
+    attr_defs: List[AttrDefType]
+) -> List[Dict[str, Any]]:
     """Serialize attribute definitions to data.
 
     Args:
-        attr_defs (List[AbstractAttrDef]): Attribute definitions to serialize.
+        attr_defs (List[AttrDefType]): Attribute definitions to serialize.
 
     Returns:
         List[Dict[str, Any]]: Serialized data.
@@ -1178,7 +1186,7 @@ def serialize_attr_defs(attr_defs):
     ]
 
 
-def deserialize_attr_def(attr_def_data):
+def deserialize_attr_def(attr_def_data: Dict[str, Any]) -> AttrDefType:
     """Deserialize attribute definition from data.
 
     Args:
@@ -1191,7 +1199,9 @@ def deserialize_attr_def(attr_def_data):
     return cls.deserialize(attr_def_data)
 
 
-def deserialize_attr_defs(attr_defs_data):
+def deserialize_attr_defs(
+    attr_defs_data: List[Dict[str, Any]]
+) -> List[AttrDefType]:
     """Deserialize attribute definitions.
 
     Args:
