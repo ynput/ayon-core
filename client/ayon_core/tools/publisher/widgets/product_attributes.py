@@ -1,12 +1,57 @@
+import typing
+from typing import Dict, List, Any
+
 from qtpy import QtWidgets, QtCore
 
-from ayon_core.lib.attribute_definitions import UnknownDef
-from ayon_core.tools.attribute_defs import create_widget_for_attr_def
+from ayon_core.lib.attribute_definitions import AbstractAttrDef, UnknownDef
+from ayon_core.tools.attribute_defs import (
+    create_widget_for_attr_def,
+    AttributeDefinitionsLabel,
+)
 from ayon_core.tools.publisher.abstract import AbstractPublisherFrontend
 from ayon_core.tools.publisher.constants import (
     INPUTS_LAYOUT_HSPACING,
     INPUTS_LAYOUT_VSPACING,
 )
+
+if typing.TYPE_CHECKING:
+    from typing import Union
+
+
+class _CreateAttrDefInfo:
+    """Helper class to store information about create attribute definition."""
+    def __init__(
+        self,
+        attr_def: AbstractAttrDef,
+        instance_ids: List["Union[str, None]"],
+        defaults: List[Any],
+        label_widget: "Union[AttributeDefinitionsLabel, None]",
+    ):
+        self.attr_def: AbstractAttrDef = attr_def
+        self.instance_ids: List["Union[str, None]"] = instance_ids
+        self.defaults: List[Any] = defaults
+        self.label_widget: "Union[AttributeDefinitionsLabel, None]" = (
+            label_widget
+        )
+
+
+class _PublishAttrDefInfo:
+    """Helper class to store information about publish attribute definition."""
+    def __init__(
+        self,
+        attr_def: AbstractAttrDef,
+        plugin_name: str,
+        instance_ids: List["Union[str, None]"],
+        defaults: List[Any],
+        label_widget: "Union[AttributeDefinitionsLabel, None]",
+    ):
+        self.attr_def: AbstractAttrDef = attr_def
+        self.plugin_name: str = plugin_name
+        self.instance_ids: List["Union[str, None]"] = instance_ids
+        self.defaults: List[Any] = defaults
+        self.label_widget: "Union[AttributeDefinitionsLabel, None]" = (
+            label_widget
+        )
 
 
 class CreatorAttrsWidget(QtWidgets.QWidget):
@@ -51,8 +96,7 @@ class CreatorAttrsWidget(QtWidgets.QWidget):
         self._controller: AbstractPublisherFrontend = controller
         self._scroll_area = scroll_area
 
-        self._attr_def_id_to_instances = {}
-        self._attr_def_id_to_attr_def = {}
+        self._attr_def_info_by_id: Dict[str, _CreateAttrDefInfo] = {}
         self._current_instance_ids = set()
 
         # To store content of scroll area to prevent garbage collection
@@ -81,8 +125,7 @@ class CreatorAttrsWidget(QtWidgets.QWidget):
             prev_content_widget.deleteLater()
 
         self._content_widget = None
-        self._attr_def_id_to_instances = {}
-        self._attr_def_id_to_attr_def = {}
+        self._attr_def_info_by_id = {}
 
         result = self._controller.get_creator_attribute_definitions(
             self._current_instance_ids
@@ -97,9 +140,21 @@ class CreatorAttrsWidget(QtWidgets.QWidget):
         content_layout.setVerticalSpacing(INPUTS_LAYOUT_VSPACING)
 
         row = 0
-        for attr_def, instance_ids, values in result:
-            widget = create_widget_for_attr_def(attr_def, content_widget)
+        for attr_def, info_by_id in result:
+            widget = create_widget_for_attr_def(
+                attr_def, content_widget, handle_revert_to_default=False
+            )
+            default_values = []
             if attr_def.is_value_def:
+                values = []
+                for item in info_by_id.values():
+                    values.append(item["value"])
+                    # 'set' cannot be used for default values because they can
+                    #    be unhashable types, e.g. 'list'.
+                    default = item["default"]
+                    if default not in default_values:
+                        default_values.append(default)
+
                 if len(values) == 1:
                     value = values[0]
                     if value is not None:
@@ -108,8 +163,13 @@ class CreatorAttrsWidget(QtWidgets.QWidget):
                     widget.set_value(values, True)
 
             widget.value_changed.connect(self._input_value_changed)
-            self._attr_def_id_to_instances[attr_def.id] = instance_ids
-            self._attr_def_id_to_attr_def[attr_def.id] = attr_def
+            widget.revert_to_default_requested.connect(
+                self._on_request_revert_to_default
+            )
+            attr_def_info = _CreateAttrDefInfo(
+                attr_def, list(info_by_id), default_values, None
+            )
+            self._attr_def_info_by_id[attr_def.id] = attr_def_info
 
             if not attr_def.visible:
                 continue
@@ -121,10 +181,18 @@ class CreatorAttrsWidget(QtWidgets.QWidget):
             col_num = 2 - expand_cols
 
             label = None
+            is_overriden = False
             if attr_def.is_value_def:
+                is_overriden = any(
+                    item["value"] != item["default"]
+                    for item in info_by_id.values()
+                )
                 label = attr_def.label or attr_def.key
+
             if label:
-                label_widget = QtWidgets.QLabel(label, self)
+                label_widget = AttributeDefinitionsLabel(
+                    attr_def.id, label, self
+                )
                 tooltip = attr_def.tooltip
                 if tooltip:
                     label_widget.setToolTip(tooltip)
@@ -138,6 +206,11 @@ class CreatorAttrsWidget(QtWidgets.QWidget):
                 )
                 if not attr_def.is_label_horizontal:
                     row += 1
+                attr_def_info.label_widget = label_widget
+                label_widget.set_overridden(is_overriden)
+                label_widget.revert_to_default_requested.connect(
+                    self._on_request_revert_to_default
+                )
 
             content_layout.addWidget(
                 widget, row, col_num, 1, expand_cols
@@ -159,19 +232,36 @@ class CreatorAttrsWidget(QtWidgets.QWidget):
         for instance_id, changes in event["instance_changes"].items():
             if (
                 instance_id in self._current_instance_ids
-                and "creator_attributes" not in changes
+                and "creator_attributes" in changes
             ):
                 self._refresh_content()
                 break
 
     def _input_value_changed(self, value, attr_id):
-        instance_ids = self._attr_def_id_to_instances.get(attr_id)
-        attr_def = self._attr_def_id_to_attr_def.get(attr_id)
-        if not instance_ids or not attr_def:
+        attr_def_info = self._attr_def_info_by_id.get(attr_id)
+        if attr_def_info is None:
             return
+
+        if attr_def_info.label_widget is not None:
+            defaults = attr_def_info.defaults
+            is_overriden = len(defaults) != 1 or value not in defaults
+            attr_def_info.label_widget.set_overridden(is_overriden)
+
         self._controller.set_instances_create_attr_values(
-            instance_ids, attr_def.key, value
+            attr_def_info.instance_ids,
+            attr_def_info.attr_def.key,
+            value
         )
+
+    def _on_request_revert_to_default(self, attr_id):
+        attr_def_info = self._attr_def_info_by_id.get(attr_id)
+        if attr_def_info is None:
+            return
+        self._controller.revert_instances_create_attr_values(
+            attr_def_info.instance_ids,
+            attr_def_info.attr_def.key,
+        )
+        self._refresh_content()
 
 
 class PublishPluginAttrsWidget(QtWidgets.QWidget):
@@ -223,9 +313,7 @@ class PublishPluginAttrsWidget(QtWidgets.QWidget):
         self._controller: AbstractPublisherFrontend = controller
         self._scroll_area = scroll_area
 
-        self._attr_def_id_to_instances = {}
-        self._attr_def_id_to_attr_def = {}
-        self._attr_def_id_to_plugin_name = {}
+        self._attr_def_info_by_id: Dict[str, _PublishAttrDefInfo] = {}
 
         # Store content of scroll area to prevent garbage collection
         self._content_widget = None
@@ -254,9 +342,7 @@ class PublishPluginAttrsWidget(QtWidgets.QWidget):
 
         self._content_widget = None
 
-        self._attr_def_id_to_instances = {}
-        self._attr_def_id_to_attr_def = {}
-        self._attr_def_id_to_plugin_name = {}
+        self._attr_def_info_by_id = {}
 
         result = self._controller.get_publish_attribute_definitions(
             self._current_instance_ids, self._context_selected
@@ -275,12 +361,10 @@ class PublishPluginAttrsWidget(QtWidgets.QWidget):
         content_layout.addStretch(1)
 
         row = 0
-        for plugin_name, attr_defs, all_plugin_values in result:
-            plugin_values = all_plugin_values[plugin_name]
-
+        for plugin_name, attr_defs, plugin_values in result:
             for attr_def in attr_defs:
                 widget = create_widget_for_attr_def(
-                    attr_def, content_widget
+                    attr_def, content_widget, handle_revert_to_default=False
                 )
                 visible_widget = attr_def.visible
                 # Hide unknown values of publish plugins
@@ -290,6 +374,7 @@ class PublishPluginAttrsWidget(QtWidgets.QWidget):
                     widget.setVisible(False)
                     visible_widget = False
 
+                label_widget = None
                 if visible_widget:
                     expand_cols = 2
                     if attr_def.is_value_def and attr_def.is_label_horizontal:
@@ -300,7 +385,12 @@ class PublishPluginAttrsWidget(QtWidgets.QWidget):
                     if attr_def.is_value_def:
                         label = attr_def.label or attr_def.key
                     if label:
-                        label_widget = QtWidgets.QLabel(label, content_widget)
+                        label_widget = AttributeDefinitionsLabel(
+                            attr_def.id, label, content_widget
+                        )
+                        label_widget.revert_to_default_requested.connect(
+                            self._on_request_revert_to_default
+                        )
                         tooltip = attr_def.tooltip
                         if tooltip:
                             label_widget.setToolTip(tooltip)
@@ -323,37 +413,75 @@ class PublishPluginAttrsWidget(QtWidgets.QWidget):
                     continue
 
                 widget.value_changed.connect(self._input_value_changed)
+                widget.revert_to_default_requested.connect(
+                    self._on_request_revert_to_default
+                )
 
-                attr_values = plugin_values[attr_def.key]
-                multivalue = len(attr_values) > 1
+                instance_ids = []
                 values = []
-                instances = []
-                for instance, value in attr_values:
+                default_values = []
+                is_overriden = False
+                for (instance_id, value, default_value) in (
+                    plugin_values.get(attr_def.key, [])
+                ):
+                    instance_ids.append(instance_id)
                     values.append(value)
-                    instances.append(instance)
+                    if not is_overriden and value != default_value:
+                        is_overriden = True
+                    # 'set' cannot be used for default values because they can
+                    #    be unhashable types, e.g. 'list'.
+                    if default_value not in default_values:
+                        default_values.append(default_value)
 
-                self._attr_def_id_to_attr_def[attr_def.id] = attr_def
-                self._attr_def_id_to_instances[attr_def.id] = instances
-                self._attr_def_id_to_plugin_name[attr_def.id] = plugin_name
+                multivalue = len(values) > 1
+
+                self._attr_def_info_by_id[attr_def.id] = _PublishAttrDefInfo(
+                    attr_def,
+                    plugin_name,
+                    instance_ids,
+                    default_values,
+                    label_widget,
+                )
 
                 if multivalue:
                     widget.set_value(values, multivalue)
                 else:
                     widget.set_value(values[0])
 
+                if label_widget is not None:
+                    label_widget.set_overridden(is_overriden)
+
         self._scroll_area.setWidget(content_widget)
         self._content_widget = content_widget
 
     def _input_value_changed(self, value, attr_id):
-        instance_ids = self._attr_def_id_to_instances.get(attr_id)
-        attr_def = self._attr_def_id_to_attr_def.get(attr_id)
-        plugin_name = self._attr_def_id_to_plugin_name.get(attr_id)
-        if not instance_ids or not attr_def or not plugin_name:
+        attr_def_info = self._attr_def_info_by_id.get(attr_id)
+        if attr_def_info is None:
             return
 
+        if attr_def_info.label_widget is not None:
+            defaults = attr_def_info.defaults
+            is_overriden = len(defaults) != 1 or value not in defaults
+            attr_def_info.label_widget.set_overridden(is_overriden)
+
         self._controller.set_instances_publish_attr_values(
-            instance_ids, plugin_name, attr_def.key, value
+            attr_def_info.instance_ids,
+            attr_def_info.plugin_name,
+            attr_def_info.attr_def.key,
+            value
         )
+
+    def _on_request_revert_to_default(self, attr_id):
+        attr_def_info = self._attr_def_info_by_id.get(attr_id)
+        if attr_def_info is None:
+            return
+
+        self._controller.revert_instances_publish_attr_values(
+            attr_def_info.instance_ids,
+            attr_def_info.plugin_name,
+            attr_def_info.attr_def.key,
+        )
+        self._refresh_content()
 
     def _on_instance_attr_defs_change(self, event):
         for instance_id in event.data:
@@ -370,7 +498,7 @@ class PublishPluginAttrsWidget(QtWidgets.QWidget):
         for instance_id, changes in event["instance_changes"].items():
             if (
                 instance_id in self._current_instance_ids
-                and "publish_attributes" not in changes
+                and "publish_attributes" in changes
             ):
                 self._refresh_content()
                 break
