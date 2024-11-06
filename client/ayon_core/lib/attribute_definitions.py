@@ -15,67 +15,6 @@ import clique
 _attr_defs_by_type = {}
 
 
-def register_attr_def_class(cls):
-    """Register attribute definition.
-
-    Currently registered definitions are used to deserialize data to objects.
-
-    Attrs:
-        cls (AbstractAttrDef): Non-abstract class to be registered with unique
-            'type' attribute.
-
-    Raises:
-        KeyError: When type was already registered.
-    """
-
-    if cls.type in _attr_defs_by_type:
-        raise KeyError("Type \"{}\" was already registered".format(cls.type))
-    _attr_defs_by_type[cls.type] = cls
-
-
-def get_attributes_keys(attribute_definitions):
-    """Collect keys from list of attribute definitions.
-
-    Args:
-        attribute_definitions (List[AbstractAttrDef]): Objects of attribute
-            definitions.
-
-    Returns:
-        Set[str]: Keys that will be created using passed attribute definitions.
-    """
-
-    keys = set()
-    if not attribute_definitions:
-        return keys
-
-    for attribute_def in attribute_definitions:
-        if not isinstance(attribute_def, UIDef):
-            keys.add(attribute_def.key)
-    return keys
-
-
-def get_default_values(attribute_definitions):
-    """Receive default values for attribute definitions.
-
-    Args:
-        attribute_definitions (List[AbstractAttrDef]): Attribute definitions
-            for which default values should be collected.
-
-    Returns:
-        Dict[str, Any]: Default values for passed attribute definitions.
-    """
-
-    output = {}
-    if not attribute_definitions:
-        return output
-
-    for attr_def in attribute_definitions:
-        # Skip UI definitions
-        if not isinstance(attr_def, UIDef):
-            output[attr_def.key] = attr_def.default
-    return output
-
-
 class AbstractAttrDefMeta(ABCMeta):
     """Metaclass to validate the existence of 'key' attribute.
 
@@ -1060,6 +999,67 @@ class FileDef(AbstractAttrDef):
         if self.single_item:
             return FileDefItem.create_empty_item().to_dict()
         return []
+
+
+def register_attr_def_class(cls):
+    """Register attribute definition.
+
+    Currently registered definitions are used to deserialize data to objects.
+
+    Attrs:
+        cls (AbstractAttrDef): Non-abstract class to be registered with unique
+            'type' attribute.
+
+    Raises:
+        KeyError: When type was already registered.
+    """
+
+    if cls.type in _attr_defs_by_type:
+        raise KeyError("Type \"{}\" was already registered".format(cls.type))
+    _attr_defs_by_type[cls.type] = cls
+
+
+def get_attributes_keys(attribute_definitions):
+    """Collect keys from list of attribute definitions.
+
+    Args:
+        attribute_definitions (List[AbstractAttrDef]): Objects of attribute
+            definitions.
+
+    Returns:
+        Set[str]: Keys that will be created using passed attribute definitions.
+    """
+
+    keys = set()
+    if not attribute_definitions:
+        return keys
+
+    for attribute_def in attribute_definitions:
+        if not isinstance(attribute_def, UIDef):
+            keys.add(attribute_def.key)
+    return keys
+
+
+def get_default_values(attribute_definitions):
+    """Receive default values for attribute definitions.
+
+    Args:
+        attribute_definitions (List[AbstractAttrDef]): Attribute definitions
+            for which default values should be collected.
+
+    Returns:
+        Dict[str, Any]: Default values for passed attribute definitions.
+    """
+
+    output = {}
+    if not attribute_definitions:
+        return output
+
+    for attr_def in attribute_definitions:
+        # Skip UI definitions
+        if not isinstance(attr_def, UIDef):
+            output[attr_def.key] = attr_def.default
+    return output
 
 
 def serialize_attr_def(attr_def):
