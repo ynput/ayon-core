@@ -100,18 +100,25 @@ class ExtractOIIOTranscode(publish.Extractor):
                 self.log.warning("Config file doesn't exist, skipping")
                 continue
 
+            # Get representation files to convert
+            if isinstance(repre["files"], list):
+                repre_files_to_convert = copy.deepcopy(repre["files"])
+            else:
+                repre_files_to_convert = [repre["files"]]
+            repre_files_to_convert = self._translate_to_sequence(
+                repre_files_to_convert)
+
+            # Process each output definition
             for output_def in profile_output_defs:
+                # Local copy to avoid accidental mutable changes
+                files_to_convert = list(repre_files_to_convert)
+
                 output_name = output_def["name"]
                 new_repre = copy.deepcopy(repre)
 
                 original_staging_dir = new_repre["stagingDir"]
                 new_staging_dir = get_transcode_temp_directory()
                 new_repre["stagingDir"] = new_staging_dir
-
-                if isinstance(new_repre["files"], list):
-                    files_to_convert = copy.deepcopy(new_repre["files"])
-                else:
-                    files_to_convert = [new_repre["files"]]
 
                 output_extension = output_def["extension"]
                 output_extension = output_extension.replace('.', '')
@@ -121,7 +128,6 @@ class ExtractOIIOTranscode(publish.Extractor):
                                                output_extension)
 
                 transcoding_type = output_def["transcoding_type"]
-
                 target_colorspace = view = display = None
                 # NOTE: we use colorspace_data as the fallback values for
                 #     the target colorspace.
