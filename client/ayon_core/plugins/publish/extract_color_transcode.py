@@ -153,8 +153,7 @@ class ExtractOIIOTranscode(publish.Extractor):
                 additional_command_args = (output_def["oiiotool_args"]
                                            ["additional_command_args"])
 
-                files_to_convert = self._translate_to_sequence(
-                    files_to_convert)
+                unknown_rgba_channels = False
                 for file_name in files_to_convert:
                     input_path = os.path.join(original_staging_dir,
                                               file_name)
@@ -174,11 +173,16 @@ class ExtractOIIOTranscode(publish.Extractor):
                             self.log
                         )
                     except UnknownRGBAChannelsError:
+                        unknown_rgba_channels = True
                         self.log.error(
                             "Skipping OIIO Transcode. Unknown RGBA channels"
                             f" for colorspace conversion in file: {input_path}"
                         )
-                        continue
+                        break
+
+                if unknown_rgba_channels:
+                    # Stop processing this representation
+                    break
 
                 # cleanup temporary transcoded files
                 for file_name in new_repre["files"]:
