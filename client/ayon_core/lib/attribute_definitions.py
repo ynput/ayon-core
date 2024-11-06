@@ -8,13 +8,22 @@ import warnings
 from abc import ABCMeta, abstractmethod
 import typing
 from typing import (
-    Any, Optional, List, Set, Dict, Iterable, TypedDict, TypeVar,
+    Any,
+    Optional,
+    Tuple,
+    List,
+    Set,
+    Dict,
+    Iterable,
+    TypedDict,
+    TypeVar,
 )
 
 import clique
 
 if typing.TYPE_CHECKING:
     from typing import Self, Union, Pattern
+
 # Global variable which store attribute definitions by type
 #   - default types are registered on import
 _attr_defs_by_type = {}
@@ -26,6 +35,9 @@ IntFloatType = "Union[int, float]"
 class EnumItemDict(TypedDict):
     label: str
     value: Any
+
+
+EnumItemsInputType = "Union[Dict[Any, str], List[Tuple[Any, str]], List[Any], List[EnumItemDict]]"  # noqa: E501
 
 
 class FileDefItemDict(TypedDict):
@@ -526,8 +538,8 @@ class EnumDef(AbstractAttrDef):
 
     Args:
         key (str): Key under which value is stored.
-        items (Union[Dict[Any, str], List[Any], List[EnumItemDict]]): Items
-            definition that can be converted using 'prepare_enum_items'.
+        items (EnumItemsInputType): Items definition that can be converted
+            using 'prepare_enum_items'.
         default (Optional[Any]): Default value. Must be one key(value) from
             passed items or list of values for multiselection.
         multiselection (Optional[bool]): If True, multiselection is allowed.
@@ -539,7 +551,7 @@ class EnumDef(AbstractAttrDef):
     def __init__(
         self,
         key: str,
-        items: "Union[Dict[Any, str], List[Any], List[EnumItemDict]]",
+        items: EnumItemsInputType,
         default: "Union[str, List[Any]]" = None,
         multiselection: Optional[bool] = False,
         **kwargs
@@ -598,7 +610,7 @@ class EnumDef(AbstractAttrDef):
         return data
 
     @staticmethod
-    def prepare_enum_items(items) -> List[EnumItemDict]:
+    def prepare_enum_items(items: EnumItemsInputType) -> List[EnumItemDict]:
         """Convert items to unified structure.
 
         Output is a list where each item is dictionary with 'value'
@@ -614,8 +626,7 @@ class EnumDef(AbstractAttrDef):
         ```
 
         Args:
-            items (Union[Dict[Any, str], List[Any], List[EnumItemDict]]): The
-                items to convert.
+            items (EnumItemsInputType): The items to convert.
 
         Returns:
             List[EnumItemDict]: Unified structure of items.
