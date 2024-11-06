@@ -232,7 +232,7 @@ class CreatorAttrsWidget(QtWidgets.QWidget):
         for instance_id, changes in event["instance_changes"].items():
             if (
                 instance_id in self._current_instance_ids
-                and "creator_attributes" not in changes
+                and "creator_attributes" in changes
             ):
                 self._refresh_content()
                 break
@@ -498,7 +498,7 @@ class PublishPluginAttrsWidget(QtWidgets.QWidget):
         for instance_id, changes in event["instance_changes"].items():
             if (
                 instance_id in self._current_instance_ids
-                and "publish_attributes" not in changes
+                and "publish_attributes" in changes
             ):
                 self._refresh_content()
                 break
