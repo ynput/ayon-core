@@ -48,4 +48,3 @@ class ExtractColorspaceData(publish.Extractor,
 
             self.set_representation_colorspace(
                 representation, context, colorspace)
-            )
