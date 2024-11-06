@@ -10,6 +10,7 @@ from ayon_core.lib import (
 )
 
 from ayon_core.lib.transcoding import (
+    UnknownRGBAChannelsError,
     convert_colorspace,
     get_transcode_temp_directory,
 )
@@ -160,17 +161,24 @@ class ExtractOIIOTranscode(publish.Extractor):
                     output_path = self._get_output_file_path(input_path,
                                                              new_staging_dir,
                                                              output_extension)
-                    convert_colorspace(
-                        input_path,
-                        output_path,
-                        config_path,
-                        source_colorspace,
-                        target_colorspace,
-                        view,
-                        display,
-                        additional_command_args,
-                        self.log
-                    )
+                    try:
+                        convert_colorspace(
+                            input_path,
+                            output_path,
+                            config_path,
+                            source_colorspace,
+                            target_colorspace,
+                            view,
+                            display,
+                            additional_command_args,
+                            self.log
+                        )
+                    except UnknownRGBAChannelsError:
+                        self.log.error(
+                            "Skipping OIIO Transcode. Unknown RGBA channels"
+                            f" for colorspace conversion in file: {input_path}"
+                        )
+                        continue
 
                 # cleanup temporary transcoded files
                 for file_name in new_repre["files"]:
