@@ -30,7 +30,12 @@ class FrameRanged(TraitBase):
 
     Model representing a frame ranged trait.
 
-    Sync with OpenAssetIO MediaCreation Traits.
+    Sync with OpenAssetIO MediaCreation Traits. For compatibility with
+    OpenAssetIO, we'll need to handle different names of attributes:
+
+        * frame_start -> start_frame
+        * frame_end -> end_frame
+        ...
 
     Attributes:
         name (str): Trait name.
@@ -48,13 +53,13 @@ class FrameRanged(TraitBase):
     description: ClassVar[str] = "Frame Ranged Trait"
     id: ClassVar[str] = "ayon.time.FrameRanged.v1"
     frame_start: int = Field(
-        ..., title="Start Frame", alias="start_frame")
+        ..., title="Start Frame")
     frame_end: int = Field(
-        ..., title="Frame Start", alias="end_frame")
-    frame_in: int = Field(..., title="In Frame", alias="in_frame")
-    frame_out: int = Field(..., title="Out Frame", alias="out_frame")
+        ..., title="Frame Start")
+    frame_in: int = Field(..., title="In Frame")
+    frame_out: int = Field(..., title="Out Frame")
     frames_per_second: int = Field(
-        ..., title="Frames Per Second", alias="fps")
+        ..., title="Frames Per Second")
     step: Optional[int] = Field(1, title="Step")
 
 
