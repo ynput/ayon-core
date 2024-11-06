@@ -67,6 +67,11 @@ VIDEO_EXTENSIONS = {
 }
 
 
+class UnknownRGBAChannelsError(ValueError):
+    """Raised when we can't find RGB channels for conversion in input media."""
+    pass
+
+
 def get_transcode_temp_directory():
     """Creates temporary folder for transcoding.
 
@@ -1427,7 +1432,7 @@ def get_oiio_input_and_channel_args(oiio_input_info, alpha_default=None):
     review_channels = get_convert_rgb_channels(channel_names)
 
     if review_channels is None:
-        raise ValueError(
+        raise UnknownRGBAChannelsError(
             "Couldn't find channels that can be used for conversion."
         )
 
