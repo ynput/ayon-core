@@ -52,8 +52,8 @@ class AbstractAttrDefMeta(ABCMeta):
     """Metaclass to validate the existence of 'key' attribute.
 
     Each object of `AbstractAttrDef` must have defined 'key' attribute.
-    """
 
+    """
     def __call__(cls, *args, **kwargs):
         obj = super(AbstractAttrDefMeta, cls).__call__(*args, **kwargs)
         init_class = getattr(obj, "__init__class__", None)
@@ -116,8 +116,8 @@ class AbstractAttrDef(metaclass=AbstractAttrDefMeta):
         enabled (Optional[bool]): Item is enabled (for UI purposes).
         hidden (Optional[bool]): DEPRECATED: Use 'visible' instead.
         disabled (Optional[bool]): DEPRECATED: Use 'enabled' instead.
-    """
 
+    """
     type_attributes = []
 
     is_value_def = True
@@ -227,8 +227,8 @@ class AbstractAttrDef(metaclass=AbstractAttrDefMeta):
 
         Returns:
             str: Type of attribute definition.
-        """
 
+        """
         pass
 
     @abstractmethod
@@ -237,8 +237,8 @@ class AbstractAttrDef(metaclass=AbstractAttrDefMeta):
 
         Convert passed value to a valid type. Use default if value can't be
         converted.
-        """
 
+        """
         pass
 
     def serialize(self) -> Dict[str, Any]:
@@ -247,8 +247,8 @@ class AbstractAttrDef(metaclass=AbstractAttrDefMeta):
         Returns:
             Dict[str, Any]: Serialized object that can be passed to
                 'deserialize' method.
-        """
 
+        """
         data = {
             "type": self.type,
             "key": self.key,
@@ -327,8 +327,8 @@ class UnknownDef(AbstractAttrDef):
 
     This attribute can be used to keep existing data unchanged but does not
     have known definition of type.
-    """
 
+    """
     type = "unknown"
 
     def __init__(self, key: str, default: Optional[Any] = None, **kwargs):
@@ -349,8 +349,8 @@ class HiddenDef(AbstractAttrDef):
     to other attributes (e.g. in multi-page UIs).
 
     Keep in mind the value should be possible to parse by json parser.
-    """
 
+    """
     type = "hidden"
 
     def __init__(self, key: str, default: Optional[Any] = None, **kwargs):
@@ -376,8 +376,8 @@ class NumberDef(AbstractAttrDef):
         maximum(int, float): Maximum possible value.
         decimals(int): Maximum decimal points of value.
         default(int, float): Default value for conversion.
-    """
 
+    """
     type = "number"
     type_attributes = [
         "minimum",
@@ -466,8 +466,8 @@ class TextDef(AbstractAttrDef):
         regex(str, re.Pattern): Regex validation.
         placeholder(str): UI placeholder for attribute.
         default(str, None): Default value. Empty string used when not defined.
-    """
 
+    """
     type = "text"
     type_attributes = [
         "multiline",
@@ -546,8 +546,8 @@ class EnumDef(AbstractAttrDef):
             passed items or list of values for multiselection.
         multiselection (Optional[bool]): If True, multiselection is allowed.
             Output is list of selected items.
-    """
 
+    """
     type = "enum"
 
     def __init__(
@@ -684,8 +684,8 @@ class BoolDef(AbstractAttrDef):
 
     Args:
         default(bool): Default value. Set to `False` if not defined.
-    """
 
+    """
     type = "bool"
 
     def __init__(self, key: str, default: Optional[bool] = None, **kwargs):
@@ -854,8 +854,8 @@ class FileDefItem:
 
         Returns:
             list: Created FileDefItem objects.
-        """
 
+        """
         # Convert single item to iterable
         if not isinstance(value, (list, tuple, set)):
             value = [value]
@@ -1101,8 +1101,8 @@ def register_attr_def_class(cls: AttrDefType):
 
     Raises:
         KeyError: When type was already registered.
-    """
 
+    """
     if cls.type in _attr_defs_by_type:
         raise KeyError("Type \"{}\" was already registered".format(cls.type))
     _attr_defs_by_type[cls.type] = cls
@@ -1119,8 +1119,8 @@ def get_attributes_keys(
 
     Returns:
         Set[str]: Keys that will be created using passed attribute definitions.
-    """
 
+    """
     keys = set()
     if not attribute_definitions:
         return keys
@@ -1142,8 +1142,8 @@ def get_default_values(
 
     Returns:
         Dict[str, Any]: Default values for passed attribute definitions.
-    """
 
+    """
     output = {}
     if not attribute_definitions:
         return output
@@ -1163,8 +1163,8 @@ def serialize_attr_def(attr_def: AttrDefType) -> Dict[str, Any]:
 
     Returns:
         Dict[str, Any]: Serialized data.
-    """
 
+    """
     return attr_def.serialize()
 
 
@@ -1178,8 +1178,8 @@ def serialize_attr_defs(
 
     Returns:
         List[Dict[str, Any]]: Serialized data.
-    """
 
+    """
     return [
         serialize_attr_def(attr_def)
         for attr_def in attr_defs
@@ -1192,8 +1192,8 @@ def deserialize_attr_def(attr_def_data: Dict[str, Any]) -> AttrDefType:
     Args:
         attr_def_data (Dict[str, Any]): Attribute definition data to
             deserialize.
-    """
 
+    """
     attr_type = attr_def_data.pop("type")
     cls = _attr_defs_by_type[attr_type]
     return cls.deserialize(attr_def_data)
@@ -1206,8 +1206,8 @@ def deserialize_attr_defs(
 
     Args:
         List[Dict[str, Any]]: List of attribute definitions.
-    """
 
+    """
     return [
         deserialize_attr_def(attr_def_data)
         for attr_def_data in attr_defs_data
