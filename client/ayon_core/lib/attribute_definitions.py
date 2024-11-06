@@ -7,12 +7,14 @@ import copy
 import warnings
 from abc import ABCMeta, abstractmethod
 import typing
-from typing import Any, Optional, List, TypedDict
+from typing import (
+    Any, Optional, List, Set, Dict, Iterable, TypedDict, TypeVar,
+)
 
 import clique
 
 if typing.TYPE_CHECKING:
-    from typing import Union
+    from typing import Self, Union, Pattern
 # Global variable which store attribute definitions by type
 #   - default types are registered on import
 _attr_defs_by_type = {}
@@ -51,8 +53,12 @@ class AbstractAttrDefMeta(ABCMeta):
 
 
 def _convert_reversed_attr(
-    main_value, depr_value, main_label, depr_label, default
-):
+    main_value: Any,
+    depr_value: Any,
+    main_label: str,
+    depr_label: str,
+    default: Any,
+) -> Any:
     if main_value is not None and depr_value is not None:
         if main_value == depr_value:
             print(
@@ -141,7 +147,7 @@ class AbstractAttrDef(metaclass=AbstractAttrDefMeta):
     def id(self) -> str:
         return self._id
 
-    def clone(self):
+    def clone(self) -> "Self":
         data = self.serialize()
         data.pop("type")
         return self.deserialize(data)
@@ -214,7 +220,7 @@ class AbstractAttrDef(metaclass=AbstractAttrDefMeta):
         pass
 
     @abstractmethod
-    def convert_value(self, value):
+    def convert_value(self, value: Any) -> Any:
         """Convert value to a valid one.
 
         Convert passed value to a valid type. Use default if value can't be
@@ -223,7 +229,7 @@ class AbstractAttrDef(metaclass=AbstractAttrDefMeta):
 
         pass
 
-    def serialize(self):
+    def serialize(self) -> Dict[str, Any]:
         """Serialize object to data so it's possible to recreate it.
 
         Returns:
@@ -246,7 +252,7 @@ class AbstractAttrDef(metaclass=AbstractAttrDefMeta):
         return data
 
     @classmethod
-    def deserialize(cls, data):
+    def deserialize(cls, data: Dict[str, Any]) -> "Self":
         """Recreate object from data.
 
         Data can be received using 'serialize' method.
@@ -257,7 +263,7 @@ class AbstractAttrDef(metaclass=AbstractAttrDefMeta):
 
         return cls(**data)
 
-    def _def_type_compare(self, other: "AbstractAttrDef") -> bool:
+    def _def_type_compare(self, other: "Self") -> bool:
         return True
 
 
@@ -268,13 +274,19 @@ class AbstractAttrDef(metaclass=AbstractAttrDefMeta):
 class UIDef(AbstractAttrDef):
     is_value_def = False
 
-    def __init__(self, key=None, default=None, *args, **kwargs):
+    def __init__(
+        self,
+        key: Optional[str] = None,
+        default: Optional[Any] = None,
+        *args,
+        **kwargs
+    ):
         super().__init__(key, default, *args, **kwargs)
 
     def is_value_valid(self, value: Any) -> bool:
         return True
 
-    def convert_value(self, value):
+    def convert_value(self, value: Any) -> Any:
         return value
 
 
@@ -305,14 +317,14 @@ class UnknownDef(AbstractAttrDef):
 
     type = "unknown"
 
-    def __init__(self, key, default=None, **kwargs):
+    def __init__(self, key: str, default: Optional[Any] = None, **kwargs):
         kwargs["default"] = default
         super().__init__(key, **kwargs)
 
     def is_value_valid(self, value: Any) -> bool:
         return True
 
-    def convert_value(self, value):
+    def convert_value(self, value: Any) -> Any:
         return value
 
 
@@ -327,7 +339,7 @@ class HiddenDef(AbstractAttrDef):
 
     type = "hidden"
 
-    def __init__(self, key, default=None, **kwargs):
+    def __init__(self, key: str, default: Optional[Any] = None, **kwargs):
         kwargs["default"] = default
         kwargs["visible"] = False
         super().__init__(key, **kwargs)
@@ -335,7 +347,7 @@ class HiddenDef(AbstractAttrDef):
     def is_value_valid(self, value: Any) -> bool:
         return True
 
-    def convert_value(self, value):
+    def convert_value(self, value: Any) -> Any:
         return value
 
 
@@ -360,7 +372,12 @@ class NumberDef(AbstractAttrDef):
     ]
 
     def __init__(
-        self, key, minimum=None, maximum=None, decimals=None, default=None,
+        self,
+        key: str,
+        minimum: Optional[IntFloatType] = None,
+        maximum: Optional[IntFloatType] = None,
+        decimals: Optional[int] = None,
+        default: Optional[IntFloatType] = None,
         **kwargs
     ):
         minimum = 0 if minimum is None else minimum
@@ -386,9 +403,9 @@ class NumberDef(AbstractAttrDef):
 
         super().__init__(key, default=default, **kwargs)
 
-        self.minimum = minimum
-        self.maximum = maximum
-        self.decimals = 0 if decimals is None else decimals
+        self.minimum: IntFloatType = minimum
+        self.maximum: IntFloatType = maximum
+        self.decimals: int = 0 if decimals is None else decimals
 
     def is_value_valid(self, value: Any) -> bool:
         if self.decimals == 0:
@@ -400,7 +417,7 @@ class NumberDef(AbstractAttrDef):
             return False
         return True
 
-    def convert_value(self, value):
+    def convert_value(self, value: Any) -> IntFloatType:
         if isinstance(value, str):
             try:
                 value = float(value)
@@ -444,7 +461,12 @@ class TextDef(AbstractAttrDef):
     ]
 
     def __init__(
-        self, key, multiline=None, regex=None, placeholder=None, default=None,
+        self,
+        key: str,
+        multiline: Optional[bool] = None,
+        regex: Optional[str] = None,
+        placeholder: Optional[str] = None,
+        default: Optional[str] = None,
         **kwargs
     ):
         if default is None:
@@ -463,9 +485,9 @@ class TextDef(AbstractAttrDef):
         if isinstance(regex, str):
             regex = re.compile(regex)
 
-        self.multiline = multiline
-        self.placeholder = placeholder
-        self.regex = regex
+        self.multiline: bool = multiline
+        self.placeholder: Optional[str] = placeholder
+        self.regex: Optional["Pattern"] = regex
 
     def is_value_valid(self, value: Any) -> bool:
         if not isinstance(value, str):
@@ -474,12 +496,12 @@ class TextDef(AbstractAttrDef):
             return False
         return True
 
-    def convert_value(self, value):
+    def convert_value(self, value: Any) -> str:
         if isinstance(value, str):
             return value
         return self.default
 
-    def serialize(self):
+    def serialize(self) -> Dict[str, Any]:
         data = super().serialize()
         regex = None
         if self.regex is not None:
@@ -503,8 +525,9 @@ class EnumDef(AbstractAttrDef):
     is enabled.
 
     Args:
-        items (Union[list[str], list[dict[str, Any]]): Items definition that
-            can be converted using 'prepare_enum_items'.
+        key (str): Key under which value is stored.
+        items (Union[Dict[Any, str], List[Any], List[EnumItemDict]]): Items
+            definition that can be converted using 'prepare_enum_items'.
         default (Optional[Any]): Default value. Must be one key(value) from
             passed items or list of values for multiselection.
         multiselection (Optional[bool]): If True, multiselection is allowed.
@@ -514,7 +537,12 @@ class EnumDef(AbstractAttrDef):
     type = "enum"
 
     def __init__(
-        self, key, items, default=None, multiselection=False, **kwargs
+        self,
+        key: str,
+        items: "Union[Dict[Any, str], List[Any], List[EnumItemDict]]",
+        default: "Union[str, List[Any]]" = None,
+        multiselection: Optional[bool] = False,
+        **kwargs
     ):
         if not items:
             raise ValueError((
@@ -525,6 +553,9 @@ class EnumDef(AbstractAttrDef):
         items = self.prepare_enum_items(items)
         item_values = [item["value"] for item in items]
         item_values_set = set(item_values)
+        if multiselection is None:
+            multiselection = False
+
         if multiselection:
             if default is None:
                 default = []
@@ -535,9 +566,9 @@ class EnumDef(AbstractAttrDef):
 
         super().__init__(key, default=default, **kwargs)
 
-        self.items = items
-        self._item_values = item_values_set
-        self.multiselection = multiselection
+        self.items: List[EnumItemDict] = items
+        self._item_values: Set[Any] = item_values_set
+        self.multiselection: bool = multiselection
 
     def convert_value(self, value):
         if not self.multiselection:
@@ -567,7 +598,7 @@ class EnumDef(AbstractAttrDef):
         return data
 
     @staticmethod
-    def prepare_enum_items(items):
+    def prepare_enum_items(items) -> List[EnumItemDict]:
         """Convert items to unified structure.
 
         Output is a list where each item is dictionary with 'value'
@@ -583,13 +614,13 @@ class EnumDef(AbstractAttrDef):
         ```
 
         Args:
-            items (Union[Dict[str, Any], List[Any], List[Dict[str, Any]]): The
+            items (Union[Dict[Any, str], List[Any], List[EnumItemDict]]): The
                 items to convert.
 
         Returns:
-            List[Dict[str, Any]]: Unified structure of items.
-        """
+            List[EnumItemDict]: Unified structure of items.
 
+        """
         output = []
         if isinstance(items, dict):
             for value, label in items.items():
@@ -644,7 +675,7 @@ class BoolDef(AbstractAttrDef):
 
     type = "bool"
 
-    def __init__(self, key, default=None, **kwargs):
+    def __init__(self, key: str, default: Optional[bool] = None, **kwargs):
         if default is None:
             default = False
         super().__init__(key, default=default, **kwargs)
@@ -652,7 +683,7 @@ class BoolDef(AbstractAttrDef):
     def is_value_valid(self, value: Any) -> bool:
         return isinstance(value, bool)
 
-    def convert_value(self, value):
+    def convert_value(self, value: Any) -> bool:
         if isinstance(value, bool):
             return value
         return self.default
@@ -660,7 +691,11 @@ class BoolDef(AbstractAttrDef):
 
 class FileDefItem:
     def __init__(
-        self, directory, filenames, frames=None, template=None
+        self,
+        directory: str,
+        filenames: List[str],
+        frames: Optional[List[int]] = None,
+        template: Optional[str] = None,
     ):
         self.directory = directory
 
@@ -689,7 +724,7 @@ class FileDefItem:
         )
 
     @property
-    def label(self):
+    def label(self) -> Optional[str]:
         if self.is_empty:
             return None
 
@@ -732,7 +767,7 @@ class FileDefItem:
             filename_template, ",".join(ranges)
         )
 
-    def split_sequence(self):
+    def split_sequence(self) -> List["Self"]:
         if not self.is_sequence:
             raise ValueError("Cannot split single file item")
 
@@ -743,7 +778,7 @@ class FileDefItem:
         return self.from_paths(paths, False)
 
     @property
-    def ext(self):
+    def ext(self) -> Optional[str]:
         if self.is_empty:
             return None
         _, ext = os.path.splitext(self.filenames[0])
@@ -752,14 +787,14 @@ class FileDefItem:
         return None
 
     @property
-    def lower_ext(self):
+    def lower_ext(self) -> Optional[str]:
         ext = self.ext
         if ext is not None:
             return ext.lower()
         return ext
 
     @property
-    def is_dir(self):
+    def is_dir(self) -> bool:
         if self.is_empty:
             return False
 
@@ -768,10 +803,15 @@ class FileDefItem:
             return False
         return True
 
-    def set_directory(self, directory):
+    def set_directory(self, directory: str):
         self.directory = directory
 
-    def set_filenames(self, filenames, frames=None, template=None):
+    def set_filenames(
+        self,
+        filenames: List[str],
+        frames: Optional[List[int]] = None,
+        template: Optional[str] = None,
+    ):
         if frames is None:
             frames = []
         is_sequence = False
@@ -788,11 +828,15 @@ class FileDefItem:
         self.is_sequence = is_sequence
 
     @classmethod
-    def create_empty_item(cls):
+    def create_empty_item(cls) -> "Self":
         return cls("", "")
 
     @classmethod
-    def from_value(cls, value, allow_sequences):
+    def from_value(
+        cls,
+        value: "Union[List[FileDefItemDict], FileDefItemDict]",
+        allow_sequences: bool,
+    ) -> List["Self"]:
         """Convert passed value to FileDefItem objects.
 
         Returns:
@@ -830,7 +874,7 @@ class FileDefItem:
         return output
 
     @classmethod
-    def from_dict(cls, data):
+    def from_dict(cls, data: FileDefItemDict) -> "Self":
         return cls(
             data["directory"],
             data["filenames"],
@@ -839,7 +883,11 @@ class FileDefItem:
         )
 
     @classmethod
-    def from_paths(cls, paths, allow_sequences):
+    def from_paths(
+        cls,
+        paths: List[str],
+        allow_sequences: bool,
+    ) -> List["Self"]:
         filenames_by_dir = collections.defaultdict(list)
         for path in paths:
             normalized = os.path.normpath(path)
@@ -868,7 +916,7 @@ class FileDefItem:
 
         return output
 
-    def to_dict(self):
+    def to_dict(self) -> FileDefItemDict:
         output = {
             "is_sequence": self.is_sequence,
             "directory": self.directory,
@@ -906,8 +954,15 @@ class FileDef(AbstractAttrDef):
     ]
 
     def __init__(
-        self, key, single_item=True, folders=None, extensions=None,
-        allow_sequences=True, extensions_label=None, default=None, **kwargs
+        self,
+        key: str,
+        single_item: Optional[bool] = True,
+        folders: Optional[bool] = None,
+        extensions: Optional[Iterable[str]] = None,
+        allow_sequences: Optional[bool] = True,
+        extensions_label: Optional[str] = None,
+        default: Optional["Union[FileDefItemDict, List[str]]"] = None,
+        **kwargs
     ):
         if folders is None and extensions is None:
             folders = True
@@ -943,14 +998,14 @@ class FileDef(AbstractAttrDef):
         if is_label_horizontal is None:
             kwargs["is_label_horizontal"] = False
 
-        self.single_item = single_item
-        self.folders = folders
-        self.extensions = set(extensions)
-        self.allow_sequences = allow_sequences
-        self.extensions_label = extensions_label
+        self.single_item: bool = single_item
+        self.folders: bool = folders
+        self.extensions: Set[str] = set(extensions)
+        self.allow_sequences: bool = allow_sequences
+        self.extensions_label: Optional[str] = extensions_label
         super().__init__(key, default=default, **kwargs)
 
-    def __eq__(self, other):
+    def __eq__(self, other: Any) -> bool:
         if not super().__eq__(other):
             return False
 
@@ -984,7 +1039,9 @@ class FileDef(AbstractAttrDef):
                 return False
         return True
 
-    def convert_value(self, value):
+    def convert_value(
+        self, value: Any
+    ) -> "Union[FileDefItemDict, List[FileDefItemDict]]":
         if isinstance(value, (str, dict)):
             value = [value]
 
