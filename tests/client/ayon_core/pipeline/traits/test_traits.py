@@ -72,7 +72,8 @@ def test_representation_errors(representation: Representation) -> None:
 
 def test_representation_traits(representation: Representation) -> None:
     """Test setting and getting traits."""
-    assert representation.get_trait_by_id("ayon.2d.PixelBased").version == 1
+    assert representation.get_trait_by_id(
+        "ayon.2d.PixelBased").get_version() == 1
 
     assert len(representation) == len(REPRESENTATION_DATA)
     assert representation.get_trait_by_id(FileLocation.id)
@@ -234,7 +235,7 @@ def test_bundles() -> None:
 
 def test_get_version_from_id() -> None:
     """Test getting version from trait ID."""
-    assert Image().version == 1
+    assert Image().get_version() == 1
 
     class TestOverscan(Overscan):
         id = "ayon.2d.Overscan.v2"
@@ -244,12 +245,12 @@ def test_get_version_from_id() -> None:
         right=0,
         top=0,
         bottom=0
-    ).version == 2
+    ).get_version() == 2
 
     class TestMimeType(MimeType):
         id = "ayon.content.MimeType"
 
-    assert TestMimeType(mime_type="foo/bar").version is None
+    assert TestMimeType(mime_type="foo/bar").get_version() is None
 
 
 def test_from_dict() -> None:

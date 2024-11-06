@@ -55,7 +55,7 @@ class LocatableContent(TraitBase):
     location: str = Field(..., title="Location")
     is_templated: Optional[bool] = Field(None, title="Is Templated")
 
-class FileLocation(LocatableContent):
+class FileLocation(TraitBase):
     """FileLocation trait model.
 
     This model represents a file path. It is a specialization of the
@@ -75,9 +75,10 @@ class FileLocation(LocatableContent):
     name: ClassVar[str] = "FileLocation"
     description: ClassVar[str] = "FileLocation Trait Model"
     id: ClassVar[str] = "ayon.content.FileLocation.v1"
-    file_path: Path = Field(..., title="File Path", alias="location")
-    file_size: int = Field(None, title="File Size")
+    file_path: Path = Field(..., title="File Path")
+    file_size: Optional[int] = Field(None, title="File Size")
     file_hash: Optional[str] = Field(None, title="File Hash")
+
 
 class RootlessLocation(TraitBase):
     """RootlessLocation trait model.
