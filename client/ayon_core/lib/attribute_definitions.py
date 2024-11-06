@@ -6,13 +6,32 @@ import json
 import copy
 import warnings
 from abc import ABCMeta, abstractmethod
-from typing import Any, Optional
+import typing
+from typing import Any, Optional, List, TypedDict
 
 import clique
 
+if typing.TYPE_CHECKING:
+    from typing import Union
 # Global variable which store attribute definitions by type
 #   - default types are registered on import
 _attr_defs_by_type = {}
+
+# Type hint helpers
+IntFloatType = "Union[int, float]"
+
+
+class EnumItemDict(TypedDict):
+    label: str
+    value: Any
+
+
+class FileDefItemDict(TypedDict):
+    directory: str
+    filenames: List[str]
+    frames: Optional[List[int]]
+    template: Optional[str]
+    is_sequence: Optional[bool]
 
 
 class AbstractAttrDefMeta(ABCMeta):
