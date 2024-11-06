@@ -1585,6 +1585,10 @@ CreateNextPageOverlay {
 }
 
 /* Attribute Definition widgets */
+AttributeDefinitionsLabel[overridden="1"] {
+    color: {color:font-overridden};
+}
+
 AttributeDefinitionsWidget QAbstractSpinBox, QLineEdit, QPlainTextEdit, QTextEdit {
     padding: 1px;
 }
