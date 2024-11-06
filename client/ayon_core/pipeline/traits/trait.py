@@ -6,7 +6,7 @@ import re
 import sys
 import uuid
 from abc import ABC, abstractmethod
-from functools import cached_property, lru_cache
+from functools import lru_cache
 from typing import ClassVar, Optional, Type, Union
 
 import pydantic.alias_generators
@@ -65,20 +65,6 @@ class TraitBase(ABC, BaseModel):
         """Abstract attribute for description."""
         ...
 
-    @property
-    @cached_property
-    def version(self) -> Union[int, None]:
-        # sourcery skip: use-named-expression
-        """Get trait version from ID.
-
-        This assumes Trait ID ends with `.v{version}`. If not, it will
-        return None.
-
-        """
-        version_regex = r"v(\d+)$"
-        match = re.search(version_regex, self.id)
-        return int(match[1]) if match else None
-
     def validate(self, representation: Representation) -> bool:
         """Validate the trait.
 
@@ -94,6 +80,19 @@ class TraitBase(ABC, BaseModel):
 
         """
         return True
+
+    @classmethod
+    def get_version(cls) -> Optional[int]:
+        # sourcery skip: use-named-expression
+        """Get trait version from ID.
+
+        This assumes Trait ID ends with `.v{version}`. If not, it will
+        return None.
+
+        """
+        version_regex = r"v(\d+)$"
+        match = re.search(version_regex, str(cls.id))
+        return int(match[1]) if match else None
 
 
 class Representation:

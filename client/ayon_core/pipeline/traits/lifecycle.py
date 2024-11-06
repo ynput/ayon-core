@@ -1,7 +1,6 @@
 """Lifecycle traits."""
 from typing import ClassVar
 
-from . import Representation
 from .trait import TraitBase
 
 
@@ -21,7 +20,7 @@ class Transient(TraitBase):
     description: ClassVar[str] = "Transient Trait Model"
     id: ClassVar[str] = "ayon.lifecycle.Transient.v1"
 
-    def validate(self, representation: Representation) -> bool:
+    def validate(self, representation) -> bool:  # noqa: ANN001
         """Validate representation is not Persistent.
 
         Args:
@@ -50,7 +49,7 @@ class Persistent(TraitBase):
     description: ClassVar[str] = "Persistent Trait Model"
     id: ClassVar[str] = "ayon.lifecycle.Persistent.v1"
 
-    def validate(self, representation: Representation) -> bool:
+    def validate(self, representation) -> bool:  # noqa: ANN001
         """Validate representation is not Transient.
 
         Args:
