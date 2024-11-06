@@ -5,7 +5,6 @@ import pyblish.api
 
 from ayon_core.pipeline import publish
 from ayon_core.lib import (
-
     is_oiio_supported,
 )
 
@@ -154,12 +153,15 @@ class ExtractOIIOTranscode(publish.Extractor):
 
                 files_to_convert = self._translate_to_sequence(
                     files_to_convert)
+                self.log.debug("Files to convert: {}".format(files_to_convert))
                 for file_name in files_to_convert:
+                    self.log.debug("Transcoding file: `{}`".format(file_name))
                     input_path = os.path.join(original_staging_dir,
                                               file_name)
                     output_path = self._get_output_file_path(input_path,
                                                              new_staging_dir,
                                                              output_extension)
+                    self.log.debug("Ynput path: `{}`".format(input_path))
                     convert_colorspace(
                         input_path,
                         output_path,
