@@ -10,7 +10,6 @@ import typing
 from typing import (
     Any,
     Optional,
-    Tuple,
     List,
     Set,
     Dict,
@@ -22,7 +21,7 @@ from typing import (
 import clique
 
 if typing.TYPE_CHECKING:
-    from typing import Self, Union, Pattern
+    from typing import Tuple, Self, Union, Pattern
 
 # Global variable which store attribute definitions by type
 #   - default types are registered on import
