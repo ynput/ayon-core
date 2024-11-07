@@ -14,14 +14,35 @@ from typing import (
     Set,
     Dict,
     Iterable,
-    TypedDict,
     TypeVar,
 )
 
 import clique
 
 if typing.TYPE_CHECKING:
-    from typing import Self, Union, Pattern
+    from typing import Self, Tuple, Union, TypedDict, Pattern
+
+
+    class EnumItemDict(TypedDict):
+        label: str
+        value: Any
+
+
+    EnumItemsInputType = Union[
+        Dict[Any, str],
+        List[Tuple[Any, str]],
+        List[Any],
+        List[EnumItemDict]
+    ]
+
+
+    class FileDefItemDict(TypedDict):
+        directory: str
+        filenames: List[str]
+        frames: Optional[List[int]]
+        template: Optional[str]
+        is_sequence: Optional[bool]
+
 
 # Global variable which store attribute definitions by type
 #   - default types are registered on import
@@ -29,22 +50,6 @@ _attr_defs_by_type = {}
 
 # Type hint helpers
 IntFloatType = "Union[int, float]"
-
-
-class EnumItemDict(TypedDict):
-    label: str
-    value: Any
-
-
-EnumItemsInputType = "Union[Dict[Any, str], List[Tuple[Any, str]], List[Any], List[EnumItemDict]]"  # noqa: E501
-
-
-class FileDefItemDict(TypedDict):
-    directory: str
-    filenames: List[str]
-    frames: Optional[List[int]]
-    template: Optional[str]
-    is_sequence: Optional[bool]
 
 
 class AbstractAttrDefMeta(ABCMeta):
@@ -552,7 +557,7 @@ class EnumDef(AbstractAttrDef):
     def __init__(
         self,
         key: str,
-        items: EnumItemsInputType,
+        items: "EnumItemsInputType",
         default: "Union[str, List[Any]]" = None,
         multiselection: Optional[bool] = False,
         **kwargs
@@ -579,7 +584,7 @@ class EnumDef(AbstractAttrDef):
 
         super().__init__(key, default=default, **kwargs)
 
-        self.items: List[EnumItemDict] = items
+        self.items: List["EnumItemDict"] = items
         self._item_values: Set[Any] = item_values_set
         self.multiselection: bool = multiselection
 
@@ -611,7 +616,7 @@ class EnumDef(AbstractAttrDef):
         return data
 
     @staticmethod
-    def prepare_enum_items(items: EnumItemsInputType) -> List[EnumItemDict]:
+    def prepare_enum_items(items: "EnumItemsInputType") -> List["EnumItemDict"]:
         """Convert items to unified structure.
 
         Output is a list where each item is dictionary with 'value'
@@ -886,7 +891,7 @@ class FileDefItem:
         return output
 
     @classmethod
-    def from_dict(cls, data: FileDefItemDict) -> "Self":
+    def from_dict(cls, data: "FileDefItemDict") -> "Self":
         return cls(
             data["directory"],
             data["filenames"],
@@ -928,7 +933,7 @@ class FileDefItem:
 
         return output
 
-    def to_dict(self) -> FileDefItemDict:
+    def to_dict(self) -> "FileDefItemDict":
         output = {
             "is_sequence": self.is_sequence,
             "directory": self.directory,
