@@ -426,7 +426,7 @@ class FilterProxyModel(QtCore.QSortFilterProxyModel):
         state = bool(state)
 
         if state != self._filter_outdated:
-            self._filter_outdated = bool(state)
+            self._filter_outdated = state
             self.invalidateFilter()
 
     def set_hierarchy_view(self, state):
