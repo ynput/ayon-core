@@ -161,7 +161,7 @@ class ExtractOIIOTranscode(publish.Extractor):
                     output_path = self._get_output_file_path(input_path,
                                                              new_staging_dir,
                                                              output_extension)
-                    self.log.debug("Ynput path: `{}`".format(input_path))
+
                     convert_colorspace(
                         input_path,
                         output_path,
