@@ -304,7 +304,7 @@ def prepare_representations(
     do_not_add_review,
     context,
     color_managed_plugin,
-    frames_to_render
+    frames_to_render=None
 ):
     """Create representations for file sequences.
 
