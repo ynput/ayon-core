@@ -20,6 +20,7 @@ from ayon_core.pipeline.publish import (
     get_publish_template_name,
 )
 from ayon_core.pipeline.traits import Persistent, Representation
+from pipeline.traits import FileLocation
 
 if TYPE_CHECKING:
     import logging
@@ -146,6 +147,12 @@ class IntegrateTraits(pyblish.api.InstancePlugin):
         instance.data["versionEntity"] = version_entity
 
         # 7) Get transfers from representations
+        for representation in representations:
+            # this should test version-less FileLocation probably
+            if representation.contains_trait(FileLocation):
+                self.log.debug(
+                    "Representation: %s", representation)
+
         # 8) Transfer files
         # 9) Commit the session to AYON
         # 10) Finalize represetations - add integrated path Trait etc.
@@ -306,7 +313,7 @@ class IntegrateTraits(pyblish.api.InstancePlugin):
         all_version_data = self.get_version_data_from_instance(instance)
         version_data = {}
         version_attributes = {}
-        attr_defs = self._get_attributes_for_type(instance.context, "version")
+        attr_defs = self.get_attributes_for_type(instance.context, "version")
         for key, value in all_version_data.items():
             if key in attr_defs:
                 version_attributes[key] = value
@@ -434,6 +441,11 @@ class IntegrateTraits(pyblish.api.InstancePlugin):
                 " This may cause issues on farm."
             ),path)
         return path
+
+    def get_attributes_for_type(
+            self, context: pyblish.api.Context, entity_type: str) -> dict:
+        """Get AYON attributes for the given entity type."""
+        return self.get_attributes_by_type(context)[entity_type]
 
     def get_attributes_by_type(
             self, context: pyblish.api.Context) -> dict:

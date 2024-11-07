@@ -108,6 +108,9 @@ def mock_context(
                 frame_end=SEQUENCE_LENGTH,
                 frame_padding=4,
                 frame_regex=r"^img\.(\d{4})\.png$",
+                frame_in=0,
+                frame_out=SEQUENCE_LENGTH - 1,
+                frames_per_second=25
             ),
             FileLocation(
                 file_path=sequence_files[0],
