@@ -94,6 +94,16 @@ class TraitBase(ABC, BaseModel):
         match = re.search(version_regex, str(cls.id))
         return int(match[1]) if match else None
 
+    @classmethod
+    def get_versionless_id(cls) -> str:
+        """Get trait ID without version.
+
+        Returns:
+            str: Trait ID without version.
+
+        """
+        return re.sub(r"\.v\d+$", "", str(cls.id))
+
 
 class Representation:
     """Representation of products.
@@ -416,6 +426,9 @@ class Representation:
             bool: True if the representations are equal, False otherwise.
 
         """
+        if self.representation_id != other.representation_id:
+            return False
+
         if not isinstance(other, Representation):
             return False
 
