@@ -2,11 +2,15 @@
 from __future__ import annotations
 
 from enum import Enum, auto
-from typing import ClassVar, Optional
+from typing import TYPE_CHECKING, ClassVar, Optional, Union
 
 from pydantic import Field
 
 from .trait import TraitBase
+
+if TYPE_CHECKING:
+    from decimal import Decimal
+    from fractions import Fraction
 
 
 class GapPolicy(Enum):
@@ -45,7 +49,7 @@ class FrameRanged(TraitBase):
         frame_end (int): Frame end.
         frame_in (int): Frame in.
         frame_out (int): Frame out.
-        frames_per_second (int): Frames per second.
+        frames_per_second (float, Fraction, Decimal): Frames per second.
         step (int): Step.
 
     """
@@ -56,9 +60,9 @@ class FrameRanged(TraitBase):
         ..., title="Start Frame")
     frame_end: int = Field(
         ..., title="Frame Start")
-    frame_in: int = Field(..., title="In Frame")
-    frame_out: int = Field(..., title="Out Frame")
-    frames_per_second: int = Field(
+    frame_in: Optional[int] = Field(None, title="In Frame")
+    frame_out: Optional[int] = Field(None, title="Out Frame")
+    frames_per_second: Union[float, Fraction, Decimal] = Field(
         ..., title="Frames Per Second")
     step: Optional[int] = Field(1, title="Step")
 
