@@ -126,6 +126,8 @@ def _windows_get_pid_args(pid: int) -> Optional[List[str]]:
     finally:
         ctypes.windll.kernel32.CloseHandle(handle)
     return output
+
+
 def _windows_pid_is_running(pid: int) -> bool:
     args = _windows_get_pid_args(pid)
     if not args:
