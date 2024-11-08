@@ -194,14 +194,14 @@ class InventoryModel(QtGui.QStandardItemModel):
         group_items = []
         for repre_id, container_items in items_by_repre_id.items():
             repre_info = repre_info_by_id[repre_id]
-            version_label = "N/A"
             version_color = None
-            is_latest = False
-            is_hero = False
-            status_name = None
             if not repre_info.is_valid:
+                version_label = "N/A"
                 group_name = "< Entity N/A >"
                 item_icon = invalid_item_icon
+                is_latest = False
+                is_hero = False
+                status_name = None
 
             else:
                 group_name = "{}_{}: ({})".format(
@@ -217,6 +217,7 @@ class InventoryModel(QtGui.QStandardItemModel):
                 version_item = version_items[repre_info.version_id]
                 version_label = format_version(version_item.version)
                 is_hero = version_item.version < 0
+                is_latest = version_item.is_latest
                 if not version_item.is_latest:
                     version_color = self.OUTDATED_COLOR
                 status_name = version_item.status
@@ -425,7 +426,7 @@ class FilterProxyModel(QtCore.QSortFilterProxyModel):
         state = bool(state)
 
         if state != self._filter_outdated:
-            self._filter_outdated = bool(state)
+            self._filter_outdated = state
             self.invalidateFilter()
 
     def set_hierarchy_view(self, state):
