@@ -252,6 +252,26 @@ def test_get_version_from_id() -> None:
 
     assert TestMimeType(mime_type="foo/bar").get_version() is None
 
+def test_get_versionless_id() -> None:
+    """Test getting versionless trait ID."""
+    assert Image().get_versionless_id() == "ayon.2d.Image"
+
+    class TestOverscan(Overscan):
+        id = "ayon.2d.Overscan.v2"
+
+    assert TestOverscan(
+        left=0,
+        right=0,
+        top=0,
+        bottom=0
+    ).get_versionless_id() == "ayon.2d.Overscan"
+
+    class TestMimeType(MimeType):
+        id = "ayon.content.MimeType"
+
+    assert TestMimeType(mime_type="foo/bar").get_versionless_id() == \
+           "ayon.content.MimeType"
+
 
 def test_from_dict() -> None:
     """Test creating representation from dictionary."""
