@@ -1,6 +1,7 @@
 """Integrate representations with traits."""
 from __future__ import annotations
 
+import copy
 from typing import TYPE_CHECKING, Any, List
 
 import pyblish.api
@@ -17,10 +18,16 @@ from ayon_api.operations import (
     new_version_entity,
 )
 from ayon_core.pipeline.publish import (
+    PublishError,
     get_publish_template_name,
 )
-from ayon_core.pipeline.traits import Persistent, Representation
-from pipeline.traits import FileLocation
+from ayon_core.pipeline.traits import (
+    ColorManaged,
+    FileLocation,
+    Persistent,
+    Representation,
+)
+from pipeline.traits import PixelBased
 
 if TYPE_CHECKING:
     import logging
@@ -131,8 +138,8 @@ class IntegrateTraits(pyblish.api.InstancePlugin):
                 "Instance has no persistent representations. Skipping")
             return
 
-        # 3) get anatomy template name
-        # template_name = self.get_template_name(instance)
+        # 3) get anatomy template
+        template = self.get_template(instance)
 
         # 4) initialize OperationsSession()
         op_session = OperationsSession()
@@ -146,12 +153,61 @@ class IntegrateTraits(pyblish.api.InstancePlugin):
         )
         instance.data["versionEntity"] = version_entity
 
+        instance_template_data = {}
+        # handle {originalDirname} requested in the template
+        if "{originalDirname}" in template:
+            instance_template_data = {
+                "originalDirname": self._get_relative_to_root_original_dirname(
+                    instance)
+            }
+        # 6.5) prepare template and data to format it
+        for representation in representations:
+            template_data = self.get_template_date_from_representation(
+                representation, instance)
+            # add instance based template data
+            template_data.update(instance_template_data)
+            if "{originalBasename}" in template:
+                # Remove 'frame' from template data because original frame
+                # number will be used.
+                template_data.pop("frame", None)
+                # WIP: use trait logic to get original frame range
+
+
+
         # 7) Get transfers from representations
         for representation in representations:
             # this should test version-less FileLocation probably
-            if representation.contains_trait(FileLocation):
+            if representation.contains_trait_by_id(
+                    FileLocation.get_versionless_id()):
                 self.log.debug(
                     "Representation: %s", representation)
+
+    def _get_relative_to_root_original_dirname(
+            self, instance: pyblish.api.Instance) -> str:
+        """Get path stripped of root of the original directory name.
+
+        If `originalDirname` or `stagingDir` is set in instance data,
+        this will return it as rootless path. The path must reside
+        within the project directory.
+        """
+        original_directory = (
+                instance.data.get("originalDirname") or
+                instance.data.get("stagingDir"))
+        anatomy = instance.context.data["anatomy"]
+
+        _rootless = self.get_rootless_path(anatomy, original_directory)
+        # this check works because _rootless will be the same as
+        # original_directory if the original_directory cannot be transformed
+        # to the rootless path.
+        if _rootless == original_directory:
+            msg = (
+                f"Destination path '{original_directory}' must "
+                "be in project directory.")
+            raise PublishError(msg)
+        # the root is at the beginning - {root[work]}/rest/of/the/path
+        relative_path_start = _rootless.rfind("}") + 2
+        return _rootless[relative_path_start:]
+
 
         # 8) Transfer files
         # 9) Commit the session to AYON
@@ -204,6 +260,23 @@ class IntegrateTraits(pyblish.api.InstancePlugin):
             project_settings=context.data["project_settings"],
             logger=self.log
         )
+
+    def get_template(self, instance: pyblish.api.Instance) -> str:
+        """Return anatomy template name to use for integration.
+
+        Args:
+            instance (pyblish.api.Instance): Instance to process.
+
+        Returns:
+            str: Anatomy template name
+
+        """
+        # Anatomy data is pre-filled by Collectors
+        template_name = self.get_template_name(instance)
+        anatomy = instance.context.data["anatomy"]
+        publish_template = anatomy.get_template_item("publish", template_name)
+        path_template_obj = publish_template["path"]
+        return path_template_obj.template.replace("\\", "/")
 
     def prepare_product(
             self,
@@ -464,3 +537,56 @@ class IntegrateTraits(pyblish.api.InstancePlugin):
             }
             context.data["ayonAttributes"] = attributes
         return attributes
+
+    def get_template_date_from_representation(
+            self,
+            representation: Representation,
+            instance: pyblish.api.Instance) -> dict:
+        """Get template data from representation.
+
+        Using representation traits and data on instance
+        prepare data for formatting template.
+
+        Args:
+            representation (Representation): Representation to process.
+            instance (pyblish.api.Instance): Instance to process.
+
+        Returns:
+            dict: Template data.
+
+        """
+        template_data = copy.deepcopy(instance.data["anatomyData"])
+        template_data["representation"] = representation.name
+
+        # add colorspace data to template data
+        if representation.contains_trait(ColorManaged):
+            colorspace_data: ColorManaged = representation.get_trait(
+                ColorManaged)
+
+            template_data["colorspace"] = {
+                "colorspace": colorspace_data.color_space,
+                "config": colorspace_data.config
+            }
+
+            # add explicit list of traits properties to template data
+            # there must be some better way to handle this
+            try:
+                # resolution from PixelBased trait
+                template_data["resolution_width"] = representation.get_trait(
+                    PixelBased).display_window_width
+                template_data["resolution_height"] = representation.get_trait(
+                    PixelBased).display_window_height
+                # get fps from representation traits
+                # is this the right way? Isn't it going against the
+                # trait abstraction?
+                traits = representation.get_traits()
+                for trait in traits.values():
+                    if hasattr(trait, "frames_per_second"):
+                        template_data["fps"] = trait.fps
+
+                # Note: handle "output" and "originalBasename"
+
+            except ValueError as e:
+                self.log.debug("Missing traits: %s", e)
+
+        return template_data
