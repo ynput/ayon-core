@@ -434,6 +434,13 @@ class CreatedInstance:
         "creator_attributes",
         "publish_attributes"
     )
+    # Keys that can be changed, but should not be removed from instance
+    __required_keys = {
+        "folderPath": None,
+        "task": None,
+        "productName": None,
+        "active": True,
+    }
 
     def __init__(
         self,
@@ -515,6 +522,9 @@ class CreatedInstance:
         if data:
             self._data.update(data)
 
+        for key, default in self.__required_keys.items():
+            self._data.setdefault(key, default)
+
         if not self._data.get("instance_id"):
             self._data["instance_id"] = str(uuid4())
 
@@ -567,6 +577,8 @@ class CreatedInstance:
         has_key = key in self._data
         output = self._data.pop(key, *args, **kwargs)
         if has_key:
+            if key in self.__required_keys:
+                self._data[key] = self.__required_keys[key]
             self._create_context.instance_values_changed(
                 self.id, {key: None}
             )
