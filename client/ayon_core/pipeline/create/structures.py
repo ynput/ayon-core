@@ -429,7 +429,7 @@ class CreatedInstance:
     __immutable_keys = (
         "id",
         "instance_id",
-        "product_type",
+        "productType",
         "creator_identifier",
         "creator_attributes",
         "publish_attributes"
