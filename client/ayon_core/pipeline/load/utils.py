@@ -542,9 +542,6 @@ def update_container(container, version=-1):
                 )
             )
 
-    path = get_representation_path(new_representation)
-    if not path or not os.path.exists(path):
-        raise ValueError("Path {} doesn't exist".format(path))
     project_entity = ayon_api.get_project(project_name)
     context = {
         "project": project_entity,
@@ -553,6 +550,9 @@ def update_container(container, version=-1):
         "version": new_version,
         "representation": new_representation,
     }
+    path = get_representation_path_from_context(context)
+    if not path or not os.path.exists(path):
+        raise ValueError("Path {} doesn't exist".format(path))
 
     return Loader().update(container, context)
 
