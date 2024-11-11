@@ -11,7 +11,7 @@ if TYPE_CHECKING:
     from pathlib import Path
 
 
-def ge_sequence_from_files(paths: list[Path]) -> Sequence:
+def get_sequence_from_files(paths: list[Path]) -> Sequence:
     """Get original frame range from files.
 
     Note that this cannot guess frame rate, so it's set to 25.
