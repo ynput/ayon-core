@@ -6,6 +6,7 @@ from ayon_api.graphql import GraphQlQuery
 
 from ayon_core.host import ILoadHost
 from ayon_core.tools.common_models.projects import StatusStates
+from ayon_core.pipeline.context_tools import get_current_project_name
 
 
 # --- Implementation that should be in ayon-python-api ---
@@ -93,13 +94,15 @@ class ContainerItem:
         loader_name,
         namespace,
         object_name,
-        item_id
+        item_id,
+        project_name
     ):
         self.representation_id = representation_id
         self.loader_name = loader_name
         self.object_name = object_name
         self.namespace = namespace
         self.item_id = item_id
+        self.project_name = project_name
 
     @classmethod
     def from_container_data(cls, container):
@@ -109,6 +112,8 @@ class ContainerItem:
             namespace=container["namespace"],
             object_name=container["objectName"],
             item_id=uuid.uuid4().hex,
+            project_name=container.get(
+                "project_name", get_current_project_name())
         )
 
 
@@ -222,6 +227,9 @@ class ContainersModel:
     def get_representation_info_items(self, representation_ids):
         output = {}
         missing_repre_ids = set()
+        missing_repre_ids_by_project = {}
+        containers = self._controller.get_containers()
+
         for repre_id in representation_ids:
             try:
                 uuid.UUID(repre_id)
@@ -229,54 +237,60 @@ class ContainersModel:
                 output[repre_id] = RepresentationInfo.new_invalid()
                 continue
 
+            project_name = self._find_project_name(containers, repre_id)
+            if project_name is None:
+                project_name = self._controller.get_current_project_name()
+
             repre_info = self._repre_info_by_id.get(repre_id)
             if repre_info is None:
                 missing_repre_ids.add(repre_id)
+                missing_repre_ids_by_project.update({project_name: repre_id})
             else:
                 output[repre_id] = repre_info
 
         if not missing_repre_ids:
             return output
 
-        project_name = self._controller.get_current_project_name()
-        repre_hierarchy_by_id = get_representations_hierarchy(
-            project_name, missing_repre_ids
-        )
-        for repre_id, repre_hierarchy in repre_hierarchy_by_id.items():
-            kwargs = {
-                "folder_id": None,
-                "folder_path": None,
-                "product_id": None,
-                "product_name": None,
-                "product_type": None,
-                "product_group": None,
-                "version_id": None,
-                "representation_name": None,
-            }
-            folder = repre_hierarchy.folder
-            product = repre_hierarchy.product
-            version = repre_hierarchy.version
-            repre = repre_hierarchy.representation
-            if folder:
-                kwargs["folder_id"] = folder["id"]
-                kwargs["folder_path"] = folder["path"]
-            if product:
-                group = product["attrib"]["productGroup"]
-                kwargs["product_id"] = product["id"]
-                kwargs["product_name"] = product["name"]
-                kwargs["product_type"] = product["productType"]
-                kwargs["product_group"] = group
-            if version:
-                kwargs["version_id"] = version["id"]
-            if repre:
-                kwargs["representation_name"] = repre["name"]
+        for project_name, missing_ids in missing_repre_ids_by_project.items():
+            repre_hierarchy_by_id = get_representations_hierarchy(
+                project_name, {missing_ids}
+            )
+            for repre_id, repre_hierarchy in repre_hierarchy_by_id.items():
+                kwargs = {
+                    "folder_id": None,
+                    "folder_path": None,
+                    "product_id": None,
+                    "product_name": None,
+                    "product_type": None,
+                    "product_group": None,
+                    "version_id": None,
+                    "representation_name": None,
+                }
+                folder = repre_hierarchy.folder
+                product = repre_hierarchy.product
+                version = repre_hierarchy.version
+                repre = repre_hierarchy.representation
+                if folder:
+                    kwargs["folder_id"] = folder["id"]
+                    kwargs["folder_path"] = folder["path"]
+                if product:
+                    group = product["attrib"]["productGroup"]
+                    kwargs["product_id"] = product["id"]
+                    kwargs["product_name"] = product["name"]
+                    kwargs["product_type"] = product["productType"]
+                    kwargs["product_group"] = group
+                if version:
+                    kwargs["version_id"] = version["id"]
+                if repre:
+                    kwargs["representation_name"] = repre["name"]
 
-            repre_info = RepresentationInfo(**kwargs)
-            self._repre_info_by_id[repre_id] = repre_info
-            output[repre_id] = repre_info
+                repre_info = RepresentationInfo(**kwargs)
+                self._repre_info_by_id[repre_id] = repre_info
+                output[repre_id] = repre_info
         return output
 
-    def get_version_items(self, product_ids):
+    def get_version_items(self, product_ids, representation_ids):
+        project_ids_by_project_names = {}
         if not product_ids:
             return {}
 
@@ -293,20 +307,37 @@ class ContainersModel:
 
             def version_sorted(entity):
                 return entity["version"]
+            containers = self.get_containers()
+            for repre_id in representation_ids:
+                project_name = self._find_project_name(containers, repre_id)
+                if project_name is None:
+                    project_name = self._controller.get_current_project_name()
+                repre_hierarchy_by_id = get_representations_hierarchy(
+                    project_name, {repre_id}
+                )
+                product_ids_list = set()
+                for repre_hierarchy in repre_hierarchy_by_id.values():
+                    product = repre_hierarchy.product
+                    product_id = product["id"]
+                    if product_id not in missing_ids:
+                        continue
+                    product_ids_list.add(product_id)
+                project_ids_by_project_names.update({project_name: product_ids_list})
 
-            project_name = self._controller.get_current_project_name()
             version_entities_by_product_id = {
                 product_id: []
                 for product_id in missing_ids
             }
-
-            version_entities = list(ayon_api.get_versions(
-                project_name,
-                product_ids=missing_ids,
-                fields={"id", "version", "productId", "status"}
-            ))
-            version_entities.sort(key=version_sorted)
-            for version_entity in version_entities:
+            version_entities_list = []
+            for project_name, missing_product_ids in project_ids_by_project_names.items():
+                version_entities = list(ayon_api.get_versions(
+                    project_name,
+                    product_ids=missing_product_ids,
+                    fields={"id", "version", "productId", "status"}
+                ))
+                version_entities_list.extend(version_entities)
+            version_entities_list.sort(key=version_sorted)
+            for version_entity in version_entities_list:
                 product_id = version_entity["productId"]
                 version_entities_by_product_id[product_id].append(
                     version_entity
@@ -337,11 +368,17 @@ class ContainersModel:
                 self._version_items_by_product_id[product_id] = (
                     version_items_by_id
                 )
-
         return {
             product_id: dict(self._version_items_by_product_id[product_id])
             for product_id in product_ids
         }
+
+    def _find_project_name(self, containers, representation_id):
+    # Function to find the project name by representation
+        for container in containers:
+            if container.get('representation') == representation_id:
+                return container.get('project_name', get_current_project_name())
+        return None
 
     def _update_cache(self):
         if self._items_cache is not None:
