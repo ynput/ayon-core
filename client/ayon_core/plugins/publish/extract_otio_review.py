@@ -74,7 +74,10 @@ class ExtractOTIOReview(
         # TODO: what if handles are different in `versionData`?
         handle_start = instance.data["handleStart"]
         handle_end = instance.data["handleEnd"]
-        otio_review_clips = instance.data["otioReviewClips"]
+        otio_review_clips = instance.data.get("otioReviewClips")
+
+        if otio_review_clips is None:
+            self.log.info(f"Instance `{instance}` has no otioReviewClips")
 
         # add plugin wide attributes
         self.representation_files = []
