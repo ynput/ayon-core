@@ -30,6 +30,9 @@ from .two_dimensional import (
     PixelBased,
     Planar,
 )
+from .utils import (
+    get_sequence_from_files,
+)
 
 __all__ = [
     # base
@@ -83,4 +86,7 @@ __all__ = [
     "GapPolicy",
     "Sequence",
     "SMPTETimecode",
+
+    # utils
+    "get_sequence_from_files",
 ]
