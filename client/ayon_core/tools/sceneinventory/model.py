@@ -150,7 +150,7 @@ class InventoryModel(QtGui.QStandardItemModel):
             if repre_info.is_valid
         }
         version_items_by_product_id = self._controller.get_version_items(
-            product_ids
+            product_ids, repre_id
         )
         # SiteSync addon information
         progress_by_id = self._controller.get_representations_site_progress(

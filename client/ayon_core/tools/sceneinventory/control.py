@@ -4,7 +4,7 @@ from ayon_core.lib.events import QueuedEventSystem
 from ayon_core.host import HostBase
 from ayon_core.pipeline import (
     registered_host,
-    get_current_context,
+    get_current_context
 )
 from ayon_core.tools.common_models import HierarchyModel, ProjectsModel
 
@@ -110,8 +110,9 @@ class SceneInventoryController:
             representation_ids
         )
 
-    def get_version_items(self, product_ids):
-        return self._containers_model.get_version_items(product_ids)
+    def get_version_items(self, product_ids, representation_ids):
+        return self._containers_model.get_version_items(
+            product_ids, representation_ids)
 
     # Site Sync methods
     def is_sitesync_enabled(self):
