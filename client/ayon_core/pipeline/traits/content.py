@@ -79,6 +79,25 @@ class FileLocation(TraitBase):
     file_size: Optional[int] = Field(None, title="File Size")
     file_hash: Optional[str] = Field(None, title="File Hash")
 
+class FileLocations(TraitBase):
+    """FileLocation trait model.
+
+    This model represents a file path. It is a specialization of the
+    LocatableContent trait. It is adding optional file size and file hash
+    for easy access to file information.
+
+    Attributes:
+        name (str): Trait name.
+        description (str): Trait description.
+        id (str): id should be namespaced trait name with version
+        file_paths (list of FileLocation): File locations.
+
+    """
+
+    name: ClassVar[str] = "FileLocations"
+    description: ClassVar[str] = "FileLocations Trait Model"
+    id: ClassVar[str] = "ayon.content.FileLocations.v1"
+    file_paths: list[FileLocation] = Field(..., title="File Path")
 
 class RootlessLocation(TraitBase):
     """RootlessLocation trait model.
