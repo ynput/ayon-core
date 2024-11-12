@@ -7,7 +7,14 @@ from typing import ClassVar, Optional
 
 from pydantic import Field
 
-from .trait import Representation, TraitBase
+from .time import Sequence
+from .trait import (
+    MissingTraitError,
+    Representation,
+    TraitBase,
+    TraitValidationError,
+    get_sequence_from_files,
+)
 
 
 class MimeType(TraitBase):
@@ -98,6 +105,64 @@ class FileLocations(TraitBase):
     description: ClassVar[str] = "FileLocations Trait Model"
     id: ClassVar[str] = "ayon.content.FileLocations.v1"
     file_paths: list[FileLocation] = Field(..., title="File Path")
+
+    def validate(self, representation: Representation) -> bool:
+        """Validate the trait.
+
+        This method validates the trait against others in the representation.
+        In particular, it checks that the sequence trait is present and if
+        so, it will compare the frame range to the file paths.
+
+        Args:
+            representation (Representation): Representation to validate.
+
+        Returns:
+            bool: True if the trait is valid, False otherwise
+
+        """
+        if len(self.file_paths) == 0:
+                # If there are no file paths, we can't validate
+                msg = "No file locations defined (empty list)"
+                raise TraitValidationError(self.name, msg)
+
+        tmp_seq: Sequence = get_sequence_from_files(
+                    [f.file_path for f in self.file_paths])
+
+        if len(self.file_paths) != \
+                    tmp_seq.frame_end - tmp_seq.frame_start:
+                # If the number of file paths does not match the frame range,
+                # the trait is invalid
+                msg = (
+                    f"Number of file locations ({len(self.file_paths)}) "
+                    "does not match frame range "
+                    f"({tmp_seq.frame_end - tmp_seq.frame_start})"
+                )
+                raise TraitValidationError(self.name, msg)
+
+        try:
+            sequence: Sequence = representation.get_trait(Sequence)
+
+            if sequence.frame_start != tmp_seq.frame_start or \
+                    sequence.frame_end != tmp_seq.frame_end or \
+                    sequence.frame_padding != tmp_seq.frame_padding:
+                # If the frame range does not match the sequence trait, the
+                # trait is invalid. Note that we don't check the frame rate
+                # because it is not stored in the file paths and is not
+                # determined by `get_sequence_from_files`.
+                msg = (
+                    "Frame range "
+                    f"({sequence.frame_start}-{sequence.frame_end}) "
+                    "in sequence trait does not match "
+                    "frame range "
+                    f"({tmp_seq.frame_start}-{tmp_seq.frame_end}) "
+                    "defined in files."
+                )
+                raise TraitValidationError(self.name, msg)
+
+        except MissingTraitError:
+            # If there is no sequence trait, we can't validate it
+            pass
+
 
 class RootlessLocation(TraitBase):
     """RootlessLocation trait model.
