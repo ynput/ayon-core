@@ -64,7 +64,7 @@ class CollectHierarchy(pyblish.api.ContextPlugin):
                     "resolutionWidth": instance.data["resolutionWidth"],
                     "resolutionHeight": instance.data["resolutionHeight"],
                     "pixelAspect": instance.data["pixelAspect"],
-                }          
+                }
 
             # Split by '/' for AYON where asset is a path
             name = instance.data["folderPath"].split("/")[-1]
