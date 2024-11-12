@@ -8,15 +8,17 @@ from ayon_core.pipeline.traits import (
     Bundle,
     FileLocation,
     FileLocations,
+    FrameRanged,
     Image,
     MimeType,
+    Overscan,
     PixelBased,
     Planar,
     Representation,
     Sequence,
     TraitBase,
 )
-from pipeline.traits import Overscan
+from ayon_core.pipeline.traits.trait import TraitValidationError
 
 REPRESENTATION_DATA = {
         FileLocation.id: {
@@ -340,7 +342,7 @@ def test_file_locations_validation() -> None:
             file_size=1024,
             file_hash=None,
         )
-        for frame in range(1001, 1050)
+        for frame in range(1001, 1051)
     ]
 
     representation = Representation(name="test", traits=[
@@ -351,39 +353,40 @@ def test_file_locations_validation() -> None:
         file_paths=file_locations_list)
 
     # this should be valid trait
-    assert file_locations_trait.validate(representation) is True
+    file_locations_trait.validate(representation)
 
-    # add valid sequence trait
-    sequence_trait = Sequence(
+    # add valid FrameRanged trait
+    sequence_trait = FrameRanged(
         frame_start=1001,
         frame_end=1050,
         frame_padding=4,
-        frames_per_second=25
+        frames_per_second="25"
     )
     representation.add_trait(sequence_trait)
 
      # it should still validate fine
-    assert file_locations_trait.validate(representation) is True
+    file_locations_trait.validate(representation)
 
     # create empty file locations trait
     empty_file_locations_trait = FileLocations(file_paths=[])
     representation = Representation(name="test", traits=[
         empty_file_locations_trait
     ])
-    assert empty_file_locations_trait.validate(
-        representation) is False
+    with pytest.raises(TraitValidationError):
+        empty_file_locations_trait.validate(representation)
 
     # create valid file locations trait but with not matching sequence
     # trait
     representation = Representation(name="test", traits=[
         FileLocations(file_paths=file_locations_list)
     ])
-    invalid_sequence_trait = Sequence(
+    invalid_sequence_trait = FrameRanged(
         frame_start=1001,
         frame_end=1051,
         frame_padding=4,
-        frames_per_second=25
+        frames_per_second="25"
     )
 
     representation.add_trait(invalid_sequence_trait)
-    assert file_locations_trait.validate(representation) is False
+    with pytest.raises(TraitValidationError):
+        file_locations_trait.validate(representation)
