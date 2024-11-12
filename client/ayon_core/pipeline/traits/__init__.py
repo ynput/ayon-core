@@ -13,6 +13,7 @@ from .content import (
 from .cryptography import DigitallySigned, GPGSigned
 from .lifecycle import Persistent, Transient
 from .meta import Tagged, TemplatePath
+from .representation import Representation
 from .three_dimensional import Geometry, IESProfile, Lighting, Shader, Spatial
 from .time import (
     FrameRanged,
@@ -22,7 +23,7 @@ from .time import (
     SMPTETimecode,
     Static,
 )
-from .trait import MissingTraitError, Representation, TraitBase
+from .trait import MissingTraitError, TraitBase
 from .two_dimensional import (
     UDIM,
     Deep,

@@ -2,16 +2,15 @@
 from __future__ import annotations
 
 from enum import Enum, auto
-from typing import TYPE_CHECKING, ClassVar, Optional, Union
+from typing import TYPE_CHECKING, Annotated, ClassVar, Optional, Union
 
-from pydantic import Field
+from pydantic import Field, PlainSerializer
 
-from .content import FileLocations
-from .trait import MissingTraitError, Representation, TraitBase
+from .representation import Representation
+from .trait import MissingTraitError, TraitBase
 
 if TYPE_CHECKING:
     from decimal import Decimal
-    from fractions import Fraction
 
 
 class GapPolicy(Enum):
@@ -42,6 +41,13 @@ class FrameRanged(TraitBase):
         * frame_end -> end_frame
         ...
 
+    Note: frames_per_second is a string to allow various precision
+        formats. FPS is a floating point number, but it can be also
+        represented as a fraction (e.g. "30000/1001") or as a decimal
+        or even as irrational number. We need to support all these
+        formats. To work with FPS, we'll need some helper function
+        to convert FPS to Decimal from string.
+
     Attributes:
         name (str): Trait name.
         description (str): Trait description.
@@ -50,7 +56,7 @@ class FrameRanged(TraitBase):
         frame_end (int): Frame end.
         frame_in (int): Frame in.
         frame_out (int): Frame out.
-        frames_per_second (float, Fraction, Decimal): Frames per second.
+        frames_per_second (str): Frames per second.
         step (int): Step.
 
     """
@@ -63,8 +69,7 @@ class FrameRanged(TraitBase):
         ..., title="Frame Start")
     frame_in: Optional[int] = Field(None, title="In Frame")
     frame_out: Optional[int] = Field(None, title="Out Frame")
-    frames_per_second: Union[float, Fraction, Decimal] = Field(
-        ..., title="Frames Per Second")
+    frames_per_second: str = Field(..., title="Frames Per Second")
     step: Optional[int] = Field(1, title="Step")
 
 
@@ -83,9 +88,9 @@ class Handles(TraitBase):
         frame_end_handle (int): Frame end handle.
 
     """
-    name: ClassVar[str] = "Clip"
-    description: ClassVar[str] = "Clip Trait"
-    id: ClassVar[str] = "ayon.time.Clip.v1"
+    name: ClassVar[str] = "Handles"
+    description: ClassVar[str] = "Handles Trait"
+    id: ClassVar[str] = "ayon.time.Handles.v1"
     inclusive: Optional[bool] = Field(
         False, title="Handles are inclusive")  # noqa: FBT003
     frame_start_handle: Optional[int] = Field(
@@ -93,7 +98,7 @@ class Handles(TraitBase):
     frame_end_handle: Optional[int] = Field(
         0, title="Frame End Handle")
 
-class Sequence(FrameRanged, Handles):
+class Sequence(TraitBase):
     """Sequence trait model.
 
     This model represents a sequence trait. Based on the FrameRanged trait
@@ -130,6 +135,7 @@ class Sequence(FrameRanged, Handles):
         # if there is FileLocations trait, run validation
         # on it as well
         try:
+            from .content import FileLocations
             file_locs: FileLocations = representation.get_trait(
                 FileLocations)
             file_locs.validate(representation)
