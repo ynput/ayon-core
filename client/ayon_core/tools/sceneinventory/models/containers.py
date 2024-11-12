@@ -383,7 +383,6 @@ class ContainersModel:
             container_items_by_id[item.item_id] = item
             container_items.append(item)
 
-
         self._containers_by_id = containers_by_id
         self._container_items_by_id = container_items_by_id
         self._items_cache = container_items
