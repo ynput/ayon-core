@@ -13,8 +13,8 @@ class CollectHierarchy(pyblish.api.ContextPlugin):
 
     label = "Collect Hierarchy"
     order = pyblish.api.CollectorOrder - 0.076
-    families = ["shot"]
-    hosts = ["resolve", "hiero", "flame"]
+    families = ["shot", "csv_ingest_shot"]
+    hosts = ["resolve", "hiero", "flame", "traypublisher"]
 
     def process(self, context):
         project_name = context.data["projectName"]
@@ -38,8 +38,9 @@ class CollectHierarchy(pyblish.api.ContextPlugin):
             ):
                 continue
 
-            # exclude if not masterLayer True
-            if not instance.data.get("heroTrack"):
+            # exclude if not CSV ingest shot and not masterLayer True
+            if ("csv_ingest_shot" not in families and
+                not instance.data.get("heroTrack")):
                 continue
 
             shot_data = {
@@ -49,7 +50,10 @@ class CollectHierarchy(pyblish.api.ContextPlugin):
                 "folder_type": "Shot",
                 "tasks": instance.data.get("tasks") or {},
                 "comments": instance.data.get("comments", []),
-                "attributes": {
+            }
+
+            if "csv_ingest_shot" not in families:
+                shot_data["attributes"] =  {
                     "handleStart": instance.data["handleStart"],
                     "handleEnd": instance.data["handleEnd"],
                     "frameStart": instance.data["frameStart"],
@@ -60,8 +64,8 @@ class CollectHierarchy(pyblish.api.ContextPlugin):
                     "resolutionWidth": instance.data["resolutionWidth"],
                     "resolutionHeight": instance.data["resolutionHeight"],
                     "pixelAspect": instance.data["pixelAspect"],
-                },
-            }
+                }          
+
             # Split by '/' for AYON where asset is a path
             name = instance.data["folderPath"].split("/")[-1]
             actual = {name: shot_data}
