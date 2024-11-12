@@ -6,7 +6,8 @@ from typing import TYPE_CHECKING, ClassVar, Optional, Union
 
 from pydantic import Field
 
-from .trait import TraitBase
+from .content import FileLocations
+from .trait import MissingTraitError, Representation, TraitBase
 
 if TYPE_CHECKING:
     from decimal import Decimal
@@ -121,6 +122,19 @@ class Sequence(FrameRanged, Handles):
     frame_regex: str = Field(..., title="Frame Regex")
     frame_list: Optional[str] = Field(None, title="Frame List")
 
+    def validate(self, representation: Representation) -> None:
+        """Validate the trait."""
+        if not super().validate(representation):
+            return False
+
+        # if there is FileLocations trait, run validation
+        # on it as well
+        try:
+            file_locs: FileLocations = representation.get_trait(
+                FileLocations)
+            file_locs.validate(representation)
+        except MissingTraitError:
+            pass
 
 # Do we need one for drop and non-drop frame?
 class SMPTETimecode(TraitBase):
