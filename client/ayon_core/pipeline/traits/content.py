@@ -7,14 +7,14 @@ from typing import ClassVar, Optional
 
 from pydantic import Field
 
-from .time import Sequence
+from .representation import Representation
+from .time import FrameRanged
 from .trait import (
     MissingTraitError,
-    Representation,
     TraitBase,
     TraitValidationError,
-    get_sequence_from_files,
 )
+from .utils import get_sequence_from_files
 
 
 class MimeType(TraitBase):
@@ -125,26 +125,25 @@ class FileLocations(TraitBase):
                 msg = "No file locations defined (empty list)"
                 raise TraitValidationError(self.name, msg)
 
-        tmp_seq: Sequence = get_sequence_from_files(
+        tmp_frame_ranged: FrameRanged = get_sequence_from_files(
                     [f.file_path for f in self.file_paths])
 
-        if len(self.file_paths) != \
-                    tmp_seq.frame_end - tmp_seq.frame_start:
+        if len(self.file_paths) - 1 != \
+                    tmp_frame_ranged.frame_end - tmp_frame_ranged.frame_start:
                 # If the number of file paths does not match the frame range,
                 # the trait is invalid
                 msg = (
-                    f"Number of file locations ({len(self.file_paths)}) "
+                    f"Number of file locations ({len(self.file_paths) - 1}) "
                     "does not match frame range "
-                    f"({tmp_seq.frame_end - tmp_seq.frame_start})"
+                    f"({tmp_frame_ranged.frame_end - tmp_frame_ranged.frame_start})"
                 )
                 raise TraitValidationError(self.name, msg)
 
         try:
-            sequence: Sequence = representation.get_trait(Sequence)
+            sequence: FrameRanged = representation.get_trait(FrameRanged)
 
-            if sequence.frame_start != tmp_seq.frame_start or \
-                    sequence.frame_end != tmp_seq.frame_end or \
-                    sequence.frame_padding != tmp_seq.frame_padding:
+            if sequence.frame_start != tmp_frame_ranged.frame_start or \
+                    sequence.frame_end != tmp_frame_ranged.frame_end:
                 # If the frame range does not match the sequence trait, the
                 # trait is invalid. Note that we don't check the frame rate
                 # because it is not stored in the file paths and is not
@@ -154,7 +153,7 @@ class FileLocations(TraitBase):
                     f"({sequence.frame_start}-{sequence.frame_end}) "
                     "in sequence trait does not match "
                     "frame range "
-                    f"({tmp_seq.frame_start}-{tmp_seq.frame_end}) "
+                    f"({tmp_frame_ranged.frame_start}-{tmp_frame_ranged.frame_end}) "
                     "defined in files."
                 )
                 raise TraitValidationError(self.name, msg)
