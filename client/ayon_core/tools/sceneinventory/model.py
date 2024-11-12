@@ -130,6 +130,7 @@ class InventoryModel(QtGui.QStandardItemModel):
         self._clear_items()
 
         items_by_repre_id = {}
+        project_names = set()
         for container_item in container_items:
             # if (
             #     selected is not None
@@ -137,8 +138,10 @@ class InventoryModel(QtGui.QStandardItemModel):
             # ):
             #     continue
             repre_id = container_item.representation_id
+            project_name = container_item.project_name
             items = items_by_repre_id.setdefault(repre_id, [])
             items.append(container_item)
+            project_names.add(project_name)
 
         repre_id = set(items_by_repre_id.keys())
         repre_info_by_id = self._controller.get_representation_info_items(
@@ -150,7 +153,7 @@ class InventoryModel(QtGui.QStandardItemModel):
             if repre_info.is_valid
         }
         version_items_by_product_id = self._controller.get_version_items(
-            product_ids, repre_id
+            product_ids, project_names
         )
         # SiteSync addon information
         progress_by_id = self._controller.get_representations_site_progress(
