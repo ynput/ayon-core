@@ -208,6 +208,7 @@ class SceneInventoryView(QtWidgets.QTreeView):
         filtered_items = []
         product_ids = set()
         version_ids = set()
+        project_names = set()
         for container_item in container_items_by_id.values():
             repre_id = container_item.representation_id
             repre_info = repre_info_by_id.get(repre_id)
@@ -215,6 +216,7 @@ class SceneInventoryView(QtWidgets.QTreeView):
                 filtered_items.append(container_item)
                 version_ids.add(repre_info.version_id)
                 product_ids.add(repre_info.product_id)
+                project_names.add(container_item.project_name)
 
         # remove
         remove_icon = qtawesome.icon("fa.remove", color=DEFAULT_COLOR)
@@ -228,11 +230,7 @@ class SceneInventoryView(QtWidgets.QTreeView):
             return
 
         version_items_by_product_id = self._controller.get_version_items(
-            product_ids, {
-            container_item.representation_id
-            for container_item in container_items_by_id.values()
-            }
-        )
+            product_ids, project_names)
         has_outdated = False
         has_loaded_hero_versions = False
         has_available_hero_version = False
@@ -742,6 +740,10 @@ class SceneInventoryView(QtWidgets.QTreeView):
             container_item.representation_id
             for container_item in container_items_by_id.values()
         }
+        project_names = {
+            container_item.project_name
+            for container_item in container_items_by_id.values()
+        }
         repre_info_by_id = self._controller.get_representation_info_items(
             repre_ids
         )
@@ -754,8 +756,7 @@ class SceneInventoryView(QtWidgets.QTreeView):
         active_version_id = active_repre_info.version_id
         active_product_id = active_repre_info.product_id
         version_items_by_product_id = self._controller.get_version_items(
-            product_ids, repre_ids
-        )
+            product_ids, project_names)
         version_items = list(
             version_items_by_product_id[active_product_id].values()
         )
@@ -937,6 +938,10 @@ class SceneInventoryView(QtWidgets.QTreeView):
             container_item.representation_id
             for container_item in containers_items_by_id.values()
         }
+        project_names = {
+            container_item.project_name
+            for container_item in containers_items_by_id.values()
+        }
         repre_info_by_id = self._controller.get_representation_info_items(
             repre_ids
         )
@@ -946,8 +951,7 @@ class SceneInventoryView(QtWidgets.QTreeView):
             if repre_info.is_valid
         }
         version_items_by_product_id = self._controller.get_version_items(
-            product_ids, repre_ids
-        )
+            product_ids, project_names)
 
         update_containers = []
         update_versions = []
