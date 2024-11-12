@@ -7,11 +7,13 @@ import pytest
 from ayon_core.pipeline.traits import (
     Bundle,
     FileLocation,
+    FileLocations,
     Image,
     MimeType,
     PixelBased,
     Planar,
     Representation,
+    Sequence,
     TraitBase,
 )
 from pipeline.traits import Overscan
@@ -329,3 +331,59 @@ def test_from_dict() -> None:
     representation = Representation.from_dict(
         "test", trait_data=traits_data)
     """
+
+def test_file_locations_validation() -> None:
+    """Test FileLocations trait validation."""
+    file_locations_list = [
+        FileLocation(
+            file_path=Path(f"/path/to/file.{frame}.exr"),
+            file_size=1024,
+            file_hash=None,
+        )
+        for frame in range(1001, 1050)
+    ]
+
+    representation = Representation(name="test", traits=[
+        FileLocations(file_paths=file_locations_list)
+    ])
+
+    file_locations_trait: FileLocations = FileLocations(
+        file_paths=file_locations_list)
+
+    # this should be valid trait
+    assert file_locations_trait.validate(representation) is True
+
+    # add valid sequence trait
+    sequence_trait = Sequence(
+        frame_start=1001,
+        frame_end=1050,
+        frame_padding=4,
+        frames_per_second=25
+    )
+    representation.add_trait(sequence_trait)
+
+     # it should still validate fine
+    assert file_locations_trait.validate(representation) is True
+
+    # create empty file locations trait
+    empty_file_locations_trait = FileLocations(file_paths=[])
+    representation = Representation(name="test", traits=[
+        empty_file_locations_trait
+    ])
+    assert empty_file_locations_trait.validate(
+        representation) is False
+
+    # create valid file locations trait but with not matching sequence
+    # trait
+    representation = Representation(name="test", traits=[
+        FileLocations(file_paths=file_locations_list)
+    ])
+    invalid_sequence_trait = Sequence(
+        frame_start=1001,
+        frame_end=1051,
+        frame_padding=4,
+        frames_per_second=25
+    )
+
+    representation.add_trait(invalid_sequence_trait)
+    assert file_locations_trait.validate(representation) is False

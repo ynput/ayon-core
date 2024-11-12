@@ -4,6 +4,7 @@ from .content import (
     Bundle,
     Compressed,
     FileLocation,
+    FileLocations,
     Fragment,
     LocatableContent,
     MimeType,
@@ -21,7 +22,7 @@ from .time import (
     SMPTETimecode,
     Static,
 )
-from .trait import Representation, TraitBase
+from .trait import MissingTraitError, Representation, TraitBase
 from .two_dimensional import (
     UDIM,
     Deep,
@@ -30,16 +31,21 @@ from .two_dimensional import (
     PixelBased,
     Planar,
 )
+from .utils import (
+    get_sequence_from_files,
+)
 
 __all__ = [
     # base
     "Representation",
     "TraitBase",
+    "MissingTraitError",
 
     # content
     "Bundle",
     "Compressed",
     "FileLocation",
+    "FileLocations",
     "MimeType",
     "RootlessLocation",
     "Fragment",
@@ -83,4 +89,7 @@ __all__ = [
     "GapPolicy",
     "Sequence",
     "SMPTETimecode",
+
+    # utils
+    "get_sequence_from_files",
 ]
