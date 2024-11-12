@@ -22,7 +22,7 @@ class ExtractHierarchyToAYON(pyblish.api.ContextPlugin):
 
     order = pyblish.api.ExtractorOrder - 0.01
     label = "Extract Hierarchy To AYON"
-    families = ["clip", "shot"]
+    families = ["clip", "shot", "csv_ingest_shot"]
 
     def process(self, context):
         if not context.data.get("hierarchyContext"):
