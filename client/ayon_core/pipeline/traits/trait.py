@@ -65,7 +65,7 @@ class TraitBase(ABC, BaseModel):
         """Abstract attribute for description."""
         ...
 
-    def validate(self, representation: Representation) -> bool:
+    def validate(self, representation: Representation) -> None:
         """Validate the trait.
 
         This method should be implemented in the derived classes to validate
@@ -76,10 +76,11 @@ class TraitBase(ABC, BaseModel):
             representation (Representation): Representation instance.
 
         Raises:
-            ValueError: If the trait is invalid within representation.
+            TraitValidationError: If the trait is invalid
+                within representation.
 
         """
-        return True
+        return
 
     @classmethod
     def get_version(cls) -> Optional[int]:
@@ -300,14 +301,14 @@ class Representation:
             TraitBase: Trait instance.
 
         Raises:
-            ValueError: If the trait is not found.
+            MissingTraitError: If the trait is not found.
 
         """
         try:
             return self._data[trait.id]
         except KeyError as e:
             msg = f"Trait with ID {trait.id} not found."
-            raise ValueError(msg) from e
+            raise MissingTraitError(msg) from e
 
     def get_trait_by_id(self, trait_id: str) -> Union[T]:
         # sourcery skip: use-named-expression
@@ -320,7 +321,7 @@ class Representation:
             TraitBase: Trait instance.
 
         Raises:
-            ValueError: If the trait is not found.
+            MissingTraitError: If the trait is not found.
 
         """
         version = _get_version_from_id(trait_id)
@@ -329,7 +330,7 @@ class Representation:
                 return self._data[trait_id]
             except KeyError as e:
                 msg = f"Trait with ID {trait_id} not found."
-                raise ValueError(msg) from e
+                raise MissingTraitError(msg) from e
 
         result = next(
             (
@@ -341,7 +342,7 @@ class Representation:
         )
         if not result:
             msg = f"Trait with ID {trait_id} not found."
-            raise ValueError(msg)
+            raise MissingTraitError(msg)
         return result
 
     def get_traits(self,
@@ -672,6 +673,18 @@ class Representation:
             name=name, representation_id=representation_id, traits=traits)
 
 
+    def validate(self) -> bool:
+        """Validate the representation.
+
+        This method will validate all the traits in the representation.
+
+        Returns:
+            bool: True if the representation is valid, False otherwise.
+
+        """
+        return all(trait.validate(self) for trait in self._data.values())
+
+
 
 class IncompatibleTraitVersionError(Exception):
     """Incompatible trait version exception.
@@ -706,4 +719,24 @@ class TraitValidationError(Exception):
     """Trait validation error exception.
 
     This exception is raised when the trait validation fails.
+    """
+
+    def __init__(self, scope: str, message: str):
+        """Initialize the exception.
+
+        We could determine the scope from the stack in the future,
+        provided the scope is always Trait name.
+
+        Args:
+            scope (str): Scope of the error.
+            message (str): Error message.
+
+        """
+        super().__init__(f"{scope}: {message}")
+
+
+class MissingTraitError(TypeError):
+    """Missing trait error exception.
+
+    This exception is raised when the trait is missing.
     """

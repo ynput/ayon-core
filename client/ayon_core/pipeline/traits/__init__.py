@@ -4,6 +4,7 @@ from .content import (
     Bundle,
     Compressed,
     FileLocation,
+    FileLocations,
     Fragment,
     LocatableContent,
     MimeType,
@@ -21,7 +22,7 @@ from .time import (
     SMPTETimecode,
     Static,
 )
-from .trait import Representation, TraitBase
+from .trait import MissingTraitError, Representation, TraitBase
 from .two_dimensional import (
     UDIM,
     Deep,
@@ -38,11 +39,13 @@ __all__ = [
     # base
     "Representation",
     "TraitBase",
+    "MissingTraitError",
 
     # content
     "Bundle",
     "Compressed",
     "FileLocation",
+    "FileLocations",
     "MimeType",
     "RootlessLocation",
     "Fragment",

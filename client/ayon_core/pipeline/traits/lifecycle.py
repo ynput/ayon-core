@@ -1,7 +1,7 @@
 """Lifecycle traits."""
 from typing import ClassVar
 
-from .trait import TraitBase
+from .trait import TraitBase, TraitValidationError
 
 
 class Transient(TraitBase):
@@ -20,7 +20,7 @@ class Transient(TraitBase):
     description: ClassVar[str] = "Transient Trait Model"
     id: ClassVar[str] = "ayon.lifecycle.Transient.v1"
 
-    def validate(self, representation) -> bool:  # noqa: ANN001
+    def validate(self, representation) -> None:  # noqa: ANN001
         """Validate representation is not Persistent.
 
         Args:
@@ -29,7 +29,9 @@ class Transient(TraitBase):
         Returns:
             bool: True if representation is valid, False otherwise.
         """
-        return not representation.contains_trait(Persistent)
+        if representation.contains_trait(Persistent):
+            msg = "Representation is marked as both Persistent and Transient."
+            raise TraitValidationError(self.name, msg)
 
 
 class Persistent(TraitBase):
@@ -49,13 +51,13 @@ class Persistent(TraitBase):
     description: ClassVar[str] = "Persistent Trait Model"
     id: ClassVar[str] = "ayon.lifecycle.Persistent.v1"
 
-    def validate(self, representation) -> bool:  # noqa: ANN001
+    def validate(self, representation) -> None:  # noqa: ANN001
         """Validate representation is not Transient.
 
         Args:
             representation (Representation): Representation model.
 
-        Returns:
-            bool: True if representation is valid, False otherwise.
         """
-        return not representation.contains_trait(Transient)
+        if representation.contains_trait(Persistent):
+            msg = "Representation is marked as both Persistent and Transient."
+            raise TraitValidationError(self.name, msg)
