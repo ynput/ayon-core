@@ -100,37 +100,33 @@ class CollectOtioReview(pyblish.api.InstancePlugin):
                 "Creating review track: {}".format(otio_review_clips))
 
             # get colorspace from metadata if available
-            if len(otio_review_clips) >= 1 and any(
-                # lets make sure any clip with media reference is found
+            # get metadata from first clip with media reference
+            r_otio_cl = next(
                 (
                     clip
                     for clip in otio_review_clips
-                    if isinstance(clip, otio.schema.Clip)
-                    and clip.media_reference
-                )
-            ):
-                # get metadata from first clip
-                # get colorspace from metadata if available
-                # check if resolution is the same as source
-                r_otio_cl = next(
-                    (
-                        clip
-                        for clip in otio_review_clips
-                        if isinstance(clip, otio.schema.Clip)
+                    if (
+                        isinstance(clip, otio.schema.Clip)
                         and clip.media_reference
-                    ),
-                    None,
-                )
-
-                # get metadata from first clip with media reference
+                    )
+                ),
+                None
+            )
+            if r_otio_cl is not None:
                 media_ref = r_otio_cl.media_reference
                 media_metadata = media_ref.metadata
 
                 # TODO: we might need some alternative method since
                 #       native OTIO exports do not support ayon metadata
-                if review_colorspace := media_metadata.get(
+                review_colorspace = media_metadata.get(
                     "ayon.source.colorspace"
-                ):
+                )
+                if review_colorspace is None:
+                    # Backwards compatibility for older scenes
+                    review_colorspace = media_metadata.get(
+                        "openpype.source.colourtransform"
+                    )
+                if review_colorspace:
                     instance.data["reviewColorspace"] = review_colorspace
                     self.log.info(
                         "Review colorspace: {}".format(review_colorspace))
