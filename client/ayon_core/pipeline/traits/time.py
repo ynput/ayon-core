@@ -2,15 +2,14 @@
 from __future__ import annotations
 
 from enum import Enum, auto
-from typing import TYPE_CHECKING, Annotated, ClassVar, Optional, Union
+from typing import TYPE_CHECKING, ClassVar, Optional
 
-from pydantic import Field, PlainSerializer
+from pydantic import Field
 
-from .representation import Representation
 from .trait import MissingTraitError, TraitBase
 
 if TYPE_CHECKING:
-    from decimal import Decimal
+    from .representation import Representation
 
 
 class GapPolicy(Enum):
