@@ -135,7 +135,7 @@ class FileLocations(TraitBase):
                 msg = (
                     f"Number of file locations ({len(self.file_paths) - 1}) "
                     "does not match frame range "
-                    f"({tmp_frame_ranged.frame_end - tmp_frame_ranged.frame_start})"
+                    f"({tmp_frame_ranged.frame_end - tmp_frame_ranged.frame_start})"  # noqa: E501
                 )
                 raise TraitValidationError(self.name, msg)
 
@@ -153,7 +153,7 @@ class FileLocations(TraitBase):
                     f"({sequence.frame_start}-{sequence.frame_end}) "
                     "in sequence trait does not match "
                     "frame range "
-                    f"({tmp_frame_ranged.frame_start}-{tmp_frame_ranged.frame_end}) "
+                    f"({tmp_frame_ranged.frame_start}-{tmp_frame_ranged.frame_end}) "  # noqa: E501
                     "defined in files."
                 )
                 raise TraitValidationError(self.name, msg)

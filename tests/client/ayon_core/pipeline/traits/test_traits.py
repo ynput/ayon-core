@@ -15,7 +15,6 @@ from ayon_core.pipeline.traits import (
     PixelBased,
     Planar,
     Representation,
-    Sequence,
     TraitBase,
 )
 from ayon_core.pipeline.traits.trait import TraitValidationError
@@ -50,7 +49,7 @@ class InvalidTrait:
     """Invalid trait class."""
     foo = "bar"
 
-@pytest.fixture()
+@pytest.fixture
 def representation() -> Representation:
     """Return a traits data instance."""
     return Representation(name="test", traits=[
