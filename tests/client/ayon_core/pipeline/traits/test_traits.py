@@ -15,7 +15,6 @@ from ayon_core.pipeline.traits import (
     PixelBased,
     Planar,
     Representation,
-    Sequence,
     TraitBase,
 )
 from ayon_core.pipeline.traits.trait import TraitValidationError
