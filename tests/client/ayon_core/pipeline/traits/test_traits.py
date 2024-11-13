@@ -50,7 +50,7 @@ class InvalidTrait:
     """Invalid trait class."""
     foo = "bar"
 
-@pytest.fixture()
+@pytest.fixture
 def representation() -> Representation:
     """Return a traits data instance."""
     return Representation(name="test", traits=[
