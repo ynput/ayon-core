@@ -249,7 +249,6 @@ class ContainersModel:
                     ).add(repre_id)
             else:
                 output[repre_id] = repre_info
-
         if not missing_repre_ids_by_project:
             return output
 
@@ -292,7 +291,7 @@ class ContainersModel:
                 output[repre_id] = repre_info
         return output
 
-    def get_version_items(self, product_ids, project_names):
+    def get_version_items(self, project_name, product_ids):
         if not product_ids:
             return {}
         missing_ids = {
@@ -301,10 +300,7 @@ class ContainersModel:
             if product_id not in self._version_items_by_product_id
         }
 
-        product_ids_by_project = {
-            project_name: self._product_id_by_project.get(project_name)
-            for project_name in project_names
-        }
+        current_product_id = self._product_id_by_project.get(project_name)
         if missing_ids:
             status_items_by_name = {
                 status_item.name: status_item
@@ -313,24 +309,22 @@ class ContainersModel:
 
             def version_sorted(entity):
                 return entity["version"]
-            version_entities_list = []
+            if current_product_id not in missing_ids:
+                return
             version_entities_by_product_id = {
                 product_id: []
                 for product_id in missing_ids
             }
-            for project_name, product_id in product_ids_by_project.items():
+            version_entities = list(ayon_api.get_versions(
+                project_name,
+                product_ids={current_product_id},
+                fields={"id", "version", "productId", "status"}
+            ))
+            version_entities.sort(key=version_sorted)
+            for version_entity in version_entities:
+                product_id = version_entity["productId"]
                 if product_id not in missing_ids:
                     continue
-                version_entities = list(ayon_api.get_versions(
-                    project_name,
-                    product_ids={product_id},
-                    fields={"id", "version", "productId", "status"}
-                ))
-
-                version_entities_list.extend(version_entities)
-            version_entities_list.sort(key=version_sorted)
-            for version_entity in version_entities_list:
-                product_id = version_entity["productId"]
                 version_entities_by_product_id[product_id].append(
                     version_entity
                 )
