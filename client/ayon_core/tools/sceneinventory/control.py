@@ -110,9 +110,9 @@ class SceneInventoryController:
             representation_ids
         )
 
-    def get_version_items(self, product_ids, representation_ids):
+    def get_version_items(self, project_name, product_ids):
         return self._containers_model.get_version_items(
-            product_ids, representation_ids)
+            project_name, product_ids)
 
     # Site Sync methods
     def is_sitesync_enabled(self):

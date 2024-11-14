@@ -152,9 +152,20 @@ class InventoryModel(QtGui.QStandardItemModel):
             for repre_info in repre_info_by_id.values()
             if repre_info.is_valid
         }
-        version_items_by_product_id = self._controller.get_version_items(
-            product_ids, project_names
-        )
+
+        project_products = {project_name: set() for project_name in project_names}
+        for representation_id, items in items_by_repre_id.items():
+            repre_info = repre_info_by_id.get(representation_id)
+            if repre_info and repre_info.is_valid:
+                product_id = repre_info.product_id
+                for item in items:
+                    project_name = item.project_name
+                    project_products[project_name].add(product_id)
+        version_items_by_product_id = {}
+        for project_name, product_ids in project_products.items():
+            version_items_by_product_id.update(self._controller.get_version_items(
+                project_name, product_ids
+            ))
         # SiteSync addon information
         progress_by_id = self._controller.get_representations_site_progress(
             repre_id
@@ -236,7 +247,6 @@ class InventoryModel(QtGui.QStandardItemModel):
             for container_item in container_items:
                 object_name = container_item.object_name or "<none>"
                 unique_name = repre_name + object_name
-
                 item = QtGui.QStandardItem()
                 item.setColumnCount(root_item.columnCount())
                 item.setData(container_item.namespace, QtCore.Qt.DisplayRole)
@@ -251,7 +261,6 @@ class InventoryModel(QtGui.QStandardItemModel):
                 item.setData(True, IS_CONTAINER_ITEM_ROLE)
                 item.setData(unique_name, ITEM_UNIQUE_NAME_ROLE)
                 container_model_items.append(item)
-
             if not container_model_items:
                 continue
 
@@ -290,7 +299,7 @@ class InventoryModel(QtGui.QStandardItemModel):
             group_item.setData(active_site_icon, ACTIVE_SITE_ICON_ROLE)
             group_item.setData(remote_site_icon, REMOTE_SITE_ICON_ROLE)
             group_item.setData(False, IS_CONTAINER_ITEM_ROLE)
-
+            print(group_item)
             if version_color is not None:
                 group_item.setData(version_color, VERSION_COLOR_ROLE)
 
