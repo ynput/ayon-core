@@ -192,11 +192,20 @@ class SceneInventoryView(QtWidgets.QTreeView):
                 container_item = container_items_by_id[item_id]
                 active_repre_id = container_item.representation_id
                 break
+        repre_ids_by_project = collections.defaultdict(set)
+        for container_item in container_items_by_id.values():
+            repre_id = container_item.representation_id
+            project_name = (
+                container_item.project_name or
+                self._controller.get_current_project_name()
+            )
+            repre_ids_by_project[project_name].add(repre_id)
+        repre_info_by_id = {}
+        for project_name, repre_ids in repre_ids_by_project.items():
+            repre_info = self._controller.get_representation_info_items(
+                project_name, repre_ids)
+            repre_info_by_id.update(repre_info)
 
-        repre_info_by_id = self._controller.get_representation_info_items({
-            container_item.representation_id
-            for container_item in container_items_by_id.values()
-        })
         valid_repre_ids = {
             repre_id
             for repre_id, repre_info in repre_info_by_id.items()
@@ -206,20 +215,20 @@ class SceneInventoryView(QtWidgets.QTreeView):
         # Exclude items that are "NOT FOUND" since setting versions, updating
         # and removal won't work for those items.
         filtered_items = []
-        project_products = {}
+        product_ids_by_project = collections.defaultdict(set)
         version_ids = set()
         for container_item in container_items_by_id.values():
             repre_id = container_item.representation_id
-            project_name = container_item.project_name
+            project_name = (
+                container_item.project_name or
+                self._controller.get_current_project_name()
+            )
             repre_info = repre_info_by_id.get(repre_id)
             if repre_info and repre_info.is_valid:
                 filtered_items.append(container_item)
                 version_ids.add(repre_info.version_id)
                 product_id = repre_info.product_id
-                if project_name not in project_products:
-                    project_products[project_name] = set()
-                project_products[project_name].add(product_id)
-        print("p_products", project_products)
+                product_ids_by_project[project_name].add(product_id)
         # remove
         remove_icon = qtawesome.icon("fa.remove", color=DEFAULT_COLOR)
         remove_action = QtWidgets.QAction(remove_icon, "Remove items", menu)
@@ -231,11 +240,12 @@ class SceneInventoryView(QtWidgets.QTreeView):
             menu.addAction(remove_action)
             return
         version_items_by_product_id = {}
-        for project_name, product_ids in project_products.items():
-            version_items_by_product_id.update(
-                self._controller.get_version_items(
-                project_name, product_ids)
+        for project_name, product_ids in product_ids_by_project.items():
+            version_items = self._controller.get_version_items(
+                project_name, product_ids
             )
+            version_items_by_product_id.update(version_items
+)
         has_outdated = False
         has_loaded_hero_versions = False
         has_available_hero_version = False
@@ -741,38 +751,47 @@ class SceneInventoryView(QtWidgets.QTreeView):
         container_items_by_id = self._controller.get_container_items_by_id(
             item_ids
         )
-        print(container_items_by_id, "container")
-        repre_ids = {
-            container_item.representation_id
-            for container_item in container_items_by_id.values()
-        }
-        repre_info_by_id = self._controller.get_representation_info_items(
-            repre_ids
-        )
+        repre_ids_by_project = collections.defaultdict(set)
+        for container_item in container_items_by_id.values():
+            repre_id = container_item.representation_id
+            project_name = (
+                container_item.project_name or
+                self._controller.get_current_project_name()
+            )
+            repre_ids_by_project[project_name].add(repre_id)
+        repre_info_by_id = {}
+        for project_name, repre_ids in repre_ids_by_project.items():
+            repre_info = self._controller.get_representation_info_items(
+                project_name, repre_ids
+            )
+            repre_info_by_id.update(repre_info)
 
         product_ids = {
             repre_info.product_id
             for repre_info in repre_info_by_id.values()
         }
-        project_products = {}
+        product_ids_by_project = collections.defaultdict(set)
         for container_item in container_items_by_id.values():
             repre_id = container_item.representation_id
-            project_name = container_item.project_name
+            project_name = (
+                container_item.project_name or
+                self._controller.get_current_project_name()
+            )
             repre_info = repre_info_by_id.get(repre_id)
-            if repre_info and repre_info.is_valid:
-                if project_name not in project_products:
-                    project_products[project_name] = set()
-                    product_id = repre_info.product_id
-                    project_products[project_name].add(product_id)
-        print("proj_product", project_products)
+            if not repre_info or not repre_info.is_valid:
+                continue
+            product_ids_by_project[project_name].add(
+                repre_info.product_id
+            )
         active_repre_info = repre_info_by_id[active_repre_id]
         active_version_id = active_repre_info.version_id
         active_product_id = active_repre_info.product_id
         version_items_by_product_id = {}
-        for project_name, product_ids in project_products.items():
-            version_items_by_product_id.update(
-                self._controller.get_version_items(
-                project_name, product_ids))
+        for project_name, project_product_ids in product_ids_by_project.items():
+            version_items = self._controller.get_version_items(
+                project_name, project_product_ids
+            )
+            version_items_by_product_id.update(version_items)
         version_items = list(
             version_items_by_product_id[active_product_id].values()
         )
@@ -949,35 +968,44 @@ class SceneInventoryView(QtWidgets.QTreeView):
     def _on_switch_to_versioned(self, item_ids):
         # Get container items by ID
         containers_items_by_id = self._controller.get_container_items_by_id(item_ids)
-        repre_ids = {
-            container_item.representation_id
-            for container_item in containers_items_by_id.values()
-        }
         # Extract project names and their corresponding representation IDs
-        project_name_to_repre_ids = {}
+        repre_ids_by_project = collections.defaultdict(set)
         for container_item in containers_items_by_id.values():
             project_name = container_item.project_name
+            project_name = (
+                container_item.project_name or
+                self._controller.get_current_project_name()
+            )
             repre_id = container_item.representation_id
-            if project_name not in project_name_to_repre_ids:
-                project_name_to_repre_ids[project_name] = set()
-            project_name_to_repre_ids[project_name].add(repre_id)
+            repre_ids_by_project[project_name].add(repre_id)
 
         # Get representation info items by ID
-        repre_info_by_id = self._controller.get_representation_info_items(repre_ids)
+        repre_info_by_id = {}
+        for project_name, repre_ids in repre_ids_by_project.items():
+            repre_info = self._controller.get_representation_info_items(
+                project_name, repre_ids)
+            repre_info_by_id.update(repre_info)
 
-        # Create a dictionary to map project names to sets of product IDs
-        project_products = {
-            project_name: set() for project_name in project_name_to_repre_ids.keys()
-        }
-
-        print("project_products", project_products)
-        version_items_by_product_id = {}
-        for project_name, product_ids in project_name_to_repre_ids.items():
-            version_items_by_product_id.update(
-                self._controller.get_version_items(
-                project_name, product_ids
-                )
+        product_ids_by_project = collections.defaultdict(set)
+        for container_item in containers_items_by_id.values():
+            repre_id = container_item.representation_id
+            project_name = (
+                container_item.project_name or
+                self._controller.get_current_project_name()
             )
+            repre_info = repre_info_by_id.get(repre_id)
+            if not repre_info or not repre_info.is_valid:
+                continue
+            product_ids_by_project[project_name].add(
+                repre_info.product_id
+            )
+
+        version_items_by_product_id = {}
+        for project_name, product_ids in product_ids_by_project.items():
+            version_items = self._controller.get_version_items(
+                project_name, product_ids
+            )
+            version_items_by_product_id.update(version_items)
 
         update_containers = []
         update_versions = []

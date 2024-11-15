@@ -105,9 +105,9 @@ class SceneInventoryController:
     def get_container_items_by_id(self, item_ids):
         return self._containers_model.get_container_items_by_id(item_ids)
 
-    def get_representation_info_items(self, representation_ids):
+    def get_representation_info_items(self, project_name, representation_ids):
         return self._containers_model.get_representation_info_items(
-            representation_ids
+            project_name, representation_ids
         )
 
     def get_version_items(self, project_name, product_ids):

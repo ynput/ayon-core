@@ -129,43 +129,54 @@ class InventoryModel(QtGui.QStandardItemModel):
 
         self._clear_items()
 
-        items_by_repre_id = {}
-        project_names = set()
+        items_by_repre_id = collections.defaultdict(list)
+        repre_ids_by_project = collections.defaultdict(set)
         for container_item in container_items:
             # if (
             #     selected is not None
             #     and container_item.item_id not in selected
             # ):
             #     continue
+            project_name = (
+                container_item.project_name or
+                self._controller.get_current_project_name()
+            )
             repre_id = container_item.representation_id
-            project_name = container_item.project_name
-            items = items_by_repre_id.setdefault(repre_id, [])
-            items.append(container_item)
-            project_names.add(project_name)
+            items_by_repre_id[repre_id].append(container_item)
+            repre_ids_by_project[project_name].add(repre_id)
 
         repre_id = set(items_by_repre_id.keys())
-        repre_info_by_id = self._controller.get_representation_info_items(
-            repre_id
-        )
+        repre_info_by_id = {}
+        for project_name, repre_ids in repre_ids_by_project.items():
+            repre_info = self._controller.get_representation_info_items(
+                project_name, repre_ids
+            )
+            repre_info_by_id.update(repre_info)
         product_ids = {
             repre_info.product_id
             for repre_info in repre_info_by_id.values()
             if repre_info.is_valid
         }
 
-        project_products = {project_name: set() for project_name in project_names}
-        for representation_id, items in items_by_repre_id.items():
+        project_products = collections.defaultdict(set)
+        for container_item in container_items:
+            representation_id = container_item.representation_id
+            project_name = (
+                container_item.project_name or
+                self._controller.get_current_project_name()
+            )
             repre_info = repre_info_by_id.get(representation_id)
             if repre_info and repre_info.is_valid:
                 product_id = repre_info.product_id
-                for item in items:
-                    project_name = item.project_name
-                    project_products[project_name].add(product_id)
+                project_products[project_name].add(product_id)
+
         version_items_by_product_id = {}
         for project_name, product_ids in project_products.items():
-            version_items_by_product_id.update(self._controller.get_version_items(
+            version_items = self._controller.get_version_items(
                 project_name, product_ids
-            ))
+            )
+            version_items_by_product_id.update(version_items)
+
         # SiteSync addon information
         progress_by_id = self._controller.get_representations_site_progress(
             repre_id
@@ -299,7 +310,7 @@ class InventoryModel(QtGui.QStandardItemModel):
             group_item.setData(active_site_icon, ACTIVE_SITE_ICON_ROLE)
             group_item.setData(remote_site_icon, REMOTE_SITE_ICON_ROLE)
             group_item.setData(False, IS_CONTAINER_ITEM_ROLE)
-            print(group_item)
+
             if version_color is not None:
                 group_item.setData(version_color, VERSION_COLOR_ROLE)
 
