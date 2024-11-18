@@ -201,8 +201,8 @@ def get_staging_dir_info(
                 "stagingDir": get_temp_dir(
                     project_name=project_entity["name"],
                     anatomy=anatomy,
-                    prefix=kwargs.get("prefix"),
-                    suffix=kwargs.get("suffix"),
+                    prefix=prefix,
+                    suffix=suffix,
                 ),
                 "stagingDir_persistent": False,
             }
