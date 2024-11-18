@@ -61,7 +61,7 @@ class CollectHierarchy(pyblish.api.ContextPlugin):
                 "fps",
                 "resolutionWidth",
                 "resolutionHeight",
-                "pixelAspect",                
+                "pixelAspect",
             )
             for shot_attr in SHOT_ATTRS:
                 if shot_attr not in instance.data:
