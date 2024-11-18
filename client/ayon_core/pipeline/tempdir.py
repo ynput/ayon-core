@@ -86,9 +86,7 @@ def _create_custom_tempdir(project_name, anatomy=None):
     Returns:
         str | None: formatted path or None
     """
-    env_tmpdir = os.getenv(
-        "AYON_TMPDIR",
-    )
+    env_tmpdir = os.getenv("AYON_TMPDIR")
     if not env_tmpdir:
         return
 
