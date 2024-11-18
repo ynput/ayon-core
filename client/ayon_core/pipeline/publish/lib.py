@@ -687,33 +687,25 @@ def get_instance_staging_dir(instance):
     anatomy_data = instance.data["anatomyData"]
     template_data = copy.deepcopy(anatomy_data)
 
-    product_type = instance.data["productType"]
-    product_name = instance.data["productName"]
-
     # context data based variables
-    project_entity = instance.context.data["projectEntity"]
-    folder_entity = instance.context.data["folderEntity"]
-    task_entity = instance.context.data["taskEntity"]
-    host_name = instance.context.data["hostName"]
-    project_settings = instance.context.data["project_settings"]
-    anatomy = instance.context.data["anatomy"]
-    current_file = instance.context.data.get("currentFile")
+    context = instance.context
 
     # add current file as workfile name into formatting data
+    current_file = context.data.get("currentFile")
     if current_file:
         workfile = os.path.basename(current_file)
         workfile_name, _ = os.path.splitext(workfile)
         template_data["workfile_name"] = workfile_name
 
     staging_dir_info = get_staging_dir_info(
-        host_name,
-        project_entity,
-        folder_entity,
-        task_entity,
-        product_type,
-        product_name,
-        anatomy,
-        project_settings=project_settings,
+        context.data["hostName"],
+        context.data["projectEntity"],
+        instance.data.get("folderEntity"),
+        instance.data.get("taskEntity"),
+        instance.data["productType"],
+        instance.data["productName"],
+        anatomy=context.data["anatomy"],
+        project_settings=context.data["project_settings"],
         template_data=template_data,
     )
 
