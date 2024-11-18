@@ -5,6 +5,7 @@ Temporary folder operations
 import os
 import tempfile
 from pathlib import Path
+
 from ayon_core.lib import StringTemplate
 from ayon_core.pipeline import Anatomy
 
@@ -48,7 +49,7 @@ def get_temp_dir(
     # get customized tempdir path from `OPENPYPE_TMPDIR` env var
     custom_temp_dir = _create_custom_tempdir(anatomy.project_name, anatomy)
 
-    return _create_local_staging_dir(prefix, suffix, custom_temp_dir)
+    return _create_local_staging_dir(prefix, suffix, dirpath=custom_temp_dir)
 
 
 def _create_local_staging_dir(prefix, suffix, dirpath=None):
@@ -70,7 +71,7 @@ def _create_local_staging_dir(prefix, suffix, dirpath=None):
     return staging_dir.as_posix()
 
 
-def _create_custom_tempdir(project_name, anatomy=None):
+def _create_custom_tempdir(project_name, anatomy):
     """ Create custom tempdir
 
     Template path formatting is supporting:
@@ -81,19 +82,17 @@ def _create_custom_tempdir(project_name, anatomy=None):
 
     Args:
         project_name (str): project name
-        anatomy (ayon_core.pipeline.Anatomy)[optional]: Anatomy object
+        anatomy (ayon_core.pipeline.Anatomy): Anatomy object
 
     Returns:
         str | None: formatted path or None
     """
     env_tmpdir = os.getenv("AYON_TMPDIR")
     if not env_tmpdir:
-        return
+        return None
 
     custom_tempdir = None
     if "{" in env_tmpdir:
-        if anatomy is None:
-            anatomy = Anatomy(project_name)
         # create base formate data
         template_data = {
             "root": anatomy.roots,

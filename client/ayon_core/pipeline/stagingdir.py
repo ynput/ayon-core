@@ -77,7 +77,7 @@ def get_staging_dir_config(
         # template should always be found either from anatomy or from profile
         raise ValueError(
             "Staging dir profile is misconfigured! "
-            "No template was found for profile! "
+            f"No template was found for profile: {profile}! "
             "Check your project settings at: "
             "'ayon+settings://core/tools/publish/custom_staging_dir_profiles'"
         )
@@ -112,10 +112,11 @@ def get_staging_dir_info(
     anatomy=None,
     project_settings=None,
     template_data=None,
-    always_return_path=None,
-    force_tmp_dir=None,
+    always_return_path=True,
+    force_tmp_dir=False,
     logger=None,
-    **kwargs
+    prefix=None,
+    suffix=None,
 ):
     """Get staging dir info data.
 
@@ -141,21 +142,14 @@ def get_staging_dir_info(
         force_tmp_dir (Optional[bool]): If True, staging dir will be created as
             tempdir.
         logger (Optional[logging.Logger]): Logger instance.
-        **kwargs: Arbitrary keyword arguments. See below.
-
-    Keyword Arguments:
-        prefix (str): Prefix for staging dir.
-        suffix (str): Suffix for staging dir.
+        prefix (Optional[str]) Optional prefix for staging dir name.
+        suffix (Optional[str]): Optional suffix for staging dir name.
 
     Returns:
         Optional[Dict[str, Any]]: Staging dir info data
 
     """
     log = logger or Logger.get_logger("get_staging_dir_info")
-
-    # make sure always_return_path is set to true by default
-    if always_return_path is None:
-        always_return_path = True
 
     if anatomy is None:
         anatomy = Anatomy(
@@ -166,11 +160,11 @@ def get_staging_dir_info(
         return get_temp_dir(
             project_name=project_entity["name"],
             anatomy=anatomy,
-            prefix=kwargs.get("prefix"),
-            suffix=kwargs.get("suffix"),
+            prefix=prefix,
+            suffix=suffix,
         )
 
-    # making fewer queries to database
+    # making few queries to database
     ctx_data = get_template_data(
         project_entity, folder_entity, task_entity, host_name
     )
@@ -192,8 +186,8 @@ def get_staging_dir_info(
     staging_dir_config = get_staging_dir_config(
         host_name,
         project_entity["name"],
-        task_entity["type"],
-        task_entity["name"],
+        task_entity.get("type"),
+        task_entity.get("name"),
         product_type,
         product_name,
         project_settings=project_settings,
@@ -201,19 +195,19 @@ def get_staging_dir_info(
         log=log,
     )
 
-    # if no preset matching and always_get_some_dir is set, return tempdir
-    if not staging_dir_config and always_return_path:
-        return {
-            "stagingDir": get_temp_dir(
-                project_name=project_entity["name"],
-                anatomy=anatomy,
-                prefix=kwargs.get("prefix"),
-                suffix=kwargs.get("suffix"),
-            ),
-            "stagingDir_persistent": False,
-        }
     if not staging_dir_config:
-        return None
+        if always_return_path:  # no config found but force an output
+            return {
+                "stagingDir": get_temp_dir(
+                    project_name=project_entity["name"],
+                    anatomy=anatomy,
+                    prefix=kwargs.get("prefix"),
+                    suffix=kwargs.get("suffix"),
+                ),
+                "stagingDir_persistent": False,
+            }
+        else:
+            return None
 
     return {
         "stagingDir": StringTemplate.format_template(

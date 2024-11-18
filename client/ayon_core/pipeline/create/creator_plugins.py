@@ -873,7 +873,7 @@ class Creator(BaseCreator):
         )
 
         if not staging_dir_info:
-            return
+            return None
 
         staging_dir_path = staging_dir_info["stagingDir"]
 
