@@ -53,7 +53,7 @@ class InventoryModel(QtGui.QStandardItemModel):
         "Object name",
         "Active site",
         "Remote site",
-        "Project"
+        "Project",
     ]
     name_col = column_labels.index("Name")
     version_col = column_labels.index("Version")
@@ -142,10 +142,7 @@ class InventoryModel(QtGui.QStandardItemModel):
             #     and container_item.item_id not in selected
             # ):
             #     continue
-            project_name = (
-                container_item.project_name or
-                self._controller.get_current_project_name()
-            )
+            project_name = container_item.project_name
             repre_id = container_item.representation_id
             items_by_repre_id[repre_id].append(container_item)
             repre_ids_by_project[project_name].add(repre_id)
@@ -166,10 +163,7 @@ class InventoryModel(QtGui.QStandardItemModel):
         project_products = collections.defaultdict(set)
         for container_item in container_items:
             representation_id = container_item.representation_id
-            project_name = (
-                container_item.project_name or
-                self._controller.get_current_project_name()
-            )
+            project_name = container_item.project_name
             repre_info = repre_info_by_id.get(representation_id)
             if repre_info and repre_info.is_valid:
                 product_id = repre_info.product_id

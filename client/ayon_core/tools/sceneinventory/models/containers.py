@@ -5,6 +5,7 @@ import ayon_api
 from ayon_api.graphql import GraphQlQuery
 
 from ayon_core.host import ILoadHost
+from ayon_core.pipeline import get_current_project_name
 from ayon_core.tools.common_models.projects import StatusStates
 
 
@@ -111,7 +112,9 @@ class ContainerItem:
             namespace=container["namespace"],
             object_name=container["objectName"],
             item_id=uuid.uuid4().hex,
-            project_name=container.get("project_name", None)
+            project_name=container.get(
+                "project_name", get_current_project_name()
+            )
         )
 
 
