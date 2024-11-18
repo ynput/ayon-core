@@ -707,6 +707,7 @@ def get_instance_staging_dir(instance):
         anatomy=context.data["anatomy"],
         project_settings=context.data["project_settings"],
         template_data=template_data,
+        always_return_path=True,
     )
 
     staging_dir_path = staging_dir_info["stagingDir"]
