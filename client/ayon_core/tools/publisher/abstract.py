@@ -366,12 +366,20 @@ class AbstractPublisherFrontend(AbstractPublisherCommon):
     @abstractmethod
     def get_creator_attribute_definitions(
         self, instance_ids: Iterable[str]
-    ) -> List[Tuple[AbstractAttrDef, List[str], List[Any]]]:
+    ) -> List[Tuple[AbstractAttrDef, Dict[str, Dict[str, Any]]]]:
         pass
 
     @abstractmethod
     def set_instances_create_attr_values(
         self, instance_ids: Iterable[str], key: str, value: Any
+    ):
+        pass
+
+    @abstractmethod
+    def revert_instances_create_attr_values(
+        self,
+        instance_ids: List["Union[str, None]"],
+        key: str,
     ):
         pass
 
@@ -383,7 +391,7 @@ class AbstractPublisherFrontend(AbstractPublisherCommon):
     ) -> List[Tuple[
         str,
         List[AbstractAttrDef],
-        Dict[str, List[Tuple[str, Any]]]
+        Dict[str, List[Tuple[str, Any, Any]]]
     ]]:
         pass
 
@@ -394,6 +402,15 @@ class AbstractPublisherFrontend(AbstractPublisherCommon):
         plugin_name: str,
         key: str,
         value: Any
+    ):
+        pass
+
+    @abstractmethod
+    def revert_instances_publish_attr_values(
+        self,
+        instance_ids: List["Union[str, None]"],
+        plugin_name: str,
+        key: str,
     ):
         pass
 

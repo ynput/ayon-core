@@ -40,6 +40,7 @@ from ayon_core.tools.publisher.abstract import (
 )
 
 CREATE_EVENT_SOURCE = "publisher.create.model"
+_DEFAULT_VALUE = object()
 
 
 class CreatorType:
@@ -295,7 +296,7 @@ class InstanceItem:
         return InstanceItem(
             instance.id,
             instance.creator_identifier,
-            instance.label,
+            instance.label or "N/A",
             instance.group_label,
             instance.product_type,
             instance.product_name,
@@ -752,24 +753,16 @@ class CreateModel:
         self._remove_instances_from_context(instance_ids)
 
     def set_instances_create_attr_values(self, instance_ids, key, value):
-        with self._create_context.bulk_value_changes(CREATE_EVENT_SOURCE):
-            for instance_id in instance_ids:
-                instance = self._get_instance_by_id(instance_id)
-                creator_attributes = instance["creator_attributes"]
-                attr_def = creator_attributes.get_attr_def(key)
-                if (
-                    attr_def is None
-                    or not attr_def.is_value_def
-                    or not attr_def.visible
-                    or not attr_def.enabled
-                    or not attr_def.is_value_valid(value)
-                ):
-                    continue
-                creator_attributes[key] = value
+        self._set_instances_create_attr_values(instance_ids, key, value)
+
+    def revert_instances_create_attr_values(self, instance_ids, key):
+        self._set_instances_create_attr_values(
+            instance_ids, key, _DEFAULT_VALUE
+        )
 
     def get_creator_attribute_definitions(
         self, instance_ids: List[str]
-    ) -> List[Tuple[AbstractAttrDef, List[str], List[Any]]]:
+    ) -> List[Tuple[AbstractAttrDef, Dict[str, Dict[str, Any]]]]:
         """Collect creator attribute definitions for multuple instances.
 
         Args:
@@ -796,37 +789,38 @@ class CreateModel:
 
                 if found_idx is None:
                     idx = len(output)
-                    output.append((attr_def, [instance_id], [value]))
+                    output.append((
+                        attr_def,
+                        {
+                            instance_id: {
+                                "value": value,
+                                "default": attr_def.default
+                            }
+                        }
+                    ))
                     _attr_defs[idx] = attr_def
                 else:
-                    _, ids, values = output[found_idx]
-                    ids.append(instance_id)
-                    values.append(value)
+                    _, info_by_id = output[found_idx]
+                    info_by_id[instance_id] = {
+                        "value": value,
+                        "default": attr_def.default
+                    }
+
         return output
 
     def set_instances_publish_attr_values(
-        self, instance_ids, plugin_name,  key, value
+        self, instance_ids, plugin_name, key, value
     ):
-        with self._create_context.bulk_value_changes(CREATE_EVENT_SOURCE):
-            for instance_id in instance_ids:
-                if instance_id is None:
-                    instance = self._create_context
-                else:
-                    instance = self._get_instance_by_id(instance_id)
-                plugin_val = instance.publish_attributes[plugin_name]
-                attr_def = plugin_val.get_attr_def(key)
-                # Ignore if attribute is not available or enabled/visible
-                #   on the instance, or the value is not valid for definition
-                if (
-                    attr_def is None
-                    or not attr_def.is_value_def
-                    or not attr_def.visible
-                    or not attr_def.enabled
-                    or not attr_def.is_value_valid(value)
-                ):
-                    continue
+        self._set_instances_publish_attr_values(
+            instance_ids, plugin_name, key, value
+        )
 
-                plugin_val[key] = value
+    def revert_instances_publish_attr_values(
+        self, instance_ids, plugin_name, key
+    ):
+        self._set_instances_publish_attr_values(
+            instance_ids, plugin_name, key, _DEFAULT_VALUE
+        )
 
     def get_publish_attribute_definitions(
         self,
@@ -835,7 +829,7 @@ class CreateModel:
     ) -> List[Tuple[
         str,
         List[AbstractAttrDef],
-        Dict[str, List[Tuple[str, Any]]]
+        Dict[str, List[Tuple[str, Any, Any]]]
     ]]:
         """Collect publish attribute definitions for passed instances.
 
@@ -865,21 +859,21 @@ class CreateModel:
                 attr_defs = attr_val.attr_defs
                 if not attr_defs:
                     continue
+
                 plugin_attr_defs = all_defs_by_plugin_name.setdefault(
                     plugin_name, []
                 )
-                plugin_attr_defs.append(attr_defs)
-
                 plugin_values = all_plugin_values.setdefault(plugin_name, {})
+
+                plugin_attr_defs.append(attr_defs)
 
                 for attr_def in attr_defs:
                     if isinstance(attr_def, UIDef):
                         continue
-
                     attr_values = plugin_values.setdefault(attr_def.key, [])
-
-                    value = attr_val[attr_def.key]
-                    attr_values.append((item_id, value))
+                    attr_values.append(
+                        (item_id, attr_val[attr_def.key], attr_def.default)
+                    )
 
         attr_defs_by_plugin_name = {}
         for plugin_name, attr_defs in all_defs_by_plugin_name.items():
@@ -893,7 +887,7 @@ class CreateModel:
             output.append((
                 plugin_name,
                 attr_defs_by_plugin_name[plugin_name],
-                all_plugin_values
+                all_plugin_values[plugin_name],
             ))
         return output
 
@@ -1052,6 +1046,53 @@ class CreateModel:
             self._creator_items[identifier] = (
                 CreatorItem.from_creator(creator)
             )
+
+    def _set_instances_create_attr_values(self, instance_ids, key, value):
+        with self._create_context.bulk_value_changes(CREATE_EVENT_SOURCE):
+            for instance_id in instance_ids:
+                instance = self._get_instance_by_id(instance_id)
+                creator_attributes = instance["creator_attributes"]
+                attr_def = creator_attributes.get_attr_def(key)
+                if (
+                    attr_def is None
+                    or not attr_def.is_value_def
+                    or not attr_def.visible
+                    or not attr_def.enabled
+                ):
+                    continue
+
+                if value is _DEFAULT_VALUE:
+                    creator_attributes[key] = attr_def.default
+
+                elif attr_def.is_value_valid(value):
+                    creator_attributes[key] = value
+
+    def _set_instances_publish_attr_values(
+        self, instance_ids, plugin_name, key, value
+    ):
+        with self._create_context.bulk_value_changes(CREATE_EVENT_SOURCE):
+            for instance_id in instance_ids:
+                if instance_id is None:
+                    instance = self._create_context
+                else:
+                    instance = self._get_instance_by_id(instance_id)
+                plugin_val = instance.publish_attributes[plugin_name]
+                attr_def = plugin_val.get_attr_def(key)
+                # Ignore if attribute is not available or enabled/visible
+                #   on the instance, or the value is not valid for definition
+                if (
+                    attr_def is None
+                    or not attr_def.is_value_def
+                    or not attr_def.visible
+                    or not attr_def.enabled
+                ):
+                    continue
+
+                if value is _DEFAULT_VALUE:
+                    plugin_val[key] = attr_def.default
+
+                elif attr_def.is_value_valid(value):
+                    plugin_val[key] = value
 
     def _cc_added_instance(self, event):
         instance_ids = {

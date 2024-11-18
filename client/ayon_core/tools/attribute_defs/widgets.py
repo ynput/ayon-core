@@ -1,4 +1,6 @@
 import copy
+import typing
+from typing import Optional
 
 from qtpy import QtWidgets, QtCore
 
@@ -20,14 +22,25 @@ from ayon_core.tools.utils import (
     FocusSpinBox,
     FocusDoubleSpinBox,
     MultiSelectionComboBox,
+    set_style_property,
 )
 from ayon_core.tools.utils import NiceCheckbox
 
+from ._constants import REVERT_TO_DEFAULT_LABEL
 from .files_widget import FilesWidget
 
+if typing.TYPE_CHECKING:
+    from typing import Union
 
-def create_widget_for_attr_def(attr_def, parent=None):
-    widget = _create_widget_for_attr_def(attr_def, parent)
+
+def create_widget_for_attr_def(
+    attr_def: AbstractAttrDef,
+    parent: Optional[QtWidgets.QWidget] = None,
+    handle_revert_to_default: Optional[bool] = True,
+):
+    widget = _create_widget_for_attr_def(
+        attr_def, parent, handle_revert_to_default
+    )
     if not attr_def.visible:
         widget.setVisible(False)
 
@@ -36,42 +49,96 @@ def create_widget_for_attr_def(attr_def, parent=None):
     return widget
 
 
-def _create_widget_for_attr_def(attr_def, parent=None):
+def _create_widget_for_attr_def(
+    attr_def: AbstractAttrDef,
+    parent: "Union[QtWidgets.QWidget, None]",
+    handle_revert_to_default: bool,
+):
     if not isinstance(attr_def, AbstractAttrDef):
         raise TypeError("Unexpected type \"{}\" expected \"{}\"".format(
             str(type(attr_def)), AbstractAttrDef
         ))
 
+    cls = None
     if isinstance(attr_def, NumberDef):
-        return NumberAttrWidget(attr_def, parent)
+        cls = NumberAttrWidget
 
-    if isinstance(attr_def, TextDef):
-        return TextAttrWidget(attr_def, parent)
+    elif isinstance(attr_def, TextDef):
+        cls = TextAttrWidget
 
-    if isinstance(attr_def, EnumDef):
-        return EnumAttrWidget(attr_def, parent)
+    elif isinstance(attr_def, EnumDef):
+        cls = EnumAttrWidget
 
-    if isinstance(attr_def, BoolDef):
-        return BoolAttrWidget(attr_def, parent)
+    elif isinstance(attr_def, BoolDef):
+        cls = BoolAttrWidget
 
-    if isinstance(attr_def, UnknownDef):
-        return UnknownAttrWidget(attr_def, parent)
+    elif isinstance(attr_def, UnknownDef):
+        cls = UnknownAttrWidget
 
-    if isinstance(attr_def, HiddenDef):
-        return HiddenAttrWidget(attr_def, parent)
+    elif isinstance(attr_def, HiddenDef):
+        cls = HiddenAttrWidget
 
-    if isinstance(attr_def, FileDef):
-        return FileAttrWidget(attr_def, parent)
+    elif isinstance(attr_def, FileDef):
+        cls = FileAttrWidget
 
-    if isinstance(attr_def, UISeparatorDef):
-        return SeparatorAttrWidget(attr_def, parent)
+    elif isinstance(attr_def, UISeparatorDef):
+        cls = SeparatorAttrWidget
 
-    if isinstance(attr_def, UILabelDef):
-        return LabelAttrWidget(attr_def, parent)
+    elif isinstance(attr_def, UILabelDef):
+        cls = LabelAttrWidget
 
-    raise ValueError("Unknown attribute definition \"{}\"".format(
-        str(type(attr_def))
-    ))
+    if cls is None:
+        raise ValueError("Unknown attribute definition \"{}\"".format(
+            str(type(attr_def))
+        ))
+
+    return cls(attr_def, parent, handle_revert_to_default)
+
+
+class AttributeDefinitionsLabel(QtWidgets.QLabel):
+    """Label related to value attribute definition.
+
+    Label is used to show attribute definition label and to show if value
+    is overridden.
+
+    Label can be right-clicked to revert value to default.
+    """
+    revert_to_default_requested = QtCore.Signal(str)
+
+    def __init__(
+        self,
+        attr_id: str,
+        label: str,
+        parent: QtWidgets.QWidget,
+    ):
+        super().__init__(label, parent)
+
+        self._attr_id = attr_id
+        self._overridden = False
+        self.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
+
+        self.customContextMenuRequested.connect(self._on_context_menu)
+
+    def set_overridden(self, overridden: bool):
+        if self._overridden == overridden:
+            return
+        self._overridden = overridden
+        set_style_property(
+            self,
+            "overridden",
+            "1" if overridden else ""
+        )
+
+    def _on_context_menu(self, point: QtCore.QPoint):
+        menu = QtWidgets.QMenu(self)
+        action = QtWidgets.QAction(menu)
+        action.setText(REVERT_TO_DEFAULT_LABEL)
+        action.triggered.connect(self._request_revert_to_default)
+        menu.addAction(action)
+        menu.exec_(self.mapToGlobal(point))
+
+    def _request_revert_to_default(self):
+        self.revert_to_default_requested.emit(self._attr_id)
 
 
 class AttributeDefinitionsWidget(QtWidgets.QWidget):
@@ -83,16 +150,18 @@ class AttributeDefinitionsWidget(QtWidgets.QWidget):
     """
 
     def __init__(self, attr_defs=None, parent=None):
-        super(AttributeDefinitionsWidget, self).__init__(parent)
+        super().__init__(parent)
 
-        self._widgets = []
+        self._widgets_by_id = {}
+        self._labels_by_id = {}
         self._current_keys = set()
 
         self.set_attr_defs(attr_defs)
 
     def clear_attr_defs(self):
         """Remove all existing widgets and reset layout if needed."""
-        self._widgets = []
+        self._widgets_by_id = {}
+        self._labels_by_id = {}
         self._current_keys = set()
 
         layout = self.layout()
@@ -133,7 +202,7 @@ class AttributeDefinitionsWidget(QtWidgets.QWidget):
 
                 self._current_keys.add(attr_def.key)
             widget = create_widget_for_attr_def(attr_def, self)
-            self._widgets.append(widget)
+            self._widgets_by_id[attr_def.id] = widget
 
             if not attr_def.visible:
                 continue
@@ -145,7 +214,13 @@ class AttributeDefinitionsWidget(QtWidgets.QWidget):
             col_num = 2 - expand_cols
 
             if attr_def.is_value_def and attr_def.label:
-                label_widget = QtWidgets.QLabel(attr_def.label, self)
+                label_widget = AttributeDefinitionsLabel(
+                    attr_def.id, attr_def.label, self
+                )
+                label_widget.revert_to_default_requested.connect(
+                    self._on_revert_request
+                )
+                self._labels_by_id[attr_def.id] = label_widget
                 tooltip = attr_def.tooltip
                 if tooltip:
                     label_widget.setToolTip(tooltip)
@@ -160,6 +235,9 @@ class AttributeDefinitionsWidget(QtWidgets.QWidget):
                 if not attr_def.is_label_horizontal:
                     row += 1
 
+            if attr_def.is_value_def:
+                widget.value_changed.connect(self._on_value_change)
+
             layout.addWidget(
                 widget, row, col_num, 1, expand_cols
             )
@@ -168,7 +246,7 @@ class AttributeDefinitionsWidget(QtWidgets.QWidget):
     def set_value(self, value):
         new_value = copy.deepcopy(value)
         unused_keys = set(new_value.keys())
-        for widget in self._widgets:
+        for widget in self._widgets_by_id.values():
             attr_def = widget.attr_def
             if attr_def.key not in new_value:
                 continue
@@ -181,22 +259,42 @@ class AttributeDefinitionsWidget(QtWidgets.QWidget):
 
     def current_value(self):
         output = {}
-        for widget in self._widgets:
+        for widget in self._widgets_by_id.values():
             attr_def = widget.attr_def
             if not isinstance(attr_def, UIDef):
                 output[attr_def.key] = widget.current_value()
 
         return output
 
+    def _on_revert_request(self, attr_id):
+        widget = self._widgets_by_id.get(attr_id)
+        if widget is not None:
+            widget.set_value(widget.attr_def.default)
+
+    def _on_value_change(self, value, attr_id):
+        widget = self._widgets_by_id.get(attr_id)
+        if widget is None:
+            return
+        label = self._labels_by_id.get(attr_id)
+        if label is not None:
+            label.set_overridden(value != widget.attr_def.default)
+
 
 class _BaseAttrDefWidget(QtWidgets.QWidget):
     # Type 'object' may not work with older PySide versions
     value_changed = QtCore.Signal(object, str)
+    revert_to_default_requested = QtCore.Signal(str)
 
-    def __init__(self, attr_def, parent):
-        super(_BaseAttrDefWidget, self).__init__(parent)
+    def __init__(
+        self,
+        attr_def: AbstractAttrDef,
+        parent: "Union[QtWidgets.QWidget, None]",
+        handle_revert_to_default: Optional[bool] = True,
+    ):
+        super().__init__(parent)
 
-        self.attr_def = attr_def
+        self.attr_def: AbstractAttrDef = attr_def
+        self._handle_revert_to_default: bool = handle_revert_to_default
 
         main_layout = QtWidgets.QHBoxLayout(self)
         main_layout.setContentsMargins(0, 0, 0, 0)
@@ -204,6 +302,15 @@ class _BaseAttrDefWidget(QtWidgets.QWidget):
         self.main_layout = main_layout
 
         self._ui_init()
+
+    def revert_to_default_value(self):
+        if not self.attr_def.is_value_def:
+            return
+
+        if self._handle_revert_to_default:
+            self.set_value(self.attr_def.default)
+        else:
+            self.revert_to_default_requested.emit(self.attr_def.id)
 
     def _ui_init(self):
         raise NotImplementedError(
@@ -255,7 +362,7 @@ class ClickableLineEdit(QtWidgets.QLineEdit):
     clicked = QtCore.Signal()
 
     def __init__(self, text, parent):
-        super(ClickableLineEdit, self).__init__(parent)
+        super().__init__(parent)
         self.setText(text)
         self.setReadOnly(True)
 
@@ -264,7 +371,7 @@ class ClickableLineEdit(QtWidgets.QLineEdit):
     def mousePressEvent(self, event):
         if event.button() == QtCore.Qt.LeftButton:
             self._mouse_pressed = True
-        super(ClickableLineEdit, self).mousePressEvent(event)
+        super().mousePressEvent(event)
 
     def mouseReleaseEvent(self, event):
         if self._mouse_pressed:
@@ -272,7 +379,7 @@ class ClickableLineEdit(QtWidgets.QLineEdit):
             if self.rect().contains(event.pos()):
                 self.clicked.emit()
 
-        super(ClickableLineEdit, self).mouseReleaseEvent(event)
+        super().mouseReleaseEvent(event)
 
 
 class NumberAttrWidget(_BaseAttrDefWidget):
@@ -283,6 +390,9 @@ class NumberAttrWidget(_BaseAttrDefWidget):
             input_widget.setDecimals(decimals)
         else:
             input_widget = FocusSpinBox(self)
+
+        # Override context menu event to add revert to default action
+        input_widget.contextMenuEvent = self._input_widget_context_event
 
         if self.attr_def.tooltip:
             input_widget.setToolTip(self.attr_def.tooltip)
@@ -320,6 +430,16 @@ class NumberAttrWidget(_BaseAttrDefWidget):
         ):
             self._set_multiselection_visible(True)
         return False
+
+    def _input_widget_context_event(self, event):
+        line_edit = self._input_widget.lineEdit()
+        menu = line_edit.createStandardContextMenu()
+        menu.setAttribute(QtCore.Qt.WA_DeleteOnClose)
+        action = QtWidgets.QAction(menu)
+        action.setText(REVERT_TO_DEFAULT_LABEL)
+        action.triggered.connect(self.revert_to_default_value)
+        menu.addAction(action)
+        menu.popup(event.globalPos())
 
     def current_value(self):
         return self._input_widget.value()
@@ -386,6 +506,9 @@ class TextAttrWidget(_BaseAttrDefWidget):
         else:
             input_widget = QtWidgets.QLineEdit(self)
 
+        # Override context menu event to add revert to default action
+        input_widget.contextMenuEvent = self._input_widget_context_event
+
         if (
             self.attr_def.placeholder
             and hasattr(input_widget, "setPlaceholderText")
@@ -406,6 +529,15 @@ class TextAttrWidget(_BaseAttrDefWidget):
         self._input_widget = input_widget
 
         self.main_layout.addWidget(input_widget, 0)
+
+    def _input_widget_context_event(self, event):
+        menu = self._input_widget.createStandardContextMenu()
+        menu.setAttribute(QtCore.Qt.WA_DeleteOnClose)
+        action = QtWidgets.QAction(menu)
+        action.setText(REVERT_TO_DEFAULT_LABEL)
+        action.triggered.connect(self.revert_to_default_value)
+        menu.addAction(action)
+        menu.popup(event.globalPos())
 
     def _on_value_change(self):
         if self.multiline:
@@ -459,6 +591,20 @@ class BoolAttrWidget(_BaseAttrDefWidget):
         self.main_layout.addWidget(input_widget, 0)
         self.main_layout.addStretch(1)
 
+        self.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
+        self.customContextMenuRequested.connect(self._on_context_menu)
+
+    def _on_context_menu(self, pos):
+        self._menu = QtWidgets.QMenu(self)
+
+        action = QtWidgets.QAction(self._menu)
+        action.setText(REVERT_TO_DEFAULT_LABEL)
+        action.triggered.connect(self.revert_to_default_value)
+        self._menu.addAction(action)
+
+        global_pos = self.mapToGlobal(pos)
+        self._menu.exec_(global_pos)
+
     def _on_value_change(self):
         new_value = self._input_widget.isChecked()
         self.value_changed.emit(new_value, self.attr_def.id)
@@ -487,7 +633,7 @@ class BoolAttrWidget(_BaseAttrDefWidget):
 class EnumAttrWidget(_BaseAttrDefWidget):
     def __init__(self, *args, **kwargs):
         self._multivalue = False
-        super(EnumAttrWidget, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
 
     @property
     def multiselection(self):
@@ -521,6 +667,20 @@ class EnumAttrWidget(_BaseAttrDefWidget):
         self._input_widget = input_widget
 
         self.main_layout.addWidget(input_widget, 0)
+
+        input_widget.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
+        input_widget.customContextMenuRequested.connect(self._on_context_menu)
+
+    def _on_context_menu(self, pos):
+        menu = QtWidgets.QMenu(self)
+
+        action = QtWidgets.QAction(menu)
+        action.setText(REVERT_TO_DEFAULT_LABEL)
+        action.triggered.connect(self.revert_to_default_value)
+        menu.addAction(action)
+
+        global_pos = self.mapToGlobal(pos)
+        menu.exec_(global_pos)
 
     def _on_value_change(self):
         new_value = self.current_value()
@@ -614,7 +774,7 @@ class HiddenAttrWidget(_BaseAttrDefWidget):
     def setVisible(self, visible):
         if visible:
             visible = False
-        super(HiddenAttrWidget, self).setVisible(visible)
+        super().setVisible(visible)
 
     def current_value(self):
         if self._multivalue:
@@ -650,9 +810,24 @@ class FileAttrWidget(_BaseAttrDefWidget):
 
         self.main_layout.addWidget(input_widget, 0)
 
+        input_widget.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
+        input_widget.customContextMenuRequested.connect(self._on_context_menu)
+        input_widget.revert_requested.connect(self.revert_to_default_value)
+
     def _on_value_change(self):
         new_value = self.current_value()
         self.value_changed.emit(new_value, self.attr_def.id)
+
+    def _on_context_menu(self, pos):
+        menu = QtWidgets.QMenu(self)
+
+        action = QtWidgets.QAction(menu)
+        action.setText(REVERT_TO_DEFAULT_LABEL)
+        action.triggered.connect(self.revert_to_default_value)
+        menu.addAction(action)
+
+        global_pos = self.mapToGlobal(pos)
+        menu.exec_(global_pos)
 
     def current_value(self):
         return self._input_widget.current_value()
