@@ -195,10 +195,7 @@ class SceneInventoryView(QtWidgets.QTreeView):
         repre_ids_by_project = collections.defaultdict(set)
         for container_item in container_items_by_id.values():
             repre_id = container_item.representation_id
-            project_name = (
-                container_item.project_name or
-                self._controller.get_current_project_name()
-            )
+            project_name = container_item.project_name
             repre_ids_by_project[project_name].add(repre_id)
         repre_info_by_id = {}
         for project_name, repre_ids in repre_ids_by_project.items():
@@ -219,10 +216,7 @@ class SceneInventoryView(QtWidgets.QTreeView):
         version_ids = set()
         for container_item in container_items_by_id.values():
             repre_id = container_item.representation_id
-            project_name = (
-                container_item.project_name or
-                self._controller.get_current_project_name()
-            )
+            project_name = container_item.project_name
             repre_info = repre_info_by_id.get(repre_id)
             if repre_info and repre_info.is_valid:
                 filtered_items.append(container_item)
@@ -754,10 +748,7 @@ class SceneInventoryView(QtWidgets.QTreeView):
         repre_ids_by_project = collections.defaultdict(set)
         for container_item in container_items_by_id.values():
             repre_id = container_item.representation_id
-            project_name = (
-                container_item.project_name or
-                self._controller.get_current_project_name()
-            )
+            project_name = container_item.project_name
             repre_ids_by_project[project_name].add(repre_id)
         repre_info_by_id = {}
         for project_name, repre_ids in repre_ids_by_project.items():
@@ -773,10 +764,7 @@ class SceneInventoryView(QtWidgets.QTreeView):
         product_ids_by_project = collections.defaultdict(set)
         for container_item in container_items_by_id.values():
             repre_id = container_item.representation_id
-            project_name = (
-                container_item.project_name or
-                self._controller.get_current_project_name()
-            )
+            project_name = container_item.project_name
             repre_info = repre_info_by_id.get(repre_id)
             if not repre_info or not repre_info.is_valid:
                 continue
@@ -972,10 +960,6 @@ class SceneInventoryView(QtWidgets.QTreeView):
         repre_ids_by_project = collections.defaultdict(set)
         for container_item in containers_items_by_id.values():
             project_name = container_item.project_name
-            project_name = (
-                container_item.project_name or
-                self._controller.get_current_project_name()
-            )
             repre_id = container_item.representation_id
             repre_ids_by_project[project_name].add(repre_id)
 
@@ -989,10 +973,7 @@ class SceneInventoryView(QtWidgets.QTreeView):
         product_ids_by_project = collections.defaultdict(set)
         for container_item in containers_items_by_id.values():
             repre_id = container_item.representation_id
-            project_name = (
-                container_item.project_name or
-                self._controller.get_current_project_name()
-            )
+            project_name = container_item.project_name
             repre_info = repre_info_by_id.get(repre_id)
             if not repre_info or not repre_info.is_valid:
                 continue
