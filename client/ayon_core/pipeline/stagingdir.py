@@ -9,12 +9,12 @@ STAGING_DIR_TEMPLATES = "staging"
 
 
 def get_staging_dir_config(
-    host_name,
     project_name,
     task_type,
     task_name,
     product_type,
     product_name,
+    host_name,
     project_settings=None,
     anatomy=None,
     log=None,
@@ -24,8 +24,8 @@ def get_staging_dir_config(
     Args:
         host_name (str): Name of host.
         project_name (str): Name of project.
-        task_type (str): Type of task.
-        task_name (str): Name of task.
+        task_type (Optional[str]): Type of task.
+        task_name (Optional[str]): Name of task.
         product_type (str): Type of product.
         product_name (str): Name of product.
         project_settings(Dict[str, Any]): Prepared project settings.
@@ -103,13 +103,13 @@ def _validate_template_name(project_name, template_name, anatomy):
 
 
 def get_staging_dir_info(
-    host_name,
     project_entity,
     folder_entity,
     task_entity,
     product_type,
     product_name,
-    anatomy,
+    host_name,
+    anatomy=None,
     project_settings=None,
     template_data=None,
     always_return_path=None,
@@ -156,6 +156,11 @@ def get_staging_dir_info(
     # make sure always_return_path is set to true by default
     if always_return_path is None:
         always_return_path = True
+
+    if anatomy is None:
+        anatomy = Anatomy(
+            project_entity["name"], project_entity=project_entity
+        )
 
     if force_tmp_dir:
         return get_temp_dir(
