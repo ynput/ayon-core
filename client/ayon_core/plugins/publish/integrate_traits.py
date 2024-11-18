@@ -27,10 +27,12 @@ from ayon_core.pipeline.traits import (
     Persistent,
     Representation,
 )
-from pipeline.traits import PixelBased
+from pipeline.traits import MissingTraitError, PixelBased
+from pipeline.traits.content import FileLocations
 
 if TYPE_CHECKING:
     import logging
+    from pathlib import Path
 
     from pipeline import Anatomy
 
@@ -132,7 +134,7 @@ class IntegrateTraits(pyblish.api.InstancePlugin):
             instance.data["representations_with_traits"]
         )
 
-        representations = instance.data["representations_with_traits"]
+        representations: list[Representation] = instance.data["representations_with_traits"]  # noqa: E501
         if not representations:
             self.log.debug(
                 "Instance has no persistent representations. Skipping")
@@ -154,6 +156,7 @@ class IntegrateTraits(pyblish.api.InstancePlugin):
         instance.data["versionEntity"] = version_entity
 
         instance_template_data = {}
+        transfers = []
         # handle {originalDirname} requested in the template
         if "{originalDirname}" in template:
             instance_template_data = {
@@ -162,7 +165,10 @@ class IntegrateTraits(pyblish.api.InstancePlugin):
             }
         # 6.5) prepare template and data to format it
         for representation in representations:
-            template_data = self.get_template_date_from_representation(
+
+            # validate representation first
+            representation.validate()
+            template_data = self.get_template_data_from_representation(
                 representation, instance)
             # add instance based template data
             template_data.update(instance_template_data)
@@ -171,8 +177,11 @@ class IntegrateTraits(pyblish.api.InstancePlugin):
                 # number will be used.
                 template_data.pop("frame", None)
                 # WIP: use trait logic to get original frame range
+                # check if files listes in FileLocations trait match frames
+                # in sequence
 
-
+            transfers += self.get_transfers_from_representation(
+                representation, template, template_data)
 
         # 7) Get transfers from representations
         for representation in representations:
@@ -538,7 +547,7 @@ class IntegrateTraits(pyblish.api.InstancePlugin):
             context.data["ayonAttributes"] = attributes
         return attributes
 
-    def get_template_date_from_representation(
+    def get_template_data_from_representation(
             self,
             representation: Representation,
             instance: pyblish.api.Instance) -> dict:
@@ -586,7 +595,60 @@ class IntegrateTraits(pyblish.api.InstancePlugin):
 
                 # Note: handle "output" and "originalBasename"
 
-            except ValueError as e:
+            except MissingTraitError as e:
                 self.log.debug("Missing traits: %s", e)
 
         return template_data
+
+    def get_transfers_from_representation(
+            self,
+            representation: Representation,
+            template: str,
+            template_data: dict) -> list:
+        """Get transfers from representation.
+
+        Args:
+            representation (Representation): Representation to process.
+            template (str): Template to format.
+            template_data (dict): Template data.
+
+        Returns:
+            list: List of transfers.
+
+        """
+        transfers = []
+        # check if representation contains traits with files
+        if not representation.contains_traits(
+                [FileLocation, FileLocations]):
+            return transfers
+
+        files: list[Path] = []
+
+        if representation.contains_trait(FileLocations):
+            files = [
+                location.file_path
+                for location in representation.get_trait(
+                    FileLocations).file_paths
+            ]
+        elif representation.contains_trait(FileLocation):
+            file_location: FileLocation = representation.get_trait(
+                FileLocation)
+            files = [file_location.file_path]
+
+        template_data_copy = copy.deepcopy(template_data)
+        for file in files:
+            if "{originalBasename}" in template:
+                template_data_copy["originalBasename"] = file.stem
+            """
+            dst = path_template_obj.format_strict(template_data)
+            src = os.path.join(stagingdir, src_file_name)
+            """
+        if representation.contains_trait_by_id(
+                FileLocation.get_versionless_id()):
+            file_location: FileLocation = representation.get_trait_by_id(
+                FileLocation.get_versionless_id())
+            """
+            transfers += self.get_transfers_from_file_location(
+                file_location, template, template_data)
+            """
+        return transfers
