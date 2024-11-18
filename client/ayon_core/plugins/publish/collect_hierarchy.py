@@ -13,7 +13,6 @@ class CollectHierarchy(pyblish.api.ContextPlugin):
 
     label = "Collect Hierarchy"
     order = pyblish.api.CollectorOrder - 0.076
-    families = ["shot", "csv_ingest_shot"]
     hosts = ["resolve", "hiero", "flame", "traypublisher"]
 
     def process(self, context):
@@ -38,9 +37,12 @@ class CollectHierarchy(pyblish.api.ContextPlugin):
             ):
                 continue
 
-            # exclude if not CSV ingest shot and not masterLayer True
-            if ("csv_ingest_shot" not in families and
-                not instance.data.get("heroTrack")):
+            # Skip if is not a hero track
+            # - skip check for traypubliser CSV ingest
+            if (
+                not instance.data.get("heroTrack")
+                and "csv_ingest_shot" not in families
+            ):
                 continue
 
             shot_data = {
@@ -52,6 +54,7 @@ class CollectHierarchy(pyblish.api.ContextPlugin):
                 "comments": instance.data.get("comments", []),
             }
 
+            # TODO Fill in reason why we don't set attributes for csv_ingest_shot
             if "csv_ingest_shot" not in families:
                 shot_data["attributes"] =  {
                     "handleStart": instance.data["handleStart"],
