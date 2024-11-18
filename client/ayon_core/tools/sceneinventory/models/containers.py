@@ -228,9 +228,7 @@ class ContainersModel:
 
     def get_representation_info_items(self, project_name, representation_ids):
         output = {}
-        missing_repre_ids_by_project = {}
-        if project_name is None:
-            project_name = self._controller.get_current_project_name()
+        missing_repre_ids = set()
         for repre_id in representation_ids:
             try:
                 uuid.UUID(repre_id)
@@ -239,60 +237,55 @@ class ContainersModel:
                 continue
             repre_info = self._repre_info_by_id.get(repre_id)
             if repre_info is None:
-                missing_repre_ids_by_project.setdefault(
-                    project_name, set()
-                    ).add(repre_id)
+                missing_repre_ids.add(repre_id)
             else:
                 output[repre_id] = repre_info
-        if not missing_repre_ids_by_project:
+        if not missing_repre_ids:
             return output
 
-        for project_name, missing_ids in missing_repre_ids_by_project.items():
-            repre_hierarchy_by_id = get_representations_hierarchy(
-                project_name, missing_ids
-            )
-            self._product_ids_by_project[project_name] = set()
-            for repre_id, repre_hierarchy in repre_hierarchy_by_id.items():
-                kwargs = {
-                    "folder_id": None,
-                    "folder_path": None,
-                    "product_id": None,
-                    "product_name": None,
-                    "product_type": None,
-                    "product_group": None,
-                    "version_id": None,
-                    "representation_name": None,
-                }
-                folder = repre_hierarchy.folder
-                product = repre_hierarchy.product
-                version = repre_hierarchy.version
-                repre = repre_hierarchy.representation
-                if folder:
-                    kwargs["folder_id"] = folder["id"]
-                    kwargs["folder_path"] = folder["path"]
-                if product:
-                    group = product["attrib"]["productGroup"]
-                    kwargs["product_id"] = product["id"]
-                    kwargs["product_name"] = product["name"]
-                    kwargs["product_type"] = product["productType"]
-                    kwargs["product_group"] = group
-                if version:
-                    kwargs["version_id"] = version["id"]
-                if repre:
-                    kwargs["representation_name"] = repre["name"]
+        repre_hierarchy_by_id = get_representations_hierarchy(
+            project_name, missing_repre_ids
+        )
+        self._product_ids_by_project[project_name] = set()
+        for repre_id, repre_hierarchy in repre_hierarchy_by_id.items():
+            kwargs = {
+                "folder_id": None,
+                "folder_path": None,
+                "product_id": None,
+                "product_name": None,
+                "product_type": None,
+                "product_group": None,
+                "version_id": None,
+                "representation_name": None,
+            }
+            folder = repre_hierarchy.folder
+            product = repre_hierarchy.product
+            version = repre_hierarchy.version
+            repre = repre_hierarchy.representation
+            if folder:
+                kwargs["folder_id"] = folder["id"]
+                kwargs["folder_path"] = folder["path"]
+            if product:
+                group = product["attrib"]["productGroup"]
+                kwargs["product_id"] = product["id"]
+                kwargs["product_name"] = product["name"]
+                kwargs["product_type"] = product["productType"]
+                kwargs["product_group"] = group
+            if version:
+                kwargs["version_id"] = version["id"]
+            if repre:
+                kwargs["representation_name"] = repre["name"]
 
-                repre_info = RepresentationInfo(**kwargs)
-                self._repre_info_by_id[repre_id] = repre_info
-                self._product_ids_by_project[project_name].add(
-                    repre_info.product_id)
-                output[repre_id] = repre_info
+            repre_info = RepresentationInfo(**kwargs)
+            self._repre_info_by_id[repre_id] = repre_info
+            self._product_ids_by_project[project_name].add(
+                repre_info.product_id)
+            output[repre_id] = repre_info
         return output
 
     def get_version_items(self, project_name, product_ids):
         if not product_ids:
             return {}
-        if project_name is None:
-            project_name = self._controller.get_current_project_name()
         missing_ids = {
             product_id
             for product_id in product_ids
