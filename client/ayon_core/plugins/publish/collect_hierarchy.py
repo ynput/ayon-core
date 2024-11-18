@@ -31,18 +31,14 @@ class CollectHierarchy(pyblish.api.ContextPlugin):
             product_type = instance.data["productType"]
             families = instance.data["families"]
 
-            # exclude other families then self.families with intersection
-            if not set(self.families).intersection(
-                set(families + [product_type])
-            ):
+            # exclude other families then "shot" with intersection
+            if "shot" not in (families + [product_type]):
+                self.log.debug("Skipping not a shot: {}".format(families))
                 continue
 
             # Skip if is not a hero track
-            # - skip check for traypubliser CSV ingest
-            if (
-                not instance.data.get("heroTrack")
-                and "csv_ingest_shot" not in families
-            ):
+            if not instance.data.get("heroTrack"):
+                self.log.debug("Skipping not a shot from hero track")
                 continue
 
             shot_data = {
@@ -54,20 +50,29 @@ class CollectHierarchy(pyblish.api.ContextPlugin):
                 "comments": instance.data.get("comments", []),
             }
 
-            # TODO Fill in reason why we don't set attributes for csv_ingest_shot
-            if "csv_ingest_shot" not in families:
-                shot_data["attributes"] =  {
-                    "handleStart": instance.data["handleStart"],
-                    "handleEnd": instance.data["handleEnd"],
-                    "frameStart": instance.data["frameStart"],
-                    "frameEnd": instance.data["frameEnd"],
-                    "clipIn": instance.data["clipIn"],
-                    "clipOut": instance.data["clipOut"],
-                    "fps": instance.data["fps"],
-                    "resolutionWidth": instance.data["resolutionWidth"],
-                    "resolutionHeight": instance.data["resolutionHeight"],
-                    "pixelAspect": instance.data["pixelAspect"],
-                }
+            shot_data["attributes"] =  {}
+            SHOT_ATTRS = (
+                "handleStart",
+                "handleEnd",
+                "frameStart",
+                "frameEnd",
+                "clipIn",
+                "clipOut",
+                "fps",
+                "resolutionWidth",
+                "resolutionHeight",
+                "pixelAspect",                
+            )
+            for shot_attr in SHOT_ATTRS:
+                if shot_attr not in instance.data:
+                    # Shot attribute might not be defined (e.g. CSV ingest)
+                    self.log.debug(
+                        "%s shot attribute is not defined for instance.",
+                        shot_attr
+                    )
+                    continue
+
+                shot_data["attributes"][shot_attr] = instance.data[shot_attr]
 
             # Split by '/' for AYON where asset is a path
             name = instance.data["folderPath"].split("/")[-1]
