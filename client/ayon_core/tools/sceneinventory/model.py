@@ -36,6 +36,7 @@ REMOTE_SITE_ICON_ROLE = QtCore.Qt.UserRole + 23
 # This value hold unique value of container that should be used to identify
 #     containers inbetween refresh.
 ITEM_UNIQUE_NAME_ROLE = QtCore.Qt.UserRole + 24
+PROJECT_NAME_ROLE = QtCore.Qt.UserRole + 25
 
 
 class InventoryModel(QtGui.QStandardItemModel):
@@ -52,6 +53,7 @@ class InventoryModel(QtGui.QStandardItemModel):
         "Object name",
         "Active site",
         "Remote site",
+        "Project"
     ]
     name_col = column_labels.index("Name")
     version_col = column_labels.index("Version")
@@ -63,6 +65,7 @@ class InventoryModel(QtGui.QStandardItemModel):
     object_name_col = column_labels.index("Object name")
     active_site_col = column_labels.index("Active site")
     remote_site_col = column_labels.index("Remote site")
+    project_col = column_labels.index("Project")
     display_role_by_column = {
         name_col: QtCore.Qt.DisplayRole,
         version_col: VERSION_LABEL_ROLE,
@@ -72,6 +75,7 @@ class InventoryModel(QtGui.QStandardItemModel):
         product_group_col: PRODUCT_GROUP_NAME_ROLE,
         loader_col: LOADER_NAME_ROLE,
         object_name_col: OBJECT_NAME_ROLE,
+        project_col: PROJECT_NAME_ROLE,
         active_site_col: ACTIVE_SITE_PROGRESS_ROLE,
         remote_site_col: REMOTE_SITE_PROGRESS_ROLE,
     }
@@ -85,7 +89,7 @@ class InventoryModel(QtGui.QStandardItemModel):
     foreground_role_by_column = {
         name_col: NAME_COLOR_ROLE,
         version_col: VERSION_COLOR_ROLE,
-        status_col: STATUS_COLOR_ROLE
+        status_col: STATUS_COLOR_ROLE,
     }
     width_by_column = {
         name_col: 250,
@@ -95,6 +99,7 @@ class InventoryModel(QtGui.QStandardItemModel):
         product_type_col: 150,
         product_group_col: 120,
         loader_col: 150,
+        project_col: 150,
     }
 
     OUTDATED_COLOR = QtGui.QColor(235, 30, 30)
@@ -269,6 +274,7 @@ class InventoryModel(QtGui.QStandardItemModel):
                 item.setData(version_label, VERSION_LABEL_ROLE)
                 item.setData(container_item.loader_name, LOADER_NAME_ROLE)
                 item.setData(container_item.object_name, OBJECT_NAME_ROLE)
+                item.setData(container_item.project_name, PROJECT_NAME_ROLE)
                 item.setData(True, IS_CONTAINER_ITEM_ROLE)
                 item.setData(unique_name, ITEM_UNIQUE_NAME_ROLE)
                 container_model_items.append(item)
