@@ -5,7 +5,6 @@ import ayon_api
 from ayon_api.graphql import GraphQlQuery
 
 from ayon_core.host import ILoadHost
-from ayon_core.pipeline import get_current_project_name
 from ayon_core.tools.common_models.projects import StatusStates
 
 
@@ -105,7 +104,7 @@ class ContainerItem:
         self.project_name = project_name
 
     @classmethod
-    def from_container_data(cls, container):
+    def from_container_data(cls, current_project_name, container):
         return cls(
             representation_id=container["representation"],
             loader_name=container["loader"],
@@ -113,7 +112,7 @@ class ContainerItem:
             object_name=container["objectName"],
             item_id=uuid.uuid4().hex,
             project_name=container.get(
-                "project_name", get_current_project_name()
+                "project_name", current_project_name
             )
         )
 
@@ -368,7 +367,8 @@ class ContainersModel:
         invalid_ids_mapping = {}
         for container in containers:
             try:
-                item = ContainerItem.from_container_data(container)
+                current_project_name = self._controller.get_current_project_name()
+                item = ContainerItem.from_container_data(current_project_name, container)
                 repre_id = item.representation_id
                 try:
                     uuid.UUID(repre_id)
