@@ -202,7 +202,6 @@ class AttributeDefinitionsWidget(QtWidgets.QWidget):
 
                 self._current_keys.add(attr_def.key)
             widget = create_widget_for_attr_def(attr_def, self)
-            self._widgets.append(widget)
             self._widgets_by_id[attr_def.id] = widget
 
             if not attr_def.visible:
