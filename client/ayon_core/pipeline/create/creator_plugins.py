@@ -857,16 +857,18 @@ class Creator(BaseCreator):
         version = instance.get("version")
         if version is not None:
             template_data = {"version": version}
+        else:
+            template_data = {}
 
         staging_dir_info = get_staging_dir_info(
-            create_ctx.host_name,
             create_ctx.get_current_project_entity(),
             create_ctx.get_current_folder_entity(),
             create_ctx.get_current_task_entity(),
             product_type,
             product_name,
-            create_ctx.get_current_project_anatomy(),
-            create_ctx.get_current_project_settings(),
+            create_ctx.host_name,
+            anatomy=create_ctx.get_current_project_anatomy(),
+            project_settings=create_ctx.get_current_project_settings(),
             always_return_path=False,
             logger=self.log,
             template_data=template_data,

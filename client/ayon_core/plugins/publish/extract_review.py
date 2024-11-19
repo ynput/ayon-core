@@ -312,7 +312,7 @@ class ExtractReview(pyblish.api.InstancePlugin):
             if do_convert:
                 new_staging_dir = get_temp_dir(
                     project_name=instance.context.data["projectName"],
-                    make_local=True,
+                    use_local_temp=True,
                 )
                 repre["stagingDir"] = new_staging_dir
 

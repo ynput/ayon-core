@@ -653,12 +653,12 @@ def get_custom_staging_dir_info(
         DeprecationWarning,
     )
     tr_data = get_staging_dir_config(
-        host_name,
         project_name,
         task_type,
         task_name,
         product_type,
         product_name,
+        host_name,
         project_settings=project_settings,
         anatomy=anatomy,
         log=log,
@@ -698,12 +698,12 @@ def get_instance_staging_dir(instance):
         template_data["workfile_name"] = workfile_name
 
     staging_dir_info = get_staging_dir_info(
-        context.data["hostName"],
         context.data["projectEntity"],
         instance.data.get("folderEntity"),
         instance.data.get("taskEntity"),
         instance.data["productType"],
         instance.data["productName"],
+        context.data["hostName"],
         anatomy=context.data["anatomy"],
         project_settings=context.data["project_settings"],
         template_data=template_data,
