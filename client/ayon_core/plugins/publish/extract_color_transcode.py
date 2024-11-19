@@ -106,7 +106,7 @@ class ExtractOIIOTranscode(publish.Extractor):
                 original_staging_dir = new_repre["stagingDir"]
                 new_staging_dir = get_temp_dir(
                     project_name=instance.context.data["projectName"],
-                    make_local=True,
+                    use_local_temp=True,
                 )
                 new_repre["stagingDir"] = new_staging_dir
 

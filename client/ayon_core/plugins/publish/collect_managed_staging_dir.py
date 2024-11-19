@@ -33,7 +33,11 @@ class CollectManagedStagingDir(pyblish.api.InstancePlugin):
     order = pyblish.api.CollectorOrder + 0.4990
 
     def process(self, instance):
+        """ Collect the staging data and stores it to the instance.
 
+        Args:
+            instance (object): The instance to inspect.
+        """
         staging_dir_path = get_instance_staging_dir(instance)
         persistance = instance.data.get("stagingDir_persistent", False)
 

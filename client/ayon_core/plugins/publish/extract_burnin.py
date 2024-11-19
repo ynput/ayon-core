@@ -254,7 +254,7 @@ class ExtractBurnin(publish.Extractor):
             if do_convert:
                 new_staging_dir = get_temp_dir(
                     project_name=instance.context.data["projectName"],
-                    make_local=True,
+                    use_local_temp=True,
                 )
                 repre["stagingDir"] = new_staging_dir
 

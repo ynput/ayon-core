@@ -184,12 +184,12 @@ def get_staging_dir_info(
 
     # get staging dir config
     staging_dir_config = get_staging_dir_config(
-        host_name,
         project_entity["name"],
-        task_entity.get("type"),
+        task_entity.get("taskType"),
         task_entity.get("name"),
         product_type,
         product_name,
+        host_name,
         project_settings=project_settings,
         anatomy=anatomy,
         log=log,
@@ -211,7 +211,7 @@ def get_staging_dir_info(
 
     return {
         "stagingDir": StringTemplate.format_template(
-            staging_dir_config["template"], ctx_data
+            staging_dir_config["template"]["directory"], ctx_data
         ),
         "stagingDir_persistent": staging_dir_config["persistence"],
     }
