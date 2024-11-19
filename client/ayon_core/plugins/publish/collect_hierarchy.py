@@ -64,7 +64,8 @@ class CollectHierarchy(pyblish.api.ContextPlugin):
                 "pixelAspect",
             )
             for shot_attr in SHOT_ATTRS:
-                if shot_attr not in instance.data:
+                attr_value = instance.data.get(shot_attr)
+                if attr_value is None:                
                     # Shot attribute might not be defined (e.g. CSV ingest)
                     self.log.debug(
                         "%s shot attribute is not defined for instance.",
@@ -72,7 +73,7 @@ class CollectHierarchy(pyblish.api.ContextPlugin):
                     )
                     continue
 
-                shot_data["attributes"][shot_attr] = instance.data[shot_attr]
+                shot_data["attributes"][shot_attr] = attr_value
 
             # Split by '/' for AYON where asset is a path
             name = instance.data["folderPath"].split("/")[-1]
