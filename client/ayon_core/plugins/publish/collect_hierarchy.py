@@ -65,7 +65,7 @@ class CollectHierarchy(pyblish.api.ContextPlugin):
             )
             for shot_attr in SHOT_ATTRS:
                 attr_value = instance.data.get(shot_attr)
-                if attr_value is None:                
+                if attr_value is None:
                     # Shot attribute might not be defined (e.g. CSV ingest)
                     self.log.debug(
                         "%s shot attribute is not defined for instance.",
