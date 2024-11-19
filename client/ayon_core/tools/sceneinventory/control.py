@@ -4,7 +4,7 @@ from ayon_core.lib.events import QueuedEventSystem
 from ayon_core.host import HostBase
 from ayon_core.pipeline import (
     registered_host,
-    get_current_context
+    get_current_context,
 )
 from ayon_core.tools.common_models import HierarchyModel, ProjectsModel
 
