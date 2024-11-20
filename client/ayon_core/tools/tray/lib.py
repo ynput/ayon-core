@@ -3,12 +3,9 @@ import sys
 import json
 import hashlib
 import platform
-import subprocess
-import csv
 import time
 import signal
-import locale
-from typing import Optional, Dict, Tuple, Any
+from typing import Optional, List, Dict, Tuple, Any
 
 import requests
 from ayon_api.utils import get_default_settings_variant
@@ -53,15 +50,101 @@ def _get_server_and_variant(
     return server_url, variant
 
 
+def _windows_get_pid_args(pid: int) -> Optional[List[str]]:
+    import ctypes
+    from ctypes import wintypes
+
+    # Define constants
+    PROCESS_COMMANDLINE_INFO = 60
+    STATUS_NOT_FOUND = 0xC0000225
+    PROCESS_QUERY_LIMITED_INFORMATION = 0x1000
+
+    # Define the UNICODE_STRING structure
+    class UNICODE_STRING(ctypes.Structure):
+        _fields_ = [
+            ("Length", wintypes.USHORT),
+            ("MaximumLength", wintypes.USHORT),
+            ("Buffer", wintypes.LPWSTR)
+        ]
+
+    shell32 = ctypes.WinDLL("shell32", use_last_error=True)
+
+    CommandLineToArgvW = shell32.CommandLineToArgvW
+    CommandLineToArgvW.argtypes = [
+        wintypes.LPCWSTR, ctypes.POINTER(ctypes.c_int)
+    ]
+    CommandLineToArgvW.restype = ctypes.POINTER(wintypes.LPWSTR)
+
+    output = None
+    # Open the process
+    handle = ctypes.windll.kernel32.OpenProcess(
+        PROCESS_QUERY_LIMITED_INFORMATION, False, pid
+    )
+    if not handle:
+        return output
+
+    try:
+        buffer_len = wintypes.ULONG()
+        # Get the right buffer size first
+        status = ctypes.windll.ntdll.NtQueryInformationProcess(
+            handle,
+            PROCESS_COMMANDLINE_INFO,
+            ctypes.c_void_p(None),
+            0,
+            ctypes.byref(buffer_len)
+        )
+
+        if status == STATUS_NOT_FOUND:
+            return output
+
+        # Create buffer with collected size
+        buffer = ctypes.create_string_buffer(buffer_len.value)
+
+        # Get the command line
+        status = ctypes.windll.ntdll.NtQueryInformationProcess(
+            handle,
+            PROCESS_COMMANDLINE_INFO,
+            buffer,
+            buffer_len,
+            ctypes.byref(buffer_len)
+        )
+        if status:
+            return output
+        # Build the string
+        tmp = ctypes.cast(buffer, ctypes.POINTER(UNICODE_STRING)).contents
+        size = tmp.Length // 2 + 1
+        cmdline_buffer = ctypes.create_unicode_buffer(size)
+        ctypes.cdll.msvcrt.wcscpy(cmdline_buffer, tmp.Buffer)
+
+        args_len = ctypes.c_int()
+        args = CommandLineToArgvW(
+            cmdline_buffer, ctypes.byref(args_len)
+        )
+        output = [args[idx] for idx in range(args_len.value)]
+        ctypes.windll.kernel32.LocalFree(args)
+
+    finally:
+        ctypes.windll.kernel32.CloseHandle(handle)
+    return output
+
+
 def _windows_pid_is_running(pid: int) -> bool:
-    args = ["tasklist.exe", "/fo", "csv", "/fi", f"PID eq {pid}"]
-    output = subprocess.check_output(args)
-    encoding = locale.getpreferredencoding()
-    csv_content = csv.DictReader(output.decode(encoding).splitlines())
-    # if "PID" not in csv_content.fieldnames:
-    #     return False
-    for _ in csv_content:
+    args = _windows_get_pid_args(pid)
+    if not args:
+        return False
+    executable_path = args[0]
+
+    filename = os.path.basename(executable_path).lower()
+    if "ayon" in filename:
         return True
+
+    # Try to handle tray running from code
+    # - this might be potential danger that kills other python process running
+    #   'start.py' script (low chance, but still)
+    if "python" in filename and len(args) > 1:
+        script_filename = os.path.basename(args[1].lower())
+        if script_filename == "start.py":
+            return True
     return False
 
 
