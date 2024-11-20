@@ -26,7 +26,10 @@ from ayon_core.lib import (
 from ayon_core.pipeline import publish
 
 
-class ExtractOTIOReview(publish.Extractor):
+class ExtractOTIOReview(
+    publish.Extractor,
+    publish.ColormanagedPyblishPluginMixin
+):
     """
     Extract OTIO timeline into one concuted image sequence file.
 
@@ -71,14 +74,19 @@ class ExtractOTIOReview(publish.Extractor):
         # TODO: what if handles are different in `versionData`?
         handle_start = instance.data["handleStart"]
         handle_end = instance.data["handleEnd"]
-        otio_review_clips = instance.data["otioReviewClips"]
+        otio_review_clips = instance.data.get("otioReviewClips")
+
+        if otio_review_clips is None:
+            self.log.info(f"Instance `{instance}` has no otioReviewClips")
 
         # add plugin wide attributes
         self.representation_files = []
         self.used_frames = []
         self.workfile_start = int(instance.data.get(
             "workfileFrameStart", 1001)) - handle_start
-        self.padding = len(str(self.workfile_start))
+        # NOTE: padding has to be converted from
+        #       end frame since start could be lower then 1000
+        self.padding = len(str(instance.data.get("frameEnd", 1001)))
         self.used_frames.append(self.workfile_start)
         self.to_width = instance.data.get(
             "resolutionWidth") or self.to_width
@@ -86,8 +94,10 @@ class ExtractOTIOReview(publish.Extractor):
             "resolutionHeight") or self.to_height
 
         # skip instance if no reviewable data available
-        if (not isinstance(otio_review_clips[0], otio.schema.Clip)) \
-                and (len(otio_review_clips) == 1):
+        if (
+            not isinstance(otio_review_clips[0], otio.schema.Clip)
+            and len(otio_review_clips) == 1
+        ):
             self.log.warning(
                 "Instance `{}` has nothing to process".format(instance))
             return
@@ -168,7 +178,7 @@ class ExtractOTIOReview(publish.Extractor):
                 start -= clip_handle_start
                 duration += clip_handle_start
             elif len(otio_review_clips) > 1 \
-                    and (index == len(otio_review_clips) - 1):
+                        and (index == len(otio_review_clips) - 1):
                 # more clips | last clip reframing with handle
                 duration += clip_handle_end
             elif len(otio_review_clips) == 1:
@@ -263,6 +273,13 @@ class ExtractOTIOReview(publish.Extractor):
 
         # creating and registering representation
         representation = self._create_representation(start, duration)
+
+        # add colorspace data to representation
+        if colorspace := instance.data.get("reviewColorspace"):
+            self.set_representation_colorspace(
+                representation, instance.context, colorspace
+            )
+
         instance.data["representations"].append(representation)
         self.log.info("Adding representation: {}".format(representation))
 

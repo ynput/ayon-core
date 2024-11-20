@@ -376,6 +376,14 @@ class AbstractPublisherFrontend(AbstractPublisherCommon):
         pass
 
     @abstractmethod
+    def revert_instances_create_attr_values(
+        self,
+        instance_ids: List["Union[str, None]"],
+        key: str,
+    ):
+        pass
+
+    @abstractmethod
     def get_publish_attribute_definitions(
         self,
         instance_ids: Iterable[str],
@@ -394,6 +402,15 @@ class AbstractPublisherFrontend(AbstractPublisherCommon):
         plugin_name: str,
         key: str,
         value: Any
+    ):
+        pass
+
+    @abstractmethod
+    def revert_instances_publish_attr_values(
+        self,
+        instance_ids: List["Union[str, None]"],
+        plugin_name: str,
+        key: str,
     ):
         pass
 

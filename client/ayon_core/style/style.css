@@ -44,10 +44,6 @@ QLabel {
     background: transparent;
 }
 
-QLabel[overriden="1"] {
-    color: {color:font-overridden};
-}
-
 /* Inputs */
 QAbstractSpinBox, QLineEdit, QPlainTextEdit, QTextEdit {
     border: 1px solid {color:border};
@@ -1589,6 +1585,10 @@ CreateNextPageOverlay {
 }
 
 /* Attribute Definition widgets */
+AttributeDefinitionsLabel[overridden="1"] {
+    color: {color:font-overridden};
+}
+
 AttributeDefinitionsWidget QAbstractSpinBox, QLineEdit, QPlainTextEdit, QTextEdit {
     padding: 1px;
 }
