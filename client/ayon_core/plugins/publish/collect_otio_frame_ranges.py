@@ -29,6 +29,10 @@ class CollectOtioFrameRanges(pyblish.api.InstancePlugin):
             otio_range_with_handles
         )
 
+        if not instance.data.get("otioClip"):
+            self.log.debug("Skipping collect OTIO frame range.")
+            return
+
         # get basic variables
         otio_clip = instance.data["otioClip"]
         workfile_start = instance.data["workfileFrameStart"]
