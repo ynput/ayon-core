@@ -437,8 +437,21 @@ class FormattingPart:
     Args:
         template(str): String containing the formatting key.
     """
-    def __init__(self, template):
-        self._template = template
+    def __init__(self, field_name, format_spec, conversion):
+        format_spec_v = ""
+        if format_spec:
+            format_spec_v = f":{format_spec}"
+        conversion_v = ""
+        if conversion:
+            conversion_v = f"!{conversion}"
+
+        self._field_name = field_name
+        self._format_spec = format_spec_v
+        self._conversion = conversion_v
+
+        template_base = f"{field_name}{format_spec_v}{conversion_v}"
+        self._template_base = template_base
+        self._template = f"{{{template_base}}}"
 
     @property
     def template(self):
