@@ -377,8 +377,8 @@ def prepare_representations(
                 " This may cause issues on farm."
             ).format(staging))
 
-        frame_start = int(frames_to_render[0])
-        frame_end = int(frames_to_render[-1])
+        frame_start = frames_to_render[0]
+        frame_end = frames_to_render[-1]
         if skeleton_data.get("slate"):
             frame_start -= 1
 
@@ -487,8 +487,9 @@ def _get_real_frames_to_render(frames):
             frames_to_render.extend(
                 range(int(splitted[0]), int(splitted[1])+1))
         else:
-            frames_to_render.append(frame)
-    return [str(frame_to_render) for frame_to_render in frames_to_render]
+            frames_to_render.append(int(frame))
+    frames_to_render.sort()
+    return frames_to_render
 
 
 def _get_real_files_to_rendered(collection, frames_to_render):
@@ -501,6 +502,7 @@ def _get_real_files_to_rendered(collection, frames_to_render):
     """
     files = [os.path.basename(f) for f in list(collection)]
     file_name, extracted_frame = list(collect_frames(files).items())[0]
+
     if not extracted_frame:
         return files
 
