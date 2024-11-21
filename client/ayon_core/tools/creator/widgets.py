@@ -104,7 +104,7 @@ class ProductNameValidator(RegularExpressionValidatorClass):
 
     def validate(self, text, pos):
         results = super(ProductNameValidator, self).validate(text, pos)
-        if results[0] == self.Invalid:
+        if results[0] == self.invalid:
             self.invalid.emit(self.invalid_chars(text))
         return results
 
