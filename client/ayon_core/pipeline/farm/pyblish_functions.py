@@ -481,7 +481,7 @@ def _get_real_frames_to_render(frames):
             frames_to_render.extend(
                 range(int(splitted[0]), int(splitted[1])+1))
         else:
-            frames_to_render.append(frame)
+            frames_to_render.append(int(frame))
     frames_to_render.sort()
     return frames_to_render
 
