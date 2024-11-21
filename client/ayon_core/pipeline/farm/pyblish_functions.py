@@ -333,7 +333,13 @@ def prepare_representations(
 
     log = Logger.get_logger("farm_publishing")
 
-    frames_to_render = _get_real_frames_to_render(frames_to_render)
+    if frames_to_render is not None:
+        frames_to_render = _get_real_frames_to_render(frames_to_render)
+    else:
+        # Backwards compatibility for older logic
+        frame_start = int(skeleton_data.get("frameStartHandle"))
+        frame_end = int(skeleton_data.get("frameEndHandle"))
+        frames_to_render = list(range(frame_start, frame_end + 1))
 
     # create representation for every collected sequence
     for collection in collections:
