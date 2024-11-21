@@ -512,14 +512,14 @@ def _get_real_files_to_rendered(collection, frames_to_render):
         for frame_to_render in frames_to_render
     }
 
-    filtered_files = []
-    for file_name in files:
-        if any(frame in file_name
-               for frame in normalized_frames_to_render):
-            filtered_files.append(file_name)
-
-    files = filtered_files
-    return files
+    return [
+        file_name
+        for file_name in files
+        if any(
+            frame in file_name
+            for frame in normalized_frames_to_render
+        )
+    ]
 
 
 def create_instances_for_aov(instance, skeleton, aov_filter,
