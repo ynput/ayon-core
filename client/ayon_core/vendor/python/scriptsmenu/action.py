@@ -1,6 +1,6 @@
 import os
 
-from qtpy import QtWidgets
+from qtpy import QtWidgets, QT6
 
 
 class Action(QtWidgets.QAction):
@@ -112,20 +112,21 @@ module.{module_name}()"""
         Run the command of the instance or copy the command to the active shelf
         based on the current modifiers.
 
-        If callbacks have been registered with fouind modifier integer the
+        If callbacks have been registered with found modifier integer the
         function will trigger all callbacks. When a callback function returns a
         non zero integer it will not execute the action's command
-
         """
 
         # get the current application and its linked keyboard modifiers
         app = QtWidgets.QApplication.instance()
         modifiers = app.keyboardModifiers()
+        if not QT6:
+            modifiers = int(modifiers)
 
         # If the menu has a callback registered for the current modifier
         # we run the callback instead of the action itself.
         registered = self._root.registered_callbacks
-        callbacks = registered.get(int(modifiers), [])
+        callbacks = registered.get(modifiers, [])
         for callback in callbacks:
             signal = callback(self)
             if signal != 0:

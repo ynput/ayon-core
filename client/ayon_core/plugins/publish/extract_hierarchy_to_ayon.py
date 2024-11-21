@@ -22,7 +22,6 @@ class ExtractHierarchyToAYON(pyblish.api.ContextPlugin):
 
     order = pyblish.api.ExtractorOrder - 0.01
     label = "Extract Hierarchy To AYON"
-    families = ["clip", "shot"]
 
     def process(self, context):
         if not context.data.get("hierarchyContext"):
@@ -154,7 +153,9 @@ class ExtractHierarchyToAYON(pyblish.api.ContextPlugin):
                 # TODO check if existing entity have 'task' type
                 if task_entity is None:
                     task_entity = entity_hub.add_new_task(
-                        task_info["type"],
+                        task_type=task_info["type"],
+                        # TODO change 'parent_id' to 'folder_id' when ayon api
+                        #   is updated
                         parent_id=entity.id,
                         name=task_name
                     )
@@ -182,7 +183,7 @@ class ExtractHierarchyToAYON(pyblish.api.ContextPlugin):
                         folder_type = "Folder"
 
                     child_entity = entity_hub.add_new_folder(
-                        folder_type,
+                        folder_type=folder_type,
                         parent_id=entity.id,
                         name=child_name
                     )
