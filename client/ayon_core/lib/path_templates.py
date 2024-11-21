@@ -1,10 +1,10 @@
 import os
 import re
+import copy
 import numbers
+from typing import List
 from string import Formatter
 
-KEY_PATTERN = re.compile(r"(\{.*?[^{0]*\})")
-KEY_PADDING_PATTERN = re.compile(r"([^:]+)\S+[><]\S+")
 SUB_DICT_PATTERN = re.compile(r"([^\[\]]+)")
 OPTIONAL_PATTERN = re.compile(r"(<.*?[^{0]*>)[^0-9]*?")
 
@@ -369,11 +369,10 @@ class TemplatePartResult:
     @staticmethod
     def split_keys_to_subdicts(values):
         output = {}
+        formatter = Formatter()
         for key, value in values.items():
-            key_padding = list(KEY_PADDING_PATTERN.findall(key))
-            if key_padding:
-                key = key_padding[0]
-            key_subdict = list(SUB_DICT_PATTERN.findall(key))
+            _, field_name, _, _ = next(formatter.parse(f"{{{key}}}"))
+            key_subdict = list(SUB_DICT_PATTERN.findall(field_name))
             data = output
             last_key = key_subdict.pop(-1)
             for subkey in key_subdict:
@@ -502,6 +501,16 @@ class FormattingPart:
                     return False
         return not queue
 
+    @staticmethod
+    def keys_to_template_base(keys: List[str]):
+        if not keys:
+            return None
+        # Create copy of keys
+        keys = list(keys)
+        template_base = keys.pop(0)
+        joined_keys = "".join([f"[{key}]" for key in keys])
+        return f"{template_base}{joined_keys}"
+
     def format(self, data, result):
         """Format the formattings string.
 
@@ -509,7 +518,7 @@ class FormattingPart:
             data(dict): Data that should be used for formatting.
             result(TemplatePartResult): Object where result is stored.
         """
-        key = self.template[1:-1]
+        key = self._template_base
         if key in result.realy_used_values:
             result.add_output(result.realy_used_values[key])
             return result
@@ -521,17 +530,38 @@ class FormattingPart:
             return result
 
         # check if key expects subdictionary keys (e.g. project[name])
-        existence_check = key
-        key_padding = list(KEY_PADDING_PATTERN.findall(existence_check))
-        if key_padding:
-            existence_check = key_padding[0]
-        key_subdict = list(SUB_DICT_PATTERN.findall(existence_check))
+        key_subdict = list(SUB_DICT_PATTERN.findall(self._field_name))
 
         value = data
         missing_key = False
         invalid_type = False
         used_keys = []
+        keys_to_value = None
+        used_value = None
+
         for sub_key in key_subdict:
+            if isinstance(value, list):
+                if not sub_key.lstrip("-").isdigit():
+                    invalid_type = True
+                    break
+                sub_key = int(sub_key)
+                if sub_key < 0:
+                    sub_key = len(value) + sub_key
+
+                invalid = 0 > sub_key < len(data)
+                if invalid:
+                    used_keys.append(sub_key)
+                    missing_key = True
+                    break
+
+                used_keys.append(sub_key)
+                if keys_to_value is None:
+                    keys_to_value = list(used_keys)
+                    keys_to_value.pop(-1)
+                    used_value = copy.deepcopy(value)
+                value = value[sub_key]
+                continue
+
             if (
                 value is None
                 or (hasattr(value, "items") and sub_key not in value)
@@ -547,45 +577,57 @@ class FormattingPart:
             used_keys.append(sub_key)
             value = value.get(sub_key)
 
-        if missing_key or invalid_type:
-            if len(used_keys) == 0:
-                invalid_key = key_subdict[0]
-            else:
-                invalid_key = used_keys[0]
-                for idx, sub_key in enumerate(used_keys):
-                    if idx == 0:
-                        continue
-                    invalid_key += "[{0}]".format(sub_key)
+        field_name = key_subdict[0]
+        if used_keys:
+            field_name = self.keys_to_template_base(used_keys)
 
+        if missing_key or invalid_type:
             if missing_key:
-                result.add_missing_key(invalid_key)
+                result.add_missing_key(field_name)
 
             elif invalid_type:
-                result.add_invalid_type(invalid_key, value)
+                result.add_invalid_type(field_name, value)
 
             result.add_output(self.template)
             return result
 
-        if self.validate_value_type(value):
-            fill_data = {}
-            first_value = True
-            for used_key in reversed(used_keys):
-                if first_value:
-                    first_value = False
-                    fill_data[used_key] = value
-                else:
-                    _fill_data = {used_key: fill_data}
-                    fill_data = _fill_data
-
-            formatted_value = self.template.format(**fill_data)
-            result.add_realy_used_value(key, formatted_value)
-            result.add_used_value(existence_check, formatted_value)
-            result.add_output(formatted_value)
+        if not self.validate_value_type(value):
+            result.add_invalid_type(key, value)
+            result.add_output(self.template)
             return result
 
-        result.add_invalid_type(key, value)
-        result.add_output(self.template)
+        fill_data = root_fill_data = {}
+        parent_fill_data = None
+        parent_key = None
+        fill_value = data
+        value_filled = False
+        for used_key in used_keys:
+            if isinstance(fill_value, list):
+                parent_fill_data[parent_key] = fill_value
+                value_filled = True
+                break
+            fill_value = fill_value[used_key]
+            parent_fill_data = fill_data
+            fill_data = parent_fill_data.setdefault(used_key, {})
+            parent_key = used_key
 
+        if not value_filled:
+            parent_fill_data[used_keys[-1]] = value
+
+        template = f"{{{field_name}{self._format_spec}{self._conversion}}}"
+        formatted_value = template.format(**root_fill_data)
+        used_key = key
+        if keys_to_value is not None:
+            used_key = self.keys_to_template_base(keys_to_value)
+
+        if used_value is None:
+            if isinstance(value, numbers.Number):
+                used_value = value
+            else:
+                used_value = formatted_value
+        result.add_realy_used_value(self._field_name, used_value)
+        result.add_used_value(used_key, used_value)
+        result.add_output(formatted_value)
         return result
 
 
