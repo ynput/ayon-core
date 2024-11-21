@@ -974,7 +974,6 @@ class SceneInventoryView(QtWidgets.QTreeView):
                 project_name, repre_ids)
             repre_info_by_project[project_name].update(repre_info)
 
-        product_ids_by_project = collections.defaultdict(set)
         version_items_by_product_id_by_project = collections.defaultdict(dict)
         for container_item in containers_items_by_id.values():
             project_name = container_item.project_name
