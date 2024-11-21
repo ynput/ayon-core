@@ -4,7 +4,10 @@ import os
 from typing import Dict
 
 import pyblish.api
-from pxr import Sdf
+try:
+    from pxr import Sdf
+except ImportError:
+    Sdf = None
 
 from ayon_core.lib import (
     TextDef,
@@ -13,21 +16,24 @@ from ayon_core.lib import (
     UILabelDef,
     EnumDef
 )
-from ayon_core.pipeline.usdlib import (
-    get_or_define_prim_spec,
-    add_ordered_reference,
-    variant_nested_prim_path,
-    setup_asset_layer,
-    add_ordered_sublayer,
-    set_layer_defaults
-)
+try:
+    from ayon_core.pipeline.usdlib import (
+        get_or_define_prim_spec,
+        add_ordered_reference,
+        variant_nested_prim_path,
+        setup_asset_layer,
+        add_ordered_sublayer,
+        set_layer_defaults
+    )
+except ImportError:
+    pass
 from ayon_core.pipeline.entity_uri import (
     construct_ayon_entity_uri,
     parse_ayon_entity_uri
 )
 from ayon_core.pipeline.load.utils import get_representation_path_by_names
 from ayon_core.pipeline.publish.lib import get_instance_expected_output_path
-from ayon_core.pipeline import publish
+from ayon_core.pipeline import publish, KnownPublishError
 
 
 # This global toggle is here mostly for debugging purposes and should usually
@@ -77,7 +83,7 @@ def get_representation_path_in_publish_context(
 
     Allow resolving 'latest' paths from a publishing context's instances
     as if they will exist after publishing without them being integrated yet.
-    
+
     Use first instance that has same folder path and product name,
     and contains representation with passed name.
 
@@ -138,13 +144,14 @@ def get_instance_uri_path(
     folder_path = instance.data["folderPath"]
     product_name = instance.data["productName"]
     project_name = context.data["projectName"]
+    version_name = instance.data["version"]
 
     # Get the layer's published path
     path = construct_ayon_entity_uri(
         project_name=project_name,
         folder_path=folder_path,
         product=product_name,
-        version="latest",
+        version=version_name,
         representation_name="usd"
     )
 
@@ -231,7 +238,7 @@ def add_representation(instance, name,
 
 
 class CollectUSDLayerContributions(pyblish.api.InstancePlugin,
-                                   publish.OpenPypePyblishPluginMixin):
+                                   publish.AYONPyblishPluginMixin):
     """Collect the USD Layer Contributions and create dependent instances.
 
     Our contributions go to the layer
@@ -451,7 +458,18 @@ class CollectUSDLayerContributions(pyblish.api.InstancePlugin,
         return new_instance
 
     @classmethod
-    def get_attribute_defs(cls):
+    def get_attr_defs_for_instance(cls, create_context, instance):
+        # Filtering of instance, if needed, can be customized
+        if not cls.instance_matches_plugin_families(instance):
+            return []
+
+        # Attributes logic
+        publish_attributes = instance["publish_attributes"].get(
+            cls.__name__, {})
+
+        visible = publish_attributes.get("contribution_enabled", True)
+        variant_visible = visible and publish_attributes.get(
+            "contribution_apply_as_variant", True)
 
         return [
             UISeparatorDef("usd_container_settings1"),
@@ -477,7 +495,8 @@ class CollectUSDLayerContributions(pyblish.api.InstancePlugin,
                         "the contribution itself will be added to the "
                         "department layer."
                     ),
-                    default="usdAsset"),
+                    default="usdAsset",
+                    visible=visible),
             EnumDef("contribution_target_product_init",
                     label="Initialize as",
                     tooltip=(
@@ -488,7 +507,8 @@ class CollectUSDLayerContributions(pyblish.api.InstancePlugin,
                         "setting will do nothing."
                     ),
                     items=["asset", "shot"],
-                    default="asset"),
+                    default="asset",
+                    visible=visible),
 
             # Asset layer, e.g. model.usd, look.usd, rig.usd
             EnumDef("contribution_layer",
@@ -500,7 +520,8 @@ class CollectUSDLayerContributions(pyblish.api.InstancePlugin,
                         "the list) will contribute as a stronger opinion."
                     ),
                     items=list(cls.contribution_layers.keys()),
-                    default="model"),
+                    default="model",
+                    visible=visible),
             BoolDef("contribution_apply_as_variant",
                     label="Add as variant",
                     tooltip=(
@@ -511,13 +532,16 @@ class CollectUSDLayerContributions(pyblish.api.InstancePlugin,
                         "appended to as a sublayer to the department layer "
                         "instead."
                     ),
-                    default=True),
+                    default=True,
+                    visible=visible),
             TextDef("contribution_variant_set_name",
                     label="Variant Set Name",
-                    default="{layer}"),
+                    default="{layer}",
+                    visible=variant_visible),
             TextDef("contribution_variant",
                     label="Variant Name",
-                    default="{variant}"),
+                    default="{variant}",
+                    visible=variant_visible),
             BoolDef("contribution_variant_is_default",
                     label="Set as default variant selection",
                     tooltip=(
@@ -528,9 +552,40 @@ class CollectUSDLayerContributions(pyblish.api.InstancePlugin,
                         "The behavior is unpredictable if multiple instances "
                         "for the same variant set have this enabled."
                     ),
-                    default=False),
+                    default=False,
+                    visible=variant_visible),
             UISeparatorDef("usd_container_settings3"),
         ]
+
+    @classmethod
+    def register_create_context_callbacks(cls, create_context):
+        create_context.add_value_changed_callback(cls.on_values_changed)
+
+    @classmethod
+    def on_values_changed(cls, event):
+        """Update instance attribute definitions on attribute changes."""
+
+        # Update attributes if any of the following plug-in attributes
+        # change:
+        keys = ["contribution_enabled", "contribution_apply_as_variant"]
+
+        for instance_change in event["changes"]:
+            instance = instance_change["instance"]
+            if not cls.instance_matches_plugin_families(instance):
+                continue
+            value_changes = instance_change["changes"]
+            plugin_attribute_changes = (
+                value_changes.get("publish_attributes", {})
+                .get(cls.__name__, {}))
+
+            if not any(key in plugin_attribute_changes for key in keys):
+                continue
+
+            # Update the attribute definitions
+            new_attrs = cls.get_attr_defs_for_instance(
+                event["create_context"], instance
+            )
+            instance.set_publish_plugin_attr_defs(cls.__name__, new_attrs)
 
 
 class CollectUSDLayerContributionsHoudiniLook(CollectUSDLayerContributions):
@@ -544,9 +599,12 @@ class CollectUSDLayerContributionsHoudiniLook(CollectUSDLayerContributions):
     label = CollectUSDLayerContributions.label + " (Look)"
 
     @classmethod
-    def get_attribute_defs(cls):
-        defs = super(CollectUSDLayerContributionsHoudiniLook,
-                     cls).get_attribute_defs()
+    def get_attr_defs_for_instance(cls, create_context, instance):
+        # Filtering of instance, if needed, can be customized
+        if not cls.instance_matches_plugin_families(instance):
+            return []
+
+        defs = super().get_attr_defs_for_instance(create_context, instance)
 
         # Update default for department layer to look
         layer_def = next(d for d in defs if d.key == "contribution_layer")
@@ -555,11 +613,23 @@ class CollectUSDLayerContributionsHoudiniLook(CollectUSDLayerContributions):
         return defs
 
 
+class ValidateUSDDependencies(pyblish.api.InstancePlugin):
+    families = ["usdLayer"]
+
+    order = pyblish.api.ValidatorOrder
+
+    def process(self, instance):
+        if Sdf is None:
+            raise KnownPublishError("USD library 'Sdf' is not available.")
+
+
 class ExtractUSDLayerContribution(publish.Extractor):
 
     families = ["usdLayer"]
     label = "Extract USD Layer Contributions (Asset/Shot)"
     order = pyblish.api.ExtractorOrder + 0.45
+
+    use_ayon_entity_uri = False
 
     def process(self, instance):
 
@@ -578,7 +648,8 @@ class ExtractUSDLayerContribution(publish.Extractor):
 
         contributions = instance.data.get("usd_contributions", [])
         for contribution in sorted(contributions, key=attrgetter("order")):
-            path = get_instance_uri_path(contribution.instance)
+            path = get_instance_uri_path(contribution.instance,
+                                         resolve=not self.use_ayon_entity_uri)
             if isinstance(contribution, VariantContribution):
                 # Add contribution as a reference inside a variant
                 self.log.debug(f"Adding variant: {contribution}")
@@ -652,14 +723,14 @@ class ExtractUSDLayerContribution(publish.Extractor):
         )
 
     def remove_previous_reference_contribution(self,
-                                               prim_spec: Sdf.PrimSpec,
+                                               prim_spec: "Sdf.PrimSpec",
                                                instance: pyblish.api.Instance):
         # Remove existing contributions of the same product - ignoring
         # the picked version and representation. We assume there's only ever
         # one version of a product you want to have referenced into a Prim.
         remove_indices = set()
         for index, ref in enumerate(prim_spec.referenceList.prependedItems):
-            ref: Sdf.Reference  # type hint
+            ref: "Sdf.Reference"
 
             uri = ref.customData.get("ayon_uri")
             if uri and self.instance_match_ayon_uri(instance, uri):
@@ -674,8 +745,8 @@ class ExtractUSDLayerContribution(publish.Extractor):
             ]
 
     def add_reference_contribution(self,
-                                   layer: Sdf.Layer,
-                                   prim_path: Sdf.Path,
+                                   layer: "Sdf.Layer",
+                                   prim_path: "Sdf.Path",
                                    filepath: str,
                                    contribution: VariantContribution):
         instance = contribution.instance
@@ -719,6 +790,8 @@ class ExtractUSDAssetContribution(publish.Extractor):
     families = ["usdAsset"]
     label = "Extract USD Asset/Shot Contributions"
     order = ExtractUSDLayerContribution.order + 0.01
+
+    use_ayon_entity_uri = False
 
     def process(self, instance):
 
@@ -795,15 +868,15 @@ class ExtractUSDAssetContribution(publish.Extractor):
             layer_id = layer_instance.data["usd_layer_id"]
             order = layer_instance.data["usd_layer_order"]
 
-            path = get_instance_uri_path(instance=layer_instance)
+            path = get_instance_uri_path(instance=layer_instance,
+                                         resolve=not self.use_ayon_entity_uri)
             add_ordered_sublayer(target_layer,
                                  contribution_path=path,
                                  layer_id=layer_id,
                                  order=order,
                                  # Add the sdf argument metadata which allows
                                  # us to later detect whether another path
-                                 # has the same layer id, so we can replace it
-                                 # it.
+                                 # has the same layer id, so we can replace it.
                                  add_sdf_arguments_metadata=True)
 
         # Save the file
