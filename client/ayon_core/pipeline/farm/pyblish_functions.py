@@ -501,21 +501,23 @@ def _get_real_files_to_rendered(collection, frames_to_render):
     """
     files = [os.path.basename(f) for f in list(collection)]
     file_name, extracted_frame = list(collect_frames(files).items())[0]
-    if extracted_frame:
-        found_frame_pattern_length = len(extracted_frame)
-        normalized_frames_to_render = set()
-        for frame_to_render in frames_to_render:
-            normalized_frames_to_render.add(
-                str(frame_to_render).zfill(found_frame_pattern_length)
-            )
+    if not extracted_frame:
+        return files
 
-        filtered_files = []
-        for file_name in files:
-            if any(frame in file_name
-                   for frame in normalized_frames_to_render):
-                filtered_files.append(file_name)
+    found_frame_pattern_length = len(extracted_frame)
+    normalized_frames_to_render = set()
+    for frame_to_render in frames_to_render:
+        normalized_frames_to_render.add(
+            str(frame_to_render).zfill(found_frame_pattern_length)
+        )
 
-        files = filtered_files
+    filtered_files = []
+    for file_name in files:
+        if any(frame in file_name
+               for frame in normalized_frames_to_render):
+            filtered_files.append(file_name)
+
+    files = filtered_files
     return files
 
 
