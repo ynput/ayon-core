@@ -10,12 +10,16 @@ import os
 import clique
 import pyblish.api
 
+from ayon_core.pipeline import publish
 from ayon_core.pipeline.publish import (
     get_publish_template_name
 )
 
 
-class CollectOtioSubsetResources(pyblish.api.InstancePlugin):
+class CollectOtioSubsetResources(
+    pyblish.api.InstancePlugin,
+    publish.ColormanagedPyblishPluginMixin
+):
     """Get Resources for a product version"""
 
     label = "Collect OTIO Subset Resources"
@@ -190,9 +194,13 @@ class CollectOtioSubsetResources(pyblish.api.InstancePlugin):
         instance.data["originalDirname"] = self.staging_dir
 
         if repre:
+            colorspace = instance.data.get("colorspace")
+            # add colorspace data to representation
+            self.set_representation_colorspace(
+                repre, instance.context, colorspace)
+
             # add representation to instance data
             instance.data["representations"].append(repre)
-            self.log.debug(">>>>>>>> {}".format(repre))
 
         self.log.debug(instance.data)
 
