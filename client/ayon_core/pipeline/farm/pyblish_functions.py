@@ -507,11 +507,10 @@ def _get_real_files_to_rendered(collection, frames_to_render):
         return files
 
     found_frame_pattern_length = len(extracted_frame)
-    normalized_frames_to_render = set()
-    for frame_to_render in frames_to_render:
-        normalized_frames_to_render.add(
-            str(frame_to_render).zfill(found_frame_pattern_length)
-        )
+    normalized_frames_to_render = {
+        str(frame_to_render).zfill(found_frame_pattern_length)
+        for frame_to_render in frames_to_render
+    }
 
     filtered_files = []
     for file_name in files:
