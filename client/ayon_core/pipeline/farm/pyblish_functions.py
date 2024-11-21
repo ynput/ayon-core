@@ -482,7 +482,8 @@ def _get_real_frames_to_render(frames):
                 range(int(splitted[0]), int(splitted[1])+1))
         else:
             frames_to_render.append(frame)
-    return [str(frame_to_render) for frame_to_render in frames_to_render]
+    frames_to_render.sort()
+    return frames_to_render
 
 
 def _get_real_files_to_rendered(collection, frames_to_render):
