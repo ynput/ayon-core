@@ -197,26 +197,29 @@ class SceneInventoryView(QtWidgets.QTreeView):
             repre_id = container_item.representation_id
             project_name = container_item.project_name
             repre_ids_by_project[project_name].add(repre_id)
-        repre_info_by_id = {}
+
+        repre_info_by_project = collections.defaultdict(dict)
         for project_name, repre_ids in repre_ids_by_project.items():
             repre_info = self._controller.get_representation_info_items(
                 project_name, repre_ids)
-            repre_info_by_id.update(repre_info)
-
-        valid_repre_ids = {
-            repre_id
-            for repre_id, repre_info in repre_info_by_id.items()
-            if repre_info.is_valid
-        }
-
+            repre_info_by_project[project_name].update(repre_info)
         # Exclude items that are "NOT FOUND" since setting versions, updating
         # and removal won't work for those items.
         filtered_items = []
-        product_ids_by_project = collections.defaultdict(set)
         version_ids = set()
+        valid_repre_ids = set()
+        product_ids_by_project = collections.defaultdict(set)
         for container_item in container_items_by_id.values():
-            repre_id = container_item.representation_id
             project_name = container_item.project_name
+            repre_info_by_id = repre_info_by_project.get(project_name)
+            repre_id = container_item.representation_id
+            all_valid_repre_ids = {
+                repre_id
+                for repre_id, repre_info in repre_info_by_id.items()
+                if repre_info.is_valid
+            }
+            valid_repre_ids.update(all_valid_repre_ids)
+
             repre_info = repre_info_by_id.get(repre_id)
             if repre_info and repre_info.is_valid:
                 filtered_items.append(container_item)
@@ -233,47 +236,47 @@ class SceneInventoryView(QtWidgets.QTreeView):
             # Keep remove action for invalid items
             menu.addAction(remove_action)
             return
-        version_items_by_product_id = {}
+        version_items_by_product_id_by_project = collections.defaultdict(dict)
         for project_name, product_ids in product_ids_by_project.items():
             version_items = self._controller.get_version_items(
                 project_name, product_ids
             )
-            version_items_by_product_id.update(version_items
-)
+            version_items_by_product_id_by_project[project_name] = version_items
         has_outdated = False
         has_loaded_hero_versions = False
         has_available_hero_version = False
         has_outdated_approved = False
         last_version_by_product_id = {}
-        for product_id, version_items_by_id in (
-            version_items_by_product_id.items()
-        ):
-            _has_outdated_approved = False
-            _last_approved_version_item = None
-            for version_item in version_items_by_id.values():
-                if version_item.is_hero:
-                    has_available_hero_version = True
-
-                elif version_item.is_last_approved:
-                    _last_approved_version_item = version_item
-                    _has_outdated_approved = True
-
-                if version_item.version_id not in version_ids:
-                    continue
-
-                if version_item.is_hero:
-                    has_loaded_hero_versions = True
-                elif not version_item.is_latest:
-                    has_outdated = True
-
-            if (
-                _has_outdated_approved
-                and _last_approved_version_item is not None
+        for version_items_by_product_id in version_items_by_product_id_by_project.values():
+            for product_id, version_items_by_id in (
+                version_items_by_product_id.items()
             ):
-                last_version_by_product_id[product_id] = (
-                    _last_approved_version_item
-                )
-                has_outdated_approved = True
+                _has_outdated_approved = False
+                _last_approved_version_item = None
+                for version_item in version_items_by_id.values():
+                    if version_item.is_hero:
+                        has_available_hero_version = True
+
+                    elif version_item.is_last_approved:
+                        _last_approved_version_item = version_item
+                        _has_outdated_approved = True
+
+                    if version_item.version_id not in version_ids:
+                        continue
+
+                    if version_item.is_hero:
+                        has_loaded_hero_versions = True
+                    elif not version_item.is_latest:
+                        has_outdated = True
+
+                if (
+                    _has_outdated_approved
+                    and _last_approved_version_item is not None
+                ):
+                    last_version_by_product_id[product_id] = (
+                        _last_approved_version_item
+                    )
+                    has_outdated_approved = True
 
         switch_to_versioned = None
         if has_loaded_hero_versions:
@@ -294,8 +297,9 @@ class SceneInventoryView(QtWidgets.QTreeView):
         approved_version_by_item_id = {}
         if has_outdated_approved:
             for container_item in container_items_by_id.values():
+                project_name = container_item.project_name
                 repre_id = container_item.representation_id
-                repre_info = repre_info_by_id.get(repre_id)
+                repre_info = repre_info_by_project[project_name][repre_id]
                 if not repre_info or not repre_info.is_valid:
                     continue
                 version_item = last_version_by_product_id.get(
@@ -750,54 +754,53 @@ class SceneInventoryView(QtWidgets.QTreeView):
             repre_id = container_item.representation_id
             project_name = container_item.project_name
             repre_ids_by_project[project_name].add(repre_id)
-        repre_info_by_id = {}
+
+        versions = set()
+        repre_info_by_project = collections.defaultdict(dict)
+        version_items_by_product_id_by_project = collections.defaultdict(dict)
         for project_name, repre_ids in repre_ids_by_project.items():
             repre_info = self._controller.get_representation_info_items(
                 project_name, repre_ids
             )
-            repre_info_by_id.update(repre_info)
+            repre_info_by_project[project_name].update(repre_info)
 
-        product_ids = {
-            repre_info.product_id
-            for repre_info in repre_info_by_id.values()
-        }
-        product_ids_by_project = collections.defaultdict(set)
         for container_item in container_items_by_id.values():
-            repre_id = container_item.representation_id
             project_name = container_item.project_name
+            repre_info_by_id = repre_info_by_project.get(project_name)
+            repre_id = container_item.representation_id
             repre_info = repre_info_by_id.get(repre_id)
-            if not repre_info or not repre_info.is_valid:
-                continue
-            product_ids_by_project[project_name].add(
+            product_ids = {
                 repre_info.product_id
-            )
-        active_repre_info = repre_info_by_id[active_repre_id]
-        active_version_id = active_repre_info.version_id
-        active_product_id = active_repre_info.product_id
-        version_items_by_product_id = {}
-        for project_name, project_product_ids in product_ids_by_project.items():
+                for repre_info in repre_info_by_id.values()
+                if repre_info.is_valid
+            }
             version_items = self._controller.get_version_items(
-                project_name, project_product_ids
+                project_name, product_ids
             )
-            version_items_by_product_id.update(version_items)
-        version_items = list(
-            version_items_by_product_id[active_product_id].values()
-        )
-        versions = {version_item.version for version_item in version_items}
+            version_items_by_product_id_by_project[project_name] = version_items
+            active_repre_info = repre_info_by_id[active_repre_id]
+            active_version_id = active_repre_info.version_id
+            active_product_id = active_repre_info.product_id
+            version_items = list(
+                version_items_by_product_id_by_project[project_name][active_product_id].values()
+            )
+            all_versions = {version_item.version for version_item in version_items}
+            versions.update(all_versions)
         product_ids_by_version = collections.defaultdict(set)
-        for version_items_by_id in version_items_by_product_id.values():
-            for version_item in version_items_by_id.values():
-                version = version_item.version
-                _prod_version = version
-                if _prod_version < 0:
-                    _prod_version = -1
-                product_ids_by_version[_prod_version].add(
-                    version_item.product_id
-                )
-                if version in versions:
-                    continue
-                versions.add(version)
-                version_items.append(version_item)
+        for version_items_by_product_id in version_items_by_product_id_by_project.values():
+            for version_items_by_id in version_items_by_product_id.values():
+                for version_item in version_items_by_id.values():
+                    version = version_item.version
+                    _prod_version = version
+                    if _prod_version < 0:
+                        _prod_version = -1
+                    product_ids_by_version[_prod_version].add(
+                        version_item.product_id
+                    )
+                    if version in versions:
+                        continue
+                    versions.add(version)
+                    version_items.append(version_item)
 
         def version_sorter(item):
             hero_value = 0
@@ -862,8 +865,9 @@ class SceneInventoryView(QtWidgets.QTreeView):
 
         filtered_item_ids = set()
         for container_item in container_items_by_id.values():
+            project_name = container_item.project_name
             repre_id = container_item.representation_id
-            repre_info = repre_info_by_id[repre_id]
+            repre_info = repre_info_by_project[project_name][repre_id]
             if repre_info.product_id in product_ids:
                 filtered_item_ids.add(container_item.item_id)
 
@@ -964,37 +968,39 @@ class SceneInventoryView(QtWidgets.QTreeView):
             repre_ids_by_project[project_name].add(repre_id)
 
         # Get representation info items by ID
-        repre_info_by_id = {}
+        repre_info_by_project = collections.defaultdict(dict)
         for project_name, repre_ids in repre_ids_by_project.items():
             repre_info = self._controller.get_representation_info_items(
                 project_name, repre_ids)
-            repre_info_by_id.update(repre_info)
+            repre_info_by_project[project_name].update(repre_info)
 
         product_ids_by_project = collections.defaultdict(set)
+        version_items_by_product_id_by_project = collections.defaultdict(dict)
         for container_item in containers_items_by_id.values():
-            repre_id = container_item.representation_id
             project_name = container_item.project_name
+            repre_info_by_id = repre_info_by_project.get(project_name)
+            repre_id = container_item.representation_id
             repre_info = repre_info_by_id.get(repre_id)
-            if not repre_info or not repre_info.is_valid:
-                continue
-            product_ids_by_project[project_name].add(
+            product_ids = {
                 repre_info.product_id
-            )
-
-        version_items_by_product_id = {}
-        for project_name, product_ids in product_ids_by_project.items():
+                for repre_info in repre_info_by_id.values()
+                if repre_info.is_valid
+            }
             version_items = self._controller.get_version_items(
                 project_name, product_ids
             )
-            version_items_by_product_id.update(version_items)
+            version_items_by_product_id_by_project[project_name] = version_items
 
         update_containers = []
         update_versions = []
         for item_id, container_item in containers_items_by_id.items():
             repre_id = container_item.representation_id
+            project_name = container_item.project_name
             repre_info = repre_info_by_id[repre_id]
             product_id = repre_info.product_id
-            version_items_id = version_items_by_product_id[product_id]
+            version_items_id = (
+                version_items_by_product_id_by_project[project_name][product_id]
+            )
             version_item = version_items_id.get(repre_info.version_id, {})
             if not version_item or not version_item.is_hero:
                 continue

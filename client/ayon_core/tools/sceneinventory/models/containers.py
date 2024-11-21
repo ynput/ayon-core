@@ -191,7 +191,7 @@ class VersionItem:
 class ContainersModel:
     def __init__(self, controller):
         self._controller = controller
-        self._project_cache = None
+        self._items_cache = None
         self._containers_by_id = {}
         self._container_items_by_id = {}
         self._container_items_by_project = {}
@@ -200,7 +200,7 @@ class ContainersModel:
         self._product_ids_by_project = {}
 
     def reset(self):
-        self._project_cache = None
+        self._items_cache = None
         self._containers_by_id = {}
         self._container_items_by_id = {}
         self._container_items_by_project = {}
@@ -220,7 +220,7 @@ class ContainersModel:
 
     def get_container_items(self):
         self._update_cache()
-        return self._project_cache
+        return list(self._items_cache)
 
     def get_container_items_by_id(self, item_ids):
         return {
@@ -344,7 +344,7 @@ class ContainersModel:
         }
 
     def _update_cache(self):
-        if self._project_cache is not None:
+        if self._items_cache is not None:
             return
 
         host = self._controller.get_host()
@@ -358,7 +358,6 @@ class ContainersModel:
         container_items = []
         containers_by_id = {}
         container_items_by_id = {}
-        project_cache = collections.defaultdict(dict)
         invalid_ids_mapping = {}
         for container in containers:
             try:
@@ -383,10 +382,8 @@ class ContainersModel:
 
             containers_by_id[item.item_id] = container
             container_items_by_id[item.item_id] = item
-            project_cache[item.project_name] = container_items_by_id
             container_items.append(item)
 
         self._containers_by_id = containers_by_id
         self._container_items_by_id = container_items_by_id
         self._items_cache = container_items
-        self._project_cache = project_cache
