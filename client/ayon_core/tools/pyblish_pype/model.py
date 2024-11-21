@@ -780,6 +780,8 @@ class InstanceModel(QtGui.QStandardItemModel):
 
     def update_with_result(self, result):
         instance = result["instance"]
+        if isinstance(instance, list):
+            instance = instance.pop() if instance else None
         if instance is None:
             instance_id = self.controller.context.id
         else:
@@ -976,6 +978,8 @@ class TerminalModel(QtGui.QStandardItemModel):
         prepared_records = []
         instance_name = None
         instance = result["instance"]
+        if isinstance(instance, list):
+            instance = instance.pop() if instance else None
         if instance is not None:
             instance_name = instance.data["name"]
 
