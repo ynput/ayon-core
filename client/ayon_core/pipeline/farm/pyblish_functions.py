@@ -371,8 +371,8 @@ def prepare_representations(
                 " This may cause issues on farm."
             ).format(staging))
 
-        frame_start = int(frames_to_render[0])
-        frame_end = int(frames_to_render[-1])
+        frame_start = frames_to_render[0]
+        frame_end = frames_to_render[-1]
         if skeleton_data.get("slate"):
             frame_start -= 1
 
