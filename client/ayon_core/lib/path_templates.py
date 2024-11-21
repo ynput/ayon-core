@@ -1,6 +1,7 @@
 import os
 import re
 import numbers
+from string import Formatter
 
 KEY_PATTERN = re.compile(r"(\{.*?[^{0]*\})")
 KEY_PADDING_PATTERN = re.compile(r"([^:]+)\S+[><]\S+")
@@ -48,16 +49,16 @@ class StringTemplate:
 
         self._template = template
         parts = []
-        last_end_idx = 0
-        for item in KEY_PATTERN.finditer(template):
-            start, end = item.span()
-            if start > last_end_idx:
-                parts.append(template[last_end_idx:start])
-            parts.append(FormattingPart(template[start:end]))
-            last_end_idx = end
+        formatter = Formatter()
 
-        if last_end_idx < len(template):
-            parts.append(template[last_end_idx:len(template)])
+        for item in formatter.parse(template):
+            literal_text, field_name, format_spec, conversion = item
+            if literal_text:
+                parts.append(literal_text)
+            if field_name:
+                parts.append(
+                    FormattingPart(field_name, format_spec, conversion)
+                )
 
         new_parts = []
         for part in parts:
