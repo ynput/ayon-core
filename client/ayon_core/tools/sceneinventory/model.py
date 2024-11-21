@@ -131,50 +131,39 @@ class InventoryModel(QtGui.QStandardItemModel):
         """Refresh the model"""
         # for debugging or testing, injecting items from outside
         container_items = self._controller.get_container_items()
-
         self._clear_items()
-
-        items_by_repre_id = collections.defaultdict(list)
-        repre_ids_by_project = collections.defaultdict(set)
-        for container_item in container_items:
+        repre_id = set()
+        repre_id_by_project_id = collections.defaultdict(set)
+        version_items_by_product_id = collections.defaultdict(dict)
+        repre_info_by_id_by_project = collections.defaultdict(list)
+        item_by_repre_id_by_project_id = collections.defaultdict(
+            lambda: collections.defaultdict(set))
+        for project_name, container_item in container_items.items():
             # if (
             #     selected is not None
             #     and container_item.item_id not in selected
             # ):
             #     continue
-            project_name = container_item.project_name
-            repre_id = container_item.representation_id
-            items_by_repre_id[repre_id].append(container_item)
-            repre_ids_by_project[project_name].add(repre_id)
-
-        repre_id = set(items_by_repre_id.keys())
-        repre_info_by_id = {}
-        for project_name, repre_ids in repre_ids_by_project.items():
+            for item in container_item.values():
+                representation_id = item.representation_id
+                if item.project_name != project_name:
+                    continue
+                repre_id.add(representation_id)
+                item_by_repre_id_by_project_id[project_name][representation_id].add(item)
             repre_info = self._controller.get_representation_info_items(
-                project_name, repre_ids
+                project_name, repre_id
             )
-            repre_info_by_id.update(repre_info)
-        product_ids = {
-            repre_info.product_id
-            for repre_info in repre_info_by_id.values()
-            if repre_info.is_valid
-        }
+            repre_info_by_id_by_project[project_name] = repre_info
 
-        project_products = collections.defaultdict(set)
-        for container_item in container_items:
-            representation_id = container_item.representation_id
-            project_name = container_item.project_name
-            repre_info = repre_info_by_id.get(representation_id)
-            if repre_info and repre_info.is_valid:
-                product_id = repre_info.product_id
-                project_products[project_name].add(product_id)
-
-        version_items_by_product_id = {}
-        for project_name, product_ids in project_products.items():
+            product_ids = {
+                repre_info.product_id
+                for repre_info in repre_info.values()
+                if repre_info.is_valid
+            }
             version_items = self._controller.get_version_items(
                 project_name, product_ids
             )
-            version_items_by_product_id.update(version_items)
+            version_items_by_product_id[project_name] = version_items
 
         # SiteSync addon information
         progress_by_id = self._controller.get_representations_site_progress(
@@ -216,112 +205,113 @@ class InventoryModel(QtGui.QStandardItemModel):
 
         root_item = self.invisibleRootItem()
         group_items = []
-        for repre_id, container_items in items_by_repre_id.items():
-            repre_info = repre_info_by_id[repre_id]
-            version_color = None
-            if not repre_info.is_valid:
-                version_label = "N/A"
-                group_name = "< Entity N/A >"
-                item_icon = invalid_item_icon
-                is_latest = False
-                is_hero = False
-                status_name = None
+        for project_name, items_by_repre_id in item_by_repre_id_by_project_id.items():
+            for repre_id, container_items in items_by_repre_id.items():
+                repre_info = repre_info_by_id_by_project[project_name][repre_id]
+                version_color = None
+                if not repre_info.is_valid:
+                    version_label = "N/A"
+                    group_name = "< Entity N/A >"
+                    item_icon = invalid_item_icon
+                    is_latest = False
+                    is_hero = False
+                    status_name = None
 
-            else:
-                group_name = "{}_{}: ({})".format(
-                    repre_info.folder_path.rsplit("/")[-1],
-                    repre_info.product_name,
-                    repre_info.representation_name
+                else:
+                    group_name = "{}_{}: ({})".format(
+                        repre_info.folder_path.rsplit("/")[-1],
+                        repre_info.product_name,
+                        repre_info.representation_name
+                    )
+                    item_icon = valid_item_icon
+
+                    version_items = (
+                        version_items_by_product_id[project_name][repre_info.product_id]
+                    )
+                    version_item = version_items[repre_info.version_id]
+                    version_label = format_version(version_item.version)
+                    is_hero = version_item.version < 0
+                    is_latest = version_item.is_latest
+                    if not version_item.is_latest:
+                        version_color = self.OUTDATED_COLOR
+                    status_name = version_item.status
+
+                status_color, status_short, status_icon = self._get_status_data(
+                    status_name
                 )
-                item_icon = valid_item_icon
 
-                version_items = (
-                    version_items_by_product_id[repre_info.product_id]
+                repre_name = (
+                    repre_info.representation_name or "<unknown representation>"
                 )
-                version_item = version_items[repre_info.version_id]
-                version_label = format_version(version_item.version)
-                is_hero = version_item.version < 0
-                is_latest = version_item.is_latest
-                if not version_item.is_latest:
-                    version_color = self.OUTDATED_COLOR
-                status_name = version_item.status
+                container_model_items = []
+                for container_item in container_items:
+                    object_name = container_item.object_name or "<none>"
+                    unique_name = repre_name + object_name
+                    item = QtGui.QStandardItem()
+                    item.setColumnCount(root_item.columnCount())
+                    item.setData(container_item.namespace, QtCore.Qt.DisplayRole)
+                    item.setData(self.GRAYOUT_COLOR, NAME_COLOR_ROLE)
+                    item.setData(self.GRAYOUT_COLOR, VERSION_COLOR_ROLE)
+                    item.setData(item_icon, QtCore.Qt.DecorationRole)
+                    item.setData(repre_info.product_id, PRODUCT_ID_ROLE)
+                    item.setData(container_item.item_id, ITEM_ID_ROLE)
+                    item.setData(version_label, VERSION_LABEL_ROLE)
+                    item.setData(container_item.loader_name, LOADER_NAME_ROLE)
+                    item.setData(container_item.object_name, OBJECT_NAME_ROLE)
+                    item.setData(container_item.project_name, PROJECT_NAME_ROLE)
+                    item.setData(True, IS_CONTAINER_ITEM_ROLE)
+                    item.setData(unique_name, ITEM_UNIQUE_NAME_ROLE)
+                    container_model_items.append(item)
+                if not container_model_items:
+                    continue
 
-            status_color, status_short, status_icon = self._get_status_data(
-                status_name
-            )
+                progress = progress_by_id[repre_id]
+                active_site_progress = "{}%".format(
+                    max(progress["active_site"], 0) * 100
+                )
+                remote_site_progress = "{}%".format(
+                    max(progress["remote_site"], 0) * 100
+                )
 
-            repre_name = (
-                repre_info.representation_name or "<unknown representation>"
-            )
-            container_model_items = []
-            for container_item in container_items:
-                object_name = container_item.object_name or "<none>"
-                unique_name = repre_name + object_name
-                item = QtGui.QStandardItem()
-                item.setColumnCount(root_item.columnCount())
-                item.setData(container_item.namespace, QtCore.Qt.DisplayRole)
-                item.setData(self.GRAYOUT_COLOR, NAME_COLOR_ROLE)
-                item.setData(self.GRAYOUT_COLOR, VERSION_COLOR_ROLE)
-                item.setData(item_icon, QtCore.Qt.DecorationRole)
-                item.setData(repre_info.product_id, PRODUCT_ID_ROLE)
-                item.setData(container_item.item_id, ITEM_ID_ROLE)
-                item.setData(version_label, VERSION_LABEL_ROLE)
-                item.setData(container_item.loader_name, LOADER_NAME_ROLE)
-                item.setData(container_item.object_name, OBJECT_NAME_ROLE)
-                item.setData(container_item.project_name, PROJECT_NAME_ROLE)
-                item.setData(True, IS_CONTAINER_ITEM_ROLE)
-                item.setData(unique_name, ITEM_UNIQUE_NAME_ROLE)
-                container_model_items.append(item)
-            if not container_model_items:
-                continue
+                group_item = QtGui.QStandardItem()
+                group_item.setColumnCount(root_item.columnCount())
+                group_item.setData(group_name, QtCore.Qt.DisplayRole)
+                group_item.setData(group_name, ITEM_UNIQUE_NAME_ROLE)
+                group_item.setData(group_item_icon, QtCore.Qt.DecorationRole)
+                group_item.setData(group_item_font, QtCore.Qt.FontRole)
+                group_item.setData(repre_info.product_id, PRODUCT_ID_ROLE)
+                group_item.setData(repre_info.product_type, PRODUCT_TYPE_ROLE)
+                group_item.setData(product_type_icon, PRODUCT_TYPE_ICON_ROLE)
+                group_item.setData(is_latest, VERSION_IS_LATEST_ROLE)
+                group_item.setData(is_hero, VERSION_IS_HERO_ROLE)
+                group_item.setData(version_label, VERSION_LABEL_ROLE)
+                group_item.setData(len(container_items), COUNT_ROLE)
+                group_item.setData(status_name, STATUS_NAME_ROLE)
+                group_item.setData(status_short, STATUS_SHORT_ROLE)
+                group_item.setData(status_color, STATUS_COLOR_ROLE)
+                group_item.setData(status_icon, STATUS_ICON_ROLE)
 
-            progress = progress_by_id[repre_id]
-            active_site_progress = "{}%".format(
-                max(progress["active_site"], 0) * 100
-            )
-            remote_site_progress = "{}%".format(
-                max(progress["remote_site"], 0) * 100
-            )
-
-            group_item = QtGui.QStandardItem()
-            group_item.setColumnCount(root_item.columnCount())
-            group_item.setData(group_name, QtCore.Qt.DisplayRole)
-            group_item.setData(group_name, ITEM_UNIQUE_NAME_ROLE)
-            group_item.setData(group_item_icon, QtCore.Qt.DecorationRole)
-            group_item.setData(group_item_font, QtCore.Qt.FontRole)
-            group_item.setData(repre_info.product_id, PRODUCT_ID_ROLE)
-            group_item.setData(repre_info.product_type, PRODUCT_TYPE_ROLE)
-            group_item.setData(product_type_icon, PRODUCT_TYPE_ICON_ROLE)
-            group_item.setData(is_latest, VERSION_IS_LATEST_ROLE)
-            group_item.setData(is_hero, VERSION_IS_HERO_ROLE)
-            group_item.setData(version_label, VERSION_LABEL_ROLE)
-            group_item.setData(len(container_items), COUNT_ROLE)
-            group_item.setData(status_name, STATUS_NAME_ROLE)
-            group_item.setData(status_short, STATUS_SHORT_ROLE)
-            group_item.setData(status_color, STATUS_COLOR_ROLE)
-            group_item.setData(status_icon, STATUS_ICON_ROLE)
-
-            group_item.setData(
-                active_site_progress, ACTIVE_SITE_PROGRESS_ROLE
-            )
-            group_item.setData(
-                remote_site_progress, REMOTE_SITE_PROGRESS_ROLE
-            )
-            group_item.setData(active_site_icon, ACTIVE_SITE_ICON_ROLE)
-            group_item.setData(remote_site_icon, REMOTE_SITE_ICON_ROLE)
-            group_item.setData(False, IS_CONTAINER_ITEM_ROLE)
-
-            if version_color is not None:
-                group_item.setData(version_color, VERSION_COLOR_ROLE)
-
-            if repre_info.product_group:
                 group_item.setData(
-                    repre_info.product_group, PRODUCT_GROUP_NAME_ROLE
+                    active_site_progress, ACTIVE_SITE_PROGRESS_ROLE
                 )
-                group_item.setData(group_icon, PRODUCT_GROUP_ICON_ROLE)
+                group_item.setData(
+                    remote_site_progress, REMOTE_SITE_PROGRESS_ROLE
+                )
+                group_item.setData(active_site_icon, ACTIVE_SITE_ICON_ROLE)
+                group_item.setData(remote_site_icon, REMOTE_SITE_ICON_ROLE)
+                group_item.setData(False, IS_CONTAINER_ITEM_ROLE)
 
-            group_item.appendRows(container_model_items)
-            group_items.append(group_item)
+                if version_color is not None:
+                    group_item.setData(version_color, VERSION_COLOR_ROLE)
+
+                if repre_info.product_group:
+                    group_item.setData(
+                        repre_info.product_group, PRODUCT_GROUP_NAME_ROLE
+                    )
+                    group_item.setData(group_icon, PRODUCT_GROUP_ICON_ROLE)
+
+                group_item.appendRows(container_model_items)
+                group_items.append(group_item)
 
         if group_items:
             root_item.appendRows(group_items)

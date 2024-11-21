@@ -191,7 +191,7 @@ class VersionItem:
 class ContainersModel:
     def __init__(self, controller):
         self._controller = controller
-        self._items_cache = None
+        self._project_cache = None
         self._containers_by_id = {}
         self._container_items_by_id = {}
         self._container_items_by_project = {}
@@ -200,7 +200,7 @@ class ContainersModel:
         self._product_ids_by_project = {}
 
     def reset(self):
-        self._items_cache = None
+        self._project_cache = None
         self._containers_by_id = {}
         self._container_items_by_id = {}
         self._container_items_by_project = {}
@@ -220,7 +220,7 @@ class ContainersModel:
 
     def get_container_items(self):
         self._update_cache()
-        return list(self._items_cache)
+        return self._project_cache
 
     def get_container_items_by_id(self, item_ids):
         return {
@@ -248,7 +248,6 @@ class ContainersModel:
         repre_hierarchy_by_id = get_representations_hierarchy(
             project_name, missing_repre_ids
         )
-        self._product_ids_by_project[project_name] = set()
         for repre_id, repre_hierarchy in repre_hierarchy_by_id.items():
             kwargs = {
                 "folder_id": None,
@@ -280,8 +279,6 @@ class ContainersModel:
 
             repre_info = RepresentationInfo(**kwargs)
             self._repre_info_by_id[repre_id] = repre_info
-            self._product_ids_by_project[project_name].add(
-                repre_info.product_id)
             output[repre_id] = repre_info
         return output
 
@@ -293,7 +290,6 @@ class ContainersModel:
             for product_id in product_ids
             if product_id not in self._version_items_by_product_id
         }
-        current_product_ids = self._product_ids_by_project.get(project_name)
         if missing_ids:
             status_items_by_name = {
                 status_item.name: status_item
@@ -302,14 +298,13 @@ class ContainersModel:
 
             def version_sorted(entity):
                 return entity["version"]
-            current_missing_ids = current_product_ids.intersection(missing_ids)
             version_entities_by_product_id = {
                 product_id: []
-                for product_id in current_missing_ids
+                for product_id in missing_ids
             }
             version_entities = list(ayon_api.get_versions(
                 project_name,
-                product_ids=current_missing_ids,
+                product_ids=missing_ids,
                 fields={"id", "version", "productId", "status"}
             ))
             version_entities.sort(key=version_sorted)
@@ -349,7 +344,7 @@ class ContainersModel:
         }
 
     def _update_cache(self):
-        if self._items_cache is not None:
+        if self._project_cache is not None:
             return
 
         host = self._controller.get_host()
@@ -363,7 +358,7 @@ class ContainersModel:
         container_items = []
         containers_by_id = {}
         container_items_by_id = {}
-        project_name_by_repre_id = {}
+        project_cache = collections.defaultdict(dict)
         invalid_ids_mapping = {}
         for container in containers:
             try:
@@ -388,9 +383,10 @@ class ContainersModel:
 
             containers_by_id[item.item_id] = container
             container_items_by_id[item.item_id] = item
-            project_name_by_repre_id[item.representation_id] = item.project_name
+            project_cache[item.project_name] = container_items_by_id
             container_items.append(item)
 
         self._containers_by_id = containers_by_id
         self._container_items_by_id = container_items_by_id
         self._items_cache = container_items
+        self._project_cache = project_cache
