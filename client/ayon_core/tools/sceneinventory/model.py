@@ -133,24 +133,26 @@ class InventoryModel(QtGui.QStandardItemModel):
         container_items = self._controller.get_container_items()
         self._clear_items()
         repre_id = set()
+        repre_ids_by_project = collections.defaultdict(set)
         version_items_by_product_id = collections.defaultdict(dict)
-        repre_info_by_id_by_project = collections.defaultdict(list)
+        repre_info_by_id_by_project = collections.defaultdict(dict)
         item_by_repre_id_by_project_id = collections.defaultdict(
             lambda: collections.defaultdict(set))
-        for project_name, container_item in container_items.items():
+        for container_item in container_items:
             # if (
             #     selected is not None
             #     and container_item.item_id not in selected
             # ):
             #     continue
-            for item in container_item.values():
-                representation_id = item.representation_id
-                if item.project_name != project_name:
-                    continue
-                repre_id.add(representation_id)
-                item_by_repre_id_by_project_id[project_name][representation_id].add(item)
+            project_name = container_item.project_name
+            representation_id = container_item.representation_id
+            repre_id.add(representation_id)
+            repre_ids_by_project[project_name].add(representation_id)
+            item_by_repre_id_by_project_id[project_name][representation_id].add(container_item)
+
+        for project_name, representation_ids in repre_ids_by_project.items():
             repre_info = self._controller.get_representation_info_items(
-                project_name, repre_id
+                project_name, representation_ids
             )
             repre_info_by_id_by_project[project_name] = repre_info
 
