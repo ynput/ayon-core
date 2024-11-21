@@ -133,7 +133,6 @@ class InventoryModel(QtGui.QStandardItemModel):
         container_items = self._controller.get_container_items()
         self._clear_items()
         repre_id = set()
-        repre_id_by_project_id = collections.defaultdict(set)
         version_items_by_product_id = collections.defaultdict(dict)
         repre_info_by_id_by_project = collections.defaultdict(list)
         item_by_repre_id_by_project_id = collections.defaultdict(
