@@ -118,8 +118,8 @@ class SceneInventoryController:
     def is_sitesync_enabled(self):
         return self._sitesync_model.is_sitesync_enabled()
 
-    def get_sites_information(self):
-        return self._sitesync_model.get_sites_information()
+    def get_sites_information(self, project_name):
+        return self._sitesync_model.get_sites_information(project_name)
 
     def get_site_provider_icons(self):
         return self._sitesync_model.get_site_provider_icons()
