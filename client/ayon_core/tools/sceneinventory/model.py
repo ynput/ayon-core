@@ -133,10 +133,10 @@ class InventoryModel(QtGui.QStandardItemModel):
         container_items = self._controller.get_container_items()
         self._clear_items()
         repre_ids_by_project = collections.defaultdict(set)
-        version_items_by_product_id = collections.defaultdict(dict)
+        version_items_by_project = collections.defaultdict(dict)
         repre_info_by_id_by_project = collections.defaultdict(dict)
-        item_by_repre_id_by_project_id = collections.defaultdict(
-            lambda: collections.defaultdict(set))
+        item_by_repre_id_by_project = collections.defaultdict(
+            lambda: collections.defaultdict(list))
         for container_item in container_items:
             # if (
             #     selected is not None
@@ -146,7 +146,11 @@ class InventoryModel(QtGui.QStandardItemModel):
             project_name = container_item.project_name
             representation_id = container_item.representation_id
             repre_ids_by_project[project_name].add(representation_id)
-            item_by_repre_id_by_project_id[project_name][representation_id].add(container_item)
+            (
+                item_by_repre_id_by_project
+                [project_name]
+                [representation_id]
+            ).append(container_item)
 
         for project_name, representation_ids in repre_ids_by_project.items():
             repre_info = self._controller.get_representation_info_items(
@@ -162,17 +166,20 @@ class InventoryModel(QtGui.QStandardItemModel):
             version_items = self._controller.get_version_items(
                 project_name, product_ids
             )
-            version_items_by_product_id[project_name] = version_items
+            version_items_by_project[project_name] = version_items
 
         # SiteSync addon information
-        progress_by_project = {}
-        for project_name, repre_ids in repre_ids_by_project.items():
-            progress_by_id = self._controller.get_representations_site_progress(
+        progress_by_project = {
+            project_name: self._controller.get_representations_site_progress(
                 project_name, repre_ids
             )
-            progress_by_project[project_name] = progress_by_id
+            for project_name, repre_ids in repre_ids_by_project.items()
+        }
 
-        sites_info = self._controller.get_sites_information()
+        sites_info_by_project_name = {
+            project_name: self._controller.get_sites_information(project_name)
+            for project_name in repre_ids_by_project.keys()
+        }
         site_icons = {
             provider: get_qt_icon(icon_def)
             for provider, icon_def in (
@@ -203,15 +210,26 @@ class InventoryModel(QtGui.QStandardItemModel):
         group_item_font = QtGui.QFont()
         group_item_font.setBold(True)
 
-        active_site_icon = site_icons.get(sites_info["active_site_provider"])
-        remote_site_icon = site_icons.get(sites_info["remote_site_provider"])
-
         root_item = self.invisibleRootItem()
         group_items = []
-        for project_name, items_by_repre_id in item_by_repre_id_by_project_id.items():
+        for project_name, items_by_repre_id in (
+            item_by_repre_id_by_project.items()
+        ):
+            sites_info = sites_info_by_project_name[project_name]
+            active_site_icon = site_icons.get(
+                sites_info["active_site_provider"]
+            )
+            remote_site_icon = site_icons.get(
+                sites_info["remote_site_provider"]
+            )
+
             progress_by_id = progress_by_project[project_name]
+            repre_info_by_id = repre_info_by_id_by_project[project_name]
+            version_items_by_product_id = (
+                version_items_by_project[project_name]
+            )
             for repre_id, container_items in items_by_repre_id.items():
-                repre_info = repre_info_by_id_by_project[project_name][repre_id]
+                repre_info = repre_info_by_id[repre_id]
                 version_color = None
                 if not repre_info.is_valid:
                     version_label = "N/A"
@@ -230,7 +248,7 @@ class InventoryModel(QtGui.QStandardItemModel):
                     item_icon = valid_item_icon
 
                     version_items = (
-                        version_items_by_product_id[project_name][repre_info.product_id]
+                        version_items_by_product_id[repre_info.product_id]
                     )
                     version_item = version_items[repre_info.version_id]
                     version_label = format_version(version_item.version)
@@ -266,8 +284,6 @@ class InventoryModel(QtGui.QStandardItemModel):
                     item.setData(True, IS_CONTAINER_ITEM_ROLE)
                     item.setData(unique_name, ITEM_UNIQUE_NAME_ROLE)
                     container_model_items.append(item)
-                if not container_model_items:
-                    continue
 
                 progress = progress_by_id[repre_id]
                 active_site_progress = "{}%".format(
