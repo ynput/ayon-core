@@ -194,19 +194,15 @@ class ContainersModel:
         self._items_cache = None
         self._containers_by_id = {}
         self._container_items_by_id = {}
-        self._container_items_by_project = {}
         self._version_items_by_product_id = {}
         self._repre_info_by_id = {}
-        self._product_ids_by_project = {}
 
     def reset(self):
         self._items_cache = None
         self._containers_by_id = {}
         self._container_items_by_id = {}
-        self._container_items_by_project = {}
         self._version_items_by_product_id = {}
         self._repre_info_by_id = {}
-        self._product_ids_by_project = {}
 
     def get_containers(self):
         self._update_cache()
