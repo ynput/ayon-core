@@ -15,6 +15,7 @@ from ayon_core.pipeline.traits import (
     PixelBased,
     Planar,
     Representation,
+    Sequence,
     TraitBase,
 )
 from ayon_core.pipeline.traits.trait import TraitValidationError
@@ -358,7 +359,6 @@ def test_file_locations_validation() -> None:
     sequence_trait = FrameRanged(
         frame_start=1001,
         frame_end=1050,
-        frame_padding=4,
         frames_per_second="25"
     )
     representation.add_trait(sequence_trait)
@@ -382,10 +382,27 @@ def test_file_locations_validation() -> None:
     invalid_sequence_trait = FrameRanged(
         frame_start=1001,
         frame_end=1051,
-        frame_padding=4,
         frames_per_second="25"
     )
 
     representation.add_trait(invalid_sequence_trait)
     with pytest.raises(TraitValidationError):
         file_locations_trait.validate(representation)
+
+def test_sequence_get_frame_padding() -> None:
+    """Test getting frame padding from FileLocations trait."""
+    file_locations_list = [
+        FileLocation(
+            file_path=Path(f"/path/to/file.{frame}.exr"),
+            file_size=1024,
+            file_hash=None,
+        )
+        for frame in range(1001, 1051)
+    ]
+
+    representation = Representation(name="test", traits=[
+        FileLocations(file_paths=file_locations_list)
+    ])
+
+    assert Sequence.get_frame_padding(
+        file_locations=representation.get_trait(FileLocations)) == 4

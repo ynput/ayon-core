@@ -4,11 +4,15 @@ from __future__ import annotations
 from enum import Enum, auto
 from typing import TYPE_CHECKING, ClassVar, Optional
 
+import clique
 from pydantic import Field
 
 from .trait import MissingTraitError, TraitBase
 
 if TYPE_CHECKING:
+    from pathlib import Path
+
+    from .content import FileLocations
     from .representation import Representation
 
 
@@ -140,6 +144,21 @@ class Sequence(TraitBase):
             file_locs.validate(representation)
         except MissingTraitError:
             pass
+
+    @staticmethod
+    def get_frame_padding(file_locations: FileLocations) -> int:
+        """Get frame padding."""
+        files: list[Path] = [
+            file.file_path.as_posix()
+            for file in file_locations.file_paths
+        ]
+        src_collections, _ = clique.assemble(files)
+
+        src_collection = src_collections[0]
+        destination_indexes = list(src_collection.indexes)
+        # Use last frame for minimum padding
+        #   - that should cover both 'udim' and 'frame' minimum padding
+        return len(str(destination_indexes[-1]))
 
 # Do we need one for drop and non-drop frame?
 class SMPTETimecode(TraitBase):
