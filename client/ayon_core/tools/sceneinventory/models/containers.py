@@ -359,9 +359,9 @@ class ContainersModel:
         containers_by_id = {}
         container_items_by_id = {}
         invalid_ids_mapping = {}
+        current_project_name = self._controller.get_current_project_name()
         for container in containers:
             try:
-                current_project_name = self._controller.get_current_project_name()
                 item = ContainerItem.from_container_data(current_project_name, container)
                 repre_id = item.representation_id
                 try:
