@@ -8,6 +8,8 @@ import pyblish.api
 import pytest
 from ayon_core.pipeline.traits import (
     FileLocation,
+    FileLocations,
+    FrameRanged,
     Image,
     MimeType,
     Persistent,
@@ -92,6 +94,13 @@ def mock_context(
     instance.data["integrate"] = True
     instance.data["farm"] = False
 
+    _file_size = len(base64.b64decode(PNG_FILE_B64))
+    file_locations = [
+        FileLocation(
+            file_path=f,
+            file_size=_file_size)
+        for f in sequence_files]
+
     instance.data["representations_with_traits"] = [
         Representation(name="test_single", traits=[
             Persistent(),
@@ -103,18 +112,20 @@ def mock_context(
         ]),
         Representation(name="test_sequence", traits=[
             Persistent(),
-            Sequence(
+            FrameRanged(
                 frame_start=1,
                 frame_end=SEQUENCE_LENGTH,
-                frame_padding=4,
-                frame_regex=r"^img\.(\d{4})\.png$",
                 frame_in=0,
                 frame_out=SEQUENCE_LENGTH - 1,
-                frames_per_second=25
+                frames_per_second="25",
             ),
-            FileLocation(
-                file_path=sequence_files[0],
-                file_size=len(base64.b64decode(PNG_FILE_B64))),
+            Sequence(
+                frame_padding=4,
+                frame_regex=r"^img\.(\d{4})\.png$",
+            ),
+            FileLocations(
+                file_paths=file_locations,
+            ),
             Image(),
             PixelBased(
                 display_window_width=1920,
