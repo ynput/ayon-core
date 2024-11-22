@@ -294,10 +294,12 @@ class ContainersModel:
 
             def version_sorted(entity):
                 return entity["version"]
+
             version_entities_by_product_id = {
                 product_id: []
                 for product_id in missing_ids
             }
+
             version_entities = list(ayon_api.get_versions(
                 project_name,
                 product_ids=missing_ids,
@@ -309,6 +311,7 @@ class ContainersModel:
                 version_entities_by_product_id[product_id].append(
                     version_entity
                 )
+
             for product_id, version_entities in (
                 version_entities_by_product_id.items()
             ):
@@ -334,6 +337,7 @@ class ContainersModel:
                 self._version_items_by_product_id[product_id] = (
                     version_items_by_id
                 )
+
         return {
             product_id: dict(self._version_items_by_product_id[product_id])
             for product_id in product_ids
