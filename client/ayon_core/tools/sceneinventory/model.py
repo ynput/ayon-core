@@ -132,7 +132,6 @@ class InventoryModel(QtGui.QStandardItemModel):
         # for debugging or testing, injecting items from outside
         container_items = self._controller.get_container_items()
         self._clear_items()
-        repre_ids = set()
         repre_ids_by_project = collections.defaultdict(set)
         version_items_by_product_id = collections.defaultdict(dict)
         repre_info_by_id_by_project = collections.defaultdict(dict)
@@ -146,7 +145,6 @@ class InventoryModel(QtGui.QStandardItemModel):
             #     continue
             project_name = container_item.project_name
             representation_id = container_item.representation_id
-            repre_ids.add(representation_id)
             repre_ids_by_project[project_name].add(representation_id)
             item_by_repre_id_by_project_id[project_name][representation_id].add(container_item)
 
@@ -167,9 +165,13 @@ class InventoryModel(QtGui.QStandardItemModel):
             version_items_by_product_id[project_name] = version_items
 
         # SiteSync addon information
-        progress_by_id = self._controller.get_representations_site_progress(
-            repre_ids
-        )
+        progress_by_project = {}
+        for project_name, repre_ids in repre_ids_by_project.items():
+            progress_by_id = self._controller.get_representations_site_progress(
+                project_name, repre_ids
+            )
+            progress_by_project[project_name] = progress_by_id
+
         sites_info = self._controller.get_sites_information()
         site_icons = {
             provider: get_qt_icon(icon_def)
@@ -207,6 +209,7 @@ class InventoryModel(QtGui.QStandardItemModel):
         root_item = self.invisibleRootItem()
         group_items = []
         for project_name, items_by_repre_id in item_by_repre_id_by_project_id.items():
+            progress_by_id = progress_by_project[project_name]
             for repre_id, container_items in items_by_repre_id.items():
                 repre_info = repre_info_by_id_by_project[project_name][repre_id]
                 version_color = None
