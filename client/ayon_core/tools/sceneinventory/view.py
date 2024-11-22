@@ -413,12 +413,13 @@ class SceneInventoryView(QtWidgets.QTreeView):
 
         self._handle_sitesync(menu, valid_repre_ids)
 
-    def _handle_sitesync(self, menu, repre_ids):
+    def _handle_sitesync(self, menu, repre_ids_by_project_name):
         """Adds actions for download/upload when SyncServer is enabled
 
         Args:
             menu (OptionMenu)
-            repre_ids (list) of object_ids
+            repre_ids_by_project_name (Dict[str, Set[str]]): Representation
+                ids by project name.
 
         Returns:
             (OptionMenu)
@@ -427,7 +428,7 @@ class SceneInventoryView(QtWidgets.QTreeView):
         if not self._controller.is_sitesync_enabled():
             return
 
-        if not repre_ids:
+        if not repre_ids_by_project_name:
             return
 
         menu.addSeparator()
@@ -439,7 +440,10 @@ class SceneInventoryView(QtWidgets.QTreeView):
             menu
         )
         download_active_action.triggered.connect(
-            lambda: self._add_sites(repre_ids, "active_site"))
+            lambda: self._add_sites(
+                repre_ids_by_project_name, "active_site"
+            )
+        )
 
         upload_icon = qtawesome.icon("fa.upload", color=DEFAULT_COLOR)
         upload_remote_action = QtWidgets.QAction(
@@ -448,23 +452,30 @@ class SceneInventoryView(QtWidgets.QTreeView):
             menu
         )
         upload_remote_action.triggered.connect(
-            lambda: self._add_sites(repre_ids, "remote_site"))
+            lambda: self._add_sites(
+                repre_ids_by_project_name, "remote_site"
+            )
+        )
 
         menu.addAction(download_active_action)
         menu.addAction(upload_remote_action)
 
-    def _add_sites(self, repre_ids, site_type):
+    def _add_sites(self, repre_ids_by_project_name, site_type):
         """(Re)sync all 'repre_ids' to specific site.
 
         It checks if opposite site has fully available content to limit
         accidents. (ReSync active when no remote >> losing active content)
 
         Args:
-            repre_ids (list)
+            repre_ids_by_project_name (Dict[str, Set[str]]): Representation
+                ids by project name.
             site_type (Literal[active_site, remote_site]): Site type.
-        """
 
-        self._controller.resync_representations(repre_ids, site_type)
+        """
+        for project_name, repre_ids in repre_ids_by_project_name.items():
+            self._controller.resync_representations(
+                project_name, repre_ids, site_type
+            )
 
         self.data_changed.emit()
 

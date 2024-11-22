@@ -103,7 +103,7 @@ class SiteSyncModel:
         active_site = self._get_active_site()
         remote_site = self._get_remote_site()
         progress = self.get_representations_site_progress(
-            representation_ids
+            project_name, representation_ids
         )
         for repre_id in representation_ids:
             repre_progress = progress.get(repre_id)
