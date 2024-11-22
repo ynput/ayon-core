@@ -772,60 +772,71 @@ class SceneInventoryView(QtWidgets.QTreeView):
         container_items_by_id = self._controller.get_container_items_by_id(
             item_ids
         )
+        project_names = set()
         repre_ids_by_project = collections.defaultdict(set)
         for container_item in container_items_by_id.values():
             repre_id = container_item.representation_id
             project_name = container_item.project_name
+            project_names.add(project_name)
             repre_ids_by_project[project_name].add(repre_id)
 
-        version_ids = set()
-        repre_info_by_project = collections.defaultdict(dict)
-        version_items_by_product_id_by_project = collections.defaultdict(dict)
+        active_project_name = None
+        active_repre_info = None
+        repre_info_by_project = {}
+        version_items_by_project = {}
         for project_name, repre_ids in repre_ids_by_project.items():
-            repre_info = self._controller.get_representation_info_items(
+            repres_info = self._controller.get_representation_info_items(
                 project_name, repre_ids
             )
-            repre_info_by_project[project_name].update(repre_info)
+            if active_repre_info is None:
+                active_project_name = project_name
+                active_repre_info = repres_info.get(active_repre_id)
 
-        for container_item in container_items_by_id.values():
-            project_name = container_item.project_name
-            repre_info_by_id = repre_info_by_project.get(project_name)
-            repre_id = container_item.representation_id
-            repre_info = repre_info_by_id.get(repre_id)
             product_ids = {
                 repre_info.product_id
-                for repre_info in repre_info_by_id.values()
+                for repre_info in repres_info.values()
                 if repre_info.is_valid
             }
-            version_items = self._controller.get_version_items(
+            version_items_by_product_id = self._controller.get_version_items(
                 project_name, product_ids
             )
-            version_items_by_product_id_by_project[project_name] = version_items
-            active_repre_info = repre_info_by_id[active_repre_id]
-            active_version_id = active_repre_info.version_id
-            active_product_id = active_repre_info.product_id
-            version_items = list(
-                version_items_by_product_id_by_project[project_name][active_product_id].values()
+
+            repre_info_by_project[project_name] = repres_info
+            version_items_by_project[project_name] = version_items_by_product_id
+
+        active_version_id = active_repre_info.version_id
+        active_product_id = active_repre_info.product_id
+
+        versions = set()
+        product_ids = set()
+        version_items = []
+        product_ids_by_version_by_project = {}
+        for project_name, version_items_by_product_id in (
+            version_items_by_project.items()
+        ):
+            product_ids_by_version = collections.defaultdict(set)
+            product_ids_by_version_by_project[project_name] = (
+                product_ids_by_version
             )
-            version_ids.update(version_item.version for version_item in version_items)
+            versions |= {
+                version_item.version
+                for version_item in version_items_by_product_id.values()
+            }
+            for version_item in version_items_by_product_id.values():
+                version = version_item.version
+                _prod_version = version
+                if _prod_version < 0:
+                    _prod_version = -1
+                product_ids_by_version[_prod_version].add(
+                    version_item.product_id
+                )
+                product_ids.add(version_item.product_id)
+                if version in versions:
+                    continue
+                versions.add(version)
+                version_items.append((project_name, version_item))
 
-        product_ids_by_version = collections.defaultdict(set)
-        for version_items_by_product_id in version_items_by_product_id_by_project.values():
-            for version_items_by_id in version_items_by_product_id.values():
-                for version_item in version_items_by_id.values():
-                    version = version_item.version
-                    _prod_version = version
-                    if _prod_version < 0:
-                        _prod_version = -1
-                    product_ids_by_version[_prod_version].add(
-                        version_item.product_id
-                    )
-                    if version in version_ids:
-                        continue
-                    version_ids.add(version)
-                    version_items.append(version_item)
-
-        def version_sorter(item):
+        def version_sorter(_, item):
             hero_value = 0
             i_version = item.version
             if i_version < 0:
@@ -844,7 +855,8 @@ class SceneInventoryView(QtWidgets.QTreeView):
 
         version_options = []
         active_version_idx = 0
-        for idx, version_item in enumerate(version_items):
+        for idx, item in enumerate(version_items):
+            project_name, version_item = item
             version = version_item.version
             label = format_version(version)
             if version_item.version_id == active_version_id:
@@ -884,11 +896,13 @@ class SceneInventoryView(QtWidgets.QTreeView):
             product_version = -1
             version = HeroVersionType(version)
 
-        product_ids = product_ids_by_version[product_version]
-
         filtered_item_ids = set()
         for container_item in container_items_by_id.values():
             project_name = container_item.project_name
+            product_ids_by_version = (
+                product_ids_by_version_by_project[project_name]
+            )
+            product_ids = product_ids_by_version[product_version]
             repre_id = container_item.representation_id
             repre_info = repre_info_by_project[project_name][repre_id]
             if repre_info.product_id in product_ids:
