@@ -465,7 +465,9 @@ def update_container(container, version=-1):
     from ayon_core.pipeline import get_current_project_name
 
     # Compute the different version from 'representation'
-    project_name = container.get("project_name", get_current_project_name())
+    project_name = container.get("project_name")
+    if project_name is None:
+        project_name = get_current_project_name()
     repre_id = container["representation"]
     if not _is_valid_representation_id(repre_id):
         raise ValueError(
@@ -588,7 +590,9 @@ def switch_container(container, representation, loader_plugin=None):
         )
 
     # Get the new representation to switch to
-    project_name = container.get("project_name", get_current_project_name())
+    project_name = container.get("project_name")
+    if project_name is None:
+        project_name = get_current_project_name()
 
     context = get_representation_context(
         project_name, representation["id"]
