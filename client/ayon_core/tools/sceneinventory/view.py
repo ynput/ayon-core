@@ -755,7 +755,7 @@ class SceneInventoryView(QtWidgets.QTreeView):
             project_name = container_item.project_name
             repre_ids_by_project[project_name].add(repre_id)
 
-        versions = set()
+        version_ids = set()
         repre_info_by_project = collections.defaultdict(dict)
         version_items_by_product_id_by_project = collections.defaultdict(dict)
         for project_name, repre_ids in repre_ids_by_project.items():
@@ -784,8 +784,8 @@ class SceneInventoryView(QtWidgets.QTreeView):
             version_items = list(
                 version_items_by_product_id_by_project[project_name][active_product_id].values()
             )
-            all_versions = {version_item.version for version_item in version_items}
-            versions.update(all_versions)
+            version_ids.update(version_item.version for version_item in version_items)
+
         product_ids_by_version = collections.defaultdict(set)
         for version_items_by_product_id in version_items_by_product_id_by_project.values():
             for version_items_by_id in version_items_by_product_id.values():
@@ -797,9 +797,9 @@ class SceneInventoryView(QtWidgets.QTreeView):
                     product_ids_by_version[_prod_version].add(
                         version_item.product_id
                     )
-                    if version in versions:
+                    if version in version_ids:
                         continue
-                    versions.add(version)
+                    version_ids.add(version)
                     version_items.append(version_item)
 
         def version_sorter(item):

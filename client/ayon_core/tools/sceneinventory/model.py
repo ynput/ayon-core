@@ -132,7 +132,7 @@ class InventoryModel(QtGui.QStandardItemModel):
         # for debugging or testing, injecting items from outside
         container_items = self._controller.get_container_items()
         self._clear_items()
-        repre_id = set()
+        repre_ids = set()
         repre_ids_by_project = collections.defaultdict(set)
         version_items_by_product_id = collections.defaultdict(dict)
         repre_info_by_id_by_project = collections.defaultdict(dict)
@@ -146,7 +146,7 @@ class InventoryModel(QtGui.QStandardItemModel):
             #     continue
             project_name = container_item.project_name
             representation_id = container_item.representation_id
-            repre_id.add(representation_id)
+            repre_ids.add(representation_id)
             repre_ids_by_project[project_name].add(representation_id)
             item_by_repre_id_by_project_id[project_name][representation_id].add(container_item)
 
@@ -168,7 +168,7 @@ class InventoryModel(QtGui.QStandardItemModel):
 
         # SiteSync addon information
         progress_by_id = self._controller.get_representations_site_progress(
-            repre_id
+            repre_ids
         )
         sites_info = self._controller.get_sites_information()
         site_icons = {
