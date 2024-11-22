@@ -124,14 +124,20 @@ class SceneInventoryController:
     def get_site_provider_icons(self):
         return self._sitesync_model.get_site_provider_icons()
 
-    def get_representations_site_progress(self, representation_ids):
+    def get_representations_site_progress(
+        self, project_name, representation_ids
+    ):
         return self._sitesync_model.get_representations_site_progress(
-            representation_ids
+            project_name, representation_ids
         )
 
-    def resync_representations(self, representation_ids, site_type):
+    def resync_representations(
+        self, project_name, representation_ids, site_type
+    ):
         return self._sitesync_model.resync_representations(
-            representation_ids, site_type
+            project_name,
+            representation_ids,
+            site_type
         )
 
     # Switch dialog methods
