@@ -780,7 +780,7 @@ class SceneInventoryView(QtWidgets.QTreeView):
             project_names.add(project_name)
             repre_ids_by_project[project_name].add(repre_id)
 
-        active_project_name = None
+        # active_project_name = None
         active_repre_info = None
         repre_info_by_project = {}
         version_items_by_project = {}
@@ -789,7 +789,7 @@ class SceneInventoryView(QtWidgets.QTreeView):
                 project_name, repre_ids
             )
             if active_repre_info is None:
-                active_project_name = project_name
+                # active_project_name = project_name
                 active_repre_info = repres_info.get(active_repre_id)
 
             product_ids = {
@@ -805,7 +805,7 @@ class SceneInventoryView(QtWidgets.QTreeView):
             version_items_by_project[project_name] = version_items_by_product_id
 
         active_version_id = active_repre_info.version_id
-        active_product_id = active_repre_info.product_id
+        # active_product_id = active_repre_info.product_id
 
         versions = set()
         product_ids = set()
