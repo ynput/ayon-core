@@ -54,7 +54,9 @@ class SiteSyncModel:
             "remote_site_provider": self._get_remote_site_provider()
         }
 
-    def get_representations_site_progress(self, representation_ids):
+    def get_representations_site_progress(
+        self, project_name, representation_ids
+    ):
         """Get progress of representations sync."""
 
         representation_ids = set(representation_ids)
@@ -68,7 +70,6 @@ class SiteSyncModel:
         if not self.is_sitesync_enabled():
             return output
 
-        project_name = self._controller.get_current_project_name()
         sitesync_addon = self._get_sitesync_addon()
         repre_entities = ayon_api.get_representations(
             project_name, representation_ids
@@ -86,10 +87,13 @@ class SiteSyncModel:
 
         return output
 
-    def resync_representations(self, representation_ids, site_type):
+    def resync_representations(
+        self, project_name, representation_ids, site_type
+    ):
         """
 
         Args:
+            project_name (str): Project name.
             representation_ids (Iterable[str]): Representation ids.
             site_type (Literal[active_site, remote_site]): Site type.
         """
