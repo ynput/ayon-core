@@ -86,8 +86,9 @@ class SceneInventoryController:
         self._current_folder_set = True
         return self._current_folder_id
 
-    def get_project_status_items(self):
-        project_name = self.get_current_project_name()
+    def get_project_status_items(self, project_name=None):
+        if project_name is None:
+            project_name = self.get_current_project_name()
         return self._projects_model.get_project_status_items(
             project_name, None
         )
