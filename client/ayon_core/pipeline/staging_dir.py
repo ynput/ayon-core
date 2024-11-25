@@ -203,7 +203,7 @@ def get_staging_dir_info(
         }
 
     # no config found but force an output
-    if always_return_path: 
+    if always_return_path:
         return {
             "stagingDir": get_temp_dir(
                 project_name=project_entity["name"],
