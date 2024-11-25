@@ -535,8 +535,8 @@ class AYONAddon(ABC):
         Implementation of this method is optional.
 
         Note:
-            The logic can be similar to logic in tray, but tray does not require
-                to be logged in.
+            The logic can be similar to logic in tray, but tray does not
+                require to be logged in.
 
         Args:
             process_context (ProcessContext): Context of child

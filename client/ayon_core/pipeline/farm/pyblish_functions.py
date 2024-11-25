@@ -8,7 +8,10 @@ import attr
 import ayon_api
 import clique
 from ayon_core.lib import Logger, collect_frames
-from ayon_core.pipeline import get_current_project_name, get_representation_path
+from ayon_core.pipeline import (
+    get_current_project_name,
+    get_representation_path,
+)
 from ayon_core.pipeline.create import get_product_name
 from ayon_core.pipeline.farm.patterning import match_aov_pattern
 from ayon_core.pipeline.publish import KnownPublishError
@@ -771,9 +774,14 @@ def _create_instances_for_aov(instance, skeleton, aov_filter, additional_data,
 
         project_settings = instance.context.data.get("project_settings")
 
-        use_legacy_product_name = True
         try:
-            use_legacy_product_name = project_settings["core"]["tools"]["creator"]["use_legacy_product_names_for_renders"]  # noqa: E501
+            use_legacy_product_name = (
+                project_settings
+                ["core"]
+                ["tools"]
+                ["creator"]
+                ["use_legacy_product_names_for_renders"]
+            )
         except KeyError:
             warnings.warn(
                 ("use_legacy_for_renders not found in project settings. "
@@ -789,7 +797,9 @@ def _create_instances_for_aov(instance, skeleton, aov_filter, additional_data,
                 dynamic_data=dynamic_data)
 
         else:
-            product_name, group_name = get_product_name_and_group_from_template(
+            (
+                product_name, group_name
+            ) = get_product_name_and_group_from_template(
                 task_entity=instance.data["taskEntity"],
                 project_name=instance.context.data["projectName"],
                 host_name=instance.context.data["hostName"],
@@ -932,7 +942,7 @@ def _collect_expected_files_for_aov(files):
     # but we really expect only one collection.
     # Nothing else make sense.
     if len(cols) != 1:
-        raise ValueError("Only one image sequence type is expected.")  # noqa: E501
+        raise ValueError("Only one image sequence type is expected.")
     return list(cols[0])
 
 
