@@ -1,7 +1,7 @@
 from ayon_core.lib import Logger, filter_profiles, StringTemplate
 from ayon_core.settings import get_project_settings
-from ayon_core.pipeline.template_data import get_template_data
 
+from .template_data import get_template_data
 from .anatomy import Anatomy
 from .tempdir import get_temp_dir
 
@@ -71,7 +71,7 @@ def get_staging_dir_config(
     template_name = profile["template_name"]
     _validate_template_name(project_name, template_name, anatomy)
 
-    template = anatomy.templates[STAGING_DIR_TEMPLATES][template_name]
+    template = anatomy.get_template_item("staging", template_name)
 
     if not template:
         # template should always be found either from anatomy or from profile
@@ -93,7 +93,7 @@ def _validate_template_name(project_name, template_name, anatomy):
     Raises:
         ValueError - if misconfigured template
     """
-    if template_name not in anatomy.templates[STAGING_DIR_TEMPLATES]:
+    if template_name not in anatomy.templates["staging"]:
         raise ValueError(
             (
                 'Anatomy of project "{}" does not have set'
@@ -195,23 +195,25 @@ def get_staging_dir_info(
         log=log,
     )
 
-    if not staging_dir_config:
-        if always_return_path:  # no config found but force an output
-            return {
-                "stagingDir": get_temp_dir(
-                    project_name=project_entity["name"],
-                    anatomy=anatomy,
-                    prefix=prefix,
-                    suffix=suffix,
-                ),
-                "stagingDir_persistent": False,
-            }
-        else:
-            return None
+    if staging_dir_config:
+        return {
+            "stagingDir": StringTemplate.format_template(
+                staging_dir_config["template"]["directory"],
+                ctx_data
+            ),
+            "stagingDir_persistent": staging_dir_config["persistence"],
+        }
 
-    return {
-        "stagingDir": StringTemplate.format_template(
-            staging_dir_config["template"]["directory"], ctx_data
-        ),
-        "stagingDir_persistent": staging_dir_config["persistence"],
-    }
+    # no config found but force an output
+    if always_return_path: 
+        return {
+            "stagingDir": get_temp_dir(
+                project_name=project_entity["name"],
+                anatomy=anatomy,
+                prefix=prefix,
+                suffix=suffix,
+            ),
+            "stagingDir_persistent": False,
+        }
+
+    return None
