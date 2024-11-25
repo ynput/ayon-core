@@ -217,7 +217,9 @@ class ProductTypeDescriptionWidget(QtWidgets.QWidget):
 
         product_type_label = QtWidgets.QLabel(self)
         product_type_label.setObjectName("CreatorProductTypeLabel")
-        product_type_label.setAlignment(QtCore.Qt.AlignBottom | QtCore.Qt.AlignLeft)
+        product_type_label.setAlignment(
+            QtCore.Qt.AlignBottom | QtCore.Qt.AlignLeft
+        )
 
         help_label = QtWidgets.QLabel(self)
         help_label.setAlignment(QtCore.Qt.AlignTop | QtCore.Qt.AlignLeft)
