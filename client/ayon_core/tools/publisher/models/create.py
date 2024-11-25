@@ -296,7 +296,7 @@ class InstanceItem:
         return InstanceItem(
             instance.id,
             instance.creator_identifier,
-            instance.label,
+            instance.label or "N/A",
             instance.group_label,
             instance.product_type,
             instance.product_name,
