@@ -196,7 +196,7 @@ def get_staging_dir_info(
     if staging_dir_config:
         return {
             "stagingDir": StringTemplate.format_template(
-                staging_dir_config["template"]["directory"],
+                str(staging_dir_config["template"]["directory"]),
                 ctx_data
             ),
             "stagingDir_persistent": staging_dir_config["persistence"],
