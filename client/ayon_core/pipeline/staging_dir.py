@@ -5,8 +5,6 @@ from .template_data import get_template_data
 from .anatomy import Anatomy
 from .tempdir import get_temp_dir
 
-STAGING_DIR_TEMPLATES = "staging"
-
 
 def get_staging_dir_config(
     project_name,
