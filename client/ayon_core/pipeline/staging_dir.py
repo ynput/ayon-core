@@ -147,6 +147,7 @@ def get_staging_dir_info(
         Optional[Dict[str, Any]]: Staging dir info data
 
     """
+    task_entity = task_entity or {}
     log = logger or Logger.get_logger("get_staging_dir_info")
 
     if anatomy is None:
