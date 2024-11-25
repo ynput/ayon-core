@@ -79,7 +79,8 @@ class ExtractOtioAudioTracks(pyblish.api.ContextPlugin):
             if not recycling_file:
                 parent_track = audio_clip.parent()
                 parent_track_start = parent_track.range_in_parent().start_time
-                relative_start_time = audio_range.start_time - parent_track_start
+                relative_start_time = (
+                    audio_range.start_time - parent_track_start)
                 start_sec = relative_start_time.to_seconds()
                 duration_sec = audio_range.duration.to_seconds()
 
