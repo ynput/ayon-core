@@ -616,7 +616,9 @@ class EnumDef(AbstractAttrDef):
         return data
 
     @staticmethod
-    def prepare_enum_items(items: "EnumItemsInputType") -> List["EnumItemDict"]:
+    def prepare_enum_items(
+        items: "EnumItemsInputType"
+    ) -> List["EnumItemDict"]:
         """Convert items to unified structure.
 
         Output is a list where each item is dictionary with 'value'
