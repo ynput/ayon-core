@@ -222,6 +222,9 @@ def remap_range_on_file_sequence(otio_clip, in_out_range):
     source_range = otio_clip.source_range
     available_range_rate = available_range.start_time.rate
     media_in = available_range.start_time.value
+    available_range_start_frame = (
+        available_range.start_time.to_frames()
+    )
 
     # Temporary.
     # Some AYON custom OTIO exporter were implemented with relative
@@ -230,7 +233,7 @@ def remap_range_on_file_sequence(otio_clip, in_out_range):
     # while we are updating those.
     if (
         is_clip_from_media_sequence(otio_clip)
-        and otio_clip.available_range().start_time.to_frames() == media_ref.start_frame
+        and available_range_start_frame == media_ref.start_frame
         and source_range.start_time.to_frames() < media_ref.start_frame
     ):
         media_in = 0
@@ -303,8 +306,12 @@ def get_media_range_with_retimes(otio_clip, handle_start, handle_end):
     rounded_av_rate = round(available_range_rate, 2)
     rounded_src_rate = round(source_range.start_time.rate, 2)
     if rounded_av_rate != rounded_src_rate:
-        conformed_src_in = source_range.start_time.rescaled_to(available_range_rate)
-        conformed_src_duration = source_range.duration.rescaled_to(available_range_rate)
+        conformed_src_in = source_range.start_time.rescaled_to(
+            available_range_rate
+        )
+        conformed_src_duration = source_range.duration.rescaled_to(
+            available_range_rate
+        )
         conformed_source_range = otio.opentime.TimeRange(
             start_time=conformed_src_in,
             duration=conformed_src_duration
