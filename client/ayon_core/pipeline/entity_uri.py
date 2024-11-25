@@ -18,13 +18,13 @@ def parse_ayon_entity_uri(uri: str) -> Optional[dict]:
 
     Example:
     >>> parse_ayon_entity_uri(
-    >>>     "ayon://test/char/villain?product=modelMain&version=2&representation=usd"  # noqa: E501
+    >>>     "ayon://test/char/villain?product=modelMain&version=2&representation=usd"
     >>> )
     {'project': 'test', 'folderPath': '/char/villain',
      'product': 'modelMain', 'version': 1,
      'representation': 'usd'}
     >>> parse_ayon_entity_uri(
-    >>>     "ayon+entity://project/folder?product=renderMain&version=3&representation=exr"  # noqa: E501
+    >>>     "ayon+entity://project/folder?product=renderMain&version=3&representation=exr"
     >>> )
     {'project': 'project', 'folderPath': '/folder',
      'product': 'renderMain', 'version': 3,
@@ -34,7 +34,7 @@ def parse_ayon_entity_uri(uri: str) -> Optional[dict]:
         dict[str, Union[str, int]]: The individual key with their values as
             found in the ayon entity URI.
 
-    """
+    """  # noqa: E501
 
     if not (uri.startswith("ayon+entity://") or uri.startswith("ayon://")):
         return {}
