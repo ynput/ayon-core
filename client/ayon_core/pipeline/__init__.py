@@ -9,7 +9,7 @@ from .anatomy import Anatomy
 
 from .tempdir import get_temp_dir
 
-from .stagingdir import get_staging_dir_info
+from .staging_dir import get_staging_dir_info
 
 from .create import (
     BaseCreator,

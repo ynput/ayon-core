@@ -642,7 +642,7 @@ def get_custom_staging_dir_info(
     anatomy=None,
     log=None,
 ):
-    from ayon_core.pipeline.stagingdir import get_staging_dir_config
+    from ayon_core.pipeline.staging_dir import get_staging_dir_config
     warnings.warn(
         (
             "Function 'get_custom_staging_dir_info' in"
