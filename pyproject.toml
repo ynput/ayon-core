@@ -5,7 +5,7 @@
 
 [tool.poetry]
 name = "ayon-core"
-version = "1.0.7+dev"
+version = "1.0.9+dev"
 description = ""
 authors = ["Ynput Team <team@ynput.io>"]
 readme = "README.md"
@@ -68,7 +68,7 @@ target-version = "py39"
 
 [tool.ruff.lint]
 # Enable Pyflakes (`F`) and a subset of the pycodestyle (`E`)  codes by default.
-select = ["E4", "E7", "E9", "F", "W"]
+select = ["E", "F", "W"]
 ignore = []
 
 # Allow fix for all enabled rules (when `--fix`) is provided.
