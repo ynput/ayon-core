@@ -1,0 +1,15 @@
+name: 🔸Auto assign pr
+on:
+  pull_request:
+    types:
+      - opened
+
+jobs:
+  auto-assign-pr:
+    uses: ynput/ops-repo-automation/.github/workflows/pr_to_project.yml@develop
+    with:
+      repo: "${{ github.repository }}"
+      project_id: 16
+      pull_request_number: ${{ github.event.pull_request.number }}
+    secrets:
+      token: ${{ secrets.YNPUT_BOT_TOKEN }}

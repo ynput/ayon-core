@@ -214,8 +214,8 @@ class TasksCombobox(QtWidgets.QComboBox):
     Combobox gives ability to select only from intersection of task names for
     folder paths in selected instances.
 
-    If folder paths in selected instances does not have same tasks then combobox
-    will be empty.
+    If folder paths in selected instances does not have same tasks
+     then combobox will be empty.
     """
     value_changed = QtCore.Signal()
 
@@ -604,7 +604,7 @@ class VariantInputWidget(PlaceholderLineEdit):
 
 
 class GlobalAttrsWidget(QtWidgets.QWidget):
-    """Global attributes mainly to define context and product name of instances.
+    """Global attributes to define context and product name of instances.
 
     product name is or may be affected on context. Gives abiity to modify
     context and product name of instance. This change is not autopromoted but

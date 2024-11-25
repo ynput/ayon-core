@@ -190,6 +190,7 @@ def get_current_project_settings():
     project_name = os.environ.get("AYON_PROJECT_NAME")
     if not project_name:
         raise ValueError(
-            "Missing context project in environemt variable `AYON_PROJECT_NAME`."
+            "Missing context project in environment"
+            " variable `AYON_PROJECT_NAME`."
         )
     return get_project_settings(project_name)
