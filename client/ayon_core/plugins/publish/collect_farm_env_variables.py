@@ -11,21 +11,6 @@ class CollectCoreJobEnvVars(pyblish.api.ContextPlugin):
     label = "AYON core Farm Environment Variables"
     targets = ["local"]
 
-    ENV_KEYS = [
-        # AYON
-        "AYON_BUNDLE_NAME",
-        "AYON_DEFAULT_SETTINGS_VARIANT",
-        "AYON_PROJECT_NAME",
-        "AYON_FOLDER_PATH",
-        "AYON_TASK_NAME",
-        "AYON_APP_NAME",
-        "AYON_WORKDIR",
-        "AYON_APP_NAME",
-        "AYON_LOG_NO_COLORS",
-        "AYON_IN_TESTS",
-        "IS_TEST",  # backwards compatibility
-    ]
-
     def process(self, context):
         env = context.data.setdefault(FARM_JOB_ENV_DATA_KEY, {})
         for key in [
