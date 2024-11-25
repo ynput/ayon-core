@@ -172,7 +172,8 @@ class ExtractOtioAudioTracks(pyblish.api.ContextPlugin):
                     clip_start = otio_clip.source_range.start_time
                     fps = clip_start.rate
                     conformed_av_start = media_av_start.rescaled_to(fps)
-                    start = clip_start - conformed_av_start  # ffmpeg ignores embedded tc
+                    # ffmpeg ignores embedded tc
+                    start = clip_start - conformed_av_start
                     duration = otio_clip.source_range.duration
                     media_path = otio_clip.media_reference.target_url
                     input = {
