@@ -1283,12 +1283,16 @@ class CreateContext:
 
     @contextmanager
     def bulk_pre_create_attr_defs_change(self, sender=None):
-        with self._bulk_context("pre_create_attrs_change", sender) as bulk_info:
+        with self._bulk_context(
+            "pre_create_attrs_change", sender
+        ) as bulk_info:
             yield bulk_info
 
     @contextmanager
     def bulk_create_attr_defs_change(self, sender=None):
-        with self._bulk_context("create_attrs_change", sender) as bulk_info:
+        with self._bulk_context(
+            "create_attrs_change", sender
+        ) as bulk_info:
             yield bulk_info
 
     @contextmanager
@@ -1946,9 +1950,9 @@ class CreateContext:
             creator are just removed from context.
 
         Args:
-            instances (List[CreatedInstance]): Instances that should be removed.
-                Remove logic is done using creator, which may require to
-                do other cleanup than just remove instance from context.
+            instances (List[CreatedInstance]): Instances that should be
+                removed. Remove logic is done using creator, which may require
+                to do other cleanup than just remove instance from context.
             sender (Optional[str]): Sender of the event.
 
         """
