@@ -83,8 +83,8 @@ class CreatorToolModel(BaseSettingsModel):
     filter_creator_profiles: list[FilterCreatorProfile] = SettingsField(
         default_factory=list,
         title="Filter creator profiles",
-        description="Allowed list of creator labels that will be only shown if "
-                    "profile matches context."
+        description="Allowed list of creator labels that will be only shown"
+                    " if profile matches context."
     )
 
     @validator("product_types_smart_select")
@@ -426,7 +426,9 @@ DEFAULT_TOOLS_VALUES = {
                 ],
                 "task_types": [],
                 "tasks": [],
-                "template": "{product[type]}{Task[name]}_{Renderlayer}_{Renderpass}"
+                "template": (
+                    "{product[type]}{Task[name]}_{Renderlayer}_{Renderpass}"
+                )
             },
             {
                 "product_types": [
