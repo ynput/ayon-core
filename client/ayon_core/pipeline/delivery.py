@@ -387,7 +387,7 @@ def get_representations_delivery_template_data(
         #   convert representation entity. Fixed in 'ayon_api' 1.0.10.
         if isinstance(template_data, str):
             con = ayon_api.get_server_api_connection()
-            repre_entity = con._representation_conversion(repre_entity)
+            con._representation_conversion(repre_entity)
             template_data = repre_entity["context"]
 
         template_data.update(copy.deepcopy(general_template_data))
