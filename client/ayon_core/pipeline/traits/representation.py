@@ -6,6 +6,7 @@ import re
 import sys
 import uuid
 from functools import lru_cache
+from types import GenericAlias
 from typing import ClassVar, Optional, Type, TypeVar, Union
 
 from .trait import (
@@ -50,7 +51,8 @@ class Representation:
     """
     _data: dict
     _module_blacklist: ClassVar[list[str]] = [
-        "_", "builtins", "pydantic"]
+        "_", "builtins", "pydantic",
+    ]
     name: str
     representation_id: str
 
@@ -422,9 +424,19 @@ class Representation:
         for module in filtered_modules.values():
             if not module:
                 continue
-            for _, klass in inspect.getmembers(module, inspect.isclass):
-                if inspect.isclass(klass) \
-                        and issubclass(klass, TraitBase) \
+
+            for attr_name in dir(module):
+                klass = getattr(module, attr_name)
+                if not inspect.isclass(klass):
+                    continue
+                # this needs to be done because of the  bug? in
+                # python ABCMeta, where ``issubclass`` is not working
+                # if it hits the GenericAlias (that is in fact
+                # tuple[int, int]). This is added to the scope by
+                # ``types`` module.
+                if type(klass) is GenericAlias:
+                    continue
+                if issubclass(klass, TraitBase) \
                         and str(klass.id).startswith(trait_id):
                     trait_candidates.add(klass)
         return trait_candidates
