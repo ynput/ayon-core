@@ -23,8 +23,6 @@ class CollectCoreJobEnvVars(pyblish.api.ContextPlugin):
             "AYON_WORKDIR",
             "AYON_LOG_NO_COLORS",
             "AYON_IN_TESTS",
-            # backwards compatibility
-            "IS_TEST",
         ]:
             value = os.getenv(key)
             if value:
