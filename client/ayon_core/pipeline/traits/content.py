@@ -1,14 +1,14 @@
 """Content traits for the pipeline."""
 from __future__ import annotations
 
-# TCH003 is there because Path in TYPECHECKING will fail in tests
-from pathlib import Path  # noqa: TCH003
+# TC003 is there because Path in TYPECHECKING will fail in tests
+from pathlib import Path  # noqa: TC003
 from typing import ClassVar, Optional
 
 from pydantic import Field
 
 from .representation import Representation
-from .time import FrameRanged
+from .time import FrameRanged, Sequence
 from .trait import (
     MissingTraitError,
     TraitBase,
@@ -106,7 +106,7 @@ class FileLocations(TraitBase):
     id: ClassVar[str] = "ayon.content.FileLocations.v1"
     file_paths: list[FileLocation] = Field(..., title="File Path")
 
-    def validate(self, representation: Representation) -> bool:
+    def validate(self, representation: Representation) -> None:
         """Validate the trait.
 
         This method validates the trait against others in the representation.
@@ -120,6 +120,7 @@ class FileLocations(TraitBase):
             bool: True if the trait is valid, False otherwise
 
         """
+        super().validate(representation)
         if len(self.file_paths) == 0:
                 # If there are no file paths, we can't validate
                 msg = "No file locations defined (empty list)"
@@ -127,6 +128,33 @@ class FileLocations(TraitBase):
 
         tmp_frame_ranged: FrameRanged = get_sequence_from_files(
                     [f.file_path for f in self.file_paths])
+
+        frames_from_spec = None
+        try:
+            sequence: Sequence = representation.get_trait(Sequence)
+            if sequence.frame_spec:
+                frames_from_spec: list[int] = sequence.get_frame_list(
+                    self, sequence.frame_regex)
+
+        except MissingTraitError:
+            # If there is no sequence trait, we can't validate it
+            pass
+        if frames_from_spec:
+            if len(frames_from_spec) != len(self.file_paths) :
+                # If the number of file paths does not match the frame range,
+                # the trait is invalid
+                msg = (
+                    f"Number of file locations ({len(self.file_paths)}) "
+                    "does not match frame range defined by frame spec "
+                    "on Sequence trait: "
+                    f"({len(frames_from_spec)})"
+                )
+                raise TraitValidationError(self.name, msg)
+            # if there is frame spec on the Sequence trait
+            # we should not validate the frame range from the files.
+            # the rest is validated by Sequence validators.
+            return
+
 
         if len(self.file_paths) - 1 != \
                     tmp_frame_ranged.frame_end - tmp_frame_ranged.frame_start:
@@ -140,17 +168,17 @@ class FileLocations(TraitBase):
                 raise TraitValidationError(self.name, msg)
 
         try:
-            sequence: FrameRanged = representation.get_trait(FrameRanged)
+            frame_ranged: FrameRanged = representation.get_trait(FrameRanged)
 
-            if sequence.frame_start != tmp_frame_ranged.frame_start or \
-                    sequence.frame_end != tmp_frame_ranged.frame_end:
+            if frame_ranged.frame_start != tmp_frame_ranged.frame_start or \
+                    frame_ranged.frame_end != tmp_frame_ranged.frame_end:
                 # If the frame range does not match the sequence trait, the
                 # trait is invalid. Note that we don't check the frame rate
                 # because it is not stored in the file paths and is not
                 # determined by `get_sequence_from_files`.
                 msg = (
                     "Frame range "
-                    f"({sequence.frame_start}-{sequence.frame_end}) "
+                    f"({frame_ranged.frame_start}-{frame_ranged.frame_end}) "
                     "in sequence trait does not match "
                     "frame range "
                     f"({tmp_frame_ranged.frame_start}-{tmp_frame_ranged.frame_end}) "  # noqa: E501
@@ -159,7 +187,7 @@ class FileLocations(TraitBase):
                 raise TraitValidationError(self.name, msg)
 
         except MissingTraitError:
-            # If there is no sequence trait, we can't validate it
+            # If there is no frame_ranged trait, we can't validate it
             pass
 
 

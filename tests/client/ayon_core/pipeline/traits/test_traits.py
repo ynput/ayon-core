@@ -406,3 +406,65 @@ def test_sequence_get_frame_padding() -> None:
 
     assert Sequence.get_frame_padding(
         file_locations=representation.get_trait(FileLocations)) == 4
+
+def test_sequence_validations() -> None:
+    """Test Sequence trait validation."""
+    file_locations_list = [
+        FileLocation(
+            file_path=Path(f"/path/to/file.{frame}.exr"),
+            file_size=1024,
+            file_hash=None,
+        )
+        for frame in range(1001, 1010 + 1)  # because range is zero based
+    ]
+
+    file_locations_list += [
+        FileLocation(
+            file_path=Path(f"/path/to/file.{frame}.exr"),
+            file_size=1024,
+            file_hash=None,
+        )
+        for frame in range(1015, 1020 + 1)
+    ]
+
+    file_locations_list += [
+        FileLocation
+        (
+            file_path=Path("/path/to/file.1100.exr"),
+            file_size=1024,
+            file_hash=None,
+        )
+    ]
+
+    representation = Representation(name="test", traits=[
+        FileLocations(file_paths=file_locations_list),
+        FrameRanged(
+            frame_start=1001,
+            frame_end=1100, frames_per_second="25"),
+        Sequence(
+            frame_padding=4,
+            frame_spec="1001-1010,1015-1020,1100")
+    ])
+
+    representation.get_trait(Sequence).validate(representation)
+
+
+
+
+def test_list_spec_to_frames() -> None:
+    """Test converting list specification to frames."""
+    assert Sequence.list_spec_to_frames("1-10,20-30,55") == [
+        1, 2, 3, 4, 5, 6, 7, 8, 9, 10,
+        20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 55
+    ]
+    assert Sequence.list_spec_to_frames("1,2,3,4,5") == [
+        1, 2, 3, 4, 5
+    ]
+    assert Sequence.list_spec_to_frames("1-10") == [
+        1, 2, 3, 4, 5, 6, 7, 8, 9, 10
+    ]
+    assert Sequence.list_spec_to_frames("1") == [1]
+    with pytest.raises(
+            ValueError,
+            match="Invalid frame number in the list: .*"):
+        Sequence.list_spec_to_frames("a")
