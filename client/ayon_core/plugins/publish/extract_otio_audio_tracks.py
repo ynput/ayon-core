@@ -166,9 +166,8 @@ class ExtractOtioAudioTracks(pyblish.api.ContextPlugin):
             playhead = 0
             for otio_clip in otio_track:
                 self.log.debug(otio_clip)
-                if isinstance(otio_clip, otio.schema.Gap):
-                    playhead += otio_clip.source_range.duration.value
-                elif isinstance(otio_clip, otio.schema.Clip):
+                if (isinstance(otio_clip, otio.schema.Clip) and
+                    not otio_clip.media_reference.is_missing_reference):
                     media_av_start = otio_clip.available_range().start_time
                     clip_start = otio_clip.source_range.start_time
                     fps = clip_start.rate
@@ -190,7 +189,8 @@ class ExtractOtioAudioTracks(pyblish.api.ContextPlugin):
                     if input not in output:
                         output.append(input)
                         self.log.debug("__ input: {}".format(input))
-                    playhead += otio_clip.source_range.duration.value
+
+                playhead += otio_clip.source_range.duration.value
 
         return output
 
