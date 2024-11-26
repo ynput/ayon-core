@@ -805,7 +805,7 @@ class SceneInventoryView(QtWidgets.QTreeView):
             version_items_by_project[project_name] = version_items_by_product_id
 
         active_version_id = active_repre_info.version_id
-        # active_product_id = active_repre_info.product_id
+        active_product_id = active_repre_info.product_id
 
         versions = set()
         product_ids = set()
@@ -820,21 +820,23 @@ class SceneInventoryView(QtWidgets.QTreeView):
             )
             versions |= {
                 version_item.version
-                for version_item in version_items_by_product_id.values()
+                for version_item in
+                version_items_by_product_id[active_product_id].values()
             }
-            for version_item in version_items_by_product_id.values():
-                version = version_item.version
-                _prod_version = version
-                if _prod_version < 0:
-                    _prod_version = -1
-                product_ids_by_version[_prod_version].add(
-                    version_item.product_id
-                )
-                product_ids.add(version_item.product_id)
-                if version in versions:
-                    continue
-                versions.add(version)
-                version_items.append((project_name, version_item))
+            for version_item_by_id in version_items_by_product_id.values():
+                for version_item in version_item_by_id.values():
+                    version = version_item.version
+                    _prod_version = version
+                    if _prod_version < 0:
+                        _prod_version = -1
+                    product_ids_by_version[_prod_version].add(
+                        version_item.product_id
+                    )
+                    product_ids.add(version_item.product_id)
+                    if version in versions:
+                        continue
+                    versions.add(version)
+                    version_items.append((project_name, version_item))
 
         def version_sorter(_, item):
             hero_value = 0
