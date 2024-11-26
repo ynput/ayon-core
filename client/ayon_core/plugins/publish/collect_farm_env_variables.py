@@ -13,9 +13,14 @@ class CollectCoreJobEnvVars(pyblish.api.ContextPlugin):
 
     def process(self, context):
         env = context.data.setdefault(FARM_JOB_ENV_DATA_KEY, {})
+
+        # Disable colored logs on farm
+        env["AYON_LOG_NO_COLORS"] = "1"
+
         for key in [
             "AYON_BUNDLE_NAME",
             "AYON_DEFAULT_SETTINGS_VARIANT",
+            "AYON_USERNAME",
             "AYON_PROJECT_NAME",
             "AYON_FOLDER_PATH",
             "AYON_TASK_NAME",
