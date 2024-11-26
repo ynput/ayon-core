@@ -273,7 +273,8 @@ class InventoryModel(QtGui.QStandardItemModel):
                 ) = self._get_status_data(project_name, status_name)
 
                 repre_name = (
-                    repre_info.representation_name or "<unknown representation>"
+                    repre_info.representation_name or
+                    "<unknown representation>"
                 )
                 container_model_items = []
                 for container_item in container_items:
@@ -281,7 +282,8 @@ class InventoryModel(QtGui.QStandardItemModel):
                     unique_name = repre_name + object_name
                     item = QtGui.QStandardItem()
                     item.setColumnCount(root_item.columnCount())
-                    item.setData(container_item.namespace, QtCore.Qt.DisplayRole)
+                    item.setData(container_item.namespace,
+                                 QtCore.Qt.DisplayRole)
                     item.setData(self.GRAYOUT_COLOR, NAME_COLOR_ROLE)
                     item.setData(self.GRAYOUT_COLOR, VERSION_COLOR_ROLE)
                     item.setData(item_icon, QtCore.Qt.DecorationRole)
@@ -290,7 +292,8 @@ class InventoryModel(QtGui.QStandardItemModel):
                     item.setData(version_label, VERSION_LABEL_ROLE)
                     item.setData(container_item.loader_name, LOADER_NAME_ROLE)
                     item.setData(container_item.object_name, OBJECT_NAME_ROLE)
-                    item.setData(container_item.project_name, PROJECT_NAME_ROLE)
+                    item.setData(container_item.project_name,
+                                 PROJECT_NAME_ROLE)
                     item.setData(True, IS_CONTAINER_ITEM_ROLE)
                     item.setData(unique_name, ITEM_UNIQUE_NAME_ROLE)
                     container_model_items.append(item)
