@@ -6,7 +6,7 @@ on:
 
 jobs:
   auto-assign-pr:
-    uses: ynput/ops-repo-automation/.github/workflows/pr_to_project.yml@develop
+    uses: ynput/ops-repo-automation/.github/workflows/pr_to_project.yml@main
     with:
       repo: "${{ github.repository }}"
       project_id: 16
