@@ -14,15 +14,15 @@ class CollectCoreJobEnvVars(pyblish.api.ContextPlugin):
     def process(self, context):
         env = context.data.setdefault(FARM_JOB_ENV_DATA_KEY, {})
         for key in [
-            # AYON
             "AYON_BUNDLE_NAME",
             "AYON_DEFAULT_SETTINGS_VARIANT",
             "AYON_PROJECT_NAME",
             "AYON_FOLDER_PATH",
             "AYON_TASK_NAME",
-            "AYON_WORKDIR",
             "AYON_LOG_NO_COLORS",
             "AYON_IN_TESTS",
+            # NOTE Not sure why workdir is needed?
+            "AYON_WORKDIR",
         ]:
             value = os.getenv(key)
             if value:
