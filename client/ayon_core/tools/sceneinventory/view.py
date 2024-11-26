@@ -802,7 +802,9 @@ class SceneInventoryView(QtWidgets.QTreeView):
             )
 
             repre_info_by_project[project_name] = repres_info
-            version_items_by_project[project_name] = version_items_by_product_id
+            version_items_by_project[project_name] = (
+                version_items_by_product_id
+            )
 
         active_version_id = active_repre_info.version_id
         # active_product_id = active_repre_info.product_id
@@ -994,7 +996,8 @@ class SceneInventoryView(QtWidgets.QTreeView):
 
     def _on_switch_to_versioned(self, item_ids):
         # Get container items by ID
-        containers_items_by_id = self._controller.get_container_items_by_id(item_ids)
+        containers_items_by_id = self._controller.get_container_items_by_id(
+            item_ids)
         # Extract project names and their corresponding representation IDs
         repre_ids_by_project = collections.defaultdict(set)
         for container_item in containers_items_by_id.values():

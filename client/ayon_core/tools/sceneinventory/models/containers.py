@@ -362,7 +362,8 @@ class ContainersModel:
         current_project_name = self._controller.get_current_project_name()
         for container in containers:
             try:
-                item = ContainerItem.from_container_data(current_project_name, container)
+                item = ContainerItem.from_container_data(
+                    current_project_name, container)
                 repre_id = item.representation_id
                 try:
                     uuid.UUID(repre_id)
