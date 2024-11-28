@@ -920,7 +920,9 @@ class SceneInventoryView(QtWidgets.QTreeView):
             project_name = container_item.project_name
             container_ids_by_project_name[project_name].add(container_id)
 
-        for project_name, container_ids in container_ids_by_project_name.items():
+        for project_name, container_ids in (
+            container_ids_by_project_name.items()
+        ):
             containers_by_id = self._controller.get_containers_by_item_ids(
                 container_ids
             )
