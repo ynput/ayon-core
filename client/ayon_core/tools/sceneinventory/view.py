@@ -820,8 +820,8 @@ class SceneInventoryView(QtWidgets.QTreeView):
             product_ids_by_version_by_project[project_name] = (
                 product_ids_by_version
             )
-            for version_item_by_id in version_items_by_product_id.values():
-                for version_item in version_item_by_id.values():
+            for version_items_by_id in version_items_by_product_id.values():
+                for version_item in version_items_by_id.values():
                     version = version_item.version
                     _prod_version = version
                     if _prod_version < 0:
