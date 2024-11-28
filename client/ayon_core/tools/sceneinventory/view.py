@@ -912,14 +912,26 @@ class SceneInventoryView(QtWidgets.QTreeView):
 
     def _show_switch_dialog(self, item_ids):
         """Display Switch dialog"""
-        containers_by_id = self._controller.get_containers_by_item_ids(
+        container_items_by_id = self._controller.get_container_items_by_id(
             item_ids
         )
-        dialog = SwitchAssetDialog(
-            self._controller, self, list(containers_by_id.values())
-        )
-        dialog.switched.connect(self.data_changed.emit)
-        dialog.show()
+        container_ids_by_project_name = collections.defaultdict(set)
+        for container_id, container_item in container_items_by_id.values():
+            project_name = container_item.project_name
+            container_ids_by_project_name[project_name].add(container_id)
+
+        for project_name, container_ids in container_ids_by_project_name.items():
+            containers_by_id = self._controller.get_containers_by_item_ids(
+                container_ids
+            )
+            dialog = SwitchAssetDialog(
+                self._controller,
+                project_name,
+                list(containers_by_id.values()),
+                self
+            )
+            dialog.switched.connect(self.data_changed.emit)
+            dialog.show()
 
     def _show_remove_warning_dialog(self, item_ids):
         """Prompt a dialog to inform the user the action will remove items"""
