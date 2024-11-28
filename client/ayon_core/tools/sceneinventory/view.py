@@ -833,11 +833,10 @@ class SceneInventoryView(QtWidgets.QTreeView):
                     if version in versions:
                         continue
                     versions.add(version)
-                    version_items.append((project_name, version_item))
+                    version_items.append(version_item)
 
-        def version_sorter(items):
+        def version_sorter(item):
             hero_value = 0
-            item = items[-1]
             i_version = item.version
             if i_version < 0:
                 hero_value = 1
@@ -855,8 +854,7 @@ class SceneInventoryView(QtWidgets.QTreeView):
 
         version_options = []
         active_version_idx = 0
-        for idx, item in enumerate(version_items):
-            project_name, version_item = item
+        for idx, version_item in enumerate(version_items):
             version = version_item.version
             label = format_version(version)
             if version_item.version_id == active_version_id:
