@@ -292,8 +292,6 @@ class InventoryModel(QtGui.QStandardItemModel):
                     item.setData(version_label, VERSION_LABEL_ROLE)
                     item.setData(container_item.loader_name, LOADER_NAME_ROLE)
                     item.setData(container_item.object_name, OBJECT_NAME_ROLE)
-                    item.setData(container_item.project_name,
-                                 PROJECT_NAME_ROLE)
                     item.setData(True, IS_CONTAINER_ITEM_ROLE)
                     item.setData(unique_name, ITEM_UNIQUE_NAME_ROLE)
                     container_model_items.append(item)
@@ -323,6 +321,7 @@ class InventoryModel(QtGui.QStandardItemModel):
                 group_item.setData(status_short, STATUS_SHORT_ROLE)
                 group_item.setData(status_color, STATUS_COLOR_ROLE)
                 group_item.setData(status_icon, STATUS_ICON_ROLE)
+                group_item.setData(project_name, PROJECT_NAME_ROLE)
 
                 group_item.setData(
                     active_site_progress, ACTIVE_SITE_PROGRESS_ROLE
