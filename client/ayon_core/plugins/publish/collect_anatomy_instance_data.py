@@ -413,16 +413,16 @@ class CollectAnatomyInstanceData(pyblish.api.ContextPlugin):
             # Backwards compatible (Deprecated since 24/06/06)
             or instance.data.get("newAssetPublishing")
         ):
-            hierarchy = instance.data["hierarchy"]
-            anatomy_data["hierarchy"] = hierarchy
+            folder_path = instance.data["folderPath"]
+            parents = folder_path.lstrip("/").split("/")
+            folder_name = parents.pop(-1)
 
             parent_name = project_entity["name"]
-            parents = []
-            if hierarchy:
-                parents = hierarchy.split("/")
+            hierarchy = ""
+            if parents:
                 parent_name = parents[-1]
+                hierarchy = "/".join(parents)
 
-            folder_name = instance.data["folderPath"].split("/")[-1]
             anatomy_data.update({
                 "asset": folder_name,
                 "hierarchy": hierarchy,

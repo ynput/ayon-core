@@ -3,6 +3,7 @@ from .constants import (
     ValidateContentsOrder,
     ValidateSceneOrder,
     ValidateMeshOrder,
+    FARM_JOB_ENV_DATA_KEY,
 )
 
 from .publish_plugins import (
@@ -59,6 +60,7 @@ __all__ = (
     "ValidateContentsOrder",
     "ValidateSceneOrder",
     "ValidateMeshOrder",
+    "FARM_JOB_ENV_DATA_KEY",
 
     "AbstractMetaInstancePlugin",
     "AbstractMetaContextPlugin",
