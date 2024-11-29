@@ -37,7 +37,7 @@ class ValidateCurrentSaveFile(pyblish.api.ContextPlugin):
     label = "Validate File Saved"
     order = pyblish.api.ValidatorOrder - 0.1
     hosts = ["fusion", "houdini", "max", "maya", "nuke", "substancepainter",
-             "cinema4d"]
+             "cinema4d", "loki"]
     actions = [SaveByVersionUpAction, ShowWorkfilesAction]
 
     def process(self, context):
