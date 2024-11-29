@@ -1,6 +1,7 @@
 """Temporal (time related) traits."""
 from __future__ import annotations
 
+import contextlib
 from enum import Enum, auto
 from typing import TYPE_CHECKING, ClassVar, Optional
 
@@ -137,20 +138,62 @@ class Sequence(TraitBase):
 
         # if there is FileLocations trait, run validation
         # on it as well
-        try:
-            from .content import FileLocations
-            file_locs: FileLocations = representation.get_trait(
-                FileLocations)
-            file_locs.validate(representation)
-            # validate if file locations on representation
-            # matches the frame list (if any)
-            self.validate_frame_list(file_locs)
-            self.validate_frame_padding(file_locs)
-        except MissingTraitError:
-            pass
+
+        with contextlib.suppress(MissingTraitError):
+            self._validate_file_locations(representation)
+
+    def _validate_file_locations(self, representation: Representation) -> None:
+        """Validate file locations trait.
+
+        If along with the Sequence trait, there is a FileLocations trait,
+        then we need to validate if the file locations match the frame
+        list specification.
+
+        Args:
+            representation (Representation): Representation instance.
+
+        Raises:
+            TraitValidationError: If file locations do not match the
+                frame list specification
+
+        """
+        from .content import FileLocations
+        file_locs: FileLocations = representation.get_trait(
+            FileLocations)
+        # validate if file locations on representation
+        # matches the frame list (if any)
+        # we need to extend the expected frames with Handles
+        frame_start = None
+        frame_end = None
+        handles_frame_start = None
+        handles_frame_end = None
+        with contextlib.suppress(MissingTraitError):
+            handles: Handles = representation.get_trait(Handles)
+            # if handles are inclusive, they should be already
+            # accounted in the FrameRaged frame spec
+            if not handles.inclusive:
+                handles_frame_start = handles.frame_start_handle
+                handles_frame_end = handles.frame_end_handle
+        with contextlib.suppress(MissingTraitError):
+            frame_ranged: FrameRanged = representation.get_trait(
+                FrameRanged)
+            frame_start = frame_ranged.frame_start
+            frame_end = frame_ranged.frame_end
+        self.validate_frame_list(
+            file_locs,
+            frame_start,
+            frame_end,
+            handles_frame_start,
+            handles_frame_end)
+        self.validate_frame_padding(file_locs)
 
     def validate_frame_list(
-            self, file_locations: FileLocations) -> None:
+            self,
+            file_locations: FileLocations,
+            frame_start: Optional[int] = None,
+            frame_end: Optional[int] = None,
+            handles_frame_start: Optional[int] = None,
+            handles_frame_end: Optional[int] = None) -> None:
         """Validate frame list.
 
         This will take FileLocations trait and validate if the
@@ -164,6 +207,10 @@ class Sequence(TraitBase):
 
         Args:
             file_locations (FileLocations): File locations trait.
+            frame_start (Optional[int]): Frame start.
+            frame_end (Optional[int]): Frame end.
+            handles_frame_start (Optional[int]): Frame start handle.
+            handles_frame_end (Optional[int]): Frame end handle.
 
         Raises:
             TraitValidationError: If frame list does not match
@@ -177,6 +224,32 @@ class Sequence(TraitBase):
             file_locations, self.frame_regex)
 
         expected_frames = self.list_spec_to_frames(self.frame_spec)
+        if frame_start is None or frame_end is None:
+            if min(expected_frames) != frame_start:
+                msg = (
+                    "Frame start does not match the expected frame start. "
+                    f"Expected: {frame_start}, Found: {min(expected_frames)}"
+                )
+                raise TraitValidationError(self.name, msg)
+
+            if max(expected_frames) != frame_end:
+                msg = (
+                    "Frame end does not match the expected frame end. "
+                    f"Expected: {frame_end}, Found: {max(expected_frames)}"
+                )
+                raise TraitValidationError(self.name, msg)
+
+        # we need to extend the expected frames with Handles
+        if handles_frame_start is not None:
+            expected_frames.extend(
+                range(
+                    min(frames) - handles_frame_start, min(frames) + 1))
+
+        if handles_frame_end is not None:
+            expected_frames.extend(
+                range(
+                    max(frames), max(frames) + handles_frame_end + 1))
+
         if set(frames) != set(expected_frames):
             msg = (
                 "Frame list does not match the expected frames. "

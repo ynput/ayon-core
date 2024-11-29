@@ -1,6 +1,7 @@
 """Defines the base trait model and representation."""
 from __future__ import annotations
 
+import contextlib
 import inspect
 import re
 import sys
@@ -49,7 +50,7 @@ class Representation:
         representation_id (str): Representation ID.
 
     """
-    _data: dict
+    _data: dict[str, T]
     _module_blacklist: ClassVar[list[str]] = [
         "_", "builtins", "pydantic",
     ]
@@ -59,6 +60,70 @@ class Representation:
     def __hash__(self):
         """Return hash of the representation ID."""
         return hash(self.representation_id)
+
+    def __getitem__(self, key: str) -> T:
+        """Get the trait by ID.
+
+        Args:
+            key (str): Trait ID.
+
+        Returns:
+            TraitBase: Trait instance.
+
+        Raises:
+            MissingTraitError: If the trait is not found.
+
+        """
+        return self.get_trait_by_id(key)
+
+    def __setitem__(self, key: str, value: T) -> None:
+        """Set the trait by ID.
+
+        Args:
+            key (str): Trait ID.
+            value (TraitBase): Trait instance.
+
+        """
+        with contextlib.suppress(KeyError):
+            self._data.pop(key)
+
+        self.add_trait(value)
+
+    def __delitem__(self, key: str) -> None:
+        """Remove the trait by ID.
+
+        Args:
+            key (str): Trait ID.
+
+        Raises:
+            ValueError: If the trait is not found.
+
+        """
+        self.remove_trait_by_id(key)
+
+    def __contains__(self, key: str) -> bool:
+        """Check if the trait exists by ID.
+
+        Args:
+            key (str): Trait ID.
+
+        Returns:
+            bool: True if the trait exists, False otherwise.
+
+        """
+        return self.contains_trait_by_id(key)
+
+    def __iter__(self):
+        """Return the trait ID iterator."""
+        return iter(self._data)
+
+    def __str__(self):
+        """Return the representation name."""
+        return self.name
+
+    def items(self) -> dict[str, T]:
+        """Return the traits as items."""
+        return self._data.items()
 
     def add_trait(self, trait: TraitBase, *, exists_ok: bool=False) -> None:
         """Add a trait to the Representation.
@@ -365,7 +430,7 @@ class Representation:
         match = re.search(version_regex, trait_id)
         return int(match[1]) if match else None
 
-    def __eq__(self, other: Representation) -> bool:  # noqa: PLR0911
+    def __eq__(self, other: object) -> bool:  # noqa: PLR0911
         """Check if the representation is equal to another.
 
         Args:
@@ -375,10 +440,10 @@ class Representation:
             bool: True if the representations are equal, False otherwise.
 
         """
-        if self.representation_id != other.representation_id:
+        if not isinstance(other, Representation):
             return False
 
-        if not isinstance(other, Representation):
+        if self.representation_id != other.representation_id:
             return False
 
         if self.name != other.name:
@@ -393,9 +458,6 @@ class Representation:
                 return False
             if trait != other._data[trait_id]:
                 return False
-            for key, value in trait.model_dump().items():
-                if value != other._data[trait_id].model_dump().get(key):
-                    return False
 
         return True
 
@@ -618,4 +680,5 @@ class Representation:
             bool: True if the representation is valid, False otherwise.
 
         """
-        return all(trait.validate(self) for trait in self._data.values())
+        for trait in self._data.values():
+            trait.validate(self)
