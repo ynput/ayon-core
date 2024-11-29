@@ -499,8 +499,10 @@ class ProductsModel(QtGui.QStandardItemModel):
             version_item.version_id
             for version_item in last_version_by_product_id.values()
         }
-        repre_count_by_version_id = self._controller.get_versions_representation_count(
-            project_name, version_ids
+        repre_count_by_version_id = (
+            self._controller.get_versions_representation_count(
+                project_name, version_ids
+            )
         )
         sync_availability_by_version_id = (
             self._controller.get_version_sync_availability(
