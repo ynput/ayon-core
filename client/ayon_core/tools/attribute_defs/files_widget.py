@@ -522,7 +522,7 @@ class FilesProxyModel(QtCore.QSortFilterProxyModel):
 
 
 class ItemWidget(QtWidgets.QWidget):
-    context_menu_requested = QtCore.Signal(QtCore.QPoint)
+    context_menu_requested = QtCore.Signal(QtCore.QPoint, bool)
 
     def __init__(
         self, item_id, label, pixmap_icon, is_sequence, multivalue, parent=None
@@ -589,7 +589,7 @@ class ItemWidget(QtWidgets.QWidget):
     def _on_actions_clicked(self):
         pos = self._split_btn.rect().bottomLeft()
         point = self._split_btn.mapToGlobal(pos)
-        self.context_menu_requested.emit(point)
+        self.context_menu_requested.emit(point, False)
 
 
 class InViewButton(IconButton):
