@@ -239,6 +239,18 @@ class LoaderController(BackendLoaderController, FrontendLoaderController):
             project_name, thumbnail_id
         )
 
+    def get_folder_product_group_names(
+        self, project_name, folder_ids
+    ):
+        product_items = self.get_product_items(
+            project_name=project_name,
+            folder_ids=folder_ids)
+        product_groups = {
+            product_item.group_name for product_item in product_items
+        }
+        product_groups.discard(None)
+        return product_groups
+
     def change_products_group(self, project_name, product_ids, group_name):
         self._products_model.change_products_group(
             project_name, product_ids, group_name
