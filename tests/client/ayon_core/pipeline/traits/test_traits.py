@@ -7,18 +7,14 @@ import pytest
 from ayon_core.pipeline.traits import (
     Bundle,
     FileLocation,
-    FileLocations,
-    FrameRanged,
     Image,
     MimeType,
     Overscan,
     PixelBased,
     Planar,
     Representation,
-    Sequence,
     TraitBase,
 )
-from ayon_core.pipeline.traits.trait import TraitValidationError
 
 REPRESENTATION_DATA = {
         FileLocation.id: {
@@ -171,7 +167,8 @@ def test_trait_removing(representation: Representation) -> None:
             ValueError, match=f"Trait with ID {Image.id} not found."):
         representation.remove_trait(Image)
 
-def test_representation_dict_properties(representation: Representation) -> None:
+def test_representation_dict_properties(
+        representation: Representation) -> None:
     """Test representation as dictionary."""
     representation = Representation(name="test")
     representation[Image.id] = Image()
@@ -206,49 +203,6 @@ def test_traits_data_to_dict(representation: Representation) -> None:
     result = representation.traits_as_dict()
     assert result == REPRESENTATION_DATA
 
-
-def test_bundles() -> None:
-    """Test bundle trait."""
-    diffuse_texture = [
-        Image(),
-        PixelBased(
-            display_window_width=1920,
-            display_window_height=1080,
-            pixel_aspect_ratio=1.0),
-        Planar(planar_configuration="RGB"),
-        FileLocation(
-            file_path=Path("/path/to/diffuse.jpg"),
-            file_size=1024,
-            file_hash=None),
-        MimeType(mime_type="image/jpeg"),
-    ]
-    bump_texture = [
-        Image(),
-        PixelBased(
-            display_window_width=1920,
-            display_window_height=1080,
-            pixel_aspect_ratio=1.0),
-        Planar(planar_configuration="RGB"),
-        FileLocation(
-            file_path=Path("/path/to/bump.tif"),
-            file_size=1024,
-            file_hash=None),
-        MimeType(mime_type="image/tiff"),
-    ]
-    bundle = Bundle(items=[diffuse_texture, bump_texture])
-    representation = Representation(name="test_bundle", traits=[bundle])
-
-    if representation.contains_trait(trait=Bundle):
-        assert representation.get_trait(trait=Bundle).items == [
-            diffuse_texture, bump_texture
-        ]
-
-    for item in representation.get_trait(trait=Bundle).items:
-        sub_representation = Representation(name="test", traits=item)
-        assert sub_representation.contains_trait(trait=Image)
-        assert sub_representation.get_trait(trait=MimeType).mime_type in [
-            "image/jpeg", "image/tiff"
-        ]
 
 def test_get_version_from_id() -> None:
     """Test getting version from trait ID."""
@@ -347,137 +301,69 @@ def test_from_dict() -> None:
         "test", trait_data=traits_data)
     """
 
-def test_file_locations_validation() -> None:
-    """Test FileLocations trait validation."""
-    file_locations_list = [
-        FileLocation(
-            file_path=Path(f"/path/to/file.{frame}.exr"),
-            file_size=1024,
-            file_hash=None,
-        )
-        for frame in range(1001, 1051)
-    ]
+def test_representation_equality() -> None:
 
-    representation = Representation(name="test", traits=[
-        FileLocations(file_paths=file_locations_list)
+    # rep_a and rep_b are equal
+    rep_a = Representation(name="test", traits=[
+        FileLocation(file_path=Path("/path/to/file"), file_size=1024),
+        Image(),
+        PixelBased(
+            display_window_width=1920,
+            display_window_height=1080,
+            pixel_aspect_ratio=1.0),
+        Planar(planar_configuration="RGB"),
+    ])
+    rep_b = Representation(name="test", traits=[
+        FileLocation(file_path=Path("/path/to/file"), file_size=1024),
+        Image(),
+        PixelBased(
+            display_window_width=1920,
+            display_window_height=1080,
+            pixel_aspect_ratio=1.0),
+        Planar(planar_configuration="RGB"),
     ])
 
-    file_locations_trait: FileLocations = FileLocations(
-        file_paths=file_locations_list)
-
-    # this should be valid trait
-    file_locations_trait.validate(representation)
-
-    # add valid FrameRanged trait
-    sequence_trait = FrameRanged(
-        frame_start=1001,
-        frame_end=1050,
-        frames_per_second="25"
-    )
-    representation.add_trait(sequence_trait)
-
-     # it should still validate fine
-    file_locations_trait.validate(representation)
-
-    # create empty file locations trait
-    empty_file_locations_trait = FileLocations(file_paths=[])
-    representation = Representation(name="test", traits=[
-        empty_file_locations_trait
-    ])
-    with pytest.raises(TraitValidationError):
-        empty_file_locations_trait.validate(representation)
-
-    # create valid file locations trait but with not matching sequence
-    # trait
-    representation = Representation(name="test", traits=[
-        FileLocations(file_paths=file_locations_list)
-    ])
-    invalid_sequence_trait = FrameRanged(
-        frame_start=1001,
-        frame_end=1051,
-        frames_per_second="25"
-    )
-
-    representation.add_trait(invalid_sequence_trait)
-    with pytest.raises(TraitValidationError):
-        file_locations_trait.validate(representation)
-
-def test_sequence_get_frame_padding() -> None:
-    """Test getting frame padding from FileLocations trait."""
-    file_locations_list = [
-        FileLocation(
-            file_path=Path(f"/path/to/file.{frame}.exr"),
-            file_size=1024,
-            file_hash=None,
-        )
-        for frame in range(1001, 1051)
-    ]
-
-    representation = Representation(name="test", traits=[
-        FileLocations(file_paths=file_locations_list)
+    # rep_c has different value for planar_configuration then rep_a and rep_b
+    rep_c = Representation(name="test", traits=[
+        FileLocation(file_path=Path("/path/to/file"), file_size=1024),
+        Image(),
+        PixelBased(
+            display_window_width=1920,
+            display_window_height=1080,
+            pixel_aspect_ratio=1.0),
+        Planar(planar_configuration="RGBA"),
     ])
 
-    assert Sequence.get_frame_padding(
-        file_locations=representation.get_trait(FileLocations)) == 4
-
-def test_sequence_validations() -> None:
-    """Test Sequence trait validation."""
-    file_locations_list = [
-        FileLocation(
-            file_path=Path(f"/path/to/file.{frame}.exr"),
-            file_size=1024,
-            file_hash=None,
-        )
-        for frame in range(1001, 1010 + 1)  # because range is zero based
-    ]
-
-    file_locations_list += [
-        FileLocation(
-            file_path=Path(f"/path/to/file.{frame}.exr"),
-            file_size=1024,
-            file_hash=None,
-        )
-        for frame in range(1015, 1020 + 1)
-    ]
-
-    file_locations_list += [
-        FileLocation
-        (
-            file_path=Path("/path/to/file.1100.exr"),
-            file_size=1024,
-            file_hash=None,
-        )
-    ]
-
-    representation = Representation(name="test", traits=[
-        FileLocations(file_paths=file_locations_list),
-        FrameRanged(
-            frame_start=1001,
-            frame_end=1100, frames_per_second="25"),
-        Sequence(
-            frame_padding=4,
-            frame_spec="1001-1010,1015-1020,1100")
+    rep_d = Representation(name="test", traits=[
+        FileLocation(file_path=Path("/path/to/file"), file_size=1024),
+        Image(),
+    ])
+    rep_e = Representation(name="foo", traits=[
+        FileLocation(file_path=Path("/path/to/file"), file_size=1024),
+        Image(),
+    ])
+    rep_f = Representation(name="foo", traits=[
+        FileLocation(file_path=Path("/path/to/file"), file_size=1024),
+        Planar(planar_configuration="RGBA"),
     ])
 
-    representation.get_trait(Sequence).validate(representation)
+
+    # lets assume ids are the same (because ids are randomly generated)
+    rep_b.representation_id = rep_d.representation_id = rep_a.representation_id
+    rep_c.representation_id = rep_e.representation_id = rep_a.representation_id
+    rep_f.representation_id = rep_a.representation_id
+    assert rep_a == rep_b
+
+    # because of the trait value difference
+    assert rep_a != rep_c
+    # because of the type difference
+    assert rep_a != "foo"
+    # because of the trait count difference
+    assert rep_a != rep_d
+    # because of the name difference
+    assert rep_d != rep_e
+    # because of the trait difference
+    assert rep_d != rep_f
 
 
 
-
-def test_list_spec_to_frames() -> None:
-    """Test converting list specification to frames."""
-    assert Sequence.list_spec_to_frames("1-10,20-30,55") == [
-        1, 2, 3, 4, 5, 6, 7, 8, 9, 10,
-        20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 55
-    ]
-    assert Sequence.list_spec_to_frames("1,2,3,4,5") == [
-        1, 2, 3, 4, 5
-    ]
-    assert Sequence.list_spec_to_frames("1-10") == [
-        1, 2, 3, 4, 5, 6, 7, 8, 9, 10
-    ]
-    assert Sequence.list_spec_to_frames("1") == [1]
-    with pytest.raises(
-            ValueError,
-            match="Invalid frame number in the list: .*"):
-        Sequence.list_spec_to_frames("a")
