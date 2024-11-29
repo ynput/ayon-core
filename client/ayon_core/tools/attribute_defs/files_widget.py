@@ -254,7 +254,7 @@ class FilesModel(QtGui.QStandardItemModel):
         """Make sure that removed items are removed from items mapping.
 
         Connected with '_on_insert'. When user drag item and drop it to same
-        view the item is actually removed and creted again but it happens in
+        view the item is actually removed and created again but it happens in
         inner calls of Qt.
         """
 
