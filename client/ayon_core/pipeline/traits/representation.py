@@ -430,7 +430,7 @@ class Representation:
         match = re.search(version_regex, trait_id)
         return int(match[1]) if match else None
 
-    def __eq__(self, other: Representation) -> bool:  # noqa: PLR0911
+    def __eq__(self, other: object) -> bool:  # noqa: PLR0911
         """Check if the representation is equal to another.
 
         Args:
@@ -440,10 +440,10 @@ class Representation:
             bool: True if the representations are equal, False otherwise.
 
         """
-        if self.representation_id != other.representation_id:
+        if not isinstance(other, Representation):
             return False
 
-        if not isinstance(other, Representation):
+        if self.representation_id != other.representation_id:
             return False
 
         if self.name != other.name:
@@ -458,9 +458,6 @@ class Representation:
                 return False
             if trait != other._data[trait_id]:
                 return False
-            for key, value in trait.model_dump().items():
-                if value != other._data[trait_id].model_dump().get(key):
-                    return False
 
         return True
 
@@ -683,4 +680,5 @@ class Representation:
             bool: True if the representation is valid, False otherwise.
 
         """
-        return all(trait.validate(self) for trait in self._data.values())
+        for trait in self._data.values():
+            trait.validate(self)
