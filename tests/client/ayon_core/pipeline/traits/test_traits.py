@@ -25,15 +25,18 @@ REPRESENTATION_DATA = {
             "file_path": Path("/path/to/file"),
             "file_size": 1024,
             "file_hash": None,
+            "persitent": True,
         },
-        Image.id: {},
+        Image.id: {"persitent": True},
         PixelBased.id: {
             "display_window_width": 1920,
             "display_window_height": 1080,
             "pixel_aspect_ratio": 1.0,
+            "persitent": True,
         },
         Planar.id: {
             "planar_configuration": "RGB",
+            "persitent": True,
         },
     }
 
@@ -168,6 +171,16 @@ def test_trait_removing(representation: Representation) -> None:
             ValueError, match=f"Trait with ID {Image.id} not found."):
         representation.remove_trait(Image)
 
+def test_representation_dict_properties(representation: Representation) -> None:
+    """Test representation as dictionary."""
+    representation = Representation(name="test")
+    representation[Image.id] = Image()
+    assert Image.id in representation
+    image = representation[Image.id]
+    assert image == Image()
+    for trait_id, trait in representation.items():
+        assert trait_id == Image.id
+        assert trait == Image()
 
 
 def test_getting_traits_data(representation: Representation) -> None:
