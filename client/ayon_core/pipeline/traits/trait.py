@@ -10,6 +10,7 @@ from pydantic import (
     AliasGenerator,
     BaseModel,
     ConfigDict,
+    Field,
 )
 
 if TYPE_CHECKING:
@@ -31,6 +32,10 @@ class TraitBase(ABC, BaseModel):
             serialization_alias=pydantic.alias_generators.to_camel,
         )
     )
+
+    persitent: bool = Field(
+        default=True, title="Persitent",
+        description="Whether the trait is persistent (integrated) or not.")
 
     @property
     @abstractmethod
