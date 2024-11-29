@@ -1,6 +1,8 @@
 """Content traits for the pipeline."""
 from __future__ import annotations
 
+import contextlib
+
 # TC003 is there because Path in TYPECHECKING will fail in tests
 from pathlib import Path  # noqa: TC003
 from typing import ClassVar, Optional
@@ -8,7 +10,7 @@ from typing import ClassVar, Optional
 from pydantic import Field
 
 from .representation import Representation
-from .time import FrameRanged, Sequence
+from .time import FrameRanged, Handles, Sequence
 from .trait import (
     MissingTraitError,
     TraitBase,
@@ -125,20 +127,55 @@ class FileLocations(TraitBase):
                 # If there are no file paths, we can't validate
                 msg = "No file locations defined (empty list)"
                 raise TraitValidationError(self.name, msg)
+        if representation.contains_trait(FrameRanged):
+            self._validate_frame_range(representation)
 
+    def _validate_frame_range(self, representation: Representation) -> None:
+        """Validate the frame range against the file paths.
+
+        If the representation contains a FrameRanged trait, this method will
+        validate the frame range against the file paths. If the frame range
+        does not match the file paths, the trait is invalid. It takes into
+        account the Handles and Sequence traits.
+
+        Args:
+            representation (Representation): Representation to validate.
+
+        Raises:
+            TraitValidationError: If the trait is invalid within the
+                representation.
+
+        """
         tmp_frame_ranged: FrameRanged = get_sequence_from_files(
                     [f.file_path for f in self.file_paths])
 
         frames_from_spec = None
-        try:
+        with contextlib.suppress(MissingTraitError):
             sequence: Sequence = representation.get_trait(Sequence)
             if sequence.frame_spec:
                 frames_from_spec: list[int] = sequence.get_frame_list(
                     self, sequence.frame_regex)
 
-        except MissingTraitError:
-            # If there is no sequence trait, we can't validate it
-            pass
+        frame_start_with_handles, frame_end_with_handles = \
+            self._get_frame_info_with_handles(representation, frames_from_spec)
+
+        if frame_start_with_handles \
+                and tmp_frame_ranged.frame_start != frame_start_with_handles:
+            # If the detected frame range does not match the combined
+            # FrameRanged and Handles trait, the
+            # trait is invalid.
+            msg = (
+                f"Frame range defined by {self.name} "
+                f"({tmp_frame_ranged.frame_start}-"
+                f"{tmp_frame_ranged.frame_end}) "
+                "in files does not match "
+                "frame range "
+                f"({frame_start_with_handles}-"
+                f"{frame_end_with_handles}) defined in FrameRanged trait."
+            )
+
+            raise TraitValidationError(self.name, msg)
+
         if frames_from_spec:
             if len(frames_from_spec) != len(self.file_paths) :
                 # If the number of file paths does not match the frame range,
@@ -155,40 +192,94 @@ class FileLocations(TraitBase):
             # the rest is validated by Sequence validators.
             return
 
+        length_with_handles: int = (
+            frame_end_with_handles - frame_start_with_handles + 1
+        )
 
-        if len(self.file_paths) - 1 != \
-                    tmp_frame_ranged.frame_end - tmp_frame_ranged.frame_start:
+        if len(self.file_paths) != length_with_handles:
                 # If the number of file paths does not match the frame range,
                 # the trait is invalid
                 msg = (
-                    f"Number of file locations ({len(self.file_paths) - 1}) "
+                    f"Number of file locations ({len(self.file_paths)}) "
                     "does not match frame range "
-                    f"({tmp_frame_ranged.frame_end - tmp_frame_ranged.frame_start})"  # noqa: E501
+                    f"({length_with_handles})"
                 )
                 raise TraitValidationError(self.name, msg)
 
-        try:
-            frame_ranged: FrameRanged = representation.get_trait(FrameRanged)
+        frame_ranged: FrameRanged = representation.get_trait(FrameRanged)
 
-            if frame_ranged.frame_start != tmp_frame_ranged.frame_start or \
-                    frame_ranged.frame_end != tmp_frame_ranged.frame_end:
-                # If the frame range does not match the sequence trait, the
-                # trait is invalid. Note that we don't check the frame rate
-                # because it is not stored in the file paths and is not
-                # determined by `get_sequence_from_files`.
-                msg = (
-                    "Frame range "
-                    f"({frame_ranged.frame_start}-{frame_ranged.frame_end}) "
-                    "in sequence trait does not match "
-                    "frame range "
-                    f"({tmp_frame_ranged.frame_start}-{tmp_frame_ranged.frame_end}) "  # noqa: E501
-                    "defined in files."
-                )
-                raise TraitValidationError(self.name, msg)
+        if frame_start_with_handles != tmp_frame_ranged.frame_start or \
+                frame_end_with_handles != tmp_frame_ranged.frame_end:
+            # If the frame range does not match the FrameRanged trait, the
+            # trait is invalid. Note that we don't check the frame rate
+            # because it is not stored in the file paths and is not
+            # determined by `get_sequence_from_files`.
+            msg = (
+                "Frame range "
+                f"({frame_ranged.frame_start}-{frame_ranged.frame_end}) "
+                "in sequence trait does not match "
+                "frame range "
+                f"({tmp_frame_ranged.frame_start}-"
+                f"{tmp_frame_ranged.frame_end}) "
+            )
+            raise TraitValidationError(self.name, msg)
 
-        except MissingTraitError:
-            # If there is no frame_ranged trait, we can't validate it
-            pass
+    def _get_frame_info_with_handles(
+            self,
+            representation: Representation,
+            frames_from_spec: list[int]) -> tuple[int, int]:
+        """Get the frame range with handles from the representation.
+
+        This will return frame start and frame end with handles calculated
+        in if there actually is the Handles trait in the representation.
+
+        Args:
+            representation (Representation): Representation to get the frame
+                range from.
+            frames_from_spec (list[int]): List of frames from the frame spec.
+                This list is modified in place to take into
+                account the handles.
+
+        Mutates:
+            frames_from_spec: List of frames from the frame spec.
+
+        Returns:
+            tuple[int, int]: Start and end frame with handles.
+
+        """
+        frame_start = frame_end = 0
+        frame_start_handle = frame_end_handle = 0
+        # If there is no sequence trait, we can't validate it
+        if frames_from_spec and representation.contains_trait(FrameRanged):
+            # if there is no FrameRanged trait (but really there should be)
+            # we can use the frame range from the frame spec
+            frame_start = min(frames_from_spec)
+            frame_end = max(frames_from_spec)
+
+        # Handle the frame range
+        with contextlib.suppress(MissingTraitError):
+            frame_start = representation.get_trait(FrameRanged).frame_start
+            frame_end = representation.get_trait(FrameRanged).frame_end
+
+        # Handle the handles :P
+        with contextlib.suppress(MissingTraitError):
+            handles: Handles = representation.get_trait(Handles)
+            if not handles.inclusive:
+                # if handless are exclusive, we need to adjust the frame range
+                frame_start_handle = handles.frame_start_handle
+                frame_end_handle = handles.frame_end_handle
+                if frames_from_spec:
+                    frames_from_spec.extend(
+                        range(frame_start - frame_start_handle, frame_start)
+                    )
+                    frames_from_spec.extend(
+                        range(frame_end + 1, frame_end_handle + frame_end + 1)
+                    )
+
+        frame_start_with_handles = frame_start - frame_start_handle
+        frame_end_with_handles = frame_end + frame_end_handle
+
+        return frame_start_with_handles, frame_end_with_handles
 
 
 class RootlessLocation(TraitBase):
