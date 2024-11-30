@@ -131,13 +131,12 @@ class FileLocations(TraitBase):
         if representation.contains_trait(FrameRanged):
             self._validate_frame_range(representation)
         if not representation.contains_trait(Sequence) \
-                and not representation.contains_trait(Bundle) \
                 and not representation.contains_trait(UDIM):
-            # we have multiple files, but it is not a sequence or bundle
+            # we have multiple files, but it is not a sequence
             # or UDIM tile set what it it then? If the files are not related
             # to each other then this representation is invalid.
             msg = (
-                 "Multiple file locations defined, but no Sequence or Bundle "
+                 "Multiple file locations defined, but no Sequence "
                  "or UDIM trait defined. If the files are not related to "
                  "each other, the representation is invalid."
             )
@@ -351,28 +350,22 @@ class Bundle(TraitBase):
 
     This model list of independent Representation traits
     that are bundled together. This is useful for representing
-    a collection of representations that are part of a single
-    entity.
+    a collection of sub-entities that are part of a single
+    entity. You can easily reconstruct representations from
+    the bundle.
 
     Example::
 
             Bundle(
                 items=[
                     [
-                        Representation(
-                            traits=[
-                                MimeType(mime_type="image/jpeg"),
-                                FileLocation(file_path="/path/to/file.jpg")
-                            ]
-                        )
+                        MimeType(mime_type="image/jpeg"),
+                        FileLocation(file_path="/path/to/file.jpg")
                     ],
                     [
-                        Representation(
-                            traits=[
-                                MimeType(mime_type="image/png"),
-                                FileLocation(file_path="/path/to/file.png")
-                            ]
-                        )
+
+                        MimeType(mime_type="image/png"),
+                        FileLocation(file_path="/path/to/file.png")
                     ]
                 ]
             )
