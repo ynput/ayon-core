@@ -302,7 +302,7 @@ def test_from_dict() -> None:
     """
 
 def test_representation_equality() -> None:
-
+    """Test representation equality."""
     # rep_a and rep_b are equal
     rep_a = Representation(name="test", traits=[
         FileLocation(file_path=Path("/path/to/file"), file_size=1024),
