@@ -82,13 +82,13 @@ def test_sequence_validations() -> None:
     # do the same but set handles as exclusive
     representation = Representation(name="test_3", traits=[
         FileLocations(file_paths=[
-        FileLocation(
-            file_path=Path(f"/path/to/file.{frame}.exr"),
-            file_size=1024,
-            file_hash=None,
-        )
-        for frame in range(996, 1105 + 1)  # because range is zero based
-    ]),
+            FileLocation(
+                file_path=Path(f"/path/to/file.{frame}.exr"),
+                file_size=1024,
+                file_hash=None,
+            )
+            for frame in range(996, 1105 + 1)  # because range is zero based
+        ]),
         Handles(
             frame_start_handle=5,
             frame_end_handle=5,

@@ -16,6 +16,7 @@ from .trait import (
     TraitBase,
     TraitValidationError,
 )
+from .two_dimensional import UDIM
 from .utils import get_sequence_from_files
 
 
@@ -130,14 +131,15 @@ class FileLocations(TraitBase):
         if representation.contains_trait(FrameRanged):
             self._validate_frame_range(representation)
         if not representation.contains_trait(Sequence) \
-                and not representation.contains_trait(Bundle):
+                and not representation.contains_trait(Bundle) \
+                and not representation.contains_trait(UDIM):
             # we have multiple files, but it is not a sequence or bundle
-            # what it it then? If the files are not related to each other
-            # then this representation is invalid.
+            # or UDIM tile set what it it then? If the files are not related
+            # to each other then this representation is invalid.
             msg = (
                  "Multiple file locations defined, but no Sequence or Bundle "
-                 "trait defined. If the files are not related to each other, "
-                 "the representation is invalid."
+                 "or UDIM trait defined. If the files are not related to "
+                 "each other, the representation is invalid."
             )
             raise TraitValidationError(self.name, msg)
 
