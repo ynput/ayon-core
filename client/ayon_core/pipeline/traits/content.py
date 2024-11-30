@@ -129,6 +129,17 @@ class FileLocations(TraitBase):
                 raise TraitValidationError(self.name, msg)
         if representation.contains_trait(FrameRanged):
             self._validate_frame_range(representation)
+        if not representation.contains_trait(Sequence) \
+                and not representation.contains_trait(Bundle):
+            # we have multiple files, but it is not a sequence or bundle
+            # what it it then? If the files are not related to each other
+            # then this representation is invalid.
+            msg = (
+                 "Multiple file locations defined, but no Sequence or Bundle "
+                 "trait defined. If the files are not related to each other, "
+                 "the representation is invalid."
+            )
+            raise TraitValidationError(self.name, msg)
 
     def _validate_frame_range(self, representation: Representation) -> None:
         """Validate the frame range against the file paths.

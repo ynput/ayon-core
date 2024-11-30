@@ -14,6 +14,7 @@ from ayon_core.pipeline.traits import (
     PixelBased,
     Planar,
     Representation,
+    Sequence,
 )
 from ayon_core.pipeline.traits.trait import TraitValidationError
 
@@ -74,7 +75,8 @@ def test_file_locations_validation() -> None:
     ]
 
     representation = Representation(name="test", traits=[
-        FileLocations(file_paths=file_locations_list)
+        FileLocations(file_paths=file_locations_list),
+        Sequence(frame_padding=4),
     ])
 
     file_locations_trait: FileLocations = FileLocations(
@@ -84,12 +86,12 @@ def test_file_locations_validation() -> None:
     file_locations_trait.validate(representation)
 
     # add valid FrameRanged trait
-    sequence_trait = FrameRanged(
+    frameranged_trait = FrameRanged(
         frame_start=1001,
         frame_end=1050,
         frames_per_second="25"
     )
-    representation.add_trait(sequence_trait)
+    representation.add_trait(frameranged_trait)
 
      # it should still validate fine
     file_locations_trait.validate(representation)
@@ -102,10 +104,11 @@ def test_file_locations_validation() -> None:
     with pytest.raises(TraitValidationError):
         empty_file_locations_trait.validate(representation)
 
-    # create valid file locations trait but with not matching sequence
-    # trait
+    # create valid file locations trait but with not matching
+    # frame range trait
     representation = Representation(name="test", traits=[
-        FileLocations(file_paths=file_locations_list)
+        FileLocations(file_paths=file_locations_list),
+        Sequence(frame_padding=4),
     ])
     invalid_sequence_trait = FrameRanged(
         frame_start=1001,
@@ -117,3 +120,22 @@ def test_file_locations_validation() -> None:
     with pytest.raises(TraitValidationError):
         file_locations_trait.validate(representation)
 
+    # invalid representation with mutliple file locations but
+    # unrelated to either Sequence or Bundle traits
+    representation = Representation(name="test", traits=[
+        FileLocations(file_paths=[
+            FileLocation(
+                file_path=Path("/path/to/file_foo.exr"),
+                file_size=1024,
+                file_hash=None,
+            ),
+            FileLocation(
+                file_path=Path("/path/to/anotherfile.obj"),
+                file_size=1234,
+                file_hash=None,
+            )
+        ])
+    ])
+
+    with pytest.raises(TraitValidationError):
+        representation.validate()
