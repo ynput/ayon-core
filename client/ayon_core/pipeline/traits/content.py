@@ -2,10 +2,11 @@
 from __future__ import annotations
 
 import contextlib
+import re
 
 # TC003 is there because Path in TYPECHECKING will fail in tests
 from pathlib import Path  # noqa: TC003
-from typing import ClassVar, Optional
+from typing import ClassVar, Generator, Optional
 
 from pydantic import Field
 
@@ -108,6 +109,51 @@ class FileLocations(TraitBase):
     description: ClassVar[str] = "FileLocations Trait Model"
     id: ClassVar[str] = "ayon.content.FileLocations.v1"
     file_paths: list[FileLocation] = Field(..., title="File Path")
+
+    def get_files(self) -> Generator[Path, None, None]:
+        """Get all file paths from the trait.
+
+        This method will return all file paths from the trait.
+
+        Yeilds:
+            Path: List of file paths.
+
+        """
+        for file_location in self.file_paths:
+            yield file_location.file_path
+
+    def get_file_for_frame(
+            self,
+            frame: int,
+            sequence_trait: Optional[Sequence] = None,
+            ) -> Optional[FileLocation]:
+        """Get file location for a frame.
+
+        This method will return the file location for a given frame. If the
+        frame is not found in the file paths, it will return None.
+
+        Args:
+            frame (int): Frame to get the file location for.
+            sequence_trait (Sequence): Sequence trait to get the
+                frame range specs from.
+
+        Returns:
+            Optional[FileLocation]: File location for the frame.
+
+        """
+        frame_regex = r"\.(?P<frame>(?P<padding>0*)\d+)\.\D+\d?$"
+        if sequence_trait and sequence_trait.frame_regex:
+            frame_regex = sequence_trait.frame_regex
+
+        re.compile(frame_regex)
+
+        for file_path in self.get_files():
+            result = re.search(frame_regex, file_path.name)
+            if result:
+                frame_index = int(result.group("frame"))
+                if frame_index == frame:
+                    return file_path
+        return None
 
     def validate(self, representation: Representation) -> None:
         """Validate the trait.
