@@ -144,7 +144,7 @@ class FileLocations(TraitBase):
         if sequence_trait and sequence_trait.frame_regex:
             frame_regex = sequence_trait.frame_regex
 
-        re.compile(frame_regex)
+        frame_regex = re.compile(frame_regex)
         for location in self.file_paths:
             result = re.search(frame_regex, location.file_path.name)
             if result:
