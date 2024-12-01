@@ -140,8 +140,9 @@ def test_file_locations_validation() -> None:
     with pytest.raises(TraitValidationError):
         representation.validate()
 
-def test_get_file_from_frame() -> None:
-    """Test get_file_from_frame method."""
+
+def test_get_file_location_from_frame() -> None:
+    """Test get_file_location_from_frame method."""
     file_locations_list = [
         FileLocation(
             file_path=Path(f"/path/to/file.{frame}.exr"),
@@ -154,11 +155,11 @@ def test_get_file_from_frame() -> None:
     file_locations_trait: FileLocations = FileLocations(
         file_paths=file_locations_list)
 
-    assert file_locations_trait.get_file_for_frame(frame=1001) == \
-        file_locations_list[0].file_path
-    assert file_locations_trait.get_file_for_frame(frame=1050) == \
-        file_locations_list[-1].file_path
-    assert file_locations_trait.get_file_for_frame(frame=1100) is None
+    assert file_locations_trait.get_file_location_for_frame(frame=1001) == \
+        file_locations_list[0]
+    assert file_locations_trait.get_file_location_for_frame(frame=1050) == \
+        file_locations_list[-1]
+    assert file_locations_trait.get_file_location_for_frame(frame=1100) is None
 
     # test with custom regex
     sequence = Sequence(
@@ -176,6 +177,6 @@ def test_get_file_from_frame() -> None:
     file_locations_trait: FileLocations = FileLocations(
         file_paths=file_locations_list)
 
-    assert file_locations_trait.get_file_for_frame(
+    assert file_locations_trait.get_file_location_for_frame(
         frame=1001, sequence_trait=sequence) == \
-            file_locations_list[0].file_path
+            file_locations_list[0]
