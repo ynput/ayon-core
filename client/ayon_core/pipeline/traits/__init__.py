@@ -23,7 +23,11 @@ from .time import (
     SMPTETimecode,
     Static,
 )
-from .trait import MissingTraitError, TraitBase
+from .trait import (
+    MissingTraitError,
+    TraitBase,
+    TraitValidationError,
+)
 from .two_dimensional import (
     UDIM,
     Deep,
@@ -41,6 +45,7 @@ __all__ = [
     "Representation",
     "TraitBase",
     "MissingTraitError",
+    "TraitValidationError",
 
     # content
     "Bundle",
