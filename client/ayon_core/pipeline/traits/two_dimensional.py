@@ -170,3 +170,20 @@ class UDIM(TraitBase):
                 if udim_index == udim:
                     return location
         return None
+
+    def get_udim_from_file_location(
+            self, file_location: FileLocation) -> Optional[int]:
+        """Get UDIM from file location.
+
+        Args:
+            file_location (FileLocation): File location.
+
+        Returns:
+            Optional[int]: UDIM value.
+
+        """
+        pattern = re.compile(self.udim_regex)
+        result = re.search(pattern, file_location.file_path.name)
+        if result:
+            return int(result.group("udim"))
+        return None

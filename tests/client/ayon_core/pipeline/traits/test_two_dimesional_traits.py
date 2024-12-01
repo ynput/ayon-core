@@ -41,3 +41,22 @@ def test_get_file_location_for_udim() -> None:
         file_locations=representation.get_trait(FileLocations),
         udim=1001
     ) == file_locations_list[0]
+
+def test_get_udim_from_file_location() -> None:
+    """Test get_udim_from_file_location."""
+    file_location_1 = FileLocation(
+        file_path=Path("/path/to/file.1001.exr"),
+        file_size=1024,
+        file_hash=None,
+    )
+
+    file_location_2 = FileLocation(
+        file_path=Path("/path/to/file.xxxxx.exr"),
+        file_size=1024,
+        file_hash=None,
+    )
+    assert UDIM(udim=[1001]).get_udim_from_file_location(
+        file_location_1) == 1001
+
+    assert UDIM(udim=[1001]).get_udim_from_file_location(
+        file_location_2) is None
