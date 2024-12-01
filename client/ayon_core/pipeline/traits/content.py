@@ -126,7 +126,7 @@ class FileLocations(TraitBase):
             self,
             frame: int,
             sequence_trait: Optional[Sequence] = None,
-            ) -> Optional[FileLocation]:
+            ) -> Optional[Path]:
         """Get file location for a frame.
 
         This method will return the file location for a given frame. If the
@@ -138,7 +138,7 @@ class FileLocations(TraitBase):
                 frame range specs from.
 
         Returns:
-            Optional[FileLocation]: File location for the frame.
+            Optional[Path]: File location for the frame.
 
         """
         frame_regex = r"\.(?P<frame>(?P<padding>0*)\d+)\.\D+\d?$"
