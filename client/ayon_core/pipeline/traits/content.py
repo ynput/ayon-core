@@ -82,7 +82,6 @@ class FileLocation(TraitBase):
         file_hash (str): File hash.
 
     """
-
     name: ClassVar[str] = "FileLocation"
     description: ClassVar[str] = "FileLocation Trait Model"
     id: ClassVar[str] = "ayon.content.FileLocation.v1"
@@ -122,11 +121,11 @@ class FileLocations(TraitBase):
         for file_location in self.file_paths:
             yield file_location.file_path
 
-    def get_file_for_frame(
+    def get_file_location_for_frame(
             self,
             frame: int,
             sequence_trait: Optional[Sequence] = None,
-            ) -> Optional[Path]:
+        ) -> Optional[FileLocation]:
         """Get file location for a frame.
 
         This method will return the file location for a given frame. If the
@@ -138,7 +137,7 @@ class FileLocations(TraitBase):
                 frame range specs from.
 
         Returns:
-            Optional[Path]: File location for the frame.
+            Optional[FileLocation]: File location for the frame.
 
         """
         frame_regex = r"\.(?P<frame>(?P<padding>0*)\d+)\.\D+\d?$"
@@ -146,13 +145,12 @@ class FileLocations(TraitBase):
             frame_regex = sequence_trait.frame_regex
 
         re.compile(frame_regex)
-
-        for file_path in self.get_files():
-            result = re.search(frame_regex, file_path.name)
+        for location in self.file_paths:
+            result = re.search(frame_regex, location.file_path.name)
             if result:
                 frame_index = int(result.group("frame"))
                 if frame_index == frame:
-                    return file_path
+                    return location
         return None
 
     def validate(self, representation: Representation) -> None:
