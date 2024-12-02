@@ -9,7 +9,7 @@ on:
 
 jobs:
   validate-type-label:
-    uses: ynput/ops-repo-automation/.github/workflows/validate_pr_labels.yml@develop
+    uses: ynput/ops-repo-automation/.github/workflows/validate_pr_labels.yml@main
     with:
       repo: "${{ github.repository }}"
       pull_request_number: ${{ github.event.pull_request.number }}
