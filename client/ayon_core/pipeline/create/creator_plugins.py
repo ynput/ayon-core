@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING, Optional, Dict, Any
 from abc import ABC, abstractmethod
 
 from ayon_core.settings import get_project_settings
-from ayon_core.lib import Logger
+from ayon_core.lib import Logger, get_version_from_path
 from ayon_core.pipeline.plugin_discover import (
     discover,
     register_plugin,
@@ -860,6 +860,14 @@ class Creator(BaseCreator):
         else:
             template_data = {}
 
+        # TODO: confirm feature
+        anatomy_data_settings = self.project_settings["core"]["publish"]["CollectAnatomyInstanceData"]
+        follow_workfile_version = anatomy_data_settings["follow_workfile_version"]
+        if follow_workfile_version:
+            current_workfile = self.create_context.get_current_workfile_path()
+            workfile_version = get_version_from_path(current_workfile)
+            template_data = {"version": int(workfile_version)}
+
         staging_dir_info = get_staging_dir_info(
             create_ctx.get_current_project_entity(),
             create_ctx.get_current_folder_entity(),
@@ -877,12 +885,15 @@ class Creator(BaseCreator):
         if not staging_dir_info:
             return None
 
-        staging_dir_path = staging_dir_info["stagingDir"]
+        staging_dir_path = staging_dir_info.dir
 
         # path might be already created by get_staging_dir_info
         os.makedirs(staging_dir_path, exist_ok=True)
 
-        instance.transient_data.update(staging_dir_info)
+        instance.transient_data.update({
+            "stagingDir": staging_dir_path,
+            "stagingDir_persistent": staging_dir_info.persistent,
+        })
 
         self.log.info(f"Applied staging dir to instance: {staging_dir_path}")
 

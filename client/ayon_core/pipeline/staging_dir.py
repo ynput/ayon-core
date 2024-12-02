@@ -1,9 +1,14 @@
+from collections import namedtuple
+
 from ayon_core.lib import Logger, filter_profiles, StringTemplate
 from ayon_core.settings import get_project_settings
 
 from .template_data import get_template_data
 from .anatomy import Anatomy
 from .tempdir import get_temp_dir
+
+
+StagingDir = namedtuple("StagingDir", ["dir", "persistent"])
 
 
 def get_staging_dir_config(
@@ -144,7 +149,7 @@ def get_staging_dir_info(
         suffix (Optional[str]): Optional suffix for staging dir name.
 
     Returns:
-        Optional[Dict[str, Any]]: Staging dir info data
+        Optional[StagingDir]: Staging dir info data
 
     """
     task_entity = task_entity or {}
@@ -195,24 +200,24 @@ def get_staging_dir_info(
     )
 
     if staging_dir_config:
-        return {
-            "stagingDir": StringTemplate.format_template(
+        return StagingDir(
+            StringTemplate.format_template(
                 str(staging_dir_config["template"]["directory"]),
                 ctx_data
             ),
-            "stagingDir_persistent": staging_dir_config["persistence"],
-        }
+            staging_dir_config["persistence"],
+        )
 
     # no config found but force an output
     if always_return_path:
-        return {
-            "stagingDir": get_temp_dir(
+        return StagingDir(
+            get_temp_dir(
                 project_name=project_entity["name"],
                 anatomy=anatomy,
                 prefix=prefix,
                 suffix=suffix,
             ),
-            "stagingDir_persistent": False,
-        }
+            False,
+        )
 
     return None
