@@ -861,8 +861,9 @@ class Creator(BaseCreator):
             template_data = {}
 
         # TODO: confirm feature
-        anatomy_data_settings = self.project_settings["core"]["publish"]["CollectAnatomyInstanceData"]
-        follow_workfile_version = anatomy_data_settings["follow_workfile_version"]
+        publish_settings = self.project_settings["core"]["publish"]
+        anatomy_settings = publish_settings["CollectAnatomyInstanceData"]
+        follow_workfile_version = anatomy_settings["follow_workfile_version"]
         if follow_workfile_version:
             current_workfile = self.create_context.get_current_workfile_path()
             workfile_version = get_version_from_path(current_workfile)
