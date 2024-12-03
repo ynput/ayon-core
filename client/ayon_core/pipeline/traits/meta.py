@@ -51,3 +51,25 @@ class TemplatePath(TraitBase):
     id: ClassVar[str] = "ayon.meta.TemplatePath.v1"
     template: str = Field(..., title="Template Path")
     data: dict = Field(..., title="Formatting Data")
+
+class Variant(TraitBase):
+    """Variant trait model.
+
+    This model represents a variant of the representation.
+
+    Example::
+
+        Variant(variant="high")
+        Variant(variant="prores444)
+
+    Attributes:
+        name (str): Trait name.
+        description (str): Trait description.
+        id (str): id should be namespaced trait name with version
+        variant (str): Variant name.
+    """
+
+    name: ClassVar[str] = "Variant"
+    description: ClassVar[str] = "Variant Trait Model"
+    id: ClassVar[str] = "ayon.meta.Variant.v1"
+    variant: str = Field(..., title="Variant")
