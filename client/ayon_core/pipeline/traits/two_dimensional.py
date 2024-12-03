@@ -1,10 +1,15 @@
 """Two-dimensional image traits."""
-from typing import ClassVar
+from __future__ import annotations
 
-from pydantic import Field
+import re
+from typing import TYPE_CHECKING, ClassVar, Optional
+
+from pydantic import Field, field_validator
 
 from .trait import TraitBase
 
+if TYPE_CHECKING:
+    from .content import FileLocation, FileLocations
 
 class Image(TraitBase):
     """Image trait model.
@@ -129,4 +134,56 @@ class UDIM(TraitBase):
     name: ClassVar[str] = "UDIM"
     description: ClassVar[str] = "UDIM Trait"
     id: ClassVar[str] = "ayon.2d.UDIM.v1"
-    udim: int = Field(..., title="UDIM")
+    udim: list[int] = Field(..., title="UDIM")
+    udim_regex: Optional[str] = Field(
+        r"(?:\.|_)(?P<udim>\d+)\.\D+\d?$", title="UDIM Regex")
+
+    @field_validator("udim_regex")
+    @classmethod
+    def validate_frame_regex(cls, v: Optional[str]) -> str:
+        """Validate udim regex."""
+        if v is not None and "?P<udim>" not in v:
+            msg = "UDIM regex must include 'udim' named group"
+            raise ValueError(msg)
+        return v
+
+    def get_file_location_for_udim(
+            self,
+            file_locations: FileLocations,
+            udim: int,
+        ) -> Optional[FileLocation]:
+        """Get file location for UDIM.
+
+        Args:
+            file_locations (FileLocations): File locations.
+            udim (int): UDIM value.
+
+        Returns:
+            Optional[FileLocation]: File location.
+
+        """
+        pattern = re.compile(self.udim_regex)
+        for location in file_locations.file_paths:
+            result = re.search(pattern, location.file_path.name)
+            if result:
+                udim_index = int(result.group("udim"))
+                if udim_index == udim:
+                    return location
+        return None
+
+    def get_udim_from_file_location(
+            self, file_location: FileLocation) -> Optional[int]:
+        """Get UDIM from file location.
+
+        Args:
+            file_location (FileLocation): File location.
+
+        Returns:
+            Optional[int]: UDIM value.
+
+        """
+        pattern = re.compile(self.udim_regex)
+        result = re.search(pattern, file_location.file_path.name)
+        if result:
+            return int(result.group("udim"))
+        return None

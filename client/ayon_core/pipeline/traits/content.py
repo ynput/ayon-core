@@ -2,10 +2,11 @@
 from __future__ import annotations
 
 import contextlib
+import re
 
 # TC003 is there because Path in TYPECHECKING will fail in tests
 from pathlib import Path  # noqa: TC003
-from typing import ClassVar, Optional
+from typing import ClassVar, Generator, Optional
 
 from pydantic import Field
 
@@ -81,7 +82,6 @@ class FileLocation(TraitBase):
         file_hash (str): File hash.
 
     """
-
     name: ClassVar[str] = "FileLocation"
     description: ClassVar[str] = "FileLocation Trait Model"
     id: ClassVar[str] = "ayon.content.FileLocation.v1"
@@ -109,6 +109,50 @@ class FileLocations(TraitBase):
     id: ClassVar[str] = "ayon.content.FileLocations.v1"
     file_paths: list[FileLocation] = Field(..., title="File Path")
 
+    def get_files(self) -> Generator[Path, None, None]:
+        """Get all file paths from the trait.
+
+        This method will return all file paths from the trait.
+
+        Yeilds:
+            Path: List of file paths.
+
+        """
+        for file_location in self.file_paths:
+            yield file_location.file_path
+
+    def get_file_location_for_frame(
+            self,
+            frame: int,
+            sequence_trait: Optional[Sequence] = None,
+        ) -> Optional[FileLocation]:
+        """Get file location for a frame.
+
+        This method will return the file location for a given frame. If the
+        frame is not found in the file paths, it will return None.
+
+        Args:
+            frame (int): Frame to get the file location for.
+            sequence_trait (Sequence): Sequence trait to get the
+                frame range specs from.
+
+        Returns:
+            Optional[FileLocation]: File location for the frame.
+
+        """
+        frame_regex = r"\.(?P<frame>(?P<padding>0*)\d+)\.\D+\d?$"
+        if sequence_trait and sequence_trait.frame_regex:
+            frame_regex = sequence_trait.frame_regex
+
+        frame_regex = re.compile(frame_regex)
+        for location in self.file_paths:
+            result = re.search(frame_regex, location.file_path.name)
+            if result:
+                frame_index = int(result.group("frame"))
+                if frame_index == frame:
+                    return location
+        return None
+
     def validate(self, representation: Representation) -> None:
         """Validate the trait.
 
@@ -131,13 +175,12 @@ class FileLocations(TraitBase):
         if representation.contains_trait(FrameRanged):
             self._validate_frame_range(representation)
         if not representation.contains_trait(Sequence) \
-                and not representation.contains_trait(Bundle) \
                 and not representation.contains_trait(UDIM):
-            # we have multiple files, but it is not a sequence or bundle
+            # we have multiple files, but it is not a sequence
             # or UDIM tile set what it it then? If the files are not related
             # to each other then this representation is invalid.
             msg = (
-                 "Multiple file locations defined, but no Sequence or Bundle "
+                 "Multiple file locations defined, but no Sequence "
                  "or UDIM trait defined. If the files are not related to "
                  "each other, the representation is invalid."
             )
@@ -351,28 +394,22 @@ class Bundle(TraitBase):
 
     This model list of independent Representation traits
     that are bundled together. This is useful for representing
-    a collection of representations that are part of a single
-    entity.
+    a collection of sub-entities that are part of a single
+    entity. You can easily reconstruct representations from
+    the bundle.
 
     Example::
 
             Bundle(
                 items=[
                     [
-                        Representation(
-                            traits=[
-                                MimeType(mime_type="image/jpeg"),
-                                FileLocation(file_path="/path/to/file.jpg")
-                            ]
-                        )
+                        MimeType(mime_type="image/jpeg"),
+                        FileLocation(file_path="/path/to/file.jpg")
                     ],
                     [
-                        Representation(
-                            traits=[
-                                MimeType(mime_type="image/png"),
-                                FileLocation(file_path="/path/to/file.png")
-                            ]
-                        )
+
+                        MimeType(mime_type="image/png"),
+                        FileLocation(file_path="/path/to/file.png")
                     ]
                 ]
             )
