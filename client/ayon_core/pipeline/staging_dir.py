@@ -1,6 +1,6 @@
-from collections import namedtuple
+from dataclasses import dataclass
 
-from ayon_core.lib import Logger, filter_profiles, StringTemplate
+from ayon_core.lib import Logger, filter_profiles
 from ayon_core.settings import get_project_settings
 
 from .template_data import get_template_data
@@ -42,7 +42,7 @@ def get_staging_dir_config(
         Dict or None: Data with directory template and is_persistent or None
 
     Raises:
-        ValueError - if misconfigured template should be used
+        KeyError - if misconfigured template should be used
 
     """
     settings = project_settings or get_project_settings(project_name)
@@ -129,12 +129,12 @@ def get_staging_dir_info(
     If `prefix` or `suffix` is not set, default values will be used.
 
     Arguments:
-        host_name (str): Name of host.
         project_entity (Dict[str, Any]): Project entity.
         folder_entity (Optional[Dict[str, Any]]): Folder entity.
         task_entity (Optional[Dict[str, Any]]): Task entity.
         product_type (str): Type of product.
         product_name (str): Name of product.
+        host_name (str): Name of host.
         anatomy (Optional[Anatomy]): Anatomy object.
         project_settings (Optional[Dict[str, Any]]): Prepared project settings.
         template_data (Optional[Dict[str, Any]]): Additional data for
@@ -184,6 +184,7 @@ def get_staging_dir_info(
     # add additional template formatting data
     if template_data:
         ctx_data.update(template_data)
+
     task_name = task_type = None
     if task_entity:
         task_name = task_entity["name"]

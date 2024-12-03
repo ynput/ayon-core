@@ -710,7 +710,7 @@ def get_instance_staging_dir(instance):
         always_return_path=True,
     )
 
-    staging_dir_path = staging_dir_info.dir
+    staging_dir_path = staging_dir_info.directory
 
     # path might be already created by get_staging_dir_info
     os.makedirs(staging_dir_path, exist_ok=True)
