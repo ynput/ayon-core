@@ -8,7 +8,10 @@ from .anatomy import Anatomy
 from .tempdir import get_temp_dir
 
 
-StagingDir = namedtuple("StagingDir", ["dir", "persistent"])
+@dataclass
+class StagingDir:
+    directory: str
+    persistent: bool
 
 
 def get_staging_dir_config(
@@ -78,10 +81,9 @@ def get_staging_dir_config(
 
     if not template:
         # template should always be found either from anatomy or from profile
-        raise ValueError(
-            "Staging dir profile is misconfigured! "
-            f"No template was found for profile: {profile}! "
-            "Check your project settings at: "
+        raise KeyError(
+            f"Staging template '{template_name}' was not found."
+            "Check project anatomy or settings at: "
             "'ayon+settings://core/tools/publish/custom_staging_dir_profiles'"
         )
 
@@ -98,10 +100,8 @@ def _validate_template_name(project_name, template_name, anatomy):
     """
     if template_name not in anatomy.templates["staging"]:
         raise ValueError(
-            (
-                'Anatomy of project "{}" does not have set'
-                ' "{}" template key at Staging Dir section!'
-            ).format(project_name, template_name)
+            f'Anatomy of project "{project_name}" does not have set'
+            f' "{template_name}" template key at Staging Dir category!'
         )
 
 
@@ -131,14 +131,14 @@ def get_staging_dir_info(
     Arguments:
         host_name (str): Name of host.
         project_entity (Dict[str, Any]): Project entity.
-        folder_entity (Dict[str, Any]): Folder entity.
-        task_entity (Dict[str, Any]): Task entity.
+        folder_entity (Optional[Dict[str, Any]]): Folder entity.
+        task_entity (Optional[Dict[str, Any]]): Task entity.
         product_type (str): Type of product.
         product_name (str): Name of product.
-        anatomy (ayon_core.pipeline.Anatomy): Anatomy object.
+        anatomy (Optional[Anatomy]): Anatomy object.
         project_settings (Optional[Dict[str, Any]]): Prepared project settings.
-        template_data (Optional[Dict[str, Any]]): Data for formatting staging
-            dir template.
+        template_data (Optional[Dict[str, Any]]): Additional data for
+            formatting staging dir template.
         always_return_path (Optional[bool]): If True, staging dir will be
             created as tempdir if no staging dir profile is found. Input value
             False will return None if no staging dir profile is found.
@@ -152,7 +152,6 @@ def get_staging_dir_info(
         Optional[StagingDir]: Staging dir info data
 
     """
-    task_entity = task_entity or {}
     log = logger or Logger.get_logger("get_staging_dir_info")
 
     if anatomy is None:
@@ -185,12 +184,16 @@ def get_staging_dir_info(
     # add additional template formatting data
     if template_data:
         ctx_data.update(template_data)
+    task_name = task_type = None
+    if task_entity:
+        task_name = task_entity["name"]
+        task_type = task_entity["taskType"]
 
     # get staging dir config
     staging_dir_config = get_staging_dir_config(
         project_entity["name"],
-        task_entity.get("taskType"),
-        task_entity.get("name"),
+        task_type,
+        task_name ,
         product_type,
         product_name,
         host_name,
@@ -200,11 +203,9 @@ def get_staging_dir_info(
     )
 
     if staging_dir_config:
+        dir_template = staging_dir_config["template"]["directory"]
         return StagingDir(
-            StringTemplate.format_template(
-                str(staging_dir_config["template"]["directory"]),
-                ctx_data
-            ),
+            dir_template.format_strict(ctx_data),
             staging_dir_config["persistence"],
         )
 

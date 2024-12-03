@@ -36,7 +36,8 @@ def get_temp_dir(
         str: Path to staging dir of instance.
 
     """
-    prefix = prefix or "ay_tmp_"
+    if prefix is None:
+        prefix = "ay_tmp_"
     suffix = suffix or ""
 
     if use_local_temp:
