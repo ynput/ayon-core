@@ -916,7 +916,7 @@ class SceneInventoryView(QtWidgets.QTreeView):
             item_ids
         )
         container_ids_by_project_name = collections.defaultdict(set)
-        for container_id, container_item in container_items_by_id.values():
+        for container_id, container_item in container_items_by_id.items():
             project_name = container_item.project_name
             container_ids_by_project_name[project_name].add(container_id)
 
