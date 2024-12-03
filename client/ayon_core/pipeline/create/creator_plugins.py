@@ -833,17 +833,15 @@ class Creator(BaseCreator):
         """
         return self.pre_create_attr_defs
 
-    def apply_staging_dir(self, instance):
-        """Apply staging dir with persistence to instance's transient data.
-
-        Method is called on instance creation and on instance update.
+    def get_staging_dir(self, instance):
+        """Return the staging dir and persistence from instance.
 
         Args:
             instance (CreatedInstance): Instance for which should be staging
-                dir applied.
+                dir gathered.
 
         Returns:
-            Optional[str]: Staging dir path or None if not applied.
+            Optional[namedtuple]: Staging dir path and persistence or None
         """
         create_ctx = self.create_context
         product_name = instance.get("productName")
@@ -852,25 +850,32 @@ class Creator(BaseCreator):
 
         # this can only work if product name and folder path are available
         if not product_name or not folder_path:
-            return
+            return None
 
-        version = instance.get("version")
-        if version is not None:
-            template_data = {"version": version}
-        else:
-            template_data = {}
-
-        # TODO: confirm feature
         publish_settings = self.project_settings["core"]["publish"]
         follow_workfile_version = (
             publish_settings
             ["CollectAnatomyInstanceData"]
             ["follow_workfile_version"]
         )
-        if follow_workfile_version:
+
+        # Gather version number provided from the instance.
+        version = instance.get("version")
+
+        # If follow workfile, gather version from workfile path.
+        if version is None and follow_workfile_version:
             current_workfile = self.create_context.get_current_workfile_path()
             workfile_version = get_version_from_path(current_workfile)
-            template_data = {"version": int(workfile_version)}
+            version = int(workfile_version)
+
+        # Fill-up version with next version available.
+        elif version is None:
+            versions = self.get_next_versions_for_instances(
+                [instance]
+            )
+            version, = tuple(versions.values())
+
+        template_data = {"version": version}
 
         staging_dir_info = get_staging_dir_info(
             create_ctx.get_current_project_entity(),
@@ -886,12 +891,26 @@ class Creator(BaseCreator):
             template_data=template_data,
         )
 
-        if not staging_dir_info:
+        return staging_dir_info or None
+
+    def apply_staging_dir(self, instance):
+        """Apply staging dir with persistence to instance's transient data.
+
+        Method is called on instance creation and on instance update.
+
+        Args:
+            instance (CreatedInstance): Instance for which should be staging
+                dir applied.
+
+        Returns:
+            Optional[str]: Staging dir path or None if not applied.
+        """
+        staging_dir_info = self.get_staging_dir(instance)
+        if staging_dir_info is None:
             return None
 
-        staging_dir_path = staging_dir_info.dir
-
         # path might be already created by get_staging_dir_info
+        staging_dir_path = staging_dir_info.directory
         os.makedirs(staging_dir_path, exist_ok=True)
 
         instance.transient_data.update({
