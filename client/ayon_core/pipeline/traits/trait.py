@@ -33,8 +33,8 @@ class TraitBase(ABC, BaseModel):
         )
     )
 
-    persitent: bool = Field(
-        default=True, title="Persitent",
+    persistent: bool = Field(
+        default=True, title="Persistent",
         description="Whether the trait is persistent (integrated) or not.")
 
     @property
