@@ -862,8 +862,11 @@ class Creator(BaseCreator):
 
         # TODO: confirm feature
         publish_settings = self.project_settings["core"]["publish"]
-        anatomy_settings = publish_settings["CollectAnatomyInstanceData"]
-        follow_workfile_version = anatomy_settings["follow_workfile_version"]
+        follow_workfile_version = (
+            publish_settings
+            ["CollectAnatomyInstanceData"]
+            ["follow_workfile_version"]
+        )
         if follow_workfile_version:
             current_workfile = self.create_context.get_current_workfile_path()
             workfile_version = get_version_from_path(current_workfile)
@@ -871,8 +874,8 @@ class Creator(BaseCreator):
 
         staging_dir_info = get_staging_dir_info(
             create_ctx.get_current_project_entity(),
-            create_ctx.get_current_folder_entity(),
-            create_ctx.get_current_task_entity(),
+            create_ctx.get_folder_entity(folder_path),
+            create_ctx.get_task_entity(folder_path, instance.get("task")),
             product_type,
             product_name,
             create_ctx.host_name,
