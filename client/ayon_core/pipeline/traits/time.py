@@ -6,7 +6,7 @@ from enum import Enum, auto
 from typing import TYPE_CHECKING, ClassVar, Optional
 
 import clique
-from pydantic import Field
+from pydantic import Field, field_validator
 
 from .trait import MissingTraitError, TraitBase, TraitValidationError
 
@@ -118,7 +118,7 @@ class Sequence(TraitBase):
             sequence.
         frame_padding (int): Frame padding.
         frame_regex (str): Frame regex - regular expression to match
-            frame numbers.
+            frame numbers. Must include 'frame' named group.
         frame_spec (str): Frame list specification of frames. This takes
             string like "1-10,20-30,40-50" etc.
 
@@ -131,6 +131,15 @@ class Sequence(TraitBase):
     frame_padding: int = Field(..., title="Frame Padding")
     frame_regex: Optional[str] = Field(None, title="Frame Regex")
     frame_spec: Optional[str] = Field(None, title="Frame Specification")
+
+    @field_validator("frame_regex")
+    @classmethod
+    def validate_frame_regex(cls, v: Optional[str]) -> str:
+        """Validate frame regex."""
+        if v is not None and "?P<frame>" not in v:
+            msg = "Frame regex must include 'frame' named group"
+            raise ValueError(msg)
+        return v
 
     def validate(self, representation: Representation) -> None:
         """Validate the trait."""

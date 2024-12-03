@@ -1,7 +1,10 @@
 """Integrate representations with traits."""
 from __future__ import annotations
 
+import contextlib
 import copy
+from dataclasses import dataclass
+from pathlib import Path
 from typing import TYPE_CHECKING, Any, List
 
 import pyblish.api
@@ -22,19 +25,42 @@ from ayon_core.pipeline.publish import (
     get_publish_template_name,
 )
 from ayon_core.pipeline.traits import (
+    UDIM,
+    Bundle,
     ColorManaged,
     FileLocation,
+    FileLocations,
+    FrameRanged,
+    MissingTraitError,
     Persistent,
+    PixelBased,
     Representation,
+    Sequence,
+    TemplatePath,
+    TraitValidationError,
 )
-from pipeline.traits import MissingTraitError, PixelBased
-from pipeline.traits.content import FileLocations
 
 if TYPE_CHECKING:
     import logging
-    from pathlib import Path
 
-    from pipeline import Anatomy
+    from ayon_core.pipeline import Anatomy
+
+
+@dataclass
+class TransferItem:
+    """Represents single transfer item.
+
+    Source file path, destination file path, template that was used to
+    construct the destination path, template data that was used in the
+    template, size of the file, checksum of the file.
+    """
+    source: Path
+    destination: Path
+    size: int
+    checksum: str
+    template: str
+    template_data: dict[str, Any]
+
 
 
 def get_instance_families(instance: pyblish.api.Instance) -> List[str]:
@@ -105,8 +131,12 @@ class IntegrateTraits(pyblish.api.InstancePlugin):
     order = pyblish.api.IntegratorOrder
     log: logging.Logger
 
-    def process(self, instance: pyblish.api.Instance) -> None:
+    def process(self, instance: pyblish.api.Instance) -> None:  # noqa: C901, PLR0915, PLR0912
         """Integrate representations with traits.
+
+        Todo:
+            Refactor this method to be more readable and maintainable.
+            Remove corresponding noqa codes.
 
         Args:
             instance (pyblish.api.Instance): Instance to process.
@@ -141,7 +171,8 @@ class IntegrateTraits(pyblish.api.InstancePlugin):
             return
 
         # 3) get anatomy template
-        template = self.get_template(instance)
+        anatomy: Anatomy = instance.context.data["anatomy"]
+        template: str = self.get_publish_template(instance)
 
         # 4) initialize OperationsSession()
         op_session = OperationsSession()
@@ -155,30 +186,160 @@ class IntegrateTraits(pyblish.api.InstancePlugin):
         )
         instance.data["versionEntity"] = version_entity
 
-        instance_template_data = {}
-        transfers = []
-        # handle {originalDirname} requested in the template
+        instance_template_data: dict[str, str] = {}
+        transfers: list[TransferItem] = []
+        """
+        # WIP: This is a draft of the logic that should be implemented
+        #      to handle {originalDirname} in the template
+
         if "{originalDirname}" in template:
             instance_template_data = {
                 "originalDirname": self._get_relative_to_root_original_dirname(
                     instance)
             }
+        """
         # 6.5) prepare template and data to format it
         for representation in representations:
 
-            # validate representation first
-            representation.validate()
+            # validate representation first, this will go through all traits
+            # and check if they are valid
+            try:
+                representation.validate()
+            except TraitValidationError as e:
+                msg = f"Representation '{representation.name}' is invalid: {e}"
+                raise PublishError(msg) from e
+
             template_data = self.get_template_data_from_representation(
                 representation, instance)
             # add instance based template data
             template_data.update(instance_template_data)
-            if "{originalBasename}" in template:
-                # Remove 'frame' from template data because original frame
-                # number will be used.
+            path_template_object = self.get_publish_template_object(
+                instance)["path"]
+
+            # If representation has FileLocations trait (list of files)
+            # it can be either Sequence, Bundle or UDIM tile set.
+            # We do not allow unrelated files in the single representation.
+            if representation.contains_trait(FileLocations):
+                # handle sequence
+                # note: we do not support yet frame sequence of multiple UDIM
+                # tiles in the same representation
+                if representation.contains_trait(Sequence):
+                    sequence: Sequence = representation.get_trait(Sequence)
+
+                    # get the padding from the sequence if the padding on the
+                    # template is higher, us the one from the template
+                    dst_padding = representation.get_trait(
+                        Sequence).frame_padding
+                    frames: list[int] = sequence.get_frame_list(
+                        representation.get_trait(FileLocations),
+                        regex=sequence.frame_regex)
+                    template_padding = anatomy.templates_obj.frame_padding
+                    if template_padding > dst_padding:
+                        dst_padding = template_padding
+
+                    # go through all frames in the sequence
+                    # find their corresponding file locations
+                    # format their template and add them to transfers
+                    for frame in frames:
+                        template_data["frame"] = frame
+                        template_filled = path_template_object.format_strict(
+                            template_data
+                        )
+                        file_loc: FileLocation = representation.get_trait(
+                            FileLocations).get_file_location_for_frame(
+                                frame, sequence)
+                        transfers.append(
+                            TransferItem(
+                                source=file_loc.file_path,
+                                destination=Path(template_filled),
+                                size=file_loc.file_size,
+                                checksum=file_loc.file_hash,
+                                template=template,
+                                template_data=template_data,
+                            )
+                        )
+
+                elif representation.contains_trait(UDIM) and \
+                        not representation.contains_trait(Sequence):
+                    # handle UDIM not in sequence
+                    udim: UDIM = representation.get_trait(UDIM)
+                    for file_loc in representation.get_trait(
+                            FileLocations).file_paths:
+                        template_data["udim"] = (
+                            udim.get_udim_from_file_location(file_loc)
+                        )
+                        template_filled = template.format(**template_data)
+                        transfers.append(
+                            TransferItem(
+                                source=file_loc.file_path,
+                                destination=Path(template_filled),
+                                size=file_loc.file_size,
+                                checksum=file_loc.file_hash,
+                                template=template,
+                                template_data=template_data,
+                            )
+                        )
+                else:
+                    # This should never happen because the representation
+                    # validation should catch this.
+                    msg = (
+                        "Representation contains FileLocations trait, but "
+                        "is not a Sequence or UDIM."
+                    )
+                    raise PublishError(msg)
+            elif representation.contains_trait(FileLocation):
+                # single file representation
                 template_data.pop("frame", None)
-                # WIP: use trait logic to get original frame range
-                # check if files listes in FileLocations trait match frames
-                # in sequence
+                with contextlib.suppress(MissingTraitError):
+                    udim = representation.get_trait(UDIM)
+                    template_data["udim"] = udim.udim[0]
+
+                template_filled = path_template_object.format_strict(
+                    template_data
+                )
+                file_loc: FileLocation = representation.get_trait(FileLocation)
+                transfers.append(
+                    TransferItem(
+                        source=file_loc.file_path,
+                        destination=Path(template_filled),
+                        size=file_loc.file_size,
+                        checksum=file_loc.file_hash,
+                        template=template,
+                        template_data=template_data,
+                    )
+                )
+            elif representation.contains_trait(Bundle):
+                # handle Bundle
+                # go through all files in the bundle
+                pass
+
+                # add TemplatePath trait to the representation
+            representation.add_trait(TemplatePath(
+                template=template,
+                data=template_data
+            ))
+
+            # format destination path for different types of representations
+            # in Sequence, we need to handle frame numbering, its padding and
+            # also the case where it is a UDIM sequence. Note that sequence
+            # can be non-contiguous.
+
+            # --------------------------------
+
+            # single file representation or list of non-sequential files is
+            # simple if representation contains FileLocations trait,
+            # it is a list of files. there is no hard constrain there,
+            # but those files should be of the same type ideally - described
+            # by the same traits.
+
+            if representation.contains_trait(Sequence):
+                # handle template for sequence - this is mostly about
+                # determining template data for the "udim" and for the "frame".
+                # Assumption is that the Sequence trait already has the correct
+                # frame range set. We just need to recalculate to include
+                # the handles.
+
+                ...
 
             transfers += self.get_transfers_from_representation(
                 representation, template, template_data)
@@ -270,7 +431,7 @@ class IntegrateTraits(pyblish.api.InstancePlugin):
             logger=self.log
         )
 
-    def get_template(self, instance: pyblish.api.Instance) -> str:
+    def get_publish_template(self, instance: pyblish.api.Instance) -> str:
         """Return anatomy template name to use for integration.
 
         Args:
@@ -286,6 +447,24 @@ class IntegrateTraits(pyblish.api.InstancePlugin):
         publish_template = anatomy.get_template_item("publish", template_name)
         path_template_obj = publish_template["path"]
         return path_template_obj.template.replace("\\", "/")
+
+    def get_publish_template_object(
+            self, instance: pyblish.api.Instance) -> object:
+        """Return anatomy template object to use for integration.
+
+        Note: What is the actual type of the object?
+
+        Args:
+            instance (pyblish.api.Instance): Instance to process.
+
+        Returns:
+            object: Anatomy template object
+
+        """
+        # Anatomy data is pre-filled by Collectors
+        template_name = self.get_template_name(instance)
+        anatomy = instance.context.data["anatomy"]
+        return anatomy.get_template_item("publish", template_name)
 
     def prepare_product(
             self,
@@ -586,12 +765,8 @@ class IntegrateTraits(pyblish.api.InstancePlugin):
                 template_data["resolution_height"] = representation.get_trait(
                     PixelBased).display_window_height
                 # get fps from representation traits
-                # is this the right way? Isn't it going against the
-                # trait abstraction?
-                traits = representation.get_traits()
-                for trait in traits.values():
-                    if hasattr(trait, "frames_per_second"):
-                        template_data["fps"] = trait.fps
+                template_data["fps"] = representation.get_trait(
+                    FrameRanged).frames_per_second
 
                 # Note: handle "output" and "originalBasename"
 
