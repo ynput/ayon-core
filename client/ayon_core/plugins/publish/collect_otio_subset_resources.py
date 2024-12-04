@@ -149,6 +149,7 @@ class CollectOtioSubsetResources(
 
         self.log.info(
             "frame_start-frame_end: {}-{}".format(frame_start, frame_end))
+        review_repre = None
 
         if is_sequence:
             # file sequence way
@@ -177,6 +178,11 @@ class CollectOtioSubsetResources(
             repre = self._create_representation(
                 frame_start, frame_end, collection=collection)
 
+            if "review" in instance.data["families"]:
+                review_repre = self._create_representation(
+                frame_start, frame_end, collection=collection,
+                delete=True, review=True)
+
         else:
             _trim = False
             dirname, filename = os.path.split(media_ref.target_url)
@@ -191,16 +197,25 @@ class CollectOtioSubsetResources(
             repre = self._create_representation(
                 frame_start, frame_end, file=filename, trim=_trim)
 
+            if "review" in instance.data["families"]:
+                review_repre = self._create_representation(
+                frame_start, frame_end,
+                file=filename, delete=True, review=True)
+
         instance.data["originalDirname"] = self.staging_dir
 
+        # add representation to instance data
         if repre:
             colorspace = instance.data.get("colorspace")
             # add colorspace data to representation
             self.set_representation_colorspace(
                 repre, instance.context, colorspace)
 
-            # add representation to instance data
             instance.data["representations"].append(repre)
+
+        # add review representation to instance data
+        if review_repre:
+            instance.data["representations"].append(review_repre)            
 
         self.log.debug(instance.data)
 
@@ -221,7 +236,8 @@ class CollectOtioSubsetResources(
         representation_data = {
             "frameStart": start,
             "frameEnd": end,
-            "stagingDir": self.staging_dir
+            "stagingDir": self.staging_dir,
+            "tags": [],
         }
 
         if kwargs.get("collection"):
@@ -247,8 +263,10 @@ class CollectOtioSubsetResources(
                 "frameEnd": end,
             })
 
-        if kwargs.get("trim") is True:
-            representation_data["tags"] = ["trim"]
+        for tag_name in ("trim", "delete", "review"):
+            if kwargs.get(tag_name) is True:
+                representation_data["tags"].append(tag_name)
+
         return representation_data
 
     def get_template_name(self, instance):
