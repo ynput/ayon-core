@@ -5,7 +5,7 @@ import numbers
 import warnings
 from string import Formatter
 import typing
-from typing import List, Dict, Any, Set, Optional
+from typing import List, Dict, Any, Set
 
 if typing.TYPE_CHECKING:
     from typing import Union
