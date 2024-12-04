@@ -65,11 +65,9 @@ def _create_local_staging_dir(prefix, suffix, dirpath=None):
         str: path to tempdir
     """
     # use pathlib for creating tempdir
-    staging_dir = Path(tempfile.mkdtemp(
+    return tempfile.mkdtemp(
         prefix=prefix, suffix=suffix, dir=dirpath
-    ))
-
-    return staging_dir.as_posix()
+    )
 
 
 def _create_custom_tempdir(project_name, anatomy):

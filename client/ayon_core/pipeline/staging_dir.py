@@ -173,13 +173,10 @@ def get_staging_dir_info(
     )
 
     # add additional data
-    ctx_data.update({
-        "product": {
-            "type": product_type,
-            "name": product_name
-        },
-        "root": anatomy.roots
-    })
+    ctx_data["product"] = {
+        "type": product_type,
+        "name": product_name
+    }
 
     # add additional template formatting data
     if template_data:
