@@ -292,7 +292,7 @@ class TemplatePartResult:
         # Used values stored by key with all modifirs
         #   - value is already formatted string
         #   Example: {"version:0>3": "001"}
-        self._realy_used_values = {}
+        self._really_used_values: Dict[str, Any] = {}
         # Concatenated string output after formatting
         self._output = ""
         # Is this result from optional part
@@ -314,7 +314,7 @@ class TemplatePartResult:
             if other.optional and not other.solved:
                 return
             self._used_values.update(other.used_values)
-            self._realy_used_values.update(other.realy_used_values)
+            self._really_used_values.update(other.really_used_values)
 
         else:
             raise TypeError("Cannot add data from \"{}\" to \"{}\"".format(
@@ -359,8 +359,17 @@ class TemplatePartResult:
         return self._invalid_optional_types
 
     @property
-    def realy_used_values(self):
-        return self._realy_used_values
+    def really_used_values(self) -> Dict[str, Any]:
+        return self._really_used_values
+
+    @property
+    def realy_used_values(self) -> Dict[str, Any]:
+        warnings.warn(
+            "Property 'realy_used_values' is deprecated."
+            " Use 'really_used_values' instead.",
+            DeprecationWarning
+        )
+        return self._really_used_values
 
     @property
     def used_values(self):
@@ -391,8 +400,16 @@ class TemplatePartResult:
 
         return self.split_keys_to_subdicts(new_used_values)
 
-    def add_realy_used_value(self, key, value):
-        self._realy_used_values[key] = value
+    def add_really_used_value(self, key: str, value: Any):
+        self._really_used_values[key] = value
+
+    def add_realy_used_value(self, key: str, value: Any):
+        warnings.warn(
+            "Method 'add_realy_used_value' is deprecated."
+            " Use 'add_really_used_value' instead.",
+            DeprecationWarning
+        )
+        self.add_really_used_value(key, value)
 
     def add_used_value(self, key, value):
         self._used_values[key] = value
@@ -519,8 +536,8 @@ class FormattingPart:
             result(TemplatePartResult): Object where result is stored.
         """
         key = self._template_base
-        if key in result.realy_used_values:
-            result.add_output(result.realy_used_values[key])
+        if key in result.really_used_values:
+            result.add_output(result.really_used_values[key])
             return result
 
         # ensure key is properly formed [({})] properly closed.
@@ -625,7 +642,7 @@ class FormattingPart:
                 used_value = value
             else:
                 used_value = formatted_value
-        result.add_realy_used_value(self._field_name, used_value)
+        result.add_really_used_value(self._field_name, used_value)
         result.add_used_value(used_key, used_value)
         result.add_output(formatted_value)
         return result
