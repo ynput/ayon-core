@@ -21,17 +21,17 @@ class DigitallySigned(TraitBase):
     description: ClassVar[str] = "Digitally signed trait."
 
 
-class GPGSigned(DigitallySigned):
-    """GPG signed trait.
+class PGPSigned(DigitallySigned):
+    """PGP signed trait.
 
-    This trait holds GPG signed data.
+    This trait holds PGP (RFC-4880) signed data.
 
     Attributes:
-        signature (str): GPG signature.
+        signature (str): PGP signature.
     """
-    id: ClassVar[str] = "ayon.cryptography.GPGSigned.v1"
-    name: ClassVar[str] = "GPGSigned"
-    description: ClassVar[str] = "GPG signed trait."
+    id: ClassVar[str] = "ayon.cryptography.PGPSigned.v1"
+    name: ClassVar[str] = "PGPSigned"
+    description: ClassVar[str] = "PGP signed trait."
     signed_data: str = Field(
         ...,
         description="Signed data."
