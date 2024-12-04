@@ -215,7 +215,7 @@ class CollectOtioSubsetResources(
 
         # add review representation to instance data
         if review_repre:
-            instance.data["representations"].append(review_repre)            
+            instance.data["representations"].append(review_repre)
 
         self.log.debug(instance.data)
 
