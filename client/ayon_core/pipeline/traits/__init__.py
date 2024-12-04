@@ -12,7 +12,7 @@ from .content import (
 )
 from .cryptography import DigitallySigned, GPGSigned
 from .lifecycle import Persistent, Transient
-from .meta import Tagged, TemplatePath
+from .meta import Tagged, TemplatePath, Variant
 from .representation import Representation
 from .three_dimensional import Geometry, IESProfile, Lighting, Shader, Spatial
 from .time import (
@@ -71,6 +71,7 @@ __all__ = [
     # meta
     "Tagged",
     "TemplatePath",
+    "Variant",
 
     # two-dimensional
     "Compressed",
