@@ -10,7 +10,7 @@ from .content import (
     MimeType,
     RootlessLocation,
 )
-from .cryptography import DigitallySigned, GPGSigned
+from .cryptography import DigitallySigned, PGPSigned
 from .lifecycle import Persistent, Transient
 from .meta import Tagged, TemplatePath, Variant
 from .representation import Representation
@@ -62,7 +62,7 @@ __all__ = [
 
     # cryptography
     "DigitallySigned",
-    "GPGSigned",
+    "PGPSigned",
 
     # life cycle
     "Persistent",
