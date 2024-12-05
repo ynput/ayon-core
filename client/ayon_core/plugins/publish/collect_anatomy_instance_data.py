@@ -434,6 +434,7 @@ class CollectAnatomyInstanceData(pyblish.api.ContextPlugin):
                     #   Using 'Shot' is current default behavior of editorial
                     #   (or 'newHierarchyIntegration') publishing.
                     "type": "Shot",
+                    "parents": parents,
                 },
             })
 
