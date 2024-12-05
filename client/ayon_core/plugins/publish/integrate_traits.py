@@ -20,6 +20,7 @@ from ayon_api.operations import (
     # new_representation_entity,
     new_version_entity,
 )
+from ayon_core.pipeline.anatomy.templates import AnatomyStringTemplate
 from ayon_core.pipeline.publish import (
     PublishError,
     get_publish_template_name,
@@ -38,6 +39,8 @@ from ayon_core.pipeline.traits import (
     Sequence,
     TemplatePath,
     TraitValidationError,
+    Transient,
+    Variant,
 )
 
 if TYPE_CHECKING:
@@ -46,7 +49,7 @@ if TYPE_CHECKING:
     from ayon_core.pipeline import Anatomy
 
 
-@dataclass
+@dataclass(frozen=True)
 class TransferItem:
     """Represents single transfer item.
 
@@ -61,6 +64,17 @@ class TransferItem:
     template: str
     template_data: dict[str, Any]
 
+
+@dataclass
+class TemplateItem:
+    """Represents single template item.
+
+    Template path, template data that was used in the template.
+    """
+    anatomy: Anatomy
+    template: str
+    template_data: dict[str, Any]
+    template_object: AnatomyStringTemplate
 
 
 def get_instance_families(instance: pyblish.api.Instance) -> List[str]:
@@ -131,7 +145,7 @@ class IntegrateTraits(pyblish.api.InstancePlugin):
     order = pyblish.api.IntegratorOrder
     log: logging.Logger
 
-    def process(self, instance: pyblish.api.Instance) -> None:  # noqa: C901, PLR0915, PLR0912
+    def process(self, instance: pyblish.api.Instance) -> None:
         """Integrate representations with traits.
 
         Todo:
@@ -187,17 +201,8 @@ class IntegrateTraits(pyblish.api.InstancePlugin):
         instance.data["versionEntity"] = version_entity
 
         instance_template_data: dict[str, str] = {}
-        transfers: list[TransferItem] = []
-        """
-        # WIP: This is a draft of the logic that should be implemented
-        #      to handle {originalDirname} in the template
 
-        if "{originalDirname}" in template:
-            instance_template_data = {
-                "originalDirname": self._get_relative_to_root_original_dirname(
-                    instance)
-            }
-        """
+        transfers: list[TransferItem] = []
         # 6.5) prepare template and data to format it
         for representation in representations:
 
@@ -213,144 +218,61 @@ class IntegrateTraits(pyblish.api.InstancePlugin):
                 representation, instance)
             # add instance based template data
             template_data.update(instance_template_data)
-            path_template_object = self.get_publish_template_object(
-                instance)["path"]
 
-            # If representation has FileLocations trait (list of files)
-            # it can be either Sequence, Bundle or UDIM tile set.
-            # We do not allow unrelated files in the single representation.
+            # treat Variant as `output` in template data
+            with contextlib.suppress(MissingTraitError):
+                template_data["output"] = (
+                    representation.get_trait(Variant).variant
+                )
+
+            template_item = TemplateItem(
+                anatomy=anatomy,
+                template=template,
+                template_data=template_data,
+                template_object=self.get_publish_template_object(instance)
+            )
+
             if representation.contains_trait(FileLocations):
-                # handle sequence
-                # note: we do not support yet frame sequence of multiple UDIM
+                # If representation has FileLocations trait (list of files)
+                # it can be either Sequence or UDIM tile set.
+                # We do not allow unrelated files in the single representation.
+                # Note: we do not support yet frame sequence of multiple UDIM
                 # tiles in the same representation
-                if representation.contains_trait(Sequence):
-                    sequence: Sequence = representation.get_trait(Sequence)
-
-                    # get the padding from the sequence if the padding on the
-                    # template is higher, us the one from the template
-                    dst_padding = representation.get_trait(
-                        Sequence).frame_padding
-                    frames: list[int] = sequence.get_frame_list(
-                        representation.get_trait(FileLocations),
-                        regex=sequence.frame_regex)
-                    template_padding = anatomy.templates_obj.frame_padding
-                    if template_padding > dst_padding:
-                        dst_padding = template_padding
-
-                    # go through all frames in the sequence
-                    # find their corresponding file locations
-                    # format their template and add them to transfers
-                    for frame in frames:
-                        template_data["frame"] = frame
-                        template_filled = path_template_object.format_strict(
-                            template_data
-                        )
-                        file_loc: FileLocation = representation.get_trait(
-                            FileLocations).get_file_location_for_frame(
-                                frame, sequence)
-                        transfers.append(
-                            TransferItem(
-                                source=file_loc.file_path,
-                                destination=Path(template_filled),
-                                size=file_loc.file_size,
-                                checksum=file_loc.file_hash,
-                                template=template,
-                                template_data=template_data,
-                            )
-                        )
-
-                elif representation.contains_trait(UDIM) and \
-                        not representation.contains_trait(Sequence):
-                    # handle UDIM not in sequence
-                    udim: UDIM = representation.get_trait(UDIM)
-                    for file_loc in representation.get_trait(
-                            FileLocations).file_paths:
-                        template_data["udim"] = (
-                            udim.get_udim_from_file_location(file_loc)
-                        )
-                        template_filled = template.format(**template_data)
-                        transfers.append(
-                            TransferItem(
-                                source=file_loc.file_path,
-                                destination=Path(template_filled),
-                                size=file_loc.file_size,
-                                checksum=file_loc.file_hash,
-                                template=template,
-                                template_data=template_data,
-                            )
-                        )
-                else:
-                    # This should never happen because the representation
-                    # validation should catch this.
-                    msg = (
-                        "Representation contains FileLocations trait, but "
-                        "is not a Sequence or UDIM."
-                    )
-                    raise PublishError(msg)
+                self.get_transfers_from_file_locations(
+                    representation, template_item, transfers
+                )
             elif representation.contains_trait(FileLocation):
-                # single file representation
-                template_data.pop("frame", None)
-                with contextlib.suppress(MissingTraitError):
-                    udim = representation.get_trait(UDIM)
-                    template_data["udim"] = udim.udim[0]
+                # This is just a single file representation
+                self.get_transfers_from_file_location(
+                    representation, template_item, transfers
+                )
 
-                template_filled = path_template_object.format_strict(
-                    template_data
-                )
-                file_loc: FileLocation = representation.get_trait(FileLocation)
-                transfers.append(
-                    TransferItem(
-                        source=file_loc.file_path,
-                        destination=Path(template_filled),
-                        size=file_loc.file_size,
-                        checksum=file_loc.file_hash,
-                        template=template,
-                        template_data=template_data,
-                    )
-                )
             elif representation.contains_trait(Bundle):
-                # handle Bundle
-                # go through all files in the bundle
+                # Bundle groups multiple "sub-representations" together.
+                # It has list of lists with traits, some might be
+                # FileLocations,but some might be "file-less" representations
+                # or even other bundles.
+                bundle: Bundle = representation.get_trait(Bundle)
+                for idx, sub_representation_traits in enumerate(bundle.items):
+                    sub_representation = Representation(
+                        name=f"{representation.name}_{idx}",
+                        traits=sub_representation_traits)
+                    # sub presentation transient:
+                    sub_representation.add_trait(Transient())
+                    if sub_representation.contains_trait(FileLocations):
+                        ...
+
                 pass
 
                 # add TemplatePath trait to the representation
             representation.add_trait(TemplatePath(
-                template=template,
-                data=template_data
+                template=template_item.template,
+                data=template_item.template_data
             ))
-
-            # format destination path for different types of representations
-            # in Sequence, we need to handle frame numbering, its padding and
-            # also the case where it is a UDIM sequence. Note that sequence
-            # can be non-contiguous.
-
-            # --------------------------------
-
-            # single file representation or list of non-sequential files is
-            # simple if representation contains FileLocations trait,
-            # it is a list of files. there is no hard constrain there,
-            # but those files should be of the same type ideally - described
-            # by the same traits.
-
-            if representation.contains_trait(Sequence):
-                # handle template for sequence - this is mostly about
-                # determining template data for the "udim" and for the "frame".
-                # Assumption is that the Sequence trait already has the correct
-                # frame range set. We just need to recalculate to include
-                # the handles.
-
-                ...
 
             transfers += self.get_transfers_from_representation(
                 representation, template, template_data)
 
-        # 7) Get transfers from representations
-        for representation in representations:
-            # this should test version-less FileLocation probably
-            if representation.contains_trait_by_id(
-                    FileLocation.get_versionless_id()):
-                self.log.debug(
-                    "Representation: %s", representation)
 
     def _get_relative_to_root_original_dirname(
             self, instance: pyblish.api.Instance) -> str:
@@ -449,7 +371,7 @@ class IntegrateTraits(pyblish.api.InstancePlugin):
         return path_template_obj.template.replace("\\", "/")
 
     def get_publish_template_object(
-            self, instance: pyblish.api.Instance) -> object:
+            self, instance: pyblish.api.Instance) -> AnatomyStringTemplate:
         """Return anatomy template object to use for integration.
 
         Note: What is the actual type of the object?
@@ -775,8 +697,8 @@ class IntegrateTraits(pyblish.api.InstancePlugin):
 
         return template_data
 
+    @staticmethod
     def get_transfers_from_representation(
-            self,
             representation: Representation,
             template: str,
             template_data: dict) -> list:
@@ -827,3 +749,172 @@ class IntegrateTraits(pyblish.api.InstancePlugin):
                 file_location, template, template_data)
             """
         return transfers
+
+    @staticmethod
+    def get_transfers_from_file_locations(
+            representation: Representation,
+            template_item: TemplateItem,
+            transfers: list[TransferItem]) -> None:
+        """Get transfers from FileLocations trait.
+
+        Args:
+            representation (Representation): Representation to process.
+            template_item (TemplateItem): Template item.
+            transfers (list): List of transfers.
+
+        Mutates:
+            transfers (list): List of transfers.
+            template_item (TemplateItem): Template item.
+
+        """
+        if representation.contains_trait(Sequence):
+            IntegrateTraits.get_transfers_from_sequence(
+                representation, template_item, transfers
+            )
+
+        elif representation.contains_trait(UDIM) and \
+                not representation.contains_trait(Sequence):
+            # handle UDIM not in sequence
+            IntegrateTraits.get_transfers_from_udim(
+                representation, template_item, transfers
+            )
+
+        else:
+            # This should never happen because the representation
+            # validation should catch this.
+            msg = (
+                "Representation contains FileLocations trait, but "
+                "is not a Sequence or UDIM."
+            )
+            raise PublishError(msg)
+
+
+    @staticmethod
+    def get_transfers_from_sequence(
+            representation: Representation,
+            template_item: TemplateItem,
+            transfers: list[TransferItem]
+    ) -> None:
+        """Get transfers from Sequence trait.
+
+        Args:
+            representation (Representation): Representation to process.
+            template_item (TemplateItem): Template item.
+            transfers (list): List of transfers.
+
+        Mutates:
+            transfers (list): List of transfers.
+            template_item (TemplateItem): Template item.
+
+        """
+        sequence: Sequence = representation.get_trait(Sequence)
+        path_template_object = template_item.template_object["path"]
+
+        # get the padding from the sequence if the padding on the
+        # template is higher, us the one from the template
+        dst_padding = representation.get_trait(
+            Sequence).frame_padding
+        frames: list[int] = sequence.get_frame_list(
+            representation.get_trait(FileLocations),
+            regex=sequence.frame_regex)
+        template_padding = template_item.anatomy.templates_obj.frame_padding
+        if template_padding > dst_padding:
+            dst_padding = template_padding
+
+        # go through all frames in the sequence
+        # find their corresponding file locations
+        # format their template and add them to transfers
+        for frame in frames:
+            template_item.template_data["frame"] = frame
+            template_filled = path_template_object.format_strict(
+                template_item.template_data
+            )
+            file_loc: FileLocation = representation.get_trait(
+                FileLocations).get_file_location_for_frame(
+                frame, sequence)
+            transfers.append(
+                TransferItem(
+                    source=file_loc.file_path,
+                    destination=Path(template_filled),
+                    size=file_loc.file_size,
+                    checksum=file_loc.file_hash,
+                    template=template_item.template,
+                    template_data=template_item.template_data,
+                )
+            )
+
+    @staticmethod
+    def get_transfers_from_udim(
+            representation: Representation,
+            template_item: TemplateItem,
+            transfers: list[TransferItem]
+    ) -> None:
+        """Get transfers from UDIM trait.
+
+        Args:
+            representation (Representation): Representation to process.
+            template_item (TemplateItem): Template item.
+            transfers (list): List of transfers.
+
+        Mutates:
+            transfers (list): List of transfers.
+            template_item (TemplateItem): Template item.
+
+        """
+        udim: UDIM = representation.get_trait(UDIM)
+        for file_loc in representation.get_trait(
+                FileLocations).file_paths:
+            template_item.template_data["udim"] = (
+                udim.get_udim_from_file_location(file_loc)
+            )
+            template_filled = template_item.template.format(
+                **template_item.template_data)
+            transfers.append(
+                TransferItem(
+                    source=file_loc.file_path,
+                    destination=Path(template_filled),
+                    size=file_loc.file_size,
+                    checksum=file_loc.file_hash,
+                    template=template_item.template,
+                    template_data=template_item.template_data,
+                )
+            )
+
+    @staticmethod
+    def get_transfers_from_file_location(
+            representation: Representation,
+            template_item: TemplateItem,
+            transfers: list[TransferItem]
+    ) -> None:
+        """Get transfers from FileLocation trait.
+
+        Args:
+            representation (Representation): Representation to process.
+            template_item (TemplateItem): Template item.
+            transfers (list): List of transfers.
+
+        Mutates:
+            transfers (list): List of transfers.
+            template_item (TemplateItem): Template item.
+
+        """
+        path_template_object = template_item.template_object["path"]
+        template_item.template_data.pop("frame", None)
+        with contextlib.suppress(MissingTraitError):
+            udim = representation.get_trait(UDIM)
+            template_item.template_data["udim"] = udim.udim[0]
+
+        template_filled = path_template_object.format_strict(
+            template_item.template_data
+        )
+        file_loc: FileLocation = representation.get_trait(FileLocation)
+        transfers.append(
+            TransferItem(
+                source=file_loc.file_path,
+                destination=Path(template_filled),
+                size=file_loc.file_size,
+                checksum=file_loc.file_hash,
+                template=template_item.template,
+                template_data=template_item.template_data.copy(),
+            )
+        )
