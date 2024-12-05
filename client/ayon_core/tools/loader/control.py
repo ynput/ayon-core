@@ -382,7 +382,7 @@ class LoaderController(BackendLoaderController, FrontendLoaderController):
                 try:
                     uuid.UUID(repre_id)
                     repre_ids.add(repre_id)
-                except ValueError:
+                except (ValueError, TypeError, AttributeError):
                     pass
 
             product_ids = self._products_model.get_product_ids_by_repre_ids(
