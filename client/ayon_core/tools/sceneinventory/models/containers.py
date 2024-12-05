@@ -368,8 +368,8 @@ class ContainersModel:
                 try:
                     uuid.UUID(repre_id)
                 except (ValueError, TypeError, AttributeError):
-                    # Fake not existing representation id so container is shown in UI
-                    #   but as invalid
+                    # Fake not existing representation id so container
+                    #   is shown in UI but as invalid
                     item.representation_id = invalid_ids_mapping.setdefault(
                         repre_id, uuid.uuid4().hex
                     )

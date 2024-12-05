@@ -1,5 +1,9 @@
 import ayon_api
-from ayon_core.lib import StringTemplate, filter_profiles, prepare_template_data
+from ayon_core.lib import (
+    StringTemplate,
+    filter_profiles,
+    prepare_template_data,
+)
 from ayon_core.settings import get_project_settings
 
 from .constants import DEFAULT_PRODUCT_TEMPLATE
