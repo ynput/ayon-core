@@ -43,7 +43,8 @@ class CollectHierarchy(pyblish.api.ContextPlugin):
 
             shot_data = {
                 "entity_type": "folder",
-                # WARNING unless overwritten, default folder type is hardcoded to shot
+                # WARNING unless overwritten, default folder type is hardcoded
+                #   to shot
                 "folder_type": instance.data.get("folder_type") or "Shot",
                 "tasks": instance.data.get("tasks") or {},
                 "comments": instance.data.get("comments", []),
