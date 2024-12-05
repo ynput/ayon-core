@@ -93,22 +93,27 @@ class ContainerItem:
         loader_name,
         namespace,
         object_name,
-        item_id
+        item_id,
+        project_name
     ):
         self.representation_id = representation_id
         self.loader_name = loader_name
         self.object_name = object_name
         self.namespace = namespace
         self.item_id = item_id
+        self.project_name = project_name
 
     @classmethod
-    def from_container_data(cls, container):
+    def from_container_data(cls, current_project_name, container):
         return cls(
             representation_id=container["representation"],
             loader_name=container["loader"],
             namespace=container["namespace"],
             object_name=container["objectName"],
             item_id=uuid.uuid4().hex,
+            project_name=container.get(
+                "project_name", current_project_name
+            )
         )
 
 
@@ -219,7 +224,7 @@ class ContainersModel:
             for item_id in item_ids
         }
 
-    def get_representation_info_items(self, representation_ids):
+    def get_representation_info_items(self, project_name, representation_ids):
         output = {}
         missing_repre_ids = set()
         for repre_id in representation_ids:
@@ -228,17 +233,14 @@ class ContainersModel:
             except ValueError:
                 output[repre_id] = RepresentationInfo.new_invalid()
                 continue
-
             repre_info = self._repre_info_by_id.get(repre_id)
             if repre_info is None:
                 missing_repre_ids.add(repre_id)
             else:
                 output[repre_id] = repre_info
-
         if not missing_repre_ids:
             return output
 
-        project_name = self._controller.get_current_project_name()
         repre_hierarchy_by_id = get_representations_hierarchy(
             project_name, missing_repre_ids
         )
@@ -276,10 +278,9 @@ class ContainersModel:
             output[repre_id] = repre_info
         return output
 
-    def get_version_items(self, product_ids):
+    def get_version_items(self, project_name, product_ids):
         if not product_ids:
             return {}
-
         missing_ids = {
             product_id
             for product_id in product_ids
@@ -294,7 +295,6 @@ class ContainersModel:
             def version_sorted(entity):
                 return entity["version"]
 
-            project_name = self._controller.get_current_project_name()
             version_entities_by_product_id = {
                 product_id: []
                 for product_id in missing_ids
@@ -359,9 +359,11 @@ class ContainersModel:
         containers_by_id = {}
         container_items_by_id = {}
         invalid_ids_mapping = {}
+        current_project_name = self._controller.get_current_project_name()
         for container in containers:
             try:
-                item = ContainerItem.from_container_data(container)
+                item = ContainerItem.from_container_data(
+                    current_project_name, container)
                 repre_id = item.representation_id
                 try:
                     uuid.UUID(repre_id)
