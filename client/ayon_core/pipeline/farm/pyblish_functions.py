@@ -533,10 +533,7 @@ def _get_real_files_to_render(collection, frames_to_render):
     return [
         file_name
         for file_name in file_names
-        if any(
-            f"{head_name}{frame}{collection.tail}" == file_name
-            for frame in normalized_frames_to_render
-        )
+        if file_name in normalized_filenames
     ]
 
 
