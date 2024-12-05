@@ -525,7 +525,10 @@ def _get_real_files_to_render(collection, frames_to_render):
     }
 
     head_name = os.path.basename(collection.head)
-
+    normalized_filenames = {
+        f"{head_name}{frame}{collection.tail}"
+        for frame in normalized_frames_to_render
+    }
     file_names = [os.path.basename(f) for f in collection]
     return [
         file_name
