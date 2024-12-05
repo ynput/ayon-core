@@ -199,8 +199,8 @@ class CollectOtioSubsetResources(
 
             if "review" in instance.data["families"]:
                 review_repre = self._create_representation(
-                frame_start, frame_end,
-                file=filename, delete=True, review=True)
+                    frame_start, frame_end,
+                    file=filename, delete=True, review=True)
 
         instance.data["originalDirname"] = self.staging_dir
 
