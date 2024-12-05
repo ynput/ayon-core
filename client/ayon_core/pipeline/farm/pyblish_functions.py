@@ -385,8 +385,7 @@ def prepare_representations(
         if skeleton_data.get("slate"):
             frame_start -= 1
 
-        files = _get_real_files_to_rendered(collection, frames_to_render)
-
+        files = _get_real_files_to_render(collection, frames_to_render)
         # explicitly disable review by user
         preview = preview and not do_not_add_review
         rep = {
@@ -492,31 +491,47 @@ def _get_real_frames_to_render(frames):
     return frames_to_render
 
 
-def _get_real_files_to_rendered(collection, frames_to_render):
-    """Use expected files based on real frames_to_render.
+def _get_real_files_to_render(collection, frames_to_render):
+    """Filter files with frames that should be really rendered.
 
-    Artists might explicitly set frames they want to render via Publisher UI.
-    This uses this value to filter out files
+    'expected_files' are collected from DCC based on timeline setting. This is
+    being calculated differently in each DCC. Filtering here is on single place
+
+    But artists might explicitly set frames they want to render in Publisher UI
+    This range would override and filter previously prepared expected files
+    from DCC.
+
     Args:
-        frames_to_render (list): of str '1001'
+        collection (clique.Collection): absolute paths
+        frames_to_render (list[int]): of int 1001
+    Returns:
+        (list[str])
+
+    Example:
+    --------
+
+    expectedFiles = [
+        "foo_v01.0001.exr",
+        "foo_v01.0002.exr",
+    ]
+    frames_to_render = '0001'
+    >>
+    ["foo_v01.0001.exr"] - only explicitly requested frame returned
     """
-    files = [os.path.basename(f) for f in list(collection)]
-    file_name, extracted_frame = list(collect_frames(files).items())[0]
-
-    if not extracted_frame:
-        return files
-
-    found_frame_pattern_length = len(extracted_frame)
+    found_frame_pattern_length = collection.padding
     normalized_frames_to_render = {
         str(frame_to_render).zfill(found_frame_pattern_length)
         for frame_to_render in frames_to_render
     }
 
+    head_name = os.path.basename(collection.head)
+
+    file_names = [os.path.basename(f) for f in collection]
     return [
         file_name
-        for file_name in files
+        for file_name in file_names
         if any(
-            frame in file_name
+            f"{head_name}{frame}{collection.tail}" == file_name
             for frame in normalized_frames_to_render
         )
     ]
