@@ -380,10 +380,10 @@ class ContainersModel:
                         repre_id, uuid.uuid4().hex
                     )
 
-            except Exception as e:
+            except Exception:
                 # skip item if required data are missing
-                self._controller.log_error(
-                    f"Failed to create item: {e}"
+                self._log.warning(
+                    f"Failed to create container item", exc_info=True
                 )
                 continue
 
