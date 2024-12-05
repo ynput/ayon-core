@@ -435,13 +435,10 @@ def prepare_representations(
                 " This may cause issues on farm."
             ).format(staging))
 
-        files = _get_real_files_to_rendered(
-            [os.path.basename(remainder)], frames_to_render)
-
         rep = {
             "name": ext,
             "ext": ext,
-            "files": files[0],
+            "files": os.path.basename(remainder),
             "stagingDir": staging,
         }
 
