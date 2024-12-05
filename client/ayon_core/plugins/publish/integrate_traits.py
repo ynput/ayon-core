@@ -20,7 +20,6 @@ from ayon_api.operations import (
     # new_representation_entity,
     new_version_entity,
 )
-from ayon_core.pipeline.anatomy.templates import AnatomyStringTemplate
 from ayon_core.pipeline.publish import (
     PublishError,
     get_publish_template_name,
@@ -47,6 +46,9 @@ if TYPE_CHECKING:
     import logging
 
     from ayon_core.pipeline import Anatomy
+    from ayon_core.pipeline.anatomy.templates import (
+        TemplateItem as AnatomyTemplateItem,
+    )
 
 
 @dataclass(frozen=True)
@@ -74,7 +76,7 @@ class TemplateItem:
     anatomy: Anatomy
     template: str
     template_data: dict[str, Any]
-    template_object: AnatomyStringTemplate
+    template_object: AnatomyTemplateItem
 
 
 def get_instance_families(instance: pyblish.api.Instance) -> List[str]:
@@ -145,7 +147,7 @@ class IntegrateTraits(pyblish.api.InstancePlugin):
     order = pyblish.api.IntegratorOrder
     log: logging.Logger
 
-    def process(self, instance: pyblish.api.Instance) -> None:
+    def process(self, instance: pyblish.api.Instance) -> None:  # noqa: C901
         """Integrate representations with traits.
 
         Todo:
@@ -184,8 +186,7 @@ class IntegrateTraits(pyblish.api.InstancePlugin):
                 "Instance has no persistent representations. Skipping")
             return
 
-        # 3) get anatomy template
-        anatomy: Anatomy = instance.context.data["anatomy"]
+        # 3) get template and template data
         template: str = self.get_publish_template(instance)
 
         # 4) initialize OperationsSession()
@@ -226,7 +227,7 @@ class IntegrateTraits(pyblish.api.InstancePlugin):
                 )
 
             template_item = TemplateItem(
-                anatomy=anatomy,
+                anatomy=instance.context.data["anatomy"],
                 template=template,
                 template_data=template_data,
                 template_object=self.get_publish_template_object(instance)
@@ -261,8 +262,6 @@ class IntegrateTraits(pyblish.api.InstancePlugin):
                     sub_representation.add_trait(Transient())
                     if sub_representation.contains_trait(FileLocations):
                         ...
-
-                pass
 
                 # add TemplatePath trait to the representation
             representation.add_trait(TemplatePath(
@@ -371,7 +370,7 @@ class IntegrateTraits(pyblish.api.InstancePlugin):
         return path_template_obj.template.replace("\\", "/")
 
     def get_publish_template_object(
-            self, instance: pyblish.api.Instance) -> AnatomyStringTemplate:
+            self, instance: pyblish.api.Instance) -> AnatomyTemplateItem:
         """Return anatomy template object to use for integration.
 
         Note: What is the actual type of the object?
@@ -380,7 +379,7 @@ class IntegrateTraits(pyblish.api.InstancePlugin):
             instance (pyblish.api.Instance): Instance to process.
 
         Returns:
-            object: Anatomy template object
+            AnatomyTemplateItem: Anatomy template object
 
         """
         # Anatomy data is pre-filled by Collectors
