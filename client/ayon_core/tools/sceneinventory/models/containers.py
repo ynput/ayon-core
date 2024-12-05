@@ -4,6 +4,7 @@ import collections
 import ayon_api
 from ayon_api.graphql import GraphQlQuery
 
+from ayon_core.lib import Logger
 from ayon_core.host import ILoadHost
 from ayon_core.tools.common_models.projects import StatusStates
 
@@ -196,6 +197,7 @@ class ContainersModel:
         self._container_items_by_id = {}
         self._version_items_by_product_id = {}
         self._repre_info_by_id = {}
+        self._log = Logger.get_logger("ContainersModel")
 
     def reset(self):
         self._items_cache = None
@@ -368,6 +370,10 @@ class ContainersModel:
                 try:
                     uuid.UUID(repre_id)
                 except (ValueError, TypeError, AttributeError):
+                    self._log.warning(
+                        "Container contains invalid representation id."
+                        f"\n{container}"
+                    )
                     # Fake not existing representation id so container
                     #   is shown in UI but as invalid
                     item.representation_id = invalid_ids_mapping.setdefault(
