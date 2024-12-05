@@ -350,12 +350,14 @@ class ContainersModel:
             return
 
         host = self._controller.get_host()
-        if isinstance(host, ILoadHost):
-            containers = list(host.get_containers())
-        elif hasattr(host, "ls"):
-            containers = list(host.ls())
-        else:
-            containers = []
+        containers = []
+        try:
+            if isinstance(host, ILoadHost):
+                containers = list(host.get_containers())
+            elif hasattr(host, "ls"):
+                containers = list(host.ls())
+        except Exception:
+            self._log.error("Failed to get containers", exc_info=True)
 
         container_items = []
         containers_by_id = {}
@@ -363,6 +365,9 @@ class ContainersModel:
         invalid_ids_mapping = {}
         current_project_name = self._controller.get_current_project_name()
         for container in containers:
+            if not container:
+                continue
+
             try:
                 item = ContainerItem.from_container_data(
                     current_project_name, container)
