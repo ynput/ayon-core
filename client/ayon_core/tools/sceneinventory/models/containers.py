@@ -388,7 +388,7 @@ class ContainersModel:
             except Exception:
                 # skip item if required data are missing
                 self._log.warning(
-                    f"Failed to create container item", exc_info=True
+                    "Failed to create container item", exc_info=True
                 )
                 continue
 
