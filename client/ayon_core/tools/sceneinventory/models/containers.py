@@ -230,7 +230,7 @@ class ContainersModel:
         for repre_id in representation_ids:
             try:
                 uuid.UUID(repre_id)
-            except ValueError:
+            except (ValueError, TypeError, AttributeError):
                 output[repre_id] = RepresentationInfo.new_invalid()
                 continue
             repre_info = self._repre_info_by_id.get(repre_id)
