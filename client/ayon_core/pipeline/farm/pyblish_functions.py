@@ -384,6 +384,7 @@ def prepare_representations(
         frame_end = frames_to_render[-1]
         if skeleton_data.get("slate"):
             frame_start -= 1
+            frames_to_render.insert(0, frame_start)
 
         files = _get_real_files_to_render(collection, frames_to_render)
         # explicitly disable review by user
