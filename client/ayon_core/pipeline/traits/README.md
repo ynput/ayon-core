@@ -271,13 +271,41 @@ rep = Representation.from_dict(name="image", rep_dict)
 
 ```
 
-## Future
 
-Apart of some new additions to traits if needed, there are few thing that needs to be done.
+## Addon specific traits
 
-### Traits plugin system
+Addon can define its own traits. To do so, it needs to implement `ITraits` interface:
 
-Traits are now ordinary python classes, but to extend its usability more, it would be good to
-have addon level API to expose traits defined by individual addons. This API would then be used not
-only by discovery logic but also by the AYON server that can display and work with the information
-defined by them.
+```python
+from ayon_core.pipeline.traits import TraitBase
+from ayon_core.addon import (
+    AYONAddon,
+    ITraits,
+)
+
+class MyTraitFoo(TraitBase):
+    id = "myaddon.mytrait.foo.v1"
+    name = "My Trait Foo"
+    description = "This is my trait foo"
+    persistent = True
+
+
+class MyTraitBar(TraitBase):
+    id = "myaddon.mytrait.bar.v1"
+    name = "My Trait Bar"
+    description = "This is my trait bar"
+    persistent = True
+
+    
+class MyAddon(AYONAddon, ITraits):
+    def __init__(self):
+        super().__init__()
+
+    def get_addon_traits(self):
+        return [
+            MyTraitFoo,
+            MyTraitBar,
+        ]
+
+
+```
