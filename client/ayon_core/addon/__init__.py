@@ -6,6 +6,7 @@ from .interfaces import (
     ITrayAction,
     ITrayService,
     IHostAddon,
+    ITraits,
 )
 
 from .base import (
@@ -30,6 +31,7 @@ __all__ = (
     "ITrayAction",
     "ITrayService",
     "IHostAddon",
+    "ITraits",
 
     "ProcessPreparationError",
     "ProcessContext",
