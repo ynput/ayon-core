@@ -29,7 +29,8 @@ class AddLastWorkfileToLaunchArgs(PreLaunchHook):
         "aftereffects",
         "wrap",
         "openrv",
-        "cinema4d"
+        "cinema4d",
+        "loki"
     }
     launch_types = {LaunchTypes.local}
 
