@@ -518,23 +518,14 @@ def _get_real_files_to_render(collection, frames_to_render):
     >>
     ["foo_v01.0001.exr"] - only explicitly requested frame returned
     """
-    found_frame_pattern_length = collection.padding
-    normalized_frames_to_render = {
-        str(frame_to_render).zfill(found_frame_pattern_length)
-        for frame_to_render in frames_to_render
-    }
-
-    head_name = os.path.basename(collection.head)
-    normalized_filenames = {
-        f"{head_name}{frame}{collection.tail}"
-        for frame in normalized_frames_to_render
-    }
-    file_names = [os.path.basename(f) for f in collection]
-    return [
-        file_name
-        for file_name in file_names
-        if file_name in normalized_filenames
-    ]
+    included_frames = set(collection.indexes).intersection(frames_to_render)
+    real_collection = clique.Collection(
+        collection.head,
+        collection.tail,
+        collection.padding,
+        indexes=included_frames
+    )
+    return list(real_collection)
 
 
 def create_instances_for_aov(instance, skeleton, aov_filter,
