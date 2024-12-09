@@ -525,7 +525,8 @@ def _get_real_files_to_render(collection, frames_to_render):
         collection.padding,
         indexes=included_frames
     )
-    return list(real_collection)
+    real_full_paths = list(real_collection)
+    return [os.path.basename(file_url) for file_url in real_full_paths]
 
 
 def create_instances_for_aov(instance, skeleton, aov_filter,
