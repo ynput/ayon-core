@@ -7,7 +7,7 @@ from copy import deepcopy
 import attr
 import ayon_api
 import clique
-from ayon_core.lib import Logger, collect_frames
+from ayon_core.lib import Logger
 from ayon_core.pipeline import (
     get_current_project_name,
     get_representation_path,
@@ -386,8 +386,7 @@ def prepare_representations(
             frame_start -= 1
             frames_to_render.insert(0, frame_start)
 
-        files = _get_real_files_to_rendered(collection, frames_to_render)
-
+        files = _get_real_files_to_render(collection, frames_to_render)
         # explicitly disable review by user
         preview = preview and not do_not_add_review
         rep = {
@@ -436,13 +435,10 @@ def prepare_representations(
                 " This may cause issues on farm."
             ).format(staging))
 
-        files = _get_real_files_to_rendered(
-            [os.path.basename(remainder)], frames_to_render)
-
         rep = {
             "name": ext,
             "ext": ext,
-            "files": files[0],
+            "files": os.path.basename(remainder),
             "stagingDir": staging,
         }
 
@@ -496,34 +492,42 @@ def _get_real_frames_to_render(frames):
     return frames_to_render
 
 
-def _get_real_files_to_rendered(collection, frames_to_render):
-    """Use expected files based on real frames_to_render.
+def _get_real_files_to_render(collection, frames_to_render):
+    """Filter files with frames that should be really rendered.
 
-    Artists might explicitly set frames they want to render via Publisher UI.
-    This uses this value to filter out files
+    'expected_files' are collected from DCC based on timeline setting. This is
+    being calculated differently in each DCC. Filtering here is on single place
+
+    But artists might explicitly set frames they want to render in Publisher UI
+    This range would override and filter previously prepared expected files
+    from DCC.
+
     Args:
-        frames_to_render (list): of str '1001'
-    """
-    files = [os.path.basename(f) for f in list(collection)]
-    file_name, extracted_frame = list(collect_frames(files).items())[0]
+        collection (clique.Collection): absolute paths
+        frames_to_render (list[int]): of int 1001
+    Returns:
+        (list[str])
 
-    if not extracted_frame:
-        return files
+    Example:
+    --------
 
-    found_frame_pattern_length = len(extracted_frame)
-    normalized_frames_to_render = {
-        str(frame_to_render).zfill(found_frame_pattern_length)
-        for frame_to_render in frames_to_render
-    }
-
-    return [
-        file_name
-        for file_name in files
-        if any(
-            frame in file_name
-            for frame in normalized_frames_to_render
-        )
+    expectedFiles = [
+        "foo_v01.0001.exr",
+        "foo_v01.0002.exr",
     ]
+    frames_to_render = 1
+    >>
+    ["foo_v01.0001.exr"] - only explicitly requested frame returned
+    """
+    included_frames = set(collection.indexes).intersection(frames_to_render)
+    real_collection = clique.Collection(
+        collection.head,
+        collection.tail,
+        collection.padding,
+        indexes=included_frames
+    )
+    real_full_paths = list(real_collection)
+    return [os.path.basename(file_url) for file_url in real_full_paths]
 
 
 def create_instances_for_aov(instance, skeleton, aov_filter,
