@@ -514,7 +514,7 @@ def _get_real_files_to_render(collection, frames_to_render):
         "foo_v01.0001.exr",
         "foo_v01.0002.exr",
     ]
-    frames_to_render = '0001'
+    frames_to_render = 1
     >>
     ["foo_v01.0001.exr"] - only explicitly requested frame returned
     """
