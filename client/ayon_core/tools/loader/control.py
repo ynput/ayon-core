@@ -372,17 +372,17 @@ class LoaderController(BackendLoaderController, FrontendLoaderController):
 
             repre_ids = set()
             for container in containers:
-                repre_id = container.get("representation")
-                # Ignore invalid representation ids.
-                # - invalid representation ids may be available if e.g. is
-                #   opened scene from OpenPype whe 'ObjectId' was used instead
-                #   of 'uuid'.
-                # NOTE: Server call would crash if there is any invalid id.
-                #   That would cause crash we won't get any information.
                 try:
+                    repre_id = container.get("representation")
+                    # Ignore invalid representation ids.
+                    # - invalid representation ids may be available if e.g. is
+                    #   opened scene from OpenPype whe 'ObjectId' was used
+                    #   instead of 'uuid'.
+                    # NOTE: Server call would crash if there is any invalid id.
+                    #   That would cause crash we won't get any information.
                     uuid.UUID(repre_id)
                     repre_ids.add(repre_id)
-                except ValueError:
+                except (ValueError, TypeError, AttributeError):
                     pass
 
             product_ids = self._products_model.get_product_ids_by_repre_ids(
