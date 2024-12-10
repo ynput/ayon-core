@@ -859,7 +859,7 @@ class FilesWidget(QtWidgets.QFrame):
         for row in range(self._files_proxy_model.rowCount()):
             index = self._files_proxy_model.index(row, 0)
             item_id = index.data(ITEM_ID_ROLE)
-            available_item_ids.add(index.data(ITEM_ID_ROLE))
+            available_item_ids.add(item_id)
 
         widget_ids = set(self._widgets_by_id.keys())
         for item_id in available_item_ids:
