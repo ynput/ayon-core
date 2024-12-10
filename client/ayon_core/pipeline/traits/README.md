@@ -28,10 +28,10 @@ This will be *"translated"* to similar structure in database:
     "version_id": "...",
     "files": [
         {
-            "id": ...
-            "hash": ...
+            "id": ...,
+            "hash": ...,
             "name": "foo_001.exr",
-            "path": "{root[work]}/bar/dir/foo_001.exr"
+            "path": "{root[work]}/bar/dir/foo_001.exr",
             "size": 1234,
             "hash_type": "...",
         },
@@ -39,15 +39,15 @@ This will be *"translated"* to similar structure in database:
     ],
     "attrib": {
         "path": "root/bar/dir/foo_001.exr",
-        "template": "{root[work]}/{project[name]}..."
+        "template": "{root[work]}/{project[name]}...",
     },
     "data": {
         "context": {
             "ext": "exr",
-            "root": {...}
+            "root": {...},
             ...
     },
-    "active": True"
+    "active": True
     ...
 
 }
@@ -163,6 +163,8 @@ to different packages based on their use:
 | meta | Tagged | holds list of tag strings.
 | | TemplatePath | Template consisted of tokens/keys and data to be used to resolve the template into string
 | | Variant | Used to differentiate between data variants of the same output (mp4 as h.264 and h.265 for example)
+| | KeepOriginalLocation | Marks the representation to keep the original location of the file
+| | KeepOriginalName | Marks the representation to keep the original name of the file
 | three dimensional | Spatial | Spatial information like up-axis, units and handedness.
 | | Geometry | Type trait to mark the representation as a geometry.
 | | Shader | Type trait to mark the representation as a Shader.
@@ -202,21 +204,21 @@ from ayon_core.pipeline.traits import (
     Image,
     PixelBased,
     Persistent,
-    Representation
-    Static
+    Representation,
+    Static,
 )
     
 rep = Representation(name="reference image", traits=[
     FileLocation(
         file_path=Path("/foo/bar/baz.exr"),
         file_size=1234,
-        file_hash="sha256:..."
+        file_hash="sha256:...",
     ),
     Image(),
     PixelBased(
-        display_window_width="1920",
-        display_window_height="1080",
-        pixel_aspect_ratio=1.0
+        display_window_width=1920,
+        display_window_height=1080,
+        pixel_aspect_ratio=1.0,
     ),
     Persistent(),
     Static()
@@ -237,6 +239,7 @@ To work with the resolution of such representation:
 
 try:
     width = rep.get_trait(PixelBased).display_window_width
+    # or like this:
     height = rep[PixelBased.id].display_window_height
 except MissingTraitError:
     print(f"resolution isn't set on {rep.name}")
