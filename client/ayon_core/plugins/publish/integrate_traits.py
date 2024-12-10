@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import contextlib
 import copy
+from copy import deepcopy
 from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, List
@@ -47,8 +48,8 @@ if TYPE_CHECKING:
 
     from ayon_core.pipeline import Anatomy
     from ayon_core.pipeline.anatomy.templates import (
-        TemplateItem as AnatomyTemplateItem,
-    )
+        TemplateItem as AnatomyTemplateItem, AnatomyStringTemplate,
+)
 
 
 @dataclass(frozen=True)
@@ -203,23 +204,43 @@ class IntegrateTraits(pyblish.api.InstancePlugin):
                 "Instance has no persistent representations. Skipping")
             return
 
-        # 3) get template and template data
-        template: str = self.get_publish_template(instance)
-
-        # 4) initialize OperationsSession()
         op_session = OperationsSession()
 
-        # 5) Prepare product
         product_entity = self.prepare_product(instance, op_session)
 
-        # 6) Prepare version
         version_entity = self.prepare_version(
             instance, op_session, product_entity
         )
         instance.data["versionEntity"] = version_entity
 
-        instance_template_data: dict[str, str] = {}
+        transfers = self.get_transfers_from_representations(
+            instance, representations)
 
+    def get_transfers_from_representations(
+            self,
+            instance: pyblish.api.Instance,
+            representations: list[Representation]) -> list[TransferItem]:
+        """Get transfers from representations.
+
+        This method will go through all representations and prepare transfers
+        based on the traits they contain. First it will validate the
+        representation, and then it will prepare template data for the
+        representation. It specifically handles FileLocations, FileLocation,
+        Bundle, Sequence and UDIM traits.
+
+        Args:
+            instance (pyblish.api.Instance): Instance to process.
+            representations (list[Representation]): List of representations.
+
+        Returns:
+            list[TransferItem]: List of transfers.
+
+        Raises:
+            PublishError: If representation is invalid.
+
+        """
+        template: str = self.get_publish_template(instance)
+        instance_template_data: dict[str, str] = {}
         transfers: list[TransferItem] = []
         # prepare template and data to format it
         for representation in representations:
@@ -235,6 +256,7 @@ class IntegrateTraits(pyblish.api.InstancePlugin):
             template_data = self.get_template_data_from_representation(
                 representation, instance)
             # add instance based template data
+
             template_data.update(instance_template_data)
 
             # treat Variant as `output` in template data
@@ -246,7 +268,7 @@ class IntegrateTraits(pyblish.api.InstancePlugin):
             template_item = TemplateItem(
                 anatomy=instance.context.data["anatomy"],
                 template=template,
-                template_data=template_data,
+                template_data=copy.deepcopy(template_data),
                 template_object=self.get_publish_template_object(instance),
             )
 
@@ -273,7 +295,7 @@ class IntegrateTraits(pyblish.api.InstancePlugin):
                 self.get_transfers_from_bundle(
                     representation, template_item, transfers
                 )
-
+        return transfers
 
     def _get_relative_to_root_original_dirname(
             self, instance: pyblish.api.Instance) -> str:
@@ -668,6 +690,8 @@ class IntegrateTraits(pyblish.api.InstancePlugin):
         """
         template_data = copy.deepcopy(instance.data["anatomyData"])
         template_data["representation"] = representation.name
+        template_data["version"] = instance.data["version"]
+        template_data["hierarchy"] = instance.data["hierarchy"]
 
         # add colorspace data to template data
         if representation.contains_trait(ColorManaged):
@@ -770,23 +794,26 @@ class IntegrateTraits(pyblish.api.InstancePlugin):
         if template_padding > dst_padding:
             dst_padding = template_padding
 
-        # add template path and the data to resolve it
-        representation.add_trait(TemplatePath(
-            template=template_item.template,
-            data=template_item.template_data
-        ))
-
         # go through all frames in the sequence
         # find their corresponding file locations
         # format their template and add them to transfers
         for frame in frames:
-            template_item.template_data["frame"] = frame
-            template_filled = path_template_object.format_strict(
-                template_item.template_data
-            )
             file_loc: FileLocation = representation.get_trait(
                 FileLocations).get_file_location_for_frame(
                 frame, sequence)
+
+            template_item.template_data["frame"] = frame
+            template_item.template_data["ext"] = (
+                file_loc.file_path.suffix
+            )
+            template_filled = path_template_object.format_strict(
+                template_item.template_data
+            )
+
+            # add used values to the template data
+            used_values: dict = template_filled.used_values
+            template_item.template_data.update(used_values)
+
             transfers.append(
                 TransferItem(
                     source=file_loc.file_path,
@@ -798,6 +825,12 @@ class IntegrateTraits(pyblish.api.InstancePlugin):
                     representation=representation,
                 )
             )
+
+            # add template path and the data to resolve it
+            representation.add_trait(TemplatePath(
+                template=template_item.template,
+                data=template_item.template_data
+            ))
 
 
     @staticmethod
@@ -819,13 +852,23 @@ class IntegrateTraits(pyblish.api.InstancePlugin):
 
         """
         udim: UDIM = representation.get_trait(UDIM)
+        path_template_object: AnatomyStringTemplate = (
+            template_item.template_object["path"]
+        )
         for file_loc in representation.get_trait(
                 FileLocations).file_paths:
             template_item.template_data["udim"] = (
                 udim.get_udim_from_file_location(file_loc)
             )
-            template_filled = template_item.template.format(
-                **template_item.template_data)
+
+            template_filled = path_template_object.format_strict(
+                template_item.template_data
+            )
+
+            # add used values to the template data
+            used_values: dict = template_filled.used_values
+            template_item.template_data.update(used_values)
+
             transfers.append(
                 TransferItem(
                     source=file_loc.file_path,
@@ -861,7 +904,12 @@ class IntegrateTraits(pyblish.api.InstancePlugin):
             template_item (TemplateItem): Template item.
 
         """
-        path_template_object = template_item.template_object["path"]
+        path_template_object: AnatomyStringTemplate = (
+            template_item.template_object["path"]
+        )
+        template_item.template_data["ext"] = (
+            representation.get_trait(FileLocation).file_path.suffix
+        )
         template_item.template_data.pop("frame", None)
         with contextlib.suppress(MissingTraitError):
             udim = representation.get_trait(UDIM)
@@ -870,6 +918,11 @@ class IntegrateTraits(pyblish.api.InstancePlugin):
         template_filled = path_template_object.format_strict(
             template_item.template_data
         )
+
+        # add used values to the template data
+        used_values: dict = template_filled.used_values
+        template_item.template_data.update(used_values)
+
         file_loc: FileLocation = representation.get_trait(FileLocation)
         transfers.append(
             TransferItem(
@@ -878,7 +931,7 @@ class IntegrateTraits(pyblish.api.InstancePlugin):
                 size=file_loc.file_size,
                 checksum=file_loc.file_hash,
                 template=template_item.template,
-                template_data=template_item.template_data.copy(),
+                template_data=template_item.template_data,
                 representation=representation,
             )
         )
@@ -928,3 +981,4 @@ class IntegrateTraits(pyblish.api.InstancePlugin):
                 IntegrateTraits.get_transfers_from_bundle(
                     sub_representation, template_item, transfers
                 )
+
