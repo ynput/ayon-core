@@ -20,7 +20,7 @@ from ayon_core.lib import (
 )
 from ayon_core.settings import get_studio_settings
 from ayon_core.addon import (
-    ITrayAction,
+    ITrayAddon,
     ITrayService,
 )
 from ayon_core.pipeline import install_ayon_plugins
@@ -156,7 +156,7 @@ class TrayManager:
 
         tray_menu = self.tray_widget.menu
 
-        console_action = ITrayAction.add_action_to_admin_submenu(
+        console_action = ITrayAddon.add_action_to_admin_submenu(
             "Console", tray_menu
         )
         console_action.triggered.connect(self._show_console_window)
@@ -183,7 +183,7 @@ class TrayManager:
             "POST", "/tray/message", self._web_show_tray_message
         )
 
-        admin_submenu = ITrayAction.admin_submenu(tray_menu)
+        admin_submenu = ITrayAddon.admin_submenu(tray_menu)
         tray_menu.addMenu(admin_submenu)
 
         # Add services if they are
