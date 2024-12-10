@@ -522,7 +522,7 @@ class FilesProxyModel(QtCore.QSortFilterProxyModel):
 
 
 class ItemWidget(QtWidgets.QWidget):
-    context_menu_requested = QtCore.Signal(QtCore.QPoint, bool)
+    context_menu_requested = QtCore.Signal(QtCore.QPoint)
 
     def __init__(
         self, item_id, label, pixmap_icon, is_sequence, multivalue, parent=None
@@ -841,7 +841,7 @@ class FilesWidget(QtWidgets.QFrame):
                 self._multivalue
             )
             widget.context_menu_requested.connect(
-                self._on_context_menu_requested
+                self._on_item_context_menu_request
             )
             self._files_view.setIndexWidget(index, widget)
             self._files_proxy_model.setData(
@@ -922,6 +922,9 @@ class FilesWidget(QtWidgets.QFrame):
 
         if menu.actions():
             menu.popup(pos)
+
+    def _on_item_context_menu_request(self, pos):
+        self._on_context_menu_requested(pos, True)
 
     def dragEnterEvent(self, event):
         if self._multivalue:
