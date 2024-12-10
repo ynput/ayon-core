@@ -35,6 +35,7 @@ from ayon_core.tools.tray.lib import (
 )
 from ayon_core.tools.launcher.ui import LauncherWindow
 from ayon_core.tools.loader.ui import LoaderWindow
+from ayon_core.tools.console_interpreter.ui import ConsoleInterpreterWindow
 
 from .addons_manager import TrayAddonsManager
 from .host_console_listener import HostListener
@@ -87,6 +88,7 @@ class TrayManager:
 
         self._launcher_window = None
         self._browser_window = None
+        self._console_window = ConsoleInterpreterWindow()
 
         self._update_check_timer = update_check_timer
         self._update_check_interval = update_check_interval
@@ -153,6 +155,11 @@ class TrayManager:
             return
 
         tray_menu = self.tray_widget.menu
+
+        console_action = ITrayAction.add_action_to_admin_submenu(
+            "Console", tray_menu
+        )
+        console_action.triggered.connect(self._show_console_window)
 
         self._addons_manager.initialize(tray_menu)
 
@@ -562,6 +569,11 @@ class TrayManager:
         self._browser_window.show()
         self._browser_window.raise_()
         self._browser_window.activateWindow()
+
+    def _show_console_window(self):
+        self._console_window.show()
+        self._console_window.raise_()
+        self._console_window.activateWindow()
 
 
 class SystemTrayIcon(QtWidgets.QSystemTrayIcon):
