@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+import os
 import copy
 import collections
 from typing import TYPE_CHECKING, Optional, Dict, Any
@@ -6,7 +7,7 @@ from typing import TYPE_CHECKING, Optional, Dict, Any
 from abc import ABC, abstractmethod
 
 from ayon_core.settings import get_project_settings
-from ayon_core.lib import Logger
+from ayon_core.lib import Logger, get_version_from_path
 from ayon_core.pipeline.plugin_discover import (
     discover,
     register_plugin,
@@ -14,6 +15,7 @@ from ayon_core.pipeline.plugin_discover import (
     deregister_plugin,
     deregister_plugin_path
 )
+from ayon_core.pipeline import get_staging_dir_info
 
 from .constants import DEFAULT_VARIANT_VALUE
 from .product_name import get_product_name
@@ -830,6 +832,95 @@ class Creator(BaseCreator):
                 for created instance.
         """
         return self.pre_create_attr_defs
+
+    def get_staging_dir(self, instance):
+        """Return the staging dir and persistence from instance.
+
+        Args:
+            instance (CreatedInstance): Instance for which should be staging
+                dir gathered.
+
+        Returns:
+            Optional[namedtuple]: Staging dir path and persistence or None
+        """
+        create_ctx = self.create_context
+        product_name = instance.get("productName")
+        product_type = instance.get("productType")
+        folder_path = instance.get("folderPath")
+
+        # this can only work if product name and folder path are available
+        if not product_name or not folder_path:
+            return None
+
+        publish_settings = self.project_settings["core"]["publish"]
+        follow_workfile_version = (
+            publish_settings
+            ["CollectAnatomyInstanceData"]
+            ["follow_workfile_version"]
+        )
+
+        # Gather version number provided from the instance.
+        version = instance.get("version")
+
+        # If follow workfile, gather version from workfile path.
+        if version is None and follow_workfile_version:
+            current_workfile = self.create_context.get_current_workfile_path()
+            workfile_version = get_version_from_path(current_workfile)
+            version = int(workfile_version)
+
+        # Fill-up version with next version available.
+        elif version is None:
+            versions = self.get_next_versions_for_instances(
+                [instance]
+            )
+            version, = tuple(versions.values())
+
+        template_data = {"version": version}
+
+        staging_dir_info = get_staging_dir_info(
+            create_ctx.get_current_project_entity(),
+            create_ctx.get_folder_entity(folder_path),
+            create_ctx.get_task_entity(folder_path, instance.get("task")),
+            product_type,
+            product_name,
+            create_ctx.host_name,
+            anatomy=create_ctx.get_current_project_anatomy(),
+            project_settings=create_ctx.get_current_project_settings(),
+            always_return_path=False,
+            logger=self.log,
+            template_data=template_data,
+        )
+
+        return staging_dir_info or None
+
+    def apply_staging_dir(self, instance):
+        """Apply staging dir with persistence to instance's transient data.
+
+        Method is called on instance creation and on instance update.
+
+        Args:
+            instance (CreatedInstance): Instance for which should be staging
+                dir applied.
+
+        Returns:
+            Optional[str]: Staging dir path or None if not applied.
+        """
+        staging_dir_info = self.get_staging_dir(instance)
+        if staging_dir_info is None:
+            return None
+
+        # path might be already created by get_staging_dir_info
+        staging_dir_path = staging_dir_info.directory
+        os.makedirs(staging_dir_path, exist_ok=True)
+
+        instance.transient_data.update({
+            "stagingDir": staging_dir_path,
+            "stagingDir_persistent": staging_dir_info.persistent,
+        })
+
+        self.log.info(f"Applied staging dir to instance: {staging_dir_path}")
+
+        return staging_dir_path
 
     def _pre_create_attr_defs_changed(self):
         """Called when pre-create attribute definitions change.
