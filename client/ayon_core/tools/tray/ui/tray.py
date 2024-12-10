@@ -36,6 +36,9 @@ from ayon_core.tools.tray.lib import (
 from ayon_core.tools.launcher.ui import LauncherWindow
 from ayon_core.tools.loader.ui import LoaderWindow
 from ayon_core.tools.console_interpreter.ui import ConsoleInterpreterWindow
+from ayon_core.tools.publisher.publish_report_viewer import (
+    PublishReportViewerWindow,
+)
 
 from .addons_manager import TrayAddonsManager
 from .host_console_listener import HostListener
@@ -89,6 +92,7 @@ class TrayManager:
         self._launcher_window = None
         self._browser_window = None
         self._console_window = ConsoleInterpreterWindow()
+        self._publish_report_viewer_window = PublishReportViewerWindow()
 
         self._update_check_timer = update_check_timer
         self._update_check_interval = update_check_interval
@@ -160,6 +164,13 @@ class TrayManager:
             "Console", tray_menu
         )
         console_action.triggered.connect(self._show_console_window)
+
+        publish_report_viewer_action = ITrayAddon.add_action_to_admin_submenu(
+            "Publish report viewer", tray_menu
+        )
+        publish_report_viewer_action.triggered.connect(
+            self._show_publish_report_viewer
+        )
 
         self._addons_manager.initialize(tray_menu)
 
@@ -574,6 +585,12 @@ class TrayManager:
         self._console_window.show()
         self._console_window.raise_()
         self._console_window.activateWindow()
+
+    def _show_publish_report_viewer(self):
+        self._publish_report_viewer_window.refresh()
+        self._publish_report_viewer_window.show()
+        self._publish_report_viewer_window.raise_()
+        self._publish_report_viewer_window.activateWindow()
 
 
 class SystemTrayIcon(QtWidgets.QSystemTrayIcon):
