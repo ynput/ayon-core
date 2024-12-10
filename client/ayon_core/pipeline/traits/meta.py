@@ -52,6 +52,7 @@ class TemplatePath(TraitBase):
     template: str = Field(..., title="Template Path")
     data: dict = Field(..., title="Formatting Data")
 
+
 class Variant(TraitBase):
     """Variant trait model.
 
@@ -73,3 +74,28 @@ class Variant(TraitBase):
     description: ClassVar[str] = "Variant Trait Model"
     id: ClassVar[str] = "ayon.meta.Variant.v1"
     variant: str = Field(..., title="Variant")
+
+
+class KeepOriginalLocation(TraitBase):
+    """Keep files in its original location.
+    
+    Note:
+        This is not a persistent trait.
+
+    """
+    name: ClassVar[str] = "KeepOriginalLocation"
+    description: ClassVar[str] = "Keep Original Location Trait Model"
+    id: ClassVar[str] = "ayon.meta.KeepOriginalLocation.v1"
+    persistent = Field(False, title="Persistent")
+
+class KeepOriginalName(TraitBase):
+    """Keep files in its original name.
+    
+    Note:
+        This is not a persistent trait.
+
+    """
+    name: ClassVar[str] = "KeepOriginalName"
+    description: ClassVar[str] = "Keep Original Name Trait Model"
+    id: ClassVar[str] = "ayon.meta.KeepOriginalName.v1"
+    persistent = Field(False, title="Persistent")
