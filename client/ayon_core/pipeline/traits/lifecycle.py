@@ -58,6 +58,6 @@ class Persistent(TraitBase):
             representation (Representation): Representation model.
 
         """
-        if representation.contains_trait(Persistent):
+        if representation.contains_trait(Transient):
             msg = "Representation is marked as both Persistent and Transient."
             raise TraitValidationError(self.name, msg)
