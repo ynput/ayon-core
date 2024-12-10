@@ -589,7 +589,7 @@ class ItemWidget(QtWidgets.QWidget):
     def _on_actions_clicked(self):
         pos = self._split_btn.rect().bottomLeft()
         point = self._split_btn.mapToGlobal(pos)
-        self.context_menu_requested.emit(point, False)
+        self.context_menu_requested.emit(point)
 
 
 class InViewButton(IconButton):
