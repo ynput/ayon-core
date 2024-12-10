@@ -14,6 +14,62 @@ from ayon_core.tools.push_to_project.control import (
 )
 
 
+class ErrorDetailDialog(QtWidgets.QDialog):
+    def __init__(self, parent):
+        super().__init__(parent)
+
+        self.setWindowTitle("Error detail")
+        self.setWindowIcon(QtGui.QIcon(get_app_icon_path()))
+
+        title_label = QtWidgets.QLabel(self)
+
+        sep_1 = SeparatorWidget(parent=self)
+
+        detail_widget = QtWidgets.QTextBrowser(self)
+        detail_widget.setReadOnly(True)
+        detail_widget.setTextInteractionFlags(
+            QtCore.Qt.TextBrowserInteraction
+        )
+
+        sep_2 = SeparatorWidget(parent=self)
+
+        btns_widget = QtWidgets.QWidget(self)
+
+        copy_btn = QtWidgets.QPushButton("Copy", btns_widget)
+        close_btn = QtWidgets.QPushButton("Close", btns_widget)
+
+        btns_layout = QtWidgets.QHBoxLayout(btns_widget)
+        btns_layout.setContentsMargins(0, 0, 0, 0)
+        btns_layout.addStretch(1)
+        btns_layout.addWidget(copy_btn, 0)
+        btns_layout.addWidget(close_btn, 0)
+
+        main_layout = QtWidgets.QVBoxLayout(self)
+        main_layout.setContentsMargins(6, 6, 6, 6)
+        main_layout.addWidget(title_label, 0)
+        main_layout.addWidget(sep_1, 0)
+        main_layout.addWidget(detail_widget, 1)
+        main_layout.addWidget(sep_2, 0)
+        main_layout.addWidget(btns_widget, 0)
+
+        copy_btn.clicked.connect(self._on_copy_click)
+        close_btn.clicked.connect(self._on_close_click)
+
+        self._title_label = title_label
+        self._detail_widget = detail_widget
+
+    def set_detail(self, title, detail):
+        self._title_label.setText(title)
+        self._detail_widget.setText(detail)
+
+    def _on_copy_click(self):
+        clipboard = QtWidgets.QApplication.clipboard()
+        clipboard.setText(self._detail_widget.toPlainText())
+
+    def _on_close_click(self):
+        self.close()
+
+
 class PushToContextSelectWindow(QtWidgets.QWidget):
     def __init__(self, controller=None):
         super(PushToContextSelectWindow, self).__init__()
@@ -113,6 +169,10 @@ class PushToContextSelectWindow(QtWidgets.QWidget):
 
         overlay_label = QtWidgets.QLabel(overlay_widget)
         overlay_label.setAlignment(QtCore.Qt.AlignCenter)
+        overlay_label.setWordWrap(True)
+        overlay_label.setTextInteractionFlags(
+            QtCore.Qt.TextBrowserInteraction
+        )
 
         overlay_btns_widget = QtWidgets.QWidget(overlay_widget)
         overlay_btns_widget.setAttribute(QtCore.Qt.WA_TranslucentBackground)
@@ -121,13 +181,28 @@ class PushToContextSelectWindow(QtWidgets.QWidget):
         overlay_try_btn = QtWidgets.QPushButton(
             "Try again", overlay_btns_widget
         )
+        overlay_try_btn.setToolTip(
+            "Hide overlay and modify submit information."
+        )
+
+        show_detail_btn = QtWidgets.QPushButton(
+            "Show error detail", overlay_btns_widget
+        )
+        show_detail_btn.setToolTip(
+            "Show error detail dialog to copy full error."
+        )
+
         overlay_close_btn = QtWidgets.QPushButton(
             "Close", overlay_btns_widget
         )
+        overlay_close_btn.setToolTip("Discard changes and close window.")
 
         overlay_btns_layout = QtWidgets.QHBoxLayout(overlay_btns_widget)
+        overlay_btns_layout.setContentsMargins(0, 0, 0, 0)
+        overlay_btns_layout.setSpacing(10)
         overlay_btns_layout.addStretch(1)
         overlay_btns_layout.addWidget(overlay_try_btn, 0)
+        overlay_btns_layout.addWidget(show_detail_btn, 0)
         overlay_btns_layout.addWidget(overlay_close_btn, 0)
         overlay_btns_layout.addStretch(1)
 
@@ -162,6 +237,7 @@ class PushToContextSelectWindow(QtWidgets.QWidget):
 
         publish_btn.clicked.connect(self._on_select_click)
         cancel_btn.clicked.connect(self._on_close_click)
+        show_detail_btn.clicked.connect(self._on_show_detail_click)
         overlay_close_btn.clicked.connect(self._on_close_click)
         overlay_try_btn.clicked.connect(self._on_try_again_click)
 
@@ -209,9 +285,12 @@ class PushToContextSelectWindow(QtWidgets.QWidget):
         self._publish_btn = publish_btn
 
         self._overlay_widget = overlay_widget
+        self._show_detail_btn = show_detail_btn
         self._overlay_close_btn = overlay_close_btn
         self._overlay_try_btn = overlay_try_btn
         self._overlay_label = overlay_label
+
+        self._error_detail_dialog = ErrorDetailDialog(self)
 
         self._user_input_changed_timer = user_input_changed_timer
         # Store current value on input text change
@@ -235,6 +314,7 @@ class PushToContextSelectWindow(QtWidgets.QWidget):
         self._folder_is_valid = None
 
         publish_btn.setEnabled(False)
+        show_detail_btn.setVisible(False)
         overlay_close_btn.setVisible(False)
         overlay_try_btn.setVisible(False)
 
@@ -374,6 +454,9 @@ class PushToContextSelectWindow(QtWidgets.QWidget):
     def _on_submission_change(self, event):
         self._publish_btn.setEnabled(event["enabled"])
 
+    def _on_show_detail_click(self):
+        self._error_detail_dialog.show()
+
     def _on_close_click(self):
         self.close()
 
@@ -384,8 +467,11 @@ class PushToContextSelectWindow(QtWidgets.QWidget):
         self._process_item_id = None
         self._last_submit_message = None
 
+        self._error_detail_dialog.close()
+
         self._overlay_close_btn.setVisible(False)
         self._overlay_try_btn.setVisible(False)
+        self._show_detail_btn.setVisible(False)
         self._main_layout.setCurrentWidget(self._main_context_widget)
 
     def _on_main_thread_timer(self):
@@ -401,13 +487,24 @@ class PushToContextSelectWindow(QtWidgets.QWidget):
         if self._main_thread_timer_can_stop:
             self._main_thread_timer.stop()
             self._overlay_close_btn.setVisible(True)
-            if push_failed and not fail_traceback:
+            if push_failed:
                 self._overlay_try_btn.setVisible(True)
+                if fail_traceback:
+                    self._show_detail_btn.setVisible(True)
 
         if push_failed:
-            message = "Push Failed:\n{}".format(process_status["fail_reason"])
+            reason = process_status["fail_reason"]
             if fail_traceback:
-                message += "\n{}".format(fail_traceback)
+                message = (
+                    "Unhandled error happened."
+                    " Check error detail for more information."
+                )
+                self._error_detail_dialog.set_detail(
+                    reason, fail_traceback
+                )
+            else:
+                message = f"Push Failed:\n{reason}"
+
             self._overlay_label.setText(message)
             set_style_property(self._overlay_close_btn, "state", "error")
 
