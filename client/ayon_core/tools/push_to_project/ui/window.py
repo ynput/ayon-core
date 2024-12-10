@@ -45,7 +45,7 @@ class ErrorDetailDialog(QtWidgets.QDialog):
         btns_layout.addWidget(close_btn, 0)
 
         main_layout = QtWidgets.QVBoxLayout(self)
-        main_layout.setContentsMargins(6, 6, 6, 6)
+        main_layout.setContentsMargins(10, 10, 10, 10)
         main_layout.addWidget(title_label, 0)
         main_layout.addWidget(sep_1, 0)
         main_layout.addWidget(detail_widget, 1)
