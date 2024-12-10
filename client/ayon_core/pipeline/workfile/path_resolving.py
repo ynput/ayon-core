@@ -34,15 +34,23 @@ def get_workfile_template_key_from_context(
         host_name (str): Host name.
         project_settings (Dict[str, Any]): Project settings for passed
             'project_name'. Not required at all but makes function faster.
-    """
 
+    Returns:
+        str: Workfile template name.
+
+    """
     folder_entity = ayon_api.get_folder_by_path(
-        project_name, folder_path, fields={"id"}
+        project_name,
+        folder_path,
+        fields={"id"},
     )
     task_entity = ayon_api.get_task_by_name(
-        project_name, folder_entity["id"], task_name
+        project_name,
+        folder_entity["id"],
+        task_name,
+        fields={"taskType"},
     )
-    task_type = task_entity.get("type")
+    task_type = task_entity.get("taskType")
 
     return get_workfile_template_key(
         project_name, task_type, host_name, project_settings
