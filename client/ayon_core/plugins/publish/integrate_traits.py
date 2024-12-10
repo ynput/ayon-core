@@ -58,6 +58,16 @@ class TransferItem:
     Source file path, destination file path, template that was used to
     construct the destination path, template data that was used in the
     template, size of the file, checksum of the file.
+
+    Attributes:
+        source (Path): Source file path.
+        destination (Path): Destination file path.
+        size (int): Size of the file.
+        checksum (str): Checksum of the file.
+        template (str): Template path.
+        template_data (dict[str, Any]): Template data.
+        representation (Representation): Reference to representation
+
     """
     source: Path
     destination: Path
@@ -65,6 +75,7 @@ class TransferItem:
     checksum: str
     template: str
     template_data: dict[str, Any]
+    representation: Representation
 
 
 @dataclass
@@ -72,6 +83,12 @@ class TemplateItem:
     """Represents single template item.
 
     Template path, template data that was used in the template.
+
+    Attributes:
+        anatomy (Anatomy): Anatomy object.
+        template (str): Template path.
+        template_data (dict[str, Any]): Template data.
+        template_object (AnatomyTemplateItem): Template object
     """
     anatomy: Anatomy
     template: str
@@ -147,7 +164,7 @@ class IntegrateTraits(pyblish.api.InstancePlugin):
     order = pyblish.api.IntegratorOrder
     log: logging.Logger
 
-    def process(self, instance: pyblish.api.Instance) -> None:  # noqa: C901
+    def process(self, instance: pyblish.api.Instance) -> None:
         """Integrate representations with traits.
 
         Todo:
@@ -204,7 +221,7 @@ class IntegrateTraits(pyblish.api.InstancePlugin):
         instance_template_data: dict[str, str] = {}
 
         transfers: list[TransferItem] = []
-        # 6.5) prepare template and data to format it
+        # prepare template and data to format it
         for representation in representations:
 
             # validate representation first, this will go through all traits
@@ -230,7 +247,7 @@ class IntegrateTraits(pyblish.api.InstancePlugin):
                 anatomy=instance.context.data["anatomy"],
                 template=template,
                 template_data=template_data,
-                template_object=self.get_publish_template_object(instance)
+                template_object=self.get_publish_template_object(instance),
             )
 
             if representation.contains_trait(FileLocations):
@@ -250,27 +267,12 @@ class IntegrateTraits(pyblish.api.InstancePlugin):
 
             elif representation.contains_trait(Bundle):
                 # Bundle groups multiple "sub-representations" together.
-                # It has list of lists with traits, some might be
+                # It has a list of lists with traits, some might be
                 # FileLocations,but some might be "file-less" representations
                 # or even other bundles.
-                bundle: Bundle = representation.get_trait(Bundle)
-                for idx, sub_representation_traits in enumerate(bundle.items):
-                    sub_representation = Representation(
-                        name=f"{representation.name}_{idx}",
-                        traits=sub_representation_traits)
-                    # sub presentation transient:
-                    sub_representation.add_trait(Transient())
-                    if sub_representation.contains_trait(FileLocations):
-                        ...
-
-                # add TemplatePath trait to the representation
-            representation.add_trait(TemplatePath(
-                template=template_item.template,
-                data=template_item.template_data
-            ))
-
-            transfers += self.get_transfers_from_representation(
-                representation, template, template_data)
+                self.get_transfers_from_bundle(
+                    representation, template_item, transfers
+                )
 
 
     def _get_relative_to_root_original_dirname(
@@ -696,58 +698,6 @@ class IntegrateTraits(pyblish.api.InstancePlugin):
 
         return template_data
 
-    @staticmethod
-    def get_transfers_from_representation(
-            representation: Representation,
-            template: str,
-            template_data: dict) -> list:
-        """Get transfers from representation.
-
-        Args:
-            representation (Representation): Representation to process.
-            template (str): Template to format.
-            template_data (dict): Template data.
-
-        Returns:
-            list: List of transfers.
-
-        """
-        transfers = []
-        # check if representation contains traits with files
-        if not representation.contains_traits(
-                [FileLocation, FileLocations]):
-            return transfers
-
-        files: list[Path] = []
-
-        if representation.contains_trait(FileLocations):
-            files = [
-                location.file_path
-                for location in representation.get_trait(
-                    FileLocations).file_paths
-            ]
-        elif representation.contains_trait(FileLocation):
-            file_location: FileLocation = representation.get_trait(
-                FileLocation)
-            files = [file_location.file_path]
-
-        template_data_copy = copy.deepcopy(template_data)
-        for file in files:
-            if "{originalBasename}" in template:
-                template_data_copy["originalBasename"] = file.stem
-            """
-            dst = path_template_obj.format_strict(template_data)
-            src = os.path.join(stagingdir, src_file_name)
-            """
-        if representation.contains_trait_by_id(
-                FileLocation.get_versionless_id()):
-            file_location: FileLocation = representation.get_trait_by_id(
-                FileLocation.get_versionless_id())
-            """
-            transfers += self.get_transfers_from_file_location(
-                file_location, template, template_data)
-            """
-        return transfers
 
     @staticmethod
     def get_transfers_from_file_locations(
@@ -820,6 +770,12 @@ class IntegrateTraits(pyblish.api.InstancePlugin):
         if template_padding > dst_padding:
             dst_padding = template_padding
 
+        # add template path and the data to resolve it
+        representation.add_trait(TemplatePath(
+            template=template_item.template,
+            data=template_item.template_data
+        ))
+
         # go through all frames in the sequence
         # find their corresponding file locations
         # format their template and add them to transfers
@@ -839,8 +795,10 @@ class IntegrateTraits(pyblish.api.InstancePlugin):
                     checksum=file_loc.file_hash,
                     template=template_item.template,
                     template_data=template_item.template_data,
+                    representation=representation,
                 )
             )
+
 
     @staticmethod
     def get_transfers_from_udim(
@@ -876,8 +834,14 @@ class IntegrateTraits(pyblish.api.InstancePlugin):
                     checksum=file_loc.file_hash,
                     template=template_item.template,
                     template_data=template_item.template_data,
+                    representation=representation,
                 )
             )
+        # add template path and the data to resolve it
+        representation.add_trait(TemplatePath(
+            template=template_item.template,
+            data=template_item.template_data
+        ))
 
     @staticmethod
     def get_transfers_from_file_location(
@@ -915,5 +879,52 @@ class IntegrateTraits(pyblish.api.InstancePlugin):
                 checksum=file_loc.file_hash,
                 template=template_item.template,
                 template_data=template_item.template_data.copy(),
+                representation=representation,
             )
         )
+        # add template path and the data to resolve it
+        representation.add_trait(TemplatePath(
+            template=template_item.template,
+            data=template_item.template_data
+        ))
+
+    @staticmethod
+    def get_transfers_from_bundle(
+            representation: Representation,
+            template_item: TemplateItem,
+            transfers: list[TransferItem]
+    ) -> None:
+        """Get transfers from Bundle trait.
+
+        This will be called recursively for each sub-representation in the
+        bundle that is a Bundle itself.
+
+        Args:
+            representation (Representation): Representation to process.
+            template_item (TemplateItem): Template item.
+            transfers (list): List of transfers.
+
+        Mutates:
+            transfers (list): List of transfers.
+            template_item (TemplateItem): Template item.
+
+        """
+        bundle: Bundle = representation.get_trait(Bundle)
+        for idx, sub_representation_traits in enumerate(bundle.items):
+            sub_representation = Representation(
+                name=f"{representation.name}_{idx}",
+                traits=sub_representation_traits)
+            # sub presentation transient:
+            sub_representation.add_trait(Transient())
+            if sub_representation.contains_trait(FileLocations):
+                IntegrateTraits.get_transfers_from_file_locations(
+                    sub_representation, template_item, transfers
+                )
+            elif sub_representation.contains_trait(FileLocation):
+                IntegrateTraits.get_transfers_from_file_location(
+                    sub_representation, template_item, transfers
+                )
+            elif sub_representation.contains_trait(Bundle):
+                IntegrateTraits.get_transfers_from_bundle(
+                    sub_representation, template_item, transfers
+                )
