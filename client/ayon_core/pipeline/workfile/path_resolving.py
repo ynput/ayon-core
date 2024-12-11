@@ -2,6 +2,7 @@ import os
 import re
 import copy
 import platform
+from typing import Optional, Dict, Any
 
 import ayon_api
 
@@ -16,12 +17,12 @@ from ayon_core.pipeline.template_data import get_template_data
 
 
 def get_workfile_template_key_from_context(
-    project_name,
-    folder_path,
-    task_name,
-    host_name,
-    project_settings=None
-):
+    project_name: str,
+    folder_path: str,
+    task_name: str,
+    host_name: str,
+    project_settings: Optional[Dict[str, Any]] = None,
+) -> str:
     """Helper function to get template key for workfile template.
 
     Do the same as `get_workfile_template_key` but returns value for "session
@@ -34,15 +35,23 @@ def get_workfile_template_key_from_context(
         host_name (str): Host name.
         project_settings (Dict[str, Any]): Project settings for passed
             'project_name'. Not required at all but makes function faster.
-    """
 
+    Returns:
+        str: Workfile template name.
+
+    """
     folder_entity = ayon_api.get_folder_by_path(
-        project_name, folder_path, fields={"id"}
+        project_name,
+        folder_path,
+        fields={"id"},
     )
     task_entity = ayon_api.get_task_by_name(
-        project_name, folder_entity["id"], task_name
+        project_name,
+        folder_entity["id"],
+        task_name,
+        fields={"taskType"},
     )
-    task_type = task_entity.get("type")
+    task_type = task_entity.get("taskType")
 
     return get_workfile_template_key(
         project_name, task_type, host_name, project_settings
