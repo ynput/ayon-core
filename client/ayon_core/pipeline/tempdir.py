@@ -71,8 +71,8 @@ def _create_local_staging_dir(prefix, suffix, dirpath=None):
     )
 
 
-def create_custom_tempdir(project_name, anatomy):
-    """ Deprecated 09/12/2024, here for backward-compatibility with Resolve.
+def create_custom_tempdir(project_name, anatomy=None):
+    """Backward compatibility deprecated since 2024/12/09.
     """
     warnings.warn(
         "Used deprecated 'create_custom_tempdir' "
