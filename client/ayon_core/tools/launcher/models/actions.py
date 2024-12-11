@@ -21,9 +21,9 @@ except ImportError:
 
         Application action based on 'ApplicationManager' system.
 
-        Handling of applications in launcher is not ideal and should be completely
-        redone from scratch. This is just a temporary solution to keep backwards
-        compatibility with AYON launcher.
+        Handling of applications in launcher is not ideal and should be
+        completely redone from scratch. This is just a temporary solution
+        to keep backwards compatibility with AYON launcher.
 
         Todos:
             Move handling of errors to frontend.
