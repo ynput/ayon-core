@@ -80,6 +80,9 @@ def create_custom_tempdir(project_name, anatomy=None):
         DeprecationWarning,
     )
 
+    if anatomy is None:
+        anatomy = Anatomy(project_name)
+
     return _create_custom_tempdir(project_name, anatomy)
 
 
