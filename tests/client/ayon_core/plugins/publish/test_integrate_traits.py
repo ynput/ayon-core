@@ -48,8 +48,10 @@ def single_file(tmp_path_factory: pytest.TempPathFactory) -> Path:
 def sequence_files(tmp_path_factory: pytest.TempPathFactory) -> list[Path]:
     """Return a sequence of temporary image files."""
     files = []
+    dir_name = tmp_path_factory.mktemp("sequence")
     for i in range(SEQUENCE_LENGTH):
-        filename = tmp_path_factory.mktemp("sequence") / f"img.{i:04d}.png"
+        frame = i + 1
+        filename = dir_name / f"img.{frame:04d}.png"
         with open(filename, "wb") as f:
             f.write(base64.b64decode(PNG_FILE_B64))
         files.append(filename)
