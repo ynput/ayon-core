@@ -157,7 +157,6 @@ class CollectOtioSubsetResources(
                 self.staging_dir = media_ref.target_url_base
                 head = media_ref.name_prefix
                 tail = media_ref.name_suffix
-                import rpdb ; rpdb.Rpdb().set_trace()
                 collection = clique.Collection(
                     head=head,
                     tail=tail,
