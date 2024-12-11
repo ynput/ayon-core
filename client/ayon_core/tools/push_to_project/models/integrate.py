@@ -835,8 +835,10 @@ class ProjectPushItemProcess:
             )
         except TaskNotSetError:
             self._status.set_failed(
-                "Product name template requires task name."
-                " Please select target task to continue."
+                "Target product name template requires task name. To continue"
+                " you have to select target task or change settings"
+                " `ayon+settings://core/tools/publish/template_name_profiles"
+                f"?project={self._item.dst_project_name}`."
             )
             raise PushToProjectError(self._status.fail_reason)
 
