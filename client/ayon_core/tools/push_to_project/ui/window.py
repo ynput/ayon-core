@@ -8,6 +8,7 @@ from ayon_core.tools.utils import (
     ProjectsCombobox,
     FoldersWidget,
     TasksWidget,
+    NiceCheckbox,
 )
 from ayon_core.tools.push_to_project.control import (
     PushToContextController,
@@ -122,9 +123,12 @@ class PushToContextSelectWindow(QtWidgets.QWidget):
         # --- Inputs widget ---
         inputs_widget = QtWidgets.QWidget(main_splitter)
 
+        new_folder_checkbox = NiceCheckbox(True, parent=inputs_widget)
+
         folder_name_input = PlaceholderLineEdit(inputs_widget)
         folder_name_input.setPlaceholderText("< Name of new folder >")
         folder_name_input.setObjectName("ValidatedLineEdit")
+        folder_name_input.setEnabled(new_folder_checkbox.isChecked())
 
         variant_input = PlaceholderLineEdit(inputs_widget)
         variant_input.setPlaceholderText("< Variant >")
@@ -135,6 +139,7 @@ class PushToContextSelectWindow(QtWidgets.QWidget):
 
         inputs_layout = QtWidgets.QFormLayout(inputs_widget)
         inputs_layout.setContentsMargins(0, 0, 0, 0)
+        inputs_layout.addRow("Create new folder", new_folder_checkbox)
         inputs_layout.addRow("New folder name", folder_name_input)
         inputs_layout.addRow("Variant", variant_input)
         inputs_layout.addRow("Comment", comment_input)
@@ -231,6 +236,7 @@ class PushToContextSelectWindow(QtWidgets.QWidget):
         main_thread_timer.timeout.connect(self._on_main_thread_timer)
         show_timer.timeout.connect(self._on_show_timer)
         user_input_changed_timer.timeout.connect(self._on_user_input_timer)
+        new_folder_checkbox.stateChanged.connect(self._on_new_folder_check)
         folder_name_input.textChanged.connect(self._on_new_folder_change)
         variant_input.textChanged.connect(self._on_variant_change)
         comment_input.textChanged.connect(self._on_comment_change)
@@ -279,6 +285,7 @@ class PushToContextSelectWindow(QtWidgets.QWidget):
         self._tasks_widget = tasks_widget
 
         self._variant_input = variant_input
+        self._new_folder_checkbox = new_folder_checkbox
         self._folder_name_input = folder_name_input
         self._comment_input = comment_input
 
@@ -297,8 +304,9 @@ class PushToContextSelectWindow(QtWidgets.QWidget):
         #   The value is unset when is passed to controller
         # The goal is to have controll over changes happened during user change
         #   in UI and controller auto-changes
-        self._variant_input_text = None
+        self._new_folder_name_enabled = None
         self._new_folder_name_input_text = None
+        self._variant_input_text = None
         self._comment_input_text = None
 
         self._first_show = True
@@ -369,6 +377,11 @@ class PushToContextSelectWindow(QtWidgets.QWidget):
 
         self.refresh()
 
+    def _on_new_folder_check(self):
+        self._new_folder_name_enabled = self._new_folder_checkbox.isChecked()
+        self._folder_name_input.setEnabled(self._new_folder_name_enabled)
+        self._user_input_changed_timer.start()
+
     def _on_new_folder_change(self, text):
         self._new_folder_name_input_text = text
         self._user_input_changed_timer.start()
@@ -382,9 +395,15 @@ class PushToContextSelectWindow(QtWidgets.QWidget):
         self._user_input_changed_timer.start()
 
     def _on_user_input_timer(self):
+        folder_name_enabled = self._new_folder_name_enabled
         folder_name = self._new_folder_name_input_text
-        if folder_name is not None:
+        if folder_name is not None or folder_name_enabled is not None:
             self._new_folder_name_input_text = None
+            self._new_folder_name_enabled = None
+            if not self._new_folder_checkbox.isChecked():
+                folder_name = None
+            elif folder_name is None:
+                folder_name = self._folder_name_input.text()
             self._controller.set_user_value_folder_name(folder_name)
 
         variant = self._variant_input_text
@@ -430,16 +449,13 @@ class PushToContextSelectWindow(QtWidgets.QWidget):
         self._header_label.setText(self._controller.get_source_label())
 
     def _invalidate_new_folder_name(self, folder_name, is_valid):
-        self._tasks_widget.setVisible(not folder_name)
+        self._tasks_widget.setVisible(folder_name is None)
         if self._folder_is_valid is is_valid:
             return
         self._folder_is_valid = is_valid
         state = ""
-        if folder_name:
-            if is_valid is True:
-                state = "valid"
-            elif is_valid is False:
-                state = "invalid"
+        if folder_name is not None:
+            state = "valid" if is_valid else "invalid"
         set_style_property(
             self._folder_name_input, "state", state
         )
