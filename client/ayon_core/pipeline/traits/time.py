@@ -287,7 +287,7 @@ class Sequence(TraitBase):
                 "Frame padding does not match the expected frame padding. "
                 f"Expected: {expected_padding}, Found: {self.frame_padding}"
             )
-            raise TraitValidationError(msg)
+            raise TraitValidationError(self.name, msg)
 
     @staticmethod
     def list_spec_to_frames(list_spec: str) -> list[int]:
@@ -350,10 +350,7 @@ class Sequence(TraitBase):
     def get_frame_padding(file_locations: FileLocations) -> int:
         """Get frame padding."""
         src_collection = Sequence._get_collection(file_locations)
-        destination_indexes = list(src_collection.indexes)
-        # Use last frame for minimum padding
-        #   - that should cover both 'udim' and 'frame' minimum padding
-        return len(str(destination_indexes[-1]))
+        return src_collection.padding
 
     @staticmethod
     def get_frame_list(
