@@ -118,7 +118,8 @@ class Sequence(TraitBase):
             sequence.
         frame_padding (int): Frame padding.
         frame_regex (str): Frame regex - regular expression to match
-            frame numbers. Must include 'frame' named group.
+            frame numbers. Must include 'index' named group and 'padding'
+            named group.
         frame_spec (str): Frame list specification of frames. This takes
             string like "1-10,20-30,40-50" etc.
 
@@ -136,8 +137,8 @@ class Sequence(TraitBase):
     @classmethod
     def validate_frame_regex(cls, v: Optional[str]) -> str:
         """Validate frame regex."""
-        if v is not None and "?P<frame>" not in v:
-            msg = "Frame regex must include 'frame' named group"
+        if v and any(s not in v for s in ["?P<index>", "?P<padding>"]):
+            msg = "Frame regex must include 'index' and `padding named groups"
             raise ValueError(msg)
         return v
 
