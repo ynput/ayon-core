@@ -86,7 +86,7 @@ class KeepOriginalLocation(TraitBase):
     name: ClassVar[str] = "KeepOriginalLocation"
     description: ClassVar[str] = "Keep Original Location Trait Model"
     id: ClassVar[str] = "ayon.meta.KeepOriginalLocation.v1"
-    persistent = Field(False, title="Persistent")
+    persistent: bool = Field(False, title="Persistent")
 
 class KeepOriginalName(TraitBase):
     """Keep files in its original name.
@@ -98,4 +98,4 @@ class KeepOriginalName(TraitBase):
     name: ClassVar[str] = "KeepOriginalName"
     description: ClassVar[str] = "Keep Original Name Trait Model"
     id: ClassVar[str] = "ayon.meta.KeepOriginalName.v1"
-    persistent = Field(False, title="Persistent")
+    persistent: bool = Field(False, title="Persistent")
