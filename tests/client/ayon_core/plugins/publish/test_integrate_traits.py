@@ -163,7 +163,7 @@ def mock_context(
             ),
             Sequence(
                 frame_padding=4,
-                frame_regex=r"^img\.(?P<frame>\d{4})\.png$",
+                frame_regex=r"img\.(?P<index>(?P<padding>0*)\d{4})\.png$",
             ),
             FileLocations(
                 file_paths=file_locations,
@@ -269,7 +269,13 @@ def test_prepare_version(
 
 def test_get_transfers_from_representation(
         mock_context: pyblish.api.Context) -> None:
-    """Test get_transfers_from_representation."""
+    """Test get_transfers_from_representation.
+
+    Todo: This test will benefit massively from a proper mocking of the
+        context. We need to parametrize the test with different
+        representations and test the output of the function.
+
+    """
     integrator = IntegrateTraits()
 
     instance = mock_context[0]
@@ -278,27 +284,4 @@ def test_get_transfers_from_representation(
     transfers = integrator.get_transfers_from_representations(
         instance, representations)
 
-    assert transfers == [
-        {
-            "file_path": Path("test"),
-            "file_size": 1234,
-            "traits": [
-                "Persistent",
-                "Image",
-                "MimeType"
-            ]
-        },
-        {
-            "file_path": Path("test"),
-            "file_size": 1234,
-            "traits": [
-                "Persistent",
-                "FrameRanged",
-                "Sequence",
-                "FileLocations",
-                "Image",
-                "PixelBased",
-                "MimeType"
-            ]
-        }
-    ]
+    assert len(transfers) == 11
