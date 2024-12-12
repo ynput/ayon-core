@@ -826,7 +826,8 @@ class IntegrateTraits(pyblish.api.InstancePlugin):
                 )
             )
 
-            # add template path and the data to resolve it
+        # add template path and the data to resolve it
+        if not representation.contains_trait(TemplatePath):
             representation.add_trait(TemplatePath(
                 template=template_item.template,
                 data=template_item.template_data
@@ -908,7 +909,7 @@ class IntegrateTraits(pyblish.api.InstancePlugin):
             template_item.template_object["path"]
         )
         template_item.template_data["ext"] = (
-            representation.get_trait(FileLocation).file_path.suffix
+            representation.get_trait(FileLocation).file_path.suffix.rstrip(".")
         )
         template_item.template_data.pop("frame", None)
         with contextlib.suppress(MissingTraitError):
