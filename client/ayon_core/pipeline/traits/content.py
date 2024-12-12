@@ -140,7 +140,7 @@ class FileLocations(TraitBase):
             Optional[FileLocation]: File location for the frame.
 
         """
-        frame_regex = r"\.(?P<frame>(?P<padding>0*)\d+)\.\D+\d?$"
+        frame_regex = r"\.(?P<index>(?P<padding>0*)\d+)\.\D+\d?$"
         if sequence_trait and sequence_trait.frame_regex:
             frame_regex = sequence_trait.frame_regex
 
@@ -148,7 +148,7 @@ class FileLocations(TraitBase):
         for location in self.file_paths:
             result = re.search(frame_regex, location.file_path.name)
             if result:
-                frame_index = int(result.group("frame"))
+                frame_index = int(result.group("index"))
                 if frame_index == frame:
                     return location
         return None
