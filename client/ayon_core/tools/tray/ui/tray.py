@@ -20,9 +20,10 @@ from ayon_core.lib import (
 )
 from ayon_core.settings import get_studio_settings
 from ayon_core.addon import (
-    ITrayAction,
+    ITrayAddon,
     ITrayService,
 )
+from ayon_core.pipeline import install_ayon_plugins
 from ayon_core.tools.utils import (
     WrappedCallbackItem,
     get_ayon_qt_app,
@@ -31,6 +32,12 @@ from ayon_core.tools.tray.lib import (
     set_tray_server_url,
     remove_tray_server_url,
     TrayIsRunningError,
+)
+from ayon_core.tools.launcher.ui import LauncherWindow
+from ayon_core.tools.loader.ui import LoaderWindow
+from ayon_core.tools.console_interpreter.ui import ConsoleInterpreterWindow
+from ayon_core.tools.publisher.publish_report_viewer import (
+    PublishReportViewerWindow,
 )
 
 from .addons_manager import TrayAddonsManager
@@ -82,6 +89,11 @@ class TrayManager:
 
         self._outdated_dialog = None
 
+        self._launcher_window = None
+        self._browser_window = None
+        self._console_window = ConsoleInterpreterWindow()
+        self._publish_report_viewer_window = PublishReportViewerWindow()
+
         self._update_check_timer = update_check_timer
         self._update_check_interval = update_check_interval
         self._main_thread_timer = main_thread_timer
@@ -109,12 +121,15 @@ class TrayManager:
     @property
     def doubleclick_callback(self):
         """Double-click callback for Tray icon."""
-        return self._addons_manager.get_doubleclick_callback()
+        callback = self._addons_manager.get_doubleclick_callback()
+        if callback is None:
+            callback = self._show_launcher_window
+        return callback
 
     def execute_doubleclick(self):
         """Execute double click callback in main thread."""
         callback = self.doubleclick_callback
-        if callback:
+        if callback is not None:
             self.execute_in_main_thread(callback)
 
     def show_tray_message(self, title, message, icon=None, msecs=None):
@@ -144,7 +159,33 @@ class TrayManager:
             return
 
         tray_menu = self.tray_widget.menu
+        # Add launcher at first place
+        launcher_action = QtWidgets.QAction(
+            "Launcher", tray_menu
+        )
+        launcher_action.triggered.connect(self._show_launcher_window)
+        tray_menu.addAction(launcher_action)
+
+        console_action = ITrayAddon.add_action_to_admin_submenu(
+            "Console", tray_menu
+        )
+        console_action.triggered.connect(self._show_console_window)
+
+        publish_report_viewer_action = ITrayAddon.add_action_to_admin_submenu(
+            "Publish report viewer", tray_menu
+        )
+        publish_report_viewer_action.triggered.connect(
+            self._show_publish_report_viewer
+        )
+
         self._addons_manager.initialize(tray_menu)
+
+        # Add browser action after addon actions
+        browser_action = QtWidgets.QAction(
+            "Browser", tray_menu
+        )
+        browser_action.triggered.connect(self._show_browser_window)
+        tray_menu.addAction(browser_action)
 
         self._addons_manager.add_route(
             "GET", "/tray", self._web_get_tray_info
@@ -153,7 +194,7 @@ class TrayManager:
             "POST", "/tray/message", self._web_show_tray_message
         )
 
-        admin_submenu = ITrayAction.admin_submenu(tray_menu)
+        admin_submenu = ITrayAddon.admin_submenu(tray_menu)
         tray_menu.addMenu(admin_submenu)
 
         # Add services if they are
@@ -521,6 +562,35 @@ class TrayManager:
         self._info_widget.show()
         self._info_widget.raise_()
         self._info_widget.activateWindow()
+
+    def _show_launcher_window(self):
+        if self._launcher_window is None:
+            self._launcher_window = LauncherWindow()
+
+        self._launcher_window.show()
+        self._launcher_window.raise_()
+        self._launcher_window.activateWindow()
+
+    def _show_browser_window(self):
+        if self._browser_window is None:
+            self._browser_window = LoaderWindow()
+            self._browser_window.setWindowTitle("AYON Browser")
+            install_ayon_plugins()
+
+        self._browser_window.show()
+        self._browser_window.raise_()
+        self._browser_window.activateWindow()
+
+    def _show_console_window(self):
+        self._console_window.show()
+        self._console_window.raise_()
+        self._console_window.activateWindow()
+
+    def _show_publish_report_viewer(self):
+        self._publish_report_viewer_window.refresh()
+        self._publish_report_viewer_window.show()
+        self._publish_report_viewer_window.raise_()
+        self._publish_report_viewer_window.activateWindow()
 
 
 class SystemTrayIcon(QtWidgets.QSystemTrayIcon):
