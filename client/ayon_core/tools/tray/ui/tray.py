@@ -159,6 +159,12 @@ class TrayManager:
             return
 
         tray_menu = self.tray_widget.menu
+        # Add launcher at first place
+        launcher_action = QtWidgets.QAction(
+            "Launcher", tray_menu
+        )
+        launcher_action.triggered.connect(self._show_launcher_window)
+        tray_menu.addAction(launcher_action)
 
         console_action = ITrayAddon.add_action_to_admin_submenu(
             "Console", tray_menu
@@ -174,13 +180,7 @@ class TrayManager:
 
         self._addons_manager.initialize(tray_menu)
 
-        # Add default actions under addon actions
-        launcher_action = QtWidgets.QAction(
-            "Launcher", tray_menu
-        )
-        launcher_action.triggered.connect(self._show_launcher_window)
-        tray_menu.addAction(launcher_action)
-
+        # Add browser action after addon actions
         browser_action = QtWidgets.QAction(
             "Browser", tray_menu
         )
