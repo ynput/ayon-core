@@ -5,6 +5,7 @@ Temporary folder operations
 import os
 import tempfile
 from pathlib import Path
+import warnings
 
 from ayon_core.lib import StringTemplate
 from ayon_core.pipeline import Anatomy
@@ -68,6 +69,21 @@ def _create_local_staging_dir(prefix, suffix, dirpath=None):
     return tempfile.mkdtemp(
         prefix=prefix, suffix=suffix, dir=dirpath
     )
+
+
+def create_custom_tempdir(project_name, anatomy=None):
+    """Backward compatibility deprecated since 2024/12/09.
+    """
+    warnings.warn(
+        "Used deprecated 'create_custom_tempdir' "
+        "use 'ayon_core.pipeline.tempdir.get_temp_dir' instead.",
+        DeprecationWarning,
+    )
+
+    if anatomy is None:
+        anatomy = Anatomy(project_name)
+
+    return _create_custom_tempdir(project_name, anatomy)
 
 
 def _create_custom_tempdir(project_name, anatomy):

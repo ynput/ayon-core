@@ -5,7 +5,7 @@
 
 [tool.poetry]
 name = "ayon-core"
-version = "1.0.11+dev"
+version = "1.0.12+dev"
 description = ""
 authors = ["Ynput Team <team@ynput.io>"]
 readme = "README.md"
@@ -89,7 +89,7 @@ ignore = [
     "UP007",  # ..^
     "UP035",  # ..
     "ARG002",
-    "INP001", # add `__init__.py` to namespaced package
+    "INP001"  # add `__init__.py` to namespaced package
 ]
 
 # Allow fix for all enabled rules (when `--fix`) is provided.
