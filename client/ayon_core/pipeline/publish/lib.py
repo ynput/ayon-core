@@ -764,7 +764,7 @@ def replace_with_published_scene_path(instance, replace_in_path=True):
         return
 
     # determine published path from Anatomy.
-    template_data = workfile_instance.data.get("anatomyData")
+    template_data = copy.deepcopy(workfile_instance.data["anatomyData"])
     rep = workfile_instance.data["representations"][0]
     template_data["representation"] = rep.get("name")
     template_data["ext"] = rep.get("ext")
