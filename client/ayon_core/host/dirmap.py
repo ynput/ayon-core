@@ -118,7 +118,7 @@ class HostDirmap(ABC):
             site, in that case configuration in Local Settings takes precedence
         """
 
-        dirmap_label = "{}-dirmap".format(self.host_name)
+        dirmap_label = "{}_dirmap".format(self.host_name)
         mapping_sett = self.project_settings[self.host_name].get(dirmap_label,
                                                                  {})
         local_mapping = self._get_local_sync_dirmap()
