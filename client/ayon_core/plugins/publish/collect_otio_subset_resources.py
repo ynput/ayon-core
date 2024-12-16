@@ -178,7 +178,8 @@ class CollectOtioSubsetResources(
             repre = self._create_representation(
                 frame_start, frame_end, collection=collection)
 
-            if "review" in instance.data["families"]:
+            if ("review" in instance.data["families"] and
+                not instance.data.get("otioReviewClips")):
                 review_repre = self._create_representation(
                 frame_start, frame_end, collection=collection,
                 delete=True, review=True)
@@ -197,7 +198,8 @@ class CollectOtioSubsetResources(
             repre = self._create_representation(
                 frame_start, frame_end, file=filename, trim=_trim)
 
-            if "review" in instance.data["families"]:
+            if ("review" in instance.data["families"] and
+                not instance.data.get("otioReviewClips")):
                 review_repre = self._create_representation(
                     frame_start, frame_end,
                     file=filename, delete=True, review=True)
