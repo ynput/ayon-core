@@ -54,6 +54,13 @@ class IPluginPaths(AYONInterface):
             paths = [paths]
         return paths
 
+    def get_launcher_action_paths(self):
+        """Receive launcher actions paths.
+
+        Give addons ability to add launcher actions paths.
+        """
+        return self._get_plugin_paths_by_type("actions")
+
     def get_create_plugin_paths(self, host_name):
         """Receive create plugin paths.
 
