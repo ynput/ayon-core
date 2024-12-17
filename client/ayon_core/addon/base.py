@@ -894,6 +894,21 @@ class AddonsManager:
                 output.extend(paths)
         return output
 
+    def collect_launcher_action_paths(self):
+        """Helper to collect launcher action paths from addons.
+
+        Returns:
+            list: List of paths to launcher actions.
+
+        """
+        output = self._collect_plugin_paths(
+            "get_launcher_action_paths"
+        )
+        # Add default core actions
+        actions_dir = os.path.join(AYON_CORE_ROOT, "plugins", "actions")
+        output.insert(0, actions_dir)
+        return output
+
     def collect_create_plugin_paths(self, host_name):
         """Helper to collect creator plugin paths from addons.
 

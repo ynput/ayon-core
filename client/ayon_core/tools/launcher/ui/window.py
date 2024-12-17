@@ -202,8 +202,9 @@ class LauncherWindow(QtWidgets.QWidget):
             self._go_to_hierarchy_page(project_name)
 
     def _on_projects_refresh(self):
-        # There is nothing to do, we're on projects page
+        # Refresh only actions on projects page
         if self._is_on_projects_page:
+            self._actions_widget.refresh()
             return
 
         # No projects were found -> go back to projects page
