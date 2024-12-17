@@ -117,10 +117,7 @@ class HostDirmap(ABC):
             It checks if Site Sync is enabled and user chose to use local
             site, in that case configuration in Local Settings takes precedence
         """
-
-        dirmap_label = "{}_dirmap".format(self.host_name)
-        mapping_sett = self.project_settings[self.host_name].get(dirmap_label,
-                                                                 {})
+        mapping_sett = self.project_settings[self.host_name].get("dirmap", {})
         local_mapping = self._get_local_sync_dirmap()
         mapping_enabled = mapping_sett.get("enabled") or bool(local_mapping)
         if not mapping_enabled:
