@@ -64,6 +64,28 @@ def test_movie_embedded_tc_handle():
     )
 
 
+def test_movie_23fps_qt_embedded_tc():
+    """
+    Movie clip (embedded timecode 1h)
+    available_range = 1937896-1937994 23.976fps
+    source_range = 1937905-1937987 23.97602462768554fps
+    """
+    expected_data = {
+        'mediaIn': 1009,
+        'mediaOut': 1090,
+        'handleStart': 8,
+        'handleEnd': 8,
+        'speed': 1.0
+    }
+
+    _check_expected_retimed_values(
+        "qt_23.976_embedded_long_tc.json",
+        expected_data,
+        handle_start=8,
+        handle_end=8,
+    )
+
+
 def test_movie_retime_effect():
     """
     Movie clip (embedded timecode 1h)
