@@ -252,48 +252,48 @@ def test_multiple_review_clips_no_gap():
 
         '/path/to/ffmpeg -start_number 1000 -framerate 25.0 -i '
         f'C:\\no_tc{os.sep}output.%04d.tif '
-        '-start_number 1199 C:/result/output.%04d.jpg',
+        '-start_number 1198 C:/result/output.%04d.jpg',
 
         '/path/to/ffmpeg -start_number 1000 -framerate 24.0 -i '
         f'C:\\with_tc{os.sep}output.%04d.exr '
-        '-start_number 1300 C:/result/output.%04d.jpg',
+        '-start_number 1299 C:/result/output.%04d.jpg',
 
         # Repeated 25fps tiff sequence multiple times till the end
         '/path/to/ffmpeg -start_number 1000 -framerate 25.0 -i '
         f'C:\\no_tc{os.sep}output.%04d.tif '
-        '-start_number 1397 C:/result/output.%04d.jpg',
+        '-start_number 1395 C:/result/output.%04d.jpg',
 
         '/path/to/ffmpeg -start_number 1000 -framerate 25.0 -i '
         f'C:\\no_tc{os.sep}output.%04d.tif '
-        '-start_number 1498 C:/result/output.%04d.jpg',
+        '-start_number 1496 C:/result/output.%04d.jpg',
 
         '/path/to/ffmpeg -start_number 1000 -framerate 25.0 -i '
         f'C:\\no_tc{os.sep}output.%04d.tif '
-        '-start_number 1599 C:/result/output.%04d.jpg',
+        '-start_number 1597 C:/result/output.%04d.jpg',
 
         '/path/to/ffmpeg -start_number 1000 -framerate 25.0 -i '
         f'C:\\no_tc{os.sep}output.%04d.tif '
-        '-start_number 1700 C:/result/output.%04d.jpg',
+        '-start_number 1698 C:/result/output.%04d.jpg',
 
         '/path/to/ffmpeg -start_number 1000 -framerate 25.0 -i '
         f'C:\\no_tc{os.sep}output.%04d.tif '
-        '-start_number 1801 C:/result/output.%04d.jpg',
+        '-start_number 1799 C:/result/output.%04d.jpg',
 
         '/path/to/ffmpeg -start_number 1000 -framerate 25.0 -i '
         f'C:\\no_tc{os.sep}output.%04d.tif '
-        '-start_number 1902 C:/result/output.%04d.jpg',
+        '-start_number 1900 C:/result/output.%04d.jpg',
 
         '/path/to/ffmpeg -start_number 1000 -framerate 25.0 -i '
         f'C:\\no_tc{os.sep}output.%04d.tif '
-        '-start_number 2003 C:/result/output.%04d.jpg',
+        '-start_number 2001 C:/result/output.%04d.jpg',
 
         '/path/to/ffmpeg -start_number 1000 -framerate 25.0 -i '
         f'C:\\no_tc{os.sep}output.%04d.tif '
-        '-start_number 2104 C:/result/output.%04d.jpg',
+        '-start_number 2102 C:/result/output.%04d.jpg',
 
         '/path/to/ffmpeg -start_number 1000 -framerate 25.0 -i '
         f'C:\\no_tc{os.sep}output.%04d.tif '
-        '-start_number 2205 C:/result/output.%04d.jpg'
+        '-start_number 2203 C:/result/output.%04d.jpg'
     ]
 
     assert calls == expected
