@@ -585,9 +585,6 @@ def version_up_current_workfile():
     """Function to increment and save workfile
     """
     host = registered_host()
-    if not host.has_unsaved_changes():
-        print("No unsaved changes, skipping file save..")
-        return
 
     project_name = get_current_project_name()
     folder_path = get_current_folder_path()
