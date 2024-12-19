@@ -26,7 +26,7 @@ from ayon_core.pipeline import Anatomy
 from ayon_core.pipeline.version_start import get_versioning_start
 from ayon_core.pipeline.template_data import get_template_data
 from ayon_core.pipeline.publish import get_publish_template_name
-from ayon_core.pipeline.create import get_product_name
+from ayon_core.pipeline.create import get_product_name, TaskNotSetError
 
 UNKNOWN = object()
 
@@ -823,15 +823,25 @@ class ProjectPushItemProcess:
             task_name = task_info["name"]
             task_type = task_info["taskType"]
 
-        product_name = get_product_name(
-            self._item.dst_project_name,
-            task_name,
-            task_type,
-            self.host_name,
-            product_type,
-            self._item.variant,
-            project_settings=self._project_settings
-        )
+        try:
+            product_name = get_product_name(
+                self._item.dst_project_name,
+                task_name,
+                task_type,
+                self.host_name,
+                product_type,
+                self._item.variant,
+                project_settings=self._project_settings
+            )
+        except TaskNotSetError:
+            self._status.set_failed(
+                "Target product name template requires task name. To continue"
+                " you have to select target task or change settings"
+                " <b>ayon+settings://core/tools/creator/product_name_profiles"
+                f"?project={self._item.dst_project_name}</b>."
+            )
+            raise PushToProjectError(self._status.fail_reason)
+
         self._log_info(
             f"Push will be integrating to product with name '{product_name}'"
         )
