@@ -12,6 +12,7 @@ from .tempdir import get_temp_dir
 class StagingDir:
     directory: str
     persistent: bool
+    custom: bool  # Whether the staging dir is a custom staging dir
 
 
 def get_staging_dir_config(
@@ -204,7 +205,8 @@ def get_staging_dir_info(
         dir_template = staging_dir_config["template"]["directory"]
         return StagingDir(
             dir_template.format_strict(ctx_data),
-            staging_dir_config["persistence"],
+            persistent=staging_dir_config["persistence"],
+            custom=True
         )
 
     # no config found but force an output
@@ -216,7 +218,8 @@ def get_staging_dir_info(
                 prefix=prefix,
                 suffix=suffix,
             ),
-            False,
+            persistent=False,
+            custom=False
         )
 
     return None
