@@ -64,7 +64,7 @@ class LocatableContent(TraitBase):
     description: ClassVar[str] = "LocatableContent Trait Model"
     id: ClassVar[str] = "ayon.content.LocatableContent.v1"
     location: str = Field(..., title="Location")
-    is_templated: Optional[bool] = Field(None, title="Is Templated")
+    is_templated: Optional[bool] = Field(default=None, title="Is Templated")
 
 class FileLocation(TraitBase):
     """FileLocation trait model.
@@ -86,8 +86,8 @@ class FileLocation(TraitBase):
     description: ClassVar[str] = "FileLocation Trait Model"
     id: ClassVar[str] = "ayon.content.FileLocation.v1"
     file_path: Path = Field(..., title="File Path")
-    file_size: Optional[int] = Field(None, title="File Size")
-    file_hash: Optional[str] = Field(None, title="File Hash")
+    file_size: Optional[int] = Field(default=None, title="File Size")
+    file_hash: Optional[str] = Field(default=None, title="File Hash")
 
 class FileLocations(TraitBase):
     """FileLocation trait model.
@@ -140,11 +140,10 @@ class FileLocations(TraitBase):
             Optional[FileLocation]: File location for the frame.
 
         """
-        frame_regex = r"\.(?P<index>(?P<padding>0*)\d+)\.\D+\d?$"
+        frame_regex = re.compile(r"\.(?P<index>(?P<padding>0*)\d+)\.\D+\d?$")
         if sequence_trait and sequence_trait.frame_regex:
-            frame_regex = sequence_trait.frame_regex
+            frame_regex = sequence_trait.get_frame_pattern()
 
-        frame_regex = re.compile(frame_regex)
         for location in self.file_paths:
             result = re.search(frame_regex, location.file_path.name)
             if result:
@@ -153,7 +152,7 @@ class FileLocations(TraitBase):
                     return location
         return None
 
-    def validate(self, representation: Representation) -> None:
+    def validate_trait(self, representation: Representation) -> None:
         """Validate the trait.
 
         This method validates the trait against others in the representation.
@@ -167,7 +166,7 @@ class FileLocations(TraitBase):
             bool: True if the trait is valid, False otherwise
 
         """
-        super().validate(representation)
+        super().validate_trait(representation)
         if len(self.file_paths) == 0:
                 # If there are no file paths, we can't validate
                 msg = "No file locations defined (empty list)"
@@ -205,12 +204,13 @@ class FileLocations(TraitBase):
         tmp_frame_ranged: FrameRanged = get_sequence_from_files(
                     [f.file_path for f in self.file_paths])
 
-        frames_from_spec = None
+        frames_from_spec: list[int] = []
         with contextlib.suppress(MissingTraitError):
             sequence: Sequence = representation.get_trait(Sequence)
+            frame_regex = sequence.get_frame_pattern()
             if sequence.frame_spec:
-                frames_from_spec: list[int] = sequence.get_frame_list(
-                    self, sequence.frame_regex)
+                frames_from_spec = sequence.get_frame_list(
+                    self, frame_regex)
 
         frame_start_with_handles, frame_end_with_handles = \
             self._get_frame_info_with_handles(representation, frames_from_spec)
@@ -322,8 +322,8 @@ class FileLocations(TraitBase):
             handles: Handles = representation.get_trait(Handles)
             if not handles.inclusive:
                 # if handless are exclusive, we need to adjust the frame range
-                frame_start_handle = handles.frame_start_handle
-                frame_end_handle = handles.frame_end_handle
+                frame_start_handle = handles.frame_start_handle or 0
+                frame_end_handle = handles.frame_end_handle or 0
                 if frames_from_spec:
                     frames_from_spec.extend(
                         range(frame_start - frame_start_handle, frame_start)
@@ -428,9 +428,11 @@ class Bundle(TraitBase):
     items: list[list[TraitBase]] = Field(
         ..., title="Bundles of traits")
 
-    def to_representation(self) -> Representation:
-        """Convert to a representation."""
-        return Representation(traits=self.items)
+    def to_representations(self) -> Generator[Representation]:
+        """Convert bundle to representations."""
+        for idx, item in enumerate(self.items):
+            yield Representation(name=f"{self.name} {idx}", traits=item)
+  
 
 
 class Fragment(TraitBase):

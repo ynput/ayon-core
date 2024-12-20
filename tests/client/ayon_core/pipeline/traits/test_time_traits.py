@@ -15,6 +15,7 @@ from ayon_core.pipeline.traits import (
 from ayon_core.pipeline.traits.trait import TraitValidationError
 
 
+
 def test_sequence_validations() -> None:
     """Test Sequence trait validation."""
     file_locations_list = [
@@ -54,7 +55,7 @@ def test_sequence_validations() -> None:
             frame_spec="1001-1010,1015-1020,1100")
     ])
 
-    representation.get_trait(Sequence).validate(representation)
+    representation.get_trait(Sequence).validate_trait(representation)
 
     # here we set handles and set them as inclusive, so this should pass
     representation = Representation(name="test_2", traits=[
