@@ -104,7 +104,7 @@ class ProductNameValidator(RegularExpressionValidatorClass):
 
     def validate(self, text, pos):
         results = super(ProductNameValidator, self).validate(text, pos)
-        if results[0] == self.Invalid:
+        if results[0] == RegularExpressionValidatorClass.Invalid:
             self.invalid.emit(self.invalid_chars(text))
         return results
 
@@ -217,7 +217,9 @@ class ProductTypeDescriptionWidget(QtWidgets.QWidget):
 
         product_type_label = QtWidgets.QLabel(self)
         product_type_label.setObjectName("CreatorProductTypeLabel")
-        product_type_label.setAlignment(QtCore.Qt.AlignBottom | QtCore.Qt.AlignLeft)
+        product_type_label.setAlignment(
+            QtCore.Qt.AlignBottom | QtCore.Qt.AlignLeft
+        )
 
         help_label = QtWidgets.QLabel(self)
         help_label.setAlignment(QtCore.Qt.AlignTop | QtCore.Qt.AlignLeft)
