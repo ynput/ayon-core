@@ -11,8 +11,8 @@ class ValidateProductUniqueness(pyblish.api.ContextPlugin):
     """Validate all product names are unique.
 
     This only validates whether the instances currently set to publish from
-    the workfile overlap one another for the folder + product they are publishing
-    to.
+    the workfile overlap one another for the folder + product they are
+    publishing to.
 
     This does not perform any check against existing publishes in the database
     since it is allowed to publish into existing products resulting in
@@ -72,8 +72,10 @@ class ValidateProductUniqueness(pyblish.api.ContextPlugin):
             # All is ok
             return
 
-        msg = ("Instance product names {} are not unique. ".format(non_unique) +
-               "Please remove or rename duplicates.")
+        msg = (
+            f"Instance product names {non_unique} are not unique."
+            " Please remove or rename duplicates."
+        )
         formatting_data = {
             "non_unique": ",".join(non_unique)
         }

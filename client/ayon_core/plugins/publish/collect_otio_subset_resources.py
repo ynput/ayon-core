@@ -10,12 +10,16 @@ import os
 import clique
 import pyblish.api
 
+from ayon_core.pipeline import publish
 from ayon_core.pipeline.publish import (
     get_publish_template_name
 )
 
 
-class CollectOtioSubsetResources(pyblish.api.InstancePlugin):
+class CollectOtioSubsetResources(
+    pyblish.api.InstancePlugin,
+    publish.ColormanagedPyblishPluginMixin
+):
     """Get Resources for a product version"""
 
     label = "Collect OTIO Subset Resources"
@@ -145,6 +149,7 @@ class CollectOtioSubsetResources(pyblish.api.InstancePlugin):
 
         self.log.info(
             "frame_start-frame_end: {}-{}".format(frame_start, frame_end))
+        review_repre = None
 
         if is_sequence:
             # file sequence way
@@ -173,6 +178,11 @@ class CollectOtioSubsetResources(pyblish.api.InstancePlugin):
             repre = self._create_representation(
                 frame_start, frame_end, collection=collection)
 
+            if "review" in instance.data["families"]:
+                review_repre = self._create_representation(
+                frame_start, frame_end, collection=collection,
+                delete=True, review=True)
+
         else:
             _trim = False
             dirname, filename = os.path.split(media_ref.target_url)
@@ -187,12 +197,25 @@ class CollectOtioSubsetResources(pyblish.api.InstancePlugin):
             repre = self._create_representation(
                 frame_start, frame_end, file=filename, trim=_trim)
 
+            if "review" in instance.data["families"]:
+                review_repre = self._create_representation(
+                    frame_start, frame_end,
+                    file=filename, delete=True, review=True)
+
         instance.data["originalDirname"] = self.staging_dir
 
+        # add representation to instance data
         if repre:
-            # add representation to instance data
+            colorspace = instance.data.get("colorspace")
+            # add colorspace data to representation
+            self.set_representation_colorspace(
+                repre, instance.context, colorspace)
+
             instance.data["representations"].append(repre)
-            self.log.debug(">>>>>>>> {}".format(repre))
+
+        # add review representation to instance data
+        if review_repre:
+            instance.data["representations"].append(review_repre)
 
         self.log.debug(instance.data)
 
@@ -213,7 +236,8 @@ class CollectOtioSubsetResources(pyblish.api.InstancePlugin):
         representation_data = {
             "frameStart": start,
             "frameEnd": end,
-            "stagingDir": self.staging_dir
+            "stagingDir": self.staging_dir,
+            "tags": [],
         }
 
         if kwargs.get("collection"):
@@ -239,8 +263,10 @@ class CollectOtioSubsetResources(pyblish.api.InstancePlugin):
                 "frameEnd": end,
             })
 
-        if kwargs.get("trim") is True:
-            representation_data["tags"] = ["trim"]
+        for tag_name in ("trim", "delete", "review"):
+            if kwargs.get(tag_name) is True:
+                representation_data["tags"].append(tag_name)
+
         return representation_data
 
     def get_template_name(self, instance):

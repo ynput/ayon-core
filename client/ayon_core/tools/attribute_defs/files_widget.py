@@ -17,6 +17,8 @@ from ayon_core.tools.utils import (
     PixmapLabel
 )
 
+from ._constants import REVERT_TO_DEFAULT_LABEL
+
 ITEM_ID_ROLE = QtCore.Qt.UserRole + 1
 ITEM_LABEL_ROLE = QtCore.Qt.UserRole + 2
 ITEM_ICON_ROLE = QtCore.Qt.UserRole + 3
@@ -252,7 +254,7 @@ class FilesModel(QtGui.QStandardItemModel):
         """Make sure that removed items are removed from items mapping.
 
         Connected with '_on_insert'. When user drag item and drop it to same
-        view the item is actually removed and creted again but it happens in
+        view the item is actually removed and created again but it happens in
         inner calls of Qt.
         """
 
@@ -598,7 +600,7 @@ class FilesView(QtWidgets.QListView):
     """View showing instances and their groups."""
 
     remove_requested = QtCore.Signal()
-    context_menu_requested = QtCore.Signal(QtCore.QPoint)
+    context_menu_requested = QtCore.Signal(QtCore.QPoint, bool)
 
     def __init__(self, *args, **kwargs):
         super(FilesView, self).__init__(*args, **kwargs)
@@ -690,9 +692,8 @@ class FilesView(QtWidgets.QListView):
 
     def _on_context_menu_request(self, pos):
         index = self.indexAt(pos)
-        if index.isValid():
-            point = self.viewport().mapToGlobal(pos)
-            self.context_menu_requested.emit(point)
+        point = self.viewport().mapToGlobal(pos)
+        self.context_menu_requested.emit(point, index.isValid())
 
     def _on_selection_change(self):
         self._remove_btn.setEnabled(self.has_selected_item_ids())
@@ -721,27 +722,34 @@ class FilesView(QtWidgets.QListView):
 
 class FilesWidget(QtWidgets.QFrame):
     value_changed = QtCore.Signal()
+    revert_requested = QtCore.Signal()
 
     def __init__(self, single_item, allow_sequences, extensions_label, parent):
-        super(FilesWidget, self).__init__(parent)
+        super().__init__(parent)
         self.setAcceptDrops(True)
 
+        wrapper_widget = QtWidgets.QWidget(self)
+
         empty_widget = DropEmpty(
-            single_item, allow_sequences, extensions_label, self
+            single_item, allow_sequences, extensions_label, wrapper_widget
         )
 
         files_model = FilesModel(single_item, allow_sequences)
         files_proxy_model = FilesProxyModel()
         files_proxy_model.setSourceModel(files_model)
-        files_view = FilesView(self)
+        files_view = FilesView(wrapper_widget)
         files_view.setModel(files_proxy_model)
 
-        layout = QtWidgets.QStackedLayout(self)
-        layout.setContentsMargins(0, 0, 0, 0)
-        layout.setStackingMode(QtWidgets.QStackedLayout.StackAll)
-        layout.addWidget(empty_widget)
-        layout.addWidget(files_view)
-        layout.setCurrentWidget(empty_widget)
+        wrapper_layout = QtWidgets.QStackedLayout(wrapper_widget)
+        wrapper_layout.setContentsMargins(0, 0, 0, 0)
+        wrapper_layout.setStackingMode(QtWidgets.QStackedLayout.StackAll)
+        wrapper_layout.addWidget(empty_widget)
+        wrapper_layout.addWidget(files_view)
+        wrapper_layout.setCurrentWidget(empty_widget)
+
+        main_layout = QtWidgets.QHBoxLayout(self)
+        main_layout.setContentsMargins(0, 0, 0, 0)
+        main_layout.addWidget(wrapper_widget, 1)
 
         files_proxy_model.rowsInserted.connect(self._on_rows_inserted)
         files_proxy_model.rowsRemoved.connect(self._on_rows_removed)
@@ -761,7 +769,11 @@ class FilesWidget(QtWidgets.QFrame):
 
         self._widgets_by_id = {}
 
-        self._layout = layout
+        self._wrapper_widget = wrapper_widget
+        self._wrapper_layout = wrapper_layout
+
+        self.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
+        self.customContextMenuRequested.connect(self._on_context_menu)
 
     def _set_multivalue(self, multivalue):
         if self._multivalue is multivalue:
@@ -770,7 +782,7 @@ class FilesWidget(QtWidgets.QFrame):
         self._files_view.set_multivalue(multivalue)
         self._files_model.set_multivalue(multivalue)
         self._files_proxy_model.set_multivalue(multivalue)
-        self.setEnabled(not multivalue)
+        self._wrapper_widget.setEnabled(not multivalue)
 
     def set_value(self, value, multivalue):
         self._in_set_value = True
@@ -829,7 +841,7 @@ class FilesWidget(QtWidgets.QFrame):
                 self._multivalue
             )
             widget.context_menu_requested.connect(
-                self._on_context_menu_requested
+                self._on_item_context_menu_request
             )
             self._files_view.setIndexWidget(index, widget)
             self._files_proxy_model.setData(
@@ -847,7 +859,7 @@ class FilesWidget(QtWidgets.QFrame):
         for row in range(self._files_proxy_model.rowCount()):
             index = self._files_proxy_model.index(row, 0)
             item_id = index.data(ITEM_ID_ROLE)
-            available_item_ids.add(index.data(ITEM_ID_ROLE))
+            available_item_ids.add(item_id)
 
         widget_ids = set(self._widgets_by_id.keys())
         for item_id in available_item_ids:
@@ -888,22 +900,31 @@ class FilesWidget(QtWidgets.QFrame):
         if items_to_delete:
             self._remove_item_by_ids(items_to_delete)
 
-    def _on_context_menu_requested(self, pos):
-        if self._multivalue:
-            return
+    def _on_context_menu(self, pos):
+        self._on_context_menu_requested(pos, False)
 
+    def _on_context_menu_requested(self, pos, valid_index):
         menu = QtWidgets.QMenu(self._files_view)
+        if valid_index and not self._multivalue:
+            if self._files_view.has_selected_sequence():
+                split_action = QtWidgets.QAction("Split sequence", menu)
+                split_action.triggered.connect(self._on_split_request)
+                menu.addAction(split_action)
 
-        if self._files_view.has_selected_sequence():
-            split_action = QtWidgets.QAction("Split sequence", menu)
-            split_action.triggered.connect(self._on_split_request)
-            menu.addAction(split_action)
+            remove_action = QtWidgets.QAction("Remove", menu)
+            remove_action.triggered.connect(self._on_remove_requested)
+            menu.addAction(remove_action)
 
-        remove_action = QtWidgets.QAction("Remove", menu)
-        remove_action.triggered.connect(self._on_remove_requested)
-        menu.addAction(remove_action)
+        if not valid_index:
+            revert_action = QtWidgets.QAction(REVERT_TO_DEFAULT_LABEL, menu)
+            revert_action.triggered.connect(self.revert_requested)
+            menu.addAction(revert_action)
 
-        menu.popup(pos)
+        if menu.actions():
+            menu.popup(pos)
+
+    def _on_item_context_menu_request(self, pos):
+        self._on_context_menu_requested(pos, True)
 
     def dragEnterEvent(self, event):
         if self._multivalue:
@@ -1011,5 +1032,5 @@ class FilesWidget(QtWidgets.QFrame):
             current_widget = self._files_view
         else:
             current_widget = self._empty_widget
-        self._layout.setCurrentWidget(current_widget)
+        self._wrapper_layout.setCurrentWidget(current_widget)
         self._files_view.update_remove_btn_visibility()

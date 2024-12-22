@@ -60,7 +60,11 @@
         "icon-alert-tools": "#AA5050",
         "icon-entity-default": "#bfccd6",
         "icon-entity-disabled": "#808080",
+
         "font-entity-deprecated": "#666666",
+
+        "font-overridden": "#91CDFC",
+
         "overlay-messages": {
             "close-btn": "#D3D8DE",
             "bg-success": "#458056",
