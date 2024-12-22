@@ -16,7 +16,7 @@ from ayon_core.pipeline.traits import (
     TraitBase,
 )
 
-REPRESENTATION_DATA = {
+REPRESENTATION_DATA: dict = {
         FileLocation.id: {
             "file_path": Path("/path/to/file"),
             "file_size": 1024,
@@ -127,7 +127,8 @@ def test_representation_traits(representation: Representation) -> None:
               repre_dict
 
     assert representation.has_traits() is True
-    empty_representation = Representation(name="test", traits=[])
+    empty_representation: Representation = Representation(
+        name="test", traits=[])
     assert empty_representation.has_traits() is False
 
     assert representation.contains_trait(trait=FileLocation) is True
