@@ -9,11 +9,13 @@ import clique
 import pyblish.api
 
 from ayon_core import resources, AYON_CORE_ROOT
-from ayon_core.pipeline import publish
+from ayon_core.pipeline import (
+    publish,
+    get_temp_dir
+)
 from ayon_core.lib import (
     run_ayon_launcher_process,
 
-    get_transcode_temp_directory,
     convert_input_paths_for_ffmpeg,
     should_convert_for_ffmpeg
 )
@@ -199,7 +201,7 @@ class ExtractBurnin(publish.Extractor):
         if not burnins_per_repres:
             self.log.debug(
                 "Skipped instance. No representations found matching a burnin"
-                "definition in: %s", burnin_defs
+                " definition in: %s", burnin_defs
             )
             return
 
@@ -250,7 +252,10 @@ class ExtractBurnin(publish.Extractor):
             #   - change staging dir of source representation
             #   - must be set back after output definitions processing
             if do_convert:
-                new_staging_dir = get_transcode_temp_directory()
+                new_staging_dir = get_temp_dir(
+                    project_name=instance.context.data["projectName"],
+                    use_local_temp=True,
+                )
                 repre["stagingDir"] = new_staging_dir
 
                 convert_input_paths_for_ffmpeg(
@@ -399,7 +404,7 @@ class ExtractBurnin(publish.Extractor):
 
                 add_repre_files_for_cleanup(instance, new_repre)
 
-            # Cleanup temp staging dir after procesisng of output definitions
+            # Cleanup temp staging dir after processing of output definitions
             if do_convert:
                 temp_dir = repre["stagingDir"]
                 shutil.rmtree(temp_dir)
@@ -420,6 +425,12 @@ class ExtractBurnin(publish.Extractor):
                     self.log.debug("Removed: \"{}\"".format(filepath))
 
     def _get_burnin_options(self):
+        """Get the burnin options from `ExtractBurnin` settings.
+
+        Returns:
+            dict[str, Any]: Burnin options.
+
+        """
         # Prepare burnin options
         burnin_options = copy.deepcopy(self.default_options)
         if self.options:
@@ -699,7 +710,7 @@ class ExtractBurnin(publish.Extractor):
         """Prepare data for representation.
 
         Args:
-            instance (Instance): Currently processed Instance.
+            instance (pyblish.api.Instance): Currently processed Instance.
             repre (dict): Currently processed representation.
             burnin_data (dict): Copy of basic burnin data based on instance
                 data.
@@ -757,9 +768,11 @@ class ExtractBurnin(publish.Extractor):
 
         Args:
             profile (dict): Profile from presets matching current context.
+            instance (pyblish.api.Instance): Publish instance.
 
         Returns:
-            list: Contain all valid output definitions.
+            list[dict[str, Any]]: Contain all valid output definitions.
+
         """
         filtered_burnin_defs = []
 
@@ -778,12 +791,11 @@ class ExtractBurnin(publish.Extractor):
             if not self.families_filter_validation(
                 families, families_filters
             ):
-                self.log.debug((
-                    "Skipped burnin definition \"{}\". Family"
-                    " filters ({}) does not match current instance families: {}"
-                ).format(
-                    filename_suffix, str(families_filters), str(families)
-                ))
+                self.log.debug(
+                    f"Skipped burnin definition \"{filename_suffix}\"."
+                    f" Family filters ({families_filters}) does not match"
+                    f" current instance families: {families}"
+                )
                 continue
 
             # Burnin values

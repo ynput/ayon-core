@@ -509,8 +509,11 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
         if not is_sequence_representation:
             files = [files]
 
-        if any(os.path.isabs(fname) for fname in files):
-            raise KnownPublishError("Given file names contain full paths")
+        for fname in files:
+            if os.path.isabs(fname):
+                raise KnownPublishError(
+                    f"Representation file names contains full paths: {fname}"
+                )
 
         if not is_sequence_representation:
             return
@@ -743,6 +746,11 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
             #   contain '{frame}' in template -> Do we want support it?
             if not is_udim:
                 repre_context["frame"] = first_index_padded
+
+            # store renderlayer in context if it exists
+            # to be later used for example by delivery templates
+            if instance.data.get("renderlayer"):
+                repre_context["renderlayer"] = instance.data["renderlayer"]
 
             # Update the destination indexes and padding
             dst_collection = clique.assemble(dst_filepaths)[0][0]

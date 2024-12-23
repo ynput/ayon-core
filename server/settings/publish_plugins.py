@@ -57,7 +57,7 @@ class CollectFramesFixDefModel(BaseSettingsModel):
         True,
         title="Show 'Rewrite latest version' toggle"
     )
-    
+
 
 class ContributionLayersModel(BaseSettingsModel):
     _layout = "compact"
@@ -82,6 +82,17 @@ class CollectUSDLayerContributionsModel(BaseSettingsModel):
     def validate_unique_outputs(cls, value):
         ensure_unique_names(value)
         return value
+
+
+class AyonEntityURIModel(BaseSettingsModel):
+    use_ayon_entity_uri: bool = SettingsField(
+        title="Use AYON Entity URI",
+        description=(
+            "When enabled the USD paths written using the contribution "
+            "workflow will use ayon entity URIs instead of resolved published "
+            "paths. You can only load these if you use the AYON USD Resolver."
+        )
+    )
 
 
 class PluginStateByHostModelProfile(BaseSettingsModel):
@@ -257,13 +268,36 @@ class ExtractThumbnailModel(BaseSettingsModel):
 def _extract_oiio_transcoding_type():
     return [
         {"value": "colorspace", "label": "Use Colorspace"},
-        {"value": "display", "label": "Use Display&View"}
+        {"value": "display_view", "label": "Use Display&View"}
     ]
 
 
 class OIIOToolArgumentsModel(BaseSettingsModel):
     additional_command_args: list[str] = SettingsField(
-        default_factory=list, title="Arguments")
+        default_factory=list,
+        title="Arguments",
+        description="Additional command line arguments for *oiiotool*."
+    )
+
+
+class UseDisplayViewModel(BaseSettingsModel):
+    _layout = "expanded"
+    display: str = SettingsField(
+        "",
+        title="Target Display",
+        description=(
+            "Display of the target transform. If left empty, the"
+            " source Display value will be used."
+        )
+    )
+    view: str = SettingsField(
+        "",
+        title="Target View",
+        description=(
+            "View of the target transform. If left empty, the"
+            " source View value will be used."
+        )
+    )
 
 
 class ExtractOIIOTranscodeOutputModel(BaseSettingsModel):
@@ -274,22 +308,60 @@ class ExtractOIIOTranscodeOutputModel(BaseSettingsModel):
         description="Output name (no space)",
         regex=r"[a-zA-Z0-9_]([a-zA-Z0-9_\.\-]*[a-zA-Z0-9_])?$",
     )
-    extension: str = SettingsField("", title="Extension")
+    extension: str = SettingsField(
+        "",
+        title="Extension",
+        description=(
+            "Target extension. If left empty, original"
+            " extension is used."
+        ),
+    )
     transcoding_type: str = SettingsField(
         "colorspace",
         title="Transcoding type",
-        enum_resolver=_extract_oiio_transcoding_type
+        enum_resolver=_extract_oiio_transcoding_type,
+        conditionalEnum=True,
+        description=(
+            "Select the transcoding type for your output, choosing either "
+            "*Colorspace* or *Display&View* transform."
+            " Only one option can be applied per output definition."
+        ),
     )
-    colorspace: str = SettingsField("", title="Colorspace")
-    display: str = SettingsField("", title="Display")
-    view: str = SettingsField("", title="View")
+    colorspace: str = SettingsField(
+        "",
+        title="Target Colorspace",
+        description=(
+            "Choose the desired target colorspace, confirming its availability"
+            " in the active OCIO config. If left empty, the"
+            " source colorspace value will be used, resulting in no"
+            " colorspace conversion."
+        )
+    )
+    display_view: UseDisplayViewModel = SettingsField(
+        title="Use Display&View",
+        default_factory=UseDisplayViewModel
+    )
+
     oiiotool_args: OIIOToolArgumentsModel = SettingsField(
         default_factory=OIIOToolArgumentsModel,
         title="OIIOtool arguments")
 
-    tags: list[str] = SettingsField(default_factory=list, title="Tags")
+    tags: list[str] = SettingsField(
+        default_factory=list,
+        title="Tags",
+        description=(
+            "Additional tags that will be added to the created representation."
+            "\nAdd *review* tag to create review from the transcoded"
+            " representation instead of the original."
+        )
+    )
     custom_tags: list[str] = SettingsField(
-        default_factory=list, title="Custom Tags"
+        default_factory=list,
+        title="Custom Tags",
+        description=(
+            "Additional custom tags that will be added"
+            " to the created representation."
+        )
     )
 
 
@@ -317,7 +389,13 @@ class ExtractOIIOTranscodeProfileModel(BaseSettingsModel):
     )
     delete_original: bool = SettingsField(
         True,
-        title="Delete Original Representation"
+        title="Delete Original Representation",
+        description=(
+            "Choose to preserve or remove the original representation.\n"
+            "Keep in mind that if the transcoded representation includes"
+            " a `review` tag, it will take precedence over"
+            " the original for creating reviews."
+        ),
     )
     outputs: list[ExtractOIIOTranscodeOutputModel] = SettingsField(
         default_factory=list,
@@ -360,7 +438,7 @@ class ExtractReviewFFmpegModel(BaseSettingsModel):
 def extract_review_filter_enum():
     return [
         {
-            "value": "everytime",
+            "value": "everytime",  # codespell:ignore everytime
             "label": "Always"
         },
         {
@@ -382,10 +460,10 @@ class ExtractReviewFilterModel(BaseSettingsModel):
         default_factory=list, title="Custom Tags"
     )
     single_frame_filter: str = SettingsField(
-        "everytime",
+        "everytime",  # codespell:ignore everytime
         description=(
-            "Use output <b>always</b> / only if input <b>is 1 frame</b>"
-            " image / only if has <b>2+ frames</b> or <b>is video</b>"
+            "Use output **always** / only if input **is 1 frame**"
+            " image / only if has **2+ frames** or **is video**"
         ),
         enum_resolver=extract_review_filter_enum
     )
@@ -562,12 +640,12 @@ class ExtractBurninDef(BaseSettingsModel):
     _isGroup = True
     _layout = "expanded"
     name: str = SettingsField("")
-    TOP_LEFT: str = SettingsField("", topic="Top Left")
-    TOP_CENTERED: str = SettingsField("", topic="Top Centered")
-    TOP_RIGHT: str = SettingsField("", topic="Top Right")
-    BOTTOM_LEFT: str = SettingsField("", topic="Bottom Left")
-    BOTTOM_CENTERED: str = SettingsField("", topic="Bottom Centered")
-    BOTTOM_RIGHT: str = SettingsField("", topic="Bottom Right")
+    TOP_LEFT: str = SettingsField("", title="Top Left")
+    TOP_CENTERED: str = SettingsField("", title="Top Centered")
+    TOP_RIGHT: str = SettingsField("", title="Top Right")
+    BOTTOM_LEFT: str = SettingsField("", title="Bottom Left")
+    BOTTOM_CENTERED: str = SettingsField("", title="Bottom Centered")
+    BOTTOM_RIGHT: str = SettingsField("", title="Bottom Right")
     filter: ExtractBurninDefFilter = SettingsField(
         default_factory=ExtractBurninDefFilter,
         title="Additional filtering"
@@ -780,7 +858,7 @@ class IntegrateHeroVersionModel(BaseSettingsModel):
 
 class CleanUpModel(BaseSettingsModel):
     _isGroup = True
-    paterns: list[str] = SettingsField(
+    paterns: list[str] = SettingsField(  # codespell:ignore paterns
         default_factory=list,
         title="Patterns (regex)"
     )
@@ -817,9 +895,11 @@ class PublishPuginsModel(BaseSettingsModel):
         default_factory=CollectFramesFixDefModel,
         title="Collect Frames to Fix",
     )
-    CollectUSDLayerContributions: CollectUSDLayerContributionsModel = SettingsField(
-        default_factory=CollectUSDLayerContributionsModel,
-        title="Collect USD Layer Contributions",
+    CollectUSDLayerContributions: CollectUSDLayerContributionsModel = (
+        SettingsField(
+            default_factory=CollectUSDLayerContributionsModel,
+            title="Collect USD Layer Contributions",
+        )
     )
     ValidateEditorialAssetName: ValidateBaseModel = SettingsField(
         default_factory=ValidateBaseModel,
@@ -856,6 +936,14 @@ class PublishPuginsModel(BaseSettingsModel):
     ExtractBurnin: ExtractBurninModel = SettingsField(
         default_factory=ExtractBurninModel,
         title="Extract Burnin"
+    )
+    ExtractUSDAssetContribution: AyonEntityURIModel = SettingsField(
+        default_factory=AyonEntityURIModel,
+        title="Extract USD Asset Contribution",
+    )
+    ExtractUSDLayerContribution: AyonEntityURIModel = SettingsField(
+        default_factory=AyonEntityURIModel,
+        title="Extract USD Layer Contribution",
     )
     PreIntegrateThumbnails: PreIntegrateThumbnailsModel = SettingsField(
         default_factory=PreIntegrateThumbnailsModel,
@@ -1066,7 +1154,7 @@ DEFAULT_PUBLISH_VALUES = {
                             "output": [
                                 "-pix_fmt yuv420p",
                                 "-crf 18",
-                                "-c:a acc",
+                                "-c:a aac",
                                 "-b:a 192k",
                                 "-g 1",
                                 "-movflags faststart"
@@ -1131,7 +1219,9 @@ DEFAULT_PUBLISH_VALUES = {
                         "TOP_RIGHT": "{anatomy[version]}",
                         "BOTTOM_LEFT": "{username}",
                         "BOTTOM_CENTERED": "{folder[name]}",
-                        "BOTTOM_RIGHT": "{frame_start}-{current_frame}-{frame_end}",
+                        "BOTTOM_RIGHT": (
+                            "{frame_start}-{current_frame}-{frame_end}"
+                        ),
                         "filter": {
                             "families": [],
                             "tags": []
@@ -1157,7 +1247,9 @@ DEFAULT_PUBLISH_VALUES = {
                         "TOP_RIGHT": "{anatomy[version]}",
                         "BOTTOM_LEFT": "{username}",
                         "BOTTOM_CENTERED": "{folder[name]}",
-                        "BOTTOM_RIGHT": "{frame_start}-{current_frame}-{frame_end}",
+                        "BOTTOM_RIGHT": (
+                            "{frame_start}-{current_frame}-{frame_end}"
+                        ),
                         "filter": {
                             "families": [],
                             "tags": []
@@ -1166,6 +1258,12 @@ DEFAULT_PUBLISH_VALUES = {
                 ]
             }
         ]
+    },
+    "ExtractUSDAssetContribution": {
+        "use_ayon_entity_uri": False,
+    },
+    "ExtractUSDLayerContribution": {
+        "use_ayon_entity_uri": False,
     },
     "PreIntegrateThumbnails": {
         "enabled": True,
@@ -1200,7 +1298,7 @@ DEFAULT_PUBLISH_VALUES = {
         "use_hardlinks": False
     },
     "CleanUp": {
-        "paterns": [],
+        "paterns": [],  # codespell:ignore paterns
         "remove_temp_renders": False
     },
     "CleanUpFarm": {

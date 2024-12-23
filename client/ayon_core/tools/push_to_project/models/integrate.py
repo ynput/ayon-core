@@ -26,7 +26,7 @@ from ayon_core.pipeline import Anatomy
 from ayon_core.pipeline.version_start import get_versioning_start
 from ayon_core.pipeline.template_data import get_template_data
 from ayon_core.pipeline.publish import get_publish_template_name
-from ayon_core.pipeline.create import get_product_name
+from ayon_core.pipeline.create import get_product_name, TaskNotSetError
 
 UNKNOWN = object()
 
@@ -777,7 +777,7 @@ class ProjectPushItemProcess:
         task_info = copy.deepcopy(task_info)
         task_info["name"] = dst_task_name
         # Fill rest of task information based on task type
-        task_type_name = task_info["type"]
+        task_type_name = task_info["taskType"]
         task_types_by_name = {
             task_type["name"]: task_type
             for task_type in self._project_entity["taskTypes"]
@@ -821,17 +821,27 @@ class ProjectPushItemProcess:
         task_name = task_type = None
         if task_info:
             task_name = task_info["name"]
-            task_type = task_info["type"]
+            task_type = task_info["taskType"]
 
-        product_name = get_product_name(
-            self._item.dst_project_name,
-            task_name,
-            task_type,
-            self.host_name,
-            product_type,
-            self._item.variant,
-            project_settings=self._project_settings
-        )
+        try:
+            product_name = get_product_name(
+                self._item.dst_project_name,
+                task_name,
+                task_type,
+                self.host_name,
+                product_type,
+                self._item.variant,
+                project_settings=self._project_settings
+            )
+        except TaskNotSetError:
+            self._status.set_failed(
+                "Target product name template requires task name. To continue"
+                " you have to select target task or change settings"
+                " <b>ayon+settings://core/tools/creator/product_name_profiles"
+                f"?project={self._item.dst_project_name}</b>."
+            )
+            raise PushToProjectError(self._status.fail_reason)
+
         self._log_info(
             f"Push will be integrating to product with name '{product_name}'"
         )
@@ -905,7 +915,7 @@ class ProjectPushItemProcess:
                     project_name,
                     self.host_name,
                     task_name=self._task_info["name"],
-                    task_type=self._task_info["type"],
+                    task_type=self._task_info["taskType"],
                     product_type=product_type,
                     product_name=product_entity["name"]
                 )
@@ -959,7 +969,7 @@ class ProjectPushItemProcess:
         formatting_data = get_template_data(
             self._project_entity,
             self._folder_entity,
-            self._task_info.get("name"),
+            self._task_info,
             self.host_name
         )
         formatting_data.update({

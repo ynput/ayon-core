@@ -138,7 +138,7 @@ class CollectAnatomyInstanceData(pyblish.api.ContextPlugin):
         folder_path_by_id = {}
         for instance in context:
             folder_entity = instance.data.get("folderEntity")
-            # Skip if instnace does not have filled folder entity
+            # Skip if instance does not have filled folder entity
             if not folder_entity:
                 continue
             folder_id = folder_entity["id"]
@@ -217,9 +217,8 @@ class CollectAnatomyInstanceData(pyblish.api.ContextPlugin):
             joined_paths = ", ".join(
                 ["\"{}\"".format(path) for path in not_found_task_paths]
             )
-            self.log.warning((
-                "Not found task entities with paths \"{}\"."
-            ).format(joined_paths))
+            self.log.warning(
+                f"Not found task entities with paths {joined_paths}.")
 
     def fill_latest_versions(self, context, project_name):
         """Try to find latest version for each instance's product name.
@@ -321,7 +320,7 @@ class CollectAnatomyInstanceData(pyblish.api.ContextPlugin):
                 use_context_version = instance.data["followWorkfileVersion"]
 
             if use_context_version:
-                version_number = context.data("version")
+                version_number = context.data.get("version")
 
             # Even if 'follow_workfile_version' is enabled, it may not be set
             #   because workfile version was not collected to 'context.data'
@@ -385,8 +384,19 @@ class CollectAnatomyInstanceData(pyblish.api.ContextPlugin):
                 json.dumps(anatomy_data, indent=4)
             ))
 
+            # make render layer available in anatomy data
+            render_layer = instance.data.get("renderlayer")
+            if render_layer:
+                anatomy_data["renderlayer"] = render_layer
+
+            # make aov name available in anatomy data
+            aov = instance.data.get("aov")
+            if aov:
+                anatomy_data["aov"] = aov
+
+
     def _fill_folder_data(self, instance, project_entity, anatomy_data):
-        # QUESTION should we make sure that all folder data are poped if
+        # QUESTION: should we make sure that all folder data are popped if
         #   folder data cannot be found?
         # - 'folder', 'hierarchy', 'parent', 'folder'
         folder_entity = instance.data.get("folderEntity")
@@ -403,14 +413,16 @@ class CollectAnatomyInstanceData(pyblish.api.ContextPlugin):
             # Backwards compatible (Deprecated since 24/06/06)
             or instance.data.get("newAssetPublishing")
         ):
-            hierarchy = instance.data["hierarchy"]
-            anatomy_data["hierarchy"] = hierarchy
+            folder_path = instance.data["folderPath"]
+            parents = folder_path.lstrip("/").split("/")
+            folder_name = parents.pop(-1)
 
             parent_name = project_entity["name"]
-            if hierarchy:
-                parent_name = hierarchy.split("/")[-1]
+            hierarchy = ""
+            if parents:
+                parent_name = parents[-1]
+                hierarchy = "/".join(parents)
 
-            folder_name = instance.data["folderPath"].split("/")[-1]
             anatomy_data.update({
                 "asset": folder_name,
                 "hierarchy": hierarchy,
@@ -422,11 +434,12 @@ class CollectAnatomyInstanceData(pyblish.api.ContextPlugin):
                     #   Using 'Shot' is current default behavior of editorial
                     #   (or 'newHierarchyIntegration') publishing.
                     "type": "Shot",
+                    "parents": parents,
                 },
             })
 
     def _fill_task_data(self, instance, task_types_by_name, anatomy_data):
-        # QUESTION should we make sure that all task data are poped if task
+        # QUESTION: should we make sure that all task data are popped if task
         #   data cannot be resolved?
         # - 'task'
 

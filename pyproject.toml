@@ -5,7 +5,7 @@
 
 [tool.poetry]
 name = "ayon-core"
-version = "0.4.3-dev.1"
+version = "1.0.12+dev"
 description = ""
 authors = ["Ynput Team <team@ynput.io>"]
 readme = "README.md"
@@ -23,6 +23,7 @@ ayon-python-api = "^1.0"
 ruff = "^0.3.3"
 pre-commit = "^3.6.2"
 codespell = "^2.2.6"
+semver = "^3.0.2"
 
 
 [tool.ruff]
@@ -67,7 +68,7 @@ target-version = "py39"
 
 [tool.ruff.lint]
 # Enable Pyflakes (`F`) and a subset of the pycodestyle (`E`)  codes by default.
-select = ["E4", "E7", "E9", "F"]
+select = ["E", "F", "W"]
 ignore = []
 
 # Allow fix for all enabled rules (when `--fix`) is provided.
@@ -84,7 +85,6 @@ exclude = [
 
 [tool.ruff.lint.per-file-ignores]
 "client/ayon_core/lib/__init__.py" = ["E402"]
-"client/ayon_core/hosts/max/startup/startup.py" = ["E402"]
 
 [tool.ruff.format]
 # Like Black, use double quotes for strings.
@@ -114,3 +114,12 @@ quiet-level = 3
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
+
+
+[tool.pytest.ini_options]
+log_cli = true
+log_cli_level = "INFO"
+addopts = "-ra -q"
+testpaths = [
+    "client/ayon_core/tests"
+]

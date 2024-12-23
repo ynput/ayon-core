@@ -1,12 +1,13 @@
 # -*- coding: utf-8 -*-
+import os
 import copy
 import collections
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING, Optional, Dict, Any
 
 from abc import ABC, abstractmethod
 
 from ayon_core.settings import get_project_settings
-from ayon_core.lib import Logger
+from ayon_core.lib import Logger, get_version_from_path
 from ayon_core.pipeline.plugin_discover import (
     discover,
     register_plugin,
@@ -14,26 +15,18 @@ from ayon_core.pipeline.plugin_discover import (
     deregister_plugin,
     deregister_plugin_path
 )
+from ayon_core.pipeline import get_staging_dir_info
 
 from .constants import DEFAULT_VARIANT_VALUE
 from .product_name import get_product_name
 from .utils import get_next_versions_for_instances
 from .legacy_create import LegacyCreator
+from .structures import CreatedInstance
 
 if TYPE_CHECKING:
     from ayon_core.lib import AbstractAttrDef
     # Avoid cyclic imports
-    from .context import CreateContext, CreatedInstance, UpdateData  # noqa: F401
-
-
-class CreatorError(Exception):
-    """Should be raised when creator failed because of known issue.
-
-    Message of error should be user readable.
-    """
-
-    def __init__(self, message):
-        super(CreatorError, self).__init__(message)
+    from .context import CreateContext, UpdateData  # noqa: F401
 
 
 class ProductConvertorPlugin(ABC):
@@ -214,6 +207,7 @@ class BaseCreator(ABC):
         self.headless = headless
 
         self.apply_settings(project_settings)
+        self.register_callbacks()
 
     @staticmethod
     def _get_settings_values(project_settings, category_name, plugin_name):
@@ -299,6 +293,14 @@ class BaseCreator(ABC):
                 ))
             setattr(self, key, value)
 
+    def register_callbacks(self):
+        """Register callbacks for creator.
+
+        Default implementation does nothing. It can be overridden to register
+        callbacks for creator.
+        """
+        pass
+
     @property
     def identifier(self):
         """Identifier of creator (must be unique).
@@ -371,6 +373,35 @@ class BaseCreator(ABC):
         if self._log is None:
             self._log = Logger.get_logger(self.__class__.__name__)
         return self._log
+
+    def _create_instance(
+        self,
+        product_name: str,
+        data: Dict[str, Any],
+        product_type: Optional[str] = None
+    ) -> CreatedInstance:
+        """Create instance and add instance to context.
+
+        Args:
+            product_name (str): Product name.
+            data (Dict[str, Any]): Instance data.
+            product_type (Optional[str]): Product type, object attribute
+                'product_type' is used if not passed.
+
+        Returns:
+            CreatedInstance: Created instance.
+
+        """
+        if product_type is None:
+            product_type = self.product_type
+        instance = CreatedInstance(
+            product_type,
+            product_name,
+            data,
+            creator=self,
+        )
+        self._add_instance_to_context(instance)
+        return instance
 
     def _add_instance_to_context(self, instance):
         """Helper method to add instance to create context.
@@ -561,6 +592,16 @@ class BaseCreator(ABC):
 
         return self.instance_attr_defs
 
+    def get_attr_defs_for_instance(self, instance):
+        """Get attribute definitions for an instance.
+
+        Args:
+            instance (CreatedInstance): Instance for which to get
+                attribute definitions.
+
+        """
+        return self.get_instance_attr_defs()
+
     @property
     def collection_shared_data(self):
         """Access to shared data that can be used during creator's collection.
@@ -654,7 +695,7 @@ class Creator(BaseCreator):
                 cls._get_default_variant_wrap,
                 cls._set_default_variant_wrap
             )
-        super(Creator, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
 
     @property
     def show_order(self):
@@ -791,6 +832,105 @@ class Creator(BaseCreator):
                 for created instance.
         """
         return self.pre_create_attr_defs
+
+    def get_staging_dir(self, instance):
+        """Return the staging dir and persistence from instance.
+
+        Args:
+            instance (CreatedInstance): Instance for which should be staging
+                dir gathered.
+
+        Returns:
+            Optional[namedtuple]: Staging dir path and persistence or None
+        """
+        create_ctx = self.create_context
+        product_name = instance.get("productName")
+        product_type = instance.get("productType")
+        folder_path = instance.get("folderPath")
+
+        # this can only work if product name and folder path are available
+        if not product_name or not folder_path:
+            return None
+
+        publish_settings = self.project_settings["core"]["publish"]
+        follow_workfile_version = (
+            publish_settings
+            ["CollectAnatomyInstanceData"]
+            ["follow_workfile_version"]
+        )
+
+        # Gather version number provided from the instance.
+        version = instance.get("version")
+
+        # If follow workfile, gather version from workfile path.
+        if version is None and follow_workfile_version:
+            current_workfile = self.create_context.get_current_workfile_path()
+            workfile_version = get_version_from_path(current_workfile)
+            version = int(workfile_version)
+
+        # Fill-up version with next version available.
+        elif version is None:
+            versions = self.get_next_versions_for_instances(
+                [instance]
+            )
+            version, = tuple(versions.values())
+
+        template_data = {"version": version}
+
+        staging_dir_info = get_staging_dir_info(
+            create_ctx.get_current_project_entity(),
+            create_ctx.get_folder_entity(folder_path),
+            create_ctx.get_task_entity(folder_path, instance.get("task")),
+            product_type,
+            product_name,
+            create_ctx.host_name,
+            anatomy=create_ctx.get_current_project_anatomy(),
+            project_settings=create_ctx.get_current_project_settings(),
+            always_return_path=False,
+            logger=self.log,
+            template_data=template_data,
+        )
+
+        return staging_dir_info or None
+
+    def apply_staging_dir(self, instance):
+        """Apply staging dir with persistence to instance's transient data.
+
+        Method is called on instance creation and on instance update.
+
+        Args:
+            instance (CreatedInstance): Instance for which should be staging
+                dir applied.
+
+        Returns:
+            Optional[str]: Staging dir path or None if not applied.
+        """
+        staging_dir_info = self.get_staging_dir(instance)
+        if staging_dir_info is None:
+            return None
+
+        # path might be already created by get_staging_dir_info
+        staging_dir_path = staging_dir_info.directory
+        os.makedirs(staging_dir_path, exist_ok=True)
+
+        instance.transient_data.update({
+            "stagingDir": staging_dir_path,
+            "stagingDir_persistent": staging_dir_info.persistent,
+        })
+
+        self.log.info(f"Applied staging dir to instance: {staging_dir_path}")
+
+        return staging_dir_path
+
+    def _pre_create_attr_defs_changed(self):
+        """Called when pre-create attribute definitions change.
+
+        Create plugin can call this method when knows that
+            'get_pre_create_attr_defs' should be called again.
+        """
+        self.create_context.create_plugin_pre_create_attr_defs_changed(
+            self.identifier
+        )
 
 
 class HiddenCreator(BaseCreator):

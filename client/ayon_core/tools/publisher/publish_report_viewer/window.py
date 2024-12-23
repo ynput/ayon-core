@@ -2,11 +2,11 @@ import os
 import json
 import uuid
 
-import appdirs
 import arrow
 from qtpy import QtWidgets, QtCore, QtGui
 
 from ayon_core import style
+from ayon_core.lib import get_launcher_local_dir
 from ayon_core.resources import get_ayon_icon_filepath
 from ayon_core.tools import resources
 from ayon_core.tools.utils import (
@@ -35,12 +35,8 @@ def get_reports_dir():
         str: Path to directory where reports are stored.
     """
 
-    report_dir = os.path.join(
-        appdirs.user_data_dir("AYON", "Ynput"),
-        "publish_report_viewer"
-    )
-    if not os.path.exists(report_dir):
-        os.makedirs(report_dir)
+    report_dir = get_launcher_local_dir("publish_report_viewer")
+    os.makedirs(report_dir, exist_ok=True)
     return report_dir
 
 
@@ -488,6 +484,34 @@ class LoadedFilesView(QtWidgets.QTreeView):
         self._time_delegate = time_delegate
         self._remove_btn = remove_btn
 
+    def showEvent(self, event):
+        super().showEvent(event)
+        self._model.refresh()
+        header = self.header()
+        header.resizeSections(QtWidgets.QHeaderView.ResizeToContents)
+        self._update_remove_btn()
+
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        self._update_remove_btn()
+
+    def add_filepaths(self, filepaths):
+        self._model.add_filepaths(filepaths)
+        self._fill_selection()
+
+    def remove_item_by_id(self, item_id):
+        self._model.remove_item_by_id(item_id)
+        self._fill_selection()
+
+    def get_current_report(self):
+        index = self.currentIndex()
+        item_id = index.data(ITEM_ID_ROLE)
+        return self._model.get_report_by_id(item_id)
+
+    def refresh(self):
+        self._model.refresh()
+        self._fill_selection()
+
     def _update_remove_btn(self):
         viewport = self.viewport()
         height = viewport.height() + self.header().height()
@@ -500,27 +524,8 @@ class LoadedFilesView(QtWidgets.QTreeView):
         header.resizeSections(QtWidgets.QHeaderView.ResizeToContents)
         self._update_remove_btn()
 
-    def resizeEvent(self, event):
-        super().resizeEvent(event)
-        self._update_remove_btn()
-
-    def showEvent(self, event):
-        super().showEvent(event)
-        self._model.refresh()
-        header = self.header()
-        header.resizeSections(QtWidgets.QHeaderView.ResizeToContents)
-        self._update_remove_btn()
-
     def _on_selection_change(self):
         self.selection_changed.emit()
-
-    def add_filepaths(self, filepaths):
-        self._model.add_filepaths(filepaths)
-        self._fill_selection()
-
-    def remove_item_by_id(self, item_id):
-        self._model.remove_item_by_id(item_id)
-        self._fill_selection()
 
     def _on_remove_clicked(self):
         index = self.currentIndex()
@@ -536,11 +541,6 @@ class LoadedFilesView(QtWidgets.QTreeView):
         index = model.index(0, 0)
         if index.isValid():
             self.setCurrentIndex(index)
-
-    def get_current_report(self):
-        index = self.currentIndex()
-        item_id = index.data(ITEM_ID_ROLE)
-        return self._model.get_report_by_id(item_id)
 
 
 class LoadedFilesWidget(QtWidgets.QWidget):
@@ -576,20 +576,22 @@ class LoadedFilesWidget(QtWidgets.QWidget):
             filepaths = []
             for url in mime_data.urls():
                 filepath = url.toLocalFile()
-                ext = os.path.splitext(filepath)[-1]
-                if os.path.exists(filepath) and ext == ".json":
+                if os.path.exists(filepath):
                     filepaths.append(filepath)
             self._add_filepaths(filepaths)
         event.accept()
+
+    def refresh(self):
+        self._view.refresh()
+
+    def get_current_report(self):
+        return self._view.get_current_report()
 
     def _on_report_change(self):
         self.report_changed.emit()
 
     def _add_filepaths(self, filepaths):
         self._view.add_filepaths(filepaths)
-
-    def get_current_report(self):
-        return self._view.get_current_report()
 
 
 class PublishReportViewerWindow(QtWidgets.QWidget):
@@ -629,9 +631,12 @@ class PublishReportViewerWindow(QtWidgets.QWidget):
         self.resize(self.default_width, self.default_height)
         self.setStyleSheet(style.load_stylesheet())
 
-    def _on_report_change(self):
-        report = self._loaded_files_widget.get_current_report()
-        self.set_report(report)
+    def refresh(self):
+        self._loaded_files_widget.refresh()
 
     def set_report(self, report_data):
         self._main_widget.set_report(report_data)
+
+    def _on_report_change(self):
+        report = self._loaded_files_widget.get_current_report()
+        self.set_report(report)

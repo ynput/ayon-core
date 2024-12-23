@@ -36,7 +36,9 @@ class ExtractThumbnail(pyblish.api.InstancePlugin):
         "traypublisher",
         "substancepainter",
         "nuke",
-        "aftereffects"
+        "aftereffects",
+        "unreal",
+        "houdini"
     ]
     enabled = False
 
@@ -455,6 +457,7 @@ class ExtractThumbnail(pyblish.api.InstancePlugin):
         # output file
         jpeg_items.append(path_to_subprocess_arg(dst_path))
         subprocess_command = " ".join(jpeg_items)
+
         try:
             run_subprocess(
                 subprocess_command, shell=True, logger=self.log

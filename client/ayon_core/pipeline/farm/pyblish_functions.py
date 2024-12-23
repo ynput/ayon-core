@@ -1,5 +1,5 @@
-import os
 import copy
+import os
 import re
 import warnings
 from copy import deepcopy
@@ -7,14 +7,14 @@ from copy import deepcopy
 import attr
 import ayon_api
 import clique
-
+from ayon_core.lib import Logger
 from ayon_core.pipeline import (
     get_current_project_name,
     get_representation_path,
 )
-from ayon_core.lib import Logger
-from ayon_core.pipeline.publish import KnownPublishError
+from ayon_core.pipeline.create import get_product_name
 from ayon_core.pipeline.farm.patterning import match_aov_pattern
+from ayon_core.pipeline.publish import KnownPublishError
 
 
 @attr.s
@@ -250,6 +250,9 @@ def create_skeleton_instance(
         "colorspace": data.get("colorspace")
     }
 
+    if data.get("renderlayer"):
+        instance_skeleton_data["renderlayer"] = data["renderlayer"]
+
     # skip locking version if we are creating v01
     instance_version = data.get("version")  # take this if exists
     if instance_version != 1:
@@ -295,11 +298,17 @@ def _add_review_families(families):
     return families
 
 
-def prepare_representations(skeleton_data, exp_files, anatomy, aov_filter,
-                            skip_integration_repre_list,
-                            do_not_add_review,
-                            context,
-                            color_managed_plugin):
+def prepare_representations(
+    skeleton_data,
+    exp_files,
+    anatomy,
+    aov_filter,
+    skip_integration_repre_list,
+    do_not_add_review,
+    context,
+    color_managed_plugin,
+    frames_to_render=None
+):
     """Create representations for file sequences.
 
     This will return representations of expected files if they are not
@@ -315,6 +324,8 @@ def prepare_representations(skeleton_data, exp_files, anatomy, aov_filter,
         skip_integration_repre_list (list): exclude specific extensions,
         do_not_add_review (bool): explicitly skip review
         color_managed_plugin (publish.ColormanagedPyblishPluginMixin)
+        frames_to_render (str): implicit or explicit range of frames to render
+            this value is sent to Deadline in JobInfo.Frames
     Returns:
         list of representations
 
@@ -324,6 +335,14 @@ def prepare_representations(skeleton_data, exp_files, anatomy, aov_filter,
     collections, remainders = clique.assemble(exp_files)
 
     log = Logger.get_logger("farm_publishing")
+
+    if frames_to_render is not None:
+        frames_to_render = _get_real_frames_to_render(frames_to_render)
+    else:
+        # Backwards compatibility for older logic
+        frame_start = int(skeleton_data.get("frameStartHandle"))
+        frame_end = int(skeleton_data.get("frameEndHandle"))
+        frames_to_render = list(range(frame_start, frame_end + 1))
 
     # create representation for every collected sequence
     for collection in collections:
@@ -361,18 +380,21 @@ def prepare_representations(skeleton_data, exp_files, anatomy, aov_filter,
                 " This may cause issues on farm."
             ).format(staging))
 
-        frame_start = int(skeleton_data.get("frameStartHandle"))
+        frame_start = frames_to_render[0]
+        frame_end = frames_to_render[-1]
         if skeleton_data.get("slate"):
             frame_start -= 1
+            frames_to_render.insert(0, frame_start)
 
+        files = _get_real_files_to_render(collection, frames_to_render)
         # explicitly disable review by user
         preview = preview and not do_not_add_review
         rep = {
             "name": ext,
             "ext": ext,
-            "files": [os.path.basename(f) for f in list(collection)],
+            "files": files,
             "frameStart": frame_start,
-            "frameEnd": int(skeleton_data.get("frameEndHandle")),
+            "frameEnd": frame_end,
             # If expectedFile are absolute, we need only filenames
             "stagingDir": staging,
             "fps": skeleton_data.get("fps"),
@@ -453,6 +475,61 @@ def prepare_representations(skeleton_data, exp_files, anatomy, aov_filter,
     return representations
 
 
+def _get_real_frames_to_render(frames):
+    """Returns list of frames that should be rendered.
+
+    Artists could want to selectively render only particular frames
+    """
+    frames_to_render = []
+    for frame in frames.split(","):
+        if "-" in frame:
+            splitted = frame.split("-")
+            frames_to_render.extend(
+                range(int(splitted[0]), int(splitted[1])+1))
+        else:
+            frames_to_render.append(int(frame))
+    frames_to_render.sort()
+    return frames_to_render
+
+
+def _get_real_files_to_render(collection, frames_to_render):
+    """Filter files with frames that should be really rendered.
+
+    'expected_files' are collected from DCC based on timeline setting. This is
+    being calculated differently in each DCC. Filtering here is on single place
+
+    But artists might explicitly set frames they want to render in Publisher UI
+    This range would override and filter previously prepared expected files
+    from DCC.
+
+    Args:
+        collection (clique.Collection): absolute paths
+        frames_to_render (list[int]): of int 1001
+    Returns:
+        (list[str])
+
+    Example:
+    --------
+
+    expectedFiles = [
+        "foo_v01.0001.exr",
+        "foo_v01.0002.exr",
+    ]
+    frames_to_render = 1
+    >>
+    ["foo_v01.0001.exr"] - only explicitly requested frame returned
+    """
+    included_frames = set(collection.indexes).intersection(frames_to_render)
+    real_collection = clique.Collection(
+        collection.head,
+        collection.tail,
+        collection.padding,
+        indexes=included_frames
+    )
+    real_full_paths = list(real_collection)
+    return [os.path.basename(file_url) for file_url in real_full_paths]
+
+
 def create_instances_for_aov(instance, skeleton, aov_filter,
                              skip_integration_repre_list,
                              do_not_add_review):
@@ -464,7 +541,9 @@ def create_instances_for_aov(instance, skeleton, aov_filter,
     Args:
         instance (pyblish.api.Instance): Original instance.
         skeleton (dict): Skeleton instance data.
+        aov_filter (dict): AOV filter.
         skip_integration_repre_list (list): skip
+        do_not_add_review (bool): Explicitly disable reviews
 
     Returns:
         list of pyblish.api.Instance: Instances created from
@@ -515,6 +594,131 @@ def create_instances_for_aov(instance, skeleton, aov_filter,
     )
 
 
+def _get_legacy_product_name_and_group(
+        product_type,
+        source_product_name,
+        task_name,
+        dynamic_data):
+    """Get product name with legacy logic.
+
+    This function holds legacy behaviour of creating product name
+    that is deprecated. This wasn't using product name templates
+    at all, only hardcoded values. It shouldn't be used anymore,
+    but transition to templates need careful checking of the project
+    and studio settings.
+
+    Deprecated:
+        since 0.4.4
+
+    Args:
+        product_type (str): Product type.
+        source_product_name (str): Source product name.
+        task_name (str): Task name.
+        dynamic_data (dict): Dynamic data (camera, aov, ...)
+
+    Returns:
+        tuple: product name and group name
+
+    """
+    warnings.warn("Using legacy product name for renders",
+                  DeprecationWarning)
+
+    if not source_product_name.startswith(product_type):
+        resulting_group_name = '{}{}{}{}{}'.format(
+            product_type,
+            task_name[0].upper(), task_name[1:],
+            source_product_name[0].upper(), source_product_name[1:])
+    else:
+        resulting_group_name = source_product_name
+
+    # create product name `<product type><Task><Product name>`
+    if not source_product_name.startswith(product_type):
+        resulting_group_name = '{}{}{}{}{}'.format(
+            product_type,
+            task_name[0].upper(), task_name[1:],
+            source_product_name[0].upper(), source_product_name[1:])
+    else:
+        resulting_group_name = source_product_name
+
+    resulting_product_name = resulting_group_name
+    camera = dynamic_data.get("camera")
+    aov = dynamic_data.get("aov")
+    if camera:
+        if not aov:
+            resulting_product_name = '{}_{}'.format(
+                resulting_group_name, camera)
+        elif not aov.startswith(camera):
+            resulting_product_name = '{}_{}_{}'.format(
+                resulting_group_name, camera, aov)
+        else:
+            resulting_product_name = "{}_{}".format(
+                resulting_group_name, aov)
+    else:
+        if aov:
+            resulting_product_name = '{}_{}'.format(
+                resulting_group_name, aov)
+
+    return resulting_product_name, resulting_group_name
+
+
+def get_product_name_and_group_from_template(
+        project_name,
+        task_entity,
+        product_type,
+        variant,
+        host_name,
+        dynamic_data=None):
+    """Get product name and group name from template.
+
+    This will get product name and group name from template based on
+    data provided. It is doing similar work as
+    `func::_get_legacy_product_name_and_group` but using templates.
+
+    To get group name, template is called without any dynamic data, so
+    (depending on the template itself) it should be product name without
+    aov.
+
+    Todo:
+        Maybe we should introduce templates for the groups themselves.
+
+    Args:
+        task_entity (dict): Task entity.
+        project_name (str): Project name.
+        host_name (str): Host name.
+        product_type (str): Product type.
+        variant (str): Variant.
+        dynamic_data (dict): Dynamic data (aov, renderlayer, camera, ...).
+
+    Returns:
+        tuple: product name and group name.
+
+    """
+    # remove 'aov' from data used to format group. See todo comment above
+    # for possible solution.
+    _dynamic_data = deepcopy(dynamic_data) or {}
+    _dynamic_data.pop("aov", None)
+    resulting_group_name = get_product_name(
+        project_name=project_name,
+        task_name=task_entity["name"],
+        task_type=task_entity["taskType"],
+        host_name=host_name,
+        product_type=product_type,
+        dynamic_data=_dynamic_data,
+        variant=variant,
+    )
+
+    resulting_product_name = get_product_name(
+        project_name=project_name,
+        task_name=task_entity["name"],
+        task_type=task_entity["taskType"],
+        host_name=host_name,
+        product_type=product_type,
+        dynamic_data=dynamic_data,
+        variant=variant,
+    )
+    return resulting_product_name, resulting_group_name
+
+
 def _create_instances_for_aov(instance, skeleton, aov_filter, additional_data,
                               skip_integration_repre_list, do_not_add_review):
     """Create instance for each AOV found.
@@ -526,10 +730,10 @@ def _create_instances_for_aov(instance, skeleton, aov_filter, additional_data,
         instance (pyblish.api.Instance): Original instance.
         skeleton (dict): Skeleton data for instance (those needed) later
             by collector.
-        additional_data (dict): ..
+        additional_data (dict): ...
         skip_integration_repre_list (list): list of extensions that shouldn't
             be published
-        do_not_addbe _review (bool): explicitly disable review
+        do_not_add_review (bool): explicitly disable review
 
 
     Returns:
@@ -539,68 +743,77 @@ def _create_instances_for_aov(instance, skeleton, aov_filter, additional_data,
         ValueError:
 
     """
-    # TODO: this needs to be taking the task from context or instance
-    task = os.environ["AYON_TASK_NAME"]
 
     anatomy = instance.context.data["anatomy"]
-    s_product_name = skeleton["productName"]
+    source_product_name = skeleton["productName"]
     cameras = instance.data.get("cameras", [])
-    exp_files = instance.data["expectedFiles"]
+    expected_files = instance.data["expectedFiles"]
     log = Logger.get_logger("farm_publishing")
 
     instances = []
     # go through AOVs in expected files
-    for aov, files in exp_files[0].items():
-        cols, rem = clique.assemble(files)
-        # we shouldn't have any reminders. And if we do, it should
-        # be just one item for single frame renders.
-        if not cols and rem:
-            if len(rem) != 1:
-                raise ValueError("Found multiple non related files "
-                                 "to render, don't know what to do "
-                                 "with them.")
-            col = rem[0]
-            ext = os.path.splitext(col)[1].lstrip(".")
-        else:
-            # but we really expect only one collection.
-            # Nothing else make sense.
-            if len(cols) != 1:
-                raise ValueError("Only one image sequence type is expected.")  # noqa: E501
-            ext = cols[0].tail.lstrip(".")
-            col = list(cols[0])
+    for aov, files in expected_files[0].items():
+        collected_files = _collect_expected_files_for_aov(files)
 
-        # create product name `<product type><Task><Product name>`
-        # TODO refactor/remove me
-        product_type = skeleton["productType"]
-        if not s_product_name.startswith(product_type):
-            group_name = '{}{}{}{}{}'.format(
-                product_type,
-                task[0].upper(), task[1:],
-                s_product_name[0].upper(), s_product_name[1:])
-        else:
-            group_name = s_product_name
+        expected_filepath = collected_files
+        if isinstance(collected_files, (list, tuple)):
+            expected_filepath = collected_files[0]
 
-        # if there are multiple cameras, we need to add camera name
-        expected_filepath = col[0] if isinstance(col, (list, tuple)) else col
-        cams = [cam for cam in cameras if cam in expected_filepath]
-        if cams:
-            for cam in cams:
-                if not aov:
-                    product_name = '{}_{}'.format(group_name, cam)
-                elif not aov.startswith(cam):
-                    product_name = '{}_{}_{}'.format(group_name, cam, aov)
-                else:
-                    product_name = "{}_{}".format(group_name, aov)
-        else:
-            if aov:
-                product_name = '{}_{}'.format(group_name, aov)
-            else:
-                product_name = '{}'.format(group_name)
+        dynamic_data = {
+            "aov": aov,
+            "renderlayer": instance.data.get("renderlayer"),
+        }
 
-        if isinstance(col, (list, tuple)):
-            staging = os.path.dirname(col[0])
+        # find if camera is used in the file path
+        # TODO: this must be changed to be more robust. Any coincidence
+        #       of camera name in the file path will be considered as
+        #       camera name. This is not correct.
+        camera = [cam for cam in cameras if cam in expected_filepath]
+
+        # Is there just one camera matching?
+        # TODO: this is not true, we can have multiple cameras in the scene
+        #       and we should be able to detect them all. Currently, we are
+        #       keeping the old behavior, taking the first one found.
+        if camera:
+            dynamic_data["camera"] = camera[0]
+
+        project_settings = instance.context.data.get("project_settings")
+
+        try:
+            use_legacy_product_name = (
+                project_settings
+                ["core"]
+                ["tools"]
+                ["creator"]
+                ["use_legacy_product_names_for_renders"]
+            )
+        except KeyError:
+            warnings.warn(
+                ("use_legacy_for_renders not found in project settings. "
+                 "Using legacy product name for renders. Please update "
+                 "your ayon-core version."), DeprecationWarning)
+            use_legacy_product_name = True
+
+        if use_legacy_product_name:
+            product_name, group_name = _get_legacy_product_name_and_group(
+                product_type=skeleton["productType"],
+                source_product_name=source_product_name,
+                task_name=instance.data["task"],
+                dynamic_data=dynamic_data)
+
         else:
-            staging = os.path.dirname(col)
+            (
+                product_name, group_name
+            ) = get_product_name_and_group_from_template(
+                task_entity=instance.data["taskEntity"],
+                project_name=instance.context.data["projectName"],
+                host_name=instance.context.data["hostName"],
+                product_type=skeleton["productType"],
+                variant=instance.data.get("variant", source_product_name),
+                dynamic_data=dynamic_data
+            )
+
+        staging = os.path.dirname(expected_filepath)
 
         try:
             staging = remap_source(staging, anatomy)
@@ -611,10 +824,8 @@ def _create_instances_for_aov(instance, skeleton, aov_filter, additional_data,
 
         app = os.environ.get("AYON_HOST_NAME", "")
 
-        if isinstance(col, list):
-            render_file_name = os.path.basename(col[0])
-        else:
-            render_file_name = os.path.basename(col)
+        render_file_name = os.path.basename(expected_filepath)
+
         aov_patterns = aov_filter
 
         preview = match_aov_pattern(app, aov_patterns, render_file_name)
@@ -622,9 +833,10 @@ def _create_instances_for_aov(instance, skeleton, aov_filter, additional_data,
         new_instance = deepcopy(skeleton)
         new_instance["productName"] = product_name
         new_instance["productGroup"] = group_name
+        new_instance["aov"] = aov
 
         # toggle preview on if multipart is on
-        # Because we cant query the multipartExr data member of each AOV we'll
+        # Because we can't query the multipartExr data member of each AOV we'll
         # need to have hardcoded rule of excluding any renders with
         # "cryptomatte" in the file name from being a multipart EXR. This issue
         # happens with Redshift that forces Cryptomatte renders to be separate
@@ -650,10 +862,7 @@ def _create_instances_for_aov(instance, skeleton, aov_filter, additional_data,
             new_instance["review"] = True
 
         # create representation
-        if isinstance(col, (list, tuple)):
-            files = [os.path.basename(f) for f in col]
-        else:
-            files = os.path.basename(col)
+        ext = os.path.splitext(render_file_name)[-1].lstrip(".")
 
         # Copy render product "colorspace" data to representation.
         colorspace = ""
@@ -663,10 +872,15 @@ def _create_instances_for_aov(instance, skeleton, aov_filter, additional_data,
                 colorspace = product.colorspace
                 break
 
+        if isinstance(collected_files, (list, tuple)):
+            collected_files = [os.path.basename(f) for f in collected_files]
+        else:
+            collected_files = os.path.basename(collected_files)
+
         rep = {
             "name": ext,
             "ext": ext,
-            "files": files,
+            "files": collected_files,
             "frameStart": int(skeleton["frameStartHandle"]),
             "frameEnd": int(skeleton["frameEndHandle"]),
             # If expectedFile are absolute, we need only filenames
@@ -706,6 +920,35 @@ def _create_instances_for_aov(instance, skeleton, aov_filter, additional_data,
         instances.append(new_instance)
         log.debug("instances:{}".format(instances))
     return instances
+
+
+def _collect_expected_files_for_aov(files):
+    """Collect expected files.
+
+    Args:
+        files (list): List of files.
+
+    Returns:
+        list or str: Collection of files or single file.
+
+    Raises:
+        ValueError: If there are multiple collections.
+
+    """
+    cols, rem = clique.assemble(files)
+    # we shouldn't have any reminders. And if we do, it should
+    # be just one item for single frame renders.
+    if not cols and rem:
+        if len(rem) != 1:
+            raise ValueError("Found multiple non related files "
+                             "to render, don't know what to do "
+                             "with them.")
+        return rem[0]
+    # but we really expect only one collection.
+    # Nothing else make sense.
+    if len(cols) != 1:
+        raise ValueError("Only one image sequence type is expected.")
+    return list(cols[0])
 
 
 def get_resources(project_name, version_entity, extension=None):

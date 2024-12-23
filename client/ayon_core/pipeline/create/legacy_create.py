@@ -14,7 +14,7 @@ from ayon_core.pipeline.constants import AVALON_INSTANCE_ID
 from .product_name import get_product_name
 
 
-class LegacyCreator(object):
+class LegacyCreator:
     """Determine how assets are created"""
     label = None
     product_type = None
