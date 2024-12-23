@@ -482,6 +482,8 @@ class ExtractBurnin(publish.Extractor):
         self.log.debug("Preparing basic data for burnins")
         context = instance.context
 
+        originalBasename = instance.data.get("originalBasename")
+
         version = instance.data.get("version")
         if version is None:
             version = context.data.get("version")
@@ -534,6 +536,7 @@ class ExtractBurnin(publish.Extractor):
         burnin_data["intent"] = intent_label
 
         temp_data = {
+            "originalBasename": originalBasename,
             "frame_start": frame_start,
             "frame_end": frame_end,
             "frame_start_handle": frame_start_handle,
@@ -714,9 +717,11 @@ class ExtractBurnin(publish.Extractor):
             burnin_frame_start = temp_data["frame_start_handle"]
             burnin_frame_end = temp_data["frame_end_handle"]
 
+        burnin_originalBasename = temp_data["originalBasename"]
         burnin_duration = burnin_frame_end - burnin_frame_start + 1
 
         burnin_data.update({
+            "originalBasename" : burnin_originalBasename,
             "frame_start": burnin_frame_start,
             "frame_end": burnin_frame_end,
             "duration": burnin_duration,
