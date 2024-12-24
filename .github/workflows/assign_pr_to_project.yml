@@ -1,0 +1,48 @@
+name: 🔸Auto assign pr
+on:
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        type: string
+        description: "Run workflow for this PR number"
+        required: true
+      project_id:
+        type: string
+        description: "Github Project Number"
+        required: true
+        default: "16"
+  pull_request:
+    types:
+      - opened
+
+env:
+  GH_TOKEN: ${{ github.token }}
+
+jobs:
+  get-pr-repo:
+    runs-on: ubuntu-latest
+    outputs:
+      pr_repo_name: ${{ steps.get-repo-name.outputs.repo_name || github.event.pull_request.head.repo.full_name }}
+
+    # INFO `github.event.pull_request.head.repo.full_name` is not available on manual triggered (dispatched) runs
+    steps:
+      - name: Get PR repo name
+        if: ${{ github.event_name == 'workflow_dispatch' }}
+        id: get-repo-name
+        run: |
+          repo_name=$(gh pr view ${{ inputs.pr_number }} --json headRepository,headRepositoryOwner --repo ${{ github.repository }} | jq -r '.headRepositoryOwner.login + "/" + .headRepository.name')
+          echo "repo_name=$repo_name" >> $GITHUB_OUTPUT
+
+  auto-assign-pr:
+    needs:
+      - get-pr-repo
+    if: ${{ needs.get-pr-repo.outputs.pr_repo_name == github.repository }}
+    uses: ynput/ops-repo-automation/.github/workflows/pr_to_project.yml@main
+    with:
+      repo: "${{ github.repository }}"
+      project_id: ${{ inputs.project_id != '' && fromJSON(inputs.project_id) || 16 }}
+      pull_request_number: ${{ github.event.pull_request.number ||  fromJSON(inputs.pr_number) }}
+    secrets:
+      # INFO fallback to default `github.token` is required for PRs from forks
+      # INFO organization secrets won't be available to forks
+      token: ${{ secrets.YNPUT_BOT_TOKEN || github.token}}

@@ -71,20 +71,18 @@ class ExtractOtioAudioTracks(pyblish.api.ContextPlugin):
             name = inst.data["folderPath"]
 
             recycling_file = [f for f in created_files if name in f]
-
-            # frameranges
-            timeline_in_h = inst.data["clipInH"]
-            timeline_out_h = inst.data["clipOutH"]
-            fps = inst.data["fps"]
-
-            # create duration
-            duration = (timeline_out_h - timeline_in_h) + 1
+            audio_clip = inst.data["otioClip"]
+            audio_range = audio_clip.range_in_parent()
+            duration = audio_range.duration.to_frames()
 
             # ffmpeg generate new file only if doesn't exists already
             if not recycling_file:
-                # convert to seconds
-                start_sec = float(timeline_in_h / fps)
-                duration_sec = float(duration / fps)
+                parent_track = audio_clip.parent()
+                parent_track_start = parent_track.range_in_parent().start_time
+                relative_start_time = (
+                    audio_range.start_time - parent_track_start)
+                start_sec = relative_start_time.to_seconds()
+                duration_sec = audio_range.duration.to_seconds()
 
                 # temp audio file
                 audio_fpath = self.create_temp_file(name)
@@ -163,34 +161,36 @@ class ExtractOtioAudioTracks(pyblish.api.ContextPlugin):
 
         output = []
         # go trough all audio tracks
-        for otio_track in otio_timeline.tracks:
-            if "Audio" not in otio_track.kind:
-                continue
+        for otio_track in otio_timeline.audio_tracks():
             self.log.debug("_" * 50)
             playhead = 0
             for otio_clip in otio_track:
                 self.log.debug(otio_clip)
-                if isinstance(otio_clip, otio.schema.Gap):
-                    playhead += otio_clip.source_range.duration.value
-                elif isinstance(otio_clip, otio.schema.Clip):
-                    start = otio_clip.source_range.start_time.value
-                    duration = otio_clip.source_range.duration.value
-                    fps = otio_clip.source_range.start_time.rate
+                if (isinstance(otio_clip, otio.schema.Clip) and
+                    not otio_clip.media_reference.is_missing_reference):
+                    media_av_start = otio_clip.available_range().start_time
+                    clip_start = otio_clip.source_range.start_time
+                    fps = clip_start.rate
+                    conformed_av_start = media_av_start.rescaled_to(fps)
+                    # ffmpeg ignores embedded tc
+                    start = clip_start - conformed_av_start
+                    duration = otio_clip.source_range.duration
                     media_path = otio_clip.media_reference.target_url
                     input = {
                         "mediaPath": media_path,
                         "delayFrame": playhead,
-                        "startFrame": start,
-                        "durationFrame": duration,
+                        "startFrame": start.to_frames(),
+                        "durationFrame": duration.to_frames(),
                         "delayMilSec": int(float(playhead / fps) * 1000),
-                        "startSec": float(start / fps),
-                        "durationSec": float(duration / fps),
-                        "fps": fps
+                        "startSec": start.to_seconds(),
+                        "durationSec": duration.to_seconds(),
+                        "fps": float(fps)
                     }
                     if input not in output:
                         output.append(input)
                         self.log.debug("__ input: {}".format(input))
-                    playhead += otio_clip.source_range.duration.value
+
+                playhead += otio_clip.source_range.duration.value
 
         return output
 

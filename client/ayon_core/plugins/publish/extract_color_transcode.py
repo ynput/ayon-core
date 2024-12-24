@@ -3,15 +3,15 @@ import copy
 import clique
 import pyblish.api
 
-from ayon_core.pipeline import publish
+from ayon_core.pipeline import (
+    publish,
+    get_temp_dir
+)
 from ayon_core.lib import (
-
     is_oiio_supported,
 )
-
 from ayon_core.lib.transcoding import (
     convert_colorspace,
-    get_transcode_temp_directory,
 )
 
 from ayon_core.lib.profiles_filtering import filter_profiles
@@ -104,7 +104,10 @@ class ExtractOIIOTranscode(publish.Extractor):
                 new_repre = copy.deepcopy(repre)
 
                 original_staging_dir = new_repre["stagingDir"]
-                new_staging_dir = get_transcode_temp_directory()
+                new_staging_dir = get_temp_dir(
+                    project_name=instance.context.data["projectName"],
+                    use_local_temp=True,
+                )
                 new_repre["stagingDir"] = new_staging_dir
 
                 if isinstance(new_repre["files"], list):
@@ -154,12 +157,15 @@ class ExtractOIIOTranscode(publish.Extractor):
 
                 files_to_convert = self._translate_to_sequence(
                     files_to_convert)
+                self.log.debug("Files to convert: {}".format(files_to_convert))
                 for file_name in files_to_convert:
+                    self.log.debug("Transcoding file: `{}`".format(file_name))
                     input_path = os.path.join(original_staging_dir,
                                               file_name)
                     output_path = self._get_output_file_path(input_path,
                                                              new_staging_dir,
                                                              output_extension)
+
                     convert_colorspace(
                         input_path,
                         output_path,
@@ -263,7 +269,7 @@ class ExtractOIIOTranscode(publish.Extractor):
             (list) of [file.1001-1010#.exr] or [fileA.exr, fileB.exr]
         """
         pattern = [clique.PATTERNS["frames"]]
-        collections, remainder = clique.assemble(
+        collections, _ = clique.assemble(
             files_to_convert, patterns=pattern,
             assume_padded_when_ambiguous=True)
 
