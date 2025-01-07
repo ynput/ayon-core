@@ -76,7 +76,6 @@ def get_staging_dir_config(
 
     # get template from template name
     template_name = profile["template_name"]
-    _validate_template_name(project_name, template_name, anatomy)
 
     template = anatomy.get_template_item("staging", template_name)
 
@@ -91,19 +90,6 @@ def get_staging_dir_config(
     data_persistence = profile["custom_staging_dir_persistent"]
 
     return {"template": template, "persistence": data_persistence}
-
-
-def _validate_template_name(project_name, template_name, anatomy):
-    """Check that staging dir section with appropriate template exist.
-
-    Raises:
-        ValueError - if misconfigured template
-    """
-    if template_name not in anatomy.templates["staging"]:
-        raise ValueError(
-            f'Anatomy of project "{project_name}" does not have set'
-            f' "{template_name}" template key at Staging Dir category!'
-        )
 
 
 def get_staging_dir_info(
