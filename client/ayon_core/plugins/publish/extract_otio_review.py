@@ -71,13 +71,15 @@ class ExtractOTIOReview(
         # TODO: convert resulting image sequence to mp4
 
         # get otio clip and other time info from instance clip
-        # TODO: what if handles are different in `versionData`?
-        handle_start = instance.data["handleStart"]
-        handle_end = instance.data["handleEnd"]
         otio_review_clips = instance.data.get("otioReviewClips")
 
         if otio_review_clips is None:
             self.log.info(f"Instance `{instance}` has no otioReviewClips")
+            return
+
+        # TODO: what if handles are different in `versionData`?
+        handle_start = instance.data["handleStart"]
+        handle_end = instance.data["handleEnd"]
 
         # add plugin wide attributes
         self.representation_files = []
