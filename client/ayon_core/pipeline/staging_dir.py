@@ -161,11 +161,15 @@ def get_staging_dir_info(
         )
 
     if force_tmp_dir:
-        return get_temp_dir(
-            project_name=project_entity["name"],
-            anatomy=anatomy,
-            prefix=prefix,
-            suffix=suffix,
+        return StagingDir(
+            get_temp_dir(
+                project_name=project_entity["name"],
+                anatomy=anatomy,
+                prefix=prefix,
+                suffix=suffix,
+            ),
+            is_persistent=False,
+            is_custom=False
         )
 
     # making few queries to database
