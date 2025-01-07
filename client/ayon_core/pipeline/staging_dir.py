@@ -1,3 +1,6 @@
+import logging
+import warnings
+from typing import Optional, Dict, Any
 from dataclasses import dataclass
 
 from ayon_core.lib import Logger, filter_profiles
@@ -16,16 +19,16 @@ class StagingDir:
 
 
 def get_staging_dir_config(
-    project_name,
-    task_type,
-    task_name,
-    product_type,
-    product_name,
-    host_name,
-    project_settings=None,
-    anatomy=None,
-    log=None,
-):
+    project_name: str,
+    task_type: Optional[str, None],
+    task_name: Optional[str, None],
+    product_type: str,
+    product_name: str,
+    host_name: str,
+    project_settings: Optional[Dict[str, Any]] = None,
+    anatomy: Optional[Anatomy] = None,
+    log: Optional[logging.Logger] = None,
+) -> Optional[Dict[str, Any]]:
     """Get matching staging dir profile.
 
     Args:
@@ -93,21 +96,21 @@ def get_staging_dir_config(
 
 
 def get_staging_dir_info(
-    project_entity,
-    folder_entity,
-    task_entity,
-    product_type,
-    product_name,
-    host_name,
-    anatomy=None,
-    project_settings=None,
-    template_data=None,
-    always_return_path=True,
-    force_tmp_dir=False,
-    logger=None,
-    prefix=None,
-    suffix=None,
-):
+    project_entity: Dict[str, Any],
+    folder_entity: Optional[Dict[str, Any]],
+    task_entity: Optional[Dict[str, Any]],
+    product_type: str,
+    product_name: str,
+    host_name: str,
+    anatomy: Optional[Anatomy] = None,
+    project_settings: Optional[Dict[str, Any]] = None,
+    template_data: Optional[Dict[str, Any]] = None,
+    always_return_path: bool = True,
+    force_tmp_dir: bool = False,
+    logger: Optional[logging.Logger] = None,
+    prefix: Optional[str] = None,
+    suffix: Optional[str] = None,
+) -> Optional[StagingDir]:
     """Get staging dir info data.
 
     If `force_temp` is set, staging dir will be created as tempdir.
