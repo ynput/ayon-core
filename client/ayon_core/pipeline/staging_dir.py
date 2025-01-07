@@ -14,8 +14,28 @@ from .tempdir import get_temp_dir
 @dataclass
 class StagingDir:
     directory: str
-    persistent: bool
-    custom: bool  # Whether the staging dir is a custom staging dir
+    is_persistent: bool
+    # Whether the staging dir is a custom staging dir
+    is_custom: bool
+
+    def __setattr__(self, key, value):
+        if key == "persistent":
+            warnings.warn(
+                "'StagingDir.persistent' is deprecated."
+                " Use 'StagingDir.is_persistent' instead.",
+                DeprecationWarning
+            )
+            key = "is_persistent"
+        super().__setattr__(key, value)
+
+    @property
+    def persistent(self):
+        warnings.warn(
+            "'StagingDir.persistent' is deprecated."
+            " Use 'StagingDir.is_persistent' instead.",
+            DeprecationWarning
+        )
+        return self.is_persistent
 
 
 def get_staging_dir_config(
@@ -198,8 +218,8 @@ def get_staging_dir_info(
         dir_template = staging_dir_config["template"]["directory"]
         return StagingDir(
             dir_template.format_strict(ctx_data),
-            persistent=staging_dir_config["persistence"],
-            custom=True
+            is_persistent=staging_dir_config["persistence"],
+            is_custom=True
         )
 
     # no config found but force an output
@@ -211,8 +231,8 @@ def get_staging_dir_info(
                 prefix=prefix,
                 suffix=suffix,
             ),
-            persistent=False,
-            custom=False
+            is_persistent=False,
+            is_custom=False
         )
 
     return None
