@@ -231,10 +231,13 @@ def remap_range_on_file_sequence(otio_clip, in_out_range):
     # source range for image sequence. Following code maintain
     # backward-compatibility by adjusting media_in
     # while we are updating those.
+    conformed_src_in = source_range.start_time.rescaled_to(
+        available_range_rate
+    )
     if (
         is_clip_from_media_sequence(otio_clip)
         and available_range_start_frame == media_ref.start_frame
-        and source_range.start_time.to_frames() < media_ref.start_frame
+        and conformed_src_in.to_frames() < media_ref.start_frame
     ):
         media_in = 0
 
@@ -260,21 +263,6 @@ def get_media_range_with_retimes(otio_clip, handle_start, handle_end):
     # to frame numbers from source sequence.
     media_ref = otio_clip.media_reference
     is_input_sequence = is_clip_from_media_sequence(otio_clip)
-
-    # Temporary.
-    # Some AYON custom OTIO exporter were implemented with relative
-    # source range for image sequence. Following code maintain
-    # backward-compatibility by adjusting available range
-    # while we are updating those.
-    if (
-        is_input_sequence
-        and available_range.start_time.to_frames() == media_ref.start_frame
-        and source_range.start_time.to_frames() < media_ref.start_frame
-    ):
-        available_range = _ot.TimeRange(
-            _ot.RationalTime(0, rate=available_range_rate),
-            available_range.duration,
-        )
 
     # Conform source range bounds to available range rate
     # .e.g. embedded TC of (3600 sec/ 1h), duration 100 frames
@@ -319,6 +307,21 @@ def get_media_range_with_retimes(otio_clip, handle_start, handle_end):
 
     else:
         conformed_source_range = source_range
+
+    # Temporary.
+    # Some AYON custom OTIO exporter were implemented with relative
+    # source range for image sequence. Following code maintain
+    # backward-compatibility by adjusting available range
+    # while we are updating those.
+    if (
+        is_input_sequence
+        and available_range.start_time.to_frames() == media_ref.start_frame
+        and conformed_source_range.start_time.to_frames() < media_ref.start_frame
+    ):
+        available_range = _ot.TimeRange(
+            _ot.RationalTime(0, rate=available_range_rate),
+            available_range.duration,
+        )
 
     # modifiers
     time_scalar = 1.

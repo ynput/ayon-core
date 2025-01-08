@@ -187,3 +187,29 @@ def test_img_sequence_conform_to_23_976fps():
         handle_start=0,
         handle_end=8,
     )
+
+
+def test_img_sequence_conform_from_24_to_23_976fps():
+    """
+    Img sequence clip
+    available files = 883750-884504 24fps
+    source_range =  883159-883267 23.976fps
+
+    This test ensures such entries do not trigger
+    the legacy Hiero export compatibility.
+    """
+    expected_data = {
+        'mediaIn': 884043,
+        'mediaOut': 884150,
+        'handleStart': 0,
+        'handleEnd': 0,
+        'speed': 1.0
+    }
+
+    _check_expected_retimed_values(
+        "img_seq_24_to_23.976_no_legacy.json",
+        expected_data,
+        handle_start=0,
+        handle_end=0,
+    )
+
