@@ -228,7 +228,6 @@ def remap_range_on_file_sequence(otio_clip, otio_range):
         raise ValueError("Inconsistent range between clip and provided clip")
 
     source_range = otio_clip.source_range
-    source_range_rate = source_range.start_time.rate
     media_in = available_range.start_time
     available_range_start_frame = (
         available_range.start_time.to_frames()
@@ -253,8 +252,6 @@ def remap_range_on_file_sequence(otio_clip, otio_range):
         media_ref.start_frame + src_offset_in.to_frames(),
         rate=available_range_rate,
     ).to_frames()
-
-    range_duration = otio_range.duration
 
     frame_out = otio.opentime.RationalTime.from_frames(
         frame_in + otio_range.duration.to_frames() - 1,
@@ -397,7 +394,10 @@ def get_media_range_with_retimes(otio_clip, handle_start, handle_end):
         src_duration = conformed_source_range.duration
 
         offset_in = otio.opentime.RationalTime(offset_in, rate=src_in.rate)
-        offset_duration = otio.opentime.RationalTime(offset_out, rate=src_duration.rate)
+        offset_duration = otio.opentime.RationalTime(
+            offset_out,
+            rate=src_duration.rate
+        )
 
         trim_range = otio.opentime.TimeRange(
             start_time=src_in + offset_in,
