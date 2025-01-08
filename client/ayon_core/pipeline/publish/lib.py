@@ -717,6 +717,7 @@ def get_instance_staging_dir(instance):
     instance.data.update({
         "stagingDir": staging_dir_path,
         "stagingDir_persistent": staging_dir_info.persistent,
+        "stagingDir_custom": staging_dir_info.custom
     })
 
     return staging_dir_path
