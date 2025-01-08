@@ -185,8 +185,6 @@ class WorkareaModel:
 
         for filename in os.listdir(workdir):
             filepath = os.path.join(workdir, filename)
-            if not os.path.isfile(filepath):
-                continue
 
             ext = os.path.splitext(filename)[1].lower()
             if ext not in self._extensions:
