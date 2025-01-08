@@ -316,7 +316,8 @@ def get_media_range_with_retimes(otio_clip, handle_start, handle_end):
     if (
         is_input_sequence
         and available_range.start_time.to_frames() == media_ref.start_frame
-        and conformed_source_range.start_time.to_frames() < media_ref.start_frame
+        and conformed_source_range.start_time.to_frames() <
+            media_ref.start_frame
     ):
         available_range = _ot.TimeRange(
             _ot.RationalTime(0, rate=available_range_rate),
