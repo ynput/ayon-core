@@ -561,9 +561,6 @@ class FormattingPart:
 
         """
         key = self._template_base
-        if key in result.really_used_values:
-            result.add_output(result.really_used_values[key])
-            return result
 
         # ensure key is properly formed [({})] properly closed.
         if not self.validate_key_is_matched(key):
