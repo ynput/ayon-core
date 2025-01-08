@@ -40,8 +40,8 @@ class StagingDir:
 
 def get_staging_dir_config(
     project_name: str,
-    task_type: Optional[str, None],
-    task_name: Optional[str, None],
+    task_type: Optional[str],
+    task_name: Optional[str],
     product_type: str,
     product_name: str,
     host_name: str,
