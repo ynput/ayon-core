@@ -7,7 +7,6 @@ This module contains three plugins:
 """
 
 from pprint import pformat
-from typing import Any
 
 import pyblish.api
 
@@ -23,7 +22,7 @@ from ayon_core.pipeline.editorial import (
 )
 
 
-def validate_otio_clip(instance: Any, logger: Any) -> bool:
+def validate_otio_clip(instance, logger):
     """Validate if instance has required OTIO clip data.
 
     Args:
@@ -62,7 +61,7 @@ class CollectOtioFrameRanges(pyblish.api.InstancePlugin):
     families = ["shot", "clip"]
     hosts = ["resolve", "hiero", "flame", "traypublisher"]
 
-    def process(self, instance: Any) -> None:
+    def process(self, instance):
         """Process the instance to collect frame ranges.
 
         Args:
@@ -120,7 +119,7 @@ class CollectOtioSourceRanges(pyblish.api.InstancePlugin):
     families = ["shot", "clip"]
     hosts = ["hiero", "flame"]
 
-    def process(self, instance: Any) -> None:
+    def process(self, instance):
         """Process the instance to collect source frame ranges.
 
         Args:
@@ -176,7 +175,7 @@ class CollectOtioRetimedRanges(pyblish.api.InstancePlugin):
     families = ["shot", "clip"]
     hosts = ["hiero", "flame"]
 
-    def process(self, instance: Any) -> None:
+    def process(self, instance):
         """Process the instance to handle retimed clips.
 
         Args:
