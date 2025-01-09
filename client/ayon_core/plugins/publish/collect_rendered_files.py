@@ -105,7 +105,7 @@ class CollectRenderedFiles(pyblish.api.ContextPlugin):
             instance.data.update(instance_data)
 
             # stash render job id for later validation
-            instance.data["render_job_id"] = data.get("job").get("_id")
+            instance.data["render_job_id"] = data.get("job", {}).get("_id")
             staging_dir_persistent = instance.data.get(
                 "stagingDir_persistent", False
             )
