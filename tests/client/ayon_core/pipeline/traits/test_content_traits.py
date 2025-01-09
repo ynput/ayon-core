@@ -58,7 +58,8 @@ def test_bundles() -> None:
     for item in representation.get_trait(trait=Bundle).items:
         sub_representation = Representation(name="test", traits=item)
         assert sub_representation.contains_trait(trait=Image)
-        assert sub_representation.get_trait(trait=MimeType).mime_type in [
+        sub: MimeType = sub_representation.get_trait(trait=MimeType)
+        assert sub.mime_type in [
             "image/jpeg", "image/tiff"
         ]
 
@@ -83,7 +84,7 @@ def test_file_locations_validation() -> None:
         file_paths=file_locations_list)
 
     # this should be valid trait
-    file_locations_trait.validate(representation)
+    file_locations_trait.validate_trait(representation)
 
     # add valid FrameRanged trait
     frameranged_trait = FrameRanged(
@@ -94,7 +95,7 @@ def test_file_locations_validation() -> None:
     representation.add_trait(frameranged_trait)
 
      # it should still validate fine
-    file_locations_trait.validate(representation)
+    file_locations_trait.validate_trait(representation)
 
     # create empty file locations trait
     empty_file_locations_trait = FileLocations(file_paths=[])
@@ -102,7 +103,7 @@ def test_file_locations_validation() -> None:
         empty_file_locations_trait
     ])
     with pytest.raises(TraitValidationError):
-        empty_file_locations_trait.validate(representation)
+        empty_file_locations_trait.validate_trait(representation)
 
     # create valid file locations trait but with not matching
     # frame range trait
@@ -118,7 +119,7 @@ def test_file_locations_validation() -> None:
 
     representation.add_trait(invalid_sequence_trait)
     with pytest.raises(TraitValidationError):
-        file_locations_trait.validate(representation)
+        file_locations_trait.validate_trait(representation)
 
     # invalid representation with mutliple file locations but
     # unrelated to either Sequence or Bundle traits
@@ -164,7 +165,7 @@ def test_get_file_location_from_frame() -> None:
     # test with custom regex
     sequence = Sequence(
         frame_padding=4,
-        frame_regex=r"boo_(?P<frame>\d+)\.exr")
+        frame_regex=r"boo_(?P<index>(?P<padding>0*)\d+)\.exr")
     file_locations_list = [
         FileLocation(
             file_path=Path(f"/path/to/boo_{frame}.exr"),
@@ -174,7 +175,7 @@ def test_get_file_location_from_frame() -> None:
         for frame in range(1001, 1051)
     ]
 
-    file_locations_trait: FileLocations = FileLocations(
+    file_locations_trait = FileLocations(
         file_paths=file_locations_list)
 
     assert file_locations_trait.get_file_location_for_frame(

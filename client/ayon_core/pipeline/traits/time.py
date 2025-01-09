@@ -3,17 +3,19 @@ from __future__ import annotations
 
 import contextlib
 from enum import Enum, auto
-from typing import TYPE_CHECKING, ClassVar, Optional
+from typing import TYPE_CHECKING, ClassVar, Optional, Union
 
 import clique
 from pydantic import Field, field_validator
+import re
+from re import Pattern
 
 from .trait import MissingTraitError, TraitBase, TraitValidationError
 
 if TYPE_CHECKING:
-    import re
-    from pathlib import Path
+    
 
+    from pathlib import Path
     from .content import FileLocations
     from .representation import Representation
 
@@ -72,10 +74,10 @@ class FrameRanged(TraitBase):
         ..., title="Start Frame")
     frame_end: int = Field(
         ..., title="Frame Start")
-    frame_in: Optional[int] = Field(None, title="In Frame")
-    frame_out: Optional[int] = Field(None, title="Out Frame")
+    frame_in: Optional[int] = Field(default=None, title="In Frame")
+    frame_out: Optional[int] = Field(default=None, title="Out Frame")
     frames_per_second: str = Field(..., title="Frames Per Second")
-    step: Optional[int] = Field(1, title="Step")
+    step: Optional[int] = Field(default=1, title="Step")
 
 
 class Handles(TraitBase):
@@ -127,24 +129,28 @@ class Sequence(TraitBase):
     name: ClassVar[str] = "Sequence"
     description: ClassVar[str] = "Sequence Trait Model"
     id: ClassVar[str] = "ayon.time.Sequence.v1"
-    gaps_policy: GapPolicy = Field(
-        GapPolicy.forbidden, title="Gaps Policy")
+    gaps_policy: Optional[GapPolicy] = Field(
+        default=GapPolicy.forbidden, title="Gaps Policy")
     frame_padding: int = Field(..., title="Frame Padding")
-    frame_regex: Optional[str] = Field(None, title="Frame Regex")
-    frame_spec: Optional[str] = Field(None, title="Frame Specification")
+    frame_regex: Optional[Union[Pattern, str]] = Field(default=None, title="Frame Regex")
+    frame_spec: Optional[str] = Field(default=None, title="Frame Specification")
 
     @field_validator("frame_regex")
     @classmethod
-    def validate_frame_regex(cls, v: Optional[str]) -> str:
+    def validate_frame_regex(
+        cls, v: Optional[Union[Pattern, str]]) -> Optional[Union[Pattern, str]]:
         """Validate frame regex."""
-        if v and any(s not in v for s in ["?P<index>", "?P<padding>"]):
+        _v = v
+        if v and isinstance(v, Pattern):
+            _v = v.pattern
+        if v and any(s not in _v for s in ["?P<index>", "?P<padding>"]):
             msg = "Frame regex must include 'index' and `padding named groups"
             raise ValueError(msg)
-        return v
+        return _v
 
-    def validate(self, representation: Representation) -> None:
+    def validate_trait(self, representation: Representation) -> None:
         """Validate the trait."""
-        super().validate(representation)
+        super().validate_trait(representation)
 
         # if there is FileLocations trait, run validation
         # on it as well
@@ -189,13 +195,16 @@ class Sequence(TraitBase):
                 FrameRanged)
             frame_start = frame_ranged.frame_start
             frame_end = frame_ranged.frame_end
-        self.validate_frame_list(
-            file_locs,
-            frame_start,
-            frame_end,
-            handles_frame_start,
-            handles_frame_end)
+        if self.frame_spec is not None:
+            self.validate_frame_list(
+                file_locs,
+                frame_start,
+                frame_end,
+                handles_frame_start,
+                handles_frame_end)
+
         self.validate_frame_padding(file_locs)
+        
 
     def validate_frame_list(
             self,
@@ -230,8 +239,18 @@ class Sequence(TraitBase):
         if self.frame_spec is None:
             return
 
-        frames: list[int] = self.get_frame_list(
-            file_locations, self.frame_regex)
+        frames: list[int] = []
+        if self.frame_regex:
+            if isinstance(self.frame_regex, str):
+                frame_regex = re.compile(self.frame_regex)
+            elif isinstance(self.frame_regex, Pattern):
+                frame_regex = self.frame_regex
+                
+            frames = self.get_frame_list(
+                    file_locations, frame_regex)
+        else:
+            frames = self.get_frame_list(
+                    file_locations)
 
         expected_frames = self.list_spec_to_frames(self.frame_spec)
         if frame_start is None or frame_end is None:
@@ -307,20 +326,19 @@ class Sequence(TraitBase):
                 frames.append(int(ranges[0]))
                 continue
             start, end = segment.split("-")
-            start, end = int(start), int(end)
-            frames.extend(range(start, end + 1))
+            frames.extend(range(int(start), int(end) + 1))
         return frames
 
 
     @staticmethod
     def _get_collection(
         file_locations: FileLocations,
-        regex: Optional[re.Pattern] = None) -> clique.Collection:
+        regex: Optional[Pattern] = None) -> clique.Collection:
         r"""Get collection from file locations.
 
         Args:
             file_locations (FileLocations): File locations trait.
-            regex (Optional[re.Pattern]): Regular expression to match
+            regex (Optional[Pattern]): Regular expression to match
                 frame numbers. This is passed to ``clique.assemble()``.
                 Default clique pattern is::
 
@@ -334,7 +352,7 @@ class Sequence(TraitBase):
 
         """
         patterns = None if not regex else [regex]
-        files: list[Path] = [
+        files: list[str] = [
             file.file_path.as_posix()
             for file in file_locations.file_paths
         ]
@@ -351,18 +369,18 @@ class Sequence(TraitBase):
     def get_frame_padding(file_locations: FileLocations) -> int:
         """Get frame padding."""
         src_collection = Sequence._get_collection(file_locations)
-        return src_collection.padding
+        return len(str(max(src_collection.indexes)))
 
     @staticmethod
     def get_frame_list(
             file_locations: FileLocations,
-            regex: Optional[re.Pattern] = None,
+            regex: Optional[Pattern] = None,
         ) -> list[int]:
         r"""Get frame list.
 
         Args:
             file_locations (FileLocations): File locations trait.
-            regex (Optional[re.Pattern]): Regular expression to match
+            regex (Optional[Pattern]): Regular expression to match
                 frame numbers. This is passed to ``clique.assemble()``.
                 Default clique pattern is::
 
@@ -373,6 +391,19 @@ class Sequence(TraitBase):
         """
         src_collection = Sequence._get_collection(file_locations, regex)
         return list(src_collection.indexes)
+    
+    def get_frame_pattern(self) -> Pattern:
+        """Get frame regex as pattern.
+        
+        If the regex is string, it will compile it to the pattern.
+
+        """
+        if self.frame_regex:
+            if isinstance(self.frame_regex, str):
+                return re.compile(self.frame_regex)
+            return self.frame_regex
+        return re.compile(
+            r"\.(?P<index>(?P<padding>0*)\d+)\.\D+\d?$")
 
 # Do we need one for drop and non-drop frame?
 class SMPTETimecode(TraitBase):

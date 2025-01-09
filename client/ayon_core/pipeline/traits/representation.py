@@ -8,7 +8,7 @@ import sys
 import uuid
 from functools import lru_cache
 from types import GenericAlias
-from typing import ClassVar, Optional, Type, TypeVar, Union
+from typing import ClassVar, Generic, ItemsView, Optional, Type, TypeVar, Union
 
 from .trait import (
     IncompatibleTraitVersionError,
@@ -16,12 +16,14 @@ from .trait import (
     MissingTraitError,
     TraitBase,
     UpgradableTraitError,
+    TraitValidationError,
 )
 
-T = TypeVar("T", bound=TraitBase)
+
+T = TypeVar("T", bound="TraitBase")
 
 
-def _get_version_from_id(_id: str) -> int:
+def _get_version_from_id(_id: str) -> Optional[int]:
     """Get version from ID.
 
     Args:
@@ -35,7 +37,7 @@ def _get_version_from_id(_id: str) -> int:
     return int(match[1]) if match else None
 
 
-class Representation:
+class Representation(Generic[T]):
     """Representation of products.
 
     Representation defines collection of individual properties that describe
@@ -121,15 +123,15 @@ class Representation:
         """Return the representation name."""
         return self.name
 
-    def items(self) -> dict[str, T]:
+    def items(self) -> ItemsView[str, T]:
         """Return the traits as items."""
-        return self._data.items()
+        return ItemsView(self._data)
 
-    def add_trait(self, trait: TraitBase, *, exists_ok: bool=False) -> None:
+    def add_trait(self, trait: T, *, exists_ok: bool=False) -> None:
         """Add a trait to the Representation.
 
         Args:
-            trait (TraitBase): Trait to add.
+            trait (TraiBase): Trait to add.
             exists_ok (bool, optional): If True, do not raise an error if the
                 trait already exists. Defaults to False.
 
@@ -147,7 +149,7 @@ class Representation:
         self._data[trait.id] = trait
 
     def add_traits(
-            self, traits: list[TraitBase], *, exists_ok: bool=False) -> None:
+            self, traits: list[T], *, exists_ok: bool=False) -> None:
         """Add a list of traits to the Representation.
 
         Args:
@@ -170,7 +172,7 @@ class Representation:
 
         """
         try:
-            self._data.pop(trait.id)
+            self._data.pop(str(trait.id))
         except KeyError as e:
             error_msg = f"Trait with ID {trait.id} not found."
             raise ValueError(error_msg) from e
@@ -191,7 +193,7 @@ class Representation:
             error_msg = f"Trait with ID {trait_id} not found."
             raise ValueError(error_msg) from e
 
-    def remove_traits(self, traits: list[Type[TraitBase]]) -> None:
+    def remove_traits(self, traits: list[Type[T]]) -> None:
         """Remove a list of traits from the Representation.
 
         If no trait IDs or traits are provided, all traits will be removed.
@@ -229,7 +231,7 @@ class Representation:
         """
         return bool(self._data)
 
-    def contains_trait(self, trait: Type[TraitBase]) -> bool:
+    def contains_trait(self, trait: Type[T]) -> bool:
         """Check if the trait exists in the Representation.
 
         Args:
@@ -239,7 +241,7 @@ class Representation:
             bool: True if the trait exists, False otherwise.
 
         """
-        return bool(self._data.get(trait.id))
+        return bool(self._data.get(str(trait.id)))
 
     def contains_trait_by_id(self, trait_id: str) -> bool:
         """Check if the trait exists using trait id.
@@ -253,7 +255,7 @@ class Representation:
         """
         return  bool(self._data.get(trait_id))
 
-    def contains_traits(self, traits: list[Type[TraitBase]]) -> bool:
+    def contains_traits(self, traits: list[Type[T]]) -> bool:
         """Check if the traits exist.
 
         Args:
@@ -282,7 +284,7 @@ class Representation:
             self.contains_trait_by_id(trait_id) for trait_id in trait_ids
         )
 
-    def get_trait(self, trait: Type[T]) -> Union[T]:
+    def get_trait(self, trait: Type[T]) -> T:
         """Get a trait from the representation.
 
         Args:
@@ -296,12 +298,12 @@ class Representation:
 
         """
         try:
-            return self._data[trait.id]
+            return self._data[str(trait.id)]
         except KeyError as e:
             msg = f"Trait with ID {trait.id} not found."
             raise MissingTraitError(msg) from e
 
-    def get_trait_by_id(self, trait_id: str) -> Union[T]:
+    def get_trait_by_id(self, trait_id: str) -> T:
         # sourcery skip: use-named-expression
         """Get a trait from the representation by id.
 
@@ -337,7 +339,7 @@ class Representation:
         return result
 
     def get_traits(self,
-                     traits: Optional[list[Type[TraitBase]]]=None
+                     traits: Optional[list[Type[T]]]=None
                    ) -> dict[str, T]:
         """Get a list of traits from the representation.
 
@@ -350,14 +352,14 @@ class Representation:
             dict: Dictionary of traits.
 
         """
-        result = {}
+        result: dict[str, T] = {}
         if not traits:
             for trait_id in self._data:
                 result[trait_id] = self.get_trait_by_id(trait_id=trait_id)
             return result
 
         for trait in traits:
-             result[trait.id] = self.get_trait(trait=trait)
+             result[str(trait.id)] = self.get_trait(trait=trait)
         return result
 
     def get_traits_by_ids(self, trait_ids: list[str]) -> dict[str, T]:
@@ -398,7 +400,7 @@ class Representation:
             self,
             name: str,
             representation_id: Optional[str]=None,
-            traits: Optional[list[TraitBase]]=None):
+            traits: Optional[list[T]]=None):
         """Initialize the data.
 
         Args:
@@ -465,14 +467,14 @@ class Representation:
     @lru_cache(maxsize=64)
     def _get_possible_trait_classes_from_modules(
             cls,
-            trait_id: str) -> set[type[TraitBase]]:
+            trait_id: str) -> set[type[T]]:
         """Get possible trait classes from modules.
 
         Args:
             trait_id (str): Trait ID.
 
         Returns:
-            set[type[TraitBase]]: Set of trait classes.
+            set[type[T]]: Set of trait classes.
 
         """
         modules = sys.modules.copy()
@@ -501,12 +503,12 @@ class Representation:
                 if issubclass(klass, TraitBase) \
                         and str(klass.id).startswith(trait_id):
                     trait_candidates.add(klass)
-        return trait_candidates
+        return trait_candidates  # type: ignore
 
     @classmethod
     @lru_cache(maxsize=64)
     def _get_trait_class(
-            cls, trait_id: str) -> Union[Type[TraitBase], None]:
+            cls, trait_id: str) -> Union[Type[T], None]:
         """Get the trait class with corresponding to given ID.
 
         This method will search for the trait class in all the modules except
@@ -533,6 +535,8 @@ class Representation:
         trait_candidates = cls._get_possible_trait_classes_from_modules(
             trait_id
         )
+        if not trait_candidates:
+            return None
 
         for trait_class in trait_candidates:
             if trait_class.id == trait_id:
@@ -549,11 +553,11 @@ class Representation:
                     rf"{trait_id}.v(\d+)$", str(trait_class.id))
             ]
             if trait_versions:
-                def _get_version_by_id(trait_klass: Type[TraitBase]) -> int:
+                def _get_version_by_id(trait_klass: Type[T]) -> int:
                     match = re.search(r"v(\d+)$", str(trait_klass.id))
                     return int(match[1]) if match else 0
 
-                error = LooseMatchingTraitError(
+                error: LooseMatchingTraitError = LooseMatchingTraitError(
                     "Found trait that might match.")
                 error.found_trait = max(
                     trait_versions, key=_get_version_by_id)
@@ -563,7 +567,7 @@ class Representation:
         return None
 
     @classmethod
-    def get_trait_class_by_trait_id(cls, trait_id: str) -> type[TraitBase]:
+    def get_trait_class_by_trait_id(cls, trait_id: str) -> Type[T]:
         """Get the trait class for the given trait ID.
 
         Args:
@@ -580,15 +584,28 @@ class Representation:
             ValueError: If the trait model with the given ID is not found.
 
         """
-        trait_class = None
         try:
             trait_class = cls._get_trait_class(trait_id=trait_id)
         except LooseMatchingTraitError as e:
             requested_version = _get_version_from_id(trait_id)
             found_version = _get_version_from_id(e.found_trait.id)
+            if found_version is None and not requested_version:
+                msg = (
+                    "Trait found with no version and requested version "
+                    "is not specified."
+                )
+                raise IncompatibleTraitVersionError(msg) from e
 
-            if not requested_version:
+            if requested_version is None:
                 trait_class = e.found_trait
+                requested_version = found_version
+
+            if found_version is None:
+                msg = (
+                    f"Trait {e.found_trait.id} found with no version, "
+                    "but requested version is specified."
+                )
+                raise IncompatibleTraitVersionError(msg) from e
 
             else:
                 if requested_version > found_version:
@@ -605,7 +622,7 @@ class Representation:
                         f"{requested_version} is lower "
                         f"than the found trait version {found_version}."
                     )
-                    error = UpgradableTraitError(error_msg)
+                    error: UpgradableTraitError = UpgradableTraitError(error_msg)
                     error.trait = e.found_trait
                     raise error from e
         return trait_class
@@ -638,6 +655,8 @@ class Representation:
             Representation: Representation instance.
 
         """
+        if not trait_data:
+            trait_data = {}
         traits = []
         for trait_id, value in trait_data.items():
             if not isinstance(value, dict):
@@ -671,14 +690,21 @@ class Representation:
             name=name, representation_id=representation_id, traits=traits)
 
 
-    def validate(self) -> bool:
+    def validate(self) -> None:
         """Validate the representation.
 
         This method will validate all the traits in the representation.
 
-        Returns:
-            bool: True if the representation is valid, False otherwise.
+        Raises:
+            TraitValidationError: If the trait is invalid within representation
 
         """
+        errors = []
         for trait in self._data.values():
-            trait.validate(self)
+            try:
+                trait.validate_trait(self)
+            except TraitValidationError as e:
+                errors.append(str(e))
+        if errors:
+            raise TraitValidationError(
+                f"representation {self.name}", "\n".join(errors))

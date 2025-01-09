@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import re
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING, Generic, Optional, TypeVar
 
 import pydantic.alias_generators
 from pydantic import (
@@ -15,6 +15,9 @@ from pydantic import (
 
 if TYPE_CHECKING:
     from .representation import Representation
+
+
+T = TypeVar("T", bound="TraitBase")
 
 
 class TraitBase(ABC, BaseModel):
@@ -55,7 +58,7 @@ class TraitBase(ABC, BaseModel):
         """Abstract attribute for description."""
         ...
 
-    def validate(self, representation: Representation) -> None:
+    def validate_trait(self, representation: Representation) -> None:
         """Validate the trait.
 
         This method should be implemented in the derived classes to validate
@@ -96,10 +99,6 @@ class TraitBase(ABC, BaseModel):
         return re.sub(r"\.v\d+$", "", str(cls.id))
 
 
-
-
-
-
 class IncompatibleTraitVersionError(Exception):
     """Incompatible trait version exception.
 
@@ -108,7 +107,7 @@ class IncompatibleTraitVersionError(Exception):
     """
 
 
-class UpgradableTraitError(Exception):
+class UpgradableTraitError(Generic[T], Exception):
     """Upgradable trait version exception.
 
     This exception is raised when the trait can upgrade existing data
@@ -116,17 +115,17 @@ class UpgradableTraitError(Exception):
     method that will take old trait data as argument to handle the upgrade.
     """
 
-    trait: TraitBase
+    trait: T
     old_data: dict
 
-class LooseMatchingTraitError(Exception):
+class LooseMatchingTraitError(Generic[T], Exception):
     """Loose matching trait exception.
 
     This exception is raised when the trait is found with a loose matching
     criteria.
     """
 
-    found_trait: TraitBase
+    found_trait: T
     expected_id: str
 
 class TraitValidationError(Exception):

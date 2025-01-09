@@ -29,6 +29,7 @@ ruff = "^0.3.3"
 pre-commit = "^4"
 codespell = "^2.2.6"
 semver = "^3.0.2"
+mypy = "^1.14.0"
 
 
 [tool.ruff]
@@ -132,6 +133,9 @@ ignore-regex = ".*codespell:ignore.*"
 skip = "./.*,./package/*,*/vendor/*,*/unreal/integration/*,*/aftereffects/api/extension/js/libs/*"
 count = true
 quiet-level = 3
+
+[tool.mypy]
+mypy_path = "$MYPY_CONFIG_FILE_DIR/client"
 
 [build-system]
 requires = ["poetry-core"]
