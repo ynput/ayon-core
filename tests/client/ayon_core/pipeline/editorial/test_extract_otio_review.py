@@ -103,17 +103,17 @@ def test_image_sequence_with_embedded_tc_and_handles_out_of_range():
         # 10 head black handles generated from gap (991-1000)
         "/path/to/ffmpeg -t 0.4166666666666667 -r 24.0 -f lavfi -i "
         "color=c=black:s=1280x720 -tune stillimage -start_number 991 "
-        "C:/result/output.%03d.jpg",
+        "C:/result/output.%04d.jpg",
 
         # 10 tail black handles generated from gap (1102-1111)
         "/path/to/ffmpeg -t 0.4166666666666667 -r 24.0 -f lavfi -i "
         "color=c=black:s=1280x720 -tune stillimage -start_number 1102 "
-        "C:/result/output.%03d.jpg",
+        "C:/result/output.%04d.jpg",
 
         # Report from source exr (1001-1101) with enforce framerate
         "/path/to/ffmpeg -start_number 1000 -framerate 24.0 -i "
         f"C:\\exr_embedded_tc{os.sep}output.%04d.exr -start_number 1001 "
-        "C:/result/output.%03d.jpg"
+        "C:/result/output.%04d.jpg"
     ]
 
     assert calls == expected
@@ -131,11 +131,11 @@ def test_image_sequence_and_handles_out_of_range():
     expected = [
         # 5 head black frames generated from gap (991-995)
         "/path/to/ffmpeg -t 0.2 -r 25.0 -f lavfi -i color=c=black:s=1280x720"
-        " -tune stillimage -start_number 991 C:/result/output.%03d.jpg",
+        " -tune stillimage -start_number 991 C:/result/output.%04d.jpg",
 
         # 9 tail back frames generated from gap (1097-1105)
         "/path/to/ffmpeg -t 0.36 -r 25.0 -f lavfi -i color=c=black:s=1280x720"
-        " -tune stillimage -start_number 1097 C:/result/output.%03d.jpg",
+        " -tune stillimage -start_number 1097 C:/result/output.%04d.jpg",
 
         # Report from source tiff (996-1096)
         # 996-1000 = additional 5 head frames
@@ -143,7 +143,7 @@ def test_image_sequence_and_handles_out_of_range():
         # 1096-1096 = additional 1 tail frames
         "/path/to/ffmpeg -start_number 1000 -framerate 25.0 -i "
         f"C:\\tif_seq{os.sep}output.%04d.tif -start_number 996"
-        f" C:/result/output.%03d.jpg"
+        f" C:/result/output.%04d.jpg"
     ]
 
     assert calls == expected
@@ -164,7 +164,7 @@ def test_movie_with_embedded_tc_no_gap_handles():
         # - duration = 68fr (source) + 20fr (handles) = 88frames = 3.666s
         "/path/to/ffmpeg -ss 0.16666666666666666 -t 3.6666666666666665 "
         "-i C:\\data\\qt_embedded_tc.mov -start_number 991 "
-        "C:/result/output.%03d.jpg"
+        "C:/result/output.%04d.jpg"
     ]
 
     assert calls == expected
@@ -181,12 +181,12 @@ def test_short_movie_head_gap_handles():
     expected = [
         # 10 head black frames generated from gap (991-1000)
         "/path/to/ffmpeg -t 0.4 -r 25.0 -f lavfi -i color=c=black:s=1280x720"
-        " -tune stillimage -start_number 991 C:/result/output.%03d.jpg",
+        " -tune stillimage -start_number 991 C:/result/output.%04d.jpg",
 
         # source range + 10 tail frames
         # duration = 50fr (source) + 10fr (tail handle) = 60 fr = 2.4s
         "/path/to/ffmpeg -ss 0.0 -t 2.4 -i C:\\data\\movie.mp4"
-        " -start_number 1001 C:/result/output.%03d.jpg"
+        " -start_number 1001 C:/result/output.%04d.jpg"
     ]
 
     assert calls == expected
@@ -204,13 +204,13 @@ def test_short_movie_tail_gap_handles():
         # 10 tail black frames generated from gap (1067-1076)
         "/path/to/ffmpeg -t 0.4166666666666667 -r 24.0 -f lavfi -i "
         "color=c=black:s=1280x720 -tune stillimage -start_number 1067 "
-        "C:/result/output.%03d.jpg",
+        "C:/result/output.%04d.jpg",
 
         # 10 head frames + source range
         # duration = 10fr (head handle) + 66fr (source) = 76fr = 3.16s
         "/path/to/ffmpeg -ss 1.0416666666666667 -t 3.1666666666666665 -i "
         "C:\\data\\qt_no_tc_24fps.mov -start_number 991"
-        " C:/result/output.%03d.jpg"
+        " C:/result/output.%04d.jpg"
     ]
 
     assert calls == expected
@@ -238,62 +238,62 @@ def test_multiple_review_clips_no_gap():
         # 10 head black frames generated from gap (991-1000)
         '/path/to/ffmpeg -t 0.4 -r 25.0 -f lavfi'
         ' -i color=c=black:s=1280x720 -tune '
-        'stillimage -start_number 991 C:/result/output.%03d.jpg',
+        'stillimage -start_number 991 C:/result/output.%04d.jpg',
 
         # Alternance 25fps tiff sequence and 24fps exr sequence
         #   for 100 frames each
         '/path/to/ffmpeg -start_number 1000 -framerate 25.0 -i '
         f'C:\\no_tc{os.sep}output.%04d.tif '
-        '-start_number 1001 C:/result/output.%03d.jpg',
+        '-start_number 1001 C:/result/output.%04d.jpg',
 
         '/path/to/ffmpeg -start_number 1000 -framerate 24.0 -i '
         f'C:\\with_tc{os.sep}output.%04d.exr '
-        '-start_number 1102 C:/result/output.%03d.jpg',
+        '-start_number 1102 C:/result/output.%04d.jpg',
 
         '/path/to/ffmpeg -start_number 1000 -framerate 25.0 -i '
         f'C:\\no_tc{os.sep}output.%04d.tif '
-        '-start_number 1199 C:/result/output.%03d.jpg',
+        '-start_number 1199 C:/result/output.%04d.jpg',
 
         '/path/to/ffmpeg -start_number 1000 -framerate 24.0 -i '
         f'C:\\with_tc{os.sep}output.%04d.exr '
-        '-start_number 1300 C:/result/output.%03d.jpg',
+        '-start_number 1300 C:/result/output.%04d.jpg',
 
         # Repeated 25fps tiff sequence multiple times till the end
         '/path/to/ffmpeg -start_number 1000 -framerate 25.0 -i '
         f'C:\\no_tc{os.sep}output.%04d.tif '
-        '-start_number 1397 C:/result/output.%03d.jpg',
+        '-start_number 1397 C:/result/output.%04d.jpg',
 
         '/path/to/ffmpeg -start_number 1000 -framerate 25.0 -i '
         f'C:\\no_tc{os.sep}output.%04d.tif '
-        '-start_number 1498 C:/result/output.%03d.jpg',
+        '-start_number 1498 C:/result/output.%04d.jpg',
 
         '/path/to/ffmpeg -start_number 1000 -framerate 25.0 -i '
         f'C:\\no_tc{os.sep}output.%04d.tif '
-        '-start_number 1599 C:/result/output.%03d.jpg',
+        '-start_number 1599 C:/result/output.%04d.jpg',
 
         '/path/to/ffmpeg -start_number 1000 -framerate 25.0 -i '
         f'C:\\no_tc{os.sep}output.%04d.tif '
-        '-start_number 1700 C:/result/output.%03d.jpg',
+        '-start_number 1700 C:/result/output.%04d.jpg',
 
         '/path/to/ffmpeg -start_number 1000 -framerate 25.0 -i '
         f'C:\\no_tc{os.sep}output.%04d.tif '
-        '-start_number 1801 C:/result/output.%03d.jpg',
+        '-start_number 1801 C:/result/output.%04d.jpg',
 
         '/path/to/ffmpeg -start_number 1000 -framerate 25.0 -i '
         f'C:\\no_tc{os.sep}output.%04d.tif '
-        '-start_number 1902 C:/result/output.%03d.jpg',
+        '-start_number 1902 C:/result/output.%04d.jpg',
 
         '/path/to/ffmpeg -start_number 1000 -framerate 25.0 -i '
         f'C:\\no_tc{os.sep}output.%04d.tif '
-        '-start_number 2003 C:/result/output.%03d.jpg',
+        '-start_number 2003 C:/result/output.%04d.jpg',
 
         '/path/to/ffmpeg -start_number 1000 -framerate 25.0 -i '
         f'C:\\no_tc{os.sep}output.%04d.tif '
-        '-start_number 2104 C:/result/output.%03d.jpg',
+        '-start_number 2104 C:/result/output.%04d.jpg',
 
         '/path/to/ffmpeg -start_number 1000 -framerate 25.0 -i '
         f'C:\\no_tc{os.sep}output.%04d.tif '
-        '-start_number 2205 C:/result/output.%03d.jpg'
+        '-start_number 2205 C:/result/output.%04d.jpg'
     ]
 
     assert calls == expected
@@ -321,15 +321,15 @@ def test_multiple_review_clips_with_gap():
     # Gap on review track (12 frames)
     '/path/to/ffmpeg -t 0.5 -r 24.0 -f lavfi'
     ' -i color=c=black:s=1280x720 -tune '
-    'stillimage -start_number 991 C:/result/output.%03d.jpg',
+    'stillimage -start_number 991 C:/result/output.%04d.jpg',
 
     '/path/to/ffmpeg -start_number 1000 -framerate 24.0 -i '
     f'C:\\with_tc{os.sep}output.%04d.exr '
-    '-start_number 1003 C:/result/output.%03d.jpg',
+    '-start_number 1003 C:/result/output.%04d.jpg',
 
     '/path/to/ffmpeg -start_number 1000 -framerate 24.0 -i '
     f'C:\\with_tc{os.sep}output.%04d.exr '
-    '-start_number 1091 C:/result/output.%03d.jpg'
+    '-start_number 1091 C:/result/output.%04d.jpg'
     ]
 
     assert calls == expected
