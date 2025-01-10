@@ -24,6 +24,7 @@ class CollectCoreJobEnvVars(pyblish.api.ContextPlugin):
             # NOTE we should use 'context.data["user"]' but that has higher
             #   order.
             ("AYON_USERNAME", get_ayon_username()),
+            ("AYON_HOST_NAME", context.data["hostName"]),
         ):
             if value:
                 self.log.debug(f"Setting job env: {key}: {value}")
