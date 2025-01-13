@@ -48,6 +48,22 @@ from .dialogs import (
 )
 
 
+def _crop_pixmap_to_circle(pixmap: QtGui.QPixmap) -> QtGui.QPixmap:
+    size = min(pixmap.width(), pixmap.height())
+    cropped_pixmap = QtGui.QPixmap(size, size)
+    cropped_pixmap.fill(QtCore.Qt.transparent)
+
+    painter = QtGui.QPainter(cropped_pixmap)
+    painter.setRenderHint(QtGui.QPainter.Antialiasing)
+    path = QtGui.QPainterPath()
+    path.addEllipse(QtCore.QRectF(0, 0, size, size))
+    painter.setClipPath(path)
+    painter.drawPixmap(0, 0, pixmap)
+    painter.end()
+
+    return cropped_pixmap
+
+
 class TrayManager:
     """Cares about context of application.
 
@@ -471,7 +487,20 @@ class TrayManager:
 
     def _add_version_item(self):
         tray_menu = self.tray_widget.menu
-        login_action = QtWidgets.QAction("Login", self.tray_widget)
+
+        # Show logged-in user's name and icon
+        user = ayon_api.get_user()
+        username = user["name"]
+        response = ayon_api.get(f"users/{username}/avatar")
+        image = response.content
+        pixmap = QtGui.QPixmap()
+        pixmap.loadFromData(image)
+        pixmap = _crop_pixmap_to_circle(pixmap)
+        icon = QtGui.QIcon(pixmap)
+        name = user.get("attrib", {}).get("fullName") or user["name"]
+
+        login_action = QtWidgets.QAction(f"Login ({name})", self.tray_widget)
+        login_action.setIcon(icon)
         login_action.triggered.connect(self._on_ayon_login)
         tray_menu.addAction(login_action)
         version_string = os.getenv("AYON_VERSION", "AYON Info")
