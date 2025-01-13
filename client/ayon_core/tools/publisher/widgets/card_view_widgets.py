@@ -197,7 +197,7 @@ class ConvertorItemsGroupWidget(BaseGroupWidget):
                 else:
                     widget = ConvertorItemCardWidget(item, self)
                     widget.selected.connect(self._on_widget_selection)
-                    widget.double_clicked(self.double_clicked)
+                    widget.double_clicked.emit(self.double_clicked)
                     self._widgets_by_id[item.id] = widget
                     self._content_layout.insertWidget(widget_idx, widget)
                 widget_idx += 1
