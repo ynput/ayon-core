@@ -235,3 +235,59 @@ def test_img_sequence_conform_from_24_to_23_976fps():
         handle_end=0,
     )
 
+
+def test_img_sequence_reverse_speed_no_tc():
+    """
+    Img sequence clip
+    available files = 0-100 24fps
+    source_range =  20-41 24fps
+    """
+    expected_data = {
+        'mediaIn': 1020,
+        'mediaOut': 1060,
+        'handleStart': 0,
+        'handleEnd': 0,
+        'speed': -1.0,
+        'versionData': {
+            'retime': True,
+            'speed': -1.0,
+            'timewarps': [],
+            'handleStart': 0,
+            'handleEnd': 0
+        }
+    }
+
+    _check_expected_retimed_values(
+        "img_seq_reverse_speed_no_tc.json",
+        expected_data,
+        handle_start=0,
+        handle_end=0,
+    )
+
+def test_img_sequence_reverse_speed_from_24_to_23_976fps():
+    """
+    Img sequence clip
+    available files = 941478-949084 24fps
+    source_range =  947726-947757 23.976fps
+    """
+    expected_data = {
+        'mediaIn': 948674,
+        'mediaOut': 948705,
+        'handleStart': 10,
+        'handleEnd': 10,
+        'speed': -1.0,
+        'versionData': {
+            'retime': True,
+            'speed': -1.0,
+            'timewarps': [],
+            'handleStart': 10,
+            'handleEnd': 10
+        }
+    }
+
+    _check_expected_retimed_values(
+        "img_seq_reverse_speed_24_to_23.976fps.json",
+        expected_data,
+        handle_start=10,
+        handle_end=10,
+    )
