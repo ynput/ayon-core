@@ -403,9 +403,13 @@ def get_media_range_with_retimes(otio_clip, handle_start, handle_end):
             rate=src_duration.rate
         )
 
+        retimed_duration = otio.opentime.RationalTime(
+            src_duration.value * abs(time_scalar),
+            src_duration.rate
+        )
         trim_range = otio.opentime.TimeRange(
             start_time=src_in + offset_in,
-            duration=src_duration + offset_duration
+            duration=retimed_duration + offset_duration
         )
 
         # preserve discrete frame numbers

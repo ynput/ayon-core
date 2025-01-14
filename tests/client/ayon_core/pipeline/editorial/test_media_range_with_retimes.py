@@ -291,3 +291,63 @@ def test_img_sequence_reverse_speed_from_24_to_23_976fps():
         handle_start=10,
         handle_end=10,
     )
+
+
+def test_img_sequence_2x_speed():
+    """
+    Img sequence clip
+    available files = 948674-948974 25fps
+    source_range =  948850-948870 23.976fps
+    speed = 2.0
+    """
+    expected_data = {
+        'mediaIn': 948850,
+        'mediaOut': 948871,
+        'handleStart': 20,
+        'handleEnd': 20,
+        'speed': 2.0,
+        'versionData': {
+            'retime': True,
+            'speed': 2.0,
+            'timewarps': [],
+            'handleStart': 20,
+            'handleEnd': 20
+        }
+    }
+
+    _check_expected_retimed_values(
+        "img_seq_2x_speed.json",
+        expected_data,
+        handle_start=10,
+        handle_end=10,
+    )
+
+
+def test_img_sequence_2x_speed_resolve():
+    """
+    Img sequence clip
+    available files = 0-99 24fps
+    source_range =  38-49 24fps
+    speed = 2.0
+    """
+    expected_data = {
+        'mediaIn': 1040,
+        'mediaOut': 1061,
+        'handleStart': 20,
+        'handleEnd': 20,
+        'speed': 2.0,
+        'versionData': {
+            'retime': True,
+            'speed': 2.0,
+            'timewarps': [],
+            'handleStart': 20,
+            'handleEnd': 20
+        }
+    }
+
+    _check_expected_retimed_values(
+        "img_seq_2x_speed_resolve.json",
+        expected_data,
+        handle_start=10,
+        handle_end=10,
+    )
