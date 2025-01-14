@@ -509,8 +509,11 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
         if not is_sequence_representation:
             files = [files]
 
-        if any(os.path.isabs(fname) for fname in files):
-            raise KnownPublishError("Given file names contain full paths")
+        for fname in files:
+            if os.path.isabs(fname):
+                raise KnownPublishError(
+                    f"Representation file names contains full paths: {fname}"
+                )
 
         if not is_sequence_representation:
             return

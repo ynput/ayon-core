@@ -540,11 +540,38 @@ class ClassicExpandBtnLabel(ExpandBtnLabel):
     right_arrow_path = get_style_image_path("right_arrow")
     down_arrow_path = get_style_image_path("down_arrow")
 
+    def _normalize_pixmap(self, pixmap):
+        if pixmap.width() == pixmap.height():
+            return pixmap
+        width = pixmap.width()
+        height = pixmap.height()
+        size = max(width, height)
+        pos_x = 0
+        pos_y = 0
+        if width > height:
+            pos_y = (size - height) // 2
+        else:
+            pos_x = (size - width) // 2
+
+        new_pix = QtGui.QPixmap(size, size)
+        new_pix.fill(QtCore.Qt.transparent)
+        painter = QtGui.QPainter(new_pix)
+        render_hints = (
+            QtGui.QPainter.Antialiasing
+            | QtGui.QPainter.SmoothPixmapTransform
+        )
+        if hasattr(QtGui.QPainter, "HighQualityAntialiasing"):
+            render_hints |= QtGui.QPainter.HighQualityAntialiasing
+        painter.setRenderHints(render_hints)
+        painter.drawPixmap(QtCore.QPoint(pos_x, pos_y), pixmap)
+        painter.end()
+        return new_pix
+
     def _create_collapsed_pixmap(self):
-        return QtGui.QPixmap(self.right_arrow_path)
+        return self._normalize_pixmap(QtGui.QPixmap(self.right_arrow_path))
 
     def _create_expanded_pixmap(self):
-        return QtGui.QPixmap(self.down_arrow_path)
+        return self._normalize_pixmap(QtGui.QPixmap(self.down_arrow_path))
 
 
 class ClassicExpandBtn(ExpandBtn):

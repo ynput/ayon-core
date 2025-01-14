@@ -35,7 +35,27 @@ class PublisherController(
     Known topics:
         "show.detailed.help" - Detailed help requested (UI related).
         "show.card.message" - Show card message request (UI related).
-        "instances.refresh.finished" - Instances are refreshed.
+        # --- Create model ---
+        "create.model.reset" - Reset of create model.
+        "instances.create.failed" - Creation failed.
+        "convertors.convert.failed" - Convertor failed.
+        "instances.save.failed" - Save failed.
+        "instance.thumbnail.changed" - Thumbnail changed.
+        "instances.collection.failed" - Collection of instances failed.
+        "convertors.find.failed" - Convertor find failed.
+        "instances.create.failed" - Create instances failed.
+        "instances.remove.failed" - Remove instances failed.
+        "create.context.added.instance" - Create instance added to context.
+        "create.context.value.changed" - Create instance or context value
+            changed.
+        "create.context.pre.create.attrs.changed" - Pre create attributes
+            changed.
+        "create.context.create.attrs.changed" - Create attributes changed.
+        "create.context.publish.attrs.changed" - Publish attributes changed.
+        "create.context.removed.instance" - Instance removed from context.
+        "create.model.instances.context.changed" - Instances changed context.
+            like folder, task or variant.
+        # --- Publish model ---
         "plugins.refresh.finished" - Plugins refreshed.
         "publish.reset.finished" - Reset finished.
         "controller.reset.started" - Controller reset started.
@@ -172,23 +192,36 @@ class PublisherController(
         """
         return self._create_model.get_creator_icon(identifier)
 
+    def get_instance_items(self):
+        """Current instances in create context."""
+        return self._create_model.get_instance_items()
+
+    # --- Legacy for TrayPublisher ---
     @property
     def instances(self):
-        """Current instances in create context.
-
-        Deprecated:
-            Use 'get_instances' instead. Kept for backwards compatibility with
-                traypublisher.
-
-        """
-        return self.get_instances()
+        return self.get_instance_items()
 
     def get_instances(self):
-        """Current instances in create context."""
-        return self._create_model.get_instances()
+        return self.get_instance_items()
 
-    def get_instances_by_id(self, instance_ids=None):
-        return self._create_model.get_instances_by_id(instance_ids)
+    def get_instances_by_id(self, *args, **kwargs):
+        return self.get_instance_items_by_id(*args, **kwargs)
+
+    # ---
+
+    def get_instance_items_by_id(self, instance_ids=None):
+        return self._create_model.get_instance_items_by_id(instance_ids)
+
+    def get_instances_context_info(self, instance_ids=None):
+        return self._create_model.get_instances_context_info(instance_ids)
+
+    def set_instances_context_info(self, changes_by_instance_id):
+        return self._create_model.set_instances_context_info(
+            changes_by_instance_id
+        )
+
+    def set_instances_active_state(self, active_state_by_id):
+        self._create_model.set_instances_active_state(active_state_by_id)
 
     def get_convertor_items(self):
         return self._create_model.get_convertor_items()
@@ -362,29 +395,53 @@ class PublisherController(
         if os.path.exists(dirpath):
             shutil.rmtree(dirpath)
 
-    def get_creator_attribute_definitions(self, instances):
+    def get_creator_attribute_definitions(self, instance_ids):
         """Collect creator attribute definitions for multuple instances.
 
         Args:
-            instances(List[CreatedInstance]): List of created instances for
+            instance_ids (List[str]): List of created instances for
                 which should be attribute definitions returned.
 
         """
         return self._create_model.get_creator_attribute_definitions(
-            instances
+            instance_ids
         )
 
-    def get_publish_attribute_definitions(self, instances, include_context):
+    def set_instances_create_attr_values(self, instance_ids, key, value):
+        return self._create_model.set_instances_create_attr_values(
+            instance_ids, key, value
+        )
+
+    def revert_instances_create_attr_values(self, instance_ids, key):
+        self._create_model.revert_instances_create_attr_values(
+            instance_ids, key
+        )
+
+    def get_publish_attribute_definitions(self, instance_ids, include_context):
         """Collect publish attribute definitions for passed instances.
 
         Args:
-            instances(list<CreatedInstance>): List of created instances for
+            instance_ids (List[str]): List of created instances for
                 which should be attribute definitions returned.
-            include_context(bool): Add context specific attribute definitions.
+            include_context (bool): Add context specific attribute definitions.
 
         """
         return self._create_model.get_publish_attribute_definitions(
-            instances, include_context
+            instance_ids, include_context
+        )
+
+    def set_instances_publish_attr_values(
+        self, instance_ids, plugin_name, key, value
+    ):
+        return self._create_model.set_instances_publish_attr_values(
+            instance_ids, plugin_name, key, value
+        )
+
+    def revert_instances_publish_attr_values(
+        self, instance_ids, plugin_name, key
+    ):
+        return self._create_model.revert_instances_publish_attr_values(
+            instance_ids, plugin_name, key
         )
 
     def get_product_name(
@@ -493,14 +550,14 @@ class PublisherController(
     def get_publish_progress(self):
         return self._publish_model.get_progress()
 
-    def get_publish_error_msg(self):
-        return self._publish_model.get_error_msg()
+    def get_publish_error_info(self):
+        return self._publish_model.get_error_info()
 
     def get_publish_report(self):
         return self._publish_model.get_publish_report()
 
-    def get_validation_errors(self):
-        return self._publish_model.get_validation_errors()
+    def get_publish_errors_report(self):
+        return self._publish_model.get_publish_errors_report()
 
     def set_comment(self, comment):
         """Set comment from ui to pyblish context.

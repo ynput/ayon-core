@@ -138,10 +138,7 @@ class CollectRenderedFiles(pyblish.api.ContextPlugin):
     def process(self, context):
         self._context = context
 
-        publish_data_paths = (
-            os.environ.get("AYON_PUBLISH_DATA")
-            or os.environ.get("OPENPYPE_PUBLISH_DATA")
-        )
+        publish_data_paths = os.environ.get("AYON_PUBLISH_DATA")
         if not publish_data_paths:
             raise KnownPublishError("Missing `AYON_PUBLISH_DATA`")
 

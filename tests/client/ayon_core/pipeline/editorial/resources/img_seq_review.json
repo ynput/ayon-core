@@ -1,0 +1,363 @@
+{
+    "OTIO_SCHEMA": "Clip.2",
+    "metadata": {
+        "Resolve_OTIO": {}
+    },
+    "name": "output.[1000-1100].tif",
+    "source_range": {
+        "OTIO_SCHEMA": "TimeRange.1",
+        "duration": {
+            "OTIO_SCHEMA": "RationalTime.1",
+            "rate": 24.0,
+            "value": 91.0
+        },
+        "start_time": {
+            "OTIO_SCHEMA": "RationalTime.1",
+            "rate": 24.0,
+            "value": 5.0
+        }
+    },
+    "effects": [
+        {
+            "OTIO_SCHEMA": "Effect.1",
+            "metadata": {
+                "Resolve_OTIO": {
+                    "Effect Name": "Transform",
+                    "Enabled": true,
+                    "Name": "Transform",
+                    "Parameters": [],
+                    "Type": 2
+                }
+            },
+            "name": "",
+            "effect_name": "Resolve Effect"
+        },
+        {
+            "OTIO_SCHEMA": "Effect.1",
+            "metadata": {
+                "Resolve_OTIO": {
+                    "Effect Name": "Cropping",
+                    "Enabled": true,
+                    "Name": "Cropping",
+                    "Parameters": [],
+                    "Type": 3
+                }
+            },
+            "name": "",
+            "effect_name": "Resolve Effect"
+        },
+        {
+            "OTIO_SCHEMA": "Effect.1",
+            "metadata": {
+                "Resolve_OTIO": {
+                    "Effect Name": "Dynamic Zoom",
+                    "Enabled": false,
+                    "Name": "Dynamic Zoom",
+                    "Parameters": [
+                        {
+                            "Default Parameter Value": [
+                                0.0,
+                                0.0
+                            ],
+                            "Key Frames": {
+                                "-5": {
+                                    "Value": [
+                                        0.0,
+                                        0.0
+                                    ],
+                                    "Variant Type": "POINTF"
+                                },
+                                "955": {
+                                    "Value": [
+                                        0.0,
+                                        0.0
+                                    ],
+                                    "Variant Type": "POINTF"
+                                }
+                            },
+                            "Parameter ID": "dynamicZoomCenter",
+                            "Parameter Value": [
+                                0.0,
+                                0.0
+                            ],
+                            "Variant Type": "POINTF"
+                        },
+                        {
+                            "Default Parameter Value": 1.0,
+                            "Key Frames": {
+                                "-5": {
+                                    "Value": 0.8,
+                                    "Variant Type": "Double"
+                                },
+                                "955": {
+                                    "Value": 1.0,
+                                    "Variant Type": "Double"
+                                }
+                            },
+                            "Parameter ID": "dynamicZoomScale",
+                            "Parameter Value": 1.0,
+                            "Variant Type": "Double",
+                            "maxValue": 100.0,
+                            "minValue": 0.01
+                        }
+                    ],
+                    "Type": 59
+                }
+            },
+            "name": "",
+            "effect_name": "Resolve Effect"
+        },
+        {
+            "OTIO_SCHEMA": "Effect.1",
+            "metadata": {
+                "Resolve_OTIO": {
+                    "Effect Name": "Composite",
+                    "Enabled": true,
+                    "Name": "Composite",
+                    "Parameters": [],
+                    "Type": 1
+                }
+            },
+            "name": "",
+            "effect_name": "Resolve Effect"
+        },
+        {
+            "OTIO_SCHEMA": "Effect.1",
+            "metadata": {
+                "Resolve_OTIO": {
+                    "Effect Name": "Lens Correction",
+                    "Enabled": true,
+                    "Name": "Lens Correction",
+                    "Parameters": [],
+                    "Type": 43
+                }
+            },
+            "name": "",
+            "effect_name": "Resolve Effect"
+        },
+        {
+            "OTIO_SCHEMA": "Effect.1",
+            "metadata": {
+                "Resolve_OTIO": {
+                    "Effect Name": "Retime and Scaling",
+                    "Enabled": true,
+                    "Name": "Retime and Scaling",
+                    "Parameters": [],
+                    "Type": 22
+                }
+            },
+            "name": "",
+            "effect_name": "Resolve Effect"
+        },
+        {
+            "OTIO_SCHEMA": "Effect.1",
+            "metadata": {
+                "Resolve_OTIO": {
+                    "Effect Name": "Video Faders",
+                    "Enabled": true,
+                    "Name": "Video Faders",
+                    "Parameters": [],
+                    "Type": 36
+                }
+            },
+            "name": "",
+            "effect_name": "Resolve Effect"
+        }
+    ],
+    "markers": [
+        {
+            "OTIO_SCHEMA": "Marker.2",
+            "metadata": {
+                "Resolve_OTIO": {
+                    "Keywords": [],
+                    "Note": "{\"resolve_sub_products\": {\"io.ayon.creators.resolve.shot\": {\"id\": \"pyblish.avalon.instance\", \"productType\": \"shot\", \"productName\": \"shotMain\", \"active\": true, \"creator_identifier\": \"io.ayon.creators.resolve.shot\", \"variant\": \"Main\", \"folderPath\": \"/shots/seq_img_notc_blackhandles/sh010\", \"task\": \"Generic\", \"clip_variant\": \"<track_name>\", \"clip_index\": \"a82520bd-f231-4a23-9cb7-8823141232db\", \"clip_source_resolution\": {\"width\": \"1920\", \"height\": \"1080\", \"pixelAspect\": 1.0}, \"folder\": \"shots\", \"episode\": \"ep01\", \"sequence\": \"seq_img_notc_blackhandles\", \"track\": \"{_track_}\", \"shot\": \"sh###\", \"hierarchy\": \"shots/seq_img_notc_blackhandles\", \"sourceResolution\": false, \"workfileFrameStart\": 1001, \"handleStart\": 10, \"handleEnd\": 10, \"parents\": [{\"folder_type\": \"folder\", \"entity_name\": \"shots\"}, {\"folder_type\": \"sequence\", \"entity_name\": \"seq_img_notc_blackhandles\"}], \"hierarchyData\": {\"folder\": \"shots\", \"episode\": \"ep01\", \"sequence\": \"seq_img_notc_blackhandles\", \"track\": \"Video1\", \"shot\": \"sh010\"}, \"heroTrack\": true, \"uuid\": \"5d6be326-f1d0-4416-b6aa-780d05a8dd6d\", \"reviewTrack\": \"Video1\", \"label\": \"/shots/seq_img_notc_blackhandles/sh010 shot\", \"has_promised_context\": true, \"newHierarchyIntegration\": true, \"newAssetPublishing\": true, \"instance_id\": \"e196263f-c584-40b4-bc27-018051a3bc92\", \"creator_attributes\": {\"folderPath\": \"/shots/seq_img_notc_blackhandles/sh010\", \"workfileFrameStart\": 1001, \"handleStart\": 10, \"handleEnd\": 10, \"frameStart\": 1001, \"frameEnd\": 1092, \"clipIn\": 86511, \"clipOut\": 86602, \"clipDuration\": 91, \"sourceIn\": 5, \"sourceOut\": 96, \"fps\": \"from_selection\"}, \"publish_attributes\": {\"CollectSlackFamilies\": {\"additional_message\": \"\"}}}, \"io.ayon.creators.resolve.plate\": {\"id\": \"pyblish.avalon.instance\", \"productType\": \"plate\", \"productName\": \"plateVideo1\", \"active\": true, \"creator_identifier\": \"io.ayon.creators.resolve.plate\", \"variant\": \"Video1\", \"folderPath\": \"/shots/seq_img_notc_blackhandles/sh010\", \"task\": \"Generic\", \"clip_variant\": \"<track_name>\", \"clip_index\": \"a82520bd-f231-4a23-9cb7-8823141232db\", \"clip_source_resolution\": {\"width\": \"1920\", \"height\": \"1080\", \"pixelAspect\": 1.0}, \"folder\": \"shots\", \"episode\": \"ep01\", \"sequence\": \"seq_img_notc_blackhandles\", \"track\": \"{_track_}\", \"shot\": \"sh###\", \"hierarchy\": \"shots/seq_img_notc_blackhandles\", \"sourceResolution\": false, \"workfileFrameStart\": 1001, \"handleStart\": 10, \"handleEnd\": 10, \"parents\": [{\"folder_type\": \"folder\", \"entity_name\": \"shots\"}, {\"folder_type\": \"sequence\", \"entity_name\": \"seq_img_notc_blackhandles\"}], \"hierarchyData\": {\"folder\": \"shots\", \"episode\": \"ep01\", \"sequence\": \"seq_img_notc_blackhandles\", \"track\": \"Video1\", \"shot\": \"sh010\"}, \"heroTrack\": true, \"uuid\": \"5d6be326-f1d0-4416-b6aa-780d05a8dd6d\", \"reviewTrack\": \"Video1\", \"parent_instance_id\": \"e196263f-c584-40b4-bc27-018051a3bc92\", \"label\": \"/shots/seq_img_notc_blackhandles/sh010 plate\", \"has_promised_context\": true, \"newHierarchyIntegration\": true, \"newAssetPublishing\": true, \"instance_id\": \"ced7e9b8-721a-4377-a827-15fbf7f2831a\", \"creator_attributes\": {\"parentInstance\": \"/shots/seq_img_notc_blackhandles/sh010 shot\", \"vSyncOn\": true, \"vSyncTrack\": \"Video1\"}, \"publish_attributes\": {\"CollectSlackFamilies\": {\"additional_message\": \"\"}}}}, \"clip_index\": \"a82520bd-f231-4a23-9cb7-8823141232db\", \"publish\": true}"
+                },
+                "clip_index": "a82520bd-f231-4a23-9cb7-8823141232db",
+                "publish": true,
+                "resolve_sub_products": {
+                    "io.ayon.creators.resolve.plate": {
+                        "active": true,
+                        "clip_index": "a82520bd-f231-4a23-9cb7-8823141232db",
+                        "clip_source_resolution": {
+                            "height": "1080",
+                            "pixelAspect": 1.0,
+                            "width": "1920"
+                        },
+                        "clip_variant": "<track_name>",
+                        "creator_attributes": {
+                            "parentInstance": "/shots/seq_img_notc_blackhandles/sh010 shot",
+                            "vSyncOn": true,
+                            "vSyncTrack": "Video1"
+                        },
+                        "creator_identifier": "io.ayon.creators.resolve.plate",
+                        "episode": "ep01",
+                        "folder": "shots",
+                        "folderPath": "/shots/seq_img_notc_blackhandles/sh010",
+                        "handleEnd": 10,
+                        "handleStart": 10,
+                        "has_promised_context": true,
+                        "heroTrack": true,
+                        "hierarchy": "shots/seq_img_notc_blackhandles",
+                        "hierarchyData": {
+                            "episode": "ep01",
+                            "folder": "shots",
+                            "sequence": "seq_img_notc_blackhandles",
+                            "shot": "sh010",
+                            "track": "Video1"
+                        },
+                        "id": "pyblish.avalon.instance",
+                        "instance_id": "ced7e9b8-721a-4377-a827-15fbf7f2831a",
+                        "label": "/shots/seq_img_notc_blackhandles/sh010 plate",
+                        "newAssetPublishing": true,
+                        "newHierarchyIntegration": true,
+                        "parent_instance_id": "e196263f-c584-40b4-bc27-018051a3bc92",
+                        "parents": [
+                            {
+                                "entity_name": "shots",
+                                "folder_type": "folder"
+                            },
+                            {
+                                "entity_name": "seq_img_notc_blackhandles",
+                                "folder_type": "sequence"
+                            }
+                        ],
+                        "productName": "plateVideo1",
+                        "productType": "plate",
+                        "publish_attributes": {
+                            "CollectSlackFamilies": {
+                                "additional_message": ""
+                            }
+                        },
+                        "reviewTrack": "Video1",
+                        "sequence": "seq_img_notc_blackhandles",
+                        "shot": "sh###",
+                        "sourceResolution": false,
+                        "task": "Generic",
+                        "track": "{_track_}",
+                        "uuid": "5d6be326-f1d0-4416-b6aa-780d05a8dd6d",
+                        "variant": "Video1",
+                        "workfileFrameStart": 1001
+                    },
+                    "io.ayon.creators.resolve.shot": {
+                        "active": true,
+                        "clip_index": "a82520bd-f231-4a23-9cb7-8823141232db",
+                        "clip_source_resolution": {
+                            "height": "1080",
+                            "pixelAspect": 1.0,
+                            "width": "1920"
+                        },
+                        "clip_variant": "<track_name>",
+                        "creator_attributes": {
+                            "clipDuration": 91,
+                            "clipIn": 86511,
+                            "clipOut": 86602,
+                            "folderPath": "/shots/seq_img_notc_blackhandles/sh010",
+                            "fps": "from_selection",
+                            "frameEnd": 1092,
+                            "frameStart": 1001,
+                            "handleEnd": 10,
+                            "handleStart": 10,
+                            "sourceIn": 5,
+                            "sourceOut": 96,
+                            "workfileFrameStart": 1001
+                        },
+                        "creator_identifier": "io.ayon.creators.resolve.shot",
+                        "episode": "ep01",
+                        "folder": "shots",
+                        "folderPath": "/shots/seq_img_notc_blackhandles/sh010",
+                        "handleEnd": 10,
+                        "handleStart": 10,
+                        "has_promised_context": true,
+                        "heroTrack": true,
+                        "hierarchy": "shots/seq_img_notc_blackhandles",
+                        "hierarchyData": {
+                            "episode": "ep01",
+                            "folder": "shots",
+                            "sequence": "seq_img_notc_blackhandles",
+                            "shot": "sh010",
+                            "track": "Video1"
+                        },
+                        "id": "pyblish.avalon.instance",
+                        "instance_id": "e196263f-c584-40b4-bc27-018051a3bc92",
+                        "label": "/shots/seq_img_notc_blackhandles/sh010 shot",
+                        "newAssetPublishing": true,
+                        "newHierarchyIntegration": true,
+                        "parents": [
+                            {
+                                "entity_name": "shots",
+                                "folder_type": "folder"
+                            },
+                            {
+                                "entity_name": "seq_img_notc_blackhandles",
+                                "folder_type": "sequence"
+                            }
+                        ],
+                        "productName": "shotMain",
+                        "productType": "shot",
+                        "publish_attributes": {
+                            "CollectSlackFamilies": {
+                                "additional_message": ""
+                            }
+                        },
+                        "reviewTrack": "Video1",
+                        "sequence": "seq_img_notc_blackhandles",
+                        "shot": "sh###",
+                        "sourceResolution": false,
+                        "task": "Generic",
+                        "track": "{_track_}",
+                        "uuid": "5d6be326-f1d0-4416-b6aa-780d05a8dd6d",
+                        "variant": "Main",
+                        "workfileFrameStart": 1001
+                    }
+                }
+            },
+            "name": "AyonData",
+            "color": "GREEN",
+            "marked_range": {
+                "OTIO_SCHEMA": "TimeRange.1",
+                "duration": {
+                    "OTIO_SCHEMA": "RationalTime.1",
+                    "rate": 24.0,
+                    "value": 1.0
+                },
+                "start_time": {
+                    "OTIO_SCHEMA": "RationalTime.1",
+                    "rate": 24.0,
+                    "value": 50.0
+                }
+            },
+            "comment": ""
+        }
+    ],
+    "enabled": true,
+    "media_references": {
+        "DEFAULT_MEDIA": {
+            "OTIO_SCHEMA": "ImageSequenceReference.1",
+            "metadata": {},
+            "name": "output.[1000-1100].tif",
+            "available_range": {
+                "OTIO_SCHEMA": "TimeRange.1",
+                "duration": {
+                    "OTIO_SCHEMA": "RationalTime.1",
+                    "rate": 25.0,
+                    "value": 101.0
+                },
+                "start_time": {
+                    "OTIO_SCHEMA": "RationalTime.1",
+                    "rate": 25.0,
+                    "value": 0.0
+                }
+            },
+            "available_image_bounds": null,
+            "target_url_base": "C:\\tif_seq",
+            "name_prefix": "output.",
+            "name_suffix": ".tif",
+            "start_frame": 1000,
+            "frame_step": 1,
+            "rate": 25.0,
+            "frame_zero_padding": 4,
+            "missing_frame_policy": "error"
+        }
+    },
+    "active_media_reference_key": "DEFAULT_MEDIA"
+}

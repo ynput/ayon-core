@@ -321,7 +321,7 @@ class PushToContextController:
             return False
 
         if (
-            not self._user_values.new_folder_name
+            self._user_values.new_folder_name is None
             and not self._selection_model.get_selected_folder_id()
         ):
             return False

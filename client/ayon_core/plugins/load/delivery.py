@@ -1,24 +1,22 @@
-import copy
 import platform
 from collections import defaultdict
 
 import ayon_api
 from qtpy import QtWidgets, QtCore, QtGui
 
-from ayon_core.pipeline import load, Anatomy
 from ayon_core import resources, style
-
 from ayon_core.lib import (
     format_file_size,
     collect_frames,
     get_datetime_data,
 )
+from ayon_core.pipeline import load, Anatomy
 from ayon_core.pipeline.load import get_representation_path_with_anatomy
 from ayon_core.pipeline.delivery import (
     get_format_dict,
     check_destination_path,
     deliver_single_file,
-    deliver_sequence,
+    get_representations_delivery_template_data,
 )
 
 
@@ -201,20 +199,31 @@ class DeliveryOptionsDialog(QtWidgets.QDialog):
         format_dict = get_format_dict(self.anatomy, self.root_line_edit.text())
         renumber_frame = self.renumber_frame.isChecked()
         frame_offset = self.first_frame_start.value()
+        filtered_repres = []
+        repre_ids = set()
         for repre in self._representations:
-            if repre["name"] not in selected_repres:
-                continue
+            if repre["name"] in selected_repres:
+                filtered_repres.append(repre)
+                repre_ids.add(repre["id"])
 
+        template_data_by_repre_id = (
+            get_representations_delivery_template_data(
+                self.anatomy.project_name, repre_ids
+            )
+        )
+        for repre in filtered_repres:
             repre_path = get_representation_path_with_anatomy(
                 repre, self.anatomy
             )
 
-            anatomy_data = copy.deepcopy(repre["context"])
-            new_report_items = check_destination_path(repre["id"],
-                                                      self.anatomy,
-                                                      anatomy_data,
-                                                      datetime_data,
-                                                      template_name)
+            template_data = template_data_by_repre_id[repre["id"]]
+            new_report_items = check_destination_path(
+                repre["id"],
+                self.anatomy,
+                template_data,
+                datetime_data,
+                template_name
+            )
 
             report_items.update(new_report_items)
             if new_report_items:
@@ -225,57 +234,61 @@ class DeliveryOptionsDialog(QtWidgets.QDialog):
                 repre,
                 self.anatomy,
                 template_name,
-                anatomy_data,
+                template_data,
                 format_dict,
                 report_items,
                 self.log
             ]
 
-            if repre.get("files"):
-                src_paths = []
-                for repre_file in repre["files"]:
-                    src_path = self.anatomy.fill_root(repre_file["path"])
-                    src_paths.append(src_path)
-                sources_and_frames = collect_frames(src_paths)
+            # TODO: This will currently incorrectly detect 'resources'
+            #  that are published along with the publish, because those should
+            #  not adhere to the template directly but are ingested in a
+            #  customized way. For example, maya look textures or any publish
+            #  that directly adds files into `instance.data["transfers"]`
+            src_paths = []
+            for repre_file in repre["files"]:
+                src_path = self.anatomy.fill_root(repre_file["path"])
+                src_paths.append(src_path)
+            sources_and_frames = collect_frames(src_paths)
 
-                frames = set(sources_and_frames.values())
-                frames.discard(None)
-                first_frame = None
-                if frames:
-                    first_frame = min(frames)
+            frames = set(sources_and_frames.values())
+            frames.discard(None)
+            first_frame = None
+            if frames:
+                first_frame = min(frames)
 
-                for src_path, frame in sources_and_frames.items():
-                    args[0] = src_path
-                    # Renumber frames
-                    if renumber_frame and frame is not None:
-                        # Calculate offset between
-                        # first frame and current frame
-                        # - '0' for first frame
-                        offset = frame_offset - int(first_frame)
-                        # Add offset to new frame start
-                        dst_frame = int(frame) + offset
-                        if dst_frame < 0:
-                            msg = "Renumber frame has a smaller number than original frame"     # noqa
-                            report_items[msg].append(src_path)
-                            self.log.warning("{} <{}>".format(
-                                msg, dst_frame))
-                            continue
-                        frame = dst_frame
+            for src_path, frame in sources_and_frames.items():
+                args[0] = src_path
+                # Renumber frames
+                if renumber_frame and frame is not None:
+                    # Calculate offset between
+                    # first frame and current frame
+                    # - '0' for first frame
+                    offset = frame_offset - int(first_frame)
+                    # Add offset to new frame start
+                    dst_frame = int(frame) + offset
+                    if dst_frame < 0:
+                        msg = "Renumber frame has a smaller number than original frame"     # noqa
+                        report_items[msg].append(src_path)
+                        self.log.warning("{} <{}>".format(
+                            msg, dst_frame))
+                        continue
+                    frame = dst_frame
 
-                    if frame is not None:
-                        anatomy_data["frame"] = frame
-                    new_report_items, uploaded = deliver_single_file(*args)
-                    report_items.update(new_report_items)
-                    self._update_progress(uploaded)
-            else:  # fallback for Pype2 and representations without files
-                frame = repre["context"].get("frame")
-                if frame:
-                    repre["context"]["frame"] = len(str(frame)) * "#"
-
-                if not frame:
-                    new_report_items, uploaded = deliver_single_file(*args)
-                else:
-                    new_report_items, uploaded = deliver_sequence(*args)
+                if frame is not None:
+                    if repre["context"].get("frame"):
+                        template_data["frame"] = frame
+                    elif repre["context"].get("udim"):
+                        template_data["udim"] = frame
+                    else:
+                        # Fallback
+                        self.log.warning(
+                            "Representation context has no frame or udim"
+                            " data. Supplying sequence frame to '{frame}'"
+                            " formatting data."
+                        )
+                        template_data["frame"] = frame
+                new_report_items, uploaded = deliver_single_file(*args)
                 report_items.update(new_report_items)
                 self._update_progress(uploaded)
 
@@ -339,8 +352,8 @@ class DeliveryOptionsDialog(QtWidgets.QDialog):
     def _get_selected_repres(self):
         """Returns list of representation names filtered from checkboxes."""
         selected_repres = []
-        for repre_name, chckbox in self._representation_checkboxes.items():
-            if chckbox.isChecked():
+        for repre_name, checkbox in self._representation_checkboxes.items():
+            if checkbox.isChecked():
                 selected_repres.append(repre_name)
 
         return selected_repres

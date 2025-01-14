@@ -132,7 +132,10 @@ def install_host(host):
 
     def modified_emit(obj, record):
         """Method replacing `emit` in Pyblish's MessageHandler."""
-        record.msg = record.getMessage()
+        try:
+            record.msg = record.getMessage()
+        except Exception:
+            record.msg = str(record.msg)
         obj.records.append(record)
 
     MessageHandler.emit = modified_emit
@@ -232,16 +235,6 @@ def install_ayon_plugins(project_name=None, host_name=None):
             register_loader_plugin_path(path)
             register_creator_plugin_path(path)
             register_inventory_action_path(path)
-
-
-def install_openpype_plugins(project_name=None, host_name=None):
-    """Install AYON core plugins and make sure the core is initialized.
-
-    Deprecated:
-        Use `install_ayon_plugins` instead.
-
-    """
-    install_ayon_plugins(project_name, host_name)
 
 
 def uninstall_host():
@@ -592,9 +585,6 @@ def version_up_current_workfile():
     """Function to increment and save workfile
     """
     host = registered_host()
-    if not host.has_unsaved_changes():
-        print("No unsaved changes, skipping file save..")
-        return
 
     project_name = get_current_project_name()
     folder_path = get_current_folder_path()

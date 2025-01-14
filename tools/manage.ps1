@@ -233,6 +233,13 @@ function Invoke-Codespell {
     & $Poetry $CodespellArgs
 }
 
+function Run-From-Code {
+    $Poetry = "$RepoRoot\.poetry\bin\poetry.exe"
+    $RunArgs = @( "run")
+
+    & $Poetry $RunArgs @arguments
+}
+
 function Write-Help {
     <#
     .SYNOPSIS
@@ -248,6 +255,7 @@ function Write-Help {
     Write-Info -Text "  ruff-check                    ", "Run Ruff check for the repository" -Color White, Cyan
     Write-Info -Text "  ruff-fix                      ", "Run Ruff fix for the repository" -Color White, Cyan
     Write-Info -Text "  codespell                     ", "Run codespell check for the repository" -Color White, Cyan
+    Write-Info -Text "  run                           ", "Run a poetry command in the repository environment" -Color White, Cyan
     Write-Host ""
 }
 
@@ -269,6 +277,9 @@ function Resolve-Function {
     } elseif ($FunctionName -eq "codespell") {
         Set-Cwd
         Invoke-CodeSpell
+    } elseif ($FunctionName -eq "run") {
+        Set-Cwd
+        Run-From-Code
     } else {
         Write-Host "Unknown function ""$FunctionName"""
         Write-Help

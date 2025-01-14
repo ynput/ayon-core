@@ -38,7 +38,6 @@ from .lib import (
     qt_app_context,
     get_qt_app,
     get_ayon_qt_app,
-    get_openpype_qt_app,
     get_qt_icon,
 )
 
@@ -122,7 +121,6 @@ __all__ = (
     "qt_app_context",
     "get_qt_app",
     "get_ayon_qt_app",
-    "get_openpype_qt_app",
     "get_qt_icon",
 
     "RecursiveSortFilterProxyModel",
