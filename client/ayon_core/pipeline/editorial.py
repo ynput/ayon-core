@@ -256,8 +256,14 @@ def remap_range_on_file_sequence(otio_clip, otio_range):
         rate=available_range_rate,
     ).to_frames()
 
+    # e.g.:
+    # duration = 10 frames at 24fps
+    # if frame_in = 1001 then
+    # frame_out = 1010
+    offset_duration = max(0, otio_range.duration.to_frames() - 1)
+
     frame_out = otio.opentime.RationalTime.from_frames(
-        frame_in + otio_range.duration.to_frames() - 1,
+        frame_in + offset_duration,
         rate=available_range_rate,
     ).to_frames()
 
