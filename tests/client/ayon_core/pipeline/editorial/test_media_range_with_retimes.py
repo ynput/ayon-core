@@ -351,3 +351,34 @@ def test_img_sequence_2x_speed_resolve():
         handle_start=10,
         handle_end=10,
     )
+
+
+def test_img_sequence_frozen_frame():
+    """
+    Img sequence clip
+    available files = 948674-948974 25fps
+    source_range =  909990.8339241028 
+                - 909995.8339241028 23.976fps
+    speed = 0.0
+    """
+    expected_data = {
+        'mediaIn': 948855,
+        'mediaOut': 948855,
+        'handleStart': 0,
+        'handleEnd': 0,
+        'speed': 0.0,
+        'versionData': {
+            'retime': True,
+            'speed': 0.0,
+            'timewarps': [],
+            'handleStart': 0,
+            'handleEnd': 0,
+        }
+    }
+
+    _check_expected_retimed_values(
+        "img_seq_freeze_frame.json",
+        expected_data,
+        handle_start=10,
+        handle_end=10,
+    )
