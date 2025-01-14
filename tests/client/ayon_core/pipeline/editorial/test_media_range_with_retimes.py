@@ -64,6 +64,28 @@ def test_movie_embedded_tc_handle():
     )
 
 
+def test_movie_23fps_qt_embedded_tc():
+    """
+    Movie clip (embedded timecode 1h)
+    available_range = 1937896-1937994 23.976fps
+    source_range = 1937905-1937987 23.97602462768554fps
+    """
+    expected_data = {
+        'mediaIn': 1009,
+        'mediaOut': 1090,
+        'handleStart': 8,
+        'handleEnd': 8,
+        'speed': 1.0
+    }
+
+    _check_expected_retimed_values(
+        "qt_23.976_embedded_long_tc.json",
+        expected_data,
+        handle_start=8,
+        handle_end=8,
+    )
+
+
 def test_movie_retime_effect():
     """
     Movie clip (embedded timecode 1h)
@@ -187,3 +209,29 @@ def test_img_sequence_conform_to_23_976fps():
         handle_start=0,
         handle_end=8,
     )
+
+
+def test_img_sequence_conform_from_24_to_23_976fps():
+    """
+    Img sequence clip
+    available files = 883750-884504 24fps
+    source_range =  883159-883267 23.976fps
+
+    This test ensures such entries do not trigger
+    the legacy Hiero export compatibility.
+    """
+    expected_data = {
+        'mediaIn': 884043,
+        'mediaOut': 884150,
+        'handleStart': 0,
+        'handleEnd': 0,
+        'speed': 1.0
+    }
+
+    _check_expected_retimed_values(
+        "img_seq_24_to_23.976_no_legacy.json",
+        expected_data,
+        handle_start=0,
+        handle_end=0,
+    )
+
