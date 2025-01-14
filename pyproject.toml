@@ -5,7 +5,7 @@
 
 [tool.poetry]
 name = "ayon-core"
-version = "1.0.12+dev"
+version = "1.0.13"
 description = ""
 authors = ["Ynput Team <team@ynput.io>"]
 readme = "README.md"
