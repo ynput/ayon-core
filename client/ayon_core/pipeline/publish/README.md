@@ -1,20 +1,22 @@
 # Publish
-AYON is using `pyblish` for publishing process which is a little bit extented and modified mainly for UI purposes. OpenPype's (new) publish UI does not allow to enable/disable instances or plugins that can be done during creation part. Also does support actions only for validators after validation exception.
+AYON is using `pyblish` for publishing process which is a little bit extented and modified mainly for UI purposes. AYON's (new) publish UI does not allow to enable/disable instances or plugins that can be done during creation part. Also does support actions only for validators after validation exception.
 
 ## Exceptions
 AYON define few specific exceptions that should be used in publish plugins.
 
+### Publish error
+Exception `PublishError` can be raised on known error. The message is shown to artist.
+- **message** Error message.
+- **title** Short description of error (2-5 words). Title can be used for grouping of exceptions per plugin.
+- **description** Override of 'message' for UI, you can add markdown and html. By default, is filled with 'message'.
+- **detail**  Additional detail message that is hidden under collapsed component.
+
+Arguments `title`, `description` and `detail` are optional. Title is filled with generic message "This is not your fault" if is not passed.
+
 ### Validation exception
 Validation plugins should raise `PublishValidationError` to show to an artist what's wrong and give him actions to fix it. The exception says that error happened in plugin can be fixed by artist himself (with or without action on plugin). Any other errors will stop publishing immediately. Exception `PublishValidationError` raised after validation order has same effect as any other exception.
 
-Exception `PublishValidationError` 3 arguments:
-- **message** Which is not used in UI but for headless publishing.
-- **title** Short description of error (2-5 words). Title is used for grouping of exceptions per plugin.
-- **description** Detailed description of happened issue where markdown and html can be used.
-
-
-### Known errors
-When there is a known error that can't be fixed by user (e.g. can't connect to deadline service, etc.) `KnownPublishError` should be raise. The only difference is that it's message is shown in UI to artist otherwise a neutral message without context is shown.
+Exception expect same arguments as `PublishError`. Value of `title` is filled with plugin label if is not passed.
 
 ## Plugin extension
 Publish plugins can be extended by additional logic when inherits from `AYONPyblishPluginMixin` which can be used as mixin (additional inheritance of class).

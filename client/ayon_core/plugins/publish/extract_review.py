@@ -22,8 +22,8 @@ from ayon_core.lib.transcoding import (
     should_convert_for_ffmpeg,
     get_review_layer_name,
     convert_input_paths_for_ffmpeg,
-    get_transcode_temp_directory,
 )
+from ayon_core.pipeline import get_temp_dir
 from ayon_core.pipeline.publish import (
     KnownPublishError,
     get_publish_instance_label,
@@ -95,7 +95,7 @@ class ExtractReview(pyblish.api.InstancePlugin):
     ]
 
     # Supported extensions
-    image_exts = ["exr", "jpg", "jpeg", "png", "dpx", "tga"]
+    image_exts = ["exr", "jpg", "jpeg", "png", "dpx", "tga", "tiff", "tif"]
     video_exts = ["mov", "mp4"]
     supported_exts = image_exts + video_exts
 
@@ -310,7 +310,10 @@ class ExtractReview(pyblish.api.InstancePlugin):
             #   - change staging dir of source representation
             #   - must be set back after output definitions processing
             if do_convert:
-                new_staging_dir = get_transcode_temp_directory()
+                new_staging_dir = get_temp_dir(
+                    project_name=instance.context.data["projectName"],
+                    use_local_temp=True,
+                )
                 repre["stagingDir"] = new_staging_dir
 
                 convert_input_paths_for_ffmpeg(
@@ -1900,7 +1903,7 @@ class OverscanCrop:
         string_value = re.sub(r"([ ]+)?px", " ", string_value)
         string_value = re.sub(r"([ ]+)%", "%", string_value)
         # Make sure +/- sign at the beginning of string is next to number
-        string_value = re.sub(r"^([\+\-])[ ]+", "\g<1>", string_value)
+        string_value = re.sub(r"^([\+\-])[ ]+", r"\g<1>", string_value)
         # Make sure +/- sign in the middle has zero spaces before number under
         #   which belongs
         string_value = re.sub(

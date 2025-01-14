@@ -47,8 +47,9 @@ class CollectSceneVersion(pyblish.api.ContextPlugin):
             return
 
         if not context.data.get('currentFile'):
-            raise KnownPublishError("Cannot get current workfile path. "
-                                    "Make sure your scene is saved.")
+            self.log.error("Cannot get current workfile path. "
+                           "Make sure your scene is saved.")
+            return
 
         filename = os.path.basename(context.data.get('currentFile'))
 

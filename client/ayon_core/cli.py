@@ -21,21 +21,7 @@ from ayon_core.lib import (
 
 
 
-class AliasedGroup(click.Group):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self._aliases = {}
-
-    def set_alias(self, src_name, dst_name):
-        self._aliases[dst_name] = src_name
-
-    def get_command(self, ctx, cmd_name):
-        if cmd_name in self._aliases:
-            cmd_name = self._aliases[cmd_name]
-        return super().get_command(ctx, cmd_name)
-
-
-@click.group(cls=AliasedGroup, invoke_without_command=True)
+@click.group(invoke_without_command=True)
 @click.pass_context
 @click.option("--use-staging", is_flag=True,
               expose_value=False, help="use staging variants")
@@ -84,10 +70,6 @@ def addon(ctx):
     These commands are generated dynamically by currently loaded addons.
     """
     pass
-
-
-# Add 'addon' as alias for module
-main_cli.set_alias("addon", "module")
 
 
 @main_cli.command()
@@ -164,7 +146,8 @@ def publish_report_viewer():
 @main_cli.command()
 @click.argument("output_path")
 @click.option("--project", help="Define project context")
-@click.option("--folder", help="Define folder in project (project must be set)")
+@click.option(
+    "--folder", help="Define folder in project (project must be set)")
 @click.option(
     "--strict",
     is_flag=True,
