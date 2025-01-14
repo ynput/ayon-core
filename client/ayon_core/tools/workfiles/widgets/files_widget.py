@@ -136,6 +136,8 @@ class FilesWidget(QtWidgets.QWidget):
 
         # Initial setup
         workarea_btn_open.setEnabled(False)
+        workarea_btn_browse.setEnabled(False)
+        workarea_btn_save.setEnabled(False)
         published_btn_copy_n_open.setEnabled(False)
         published_btn_change_context.setEnabled(False)
         published_btn_cancel.setVisible(False)
@@ -264,6 +266,9 @@ class FilesWidget(QtWidgets.QWidget):
     def _on_workarea_path_changed(self, event):
         valid_path = event["path"] is not None
         self._workarea_btn_open.setEnabled(valid_path)
+        valid_task = self._selected_task_id is not None
+        self._workarea_btn_save.setEnabled(valid_task)
+        self._workarea_btn_browse.setEnabled(valid_task)
 
     # -------------------------------------------------------------
     # Published workfiles
