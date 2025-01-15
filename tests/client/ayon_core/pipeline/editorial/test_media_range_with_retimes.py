@@ -113,6 +113,70 @@ def test_movie_retime_effect():
     )
 
 
+def test_movie_reverse_speed_2x():
+    """
+    Movie clip (no timecode)
+    available files = 0-100 24fps
+    source_range =  29.97-40.97 23.976fps
+    speed = -2.0
+    """
+    expected_data = {
+        # not exactly 30 because of 23.976 rouding
+        'mediaIn': 30.000000000000004,
+        # not exactly 50 because of 23.976 rouding
+        'mediaOut': 51.02199940144827,
+        'handleStart': 20,
+        'handleEnd': 20,
+        'speed': -2.0,
+        'versionData': {
+            'retime': True,
+            'speed': -2.0,
+            'timewarps': [],
+            'handleStart': 20,
+            'handleEnd': 20,
+        }
+    }
+
+    _check_expected_retimed_values(
+        "qt_reverse_speed_2x.json",
+        expected_data,
+        handle_start=10,
+        handle_end=10,
+    )
+
+
+
+def test_movie_frozen_frame():
+    """
+    Movie clip (no timecode)
+    available files = 0-100 24fps
+    source_range =  29.97-40.97 23.976fps
+    speed = 0.0
+    """
+    expected_data = {
+        # not exactly 30 because of OTIO rounding
+        'mediaIn': 30.000000000000004,
+        'mediaOut': 30.000000000000004,
+        'handleStart': 0,
+        'handleEnd': 0,
+        'speed': 0.0,
+        'versionData': {
+            'retime': True,
+            'speed': 0.0,
+            'timewarps': [],
+            'handleStart': 0,
+            'handleEnd': 0,
+        }
+    }
+
+    _check_expected_retimed_values(
+        "qt_freeze_frame.json",
+        expected_data,
+        handle_start=10,
+        handle_end=10,
+    )
+
+
 def test_img_sequence_no_handles():
     """
     Img sequence clip (no embedded timecode)

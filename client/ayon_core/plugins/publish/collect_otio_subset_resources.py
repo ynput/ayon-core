@@ -174,9 +174,17 @@ class CollectOtioSubsetResources(
                     path, trimmed_media_range_h, metadata)
                 self.staging_dir, collection = collection_data
 
-            self.log.debug(collection)
-            repre = self._create_representation(
-                frame_start, frame_end, collection=collection)
+            if len(collection.indexes) > 1:
+                self.log.debug(collection)
+                repre = self._create_representation(
+                    frame_start, frame_end, collection=collection)
+            else:
+                filename, = tuple(collection)
+                self.log.debug(filename)
+
+                # TODO: discuss this, it erases frame number.
+                repre = self._create_representation(
+                    frame_start, frame_end, file=filename)
 
             if (
                 not instance.data.get("otioReviewClips")
