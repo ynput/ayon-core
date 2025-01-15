@@ -708,6 +708,7 @@ def get_instance_staging_dir(instance):
         project_settings=context.data["project_settings"],
         template_data=template_data,
         always_return_path=True,
+        username=context.data["user"],
     )
 
     staging_dir_path = staging_dir_info.directory
