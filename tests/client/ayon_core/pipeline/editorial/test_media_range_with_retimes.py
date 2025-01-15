@@ -122,8 +122,9 @@ def test_movie_reverse_speed_2x():
     """
     expected_data = {
         # not exactly 30 because of 23.976 rouding
+        # https://github.com/AcademySoftwareFoundation/
+        # OpenTimelineIO/issues/1822
         'mediaIn': 30.000000000000004,
-        # not exactly 50 because of 23.976 rouding
         'mediaOut': 51.02199940144827,
         'handleStart': 20,
         'handleEnd': 20,
@@ -155,6 +156,8 @@ def test_movie_frozen_frame():
     """
     expected_data = {
         # not exactly 30 because of OTIO rounding
+        # https://github.com/AcademySoftwareFoundation/
+        # OpenTimelineIO/issues/1822
         'mediaIn': 30.000000000000004,
         'mediaOut': 30.000000000000004,
         'handleStart': 0,
