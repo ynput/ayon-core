@@ -375,10 +375,6 @@ def get_media_range_with_retimes(otio_clip, handle_start, handle_end):
             tw_node.update(metadata)
             tw_node["lookup"] = list(lookup)
 
-            # get first and last frame offsets
-            offset_in += lookup[0]
-            offset_out += lookup[-1]
-
             # add to timewarp nodes
             time_warp_nodes.append(tw_node)
 
@@ -403,19 +399,14 @@ def get_media_range_with_retimes(otio_clip, handle_start, handle_end):
         src_in = conformed_source_range.start_time
         src_duration = conformed_source_range.duration
 
-        offset_in = otio.opentime.RationalTime(offset_in, rate=src_in.rate)
-        offset_duration = otio.opentime.RationalTime(
-            offset_out,
-            rate=src_duration.rate
-        )
-
         retimed_duration = otio.opentime.RationalTime(
             src_duration.value * abs(time_scalar),
             src_duration.rate
         )
         trim_range = otio.opentime.TimeRange(
-            start_time=src_in + offset_in,
-            duration=retimed_duration + offset_duration
+            start_time=src_in,
+            duration=retimed_duration,
+
         )
 
         # preserve discrete frame numbers
@@ -431,13 +422,44 @@ def get_media_range_with_retimes(otio_clip, handle_start, handle_end):
         media_in_trimmed = conformed_source_range.start_time.value + offset_in
 
         offset_duration = conformed_source_range.duration.value * abs(time_scalar)
-        offset_duration += offset_out
         offset_duration -= 1  # duration 1 frame -> freeze frame -> end = start + 0
         offset_duration = max(0, offset_duration)  # negative duration = frozen frame
         media_out_trimmed = media_in_trimmed + offset_duration
 
         media_in = available_range.start_time.value
         media_out = available_range.end_time_inclusive().value
+
+    if time_warp_nodes:
+        # Naive approach: Resolve consecutive timewarp(s) on range,
+        # then check if plate range has to be extended beyond source range.
+        frame_range = [media_in_trimmed]
+        in_frame = media_in_trimmed + time_scalar
+        while in_frame <= media_out_trimmed:
+            frame_range.append(in_frame)
+            in_frame += time_scalar
+
+        for tw_idx, tw in enumerate(time_warp_nodes):
+            for idx, frame_number in enumerate(frame_range):
+                # First timewarp, apply on media range
+                if tw_idx == 0:
+                    frame_range[idx] = round(frame_number + tw["lookup"][idx] * time_scalar)
+                # Consecutive timewarp, apply on the previous result
+                else:
+                    new_idx = round(idx + tw["lookup"][idx])
+
+                    if not 0 <= new_idx < len(frame_range):
+                        # TODO: implementing this would need to actually have
+                        # retiming engine resolve process within AYON, resolving wraps
+                        # as curves, then projecting those into the previous media_range.
+                        raise NotImplementedError(
+                            "Unsupported consecutive timewarps (out of computed range)"
+                        )
+
+                    frame_range[idx] = frame_range[new_idx]
+
+        # adjust range if needed
+        media_in_trimmed = min(media_in_trimmed, min(frame_range))
+        media_out_trimmed = max(media_out_trimmed, max(frame_range))
 
     # adjust available handles if needed
     if (media_in_trimmed - media_in) < handle_start:

@@ -180,6 +180,55 @@ def test_movie_frozen_frame():
     )
 
 
+def test_movie_timewarp():
+    """
+    Movie clip (no timecode)
+    available files = 0-100 24fps
+    source_range =  29.97-40.97 23.976fps
+    speed = timewarp
+    """
+    expected_data = {
+        'handleEnd': 10,
+        'handleStart': 0,
+        'mediaIn': 948850,
+        'mediaOut': 948860,
+        'speed': 1.0,
+        'versionData': {'handleEnd': 10,
+             'handleStart': 0,
+             'retime': True,
+             'speed': 1.0,
+             'timewarps': [
+                {
+                    'Class': 'TimeWarp',
+                    'length': 4.0,
+                    'lookup': [
+                        2.0,
+                        1.8959999809265136,
+                        1.767999971389771,
+                        1.59199997138977,
+                        1.3439999809265135,
+                        1.0,
+                        0.5440000181198119,
+                        -0.007999974250793684,
+                        -0.6319999756813051,
+                        -1.3039999847412114,
+                        -2.0
+                    ],
+                    'name': 'TimeWarp2'
+                }
+            ]
+        }
+    }
+
+    _check_expected_retimed_values(
+        "qt_timewarp.json",
+        expected_data,
+        handle_start=0,
+        handle_end=10,
+    )
+
+
+
 def test_img_sequence_no_handles():
     """
     Img sequence clip (no embedded timecode)
@@ -447,5 +496,191 @@ def test_img_sequence_frozen_frame():
         "img_seq_freeze_frame.json",
         expected_data,
         handle_start=10,
+        handle_end=10,
+    )
+
+
+def test_img_sequence_timewarp_beyond_range():
+    """
+    Img sequence clip
+    available files = 948674-948974 25fps
+    source_range =  909990.8339241028 
+                - 909995.8339241028 23.976fps
+    timewarp to get from 948845 to 948870
+    """
+    expected_data = {
+        'mediaIn': 948845,
+        'mediaOut': 948870,
+        'handleStart': 0,
+        'handleEnd': 10,
+        'speed': 1.0,
+        'versionData': {'handleEnd': 10,
+             'handleStart': 0,
+             'retime': True,
+             'speed': 1.0,
+             'timewarps': [
+                {
+                    'Class': 'TimeWarp',
+                    'length': 1.0,
+                    'lookup': [
+                        -5.0,
+                        -3.9440000305175777,
+                        -2.852000034332275,
+                        -1.6880000228881844,
+                        -0.4160000076293944,
+                        1.0,
+                        2.5839999923706056,
+                        4.311999977111817,
+                        6.147999965667726,
+                        8.055999969482421,
+                        10.0
+                    ],
+                    'name': 'TimeWarp3'
+                }
+            ]
+        }
+    }
+
+    _check_expected_retimed_values(
+        "img_seq_tw_beyond_range.json",
+        expected_data,
+        handle_start=0,
+        handle_end=10,
+    )
+
+
+def test_img_sequence_2X_speed_timewarp():
+    """
+    Img sequence clip
+    available files = 948674-948974 25fps
+    source_range =  909990.8339241028 
+                - 909995.8339241028 23.976fps
+    speed: 200%
+    timewarp to get from 948854 to 948874
+    """
+    expected_data = {
+        'mediaIn': 948850,
+        'mediaOut': 948874,
+        'handleStart': 0,
+        'handleEnd': 20,
+        'speed': 2.0,
+        'versionData': {
+            'handleEnd': 20,
+            'handleStart': 0,
+            'retime': True,
+            'speed': 2.0,
+            'timewarps': [
+                {
+                    'Class': 'TimeWarp',
+                    'length': 4.0,
+                    'lookup': [
+                        2.0,
+                        1.7039999923706055,
+                        1.431999991416931,
+                        1.2079999942779531,
+                        1.055999998092652,
+                        1.0,
+                        1.056000007629395,
+                        1.208000022888184,
+                        1.432000034332276,
+                        1.7040000305175766,
+                        2.0
+                    ],
+                    'name': 'TimeWarp6'
+                }
+            ]
+        }
+    }
+
+    _check_expected_retimed_values(
+        "img_seq_2x_time_warp.json",
+        expected_data,
+        handle_start=0,
+        handle_end=10,
+    )
+
+
+def test_img_sequence_multiple_timewarps():
+    """
+    Img sequence clip
+    available files = 948674-948974 25fps
+    source_range =  909990.8339241028 
+                - 909995.8339241028 23.976fps
+    multiple timewarps to get from 948842 to 948864
+    """
+    expected_data = {
+        'mediaIn': 948845,
+        'mediaOut': 948867,
+        'handleStart': 0,
+        'handleEnd': 10,
+        'speed': 1.0,
+        'versionData': {
+            'handleEnd': 10,
+            'handleStart': 0,
+            'retime': True,
+            'speed': 1.0,
+            'timewarps': [
+                {
+                    'Class': 'TimeWarp',
+                    'length': 1.0,
+                    'lookup': [
+                        -5.0,
+                        -3.9440000305175777,
+                        -2.852000034332275,
+                        -1.6880000228881844,
+                        -0.4160000076293944,
+                        1.0,
+                        2.5839999923706056,
+                        4.311999977111817,
+                        6.147999965667726,
+                        8.055999969482421,
+                        10.0
+                    ],
+                    'name': 'TimeWarp3'
+                },
+                {
+                    'Class': 'TimeWarp',
+                    'length': 1.0,
+                    'lookup': [
+                        0.0,
+                        0.0,
+                        0.0,
+                        0.0,
+                        0.0,
+                        0.0,
+                        0.0,
+                        0.0,
+                        0.0,
+                        0.0,
+                        0.0
+                    ],
+                    'name': 'TimeWarp4'
+                },
+                {
+                    'Class': 'TimeWarp',
+                    'length': 1.0,
+                    'lookup': [
+                        0.0,
+                        -1.0,
+                        1.0,
+                        0.0,
+                        0.0,
+                        0.0,
+                        0.0,
+                        0.0,
+                        0.0,
+                        0.0,
+                        -1.0
+                    ],
+                    'name': 'TimeWarp5'
+                }
+            ]
+        }
+    }
+
+    _check_expected_retimed_values(
+        "img_seq_multiple_tws.json",
+        expected_data,
+        handle_start=0,
         handle_end=10,
     )
