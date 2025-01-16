@@ -276,6 +276,10 @@ def create_skeleton_instance(
     persistent = instance.data.get("stagingDir_persistent") is True
     instance_skeleton_data["stagingDir_persistent"] = persistent
 
+    explicit_cleanup_paths = instance.data.get("cleanupFullPaths", [])
+    if len(explicit_cleanup_paths) > 0:
+        instance_skeleton_data["cleanupFullPaths"] = explicit_cleanup_paths
+
     return instance_skeleton_data
 
 
