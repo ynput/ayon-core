@@ -23,6 +23,9 @@ Enabled vs Disabled logic in most of stylesheets
     font-family: "Noto Sans";
     font-weight: 450;
     outline: none;
+
+    /* Fix icons in BorisFX Silhouette */
+    icon-size: 16px;
 }
 
 QWidget {
