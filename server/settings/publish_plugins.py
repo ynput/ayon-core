@@ -1008,8 +1008,8 @@ DEFAULT_PUBLISH_VALUES = {
             {"name": "model", "order": 100},
             {"name": "assembly", "order": 150},
             {"name": "groom", "order": 175},
-            {"name": "look", "order": 300},
-            {"name": "rig", "order": 100},
+            {"name": "look", "order": 200},
+            {"name": "rig", "order": 300},
             # Shot layers
             {"name": "layout", "order": 200},
             {"name": "animation", "order": 300},
