@@ -4,7 +4,7 @@ from ayon_core.settings import get_studio_settings
 from ayon_core.lib.local_settings import get_ayon_username
 
 
-def get_general_template_data(settings=None):
+def get_general_template_data(settings=None, username=None):
     """General template data based on system settings or machine.
 
     Output contains formatting keys:
@@ -14,17 +14,22 @@ def get_general_template_data(settings=None):
 
     Args:
         settings (Dict[str, Any]): Studio or project settings.
+        username (Optional[str]): AYON Username.
     """
 
     if not settings:
         settings = get_studio_settings()
+
+    if username is None:
+        username = get_ayon_username()
+
     core_settings = settings["core"]
     return {
         "studio": {
             "name": core_settings["studio_name"],
             "code": core_settings["studio_code"]
         },
-        "user": get_ayon_username()
+        "user": username
     }
 
 
@@ -145,6 +150,7 @@ def get_template_data(
     task_entity=None,
     host_name=None,
     settings=None,
+    username=None
 ):
     """Prepare data for templates filling from entered documents and info.
 
@@ -167,12 +173,13 @@ def get_template_data(
         host_name (Optional[str]): Used to fill '{app}' key.
         settings (Union[Dict, None]): Prepared studio or project settings.
             They're queried if not passed (may be slower).
+        username (Optional[str]): AYON Username.
 
     Returns:
         Dict[str, Any]: Data prepared for filling workdir template.
     """
 
-    template_data = get_general_template_data(settings)
+    template_data = get_general_template_data(settings, username=username)
     template_data.update(get_project_template_data(project_entity))
     if folder_entity:
         template_data.update(get_folder_template_data(

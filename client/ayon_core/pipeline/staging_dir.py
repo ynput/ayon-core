@@ -130,6 +130,7 @@ def get_staging_dir_info(
     logger: Optional[logging.Logger] = None,
     prefix: Optional[str] = None,
     suffix: Optional[str] = None,
+    username: Optional[str] = None,
 ) -> Optional[StagingDir]:
     """Get staging dir info data.
 
@@ -183,7 +184,9 @@ def get_staging_dir_info(
 
     # making few queries to database
     ctx_data = get_template_data(
-        project_entity, folder_entity, task_entity, host_name
+        project_entity, folder_entity, task_entity, host_name,
+        settings=project_settings,
+        username=username
     )
 
     # add additional data
