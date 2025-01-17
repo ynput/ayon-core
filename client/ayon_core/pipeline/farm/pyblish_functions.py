@@ -935,9 +935,7 @@ def _collect_expected_files_for_aov(files):
         ValueError: If there are multiple collections.
 
     """
-    print(f"files: {files}")
     cols, rem = clique.assemble(files)
-    print(cols)
     # we shouldn't have any reminders. And if we do, it should
     # be just one item for single frame renders.
     if not cols and rem:
