@@ -21,7 +21,7 @@ class OCIOEnvHook(PreLaunchHook):
         "resolve",
         "openrv",
         "cinema4d",
-        "silhouette"
+        "silhouette",
     }
     launch_types = set()
 
