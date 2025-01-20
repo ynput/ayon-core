@@ -146,6 +146,35 @@ def test_movie_reverse_speed_2x():
     )
 
 
+def test_movie_reverse_speed_0_7x():
+    """
+    Movie clip (no timecode)
+    available files = 0-100 24fps
+    source_range =  29.97-40.97 23.976fps
+    speed = -0.7
+    """
+    expected_data = {
+        'handleEnd': 7,
+        'handleStart': 7,
+        'mediaIn': 30.000000000000004,
+        'mediaOut': 36.70769965924555,
+        'speed': -0.699999988079071,
+        'versionData': {
+            'handleEnd': 7,
+            'handleStart': 7,
+            'retime': True,
+            'speed': -0.699999988079071,
+            'timewarps': []
+        }
+    }
+
+    _check_expected_retimed_values(
+        "qt_reverse_speed_0_7.json",
+        expected_data,
+        handle_start=10,
+        handle_end=10,
+    )
+
 
 def test_movie_frozen_frame():
     """

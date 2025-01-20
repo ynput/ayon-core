@@ -406,7 +406,6 @@ def get_media_range_with_retimes(otio_clip, handle_start, handle_end):
         trim_range = otio.opentime.TimeRange(
             start_time=src_in,
             duration=retimed_duration,
-
         )
 
         # preserve discrete frame numbers
@@ -479,16 +478,16 @@ def get_media_range_with_retimes(otio_clip, handle_start, handle_end):
             "retime": True,
             "speed": time_scalar,
             "timewarps": time_warp_nodes,
-            "handleStart": int(handle_start),
-            "handleEnd": int(handle_end)
+            "handleStart": round(handle_start),
+            "handleEnd": round(handle_end)
         }
     }
 
     returning_dict = {
         "mediaIn": media_in_trimmed,
         "mediaOut": media_out_trimmed,
-        "handleStart": int(handle_start),
-        "handleEnd": int(handle_end),
+        "handleStart": round(handle_start),
+        "handleEnd": round(handle_end),
         "speed": time_scalar
     }
 
