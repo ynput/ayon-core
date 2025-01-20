@@ -6,6 +6,7 @@ Provides:
     instance -> otioReviewClips
 """
 import os
+import math
 
 import clique
 import pyblish.api
@@ -69,9 +70,17 @@ class CollectOtioSubsetResources(
         self.log.debug(
             ">> retimed_attributes: {}".format(retimed_attributes))
 
-        # break down into variables
-        media_in = int(retimed_attributes["mediaIn"])
-        media_out = int(retimed_attributes["mediaOut"])
+        # break down into variables as rounded frame numbers
+        #
+        # 0             1               2              3             4
+        # |-------------|---------------|--------------|-------------|
+        #         |_______________media range_______________|
+        #        0.6                                       3.2
+        #
+        #  As rounded frames, media_in = 0 and media_out = 4
+        media_in = math.floor(retimed_attributes["mediaIn"])
+        media_out = math.ceil(retimed_attributes["mediaOut"])
+
         handle_start = int(retimed_attributes["handleStart"])
         handle_end = int(retimed_attributes["handleEnd"])
 
