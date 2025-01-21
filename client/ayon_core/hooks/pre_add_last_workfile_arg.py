@@ -26,6 +26,7 @@ class AddLastWorkfileToLaunchArgs(PreLaunchHook):
         "photoshop",
         "tvpaint",
         "substancepainter",
+        "substancedesigner",
         "aftereffects",
         "wrap",
         "openrv",
