@@ -158,6 +158,7 @@ def get_staging_dir_info(
         logger (Optional[logging.Logger]): Logger instance.
         prefix (Optional[str]) Optional prefix for staging dir name.
         suffix (Optional[str]): Optional suffix for staging dir name.
+        username (Optional[str]): AYON Username.
 
     Returns:
         Optional[StagingDir]: Staging dir info data
