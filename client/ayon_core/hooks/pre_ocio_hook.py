@@ -10,6 +10,7 @@ class OCIOEnvHook(PreLaunchHook):
     order = 0
     hosts = {
         "substancepainter",
+        "substancedesigner",
         "fusion",
         "blender",
         "aftereffects",
