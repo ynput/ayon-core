@@ -24,7 +24,7 @@ Enabled vs Disabled logic in most of stylesheets
     font-weight: 450;
     outline: none;
 
-    /* Fix icons in BorisFX Silhouette */
+    /* Define icon size to fix size issues for most of DCCs */
     icon-size: 16px;
 }
 
