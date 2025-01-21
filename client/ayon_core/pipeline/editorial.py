@@ -458,7 +458,10 @@ def get_media_range_with_retimes(otio_clip, handle_start, handle_end):
 
         # adjust range if needed
         media_in_trimmed = min(media_in_trimmed, min(frame_range))
+        media_in_trimmed = max(media_in_trimmed, media_in)
+
         media_out_trimmed = max(media_out_trimmed, max(frame_range))
+        media_out_trimmed = min(media_out_trimmed, media_out)
 
     # adjust available handles if needed
     if (media_in_trimmed - media_in) < handle_start:
