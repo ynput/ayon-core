@@ -916,6 +916,7 @@ class Creator(BaseCreator):
         instance.transient_data.update({
             "stagingDir": staging_dir_path,
             "stagingDir_persistent": staging_dir_info.is_persistent,
+            "stagingDir_is_custom": staging_dir_info.is_custom,
         })
 
         self.log.info(f"Applied staging dir to instance: {staging_dir_path}")
