@@ -66,7 +66,8 @@ class CollectResourcesPath(pyblish.api.InstancePlugin):
                 "yeticacheUE",
                 "tycache",
                 "usd",
-                "oxrig"
+                "oxrig",
+                "sbsar",
                 ]
 
     def process(self, instance):
