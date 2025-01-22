@@ -431,11 +431,11 @@ def get_media_range_with_retimes(otio_clip, handle_start, handle_end):
     if time_warp_nodes:
         # Naive approach: Resolve consecutive timewarp(s) on range,
         # then check if plate range has to be extended beyond source range.
-        frame_range = [media_in_trimmed]
-        in_frame = media_in_trimmed + time_scalar
-        while in_frame <= media_out_trimmed:
-            frame_range.append(in_frame)
+        in_frame = media_in_trimmed
+        frame_range = [in_frame]
+        for _ in range(otio_clip.source_range.duration.to_frames() - 1):
             in_frame += time_scalar
+            frame_range.append(in_frame)
 
         for tw_idx, tw in enumerate(time_warp_nodes):
             for idx, frame_number in enumerate(frame_range):
@@ -457,11 +457,8 @@ def get_media_range_with_retimes(otio_clip, handle_start, handle_end):
                     frame_range[idx] = frame_range[new_idx]
 
         # adjust range if needed
-        media_in_trimmed = min(media_in_trimmed, min(frame_range))
-        media_in_trimmed = max(media_in_trimmed, media_in)
-
-        media_out_trimmed = max(media_out_trimmed, max(frame_range))
-        media_out_trimmed = min(media_out_trimmed, media_out)
+        media_in_trimmed = max(min(frame_range), media_in)
+        media_out_trimmed = min(max(frame_range), media_out)
 
     # adjust available handles if needed
     if (media_in_trimmed - media_in) < handle_start:
