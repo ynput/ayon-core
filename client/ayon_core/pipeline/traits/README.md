@@ -310,6 +310,12 @@ class MyAddon(AYONAddon, ITraits):
             MyTraitFoo,
             MyTraitBar,
         ]
-
-
 ```
+
+## Developer notes
+
+### Pydantic models
+If you want to use MyPy linter, you need to make sure that
+optional fields typed as `Optional[Type]` needs to set default value
+using `default` or `default_factory` parameter. Otherwise MyPy will
+complain about missing named arguments.
