@@ -95,8 +95,41 @@ class CollectOtioReview(pyblish.api.InstancePlugin):
             instance.data["label"] = label + " (review)"
             instance.data["families"] += ["review", "ftrack"]
             instance.data["otioReviewClips"] = otio_review_clips
+
             self.log.info(
                 "Creating review track: {}".format(otio_review_clips))
+
+            # get colorspace from metadata if available
+            # get metadata from first clip with media reference
+            r_otio_cl = next(
+                (
+                    clip
+                    for clip in otio_review_clips
+                    if (
+                        isinstance(clip, otio.schema.Clip)
+                        and clip.media_reference
+                    )
+                ),
+                None
+            )
+            if r_otio_cl is not None:
+                media_ref = r_otio_cl.media_reference
+                media_metadata = media_ref.metadata
+
+                # TODO: we might need some alternative method since
+                #       native OTIO exports do not support ayon metadata
+                review_colorspace = media_metadata.get(
+                    "ayon.source.colorspace"
+                )
+                if review_colorspace is None:
+                    # Backwards compatibility for older scenes
+                    review_colorspace = media_metadata.get(
+                        "openpype.source.colourtransform"
+                    )
+                if review_colorspace:
+                    instance.data["reviewColorspace"] = review_colorspace
+                    self.log.info(
+                        "Review colorspace: {}".format(review_colorspace))
 
         self.log.debug(
             "_ instance.data: {}".format(pformat(instance.data)))

@@ -4,6 +4,7 @@ import collections
 import ayon_api
 from ayon_api.graphql import GraphQlQuery
 
+from ayon_core.lib import Logger
 from ayon_core.host import ILoadHost
 from ayon_core.tools.common_models.projects import StatusStates
 
@@ -93,22 +94,27 @@ class ContainerItem:
         loader_name,
         namespace,
         object_name,
-        item_id
+        item_id,
+        project_name
     ):
         self.representation_id = representation_id
         self.loader_name = loader_name
         self.object_name = object_name
         self.namespace = namespace
         self.item_id = item_id
+        self.project_name = project_name
 
     @classmethod
-    def from_container_data(cls, container):
+    def from_container_data(cls, current_project_name, container):
         return cls(
             representation_id=container["representation"],
             loader_name=container["loader"],
             namespace=container["namespace"],
             object_name=container["objectName"],
             item_id=uuid.uuid4().hex,
+            project_name=container.get(
+                "project_name", current_project_name
+            )
         )
 
 
@@ -191,6 +197,7 @@ class ContainersModel:
         self._container_items_by_id = {}
         self._version_items_by_product_id = {}
         self._repre_info_by_id = {}
+        self._log = Logger.get_logger("ContainersModel")
 
     def reset(self):
         self._items_cache = None
@@ -219,26 +226,23 @@ class ContainersModel:
             for item_id in item_ids
         }
 
-    def get_representation_info_items(self, representation_ids):
+    def get_representation_info_items(self, project_name, representation_ids):
         output = {}
         missing_repre_ids = set()
         for repre_id in representation_ids:
             try:
                 uuid.UUID(repre_id)
-            except ValueError:
+            except (ValueError, TypeError, AttributeError):
                 output[repre_id] = RepresentationInfo.new_invalid()
                 continue
-
             repre_info = self._repre_info_by_id.get(repre_id)
             if repre_info is None:
                 missing_repre_ids.add(repre_id)
             else:
                 output[repre_id] = repre_info
-
         if not missing_repre_ids:
             return output
 
-        project_name = self._controller.get_current_project_name()
         repre_hierarchy_by_id = get_representations_hierarchy(
             project_name, missing_repre_ids
         )
@@ -276,10 +280,9 @@ class ContainersModel:
             output[repre_id] = repre_info
         return output
 
-    def get_version_items(self, product_ids):
+    def get_version_items(self, project_name, product_ids):
         if not product_ids:
             return {}
-
         missing_ids = {
             product_id
             for product_id in product_ids
@@ -294,7 +297,6 @@ class ContainersModel:
             def version_sorted(entity):
                 return entity["version"]
 
-            project_name = self._controller.get_current_project_name()
             version_entities_by_product_id = {
                 product_id: []
                 for product_id in missing_ids
@@ -348,41 +350,51 @@ class ContainersModel:
             return
 
         host = self._controller.get_host()
-        if isinstance(host, ILoadHost):
-            containers = list(host.get_containers())
-        elif hasattr(host, "ls"):
-            containers = list(host.ls())
-        else:
-            containers = []
+        containers = []
+        try:
+            if isinstance(host, ILoadHost):
+                containers = list(host.get_containers())
+            elif hasattr(host, "ls"):
+                containers = list(host.ls())
+        except Exception:
+            self._log.error("Failed to get containers", exc_info=True)
 
         container_items = []
         containers_by_id = {}
         container_items_by_id = {}
         invalid_ids_mapping = {}
+        current_project_name = self._controller.get_current_project_name()
         for container in containers:
+            if not container:
+                continue
+
             try:
-                item = ContainerItem.from_container_data(container)
+                item = ContainerItem.from_container_data(
+                    current_project_name, container)
                 repre_id = item.representation_id
                 try:
                     uuid.UUID(repre_id)
                 except (ValueError, TypeError, AttributeError):
-                    # Fake not existing representation id so container is shown in UI
-                    #   but as invalid
+                    self._log.warning(
+                        "Container contains invalid representation id."
+                        f"\n{container}"
+                    )
+                    # Fake not existing representation id so container
+                    #   is shown in UI but as invalid
                     item.representation_id = invalid_ids_mapping.setdefault(
                         repre_id, uuid.uuid4().hex
                     )
 
-            except Exception as e:
+            except Exception:
                 # skip item if required data are missing
-                self._controller.log_error(
-                    f"Failed to create item: {e}"
+                self._log.warning(
+                    "Failed to create container item", exc_info=True
                 )
                 continue
 
             containers_by_id[item.item_id] = container
             container_items_by_id[item.item_id] = item
             container_items.append(item)
-
 
         self._containers_by_id = containers_by_id
         self._container_items_by_id = container_items_by_id

@@ -265,7 +265,7 @@ class ActionDelegate(QtWidgets.QStyledItemDelegate):
 
         if index.data(FORCE_NOT_OPEN_WORKFILE_ROLE):
             rect = QtCore.QRectF(
-                option.rect.x(), option.rect.height(), 5, 5)
+                option.rect.x(), option.rect.y() + option.rect.height(), 5, 5)
             painter.setPen(QtCore.Qt.NoPen)
             painter.setBrush(QtGui.QColor(200, 0, 0))
             painter.drawEllipse(rect)
