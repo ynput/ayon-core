@@ -136,11 +136,11 @@ class UDIM(TraitBase):
     id: ClassVar[str] = "ayon.2d.UDIM.v1"
     udim: list[int] = Field(..., title="UDIM")
     udim_regex: Optional[str] = Field(
-        r"(?:\.|_)(?P<udim>\d+)\.\D+\d?$", title="UDIM Regex")
+        default=r"(?:\.|_)(?P<udim>\d+)\.\D+\d?$", title="UDIM Regex")
 
     @field_validator("udim_regex")
     @classmethod
-    def validate_frame_regex(cls, v: Optional[str]) -> str:
+    def validate_frame_regex(cls, v: Optional[str]) -> Optional[str]:
         """Validate udim regex."""
         if v is not None and "?P<udim>" not in v:
             msg = "UDIM regex must include 'udim' named group"

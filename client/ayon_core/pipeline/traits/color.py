@@ -28,4 +28,4 @@ class ColorManaged(TraitBase):
         ...,
         description="Color space."
     )
-    config: Optional[str] = Field(None, description="Color config.")
+    config: Optional[str] = Field(default=None, description="Color config.")

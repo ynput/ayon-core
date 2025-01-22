@@ -20,7 +20,7 @@ class Transient(TraitBase):
     description: ClassVar[str] = "Transient Trait Model"
     id: ClassVar[str] = "ayon.lifecycle.Transient.v1"
 
-    def validate(self, representation) -> None:  # noqa: ANN001
+    def validate_trait(self, representation) -> None:  # noqa: ANN001
         """Validate representation is not Persistent.
 
         Args:
@@ -51,7 +51,7 @@ class Persistent(TraitBase):
     description: ClassVar[str] = "Persistent Trait Model"
     id: ClassVar[str] = "ayon.lifecycle.Persistent.v1"
 
-    def validate(self, representation) -> None:  # noqa: ANN001
+    def validate_trait(self, representation) -> None:  # noqa: ANN001
         """Validate representation is not Transient.
 
         Args:
