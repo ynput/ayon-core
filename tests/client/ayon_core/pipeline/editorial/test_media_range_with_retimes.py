@@ -501,7 +501,7 @@ def test_img_sequence_2x_speed_resolve():
     """
     Img sequence clip
     available files = 0-99 24fps
-    source_range =  38-49 24fps
+    source_range = 38-49 24fps
     speed = 2.0
     """
     expected_data = {
@@ -531,7 +531,7 @@ def test_img_sequence_frozen_frame():
     """
     Img sequence clip
     available files = 948674-948974 25fps
-    source_range =  909990.8339241028 
+    source_range =  909990.8339241028
                 - 909995.8339241028 23.976fps
     speed = 0.0
     """
@@ -562,7 +562,7 @@ def test_img_sequence_timewarp_beyond_range():
     """
     Img sequence clip
     available files = 948674-948974 25fps
-    source_range =  909990.8339241028 
+    source_range =  909990.8339241028
                 - 909995.8339241028 23.976fps
     timewarp to get from 948845 to 948870
     """
@@ -611,7 +611,7 @@ def test_img_sequence_2X_speed_timewarp():
     """
     Img sequence clip
     available files = 948674-948974 25fps
-    source_range =  909990.8339241028 
+    source_range =  909990.8339241028
                 - 909995.8339241028 23.976fps
     speed: 200%
     timewarp to get from 948854 to 948874
@@ -662,7 +662,7 @@ def test_img_sequence_multiple_timewarps():
     """
     Img sequence clip
     available files = 948674-948974 25fps
-    source_range =  909990.8339241028 
+    source_range =  909990.8339241028
                 - 909995.8339241028 23.976fps
     multiple timewarps to get from 948842 to 948864
     """
