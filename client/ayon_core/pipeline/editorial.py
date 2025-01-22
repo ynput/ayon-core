@@ -432,7 +432,7 @@ def get_media_range_with_retimes(otio_clip, handle_start, handle_end):
 
         # Offset duration by 1 for media out frame
         # - only if duration is not single frame (start frame != end frame)
-        if offset_duration > 0: 
+        if offset_duration > 0:
             offset_duration -= 1
         media_out_trimmed = media_in_trimmed + offset_duration
 
