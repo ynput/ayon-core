@@ -28,7 +28,7 @@ def find_free_port(
         exclude_ports (list, tuple, set): List of ports that won't be
             checked form entered range.
         host (str): Host where will check for free ports. Set to
-            "localhost" by default.
+            "0.0.0.0" by default.
     """
     if port_from is None:
         port_from = 8079
@@ -42,7 +42,7 @@ def find_free_port(
 
     # Default host is localhost but it is possible to look for other hosts
     if host is None:
-        host = "localhost"
+        host = "0.0.0.0"
 
     found_port = None
     while True:
@@ -78,7 +78,7 @@ class WebServerManager:
         self._log = None
 
         self.port = port or 8079
-        self.host = host or "localhost"
+        self.host = host or "0.0.0.0"
 
         self.on_stop_callbacks = []
 
