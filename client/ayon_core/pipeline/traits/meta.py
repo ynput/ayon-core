@@ -78,7 +78,7 @@ class Variant(TraitBase):
 
 class KeepOriginalLocation(TraitBase):
     """Keep files in its original location.
-    
+
     Note:
         This is not a persistent trait.
 
@@ -86,11 +86,11 @@ class KeepOriginalLocation(TraitBase):
     name: ClassVar[str] = "KeepOriginalLocation"
     description: ClassVar[str] = "Keep Original Location Trait Model"
     id: ClassVar[str] = "ayon.meta.KeepOriginalLocation.v1"
-    persistent: bool = Field(False, title="Persistent")
+    persistent: bool = Field(default=False, title="Persistent")
 
 class KeepOriginalName(TraitBase):
     """Keep files in its original name.
-    
+
     Note:
         This is not a persistent trait.
 
@@ -98,4 +98,16 @@ class KeepOriginalName(TraitBase):
     name: ClassVar[str] = "KeepOriginalName"
     description: ClassVar[str] = "Keep Original Name Trait Model"
     id: ClassVar[str] = "ayon.meta.KeepOriginalName.v1"
-    persistent: bool = Field(False, title="Persistent")
+    persistent: bool = Field(default=False, title="Persistent")
+
+
+class SourceApplication(TraitBase):
+    """Metadata about the source (producing) application."""
+
+    name: ClassVar[str] = "SourceApplication"
+    description: ClassVar[str] = "Source Application Trait Model"
+    id: ClassVar[str] = "ayon.meta.SourceApplication.v1"
+    application: str = Field(..., title="Application Name")
+    variant: str = Field(..., title="Application Variant (e.g. Pro)")
+    version: str = Field(..., title="Application Version")
+    platform: str = Field(..., title="Platform Name")
