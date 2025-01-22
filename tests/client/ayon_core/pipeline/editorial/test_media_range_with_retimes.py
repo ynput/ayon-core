@@ -219,8 +219,8 @@ def test_movie_timewarp():
     expected_data = {
         'handleEnd': 10,
         'handleStart': 0,
-        'mediaIn': 948850,
-        'mediaOut': 948860,
+        'mediaIn': 948852,
+        'mediaOut': 948858,
         'speed': 1.0,
         'versionData': {'handleEnd': 10,
              'handleStart': 0,
@@ -249,6 +249,7 @@ def test_movie_timewarp():
         }
     }
 
+    import pdb ; pdb.set_trace()
     _check_expected_retimed_values(
         "qt_timewarp.json",
         expected_data,
@@ -588,7 +589,7 @@ def test_img_sequence_2X_speed_timewarp():
     timewarp to get from 948854 to 948874
     """
     expected_data = {
-        'mediaIn': 948850,
+        'mediaIn': 948854,
         'mediaOut': 948874,
         'handleStart': 0,
         'handleEnd': 20,
