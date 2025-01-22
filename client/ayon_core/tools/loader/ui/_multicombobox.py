@@ -517,7 +517,11 @@ class CustomPaintMultiselectComboBox(QtWidgets.QComboBox):
     def setItemCheckState(self, index, state):
         self.setItemData(index, state, QtCore.Qt.CheckStateRole)
 
-    def set_value(self, values: Optional[Iterable[Any]], role: Optional[int] = None):
+    def set_value(
+        self,
+        values: Optional[Iterable[Any]],
+        role: Optional[int] = None,
+    ):
         if role is None:
             role = self._value_role
 

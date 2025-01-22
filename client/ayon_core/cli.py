@@ -146,7 +146,8 @@ def publish_report_viewer():
 @main_cli.command()
 @click.argument("output_path")
 @click.option("--project", help="Define project context")
-@click.option("--folder", help="Define folder in project (project must be set)")
+@click.option(
+    "--folder", help="Define folder in project (project must be set)")
 @click.option(
     "--strict",
     is_flag=True,

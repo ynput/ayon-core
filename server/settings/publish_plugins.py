@@ -358,7 +358,10 @@ class ExtractOIIOTranscodeOutputModel(BaseSettingsModel):
     custom_tags: list[str] = SettingsField(
         default_factory=list,
         title="Custom Tags",
-        description="Additional custom tags that will be added to the created representation."
+        description=(
+            "Additional custom tags that will be added"
+            " to the created representation."
+        )
     )
 
 
@@ -892,9 +895,11 @@ class PublishPuginsModel(BaseSettingsModel):
         default_factory=CollectFramesFixDefModel,
         title="Collect Frames to Fix",
     )
-    CollectUSDLayerContributions: CollectUSDLayerContributionsModel = SettingsField(
-        default_factory=CollectUSDLayerContributionsModel,
-        title="Collect USD Layer Contributions",
+    CollectUSDLayerContributions: CollectUSDLayerContributionsModel = (
+        SettingsField(
+            default_factory=CollectUSDLayerContributionsModel,
+            title="Collect USD Layer Contributions",
+        )
     )
     ValidateEditorialAssetName: ValidateBaseModel = SettingsField(
         default_factory=ValidateBaseModel,
@@ -1003,8 +1008,8 @@ DEFAULT_PUBLISH_VALUES = {
             {"name": "model", "order": 100},
             {"name": "assembly", "order": 150},
             {"name": "groom", "order": 175},
-            {"name": "look", "order": 300},
-            {"name": "rig", "order": 100},
+            {"name": "look", "order": 200},
+            {"name": "rig", "order": 300},
             # Shot layers
             {"name": "layout", "order": 200},
             {"name": "animation", "order": 300},
@@ -1214,7 +1219,9 @@ DEFAULT_PUBLISH_VALUES = {
                         "TOP_RIGHT": "{anatomy[version]}",
                         "BOTTOM_LEFT": "{username}",
                         "BOTTOM_CENTERED": "{folder[name]}",
-                        "BOTTOM_RIGHT": "{frame_start}-{current_frame}-{frame_end}",
+                        "BOTTOM_RIGHT": (
+                            "{frame_start}-{current_frame}-{frame_end}"
+                        ),
                         "filter": {
                             "families": [],
                             "tags": []
@@ -1240,7 +1247,9 @@ DEFAULT_PUBLISH_VALUES = {
                         "TOP_RIGHT": "{anatomy[version]}",
                         "BOTTOM_LEFT": "{username}",
                         "BOTTOM_CENTERED": "{folder[name]}",
-                        "BOTTOM_RIGHT": "{frame_start}-{current_frame}-{frame_end}",
+                        "BOTTOM_RIGHT": (
+                            "{frame_start}-{current_frame}-{frame_end}"
+                        ),
                         "filter": {
                             "families": [],
                             "tags": []

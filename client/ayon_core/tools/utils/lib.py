@@ -556,9 +556,10 @@ class _IconsCache:
             log.info("Didn't find icon \"{}\"".format(icon_name))
 
         elif used_variant != icon_name:
-            log.debug("Icon \"{}\" was not found \"{}\" is used instead".format(
-                icon_name, used_variant
-            ))
+            log.debug(
+                f"Icon \"{icon_name}\" was not found"
+                f" \"{used_variant}\" is used instead"
+            )
 
         cls._qtawesome_cache[full_icon_name] = icon
         return icon

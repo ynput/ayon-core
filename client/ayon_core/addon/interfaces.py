@@ -84,6 +84,13 @@ class IPluginPaths(AYONInterface):
             paths = [paths]
         return paths
 
+    def get_launcher_action_paths(self):
+        """Receive launcher actions paths.
+
+        Give addons ability to add launcher actions paths.
+        """
+        return self._get_plugin_paths_by_type("actions")
+
     def get_create_plugin_paths(self, host_name: str) -> list[str]:
         """Receive create plugin paths.
 
@@ -156,6 +163,7 @@ class ITrayAddon(AYONInterface):
     tray_initialized = False
     manager: AddonsManager = None
     _tray_manager: TrayManager = None
+    _admin_submenu = None
 
     @abstractmethod
     def tray_init(self) -> None:
@@ -236,6 +244,27 @@ class ITrayAddon(AYONInterface):
         if hasattr(self.manager, "add_doubleclick_callback"):
             self.manager.add_doubleclick_callback(self, callback)
 
+    @staticmethod
+    def admin_submenu(tray_menu):
+        if ITrayAddon._admin_submenu is None:
+            from qtpy import QtWidgets
+
+            admin_submenu = QtWidgets.QMenu("Admin", tray_menu)
+            admin_submenu.menuAction().setVisible(False)
+            ITrayAddon._admin_submenu = admin_submenu
+        return ITrayAddon._admin_submenu
+
+    @staticmethod
+    def add_action_to_admin_submenu(label, tray_menu):
+        from qtpy import QtWidgets
+
+        menu = ITrayAddon.admin_submenu(tray_menu)
+        action = QtWidgets.QAction(label, menu)
+        menu.addAction(action)
+        if not menu.menuAction().isVisible():
+            menu.menuAction().setVisible(True)
+        return action
+
 
 class ITrayAction(ITrayAddon):
     """Implementation of Tray action.
@@ -249,7 +278,6 @@ class ITrayAction(ITrayAddon):
     """
 
     admin_action = False
-    _admin_submenu = None
     _action_item = None
 
     @property
@@ -268,12 +296,7 @@ class ITrayAction(ITrayAddon):
         from qtpy import QtWidgets
 
         if self.admin_action:
-            menu = self.admin_submenu(tray_menu)
-            action = QtWidgets.QAction(self.label, menu)
-            menu.addAction(action)
-            if not menu.menuAction().isVisible():
-                menu.menuAction().setVisible(True)
-
+            action = self.add_action_to_admin_submenu(self.label, tray_menu)
         else:
             action = QtWidgets.QAction(self.label, tray_menu)
             tray_menu.addAction(action)
@@ -288,17 +311,6 @@ class ITrayAction(ITrayAddon):
     def tray_exit(self) -> None:
         """Cleanup method which is executed on tray shutdown."""
         return
-
-    @staticmethod
-    def admin_submenu(tray_menu: QtWidgets.QMenu) -> QtWidgets.QMenu:
-        """Get or create admin submenu."""
-        if ITrayAction._admin_submenu is None:
-            from qtpy import QtWidgets
-
-            admin_submenu = QtWidgets.QMenu("Admin", tray_menu)
-            admin_submenu.menuAction().setVisible(False)
-            ITrayAction._admin_submenu = admin_submenu
-        return ITrayAction._admin_submenu
 
 
 class ITrayService(ITrayAddon):

@@ -86,8 +86,9 @@ class SceneInventoryController:
         self._current_folder_set = True
         return self._current_folder_id
 
-    def get_project_status_items(self):
-        project_name = self.get_current_project_name()
+    def get_project_status_items(self, project_name=None):
+        if project_name is None:
+            project_name = self.get_current_project_name()
         return self._projects_model.get_project_status_items(
             project_name, None
         )
@@ -105,32 +106,39 @@ class SceneInventoryController:
     def get_container_items_by_id(self, item_ids):
         return self._containers_model.get_container_items_by_id(item_ids)
 
-    def get_representation_info_items(self, representation_ids):
+    def get_representation_info_items(self, project_name, representation_ids):
         return self._containers_model.get_representation_info_items(
-            representation_ids
+            project_name, representation_ids
         )
 
-    def get_version_items(self, product_ids):
-        return self._containers_model.get_version_items(product_ids)
+    def get_version_items(self, project_name, product_ids):
+        return self._containers_model.get_version_items(
+            project_name, product_ids)
 
     # Site Sync methods
     def is_sitesync_enabled(self):
         return self._sitesync_model.is_sitesync_enabled()
 
-    def get_sites_information(self):
-        return self._sitesync_model.get_sites_information()
+    def get_sites_information(self, project_name):
+        return self._sitesync_model.get_sites_information(project_name)
 
     def get_site_provider_icons(self):
         return self._sitesync_model.get_site_provider_icons()
 
-    def get_representations_site_progress(self, representation_ids):
+    def get_representations_site_progress(
+        self, project_name, representation_ids
+    ):
         return self._sitesync_model.get_representations_site_progress(
-            representation_ids
+            project_name, representation_ids
         )
 
-    def resync_representations(self, representation_ids, site_type):
+    def resync_representations(
+        self, project_name, representation_ids, site_type
+    ):
         return self._sitesync_model.resync_representations(
-            representation_ids, site_type
+            project_name,
+            representation_ids,
+            site_type
         )
 
     # Switch dialog methods

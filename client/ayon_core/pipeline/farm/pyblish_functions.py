@@ -8,7 +8,10 @@ import attr
 import ayon_api
 import clique
 from ayon_core.lib import Logger
-from ayon_core.pipeline import get_current_project_name, get_representation_path
+from ayon_core.pipeline import (
+    get_current_project_name,
+    get_representation_path,
+)
 from ayon_core.pipeline.create import get_product_name
 from ayon_core.pipeline.farm.patterning import match_aov_pattern
 from ayon_core.pipeline.publish import KnownPublishError
@@ -295,11 +298,17 @@ def _add_review_families(families):
     return families
 
 
-def prepare_representations(skeleton_data, exp_files, anatomy, aov_filter,
-                            skip_integration_repre_list,
-                            do_not_add_review,
-                            context,
-                            color_managed_plugin):
+def prepare_representations(
+    skeleton_data,
+    exp_files,
+    anatomy,
+    aov_filter,
+    skip_integration_repre_list,
+    do_not_add_review,
+    context,
+    color_managed_plugin,
+    frames_to_render=None
+):
     """Create representations for file sequences.
 
     This will return representations of expected files if they are not
@@ -315,6 +324,8 @@ def prepare_representations(skeleton_data, exp_files, anatomy, aov_filter,
         skip_integration_repre_list (list): exclude specific extensions,
         do_not_add_review (bool): explicitly skip review
         color_managed_plugin (publish.ColormanagedPyblishPluginMixin)
+        frames_to_render (str): implicit or explicit range of frames to render
+            this value is sent to Deadline in JobInfo.Frames
     Returns:
         list of representations
 
@@ -324,6 +335,14 @@ def prepare_representations(skeleton_data, exp_files, anatomy, aov_filter,
     collections, remainders = clique.assemble(exp_files)
 
     log = Logger.get_logger("farm_publishing")
+
+    if frames_to_render is not None:
+        frames_to_render = _get_real_frames_to_render(frames_to_render)
+    else:
+        # Backwards compatibility for older logic
+        frame_start = int(skeleton_data.get("frameStartHandle"))
+        frame_end = int(skeleton_data.get("frameEndHandle"))
+        frames_to_render = list(range(frame_start, frame_end + 1))
 
     # create representation for every collected sequence
     for collection in collections:
@@ -361,18 +380,21 @@ def prepare_representations(skeleton_data, exp_files, anatomy, aov_filter,
                 " This may cause issues on farm."
             ).format(staging))
 
-        frame_start = int(skeleton_data.get("frameStartHandle"))
+        frame_start = frames_to_render[0]
+        frame_end = frames_to_render[-1]
         if skeleton_data.get("slate"):
             frame_start -= 1
+            frames_to_render.insert(0, frame_start)
 
+        files = _get_real_files_to_render(collection, frames_to_render)
         # explicitly disable review by user
         preview = preview and not do_not_add_review
         rep = {
             "name": ext,
             "ext": ext,
-            "files": [os.path.basename(f) for f in list(collection)],
+            "files": files,
             "frameStart": frame_start,
-            "frameEnd": int(skeleton_data.get("frameEndHandle")),
+            "frameEnd": frame_end,
             # If expectedFile are absolute, we need only filenames
             "stagingDir": staging,
             "fps": skeleton_data.get("fps"),
@@ -451,6 +473,61 @@ def prepare_representations(skeleton_data, exp_files, anatomy, aov_filter,
         )
 
     return representations
+
+
+def _get_real_frames_to_render(frames):
+    """Returns list of frames that should be rendered.
+
+    Artists could want to selectively render only particular frames
+    """
+    frames_to_render = []
+    for frame in frames.split(","):
+        if "-" in frame:
+            splitted = frame.split("-")
+            frames_to_render.extend(
+                range(int(splitted[0]), int(splitted[1])+1))
+        else:
+            frames_to_render.append(int(frame))
+    frames_to_render.sort()
+    return frames_to_render
+
+
+def _get_real_files_to_render(collection, frames_to_render):
+    """Filter files with frames that should be really rendered.
+
+    'expected_files' are collected from DCC based on timeline setting. This is
+    being calculated differently in each DCC. Filtering here is on single place
+
+    But artists might explicitly set frames they want to render in Publisher UI
+    This range would override and filter previously prepared expected files
+    from DCC.
+
+    Args:
+        collection (clique.Collection): absolute paths
+        frames_to_render (list[int]): of int 1001
+    Returns:
+        (list[str])
+
+    Example:
+    --------
+
+    expectedFiles = [
+        "foo_v01.0001.exr",
+        "foo_v01.0002.exr",
+    ]
+    frames_to_render = 1
+    >>
+    ["foo_v01.0001.exr"] - only explicitly requested frame returned
+    """
+    included_frames = set(collection.indexes).intersection(frames_to_render)
+    real_collection = clique.Collection(
+        collection.head,
+        collection.tail,
+        collection.padding,
+        indexes=included_frames
+    )
+    real_full_paths = list(real_collection)
+    return [os.path.basename(file_url) for file_url in real_full_paths]
 
 
 def create_instances_for_aov(instance, skeleton, aov_filter,
@@ -702,9 +779,14 @@ def _create_instances_for_aov(instance, skeleton, aov_filter, additional_data,
 
         project_settings = instance.context.data.get("project_settings")
 
-        use_legacy_product_name = True
         try:
-            use_legacy_product_name = project_settings["core"]["tools"]["creator"]["use_legacy_product_names_for_renders"]  # noqa: E501
+            use_legacy_product_name = (
+                project_settings
+                ["core"]
+                ["tools"]
+                ["creator"]
+                ["use_legacy_product_names_for_renders"]
+            )
         except KeyError:
             warnings.warn(
                 ("use_legacy_for_renders not found in project settings. "
@@ -720,7 +802,9 @@ def _create_instances_for_aov(instance, skeleton, aov_filter, additional_data,
                 dynamic_data=dynamic_data)
 
         else:
-            product_name, group_name = get_product_name_and_group_from_template(
+            (
+                product_name, group_name
+            ) = get_product_name_and_group_from_template(
                 task_entity=instance.data["taskEntity"],
                 project_name=instance.context.data["projectName"],
                 host_name=instance.context.data["hostName"],
@@ -863,7 +947,7 @@ def _collect_expected_files_for_aov(files):
     # but we really expect only one collection.
     # Nothing else make sense.
     if len(cols) != 1:
-        raise ValueError("Only one image sequence type is expected.")  # noqa: E501
+        raise ValueError("Only one image sequence type is expected.")
     return list(cols[0])
 
 
