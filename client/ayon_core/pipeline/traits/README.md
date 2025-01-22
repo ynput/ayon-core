@@ -165,6 +165,7 @@ to different packages based on their use:
 | | Variant | Used to differentiate between data variants of the same output (mp4 as h.264 and h.265 for example)
 | | KeepOriginalLocation | Marks the representation to keep the original location of the file
 | | KeepOriginalName | Marks the representation to keep the original name of the file
+| | SourceApplication | Holds information about producing application, about it's version, variant and platform.
 | three dimensional | Spatial | Spatial information like up-axis, units and handedness.
 | | Geometry | Type trait to mark the representation as a geometry.
 | | Shader | Type trait to mark the representation as a Shader.
