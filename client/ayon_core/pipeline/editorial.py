@@ -430,10 +430,10 @@ def get_media_range_with_retimes(otio_clip, handle_start, handle_end):
             * abs(time_scalar)
         )
 
-        # duration 1 frame -> freeze frame -> end = start + 0
-        offset_duration -= 1
-        # negative duration = frozen frame
-        offset_duration = max(0, offset_duration)
+        # Offset duration by 1 for media out frame
+        # - only if duration is not single frame (start frame != end frame)
+        if offset_duration > 0: 
+            offset_duration -= 1
         media_out_trimmed = media_in_trimmed + offset_duration
 
         media_in = available_range.start_time.value
@@ -460,17 +460,18 @@ def get_media_range_with_retimes(otio_clip, handle_start, handle_end):
                 else:
                     new_idx = round(idx + tw["lookup"][idx])
 
-                    if not 0 <= new_idx < len(frame_range):
-                        # TODO: implementing this would need to actually have
-                        # retiming engine resolve process within AYON,
-                        # resolving wraps as curves, then projecting
-                        # those into the previous media_range.
-                        raise NotImplementedError(
-                            "Unsupported consecutive timewarps "
-                            "(out of computed range)"
-                        )
+                    if 0 <= new_idx < len(frame_range):
+                        frame_range[idx] = frame_range[new_idx]
+                        continue
 
-                    frame_range[idx] = frame_range[new_idx]
+                    # TODO: implementing this would need to actually have
+                    # retiming engine resolve process within AYON,
+                    # resolving wraps as curves, then projecting
+                    # those into the previous media_range.
+                    raise NotImplementedError(
+                        "Unsupported consecutive timewarps "
+                        "(out of computed range)"
+                    )
 
         # adjust range if needed
         media_in_trimmed = max(min(frame_range), media_in)
