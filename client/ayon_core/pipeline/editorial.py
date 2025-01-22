@@ -398,7 +398,10 @@ def get_media_range_with_retimes(otio_clip, handle_start, handle_end):
     if is_input_sequence:
 
         src_in = conformed_source_range.start_time
-        src_duration = math.ceil(otio_clip.source_range.duration.value * abs(time_scalar))
+        src_duration = math.ceil(
+            otio_clip.source_range.duration.value
+            * abs(time_scalar)
+        )
         retimed_duration = otio.opentime.RationalTime(
             src_duration,
             otio_clip.source_range.duration.rate
@@ -422,9 +425,15 @@ def get_media_range_with_retimes(otio_clip, handle_start, handle_end):
         # compute retimed range
         media_in_trimmed = conformed_source_range.start_time.value + offset_in
 
-        offset_duration = conformed_source_range.duration.value * abs(time_scalar)
-        offset_duration -= 1  # duration 1 frame -> freeze frame -> end = start + 0
-        offset_duration = max(0, offset_duration)  # negative duration = frozen frame
+        offset_duration = (
+            conformed_source_range.duration.value
+            * abs(time_scalar)
+        )
+
+        # duration 1 frame -> freeze frame -> end = start + 0
+        offset_duration -= 1
+        # negative duration = frozen frame
+        offset_duration = max(0, offset_duration)
         media_out_trimmed = media_in_trimmed + offset_duration
 
         media_in = available_range.start_time.value
@@ -443,17 +452,22 @@ def get_media_range_with_retimes(otio_clip, handle_start, handle_end):
             for idx, frame_number in enumerate(frame_range):
                 # First timewarp, apply on media range
                 if tw_idx == 0:
-                    frame_range[idx] = round(frame_number + tw["lookup"][idx] * time_scalar)
+                    frame_range[idx] = round(
+                        frame_number +
+                        (tw["lookup"][idx] * time_scalar)
+                    )
                 # Consecutive timewarp, apply on the previous result
                 else:
                     new_idx = round(idx + tw["lookup"][idx])
 
                     if not 0 <= new_idx < len(frame_range):
                         # TODO: implementing this would need to actually have
-                        # retiming engine resolve process within AYON, resolving wraps
-                        # as curves, then projecting those into the previous media_range.
+                        # retiming engine resolve process within AYON,
+                        # resolving wraps as curves, then projecting
+                        # those into the previous media_range.
                         raise NotImplementedError(
-                            "Unsupported consecutive timewarps (out of computed range)"
+                            "Unsupported consecutive timewarps "
+                            "(out of computed range)"
                         )
 
                     frame_range[idx] = frame_range[new_idx]
