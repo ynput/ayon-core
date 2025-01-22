@@ -1,6 +1,7 @@
 import os
 import re
 import clique
+import math
 
 import opentimelineio as otio
 from opentimelineio import opentime as _ot
@@ -397,12 +398,13 @@ def get_media_range_with_retimes(otio_clip, handle_start, handle_end):
     if is_input_sequence:
 
         src_in = conformed_source_range.start_time
-        src_duration = conformed_source_range.duration
-
+        src_duration = math.ceil(otio_clip.source_range.duration.value * abs(time_scalar))
         retimed_duration = otio.opentime.RationalTime(
-            src_duration.value * abs(time_scalar),
-            src_duration.rate
+            src_duration,
+            otio_clip.source_range.duration.rate
         )
+        retimed_duration = retimed_duration.rescaled_to(src_in.rate)
+
         trim_range = otio.opentime.TimeRange(
             start_time=src_in,
             duration=retimed_duration,
@@ -478,16 +480,16 @@ def get_media_range_with_retimes(otio_clip, handle_start, handle_end):
             "retime": True,
             "speed": time_scalar,
             "timewarps": time_warp_nodes,
-            "handleStart": round(handle_start),
-            "handleEnd": round(handle_end)
+            "handleStart": math.ceil(handle_start),
+            "handleEnd": math.ceil(handle_end)
         }
     }
 
     returning_dict = {
         "mediaIn": media_in_trimmed,
         "mediaOut": media_out_trimmed,
-        "handleStart": round(handle_start),
-        "handleEnd": round(handle_end),
+        "handleStart": math.ceil(handle_start),
+        "handleEnd": math.ceil(handle_end),
         "speed": time_scalar
     }
 

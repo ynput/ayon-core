@@ -438,6 +438,35 @@ def test_img_sequence_reverse_speed_from_24_to_23_976fps():
     )
 
 
+def test_img_sequence_reverse_speed_0_7():
+    """
+    Img sequence clip
+    available files = 1000-1100 24fps
+    source_range =  1040-1081 25fps
+    """
+    expected_data = {
+        'mediaIn': 1040,
+        'mediaOut': 1068,
+        'handleStart': 4,
+        'handleEnd': 4,
+        'speed': -0.7,
+        'versionData': {
+            'retime': True,
+            'speed': -0.7,
+            'timewarps': [],
+            'handleStart': 4,
+            'handleEnd': 4
+        }
+    }
+
+    _check_expected_retimed_values(
+        "img_seq_reverse_speed_0_7.json",
+        expected_data,
+        handle_start=5,
+        handle_end=5,
+    )
+
+
 def test_img_sequence_2x_speed():
     """
     Img sequence clip
