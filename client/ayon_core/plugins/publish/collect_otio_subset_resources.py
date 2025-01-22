@@ -188,7 +188,7 @@ class CollectOtioSubsetResources(
                 repre = self._create_representation(
                     frame_start, frame_end, collection=collection)
             else:
-                filename, = tuple(collection)
+                filename = tuple(collection)[0]
                 self.log.debug(filename)
 
                 # TODO: discuss this, it erases frame number.
@@ -200,8 +200,8 @@ class CollectOtioSubsetResources(
                 and "review" in instance.data["families"]
             ):
                 review_repre = self._create_representation(
-                frame_start, frame_end, collection=collection,
-                delete=True, review=True)
+                    frame_start, frame_end, collection=collection,
+                    delete=True, review=True)
 
         else:
             _trim = False
