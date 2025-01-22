@@ -249,7 +249,6 @@ def test_movie_timewarp():
         }
     }
 
-    import pdb ; pdb.set_trace()
     _check_expected_retimed_values(
         "qt_timewarp.json",
         expected_data,
