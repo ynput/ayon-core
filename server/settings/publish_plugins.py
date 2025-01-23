@@ -1033,7 +1033,8 @@ DEFAULT_PUBLISH_VALUES = {
                     "maya",
                     "nuke",
                     "photoshop",
-                    "substancepainter"
+                    "substancepainter",
+                    "silhouette"
                 ],
                 "enabled": True,
                 "optional": False,
@@ -1053,7 +1054,8 @@ DEFAULT_PUBLISH_VALUES = {
                     "harmony",
                     "photoshop",
                     "aftereffects",
-                    "fusion"
+                    "fusion",
+                    "silhouette"
                 ],
                 "enabled": True,
                 "optional": True,
