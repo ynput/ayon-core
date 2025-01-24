@@ -492,7 +492,7 @@ class CreatedInstance:
         item_id = data.get("id")
         # TODO use only 'AYON_INSTANCE_ID' when all hosts support it
         if item_id not in {AYON_INSTANCE_ID, AVALON_INSTANCE_ID}:
-            item_id = AVALON_INSTANCE_ID
+            item_id = AYON_INSTANCE_ID
         self._data["id"] = item_id
         self._data["productType"] = product_type
         self._data["productName"] = product_name
