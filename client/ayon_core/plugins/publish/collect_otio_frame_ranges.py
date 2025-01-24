@@ -1,20 +1,15 @@
-"""Plugins for collecting OTIO frame ranges and related timing information.
+"""Plugin for collecting OTIO frame ranges and related timing information.
 
-This module contains three plugins:
-- CollectOtioFrameRanges: Collects basic timeline frame ranges
-- CollectOtioSourceRanges: Collects source media frame ranges
-- CollectOtioRetimedRanges: Handles retimed clip frame ranges
+This module contains a unified plugin that handles:
+- Basic timeline frame ranges
+- Source media frame ranges
+- Retimed clip frame ranges
 """
 
 from pprint import pformat
 
+import opentimelineio as otio
 import pyblish.api
-
-try:
-    import opentimelineio as otio
-except ImportError:
-    raise RuntimeError("OpenTimelineIO is not installed.")
-
 from ayon_core.pipeline.editorial import (
     get_media_range_with_retimes,
     otio_range_to_frame_range,
@@ -38,15 +33,20 @@ def validate_otio_clip(instance, logger):
     return True
 
 
-class CollectOtioFrameRanges(pyblish.api.InstancePlugin):
-    """Collect basic timeline frame ranges from OTIO clip.
+class CollectOtioRanges(pyblish.api.InstancePlugin):
+    """Collect all OTIO-related frame ranges and timing information.
 
-    This plugin extracts and stores basic timeline frame ranges including
-    handles from the OTIO clip.
+    This plugin handles collection of:
+    - Basic timeline frame ranges with handles
+    - Source media frame ranges with handles
+    - Retimed clip frame ranges
 
     Requires:
         otioClip (otio.schema.Clip): OTIO clip object
         workfileFrameStart (int): Starting frame of work file
+
+    Optional:
+        shotDurationFromSource (int): Duration from source if retimed
 
     Provides:
         frameStart (int): Start frame in timeline
@@ -55,24 +55,41 @@ class CollectOtioFrameRanges(pyblish.api.InstancePlugin):
         clipOut (int): Clip out point
         clipInH (int): Clip in point with handles
         clipOutH (int): Clip out point with handles
+        sourceStart (int): Source media start frame
+        sourceEnd (int): Source media end frame
+        sourceStartH (int): Source media start frame with handles
+        sourceEndH (int): Source media end frame with handles
     """
 
-    label = "Collect OTIO Frame Ranges"
+    label = "Collect OTIO Ranges"
     order = pyblish.api.CollectorOrder - 0.08
     families = ["shot", "clip"]
-    hosts = ["resolve", "hiero", "flame", "traypublisher"]
 
     def process(self, instance):
-        """Process the instance to collect frame ranges.
+        """Process the instance to collect all frame ranges.
 
         Args:
             instance: The instance to process
         """
-
         if not validate_otio_clip(instance, self.log):
             return
 
         otio_clip = instance.data["otioClip"]
+
+        # Collect timeline ranges if workfile start frame is available
+        if "workfileFrameStart" in instance.data:
+            self._collect_timeline_ranges(instance, otio_clip)
+
+        # Collect source ranges if clip has available range
+        if hasattr(otio_clip, 'available_range') and otio_clip.available_range():
+            self._collect_source_ranges(instance, otio_clip)
+
+        # Handle retimed ranges if source duration is available
+        if "shotDurationFromSource" in instance.data:
+            self._collect_retimed_ranges(instance, otio_clip)
+
+    def _collect_timeline_ranges(self, instance, otio_clip):
+        """Collect basic timeline frame ranges."""
         workfile_start = instance.data["workfileFrameStart"]
 
         # Get timeline ranges
@@ -98,40 +115,8 @@ class CollectOtioFrameRanges(pyblish.api.InstancePlugin):
         instance.data.update(data)
         self.log.debug(f"Added frame ranges: {pformat(data)}")
 
-
-class CollectOtioSourceRanges(pyblish.api.InstancePlugin):
-    """Collect source media frame ranges from OTIO clip.
-
-    This plugin extracts and stores source media frame ranges including
-    handles from the OTIO clip.
-
-    Requires:
-        otioClip (otio.schema.Clip): OTIO clip object
-
-    Provides:
-        sourceStart (int): Source media start frame
-        sourceEnd (int): Source media end frame
-        sourceStartH (int): Source media start frame with handles
-        sourceEndH (int): Source media end frame with handles
-    """
-
-    label = "Collect Source OTIO Frame Ranges"
-    order = pyblish.api.CollectorOrder - 0.07
-    families = ["shot", "clip"]
-    hosts = ["hiero", "flame"]
-
-    def process(self, instance):
-        """Process the instance to collect source frame ranges.
-
-        Args:
-            instance: The instance to process
-        """
-
-        if not validate_otio_clip(instance, self.log):
-            return
-
-        otio_clip = instance.data["otioClip"]
-
+    def _collect_source_ranges(self, instance, otio_clip):
+        """Collect source media frame ranges."""
         # Get source ranges
         otio_src_range = otio_clip.source_range
         otio_available_range = otio_clip.available_range()
@@ -156,41 +141,9 @@ class CollectOtioSourceRanges(pyblish.api.InstancePlugin):
         instance.data.update(data)
         self.log.debug(f"Added source ranges: {pformat(data)}")
 
-
-class CollectOtioRetimedRanges(pyblish.api.InstancePlugin):
-    """Update frame ranges for retimed clips.
-
-    This plugin updates the frame end value for retimed clips.
-
-    Requires:
-        otioClip (otio.schema.Clip): OTIO clip object
-        workfileFrameStart (int): Starting frame of work file
-        shotDurationFromSource (Optional[int]): Duration from source if retimed
-
-    Provides:
-        frameEnd (int): Updated end frame for retimed clips
-    """
-
-    label = "Collect Retimed OTIO Frame Ranges"
-    order = pyblish.api.CollectorOrder - 0.06
-    families = ["shot", "clip"]
-    hosts = ["hiero", "flame"]
-
-    def process(self, instance):
-        """Process the instance to handle retimed clips.
-
-        Args:
-            instance: The instance to process
-        """
-        if not validate_otio_clip(instance, self.log):
-            return
-
+    def _collect_retimed_ranges(self, instance, otio_clip):
+        """Handle retimed clip frame ranges."""
         workfile_source_duration = instance.data.get("shotDurationFromSource")
-        if not workfile_source_duration:
-            self.log.debug("No source duration found, skipping retime handling.")
-            return
-
-        otio_clip = instance.data["otioClip"]
         frame_start = instance.data["frameStart"]
 
         # Handle retimed clip frame range
