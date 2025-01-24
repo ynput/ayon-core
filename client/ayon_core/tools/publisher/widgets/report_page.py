@@ -1164,7 +1164,7 @@ class LogItemMessage(QtWidgets.QTextEdit):
     def minimumSizeHint(self):
         return self.sizeHint()
 
-        
+
 class LogItemWidget(QtWidgets.QWidget):
     log_level_to_flag = {
         10: LOG_DEBUG_VISIBLE,
