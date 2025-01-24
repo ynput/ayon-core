@@ -1332,6 +1332,8 @@ class InstancesLogsView(QtWidgets.QFrame):
 
         content_widget = QtWidgets.QWidget(content_wrap_widget)
         content_widget.setAttribute(QtCore.Qt.WA_TranslucentBackground)
+        content_widget.setMinimumSize(80, 80)
+
         content_layout = QtWidgets.QVBoxLayout(content_widget)
         content_layout.setContentsMargins(8, 8, 8, 8)
         content_layout.setSpacing(15)
