@@ -209,13 +209,9 @@ class ExtractOTIOReview(
                 # File sequence way
                 if is_sequence:
                     # Remap processing range to input file sequence.
-                    processing_range_as_frames = (
-                        processing_range.start_time.to_frames(),
-                        processing_range.end_time_inclusive().to_frames()
-                    )
                     first, last = remap_range_on_file_sequence(
                         r_otio_cl,
-                        processing_range_as_frames,
+                        processing_range,
                     )
                     input_fps = processing_range.start_time.rate
 

@@ -10,6 +10,7 @@ class OCIOEnvHook(PreLaunchHook):
     order = 0
     hosts = {
         "substancepainter",
+        "substancedesigner",
         "fusion",
         "blender",
         "aftereffects",
@@ -20,7 +21,8 @@ class OCIOEnvHook(PreLaunchHook):
         "hiero",
         "resolve",
         "openrv",
-        "cinema4d"
+        "cinema4d",
+        "silhouette",
     }
     launch_types = set()
 
