@@ -37,6 +37,7 @@ def validate_otio_clip(instance, logger):
         return False
     return True
 
+
 class CollectOtioFrameRanges(pyblish.api.InstancePlugin):
     """Collect basic timeline frame ranges from OTIO clip.
 
