@@ -1,3 +1,6 @@
+import logging
+import warnings
+from typing import Optional, Dict, Any
 from dataclasses import dataclass
 
 from ayon_core.lib import Logger, filter_profiles
@@ -11,20 +14,41 @@ from .tempdir import get_temp_dir
 @dataclass
 class StagingDir:
     directory: str
-    persistent: bool
+    is_persistent: bool
+    # Whether the staging dir is a custom staging dir
+    is_custom: bool
+
+    def __setattr__(self, key, value):
+        if key == "persistent":
+            warnings.warn(
+                "'StagingDir.persistent' is deprecated."
+                " Use 'StagingDir.is_persistent' instead.",
+                DeprecationWarning
+            )
+            key = "is_persistent"
+        super().__setattr__(key, value)
+
+    @property
+    def persistent(self):
+        warnings.warn(
+            "'StagingDir.persistent' is deprecated."
+            " Use 'StagingDir.is_persistent' instead.",
+            DeprecationWarning
+        )
+        return self.is_persistent
 
 
 def get_staging_dir_config(
-    project_name,
-    task_type,
-    task_name,
-    product_type,
-    product_name,
-    host_name,
-    project_settings=None,
-    anatomy=None,
-    log=None,
-):
+    project_name: str,
+    task_type: Optional[str],
+    task_name: Optional[str],
+    product_type: str,
+    product_name: str,
+    host_name: str,
+    project_settings: Optional[Dict[str, Any]] = None,
+    anatomy: Optional[Anatomy] = None,
+    log: Optional[logging.Logger] = None,
+) -> Optional[Dict[str, Any]]:
     """Get matching staging dir profile.
 
     Args:
@@ -75,7 +99,6 @@ def get_staging_dir_config(
 
     # get template from template name
     template_name = profile["template_name"]
-    _validate_template_name(project_name, template_name, anatomy)
 
     template = anatomy.get_template_item("staging", template_name)
 
@@ -92,35 +115,23 @@ def get_staging_dir_config(
     return {"template": template, "persistence": data_persistence}
 
 
-def _validate_template_name(project_name, template_name, anatomy):
-    """Check that staging dir section with appropriate template exist.
-
-    Raises:
-        ValueError - if misconfigured template
-    """
-    if template_name not in anatomy.templates["staging"]:
-        raise ValueError(
-            f'Anatomy of project "{project_name}" does not have set'
-            f' "{template_name}" template key at Staging Dir category!'
-        )
-
-
 def get_staging_dir_info(
-    project_entity,
-    folder_entity,
-    task_entity,
-    product_type,
-    product_name,
-    host_name,
-    anatomy=None,
-    project_settings=None,
-    template_data=None,
-    always_return_path=True,
-    force_tmp_dir=False,
-    logger=None,
-    prefix=None,
-    suffix=None,
-):
+    project_entity: Dict[str, Any],
+    folder_entity: Optional[Dict[str, Any]],
+    task_entity: Optional[Dict[str, Any]],
+    product_type: str,
+    product_name: str,
+    host_name: str,
+    anatomy: Optional[Anatomy] = None,
+    project_settings: Optional[Dict[str, Any]] = None,
+    template_data: Optional[Dict[str, Any]] = None,
+    always_return_path: bool = True,
+    force_tmp_dir: bool = False,
+    logger: Optional[logging.Logger] = None,
+    prefix: Optional[str] = None,
+    suffix: Optional[str] = None,
+    username: Optional[str] = None,
+) -> Optional[StagingDir]:
     """Get staging dir info data.
 
     If `force_temp` is set, staging dir will be created as tempdir.
@@ -147,6 +158,7 @@ def get_staging_dir_info(
         logger (Optional[logging.Logger]): Logger instance.
         prefix (Optional[str]) Optional prefix for staging dir name.
         suffix (Optional[str]): Optional suffix for staging dir name.
+        username (Optional[str]): AYON Username.
 
     Returns:
         Optional[StagingDir]: Staging dir info data
@@ -160,16 +172,22 @@ def get_staging_dir_info(
         )
 
     if force_tmp_dir:
-        return get_temp_dir(
-            project_name=project_entity["name"],
-            anatomy=anatomy,
-            prefix=prefix,
-            suffix=suffix,
+        return StagingDir(
+            get_temp_dir(
+                project_name=project_entity["name"],
+                anatomy=anatomy,
+                prefix=prefix,
+                suffix=suffix,
+            ),
+            is_persistent=False,
+            is_custom=False
         )
 
     # making few queries to database
     ctx_data = get_template_data(
-        project_entity, folder_entity, task_entity, host_name
+        project_entity, folder_entity, task_entity, host_name,
+        settings=project_settings,
+        username=username
     )
 
     # add additional data
@@ -204,7 +222,8 @@ def get_staging_dir_info(
         dir_template = staging_dir_config["template"]["directory"]
         return StagingDir(
             dir_template.format_strict(ctx_data),
-            staging_dir_config["persistence"],
+            is_persistent=staging_dir_config["persistence"],
+            is_custom=True
         )
 
     # no config found but force an output
@@ -216,7 +235,8 @@ def get_staging_dir_info(
                 prefix=prefix,
                 suffix=suffix,
             ),
-            False,
+            is_persistent=False,
+            is_custom=False
         )
 
     return None
