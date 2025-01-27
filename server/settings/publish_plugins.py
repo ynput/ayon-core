@@ -1034,7 +1034,7 @@ DEFAULT_PUBLISH_VALUES = {
                     "nuke",
                     "photoshop",
                     "substancepainter",
-                    "silhouette"
+                    "silhouette",
                 ],
                 "enabled": True,
                 "optional": False,
@@ -1055,7 +1055,7 @@ DEFAULT_PUBLISH_VALUES = {
                     "photoshop",
                     "aftereffects",
                     "fusion",
-                    "silhouette"
+                    "silhouette",
                 ],
                 "enabled": True,
                 "optional": True,
