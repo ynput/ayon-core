@@ -344,8 +344,6 @@ def get_media_range_with_retimes(otio_clip, handle_start, handle_end):
 
     # modifiers
     time_scalar = 1.
-    offset_in = 0
-    offset_out = 0
     time_warp_nodes = []
 
     # Check for speed effects and adjust playback speed accordingly
@@ -379,17 +377,12 @@ def get_media_range_with_retimes(otio_clip, handle_start, handle_end):
             # add to timewarp nodes
             time_warp_nodes.append(tw_node)
 
-    # multiply by time scalar
-    offset_in *= time_scalar
-    offset_out *= time_scalar
-
     # scale handles
     handle_start *= abs(time_scalar)
     handle_end *= abs(time_scalar)
 
     # flip offset and handles if reversed speed
     if time_scalar < 0:
-        offset_in, offset_out = offset_out, offset_in
         handle_start, handle_end = handle_end, handle_start
 
     # If media source is an image sequence, returned
@@ -423,7 +416,7 @@ def get_media_range_with_retimes(otio_clip, handle_start, handle_end):
 
     else:
         # compute retimed range
-        media_in_trimmed = conformed_source_range.start_time.value + offset_in
+        media_in_trimmed = conformed_source_range.start_time.value
 
         offset_duration = (
             conformed_source_range.duration.value
