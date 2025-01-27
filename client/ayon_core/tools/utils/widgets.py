@@ -54,7 +54,7 @@ class ComboBox(QtWidgets.QComboBox):
     """
 
     def __init__(self, *args, **kwargs):
-        super(ComboBox, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         delegate = QtWidgets.QStyledItemDelegate()
         self.setItemDelegate(delegate)
         self.setFocusPolicy(QtCore.Qt.StrongFocus)
@@ -63,7 +63,7 @@ class ComboBox(QtWidgets.QComboBox):
 
     def wheelEvent(self, event):
         if self.hasFocus():
-            return super(ComboBox, self).wheelEvent(event)
+            return super().wheelEvent(event)
 
 
 class CustomTextComboBox(ComboBox):
@@ -71,7 +71,14 @@ class CustomTextComboBox(ComboBox):
 
     def __init__(self, *args, **kwargs):
         self._custom_text = None
-        super(CustomTextComboBox, self).__init__(*args, **kwargs)
+        self._placeholder = placeholder
+        super().__init__(*args, **kwargs)
+
+    def set_placeholder(self, placeholder: Optional[str]):
+        if placeholder == self._placeholder:
+            return
+        self.lineEdit().setPlaceholderText(placeholder)
+        self.repaint()
 
     def set_custom_text(self, text=None):
         if self._custom_text != text:

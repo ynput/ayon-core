@@ -61,7 +61,7 @@ class MultiSelectionComboBox(QtWidgets.QComboBox):
         self._block_mouse_release_timer = QtCore.QTimer(self, singleShot=True)
         self._initial_mouse_pos = None
         self._separator = separator
-        self._placeholder_text = placeholder
+        self._placeholder_text = placeholder or ""
         delegate = ComboItemDelegate(self)
         self.setItemDelegate(delegate)
 
@@ -74,7 +74,7 @@ class MultiSelectionComboBox(QtWidgets.QComboBox):
         return self._placeholder_text
 
     def set_placeholder_text(self, text):
-        self._placeholder_text = text
+        self._placeholder_text = text or ""
         self._update_size_hint()
 
     def set_custom_text(self, text):
