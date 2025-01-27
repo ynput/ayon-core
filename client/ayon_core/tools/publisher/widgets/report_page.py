@@ -1119,7 +1119,10 @@ class LogIconFrame(QtWidgets.QFrame):
 
 class LogItemMessage(QtWidgets.QTextEdit):
     def __init__(self, msg, parent):
-        super().__init__(msg, parent)
+        super().__init__(parent)
+
+        # Set as plain text to propagate new line characters
+        self.setPlainText(msg)
 
         self.setObjectName("PublishLogMessage")
         self.setReadOnly(True)
