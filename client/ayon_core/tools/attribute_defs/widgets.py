@@ -640,15 +640,13 @@ class EnumAttrWidget(_BaseAttrDefWidget):
         return self.attr_def.multiselection
 
     def _ui_init(self):
-        placeholder = self.attr_def.placeholder
         if self.multiselection:
             input_widget = MultiSelectionComboBox(
-                self, placeholder=placeholder
+                self, placeholder=self.attr_def.placeholder
             )
 
         else:
             input_widget = CustomTextComboBox(self)
-            input_widget.set_placeholder(placeholder)
             combo_delegate = QtWidgets.QStyledItemDelegate(input_widget)
             input_widget.setItemDelegate(combo_delegate)
             self._combo_delegate = combo_delegate

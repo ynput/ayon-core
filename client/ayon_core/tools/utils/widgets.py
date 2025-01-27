@@ -71,14 +71,7 @@ class CustomTextComboBox(ComboBox):
 
     def __init__(self, *args, **kwargs):
         self._custom_text = None
-        self._placeholder = placeholder
         super().__init__(*args, **kwargs)
-
-    def set_placeholder(self, placeholder: Optional[str]):
-        if placeholder == self._placeholder:
-            return
-        self.lineEdit().setPlaceholderText(placeholder)
-        self.repaint()
 
     def set_custom_text(self, text=None):
         if self._custom_text != text:
