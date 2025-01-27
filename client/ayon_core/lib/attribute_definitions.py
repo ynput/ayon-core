@@ -550,6 +550,8 @@ class EnumDef(AbstractAttrDef):
             passed items or list of values for multiselection.
         multiselection (Optional[bool]): If True, multiselection is allowed.
             Output is list of selected items.
+        placeholder (Optional[str]): Placeholder for UI purposes, only for
+            multiselection enumeration.
 
     """
     type = "enum"
