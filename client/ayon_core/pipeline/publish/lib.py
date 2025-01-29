@@ -460,8 +460,19 @@ def filter_pyblish_plugins(plugins):
             )
             apply_plugin_settings_automatically(plugin, plugin_settins, log)
 
+        # Pyblish already operated a filter based on host.
+        # But applying settings might have changed "hosts"
+        # value in plugin so re-filter.
+        plugin_hosts = getattr(plugin, "hosts", None)
+        if (
+            plugin_hosts
+            and "*" not in plugin_hosts
+            and host_name not in plugin_hosts
+        ):
+            plugins.remove(plugin)
+
         # Remove disabled plugins
-        if getattr(plugin, "enabled", True) is False:
+        elif getattr(plugin, "enabled", True) is False:
             plugins.remove(plugin)
 
 
