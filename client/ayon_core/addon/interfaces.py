@@ -1,7 +1,6 @@
 """Addon interfaces for AYON."""
 from __future__ import annotations
 
-import logging
 from abc import ABCMeta, abstractmethod
 from typing import TYPE_CHECKING, Callable, Optional, Type
 
@@ -10,7 +9,6 @@ from ayon_core import resources
 if TYPE_CHECKING:
     from qtpy import QtWidgets
 
-    from ayon_core.addon import AddonsManager
     from ayon_core.pipeline.traits import TraitBase
     from ayon_core.tools.tray import TrayManager
 
@@ -37,10 +35,6 @@ class AYONInterface(metaclass=_AYONInterfaceMeta):
     """
 
     log = None
-
-    def __init__(self):
-        """Initialize interface."""
-        self.log = logging.getLogger(self.__class__.__name__)
 
 
 class IPluginPaths(AYONInterface):
@@ -162,7 +156,6 @@ class ITrayAddon(AYONInterface):
 
     """
     tray_initialized = False
-    manager: AddonsManager = None
     _tray_manager: TrayManager = None
     _admin_submenu = None
 
@@ -431,7 +424,6 @@ class IHostAddon(AYONInterface):
     @abstractmethod
     def host_name(self) -> str:
         """Name of host which addon represents."""
-        raise NotImplementedError
 
     def get_workfile_extensions(self) -> list[str]:
         """Define workfile extensions for host.
