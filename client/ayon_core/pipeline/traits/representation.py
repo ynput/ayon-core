@@ -501,7 +501,7 @@ class Representation(Generic[T]):
                 klass = getattr(module, attr_name)
                 if not inspect.isclass(klass):
                     continue
-                # this needs to be done because of the  bug? in
+                # this needs to be done because of the bug? in
                 # python ABCMeta, where ``issubclass`` is not working
                 # if it hits the GenericAlias (that is in fact
                 # tuple[int, int]). This is added to the scope by
@@ -511,7 +511,8 @@ class Representation(Generic[T]):
                 if issubclass(klass, TraitBase) \
                         and str(klass.id).startswith(trait_id):
                     trait_candidates.add(klass)
-        return trait_candidates  # type: ignore
+        # I
+        return trait_candidates  # type: ignore[return-value]
 
     @classmethod
     @lru_cache(maxsize=64)
@@ -632,11 +633,11 @@ class Representation(Generic[T]):
                 error: UpgradableTraitError = UpgradableTraitError(error_msg)
                 error.trait = e.found_trait
                 raise error from e
-        return trait_class
+        return trait_class  # type: ignore[return-value]
 
     @classmethod
     def from_dict(
-            cls,
+            cls: Type[Representation],
             name: str,
             representation_id: Optional[str]=None,
             trait_data: Optional[dict] = None) -> Representation:
@@ -708,10 +709,12 @@ class Representation(Generic[T]):
         """
         errors = []
         for trait in self._data.values():
+            # we do this in the loop to catch all the errors
             try:
                 trait.validate_trait(self)
-            except TraitValidationError as e:
+            except TraitValidationError as e:  # noqa: PERF203
                 errors.append(str(e))
         if errors:
-            msg = f"representation {self.name}", "\n".join(errors)
-            raise TraitValidationError(msg)
+            msg = "\n".join(errors)
+            scope = self.name
+            raise TraitValidationError(scope, msg)

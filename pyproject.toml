@@ -79,8 +79,6 @@ pydocstyle.convention = "google"
 select = ["ALL"]
 ignore = [
     "PTH",
-    "ANN101",
-    "ANN102",
     "ANN204",
     "COM812",
     "S603",
@@ -91,6 +89,8 @@ ignore = [
     "UP035",  # ..
     "ARG002",
     "INP001", # add `__init__.py` to namespaced package
+    "FIX002", # FIX all TODOs
+    "TD003",  # missing issue link
 ]
 
 # Allow fix for all enabled rules (when `--fix`) is provided.

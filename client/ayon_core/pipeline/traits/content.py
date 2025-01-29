@@ -11,7 +11,7 @@ from typing import ClassVar, Generator, Optional
 from pydantic import Field
 
 from .representation import Representation
-from .time import FrameRanged, Handles, Sequence
+from .temporal import FrameRanged, Handles, Sequence
 from .trait import (
     MissingTraitError,
     TraitBase,

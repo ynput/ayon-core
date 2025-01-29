@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING
 
 from clique import assemble
 
-from ayon_core.pipeline.traits.time import FrameRanged
+from ayon_core.pipeline.traits.temporal import FrameRanged
 
 if TYPE_CHECKING:
     from pathlib import Path

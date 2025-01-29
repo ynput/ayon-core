@@ -15,7 +15,7 @@ from .lifecycle import Persistent, Transient
 from .meta import Tagged, TemplatePath, Variant
 from .representation import Representation
 from .three_dimensional import Geometry, IESProfile, Lighting, Shader, Spatial
-from .time import (
+from .temporal import (
     FrameRanged,
     GapPolicy,
     Handles,
