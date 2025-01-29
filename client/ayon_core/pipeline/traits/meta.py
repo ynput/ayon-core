@@ -93,8 +93,8 @@ class KeepOriginalName(TraitBase):
 
     Note:
         This is not a persistent trait.
-
     """
+
     name: ClassVar[str] = "KeepOriginalName"
     description: ClassVar[str] = "Keep Original Name Trait Model"
     id: ClassVar[str] = "ayon.meta.KeepOriginalName.v1"
@@ -111,3 +111,18 @@ class SourceApplication(TraitBase):
     variant: str = Field(..., title="Application Variant (e.g. Pro)")
     version: str = Field(..., title="Application Version")
     platform: str = Field(..., title="Platform Name")
+
+
+class IntendedUse(TraitBase):
+    """Intended use of the representation.
+
+    This trait describes the intended use of the representation. It
+    can be used in cases, where the other traits are not enough to
+    describe the intended use. For example txt file with tracking
+    points can be used as corner pin in After Effect but not in Nuke.
+    """
+
+    name: ClassVar[str] = "IntendedUse"
+    description: ClassVar[str] = "Intended Use Trait Model"
+    id: ClassVar[str] = "ayon.meta.IntendedUse.v1"
+    use: str = Field(..., title="Intended Use")
