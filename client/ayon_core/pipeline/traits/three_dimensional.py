@@ -24,8 +24,8 @@ class Spatial(TraitBase):
         up_axis (str): Up axis.
         handedness (str): Handedness.
         meters_per_unit (float): Meters per unit.
-
     """
+
     id: ClassVar[str] = "ayon.3d.Spatial.v1"
     name: ClassVar[str] = "Spatial"
     description: ClassVar[str] = "Spatial trait model."

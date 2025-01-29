@@ -21,6 +21,7 @@ class ColorManaged(TraitBase):
             in the "current" OCIO context.
         config (str): An OCIO config name defining color space.
     """
+
     id: ClassVar[str] = "ayon.color.ColorManaged.v1"
     name: ClassVar[str] = "ColorManaged"
     description: ClassVar[str] = "Color Managed trait."

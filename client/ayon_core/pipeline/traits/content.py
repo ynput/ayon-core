@@ -5,7 +5,7 @@ import contextlib
 import re
 
 # TC003 is there because Path in TYPECHECKING will fail in tests
-from pathlib import Path  # noqa: TCH003
+from pathlib import Path  # noqa: TC003
 from typing import ClassVar, Generator, Optional
 
 from pydantic import Field
@@ -35,7 +35,6 @@ class MimeType(TraitBase):
         description (str): Trait description.
         id (str): id should be namespaced trait name with version
         mime_type (str): Mime type like image/jpeg.
-
     """
 
     name: ClassVar[str] = "MimeType"
@@ -58,7 +57,6 @@ class LocatableContent(TraitBase):
         description (str): Trait description.
         id (str): id should be namespaced trait name with version
         location (str): Location.
-
     """
 
     name: ClassVar[str] = "LocatableContent"
@@ -82,8 +80,8 @@ class FileLocation(TraitBase):
         file_path (str): File path.
         file_size (int): File size in bytes.
         file_hash (str): File hash.
-
     """
+
     name: ClassVar[str] = "FileLocation"
     description: ClassVar[str] = "FileLocation Trait Model"
     id: ClassVar[str] = "ayon.content.FileLocation.v1"
@@ -359,7 +357,6 @@ class RootlessLocation(TraitBase):
         description (str): Trait description.
         id (str): id should be namespaced trait name with version
         rootless_path (str): Rootless path.
-
     """
 
     name: ClassVar[str] = "RootlessLocation"
@@ -383,7 +380,6 @@ class Compressed(TraitBase):
         description (str): Trait description.
         id (str): id should be namespaced trait name with version
         compression_type (str): Compression type.
-
     """
 
     name: ClassVar[str] = "Compressed"
@@ -422,7 +418,6 @@ class Bundle(TraitBase):
         description (str): Trait description.
         id (str): id should be namespaced trait name with version
         items (list[list[TraitBase]]): List of representations.
-
     """
 
     name: ClassVar[str] = "Bundle"
@@ -460,7 +455,6 @@ class Fragment(TraitBase):
         description (str): Trait description.
         id (str): id should be namespaced trait name with version
         parent (str): Parent representation id.
-
     """
 
     name: ClassVar[str] = "Fragment"
