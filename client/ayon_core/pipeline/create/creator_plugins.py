@@ -866,7 +866,7 @@ class Creator(BaseCreator):
 
         current_host = create_ctx.host.name
         follow_workfile_version = (
-            follow_workfile_version and 
+            follow_workfile_version and
             current_host in follow_version_hosts
         )
 

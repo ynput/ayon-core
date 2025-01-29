@@ -49,7 +49,7 @@ class CollectSceneVersion(pyblish.api.ContextPlugin):
         if context.data["hostName"] not in self.hosts:
             self.log.debug(
                 f"Host {context.data['hostName']} is"
-                " not setup for following version."
+                " not setup for collecting scene version."
             )
             return
 
