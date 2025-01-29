@@ -21,21 +21,18 @@ from .utils import (
 )
 
 __all__ = (
-    "click_wrap",
-
-    "IPluginPaths",
-    "ITrayAddon",
-    "ITrayAction",
-    "ITrayService",
-    "IHostAddon",
-    "ITraits",
-
-    "ProcessPreparationError",
-    "ProcessContext",
     "AYONAddon",
     "AddonsManager",
-    "load_addons",
-
+    "IHostAddon",
+    "IPluginPaths",
+    "ITraits",
+    "ITrayAction",
+    "ITrayAddon",
+    "ITrayService",
+    "ProcessContext",
+    "ProcessPreparationError",
+    "click_wrap",
     "ensure_addons_are_process_context_ready",
     "ensure_addons_are_process_ready",
+    "load_addons",
 )
