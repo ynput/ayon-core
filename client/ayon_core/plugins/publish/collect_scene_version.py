@@ -46,6 +46,13 @@ class CollectSceneVersion(pyblish.api.ContextPlugin):
             self.log.debug("Skipping for headless publishing")
             return
 
+        if context.data["hostName"] not in self.hosts:
+            self.log.debug(
+                f"Host {context.data['hostName']} is"
+                " not setup for following version."
+            )
+            return
+
         if not context.data.get('currentFile'):
             self.log.error("Cannot get current workfile path. "
                            "Make sure your scene is saved.")
