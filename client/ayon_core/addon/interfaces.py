@@ -1,3 +1,4 @@
+"""Addon interfaces for AYON."""
 from __future__ import annotations
 
 import logging
@@ -17,11 +18,11 @@ if TYPE_CHECKING:
 class _AYONInterfaceMeta(ABCMeta):
     """AYONInterface metaclass to print proper string."""
 
-    def __str__(self):
-        return f"<'AYONInterface.{self.__name__}'>"
+    def __str__(cls):
+        return f"<'AYONInterface.{cls.__name__}'>"
 
-    def __repr__(self):
-        return str(self)
+    def __repr__(cls):
+        return str(cls)
 
 
 class AYONInterface(metaclass=_AYONInterfaceMeta):
@@ -84,7 +85,7 @@ class IPluginPaths(AYONInterface):
             paths = [paths]
         return paths
 
-    def get_launcher_action_paths(self):
+    def get_launcher_action_paths(self) -> list[str]:
         """Receive launcher actions paths.
 
         Give addons ability to add launcher actions paths.
@@ -208,7 +209,8 @@ class ITrayAddon(AYONInterface):
 
         """
         if not self.tray_initialized:
-            # TODO: Called without initialized tray, still main thread needed
+            # TODO (Illicit): Called without initialized tray, still
+            #   main thread needed.
             try:
                 callback()
 
@@ -245,7 +247,8 @@ class ITrayAddon(AYONInterface):
             self.manager.add_doubleclick_callback(self, callback)
 
     @staticmethod
-    def admin_submenu(tray_menu):
+    def admin_submenu(tray_menu: QtWidgets.QMenu) -> QtWidgets.QMenu:
+        """Get or create admin submenu."""
         if ITrayAddon._admin_submenu is None:
             from qtpy import QtWidgets
 
@@ -255,7 +258,9 @@ class ITrayAddon(AYONInterface):
         return ITrayAddon._admin_submenu
 
     @staticmethod
-    def add_action_to_admin_submenu(label, tray_menu):
+    def add_action_to_admin_submenu(
+            label: str, tray_menu: QtWidgets.QMenu) -> QtWidgets.QAction:
+        """Add action to admin submenu."""
         from qtpy import QtWidgets
 
         menu = ITrayAddon.admin_submenu(tray_menu)
@@ -330,7 +335,7 @@ class ITrayService(ITrayAddon):
         """Service label showed in menu."""
         raise NotImplementedError
 
-    # TODO be able to get any sort of information to show/print
+    # TODO (Illicit): be able to get any sort of information to show/print
     # @abstractmethod
     # def get_service_info(self):
     #     pass

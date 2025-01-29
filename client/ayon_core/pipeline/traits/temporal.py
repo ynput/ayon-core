@@ -13,7 +13,6 @@ from pydantic import Field, field_validator
 from .trait import MissingTraitError, TraitBase, TraitValidationError
 
 if TYPE_CHECKING:
-    
 
     from pathlib import Path
 
@@ -205,9 +204,9 @@ class Sequence(TraitBase):
                 handles_frame_end)
 
         self.validate_frame_padding(file_locs)
-        
 
-    def validate_frame_list(
+
+    def validate_frame_list(  # noqa: C901
             self,
             file_locations: FileLocations,
             frame_start: Optional[int] = None,
@@ -246,7 +245,7 @@ class Sequence(TraitBase):
                 frame_regex = re.compile(self.frame_regex)
             elif isinstance(self.frame_regex, Pattern):
                 frame_regex = self.frame_regex
-                
+
             frames = self.get_frame_list(
                     file_locations, frame_regex)
         else:
