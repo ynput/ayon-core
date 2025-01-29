@@ -195,13 +195,6 @@ class CollectOtioSubsetResources(
                 repre = self._create_representation(
                     frame_start, frame_end, file=filename)
 
-            if (
-                not instance.data.get("otioReviewClips")
-                and "review" in instance.data["families"]
-            ):
-                review_repre = self._create_representation(
-                    frame_start, frame_end, collection=collection,
-                    delete=True, review=True)
 
         else:
             _trim = False
@@ -217,13 +210,6 @@ class CollectOtioSubsetResources(
             repre = self._create_representation(
                 frame_start, frame_end, file=filename, trim=_trim)
 
-            if (
-                not instance.data.get("otioReviewClips")
-                and "review" in instance.data["families"]
-            ):
-                review_repre = self._create_representation(
-                    frame_start, frame_end,
-                    file=filename, delete=True, review=True)
 
         instance.data["originalDirname"] = self.staging_dir
 
@@ -236,9 +222,6 @@ class CollectOtioSubsetResources(
 
             instance.data["representations"].append(repre)
 
-        # add review representation to instance data
-        if review_repre:
-            instance.data["representations"].append(review_repre)
 
         self.log.debug(instance.data)
 
