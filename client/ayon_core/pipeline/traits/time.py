@@ -2,13 +2,13 @@
 from __future__ import annotations
 
 import contextlib
+import re
 from enum import Enum, auto
+from re import Pattern
 from typing import TYPE_CHECKING, ClassVar, Optional, Union
 
 import clique
 from pydantic import Field, field_validator
-import re
-from re import Pattern
 
 from .trait import MissingTraitError, TraitBase, TraitValidationError
 
@@ -16,6 +16,7 @@ if TYPE_CHECKING:
     
 
     from pathlib import Path
+
     from .content import FileLocations
     from .representation import Representation
 
@@ -391,10 +392,10 @@ class Sequence(TraitBase):
         """
         src_collection = Sequence._get_collection(file_locations, regex)
         return list(src_collection.indexes)
-    
+
     def get_frame_pattern(self) -> Pattern:
         """Get frame regex as pattern.
-        
+
         If the regex is string, it will compile it to the pattern.
 
         """
@@ -404,6 +405,7 @@ class Sequence(TraitBase):
             return self.frame_regex
         return re.compile(
             r"\.(?P<index>(?P<padding>0*)\d+)\.\D+\d?$")
+
 
 # Do we need one for drop and non-drop frame?
 class SMPTETimecode(TraitBase):

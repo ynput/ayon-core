@@ -8,17 +8,24 @@ import sys
 import uuid
 from functools import lru_cache
 from types import GenericAlias
-from typing import ClassVar, Generic, ItemsView, Optional, Type, TypeVar, Union
+from typing import (
+    ClassVar,
+    Generic,
+    ItemsView,
+    Optional,
+    Type,
+    TypeVar,
+    Union,
+)
 
 from .trait import (
     IncompatibleTraitVersionError,
     LooseMatchingTraitError,
     MissingTraitError,
     TraitBase,
-    UpgradableTraitError,
     TraitValidationError,
+    UpgradableTraitError,
 )
-
 
 T = TypeVar("T", bound="TraitBase")
 
@@ -333,14 +340,14 @@ class Representation(Generic[T]):
             ),
             None,
         )
-        if not result:
+        if result is None:
             msg = f"Trait with ID {trait_id} not found."
             raise MissingTraitError(msg)
         return result
 
     def get_traits(self,
                      traits: Optional[list[Type[T]]]=None
-                   ) -> dict[str, T]:
+     ) -> dict[str, T]:
         """Get a list of traits from the representation.
 
         If no trait IDs or traits are provided, all traits will be returned.
@@ -407,6 +414,7 @@ class Representation(Generic[T]):
             name (str): Representation name. Must be unique within instance.
             representation_id (str, optional): Representation ID.
             traits (list[TraitBase], optional): List of traits.
+
         """
         self.name = name
         self.representation_id = representation_id or uuid.uuid4().hex
@@ -607,24 +615,23 @@ class Representation(Generic[T]):
                 )
                 raise IncompatibleTraitVersionError(msg) from e
 
-            else:
-                if requested_version > found_version:
-                    error_msg = (
-                        f"Requested trait version {requested_version} is "
-                        f"higher than the found trait version {found_version}."
-                    )
-                    raise IncompatibleTraitVersionError(error_msg) from e
+            if requested_version > found_version:
+                error_msg = (
+                    f"Requested trait version {requested_version} is "
+                    f"higher than the found trait version {found_version}."
+                )
+                raise IncompatibleTraitVersionError(error_msg) from e
 
-                if requested_version < found_version and hasattr(
-                        e.found_trait, "upgrade"):
-                    error_msg = (
-                        "Requested trait version "
-                        f"{requested_version} is lower "
-                        f"than the found trait version {found_version}."
-                    )
-                    error: UpgradableTraitError = UpgradableTraitError(error_msg)
-                    error.trait = e.found_trait
-                    raise error from e
+            if requested_version < found_version and hasattr(
+                    e.found_trait, "upgrade"):
+                error_msg = (
+                    "Requested trait version "
+                    f"{requested_version} is lower "
+                    f"than the found trait version {found_version}."
+                )
+                error: UpgradableTraitError = UpgradableTraitError(error_msg)
+                error.trait = e.found_trait
+                raise error from e
         return trait_class
 
     @classmethod
@@ -706,5 +713,5 @@ class Representation(Generic[T]):
             except TraitValidationError as e:
                 errors.append(str(e))
         if errors:
-            raise TraitValidationError(
-                f"representation {self.name}", "\n".join(errors))
+            msg = f"representation {self.name}", "\n".join(errors)
+            raise TraitValidationError(msg)

@@ -5,7 +5,7 @@ import contextlib
 import re
 
 # TC003 is there because Path in TYPECHECKING will fail in tests
-from pathlib import Path  # noqa: TC003
+from pathlib import Path  # noqa: TCH003
 from typing import ClassVar, Generator, Optional
 
 from pydantic import Field
@@ -43,6 +43,7 @@ class MimeType(TraitBase):
     id: ClassVar[str] = "ayon.content.MimeType.v1"
     mime_type: str = Field(..., title="Mime Type")
 
+
 class LocatableContent(TraitBase):
     """LocatableContent trait model.
 
@@ -66,6 +67,7 @@ class LocatableContent(TraitBase):
     location: str = Field(..., title="Location")
     is_templated: Optional[bool] = Field(default=None, title="Is Templated")
 
+
 class FileLocation(TraitBase):
     """FileLocation trait model.
 
@@ -88,6 +90,7 @@ class FileLocation(TraitBase):
     file_path: Path = Field(..., title="File Path")
     file_size: Optional[int] = Field(default=None, title="File Size")
     file_hash: Optional[str] = Field(default=None, title="File Hash")
+
 
 class FileLocations(TraitBase):
     """FileLocation trait model.
@@ -114,7 +117,7 @@ class FileLocations(TraitBase):
 
         This method will return all file paths from the trait.
 
-        Yeilds:
+        Yields:
             Path: List of file paths.
 
         """
@@ -432,7 +435,6 @@ class Bundle(TraitBase):
         """Convert bundle to representations."""
         for idx, item in enumerate(self.items):
             yield Representation(name=f"{self.name} {idx}", traits=item)
-  
 
 
 class Fragment(TraitBase):
