@@ -57,8 +57,8 @@ class Representation(Generic[T]):
     Arguments:
         name (str): Representation name. Must be unique within instance.
         representation_id (str): Representation ID.
-
     """
+
     _data: dict[str, T]
     _module_blacklist: ClassVar[list[str]] = [
         "_", "builtins", "pydantic",
@@ -134,7 +134,7 @@ class Representation(Generic[T]):
         """Return the traits as items."""
         return ItemsView(self._data)
 
-    def add_trait(self, trait: T, *, exists_ok: bool=False) -> None:
+    def add_trait(self, trait: T, *, exists_ok: bool = False) -> None:
         """Add a trait to the Representation.
 
         Args:
@@ -156,7 +156,7 @@ class Representation(Generic[T]):
         self._data[trait.id] = trait
 
     def add_traits(
-            self, traits: list[T], *, exists_ok: bool=False) -> None:
+            self, traits: list[T], *, exists_ok: bool = False) -> None:
         """Add a list of traits to the Representation.
 
         Args:
@@ -346,7 +346,7 @@ class Representation(Generic[T]):
         return result
 
     def get_traits(self,
-                     traits: Optional[list[Type[T]]]=None
+                     traits: Optional[list[Type[T]]] = None
      ) -> dict[str, T]:
         """Get a list of traits from the representation.
 
@@ -406,8 +406,8 @@ class Representation(Generic[T]):
     def __init__(
             self,
             name: str,
-            representation_id: Optional[str]=None,
-            traits: Optional[list[T]]=None):
+            representation_id: Optional[str] = None,
+            traits: Optional[list[T]] = None):
         """Initialize the data.
 
         Args:
@@ -639,7 +639,7 @@ class Representation(Generic[T]):
     def from_dict(
             cls: Type[Representation],
             name: str,
-            representation_id: Optional[str]=None,
+            representation_id: Optional[str] = None,
             trait_data: Optional[dict] = None) -> Representation:
         """Create a representation from a dictionary.
 

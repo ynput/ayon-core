@@ -11,6 +11,7 @@ from .trait import TraitBase
 if TYPE_CHECKING:
     from .content import FileLocation, FileLocations
 
+
 class Image(TraitBase):
     """Image trait model.
 
@@ -20,7 +21,6 @@ class Image(TraitBase):
         name (str): Trait name.
         description (str): Trait description.
         id (str): id should be namespaced trait name with version
-
     """
 
     name: ClassVar[str] = "Image"
@@ -40,7 +40,6 @@ class PixelBased(TraitBase):
         display_window_width (int): Width of the image display window.
         display_window_height (int): Height of the image display window.
         pixel_aspect_ratio (float): Pixel aspect ratio.
-
     """
 
     name: ClassVar[str] = "PixelBased"
@@ -66,7 +65,6 @@ class Planar(TraitBase):
         description (str): Trait description.
         id (str): id should be namespaced trait name with version
         planar_configuration (str): Planar configuration.
-
     """
 
     name: ClassVar[str] = "Planar"
@@ -84,7 +82,6 @@ class Deep(TraitBase):
         name (str): Trait name.
         description (str): Trait description.
         id (str): id should be namespaced trait name with version
-
     """
 
     name: ClassVar[str] = "Deep"
@@ -106,7 +103,6 @@ class Overscan(TraitBase):
         right (int): Right overscan/underscan.
         top (int): Top overscan/underscan.
         bottom (int): Bottom overscan/underscan.
-
     """
 
     name: ClassVar[str] = "Overscan"
@@ -128,7 +124,6 @@ class UDIM(TraitBase):
         description (str): Trait description.
         id (str): id should be namespaced trait name with version
         udim (int): UDIM value.
-
     """
 
     name: ClassVar[str] = "UDIM"

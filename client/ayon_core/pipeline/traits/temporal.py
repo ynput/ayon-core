@@ -14,8 +14,6 @@ from .trait import MissingTraitError, TraitBase, TraitValidationError
 
 if TYPE_CHECKING:
 
-    from pathlib import Path
-
     from .content import FileLocations
     from .representation import Representation
 
@@ -132,13 +130,16 @@ class Sequence(TraitBase):
     gaps_policy: Optional[GapPolicy] = Field(
         default=GapPolicy.forbidden, title="Gaps Policy")
     frame_padding: int = Field(..., title="Frame Padding")
-    frame_regex: Optional[Union[Pattern, str]] = Field(default=None, title="Frame Regex")
-    frame_spec: Optional[str] = Field(default=None, title="Frame Specification")
+    frame_regex: Optional[Union[Pattern, str]] = Field(
+        default=None, title="Frame Regex")
+    frame_spec: Optional[str] = Field(default=None,
+        title="Frame Specification")
 
     @field_validator("frame_regex")
     @classmethod
     def validate_frame_regex(
-        cls, v: Optional[Union[Pattern, str]]) -> Optional[Union[Pattern, str]]:
+        cls, v: Optional[Union[Pattern, str]]
+    ) -> Optional[Union[Pattern, str]]:
         """Validate frame regex."""
         _v = v
         if v and isinstance(v, Pattern):
@@ -419,7 +420,6 @@ class Static(TraitBase):
     """Static time trait.
 
     Used to define static time (single frame).
-
     """
     name: ClassVar[str] = "Static"
     description: ClassVar[str] = "Static Time Trait"
