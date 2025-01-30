@@ -304,8 +304,11 @@ class OptionalPyblishPluginMixin(AYONPyblishPluginMixin):
         active = getattr(cls, "active", True)
         # Return boolean stored under 'active' key with label of the class name
         label = cls.label or cls.__name__
+        # Allow exposing tooltip from class with `optional_tooltip` attribute
+        tooltip = getattr(cls, "optional_tooltip", None)
+
         return [
-            BoolDef("active", default=active, label=label)
+            BoolDef("active", default=active, label=label, tooltip=tooltip)
         ]
 
     def is_active(self, data):
