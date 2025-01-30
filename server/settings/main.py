@@ -72,6 +72,12 @@ def _fallback_ocio_config_profile_types():
 def _ocio_built_in_paths():
     return [
         {
+            "value": "{BUILTIN_OCIO_ROOT}/aces_1.3/studio-config-v1.0.0_aces-v1.3_ocio-v2.0.ocio",
+            "label": "ACES 1.3 Studio (OCIO v2)",
+            "description": (
+                "Aces 1.3 Studio OCIO config file. Requires OCIO v2.")
+        },
+        {
             "value": "{BUILTIN_OCIO_ROOT}/aces_1.2/config.ocio",
             "label": "ACES 1.2",
             "description": "Aces 1.2 OCIO config file."
