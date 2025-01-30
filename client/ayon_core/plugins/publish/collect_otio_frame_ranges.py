@@ -119,20 +119,46 @@ class CollectOtioRanges(pyblish.api.InstancePlugin):
         # Get source ranges
         otio_src_range = otio_clip.source_range
         otio_available_range = otio_clip.available_range()
-        otio_src_range_handles = otio_range_with_handles(otio_src_range, instance)
 
-        # Get source available start frame
-        src_starting_from = otio_available_range.to_frames()
+        # Backward-compatibility for Hiero OTIO exporter.
+        # NTSC compatibility might introduce floating rates, when these are
+        # not exactly the same (23.976 vs 23.976024627685547)
+        # this will cause precision issue in computation.
+        # Currently round to 2 decimals for comparison,
+        # but this should always rescale after that.
+        rounded_av_rate = round(otio_available_range.start_time.rate, 2)
+        rounded_src_rate = round(otio_src_range.start_time.rate, 2)
+        if rounded_av_rate != rounded_src_rate:
+            conformed_src_in = otio_src_range.start_time.rescaled_to(
+                otio_available_range.start_time.rate
+            )
+            conformed_src_duration = otio_src_range.duration.rescaled_to(
+                otio_available_range.duration.rate
+            )
+            conformed_source_range = otio.opentime.TimeRange(
+                start_time=conformed_src_in,
+                duration=conformed_src_duration
+            )
+        else:
+            conformed_source_range = otio_src_range
 
-        # Convert to frames
-        src_start, src_end = otio_range_to_frame_range(otio_src_range)
-        src_start_h, src_end_h = otio_range_to_frame_range(otio_src_range_handles)
-
+        source_start = conformed_source_range.start_time
+        source_end = source_start + conformed_source_range.duration
+        handle_start = otio.opentime.RationalTime(
+            instance.data.get("handleStart", 0),
+            source_start.rate
+        )
+        handle_end = otio.opentime.RationalTime(
+            instance.data.get("handleEnd", 0),
+            source_start.rate
+        )
+        source_start_h = source_start - handle_start
+        source_end_h = source_end + handle_end
         data = {
-            "sourceStart": src_starting_from + src_start,
-            "sourceEnd": src_starting_from + src_end - 1,
-            "sourceStartH": src_starting_from + src_start_h,
-            "sourceEndH": src_starting_from + src_end_h - 1,
+            "sourceStart": source_start.to_frames(),
+            "sourceEnd": source_end.to_frames() - 1,
+            "sourceStartH": source_start_h.to_frames(),
+            "sourceEndH": source_end_h.to_frames() - 1,
         }
         instance.data.update(data)
         self.log.debug(f"Added source ranges: {pformat(data)}")
