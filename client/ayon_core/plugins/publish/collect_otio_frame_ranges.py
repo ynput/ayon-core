@@ -123,10 +123,7 @@ class CollectOtioRanges(pyblish.api.InstancePlugin):
         otio_src_range_handles = otio_range_with_handles(otio_src_range, instance)
 
         # Get source available start frame
-        src_starting_from = otio.opentime.to_frames(
-            otio_available_range.start_time,
-            otio_available_range.start_time.rate
-        )
+        src_starting_from = otio_available_range.to_frames()
 
         # Convert to frames
         src_start, src_end = otio_range_to_frame_range(otio_src_range)
