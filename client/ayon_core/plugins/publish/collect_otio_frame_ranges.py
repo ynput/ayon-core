@@ -101,8 +101,7 @@ class CollectOtioRanges(pyblish.api.InstancePlugin):
         tl_start_h, tl_end_h = otio_range_to_frame_range(otio_tl_range_handles)
 
         frame_start = workfile_start
-        frame_end = frame_start + otio.opentime.to_frames(
-            otio_tl_range.duration, otio_tl_range.duration.rate) - 1
+        frame_end = frame_start + otio_tl_range.duration.to_frames() - 1
 
         data = {
             "frameStart": frame_start,
