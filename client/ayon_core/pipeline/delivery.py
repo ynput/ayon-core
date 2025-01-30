@@ -27,6 +27,12 @@ def _copy_file(src_path, dst_path):
 
     if os.path.exists(dst_path):
         return
+
+    if os.path.isdir(src_path):
+        # Support representations that are directories
+        shutil.copytree(src_path, dst_path)
+        return
+
     try:
         create_hard_link(
             src_path,
