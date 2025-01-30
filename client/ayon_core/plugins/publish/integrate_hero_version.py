@@ -622,6 +622,13 @@ class IntegrateHeroVersion(
 
             self.log.debug("Folder already exists: \"{}\"".format(dirname))
 
+        if os.path.isdir(src_path):
+            # Support representations that are directories
+            self.log.debug(
+                f"Copying directory \"{src_path}\" to \"{dst_path}\"")
+            shutil.copytree(src_path, dst_path)
+            return
+
         if self.use_hardlinks:
             # First try hardlink and copy if paths are cross drive
             self.log.debug("Hardlinking file \"{}\" to \"{}\"".format(
