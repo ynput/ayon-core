@@ -1,5 +1,6 @@
 import os
 import logging
+import shutil
 import sys
 import errno
 
@@ -135,7 +136,10 @@ class FileTransaction:
 
             self._create_folder_for_file(dst)
 
-            if opts["mode"] == self.MODE_COPY:
+            if os.path.isdir(src):
+                self.log.debug(f"Copying directory ... {src} -> {dst}")
+                shutil.copytree(src, dst)
+            elif opts["mode"] == self.MODE_COPY:
                 self.log.debug("Copying file ... {} -> {}".format(src, dst))
                 copyfile(src, dst)
             elif opts["mode"] == self.MODE_HARDLINK:
