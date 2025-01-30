@@ -104,11 +104,13 @@ class CollectOtioRanges(pyblish.api.InstancePlugin):
 
         # Get timeline ranges
         otio_tl_range = otio_clip.range_in_parent()
-        otio_tl_range_handles = otio_range_with_handles(otio_tl_range, instance)
+        otio_tl_range_handles = otio_range_with_handles(
+            otio_tl_range, instance)
 
         # Convert to frames
         tl_start, tl_end = otio_range_to_frame_range(otio_tl_range)
-        tl_start_h, tl_end_h = otio_range_to_frame_range(otio_tl_range_handles)
+        tl_start_h, tl_end_h = otio_range_to_frame_range(
+            otio_tl_range_handles)
 
         frame_start = workfile_start
         frame_end = frame_start + otio_tl_range.duration.to_frames() - 1
@@ -175,7 +177,6 @@ class CollectOtioRanges(pyblish.api.InstancePlugin):
 
     def _collect_retimed_ranges(self, instance, otio_clip):
         """Handle retimed clip frame ranges."""
-        workfile_source_duration = instance.data.get("shotDurationFromSource")
         frame_start = instance.data["frameStart"]
 
         # Handle retimed clip frame range
