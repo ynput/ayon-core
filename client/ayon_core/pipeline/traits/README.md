@@ -166,6 +166,7 @@ to different packages based on their use:
 | | KeepOriginalLocation | Marks the representation to keep the original location of the file
 | | KeepOriginalName | Marks the representation to keep the original name of the file
 | | SourceApplication | Holds information about producing application, about it's version, variant and platform.
+| | IntendedUse | For specifying the intended use of the representation if it cannot be easily determined by other traits.
 | three dimensional | Spatial | Spatial information like up-axis, units and handedness.
 | | Geometry | Type trait to mark the representation as a geometry.
 | | Shader | Type trait to mark the representation as a Shader.
