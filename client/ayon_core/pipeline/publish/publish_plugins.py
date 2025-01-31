@@ -309,10 +309,12 @@ class OptionalPyblishPluginMixin(AYONPyblishPluginMixin):
         label = cls.label or cls.__name__
 
         return [
-            BoolDef("active",
-                    default=active,
-                    label=label,
-                    tooltip=cls.optional_tooltip)
+            BoolDef(
+                "active",
+                default=active,
+                label=label,
+                tooltip=cls.optional_tooltip,
+            )
         ]
 
     def is_active(self, data):
