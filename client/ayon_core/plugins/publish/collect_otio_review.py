@@ -55,10 +55,12 @@ class CollectOtioReview(pyblish.api.InstancePlugin):
 
         # loop all tracks and match with name in `reviewTrack`
         for track in otio_timeline.tracks:
-            # Skip the loop
+
+            # No review track defined, skip the loop
             if review_track_name is None:
                 break
 
+            # Not current review track, skip it.
             if review_track_name != track.name:
                 continue
 
