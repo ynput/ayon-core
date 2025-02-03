@@ -158,7 +158,6 @@ class CollectOtioSubsetResources(
 
         self.log.info(
             "frame_start-frame_end: {}-{}".format(frame_start, frame_end))
-        review_repre = None
 
         if is_sequence:
             # file sequence way
