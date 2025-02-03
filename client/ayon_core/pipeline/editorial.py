@@ -441,6 +441,15 @@ def get_media_range_with_retimes(otio_clip, handle_start, handle_end):
             in_frame += time_scalar
             frame_range.append(in_frame)
 
+        # Different editorial DCC might have different TimeWarp logic.
+        # The following logic assumes that the "lookup" list values are
+        # frame offsets relative to the current source frame number.
+        #
+        # media_source_range    |______1_____|______2______|______3______|
+        #
+        # media_retimed_range   |______2_____|______2______|______3______|
+        #
+        # TimeWarp lookup            +1             0             0
         for tw_idx, tw in enumerate(time_warp_nodes):
             for idx, frame_number in enumerate(frame_range):
                 # First timewarp, apply on media range
@@ -467,8 +476,31 @@ def get_media_range_with_retimes(otio_clip, handle_start, handle_end):
                     )
 
         # adjust range if needed
+        media_in_trimmed_before_tw = media_in_trimmed
         media_in_trimmed = max(min(frame_range), media_in)
         media_out_trimmed = min(max(frame_range), media_out)
+
+        # If TimeWarp changes the first frame of the soure range,
+        # we need to offset the first TimeWarp values accordingly.
+        #
+        # expected_range        |______2_____|______2______|______3______|
+        #
+        # EDITORIAL
+        # media_source_range    |______1_____|______2______|______3______|
+        #
+        # TimeWarp lookup             +1            0             0
+        #
+        # EXTRACTED PLATE
+        # plate_range           |______2_____|______3______|_ _ _ _ _ _ _|
+        #
+        # expected TimeWarp            0           -1            -1
+        if media_in_trimmed != media_in_trimmed_before_tw:
+            offset = media_in_trimmed_before_tw - media_in_trimmed
+            offset *= 1.0 / time_scalar
+            time_warp_nodes[0]["lookup"] = [
+                value + offset
+                for value in time_warp_nodes[0]["lookup"]
+            ]
 
     # adjust available handles if needed
     if (media_in_trimmed - media_in) < handle_start:
