@@ -464,6 +464,12 @@ def filter_pyblish_plugins(plugins):
         if getattr(plugin, "enabled", True) is False:
             plugins.remove(plugin)
 
+        # Pyblish already operated a filter based on host.
+        # But applying settings might have changed "hosts"
+        # value in plugin so re-filter.
+        elif not pyblish.plugin.host_is_compatible(plugin):
+            plugins.remove(plugin)
+
 
 def get_errored_instances_from_context(context, plugin=None):
     """Collect failed instances from pyblish context.
