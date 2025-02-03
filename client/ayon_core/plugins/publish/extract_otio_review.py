@@ -322,7 +322,7 @@ class ExtractOTIOReview(
         files = [f for f in collection]
         # single frame sequence
         if len(files) == 1:
-            files = files[0] 
+            files = files[0]
         ext = collection.format("{tail}")
         representation_data.update({
             "name": ext[1:],
