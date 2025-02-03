@@ -877,10 +877,11 @@ class Creator(BaseCreator):
         # If follow workfile, gather version from workfile path.
         if version is None and follow_workfile_version and current_workfile:
             workfile_version = get_version_from_path(current_workfile)
-            version = int(workfile_version)
+            if workfile_version is not None:
+                version = int(workfile_version)
 
         # Fill-up version with next version available.
-        elif version is None:
+        if version is None:
             versions = self.get_next_versions_for_instances(
                 [instance]
             )
