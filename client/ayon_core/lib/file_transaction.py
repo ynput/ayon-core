@@ -146,7 +146,7 @@ class FileTransaction:
             self.log.debug(f"Copying file ... {src} -> {dst}")
             copyfile(src, dst)
         elif opts["mode"] == self.MODE_HARDLINK:
-            self.log.debug("Hardlinking file ... {} -> {}".format(src, dst))
+            self.log.debug(f"Hardlinking file ... {src} -> {dst}")
             create_hard_link(src, dst)
 
         self._transferred.append(dst)
