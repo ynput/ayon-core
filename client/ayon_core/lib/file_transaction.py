@@ -11,7 +11,6 @@ if sys.platform == "win32":
 else:
     from shutil import copyfile
 
-import concurrent.futures
 
 class DuplicateDestinationError(ValueError):
     """Error raised when transfer destination already exists in queue.
