@@ -112,15 +112,15 @@ class FileTransaction:
         with concurrent.futures.ThreadPoolExecutor() as executor:
             backup_futures = []
             for dst, (src, _) in self._transfers.items():
-                backup_futures.append(executor.submit(self.backup_file, dst, src))
+                backup_futures.append(executor.submit(self._backup_file, dst, src))
             concurrent.futures.wait(backup_futures)
 
             transfer_futures = []
             for dst, (src, opts) in self._transfers.items():
-                transfer_futures.append(executor.submit(self.transfer_file, dst, src, opts))
+                transfer_futures.append(executor.submit(self._transfer_file, dst, src, opts))
             concurrent.futures.wait(transfer_futures)
 
-    def backup_file(self, dst, src):
+    def _backup_file(self, dst, src):
         self.log.debug(f"Checking file ... {src} -> {dst}")
         path_same = self._same_paths(src, dst)
         if path_same or not os.path.exists(dst):
@@ -132,7 +132,7 @@ class FileTransaction:
         self.log.debug(f"Backup existing file: {dst} -> {backup}")
         os.rename(dst, backup)
 
-    def transfer_file(self, dst, src, opts):
+    def _transfer_file(self, dst, src, opts):
         path_same = self._same_paths(src, dst)
         if path_same:
             self.log.debug(
