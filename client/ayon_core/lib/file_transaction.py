@@ -130,7 +130,7 @@ class FileTransaction:
         # Backup original file
         backup = dst + ".bak"
         self._backup_to_original[backup] = dst
-        self.log.debug("Backup existing file: {} -> {}".format(dst, backup))
+        self.log.debug(f"Backup existing file: {dst} -> {backup}")
         os.rename(dst, backup)
 
     def transfer_file(self, dst, src, opts):
