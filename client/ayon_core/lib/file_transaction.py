@@ -137,7 +137,7 @@ class FileTransaction:
         path_same = self._same_paths(src, dst)
         if path_same:
             self.log.debug(
-                "Source and destination are same files {} -> {}".format(src, dst))
+                f"Source and destination are same files {src} -> {dst}")
             return
 
         self._create_folder_for_file(dst)
