@@ -122,6 +122,16 @@ def run_subprocess(*args, **kwargs):
         )
         args = (new_arg, )
 
+    # Escape & on Windows in shell using ^&
+    if (
+        kwargs.get("shell") is True
+        and len(args) == 1
+        and isinstance(args[0], str)
+        and platform.system().lower() == "windows"
+    ):
+        new_arg = args[0].replace("&", "^&")
+        args = (new_arg, )
+
     # Get environents from kwarg or use current process environments if were
     # not passed.
     env = kwargs.get("env") or os.environ
