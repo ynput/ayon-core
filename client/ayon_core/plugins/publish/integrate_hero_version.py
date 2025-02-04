@@ -2,6 +2,14 @@ import os
 import copy
 import errno
 import shutil
+import sys
+# this is needed until speedcopy for linux is fixed
+if sys.platform == "win32":
+    from speedcopy import copyfile
+else:
+    from shutil import copyfile
+
+import concurrent.futures
 
 import clique
 import pyblish.api
@@ -415,11 +423,11 @@ class IntegrateHeroVersion(
             # Copy(hardlink) paths of source and destination files
             # TODO should we *only* create hardlinks?
             # TODO should we keep files for deletion until this is successful?
-            for src_path, dst_path in src_to_dst_file_paths:
-                self.copy_file(src_path, dst_path)
-
-            for src_path, dst_path in other_file_paths_mapping:
-                self.copy_file(src_path, dst_path)
+            with concurrent.futures.ThreadPoolExecutor() as executor:
+                file_futures = []
+                for src_path, dst_path in src_to_dst_file_paths + other_file_paths_mapping:
+                    file_futures.append(executor.submit(self.copy_file, src_path, dst_path))
+                concurrent.futures.wait(file_futures)
 
             # Update prepared representation etity data with files
             #   and integrate it to server.
@@ -648,7 +656,7 @@ class IntegrateHeroVersion(
             src_path, dst_path
         ))
 
-        shutil.copy(src_path, dst_path)
+        copyfile(src_path, dst_path)
 
     def version_from_representations(self, project_name, repres):
         for repre in repres:
