@@ -121,7 +121,7 @@ class FileTransaction:
             concurrent.futures.wait(transfer_futures)
 
     def backup_file(self, dst, src):
-        self.log.debug("Checking file ... {} -> {}".format(src, dst))
+        self.log.debug(f"Checking file ... {src} -> {dst}")
         path_same = self._same_paths(src, dst)
         if path_same or not os.path.exists(dst):
             return
