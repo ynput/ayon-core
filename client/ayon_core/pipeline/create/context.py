@@ -483,7 +483,7 @@ class CreateContext:
 
     def get_template_data(
         self, folder_path: Optional[str], task_name: Optional[str]
-    ) -> dict[str, Any]:
+    ) -> Dict[str, Any]:
         """Prepare template data for given context.
 
         Method is using cached entities and settings to prepare template data.
