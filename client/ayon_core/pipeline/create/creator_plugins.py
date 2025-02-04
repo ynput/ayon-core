@@ -562,6 +562,10 @@ class BaseCreator(ABC):
             instance
         )
 
+        cur_project_name = self.create_context.get_current_project_name()
+        if not project_entity and project_name == cur_project_name:
+            project_entity = self.create_context.get_current_project_entity()
+
         return get_product_name(
             project_name,
             task_name,
