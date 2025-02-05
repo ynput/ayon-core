@@ -120,10 +120,14 @@ class SourceApplication(TraitBase):
     description: ClassVar[str] = "Source Application Trait Model"
     id: ClassVar[str] = "ayon.meta.SourceApplication.v1"
     application: str = Field(..., title="Application Name")
-    variant: Optional[str] = Field(None, title="Application Variant (e.g. Pro)")
-    version: Optional[str] = Field(None, title="Application Version")
-    platform: Optional[str] = Field(None, title="Platform Name (e.g. Windows)")
-    host_name: Optional[str] = Field(None, title="AYON host Name if applicable")
+    variant: Optional[str] = Field(
+        None, title="Application Variant (e.g. Pro)")
+    version: Optional[str] = Field(
+        None, title="Application Version")
+    platform: Optional[str] = Field(
+        None, title="Platform Name (e.g. Windows)")
+    host_name: Optional[str] = Field(
+        None, title="AYON host Name if applicable")
 
 
 class IntendedUse(TraitBase):
