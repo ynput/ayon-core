@@ -2,6 +2,7 @@ import os
 import logging
 import sys
 import errno
+from concurrent.futures import ThreadPoolExecutor
 
 from ayon_core.lib import create_hard_link
 
@@ -10,6 +11,11 @@ if sys.platform == "win32":
     from speedcopy import copyfile
 else:
     from shutil import copyfile
+
+from .threadpool import as_completed_stop_and_raise_on_error
+
+
+log = logging.getLogger(__name__)
 
 
 class DuplicateDestinationError(ValueError):
@@ -108,32 +114,23 @@ class FileTransaction:
 
         self._transfers[dst] = (src, opts)
 
-
-    def _process_futures(self, futures):
-        """Wait for futures and raise exceptions if any task fails."""
-        try:
-            for future in concurrent.futures.as_completed(futures):
-                future.result()  # If an exception occurs, it will be raised here
-        except Exception as e:
-            print(f"File Transaction task failed with error: {e}", file=sys.stderr)
-            raise
-
     def process(self):
-        try:
-            with concurrent.futures.ThreadPoolExecutor(max_workers=min(8, len(self._transfers))) as executor:
-                # Submit backup tasks
-                backup_futures = [executor.submit(self._backup_file, dst, src) for dst, (src, _) in
-                                  self._transfers.items()]
-                self._process_futures(backup_futures)
+        with ThreadPoolExecutor(max_workers=8) as executor:
+            # Submit backup tasks
+            backup_futures = [
+                executor.submit(self._backup_file, dst, src)
+                for dst, (src, _) in self._transfers.items()
+            ]
+            as_completed_stop_and_raise_on_error(
+                executor, backup_futures, logger=self.log)
 
-                # Submit transfer tasks
-                transfer_futures = [executor.submit(self._transfer_file, dst, src, opts) for dst, (src, opts) in
-                                    self._transfers.items()]
-                self._process_futures(transfer_futures)
-
-        except Exception as e:
-            print(f"File Transaction Failed: {e}", file=sys.stderr)
-            sys.exit(1)
+            # Submit transfer tasks
+            transfer_futures = [
+                executor.submit(self._transfer_file, dst, src, opts)
+                for dst, (src, opts) in self._transfers.items()
+            ]
+            as_completed_stop_and_raise_on_error(
+                executor, transfer_futures, logger=self.log)
 
     def _backup_file(self, dst, src):
         self.log.debug(f"Checking file ... {src} -> {dst}")
