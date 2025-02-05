@@ -47,7 +47,7 @@ class MultiSelectionComboBox(QtWidgets.QComboBox):
     top_bottom_padding = 2
     left_right_padding = 3
     left_offset = 4
-    top_bottom_margins = 2
+    top_bottom_margins = 1
     item_spacing = 5
 
     item_bg_color = QtGui.QColor("#31424e")
@@ -250,7 +250,9 @@ class MultiSelectionComboBox(QtWidgets.QComboBox):
                     )
                     left_x = bg_rect.right() + self.item_spacing
 
-                    bg_rect.setHeight(label_height + (2 * self.top_bottom_padding))
+                    bg_rect.setHeight(
+                        label_height + (2 * self.top_bottom_padding)
+                    )
                     bg_rect.moveTop(bg_rect.top() + self.top_bottom_margins)
 
                     path = QtGui.QPainterPath()
