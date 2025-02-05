@@ -208,7 +208,8 @@ class MultiSelectionComboBox(QtWidgets.QComboBox):
             draw_text = False
         if draw_text:
             option.currentText = combotext
-            option.palette.setCurrentColorGroup(QtGui.QPalette.Disabled)
+            # Draw text as disabled -> to mimic placeholder color
+            option.state &= ~QtWidgets.QStyle.State_Enabled
             painter.drawControl(QtWidgets.QStyle.CE_ComboBoxLabel, option)
             return
 
