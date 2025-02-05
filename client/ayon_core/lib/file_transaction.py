@@ -15,9 +15,6 @@ else:
 from .threadpool import as_completed_stop_and_raise_on_error
 
 
-log = logging.getLogger(__name__)
-
-
 class DuplicateDestinationError(ValueError):
     """Error raised when transfer destination already exists in queue.
 
