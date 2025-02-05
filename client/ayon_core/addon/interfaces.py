@@ -169,18 +169,14 @@ class ITrayAddon(AYONInterface):
         prepared
 
         """
-        raise NotImplementedError
 
     @abstractmethod
     def tray_menu(self, tray_menu: QtWidgets.QMenu) -> None:
         """Add addon's action to tray menu."""
-        raise NotImplementedError
-
 
     @abstractmethod
     def tray_start(self) -> None:
         """Start procedure in tray tool."""
-        raise NotImplementedError
 
     @abstractmethod
     def tray_exit(self) -> None:
@@ -189,7 +185,6 @@ class ITrayAddon(AYONInterface):
         This is place where all threads should be shut.
 
         """
-        raise NotImplementedError
 
     def execute_in_main_thread(self, callback: Callable) -> None:
         """Pushes callback to the queue or process 'callback' on a main thread.
@@ -282,12 +277,10 @@ class ITrayAction(ITrayAddon):
     @abstractmethod
     def label(self) -> str:
         """Service label showed in menu."""
-        raise NotImplementedError
 
     @abstractmethod
     def on_action_trigger(self) -> None:
         """What happens on actions click."""
-        raise NotImplementedError
 
     def tray_menu(self, tray_menu: QtWidgets.QMenu) -> None:
         """Add action to tray menu."""
@@ -326,7 +319,6 @@ class ITrayService(ITrayAddon):
     @abstractmethod
     def label(self) -> str:
         """Service label showed in menu."""
-        raise NotImplementedError
 
     # TODO (Illicit): be able to get any sort of information to show/print
     # @abstractmethod
@@ -448,4 +440,3 @@ class ITraits(AYONInterface):
             list[Type[TraitBase]]: Traits for the addon.
 
         """
-        raise NotImplementedError
