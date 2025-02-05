@@ -29,10 +29,12 @@ class GapPolicy(Enum):
         hold (int): Gaps are interpreted as hold frames (last existing frames).
         black (int): Gaps are interpreted as black frames.
     """
+
     forbidden = auto()
     missing = auto()
     hold = auto()
     black = auto()
+
 
 class FrameRanged(TraitBase):
     """Frame ranged trait model.
@@ -63,8 +65,8 @@ class FrameRanged(TraitBase):
         frame_out (int): Frame out.
         frames_per_second (str): Frames per second.
         step (int): Step.
-
     """
+
     name: ClassVar[str] = "FrameRanged"
     description: ClassVar[str] = "Frame Ranged Trait"
     id: ClassVar[str] = "ayon.time.FrameRanged.v1"
@@ -91,8 +93,8 @@ class Handles(TraitBase):
         inclusive (bool): Handles are inclusive.
         frame_start_handle (int): Frame start handle.
         frame_end_handle (int): Frame end handle.
-
     """
+
     name: ClassVar[str] = "Handles"
     description: ClassVar[str] = "Handles Trait"
     id: ClassVar[str] = "ayon.time.Handles.v1"
@@ -102,6 +104,7 @@ class Handles(TraitBase):
         0, title="Frame Start Handle")
     frame_end_handle: Optional[int] = Field(
         0, title="Frame End Handle")
+
 
 class Sequence(TraitBase):
     """Sequence trait model.
@@ -122,8 +125,8 @@ class Sequence(TraitBase):
             named group.
         frame_spec (str): Frame list specification of frames. This takes
             string like "1-10,20-30,40-50" etc.
-
     """
+
     name: ClassVar[str] = "Sequence"
     description: ClassVar[str] = "Sequence Trait Model"
     id: ClassVar[str] = "ayon.time.Sequence.v1"
@@ -205,7 +208,6 @@ class Sequence(TraitBase):
                 handles_frame_end)
 
         self.validate_frame_padding(file_locs)
-
 
     def validate_frame_list(  # noqa: C901
             self,
@@ -330,7 +332,6 @@ class Sequence(TraitBase):
             frames.extend(range(int(start), int(end) + 1))
         return frames
 
-
     @staticmethod
     def _get_collection(
         file_locations: FileLocations,
@@ -410,6 +411,7 @@ class Sequence(TraitBase):
 # Do we need one for drop and non-drop frame?
 class SMPTETimecode(TraitBase):
     """SMPTE Timecode trait model."""
+
     name: ClassVar[str] = "Timecode"
     description: ClassVar[str] = "SMPTE Timecode Trait"
     id: ClassVar[str] = "ayon.time.SMPTETimecode.v1"
@@ -421,6 +423,7 @@ class Static(TraitBase):
 
     Used to define static time (single frame).
     """
+
     name: ClassVar[str] = "Static"
     description: ClassVar[str] = "Static Time Trait"
     id: ClassVar[str] = "ayon.time.Static.v1"
