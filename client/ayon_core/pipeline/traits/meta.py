@@ -1,5 +1,7 @@
 """Metadata traits."""
-from typing import ClassVar, List
+from __future__ import annotations
+
+from typing import ClassVar, List, Optional
 
 from pydantic import Field
 
@@ -102,15 +104,26 @@ class KeepOriginalName(TraitBase):
 
 
 class SourceApplication(TraitBase):
-    """Metadata about the source (producing) application."""
+    """Metadata about the source (producing) application.
+
+    This can be useful in cases, where this information is
+    needed but it cannot be determined from other means - like
+    .txt files used for various motion tracking applications that
+    must be interpreted by the loader.
+
+    Note that this is not really connected to any logic in
+    ayon-applications addon.
+
+    """
 
     name: ClassVar[str] = "SourceApplication"
     description: ClassVar[str] = "Source Application Trait Model"
     id: ClassVar[str] = "ayon.meta.SourceApplication.v1"
     application: str = Field(..., title="Application Name")
-    variant: str = Field(..., title="Application Variant (e.g. Pro)")
-    version: str = Field(..., title="Application Version")
-    platform: str = Field(..., title="Platform Name")
+    variant: Optional[str] = Field(None, title="Application Variant (e.g. Pro)")
+    version: Optional[str] = Field(None, title="Application Version")
+    platform: Optional[str] = Field(None, title="Platform Name (e.g. Windows)")
+    host_name: Optional[str] = Field(None, title="AYON host Name if applicable")
 
 
 class IntendedUse(TraitBase):
