@@ -21,7 +21,7 @@ from ayon_api.operations import (
 from ayon_api.utils import create_entity_id
 
 from ayon_core.lib import create_hard_link, source_hash
-from ayon_core.lib.threadpool import as_completed_stop_and_raise_on_error
+from ayon_core.lib.file_transaction import as_completed_stop_and_raise_on_error
 from ayon_core.pipeline.publish import (
     get_publish_template_name,
     OptionalPyblishPluginMixin,
