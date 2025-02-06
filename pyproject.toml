@@ -5,7 +5,7 @@
 
 [tool.poetry]
 name = "ayon-core"
-version = "1.0.12+dev"
+version = "1.1.0+dev"
 description = ""
 authors = ["Ynput Team <team@ynput.io>"]
 readme = "README.md"
@@ -25,7 +25,7 @@ pytest = "^8.0"
 pytest-print = "^1.0"
 ayon-python-api = "^1.0"
 # linting dependencies
-ruff = "^0.3.3"
+ruff = "^0.9.3"
 pre-commit = "^4"
 codespell = "^2.2.6"
 semver = "^3.0.2"
@@ -79,8 +79,7 @@ pydocstyle.convention = "google"
 select = ["ALL"]
 ignore = [
     "PTH",
-    "ANN101",
-    "ANN102",
+    "ANN101", # must be set in older version of ruff
     "ANN204",
     "COM812",
     "S603",
@@ -90,7 +89,9 @@ ignore = [
     "UP007",  # ..^
     "UP035",  # ..
     "ARG002",
-    "INP001"  # add `__init__.py` to namespaced package
+    "INP001", # add `__init__.py` to namespaced package
+    "FIX002", # FIX all TODOs
+    "TD003",  # missing issue link
 ]
 
 # Allow fix for all enabled rules (when `--fix`) is provided.

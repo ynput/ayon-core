@@ -27,7 +27,6 @@ class TraitBase(ABC, BaseModel):
     It is using Pydantic BaseModel for serialization and validation.
     ``id``, ``name``, and ``description`` are abstract attributes that must be
     implemented in the derived classes.
-
     """
 
     model_config = ConfigDict(
@@ -118,6 +117,7 @@ class UpgradableTraitError(Generic[T], Exception):
     trait: T
     old_data: dict
 
+
 class LooseMatchingTraitError(Generic[T], Exception):
     """Loose matching trait exception.
 
@@ -127,6 +127,7 @@ class LooseMatchingTraitError(Generic[T], Exception):
 
     found_trait: T
     expected_id: str
+
 
 class TraitValidationError(Exception):
     """Trait validation error exception.

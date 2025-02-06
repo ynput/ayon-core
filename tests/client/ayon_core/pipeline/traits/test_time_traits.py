@@ -15,7 +15,6 @@ from ayon_core.pipeline.traits import (
 from ayon_core.pipeline.traits.trait import TraitValidationError
 
 
-
 def test_sequence_validations() -> None:
     """Test Sequence trait validation."""
     file_locations_list = [

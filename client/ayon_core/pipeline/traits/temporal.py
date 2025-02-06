@@ -2,20 +2,18 @@
 from __future__ import annotations
 
 import contextlib
+import re
 from enum import Enum, auto
+from re import Pattern
 from typing import TYPE_CHECKING, ClassVar, Optional, Union
 
 import clique
 from pydantic import Field, field_validator
-import re
-from re import Pattern
 
 from .trait import MissingTraitError, TraitBase, TraitValidationError
 
 if TYPE_CHECKING:
-    
 
-    from pathlib import Path
     from .content import FileLocations
     from .representation import Representation
 
@@ -31,10 +29,12 @@ class GapPolicy(Enum):
         hold (int): Gaps are interpreted as hold frames (last existing frames).
         black (int): Gaps are interpreted as black frames.
     """
+
     forbidden = auto()
     missing = auto()
     hold = auto()
     black = auto()
+
 
 class FrameRanged(TraitBase):
     """Frame ranged trait model.
@@ -65,8 +65,8 @@ class FrameRanged(TraitBase):
         frame_out (int): Frame out.
         frames_per_second (str): Frames per second.
         step (int): Step.
-
     """
+
     name: ClassVar[str] = "FrameRanged"
     description: ClassVar[str] = "Frame Ranged Trait"
     id: ClassVar[str] = "ayon.time.FrameRanged.v1"
@@ -93,8 +93,8 @@ class Handles(TraitBase):
         inclusive (bool): Handles are inclusive.
         frame_start_handle (int): Frame start handle.
         frame_end_handle (int): Frame end handle.
-
     """
+
     name: ClassVar[str] = "Handles"
     description: ClassVar[str] = "Handles Trait"
     id: ClassVar[str] = "ayon.time.Handles.v1"
@@ -104,6 +104,7 @@ class Handles(TraitBase):
         0, title="Frame Start Handle")
     frame_end_handle: Optional[int] = Field(
         0, title="Frame End Handle")
+
 
 class Sequence(TraitBase):
     """Sequence trait model.
@@ -124,21 +125,24 @@ class Sequence(TraitBase):
             named group.
         frame_spec (str): Frame list specification of frames. This takes
             string like "1-10,20-30,40-50" etc.
-
     """
+
     name: ClassVar[str] = "Sequence"
     description: ClassVar[str] = "Sequence Trait Model"
     id: ClassVar[str] = "ayon.time.Sequence.v1"
     gaps_policy: Optional[GapPolicy] = Field(
         default=GapPolicy.forbidden, title="Gaps Policy")
     frame_padding: int = Field(..., title="Frame Padding")
-    frame_regex: Optional[Union[Pattern, str]] = Field(default=None, title="Frame Regex")
-    frame_spec: Optional[str] = Field(default=None, title="Frame Specification")
+    frame_regex: Optional[Union[Pattern, str]] = Field(
+        default=None, title="Frame Regex")
+    frame_spec: Optional[str] = Field(default=None,
+        title="Frame Specification")
 
     @field_validator("frame_regex")
     @classmethod
     def validate_frame_regex(
-        cls, v: Optional[Union[Pattern, str]]) -> Optional[Union[Pattern, str]]:
+        cls, v: Optional[Union[Pattern, str]]
+    ) -> Optional[Union[Pattern, str]]:
         """Validate frame regex."""
         _v = v
         if v and isinstance(v, Pattern):
@@ -204,9 +208,8 @@ class Sequence(TraitBase):
                 handles_frame_end)
 
         self.validate_frame_padding(file_locs)
-        
 
-    def validate_frame_list(
+    def validate_frame_list(  # noqa: C901
             self,
             file_locations: FileLocations,
             frame_start: Optional[int] = None,
@@ -245,7 +248,7 @@ class Sequence(TraitBase):
                 frame_regex = re.compile(self.frame_regex)
             elif isinstance(self.frame_regex, Pattern):
                 frame_regex = self.frame_regex
-                
+
             frames = self.get_frame_list(
                     file_locations, frame_regex)
         else:
@@ -329,7 +332,6 @@ class Sequence(TraitBase):
             frames.extend(range(int(start), int(end) + 1))
         return frames
 
-
     @staticmethod
     def _get_collection(
         file_locations: FileLocations,
@@ -391,10 +393,10 @@ class Sequence(TraitBase):
         """
         src_collection = Sequence._get_collection(file_locations, regex)
         return list(src_collection.indexes)
-    
+
     def get_frame_pattern(self) -> Pattern:
         """Get frame regex as pattern.
-        
+
         If the regex is string, it will compile it to the pattern.
 
         """
@@ -405,9 +407,11 @@ class Sequence(TraitBase):
         return re.compile(
             r"\.(?P<index>(?P<padding>0*)\d+)\.\D+\d?$")
 
+
 # Do we need one for drop and non-drop frame?
 class SMPTETimecode(TraitBase):
     """SMPTE Timecode trait model."""
+
     name: ClassVar[str] = "Timecode"
     description: ClassVar[str] = "SMPTE Timecode Trait"
     id: ClassVar[str] = "ayon.time.SMPTETimecode.v1"
@@ -418,8 +422,8 @@ class Static(TraitBase):
     """Static time trait.
 
     Used to define static time (single frame).
-
     """
+
     name: ClassVar[str] = "Static"
     description: ClassVar[str] = "Static Time Trait"
     id: ClassVar[str] = "ayon.time.Static.v1"
