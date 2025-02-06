@@ -54,7 +54,7 @@ from ayon_core.pipeline.plugin_discover import (
 from ayon_core.pipeline.create import (
     discover_legacy_creator_plugins,
     CreateContext,
-    HiddenCreator
+    HiddenCreator,
 )
 
 _NOT_SET = object()
