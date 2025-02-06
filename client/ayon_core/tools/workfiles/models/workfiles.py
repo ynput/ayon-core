@@ -184,9 +184,10 @@ class WorkareaModel:
             return items
 
         for filename in os.listdir(workdir):
+            # We want to support both files and folders. e.g. Silhoutte uses
+            # folders as its project files. So we do not check whether it is
+            # a file or not.
             filepath = os.path.join(workdir, filename)
-            if not os.path.isfile(filepath):
-                continue
 
             ext = os.path.splitext(filename)[1].lower()
             if ext not in self._extensions:
