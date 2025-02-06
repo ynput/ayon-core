@@ -147,7 +147,6 @@ class ExtractOTIOReview(
                 self.actual_fps = available_range.duration.rate
                 start = src_range.start_time.rescaled_to(self.actual_fps)
                 duration = src_range.duration.rescaled_to(self.actual_fps)
-                src_frame_start = src_range.start_time.to_frames()
 
                 # Temporary.
                 # Some AYON custom OTIO exporter were implemented with
@@ -157,7 +156,7 @@ class ExtractOTIOReview(
                 if (
                     is_clip_from_media_sequence(r_otio_cl)
                     and available_range_start_frame == media_ref.start_frame
-                    and src_frame_start < media_ref.start_frame
+                    and start.to_frames() < media_ref.start_frame
                 ):
                     available_range = otio.opentime.TimeRange(
                         otio.opentime.RationalTime(0, rate=self.actual_fps),
@@ -209,13 +208,9 @@ class ExtractOTIOReview(
                 # File sequence way
                 if is_sequence:
                     # Remap processing range to input file sequence.
-                    processing_range_as_frames = (
-                        processing_range.start_time.to_frames(),
-                        processing_range.end_time_inclusive().to_frames()
-                    )
                     first, last = remap_range_on_file_sequence(
                         r_otio_cl,
-                        processing_range_as_frames,
+                        processing_range,
                     )
                     input_fps = processing_range.start_time.rate
 
@@ -325,6 +320,9 @@ class ExtractOTIOReview(
         end = max(collection.indexes)
 
         files = [f for f in collection]
+        # single frame sequence
+        if len(files) == 1:
+            files = files[0]
         ext = collection.format("{tail}")
         representation_data.update({
             "name": ext[1:],

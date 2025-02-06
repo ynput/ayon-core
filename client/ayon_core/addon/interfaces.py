@@ -1,7 +1,6 @@
-"""Interfaces for AYON addons."""
+"""Addon interfaces for AYON."""
 from __future__ import annotations
 
-import logging
 from abc import ABCMeta, abstractmethod
 from typing import TYPE_CHECKING, Callable, Optional, Type
 
@@ -10,8 +9,9 @@ from ayon_core import resources
 if TYPE_CHECKING:
     from qtpy import QtWidgets
 
-    from ayon_core.addon import AddonsManager
+    from ayon_core.addon.base import AddonsManager
     from ayon_core.pipeline.traits import TraitBase
+    from ayon_core.tools.tray.ui.tray import TrayManager
 
 
 class _AYONInterfaceMeta(ABCMeta):
@@ -36,10 +36,6 @@ class AYONInterface(metaclass=_AYONInterfaceMeta):
     """
 
     log = None
-
-    def __init__(self):
-        """Initialize interface."""
-        self.log = logging.getLogger(self.__class__.__name__)
 
 
 class IPluginPaths(AYONInterface):
@@ -162,7 +158,7 @@ class ITrayAddon(AYONInterface):
     """
     manager: AddonsManager
     tray_initialized = False
-    _tray_manager = None
+    _tray_manager: TrayManager = None
     _admin_submenu = None
 
     @abstractmethod
@@ -175,18 +171,14 @@ class ITrayAddon(AYONInterface):
         prepared
 
         """
-        raise NotImplementedError
 
     @abstractmethod
     def tray_menu(self, tray_menu: QtWidgets.QMenu) -> None:
         """Add addon's action to tray menu."""
-        raise NotImplementedError
-
 
     @abstractmethod
     def tray_start(self) -> None:
         """Start procedure in tray tool."""
-        raise NotImplementedError
 
     @abstractmethod
     def tray_exit(self) -> None:
@@ -195,7 +187,6 @@ class ITrayAddon(AYONInterface):
         This is place where all threads should be shut.
 
         """
-        raise NotImplementedError
 
     def execute_in_main_thread(self, callback: Callable) -> None:
         """Pushes callback to the queue or process 'callback' on a main thread.
@@ -208,6 +199,8 @@ class ITrayAddon(AYONInterface):
 
         """
         if not self.tray_initialized:
+            # TODO (Illicit): Called without initialized tray, still
+            #   main thread needed.
             try:
                 callback()
 
@@ -286,12 +279,10 @@ class ITrayAction(ITrayAddon):
     @abstractmethod
     def label(self) -> str:
         """Service label showed in menu."""
-        raise NotImplementedError
 
     @abstractmethod
     def on_action_trigger(self) -> None:
         """What happens on actions click."""
-        raise NotImplementedError
 
     def tray_menu(self, tray_menu: QtWidgets.QMenu) -> None:
         """Add action to tray menu."""
@@ -330,7 +321,11 @@ class ITrayService(ITrayAddon):
     @abstractmethod
     def label(self) -> str:
         """Service label showed in menu."""
-        raise NotImplementedError
+
+    # TODO (Illicit): be able to get any sort of information to show/print
+    # @abstractmethod
+    # def get_service_info(self):
+    #     pass
 
     @staticmethod
     def services_submenu(tray_menu: QtWidgets.QMenu) -> QtWidgets.QMenu:
@@ -423,7 +418,6 @@ class IHostAddon(AYONInterface):
     @abstractmethod
     def host_name(self) -> str:
         """Name of host which addon represents."""
-        raise NotImplementedError
 
     def get_workfile_extensions(self) -> list[str]:
         """Define workfile extensions for host.
@@ -448,4 +442,3 @@ class ITraits(AYONInterface):
             list[Type[TraitBase]]: Traits for the addon.
 
         """
-        raise NotImplementedError

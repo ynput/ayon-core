@@ -24,8 +24,8 @@ class Spatial(TraitBase):
         up_axis (str): Up axis.
         handedness (str): Handedness.
         meters_per_unit (float): Meters per unit.
-
     """
+
     id: ClassVar[str] = "ayon.3d.Spatial.v1"
     name: ClassVar[str] = "Spatial"
     description: ClassVar[str] = "Spatial trait model."
@@ -46,6 +46,7 @@ class Geometry(TraitBase):
     name: ClassVar[str] = "Geometry"
     description: ClassVar[str] = "Geometry trait model."
 
+
 class Shader(TraitBase):
     """Shader trait model.
 
@@ -58,6 +59,7 @@ class Shader(TraitBase):
     name: ClassVar[str] = "Shader"
     description: ClassVar[str] = "Shader trait model."
 
+
 class Lighting(TraitBase):
     """Lighting trait model.
 
@@ -69,6 +71,7 @@ class Lighting(TraitBase):
     id: ClassVar[str] = "ayon.3d.Lighting.v1"
     name: ClassVar[str] = "Lighting"
     description: ClassVar[str] = "Lighting trait model."
+
 
 class IESProfile(TraitBase):
     """IES profile (IES-LM-64) type trait model.

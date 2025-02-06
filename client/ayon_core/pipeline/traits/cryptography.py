@@ -16,6 +16,7 @@ class DigitallySigned(TraitBase):
     Attributes:
         signature (str): Digital signature.
     """
+
     id: ClassVar[str] = "ayon.cryptography.DigitallySigned.v1"
     name: ClassVar[str] = "DigitallySigned"
     description: ClassVar[str] = "Digitally signed trait."
@@ -29,6 +30,7 @@ class PGPSigned(DigitallySigned):
     Attributes:
         signature (str): PGP signature.
     """
+
     id: ClassVar[str] = "ayon.cryptography.PGPSigned.v1"
     name: ClassVar[str] = "PGPSigned"
     description: ClassVar[str] = "PGP signed trait."

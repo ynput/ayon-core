@@ -1008,8 +1008,8 @@ DEFAULT_PUBLISH_VALUES = {
             {"name": "model", "order": 100},
             {"name": "assembly", "order": 150},
             {"name": "groom", "order": 175},
-            {"name": "look", "order": 300},
-            {"name": "rig", "order": 100},
+            {"name": "look", "order": 200},
+            {"name": "rig", "order": 300},
             # Shot layers
             {"name": "layout", "order": 200},
             {"name": "animation", "order": 300},
@@ -1033,7 +1033,8 @@ DEFAULT_PUBLISH_VALUES = {
                     "maya",
                     "nuke",
                     "photoshop",
-                    "substancepainter"
+                    "substancepainter",
+                    "silhouette",
                 ],
                 "enabled": True,
                 "optional": False,
@@ -1053,7 +1054,8 @@ DEFAULT_PUBLISH_VALUES = {
                     "harmony",
                     "photoshop",
                     "aftereffects",
-                    "fusion"
+                    "fusion",
+                    "silhouette",
                 ],
                 "enabled": True,
                 "optional": True,

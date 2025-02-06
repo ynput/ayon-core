@@ -1,5 +1,7 @@
 """Metadata traits."""
-from typing import ClassVar, List
+from __future__ import annotations
+
+from typing import ClassVar, List, Optional
 
 from pydantic import Field
 
@@ -78,7 +80,7 @@ class Variant(TraitBase):
 
 class KeepOriginalLocation(TraitBase):
     """Keep files in its original location.
-    
+
     Note:
         This is not a persistent trait.
 
@@ -86,16 +88,58 @@ class KeepOriginalLocation(TraitBase):
     name: ClassVar[str] = "KeepOriginalLocation"
     description: ClassVar[str] = "Keep Original Location Trait Model"
     id: ClassVar[str] = "ayon.meta.KeepOriginalLocation.v1"
-    persistent: bool = Field(False, title="Persistent")
+    persistent: bool = Field(default=False, title="Persistent")
 
 class KeepOriginalName(TraitBase):
     """Keep files in its original name.
-    
+
     Note:
         This is not a persistent trait.
-
     """
+
     name: ClassVar[str] = "KeepOriginalName"
     description: ClassVar[str] = "Keep Original Name Trait Model"
     id: ClassVar[str] = "ayon.meta.KeepOriginalName.v1"
-    persistent: bool = Field(False, title="Persistent")
+    persistent: bool = Field(default=False, title="Persistent")
+
+
+class SourceApplication(TraitBase):
+    """Metadata about the source (producing) application.
+
+    This can be useful in cases, where this information is
+    needed but it cannot be determined from other means - like
+    .txt files used for various motion tracking applications that
+    must be interpreted by the loader.
+
+    Note that this is not really connected to any logic in
+    ayon-applications addon.
+
+    """
+
+    name: ClassVar[str] = "SourceApplication"
+    description: ClassVar[str] = "Source Application Trait Model"
+    id: ClassVar[str] = "ayon.meta.SourceApplication.v1"
+    application: str = Field(..., title="Application Name")
+    variant: Optional[str] = Field(
+        None, title="Application Variant (e.g. Pro)")
+    version: Optional[str] = Field(
+        None, title="Application Version")
+    platform: Optional[str] = Field(
+        None, title="Platform Name (e.g. Windows)")
+    host_name: Optional[str] = Field(
+        None, title="AYON host Name if applicable")
+
+
+class IntendedUse(TraitBase):
+    """Intended use of the representation.
+
+    This trait describes the intended use of the representation. It
+    can be used in cases, where the other traits are not enough to
+    describe the intended use. For example txt file with tracking
+    points can be used as corner pin in After Effect but not in Nuke.
+    """
+
+    name: ClassVar[str] = "IntendedUse"
+    description: ClassVar[str] = "Intended Use Trait Model"
+    id: ClassVar[str] = "ayon.meta.IntendedUse.v1"
+    use: str = Field(..., title="Intended Use")

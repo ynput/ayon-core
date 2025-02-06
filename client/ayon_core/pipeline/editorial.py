@@ -1,6 +1,7 @@
 import os
 import re
 import clique
+import math
 
 import opentimelineio as otio
 from opentimelineio import opentime as _ot
@@ -196,11 +197,11 @@ def is_clip_from_media_sequence(otio_clip):
     return is_input_sequence or is_input_sequence_legacy
 
 
-def remap_range_on_file_sequence(otio_clip, in_out_range):
+def remap_range_on_file_sequence(otio_clip, otio_range):
     """
     Args:
         otio_clip (otio.schema.Clip): The OTIO clip to check.
-        in_out_range (tuple[float, float]): The in-out range to remap.
+        otio_range (otio.schema.TimeRange): The trim range to apply.
 
     Returns:
         tuple(int, int): The remapped range as discrete frame number.
@@ -211,17 +212,24 @@ def remap_range_on_file_sequence(otio_clip, in_out_range):
     if not is_clip_from_media_sequence(otio_clip):
         raise ValueError(f"Cannot map on non-file sequence clip {otio_clip}.")
 
-    try:
-        media_in_trimmed, media_out_trimmed = in_out_range
-
-    except ValueError as error:
-        raise ValueError("Invalid in_out_range provided.") from error
-
     media_ref = otio_clip.media_reference
     available_range = otio_clip.available_range()
-    source_range = otio_clip.source_range
     available_range_rate = available_range.start_time.rate
-    media_in = available_range.start_time.value
+
+    # Backward-compatibility for Hiero OTIO exporter.
+    # NTSC compatibility might introduce floating rates, when these are
+    # not exactly the same (23.976 vs 23.976024627685547)
+    # this will cause precision issue in computation.
+    # Currently round to 2 decimals for comparison,
+    # but this should always rescale after that.
+    rounded_av_rate = round(available_range_rate, 2)
+    rounded_range_rate = round(otio_range.start_time.rate, 2)
+
+    if rounded_av_rate != rounded_range_rate:
+        raise ValueError("Inconsistent range between clip and provided clip")
+
+    source_range = otio_clip.source_range
+    media_in = available_range.start_time
     available_range_start_frame = (
         available_range.start_time.to_frames()
     )
@@ -231,19 +239,32 @@ def remap_range_on_file_sequence(otio_clip, in_out_range):
     # source range for image sequence. Following code maintain
     # backward-compatibility by adjusting media_in
     # while we are updating those.
+    conformed_src_in = source_range.start_time.rescaled_to(
+        available_range_rate
+    )
     if (
         is_clip_from_media_sequence(otio_clip)
         and available_range_start_frame == media_ref.start_frame
-        and source_range.start_time.to_frames() < media_ref.start_frame
+        and conformed_src_in.to_frames() < media_ref.start_frame
     ):
-        media_in = 0
+        media_in = otio.opentime.RationalTime(
+            0, rate=available_range_rate
+        )
 
+    src_offset_in = otio_range.start_time - media_in
     frame_in = otio.opentime.RationalTime.from_frames(
-        media_in_trimmed - media_in + media_ref.start_frame,
+        media_ref.start_frame + src_offset_in.to_frames(),
         rate=available_range_rate,
     ).to_frames()
+
+    # e.g.:
+    # duration = 10 frames at 24fps
+    # if frame_in = 1001 then
+    # frame_out = 1010
+    offset_duration = max(0, otio_range.duration.to_frames() - 1)
+
     frame_out = otio.opentime.RationalTime.from_frames(
-        media_out_trimmed - media_in + media_ref.start_frame,
+        frame_in + offset_duration,
         rate=available_range_rate,
     ).to_frames()
 
@@ -260,21 +281,6 @@ def get_media_range_with_retimes(otio_clip, handle_start, handle_end):
     # to frame numbers from source sequence.
     media_ref = otio_clip.media_reference
     is_input_sequence = is_clip_from_media_sequence(otio_clip)
-
-    # Temporary.
-    # Some AYON custom OTIO exporter were implemented with relative
-    # source range for image sequence. Following code maintain
-    # backward-compatibility by adjusting available range
-    # while we are updating those.
-    if (
-        is_input_sequence
-        and available_range.start_time.to_frames() == media_ref.start_frame
-        and source_range.start_time.to_frames() < media_ref.start_frame
-    ):
-        available_range = _ot.TimeRange(
-            _ot.RationalTime(0, rate=available_range_rate),
-            available_range.duration,
-        )
 
     # Conform source range bounds to available range rate
     # .e.g. embedded TC of (3600 sec/ 1h), duration 100 frames
@@ -320,10 +326,24 @@ def get_media_range_with_retimes(otio_clip, handle_start, handle_end):
     else:
         conformed_source_range = source_range
 
+    # Temporary.
+    # Some AYON custom OTIO exporter were implemented with relative
+    # source range for image sequence. Following code maintain
+    # backward-compatibility by adjusting available range
+    # while we are updating those.
+    if (
+        is_input_sequence
+        and available_range.start_time.to_frames() == media_ref.start_frame
+        and conformed_source_range.start_time.to_frames() <
+            media_ref.start_frame
+    ):
+        available_range = _ot.TimeRange(
+            _ot.RationalTime(0, rate=available_range_rate),
+            available_range.duration,
+        )
+
     # modifiers
     time_scalar = 1.
-    offset_in = 0
-    offset_out = 0
     time_warp_nodes = []
 
     # Check for speed effects and adjust playback speed accordingly
@@ -354,16 +374,8 @@ def get_media_range_with_retimes(otio_clip, handle_start, handle_end):
             tw_node.update(metadata)
             tw_node["lookup"] = list(lookup)
 
-            # get first and last frame offsets
-            offset_in += lookup[0]
-            offset_out += lookup[-1]
-
             # add to timewarp nodes
             time_warp_nodes.append(tw_node)
-
-    # multiply by time scalar
-    offset_in *= time_scalar
-    offset_out *= time_scalar
 
     # scale handles
     handle_start *= abs(time_scalar)
@@ -371,33 +383,124 @@ def get_media_range_with_retimes(otio_clip, handle_start, handle_end):
 
     # flip offset and handles if reversed speed
     if time_scalar < 0:
-        offset_in, offset_out = offset_out, offset_in
         handle_start, handle_end = handle_end, handle_start
-
-    # compute retimed range
-    media_in_trimmed = conformed_source_range.start_time.value + offset_in
-    media_out_trimmed = media_in_trimmed + (
-        (
-            conformed_source_range.duration.value
-            * abs(time_scalar)
-            + offset_out
-        ) - 1
-    )
-
-    media_in = available_range.start_time.value
-    media_out = available_range.end_time_inclusive().value
 
     # If media source is an image sequence, returned
     # mediaIn/mediaOut have to correspond
     # to frame numbers from source sequence.
     if is_input_sequence:
+
+        src_in = conformed_source_range.start_time
+        src_duration = math.ceil(
+            otio_clip.source_range.duration.value
+            * abs(time_scalar)
+        )
+        retimed_duration = otio.opentime.RationalTime(
+            src_duration,
+            otio_clip.source_range.duration.rate
+        )
+        retimed_duration = retimed_duration.rescaled_to(src_in.rate)
+
+        trim_range = otio.opentime.TimeRange(
+            start_time=src_in,
+            duration=retimed_duration,
+        )
+
         # preserve discrete frame numbers
         media_in_trimmed, media_out_trimmed = remap_range_on_file_sequence(
             otio_clip,
-            (media_in_trimmed, media_out_trimmed)
+            trim_range,
         )
         media_in = media_ref.start_frame
         media_out = media_in + available_range.duration.to_frames() - 1
+
+    else:
+        # compute retimed range
+        media_in_trimmed = conformed_source_range.start_time.value
+
+        offset_duration = (
+            conformed_source_range.duration.value
+            * abs(time_scalar)
+        )
+
+        # Offset duration by 1 for media out frame
+        # - only if duration is not single frame (start frame != end frame)
+        if offset_duration > 0:
+            offset_duration -= 1
+        media_out_trimmed = media_in_trimmed + offset_duration
+
+        media_in = available_range.start_time.value
+        media_out = available_range.end_time_inclusive().value
+
+    if time_warp_nodes:
+        # Naive approach: Resolve consecutive timewarp(s) on range,
+        # then check if plate range has to be extended beyond source range.
+        in_frame = media_in_trimmed
+        frame_range = [in_frame]
+        for _ in range(otio_clip.source_range.duration.to_frames() - 1):
+            in_frame += time_scalar
+            frame_range.append(in_frame)
+
+        # Different editorial DCC might have different TimeWarp logic.
+        # The following logic assumes that the "lookup" list values are
+        # frame offsets relative to the current source frame number.
+        #
+        # media_source_range    |______1_____|______2______|______3______|
+        #
+        # media_retimed_range   |______2_____|______2______|______3______|
+        #
+        # TimeWarp lookup            +1             0             0
+        for tw_idx, tw in enumerate(time_warp_nodes):
+            for idx, frame_number in enumerate(frame_range):
+                # First timewarp, apply on media range
+                if tw_idx == 0:
+                    frame_range[idx] = round(
+                        frame_number +
+                        (tw["lookup"][idx] * time_scalar)
+                    )
+                # Consecutive timewarp, apply on the previous result
+                else:
+                    new_idx = round(idx + tw["lookup"][idx])
+
+                    if 0 <= new_idx < len(frame_range):
+                        frame_range[idx] = frame_range[new_idx]
+                        continue
+
+                    # TODO: implementing this would need to actually have
+                    # retiming engine resolve process within AYON,
+                    # resolving wraps as curves, then projecting
+                    # those into the previous media_range.
+                    raise NotImplementedError(
+                        "Unsupported consecutive timewarps "
+                        "(out of computed range)"
+                    )
+
+        # adjust range if needed
+        media_in_trimmed_before_tw = media_in_trimmed
+        media_in_trimmed = max(min(frame_range), media_in)
+        media_out_trimmed = min(max(frame_range), media_out)
+
+        # If TimeWarp changes the first frame of the soure range,
+        # we need to offset the first TimeWarp values accordingly.
+        #
+        # expected_range        |______2_____|______2______|______3______|
+        #
+        # EDITORIAL
+        # media_source_range    |______1_____|______2______|______3______|
+        #
+        # TimeWarp lookup             +1            0             0
+        #
+        # EXTRACTED PLATE
+        # plate_range           |______2_____|______3______|_ _ _ _ _ _ _|
+        #
+        # expected TimeWarp            0           -1            -1
+        if media_in_trimmed != media_in_trimmed_before_tw:
+            offset = media_in_trimmed_before_tw - media_in_trimmed
+            offset *= 1.0 / time_scalar
+            time_warp_nodes[0]["lookup"] = [
+                value + offset
+                for value in time_warp_nodes[0]["lookup"]
+            ]
 
     # adjust available handles if needed
     if (media_in_trimmed - media_in) < handle_start:
@@ -417,16 +520,16 @@ def get_media_range_with_retimes(otio_clip, handle_start, handle_end):
             "retime": True,
             "speed": time_scalar,
             "timewarps": time_warp_nodes,
-            "handleStart": int(handle_start),
-            "handleEnd": int(handle_end)
+            "handleStart": math.ceil(handle_start),
+            "handleEnd": math.ceil(handle_end)
         }
     }
 
     returning_dict = {
         "mediaIn": media_in_trimmed,
         "mediaOut": media_out_trimmed,
-        "handleStart": int(handle_start),
-        "handleEnd": int(handle_end),
+        "handleStart": math.ceil(handle_start),
+        "handleEnd": math.ceil(handle_end),
         "speed": time_scalar
     }
 

@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING
 
 from clique import assemble
 
-from ayon_core.pipeline.traits.time import FrameRanged
+from ayon_core.pipeline.traits.temporal import FrameRanged
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -15,6 +15,8 @@ def get_sequence_from_files(paths: list[Path]) -> FrameRanged:
     """Get original frame range from files.
 
     Note that this cannot guess frame rate, so it's set to 25.
+    This will also fail on paths that cannot be assembled into
+    one collection without any reminders.
 
     Args:
         paths (list[Path]): List of file paths.
@@ -23,7 +25,15 @@ def get_sequence_from_files(paths: list[Path]) -> FrameRanged:
         FrameRanged: FrameRanged trait.
 
     """
-    col = assemble([path.as_posix() for path in paths])[0][0]
+    cols, rems = assemble([path.as_posix() for path in paths])
+    if rems:
+        msg = "Cannot assemble paths into one collection"
+        raise ValueError(msg)
+    if len(cols) != 1:
+        msg = "More than one collection found"
+        raise ValueError(msg)
+    col = cols[0]
+
     sorted_frames = sorted(col.indexes)
     # First frame used for end value
     first_frame = sorted_frames[0]

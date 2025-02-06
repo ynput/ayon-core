@@ -12,10 +12,16 @@ from .content import (
 )
 from .cryptography import DigitallySigned, PGPSigned
 from .lifecycle import Persistent, Transient
-from .meta import Tagged, TemplatePath, Variant
+from .meta import (
+    IntendedUse,
+    KeepOriginalLocation,
+    SourceApplication,
+    Tagged,
+    TemplatePath,
+    Variant,
+)
 from .representation import Representation
-from .three_dimensional import Geometry, IESProfile, Lighting, Shader, Spatial
-from .time import (
+from .temporal import (
     FrameRanged,
     GapPolicy,
     Handles,
@@ -23,6 +29,7 @@ from .time import (
     SMPTETimecode,
     Static,
 )
+from .three_dimensional import Geometry, IESProfile, Lighting, Shader, Spatial
 from .trait import (
     MissingTraitError,
     TraitBase,
@@ -40,25 +47,25 @@ from .utils import (
     get_sequence_from_files,
 )
 
-__all__ = [
+__all__ = [  # noqa: RUF022
     # base
     "Representation",
     "TraitBase",
     "MissingTraitError",
     "TraitValidationError",
 
+    # color
+    "ColorManaged",
+
     # content
     "Bundle",
     "Compressed",
     "FileLocation",
     "FileLocations",
-    "MimeType",
-    "RootlessLocation",
     "Fragment",
     "LocatableContent",
-
-    # color
-    "ColorManaged",
+    "MimeType",
+    "RootlessLocation",
 
     # cryptography
     "DigitallySigned",
@@ -69,9 +76,27 @@ __all__ = [
     "Transient",
 
     # meta
+    "IntendedUse",
+    "KeepOriginalLocation",
+    "SourceApplication",
     "Tagged",
     "TemplatePath",
     "Variant",
+
+    # temporal
+    "FrameRanged",
+    "GapPolicy",
+    "Handles",
+    "Sequence",
+    "SMPTETimecode",
+    "Static",
+
+    # three-dimensional
+    "Geometry",
+    "IESProfile",
+    "Lighting",
+    "Shader",
+    "Spatial",
 
     # two-dimensional
     "Compressed",
@@ -81,21 +106,6 @@ __all__ = [
     "PixelBased",
     "Planar",
     "UDIM",
-
-    # three-dimensional
-    "Geometry",
-    "IESProfile",
-    "Lighting",
-    "Shader",
-    "Spatial",
-
-    # time
-    "FrameRanged",
-    "Static",
-    "Handles",
-    "GapPolicy",
-    "Sequence",
-    "SMPTETimecode",
 
     # utils
     "get_sequence_from_files",

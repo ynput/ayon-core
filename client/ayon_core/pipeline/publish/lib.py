@@ -464,6 +464,12 @@ def filter_pyblish_plugins(plugins):
         if getattr(plugin, "enabled", True) is False:
             plugins.remove(plugin)
 
+        # Pyblish already operated a filter based on host.
+        # But applying settings might have changed "hosts"
+        # value in plugin so re-filter.
+        elif not pyblish.plugin.host_is_compatible(plugin):
+            plugins.remove(plugin)
+
 
 def get_errored_instances_from_context(context, plugin=None):
     """Collect failed instances from pyblish context.
@@ -708,6 +714,7 @@ def get_instance_staging_dir(instance):
         project_settings=context.data["project_settings"],
         template_data=template_data,
         always_return_path=True,
+        username=context.data["user"],
     )
 
     staging_dir_path = staging_dir_info.directory
@@ -716,8 +723,8 @@ def get_instance_staging_dir(instance):
     os.makedirs(staging_dir_path, exist_ok=True)
     instance.data.update({
         "stagingDir": staging_dir_path,
-        "stagingDir_persistent": staging_dir_info.persistent,
-        "stagingDir_custom": staging_dir_info.custom
+        "stagingDir_persistent": staging_dir_info.is_persistent,
+        "stagingDir_is_custom": staging_dir_info.is_custom
     })
 
     return staging_dir_path

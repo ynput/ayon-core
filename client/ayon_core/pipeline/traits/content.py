@@ -11,7 +11,7 @@ from typing import ClassVar, Generator, Optional
 from pydantic import Field
 
 from .representation import Representation
-from .time import FrameRanged, Handles, Sequence
+from .temporal import FrameRanged, Handles, Sequence
 from .trait import (
     MissingTraitError,
     TraitBase,
@@ -35,13 +35,13 @@ class MimeType(TraitBase):
         description (str): Trait description.
         id (str): id should be namespaced trait name with version
         mime_type (str): Mime type like image/jpeg.
-
     """
 
     name: ClassVar[str] = "MimeType"
     description: ClassVar[str] = "MimeType Trait Model"
     id: ClassVar[str] = "ayon.content.MimeType.v1"
     mime_type: str = Field(..., title="Mime Type")
+
 
 class LocatableContent(TraitBase):
     """LocatableContent trait model.
@@ -57,7 +57,6 @@ class LocatableContent(TraitBase):
         description (str): Trait description.
         id (str): id should be namespaced trait name with version
         location (str): Location.
-
     """
 
     name: ClassVar[str] = "LocatableContent"
@@ -65,6 +64,7 @@ class LocatableContent(TraitBase):
     id: ClassVar[str] = "ayon.content.LocatableContent.v1"
     location: str = Field(..., title="Location")
     is_templated: Optional[bool] = Field(default=None, title="Is Templated")
+
 
 class FileLocation(TraitBase):
     """FileLocation trait model.
@@ -80,14 +80,15 @@ class FileLocation(TraitBase):
         file_path (str): File path.
         file_size (int): File size in bytes.
         file_hash (str): File hash.
-
     """
+
     name: ClassVar[str] = "FileLocation"
     description: ClassVar[str] = "FileLocation Trait Model"
     id: ClassVar[str] = "ayon.content.FileLocation.v1"
     file_path: Path = Field(..., title="File Path")
     file_size: Optional[int] = Field(default=None, title="File Size")
     file_hash: Optional[str] = Field(default=None, title="File Hash")
+
 
 class FileLocations(TraitBase):
     """FileLocation trait model.
@@ -114,7 +115,7 @@ class FileLocations(TraitBase):
 
         This method will return all file paths from the trait.
 
-        Yeilds:
+        Yields:
             Path: List of file paths.
 
         """
@@ -356,7 +357,6 @@ class RootlessLocation(TraitBase):
         description (str): Trait description.
         id (str): id should be namespaced trait name with version
         rootless_path (str): Rootless path.
-
     """
 
     name: ClassVar[str] = "RootlessLocation"
@@ -380,7 +380,6 @@ class Compressed(TraitBase):
         description (str): Trait description.
         id (str): id should be namespaced trait name with version
         compression_type (str): Compression type.
-
     """
 
     name: ClassVar[str] = "Compressed"
@@ -419,7 +418,6 @@ class Bundle(TraitBase):
         description (str): Trait description.
         id (str): id should be namespaced trait name with version
         items (list[list[TraitBase]]): List of representations.
-
     """
 
     name: ClassVar[str] = "Bundle"
@@ -432,7 +430,6 @@ class Bundle(TraitBase):
         """Convert bundle to representations."""
         for idx, item in enumerate(self.items):
             yield Representation(name=f"{self.name} {idx}", traits=item)
-  
 
 
 class Fragment(TraitBase):
@@ -458,7 +455,6 @@ class Fragment(TraitBase):
         description (str): Trait description.
         id (str): id should be namespaced trait name with version
         parent (str): Parent representation id.
-
     """
 
     name: ClassVar[str] = "Fragment"
