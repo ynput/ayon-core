@@ -91,7 +91,8 @@ class ExtractReview(pyblish.api.InstancePlugin):
         "webpublisher",
         "aftereffects",
         "flame",
-        "unreal"
+        "unreal",
+        "circuit",
     ]
 
     # Supported extensions
