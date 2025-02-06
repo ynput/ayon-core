@@ -54,6 +54,7 @@ from ayon_core.pipeline.plugin_discover import (
 from ayon_core.pipeline.create import (
     discover_legacy_creator_plugins,
     CreateContext,
+    HiddenCreator,
 )
 
 _NOT_SET = object()
@@ -309,7 +310,13 @@ class AbstractTemplateBuilder(ABC):
         self._creators_by_name = creators_by_name
 
     def _collect_creators(self):
-        self._creators_by_name = dict(self.create_context.creators)
+        self._creators_by_name = {
+            identifier: creator
+            for identifier, creator
+            in self.create_context.manual_creators.items()
+            # Do not list HiddenCreator even though it is a 'manual creator'
+            if not isinstance(creator, HiddenCreator)
+        }
 
     def get_creators_by_name(self):
         if self._creators_by_name is None:
