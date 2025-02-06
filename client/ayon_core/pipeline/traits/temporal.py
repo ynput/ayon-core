@@ -5,7 +5,7 @@ import contextlib
 import re
 from enum import Enum, auto
 from re import Pattern
-from typing import TYPE_CHECKING, ClassVar, Optional, Union
+from typing import TYPE_CHECKING, ClassVar, Optional
 
 import clique
 from pydantic import Field, field_validator
@@ -133,7 +133,7 @@ class Sequence(TraitBase):
     gaps_policy: Optional[GapPolicy] = Field(
         default=GapPolicy.forbidden, title="Gaps Policy")
     frame_padding: int = Field(..., title="Frame Padding")
-    frame_regex: Optional[Union[Pattern, str]] = Field(
+    frame_regex: Optional[Pattern] = Field(
         default=None, title="Frame Regex")
     frame_spec: Optional[str] = Field(default=None,
         title="Frame Specification")
@@ -141,16 +141,16 @@ class Sequence(TraitBase):
     @field_validator("frame_regex")
     @classmethod
     def validate_frame_regex(
-        cls, v: Optional[Union[Pattern, str]]
-    ) -> Optional[Union[Pattern, str]]:
+        cls, v: Optional[Pattern]
+    ) -> Optional[Pattern]:
         """Validate frame regex."""
-        _v = v
-        if v and isinstance(v, Pattern):
-            _v = v.pattern
+        if v is None:
+            return v
+        _v = v.pattern
         if v and any(s not in _v for s in ["?P<index>", "?P<padding>"]):
             msg = "Frame regex must include 'index' and `padding named groups"
             raise ValueError(msg)
-        return _v
+        return v
 
     def validate_trait(self, representation: Representation) -> None:
         """Validate the trait."""
@@ -244,13 +244,8 @@ class Sequence(TraitBase):
 
         frames: list[int] = []
         if self.frame_regex:
-            if isinstance(self.frame_regex, str):
-                frame_regex = re.compile(self.frame_regex)
-            elif isinstance(self.frame_regex, Pattern):
-                frame_regex = self.frame_regex
-
             frames = self.get_frame_list(
-                    file_locations, frame_regex)
+                    file_locations, self.frame_regex)
         else:
             frames = self.get_frame_list(
                     file_locations)
@@ -353,7 +348,7 @@ class Sequence(TraitBase):
             ValueError: If zero or multiple collections found.
 
         """
-        patterns = None if not regex else [regex]
+        patterns = [regex] if regex else None
         files: list[str] = [
             file.file_path.as_posix()
             for file in file_locations.file_paths
