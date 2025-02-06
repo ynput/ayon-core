@@ -209,7 +209,7 @@ class Sequence(TraitBase):
 
         self.validate_frame_padding(file_locs)
 
-    def validate_frame_list(  # noqa: C901
+    def validate_frame_list(
             self,
             file_locations: FileLocations,
             frame_start: Optional[int] = None,
