@@ -210,22 +210,36 @@ class MultiSelectionComboBox(QtWidgets.QComboBox):
         else:
             draw_text = False
 
-        lines = self._lines
         if draw_text:
             color = self._get_placeholder_color()
             pen = painter.pen()
             pen.setColor(color)
             painter.setPen(pen)
-            lines = {0: [combotext]}
 
-        font_metrics = self.fontMetrics()
+            left_x = option.rect.left() + self.left_offset
+
+            font = self.font()
+            # This is hardcoded point size from styles
+            font.setPointSize(10)
+            painter.setFont(font)
+
+            label_rect = QtCore.QRect(option.rect)
+            label_rect.moveLeft(left_x)
+
+            painter.drawText(
+                label_rect,
+                QtCore.Qt.AlignLeft | QtCore.Qt.AlignVCenter,
+                combotext
+            )
+            return
 
         if self._item_height is None:
             self.updateGeometry()
             self.update()
             return
 
-        for line, items in lines.items():
+        font_metrics = self.fontMetrics()
+        for line, items in self._lines.items():
             top_y = (
                 option.rect.top()
                 + (line * self._item_height)
