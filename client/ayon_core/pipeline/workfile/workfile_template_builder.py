@@ -311,7 +311,8 @@ class AbstractTemplateBuilder(ABC):
 
     def _collect_creators(self):
         self._creators_by_name = {
-            name: creator for name, creator
+            identifier: creator
+            for identifier, creator
             in self.create_context.manual_creators.items()
             # Do not list HiddenCreator even though it is a 'manual creator'
             if not isinstance(creator, HiddenCreator)
