@@ -14,23 +14,7 @@ class CollectSceneVersion(pyblish.api.ContextPlugin):
     order = pyblish.api.CollectorOrder
     label = 'Collect Scene Version'
     # configurable in Settings
-    hosts = [
-        "aftereffects",
-        "blender",
-        "celaction",
-        "fusion",
-        "harmony",
-        "hiero",
-        "houdini",
-        "maya",
-        "max",
-        "nuke",
-        "photoshop",
-        "resolve",
-        "tvpaint",
-        "motionbuilder",
-        "substancepainter"
-    ]
+    hosts = ["*"]
 
     # in some cases of headless publishing (for example webpublisher using PS)
     # you want to ignore version from name and let integrate use next version
