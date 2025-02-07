@@ -1,5 +1,7 @@
 from qtpy import QtCore, QtGui, QtWidgets
 
+from ayon_core.style import get_objected_colors
+
 from .lib import (
     checkstate_int_to_enum,
     checkstate_enum_to_int,
@@ -45,15 +47,16 @@ class MultiSelectionComboBox(QtWidgets.QComboBox):
     top_bottom_padding = 2
     left_right_padding = 3
     left_offset = 4
-    top_bottom_margins = 2
+    top_bottom_margins = 1
     item_spacing = 5
 
     item_bg_color = QtGui.QColor("#31424e")
+    _placeholder_color = None
 
     def __init__(
         self, parent=None, placeholder="", separator=", ", **kwargs
     ):
-        super(MultiSelectionComboBox, self).__init__(parent=parent, **kwargs)
+        super().__init__(parent=parent, **kwargs)
         self.setObjectName("MultiSelectionComboBox")
         self.setFocusPolicy(QtCore.Qt.StrongFocus)
 
@@ -61,7 +64,7 @@ class MultiSelectionComboBox(QtWidgets.QComboBox):
         self._block_mouse_release_timer = QtCore.QTimer(self, singleShot=True)
         self._initial_mouse_pos = None
         self._separator = separator
-        self._placeholder_text = placeholder
+        self._placeholder_text = placeholder or ""
         delegate = ComboItemDelegate(self)
         self.setItemDelegate(delegate)
 
@@ -74,7 +77,7 @@ class MultiSelectionComboBox(QtWidgets.QComboBox):
         return self._placeholder_text
 
     def set_placeholder_text(self, text):
-        self._placeholder_text = text
+        self._placeholder_text = text or ""
         self._update_size_hint()
 
     def set_custom_text(self, text):
@@ -206,19 +209,36 @@ class MultiSelectionComboBox(QtWidgets.QComboBox):
             combotext = self._placeholder_text
         else:
             draw_text = False
-        if draw_text:
-            option.currentText = combotext
-            option.palette.setCurrentColorGroup(QtGui.QPalette.Disabled)
-            painter.drawControl(QtWidgets.QStyle.CE_ComboBoxLabel, option)
-            return
 
-        font_metricts = self.fontMetrics()
+        if draw_text:
+            color = self._get_placeholder_color()
+            pen = painter.pen()
+            pen.setColor(color)
+            painter.setPen(pen)
+
+            left_x = option.rect.left() + self.left_offset
+
+            font = self.font()
+            # This is hardcoded point size from styles
+            font.setPointSize(10)
+            painter.setFont(font)
+
+            label_rect = QtCore.QRect(option.rect)
+            label_rect.moveLeft(left_x)
+
+            painter.drawText(
+                label_rect,
+                QtCore.Qt.AlignLeft | QtCore.Qt.AlignVCenter,
+                combotext
+            )
+            return
 
         if self._item_height is None:
             self.updateGeometry()
             self.update()
             return
 
+        font_metrics = self.fontMetrics()
         for line, items in self._lines.items():
             top_y = (
                 option.rect.top()
@@ -227,7 +247,7 @@ class MultiSelectionComboBox(QtWidgets.QComboBox):
             )
             left_x = option.rect.left() + self.left_offset
             for item in items:
-                label_rect = font_metricts.boundingRect(item)
+                label_rect = font_metrics.boundingRect(item)
                 label_height = label_rect.height()
 
                 label_rect.moveTop(top_y)
@@ -237,21 +257,24 @@ class MultiSelectionComboBox(QtWidgets.QComboBox):
                     label_rect.width() + self.left_right_padding
                 )
 
-                bg_rect = QtCore.QRectF(label_rect)
-                bg_rect.setWidth(
-                    label_rect.width() + self.left_right_padding
-                )
-                left_x = bg_rect.right() + self.item_spacing
+                if not draw_text:
+                    bg_rect = QtCore.QRectF(label_rect)
+                    bg_rect.setWidth(
+                        label_rect.width() + self.left_right_padding
+                    )
+                    left_x = bg_rect.right() + self.item_spacing
+
+                    bg_rect.setHeight(
+                        label_height + (2 * self.top_bottom_padding)
+                    )
+                    bg_rect.moveTop(bg_rect.top() + self.top_bottom_margins)
+
+                    path = QtGui.QPainterPath()
+                    path.addRoundedRect(bg_rect, 5, 5)
+
+                    painter.fillPath(path, self.item_bg_color)
 
                 label_rect.moveLeft(label_rect.x() + self.left_right_padding)
-
-                bg_rect.setHeight(label_height + (2 * self.top_bottom_padding))
-                bg_rect.moveTop(bg_rect.top() + self.top_bottom_margins)
-
-                path = QtGui.QPainterPath()
-                path.addRoundedRect(bg_rect, 5, 5)
-
-                painter.fillPath(path, self.item_bg_color)
 
                 painter.drawText(
                     label_rect,
@@ -287,11 +310,11 @@ class MultiSelectionComboBox(QtWidgets.QComboBox):
         line = 0
         self._lines = {line: []}
 
-        font_metricts = self.fontMetrics()
+        font_metrics = self.fontMetrics()
         default_left_x = 0 + self.left_offset
         left_x = int(default_left_x)
         for item in items:
-            rect = font_metricts.boundingRect(item)
+            rect = font_metrics.boundingRect(item)
             width = rect.width() + (2 * self.left_right_padding)
             right_x = left_x + width
             if right_x > total_width:
@@ -382,3 +405,12 @@ class MultiSelectionComboBox(QtWidgets.QComboBox):
             return event.ignore()
 
         return super(MultiSelectionComboBox, self).keyPressEvent(event)
+
+    @classmethod
+    def _get_placeholder_color(cls):
+        if cls._placeholder_color is None:
+            color_obj = get_objected_colors("font")
+            color = color_obj.get_qcolor()
+            color.setAlpha(67)
+            cls._placeholder_color = color
+        return cls._placeholder_color

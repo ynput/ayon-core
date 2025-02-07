@@ -550,9 +550,16 @@ class EnumDef(AbstractAttrDef):
             passed items or list of values for multiselection.
         multiselection (Optional[bool]): If True, multiselection is allowed.
             Output is list of selected items.
+        placeholder (Optional[str]): Placeholder for UI purposes, only for
+            multiselection enumeration.
 
     """
     type = "enum"
+
+    type_attributes = [
+        "multiselection",
+        "placeholder",
+    ]
 
     def __init__(
         self,
@@ -560,6 +567,7 @@ class EnumDef(AbstractAttrDef):
         items: "EnumItemsInputType",
         default: "Union[str, List[Any]]" = None,
         multiselection: Optional[bool] = False,
+        placeholder: Optional[str] = None,
         **kwargs
     ):
         if not items:
@@ -587,6 +595,7 @@ class EnumDef(AbstractAttrDef):
         self.items: List["EnumItemDict"] = items
         self._item_values: Set[Any] = item_values_set
         self.multiselection: bool = multiselection
+        self.placeholder: Optional[str] = placeholder
 
     def convert_value(self, value):
         if not self.multiselection:
@@ -612,7 +621,6 @@ class EnumDef(AbstractAttrDef):
     def serialize(self):
         data = super().serialize()
         data["items"] = copy.deepcopy(self.items)
-        data["multiselection"] = self.multiselection
         return data
 
     @staticmethod

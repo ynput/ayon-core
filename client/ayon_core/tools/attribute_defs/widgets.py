@@ -641,7 +641,9 @@ class EnumAttrWidget(_BaseAttrDefWidget):
 
     def _ui_init(self):
         if self.multiselection:
-            input_widget = MultiSelectionComboBox(self)
+            input_widget = MultiSelectionComboBox(
+                self, placeholder=self.attr_def.placeholder
+            )
 
         else:
             input_widget = CustomTextComboBox(self)
