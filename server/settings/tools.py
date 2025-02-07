@@ -559,12 +559,21 @@ DEFAULT_TOOLS_VALUES = {
             },
             {
                 "product_types": [
-                    "simpleUnrealTexture",
-                    "image",
-                    "textures"
+                    "simpleUnrealTexture"
                 ],
                 "hosts": [
-                    "standalonepublisher",
+                    "standalonepublisher"
+                ],
+                "task_types": [],
+                "task_names": [],
+                "template_name": "simpleUnrealTexture"
+            },
+            {
+                "product_types": [
+                    "image",
+                    "textures",
+                ],
+                "hosts": [
                     "substancedesigner"
                 ],
                 "task_types": [],
@@ -609,12 +618,21 @@ DEFAULT_TOOLS_VALUES = {
         "hero_template_name_profiles": [
             {
                 "product_types": [
-                    "simpleUnrealTexture",
+                    "simpleUnrealTexture"
+                ],
+                "hosts": [
+                    "standalonepublisher"
+                ],
+                "task_types": [],
+                "task_names": [],
+                "template_name": "simpleUnrealTextureHero"
+            },
+            {
+                "product_types": [
                     "image",
                     "textures"
                 ],
                 "hosts": [
-                    "standalonepublisher",
                     "substancedesigner"
                 ],
                 "task_types": [],
