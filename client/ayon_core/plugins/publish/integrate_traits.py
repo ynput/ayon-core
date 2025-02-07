@@ -3,7 +3,6 @@ from __future__ import annotations
 
 import contextlib
 import copy
-from copy import deepcopy
 from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, List
@@ -48,8 +47,11 @@ if TYPE_CHECKING:
 
     from ayon_core.pipeline import Anatomy
     from ayon_core.pipeline.anatomy.templates import (
-        TemplateItem as AnatomyTemplateItem, AnatomyStringTemplate,
-)
+        AnatomyStringTemplate,
+    )
+    from ayon_core.pipeline.anatomy.templates import (
+        TemplateItem as AnatomyTemplateItem,
+    )
 
 
 @dataclass(frozen=True)
@@ -95,6 +97,20 @@ class TemplateItem:
     template: str
     template_data: dict[str, Any]
     template_object: AnatomyTemplateItem
+
+
+
+@dataclass
+class RepresentationEntity:
+    """Representation entity data."""
+    id: str
+    versionId: str  # noqa: N815
+    name: str
+    files: dict[str, Any]
+    attrib: dict[str, Any]
+    data: str
+    tags: list[str]
+    status: str
 
 
 def get_instance_families(instance: pyblish.api.Instance) -> List[str]:
@@ -148,9 +164,11 @@ def get_changed_attributes(
 
     attrib_changes = {}
     if "attrib" in new_entity:
-        for key, value in new_entity["attrib"].items():
-            if value != old_entity["attrib"].get(key):
-                attrib_changes[key] = value
+        attrib_changes = {
+            key: value
+            for key, value in new_entity["attrib"].items()
+            if value != old_entity["attrib"].get(key)
+        }
     if attrib_changes:
         changes["attrib"] = attrib_changes
     return changes
@@ -170,7 +188,6 @@ class IntegrateTraits(pyblish.api.InstancePlugin):
 
         Todo:
             Refactor this method to be more readable and maintainable.
-            Remove corresponding noqa codes.
 
         Args:
             instance (pyblish.api.Instance): Instance to process.
@@ -187,7 +204,7 @@ class IntegrateTraits(pyblish.api.InstancePlugin):
                 "Instance is marked to be processed on farm. Skipping")
             return
 
-        # TODO (antirotor): Find better name for the key  # noqa: FIX002, TD003
+        # TODO (antirotor): Find better name for the key
         if not instance.data.get("representations_with_traits"):
             self.log.debug(
                 "Instance has no representations with traits. Skipping")
@@ -215,6 +232,14 @@ class IntegrateTraits(pyblish.api.InstancePlugin):
 
         transfers = self.get_transfers_from_representations(
             instance, representations)
+
+        # 8) Transfer files
+        for transfer in transfers:
+            self.log.debug(
+                "Transferring file: %s -> %s",
+                transfer.source,
+                transfer.destination
+            )
 
     def get_transfers_from_representations(
             self,
@@ -649,7 +674,9 @@ class IntegrateTraits(pyblish.api.InstancePlugin):
         return path
 
     def get_attributes_for_type(
-            self, context: pyblish.api.Context, entity_type: str) -> dict:
+            self,
+            context: pyblish.api.Context,
+            entity_type: str) -> dict:
         """Get AYON attributes for the given entity type."""
         return self.get_attributes_by_type(context)[entity_type]
 
@@ -791,8 +818,7 @@ class IntegrateTraits(pyblish.api.InstancePlugin):
             representation.get_trait(FileLocations),
             regex=sequence.frame_regex)
         template_padding = template_item.anatomy.templates_obj.frame_padding
-        if template_padding > dst_padding:
-            dst_padding = template_padding
+        dst_padding = max(template_padding, dst_padding)
 
         # go through all frames in the sequence
         # find their corresponding file locations
@@ -983,3 +1009,17 @@ class IntegrateTraits(pyblish.api.InstancePlugin):
                     sub_representation, template_item, transfers
                 )
 
+def create_representation_entity(representation: Representation) -> dict:
+    """Create representation entity.
+
+    Args:
+        representation (Representation): Representation to create entity for.
+
+    Returns:
+        dict: Representation entity.
+
+    """
+    return {
+        "name": representation.name,
+        "traits": representation.get_traits_data(),
+    }
