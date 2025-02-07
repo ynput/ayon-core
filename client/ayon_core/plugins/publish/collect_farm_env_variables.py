@@ -32,7 +32,7 @@ class CollectCoreJobEnvVars(pyblish.api.ContextPlugin):
 
         for key in [
             "AYON_BUNDLE_NAME",
-            "AYON_DEFAULT_SETTINGS_VARIANT",
+            "AYON_USE_STAGING",
             "AYON_IN_TESTS",
             # NOTE Not sure why workdir is needed?
             "AYON_WORKDIR",
