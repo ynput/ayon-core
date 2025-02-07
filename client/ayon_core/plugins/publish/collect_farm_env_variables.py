@@ -36,7 +36,7 @@ class CollectCoreJobEnvVars(pyblish.api.ContextPlugin):
             "AYON_IN_TESTS",
             # NOTE Not sure why workdir is needed?
             "AYON_WORKDIR",
-            # DEPRECATED remove when deadline stops using it (added in 1.1.1)
+            # DEPRECATED remove when deadline stops using it (added in 1.1.2)
             "AYON_DEFAULT_SETTINGS_VARIANT",
         ]:
             value = os.getenv(key)
