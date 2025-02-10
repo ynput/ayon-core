@@ -10,6 +10,7 @@ pyblish-base = "^1.8.11"
 speedcopy = "^2.1"
 six = "^1.15"
 qtawesome = "0.7.3"
+pydantic = "^2.9.2"
 
 [ayon.runtimeDependencies]
 aiohttp-middlewares = "^2.0.0"
