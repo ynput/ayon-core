@@ -31,7 +31,6 @@ from . import settings, util
 from .awesome import tags as awesome
 from qtpy import QtCore, QtGui
 import qtawesome
-from six import text_type
 from .constants import PluginStates, InstanceStates, GroupStates, Roles
 
 
@@ -985,7 +984,7 @@ class TerminalModel(QtGui.QStandardItemModel):
                     record_item = record
                 else:
                     record_item = {
-                        "label": text_type(record.msg),
+                        "label": str(record.msg),
                         "type": "record",
                         "levelno": record.levelno,
                         "threadName": record.threadName,
@@ -993,7 +992,7 @@ class TerminalModel(QtGui.QStandardItemModel):
                         "filename": record.filename,
                         "pathname": record.pathname,
                         "lineno": record.lineno,
-                        "msg": text_type(record.msg),
+                        "msg": str(record.msg),
                         "msecs": record.msecs,
                         "levelname": record.levelname
                     }

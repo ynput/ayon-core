@@ -10,7 +10,6 @@ import sys
 import collections
 
 from qtpy import QtCore
-from six import text_type
 import pyblish.api
 
 root = os.path.dirname(__file__)
@@ -64,7 +63,7 @@ def u_print(msg, **kwargs):
         **kwargs: Keyword argument for `print` function.
     """
 
-    if isinstance(msg, text_type):
+    if isinstance(msg, str):
         encoding = None
         try:
             encoding = os.getenv('PYTHONIOENCODING', sys.stdout.encoding)
