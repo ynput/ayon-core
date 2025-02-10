@@ -14,7 +14,8 @@ from ayon_core.lib import (
     BoolDef,
     UISeparatorDef,
     UILabelDef,
-    EnumDef
+    EnumDef,
+    filter_profiles
 )
 try:
     from ayon_core.pipeline.usdlib import (
@@ -463,6 +464,59 @@ class CollectUSDLayerContributions(pyblish.api.InstancePlugin,
         if not cls.instance_matches_plugin_families(instance):
             return []
 
+        # Set default target layer based on product type
+        # TODO: Define profiles in settings
+        profiles = [
+            {
+                "productType": "model",
+                "contribution_layer": "model",
+                "contribution_apply_as_variant": True,
+                "contribution_target_product": "usdAsset"
+            },
+            {
+                "productType": "look",
+                "contribution_layer": "look",
+                "contribution_apply_as_variant": True,
+                "contribution_target_product": "usdAsset"
+            },
+            {
+                "productType": "groom",
+                "contribution_layer": "groom",
+                "contribution_apply_as_variant": True,
+                "contribution_target_product": "usdAsset"
+            },
+            {
+                "productType": "rig",
+                "contribution_layer": "rig",
+                "contribution_apply_as_variant": True,
+                "contribution_target_product": "usdShot"
+            },
+            {
+                "productType": "usd",
+                "contribution_layer": "assembly",
+                "contribution_apply_as_variant": False,
+                "contribution_target_product": "usdShot"
+            },
+        ]
+        profile = filter_profiles(profiles, {
+            "productType": instance.data["productType"]
+        })
+        if not profile:
+            profile = {}
+
+        # Define defaults
+        default_contribution_layer = profile.get(
+            "contribution_layer", None)
+        default_apply_as_variant = profile.get(
+            "contribution_apply_as_variant", False)
+        default_target_product = profile.get(
+            "contribution_target_product", "usdAsset")
+        default_init_as = (
+            "asset"
+            if profile.get("contribution_target_product") == "usdAsset"
+            else "shot")
+        init_as_visible = False
+
         # Attributes logic
         publish_attributes = instance["publish_attributes"].get(
             cls.__name__, {})
@@ -495,7 +549,7 @@ class CollectUSDLayerContributions(pyblish.api.InstancePlugin,
                         "the contribution itself will be added to the "
                         "department layer."
                     ),
-                    default="usdAsset",
+                    default=default_target_product,
                     visible=visible),
             EnumDef("contribution_target_product_init",
                     label="Initialize as",
@@ -507,8 +561,8 @@ class CollectUSDLayerContributions(pyblish.api.InstancePlugin,
                         "setting will do nothing."
                     ),
                     items=["asset", "shot"],
-                    default="asset",
-                    visible=visible),
+                    default=default_init_as,
+                    visible=visible and init_as_visible),
 
             # Asset layer, e.g. model.usd, look.usd, rig.usd
             EnumDef("contribution_layer",
@@ -520,7 +574,7 @@ class CollectUSDLayerContributions(pyblish.api.InstancePlugin,
                         "the list) will contribute as a stronger opinion."
                     ),
                     items=list(cls.contribution_layers.keys()),
-                    default="model",
+                    default=default_contribution_layer,
                     visible=visible),
             BoolDef("contribution_apply_as_variant",
                     label="Add as variant",
@@ -532,7 +586,7 @@ class CollectUSDLayerContributions(pyblish.api.InstancePlugin,
                         "appended to as a sublayer to the department layer "
                         "instead."
                     ),
-                    default=True,
+                    default=default_apply_as_variant,
                     visible=visible),
             TextDef("contribution_variant_set_name",
                     label="Variant Set Name",
@@ -586,31 +640,6 @@ class CollectUSDLayerContributions(pyblish.api.InstancePlugin,
                 event["create_context"], instance
             )
             instance.set_publish_plugin_attr_defs(cls.__name__, new_attrs)
-
-
-class CollectUSDLayerContributionsHoudiniLook(CollectUSDLayerContributions):
-    """
-    This is solely here to expose the attribute definitions for the
-    Houdini "look" family.
-    """
-    # TODO: Improve how this is built for the look family
-    hosts = ["houdini"]
-    families = ["look"]
-    label = CollectUSDLayerContributions.label + " (Look)"
-
-    @classmethod
-    def get_attr_defs_for_instance(cls, create_context, instance):
-        # Filtering of instance, if needed, can be customized
-        if not cls.instance_matches_plugin_families(instance):
-            return []
-
-        defs = super().get_attr_defs_for_instance(create_context, instance)
-
-        # Update default for department layer to look
-        layer_def = next(d for d in defs if d.key == "contribution_layer")
-        layer_def.default = "look"
-
-        return defs
 
 
 class ValidateUSDDependencies(pyblish.api.InstancePlugin):
