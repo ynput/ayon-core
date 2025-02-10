@@ -24,6 +24,9 @@ def get_sequence_from_files(paths: list[Path]) -> FrameRanged:
     Returns:
         FrameRanged: FrameRanged trait.
 
+    Raises:
+        ValueError: If paths cannot be assembled into one collection
+
     """
     cols, rems = assemble([path.as_posix() for path in paths])
     if rems:
