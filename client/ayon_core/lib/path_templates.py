@@ -561,9 +561,6 @@ class FormattingPart:
 
         """
         key = self._template_base
-        if key in result.really_used_values:
-            result.add_output(result.really_used_values[key])
-            return result
 
         # ensure key is properly formed [({})] properly closed.
         if not self.validate_key_is_matched(key):
@@ -590,8 +587,8 @@ class FormattingPart:
                 if sub_key < 0:
                     sub_key = len(value) + sub_key
 
-                invalid = 0 > sub_key < len(data)
-                if invalid:
+                valid = 0 <= sub_key < len(value)
+                if not valid:
                     used_keys.append(sub_key)
                     missing_key = True
                     break
