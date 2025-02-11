@@ -8,7 +8,6 @@ from pathlib import Path
 import warnings
 
 import click
-import acre
 
 from ayon_core import AYON_CORE_ROOT
 from ayon_core.addon import AddonsManager
@@ -17,6 +16,11 @@ from ayon_core.lib import (
     initialize_ayon_connection,
     is_running_from_build,
     Logger,
+)
+from ayon_core.lib.env_tools import (
+    parse_env_variables_structure,
+    compute_env_variables_structure,
+    merge_env_variables,
 )
 
 
@@ -240,14 +244,13 @@ def _set_global_environments() -> None:
     # first resolve general environment because merge doesn't expect
     # values to be list.
     # TODO: switch to AYON environment functions
-    merged_env = acre.merge(
-        acre.compute(acre.parse(general_env), cleanup=False),
+    merged_env = merge_env_variables(
+        compute_env_variables_structure(
+            parse_env_variables_structure(general_env)
+        ),
         dict(os.environ)
     )
-    env = acre.compute(
-        merged_env,
-        cleanup=False
-    )
+    env = compute_env_variables_structure(merged_env)
     os.environ.clear()
     os.environ.update(env)
 
@@ -263,8 +266,8 @@ def _set_addons_environments(addons_manager):
 
     # Merge environments with current environments and update values
     if module_envs := addons_manager.collect_global_environments():
-        parsed_envs = acre.parse(module_envs)
-        env = acre.merge(parsed_envs, dict(os.environ))
+        parsed_envs = parse_env_variables_structure(module_envs)
+        env = merge_env_variables(parsed_envs, dict(os.environ))
         os.environ.clear()
         os.environ.update(env)
 
