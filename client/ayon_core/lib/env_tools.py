@@ -295,7 +295,7 @@ def merge_env_variables(
     src_env: dict[str, str],
     dst_env: dict[str, str],
     missing_template: Optional[str] = None,
-):
+) -> dict[str, str]:
     """Merge the tools environment with the 'current_env'.
 
     This finalizes the join with a current environment by formatting the
@@ -307,11 +307,11 @@ def merge_env_variables(
         src_env (dict): The dynamic environment
         dst_env (dict): The target environment variables mapping to merge
             the dynamic environment into.
-        missing_template (str): Argument passed to '_partial_format' during merging.
-            `None` should keep missing keys unchanged.
+        missing_template (str): Argument passed to '_partial_format' during
+            merging. `None` should keep missing keys unchanged.
 
     Returns:
-        dict: The resulting environment after the merge.
+        dict[str, str]: The resulting environment after the merge.
 
     """
     result = dst_env.copy()
