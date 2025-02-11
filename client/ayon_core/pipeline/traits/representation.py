@@ -44,7 +44,7 @@ def _get_version_from_id(_id: str) -> Optional[int]:
     return int(match[1]) if match else None
 
 
-class Representation(Generic[T]):
+class Representation(Generic[T]):  # noqa: PLR0904
     """Representation of products.
 
     Representation defines collection of individual properties that describe
@@ -53,6 +53,9 @@ class Representation(Generic[T]):
 
     It holds methods to add, remove, get, and check for the existence of a
     trait in the representation. It also provides a method to get all the
+
+    Note:
+        `PLR0904` is rule for checking number of public methods in a class.
 
     Arguments:
         name (str): Representation name. Must be unique within instance.
@@ -79,9 +82,6 @@ class Representation(Generic[T]):
         Returns:
             TraitBase: Trait instance.
 
-        Raises:
-            MissingTraitError: If the trait is not found.
-
         """
         return self.get_trait_by_id(key)
 
@@ -104,8 +104,6 @@ class Representation(Generic[T]):
         Args:
             key (str): Trait ID.
 
-        Raises:
-            ValueError: If the trait is not found.
 
         """
         self.remove_trait_by_id(key)
@@ -138,7 +136,7 @@ class Representation(Generic[T]):
         """Add a trait to the Representation.
 
         Args:
-            trait (TraiBase): Trait to add.
+            trait (TraitBase): Trait to add.
             exists_ok (bool, optional): If True, do not raise an error if the
                 trait already exists. Defaults to False.
 
@@ -228,7 +226,6 @@ class Representation(Generic[T]):
         for trait_id in trait_ids:
             self.remove_trait_by_id(trait_id)
 
-
     def has_traits(self) -> bool:
         """Check if the Representation has any traits.
 
@@ -260,7 +257,7 @@ class Representation(Generic[T]):
             bool: True if the trait exists, False otherwise.
 
         """
-        return  bool(self._data.get(trait_id))
+        return bool(self._data.get(trait_id))
 
     def contains_traits(self, traits: list[Type[T]]) -> bool:
         """Check if the traits exist.
@@ -366,7 +363,7 @@ class Representation(Generic[T]):
             return result
 
         for trait in traits:
-             result[str(trait.id)] = self.get_trait(trait=trait)
+            result[str(trait.id)] = self.get_trait(trait=trait)
         return result
 
     def get_traits_by_ids(self, trait_ids: list[str]) -> dict[str, T]:
@@ -532,12 +529,6 @@ class Representation(Generic[T]):
         Returns:
             Type[TraitBase]: Trait class.
 
-        Raises:
-            LooseMatchingTraitError: If the trait is found with a loose
-                matching criteria. This exception will include the trait
-                class that was found and the expected trait ID. Additional
-                downstream logic must decide how to handle this error.
-
         """
         version = cls._get_version_from_id(trait_id)
 
@@ -588,9 +579,6 @@ class Representation(Generic[T]):
         Raises:
             IncompatibleTraitVersionError: If the trait version is incompatible
                 with the current version of the trait.
-            UpgradableTraitError: If the trait can upgrade existing data
-                meant for older versions of the trait.
-            ValueError: If the trait model with the given ID is not found.
 
         """
         try:
@@ -662,6 +650,11 @@ class Representation(Generic[T]):
         Returns:
             Representation: Representation instance.
 
+        Raises:
+            ValueError: If the trait model with ID is not found.
+            TypeError: If the trait data is not a dictionary.
+            IncompatibleTraitVersionError: If the trait version is incompatible
+
         """
         if not trait_data:
             trait_data = {}
@@ -696,7 +689,6 @@ class Representation(Generic[T]):
 
         return cls(
             name=name, representation_id=representation_id, traits=traits)
-
 
     def validate(self) -> None:
         """Validate the representation.
