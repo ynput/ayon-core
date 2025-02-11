@@ -101,8 +101,7 @@ class CollectOtioRanges(pyblish.api.InstancePlugin):
         tl_start_h, tl_end_h = otio_range_to_frame_range(otio_tl_range_handles)
 
         frame_start = workfile_start
-        frame_end = frame_start + otio.opentime.to_frames(
-            otio_tl_range.duration, otio_tl_range.duration.rate) - 1
+        frame_end = frame_start + otio_tl_range.duration.to_frames() - 1
 
         data = {
             "frameStart": frame_start,
@@ -120,39 +119,68 @@ class CollectOtioRanges(pyblish.api.InstancePlugin):
         # Get source ranges
         otio_src_range = otio_clip.source_range
         otio_available_range = otio_clip.available_range()
-        otio_src_range_handles = otio_range_with_handles(otio_src_range, instance)
 
-        # Get source available start frame
-        src_starting_from = otio.opentime.to_frames(
-            otio_available_range.start_time,
-            otio_available_range.start_time.rate
+        # Backward-compatibility for Hiero OTIO exporter.
+        # NTSC compatibility might introduce floating rates, when these are
+        # not exactly the same (23.976 vs 23.976024627685547)
+        # this will cause precision issue in computation.
+        # Currently round to 2 decimals for comparison,
+        # but this should always rescale after that.
+        rounded_av_rate = round(otio_available_range.start_time.rate, 2)
+        rounded_src_rate = round(otio_src_range.start_time.rate, 2)
+        if rounded_av_rate != rounded_src_rate:
+            conformed_src_in = otio_src_range.start_time.rescaled_to(
+                otio_available_range.start_time.rate
+            )
+            conformed_src_duration = otio_src_range.duration.rescaled_to(
+                otio_available_range.duration.rate
+            )
+            conformed_source_range = otio.opentime.TimeRange(
+                start_time=conformed_src_in,
+                duration=conformed_src_duration
+            )
+        else:
+            conformed_source_range = otio_src_range
+
+        source_start = conformed_source_range.start_time
+        source_end = source_start + conformed_source_range.duration
+        handle_start = otio.opentime.RationalTime(
+            instance.data.get("handleStart", 0),
+            source_start.rate
         )
-
-        # Convert to frames
-        src_start, src_end = otio_range_to_frame_range(otio_src_range)
-        src_start_h, src_end_h = otio_range_to_frame_range(otio_src_range_handles)
-
+        handle_end = otio.opentime.RationalTime(
+            instance.data.get("handleEnd", 0),
+            source_start.rate
+        )
+        source_start_h = source_start - handle_start
+        source_end_h = source_end + handle_end
         data = {
-            "sourceStart": src_starting_from + src_start,
-            "sourceEnd": src_starting_from + src_end - 1,
-            "sourceStartH": src_starting_from + src_start_h,
-            "sourceEndH": src_starting_from + src_end_h - 1,
+            "sourceStart": source_start.to_frames(),
+            "sourceEnd": source_end.to_frames() - 1,
+            "sourceStartH": source_start_h.to_frames(),
+            "sourceEndH": source_end_h.to_frames() - 1,
         }
         instance.data.update(data)
         self.log.debug(f"Added source ranges: {pformat(data)}")
 
     def _collect_retimed_ranges(self, instance, otio_clip):
         """Handle retimed clip frame ranges."""
-        workfile_source_duration = instance.data.get("shotDurationFromSource")
-        frame_start = instance.data["frameStart"]
-
-        # Handle retimed clip frame range
         retimed_attributes = get_media_range_with_retimes(otio_clip, 0, 0)
         self.log.debug(f"Retimed attributes: {retimed_attributes}")
 
+        frame_start = instance.data["frameStart"]
         media_in = int(retimed_attributes["mediaIn"])
         media_out = int(retimed_attributes["mediaOut"])
-        frame_end = frame_start + (media_out - media_in) + 1
+        frame_end = frame_start + (media_out - media_in)
 
-        instance.data["frameEnd"] = frame_end
-        self.log.debug(f"Updated frameEnd for retimed clip: {frame_end}")
+        data = {
+            "frameStart": frame_start,
+            "frameEnd": frame_end,
+            "sourceStart": media_in,
+            "sourceEnd": media_out,
+            "sourceStartH": media_in - int(retimed_attributes["handleStart"]),
+            "sourceEndH": media_out + int(retimed_attributes["handleEnd"]),
+        }
+
+        instance.data.update(data)
+        self.log.debug(f"Updated retimed values: {data}")
