@@ -617,7 +617,7 @@ def version_up_current_workfile():
     last_workfile_path = get_last_workfile(
         work_root, file_template, data, extensions, True
     )
-    new_workfile_path = version_up(last_workfile_path)
+    new_workfile_path = last_workfile_path
     if os.path.exists(new_workfile_path):
         new_workfile_path = version_up(new_workfile_path)
     host.save_workfile(new_workfile_path)
