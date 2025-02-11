@@ -239,15 +239,12 @@ def version(build):
 
 def _set_global_environments() -> None:
     """Set global AYON environments."""
-    general_env = get_general_environments()
+    # First resolve general environment
+    general_env = parse_env_variables_structure(get_general_environments())
 
-    # first resolve general environment because merge doesn't expect
-    # values to be list.
-    # TODO: switch to AYON environment functions
+    # Merge environments with current environments and update values
     merged_env = merge_env_variables(
-        compute_env_variables_structure(
-            parse_env_variables_structure(general_env)
-        ),
+        compute_env_variables_structure(general_env),
         dict(os.environ)
     )
     env = compute_env_variables_structure(merged_env)
