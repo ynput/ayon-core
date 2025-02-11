@@ -383,7 +383,7 @@ class NiceCheckbox(QtWidgets.QFrame):
         else:
             radius = floor(checkbox_rect.width() * 0.5)
 
-        painter.setPen(QtCore.Qt.transparent)
+        painter.setPen(QtCore.Qt.NoPen)
         painter.setBrush(bg_color)
         painter.drawRoundedRect(checkbox_rect, radius, radius)
 
