@@ -136,8 +136,8 @@ def version_up(filepath):
         index += len(new_label)
         clash_basename = clash_basename[:index]
 
-    for file in os.scandir(dirname):
-        if file.name.endswith(ext) and file.name.startswith(clash_basename):
+    for f in os.scandir(dirname):
+        if f.name.endswith(ext) and f.name.startswith(clash_basename):
             log.info("Skipping existing version %s" % new_label)
             return version_up(new_filename)
 
