@@ -104,7 +104,10 @@ class CollectOtioRanges(pyblish.api.InstancePlugin):
 
         # Get timeline ranges
         otio_tl_range = otio_clip.range_in_parent()
-        otio_tl_range_handles = otio_range_with_handles(otio_tl_range, instance)
+        otio_tl_range_handles = otio_range_with_handles(
+            otio_tl_range,
+            instance
+        )
 
         # Convert to frames
         tl_start, tl_end = otio_range_to_frame_range(otio_tl_range)
