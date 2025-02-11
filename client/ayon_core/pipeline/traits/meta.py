@@ -90,6 +90,7 @@ class KeepOriginalLocation(TraitBase):
     id: ClassVar[str] = "ayon.meta.KeepOriginalLocation.v1"
     persistent: bool = Field(default=False, title="Persistent")
 
+
 class KeepOriginalName(TraitBase):
     """Keep files in its original name.
 

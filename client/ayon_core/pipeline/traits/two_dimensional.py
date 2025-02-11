@@ -136,7 +136,15 @@ class UDIM(TraitBase):
     @field_validator("udim_regex")
     @classmethod
     def validate_frame_regex(cls, v: Optional[str]) -> Optional[str]:
-        """Validate udim regex."""
+        """Validate udim regex.
+
+        Returns:
+            Optional[str]: UDIM regex.
+
+        Raises:
+            ValueError: UDIM regex must include 'udim' named group.
+
+        """
         if v is not None and "?P<udim>" not in v:
             msg = "UDIM regex must include 'udim' named group"
             raise ValueError(msg)

@@ -163,15 +163,16 @@ class FileLocations(TraitBase):
         Args:
             representation (Representation): Representation to validate.
 
-        Returns:
-            bool: True if the trait is valid, False otherwise
+        Raises:
+            TraitValidationError: If the trait is invalid within the
+                representation.
 
         """
         super().validate_trait(representation)
         if len(self.file_paths) == 0:
-                # If there are no file paths, we can't validate
-                msg = "No file locations defined (empty list)"
-                raise TraitValidationError(self.name, msg)
+            # If there are no file paths, we can't validate
+            msg = "No file locations defined (empty list)"
+            raise TraitValidationError(self.name, msg)
         if representation.contains_trait(FrameRanged):
             self._validate_frame_range(representation)
         if not representation.contains_trait(Sequence) \
@@ -234,7 +235,7 @@ class FileLocations(TraitBase):
             raise TraitValidationError(self.name, msg)
 
         if frames_from_spec:
-            if len(frames_from_spec) != len(self.file_paths) :
+            if len(frames_from_spec) != len(self.file_paths):
                 # If the number of file paths does not match the frame range,
                 # the trait is invalid
                 msg = (
@@ -254,14 +255,14 @@ class FileLocations(TraitBase):
         )
 
         if len(self.file_paths) != length_with_handles:
-                # If the number of file paths does not match the frame range,
-                # the trait is invalid
-                msg = (
-                    f"Number of file locations ({len(self.file_paths)}) "
-                    "does not match frame range "
-                    f"({length_with_handles})"
-                )
-                raise TraitValidationError(self.name, msg)
+            # If the number of file paths does not match the frame range,
+            # the trait is invalid
+            msg = (
+                f"Number of file locations ({len(self.file_paths)}) "
+                "does not match frame range "
+                f"({length_with_handles})"
+            )
+            raise TraitValidationError(self.name, msg)
 
         frame_ranged: FrameRanged = representation.get_trait(FrameRanged)
 
@@ -281,8 +282,8 @@ class FileLocations(TraitBase):
             )
             raise TraitValidationError(self.name, msg)
 
+    @staticmethod
     def _get_frame_info_with_handles(
-            self,
             representation: Representation,
             frames_from_spec: list[int]) -> tuple[int, int]:
         """Get the frame range with handles from the representation.
@@ -427,7 +428,12 @@ class Bundle(TraitBase):
         ..., title="Bundles of traits")
 
     def to_representations(self) -> Generator[Representation]:
-        """Convert bundle to representations."""
+        """Convert bundle to representations.
+
+        Yields:
+            Representation: Representation of the bundle.
+
+        """
         for idx, item in enumerate(self.items):
             yield Representation(name=f"{self.name} {idx}", traits=item)
 

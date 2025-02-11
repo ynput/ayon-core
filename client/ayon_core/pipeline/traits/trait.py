@@ -57,7 +57,7 @@ class TraitBase(ABC, BaseModel):
         """Abstract attribute for description."""
         ...
 
-    def validate_trait(self, representation: Representation) -> None:
+    def validate_trait(self, representation: Representation) -> None:  # noqa: PLR6301
         """Validate the trait.
 
         This method should be implemented in the derived classes to validate
@@ -66,10 +66,6 @@ class TraitBase(ABC, BaseModel):
 
         Args:
             representation (Representation): Representation instance.
-
-        Raises:
-            TraitValidationError: If the trait is invalid
-                within representation.
 
         """
         return
@@ -81,6 +77,9 @@ class TraitBase(ABC, BaseModel):
 
         This assumes Trait ID ends with `.v{version}`. If not, it will
         return None.
+
+        Returns:
+            Optional[int]: Trait version
 
         """
         version_regex = r"v(\d+)$"
@@ -106,7 +105,7 @@ class IncompatibleTraitVersionError(Exception):
     """
 
 
-class UpgradableTraitError(Generic[T], Exception):
+class UpgradableTraitError(Exception, Generic[T]):
     """Upgradable trait version exception.
 
     This exception is raised when the trait can upgrade existing data
@@ -118,7 +117,7 @@ class UpgradableTraitError(Generic[T], Exception):
     old_data: dict
 
 
-class LooseMatchingTraitError(Generic[T], Exception):
+class LooseMatchingTraitError(Exception, Generic[T]):
     """Loose matching trait exception.
 
     This exception is raised when the trait is found with a loose matching

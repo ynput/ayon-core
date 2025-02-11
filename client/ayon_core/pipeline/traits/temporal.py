@@ -143,11 +143,20 @@ class Sequence(TraitBase):
     def validate_frame_regex(
         cls, v: Optional[Pattern]
     ) -> Optional[Pattern]:
-        """Validate frame regex."""
+        """Validate frame regex.
+
+        Frame regex must have index and padding named groups.
+
+        Returns:
+            Optional[Pattern]: Compiled regex pattern.
+
+        Raises:
+            ValueError: If frame regex does not include 'index' and 'padding'
+
+        """
         if v is None:
             return v
-        _v = v.pattern
-        if v and any(s not in _v for s in ["?P<index>", "?P<padding>"]):
+        if v and any(s not in v.pattern for s in ["?P<index>", "?P<padding>"]):
             msg = "Frame regex must include 'index' and `padding named groups"
             raise ValueError(msg)
         return v
@@ -171,10 +180,6 @@ class Sequence(TraitBase):
 
         Args:
             representation (Representation): Representation instance.
-
-        Raises:
-            TraitValidationError: If file locations do not match the
-                frame list specification
 
         """
         from .content import FileLocations
@@ -309,7 +314,15 @@ class Sequence(TraitBase):
 
     @staticmethod
     def list_spec_to_frames(list_spec: str) -> list[int]:
-        """Convert list specification to frames."""
+        """Convert list specification to frames.
+
+        Returns:
+            list[int]: List of frame numbers.
+
+        Raises:
+            ValueError: If invalid frame number in the list.
+
+        """
         frames = []
         segments = list_spec.split(",")
         for segment in segments:
@@ -364,7 +377,12 @@ class Sequence(TraitBase):
 
     @staticmethod
     def get_frame_padding(file_locations: FileLocations) -> int:
-        """Get frame padding."""
+        """Get frame padding.
+
+        Returns:
+            int: Frame padding.
+
+        """
         src_collection = Sequence._get_collection(file_locations)
         return len(str(max(src_collection.indexes)))
 
@@ -382,6 +400,7 @@ class Sequence(TraitBase):
                 Default clique pattern is::
 
                     \.(?P<index>(?P<padding>0*)\d+)\.\D+\d?$
+
         Returns:
             list[int]: List of frame numbers.
 
@@ -393,6 +412,9 @@ class Sequence(TraitBase):
         """Get frame regex as pattern.
 
         If the regex is string, it will compile it to the pattern.
+
+        Returns:
+            Pattern: Compiled regex pattern.
 
         """
         if self.frame_regex:

@@ -74,6 +74,7 @@ indent-width = 4
 target-version = "py39"
 
 [tool.ruff.lint]
+preview = true
 pydocstyle.convention = "google"
 # Enable Pyflakes (`F`) and a subset of the pycodestyle (`E`)  codes by default.
 select = ["ALL"]
@@ -85,13 +86,19 @@ ignore = [
     "S603",
     "ERA001",
     "TRY003",
-    "UP006",  # support for older python version (type vs. Type)
-    "UP007",  # ..^
-    "UP035",  # ..
+    "UP006",   # support for older python version (type vs. Type)
+    "UP007",   # ..^
+    "UP035",   # ..
+    "UP045",   # Use `X | None` for type annotations
     "ARG002",
-    "INP001", # add `__init__.py` to namespaced package
-    "FIX002", # FIX all TODOs
-    "TD003",  # missing issue link
+    "INP001",  # add `__init__.py` to namespaced package
+    "FIX002",  # FIX all TODOs
+    "TD003",   # missing issue link
+    "S404",    # subprocess module is possibly insecure
+    "PLC0415", # import must be on top of the file
+    "CPY001",  # missing copyright header
+    "UP045"
+
 ]
 
 # Allow fix for all enabled rules (when `--fix`) is provided.
