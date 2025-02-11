@@ -562,6 +562,10 @@ class BaseCreator(ABC):
             instance
         )
 
+        cur_project_name = self.create_context.get_current_project_name()
+        if not project_entity and project_name == cur_project_name:
+            project_entity = self.create_context.get_current_project_entity()
+
         return get_product_name(
             project_name,
             task_name,
@@ -858,18 +862,30 @@ class Creator(BaseCreator):
             ["CollectAnatomyInstanceData"]
             ["follow_workfile_version"]
         )
+        follow_version_hosts = (
+            publish_settings
+            ["CollectSceneVersion"]
+            ["hosts"]
+        )
+
+        current_host = create_ctx.host.name
+        follow_workfile_version = (
+            follow_workfile_version and
+            current_host in follow_version_hosts
+        )
 
         # Gather version number provided from the instance.
+        current_workfile = create_ctx.get_current_workfile_path()
         version = instance.get("version")
 
         # If follow workfile, gather version from workfile path.
-        if version is None and follow_workfile_version:
-            current_workfile = self.create_context.get_current_workfile_path()
+        if version is None and follow_workfile_version and current_workfile:
             workfile_version = get_version_from_path(current_workfile)
-            version = int(workfile_version)
+            if workfile_version is not None:
+                version = int(workfile_version)
 
         # Fill-up version with next version available.
-        elif version is None:
+        if version is None:
             versions = self.get_next_versions_for_instances(
                 [instance]
             )
@@ -916,6 +932,7 @@ class Creator(BaseCreator):
         instance.transient_data.update({
             "stagingDir": staging_dir_path,
             "stagingDir_persistent": staging_dir_info.is_persistent,
+            "stagingDir_is_custom": staging_dir_info.is_custom,
         })
 
         self.log.info(f"Applied staging dir to instance: {staging_dir_path}")
