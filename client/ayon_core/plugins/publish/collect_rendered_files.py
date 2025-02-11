@@ -93,8 +93,7 @@ class CollectRenderedFiles(pyblish.api.ContextPlugin):
 
         # now we can just add instances from json file and we are done
         any_staging_dir_persistent = False
-        for instance_data in data.get("instances"):
-
+        for instance_data in data["instances"]:
             self.log.debug("  - processing instance for {}".format(
                 instance_data.get("productName")))
             instance = self._context.create_instance(
@@ -105,7 +104,11 @@ class CollectRenderedFiles(pyblish.api.ContextPlugin):
             instance.data.update(instance_data)
 
             # stash render job id for later validation
-            instance.data["render_job_id"] = data.get("job").get("_id")
+            instance.data["publishJobMetadata"] = data
+            # TODO remove 'render_job_id' here and rather use
+            #   'publishJobMetadata' where is needed.
+            #   - this is deadline specific
+            instance.data["render_job_id"] = data.get("job", {}).get("_id")
             staging_dir_persistent = instance.data.get(
                 "stagingDir_persistent", False
             )
