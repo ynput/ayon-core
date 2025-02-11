@@ -251,7 +251,7 @@ def uninstall_host():
     pyblish.api.deregister_discovery_filter(filter_pyblish_plugins)
     deregister_loader_plugin_path(LOAD_PATH)
     deregister_inventory_action_path(INVENTORY_PATH)
-    log.info("Global plug-ins unregistred")
+    log.info("Global plug-ins unregistered")
 
     deregister_host()
 
