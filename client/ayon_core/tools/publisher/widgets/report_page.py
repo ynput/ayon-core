@@ -1693,6 +1693,9 @@ class PublishFailWidget(QtWidgets.QWidget):
             description = error_item.description or description
             detail = error_item.detail or detail
 
+        description = description.replace("\n", "<br/>")
+        detail = detail.replace("\n", "<br/>")
+
         self._error_details_widget.set_detail(detail)
 
         if commonmark:
