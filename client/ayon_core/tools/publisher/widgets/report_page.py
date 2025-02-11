@@ -1117,6 +1117,57 @@ class LogIconFrame(QtWidgets.QFrame):
         painter.end()
 
 
+class LogItemMessage(QtWidgets.QTextEdit):
+    def __init__(self, msg, parent):
+        super().__init__(parent)
+
+        # Set as plain text to propagate new line characters
+        self.setPlainText(msg)
+
+        self.setObjectName("PublishLogMessage")
+        self.setReadOnly(True)
+        self.setFrameStyle(QtWidgets.QFrame.NoFrame)
+        self.setLineWidth(0)
+        self.setMidLineWidth(0)
+        pal = self.palette()
+        pal.setColor(QtGui.QPalette.Base, QtCore.Qt.transparent)
+        self.setPalette(pal)
+        self.setContentsMargins(0, 0, 0, 0)
+        viewport = self.viewport()
+        viewport.setContentsMargins(0, 0, 0, 0)
+
+        self.setTextInteractionFlags(
+            QtCore.Qt.TextBrowserInteraction)
+        self.setCursor(QtGui.QCursor(QtCore.Qt.IBeamCursor))
+        self.setLineWrapMode(QtWidgets.QTextEdit.WidgetWidth)
+        self.setWordWrapMode(
+            QtGui.QTextOption.WrapMode.WrapAtWordBoundaryOrAnywhere
+        )
+        self.setSizePolicy(
+            QtWidgets.QSizePolicy.Preferred,
+            QtWidgets.QSizePolicy.Maximum
+        )
+        document = self.document()
+        document.documentLayout().documentSizeChanged.connect(
+            self._adjust_minimum_size
+        )
+        document.setDocumentMargin(0.0)
+        self._height = None
+
+    def _adjust_minimum_size(self, size):
+        self._height = size.height() + (2 * self.frameWidth())
+        self.updateGeometry()
+
+    def sizeHint(self):
+        size = super().sizeHint()
+        if self._height is not None:
+            size.setHeight(self._height)
+        return size
+
+    def minimumSizeHint(self):
+        return self.sizeHint()
+
+
 class LogItemWidget(QtWidgets.QWidget):
     log_level_to_flag = {
         10: LOG_DEBUG_VISIBLE,
@@ -1132,12 +1183,7 @@ class LogItemWidget(QtWidgets.QWidget):
         type_flag, level_n = self._get_log_info(log)
         icon_label = LogIconFrame(
             self, log["type"], level_n, log.get("is_validation_error"))
-        message_label = QtWidgets.QLabel(log["msg"].rstrip(), self)
-        message_label.setObjectName("PublishLogMessage")
-        message_label.setTextInteractionFlags(
-            QtCore.Qt.TextBrowserInteraction)
-        message_label.setCursor(QtGui.QCursor(QtCore.Qt.IBeamCursor))
-        message_label.setWordWrap(True)
+        message_label = LogItemMessage(log["msg"].rstrip(), self)
 
         main_layout = QtWidgets.QHBoxLayout(self)
         main_layout.setContentsMargins(0, 0, 0, 0)
@@ -1290,6 +1336,7 @@ class InstanceLogsWidget(QtWidgets.QWidget):
 
         label_widget = QtWidgets.QLabel(instance.label, self)
         label_widget.setObjectName("PublishInstanceLogsLabel")
+        label_widget.setWordWrap(True)
         logs_grid = LogsWithIconsView(instance.logs, self)
 
         layout = QtWidgets.QVBoxLayout(self)
@@ -1329,9 +1376,11 @@ class InstancesLogsView(QtWidgets.QFrame):
 
         content_wrap_widget = QtWidgets.QWidget(scroll_area)
         content_wrap_widget.setAttribute(QtCore.Qt.WA_TranslucentBackground)
+        content_wrap_widget.setMinimumWidth(80)
 
         content_widget = QtWidgets.QWidget(content_wrap_widget)
         content_widget.setAttribute(QtCore.Qt.WA_TranslucentBackground)
+
         content_layout = QtWidgets.QVBoxLayout(content_widget)
         content_layout.setContentsMargins(8, 8, 8, 8)
         content_layout.setSpacing(15)

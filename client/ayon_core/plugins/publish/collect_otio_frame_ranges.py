@@ -80,8 +80,18 @@ class CollectOtioRanges(pyblish.api.InstancePlugin):
         if "workfileFrameStart" in instance.data:
             self._collect_timeline_ranges(instance, otio_clip)
 
+        # Traypublisher Simple or Advanced editorial publishing is
+        # working with otio clips which are having no available range
+        # because they are not having any media references.
+        try:
+            otio_clip.available_range()
+            has_available_range = True
+        except otio._otio.CannotComputeAvailableRangeError:
+            self.log.info("Clip has no available range")
+            has_available_range = False
+
         # Collect source ranges if clip has available range
-        if hasattr(otio_clip, 'available_range') and otio_clip.available_range():
+        if has_available_range:
             self._collect_source_ranges(instance, otio_clip)
 
         # Handle retimed ranges if source duration is available

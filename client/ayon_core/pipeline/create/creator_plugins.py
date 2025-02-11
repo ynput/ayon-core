@@ -15,7 +15,7 @@ from ayon_core.pipeline.plugin_discover import (
     deregister_plugin,
     deregister_plugin_path
 )
-from ayon_core.pipeline import get_staging_dir_info
+from ayon_core.pipeline.staging_dir import get_staging_dir_info, StagingDir
 
 from .constants import DEFAULT_VARIANT_VALUE
 from .product_name import get_product_name
@@ -833,7 +833,7 @@ class Creator(BaseCreator):
         """
         return self.pre_create_attr_defs
 
-    def get_staging_dir(self, instance):
+    def get_staging_dir(self, instance) -> Optional[StagingDir]:
         """Return the staging dir and persistence from instance.
 
         Args:
@@ -915,7 +915,8 @@ class Creator(BaseCreator):
 
         instance.transient_data.update({
             "stagingDir": staging_dir_path,
-            "stagingDir_persistent": staging_dir_info.persistent,
+            "stagingDir_persistent": staging_dir_info.is_persistent,
+            "stagingDir_is_custom": staging_dir_info.is_custom,
         })
 
         self.log.info(f"Applied staging dir to instance: {staging_dir_path}")
