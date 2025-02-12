@@ -85,6 +85,8 @@ class AttributesWidget(QtWidgets.QWidget):
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setHorizontalSpacing(INPUTS_LAYOUT_HSPACING)
         layout.setVerticalSpacing(INPUTS_LAYOUT_VSPACING)
+        layout.setColumnStretch(0, 0)
+        layout.setColumnStretch(1, 1)
 
         self._layout = layout
 
