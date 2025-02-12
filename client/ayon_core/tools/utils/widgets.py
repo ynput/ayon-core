@@ -88,21 +88,46 @@ class CustomTextComboBox(ComboBox):
         painter.drawControl(QtWidgets.QStyle.CE_ComboBoxLabel, option)
 
 
-class PlaceholderLineEdit(QtWidgets.QLineEdit):
-    """Set placeholder color of QLineEdit in Qt 5.12 and higher."""
-    def __init__(self, *args, **kwargs):
-        super(PlaceholderLineEdit, self).__init__(*args, **kwargs)
-        # Change placeholder palette color
-        if hasattr(QtGui.QPalette, "PlaceholderText"):
-            filter_palette = self.palette()
+class _Cache:
+    _placeholder_color = None
+
+    @classmethod
+    def get_placeholder_color(cls):
+        if cls._placeholder_color is None:
             color_obj = get_objected_colors("font")
             color = color_obj.get_qcolor()
             color.setAlpha(67)
+            cls._placeholder_color = color
+        return cls._placeholder_color
+
+
+class PlaceholderLineEdit(QtWidgets.QLineEdit):
+    """Set placeholder color of QLineEdit in Qt 5.12 and higher."""
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Change placeholder palette color
+        if hasattr(QtGui.QPalette, "PlaceholderText"):
+            filter_palette = self.palette()
             filter_palette.setColor(
                 QtGui.QPalette.PlaceholderText,
-                color
+                _Cache.get_placeholder_color()
             )
             self.setPalette(filter_palette)
+
+
+class PlaceholderPlainTextEdit(QtWidgets.QPlainTextEdit):
+    """Set placeholder color of QPlainTextEdit in Qt 5.12 and higher."""
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Change placeholder palette color
+        if hasattr(QtGui.QPalette, "PlaceholderText"):
+            viewport = self.viewport()
+            filter_palette = viewport.palette()
+            filter_palette.setColor(
+                QtGui.QPalette.PlaceholderText,
+                _Cache.get_placeholder_color()
+            )
+            viewport.setPalette(filter_palette)
 
 
 class ElideLabel(QtWidgets.QLabel):
