@@ -22,6 +22,8 @@ from ayon_core.tools.utils import (
     FocusSpinBox,
     FocusDoubleSpinBox,
     MultiSelectionComboBox,
+    PlaceholderLineEdit,
+    PlaceholderPlainTextEdit,
     set_style_property,
 )
 from ayon_core.tools.utils import NiceCheckbox
@@ -502,9 +504,9 @@ class TextAttrWidget(_BaseAttrDefWidget):
 
         self.multiline = self.attr_def.multiline
         if self.multiline:
-            input_widget = QtWidgets.QPlainTextEdit(self)
+            input_widget = PlaceholderPlainTextEdit(self)
         else:
-            input_widget = QtWidgets.QLineEdit(self)
+            input_widget = PlaceholderLineEdit(self)
 
         # Override context menu event to add revert to default action
         input_widget.contextMenuEvent = self._input_widget_context_event
