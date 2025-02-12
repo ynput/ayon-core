@@ -8,7 +8,18 @@ from ayon_core.pipeline import OptionalPyblishPluginMixin
 
 class AttachReviewables(pyblish.api.InstancePlugin,
                         OptionalPyblishPluginMixin):
-    """Attach reviewable to other instances"""
+    """Attach reviewable to other instances
+
+    This pre-integrator plugin allows instances to be 'attached to' other
+    instances by moving all its representations over to the other instance.
+    Even though this technically could work for any representation the current
+    intent is to use for reviewables only, like e.g. `review` or `render`
+    product type.
+
+    When the reviewable is attached to another instance, the instance itself
+    will not be published as a separate entity. Instead, the representations
+    will be copied/moved to the instances it is attached to.
+    """
 
     families = ["render", "review"]
     order = pyblish.api.IntegratorOrder - 0.499
