@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import base64
+import re
 import time
 from pathlib import Path
 
@@ -163,7 +164,8 @@ def mock_context(
             ),
             Sequence(
                 frame_padding=4,
-                frame_regex=r"img\.(?P<index>(?P<padding>0*)\d{4})\.png$",
+                frame_regex=re.compile(
+                    r"img\.(?P<index>(?P<padding>0*)\d{4})\.png$"),
             ),
             FileLocations(
                 file_paths=file_locations,
