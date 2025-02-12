@@ -6,8 +6,9 @@ from ayon_core.lib import EnumDef
 from ayon_core.pipeline import OptionalPyblishPluginMixin
 
 
-class AttachReviewables(pyblish.api.InstancePlugin,
-                        OptionalPyblishPluginMixin):
+class AttachReviewables(
+    pyblish.api.InstancePlugin, OptionalPyblishPluginMixin
+):
     """Attach reviewable to other instances
 
     This pre-integrator plugin allows instances to be 'attached to' other
@@ -40,17 +41,22 @@ class AttachReviewables(pyblish.api.InstancePlugin,
         attach_to = attr_values.get("attach", [])
         if not attach_to:
             self.log.debug(
-                "Reviewable is not set to attach to another instance.")
+                "Reviewable is not set to attach to another instance."
+            )
             return
 
         attach_instances: List[pyblish.api.Instance] = []
         for attach_instance_id in attach_to:
             # Find the `pyblish.api.Instance` matching the `CreatedInstance.id`
             # in the `attach_to` list
-            attach_instance = next((
-                _inst for _inst in instance.context
-                if _inst.data.get("instance_id") == attach_instance_id
-            ), None)
+            attach_instance = next(
+                (
+                    _inst
+                    for _inst in instance.context
+                    if _inst.data.get("instance_id") == attach_instance_id
+                ),
+                None,
+            )
             if not attach_instance:
                 continue
 
@@ -61,7 +67,8 @@ class AttachReviewables(pyblish.api.InstancePlugin,
             attach_instances.append(attach_instance)
 
         self.log.debug(
-            f"Attaching reviewable to other instances: {attach_instances}")
+            f"Attaching reviewable to other instances: {attach_instances}"
+        )
 
         # Copy the representations of this reviewable instance to the other
         # instance
@@ -76,7 +83,8 @@ class AttachReviewables(pyblish.api.InstancePlugin,
         for repre in representations:
             self.log.debug(
                 "Marking representation as deleted because it was "
-                f"attached to other instances instead: {repre}")
+                f"attached to other instances instead: {repre}"
+            )
             repre.setdefault("tags", []).append("delete")
 
     @classmethod
@@ -90,10 +98,12 @@ class AttachReviewables(pyblish.api.InstancePlugin,
         for other_instance in create_context.instances:
             if other_instance == instance:
                 continue
-            items.append({
-                "label": other_instance.label,
-                "value": str(other_instance.id)
-            })
+            items.append(
+                {
+                    "label": other_instance.label,
+                    "value": str(other_instance.id),
+                }
+            )
 
         return [
             EnumDef(
