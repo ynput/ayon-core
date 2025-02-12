@@ -2,7 +2,7 @@ import copy
 import typing
 from typing import Optional
 
-from qtpy import QtWidgets, QtCore
+from qtpy import QtWidgets, QtCore, QtGui
 
 from ayon_core.lib.attribute_definitions import (
     AbstractAttrDef,
@@ -655,6 +655,9 @@ class EnumAttrWidget(_BaseAttrDefWidget):
         for item in self.attr_def.items:
             input_widget.addItem(item["label"], item["value"])
 
+        if not self.attr_def.items:
+            self._add_empty_item(input_widget)
+
         idx = input_widget.findData(self.attr_def.default)
         if idx >= 0:
             input_widget.setCurrentIndex(idx)
@@ -670,6 +673,20 @@ class EnumAttrWidget(_BaseAttrDefWidget):
 
         input_widget.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
         input_widget.customContextMenuRequested.connect(self._on_context_menu)
+
+    def _add_empty_item(self, input_widget):
+        model = input_widget.model()
+        if not isinstance(model, QtGui.QStandardItemModel):
+            return
+
+        root_item = model.invisibleRootItem()
+
+        empty_item = QtGui.QStandardItem()
+        empty_item.setData("< No items to select >", QtCore.Qt.DisplayRole)
+        empty_item.setData("", QtCore.Qt.UserRole)
+        empty_item.setFlags(QtCore.Qt.NoItemFlags)
+
+        root_item.appendRow(empty_item)
 
     def _on_context_menu(self, pos):
         menu = QtWidgets.QMenu(self)
