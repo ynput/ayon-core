@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import contextlib
 import copy
+import hashlib
 from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, List
@@ -17,8 +18,13 @@ from ayon_api import (
 from ayon_api.operations import (
     OperationsSession,
     new_product_entity,
-    # new_representation_entity,
+    new_representation_entity,
     new_version_entity,
+)
+from ayon_api.utils import create_entity_id
+from ayon_core.lib import source_hash
+from ayon_core.lib.file_transaction import (
+    FileTransaction,
 )
 from ayon_core.pipeline.publish import (
     PublishError,
@@ -80,6 +86,35 @@ class TransferItem:
     template_data: dict[str, Any]
     representation: Representation
 
+    @staticmethod
+    def get_size(file_path: Path) -> int:
+        """Get size of the file.
+
+        Args:
+            file_path (Path): File path.
+
+        Returns:
+            int: Size of the file.
+
+        """
+        return file_path.stat().st_size
+
+
+    @staticmethod
+    def get_checksum(file_path: Path) -> str:
+        """Get checksum of the file.
+
+        Args:
+            file_path (Path): File path.
+
+        Returns:
+            str: Checksum of the file.
+
+        """
+        return hashlib.sha256(
+            file_path.read_bytes()
+        ).hexdigest()
+
 
 @dataclass
 class TemplateItem:
@@ -97,7 +132,6 @@ class TemplateItem:
     template: str
     template_data: dict[str, Any]
     template_object: AnatomyTemplateItem
-
 
 
 @dataclass
@@ -174,8 +208,6 @@ def get_changed_attributes(
     return changes
 
 
-
-
 class IntegrateTraits(pyblish.api.InstancePlugin):
     """Integrate representations with traits."""
 
@@ -234,12 +266,44 @@ class IntegrateTraits(pyblish.api.InstancePlugin):
             instance, representations)
 
         # 8) Transfer files
+        file_transactions = FileTransaction(
+            log=self.log,
+            # Enforce unique transfers
+            allow_queue_replacements=False)
         for transfer in transfers:
             self.log.debug(
                 "Transferring file: %s -> %s",
                 transfer.source,
                 transfer.destination
             )
+            file_transactions.add(
+                transfer.source.as_posix(),
+                transfer.destination.as_posix(),
+                mode=FileTransaction.MODE_COPY,
+            )
+        file_transactions.process()
+        self.log.debug(
+            "Transferred files %s", [file_transactions.transferred])
+
+        # 9) Create representation entities
+        for representation in representations:
+            representation_entity = new_representation_entity(
+                representation.name,
+                version_entity["id"],
+                files=self._get_legacy_files_for_representation(
+                    transfers,
+                    representation,
+                    anatomy=instance.context.data["anatomy"]),
+                attribs={},
+                data="",
+                tags=[],
+                status="",
+            )
+            # add traits to representation entity
+            representation_entity["traits"] = representation.traits_as_dict()
+
+        # 10) Commit the session to AYON
+        op_session.commit()
 
     def get_transfers_from_representations(
             self,
@@ -329,25 +393,31 @@ class IntegrateTraits(pyblish.api.InstancePlugin):
         If `originalDirname` or `stagingDir` is set in instance data,
         this will return it as rootless path. The path must reside
         within the project directory.
+
+        Returns:
+            str: Relative path to the root of the project directory.
+
+        Raises:
+            PublishError: If the path is not within the project directory.
+
         """
         original_directory = (
                 instance.data.get("originalDirname") or
                 instance.data.get("stagingDir"))
         anatomy = instance.context.data["anatomy"]
 
-        _rootless = self.get_rootless_path(anatomy, original_directory)
+        rootless = self.get_rootless_path(anatomy, original_directory)
         # this check works because _rootless will be the same as
         # original_directory if the original_directory cannot be transformed
         # to the rootless path.
-        if _rootless == original_directory:
+        if rootless == original_directory:
             msg = (
                 f"Destination path '{original_directory}' must "
                 "be in project directory.")
             raise PublishError(msg)
         # the root is at the beginning - {root[work]}/rest/of/the/path
-        relative_path_start = _rootless.rfind("}") + 2
-        return _rootless[relative_path_start:]
-
+        relative_path_start = rootless.rfind("}") + 2
+        return rootless[relative_path_start:]
 
         # 8) Transfer files
         # 9) Commit the session to AYON
@@ -670,19 +740,37 @@ class IntegrateTraits(pyblish.api.InstancePlugin):
             self.log.warning((
                 'Could not find root path for remapping "%s".'
                 " This may cause issues on farm."
-            ),path)
+            ), path)
         return path
 
     def get_attributes_for_type(
             self,
             context: pyblish.api.Context,
             entity_type: str) -> dict:
-        """Get AYON attributes for the given entity type."""
+        """Get AYON attributes for the given entity type.
+
+        Args:
+            context (pyblish.api.Context): Context to get attributes from.
+            entity_type (str): Entity type to get attributes for.
+
+        Returns:
+            dict: AYON attributes for the given entity type.
+
+        """
         return self.get_attributes_by_type(context)[entity_type]
 
+    @staticmethod
     def get_attributes_by_type(
-            self, context: pyblish.api.Context) -> dict:
-        """Gets AYON attributes from the given context."""
+            context: pyblish.api.Context) -> dict:
+        """Gets AYON attributes from the given context.
+
+        Args:
+            context (pyblish.api.Context): Context to get attributes from.
+
+        Returns:
+            dict: AYON attributes.
+
+        """
         attributes = context.data.get("ayonAttributes")
         if attributes is None:
             attributes = {
@@ -749,7 +837,6 @@ class IntegrateTraits(pyblish.api.InstancePlugin):
 
         return template_data
 
-
     @staticmethod
     def get_transfers_from_file_locations(
             representation: Representation,
@@ -765,6 +852,9 @@ class IntegrateTraits(pyblish.api.InstancePlugin):
         Mutates:
             transfers (list): List of transfers.
             template_item (TemplateItem): Template item.
+
+        Raises:
+            PublishError: If representation is invalid.
 
         """
         if representation.contains_trait(Sequence):
@@ -787,7 +877,6 @@ class IntegrateTraits(pyblish.api.InstancePlugin):
                 "is not a Sequence or UDIM."
             )
             raise PublishError(msg)
-
 
     @staticmethod
     def get_transfers_from_sequence(
@@ -844,8 +933,10 @@ class IntegrateTraits(pyblish.api.InstancePlugin):
                 TransferItem(
                     source=file_loc.file_path,
                     destination=Path(template_filled),
-                    size=file_loc.file_size,
-                    checksum=file_loc.file_hash,
+                    size=file_loc.file_size or TransferItem.get_size(
+                        file_loc.file_path),
+                    checksum=file_loc.file_hash or TransferItem.get_checksum(
+                        file_loc.file_path),
                     template=template_item.template,
                     template_data=template_item.template_data,
                     representation=representation,
@@ -858,7 +949,6 @@ class IntegrateTraits(pyblish.api.InstancePlugin):
                 template=template_item.template,
                 data=template_item.template_data
             ))
-
 
     @staticmethod
     def get_transfers_from_udim(
@@ -900,8 +990,10 @@ class IntegrateTraits(pyblish.api.InstancePlugin):
                 TransferItem(
                     source=file_loc.file_path,
                     destination=Path(template_filled),
-                    size=file_loc.file_size,
-                    checksum=file_loc.file_hash,
+                    size=file_loc.file_size or TransferItem.get_size(
+                        file_loc.file_path),
+                    checksum=file_loc.file_hash or TransferItem.get_checksum(
+                        file_loc.file_path),
                     template=template_item.template,
                     template_data=template_item.template_data,
                     representation=representation,
@@ -955,8 +1047,10 @@ class IntegrateTraits(pyblish.api.InstancePlugin):
             TransferItem(
                 source=file_loc.file_path,
                 destination=Path(template_filled),
-                size=file_loc.file_size,
-                checksum=file_loc.file_hash,
+                size=file_loc.file_size or TransferItem.get_size(
+                    file_loc.file_path),
+                checksum=file_loc.file_hash or TransferItem.get_checksum(
+                    file_loc.file_path),
                 template=template_item.template,
                 template_data=template_item.template_data,
                 representation=representation,
@@ -1009,17 +1103,48 @@ class IntegrateTraits(pyblish.api.InstancePlugin):
                     sub_representation, template_item, transfers
                 )
 
-def create_representation_entity(representation: Representation) -> dict:
-    """Create representation entity.
+    def _prepare_file_info(
+            self, path: Path, anatomy: Anatomy) -> dict[str, Any]:
+        """Prepare information for one file (asset or resource).
 
-    Args:
-        representation (Representation): Representation to create entity for.
+        Arguments:
+            path (Path): Destination url of published file.
+            anatomy (Anatomy): Project anatomy part from instance.
 
-    Returns:
-        dict: Representation entity.
+        Returns:
+            dict[str, Any]: Representation file info dictionary.
 
-    """
-    return {
-        "name": representation.name,
-        "traits": representation.get_traits_data(),
-    }
+        """
+        return {
+            "id": create_entity_id(),
+            "name": path.name,
+            "path": self.get_rootless_path(anatomy, path.as_posix()),
+            "size": path.stat().st_size,
+            "hash": source_hash(path.as_posix()),
+            "hash_type": "op3",
+        }
+
+    def _get_legacy_files_for_representation(
+            self,
+            transfer_items: list[TransferItem],
+            representation: Representation,
+            anatomy: Anatomy,
+        ) -> list[dict[str, str]]:
+        """Get legacy files for a given representation.
+
+        Returns:
+            list: List of legacy files.
+
+        """
+        selected: list[TransferItem] = []
+        selected.extend(
+            item
+            for item in transfer_items
+            if item.representation == representation
+        )
+        files: list[dict[str, str]] = []
+        files.extend(
+            self._prepare_file_info(item.destination, anatomy)
+            for item in selected
+        )
+        return files
