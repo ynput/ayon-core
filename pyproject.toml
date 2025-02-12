@@ -17,6 +17,8 @@ pre-commit = "^4.0.0"
 clique = "^2"
 pyblish-base = "^1.8"
 attrs = "^24.2.0"
+mypy = "==1.15.0"
+pydantic-core = "==2.29.0"
 
 
 [tool.poetry.dev-dependencies]
@@ -80,7 +82,7 @@ pydocstyle.convention = "google"
 select = ["ALL"]
 ignore = [
     "PTH",
-    "ANN101", # must be set in older version of ruff
+    # "ANN101", # must be set in older version of ruff
     "ANN204",
     "COM812",
     "S603",
