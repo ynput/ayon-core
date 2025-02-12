@@ -130,7 +130,7 @@ class TaskItem:
         if self._full_label is None:
             label = self.label or self.name
             self._full_label = f"{label} ({self.task_type})"
-        return self._label
+        return self._full_label
 
     def to_data(self):
         """Converts task item to data.
