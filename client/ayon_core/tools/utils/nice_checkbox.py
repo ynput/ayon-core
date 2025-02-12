@@ -328,6 +328,9 @@ class NiceCheckbox(QtWidgets.QFrame):
         if frame_rect.width() < 0 or frame_rect.height() < 0:
             return
 
+        frame_rect.setLeft(frame_rect.x() + (frame_rect.width() % 2))
+        frame_rect.setTop(frame_rect.y() + (frame_rect.height() % 2))
+
         painter = QtGui.QPainter(self)
 
         painter.setRenderHint(QtGui.QPainter.Antialiasing)
@@ -364,18 +367,23 @@ class NiceCheckbox(QtWidgets.QFrame):
             margin_size_c = 0
 
         checkbox_rect = QtCore.QRect(
-            frame_rect.x() + margin_size_c,
-            frame_rect.y() + margin_size_c,
-            frame_rect.width() - (margin_size_c * 2),
-            frame_rect.height() - (margin_size_c * 2)
+            frame_rect.x(),
+            frame_rect.y(),
+            frame_rect.width(),
+            frame_rect.height()
         )
+        if margin_size_c:
+            checkbox_rect.adjust(
+                margin_size_c, margin_size_c,
+                -margin_size_c, -margin_size_c
+            )
 
         if checkbox_rect.width() > checkbox_rect.height():
             radius = floor(checkbox_rect.height() * 0.5)
         else:
             radius = floor(checkbox_rect.width() * 0.5)
 
-        painter.setPen(QtCore.Qt.transparent)
+        painter.setPen(QtCore.Qt.NoPen)
         painter.setBrush(bg_color)
         painter.drawRoundedRect(checkbox_rect, radius, radius)
 
