@@ -830,13 +830,15 @@ class OptionalMenu(QtWidgets.QMenu):
         """Add highlight to active action"""
         active = self.actionAt(event.pos())
         for action in self.actions():
-            action.set_highlight(action is active, event.globalPos())
+            if isinstance(action, OptionalAction):
+                action.set_highlight(action is active, event.globalPos())
         super(OptionalMenu, self).mouseMoveEvent(event)
 
     def leaveEvent(self, event):
         """Remove highlight from all actions"""
         for action in self.actions():
-            action.set_highlight(False)
+            if isinstance(action, OptionalAction):
+                action.set_highlight(False)
         super(OptionalMenu, self).leaveEvent(event)
 
 
