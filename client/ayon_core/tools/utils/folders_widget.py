@@ -317,7 +317,7 @@ class FoldersQtModel(QtGui.QStandardItemModel):
     def _fill_item_data(
         self,
         item,
-        folder_item,
+        folder_item: FolderItem,
         folder_type_item_by_name,
         folder_type_icon_cache
     ):
@@ -326,6 +326,8 @@ class FoldersQtModel(QtGui.QStandardItemModel):
         Args:
             item (QtGui.QStandardItem): Item to fill data.
             folder_item (FolderItem): Folder item.
+            folder_type_item_by_name (dict): Folder type items by name.
+            folder_type_icon_cache (dict): Folder type icon cache.
 
         """
         item.setData(folder_item.entity_id, FOLDER_ID_ROLE)
