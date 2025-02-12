@@ -570,17 +570,18 @@ class EnumDef(AbstractAttrDef):
         placeholder: Optional[str] = None,
         **kwargs
     ):
-        if not items:
-            raise ValueError((
-                "Empty 'items' value. {} must have"
+        if multiselection is None:
+            multiselection = False
+
+        if not items and not multiselection:
+            raise ValueError(
+                f"Empty 'items' value. {self.__class__.__name__} must have"
                 " defined values on initialization."
-            ).format(self.__class__.__name__))
+            )
 
         items = self.prepare_enum_items(items)
         item_values = [item["value"] for item in items]
         item_values_set = set(item_values)
-        if multiselection is None:
-            multiselection = False
 
         if multiselection:
             if default is None:
