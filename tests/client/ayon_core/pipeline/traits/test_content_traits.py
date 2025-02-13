@@ -166,7 +166,7 @@ def test_get_file_location_from_frame() -> None:
     # test with custom regex
     sequence = Sequence(
         frame_padding=4,
-        frame_regex=re.compile("boo_(?P<index>(?P<padding>0*)\d+)\.exr"))
+        frame_regex=re.compile(r"boo_(?P<index>(?P<padding>0*)\d+)\.exr"))
     file_locations_list = [
         FileLocation(
             file_path=Path(f"/path/to/boo_{frame}.exr"),
