@@ -5,10 +5,10 @@ import base64
 import re
 import time
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import pyblish.api
 import pytest
-import pytest_ayon
 from ayon_api.operations import (
     OperationsSession,
 )
@@ -32,6 +32,9 @@ from ayon_core.pipeline.version_start import get_versioning_start
 from ayon_core.plugins.publish.integrate_traits import IntegrateTraits
 from ayon_core.settings import get_project_settings
 
+if TYPE_CHECKING:
+    import pytest_ayon
+
 PNG_FILE_B64 = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABAQAAAAA3bvkkAAAACklEQVR4AWNgAAAAAgABc3UBGAAAAABJRU5ErkJggg=="  # noqa: E501
 SEQUENCE_LENGTH = 10
 CURRENT_TIME = time.time()
@@ -41,9 +44,9 @@ CURRENT_TIME = time.time()
 def single_file(tmp_path_factory: pytest.TempPathFactory) -> Path:
     """Return a temporary image file."""
     filename = tmp_path_factory.mktemp("single") / "img.png"
-    with open(filename, "wb") as f:
-        f.write(base64.b64decode(PNG_FILE_B64))
+    filename.write_bytes(base64.b64decode(PNG_FILE_B64))
     return filename
+
 
 @pytest.fixture(scope="session")
 def sequence_files(tmp_path_factory: pytest.TempPathFactory) -> list[Path]:
@@ -53,12 +56,12 @@ def sequence_files(tmp_path_factory: pytest.TempPathFactory) -> list[Path]:
     for i in range(SEQUENCE_LENGTH):
         frame = i + 1
         filename = dir_name / f"img.{frame:04d}.png"
-        with open(filename, "wb") as f:
-            f.write(base64.b64decode(PNG_FILE_B64))
+        filename.write_bytes(base64.b64decode(PNG_FILE_B64))
         files.append(filename)
     return files
 
-@pytest.fixture()
+
+@pytest.fixture
 def mock_context(
         project: pytest_ayon.ProjectInfo,
         single_file: Path,
@@ -120,10 +123,7 @@ def mock_context(
 
     parents = project.folder_entity["path"].lstrip("/").split("/")
 
-    hierarchy = ""
-    if parents:
-        hierarchy = "/".join(parents)
-
+    hierarchy = "/".join(parents) if parents else ""
     instance.data["hierarchy"] = hierarchy
 
     version_number = get_versioning_start(
@@ -137,11 +137,11 @@ def mock_context(
 
     instance.data["version"] = version_number
 
-    _file_size = len(base64.b64decode(PNG_FILE_B64))
+    file_size = len(base64.b64decode(PNG_FILE_B64))
     file_locations = [
         FileLocation(
             file_path=f,
-            file_size=_file_size)
+            file_size=file_size)
         for f in sequence_files]
 
     instance.data["representations_with_traits"] = [
@@ -181,6 +181,7 @@ def mock_context(
 
     return context
 
+
 def test_get_template_name(mock_context: pyblish.api.Context) -> None:
     """Test get_template_name.
 
@@ -194,6 +195,7 @@ def test_get_template_name(mock_context: pyblish.api.Context) -> None:
         mock_context[0])
 
     assert template_name == "default"
+
 
 def test_filter_lifecycle() -> None:
     """Test filter_lifecycle."""
@@ -241,6 +243,7 @@ def test_prepare_product(
         "id": project.product_entity["id"],
         }
 
+
 def test_prepare_version(
         project: pytest_ayon.ProjectInfo,
         mock_context: pyblish.api.Context) -> None:
@@ -249,7 +252,7 @@ def test_prepare_version(
     op_session = OperationsSession()
     product = integrator.prepare_product(mock_context[0], op_session)
     version = integrator.prepare_version(
-        mock_context[0], op_session , product)
+        mock_context[0], op_session, product)
 
     assert version == {
         "attrib": {
