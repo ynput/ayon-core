@@ -83,6 +83,10 @@ class IPluginPaths(AYONInterface):
         """Receive launcher actions paths.
 
         Give addons ability to add launcher actions paths.
+
+        Returns:
+            list[str]: List of launcher action paths.
+
         """
         return self._get_plugin_paths_by_type("actions")
 
@@ -97,6 +101,9 @@ class IPluginPaths(AYONInterface):
 
         Args:
             host_name (str): For which host are the plugins meant.
+
+        Returns:
+            list[str]: List of create plugin paths.
 
         """
         return self._get_plugin_paths_by_type("create")
@@ -113,6 +120,9 @@ class IPluginPaths(AYONInterface):
         Args:
             host_name (str): For which host are the plugins meant.
 
+        Returns:
+            list[str]: List of load plugin paths.
+
         """
         return self._get_plugin_paths_by_type("load")
 
@@ -128,6 +138,9 @@ class IPluginPaths(AYONInterface):
         Args:
            host_name (str): For which host are the plugins meant.
 
+        Returns:
+            list[str]: List of publish plugin paths.
+
         """
         return self._get_plugin_paths_by_type("publish")
 
@@ -142,6 +155,9 @@ class IPluginPaths(AYONInterface):
 
         Args:
            host_name (str): For which host are the plugins meant.
+
+        Returns:
+            list[str]: List of inventory action plugin paths.
 
         """
         return self._get_plugin_paths_by_type("inventory")
@@ -236,7 +252,12 @@ class ITrayAddon(AYONInterface):
 
     @staticmethod
     def admin_submenu(tray_menu: QtWidgets.QMenu) -> QtWidgets.QMenu:
-        """Get or create admin submenu."""
+        """Get or create admin submenu.
+
+        Returns:
+            QtWidgets.QMenu: Admin submenu.
+
+        """
         if ITrayAddon._admin_submenu is None:
             from qtpy import QtWidgets
 
@@ -248,7 +269,16 @@ class ITrayAddon(AYONInterface):
     @staticmethod
     def add_action_to_admin_submenu(
             label: str, tray_menu: QtWidgets.QMenu) -> QtWidgets.QAction:
-        """Add action to admin submenu."""
+        """Add action to admin submenu.
+
+        Args:
+            label (str): Label of action.
+            tray_menu (QtWidgets.QMenu): Tray menu to add action to.
+
+        Returns:
+            QtWidgets.QAction: Action added to admin submenu
+
+        """
         from qtpy import QtWidgets
 
         menu = ITrayAddon.admin_submenu(tray_menu)
