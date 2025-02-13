@@ -54,7 +54,7 @@ class ComboBox(QtWidgets.QComboBox):
     """
 
     def __init__(self, *args, **kwargs):
-        super(ComboBox, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         delegate = QtWidgets.QStyledItemDelegate()
         self.setItemDelegate(delegate)
         self.setFocusPolicy(QtCore.Qt.StrongFocus)
@@ -63,7 +63,7 @@ class ComboBox(QtWidgets.QComboBox):
 
     def wheelEvent(self, event):
         if self.hasFocus():
-            return super(ComboBox, self).wheelEvent(event)
+            return super().wheelEvent(event)
 
 
 class CustomTextComboBox(ComboBox):
@@ -71,7 +71,7 @@ class CustomTextComboBox(ComboBox):
 
     def __init__(self, *args, **kwargs):
         self._custom_text = None
-        super(CustomTextComboBox, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
 
     def set_custom_text(self, text=None):
         if self._custom_text != text:
@@ -88,21 +88,46 @@ class CustomTextComboBox(ComboBox):
         painter.drawControl(QtWidgets.QStyle.CE_ComboBoxLabel, option)
 
 
-class PlaceholderLineEdit(QtWidgets.QLineEdit):
-    """Set placeholder color of QLineEdit in Qt 5.12 and higher."""
-    def __init__(self, *args, **kwargs):
-        super(PlaceholderLineEdit, self).__init__(*args, **kwargs)
-        # Change placeholder palette color
-        if hasattr(QtGui.QPalette, "PlaceholderText"):
-            filter_palette = self.palette()
+class _Cache:
+    _placeholder_color = None
+
+    @classmethod
+    def get_placeholder_color(cls):
+        if cls._placeholder_color is None:
             color_obj = get_objected_colors("font")
             color = color_obj.get_qcolor()
             color.setAlpha(67)
+            cls._placeholder_color = color
+        return cls._placeholder_color
+
+
+class PlaceholderLineEdit(QtWidgets.QLineEdit):
+    """Set placeholder color of QLineEdit in Qt 5.12 and higher."""
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Change placeholder palette color
+        if hasattr(QtGui.QPalette, "PlaceholderText"):
+            filter_palette = self.palette()
             filter_palette.setColor(
                 QtGui.QPalette.PlaceholderText,
-                color
+                _Cache.get_placeholder_color()
             )
             self.setPalette(filter_palette)
+
+
+class PlaceholderPlainTextEdit(QtWidgets.QPlainTextEdit):
+    """Set placeholder color of QPlainTextEdit in Qt 5.12 and higher."""
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Change placeholder palette color
+        if hasattr(QtGui.QPalette, "PlaceholderText"):
+            viewport = self.viewport()
+            filter_palette = viewport.palette()
+            filter_palette.setColor(
+                QtGui.QPalette.PlaceholderText,
+                _Cache.get_placeholder_color()
+            )
+            viewport.setPalette(filter_palette)
 
 
 class ElideLabel(QtWidgets.QLabel):
