@@ -63,9 +63,9 @@ def get_paths_from_environ(
     """Return existing paths from specific environment variable.
 
     Args:
-        env_key (str): Environment key where should look for paths.
-        env_value (str): Value of environment variable. Argument `env_key` is
-            skipped if this argument is entered.
+        env_key (Optional[str]): Environment key where should look for paths.
+        env_value (Optional[str]): Value of environment variable.
+            Argument `env_key` is skipped if this argument is entered.
         return_first (bool): Return first found value or return list of found
             paths. `None` or empty list returned if nothing found.
 
