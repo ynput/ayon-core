@@ -33,8 +33,10 @@ class RootItem(FormatObject):
         self.parent = parent
 
         self.available_platforms = set(lowered_platform_keys.keys())
-        self.value = lowered_platform_keys[platform.system().lower()].format(
-            **os.environ
+
+        current_platform = platform.system().lower()
+        self.value = lowered_platform_keys[current_platform].format_map(
+            os.environ
         )
         self.clean_value = self._clean_root(self.value)
 
