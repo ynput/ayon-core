@@ -25,7 +25,7 @@ class RootItem(FormatObject):
         self._log = None
         lowered_platform_keys = {}
         for key, value in root_raw_data.items():
-            lowered_platform_keys[key.lower()] = value
+            lowered_platform_keys[key.lower()] = value.format(**os.environ)
         self.raw_data = lowered_platform_keys
         self.cleaned_data = self._clean_roots(lowered_platform_keys)
         self.name = name
