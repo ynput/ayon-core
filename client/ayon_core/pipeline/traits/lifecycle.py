@@ -26,8 +26,10 @@ class Transient(TraitBase):
         Args:
             representation (Representation): Representation model.
 
-        Returns:
-            bool: True if representation is valid, False otherwise.
+        Raises:
+            TraitValidationError: If representation is marked as both
+                Persistent and Transient.
+
         """
         if representation.contains_trait(Persistent):
             msg = "Representation is marked as both Persistent and Transient."
@@ -56,6 +58,10 @@ class Persistent(TraitBase):
 
         Args:
             representation (Representation): Representation model.
+
+        Raises:
+            TraitValidationError: If representation is marked
+                as both Persistent and Transient.
 
         """
         if representation.contains_trait(Transient):
