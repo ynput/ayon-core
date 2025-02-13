@@ -8,6 +8,7 @@ from ayon_core.lib.env_tools import (
     compute_env_variables_structure,
 )
 
+# --- Test data ---
 COMPUTE_SRC_ENV = {
     "COMPUTE_VERSION": "1.0.0",
     # Will be available only for darwin
@@ -31,6 +32,8 @@ COMPUTE_SRC_ENV = {
     },
 }
 
+# --- RESULTS ---
+# --- Parse results ---
 PARSE_RESULT_WINDOWS = {
     "COMPUTE_VERSION": "1.0.0",
     "COMPUTE_LOCATION": "C:/Program Files/compute-app-{COMPUTE_VERSION}",
@@ -53,6 +56,7 @@ PARSE_RESULT_DARWIN = {
     "PATH_STR": "{COMPUTE_LOCATION}/bin:{COMPUTE_LOCATION}/bin2",
 }
 
+# --- Compute results ---
 COMPUTE_RESULT_WINDOWS = {
     "COMPUTE_VERSION": "1.0.0", 
     "COMPUTE_LOCATION": "C:/Program Files/compute-app-1.0.0",
