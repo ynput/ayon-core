@@ -58,7 +58,7 @@ PARSE_RESULT_DARWIN = {
 
 # --- Compute results ---
 COMPUTE_RESULT_WINDOWS = {
-    "COMPUTE_VERSION": "1.0.0", 
+    "COMPUTE_VERSION": "1.0.0",
     "COMPUTE_LOCATION": "C:/Program Files/compute-app-1.0.0",
     "PATH_LIST": (
         "C:/Program Files/compute-app-1.0.0/bin"
