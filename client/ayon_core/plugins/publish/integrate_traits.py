@@ -99,7 +99,6 @@ class TransferItem:
         """
         return file_path.stat().st_size
 
-
     @staticmethod
     def get_checksum(file_path: Path) -> str:
         """Get checksum of the file.
