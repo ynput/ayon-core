@@ -122,6 +122,9 @@ def parse_env_variables_structure(
     if platform_name is None:
         platform_name = platform.system().lower()
 
+    # Separator based on OS 'os.pathsep' is ';' on Windows and ':' on Unix
+    sep = ";" if platform_name == "windows" else ":"
+
     result = {}
     for variable, value in env.items():
         # Platform specific values
@@ -130,7 +133,7 @@ def parse_env_variables_structure(
 
         # Allow to have lists as values in the tool data
         if isinstance(value, (list, tuple)):
-            value = os.pathsep.join(value)
+            value = sep.join(value)
 
         if not value:
             continue
