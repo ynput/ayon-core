@@ -623,4 +623,12 @@ def version_up_current_workfile():
     new_workfile_path = last_workfile_path
     if os.path.exists(new_workfile_path):
         new_workfile_path = version_up(new_workfile_path)
+
+    # Raise an error if the parent folder doesn't exist as `host.save_workfile`
+    # is not supposed/able to create missing folders.
+    parent_folder = os.path.dirname(new_workfile_path)
+    if not os.path.exists(parent_folder):
+        raise AssertionError(
+            f"Folder {parent_folder} does not exist yet.")
+
     host.save_workfile(new_workfile_path)
