@@ -617,6 +617,9 @@ def version_up_current_workfile():
     last_workfile_path = get_last_workfile(
         work_root, file_template, data, extensions, True
     )
+    # `get_last_workfile` will return the first expected file version
+    # if no files exist yet. In that case, if they do not exist we will
+    # want to save v001
     new_workfile_path = last_workfile_path
     if os.path.exists(new_workfile_path):
         new_workfile_path = version_up(new_workfile_path)
