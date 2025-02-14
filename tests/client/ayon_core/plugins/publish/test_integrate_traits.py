@@ -14,6 +14,7 @@ from ayon_api.operations import (
 )
 from ayon_core.pipeline.anatomy import Anatomy
 from ayon_core.pipeline.traits import (
+    Bundle,
     FileLocation,
     FileLocations,
     FrameRanged,
@@ -177,6 +178,44 @@ def mock_context(
                 pixel_aspect_ratio=1.0),
             MimeType(mime_type="image/png"),
         ]),
+        Representation(name="test_bundle", traits=[
+            Persistent(),
+            Bundle(
+                items=[
+                    [
+                        FileLocation(
+                            file_path=single_file,
+                            file_size=len(base64.b64decode(PNG_FILE_B64))),
+                        Image(),
+                        MimeType(mime_type="image/png"),
+                    ],
+                    [
+                        Persistent(),
+                        FrameRanged(
+                            frame_start=1,
+                            frame_end=SEQUENCE_LENGTH,
+                            frame_in=0,
+                            frame_out=SEQUENCE_LENGTH - 1,
+                            frames_per_second="25",
+                        ),
+                        Sequence(
+                            frame_padding=4,
+                            frame_regex=re.compile(
+                                r"img\.(?P<index>(?P<padding>0*)\d{4})\.png$"),
+                        ),
+                        FileLocations(
+                            file_paths=file_locations,
+                        ),
+                        Image(),
+                        PixelBased(
+                            display_window_width=1920,
+                            display_window_height=1080,
+                            pixel_aspect_ratio=1.0),
+                        MimeType(mime_type="image/png"),
+                    ],
+                ],
+            ),
+        ]),
     ]
 
     return context
@@ -289,4 +328,8 @@ def test_get_transfers_from_representation(
     transfers = integrator.get_transfers_from_representations(
         instance, representations)
 
-    assert len(transfers) == 11
+    assert len(representations) == 3
+    assert len(transfers) == 22
+
+    for transfer in transfers:
+        ...

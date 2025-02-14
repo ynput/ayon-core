@@ -17,8 +17,8 @@ pre-commit = "^4.0.0"
 clique = "^2"
 pyblish-base = "^1.8"
 attrs = "^24.2.0"
-mypy = "==1.15.0"
 pydantic-core = "==2.29.0"
+speedcopy = "^2.0.0"
 
 
 [tool.poetry.dev-dependencies]
@@ -31,7 +31,7 @@ ruff = "^0.9.3"
 pre-commit = "^4"
 codespell = "^2.2.6"
 semver = "^3.0.2"
-mypy = "^1.14.0"
+mypy = "==1.15.0"
 
 
 [tool.ruff]
