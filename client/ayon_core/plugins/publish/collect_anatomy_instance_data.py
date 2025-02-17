@@ -116,10 +116,10 @@ class CollectAnatomyInstanceData(pyblish.api.ContextPlugin):
 
         if not_found_folder_paths:
             joined_folder_paths = ", ".join(
-                ["\"{}\"".format(path) for path in not_found_folder_paths]
+                [f"\"{path}\"" for path in not_found_folder_paths]
             )
             self.log.warning((
-                "Not found folder entities with paths \"{}\"."
+                "Not found folder entities with paths {}."
             ).format(joined_folder_paths))
 
     def fill_missing_task_entities(self, context, project_name):
