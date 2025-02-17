@@ -240,6 +240,13 @@ function Run-From-Code {
     & $Poetry $RunArgs @arguments
 }
 
+function Run-Tests {
+    $Poetry = "$RepoRoot\.poetry\bin\poetry.exe"
+    $RunArgs = @( "run", "pytest", "$($RepoRoot)/tests")
+
+    & $Poetry $RunArgs @arguments
+}
+
 function Write-Help {
     <#
     .SYNOPSIS
@@ -256,6 +263,7 @@ function Write-Help {
     Write-Info -Text "  ruff-fix                      ", "Run Ruff fix for the repository" -Color White, Cyan
     Write-Info -Text "  codespell                     ", "Run codespell check for the repository" -Color White, Cyan
     Write-Info -Text "  run                           ", "Run a poetry command in the repository environment" -Color White, Cyan
+    Write-Info -Text "  run-tests                     ", "Run ayon-core tests" -Color White, Cyan
     Write-Host ""
 }
 
@@ -280,6 +288,9 @@ function Resolve-Function {
     } elseif ($FunctionName -eq "run") {
         Set-Cwd
         Run-From-Code
+    } elseif ($FunctionName -eq "runtests") {
+        Set-Cwd
+        Run-Tests
     } else {
         Write-Host "Unknown function ""$FunctionName"""
         Write-Help
