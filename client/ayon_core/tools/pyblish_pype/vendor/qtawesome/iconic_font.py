@@ -5,7 +5,6 @@ from __future__ import print_function
 import json
 import os
 
-import six
 from qtpy import QtCore, QtGui
 
 
@@ -152,7 +151,7 @@ class IconicFont(QtCore.QObject):
         def hook(obj):
             result = {}
             for key in obj:
-                result[key] = six.unichr(int(obj[key], 16))
+                result[key] = chr(int(obj[key], 16))
             return result
 
         if directory is None:
