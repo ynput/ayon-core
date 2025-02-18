@@ -1,4 +1,6 @@
+from __future__ import annotations
 import collections
+from typing import Optional
 
 from qtpy import QtWidgets, QtCore
 
@@ -36,7 +38,7 @@ class ProductsProxyModel(RecursiveSortFilterProxyModel):
     def __init__(self, parent=None):
         super().__init__(parent)
 
-        self._product_type_filters = {}
+        self._product_type_filters = None
         self._statuses_filter = None
         self._ascending_sort = True
 
@@ -46,6 +48,8 @@ class ProductsProxyModel(RecursiveSortFilterProxyModel):
         return set(self._statuses_filter)
 
     def set_product_type_filters(self, product_type_filters):
+        if self._product_type_filters == product_type_filters:
+            return
         self._product_type_filters = product_type_filters
         self.invalidateFilter()
 
@@ -59,28 +63,32 @@ class ProductsProxyModel(RecursiveSortFilterProxyModel):
         source_model = self.sourceModel()
         index = source_model.index(source_row, 0, source_parent)
 
-        product_types_s = source_model.data(index, PRODUCT_TYPE_ROLE)
-        product_types = []
-        if product_types_s:
-            product_types = product_types_s.split("|")
-
-        for product_type in product_types:
-            if not self._product_type_filters.get(product_type, True):
-                return False
-
-        if not self._accept_row_by_statuses(index):
+        if not self._accept_row_by_role_value(
+            index, self._product_type_filters, PRODUCT_TYPE_ROLE
+        ):
             return False
+
+        if not self._accept_row_by_role_value(
+            index, self._statuses_filter, STATUS_NAME_FILTER_ROLE
+        ):
+            return False
+
         return super().filterAcceptsRow(source_row, source_parent)
 
-    def _accept_row_by_statuses(self, index):
-        if self._statuses_filter is None:
+    def _accept_row_by_role_value(
+        self,
+        index: QtCore.QModelIndex,
+        filter_value: Optional[set[str]],
+        role: int
+    ):
+        if filter_value is None:
             return True
-        if not self._statuses_filter:
+        if not filter_value:
             return False
 
-        status_s = index.data(STATUS_NAME_FILTER_ROLE)
+        status_s = index.data(role)
         for status in status_s.split("|"):
-            if status in self._statuses_filter:
+            if status in filter_value:
                 return True
         return False
 
@@ -120,7 +128,7 @@ class ProductsWidget(QtWidgets.QWidget):
         90,   # Product type
         130,  # Folder label
         60,   # Version
-        100,   # Status
+        100,  # Status
         125,  # Time
         75,   # Author
         75,   # Frames
