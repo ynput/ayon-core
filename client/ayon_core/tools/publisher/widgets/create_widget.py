@@ -111,7 +111,7 @@ class CreateWidget(QtWidgets.QWidget):
 
         self._folder_path = None
         self._product_names = None
-        self._selected_creator = None
+        self._selected_creator_identifier = None
 
         self._prereq_available = False
 
@@ -261,6 +261,10 @@ class CreateWidget(QtWidgets.QWidget):
         )
         controller.register_event_callback(
             "controller.reset.finished", self._on_controler_reset
+        )
+        controller.register_event_callback(
+            "create.context.pre.create.attrs.changed",
+            self._pre_create_attr_changed
         )
 
         self._main_splitter_widget = main_splitter_widget
@@ -512,6 +516,15 @@ class CreateWidget(QtWidgets.QWidget):
         # Trigger refresh only if is visible
         self.refresh()
 
+    def _pre_create_attr_changed(self, event):
+        if (
+            self._selected_creator_identifier is None
+            or self._selected_creator_identifier not in event["identifiers"]
+        ):
+            return
+
+        self._set_creator_by_identifier(self._selected_creator_identifier)
+
     def _on_folder_change(self):
         self._refresh_product_name()
         if self._context_change_is_enabled():
@@ -563,11 +576,12 @@ class CreateWidget(QtWidgets.QWidget):
         self._set_creator_detailed_text(creator_item)
         self._pre_create_widget.set_creator_item(creator_item)
 
-        self._selected_creator = creator_item
-
         if not creator_item:
+            self._selected_creator_identifier = None
             self._set_context_enabled(False)
             return
+
+        self._selected_creator_identifier = creator_item.identifier
 
         if (
             creator_item.create_allow_context_change
@@ -603,7 +617,7 @@ class CreateWidget(QtWidgets.QWidget):
             return
 
         # This should probably never happen?
-        if not self._selected_creator:
+        if not self._selected_creator_identifier:
             if self.product_name_input.text():
                 self.product_name_input.setText("")
             return
@@ -625,11 +639,13 @@ class CreateWidget(QtWidgets.QWidget):
 
         folder_path = self._get_folder_path()
         task_name = self._get_task_name()
-        creator_idenfier = self._selected_creator.identifier
         # Calculate product name with Creator plugin
         try:
             product_name = self._controller.get_product_name(
-                creator_idenfier, variant_value, task_name, folder_path
+                self._selected_creator_identifier,
+                variant_value,
+                task_name,
+                folder_path
             )
         except TaskNotSetError:
             self._create_btn.setEnabled(False)
@@ -755,7 +771,7 @@ class CreateWidget(QtWidgets.QWidget):
         )
 
         if success:
-            self._set_creator(self._selected_creator)
+            self._set_creator_by_identifier(self._selected_creator_identifier)
             self._variant_widget.setText(variant)
             self._controller.emit_card_message("Creation finished...")
             self._last_thumbnail_path = None

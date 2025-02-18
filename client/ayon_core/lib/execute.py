@@ -108,21 +108,29 @@ def run_subprocess(*args, **kwargs):
             | getattr(subprocess, "CREATE_NO_WINDOW", 0)
         )
 
-    # Escape parentheses for bash
+    # Escape special characters in certain shells
     if (
         kwargs.get("shell") is True
         and len(args) == 1
         and isinstance(args[0], str)
-        and os.getenv("SHELL") in ("/bin/bash", "/bin/sh")
     ):
-        new_arg = (
-            args[0]
-            .replace("(", "\\(")
-            .replace(")", "\\)")
-        )
-        args = (new_arg, )
+        # Escape parentheses for bash
+        if os.getenv("SHELL") in ("/bin/bash", "/bin/sh"):
+            new_arg = (
+                args[0]
+                .replace("(", "\\(")
+                .replace(")", "\\)")
+            )
+            args = (new_arg,)
+        # Escape & on Windows in shell with `cmd.exe` using ^&
+        elif (
+            platform.system().lower() == "windows"
+            and os.getenv("COMSPEC").endswith("cmd.exe")
+        ):
+            new_arg = args[0].replace("&", "^&")
+            args = (new_arg, )
 
-    # Get environents from kwarg or use current process environments if were
+    # Get environments from kwarg or use current process environments if were
     # not passed.
     env = kwargs.get("env") or os.environ
     # Make sure environment contains only strings

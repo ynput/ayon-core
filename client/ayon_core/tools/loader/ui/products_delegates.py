@@ -222,6 +222,7 @@ class VersionDelegate(QtWidgets.QStyledItemDelegate):
 
         editor = VersionComboBox(product_id, parent)
         editor.setProperty("itemId", item_id)
+        editor.setFocusPolicy(QtCore.Qt.NoFocus)
 
         editor.value_changed.connect(self._on_editor_change)
         editor.destroyed.connect(self._on_destroy)

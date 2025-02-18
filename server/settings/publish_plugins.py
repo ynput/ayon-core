@@ -358,7 +358,10 @@ class ExtractOIIOTranscodeOutputModel(BaseSettingsModel):
     custom_tags: list[str] = SettingsField(
         default_factory=list,
         title="Custom Tags",
-        description="Additional custom tags that will be added to the created representation."
+        description=(
+            "Additional custom tags that will be added"
+            " to the created representation."
+        )
     )
 
 
@@ -459,8 +462,8 @@ class ExtractReviewFilterModel(BaseSettingsModel):
     single_frame_filter: str = SettingsField(
         "everytime",  # codespell:ignore everytime
         description=(
-            "Use output <b>always</b> / only if input <b>is 1 frame</b>"
-            " image / only if has <b>2+ frames</b> or <b>is video</b>"
+            "Use output **always** / only if input **is 1 frame**"
+            " image / only if has **2+ frames** or **is video**"
         ),
         enum_resolver=extract_review_filter_enum
     )
@@ -892,9 +895,11 @@ class PublishPuginsModel(BaseSettingsModel):
         default_factory=CollectFramesFixDefModel,
         title="Collect Frames to Fix",
     )
-    CollectUSDLayerContributions: CollectUSDLayerContributionsModel = SettingsField(
-        default_factory=CollectUSDLayerContributionsModel,
-        title="Collect USD Layer Contributions",
+    CollectUSDLayerContributions: CollectUSDLayerContributionsModel = (
+        SettingsField(
+            default_factory=CollectUSDLayerContributionsModel,
+            title="Collect USD Layer Contributions",
+        )
     )
     ValidateEditorialAssetName: ValidateBaseModel = SettingsField(
         default_factory=ValidateBaseModel,
@@ -1003,8 +1008,8 @@ DEFAULT_PUBLISH_VALUES = {
             {"name": "model", "order": 100},
             {"name": "assembly", "order": 150},
             {"name": "groom", "order": 175},
-            {"name": "look", "order": 300},
-            {"name": "rig", "order": 100},
+            {"name": "look", "order": 200},
+            {"name": "rig", "order": 300},
             # Shot layers
             {"name": "layout", "order": 200},
             {"name": "animation", "order": 300},
@@ -1028,7 +1033,8 @@ DEFAULT_PUBLISH_VALUES = {
                     "maya",
                     "nuke",
                     "photoshop",
-                    "substancepainter"
+                    "substancepainter",
+                    "silhouette",
                 ],
                 "enabled": True,
                 "optional": False,
@@ -1048,7 +1054,8 @@ DEFAULT_PUBLISH_VALUES = {
                     "harmony",
                     "photoshop",
                     "aftereffects",
-                    "fusion"
+                    "fusion",
+                    "silhouette",
                 ],
                 "enabled": True,
                 "optional": True,
@@ -1214,7 +1221,9 @@ DEFAULT_PUBLISH_VALUES = {
                         "TOP_RIGHT": "{anatomy[version]}",
                         "BOTTOM_LEFT": "{username}",
                         "BOTTOM_CENTERED": "{folder[name]}",
-                        "BOTTOM_RIGHT": "{frame_start}-{current_frame}-{frame_end}",
+                        "BOTTOM_RIGHT": (
+                            "{frame_start}-{current_frame}-{frame_end}"
+                        ),
                         "filter": {
                             "families": [],
                             "tags": []
@@ -1240,7 +1249,9 @@ DEFAULT_PUBLISH_VALUES = {
                         "TOP_RIGHT": "{anatomy[version]}",
                         "BOTTOM_LEFT": "{username}",
                         "BOTTOM_CENTERED": "{folder[name]}",
-                        "BOTTOM_RIGHT": "{frame_start}-{current_frame}-{frame_end}",
+                        "BOTTOM_RIGHT": (
+                            "{frame_start}-{current_frame}-{frame_end}"
+                        ),
                         "filter": {
                             "families": [],
                             "tags": []

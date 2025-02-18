@@ -1,7 +1,6 @@
 import os
 import re
 import logging
-import platform
 
 import clique
 
@@ -38,31 +37,7 @@ def create_hard_link(src_path, dst_path):
         dst_path(str): Full path to a file where a link of source will be
             added.
     """
-    # Use `os.link` if is available
-    #   - should be for all platforms with newer python versions
-    if hasattr(os, "link"):
-        os.link(src_path, dst_path)
-        return
-
-    # Windows implementation of hardlinks
-    #   - used in Python 2
-    if platform.system().lower() == "windows":
-        import ctypes
-        from ctypes.wintypes import BOOL
-        CreateHardLink = ctypes.windll.kernel32.CreateHardLinkW
-        CreateHardLink.argtypes = [
-            ctypes.c_wchar_p, ctypes.c_wchar_p, ctypes.c_void_p
-        ]
-        CreateHardLink.restype = BOOL
-
-        res = CreateHardLink(dst_path, src_path, None)
-        if res == 0:
-            raise ctypes.WinError()
-        return
-    # Raises not implemented error if gets here
-    raise NotImplementedError(
-        "Implementation of hardlink for current environment is missing."
-    )
+    os.link(src_path, dst_path)
 
 
 def collect_frames(files):
@@ -210,7 +185,7 @@ def get_last_version_from_path(path_dir, filter):
     assert isinstance(filter, list) and (
         len(filter) != 0), "`filter` argument needs to be list and not empty"
 
-    filtred_files = list()
+    filtered_files = list()
 
     # form regex for filtering
     pattern = r".*".join(filter)
@@ -218,10 +193,10 @@ def get_last_version_from_path(path_dir, filter):
     for file in os.listdir(path_dir):
         if not re.findall(pattern, file):
             continue
-        filtred_files.append(file)
+        filtered_files.append(file)
 
-    if filtred_files:
-        sorted(filtred_files)
-        return filtred_files[-1]
+    if filtered_files:
+        filtered_files.sort()
+        return filtered_files[-1]
 
     return None

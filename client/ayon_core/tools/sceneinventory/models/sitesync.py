@@ -11,18 +11,18 @@ class SiteSyncModel:
 
         self._sitesync_addon = NOT_SET
         self._sitesync_enabled = None
-        self._active_site = NOT_SET
-        self._remote_site = NOT_SET
-        self._active_site_provider = NOT_SET
-        self._remote_site_provider = NOT_SET
+        self._active_site = {}
+        self._remote_site = {}
+        self._active_site_provider = {}
+        self._remote_site_provider = {}
 
     def reset(self):
         self._sitesync_addon = NOT_SET
         self._sitesync_enabled = None
-        self._active_site = NOT_SET
-        self._remote_site = NOT_SET
-        self._active_site_provider = NOT_SET
-        self._remote_site_provider = NOT_SET
+        self._active_site = {}
+        self._remote_site = {}
+        self._active_site_provider = {}
+        self._remote_site_provider = {}
 
     def is_sitesync_enabled(self):
         """Site sync is enabled.
@@ -46,15 +46,21 @@ class SiteSyncModel:
         sitesync_addon = self._get_sitesync_addon()
         return sitesync_addon.get_site_icons()
 
-    def get_sites_information(self):
+    def get_sites_information(self, project_name):
         return {
-            "active_site": self._get_active_site(),
-            "active_site_provider": self._get_active_site_provider(),
-            "remote_site": self._get_remote_site(),
-            "remote_site_provider": self._get_remote_site_provider()
+            "active_site": self._get_active_site(project_name),
+            "remote_site": self._get_remote_site(project_name),
+            "active_site_provider": self._get_active_site_provider(
+                project_name
+            ),
+            "remote_site_provider": self._get_remote_site_provider(
+                project_name
+            )
         }
 
-    def get_representations_site_progress(self, representation_ids):
+    def get_representations_site_progress(
+        self, project_name, representation_ids
+    ):
         """Get progress of representations sync."""
 
         representation_ids = set(representation_ids)
@@ -68,13 +74,12 @@ class SiteSyncModel:
         if not self.is_sitesync_enabled():
             return output
 
-        project_name = self._controller.get_current_project_name()
         sitesync_addon = self._get_sitesync_addon()
         repre_entities = ayon_api.get_representations(
             project_name, representation_ids
         )
-        active_site = self._get_active_site()
-        remote_site = self._get_remote_site()
+        active_site = self._get_active_site(project_name)
+        remote_site = self._get_remote_site(project_name)
 
         for repre_entity in repre_entities:
             repre_output = output[repre_entity["id"]]
@@ -86,20 +91,21 @@ class SiteSyncModel:
 
         return output
 
-    def resync_representations(self, representation_ids, site_type):
+    def resync_representations(
+        self, project_name, representation_ids, site_type
+    ):
         """
 
         Args:
+            project_name (str): Project name.
             representation_ids (Iterable[str]): Representation ids.
             site_type (Literal[active_site, remote_site]): Site type.
         """
-
-        project_name = self._controller.get_current_project_name()
         sitesync_addon = self._get_sitesync_addon()
-        active_site = self._get_active_site()
-        remote_site = self._get_remote_site()
+        active_site = self._get_active_site(project_name)
+        remote_site = self._get_remote_site(project_name)
         progress = self.get_representations_site_progress(
-            representation_ids
+            project_name, representation_ids
         )
         for repre_id in representation_ids:
             repre_progress = progress.get(repre_id)
@@ -132,48 +138,49 @@ class SiteSyncModel:
         self._sitesync_addon = sitesync_addon
         self._sitesync_enabled = sync_enabled
 
-    def _get_active_site(self):
-        if self._active_site is NOT_SET:
-            self._cache_sites()
-        return self._active_site
+    def _get_active_site(self, project_name):
+        if project_name not in self._active_site:
+            self._cache_sites(project_name)
+        return self._active_site[project_name]
 
-    def _get_remote_site(self):
-        if self._remote_site is NOT_SET:
-            self._cache_sites()
-        return self._remote_site
+    def _get_remote_site(self, project_name):
+        if project_name not in self._remote_site:
+            self._cache_sites(project_name)
+        return self._remote_site[project_name]
 
-    def _get_active_site_provider(self):
-        if self._active_site_provider is NOT_SET:
-            self._cache_sites()
-        return self._active_site_provider
+    def _get_active_site_provider(self, project_name):
+        if project_name not in self._active_site_provider:
+            self._cache_sites(project_name)
+        return self._active_site_provider[project_name]
 
-    def _get_remote_site_provider(self):
-        if self._remote_site_provider is NOT_SET:
-            self._cache_sites()
-        return self._remote_site_provider
+    def _get_remote_site_provider(self, project_name):
+        if project_name not in self._remote_site_provider:
+            self._cache_sites(project_name)
+        return self._remote_site_provider[project_name]
 
-    def _cache_sites(self):
-        active_site = None
-        remote_site = None
-        active_site_provider = None
-        remote_site_provider = None
-        if self.is_sitesync_enabled():
-            sitesync_addon = self._get_sitesync_addon()
-            project_name = self._controller.get_current_project_name()
-            active_site = sitesync_addon.get_active_site(project_name)
-            remote_site = sitesync_addon.get_remote_site(project_name)
-            active_site_provider = "studio"
-            remote_site_provider = "studio"
-            if active_site != "studio":
-                active_site_provider = sitesync_addon.get_provider_for_site(
-                    project_name, active_site
-                )
-            if remote_site != "studio":
-                remote_site_provider = sitesync_addon.get_provider_for_site(
-                    project_name, remote_site
-                )
+    def _cache_sites(self, project_name):
+        self._active_site[project_name] = None
+        self._remote_site[project_name] = None
+        self._active_site_provider[project_name] = None
+        self._remote_site_provider[project_name] = None
+        if not self.is_sitesync_enabled():
+            return
 
-        self._active_site = active_site
-        self._remote_site = remote_site
-        self._active_site_provider = active_site_provider
-        self._remote_site_provider = remote_site_provider
+        sitesync_addon = self._get_sitesync_addon()
+        active_site = sitesync_addon.get_active_site(project_name)
+        remote_site = sitesync_addon.get_remote_site(project_name)
+        active_site_provider = "studio"
+        remote_site_provider = "studio"
+        if active_site != "studio":
+            active_site_provider = sitesync_addon.get_provider_for_site(
+                project_name, active_site
+            )
+        if remote_site != "studio":
+            remote_site_provider = sitesync_addon.get_provider_for_site(
+                project_name, remote_site
+            )
+
+        self._active_site[project_name] = active_site
+        self._remote_site[project_name] = remote_site
+        self._active_site_provider[project_name] = active_site_provider
+        self._remote_site_provider[project_name] = remote_site_provider

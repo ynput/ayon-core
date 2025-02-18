@@ -9,7 +9,7 @@ from datetime import datetime
 from abc import ABC, abstractmethod
 from functools import lru_cache
 
-import appdirs
+import platformdirs
 import ayon_api
 
 _PLACEHOLDER = object()
@@ -17,7 +17,7 @@ _PLACEHOLDER = object()
 
 def _get_ayon_appdirs(*args):
     return os.path.join(
-        appdirs.user_data_dir("AYON", "Ynput"),
+        platformdirs.user_data_dir("AYON", "Ynput"),
         *args
     )
 
@@ -276,12 +276,7 @@ class ASettingRegistry(ABC):
     @abstractmethod
     def _delete_item(self, name):
         # type: (str) -> None
-        """Delete item from settings.
-
-        Note:
-            see :meth:`ayon_core.lib.user_settings.ARegistrySettings.delete_item`
-
-        """
+        """Delete item from settings."""
         pass
 
     def __delitem__(self, name):
@@ -433,12 +428,7 @@ class IniSettingRegistry(ASettingRegistry):
             config.write(cfg)
 
     def _delete_item(self, name):
-        """Delete item from default section.
-
-        Note:
-            See :meth:`~ayon_core.lib.IniSettingsRegistry.delete_item_from_section`
-
-        """
+        """Delete item from default section."""
         self.delete_item_from_section("MAIN", name)
 
 
