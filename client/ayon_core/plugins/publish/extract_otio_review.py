@@ -286,7 +286,7 @@ class ExtractOTIOReview(
             )
 
         instance.data["representations"].append(representation)
-        self.log.info("Adding representation: {}".format(representation))
+        self.log.debug("Adding representation: {}".format(representation))
 
     def _create_representation(self, start, duration):
         """
