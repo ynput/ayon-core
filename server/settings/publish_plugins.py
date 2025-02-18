@@ -79,6 +79,17 @@ class CollectUSDLayerContributionsProfileModel(BaseSettingsModel):
             " settings below would apply to the instance as default"
             " attributes."
         ),
+        section="Filter"
+    )
+    task_types: list[str] = SettingsField(
+        default_factory=list,
+        title="Task Types",
+        enum_resolver=task_types_enum,
+        description=(
+            "The current create context task type to filter against. This"
+            " allows to filter the profile to only be valid if currently "
+            " creating from within that task type."
+        ),
     )
     contribution_layer: str = SettingsField(
         "",
@@ -88,6 +99,7 @@ class CollectUSDLayerContributionsProfileModel(BaseSettingsModel):
             " matching this profile. The layer name should be in the"
             " 'Department Layer Orders' list to get a sensible order."
         ),
+        section="Instance attribute defaults",
     )
     contribution_apply_as_variant: bool = SettingsField(
         True,
@@ -1069,30 +1081,35 @@ DEFAULT_PUBLISH_VALUES = {
         "profiles": [
             {
                 "product_types": ["model"],
+                "task_types": [],
                 "contribution_layer": "model",
                 "contribution_apply_as_variant": True,
                 "contribution_target_product": "usdAsset"
             },
             {
                 "product_types": ["look"],
+                "task_types": [],
                 "contribution_layer": "look",
                 "contribution_apply_as_variant": True,
                 "contribution_target_product": "usdAsset"
             },
             {
                 "product_types": ["groom"],
+                "task_types": [],
                 "contribution_layer": "groom",
                 "contribution_apply_as_variant": True,
                 "contribution_target_product": "usdAsset"
             },
             {
                 "product_types": ["rig"],
+                "task_types": [],
                 "contribution_layer": "rig",
                 "contribution_apply_as_variant": True,
                 "contribution_target_product": "usdAsset"
             },
             {
                 "product_types": ["usd"],
+                "task_types": [],
                 "contribution_layer": "assembly",
                 "contribution_apply_as_variant": False,
                 "contribution_target_product": "usdShot"
