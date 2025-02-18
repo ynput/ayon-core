@@ -22,8 +22,8 @@ class TasksModel(QtGui.QStandardItemModel):
     tasks with same names then model is empty too.
 
     Args:
-        controller (AbstractPublisherFrontend): Controller which handles creation and
-            publishing.
+        controller (AbstractPublisherFrontend): Controller which handles
+            creation and publishing.
 
     """
     def __init__(

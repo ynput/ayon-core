@@ -6,16 +6,21 @@ Provides:
     instance -> otioReviewClips
 """
 import os
+import math
 
 import clique
 import pyblish.api
 
+from ayon_core.pipeline import publish
 from ayon_core.pipeline.publish import (
     get_publish_template_name
 )
 
 
-class CollectOtioSubsetResources(pyblish.api.InstancePlugin):
+class CollectOtioSubsetResources(
+    pyblish.api.InstancePlugin,
+    publish.ColormanagedPyblishPluginMixin
+):
     """Get Resources for a product version"""
 
     label = "Collect OTIO Subset Resources"
@@ -65,9 +70,17 @@ class CollectOtioSubsetResources(pyblish.api.InstancePlugin):
         self.log.debug(
             ">> retimed_attributes: {}".format(retimed_attributes))
 
-        # break down into variables
-        media_in = int(retimed_attributes["mediaIn"])
-        media_out = int(retimed_attributes["mediaOut"])
+        # break down into variables as rounded frame numbers
+        #
+        # 0             1               2              3             4
+        # |-------------|---------------|--------------|-------------|
+        #         |_______________media range_______________|
+        #        0.6                                       3.2
+        #
+        #  As rounded frames, media_in = 0 and media_out = 4
+        media_in = math.floor(retimed_attributes["mediaIn"])
+        media_out = math.ceil(retimed_attributes["mediaOut"])
+
         handle_start = int(retimed_attributes["handleStart"])
         handle_end = int(retimed_attributes["handleEnd"])
 
@@ -169,9 +182,18 @@ class CollectOtioSubsetResources(pyblish.api.InstancePlugin):
                     path, trimmed_media_range_h, metadata)
                 self.staging_dir, collection = collection_data
 
-            self.log.debug(collection)
-            repre = self._create_representation(
-                frame_start, frame_end, collection=collection)
+            if len(collection.indexes) > 1:
+                self.log.debug(collection)
+                repre = self._create_representation(
+                    frame_start, frame_end, collection=collection)
+            else:
+                filename = tuple(collection)[0]
+                self.log.debug(filename)
+
+                # TODO: discuss this, it erases frame number.
+                repre = self._create_representation(
+                    frame_start, frame_end, file=filename)
+
 
         else:
             _trim = False
@@ -187,12 +209,18 @@ class CollectOtioSubsetResources(pyblish.api.InstancePlugin):
             repre = self._create_representation(
                 frame_start, frame_end, file=filename, trim=_trim)
 
+
         instance.data["originalDirname"] = self.staging_dir
 
+        # add representation to instance data
         if repre:
-            # add representation to instance data
+            colorspace = instance.data.get("colorspace")
+            # add colorspace data to representation
+            self.set_representation_colorspace(
+                repre, instance.context, colorspace)
+
             instance.data["representations"].append(repre)
-            self.log.debug(">>>>>>>> {}".format(repre))
+
 
         self.log.debug(instance.data)
 
@@ -213,7 +241,8 @@ class CollectOtioSubsetResources(pyblish.api.InstancePlugin):
         representation_data = {
             "frameStart": start,
             "frameEnd": end,
-            "stagingDir": self.staging_dir
+            "stagingDir": self.staging_dir,
+            "tags": [],
         }
 
         if kwargs.get("collection"):
@@ -239,8 +268,10 @@ class CollectOtioSubsetResources(pyblish.api.InstancePlugin):
                 "frameEnd": end,
             })
 
-        if kwargs.get("trim") is True:
-            representation_data["tags"] = ["trim"]
+        for tag_name in ("trim", "delete", "review"):
+            if kwargs.get(tag_name) is True:
+                representation_data["tags"].append(tag_name)
+
         return representation_data
 
     def get_template_name(self, instance):

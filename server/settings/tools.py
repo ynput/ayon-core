@@ -83,8 +83,8 @@ class CreatorToolModel(BaseSettingsModel):
     filter_creator_profiles: list[FilterCreatorProfile] = SettingsField(
         default_factory=list,
         title="Filter creator profiles",
-        description="Allowed list of creator labels that will be only shown if "
-                    "profile matches context."
+        description="Allowed list of creator labels that will be only shown"
+                    " if profile matches context."
     )
 
     @validator("product_types_smart_select")
@@ -426,7 +426,9 @@ DEFAULT_TOOLS_VALUES = {
                 ],
                 "task_types": [],
                 "tasks": [],
-                "template": "{product[type]}{Task[name]}_{Renderlayer}_{Renderpass}"
+                "template": (
+                    "{product[type]}{Task[name]}_{Renderlayer}_{Renderpass}"
+                )
             },
             {
                 "product_types": [
@@ -482,6 +484,17 @@ DEFAULT_TOOLS_VALUES = {
                 "task_types": [],
                 "tasks": [],
                 "template": "{folder[name]}_{variant}"
+            },
+            {
+                "product_types": [
+                    "textureSet"
+                ],
+                "hosts": [
+                    "substancedesigner"
+                ],
+                "task_types": [],
+                "tasks": [],
+                "template": "T_{folder[name]}{variant}"
             }
         ],
         "filter_creator_profiles": []
@@ -557,6 +570,18 @@ DEFAULT_TOOLS_VALUES = {
             },
             {
                 "product_types": [
+                    "image",
+                    "textures",
+                ],
+                "hosts": [
+                    "substancedesigner"
+                ],
+                "task_types": [],
+                "task_names": [],
+                "template_name": "simpleUnrealTexture"
+            },
+            {
+                "product_types": [
                     "staticMesh",
                     "skeletalMesh"
                 ],
@@ -597,6 +622,18 @@ DEFAULT_TOOLS_VALUES = {
                 ],
                 "hosts": [
                     "standalonepublisher"
+                ],
+                "task_types": [],
+                "task_names": [],
+                "template_name": "simpleUnrealTextureHero"
+            },
+            {
+                "product_types": [
+                    "image",
+                    "textures"
+                ],
+                "hosts": [
+                    "substancedesigner"
                 ],
                 "task_types": [],
                 "task_names": [],

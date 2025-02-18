@@ -458,7 +458,18 @@ class CollectUSDLayerContributions(pyblish.api.InstancePlugin,
         return new_instance
 
     @classmethod
-    def get_attribute_defs(cls):
+    def get_attr_defs_for_instance(cls, create_context, instance):
+        # Filtering of instance, if needed, can be customized
+        if not cls.instance_matches_plugin_families(instance):
+            return []
+
+        # Attributes logic
+        publish_attributes = instance["publish_attributes"].get(
+            cls.__name__, {})
+
+        visible = publish_attributes.get("contribution_enabled", True)
+        variant_visible = visible and publish_attributes.get(
+            "contribution_apply_as_variant", True)
 
         return [
             UISeparatorDef("usd_container_settings1"),
@@ -484,7 +495,8 @@ class CollectUSDLayerContributions(pyblish.api.InstancePlugin,
                         "the contribution itself will be added to the "
                         "department layer."
                     ),
-                    default="usdAsset"),
+                    default="usdAsset",
+                    visible=visible),
             EnumDef("contribution_target_product_init",
                     label="Initialize as",
                     tooltip=(
@@ -495,7 +507,8 @@ class CollectUSDLayerContributions(pyblish.api.InstancePlugin,
                         "setting will do nothing."
                     ),
                     items=["asset", "shot"],
-                    default="asset"),
+                    default="asset",
+                    visible=visible),
 
             # Asset layer, e.g. model.usd, look.usd, rig.usd
             EnumDef("contribution_layer",
@@ -507,7 +520,8 @@ class CollectUSDLayerContributions(pyblish.api.InstancePlugin,
                         "the list) will contribute as a stronger opinion."
                     ),
                     items=list(cls.contribution_layers.keys()),
-                    default="model"),
+                    default="model",
+                    visible=visible),
             BoolDef("contribution_apply_as_variant",
                     label="Add as variant",
                     tooltip=(
@@ -518,13 +532,16 @@ class CollectUSDLayerContributions(pyblish.api.InstancePlugin,
                         "appended to as a sublayer to the department layer "
                         "instead."
                     ),
-                    default=True),
+                    default=True,
+                    visible=visible),
             TextDef("contribution_variant_set_name",
                     label="Variant Set Name",
-                    default="{layer}"),
+                    default="{layer}",
+                    visible=variant_visible),
             TextDef("contribution_variant",
                     label="Variant Name",
-                    default="{variant}"),
+                    default="{variant}",
+                    visible=variant_visible),
             BoolDef("contribution_variant_is_default",
                     label="Set as default variant selection",
                     tooltip=(
@@ -535,9 +552,40 @@ class CollectUSDLayerContributions(pyblish.api.InstancePlugin,
                         "The behavior is unpredictable if multiple instances "
                         "for the same variant set have this enabled."
                     ),
-                    default=False),
+                    default=False,
+                    visible=variant_visible),
             UISeparatorDef("usd_container_settings3"),
         ]
+
+    @classmethod
+    def register_create_context_callbacks(cls, create_context):
+        create_context.add_value_changed_callback(cls.on_values_changed)
+
+    @classmethod
+    def on_values_changed(cls, event):
+        """Update instance attribute definitions on attribute changes."""
+
+        # Update attributes if any of the following plug-in attributes
+        # change:
+        keys = ["contribution_enabled", "contribution_apply_as_variant"]
+
+        for instance_change in event["changes"]:
+            instance = instance_change["instance"]
+            if not cls.instance_matches_plugin_families(instance):
+                continue
+            value_changes = instance_change["changes"]
+            plugin_attribute_changes = (
+                value_changes.get("publish_attributes", {})
+                .get(cls.__name__, {}))
+
+            if not any(key in plugin_attribute_changes for key in keys):
+                continue
+
+            # Update the attribute definitions
+            new_attrs = cls.get_attr_defs_for_instance(
+                event["create_context"], instance
+            )
+            instance.set_publish_plugin_attr_defs(cls.__name__, new_attrs)
 
 
 class CollectUSDLayerContributionsHoudiniLook(CollectUSDLayerContributions):
@@ -551,9 +599,12 @@ class CollectUSDLayerContributionsHoudiniLook(CollectUSDLayerContributions):
     label = CollectUSDLayerContributions.label + " (Look)"
 
     @classmethod
-    def get_attribute_defs(cls):
-        defs = super(CollectUSDLayerContributionsHoudiniLook,
-                     cls).get_attribute_defs()
+    def get_attr_defs_for_instance(cls, create_context, instance):
+        # Filtering of instance, if needed, can be customized
+        if not cls.instance_matches_plugin_families(instance):
+            return []
+
+        defs = super().get_attr_defs_for_instance(create_context, instance)
 
         # Update default for department layer to look
         layer_def = next(d for d in defs if d.key == "contribution_layer")

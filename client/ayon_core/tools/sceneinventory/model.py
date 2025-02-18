@@ -36,6 +36,7 @@ REMOTE_SITE_ICON_ROLE = QtCore.Qt.UserRole + 23
 # This value hold unique value of container that should be used to identify
 #     containers inbetween refresh.
 ITEM_UNIQUE_NAME_ROLE = QtCore.Qt.UserRole + 24
+PROJECT_NAME_ROLE = QtCore.Qt.UserRole + 25
 
 
 class InventoryModel(QtGui.QStandardItemModel):
@@ -52,6 +53,7 @@ class InventoryModel(QtGui.QStandardItemModel):
         "Object name",
         "Active site",
         "Remote site",
+        "Project",
     ]
     name_col = column_labels.index("Name")
     version_col = column_labels.index("Version")
@@ -63,6 +65,7 @@ class InventoryModel(QtGui.QStandardItemModel):
     object_name_col = column_labels.index("Object name")
     active_site_col = column_labels.index("Active site")
     remote_site_col = column_labels.index("Remote site")
+    project_col = column_labels.index("Project")
     display_role_by_column = {
         name_col: QtCore.Qt.DisplayRole,
         version_col: VERSION_LABEL_ROLE,
@@ -72,6 +75,7 @@ class InventoryModel(QtGui.QStandardItemModel):
         product_group_col: PRODUCT_GROUP_NAME_ROLE,
         loader_col: LOADER_NAME_ROLE,
         object_name_col: OBJECT_NAME_ROLE,
+        project_col: PROJECT_NAME_ROLE,
         active_site_col: ACTIVE_SITE_PROGRESS_ROLE,
         remote_site_col: REMOTE_SITE_PROGRESS_ROLE,
     }
@@ -85,7 +89,7 @@ class InventoryModel(QtGui.QStandardItemModel):
     foreground_role_by_column = {
         name_col: NAME_COLOR_ROLE,
         version_col: VERSION_COLOR_ROLE,
-        status_col: STATUS_COLOR_ROLE
+        status_col: STATUS_COLOR_ROLE,
     }
     width_by_column = {
         name_col: 250,
@@ -95,6 +99,7 @@ class InventoryModel(QtGui.QStandardItemModel):
         product_type_col: 150,
         product_group_col: 120,
         loader_col: 150,
+        project_col: 150,
     }
 
     OUTDATED_COLOR = QtGui.QColor(235, 30, 30)
@@ -116,8 +121,8 @@ class InventoryModel(QtGui.QStandardItemModel):
 
         self._default_icon_color = get_default_entity_icon_color()
 
-        self._last_project_statuses = {}
-        self._last_status_icons_by_name = {}
+        self._last_project_statuses = collections.defaultdict(dict)
+        self._last_status_icons_by_name = collections.defaultdict(dict)
 
     def outdated(self, item):
         return item.get("isOutdated", True)
@@ -129,45 +134,73 @@ class InventoryModel(QtGui.QStandardItemModel):
 
         self._clear_items()
 
-        items_by_repre_id = {}
+        project_names = set()
+        repre_ids_by_project = collections.defaultdict(set)
+        version_items_by_project = collections.defaultdict(dict)
+        repre_info_by_id_by_project = collections.defaultdict(dict)
+        item_by_repre_id_by_project = collections.defaultdict(
+            lambda: collections.defaultdict(list))
         for container_item in container_items:
             # if (
             #     selected is not None
             #     and container_item.item_id not in selected
             # ):
             #     continue
-            repre_id = container_item.representation_id
-            items = items_by_repre_id.setdefault(repre_id, [])
-            items.append(container_item)
+            project_name = container_item.project_name
+            representation_id = container_item.representation_id
+            project_names.add(project_name)
+            repre_ids_by_project[project_name].add(representation_id)
+            (
+                item_by_repre_id_by_project
+                [project_name]
+                [representation_id]
+            ).append(container_item)
 
-        repre_id = set(items_by_repre_id.keys())
-        repre_info_by_id = self._controller.get_representation_info_items(
-            repre_id
-        )
-        product_ids = {
-            repre_info.product_id
-            for repre_info in repre_info_by_id.values()
-            if repre_info.is_valid
-        }
-        version_items_by_product_id = self._controller.get_version_items(
-            product_ids
-        )
+        for project_name, representation_ids in repre_ids_by_project.items():
+            repre_info = self._controller.get_representation_info_items(
+                project_name, representation_ids
+            )
+            repre_info_by_id_by_project[project_name] = repre_info
+
+            product_ids = {
+                repre_info.product_id
+                for repre_info in repre_info.values()
+                if repre_info.is_valid
+            }
+            version_items = self._controller.get_version_items(
+                project_name, product_ids
+            )
+            version_items_by_project[project_name] = version_items
+
         # SiteSync addon information
-        progress_by_id = self._controller.get_representations_site_progress(
-            repre_id
-        )
-        sites_info = self._controller.get_sites_information()
+        progress_by_project = {
+            project_name: self._controller.get_representations_site_progress(
+                project_name, repre_ids
+            )
+            for project_name, repre_ids in repre_ids_by_project.items()
+        }
+
+        sites_info_by_project_name = {
+            project_name: self._controller.get_sites_information(project_name)
+            for project_name in project_names
+        }
         site_icons = {
             provider: get_qt_icon(icon_def)
             for provider, icon_def in (
                 self._controller.get_site_provider_icons().items()
             )
         }
-        self._last_project_statuses = {
-            status_item.name: status_item
-            for status_item in self._controller.get_project_status_items()
-        }
-        self._last_status_icons_by_name = {}
+        last_project_statuses = collections.defaultdict(dict)
+        for project_name in project_names:
+            status_items_by_name = {
+                status_item.name: status_item
+                for status_item in self._controller.get_project_status_items(
+                    project_name
+                )
+            }
+            last_project_statuses[project_name] = status_items_by_name
+        self._last_project_statuses = last_project_statuses
+        self._last_status_icons_by_name = collections.defaultdict(dict)
 
         group_item_icon = qtawesome.icon(
             "fa.folder", color=self._default_icon_color
@@ -187,117 +220,130 @@ class InventoryModel(QtGui.QStandardItemModel):
         group_item_font = QtGui.QFont()
         group_item_font.setBold(True)
 
-        active_site_icon = site_icons.get(sites_info["active_site_provider"])
-        remote_site_icon = site_icons.get(sites_info["remote_site_provider"])
-
         root_item = self.invisibleRootItem()
         group_items = []
-        for repre_id, container_items in items_by_repre_id.items():
-            repre_info = repre_info_by_id[repre_id]
-            version_label = "N/A"
-            version_color = None
-            is_latest = False
-            is_hero = False
-            status_name = None
-            if not repre_info.is_valid:
-                group_name = "< Entity N/A >"
-                item_icon = invalid_item_icon
+        for project_name, items_by_repre_id in (
+            item_by_repre_id_by_project.items()
+        ):
+            sites_info = sites_info_by_project_name[project_name]
+            active_site_icon = site_icons.get(
+                sites_info["active_site_provider"]
+            )
+            remote_site_icon = site_icons.get(
+                sites_info["remote_site_provider"]
+            )
 
-            else:
-                group_name = "{}_{}: ({})".format(
-                    repre_info.folder_path.rsplit("/")[-1],
-                    repre_info.product_name,
-                    repre_info.representation_name
+            progress_by_id = progress_by_project[project_name]
+            repre_info_by_id = repre_info_by_id_by_project[project_name]
+            version_items_by_product_id = (
+                version_items_by_project[project_name]
+            )
+            for repre_id, container_items in items_by_repre_id.items():
+                repre_info = repre_info_by_id[repre_id]
+                version_color = None
+                if not repre_info.is_valid:
+                    version_label = "N/A"
+                    group_name = "< Entity N/A >"
+                    item_icon = invalid_item_icon
+                    is_latest = False
+                    is_hero = False
+                    status_name = None
+
+                else:
+                    group_name = "{}_{}: ({})".format(
+                        repre_info.folder_path.rsplit("/")[-1],
+                        repre_info.product_name,
+                        repre_info.representation_name
+                    )
+                    item_icon = valid_item_icon
+
+                    version_items = (
+                        version_items_by_product_id[repre_info.product_id]
+                    )
+                    version_item = version_items[repre_info.version_id]
+                    version_label = format_version(version_item.version)
+                    is_hero = version_item.version < 0
+                    is_latest = version_item.is_latest
+                    if not version_item.is_latest:
+                        version_color = self.OUTDATED_COLOR
+                    status_name = version_item.status
+
+                (
+                    status_color, status_short, status_icon
+                ) = self._get_status_data(project_name, status_name)
+
+                repre_name = (
+                    repre_info.representation_name or
+                    "<unknown representation>"
                 )
-                item_icon = valid_item_icon
+                container_model_items = []
+                for container_item in container_items:
+                    object_name = container_item.object_name or "<none>"
+                    unique_name = repre_name + object_name
+                    item = QtGui.QStandardItem()
+                    item.setColumnCount(root_item.columnCount())
+                    item.setData(container_item.namespace,
+                                 QtCore.Qt.DisplayRole)
+                    item.setData(self.GRAYOUT_COLOR, NAME_COLOR_ROLE)
+                    item.setData(self.GRAYOUT_COLOR, VERSION_COLOR_ROLE)
+                    item.setData(item_icon, QtCore.Qt.DecorationRole)
+                    item.setData(repre_info.product_id, PRODUCT_ID_ROLE)
+                    item.setData(container_item.item_id, ITEM_ID_ROLE)
+                    item.setData(version_label, VERSION_LABEL_ROLE)
+                    item.setData(container_item.loader_name, LOADER_NAME_ROLE)
+                    item.setData(container_item.object_name, OBJECT_NAME_ROLE)
+                    item.setData(True, IS_CONTAINER_ITEM_ROLE)
+                    item.setData(unique_name, ITEM_UNIQUE_NAME_ROLE)
+                    container_model_items.append(item)
 
-                version_items = (
-                    version_items_by_product_id[repre_info.product_id]
+                progress = progress_by_id[repre_id]
+                active_site_progress = "{}%".format(
+                    max(progress["active_site"], 0) * 100
                 )
-                version_item = version_items[repre_info.version_id]
-                version_label = format_version(version_item.version)
-                is_hero = version_item.version < 0
-                if not version_item.is_latest:
-                    version_color = self.OUTDATED_COLOR
-                status_name = version_item.status
+                remote_site_progress = "{}%".format(
+                    max(progress["remote_site"], 0) * 100
+                )
 
-            status_color, status_short, status_icon = self._get_status_data(
-                status_name
-            )
+                group_item = QtGui.QStandardItem()
+                group_item.setColumnCount(root_item.columnCount())
+                group_item.setData(group_name, QtCore.Qt.DisplayRole)
+                group_item.setData(group_name, ITEM_UNIQUE_NAME_ROLE)
+                group_item.setData(group_item_icon, QtCore.Qt.DecorationRole)
+                group_item.setData(group_item_font, QtCore.Qt.FontRole)
+                group_item.setData(repre_info.product_id, PRODUCT_ID_ROLE)
+                group_item.setData(repre_info.product_type, PRODUCT_TYPE_ROLE)
+                group_item.setData(product_type_icon, PRODUCT_TYPE_ICON_ROLE)
+                group_item.setData(is_latest, VERSION_IS_LATEST_ROLE)
+                group_item.setData(is_hero, VERSION_IS_HERO_ROLE)
+                group_item.setData(version_label, VERSION_LABEL_ROLE)
+                group_item.setData(len(container_items), COUNT_ROLE)
+                group_item.setData(status_name, STATUS_NAME_ROLE)
+                group_item.setData(status_short, STATUS_SHORT_ROLE)
+                group_item.setData(status_color, STATUS_COLOR_ROLE)
+                group_item.setData(status_icon, STATUS_ICON_ROLE)
+                group_item.setData(project_name, PROJECT_NAME_ROLE)
 
-            repre_name = (
-                repre_info.representation_name or "<unknown representation>"
-            )
-            container_model_items = []
-            for container_item in container_items:
-                object_name = container_item.object_name or "<none>"
-                unique_name = repre_name + object_name
-
-                item = QtGui.QStandardItem()
-                item.setColumnCount(root_item.columnCount())
-                item.setData(container_item.namespace, QtCore.Qt.DisplayRole)
-                item.setData(self.GRAYOUT_COLOR, NAME_COLOR_ROLE)
-                item.setData(self.GRAYOUT_COLOR, VERSION_COLOR_ROLE)
-                item.setData(item_icon, QtCore.Qt.DecorationRole)
-                item.setData(repre_info.product_id, PRODUCT_ID_ROLE)
-                item.setData(container_item.item_id, ITEM_ID_ROLE)
-                item.setData(version_label, VERSION_LABEL_ROLE)
-                item.setData(container_item.loader_name, LOADER_NAME_ROLE)
-                item.setData(container_item.object_name, OBJECT_NAME_ROLE)
-                item.setData(True, IS_CONTAINER_ITEM_ROLE)
-                item.setData(unique_name, ITEM_UNIQUE_NAME_ROLE)
-                container_model_items.append(item)
-
-            if not container_model_items:
-                continue
-
-            progress = progress_by_id[repre_id]
-            active_site_progress = "{}%".format(
-                max(progress["active_site"], 0) * 100
-            )
-            remote_site_progress = "{}%".format(
-                max(progress["remote_site"], 0) * 100
-            )
-
-            group_item = QtGui.QStandardItem()
-            group_item.setColumnCount(root_item.columnCount())
-            group_item.setData(group_name, QtCore.Qt.DisplayRole)
-            group_item.setData(group_name, ITEM_UNIQUE_NAME_ROLE)
-            group_item.setData(group_item_icon, QtCore.Qt.DecorationRole)
-            group_item.setData(group_item_font, QtCore.Qt.FontRole)
-            group_item.setData(repre_info.product_id, PRODUCT_ID_ROLE)
-            group_item.setData(repre_info.product_type, PRODUCT_TYPE_ROLE)
-            group_item.setData(product_type_icon, PRODUCT_TYPE_ICON_ROLE)
-            group_item.setData(is_latest, VERSION_IS_LATEST_ROLE)
-            group_item.setData(is_hero, VERSION_IS_HERO_ROLE)
-            group_item.setData(version_label, VERSION_LABEL_ROLE)
-            group_item.setData(len(container_items), COUNT_ROLE)
-            group_item.setData(status_name, STATUS_NAME_ROLE)
-            group_item.setData(status_short, STATUS_SHORT_ROLE)
-            group_item.setData(status_color, STATUS_COLOR_ROLE)
-            group_item.setData(status_icon, STATUS_ICON_ROLE)
-
-            group_item.setData(
-                active_site_progress, ACTIVE_SITE_PROGRESS_ROLE
-            )
-            group_item.setData(
-                remote_site_progress, REMOTE_SITE_PROGRESS_ROLE
-            )
-            group_item.setData(active_site_icon, ACTIVE_SITE_ICON_ROLE)
-            group_item.setData(remote_site_icon, REMOTE_SITE_ICON_ROLE)
-            group_item.setData(False, IS_CONTAINER_ITEM_ROLE)
-
-            if version_color is not None:
-                group_item.setData(version_color, VERSION_COLOR_ROLE)
-
-            if repre_info.product_group:
                 group_item.setData(
-                    repre_info.product_group, PRODUCT_GROUP_NAME_ROLE
+                    active_site_progress, ACTIVE_SITE_PROGRESS_ROLE
                 )
-                group_item.setData(group_icon, PRODUCT_GROUP_ICON_ROLE)
+                group_item.setData(
+                    remote_site_progress, REMOTE_SITE_PROGRESS_ROLE
+                )
+                group_item.setData(active_site_icon, ACTIVE_SITE_ICON_ROLE)
+                group_item.setData(remote_site_icon, REMOTE_SITE_ICON_ROLE)
+                group_item.setData(False, IS_CONTAINER_ITEM_ROLE)
 
-            group_item.appendRows(container_model_items)
-            group_items.append(group_item)
+                if version_color is not None:
+                    group_item.setData(version_color, VERSION_COLOR_ROLE)
+
+                if repre_info.product_group:
+                    group_item.setData(
+                        repre_info.product_group, PRODUCT_GROUP_NAME_ROLE
+                    )
+                    group_item.setData(group_icon, PRODUCT_GROUP_ICON_ROLE)
+
+                group_item.appendRows(container_model_items)
+                group_items.append(group_item)
 
         if group_items:
             root_item.appendRows(group_items)
@@ -358,17 +404,21 @@ class InventoryModel(QtGui.QStandardItemModel):
         root_item = self.invisibleRootItem()
         root_item.removeRows(0, root_item.rowCount())
 
-    def _get_status_data(self, status_name):
-        status_item = self._last_project_statuses.get(status_name)
-        status_icon = self._get_status_icon(status_name, status_item)
+    def _get_status_data(self, project_name, status_name):
+        status_item = self._last_project_statuses[project_name].get(
+            status_name
+        )
+        status_icon = self._get_status_icon(
+            project_name, status_name, status_item
+        )
         status_color = status_short = None
         if status_item is not None:
             status_color = status_item.color
             status_short = status_item.short
         return status_color, status_short, status_icon
 
-    def _get_status_icon(self, status_name, status_item):
-        icon = self._last_status_icons_by_name.get(status_name)
+    def _get_status_icon(self, project_name, status_name, status_item):
+        icon = self._last_status_icons_by_name[project_name].get(status_name)
         if icon is not None:
             return icon
 
@@ -381,7 +431,7 @@ class InventoryModel(QtGui.QStandardItemModel):
             })
         if icon is None:
             icon = QtGui.QIcon()
-        self._last_status_icons_by_name[status_name] = icon
+        self._last_status_icons_by_name[project_name][status_name] = icon
         return icon
 
 
@@ -425,7 +475,7 @@ class FilterProxyModel(QtCore.QSortFilterProxyModel):
         state = bool(state)
 
         if state != self._filter_outdated:
-            self._filter_outdated = bool(state)
+            self._filter_outdated = state
             self.invalidateFilter()
 
     def set_hierarchy_view(self, state):

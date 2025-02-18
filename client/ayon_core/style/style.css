@@ -23,6 +23,9 @@ Enabled vs Disabled logic in most of stylesheets
     font-family: "Noto Sans";
     font-weight: 450;
     outline: none;
+
+    /* Define icon size to fix size issues for most of DCCs */
+    icon-size: 16px;
 }
 
 QWidget {
@@ -1168,6 +1171,8 @@ ValidationArtistMessage QLabel {
 
 #PublishLogMessage {
     font-family: "Noto Sans Mono";
+    border: none;
+    padding: 0;
 }
 
 #PublishInstanceLogsLabel {
@@ -1585,6 +1590,10 @@ CreateNextPageOverlay {
 }
 
 /* Attribute Definition widgets */
+AttributeDefinitionsLabel[overridden="1"] {
+    color: {color:font-overridden};
+}
+
 AttributeDefinitionsWidget QAbstractSpinBox, QLineEdit, QPlainTextEdit, QTextEdit {
     padding: 1px;
 }

@@ -3,10 +3,19 @@ import os
 import copy
 import shutil
 import glob
-import clique
 import collections
+from typing import Dict, Any, Iterable
+
+import clique
+import ayon_api
 
 from ayon_core.lib import create_hard_link
+
+from .template_data import (
+    get_general_template_data,
+    get_folder_template_data,
+    get_task_template_data,
+)
 
 
 def _copy_file(src_path, dst_path):
@@ -327,3 +336,82 @@ def deliver_sequence(
         uploaded += 1
 
     return report_items, uploaded
+
+
+def _merge_data(data, new_data):
+    queue = collections.deque()
+    queue.append((data, new_data))
+    while queue:
+        q_data, q_new_data = queue.popleft()
+        for key, value in q_new_data.items():
+            if key in q_data and isinstance(value, dict):
+                queue.append((q_data[key], value))
+                continue
+            q_data[key] = value
+
+
+def get_representations_delivery_template_data(
+    project_name: str,
+    representation_ids: Iterable[str],
+) -> Dict[str, Dict[str, Any]]:
+    representation_ids = set(representation_ids)
+
+    output = {
+        repre_id: {}
+        for repre_id in representation_ids
+    }
+    if not representation_ids:
+        return output
+
+    project_entity = ayon_api.get_project(project_name)
+
+    general_template_data = get_general_template_data()
+
+    repres_hierarchy = ayon_api.get_representations_hierarchy(
+        project_name,
+        representation_ids,
+        project_fields=set(),
+        folder_fields={"path", "folderType"},
+        task_fields={"name", "taskType"},
+        product_fields={"name", "productType"},
+        version_fields={"version", "productId"},
+        representation_fields=None,
+    )
+    for repre_id, repre_hierarchy in repres_hierarchy.items():
+        repre_entity = repre_hierarchy.representation
+        if repre_entity is None:
+            continue
+
+        template_data = repre_entity["context"]
+        # Bug in 'ayon_api', 'get_representations_hierarchy' did not fully
+        #   convert representation entity. Fixed in 'ayon_api' 1.0.10.
+        if isinstance(template_data, str):
+            con = ayon_api.get_server_api_connection()
+            con._representation_conversion(repre_entity)
+            template_data = repre_entity["context"]
+
+        template_data.update(copy.deepcopy(general_template_data))
+        template_data.update(get_folder_template_data(
+            repre_hierarchy.folder, project_name
+        ))
+        if repre_hierarchy.task:
+            template_data.update(get_task_template_data(
+                project_entity, repre_hierarchy.task
+            ))
+
+        product_entity = repre_hierarchy.product
+        version_entity = repre_hierarchy.version
+        template_data.update({
+            "product": {
+                "name": product_entity["name"],
+                "type": product_entity["productType"],
+            },
+            "version": version_entity["version"],
+        })
+        _merge_data(template_data, repre_entity["context"])
+
+        # Remove roots from template data to auto-fill them with anatomy data
+        template_data.pop("root", None)
+
+        output[repre_id] = template_data
+    return output
