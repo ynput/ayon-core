@@ -14,6 +14,7 @@ from ayon_core.tools.utils import ProjectsCombobox
 from ayon_core.tools.loader.control import LoaderController
 
 from .folders_widget import LoaderFoldersWidget
+from .tasks_widget import LoaderTasksWidget
 from .products_widget import ProductsWidget
 from .product_types_combo import ProductTypesCombobox
 from .product_group_dialog import ProductGroupDialog
@@ -170,7 +171,10 @@ class LoaderWindow(QtWidgets.QWidget):
         context_layout.addWidget(folders_filter_input, 0)
         context_layout.addWidget(folders_widget, 1)
 
+        tasks_widget = LoaderTasksWidget(controller, context_widget)
+
         context_splitter.addWidget(context_widget)
+        context_splitter.addWidget(tasks_widget)
         context_splitter.setStretchFactor(0, 65)
         context_splitter.setStretchFactor(1, 35)
 
@@ -283,6 +287,10 @@ class LoaderWindow(QtWidgets.QWidget):
             self._on_folders_selection_changed,
         )
         controller.register_event_callback(
+            "selection.tasks.changed",
+            self._on_tasks_selection_change,
+        )
+        controller.register_event_callback(
             "selection.versions.changed",
             self._on_versions_selection_changed,
         )
@@ -305,6 +313,8 @@ class LoaderWindow(QtWidgets.QWidget):
 
         self._folders_filter_input = folders_filter_input
         self._folders_widget = folders_widget
+
+        self._tasks_widget = tasks_widget
 
         self._products_filter_input = products_filter_input
         self._product_types_filter_combo = product_types_filter_combo
@@ -427,6 +437,9 @@ class LoaderWindow(QtWidgets.QWidget):
 
     def _on_product_filter_change(self, text):
         self._products_widget.set_name_filter(text)
+
+    def _on_tasks_selection_change(self, event):
+        self._products_widget.set_tasks_filters(event["task_ids"])
 
     def _on_status_filter_change(self):
         status_names = self._product_status_filter_combo.get_value()
