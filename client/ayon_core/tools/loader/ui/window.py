@@ -439,7 +439,7 @@ class LoaderWindow(QtWidgets.QWidget):
         self._products_widget.set_name_filter(text)
 
     def _on_tasks_selection_change(self, event):
-        self._products_widget.set_tasks_filters(event["task_ids"])
+        self._products_widget.set_tasks_filter(event["task_ids"])
 
     def _on_status_filter_change(self):
         status_names = self._product_status_filter_combo.get_value()

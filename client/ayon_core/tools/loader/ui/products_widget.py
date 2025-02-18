@@ -49,7 +49,7 @@ class ProductsProxyModel(RecursiveSortFilterProxyModel):
             return None
         return set(self._statuses_filter)
 
-    def set_tasks_filters(self, task_ids_filter):
+    def set_tasks_filter(self, task_ids_filter):
         if self._task_ids_filter == task_ids_filter:
             return
         self._task_ids_filter = task_ids_filter
@@ -270,8 +270,15 @@ class ProductsWidget(QtWidgets.QWidget):
         """
         self._products_proxy_model.setFilterFixedString(name)
 
-    def set_tasks_filters(self, task_ids):
-        self._products_proxy_model.set_tasks_filters(task_ids)
+    def set_tasks_filter(self, task_ids):
+        """Set filter of version tasks.
+
+        Args:
+            task_ids (set[str]): Task ids.
+
+        """
+        self._version_delegate.set_tasks_filter(task_ids)
+        self._products_proxy_model.set_tasks_filter(task_ids)
 
     def set_statuses_filter(self, status_names):
         """Set filter of version statuses.
