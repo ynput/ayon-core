@@ -542,6 +542,21 @@ class FrontendLoaderController(_BaseLoaderController):
         pass
 
     @abstractmethod
+    def get_task_items(self, project_name, folder_ids, sender=None):
+        """Task items for folder ids.
+
+        Args:
+            project_name (str): Project name.
+            folder_ids (Iterable[str]): Folder ids.
+            sender (Optional[str]): Sender who requested the items.
+
+        Returns:
+            list[TaskItem]: List of task items.
+
+        """
+        pass
+
+    @abstractmethod
     def get_project_status_items(self, project_name, sender=None):
         """Items for all projects available on server.
 
