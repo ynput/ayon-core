@@ -1,7 +1,7 @@
 from operator import attrgetter
 import dataclasses
 import os
-from typing import Dict
+from typing import Any, Dict, List
 
 import pyblish.api
 try:
@@ -282,6 +282,9 @@ class CollectUSDLayerContributions(pyblish.api.InstancePlugin,
         "fx": 500,
         "lighting": 600,
     }
+    # Default profiles to set certain instance attribute defaults based on
+    # profiles in settings
+    profiles: List[Dict[str, Any]] = []
 
     @classmethod
     def apply_settings(cls, project_settings):
@@ -298,6 +301,8 @@ class CollectUSDLayerContributions(pyblish.api.InstancePlugin,
             contribution_layers[entry["name"]] = int(entry["order"])
         if contribution_layers:
             cls.contribution_layers = contribution_layers
+
+        cls.profiles = plugin_settings.get("profiles", [])
 
     def process(self, instance):
 
@@ -465,41 +470,8 @@ class CollectUSDLayerContributions(pyblish.api.InstancePlugin,
             return []
 
         # Set default target layer based on product type
-        # TODO: Define profiles in settings
-        profiles = [
-            {
-                "productType": "model",
-                "contribution_layer": "model",
-                "contribution_apply_as_variant": True,
-                "contribution_target_product": "usdAsset"
-            },
-            {
-                "productType": "look",
-                "contribution_layer": "look",
-                "contribution_apply_as_variant": True,
-                "contribution_target_product": "usdAsset"
-            },
-            {
-                "productType": "groom",
-                "contribution_layer": "groom",
-                "contribution_apply_as_variant": True,
-                "contribution_target_product": "usdAsset"
-            },
-            {
-                "productType": "rig",
-                "contribution_layer": "rig",
-                "contribution_apply_as_variant": True,
-                "contribution_target_product": "usdShot"
-            },
-            {
-                "productType": "usd",
-                "contribution_layer": "assembly",
-                "contribution_apply_as_variant": False,
-                "contribution_target_product": "usdShot"
-            },
-        ]
-        profile = filter_profiles(profiles, {
-            "productType": instance.data["productType"]
+        profile = filter_profiles(cls.profiles, {
+            "product_types": instance.data["productType"]
         })
         if not profile:
             profile = {}
