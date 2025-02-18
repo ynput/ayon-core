@@ -108,6 +108,7 @@ class VersionItem:
         version (int): Version. Can be negative when is hero version.
         is_hero (bool): Is hero version.
         product_id (str): Product id.
+        task_id (Union[str, None]): Task id.
         thumbnail_id (Union[str, None]): Thumbnail id.
         published_time (Union[str, None]): Published time in format
             '%Y%m%dT%H%M%SZ'.
@@ -127,6 +128,7 @@ class VersionItem:
         version,
         is_hero,
         product_id,
+        task_id,
         thumbnail_id,
         published_time,
         author,
@@ -140,6 +142,7 @@ class VersionItem:
     ):
         self.version_id = version_id
         self.product_id = product_id
+        self.task_id = task_id
         self.thumbnail_id = thumbnail_id
         self.version = version
         self.is_hero = is_hero
@@ -161,6 +164,7 @@ class VersionItem:
             and self.version == other.version
             and self.version_id == other.version_id
             and self.product_id == other.product_id
+            and self.task_id == other.task_id
         )
 
     def __ne__(self, other):
@@ -198,6 +202,7 @@ class VersionItem:
         return {
             "version_id": self.version_id,
             "product_id": self.product_id,
+            "task_id": self.task_id,
             "thumbnail_id": self.thumbnail_id,
             "version": self.version,
             "is_hero": self.is_hero,
