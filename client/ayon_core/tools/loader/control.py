@@ -206,6 +206,18 @@ class LoaderController(BackendLoaderController, FrontendLoaderController):
             ))
         return output
 
+    def get_folder_labels(self, project_name, folder_ids):
+        folder_items_by_id = self._hierarchy_model.get_folder_items_by_id(
+            project_name, folder_ids
+        )
+        output = {}
+        for folder_id, folder_item in folder_items_by_id.items():
+            label = None
+            if folder_item is not None:
+                label = folder_item.label
+            output[folder_id] = label
+        return output
+
     def get_product_items(self, project_name, folder_ids, sender=None):
         return self._products_model.get_product_items(
             project_name, folder_ids, sender)
