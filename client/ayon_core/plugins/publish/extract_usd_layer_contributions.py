@@ -470,8 +470,10 @@ class CollectUSDLayerContributions(pyblish.api.InstancePlugin,
             return []
 
         # Set default target layer based on product type
+        current_context_task_type = create_context.get_current_task_type()
         profile = filter_profiles(cls.profiles, {
-            "product_types": instance.data["productType"]
+            "product_types": instance.data["productType"],
+            "task_types": current_context_task_type
         })
         if not profile:
             profile = {}
