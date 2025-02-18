@@ -15,7 +15,7 @@ from ayon_core.tools.loader.control import LoaderController
 
 from .folders_widget import LoaderFoldersWidget
 from .products_widget import ProductsWidget
-from .product_types_widget import ProductTypesCombobox
+from .product_types_combo import ProductTypesCombobox
 from .product_group_dialog import ProductGroupDialog
 from .info_widget import InfoWidget
 from .repres_widget import RepresentationsWidget
