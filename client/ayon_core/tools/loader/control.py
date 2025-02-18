@@ -198,6 +198,14 @@ class LoaderController(BackendLoaderController, FrontendLoaderController):
     def get_folder_items(self, project_name, sender=None):
         return self._hierarchy_model.get_folder_items(project_name, sender)
 
+    def get_task_items(self, project_name, folder_ids, sender=None):
+        output = []
+        for folder_id in folder_ids:
+            output.extend(self._hierarchy_model.get_task_items(
+                project_name, folder_id, sender
+            ))
+        return output
+
     def get_product_items(self, project_name, folder_ids, sender=None):
         return self._products_model.get_product_items(
             project_name, folder_ids, sender)
@@ -298,6 +306,12 @@ class LoaderController(BackendLoaderController, FrontendLoaderController):
 
     def set_selected_folders(self, folder_ids):
         self._selection_model.set_selected_folders(folder_ids)
+
+    def get_selected_task_ids(self):
+        return self._selection_model.get_selected_task_ids()
+
+    def set_selected_tasks(self, task_ids):
+        self._selection_model.set_selected_tasks(task_ids)
 
     def get_selected_version_ids(self):
         return self._selection_model.get_selected_version_ids()
