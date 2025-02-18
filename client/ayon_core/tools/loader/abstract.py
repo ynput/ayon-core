@@ -717,8 +717,30 @@ class FrontendLoaderController(_BaseLoaderController):
 
         Returns:
             list[str]: Selected folder ids.
-        """
 
+        """
+        pass
+
+    @abstractmethod
+    def get_selected_task_ids(self):
+        """Get selected task ids.
+
+        The information is based on last selection from UI.
+
+        Returns:
+            list[str]: Selected folder ids.
+
+        """
+        pass
+
+    @abstractmethod
+    def set_selected_tasks(self, task_ids):
+        """Set selected tasks.
+
+        Args:
+            task_ids (Iterable[str]): Selected task ids.
+
+        """
         pass
 
     @abstractmethod
@@ -729,8 +751,8 @@ class FrontendLoaderController(_BaseLoaderController):
 
         Returns:
             list[str]: Selected version ids.
-        """
 
+        """
         pass
 
     @abstractmethod
