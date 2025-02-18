@@ -266,7 +266,8 @@ class LoaderTasksWidget(QtWidgets.QWidget):
         tasks_view = DeselectableTreeView(self)
         # tasks_view.setHeaderHidden(True)
         tasks_view.setSelectionMode(
-            QtWidgets.QAbstractItemView.ExtendedSelection)
+            QtWidgets.QAbstractItemView.ExtendedSelection
+        )
         tasks_view_header = tasks_view.header()
         tasks_view_header.setStretchLastSection(False)
 
