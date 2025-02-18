@@ -17,11 +17,15 @@ from ayon_core.tools.utils.tasks_widget import (
 )
 from ayon_core.tools.utils.lib import RefreshThread
 
+# Role that can't clash with default 'tasks_widget' roles
+FOLDER_LABEL_ROLE = QtCore.Qt.UserRole + 100
+
 
 class LoaderTasksQtModel(TasksQtModel):
     column_labels = [
         "Task name",
         "Task type",
+        "Folder"
     ]
 
     def __init__(self, controller):
@@ -93,7 +97,14 @@ class LoaderTasksQtModel(TasksQtModel):
             task_type_items = self._controller.get_task_type_items(
                 project_name, sender=TASKS_MODEL_SENDER_NAME
             )
-        return task_items, task_type_items
+        folder_ids = {
+            task_item.parent_id
+            for task_item in task_items
+        }
+        folder_labels_by_id = self._controller.get_folder_labels(
+            project_name, folder_ids
+        )
+        return task_items, task_type_items, folder_labels_by_id
 
     def _on_refresh_thread(self, thread_id):
         """Callback when refresh thread is finished.
@@ -131,7 +142,7 @@ class LoaderTasksQtModel(TasksQtModel):
         super()._clear_items()
 
     def _fill_data_from_thread(self, thread):
-        task_items, task_type_items = thread.get_result()
+        task_items, task_type_items, folder_labels_by_id = thread.get_result()
         # Task items are refreshed
         if task_items is None:
             return
@@ -165,11 +176,15 @@ class LoaderTasksQtModel(TasksQtModel):
                 task_type_icon_cache
             )
             name = task_item.name
+            folder_id = task_item.parent_id
+            folder_label = folder_labels_by_id.get(folder_id)
+
             item.setData(name, QtCore.Qt.DisplayRole)
             item.setData(name, ITEM_NAME_ROLE)
             item.setData(task_item.id, ITEM_ID_ROLE)
             item.setData(task_item.task_type, TASK_TYPE_ROLE)
-            item.setData(task_item.parent_id, PARENT_ID_ROLE)
+            item.setData(folder_id, PARENT_ID_ROLE)
+            item.setData(folder_label, FOLDER_LABEL_ROLE)
             item.setData(icon, QtCore.Qt.DecorationRole)
 
             items_by_name[name].append(item)
@@ -254,6 +269,12 @@ class LoaderTasksQtModel(TasksQtModel):
             else:
                 return None
 
+        if col == 2:
+            if role == QtCore.Qt.DisplayRole:
+                role = FOLDER_LABEL_ROLE
+            else:
+                return None
+
         return super().data(index, role)
 
 
@@ -277,7 +298,11 @@ class LoaderTasksWidget(QtWidgets.QWidget):
         tasks_proxy_model.setSortCaseSensitivity(QtCore.Qt.CaseInsensitive)
 
         tasks_view.setModel(tasks_proxy_model)
-        tasks_view_header.setSectionResizeMode(0, QtWidgets.QHeaderView.Stretch)
+        # Hide folder column by default
+        tasks_view.setColumnHidden(2, True)
+        tasks_view_header.setSectionResizeMode(
+            0, QtWidgets.QHeaderView.Stretch
+        )
 
         main_layout = QtWidgets.QHBoxLayout(self)
         main_layout.setContentsMargins(0, 0, 0, 0)
@@ -326,6 +351,7 @@ class LoaderTasksWidget(QtWidgets.QWidget):
     def _on_folders_selection_changed(self, event):
         project_name = event["project_name"]
         folder_ids = event["folder_ids"]
+        self._tasks_view.setColumnHidden(2, len(folder_ids) == 1)
         self._tasks_model.set_context(project_name, folder_ids)
 
     def _on_model_refresh(self):

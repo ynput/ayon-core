@@ -557,6 +557,20 @@ class FrontendLoaderController(_BaseLoaderController):
         pass
 
     @abstractmethod
+    def get_folder_labels(self, project_name, folder_ids):
+        """Get folder labels for folder ids.
+
+        Args:
+            project_name (str): Project name.
+            folder_ids (Iterable[str]): Folder ids.
+
+        Returns:
+            dict[str, Optional[str]]: Folder labels by folder id.
+
+        """
+        pass
+
+    @abstractmethod
     def get_project_status_items(self, project_name, sender=None):
         """Items for all projects available on server.
 
