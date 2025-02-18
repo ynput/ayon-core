@@ -17,6 +17,7 @@ from .products_model import (
     GROUP_TYPE_ROLE,
     MERGED_COLOR_ROLE,
     FOLDER_ID_ROLE,
+    TASK_ID_ROLE,
     PRODUCT_ID_ROLE,
     VERSION_ID_ROLE,
     VERSION_STATUS_NAME_ROLE,
@@ -40,12 +41,19 @@ class ProductsProxyModel(RecursiveSortFilterProxyModel):
 
         self._product_type_filters = None
         self._statuses_filter = None
+        self._task_ids_filter = None
         self._ascending_sort = True
 
     def get_statuses_filter(self):
         if self._statuses_filter is None:
             return None
         return set(self._statuses_filter)
+
+    def set_tasks_filters(self, task_ids_filter):
+        if self._task_ids_filter == task_ids_filter:
+            return
+        self._task_ids_filter = task_ids_filter
+        self.invalidateFilter()
 
     def set_product_type_filters(self, product_type_filters):
         if self._product_type_filters == product_type_filters:
@@ -62,6 +70,8 @@ class ProductsProxyModel(RecursiveSortFilterProxyModel):
     def filterAcceptsRow(self, source_row, source_parent):
         source_model = self.sourceModel()
         index = source_model.index(source_row, 0, source_parent)
+        if not self._accept_task_ids_filter(index):
+            return False
 
         if not self._accept_row_by_role_value(
             index, self._product_type_filters, PRODUCT_TYPE_ROLE
@@ -74,6 +84,12 @@ class ProductsProxyModel(RecursiveSortFilterProxyModel):
             return False
 
         return super().filterAcceptsRow(source_row, source_parent)
+
+    def _accept_task_ids_filter(self, index):
+        if not self._task_ids_filter:
+            return True
+        task_id = index.data(TASK_ID_ROLE)
+        return task_id in self._task_ids_filter
 
     def _accept_row_by_role_value(
         self,
@@ -253,6 +269,9 @@ class ProductsWidget(QtWidgets.QWidget):
 
         """
         self._products_proxy_model.setFilterFixedString(name)
+
+    def set_tasks_filters(self, task_ids):
+        self._products_proxy_model.set_tasks_filters(task_ids)
 
     def set_statuses_filter(self, status_names):
         """Set filter of version statuses.
