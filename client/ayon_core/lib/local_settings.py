@@ -9,7 +9,7 @@ from datetime import datetime
 from abc import ABC, abstractmethod
 from functools import lru_cache
 
-import appdirs
+import platformdirs
 import ayon_api
 
 _PLACEHOLDER = object()
@@ -17,7 +17,7 @@ _PLACEHOLDER = object()
 
 def _get_ayon_appdirs(*args):
     return os.path.join(
-        appdirs.user_data_dir("AYON", "Ynput"),
+        platformdirs.user_data_dir("AYON", "Ynput"),
         *args
     )
 
