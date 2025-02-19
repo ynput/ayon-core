@@ -58,6 +58,8 @@ class LoaderTasksQtModel(TasksQtModel):
             "Method 'get_last_folder_id' is not implemented."
         )
 
+    def flags(self, _index):
+        return QtCore.Qt.ItemIsEnabled | QtCore.Qt.ItemIsSelectable
 
     def _refresh(self, project_name, folder_ids):
         self._is_refreshing = True
