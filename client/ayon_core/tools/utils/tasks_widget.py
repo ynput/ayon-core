@@ -24,9 +24,14 @@ class TasksQtModel(QtGui.QStandardItemModel):
     """
     _default_task_icon = None
     refreshed = QtCore.Signal()
+    column_labels = ["Tasks"]
 
     def __init__(self, controller):
-        super(TasksQtModel, self).__init__()
+        super().__init__()
+
+        self.setColumnCount(len(self.column_labels))
+        for idx, label in enumerate(self.column_labels):
+            self.setHeaderData(idx, QtCore.Qt.Horizontal, label)
 
         self._controller = controller
 
@@ -337,19 +342,6 @@ class TasksQtModel(QtGui.QStandardItemModel):
 
         return self._has_content
 
-    def headerData(self, section, orientation, role):
-        # Show nice labels in the header
-        if (
-            role == QtCore.Qt.DisplayRole
-            and orientation == QtCore.Qt.Horizontal
-        ):
-            if section == 0:
-                return "Tasks"
-
-        return super(TasksQtModel, self).headerData(
-            section, orientation, role
-        )
-
 
 class TasksWidget(QtWidgets.QWidget):
     """Tasks widget.
@@ -366,7 +358,7 @@ class TasksWidget(QtWidgets.QWidget):
     selection_changed = QtCore.Signal()
 
     def __init__(self, controller, parent, handle_expected_selection=False):
-        super(TasksWidget, self).__init__(parent)
+        super().__init__(parent)
 
         tasks_view = DeselectableTreeView(self)
         tasks_view.setIndentation(0)
