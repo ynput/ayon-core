@@ -3,6 +3,7 @@ import hashlib
 
 from qtpy import QtWidgets, QtCore, QtGui
 
+from ayon_core.style import get_default_entity_icon_color
 from ayon_core.tools.utils import (
     RecursiveSortFilterProxyModel,
     DeselectableTreeView,
@@ -15,10 +16,11 @@ from ayon_core.tools.utils.tasks_widget import (
     PARENT_ID_ROLE,
     TASK_TYPE_ROLE,
 )
-from ayon_core.tools.utils.lib import RefreshThread
+from ayon_core.tools.utils.lib import RefreshThread, get_qt_icon
 
 # Role that can't clash with default 'tasks_widget' roles
 FOLDER_LABEL_ROLE = QtCore.Qt.UserRole + 100
+NO_TASKS_ID = "--no-task--"
 
 
 class LoaderTasksQtModel(TasksQtModel):
@@ -34,6 +36,9 @@ class LoaderTasksQtModel(TasksQtModel):
         self._items_by_id = {}
         self._groups_by_name = {}
         self._last_folder_ids = set()
+        # This item is used to be able filter versions without any task
+        # - do not mismatch with '_empty_tasks_item' item from 'TasksQtModel'
+        self._no_tasks_item = None
 
     def refresh(self):
         """Refresh tasks for selected folders."""
@@ -58,6 +63,20 @@ class LoaderTasksQtModel(TasksQtModel):
         if index.column() != 0:
             index = self.index(index.row(), 0, index.parent())
         return super().flags(index)
+
+    def _get_no_tasks_item(self):
+        if self._no_tasks_item is None:
+            item = QtGui.QStandardItem("< Without task >")
+            icon = get_qt_icon({
+                "type": "material-symbols",
+                "name": "indeterminate_check_box",
+                "color": get_default_entity_icon_color(),
+            })
+            item.setData(icon, QtCore.Qt.DecorationRole)
+            item.setData(NO_TASKS_ID, ITEM_ID_ROLE)
+            item.setEditable(False)
+            self._no_tasks_item = item
+        return self._no_tasks_item
 
     def _refresh(self, project_name, folder_ids):
         self._is_refreshing = True
@@ -209,7 +228,9 @@ class LoaderTasksQtModel(TasksQtModel):
             queue.append((parent, item))
 
         used_group_names = set()
-        new_root_items = []
+        new_root_items = [
+            self._get_no_tasks_item()
+        ]
         for name, items in items_by_name.items():
             if len(items) == 1:
                 new_root_items.extend(items)
@@ -364,7 +385,10 @@ class LoaderTasksWidget(QtWidgets.QWidget):
             item_id = index.data(ITEM_ID_ROLE)
             if item_id is None:
                 continue
-            item_ids |= set(item_id.split("|"))
+            if item_id == NO_TASKS_ID:
+                item_ids.add(None)
+            else:
+                item_ids |= set(item_id.split("|"))
         return item_ids
 
     def _on_selection_change(self):
