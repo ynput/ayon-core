@@ -31,10 +31,6 @@ class LoaderTasksQtModel(TasksQtModel):
     def __init__(self, controller):
         super().__init__(controller)
 
-        self.setColumnCount(len(self.column_labels))
-        for idx, label in enumerate(self.column_labels):
-            self.setHeaderData(idx, QtCore.Qt.Horizontal, label)
-
         self._items_by_id = {}
         self._groups_by_name = {}
         self._last_folder_ids = set()
