@@ -281,12 +281,9 @@ class LoaderTasksWidget(QtWidgets.QWidget):
         super().__init__(parent)
 
         tasks_view = DeselectableTreeView(self)
-        # tasks_view.setHeaderHidden(True)
         tasks_view.setSelectionMode(
             QtWidgets.QAbstractItemView.ExtendedSelection
         )
-        tasks_view_header = tasks_view.header()
-        tasks_view_header.setStretchLastSection(False)
 
         tasks_model = LoaderTasksQtModel(controller)
         tasks_proxy_model = RecursiveSortFilterProxyModel()
@@ -296,9 +293,6 @@ class LoaderTasksWidget(QtWidgets.QWidget):
         tasks_view.setModel(tasks_proxy_model)
         # Hide folder column by default
         tasks_view.setColumnHidden(2, True)
-        tasks_view_header.setSectionResizeMode(
-            0, QtWidgets.QHeaderView.Stretch
-        )
 
         main_layout = QtWidgets.QHBoxLayout(self)
         main_layout.setContentsMargins(0, 0, 0, 0)
@@ -322,6 +316,15 @@ class LoaderTasksWidget(QtWidgets.QWidget):
         self._tasks_view = tasks_view
         self._tasks_model = tasks_model
         self._tasks_proxy_model = tasks_proxy_model
+
+        self._fisrt_show = True
+
+    def showEvent(self, event):
+        super().showEvent(event)
+        if self._fisrt_show:
+            self._fisrt_show = False
+            header_widget = self._tasks_view.header()
+            header_widget.resizeSection(0, 200)
 
     def set_name_filter(self, name):
         """Set filter of folder name.
