@@ -53,7 +53,8 @@ class TasksQtModel(QtGui.QStandardItemModel):
         self._has_content = False
         self._remove_invalid_items()
         root_item = self.invisibleRootItem()
-        root_item.removeRows(0, root_item.rowCount())
+        while root_item.rowCount() != 0:
+            root_item.takeRow(0)
 
     def refresh(self):
         """Refresh tasks for last project and folder."""
