@@ -195,34 +195,26 @@ class LoaderTasksQtModel(TasksQtModel):
 
         root_item = self.invisibleRootItem()
 
-        for task_id in set(self._items_by_id) - current_ids:
-            item = self._items_by_id.pop(task_id)
-            parent = item.parent()
-            if parent is None:
-                parent = root_item
-            parent.removeRow(item.row())
+        # Make sure item is not parented
+        # - this is laziness to avoid re-parenting items which does
+        #   complicate the code with no benefit
+        queue = collections.deque()
+        queue.append((None, root_item))
+        while queue:
+            (parent, item) = queue.popleft()
+            if not item.hasChildren():
+                if parent:
+                    parent.takeRow(item.row())
+                continue
+
+            for row in range(item.rowCount()):
+                queue.append((item, item.child(row, 0)))
+
+            queue.append((parent, item))
 
         used_group_names = set()
         new_root_items = []
         for name, items in items_by_name.items():
-            # Make sure item is not parented
-            # - this is laziness to avoid re-parenting items which does
-            #   complicate the code with no benefit
-            for item in items:
-                parent = item.parent()
-                # If item is in root then model is not None, and
-                #   if parent is set then model is None
-                if parent is None and item.model() is None:
-                    continue
-
-                if parent is None:
-                    # We can skip when task stays un-grouped
-                    if len(items) == 1:
-                        continue
-                    parent = root_item
-
-                parent.takeRow(item.row())
-
             if len(items) == 1:
                 new_root_items.extend(items)
                 continue
@@ -235,7 +227,6 @@ class LoaderTasksQtModel(TasksQtModel):
                 group_item.setEditable(False)
                 group_item.setColumnCount(self.columnCount())
                 self._groups_by_name[name] = group_item
-                new_root_items.append(group_item)
 
             # Use icon from first item
             first_item_icon = items[0].data(QtCore.Qt.DecorationRole)
@@ -249,9 +240,14 @@ class LoaderTasksQtModel(TasksQtModel):
 
             group_item.appendRows(items)
 
-        for name in set(self._groups_by_name.keys()) - used_group_names:
-            group_item = self._groups_by_name.pop(name)
-            root_item.removeRow(group_item.row())
+            new_root_items.append(group_item)
+
+        # Remove unused caches
+        for task_id in set(self._items_by_id) - current_ids:
+            self._items_by_id.pop(task_id)
+
+        for name in set(self._groups_by_name) - used_group_names:
+            self._groups_by_name.pop(name)
 
         if new_root_items:
             root_item.appendRows(new_root_items)
