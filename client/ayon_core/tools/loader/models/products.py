@@ -55,6 +55,7 @@ def version_item_from_entity(version):
         version=version_num,
         is_hero=is_hero,
         product_id=version["productId"],
+        task_id=version["taskId"],
         thumbnail_id=version["thumbnailId"],
         published_time=published_time,
         author=author,
