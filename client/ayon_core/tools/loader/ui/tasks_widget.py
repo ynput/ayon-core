@@ -295,6 +295,15 @@ class LoaderTasksQtModel(TasksQtModel):
         return super().data(index, role)
 
 
+class LoaderTasksProxyModel(RecursiveSortFilterProxyModel):
+    def lessThan(self, left, right):
+        if left.data(ITEM_ID_ROLE) == NO_TASKS_ID:
+            return False
+        if right.data(ITEM_ID_ROLE) == NO_TASKS_ID:
+            return True
+        return super().lessThan(left, right)
+
+
 class LoaderTasksWidget(QtWidgets.QWidget):
     refreshed = QtCore.Signal()
 
@@ -307,7 +316,7 @@ class LoaderTasksWidget(QtWidgets.QWidget):
         )
 
         tasks_model = LoaderTasksQtModel(controller)
-        tasks_proxy_model = RecursiveSortFilterProxyModel()
+        tasks_proxy_model = LoaderTasksProxyModel()
         tasks_proxy_model.setSourceModel(tasks_model)
         tasks_proxy_model.setSortCaseSensitivity(QtCore.Qt.CaseInsensitive)
 
