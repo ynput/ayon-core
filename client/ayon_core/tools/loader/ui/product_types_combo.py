@@ -16,6 +16,8 @@ ITEM_SUBTYPE_ROLE = QtCore.Qt.UserRole + 3
 
 
 class ProductTypesQtModel(BaseQtModel):
+    refreshed = QtCore.Signal()
+
     def __init__(self, controller):
         self._reset_filters_on_refresh = True
         self._refreshing = False
@@ -38,6 +40,7 @@ class ProductTypesQtModel(BaseQtModel):
 
         self._reset_filters_on_refresh = False
         self._refreshing = False
+        self.refreshed.emit()
 
     def reset_product_types_filter_on_refresh(self):
         self._reset_filters_on_refresh = True
@@ -120,6 +123,9 @@ class ProductTypesCombobox(CustomPaintMultiselectComboBox):
             model=model,
             parent=parent
         )
+
+        model.refreshed.connect(self._on_model_refresh)
+
         self.set_placeholder_text("Product types filter...")
         self._model = model
         self._last_project_name = None
@@ -140,6 +146,9 @@ class ProductTypesCombobox(CustomPaintMultiselectComboBox):
 
     def reset_product_types_filter_on_refresh(self):
         self._model.reset_product_types_filter_on_refresh()
+
+    def _on_model_refresh(self):
+        self.value_changed.emit()
 
     def _on_product_type_filter_change(self):
         lines = ["Product types filter"]
