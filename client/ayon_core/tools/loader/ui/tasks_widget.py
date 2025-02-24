@@ -66,7 +66,7 @@ class LoaderTasksQtModel(TasksQtModel):
 
     def _get_no_tasks_item(self):
         if self._no_tasks_item is None:
-            item = QtGui.QStandardItem("< Without task >")
+            item = QtGui.QStandardItem("No task")
             icon = get_qt_icon({
                 "type": "material-symbols",
                 "name": "indeterminate_check_box",
