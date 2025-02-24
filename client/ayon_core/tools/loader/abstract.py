@@ -557,6 +557,26 @@ class FrontendLoaderController(_BaseLoaderController):
         pass
 
     @abstractmethod
+    def get_task_type_items(self, project_name, sender=None):
+        """Task type items for a project.
+
+        This function may trigger events with topics
+        'projects.task_types.refresh.started' and
+        'projects.task_types.refresh.finished' which will contain 'sender'
+        value in data.
+        That may help to avoid re-refresh of items in UI elements.
+
+        Args:
+            project_name (str): Project name.
+            sender (str): Who requested task type items.
+
+        Returns:
+            list[TaskTypeItem]: Task type information.
+
+        """
+        pass
+
+    @abstractmethod
     def get_folder_labels(self, project_name, folder_ids):
         """Get folder labels for folder ids.
 

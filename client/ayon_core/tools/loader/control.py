@@ -206,6 +206,11 @@ class LoaderController(BackendLoaderController, FrontendLoaderController):
             ))
         return output
 
+    def get_task_type_items(self, project_name, sender=None):
+        return self._projects_model.get_task_type_items(
+            project_name, sender
+        )
+
     def get_folder_labels(self, project_name, folder_ids):
         folder_items_by_id = self._hierarchy_model.get_folder_items_by_id(
             project_name, folder_ids
