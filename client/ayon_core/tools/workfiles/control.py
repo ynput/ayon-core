@@ -742,7 +742,11 @@ class BaseWorkfileController(
         # Save workfile
         dst_filepath = os.path.join(workdir, filename)
         if src_filepath:
-            shutil.copyfile(src_filepath, dst_filepath)
+            # Support published workfile representations that may be folders
+            if os.path.isdir(src_filepath):
+                shutil.copytree(src_filepath, dst_filepath)
+            else:
+                shutil.copyfile(src_filepath, dst_filepath)
             self._host_open_workfile(dst_filepath)
         else:
             self._host_save_workfile(dst_filepath)
