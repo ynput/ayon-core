@@ -108,6 +108,7 @@ class VersionItem:
         version (int): Version. Can be negative when is hero version.
         is_hero (bool): Is hero version.
         product_id (str): Product id.
+        task_id (Union[str, None]): Task id.
         thumbnail_id (Union[str, None]): Thumbnail id.
         published_time (Union[str, None]): Published time in format
             '%Y%m%dT%H%M%SZ'.
@@ -127,6 +128,7 @@ class VersionItem:
         version,
         is_hero,
         product_id,
+        task_id,
         thumbnail_id,
         published_time,
         author,
@@ -140,6 +142,7 @@ class VersionItem:
     ):
         self.version_id = version_id
         self.product_id = product_id
+        self.task_id = task_id
         self.thumbnail_id = thumbnail_id
         self.version = version
         self.is_hero = is_hero
@@ -161,6 +164,7 @@ class VersionItem:
             and self.version == other.version
             and self.version_id == other.version_id
             and self.product_id == other.product_id
+            and self.task_id == other.task_id
         )
 
     def __ne__(self, other):
@@ -198,6 +202,7 @@ class VersionItem:
         return {
             "version_id": self.version_id,
             "product_id": self.product_id,
+            "task_id": self.task_id,
             "thumbnail_id": self.thumbnail_id,
             "version": self.version,
             "is_hero": self.is_hero,
@@ -537,6 +542,55 @@ class FrontendLoaderController(_BaseLoaderController):
         pass
 
     @abstractmethod
+    def get_task_items(self, project_name, folder_ids, sender=None):
+        """Task items for folder ids.
+
+        Args:
+            project_name (str): Project name.
+            folder_ids (Iterable[str]): Folder ids.
+            sender (Optional[str]): Sender who requested the items.
+
+        Returns:
+            list[TaskItem]: List of task items.
+
+        """
+        pass
+
+    @abstractmethod
+    def get_task_type_items(self, project_name, sender=None):
+        """Task type items for a project.
+
+        This function may trigger events with topics
+        'projects.task_types.refresh.started' and
+        'projects.task_types.refresh.finished' which will contain 'sender'
+        value in data.
+        That may help to avoid re-refresh of items in UI elements.
+
+        Args:
+            project_name (str): Project name.
+            sender (str): Who requested task type items.
+
+        Returns:
+            list[TaskTypeItem]: Task type information.
+
+        """
+        pass
+
+    @abstractmethod
+    def get_folder_labels(self, project_name, folder_ids):
+        """Get folder labels for folder ids.
+
+        Args:
+            project_name (str): Project name.
+            folder_ids (Iterable[str]): Folder ids.
+
+        Returns:
+            dict[str, Optional[str]]: Folder labels by folder id.
+
+        """
+        pass
+
+    @abstractmethod
     def get_project_status_items(self, project_name, sender=None):
         """Items for all projects available on server.
 
@@ -717,8 +771,30 @@ class FrontendLoaderController(_BaseLoaderController):
 
         Returns:
             list[str]: Selected folder ids.
-        """
 
+        """
+        pass
+
+    @abstractmethod
+    def get_selected_task_ids(self):
+        """Get selected task ids.
+
+        The information is based on last selection from UI.
+
+        Returns:
+            list[str]: Selected folder ids.
+
+        """
+        pass
+
+    @abstractmethod
+    def set_selected_tasks(self, task_ids):
+        """Set selected tasks.
+
+        Args:
+            task_ids (Iterable[str]): Selected task ids.
+
+        """
         pass
 
     @abstractmethod
@@ -729,8 +805,8 @@ class FrontendLoaderController(_BaseLoaderController):
 
         Returns:
             list[str]: Selected version ids.
-        """
 
+        """
         pass
 
     @abstractmethod
