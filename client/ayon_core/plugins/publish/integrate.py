@@ -706,7 +706,8 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
                 # In case source are published in place we need to
                 # skip renumbering
                 repre_frame_start = repre.get("frameStart")
-                if repre_frame_start is not None:
+                explicit_frames = instance.data.get("explicit_frames", False)
+                if not explicit_frames and repre_frame_start is not None:
                     index_frame_start = int(repre_frame_start)
                     # Shift destination sequence to the start frame
                     destination_indexes = [
