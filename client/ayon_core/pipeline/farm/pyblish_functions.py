@@ -863,7 +863,7 @@ def _create_instances_for_aov(
             )
 
         try:
-            staging = remap_source(staging_dir, anatomy)
+            staging_dir = remap_source(staging_dir, anatomy)
         except ValueError as e:
             log.warning(e)
 
@@ -931,7 +931,7 @@ def _create_instances_for_aov(
             "frameStart": frames_to_render[0],
             "frameEnd": frames_to_render[-1],
             # If expectedFile are absolute, we need only filenames
-            "stagingDir": staging,
+            "stagingDir": staging_dir,
             "fps": new_instance.get("fps"),
             "tags": ["review"] if preview else [],
             "colorspaceData": {
