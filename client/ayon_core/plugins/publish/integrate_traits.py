@@ -918,8 +918,7 @@ class IntegrateTraits(pyblish.api.InstancePlugin):
 
             template_item.template_data["frame"] = frame
             template_item.template_data["ext"] = (
-                file_loc.file_path.suffix
-            )
+                file_loc.file_path.suffix.lstrip("."))
             template_filled = path_template_object.format_strict(
                 template_item.template_data
             )
@@ -1026,7 +1025,7 @@ class IntegrateTraits(pyblish.api.InstancePlugin):
             template_item.template_object["path"]
         )
         template_item.template_data["ext"] = (
-            representation.get_trait(FileLocation).file_path.suffix.rstrip(".")
+            representation.get_trait(FileLocation).file_path.suffix.lstrip(".")
         )
         template_item.template_data.pop("frame", None)
         with contextlib.suppress(MissingTraitError):
@@ -1110,10 +1109,17 @@ class IntegrateTraits(pyblish.api.InstancePlugin):
             path (Path): Destination url of published file.
             anatomy (Anatomy): Project anatomy part from instance.
 
+        Raises:
+            PublishError: If file does not exist.
+
         Returns:
             dict[str, Any]: Representation file info dictionary.
 
         """
+        if not path.exists():
+            msg = f"File '{path}' does not exist."
+            raise PublishError(msg)
+
         return {
             "id": create_entity_id(),
             "name": path.name,
@@ -1130,6 +1136,9 @@ class IntegrateTraits(pyblish.api.InstancePlugin):
             anatomy: Anatomy,
         ) -> list[dict[str, str]]:
         """Get legacy files for a given representation.
+
+        This expects the file to exist - it must run after the transfer
+        is done.
 
         Returns:
             list: List of legacy files.

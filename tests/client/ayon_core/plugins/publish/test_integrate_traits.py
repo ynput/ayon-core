@@ -12,6 +12,11 @@ import pytest
 from ayon_api.operations import (
     OperationsSession,
 )
+
+from ayon_core.lib.file_transaction import (
+    FileTransaction,
+)
+
 from ayon_core.pipeline.anatomy import Anatomy
 from ayon_core.pipeline.traits import (
     Bundle,
@@ -30,8 +35,19 @@ from ayon_core.pipeline.version_start import get_versioning_start
 
 # Tagged,
 # TemplatePath,
-from ayon_core.plugins.publish.integrate_traits import IntegrateTraits
+from ayon_core.plugins.publish.integrate_traits import (
+    IntegrateTraits,
+    TransferItem,
+)
+
 from ayon_core.settings import get_project_settings
+
+from ayon_api.operations import (
+    OperationsSession,
+    new_product_entity,
+    new_representation_entity,
+    new_version_entity,
+)
 
 if TYPE_CHECKING:
     import pytest_ayon
@@ -315,6 +331,9 @@ def test_get_transfers_from_representation(
         mock_context: pyblish.api.Context) -> None:
     """Test get_transfers_from_representation.
 
+    This tests getting actual transfers from the representations and
+    also the legacy files.
+
     Todo: This test will benefit massively from a proper mocking of the
         context. We need to parametrize the test with different
         representations and test the output of the function.
@@ -332,4 +351,22 @@ def test_get_transfers_from_representation(
     assert len(transfers) == 22
 
     for transfer in transfers:
-        ...
+        assert transfer.checksum == TransferItem.get_checksum(
+            transfer.source)
+
+    file_transactions = FileTransaction(
+        # Enforce unique transfers
+        allow_queue_replacements=False)
+
+    for transfer in transfers:
+        file_transactions.add(
+            transfer.source.as_posix(),
+            transfer.destination.as_posix(),
+            mode=FileTransaction.MODE_COPY,
+        )
+
+    file_transactions.process()
+
+    for representation in representations:
+        files = integrator._get_legacy_files_for_representation(  # noqa: SLF001
+            transfers, representation, anatomy=instance.data["anatomy"])
