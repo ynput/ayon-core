@@ -789,7 +789,10 @@ def _create_instances_for_aov(
             else os.path.dirname(collected_files)
         )
 
-        if frames_to_render is not None:
+        if (
+            frames_to_render is not None
+            and isinstance(collected_files, (list, tuple))  # not single file
+        ):
             frames_to_render = get_real_frames_to_render(frames_to_render)
             collections, _ = clique.assemble(collected_files)
             collected_files = _get_real_files_to_render(
