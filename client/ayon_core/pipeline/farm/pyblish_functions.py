@@ -480,13 +480,27 @@ def get_real_frames_to_render(frames):
     """Returns list of frames that should be rendered.
 
     Artists could want to selectively render only particular frames
+    Handles formats as:
+    1001
+    1002,1004
+    1003-1005
+    1001-1100x5
     """
+    pattern = r'(?:x|step|by|every)?(\d+)$'
+
     frames_to_render = []
+    step = 1
     for frame in frames.split(","):
         if "-" in frame:
-            splitted = frame.split("-")
+            frame_start, frame_end = frame.split("-")
+            match = re.findall(pattern, frame_end)
+            if match:
+                step = int(match[0])
+                frame_end = re.sub(pattern, "", frame_end)
+
             frames_to_render.extend(
-                range(int(splitted[0]), int(splitted[1])+1))
+                range(int(frame_start), int(frame_end) + 1, step)
+            )
         else:
             frames_to_render.append(int(frame))
     frames_to_render.sort()
