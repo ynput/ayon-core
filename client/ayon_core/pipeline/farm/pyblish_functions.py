@@ -805,7 +805,8 @@ def _create_instances_for_aov(
         if isinstance(collected_files, (list, tuple)):
             expected_filepath = os.path.join(staging_dir, collected_files[0])
         else:
-            expected_filepath = os.path.join(staging_dir, expected_filepath)
+            expected_filepath = os.path.join(staging_dir, collected_files)
+
 
         dynamic_data = {
             "aov": aov,
