@@ -338,7 +338,7 @@ def prepare_representations(
     log = Logger.get_logger("farm_publishing")
 
     if frames_to_render is not None:
-        frames_to_render = _get_real_frames_to_render(frames_to_render)
+        frames_to_render = get_real_frames_to_render(frames_to_render)
     else:
         # Backwards compatibility for older logic
         frame_start = int(skeleton_data.get("frameStartHandle"))
@@ -476,7 +476,7 @@ def prepare_representations(
     return representations
 
 
-def _get_real_frames_to_render(frames):
+def get_real_frames_to_render(frames):
     """Returns list of frames that should be rendered.
 
     Artists could want to selectively render only particular frames
@@ -531,9 +531,14 @@ def _get_real_files_to_render(collection, frames_to_render):
     return [os.path.basename(file_url) for file_url in real_full_paths]
 
 
-def create_instances_for_aov(instance, skeleton, aov_filter,
-                             skip_integration_repre_list,
-                             do_not_add_review):
+def create_instances_for_aov(
+    instance,
+    skeleton,
+    aov_filter,
+    skip_integration_repre_list,
+    do_not_add_review,
+    frames_to_render=None
+):
     """Create instances from AOVs.
 
     This will create new pyblish.api.Instances by going over expected
@@ -591,7 +596,8 @@ def create_instances_for_aov(instance, skeleton, aov_filter,
         aov_filter,
         additional_color_data,
         skip_integration_repre_list,
-        do_not_add_review
+        do_not_add_review,
+        frames_to_render
     )
 
 
@@ -720,8 +726,15 @@ def get_product_name_and_group_from_template(
     return resulting_product_name, resulting_group_name
 
 
-def _create_instances_for_aov(instance, skeleton, aov_filter, additional_data,
-                              skip_integration_repre_list, do_not_add_review):
+def _create_instances_for_aov(
+    instance,
+    skeleton,
+    aov_filter,
+    additional_data,
+    skip_integration_repre_list,
+    do_not_add_review,
+    frames_to_render=None
+):
     """Create instance for each AOV found.
 
     This will create new instance for every AOV it can detect in expected
@@ -735,7 +748,8 @@ def _create_instances_for_aov(instance, skeleton, aov_filter, additional_data,
         skip_integration_repre_list (list): list of extensions that shouldn't
             be published
         do_not_add_review (bool): explicitly disable review
-
+        frames_to_render (str): implicit or explicit range of frames to render
+            this value is sent to Deadline in JobInfo.Frames
 
     Returns:
         list of instances
@@ -755,10 +769,26 @@ def _create_instances_for_aov(instance, skeleton, aov_filter, additional_data,
     # go through AOVs in expected files
     for aov, files in expected_files[0].items():
         collected_files = _collect_expected_files_for_aov(files)
+        staging_dir = (
+            os.path.dirname(collected_files[0])
+            if isinstance(collected_files, (list, tuple))
+            else os.path.dirname(collected_files)
+        )
 
-        expected_filepath = collected_files
+        if frames_to_render is not None:
+            frames_to_render = get_real_frames_to_render(frames_to_render)
+            collections, _ = clique.assemble(collected_files)
+            collected_files = _get_real_files_to_render(
+                collections[0], frames_to_render)
+        else:
+            frame_start = int(skeleton.get("frameStartHandle"))
+            frame_end = int(skeleton.get("frameEndHandle"))
+            frames_to_render = list(range(frame_start, frame_end + 1))
+
         if isinstance(collected_files, (list, tuple)):
-            expected_filepath = collected_files[0]
+            expected_filepath = os.path.join(staging_dir, collected_files[0])
+        else:
+            expected_filepath = os.path.join(staging_dir, expected_filepath)
 
         dynamic_data = {
             "aov": aov,
@@ -814,10 +844,8 @@ def _create_instances_for_aov(instance, skeleton, aov_filter, additional_data,
                 dynamic_data=dynamic_data
             )
 
-        staging = os.path.dirname(expected_filepath)
-
         try:
-            staging = remap_source(staging, anatomy)
+            staging = remap_source(staging_dir, anatomy)
         except ValueError as e:
             log.warning(e)
 
@@ -882,8 +910,8 @@ def _create_instances_for_aov(instance, skeleton, aov_filter, additional_data,
             "name": ext,
             "ext": ext,
             "files": collected_files,
-            "frameStart": int(skeleton["frameStartHandle"]),
-            "frameEnd": int(skeleton["frameEndHandle"]),
+            "frameStart": frames_to_render[0],
+            "frameEnd": frames_to_render[-1],
             # If expectedFile are absolute, we need only filenames
             "stagingDir": staging,
             "fps": new_instance.get("fps"),
