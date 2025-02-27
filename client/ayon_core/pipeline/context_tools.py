@@ -629,6 +629,6 @@ def version_up_current_workfile():
     parent_folder = os.path.dirname(new_workfile_path)
     if not os.path.exists(parent_folder):
         raise AssertionError(
-            f"Folder {parent_folder} does not exist yet.")
+            f"Work area directory '{parent_folder}' does not exist yet.")
 
     host.save_workfile(new_workfile_path)
