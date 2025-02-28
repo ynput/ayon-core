@@ -486,7 +486,7 @@ def get_real_frames_to_render(frames):
     1003-1005
     1001-1100x5
     """
-    pattern = r"(?:|step|by|every|:?)(\d+)$"
+    pattern = r"(?:step|by|every|x|:)(\d+)$"
 
     frames_to_render = []
     step = 1
