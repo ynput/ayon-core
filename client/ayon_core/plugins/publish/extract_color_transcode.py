@@ -280,6 +280,10 @@ class ExtractOIIOTranscode(publish.Extractor):
 
             collection = collections[0]
             frames = list(collection.indexes)
+            real_range = list(range(frames[0], frames[-1] + 1))
+            if set(frames) != set(real_range):  # check for gaps
+                return files_to_convert
+
             frame_str = "{}-{}#".format(frames[0], frames[-1])
             file_name = "{}{}{}".format(collection.head, frame_str,
                                         collection.tail)
