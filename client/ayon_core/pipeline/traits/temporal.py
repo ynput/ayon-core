@@ -3,12 +3,12 @@ from __future__ import annotations
 
 import contextlib
 import re
+from dataclasses import dataclass
 from enum import Enum, auto
 from re import Pattern
 from typing import TYPE_CHECKING, ClassVar, Optional
 
 import clique
-from pydantic import Field, field_validator
 
 from .trait import MissingTraitError, TraitBase, TraitValidationError
 
@@ -36,6 +36,7 @@ class GapPolicy(Enum):
     black = auto()
 
 
+@dataclass
 class FrameRanged(TraitBase):
     """Frame ranged trait model.
 
@@ -70,16 +71,16 @@ class FrameRanged(TraitBase):
     name: ClassVar[str] = "FrameRanged"
     description: ClassVar[str] = "Frame Ranged Trait"
     id: ClassVar[str] = "ayon.time.FrameRanged.v1"
-    frame_start: int = Field(
-        ..., title="Start Frame")
-    frame_end: int = Field(
-        ..., title="Frame Start")
-    frame_in: Optional[int] = Field(default=None, title="In Frame")
-    frame_out: Optional[int] = Field(default=None, title="Out Frame")
-    frames_per_second: str = Field(..., title="Frames Per Second")
-    step: Optional[int] = Field(default=1, title="Step")
+    persistent: ClassVar[bool] = True
+    frame_start: int
+    frame_end: int
+    frame_in: Optional[int] = None
+    frame_out: Optional[int] = None
+    frames_per_second: str = None
+    step: Optional[int] = None
 
 
+@dataclass
 class Handles(TraitBase):
     """Handles trait model.
 
@@ -98,14 +99,13 @@ class Handles(TraitBase):
     name: ClassVar[str] = "Handles"
     description: ClassVar[str] = "Handles Trait"
     id: ClassVar[str] = "ayon.time.Handles.v1"
-    inclusive: Optional[bool] = Field(
-        False, title="Handles are inclusive")  # noqa: FBT003
-    frame_start_handle: Optional[int] = Field(
-        0, title="Frame Start Handle")
-    frame_end_handle: Optional[int] = Field(
-        0, title="Frame End Handle")
+    persistent: ClassVar[bool] = True
+    inclusive: Optional[bool] = False
+    frame_start_handle: Optional[int] = None
+    frame_end_handle: Optional[int] = None
 
 
+@dataclass
 class Sequence(TraitBase):
     """Sequence trait model.
 
@@ -130,15 +130,12 @@ class Sequence(TraitBase):
     name: ClassVar[str] = "Sequence"
     description: ClassVar[str] = "Sequence Trait Model"
     id: ClassVar[str] = "ayon.time.Sequence.v1"
-    gaps_policy: Optional[GapPolicy] = Field(
-        default=GapPolicy.forbidden, title="Gaps Policy")
-    frame_padding: int = Field(..., title="Frame Padding")
-    frame_regex: Optional[Pattern] = Field(
-        default=None, title="Frame Regex")
-    frame_spec: Optional[str] = Field(default=None,
-        title="Frame Specification")
+    persistent: ClassVar[bool] = True
+    frame_padding: int
+    gaps_policy: Optional[GapPolicy] = GapPolicy.forbidden
+    frame_regex: Optional[Pattern] = None
+    frame_spec: Optional[str] = None
 
-    @field_validator("frame_regex")
     @classmethod
     def validate_frame_regex(
         cls, v: Optional[Pattern]
@@ -426,15 +423,22 @@ class Sequence(TraitBase):
 
 
 # Do we need one for drop and non-drop frame?
+@dataclass
 class SMPTETimecode(TraitBase):
-    """SMPTE Timecode trait model."""
+    """SMPTE Timecode trait model.
+
+    Attributes:
+        timecode (str): SMPTE Timecode HH:MM:SS:FF
+    """
 
     name: ClassVar[str] = "Timecode"
     description: ClassVar[str] = "SMPTE Timecode Trait"
     id: ClassVar[str] = "ayon.time.SMPTETimecode.v1"
-    timecode: str = Field(..., title="SMPTE Timecode HH:MM:SS:FF")
+    persistent: ClassVar[bool] = True
+    timecode: str
 
 
+@dataclass
 class Static(TraitBase):
     """Static time trait.
 
@@ -444,3 +448,4 @@ class Static(TraitBase):
     name: ClassVar[str] = "Static"
     description: ClassVar[str] = "Static Time Trait"
     id: ClassVar[str] = "ayon.time.Static.v1"
+    persistent: ClassVar[bool] = True
