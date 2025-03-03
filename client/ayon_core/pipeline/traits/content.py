@@ -3,12 +3,11 @@ from __future__ import annotations
 
 import contextlib
 import re
+from dataclasses import dataclass
 
 # TC003 is there because Path in TYPECHECKING will fail in tests
 from pathlib import Path  # noqa: TC003
 from typing import ClassVar, Generator, Optional
-
-from pydantic import Field
 
 from .representation import Representation
 from .temporal import FrameRanged, Handles, Sequence
@@ -21,6 +20,7 @@ from .two_dimensional import UDIM
 from .utils import get_sequence_from_files
 
 
+@dataclass
 class MimeType(TraitBase):
     """MimeType trait model.
 
@@ -40,9 +40,11 @@ class MimeType(TraitBase):
     name: ClassVar[str] = "MimeType"
     description: ClassVar[str] = "MimeType Trait Model"
     id: ClassVar[str] = "ayon.content.MimeType.v1"
-    mime_type: str = Field(..., title="Mime Type")
+    persistent: ClassVar[bool] = True
+    mime_type: str
 
 
+@dataclass
 class LocatableContent(TraitBase):
     """LocatableContent trait model.
 
@@ -57,15 +59,18 @@ class LocatableContent(TraitBase):
         description (str): Trait description.
         id (str): id should be namespaced trait name with version
         location (str): Location.
+        is_templated (Optional[bool]): Is the location templated? Default is None.
     """
 
     name: ClassVar[str] = "LocatableContent"
     description: ClassVar[str] = "LocatableContent Trait Model"
     id: ClassVar[str] = "ayon.content.LocatableContent.v1"
-    location: str = Field(..., title="Location")
-    is_templated: Optional[bool] = Field(default=None, title="Is Templated")
+    persistent: ClassVar[bool] = True
+    location: str
+    is_templated: Optional[bool] = None
 
 
+@dataclass
 class FileLocation(TraitBase):
     """FileLocation trait model.
 
@@ -78,18 +83,20 @@ class FileLocation(TraitBase):
         description (str): Trait description.
         id (str): id should be namespaced trait name with version
         file_path (str): File path.
-        file_size (int): File size in bytes.
-        file_hash (str): File hash.
+        file_size (Optional[int]): File size in bytes.
+        file_hash (Optional[str]): File hash.
     """
 
     name: ClassVar[str] = "FileLocation"
     description: ClassVar[str] = "FileLocation Trait Model"
     id: ClassVar[str] = "ayon.content.FileLocation.v1"
-    file_path: Path = Field(..., title="File Path")
-    file_size: Optional[int] = Field(default=None, title="File Size")
-    file_hash: Optional[str] = Field(default=None, title="File Hash")
+    persistent: ClassVar[bool] = True
+    file_path: Path
+    file_size: Optional[int] = None
+    file_hash: Optional[str] = None
 
 
+@dataclass
 class FileLocations(TraitBase):
     """FileLocation trait model.
 
@@ -108,7 +115,8 @@ class FileLocations(TraitBase):
     name: ClassVar[str] = "FileLocations"
     description: ClassVar[str] = "FileLocations Trait Model"
     id: ClassVar[str] = "ayon.content.FileLocations.v1"
-    file_paths: list[FileLocation] = Field(..., title="File Path")
+    persistent: ClassVar[bool] = True
+    file_paths: list[FileLocation]
 
     def get_files(self) -> Generator[Path, None, None]:
         """Get all file paths from the trait.
@@ -340,6 +348,7 @@ class FileLocations(TraitBase):
         return frame_start_with_handles, frame_end_with_handles
 
 
+@dataclass
 class RootlessLocation(TraitBase):
     """RootlessLocation trait model.
 
@@ -363,9 +372,11 @@ class RootlessLocation(TraitBase):
     name: ClassVar[str] = "RootlessLocation"
     description: ClassVar[str] = "RootlessLocation Trait Model"
     id: ClassVar[str] = "ayon.content.RootlessLocation.v1"
-    rootless_path: str = Field(..., title="File Path")
+    persistent: ClassVar[bool] = True
+    rootless_path: str
 
 
+@dataclass
 class Compressed(TraitBase):
     """Compressed trait model.
 
@@ -386,9 +397,11 @@ class Compressed(TraitBase):
     name: ClassVar[str] = "Compressed"
     description: ClassVar[str] = "Compressed Trait"
     id: ClassVar[str] = "ayon.content.Compressed.v1"
-    compression_type: str = Field(..., title="Compression Type")
+    persistent: ClassVar[bool] = True
+    compression_type: str
 
 
+@dataclass
 class Bundle(TraitBase):
     """Bundle trait model.
 
@@ -424,8 +437,8 @@ class Bundle(TraitBase):
     name: ClassVar[str] = "Bundle"
     description: ClassVar[str] = "Bundle Trait"
     id: ClassVar[str] = "ayon.content.Bundle.v1"
-    items: list[list[TraitBase]] = Field(
-        ..., title="Bundles of traits")
+    persistent: ClassVar[bool] = True
+    items: list[list[TraitBase]]
 
     def to_representations(self) -> Generator[Representation]:
         """Convert bundle to representations.
@@ -438,6 +451,7 @@ class Bundle(TraitBase):
             yield Representation(name=f"{self.name} {idx}", traits=item)
 
 
+@dataclass
 class Fragment(TraitBase):
     """Fragment trait model.
 
@@ -466,4 +480,5 @@ class Fragment(TraitBase):
     name: ClassVar[str] = "Fragment"
     description: ClassVar[str] = "Fragment Trait"
     id: ClassVar[str] = "ayon.content.Fragment.v1"
-    parent: str = Field(..., title="Parent Representation Id")
+    persistent: ClassVar[bool] = True
+    parent: str

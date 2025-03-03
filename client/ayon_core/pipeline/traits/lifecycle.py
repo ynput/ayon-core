@@ -1,9 +1,11 @@
 """Lifecycle traits."""
+from dataclasses import dataclass
 from typing import ClassVar
 
 from .trait import TraitBase, TraitValidationError
 
 
+@dataclass
 class Transient(TraitBase):
     """Transient trait model.
 
@@ -19,6 +21,7 @@ class Transient(TraitBase):
     name: ClassVar[str] = "Transient"
     description: ClassVar[str] = "Transient Trait Model"
     id: ClassVar[str] = "ayon.lifecycle.Transient.v1"
+    persistent: ClassVar[bool] = True  # see note in Persistent
 
     def validate_trait(self, representation) -> None:  # noqa: ANN001
         """Validate representation is not Persistent.
@@ -36,6 +39,7 @@ class Transient(TraitBase):
             raise TraitValidationError(self.name, msg)
 
 
+@dataclass
 class Persistent(TraitBase):
     """Persistent trait model.
 
@@ -52,6 +56,10 @@ class Persistent(TraitBase):
     name: ClassVar[str] = "Persistent"
     description: ClassVar[str] = "Persistent Trait Model"
     id: ClassVar[str] = "ayon.lifecycle.Persistent.v1"
+    # note that this affects persistence of the trait itself, not
+    # the representation. This is a class variable, so it is shared
+    # among all instances of the class.
+    persistent: bool = True
 
     def validate_trait(self, representation) -> None:  # noqa: ANN001
         """Validate representation is not Transient.
