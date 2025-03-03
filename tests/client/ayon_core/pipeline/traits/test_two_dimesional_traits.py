@@ -42,6 +42,7 @@ def test_get_file_location_for_udim() -> None:
         udim=1001
     ) == file_locations_list[0]
 
+
 def test_get_udim_from_file_location() -> None:
     """Test get_udim_from_file_location."""
     file_location_1 = FileLocation(

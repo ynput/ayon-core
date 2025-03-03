@@ -1,6 +1,7 @@
 """Tests for the time related traits."""
 from __future__ import annotations
 
+import re
 from pathlib import Path
 
 import pytest
@@ -183,6 +184,26 @@ def test_sequence_validations() -> None:
     with pytest.raises(TraitValidationError):
         representation.validate()
 
+    representation = Representation(name="test_7", traits=[
+        FileLocations(file_paths=[
+            FileLocation(
+                file_path=Path(f"/path/to/file.{frame}.exr"),
+                file_size=1024,
+                file_hash=None,
+            )
+            for frame in range(996, 1050 + 1)  # because range is zero based
+        ]),
+        Sequence(
+            frame_padding=4,
+            frame_regex=re.compile(
+                    r"img\.(?P<index>(?P<padding>0*)\d{4})\.png$")),
+        Handles(
+            frame_start_handle=5,
+            frame_end_handle=5,
+            inclusive=False
+        )
+    ])
+    representation.validate()
 
 
 def test_list_spec_to_frames() -> None:
@@ -204,7 +225,7 @@ def test_list_spec_to_frames() -> None:
     assert Sequence.list_spec_to_frames("1") == [1]
     with pytest.raises(
             ValueError,
-            match="Invalid frame number in the list: .*"):
+            match=r"Invalid frame number in the list: .*"):
         Sequence.list_spec_to_frames("a")
 
 
@@ -225,4 +246,3 @@ def test_sequence_get_frame_padding() -> None:
 
     assert Sequence.get_frame_padding(
         file_locations=representation.get_trait(FileLocations)) == 4
-

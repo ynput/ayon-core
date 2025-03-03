@@ -83,6 +83,10 @@ class IPluginPaths(AYONInterface):
         """Receive launcher actions paths.
 
         Give addons ability to add launcher actions paths.
+
+        Returns:
+            list[str]: List of launcher action paths.
+
         """
         return self._get_plugin_paths_by_type("actions")
 
@@ -97,6 +101,9 @@ class IPluginPaths(AYONInterface):
 
         Args:
             host_name (str): For which host are the plugins meant.
+
+        Returns:
+            list[str]: List of create plugin paths.
 
         """
         return self._get_plugin_paths_by_type("create")
@@ -113,6 +120,9 @@ class IPluginPaths(AYONInterface):
         Args:
             host_name (str): For which host are the plugins meant.
 
+        Returns:
+            list[str]: List of load plugin paths.
+
         """
         return self._get_plugin_paths_by_type("load")
 
@@ -128,6 +138,9 @@ class IPluginPaths(AYONInterface):
         Args:
            host_name (str): For which host are the plugins meant.
 
+        Returns:
+            list[str]: List of publish plugin paths.
+
         """
         return self._get_plugin_paths_by_type("publish")
 
@@ -142,6 +155,9 @@ class IPluginPaths(AYONInterface):
 
         Args:
            host_name (str): For which host are the plugins meant.
+
+        Returns:
+            list[str]: List of inventory action plugin paths.
 
         """
         return self._get_plugin_paths_by_type("inventory")
@@ -214,8 +230,8 @@ class ITrayAddon(AYONInterface):
             self,
             title: str,
             message: str,
-            icon: Optional[QtWidgets.QSystemTrayIcon]=None,
-            msecs: Optional[int]=None) -> None:
+            icon: Optional[QtWidgets.QSystemTrayIcon] = None,
+            msecs: Optional[int] = None) -> None:
         """Show tray message.
 
         Args:
@@ -236,7 +252,12 @@ class ITrayAddon(AYONInterface):
 
     @staticmethod
     def admin_submenu(tray_menu: QtWidgets.QMenu) -> QtWidgets.QMenu:
-        """Get or create admin submenu."""
+        """Get or create admin submenu.
+
+        Returns:
+            QtWidgets.QMenu: Admin submenu.
+
+        """
         if ITrayAddon._admin_submenu is None:
             from qtpy import QtWidgets
 
@@ -248,7 +269,16 @@ class ITrayAddon(AYONInterface):
     @staticmethod
     def add_action_to_admin_submenu(
             label: str, tray_menu: QtWidgets.QMenu) -> QtWidgets.QAction:
-        """Add action to admin submenu."""
+        """Add action to admin submenu.
+
+        Args:
+            label (str): Label of action.
+            tray_menu (QtWidgets.QMenu): Tray menu to add action to.
+
+        Returns:
+            QtWidgets.QAction: Action added to admin submenu
+
+        """
         from qtpy import QtWidgets
 
         menu = ITrayAddon.admin_submenu(tray_menu)
@@ -295,11 +325,11 @@ class ITrayAction(ITrayAddon):
         action.triggered.connect(self.on_action_trigger)
         self._action_item = action
 
-    def tray_start(self) -> None:
+    def tray_start(self) -> None:  # noqa: PLR6301
         """Start procedure in tray tool."""
         return
 
-    def tray_exit(self) -> None:
+    def tray_exit(self) -> None:  # noqa: PLR6301
         """Cleanup method which is executed on tray shutdown."""
         return
 
@@ -327,7 +357,12 @@ class ITrayService(ITrayAddon):
 
     @staticmethod
     def services_submenu(tray_menu: QtWidgets.QMenu) -> QtWidgets.QMenu:
-        """Get or create services submenu."""
+        """Get or create services submenu.
+
+        Returns:
+            QtWidgets.QMenu: Services submenu.
+
+        """
         if ITrayService._services_submenu is None:
             from qtpy import QtWidgets
 
@@ -360,21 +395,36 @@ class ITrayService(ITrayAddon):
 
     @staticmethod
     def get_icon_running() -> QtWidgets.QIcon:
-        """Get running icon."""
+        """Get running icon.
+
+        Returns:
+            QtWidgets.QIcon: Returns "running" icon.
+
+        """
         if ITrayService._icon_running is None:
             ITrayService._load_service_icons()
         return ITrayService._icon_running
 
     @staticmethod
     def get_icon_idle() -> QtWidgets.QIcon:
-        """Get idle icon."""
+        """Get idle icon.
+
+        Returns:
+            QtWidgets.QIcon: Returns "idle" icon.
+
+        """
         if ITrayService._icon_idle is None:
             ITrayService._load_service_icons()
         return ITrayService._icon_idle
 
     @staticmethod
     def get_icon_failed() -> QtWidgets.QIcon:
-        """Get failed icon."""
+        """Get failed icon.
+
+        Returns:
+            QtWidgets.QIcon: Returns "failed" icon.
+
+        """
         if ITrayService._icon_failed is None:
             ITrayService._load_service_icons()
         return ITrayService._icon_failed
@@ -417,7 +467,7 @@ class IHostAddon(AYONInterface):
     def host_name(self) -> str:
         """Name of host which addon represents."""
 
-    def get_workfile_extensions(self) -> list[str]:
+    def get_workfile_extensions(self) -> list[str]:  # noqa: PLR6301
         """Define workfile extensions for host.
 
         Not all hosts support workfiles thus this is optional implementation.
