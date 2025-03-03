@@ -3,15 +3,8 @@ from __future__ import annotations
 
 import re
 from abc import ABC, abstractmethod
+from dataclasses import dataclass
 from typing import TYPE_CHECKING, Generic, Optional, TypeVar
-
-import pydantic.alias_generators
-from pydantic import (
-    AliasGenerator,
-    BaseModel,
-    ConfigDict,
-    Field,
-)
 
 if TYPE_CHECKING:
     from .representation import Representation
@@ -20,24 +13,14 @@ if TYPE_CHECKING:
 T = TypeVar("T", bound="TraitBase")
 
 
-class TraitBase(ABC, BaseModel):
+@dataclass
+class TraitBase(ABC):
     """Base trait model.
 
     This model must be used as a base for all trait models.
-    It is using Pydantic BaseModel for serialization and validation.
     ``id``, ``name``, and ``description`` are abstract attributes that must be
     implemented in the derived classes.
     """
-
-    model_config = ConfigDict(
-        alias_generator=AliasGenerator(
-            serialization_alias=pydantic.alias_generators.to_camel,
-        )
-    )
-
-    persistent: bool = Field(
-        default=True, title="Persistent",
-        description="Whether the trait is persistent (integrated) or not.")
 
     @property
     @abstractmethod

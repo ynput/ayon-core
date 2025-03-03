@@ -184,10 +184,13 @@ to different packages based on their use:
 | | Overscan | holds overscan/underscan information (added pixels to bottom/sides)
 | | UDIM | Representation is UDIM tile set
 
-Traits are [Pydantic models](https://docs.pydantic.dev/latest/) with optional
+Traits are Python data classes with optional
 validation and helper methods. If they implement `TraitBase.validate(Representation)` method, they can validate against all other traits
-in the representation if needed. They can also implement pydantic form of
-data validators.
+in the representation if needed. 
+
+> [!NOTE]
+> They could be easily converted to [Pydantic models](https://docs.pydantic.dev/latest/) but since this must run in diverse Python environments inside DCC, we cannot
+> easily resolve pydantic-core dependency (as it is binary written in Rust).
 
 > [!NOTE]
 > Every trait has id, name and some human readable description. Every trait
