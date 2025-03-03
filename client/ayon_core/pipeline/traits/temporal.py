@@ -381,7 +381,13 @@ class Sequence(TraitBase):
 
         """
         src_collection = Sequence._get_collection(file_locations)
-        return len(str(max(src_collection.indexes)))
+        padding = src_collection.padding
+        # sometimes Clique doens't get the padding right so
+        # we need to calculate it manually
+        if padding == 0:
+            padding = len(str(max(src_collection.indexes)))
+
+        return padding
 
     @staticmethod
     def get_frame_list(

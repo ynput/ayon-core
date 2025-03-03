@@ -36,18 +36,26 @@ REPRESENTATION_DATA: dict = {
         },
     }
 
+
 class UpgradedImage(Image):
     """Upgraded image class."""
     id = "ayon.2d.Image.v2"
 
     @classmethod
     def upgrade(cls, data: dict) -> UpgradedImage:  # noqa: ARG003
-        """Upgrade the trait."""
+        """Upgrade the trait.
+
+        Returns:
+            UpgradedImage: Upgraded image instance.
+
+        """
         return cls()
+
 
 class InvalidTrait:
     """Invalid trait class."""
     foo = "bar"
+
 
 @pytest.fixture
 def representation() -> Representation:
@@ -59,10 +67,11 @@ def representation() -> Representation:
         Planar(**REPRESENTATION_DATA[Planar.id]),
     ])
 
+
 def test_representation_errors(representation: Representation) -> None:
     """Test errors in representation."""
     with pytest.raises(ValueError,
-                       match="Invalid trait .* - ID is required."):
+                       match=r"Invalid trait .* - ID is required."):
         representation.add_trait(InvalidTrait())
 
     with pytest.raises(ValueError,
@@ -70,8 +79,9 @@ def test_representation_errors(representation: Representation) -> None:
         representation.add_trait(Image())
 
     with pytest.raises(ValueError,
-                       match="Trait with ID .* not found."):
+                       match=r"Trait with ID .* not found."):
         representation.remove_trait_by_id("foo")
+
 
 def test_representation_traits(representation: Representation) -> None:
     """Test setting and getting traits."""
@@ -143,11 +153,12 @@ def test_representation_traits(representation: Representation) -> None:
     assert representation.contains_traits_by_id(
         trait_ids=[FileLocation.id, Bundle.id]) is False
 
+
 def test_trait_removing(representation: Representation) -> None:
     """Test removing traits."""
-    assert  representation.contains_trait_by_id("nonexistent") is False
+    assert representation.contains_trait_by_id("nonexistent") is False
     with pytest.raises(
-            ValueError, match="Trait with ID nonexistent not found."):
+            ValueError, match=r"Trait with ID nonexistent not found."):
         representation.remove_trait_by_id("nonexistent")
 
     assert representation.contains_trait(trait=FileLocation) is True
@@ -167,6 +178,7 @@ def test_trait_removing(representation: Representation) -> None:
     with pytest.raises(
             ValueError, match=f"Trait with ID {Image.id} not found."):
         representation.remove_trait(Image)
+
 
 def test_representation_dict_properties(
         representation: Representation) -> None:
@@ -224,6 +236,7 @@ def test_get_version_from_id() -> None:
 
     assert TestMimeType(mime_type="foo/bar").get_version() is None
 
+
 def test_get_versionless_id() -> None:
     """Test getting versionless trait ID."""
     assert Image().get_versionless_id() == "ayon.2d.Image"
@@ -271,7 +284,7 @@ def test_from_dict() -> None:
         },
     }
 
-    with pytest.raises(ValueError, match="Trait model with ID .* not found."):
+    with pytest.raises(ValueError, match=r"Trait model with ID .* not found."):
         representation = Representation.from_dict(
             "test", trait_data=traits_data)
 
@@ -301,6 +314,7 @@ def test_from_dict() -> None:
     representation = Representation.from_dict(
         "test", trait_data=traits_data)
     """
+
 
 def test_representation_equality() -> None:
     """Test representation equality."""
@@ -348,7 +362,6 @@ def test_representation_equality() -> None:
         Planar(planar_configuration="RGBA"),
     ])
 
-
     # lets assume ids are the same (because ids are randomly generated)
     rep_b.representation_id = rep_d.representation_id = rep_a.representation_id
     rep_c.representation_id = rep_e.representation_id = rep_a.representation_id
@@ -365,6 +378,3 @@ def test_representation_equality() -> None:
     assert rep_d != rep_e
     # because of the trait difference
     assert rep_d != rep_f
-
-
-

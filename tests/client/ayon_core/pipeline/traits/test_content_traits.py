@@ -1,6 +1,7 @@
 """Tests for the content traits."""
 from __future__ import annotations
 
+import re
 from pathlib import Path
 
 import pytest
@@ -59,9 +60,9 @@ def test_bundles() -> None:
         sub_representation = Representation(name="test", traits=item)
         assert sub_representation.contains_trait(trait=Image)
         sub: MimeType = sub_representation.get_trait(trait=MimeType)
-        assert sub.mime_type in [
+        assert sub.mime_type in {
             "image/jpeg", "image/tiff"
-        ]
+        }
 
 
 def test_file_locations_validation() -> None:
@@ -94,7 +95,7 @@ def test_file_locations_validation() -> None:
     )
     representation.add_trait(frameranged_trait)
 
-     # it should still validate fine
+    # it should still validate fine
     file_locations_trait.validate_trait(representation)
 
     # create empty file locations trait
@@ -165,7 +166,7 @@ def test_get_file_location_from_frame() -> None:
     # test with custom regex
     sequence = Sequence(
         frame_padding=4,
-        frame_regex=r"boo_(?P<index>(?P<padding>0*)\d+)\.exr")
+        frame_regex=re.compile(r"boo_(?P<index>(?P<padding>0*)\d+)\.exr"))
     file_locations_list = [
         FileLocation(
             file_path=Path(f"/path/to/boo_{frame}.exr"),
