@@ -1,13 +1,13 @@
 """Color management related traits."""
 from __future__ import annotations
 
+from dataclasses import dataclass
 from typing import ClassVar, Optional
-
-from pydantic import Field
 
 from .trait import TraitBase
 
 
+@dataclass
 class ColorManaged(TraitBase):
     """Color managed trait.
 
@@ -24,9 +24,7 @@ class ColorManaged(TraitBase):
 
     id: ClassVar[str] = "ayon.color.ColorManaged.v1"
     name: ClassVar[str] = "ColorManaged"
+    color_space: str
     description: ClassVar[str] = "Color Managed trait."
-    color_space: str = Field(
-        ...,
-        description="Color space."
-    )
-    config: Optional[str] = Field(default=None, description="Color config.")
+    persistent: ClassVar[bool] = True
+    config: Optional[str] = None

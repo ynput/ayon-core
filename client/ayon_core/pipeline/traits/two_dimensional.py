@@ -2,9 +2,8 @@
 from __future__ import annotations
 
 import re
+from dataclasses import dataclass
 from typing import TYPE_CHECKING, ClassVar, Optional
-
-from pydantic import Field, field_validator
 
 from .trait import TraitBase
 
@@ -12,6 +11,7 @@ if TYPE_CHECKING:
     from .content import FileLocation, FileLocations
 
 
+@dataclass
 class Image(TraitBase):
     """Image trait model.
 
@@ -26,8 +26,10 @@ class Image(TraitBase):
     name: ClassVar[str] = "Image"
     description: ClassVar[str] = "Image Trait"
     id: ClassVar[str] = "ayon.2d.Image.v1"
+    persistent: ClassVar[bool] = True
 
 
+@dataclass
 class PixelBased(TraitBase):
     """PixelBased trait model.
 
@@ -45,11 +47,13 @@ class PixelBased(TraitBase):
     name: ClassVar[str] = "PixelBased"
     description: ClassVar[str] = "PixelBased Trait Model"
     id: ClassVar[str] = "ayon.2d.PixelBased.v1"
-    display_window_width: int = Field(..., title="Display Window Width")
-    display_window_height: int = Field(..., title="Display Window Height")
-    pixel_aspect_ratio: float = Field(..., title="Pixel Aspect Ratio")
+    persistent: ClassVar[bool] = True
+    display_window_width: int
+    display_window_height: int
+    pixel_aspect_ratio: float
 
 
+@dataclass
 class Planar(TraitBase):
     """Planar trait model.
 
@@ -57,7 +61,7 @@ class Planar(TraitBase):
 
     Todo:
         * (antirotor): Is this really a planar configuration? As with
-            bitplanes and everything? If it serves as differentiator for
+            bit planes and everything? If it serves as differentiator for
             Deep images, should it be named differently? Like Raster?
 
     Attributes:
@@ -70,9 +74,11 @@ class Planar(TraitBase):
     name: ClassVar[str] = "Planar"
     description: ClassVar[str] = "Planar Trait Model"
     id: ClassVar[str] = "ayon.2d.Planar.v1"
-    planar_configuration: str = Field(..., title="Planar-based Image")
+    persistent: ClassVar[bool] = True
+    planar_configuration: str
 
 
+@dataclass
 class Deep(TraitBase):
     """Deep trait model.
 
@@ -87,8 +93,10 @@ class Deep(TraitBase):
     name: ClassVar[str] = "Deep"
     description: ClassVar[str] = "Deep Trait Model"
     id: ClassVar[str] = "ayon.2d.Deep.v1"
+    persistent: ClassVar[bool] = True
 
 
+@dataclass
 class Overscan(TraitBase):
     """Overscan trait model.
 
@@ -108,12 +116,14 @@ class Overscan(TraitBase):
     name: ClassVar[str] = "Overscan"
     description: ClassVar[str] = "Overscan Trait"
     id: ClassVar[str] = "ayon.2d.Overscan.v1"
-    left: int = Field(..., title="Left Overscan")
-    right: int = Field(..., title="Right Overscan")
-    top: int = Field(..., title="Top Overscan")
-    bottom: int = Field(..., title="Bottom Overscan")
+    persistent: ClassVar[bool] = True
+    left: int
+    right: int
+    top: int
+    bottom: int
 
 
+@dataclass
 class UDIM(TraitBase):
     """UDIM trait model.
 
@@ -124,16 +134,18 @@ class UDIM(TraitBase):
         description (str): Trait description.
         id (str): id should be namespaced trait name with version
         udim (int): UDIM value.
+        udim_regex (str): UDIM regex.
     """
 
     name: ClassVar[str] = "UDIM"
     description: ClassVar[str] = "UDIM Trait"
     id: ClassVar[str] = "ayon.2d.UDIM.v1"
-    udim: list[int] = Field(..., title="UDIM")
-    udim_regex: Optional[str] = Field(
-        default=r"(?:\.|_)(?P<udim>\d+)\.\D+\d?$", title="UDIM Regex")
+    persistent: ClassVar[bool] = True
+    udim: list[int]
+    udim_regex: Optional[str] = r"(?:\.|_)(?P<udim>\d+)\.\D+\d?$"
 
-    @field_validator("udim_regex")
+    # field validator for udim_regex - this works in pydantic model v2 but not
+    # with the pure data classes
     @classmethod
     def validate_frame_regex(cls, v: Optional[str]) -> Optional[str]:
         """Validate udim regex.
