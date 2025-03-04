@@ -82,6 +82,14 @@ def create_project_folders(project_name, basic_paths=None):
 
 def _list_path_items(folder_structure):
     output = []
+
+    # Allow leaf folders of the `project_folder_structure` to use a list of
+    # strings instead of a dictionary of keys with empty values.
+    if isinstance(folder_structure, list):
+        assert all(isinstance(item, str) for item in folder_structure)
+        return [folder_structure]
+
+    # Process key, value as key for folder names and value its subfolders
     for key, value in folder_structure.items():
         if not value:
             output.append(key)
