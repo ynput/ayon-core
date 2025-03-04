@@ -91,6 +91,15 @@ class CollectUSDLayerContributionsProfileModel(BaseSettingsModel):
             " creating from within that task type."
         ),
     )
+    contribution_enabled: bool = SettingsField(
+        True,
+        title="Contribution Enabled (default)",
+        description=(
+            "The default state for USD Contribution being marked enabled or"
+            " disabled for this profile."
+        ),
+        section="Instance attribute defaults",
+    )
     contribution_layer: str = SettingsField(
         "",
         title="Contribution Department Layer",
@@ -99,7 +108,6 @@ class CollectUSDLayerContributionsProfileModel(BaseSettingsModel):
             " matching this profile. The layer name should be in the"
             " 'Department Layer Orders' list to get a sensible order."
         ),
-        section="Instance attribute defaults",
     )
     contribution_apply_as_variant: bool = SettingsField(
         True,
@@ -1082,6 +1090,7 @@ DEFAULT_PUBLISH_VALUES = {
             {
                 "product_types": ["model"],
                 "task_types": [],
+                "contribution_enabled": True,
                 "contribution_layer": "model",
                 "contribution_apply_as_variant": True,
                 "contribution_target_product": "usdAsset"
@@ -1089,6 +1098,7 @@ DEFAULT_PUBLISH_VALUES = {
             {
                 "product_types": ["look"],
                 "task_types": [],
+                "contribution_enabled": True,
                 "contribution_layer": "look",
                 "contribution_apply_as_variant": True,
                 "contribution_target_product": "usdAsset"
@@ -1096,6 +1106,7 @@ DEFAULT_PUBLISH_VALUES = {
             {
                 "product_types": ["groom"],
                 "task_types": [],
+                "contribution_enabled": True,
                 "contribution_layer": "groom",
                 "contribution_apply_as_variant": True,
                 "contribution_target_product": "usdAsset"
@@ -1103,6 +1114,7 @@ DEFAULT_PUBLISH_VALUES = {
             {
                 "product_types": ["rig"],
                 "task_types": [],
+                "contribution_enabled": True,
                 "contribution_layer": "rig",
                 "contribution_apply_as_variant": True,
                 "contribution_target_product": "usdAsset"
@@ -1110,6 +1122,7 @@ DEFAULT_PUBLISH_VALUES = {
             {
                 "product_types": ["usd"],
                 "task_types": [],
+                "contribution_enabled": True,
                 "contribution_layer": "assembly",
                 "contribution_apply_as_variant": False,
                 "contribution_target_product": "usdShot"
