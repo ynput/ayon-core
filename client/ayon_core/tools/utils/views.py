@@ -7,7 +7,6 @@ class DeselectableTreeView(QtWidgets.QTreeView):
     """A tree view that deselects on clicking on an empty area in the view"""
 
     def mousePressEvent(self, event):
-
         index = self.indexAt(event.pos())
         if not index.isValid():
             # clear the selection
@@ -15,7 +14,14 @@ class DeselectableTreeView(QtWidgets.QTreeView):
             # clear the current index
             self.setCurrentIndex(QtCore.QModelIndex())
 
-        QtWidgets.QTreeView.mousePressEvent(self, event)
+        elif (
+            self.selectionModel().isSelected(index)
+            and len(self.selectionModel().selectedRows()) == 1
+            and event.modifiers() == QtCore.Qt.NoModifier
+        ):
+            event.setModifiers(QtCore.Qt.ControlModifier)
+
+        super().mousePressEvent(event)
 
 
 class TreeView(QtWidgets.QTreeView):
