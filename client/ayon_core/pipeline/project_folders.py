@@ -119,6 +119,4 @@ def get_project_basic_paths(project_name: str):
 
     if isinstance(folder_structure, str):
         folder_structure = json.loads(folder_structure)
-    result = _list_path_items(folder_structure)
-    print(result)
-    return []
+    return _list_path_items(folder_structure)
