@@ -87,6 +87,10 @@ class AttachReviewables(
             )
             repre.setdefault("tags", []).append("delete")
 
+        # Stop integrator from trying to integrate this instance
+        if attach_to:
+            instance.data["integrate"] = False
+
     @classmethod
     def get_attr_defs_for_instance(cls, create_context, instance):
         # TODO: Check if instance is actually a 'reviewable'
