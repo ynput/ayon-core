@@ -66,7 +66,7 @@ class AttachReviewables(
 
             attach_instances.append(attach_instance)
 
-        self.log.debug(
+        self.log.info(
             f"Attaching reviewable to other instances: {attach_instances}"
         )
 
