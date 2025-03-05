@@ -98,6 +98,11 @@ class AttachReviewables(
         for other_instance in create_context.instances:
             if other_instance == instance:
                 continue
+
+            # Do not allow attaching to other reviewable instances
+            if other_instance.data["productType"] in cls.families:
+                continue
+
             items.append(
                 {
                     "label": other_instance.label,
