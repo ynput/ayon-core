@@ -53,7 +53,7 @@ IMAGE_EXTENSIONS = {
     ".kra", ".logluv", ".mng", ".miff", ".nrrd", ".ora",
     ".pam", ".pbm", ".pgm", ".ppm", ".pnm", ".pcx", ".pgf",
     ".pictor", ".png", ".psd", ".psb", ".psp", ".qtvr",
-    ".ras", ".rgbe", ".sgi", ".tga",
+    ".ras", ".rgbe", ".sgi", ".sxr", ".tga",
     ".tif", ".tiff", ".tiff/ep", ".tiff/it", ".ufo", ".ufp",
     ".wbmp", ".webp", ".xr", ".xt", ".xbm", ".xcf", ".xpm", ".xwd"
 }

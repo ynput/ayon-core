@@ -755,11 +755,19 @@ class CreateContext:
                 ).format(creator_class.host_name, self.host_name))
                 continue
 
-            creator = creator_class(
-                project_settings,
-                self,
-                self.headless
-            )
+            # TODO report initialization error
+            try:
+                creator = creator_class(
+                    project_settings,
+                    self,
+                    self.headless
+                )
+            except Exception:
+                self.log.error(
+                    f"Failed to initialize plugin: {creator_class}",
+                    exc_info=True
+                )
+                continue
 
             if not creator.enabled:
                 disabled_creators[creator_identifier] = creator

@@ -14,6 +14,7 @@ class SelectionModel(object):
 
         self._project_name = None
         self._folder_ids = set()
+        self._task_ids = set()
         self._version_ids = set()
         self._representation_ids = set()
 
@@ -44,6 +45,23 @@ class SelectionModel(object):
             {
                 "project_name": self._project_name,
                 "folder_ids": folder_ids,
+            },
+            self.event_source
+        )
+
+    def get_selected_task_ids(self):
+        return self._task_ids
+
+    def set_selected_tasks(self, task_ids):
+        if task_ids == self._task_ids:
+            return
+
+        self._task_ids = task_ids
+        self._controller.emit_event(
+            "selection.tasks.changed",
+            {
+                "project_name": self._project_name,
+                "task_ids": task_ids,
             },
             self.event_source
         )
