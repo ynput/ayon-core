@@ -66,8 +66,11 @@ class AttachReviewables(
 
             attach_instances.append(attach_instance)
 
+        instances_names = ", ".join(
+            instance.name for instance in attach_instances
+        )
         self.log.info(
-            f"Attaching reviewable to other instances: {attach_instances}"
+            f"Attaching reviewable to other instances: {instances_names}"
         )
 
         # Copy the representations of this reviewable instance to the other
