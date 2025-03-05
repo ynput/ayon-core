@@ -64,6 +64,14 @@ class AttachReviewables(
             if not attach_instance.data.get("active", True):
                 continue
 
+            # For now do not support attaching to 'farm' instances until we
+            # can pass the 'attaching' on to the farm jobs.
+            if attach_instance.data.get("farm"):
+                self.log.warning(
+                    "Attaching to farm instances is not supported yet."
+                )
+                continue
+
             attach_instances.append(attach_instance)
 
         instances_names = ", ".join(
