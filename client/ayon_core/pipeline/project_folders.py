@@ -89,7 +89,7 @@ def _list_path_items(
     # strings instead of a dictionary of keys with empty values.
     if isinstance(folder_structure, list):
         assert all(isinstance(item, str) for item in folder_structure)
-        return [folder_structure]
+        return [[path] for path in folder_structure]
 
     # Process key, value as key for folder names and value its subfolders
     for key, value in folder_structure.items():
@@ -119,4 +119,6 @@ def get_project_basic_paths(project_name: str):
 
     if isinstance(folder_structure, str):
         folder_structure = json.loads(folder_structure)
-    return _list_path_items(folder_structure)
+    result = _list_path_items(folder_structure)
+    print(result)
+    return []
