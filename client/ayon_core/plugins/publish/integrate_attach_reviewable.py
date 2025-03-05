@@ -57,7 +57,7 @@ class AttachReviewables(
                 ),
                 None,
             )
-            if not attach_instance:
+            if attach_instance is None:
                 continue
 
             # Skip inactive instances
