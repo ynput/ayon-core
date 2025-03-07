@@ -2,6 +2,10 @@ from ayon_core.lib import filter_profiles
 from ayon_core.settings import get_project_settings
 
 
+class MissingWorkdirError(Exception):
+    pass
+
+
 def should_use_last_workfile_on_launch(
     project_name,
     host_name,
