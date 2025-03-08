@@ -3,6 +3,7 @@ from ayon_core.settings import get_project_settings
 
 
 class MissingWorkdirError(Exception):
+    """Raised when accessing a work directory not found on disk."""
     pass
 
 
