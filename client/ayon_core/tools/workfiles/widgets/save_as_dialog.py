@@ -143,6 +143,11 @@ class SaveAsDialog(QtWidgets.QDialog):
         version_layout.addWidget(version_input)
         version_layout.addWidget(last_version_check)
 
+        # Artist note widget
+        artist_note_input = QtWidgets.QPlainTextEdit(inputs_widget)
+        artist_note_input.setPlaceholderText(
+            "Provide a note about this workfile.")
+
         # Preview widget
         preview_widget = QtWidgets.QLabel("Preview filename", inputs_widget)
         preview_widget.setWordWrap(True)
@@ -161,6 +166,7 @@ class SaveAsDialog(QtWidgets.QDialog):
         subversion_label = QtWidgets.QLabel("Subversion:", inputs_widget)
         extension_label = QtWidgets.QLabel("Extension:", inputs_widget)
         preview_label = QtWidgets.QLabel("Preview:", inputs_widget)
+        artist_note_label = QtWidgets.QLabel("Artist Note:", inputs_widget)
 
         # Build inputs
         inputs_layout = QtWidgets.QGridLayout(inputs_widget)
@@ -172,6 +178,8 @@ class SaveAsDialog(QtWidgets.QDialog):
         inputs_layout.addWidget(extension_combobox, 2, 1)
         inputs_layout.addWidget(preview_label, 3, 0)
         inputs_layout.addWidget(preview_widget, 3, 1)
+        inputs_layout.addWidget(artist_note_label, 4, 0)
+        inputs_layout.addWidget(artist_note_input, 4, 1)
 
         # Build layout
         main_layout = QtWidgets.QVBoxLayout(self)
@@ -206,11 +214,13 @@ class SaveAsDialog(QtWidgets.QDialog):
         self._extension_combobox = extension_combobox
         self._subversion_input = subversion_input
         self._preview_widget = preview_widget
+        self._artist_note_input = artist_note_input
 
         self._version_label = version_label
         self._subversion_label = subversion_label
         self._extension_label = extension_label
         self._preview_label = preview_label
+        self._artist_note_label = artist_note_label
 
         # Post init setup
 
@@ -322,6 +332,7 @@ class SaveAsDialog(QtWidgets.QDialog):
             "folder_id": self._folder_id,
             "task_id": self._task_id,
             "template_key": self._template_key,
+            "artist_note": self._artist_note_input.toPlainText(),
         }
         self.close()
 

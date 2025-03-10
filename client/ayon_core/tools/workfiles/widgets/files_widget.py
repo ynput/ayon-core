@@ -213,7 +213,8 @@ class FilesWidget(QtWidgets.QWidget):
         self._controller.duplicate_workfile(
             filepath,
             result["workdir"],
-            result["filename"]
+            result["filename"],
+            artist_note=result["artist_note"]
         )
 
     def _on_workarea_browse_clicked(self):
@@ -261,6 +262,7 @@ class FilesWidget(QtWidgets.QWidget):
             result["workdir"],
             result["filename"],
             result["template_key"],
+            artist_note=result["artist_note"]
         )
 
     def _on_workarea_path_changed(self, event):

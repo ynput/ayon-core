@@ -1016,6 +1016,7 @@ class AbstractWorkfilesFrontend(AbstractWorkfilesCommon):
         workdir,
         filename,
         template_key,
+        artist_note,
     ):
         """Save current state of workfile to workarea.
 
