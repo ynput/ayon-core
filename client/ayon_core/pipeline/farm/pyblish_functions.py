@@ -393,7 +393,7 @@ def prepare_representations(
         rep = {
             "name": ext,
             "ext": ext,
-            "files": files,
+            "files": [os.path.basename(file_path) for file_path in files],
             "frameStart": frame_start,
             "frameEnd": frame_end,
             # If expectedFile are absolute, we need only filenames
@@ -521,7 +521,7 @@ def _get_real_files_to_render(collection, frames_to_render):
         collection (clique.Collection): absolute paths
         frames_to_render (list[int]): of int 1001
     Returns:
-        (list[str])
+        (list[str]): absolut paths of files to be rendered
 
     Example:
     --------
@@ -541,8 +541,7 @@ def _get_real_files_to_render(collection, frames_to_render):
         collection.padding,
         indexes=included_frames
     )
-    real_full_paths = list(real_collection)
-    return [os.path.basename(file_url) for file_url in real_full_paths]
+    return list(real_collection)
 
 
 def create_instances_for_aov(
@@ -783,11 +782,10 @@ def _create_instances_for_aov(
     # go through AOVs in expected files
     for aov, files in expected_files[0].items():
         collected_files = _collect_expected_files_for_aov(files)
-        staging_dir = (
-            os.path.dirname(collected_files[0])
-            if isinstance(collected_files, (list, tuple))
-            else os.path.dirname(collected_files)
-        )
+        first_filepath = collected_files
+        if isinstance(first_filepath, (list, tuple)):
+            first_filepath = first_filepath[0]
+        staging_dir = os.path.dirname(first_filepath)
 
         if (
             frames_to_render is not None
@@ -802,12 +800,6 @@ def _create_instances_for_aov(
             frame_end = int(skeleton.get("frameEndHandle"))
             frames_to_render = list(range(frame_start, frame_end + 1))
 
-        if isinstance(collected_files, (list, tuple)):
-            expected_filepath = os.path.join(staging_dir, collected_files[0])
-        else:
-            expected_filepath = os.path.join(staging_dir, collected_files)
-
-
         dynamic_data = {
             "aov": aov,
             "renderlayer": instance.data.get("renderlayer"),
@@ -817,7 +809,7 @@ def _create_instances_for_aov(
         # TODO: this must be changed to be more robust. Any coincidence
         #       of camera name in the file path will be considered as
         #       camera name. This is not correct.
-        camera = [cam for cam in cameras if cam in expected_filepath]
+        camera = [cam for cam in cameras if cam in first_filepath]
 
         # Is there just one camera matching?
         # TODO: this is not true, we can have multiple cameras in the scene
@@ -871,7 +863,7 @@ def _create_instances_for_aov(
 
         app = os.environ.get("AYON_HOST_NAME", "")
 
-        render_file_name = os.path.basename(expected_filepath)
+        render_file_name = os.path.basename(first_filepath)
 
         aov_patterns = aov_filter
 
