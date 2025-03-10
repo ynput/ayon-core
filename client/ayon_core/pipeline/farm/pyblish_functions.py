@@ -486,17 +486,17 @@ def get_real_frames_to_render(frames):
     1003-1005
     1001-1100x5
     """
-    pattern = r"(?:step|by|every|x|:)(\d+)$"
+    step_pattern = re.compile(r"(?:step|by|every|x|:)(\d+)$")
 
     frames_to_render = []
     step = 1
     for frame in frames.split(","):
         if "-" in frame:
             frame_start, frame_end = frame.split("-")
-            match = re.findall(pattern, frame_end)
+            match = step_pattern.findall(frame_end)
             if match:
                 step = int(match[0])
-                frame_end = re.sub(pattern, "", frame_end)
+                frame_end = re.sub(step_pattern, "", frame_end)
 
             frames_to_render.extend(
                 range(int(frame_start), int(frame_end) + 1, step)
