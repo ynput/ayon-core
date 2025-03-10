@@ -747,7 +747,7 @@ def _create_instances_for_aov(
     additional_data,
     skip_integration_repre_list,
     do_not_add_review,
-    frames_to_render=None
+    frames_to_render
 ):
     """Create instance for each AOV found.
 
