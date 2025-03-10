@@ -2,7 +2,7 @@ from __future__ import annotations
 import os
 import re
 import json
-from typing import Dict, Any, List, Union
+from typing import Any, Union
 
 from ayon_core.settings import get_project_settings
 from ayon_core.lib import Logger
@@ -49,7 +49,7 @@ def concatenate_splitted_paths(split_paths, anatomy: Anatomy):
     return output
 
 
-def fill_paths(path_list: List[str], anatomy: Anatomy):
+def fill_paths(path_list: list[str], anatomy: Anatomy):
     format_data = get_project_template_data(project_name=anatomy.project_name)
     format_data["root"] = anatomy.roots
     filled_paths = []
@@ -83,7 +83,7 @@ def create_project_folders(project_name: str, basic_paths=None):
 
 
 def _list_path_items(
-        folder_structure: Union[Dict[str, Any], List[str]]):
+        folder_structure: Union[dict[str, Any], list[str]]):
     output = []
 
     # Allow leaf folders of the `project_folder_structure` to use a list of
