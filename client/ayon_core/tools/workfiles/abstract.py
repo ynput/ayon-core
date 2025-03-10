@@ -1041,6 +1041,7 @@ class AbstractWorkfilesFrontend(AbstractWorkfilesCommon):
         workdir,
         filename,
         template_key,
+        artist_note,
     ):
         """Action to copy published workfile representation to workarea.
 
@@ -1055,6 +1056,7 @@ class AbstractWorkfilesFrontend(AbstractWorkfilesCommon):
             workdir (str): Workarea directory.
             filename (str): Workarea filename.
             template_key (str): Template key.
+            artist_note (str): Artist note.
         """
 
         pass
