@@ -586,6 +586,7 @@ class BaseWorkfileController(
         workdir,
         filename,
         template_key,
+        artist_note,
     ):
         self._emit_event("copy_representation.started")
 
@@ -597,6 +598,7 @@ class BaseWorkfileController(
                 workdir,
                 filename,
                 template_key,
+                artist_note,
                 src_filepath=representation_filepath
             )
         except Exception:

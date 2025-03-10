@@ -315,6 +315,7 @@ class FilesWidget(QtWidgets.QWidget):
             result["workdir"],
             result["filename"],
             result["template_key"],
+            artist_note=result["artist_note"]
         )
 
     def _on_save_as_request(self):
