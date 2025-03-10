@@ -88,7 +88,9 @@ def _list_path_items(
     # Allow leaf folders of the `project_folder_structure` to use a list of
     # strings instead of a dictionary of keys with empty values.
     if isinstance(folder_structure, list):
-        assert all(isinstance(item, str) for item in folder_structure)
+        if not all(isinstance(item, str) for item in folder_structure):
+            raise ValueError(
+                f"List items must all be strings. Got: {folder_structure}")
         return [[path] for path in folder_structure]
 
     # Process key, value as key for folder names and value its subfolders
