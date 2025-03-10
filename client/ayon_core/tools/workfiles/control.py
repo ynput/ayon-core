@@ -610,7 +610,7 @@ class BaseWorkfileController(
             {"failed": failed},
         )
 
-    def duplicate_workfile(self, src_filepath, workdir, filename):
+    def duplicate_workfile(self, src_filepath, workdir, filename, artist_note):
         self._emit_event("workfile_duplicate.started")
 
         failed = False

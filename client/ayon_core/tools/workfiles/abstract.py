@@ -1060,7 +1060,7 @@ class AbstractWorkfilesFrontend(AbstractWorkfilesCommon):
         pass
 
     @abstractmethod
-    def duplicate_workfile(self, src_filepath, workdir, filename):
+    def duplicate_workfile(self, src_filepath, workdir, filename, artist_note):
         """Duplicate workfile.
 
         Workfiles is not opened when done.
@@ -1069,6 +1069,7 @@ class AbstractWorkfilesFrontend(AbstractWorkfilesCommon):
             src_filepath (str): Source workfile path.
             workdir (str): Destination workdir.
             filename (str): Destination filename.
+            artist_note (str): Artist note.
         """
 
         pass
