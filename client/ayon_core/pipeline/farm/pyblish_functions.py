@@ -536,7 +536,7 @@ def _get_real_files_to_render(collection, frames_to_render):
         collection (clique.Collection): absolute paths
         frames_to_render (list[int]): of int 1001
     Returns:
-        (list[str]): absolut paths of files to be rendered
+        list[str]: absolute paths of files to be rendered
 
     Example:
     --------
