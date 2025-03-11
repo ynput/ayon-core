@@ -1,3 +1,4 @@
+from __future__  import annotations
 import copy
 import os
 import re
@@ -480,15 +481,23 @@ def prepare_representations(
     return representations
 
 
-def get_real_frames_to_render(frames):
+def get_real_frames_to_render(frames: str) -> list[int]:
     """Returns list of frames that should be rendered.
 
     Artists could want to selectively render only particular frames
+
     Handles formats as:
-    1001
-    1002,1004
-    1003-1005
-    1001-1100x5
+     - '1001'        > [1001]
+     - '1002,1004'   > [1002, 1004]
+     - '1003-1005'   > [1003, 1004, 1005]
+     - '1001-1021x5' > [1001, 1006, 1011, 1016, 2021]
+
+    Args:
+        frames (str): string with frames to render
+
+    Returns:
+        list[int]: List of frames.
+
     """
     step_pattern = re.compile(r"(?:step|by|every|x|:)(\d+)$")
 
