@@ -339,7 +339,7 @@ def prepare_representations(
     log = Logger.get_logger("farm_publishing")
 
     if frames_to_render is not None:
-        frames_to_render = get_real_frames_to_render(frames_to_render)
+        frames_to_render = convert_frames_str_to_list(frames_to_render)
     else:
         # Backwards compatibility for older logic
         frame_start = int(skeleton_data.get("frameStartHandle"))
@@ -481,19 +481,21 @@ def prepare_representations(
     return representations
 
 
-def get_real_frames_to_render(frames: str) -> list[int]:
-    """Returns list of frames that should be rendered.
-
-    Artists could want to selectively render only particular frames
+def convert_frames_str_to_list(frames: str) -> list[int]:
+    """Convert frames definition string to frames.
 
     Handles formats as:
-     - '1001'        > [1001]
-     - '1002,1004'   > [1002, 1004]
-     - '1003-1005'   > [1003, 1004, 1005]
-     - '1001-1021x5' > [1001, 1006, 1011, 1016, 2021]
+        >>> convert_frames_str_to_list('1001')
+        [1001]
+        >>> convert_frames_str_to_list('1002,1004')
+        [1002, 1004]
+        >>> convert_frames_str_to_list('1003-1005')
+        [1003, 1004, 1005]
+        >>> convert_frames_str_to_list('1001-1021x5')
+        [1001, 1006, 1011, 1016, 1021]
 
     Args:
-        frames (str): string with frames to render
+        frames (str): String with frames definition.
 
     Returns:
         list[int]: List of frames.
@@ -501,7 +503,7 @@ def get_real_frames_to_render(frames: str) -> list[int]:
     """
     step_pattern = re.compile(r"(?:step|by|every|x|:)(\d+)$")
 
-    frames_to_render = []
+    output = []
     step = 1
     for frame in frames.split(","):
         if "-" in frame:
@@ -511,13 +513,13 @@ def get_real_frames_to_render(frames: str) -> list[int]:
                 step = int(match[0])
                 frame_end = re.sub(step_pattern, "", frame_end)
 
-            frames_to_render.extend(
+            output.extend(
                 range(int(frame_start), int(frame_end) + 1, step)
             )
         else:
-            frames_to_render.append(int(frame))
-    frames_to_render.sort()
-    return frames_to_render
+            output.append(int(frame))
+    output.sort()
+    return output
 
 
 def _get_real_paths_to_render(collection, frames_to_render):
@@ -804,7 +806,7 @@ def _create_instances_for_aov(
             frames_to_render is not None
             and isinstance(collected_files, (list, tuple))  # not single file
         ):
-            frames_to_render = get_real_frames_to_render(frames_to_render)
+            frames_to_render = convert_frames_str_to_list(frames_to_render)
             collections, _ = clique.assemble(collected_files)
             collected_files = _get_real_paths_to_render(
                 collections[0], frames_to_render)
