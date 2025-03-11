@@ -144,7 +144,7 @@ class SaveAsDialog(QtWidgets.QDialog):
         version_layout.addWidget(last_version_check)
 
         # Artist note widget
-        artist_note_input = QtWidgets.QPlainTextEdit(inputs_widget)
+        artist_note_input = PlaceholderPlainTextEdit(inputs_widget)
         artist_note_input.setPlaceholderText(
             "Provide a note about this workfile.")
 
