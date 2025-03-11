@@ -326,8 +326,8 @@ def prepare_representations(
         skip_integration_repre_list (list): exclude specific extensions,
         do_not_add_review (bool): explicitly skip review
         color_managed_plugin (publish.ColormanagedPyblishPluginMixin)
-        frames_to_render (str): implicit or explicit range of frames to render
-            this value is sent to Deadline in JobInfo.Frames
+        frames_to_render (str | None): implicit or explicit range of frames
+            to render this value is sent to Deadline in JobInfo.Frames
     Returns:
         list of representations
 
@@ -579,6 +579,7 @@ def create_instances_for_aov(
         aov_filter (dict): AOV filter.
         skip_integration_repre_list (list): skip
         do_not_add_review (bool): Explicitly disable reviews
+        frames_to_render (str | None): Frames to render.
 
     Returns:
         list of pyblish.api.Instance: Instances created from
@@ -777,8 +778,8 @@ def _create_instances_for_aov(
         skip_integration_repre_list (list): list of extensions that shouldn't
             be published
         do_not_add_review (bool): explicitly disable review
-        frames_to_render (str): implicit or explicit range of frames to render
-            this value is sent to Deadline in JobInfo.Frames
+        frames_to_render (str | None): implicit or explicit range of
+            frames to render this value is sent to Deadline in JobInfo.Frames
 
     Returns:
         list of instances
