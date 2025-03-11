@@ -710,7 +710,7 @@ class BaseWorkfileController(
         workdir: str,
         filename: str,
         template_key: str,
-        artist_note,
+        artist_note: str,
         src_filepath=None,
     ):
         # Trigger before save event
