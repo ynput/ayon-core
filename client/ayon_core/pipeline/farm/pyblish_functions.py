@@ -387,13 +387,18 @@ def prepare_representations(
             frame_start -= 1
             frames_to_render.insert(0, frame_start)
 
-        files = _get_real_files_to_render(collection, frames_to_render)
+        filenames = [
+            os.path.basename(filepath)
+            for filepath in _get_real_paths_to_render(
+                collection, frames_to_render
+            )
+        ]
         # explicitly disable review by user
         preview = preview and not do_not_add_review
         rep = {
             "name": ext,
             "ext": ext,
-            "files": [os.path.basename(file_path) for file_path in files],
+            "files": filenames,
             "frameStart": frame_start,
             "frameEnd": frame_end,
             # If expectedFile are absolute, we need only filenames
@@ -507,7 +512,7 @@ def get_real_frames_to_render(frames):
     return frames_to_render
 
 
-def _get_real_files_to_render(collection, frames_to_render):
+def _get_real_paths_to_render(collection, frames_to_render):
     """Filter files with frames that should be really rendered.
 
     'expected_files' are collected from DCC based on timeline setting. This is
@@ -793,7 +798,7 @@ def _create_instances_for_aov(
         ):
             frames_to_render = get_real_frames_to_render(frames_to_render)
             collections, _ = clique.assemble(collected_files)
-            collected_files = _get_real_files_to_render(
+            collected_files = _get_real_paths_to_render(
                 collections[0], frames_to_render)
         else:
             frame_start = int(skeleton.get("frameStartHandle"))
