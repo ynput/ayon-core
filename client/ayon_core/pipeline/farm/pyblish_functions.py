@@ -532,22 +532,23 @@ def _get_real_files_to_render(collection, frames_to_render):
     This range would override and filter previously prepared expected files
     from DCC.
 
+    Example:
+        >>> expected_files = clique.parse([
+        >>>     "foo_v01.0001.exr",
+        >>>     "foo_v01.0002.exr",
+        >>> ])
+        >>> frames_to_render = [1]
+        >>> _get_real_files_to_render(expected_files, frames_to_render)
+        ["foo_v01.0001.exr"]
+
     Args:
         collection (clique.Collection): absolute paths
         frames_to_render (list[int]): of int 1001
+
     Returns:
         list[str]: absolute paths of files to be rendered
 
-    Example:
-    --------
 
-    expectedFiles = [
-        "foo_v01.0001.exr",
-        "foo_v01.0002.exr",
-    ]
-    frames_to_render = 1
-    >>
-    ["foo_v01.0001.exr"] - only explicitly requested frame returned
     """
     included_frames = set(collection.indexes).intersection(frames_to_render)
     real_collection = clique.Collection(
