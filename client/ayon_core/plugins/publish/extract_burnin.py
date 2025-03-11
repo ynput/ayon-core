@@ -534,16 +534,6 @@ class ExtractBurnin(publish.Extractor):
             "comment": instance.data["comment"]
         })
 
-        intent_label = context.data.get("intent") or ""
-        if intent_label and isinstance(intent_label, dict):
-            value = intent_label.get("value")
-            if value:
-                intent_label = intent_label["label"]
-            else:
-                intent_label = ""
-
-        burnin_data["intent"] = intent_label
-
         temp_data = {
             "frame_start": frame_start,
             "frame_end": frame_end,
