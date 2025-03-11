@@ -399,10 +399,9 @@ def prepare_representations(
             "name": ext,
             "ext": ext,
             "files": filenames,
+            "stagingDir": staging,
             "frameStart": frame_start,
             "frameEnd": frame_end,
-            # If expectedFile are absolute, we need only filenames
-            "stagingDir": staging,
             "fps": skeleton_data.get("fps"),
             "tags": ["review"] if preview else [],
         }
