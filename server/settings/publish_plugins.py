@@ -186,31 +186,6 @@ class PluginStateByHostModel(BaseSettingsModel):
     )
 
 
-class ValidateIntentProfile(BaseSettingsModel):
-    _layout = "expanded"
-    hosts: list[str] = SettingsField(default_factory=list, title="Host names")
-    task_types: list[str] = SettingsField(
-        default_factory=list,
-        title="Task types",
-        enum_resolver=task_types_enum
-    )
-    tasks: list[str] = SettingsField(default_factory=list, title="Task names")
-    # TODO This was 'validate' in v3
-    validate_intent: bool = SettingsField(True, title="Validate")
-
-
-class ValidateIntentModel(BaseSettingsModel):
-    """Validate if Publishing intent was selected.
-
-    It is possible to disable validation for specific publishing context
-    with profiles.
-    """
-
-    _isGroup = True
-    enabled: bool = SettingsField(False)
-    profiles: list[ValidateIntentProfile] = SettingsField(default_factory=list)
-
-
 class ExtractThumbnailFFmpegModel(BaseSettingsModel):
     input: list[str] = SettingsField(
         default_factory=list,
@@ -986,10 +961,6 @@ class PublishPuginsModel(BaseSettingsModel):
         default_factory=PluginStateByHostModel,
         title="Validate Outdated Containers"
     )
-    ValidateIntent: ValidateIntentModel = SettingsField(
-        default_factory=ValidateIntentModel,
-        title="Validate Intent"
-    )
     ExtractThumbnail: ExtractThumbnailModel = SettingsField(
         default_factory=ExtractThumbnailModel,
         title="Extract Thumbnail"
@@ -1173,10 +1144,6 @@ DEFAULT_PUBLISH_VALUES = {
                 "active": True
             }
         ]
-    },
-    "ValidateIntent": {
-        "enabled": False,
-        "profiles": []
     },
     "ExtractThumbnail": {
         "enabled": True,
