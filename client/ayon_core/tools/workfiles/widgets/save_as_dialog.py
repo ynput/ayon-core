@@ -1,6 +1,6 @@
 from qtpy import QtWidgets, QtCore
 
-from ayon_core.tools.utils import PlaceholderLineEdit
+from ayon_core.tools.utils import PlaceholderLineEdit, PlaceholderPlainTextEdit
 
 
 class SubversionLineEdit(QtWidgets.QWidget):
