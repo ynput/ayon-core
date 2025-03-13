@@ -24,7 +24,7 @@ def add_missing_init_files(*roots):
     with open(TMP_FILE, "w") as f:
         json.dump(nfiles, f)
 
-    sys.stdout.write(f"\n")
+    sys.stdout.write("\n")
     sys.stdout.flush()
 
 
