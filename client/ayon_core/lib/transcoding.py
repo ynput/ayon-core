@@ -560,10 +560,10 @@ def convert_input_paths_for_ffmpeg(
     ext = os.path.splitext(first_input_path)[1].lower()
 
     if ext != ".exr":
-        raise ValueError((
+        raise ValueError(
             "Function 'convert_input_paths_for_ffmpeg' currently supports"
             f" only \".exr\" extension. Got \"{ext}\"."
-        ))
+        )
 
     input_info = get_oiio_info_for_input(first_input_path, logger=logger)
 
