@@ -1,0 +1,1048 @@
+<!doctype html><html lang=en class=no-js> <head><meta charset=utf-8><meta name=viewport content="width=device-width,initial-scale=1"><link rel=prev href=layouts.html><link rel=next href=models.html><link rel=icon href=../../../../../img/favicon.ico><meta name=generator content="mkdocs-1.6.1, mkdocs-material-9.6.8"><title>lib - ayon-core</title><link rel=stylesheet href=../../../../../assets/stylesheets/main.8608ea7d.min.css><link rel=stylesheet href=../../../../../assets/stylesheets/palette.06af60db.min.css><script src=https://unpkg.com/iframe-worker/shim></script><link rel=preconnect href=https://fonts.gstatic.com crossorigin><link rel=stylesheet href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback"><style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style><link rel=stylesheet href=../../../../../assets/_mkdocstrings.css><link rel=stylesheet href=../../../../../css/custom.css><script>__md_scope=new URL("../../../../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script></head> <body dir=ltr data-md-color-scheme=slate data-md-color-primary=indigo data-md-color-accent=indigo> <input class=md-toggle data-md-toggle=drawer type=checkbox id=__drawer autocomplete=off> <input class=md-toggle data-md-toggle=search type=checkbox id=__search autocomplete=off> <label class=md-overlay for=__drawer></label> <div data-md-component=skip> <a href=#client.ayon_core.tools.utils.lib class=md-skip> Skip to content </a> </div> <div data-md-component=announce> </div> <div data-md-color-scheme=default data-md-component=outdated hidden> </div> <header class="md-header md-header--shadow" data-md-component=header> <nav class="md-header__inner md-grid" aria-label=Header> <a href=../../../../../index.html title=ayon-core class="md-header__button md-logo" aria-label=ayon-core data-md-component=logo> <img src=../../../../../img/ay-symbol-blackw-full.png alt=logo> </a> <label class="md-header__button md-icon" for=__drawer> <svg xmlns=http://www.w3.org/2000/svg viewbox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg> </label> <div class=md-header__title data-md-component=header-title> <div class=md-header__ellipsis> <div class=md-header__topic> <span class=md-ellipsis> ayon-core </span> </div> <div class=md-header__topic data-md-component=header-topic> <span class=md-ellipsis> lib </span> </div> </div> </div> <form class=md-header__option data-md-component=palette> <input class=md-option data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme=slate data-md-color-primary=indigo data-md-color-accent=indigo aria-label="Switch to light mode" type=radio name=__palette id=__palette_0> <label class="md-header__button md-icon" title="Switch to light mode" for=__palette_1 hidden> <svg xmlns=http://www.w3.org/2000/svg viewbox="0 0 24 24"><path d="M17 6H7c-3.31 0-6 2.69-6 6s2.69 6 6 6h10c3.31 0 6-2.69 6-6s-2.69-6-6-6m0 10H7c-2.21 0-4-1.79-4-4s1.79-4 4-4h10c2.21 0 4 1.79 4 4s-1.79 4-4 4M7 9c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3"/></svg> </label> <input class=md-option data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme=default data-md-color-primary=indigo data-md-color-accent=indigo aria-label="Switch to dark mode" type=radio name=__palette id=__palette_1> <label class="md-header__button md-icon" title="Switch to dark mode" for=__palette_0 hidden> <svg xmlns=http://www.w3.org/2000/svg viewbox="0 0 24 24"><path d="M17 7H7a5 5 0 0 0-5 5 5 5 0 0 0 5 5h10a5 5 0 0 0 5-5 5 5 0 0 0-5-5m0 8a3 3 0 0 1-3-3 3 3 0 0 1 3-3 3 3 0 0 1 3 3 3 3 0 0 1-3 3"/></svg> </label> </form> <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script> <label class="md-header__button md-icon" for=__search> <svg xmlns=http://www.w3.org/2000/svg viewbox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg> </label> <div class=md-search data-md-component=search role=dialog> <label class=md-search__overlay for=__search></label> <div class=md-search__inner role=search> <form class=md-search__form name=search> <input type=text class=md-search__input name=query aria-label=Search placeholder=Search autocapitalize=off autocorrect=off autocomplete=off spellcheck=false data-md-component=search-query required> <label class="md-search__icon md-icon" for=__search> <svg xmlns=http://www.w3.org/2000/svg viewbox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg> <svg xmlns=http://www.w3.org/2000/svg viewbox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg> </label> <nav class=md-search__options aria-label=Search> <button type=reset class="md-search__icon md-icon" title=Clear aria-label=Clear tabindex=-1> <svg xmlns=http://www.w3.org/2000/svg viewbox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg> </button> </nav> </form> <div class=md-search__output> <div class=md-search__scrollwrap tabindex=0 data-md-scrollfix> <div class=md-search-result data-md-component=search-result> <div class=md-search-result__meta> Initializing search </div> <ol class=md-search-result__list role=presentation></ol> </div> </div> </div> </div> </div> </nav> </header> <div class=md-container data-md-component=container> <main class=md-main data-md-component=main> <div class="md-main__inner md-grid"> <div class="md-sidebar md-sidebar--primary" data-md-component=sidebar data-md-type=navigation> <div class=md-sidebar__scrollwrap> <div class=md-sidebar__inner> <nav class="md-nav md-nav--primary" aria-label=Navigation data-md-level=0> <label class=md-nav__title for=__drawer> <a href=../../../../../index.html title=ayon-core class="md-nav__button md-logo" aria-label=ayon-core data-md-component=logo> <img src=../../../../../img/ay-symbol-blackw-full.png alt=logo> </a> ayon-core </label> <ul class=md-nav__list data-md-scrollfix> <li class=md-nav__item> <a href=../../../../../index.html class=md-nav__link> <span class=md-ellipsis> Home </span> </a> </li> <li class=md-nav__item> <a href=../../../../../license.html class=md-nav__link> <span class=md-ellipsis> License </span> </a> </li> <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested"> <input class="md-nav__toggle md-toggle " type=checkbox id=__nav_3 checked> <label class=md-nav__link for=__nav_3 id=__nav_3_label tabindex> <span class=md-ellipsis> Reference </span> <span class="md-nav__icon md-icon"></span> </label> <nav class=md-nav data-md-level=1 aria-labelledby=__nav_3_label aria-expanded=true> <label class=md-nav__title for=__nav_3> <span class="md-nav__icon md-icon"></span> Reference </label> <ul class=md-nav__list data-md-scrollfix> <li class="md-nav__item md-nav__item--active md-nav__item--nested"> <input class="md-nav__toggle md-toggle " type=checkbox id=__nav_3_1 checked> <div class="md-nav__link md-nav__container"> <a href=../../../index.html class="md-nav__link "> <span class=md-ellipsis> client </span> </a> <label class="md-nav__link " for=__nav_3_1 id=__nav_3_1_label tabindex=0> <span class="md-nav__icon md-icon"></span> </label> </div> <nav class=md-nav data-md-level=2 aria-labelledby=__nav_3_1_label aria-expanded=true> <label class=md-nav__title for=__nav_3_1> <span class="md-nav__icon md-icon"></span> client </label> <ul class=md-nav__list data-md-scrollfix> <li class="md-nav__item md-nav__item--active md-nav__item--nested"> <input class="md-nav__toggle md-toggle " type=checkbox id=__nav_3_1_1 checked> <div class="md-nav__link md-nav__container"> <a href=../../index.html class="md-nav__link "> <span class=md-ellipsis> ayon_core </span> </a> <label class="md-nav__link " for=__nav_3_1_1 id=__nav_3_1_1_label tabindex=0> <span class="md-nav__icon md-icon"></span> </label> </div> <nav class=md-nav data-md-level=3 aria-labelledby=__nav_3_1_1_label aria-expanded=true> <label class=md-nav__title for=__nav_3_1_1> <span class="md-nav__icon md-icon"></span> ayon_core </label> <ul class=md-nav__list data-md-scrollfix> <li class=md-nav__item> <a href=../../__main__.html class=md-nav__link> <span class=md-ellipsis> __main__ </span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../../addon/base.html class=md-nav__link> <span class=md-ellipsis> addon </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class=md-nav__item> <a href=../../cli.html class=md-nav__link> <span class=md-ellipsis> cli </span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../../hooks/pre_add_last_workfile_arg.html class=md-nav__link> <span class=md-ellipsis> hooks </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../../host/dirmap.html class=md-nav__link> <span class=md-ellipsis> host </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../../lib/attribute_definitions.html class=md-nav__link> <span class=md-ellipsis> lib </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../../pipeline/actions.html class=md-nav__link> <span class=md-ellipsis> pipeline </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../../plugins/actions/open_file_explorer.html class=md-nav__link> <span class=md-ellipsis> plugins </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../../resources/app_icons/index.html class=md-nav__link> <span class=md-ellipsis> resources </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../../scripts/ocio_wrapper.html class=md-nav__link> <span class=md-ellipsis> scripts </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../../settings/lib.html class=md-nav__link> <span class=md-ellipsis> settings </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../../style/color_defs.html class=md-nav__link> <span class=md-ellipsis> style </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../../tests/conftest.html class=md-nav__link> <span class=md-ellipsis> tests </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class="md-nav__item md-nav__item--active md-nav__item--nested"> <input class="md-nav__toggle md-toggle " type=checkbox id=__nav_3_1_1_14 checked> <div class="md-nav__link md-nav__container"> <a href=../index.html class="md-nav__link "> <span class=md-ellipsis> tools </span> </a> <label class="md-nav__link " for=__nav_3_1_1_14 id=__nav_3_1_1_14_label tabindex=0> <span class="md-nav__icon md-icon"></span> </label> </div> <nav class=md-nav data-md-level=4 aria-labelledby=__nav_3_1_1_14_label aria-expanded=true> <label class=md-nav__title for=__nav_3_1_1_14> <span class="md-nav__icon md-icon"></span> tools </label> <ul class=md-nav__list data-md-scrollfix> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../attribute_defs/_constants.html class=md-nav__link> <span class=md-ellipsis> attribute_defs </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../common_models/cache.html class=md-nav__link> <span class=md-ellipsis> common_models </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../console_interpreter/abstract.html class=md-nav__link> <span class=md-ellipsis> console_interpreter </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../context_dialog/window.html class=md-nav__link> <span class=md-ellipsis> context_dialog </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../creator/constants.html class=md-nav__link> <span class=md-ellipsis> creator </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../experimental_tools/dialog.html class=md-nav__link> <span class=md-ellipsis> experimental_tools </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class=md-nav__item> <a href=../flickcharm.html class=md-nav__link> <span class=md-ellipsis> flickcharm </span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../launcher/abstract.html class=md-nav__link> <span class=md-ellipsis> launcher </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../loader/abstract.html class=md-nav__link> <span class=md-ellipsis> loader </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../publisher/abstract.html class=md-nav__link> <span class=md-ellipsis> publisher </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../push_to_project/control.html class=md-nav__link> <span class=md-ellipsis> push_to_project </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../resources/images/index.html class=md-nav__link> <span class=md-ellipsis> resources </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../sceneinventory/control.html class=md-nav__link> <span class=md-ellipsis> sceneinventory </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../stdout_broker/app.html class=md-nav__link> <span class=md-ellipsis> stdout_broker </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../subsetmanager/model.html class=md-nav__link> <span class=md-ellipsis> subsetmanager </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../texture_copy/app.html class=md-nav__link> <span class=md-ellipsis> texture_copy </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../tray/lib.html class=md-nav__link> <span class=md-ellipsis> tray </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class="md-nav__item md-nav__item--active md-nav__item--nested"> <input class="md-nav__toggle md-toggle " type=checkbox id=__nav_3_1_1_14_18 checked> <div class="md-nav__link md-nav__container"> <a href=index.html class="md-nav__link "> <span class=md-ellipsis> utils </span> </a> <label class="md-nav__link " for=__nav_3_1_1_14_18 id=__nav_3_1_1_14_18_label tabindex=0> <span class="md-nav__icon md-icon"></span> </label> </div> <nav class=md-nav data-md-level=5 aria-labelledby=__nav_3_1_1_14_18_label aria-expanded=true> <label class=md-nav__title for=__nav_3_1_1_14_18> <span class="md-nav__icon md-icon"></span> utils </label> <ul class=md-nav__list data-md-scrollfix> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=color_widgets/color_inputs.html class=md-nav__link> <span class=md-ellipsis> color_widgets </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class=md-nav__item> <a href=constants.html class=md-nav__link> <span class=md-ellipsis> constants </span> </a> </li> <li class=md-nav__item> <a href=delegates.html class=md-nav__link> <span class=md-ellipsis> delegates </span> </a> </li> <li class=md-nav__item> <a href=dialogs.html class=md-nav__link> <span class=md-ellipsis> dialogs </span> </a> </li> <li class=md-nav__item> <a href=error_dialog.html class=md-nav__link> <span class=md-ellipsis> error_dialog </span> </a> </li> <li class=md-nav__item> <a href=folders_widget.html class=md-nav__link> <span class=md-ellipsis> folders_widget </span> </a> </li> <li class=md-nav__item> <a href=host_tools.html class=md-nav__link> <span class=md-ellipsis> host_tools </span> </a> </li> <li class=md-nav__item> <a href=images/index.html class=md-nav__link> <span class=md-ellipsis> images </span> </a> </li> <li class=md-nav__item> <a href=layouts.html class=md-nav__link> <span class=md-ellipsis> layouts </span> </a> </li> <li class="md-nav__item md-nav__item--active"> <input class="md-nav__toggle md-toggle" type=checkbox id=__toc> <label class="md-nav__link md-nav__link--active" for=__toc> <span class=md-ellipsis> lib </span> <span class="md-nav__icon md-icon"></span> </label> <a href=lib.html class="md-nav__link md-nav__link--active"> <span class=md-ellipsis> lib </span> </a> <nav class="md-nav md-nav--secondary" aria-label="Table of contents"> <label class=md-nav__title for=__toc> <span class="md-nav__icon md-icon"></span> Table of contents </label> <ul class=md-nav__list data-md-component=toc data-md-scrollfix> <li class=md-nav__item> <a href=#client.ayon_core.tools.utils.lib class=md-nav__link> <span class=md-ellipsis> lib </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.tools.utils.lib.DynamicQThread class=md-nav__link> <span class=md-ellipsis> DynamicQThread </span> </a> <nav class=md-nav aria-label=DynamicQThread> <ul class=md-nav__list> <li class=md-nav__item> <a href=#client.ayon_core.tools.utils.lib.DynamicQThread.run class=md-nav__link> <span class=md-ellipsis> run </span> </a> </li> </ul> </nav> </li> <li class=md-nav__item> <a href=#client.ayon_core.tools.utils.lib.RefreshThread class=md-nav__link> <span class=md-ellipsis> RefreshThread </span> </a> <nav class=md-nav aria-label=RefreshThread> <ul class=md-nav__list> <li class=md-nav__item> <a href=#client.ayon_core.tools.utils.lib.RefreshThread._on_finish_callback class=md-nav__link> <span class=md-ellipsis> _on_finish_callback </span> </a> </li> </ul> </nav> </li> <li class=md-nav__item> <a href=#client.ayon_core.tools.utils.lib.WrappedCallbackItem class=md-nav__link> <span class=md-ellipsis> WrappedCallbackItem </span> </a> <nav class=md-nav aria-label=WrappedCallbackItem> <ul class=md-nav__list> <li class=md-nav__item> <a href=#client.ayon_core.tools.utils.lib.WrappedCallbackItem.execute class=md-nav__link> <span class=md-ellipsis> execute </span> </a> </li> </ul> </nav> </li> <li class=md-nav__item> <a href=#client.ayon_core.tools.utils.lib._IconsCache class=md-nav__link> <span class=md-ellipsis> _IconsCache </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.tools.utils.lib.center_window class=md-nav__link> <span class=md-ellipsis> center_window </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.tools.utils.lib.format_version class=md-nav__link> <span class=md-ellipsis> format_version </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.tools.utils.lib.get_ayon_qt_app class=md-nav__link> <span class=md-ellipsis> get_ayon_qt_app </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.tools.utils.lib.get_qt_app class=md-nav__link> <span class=md-ellipsis> get_qt_app </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.tools.utils.lib.get_qt_icon class=md-nav__link> <span class=md-ellipsis> get_qt_icon </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.tools.utils.lib.get_qta_icon_by_name_and_color class=md-nav__link> <span class=md-ellipsis> get_qta_icon_by_name_and_color </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.tools.utils.lib.get_warning_pixmap class=md-nav__link> <span class=md-ellipsis> get_warning_pixmap </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.tools.utils.lib.html_escape class=md-nav__link> <span class=md-ellipsis> html_escape </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.tools.utils.lib.iter_model_rows class=md-nav__link> <span class=md-ellipsis> iter_model_rows </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.tools.utils.lib.paint_image_with_color class=md-nav__link> <span class=md-ellipsis> paint_image_with_color </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.tools.utils.lib.preserve_expanded_rows class=md-nav__link> <span class=md-ellipsis> preserve_expanded_rows </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.tools.utils.lib.preserve_selection class=md-nav__link> <span class=md-ellipsis> preserve_selection </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.tools.utils.lib.set_style_property class=md-nav__link> <span class=md-ellipsis> set_style_property </span> </a> </li> </ul> </nav> </li> <li class=md-nav__item> <a href=models.html class=md-nav__link> <span class=md-ellipsis> models </span> </a> </li> <li class=md-nav__item> <a href=multiselection_combobox.html class=md-nav__link> <span class=md-ellipsis> multiselection_combobox </span> </a> </li> <li class=md-nav__item> <a href=nice_checkbox.html class=md-nav__link> <span class=md-ellipsis> nice_checkbox </span> </a> </li> <li class=md-nav__item> <a href=overlay_messages.html class=md-nav__link> <span class=md-ellipsis> overlay_messages </span> </a> </li> <li class=md-nav__item> <a href=projects_widget.html class=md-nav__link> <span class=md-ellipsis> projects_widget </span> </a> </li> <li class=md-nav__item> <a href=sliders.html class=md-nav__link> <span class=md-ellipsis> sliders </span> </a> </li> <li class=md-nav__item> <a href=tasks_widget.html class=md-nav__link> <span class=md-ellipsis> tasks_widget </span> </a> </li> <li class=md-nav__item> <a href=thumbnail_paint_widget.html class=md-nav__link> <span class=md-ellipsis> thumbnail_paint_widget </span> </a> </li> <li class=md-nav__item> <a href=views.html class=md-nav__link> <span class=md-ellipsis> views </span> </a> </li> <li class=md-nav__item> <a href=widgets.html class=md-nav__link> <span class=md-ellipsis> widgets </span> </a> </li> </ul> </nav> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../workfile_template_build/lib.html class=md-nav__link> <span class=md-ellipsis> workfile_template_build </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../workfiles/abstract.html class=md-nav__link> <span class=md-ellipsis> workfiles </span> <span class="md-nav__icon md-icon"></span> </a> </li> </ul> </nav> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../../vendor/python/qargparse.html class=md-nav__link> <span class=md-ellipsis> vendor </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class=md-nav__item> <a href=../../version.html class=md-nav__link> <span class=md-ellipsis> version </span> </a> </li> </ul> </nav> </li> </ul> </nav> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../../../../server/settings/conversion.html class=md-nav__link> <span class=md-ellipsis> server </span> <span class="md-nav__icon md-icon"></span> </a> </li> </ul> </nav> </li> </ul> </nav> </div> </div> </div> <div class="md-sidebar md-sidebar--secondary" data-md-component=sidebar data-md-type=toc> <div class=md-sidebar__scrollwrap> <div class=md-sidebar__inner> <nav class="md-nav md-nav--secondary" aria-label="Table of contents"> <label class=md-nav__title for=__toc> <span class="md-nav__icon md-icon"></span> Table of contents </label> <ul class=md-nav__list data-md-component=toc data-md-scrollfix> <li class=md-nav__item> <a href=#client.ayon_core.tools.utils.lib class=md-nav__link> <span class=md-ellipsis> lib </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.tools.utils.lib.DynamicQThread class=md-nav__link> <span class=md-ellipsis> DynamicQThread </span> </a> <nav class=md-nav aria-label=DynamicQThread> <ul class=md-nav__list> <li class=md-nav__item> <a href=#client.ayon_core.tools.utils.lib.DynamicQThread.run class=md-nav__link> <span class=md-ellipsis> run </span> </a> </li> </ul> </nav> </li> <li class=md-nav__item> <a href=#client.ayon_core.tools.utils.lib.RefreshThread class=md-nav__link> <span class=md-ellipsis> RefreshThread </span> </a> <nav class=md-nav aria-label=RefreshThread> <ul class=md-nav__list> <li class=md-nav__item> <a href=#client.ayon_core.tools.utils.lib.RefreshThread._on_finish_callback class=md-nav__link> <span class=md-ellipsis> _on_finish_callback </span> </a> </li> </ul> </nav> </li> <li class=md-nav__item> <a href=#client.ayon_core.tools.utils.lib.WrappedCallbackItem class=md-nav__link> <span class=md-ellipsis> WrappedCallbackItem </span> </a> <nav class=md-nav aria-label=WrappedCallbackItem> <ul class=md-nav__list> <li class=md-nav__item> <a href=#client.ayon_core.tools.utils.lib.WrappedCallbackItem.execute class=md-nav__link> <span class=md-ellipsis> execute </span> </a> </li> </ul> </nav> </li> <li class=md-nav__item> <a href=#client.ayon_core.tools.utils.lib._IconsCache class=md-nav__link> <span class=md-ellipsis> _IconsCache </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.tools.utils.lib.center_window class=md-nav__link> <span class=md-ellipsis> center_window </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.tools.utils.lib.format_version class=md-nav__link> <span class=md-ellipsis> format_version </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.tools.utils.lib.get_ayon_qt_app class=md-nav__link> <span class=md-ellipsis> get_ayon_qt_app </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.tools.utils.lib.get_qt_app class=md-nav__link> <span class=md-ellipsis> get_qt_app </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.tools.utils.lib.get_qt_icon class=md-nav__link> <span class=md-ellipsis> get_qt_icon </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.tools.utils.lib.get_qta_icon_by_name_and_color class=md-nav__link> <span class=md-ellipsis> get_qta_icon_by_name_and_color </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.tools.utils.lib.get_warning_pixmap class=md-nav__link> <span class=md-ellipsis> get_warning_pixmap </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.tools.utils.lib.html_escape class=md-nav__link> <span class=md-ellipsis> html_escape </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.tools.utils.lib.iter_model_rows class=md-nav__link> <span class=md-ellipsis> iter_model_rows </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.tools.utils.lib.paint_image_with_color class=md-nav__link> <span class=md-ellipsis> paint_image_with_color </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.tools.utils.lib.preserve_expanded_rows class=md-nav__link> <span class=md-ellipsis> preserve_expanded_rows </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.tools.utils.lib.preserve_selection class=md-nav__link> <span class=md-ellipsis> preserve_selection </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.tools.utils.lib.set_style_property class=md-nav__link> <span class=md-ellipsis> set_style_property </span> </a> </li> </ul> </nav> </div> </div> </div> <div class=md-content data-md-component=content> <article class="md-content__inner md-typeset"> <h1>lib</h1> <div class="doc doc-object doc-module"> <a id=client.ayon_core.tools.utils.lib></a> <div class="doc doc-contents first"> <div class="doc doc-children"> <div class="doc doc-object doc-class"> <h2 id=client.ayon_core.tools.utils.lib.DynamicQThread class="doc doc-heading"> <code>DynamicQThread</code> </h2> <div class="doc doc-contents "> <p class="doc doc-class-bases"> Bases: <code><span title=qtpy.QtCore.QThread>QThread</span></code></p> <p>QThread which can run any function with argument and kwargs.</p> <p><span class=doc-section-title>Parameters:</span></p> <table> <thead> <tr> <th>Name</th> <th>Type</th> <th>Description</th> <th>Default</th> </tr> </thead> <tbody> <tr class=doc-section-item> <td> <code>func</code> </td> <td> <code><span title=function>function</span></code> </td> <td> <div class=doc-md-description> <p>Function which will be called.</p> </div> </td> <td> <em>required</em> </td> </tr> <tr class=doc-section-item> <td> <code>args</code> </td> <td> <code><span title=tuple>tuple</span></code> </td> <td> <div class=doc-md-description> <p>Arguments which will be passed to function.</p> </div> </td> <td> <code>None</code> </td> </tr> <tr class=doc-section-item> <td> <code>kwargs</code> </td> <td> <code><span title=tuple>tuple</span></code> </td> <td> <div class=doc-md-description> <p>Keyword arguments which will be passed to function.</p> </div> </td> <td> <code>None</code> </td> </tr> <tr class=doc-section-item> <td> <code>parent</code> </td> <td> <code><span title=QObject>QObject</span></code> </td> <td> <div class=doc-md-description> <p>Parent of thread.</p> </div> </td> <td> <code>None</code> </td> </tr> </tbody> </table> <details class=quote> <summary>Source code in <code>client/ayon_core/tools/utils/lib.py</code></summary> <div class=highlight><table class=highlighttable><tr><td class=linenos><div class=linenodiv><pre><span></span><span class=normal>316</span>
+<span class=normal>317</span>
+<span class=normal>318</span>
+<span class=normal>319</span>
+<span class=normal>320</span>
+<span class=normal>321</span>
+<span class=normal>322</span>
+<span class=normal>323</span>
+<span class=normal>324</span>
+<span class=normal>325</span>
+<span class=normal>326</span>
+<span class=normal>327</span>
+<span class=normal>328</span>
+<span class=normal>329</span>
+<span class=normal>330</span>
+<span class=normal>331</span>
+<span class=normal>332</span>
+<span class=normal>333</span>
+<span class=normal>334</span>
+<span class=normal>335</span>
+<span class=normal>336</span>
+<span class=normal>337</span></pre></div></td><td class=code><div><pre><span></span><code><span class=k>class</span><span class=w> </span><span class=nc>DynamicQThread</span><span class=p>(</span><span class=n>QtCore</span><span class=o>.</span><span class=n>QThread</span><span class=p>):</span>
+<span class=w>    </span><span class=sd>&quot;&quot;&quot;QThread which can run any function with argument and kwargs.</span>
+
+<span class=sd>    Args:</span>
+<span class=sd>        func (function): Function which will be called.</span>
+<span class=sd>        args (tuple): Arguments which will be passed to function.</span>
+<span class=sd>        kwargs (tuple): Keyword arguments which will be passed to function.</span>
+<span class=sd>        parent (QObject): Parent of thread.</span>
+<span class=sd>    &quot;&quot;&quot;</span>
+    <span class=k>def</span><span class=w> </span><span class=fm>__init__</span><span class=p>(</span><span class=bp>self</span><span class=p>,</span> <span class=n>func</span><span class=p>,</span> <span class=n>args</span><span class=o>=</span><span class=kc>None</span><span class=p>,</span> <span class=n>kwargs</span><span class=o>=</span><span class=kc>None</span><span class=p>,</span> <span class=n>parent</span><span class=o>=</span><span class=kc>None</span><span class=p>):</span>
+        <span class=nb>super</span><span class=p>(</span><span class=n>DynamicQThread</span><span class=p>,</span> <span class=bp>self</span><span class=p>)</span><span class=o>.</span><span class=fm>__init__</span><span class=p>(</span><span class=n>parent</span><span class=p>)</span>
+        <span class=k>if</span> <span class=n>args</span> <span class=ow>is</span> <span class=kc>None</span><span class=p>:</span>
+            <span class=n>args</span> <span class=o>=</span> <span class=nb>tuple</span><span class=p>()</span>
+        <span class=k>if</span> <span class=n>kwargs</span> <span class=ow>is</span> <span class=kc>None</span><span class=p>:</span>
+            <span class=n>kwargs</span> <span class=o>=</span> <span class=p>{}</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>_func</span> <span class=o>=</span> <span class=n>func</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>_args</span> <span class=o>=</span> <span class=n>args</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>_kwargs</span> <span class=o>=</span> <span class=n>kwargs</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>run</span><span class=p>(</span><span class=bp>self</span><span class=p>):</span>
+<span class=w>        </span><span class=sd>&quot;&quot;&quot;Execute the function with arguments.&quot;&quot;&quot;</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>_func</span><span class=p>(</span><span class=o>*</span><span class=bp>self</span><span class=o>.</span><span class=n>_args</span><span class=p>,</span> <span class=o>**</span><span class=bp>self</span><span class=o>.</span><span class=n>_kwargs</span><span class=p>)</span>
+</code></pre></div></td></tr></table></div> </details> <div class="doc doc-children"> <div class="doc doc-object doc-function"> <h3 id=client.ayon_core.tools.utils.lib.DynamicQThread.run class="doc doc-heading"> <code class="highlight language-python"><span class=n>run</span><span class=p>()</span></code> </h3> <div class="doc doc-contents "> <p>Execute the function with arguments.</p> <details class=quote> <summary>Source code in <code>client/ayon_core/tools/utils/lib.py</code></summary> <div class=highlight><table class=highlighttable><tr><td class=linenos><div class=linenodiv><pre><span></span><span class=normal>335</span>
+<span class=normal>336</span>
+<span class=normal>337</span></pre></div></td><td class=code><div><pre><span></span><code><span class=k>def</span><span class=w> </span><span class=nf>run</span><span class=p>(</span><span class=bp>self</span><span class=p>):</span>
+<span class=w>    </span><span class=sd>&quot;&quot;&quot;Execute the function with arguments.&quot;&quot;&quot;</span>
+    <span class=bp>self</span><span class=o>.</span><span class=n>_func</span><span class=p>(</span><span class=o>*</span><span class=bp>self</span><span class=o>.</span><span class=n>_args</span><span class=p>,</span> <span class=o>**</span><span class=bp>self</span><span class=o>.</span><span class=n>_kwargs</span><span class=p>)</span>
+</code></pre></div></td></tr></table></div> </details> </div> </div> </div> </div> </div> <div class="doc doc-object doc-class"> <h2 id=client.ayon_core.tools.utils.lib.RefreshThread class="doc doc-heading"> <code>RefreshThread</code> </h2> <div class="doc doc-contents "> <p class="doc doc-class-bases"> Bases: <code><span title=qtpy.QtCore.QThread>QThread</span></code></p> <details class=quote> <summary>Source code in <code>client/ayon_core/tools/utils/lib.py</code></summary> <div class=highlight><table class=highlighttable><tr><td class=linenos><div class=linenodiv><pre><span></span><span class=normal>418</span>
+<span class=normal>419</span>
+<span class=normal>420</span>
+<span class=normal>421</span>
+<span class=normal>422</span>
+<span class=normal>423</span>
+<span class=normal>424</span>
+<span class=normal>425</span>
+<span class=normal>426</span>
+<span class=normal>427</span>
+<span class=normal>428</span>
+<span class=normal>429</span>
+<span class=normal>430</span>
+<span class=normal>431</span>
+<span class=normal>432</span>
+<span class=normal>433</span>
+<span class=normal>434</span>
+<span class=normal>435</span>
+<span class=normal>436</span>
+<span class=normal>437</span>
+<span class=normal>438</span>
+<span class=normal>439</span>
+<span class=normal>440</span>
+<span class=normal>441</span>
+<span class=normal>442</span>
+<span class=normal>443</span>
+<span class=normal>444</span>
+<span class=normal>445</span>
+<span class=normal>446</span>
+<span class=normal>447</span>
+<span class=normal>448</span>
+<span class=normal>449</span>
+<span class=normal>450</span>
+<span class=normal>451</span>
+<span class=normal>452</span>
+<span class=normal>453</span>
+<span class=normal>454</span>
+<span class=normal>455</span>
+<span class=normal>456</span>
+<span class=normal>457</span>
+<span class=normal>458</span>
+<span class=normal>459</span>
+<span class=normal>460</span>
+<span class=normal>461</span>
+<span class=normal>462</span>
+<span class=normal>463</span>
+<span class=normal>464</span>
+<span class=normal>465</span>
+<span class=normal>466</span></pre></div></td><td class=code><div><pre><span></span><code><span class=k>class</span><span class=w> </span><span class=nc>RefreshThread</span><span class=p>(</span><span class=n>QtCore</span><span class=o>.</span><span class=n>QThread</span><span class=p>):</span>
+    <span class=n>refresh_finished</span> <span class=o>=</span> <span class=n>QtCore</span><span class=o>.</span><span class=n>Signal</span><span class=p>(</span><span class=nb>str</span><span class=p>)</span>
+
+    <span class=k>def</span><span class=w> </span><span class=fm>__init__</span><span class=p>(</span><span class=bp>self</span><span class=p>,</span> <span class=n>thread_id</span><span class=p>,</span> <span class=n>func</span><span class=p>,</span> <span class=o>*</span><span class=n>args</span><span class=p>,</span> <span class=o>**</span><span class=n>kwargs</span><span class=p>):</span>
+        <span class=nb>super</span><span class=p>(</span><span class=n>RefreshThread</span><span class=p>,</span> <span class=bp>self</span><span class=p>)</span><span class=o>.</span><span class=fm>__init__</span><span class=p>()</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>_id</span> <span class=o>=</span> <span class=n>thread_id</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>_callback</span> <span class=o>=</span> <span class=n>partial</span><span class=p>(</span><span class=n>func</span><span class=p>,</span> <span class=o>*</span><span class=n>args</span><span class=p>,</span> <span class=o>**</span><span class=n>kwargs</span><span class=p>)</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>_exception</span> <span class=o>=</span> <span class=kc>None</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>_traceback</span> <span class=o>=</span> <span class=kc>None</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>_result</span> <span class=o>=</span> <span class=kc>None</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>finished</span><span class=o>.</span><span class=n>connect</span><span class=p>(</span><span class=bp>self</span><span class=o>.</span><span class=n>_on_finish_callback</span><span class=p>)</span>
+
+    <span class=nd>@property</span>
+    <span class=k>def</span><span class=w> </span><span class=nf>id</span><span class=p>(</span><span class=bp>self</span><span class=p>)</span> <span class=o>-&gt;</span> <span class=nb>str</span><span class=p>:</span>
+        <span class=k>return</span> <span class=bp>self</span><span class=o>.</span><span class=n>_id</span>
+
+    <span class=nd>@property</span>
+    <span class=k>def</span><span class=w> </span><span class=nf>failed</span><span class=p>(</span><span class=bp>self</span><span class=p>)</span> <span class=o>-&gt;</span> <span class=nb>bool</span><span class=p>:</span>
+        <span class=k>return</span> <span class=bp>self</span><span class=o>.</span><span class=n>_exception</span> <span class=ow>is</span> <span class=ow>not</span> <span class=kc>None</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>run</span><span class=p>(</span><span class=bp>self</span><span class=p>):</span>
+        <span class=k>try</span><span class=p>:</span>
+            <span class=bp>self</span><span class=o>.</span><span class=n>_result</span> <span class=o>=</span> <span class=bp>self</span><span class=o>.</span><span class=n>_callback</span><span class=p>()</span>
+        <span class=k>except</span> <span class=ne>Exception</span> <span class=k>as</span> <span class=n>exc</span><span class=p>:</span>
+            <span class=n>exc_type</span><span class=p>,</span> <span class=n>exc_value</span><span class=p>,</span> <span class=n>exc_traceback</span> <span class=o>=</span> <span class=n>sys</span><span class=o>.</span><span class=n>exc_info</span><span class=p>()</span>
+            <span class=n>err_traceback</span> <span class=o>=</span> <span class=s2>&quot;&quot;</span><span class=o>.</span><span class=n>join</span><span class=p>(</span><span class=n>traceback</span><span class=o>.</span><span class=n>format_exception</span><span class=p>(</span>
+                <span class=n>exc_type</span><span class=p>,</span> <span class=n>exc_value</span><span class=p>,</span> <span class=n>exc_traceback</span>
+            <span class=p>))</span>
+            <span class=nb>print</span><span class=p>(</span><span class=n>err_traceback</span><span class=p>)</span>
+            <span class=bp>self</span><span class=o>.</span><span class=n>_traceback</span> <span class=o>=</span> <span class=n>err_traceback</span>
+            <span class=bp>self</span><span class=o>.</span><span class=n>_exception</span> <span class=o>=</span> <span class=n>exc</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>get_result</span><span class=p>(</span><span class=bp>self</span><span class=p>)</span> <span class=o>-&gt;</span> <span class=n>Any</span><span class=p>:</span>
+        <span class=k>return</span> <span class=bp>self</span><span class=o>.</span><span class=n>_result</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>get_exception</span><span class=p>(</span><span class=bp>self</span><span class=p>)</span> <span class=o>-&gt;</span> <span class=n>Union</span><span class=p>[</span><span class=ne>BaseException</span><span class=p>,</span> <span class=kc>None</span><span class=p>]:</span>
+        <span class=k>return</span> <span class=bp>self</span><span class=o>.</span><span class=n>_exception</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>get_traceback</span><span class=p>(</span><span class=bp>self</span><span class=p>)</span> <span class=o>-&gt;</span> <span class=n>Union</span><span class=p>[</span><span class=nb>str</span><span class=p>,</span> <span class=kc>None</span><span class=p>]:</span>
+        <span class=k>return</span> <span class=bp>self</span><span class=o>.</span><span class=n>_traceback</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>_on_finish_callback</span><span class=p>(</span><span class=bp>self</span><span class=p>):</span>
+<span class=w>        </span><span class=sd>&quot;&quot;&quot;Trigger custom signal with thread id.</span>
+
+<span class=sd>        Listening for &#39;finished&#39; signal we make sure that execution of thread</span>
+<span class=sd>            finished and QThread object can be safely deleted.</span>
+<span class=sd>        &quot;&quot;&quot;</span>
+
+        <span class=bp>self</span><span class=o>.</span><span class=n>refresh_finished</span><span class=o>.</span><span class=n>emit</span><span class=p>(</span><span class=bp>self</span><span class=o>.</span><span class=n>id</span><span class=p>)</span>
+</code></pre></div></td></tr></table></div> </details> <div class="doc doc-children"> <div class="doc doc-object doc-function"> <h3 id=client.ayon_core.tools.utils.lib.RefreshThread._on_finish_callback class="doc doc-heading"> <code class="highlight language-python"><span class=n>_on_finish_callback</span><span class=p>()</span></code> </h3> <div class="doc doc-contents "> <p>Trigger custom signal with thread id.</p> <p>Listening for 'finished' signal we make sure that execution of thread finished and QThread object can be safely deleted.</p> <details class=quote> <summary>Source code in <code>client/ayon_core/tools/utils/lib.py</code></summary> <div class=highlight><table class=highlighttable><tr><td class=linenos><div class=linenodiv><pre><span></span><span class=normal>459</span>
+<span class=normal>460</span>
+<span class=normal>461</span>
+<span class=normal>462</span>
+<span class=normal>463</span>
+<span class=normal>464</span>
+<span class=normal>465</span>
+<span class=normal>466</span></pre></div></td><td class=code><div><pre><span></span><code><span class=k>def</span><span class=w> </span><span class=nf>_on_finish_callback</span><span class=p>(</span><span class=bp>self</span><span class=p>):</span>
+<span class=w>    </span><span class=sd>&quot;&quot;&quot;Trigger custom signal with thread id.</span>
+
+<span class=sd>    Listening for &#39;finished&#39; signal we make sure that execution of thread</span>
+<span class=sd>        finished and QThread object can be safely deleted.</span>
+<span class=sd>    &quot;&quot;&quot;</span>
+
+    <span class=bp>self</span><span class=o>.</span><span class=n>refresh_finished</span><span class=o>.</span><span class=n>emit</span><span class=p>(</span><span class=bp>self</span><span class=o>.</span><span class=n>id</span><span class=p>)</span>
+</code></pre></div></td></tr></table></div> </details> </div> </div> </div> </div> </div> <div class="doc doc-object doc-class"> <h2 id=client.ayon_core.tools.utils.lib.WrappedCallbackItem class="doc doc-heading"> <code>WrappedCallbackItem</code> </h2> <div class="doc doc-contents "> <p>Structure to store information about callback and args/kwargs for it.</p> <p>Item can be used to execute callback in main thread which may be needed for execution of Qt objects.</p> <p>Item store callback (callable variable), arguments and keyword arguments for the callback. Item hold information about it's process.</p> <details class=quote> <summary>Source code in <code>client/ayon_core/tools/utils/lib.py</code></summary> <div class=highlight><table class=highlighttable><tr><td class=linenos><div class=linenodiv><pre><span></span><span class=normal>340</span>
+<span class=normal>341</span>
+<span class=normal>342</span>
+<span class=normal>343</span>
+<span class=normal>344</span>
+<span class=normal>345</span>
+<span class=normal>346</span>
+<span class=normal>347</span>
+<span class=normal>348</span>
+<span class=normal>349</span>
+<span class=normal>350</span>
+<span class=normal>351</span>
+<span class=normal>352</span>
+<span class=normal>353</span>
+<span class=normal>354</span>
+<span class=normal>355</span>
+<span class=normal>356</span>
+<span class=normal>357</span>
+<span class=normal>358</span>
+<span class=normal>359</span>
+<span class=normal>360</span>
+<span class=normal>361</span>
+<span class=normal>362</span>
+<span class=normal>363</span>
+<span class=normal>364</span>
+<span class=normal>365</span>
+<span class=normal>366</span>
+<span class=normal>367</span>
+<span class=normal>368</span>
+<span class=normal>369</span>
+<span class=normal>370</span>
+<span class=normal>371</span>
+<span class=normal>372</span>
+<span class=normal>373</span>
+<span class=normal>374</span>
+<span class=normal>375</span>
+<span class=normal>376</span>
+<span class=normal>377</span>
+<span class=normal>378</span>
+<span class=normal>379</span>
+<span class=normal>380</span>
+<span class=normal>381</span>
+<span class=normal>382</span>
+<span class=normal>383</span>
+<span class=normal>384</span>
+<span class=normal>385</span>
+<span class=normal>386</span>
+<span class=normal>387</span>
+<span class=normal>388</span>
+<span class=normal>389</span>
+<span class=normal>390</span>
+<span class=normal>391</span>
+<span class=normal>392</span>
+<span class=normal>393</span>
+<span class=normal>394</span>
+<span class=normal>395</span>
+<span class=normal>396</span>
+<span class=normal>397</span>
+<span class=normal>398</span>
+<span class=normal>399</span>
+<span class=normal>400</span>
+<span class=normal>401</span></pre></div></td><td class=code><div><pre><span></span><code><span class=k>class</span><span class=w> </span><span class=nc>WrappedCallbackItem</span><span class=p>:</span>
+<span class=w>    </span><span class=sd>&quot;&quot;&quot;Structure to store information about callback and args/kwargs for it.</span>
+
+<span class=sd>    Item can be used to execute callback in main thread which may be needed</span>
+<span class=sd>    for execution of Qt objects.</span>
+
+<span class=sd>    Item store callback (callable variable), arguments and keyword arguments</span>
+<span class=sd>    for the callback. Item hold information about it&#39;s process.</span>
+<span class=sd>    &quot;&quot;&quot;</span>
+    <span class=n>not_set</span> <span class=o>=</span> <span class=nb>object</span><span class=p>()</span>
+    <span class=n>_log</span> <span class=o>=</span> <span class=kc>None</span>
+
+    <span class=k>def</span><span class=w> </span><span class=fm>__init__</span><span class=p>(</span><span class=bp>self</span><span class=p>,</span> <span class=n>callback</span><span class=p>,</span> <span class=o>*</span><span class=n>args</span><span class=p>,</span> <span class=o>**</span><span class=n>kwargs</span><span class=p>):</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>_done</span> <span class=o>=</span> <span class=kc>False</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>_exception</span> <span class=o>=</span> <span class=bp>self</span><span class=o>.</span><span class=n>not_set</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>_result</span> <span class=o>=</span> <span class=bp>self</span><span class=o>.</span><span class=n>not_set</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>_callback</span> <span class=o>=</span> <span class=n>callback</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>_args</span> <span class=o>=</span> <span class=n>args</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>_kwargs</span> <span class=o>=</span> <span class=n>kwargs</span>
+
+    <span class=k>def</span><span class=w> </span><span class=fm>__call__</span><span class=p>(</span><span class=bp>self</span><span class=p>):</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>execute</span><span class=p>()</span>
+
+    <span class=nd>@property</span>
+    <span class=k>def</span><span class=w> </span><span class=nf>log</span><span class=p>(</span><span class=bp>self</span><span class=p>):</span>
+        <span class=bp>cls</span> <span class=o>=</span> <span class=bp>self</span><span class=o>.</span><span class=vm>__class__</span>
+        <span class=k>if</span> <span class=bp>cls</span><span class=o>.</span><span class=n>_log</span> <span class=ow>is</span> <span class=kc>None</span><span class=p>:</span>
+            <span class=bp>cls</span><span class=o>.</span><span class=n>_log</span> <span class=o>=</span> <span class=n>Logger</span><span class=o>.</span><span class=n>get_logger</span><span class=p>(</span><span class=bp>cls</span><span class=o>.</span><span class=vm>__name__</span><span class=p>)</span>
+        <span class=k>return</span> <span class=bp>cls</span><span class=o>.</span><span class=n>_log</span>
+
+    <span class=nd>@property</span>
+    <span class=k>def</span><span class=w> </span><span class=nf>done</span><span class=p>(</span><span class=bp>self</span><span class=p>):</span>
+        <span class=k>return</span> <span class=bp>self</span><span class=o>.</span><span class=n>_done</span>
+
+    <span class=nd>@property</span>
+    <span class=k>def</span><span class=w> </span><span class=nf>exception</span><span class=p>(</span><span class=bp>self</span><span class=p>):</span>
+        <span class=k>return</span> <span class=bp>self</span><span class=o>.</span><span class=n>_exception</span>
+
+    <span class=nd>@property</span>
+    <span class=k>def</span><span class=w> </span><span class=nf>result</span><span class=p>(</span><span class=bp>self</span><span class=p>):</span>
+        <span class=k>return</span> <span class=bp>self</span><span class=o>.</span><span class=n>_result</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>execute</span><span class=p>(</span><span class=bp>self</span><span class=p>):</span>
+<span class=w>        </span><span class=sd>&quot;&quot;&quot;Execute callback and store its result.</span>
+
+<span class=sd>        Method must be called from main thread. Item is marked as `done`</span>
+<span class=sd>        when callback execution finished. Store output of callback of exception</span>
+<span class=sd>        information when callback raises one.</span>
+<span class=sd>        &quot;&quot;&quot;</span>
+        <span class=k>if</span> <span class=bp>self</span><span class=o>.</span><span class=n>done</span><span class=p>:</span>
+            <span class=bp>self</span><span class=o>.</span><span class=n>log</span><span class=o>.</span><span class=n>warning</span><span class=p>(</span><span class=s2>&quot;- item is already processed&quot;</span><span class=p>)</span>
+            <span class=k>return</span>
+
+        <span class=k>try</span><span class=p>:</span>
+            <span class=n>result</span> <span class=o>=</span> <span class=bp>self</span><span class=o>.</span><span class=n>_callback</span><span class=p>(</span><span class=o>*</span><span class=bp>self</span><span class=o>.</span><span class=n>_args</span><span class=p>,</span> <span class=o>**</span><span class=bp>self</span><span class=o>.</span><span class=n>_kwargs</span><span class=p>)</span>
+            <span class=bp>self</span><span class=o>.</span><span class=n>_result</span> <span class=o>=</span> <span class=n>result</span>
+
+        <span class=k>except</span> <span class=ne>Exception</span> <span class=k>as</span> <span class=n>exc</span><span class=p>:</span>
+            <span class=bp>self</span><span class=o>.</span><span class=n>_exception</span> <span class=o>=</span> <span class=n>exc</span>
+
+        <span class=k>finally</span><span class=p>:</span>
+            <span class=bp>self</span><span class=o>.</span><span class=n>_done</span> <span class=o>=</span> <span class=kc>True</span>
+</code></pre></div></td></tr></table></div> </details> <div class="doc doc-children"> <div class="doc doc-object doc-function"> <h3 id=client.ayon_core.tools.utils.lib.WrappedCallbackItem.execute class="doc doc-heading"> <code class="highlight language-python"><span class=n>execute</span><span class=p>()</span></code> </h3> <div class="doc doc-contents "> <p>Execute callback and store its result.</p> <p>Method must be called from main thread. Item is marked as <code>done</code> when callback execution finished. Store output of callback of exception information when callback raises one.</p> <details class=quote> <summary>Source code in <code>client/ayon_core/tools/utils/lib.py</code></summary> <div class=highlight><table class=highlighttable><tr><td class=linenos><div class=linenodiv><pre><span></span><span class=normal>382</span>
+<span class=normal>383</span>
+<span class=normal>384</span>
+<span class=normal>385</span>
+<span class=normal>386</span>
+<span class=normal>387</span>
+<span class=normal>388</span>
+<span class=normal>389</span>
+<span class=normal>390</span>
+<span class=normal>391</span>
+<span class=normal>392</span>
+<span class=normal>393</span>
+<span class=normal>394</span>
+<span class=normal>395</span>
+<span class=normal>396</span>
+<span class=normal>397</span>
+<span class=normal>398</span>
+<span class=normal>399</span>
+<span class=normal>400</span>
+<span class=normal>401</span></pre></div></td><td class=code><div><pre><span></span><code><span class=k>def</span><span class=w> </span><span class=nf>execute</span><span class=p>(</span><span class=bp>self</span><span class=p>):</span>
+<span class=w>    </span><span class=sd>&quot;&quot;&quot;Execute callback and store its result.</span>
+
+<span class=sd>    Method must be called from main thread. Item is marked as `done`</span>
+<span class=sd>    when callback execution finished. Store output of callback of exception</span>
+<span class=sd>    information when callback raises one.</span>
+<span class=sd>    &quot;&quot;&quot;</span>
+    <span class=k>if</span> <span class=bp>self</span><span class=o>.</span><span class=n>done</span><span class=p>:</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>log</span><span class=o>.</span><span class=n>warning</span><span class=p>(</span><span class=s2>&quot;- item is already processed&quot;</span><span class=p>)</span>
+        <span class=k>return</span>
+
+    <span class=k>try</span><span class=p>:</span>
+        <span class=n>result</span> <span class=o>=</span> <span class=bp>self</span><span class=o>.</span><span class=n>_callback</span><span class=p>(</span><span class=o>*</span><span class=bp>self</span><span class=o>.</span><span class=n>_args</span><span class=p>,</span> <span class=o>**</span><span class=bp>self</span><span class=o>.</span><span class=n>_kwargs</span><span class=p>)</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>_result</span> <span class=o>=</span> <span class=n>result</span>
+
+    <span class=k>except</span> <span class=ne>Exception</span> <span class=k>as</span> <span class=n>exc</span><span class=p>:</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>_exception</span> <span class=o>=</span> <span class=n>exc</span>
+
+    <span class=k>finally</span><span class=p>:</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>_done</span> <span class=o>=</span> <span class=kc>True</span>
+</code></pre></div></td></tr></table></div> </details> </div> </div> </div> </div> </div> <div class="doc doc-object doc-class"> <h2 id=client.ayon_core.tools.utils.lib._IconsCache class="doc doc-heading"> <code>_IconsCache</code> </h2> <div class="doc doc-contents "> <p>Cache for icons.</p> <details class=quote> <summary>Source code in <code>client/ayon_core/tools/utils/lib.py</code></summary> <div class=highlight><table class=highlighttable><tr><td class=linenos><div class=linenodiv><pre><span></span><span class=normal>469</span>
+<span class=normal>470</span>
+<span class=normal>471</span>
+<span class=normal>472</span>
+<span class=normal>473</span>
+<span class=normal>474</span>
+<span class=normal>475</span>
+<span class=normal>476</span>
+<span class=normal>477</span>
+<span class=normal>478</span>
+<span class=normal>479</span>
+<span class=normal>480</span>
+<span class=normal>481</span>
+<span class=normal>482</span>
+<span class=normal>483</span>
+<span class=normal>484</span>
+<span class=normal>485</span>
+<span class=normal>486</span>
+<span class=normal>487</span>
+<span class=normal>488</span>
+<span class=normal>489</span>
+<span class=normal>490</span>
+<span class=normal>491</span>
+<span class=normal>492</span>
+<span class=normal>493</span>
+<span class=normal>494</span>
+<span class=normal>495</span>
+<span class=normal>496</span>
+<span class=normal>497</span>
+<span class=normal>498</span>
+<span class=normal>499</span>
+<span class=normal>500</span>
+<span class=normal>501</span>
+<span class=normal>502</span>
+<span class=normal>503</span>
+<span class=normal>504</span>
+<span class=normal>505</span>
+<span class=normal>506</span>
+<span class=normal>507</span>
+<span class=normal>508</span>
+<span class=normal>509</span>
+<span class=normal>510</span>
+<span class=normal>511</span>
+<span class=normal>512</span>
+<span class=normal>513</span>
+<span class=normal>514</span>
+<span class=normal>515</span>
+<span class=normal>516</span>
+<span class=normal>517</span>
+<span class=normal>518</span>
+<span class=normal>519</span>
+<span class=normal>520</span>
+<span class=normal>521</span>
+<span class=normal>522</span>
+<span class=normal>523</span>
+<span class=normal>524</span>
+<span class=normal>525</span>
+<span class=normal>526</span>
+<span class=normal>527</span>
+<span class=normal>528</span>
+<span class=normal>529</span>
+<span class=normal>530</span>
+<span class=normal>531</span>
+<span class=normal>532</span>
+<span class=normal>533</span>
+<span class=normal>534</span>
+<span class=normal>535</span>
+<span class=normal>536</span>
+<span class=normal>537</span>
+<span class=normal>538</span>
+<span class=normal>539</span>
+<span class=normal>540</span>
+<span class=normal>541</span>
+<span class=normal>542</span>
+<span class=normal>543</span>
+<span class=normal>544</span>
+<span class=normal>545</span>
+<span class=normal>546</span>
+<span class=normal>547</span>
+<span class=normal>548</span>
+<span class=normal>549</span>
+<span class=normal>550</span>
+<span class=normal>551</span>
+<span class=normal>552</span>
+<span class=normal>553</span>
+<span class=normal>554</span>
+<span class=normal>555</span>
+<span class=normal>556</span>
+<span class=normal>557</span>
+<span class=normal>558</span>
+<span class=normal>559</span>
+<span class=normal>560</span>
+<span class=normal>561</span>
+<span class=normal>562</span>
+<span class=normal>563</span>
+<span class=normal>564</span>
+<span class=normal>565</span></pre></div></td><td class=code><div><pre><span></span><code><span class=k>class</span><span class=w> </span><span class=nc>_IconsCache</span><span class=p>:</span>
+<span class=w>    </span><span class=sd>&quot;&quot;&quot;Cache for icons.&quot;&quot;&quot;</span>
+
+    <span class=n>_cache</span> <span class=o>=</span> <span class=p>{}</span>
+    <span class=n>_default</span> <span class=o>=</span> <span class=kc>None</span>
+    <span class=n>_qtawesome_cache</span> <span class=o>=</span> <span class=p>{}</span>
+
+    <span class=nd>@classmethod</span>
+    <span class=k>def</span><span class=w> </span><span class=nf>_get_cache_key</span><span class=p>(</span><span class=bp>cls</span><span class=p>,</span> <span class=n>icon_def</span><span class=p>):</span>
+        <span class=n>parts</span> <span class=o>=</span> <span class=p>[]</span>
+        <span class=n>icon_type</span> <span class=o>=</span> <span class=n>icon_def</span><span class=p>[</span><span class=s2>&quot;type&quot;</span><span class=p>]</span>
+        <span class=k>if</span> <span class=n>icon_type</span> <span class=o>==</span> <span class=s2>&quot;path&quot;</span><span class=p>:</span>
+            <span class=n>parts</span> <span class=o>=</span> <span class=p>[</span><span class=n>icon_type</span><span class=p>,</span> <span class=n>icon_def</span><span class=p>[</span><span class=s2>&quot;path&quot;</span><span class=p>]]</span>
+
+        <span class=k>elif</span> <span class=n>icon_type</span> <span class=ow>in</span> <span class=p>{</span><span class=s2>&quot;awesome-font&quot;</span><span class=p>,</span> <span class=s2>&quot;material-symbols&quot;</span><span class=p>}:</span>
+            <span class=n>color</span> <span class=o>=</span> <span class=n>icon_def</span><span class=p>[</span><span class=s2>&quot;color&quot;</span><span class=p>]</span> <span class=ow>or</span> <span class=s2>&quot;&quot;</span>
+            <span class=k>if</span> <span class=nb>isinstance</span><span class=p>(</span><span class=n>color</span><span class=p>,</span> <span class=n>QtGui</span><span class=o>.</span><span class=n>QColor</span><span class=p>):</span>
+                <span class=n>color</span> <span class=o>=</span> <span class=n>color</span><span class=o>.</span><span class=n>name</span><span class=p>()</span>
+            <span class=n>parts</span> <span class=o>=</span> <span class=p>[</span><span class=n>icon_type</span><span class=p>,</span> <span class=n>icon_def</span><span class=p>[</span><span class=s2>&quot;name&quot;</span><span class=p>]</span> <span class=ow>or</span> <span class=s2>&quot;&quot;</span><span class=p>,</span> <span class=n>color</span><span class=p>]</span>
+        <span class=k>return</span> <span class=s2>&quot;|&quot;</span><span class=o>.</span><span class=n>join</span><span class=p>(</span><span class=n>parts</span><span class=p>)</span>
+
+    <span class=nd>@classmethod</span>
+    <span class=k>def</span><span class=w> </span><span class=nf>get_icon</span><span class=p>(</span><span class=bp>cls</span><span class=p>,</span> <span class=n>icon_def</span><span class=p>):</span>
+        <span class=k>if</span> <span class=ow>not</span> <span class=n>icon_def</span><span class=p>:</span>
+            <span class=k>return</span> <span class=kc>None</span>
+        <span class=n>icon_type</span> <span class=o>=</span> <span class=n>icon_def</span><span class=p>[</span><span class=s2>&quot;type&quot;</span><span class=p>]</span>
+        <span class=n>cache_key</span> <span class=o>=</span> <span class=bp>cls</span><span class=o>.</span><span class=n>_get_cache_key</span><span class=p>(</span><span class=n>icon_def</span><span class=p>)</span>
+        <span class=n>cache</span> <span class=o>=</span> <span class=bp>cls</span><span class=o>.</span><span class=n>_cache</span><span class=o>.</span><span class=n>get</span><span class=p>(</span><span class=n>cache_key</span><span class=p>)</span>
+        <span class=k>if</span> <span class=n>cache</span> <span class=ow>is</span> <span class=ow>not</span> <span class=kc>None</span><span class=p>:</span>
+            <span class=k>return</span> <span class=n>cache</span>
+
+        <span class=n>icon</span> <span class=o>=</span> <span class=kc>None</span>
+        <span class=k>if</span> <span class=n>icon_type</span> <span class=o>==</span> <span class=s2>&quot;path&quot;</span><span class=p>:</span>
+            <span class=n>path</span> <span class=o>=</span> <span class=n>icon_def</span><span class=p>[</span><span class=s2>&quot;path&quot;</span><span class=p>]</span>
+            <span class=k>if</span> <span class=n>os</span><span class=o>.</span><span class=n>path</span><span class=o>.</span><span class=n>exists</span><span class=p>(</span><span class=n>path</span><span class=p>):</span>
+                <span class=n>icon</span> <span class=o>=</span> <span class=n>QtGui</span><span class=o>.</span><span class=n>QIcon</span><span class=p>(</span><span class=n>path</span><span class=p>)</span>
+
+        <span class=k>elif</span> <span class=n>icon_type</span> <span class=o>==</span> <span class=s2>&quot;awesome-font&quot;</span><span class=p>:</span>
+            <span class=n>icon_name</span> <span class=o>=</span> <span class=n>icon_def</span><span class=p>[</span><span class=s2>&quot;name&quot;</span><span class=p>]</span>
+            <span class=n>icon_color</span> <span class=o>=</span> <span class=n>icon_def</span><span class=p>[</span><span class=s2>&quot;color&quot;</span><span class=p>]</span>
+            <span class=n>icon</span> <span class=o>=</span> <span class=bp>cls</span><span class=o>.</span><span class=n>get_qta_icon_by_name_and_color</span><span class=p>(</span><span class=n>icon_name</span><span class=p>,</span> <span class=n>icon_color</span><span class=p>)</span>
+            <span class=k>if</span> <span class=n>icon</span> <span class=ow>is</span> <span class=kc>None</span><span class=p>:</span>
+                <span class=n>icon</span> <span class=o>=</span> <span class=bp>cls</span><span class=o>.</span><span class=n>get_qta_icon_by_name_and_color</span><span class=p>(</span>
+                    <span class=s2>&quot;fa.</span><span class=si>{}</span><span class=s2>&quot;</span><span class=o>.</span><span class=n>format</span><span class=p>(</span><span class=n>icon_name</span><span class=p>),</span> <span class=n>icon_color</span><span class=p>)</span>
+
+        <span class=k>elif</span> <span class=n>icon_type</span> <span class=o>==</span> <span class=s2>&quot;material-symbols&quot;</span><span class=p>:</span>
+            <span class=n>icon_name</span> <span class=o>=</span> <span class=n>icon_def</span><span class=p>[</span><span class=s2>&quot;name&quot;</span><span class=p>]</span>
+            <span class=n>icon_color</span> <span class=o>=</span> <span class=n>icon_def</span><span class=p>[</span><span class=s2>&quot;color&quot;</span><span class=p>]</span>
+            <span class=k>if</span> <span class=n>qtmaterialsymbols</span><span class=o>.</span><span class=n>get_icon_name_char</span><span class=p>(</span><span class=n>icon_name</span><span class=p>)</span> <span class=ow>is</span> <span class=ow>not</span> <span class=kc>None</span><span class=p>:</span>
+                <span class=n>icon</span> <span class=o>=</span> <span class=n>qtmaterialsymbols</span><span class=o>.</span><span class=n>get_icon</span><span class=p>(</span><span class=n>icon_name</span><span class=p>,</span> <span class=n>icon_color</span><span class=p>)</span>
+
+        <span class=k>if</span> <span class=n>icon</span> <span class=ow>is</span> <span class=kc>None</span><span class=p>:</span>
+            <span class=n>icon</span> <span class=o>=</span> <span class=bp>cls</span><span class=o>.</span><span class=n>get_default</span><span class=p>()</span>
+        <span class=bp>cls</span><span class=o>.</span><span class=n>_cache</span><span class=p>[</span><span class=n>cache_key</span><span class=p>]</span> <span class=o>=</span> <span class=n>icon</span>
+        <span class=k>return</span> <span class=n>icon</span>
+
+    <span class=nd>@classmethod</span>
+    <span class=k>def</span><span class=w> </span><span class=nf>get_default</span><span class=p>(</span><span class=bp>cls</span><span class=p>):</span>
+        <span class=n>pix</span> <span class=o>=</span> <span class=n>QtGui</span><span class=o>.</span><span class=n>QPixmap</span><span class=p>(</span><span class=mi>1</span><span class=p>,</span> <span class=mi>1</span><span class=p>)</span>
+        <span class=n>pix</span><span class=o>.</span><span class=n>fill</span><span class=p>(</span><span class=n>QtCore</span><span class=o>.</span><span class=n>Qt</span><span class=o>.</span><span class=n>transparent</span><span class=p>)</span>
+        <span class=k>return</span> <span class=n>QtGui</span><span class=o>.</span><span class=n>QIcon</span><span class=p>(</span><span class=n>pix</span><span class=p>)</span>
+
+    <span class=nd>@classmethod</span>
+    <span class=k>def</span><span class=w> </span><span class=nf>get_qta_icon_by_name_and_color</span><span class=p>(</span><span class=bp>cls</span><span class=p>,</span> <span class=n>icon_name</span><span class=p>,</span> <span class=n>icon_color</span><span class=p>):</span>
+        <span class=k>if</span> <span class=ow>not</span> <span class=n>icon_name</span> <span class=ow>or</span> <span class=ow>not</span> <span class=n>icon_color</span><span class=p>:</span>
+            <span class=k>return</span> <span class=kc>None</span>
+
+        <span class=n>full_icon_name</span> <span class=o>=</span> <span class=s2>&quot;</span><span class=si>{0}</span><span class=s2>-</span><span class=si>{1}</span><span class=s2>&quot;</span><span class=o>.</span><span class=n>format</span><span class=p>(</span><span class=n>icon_name</span><span class=p>,</span> <span class=n>icon_color</span><span class=p>)</span>
+        <span class=k>if</span> <span class=n>full_icon_name</span> <span class=ow>in</span> <span class=bp>cls</span><span class=o>.</span><span class=n>_qtawesome_cache</span><span class=p>:</span>
+            <span class=k>return</span> <span class=bp>cls</span><span class=o>.</span><span class=n>_qtawesome_cache</span><span class=p>[</span><span class=n>full_icon_name</span><span class=p>]</span>
+
+        <span class=n>variants</span> <span class=o>=</span> <span class=p>[</span><span class=n>icon_name</span><span class=p>]</span>
+        <span class=n>qta_instance</span> <span class=o>=</span> <span class=n>qtawesome</span><span class=o>.</span><span class=n>_instance</span><span class=p>()</span>
+        <span class=k>for</span> <span class=n>key</span> <span class=ow>in</span> <span class=n>qta_instance</span><span class=o>.</span><span class=n>charmap</span><span class=o>.</span><span class=n>keys</span><span class=p>():</span>
+            <span class=n>variants</span><span class=o>.</span><span class=n>append</span><span class=p>(</span><span class=s2>&quot;</span><span class=si>{0}</span><span class=s2>.</span><span class=si>{1}</span><span class=s2>&quot;</span><span class=o>.</span><span class=n>format</span><span class=p>(</span><span class=n>key</span><span class=p>,</span> <span class=n>icon_name</span><span class=p>))</span>
+
+        <span class=n>icon</span> <span class=o>=</span> <span class=kc>None</span>
+        <span class=n>used_variant</span> <span class=o>=</span> <span class=kc>None</span>
+        <span class=k>for</span> <span class=n>variant</span> <span class=ow>in</span> <span class=n>variants</span><span class=p>:</span>
+            <span class=k>try</span><span class=p>:</span>
+                <span class=n>icon</span> <span class=o>=</span> <span class=n>qtawesome</span><span class=o>.</span><span class=n>icon</span><span class=p>(</span><span class=n>variant</span><span class=p>,</span> <span class=n>color</span><span class=o>=</span><span class=n>icon_color</span><span class=p>)</span>
+                <span class=n>used_variant</span> <span class=o>=</span> <span class=n>variant</span>
+                <span class=k>break</span>
+            <span class=k>except</span> <span class=ne>Exception</span><span class=p>:</span>
+                <span class=k>pass</span>
+
+        <span class=k>if</span> <span class=n>used_variant</span> <span class=ow>is</span> <span class=kc>None</span><span class=p>:</span>
+            <span class=n>log</span><span class=o>.</span><span class=n>info</span><span class=p>(</span><span class=s2>&quot;Didn&#39;t find icon </span><span class=se>\&quot;</span><span class=si>{}</span><span class=se>\&quot;</span><span class=s2>&quot;</span><span class=o>.</span><span class=n>format</span><span class=p>(</span><span class=n>icon_name</span><span class=p>))</span>
+
+        <span class=k>elif</span> <span class=n>used_variant</span> <span class=o>!=</span> <span class=n>icon_name</span><span class=p>:</span>
+            <span class=n>log</span><span class=o>.</span><span class=n>debug</span><span class=p>(</span>
+                <span class=sa>f</span><span class=s2>&quot;Icon </span><span class=se>\&quot;</span><span class=si>{</span><span class=n>icon_name</span><span class=si>}</span><span class=se>\&quot;</span><span class=s2> was not found&quot;</span>
+                <span class=sa>f</span><span class=s2>&quot; </span><span class=se>\&quot;</span><span class=si>{</span><span class=n>used_variant</span><span class=si>}</span><span class=se>\&quot;</span><span class=s2> is used instead&quot;</span>
+            <span class=p>)</span>
+
+        <span class=bp>cls</span><span class=o>.</span><span class=n>_qtawesome_cache</span><span class=p>[</span><span class=n>full_icon_name</span><span class=p>]</span> <span class=o>=</span> <span class=n>icon</span>
+        <span class=k>return</span> <span class=n>icon</span>
+</code></pre></div></td></tr></table></div> </details> <div class="doc doc-children"> </div> </div> </div> <div class="doc doc-object doc-function"> <h2 id=client.ayon_core.tools.utils.lib.center_window class="doc doc-heading"> <code class="highlight language-python"><span class=n>center_window</span><span class=p>(</span><span class=n>window</span><span class=p>)</span></code> </h2> <div class="doc doc-contents "> <p>Move window to center of it's screen.</p> <details class=quote> <summary>Source code in <code>client/ayon_core/tools/utils/lib.py</code></summary> <div class=highlight><table class=highlighttable><tr><td class=linenos><div class=linenodiv><pre><span></span><span class=normal>46</span>
+<span class=normal>47</span>
+<span class=normal>48</span>
+<span class=normal>49</span>
+<span class=normal>50</span>
+<span class=normal>51</span>
+<span class=normal>52</span>
+<span class=normal>53</span>
+<span class=normal>54</span>
+<span class=normal>55</span>
+<span class=normal>56</span>
+<span class=normal>57</span>
+<span class=normal>58</span>
+<span class=normal>59</span>
+<span class=normal>60</span>
+<span class=normal>61</span></pre></div></td><td class=code><div><pre><span></span><code><span class=k>def</span><span class=w> </span><span class=nf>center_window</span><span class=p>(</span><span class=n>window</span><span class=p>):</span>
+<span class=w>    </span><span class=sd>&quot;&quot;&quot;Move window to center of it&#39;s screen.&quot;&quot;&quot;</span>
+
+    <span class=k>if</span> <span class=nb>hasattr</span><span class=p>(</span><span class=n>QtWidgets</span><span class=o>.</span><span class=n>QApplication</span><span class=p>,</span> <span class=s2>&quot;desktop&quot;</span><span class=p>):</span>
+        <span class=n>desktop</span> <span class=o>=</span> <span class=n>QtWidgets</span><span class=o>.</span><span class=n>QApplication</span><span class=o>.</span><span class=n>desktop</span><span class=p>()</span>
+        <span class=n>screen_idx</span> <span class=o>=</span> <span class=n>desktop</span><span class=o>.</span><span class=n>screenNumber</span><span class=p>(</span><span class=n>window</span><span class=p>)</span>
+        <span class=n>screen_geo</span> <span class=o>=</span> <span class=n>desktop</span><span class=o>.</span><span class=n>screenGeometry</span><span class=p>(</span><span class=n>screen_idx</span><span class=p>)</span>
+    <span class=k>else</span><span class=p>:</span>
+        <span class=n>screen</span> <span class=o>=</span> <span class=n>window</span><span class=o>.</span><span class=n>screen</span><span class=p>()</span>
+        <span class=n>screen_geo</span> <span class=o>=</span> <span class=n>screen</span><span class=o>.</span><span class=n>geometry</span><span class=p>()</span>
+
+    <span class=n>geo</span> <span class=o>=</span> <span class=n>window</span><span class=o>.</span><span class=n>frameGeometry</span><span class=p>()</span>
+    <span class=n>geo</span><span class=o>.</span><span class=n>moveCenter</span><span class=p>(</span><span class=n>screen_geo</span><span class=o>.</span><span class=n>center</span><span class=p>())</span>
+    <span class=k>if</span> <span class=n>geo</span><span class=o>.</span><span class=n>y</span><span class=p>()</span> <span class=o>&lt;</span> <span class=n>screen_geo</span><span class=o>.</span><span class=n>y</span><span class=p>():</span>
+        <span class=n>geo</span><span class=o>.</span><span class=n>setY</span><span class=p>(</span><span class=n>screen_geo</span><span class=o>.</span><span class=n>y</span><span class=p>())</span>
+    <span class=n>window</span><span class=o>.</span><span class=n>move</span><span class=p>(</span><span class=n>geo</span><span class=o>.</span><span class=n>topLeft</span><span class=p>())</span>
+</code></pre></div></td></tr></table></div> </details> </div> </div> <div class="doc doc-object doc-function"> <h2 id=client.ayon_core.tools.utils.lib.format_version class="doc doc-heading"> <code class="highlight language-python"><span class=n>format_version</span><span class=p>(</span><span class=n>value</span><span class=p>)</span></code> </h2> <div class="doc doc-contents "> <p>Formats integer to displayable version name</p> <details class=quote> <summary>Source code in <code>client/ayon_core/tools/utils/lib.py</code></summary> <div class=highlight><table class=highlighttable><tr><td class=linenos><div class=linenodiv><pre><span></span><span class=normal>127</span>
+<span class=normal>128</span>
+<span class=normal>129</span>
+<span class=normal>130</span>
+<span class=normal>131</span>
+<span class=normal>132</span>
+<span class=normal>133</span></pre></div></td><td class=code><div><pre><span></span><code><span class=k>def</span><span class=w> </span><span class=nf>format_version</span><span class=p>(</span><span class=n>value</span><span class=p>):</span>
+<span class=w>    </span><span class=sd>&quot;&quot;&quot;Formats integer to displayable version name&quot;&quot;&quot;</span>
+    <span class=n>value</span> <span class=o>=</span> <span class=nb>int</span><span class=p>(</span><span class=n>value</span><span class=p>)</span>  <span class=c1># convert e.g. HeroVersionType to its version value</span>
+    <span class=n>label</span> <span class=o>=</span> <span class=s2>&quot;v</span><span class=si>{0:03d}</span><span class=s2>&quot;</span><span class=o>.</span><span class=n>format</span><span class=p>(</span><span class=nb>abs</span><span class=p>(</span><span class=n>value</span><span class=p>))</span>
+    <span class=k>if</span> <span class=n>value</span> <span class=o>&lt;</span> <span class=mi>0</span><span class=p>:</span>
+        <span class=k>return</span> <span class=s2>&quot;[</span><span class=si>{}</span><span class=s2>]&quot;</span><span class=o>.</span><span class=n>format</span><span class=p>(</span><span class=n>label</span><span class=p>)</span>
+    <span class=k>return</span> <span class=n>label</span>
+</code></pre></div></td></tr></table></div> </details> </div> </div> <div class="doc doc-object doc-function"> <h2 id=client.ayon_core.tools.utils.lib.get_ayon_qt_app class="doc doc-heading"> <code class="highlight language-python"><span class=n>get_ayon_qt_app</span><span class=p>()</span></code> </h2> <div class="doc doc-contents "> <p>Main Qt application initialized for AYON processed.</p> <p>This function should be used only inside AYON-launcher process and never inside other processes.</p> <details class=quote> <summary>Source code in <code>client/ayon_core/tools/utils/lib.py</code></summary> <div class=highlight><table class=highlighttable><tr><td class=linenos><div class=linenodiv><pre><span></span><span class=normal>187</span>
+<span class=normal>188</span>
+<span class=normal>189</span>
+<span class=normal>190</span>
+<span class=normal>191</span>
+<span class=normal>192</span>
+<span class=normal>193</span>
+<span class=normal>194</span>
+<span class=normal>195</span>
+<span class=normal>196</span></pre></div></td><td class=code><div><pre><span></span><code><span class=k>def</span><span class=w> </span><span class=nf>get_ayon_qt_app</span><span class=p>():</span>
+<span class=w>    </span><span class=sd>&quot;&quot;&quot;Main Qt application initialized for AYON processed.</span>
+
+<span class=sd>    This function should be used only inside AYON-launcher process</span>
+<span class=sd>        and never inside other processes.</span>
+<span class=sd>    &quot;&quot;&quot;</span>
+
+    <span class=n>app</span> <span class=o>=</span> <span class=n>get_qt_app</span><span class=p>()</span>
+    <span class=n>app</span><span class=o>.</span><span class=n>setWindowIcon</span><span class=p>(</span><span class=n>QtGui</span><span class=o>.</span><span class=n>QIcon</span><span class=p>(</span><span class=n>get_app_icon_path</span><span class=p>()))</span>
+    <span class=k>return</span> <span class=n>app</span>
+</code></pre></div></td></tr></table></div> </details> </div> </div> <div class="doc doc-object doc-function"> <h2 id=client.ayon_core.tools.utils.lib.get_qt_app class="doc doc-heading"> <code class="highlight language-python"><span class=n>get_qt_app</span><span class=p>()</span></code> </h2> <div class="doc doc-contents "> <p>Get Qt application.</p> <p>The function initializes new Qt application if it is not already initialized. It also sets some attributes to the application to ensure that it will work properly on high DPI displays.</p> <p><span class=doc-section-title>Returns:</span></p> <table> <thead> <tr> <th>Type</th> <th>Description</th> </tr> </thead> <tbody> <tr class=doc-section-item> <td> </td> <td> <div class=doc-md-description> <p>QtWidgets.QApplication: Current Qt application.</p> </div> </td> </tr> </tbody> </table> <details class=quote> <summary>Source code in <code>client/ayon_core/tools/utils/lib.py</code></summary> <div class=highlight><table class=highlighttable><tr><td class=linenos><div class=linenodiv><pre><span></span><span class=normal>150</span>
+<span class=normal>151</span>
+<span class=normal>152</span>
+<span class=normal>153</span>
+<span class=normal>154</span>
+<span class=normal>155</span>
+<span class=normal>156</span>
+<span class=normal>157</span>
+<span class=normal>158</span>
+<span class=normal>159</span>
+<span class=normal>160</span>
+<span class=normal>161</span>
+<span class=normal>162</span>
+<span class=normal>163</span>
+<span class=normal>164</span>
+<span class=normal>165</span>
+<span class=normal>166</span>
+<span class=normal>167</span>
+<span class=normal>168</span>
+<span class=normal>169</span>
+<span class=normal>170</span>
+<span class=normal>171</span>
+<span class=normal>172</span>
+<span class=normal>173</span>
+<span class=normal>174</span>
+<span class=normal>175</span>
+<span class=normal>176</span>
+<span class=normal>177</span>
+<span class=normal>178</span>
+<span class=normal>179</span>
+<span class=normal>180</span>
+<span class=normal>181</span>
+<span class=normal>182</span>
+<span class=normal>183</span>
+<span class=normal>184</span></pre></div></td><td class=code><div><pre><span></span><code><span class=k>def</span><span class=w> </span><span class=nf>get_qt_app</span><span class=p>():</span>
+<span class=w>    </span><span class=sd>&quot;&quot;&quot;Get Qt application.</span>
+
+<span class=sd>    The function initializes new Qt application if it is not already</span>
+<span class=sd>    initialized. It also sets some attributes to the application to</span>
+<span class=sd>    ensure that it will work properly on high DPI displays.</span>
+
+<span class=sd>    Returns:</span>
+<span class=sd>        QtWidgets.QApplication: Current Qt application.</span>
+<span class=sd>    &quot;&quot;&quot;</span>
+
+    <span class=n>app</span> <span class=o>=</span> <span class=n>QtWidgets</span><span class=o>.</span><span class=n>QApplication</span><span class=o>.</span><span class=n>instance</span><span class=p>()</span>
+    <span class=k>if</span> <span class=n>app</span> <span class=ow>is</span> <span class=kc>None</span><span class=p>:</span>
+        <span class=k>for</span> <span class=n>attr_name</span> <span class=ow>in</span> <span class=p>(</span>
+            <span class=s2>&quot;AA_EnableHighDpiScaling&quot;</span><span class=p>,</span>
+            <span class=s2>&quot;AA_UseHighDpiPixmaps&quot;</span><span class=p>,</span>
+        <span class=p>):</span>
+            <span class=n>attr</span> <span class=o>=</span> <span class=nb>getattr</span><span class=p>(</span><span class=n>QtCore</span><span class=o>.</span><span class=n>Qt</span><span class=p>,</span> <span class=n>attr_name</span><span class=p>,</span> <span class=kc>None</span><span class=p>)</span>
+            <span class=k>if</span> <span class=n>attr</span> <span class=ow>is</span> <span class=ow>not</span> <span class=kc>None</span><span class=p>:</span>
+                <span class=n>QtWidgets</span><span class=o>.</span><span class=n>QApplication</span><span class=o>.</span><span class=n>setAttribute</span><span class=p>(</span><span class=n>attr</span><span class=p>)</span>
+
+        <span class=n>policy</span> <span class=o>=</span> <span class=n>os</span><span class=o>.</span><span class=n>getenv</span><span class=p>(</span><span class=s2>&quot;QT_SCALE_FACTOR_ROUNDING_POLICY&quot;</span><span class=p>)</span>
+        <span class=k>if</span> <span class=p>(</span>
+            <span class=nb>hasattr</span><span class=p>(</span>
+                <span class=n>QtWidgets</span><span class=o>.</span><span class=n>QApplication</span><span class=p>,</span> <span class=s2>&quot;setHighDpiScaleFactorRoundingPolicy&quot;</span>
+            <span class=p>)</span>
+            <span class=ow>and</span> <span class=ow>not</span> <span class=n>policy</span>
+        <span class=p>):</span>
+            <span class=n>QtWidgets</span><span class=o>.</span><span class=n>QApplication</span><span class=o>.</span><span class=n>setHighDpiScaleFactorRoundingPolicy</span><span class=p>(</span>
+                <span class=n>QtCore</span><span class=o>.</span><span class=n>Qt</span><span class=o>.</span><span class=n>HighDpiScaleFactorRoundingPolicy</span><span class=o>.</span><span class=n>PassThrough</span>
+            <span class=p>)</span>
+
+        <span class=n>app</span> <span class=o>=</span> <span class=n>QtWidgets</span><span class=o>.</span><span class=n>QApplication</span><span class=p>(</span><span class=n>sys</span><span class=o>.</span><span class=n>argv</span><span class=p>)</span>
+
+    <span class=k>return</span> <span class=n>app</span>
+</code></pre></div></td></tr></table></div> </details> </div> </div> <div class="doc doc-object doc-function"> <h2 id=client.ayon_core.tools.utils.lib.get_qt_icon class="doc doc-heading"> <code class="highlight language-python"><span class=n>get_qt_icon</span><span class=p>(</span><span class=n>icon_def</span><span class=p>)</span></code> </h2> <div class="doc doc-contents "> <p>Returns icon from cache or creates new one.</p> <p><span class=doc-section-title>Parameters:</span></p> <table> <thead> <tr> <th>Name</th> <th>Type</th> <th>Description</th> <th>Default</th> </tr> </thead> <tbody> <tr class=doc-section-item> <td> <code>icon_def</code> </td> <td> <code><span title=dict>dict</span>[<span title=str>str</span>, <span title=typing.Any>Any</span>]</code> </td> <td> <div class=doc-md-description> <p>Icon definition.</p> </div> </td> <td> <em>required</em> </td> </tr> </tbody> </table> <p><span class=doc-section-title>Returns:</span></p> <table> <thead> <tr> <th>Type</th> <th>Description</th> </tr> </thead> <tbody> <tr class=doc-section-item> <td> </td> <td> <div class=doc-md-description> <p>QtGui.QIcon: Icon.</p> </div> </td> </tr> </tbody> </table> <details class=quote> <summary>Source code in <code>client/ayon_core/tools/utils/lib.py</code></summary> <div class=highlight><table class=highlighttable><tr><td class=linenos><div class=linenodiv><pre><span></span><span class=normal>568</span>
+<span class=normal>569</span>
+<span class=normal>570</span>
+<span class=normal>571</span>
+<span class=normal>572</span>
+<span class=normal>573</span>
+<span class=normal>574</span>
+<span class=normal>575</span>
+<span class=normal>576</span>
+<span class=normal>577</span>
+<span class=normal>578</span></pre></div></td><td class=code><div><pre><span></span><code><span class=k>def</span><span class=w> </span><span class=nf>get_qt_icon</span><span class=p>(</span><span class=n>icon_def</span><span class=p>):</span>
+<span class=w>    </span><span class=sd>&quot;&quot;&quot;Returns icon from cache or creates new one.</span>
+
+<span class=sd>    Args:</span>
+<span class=sd>        icon_def (dict[str, Any]): Icon definition.</span>
+
+<span class=sd>    Returns:</span>
+<span class=sd>        QtGui.QIcon: Icon.</span>
+
+<span class=sd>    &quot;&quot;&quot;</span>
+    <span class=k>return</span> <span class=n>_IconsCache</span><span class=o>.</span><span class=n>get_icon</span><span class=p>(</span><span class=n>icon_def</span><span class=p>)</span>
+</code></pre></div></td></tr></table></div> </details> </div> </div> <div class="doc doc-object doc-function"> <h2 id=client.ayon_core.tools.utils.lib.get_qta_icon_by_name_and_color class="doc doc-heading"> <code class="highlight language-python"><span class=n>get_qta_icon_by_name_and_color</span><span class=p>(</span><span class=n>icon_name</span><span class=p>,</span> <span class=n>icon_color</span><span class=p>)</span></code> </h2> <div class="doc doc-contents "> <p>Returns icon from cache or creates new one.</p> <p><span class=doc-section-title>Parameters:</span></p> <table> <thead> <tr> <th>Name</th> <th>Type</th> <th>Description</th> <th>Default</th> </tr> </thead> <tbody> <tr class=doc-section-item> <td> <code>icon_name</code> </td> <td> <code><span title=str>str</span></code> </td> <td> <div class=doc-md-description> <p>Icon name.</p> </div> </td> <td> <em>required</em> </td> </tr> <tr class=doc-section-item> <td> <code>icon_color</code> </td> <td> <code><span title=str>str</span></code> </td> <td> <div class=doc-md-description> <p>Icon color.</p> </div> </td> <td> <em>required</em> </td> </tr> </tbody> </table> <p><span class=doc-section-title>Returns:</span></p> <table> <thead> <tr> <th>Type</th> <th>Description</th> </tr> </thead> <tbody> <tr class=doc-section-item> <td> </td> <td> <div class=doc-md-description> <p>QtGui.QIcon: Icon.</p> </div> </td> </tr> </tbody> </table> <details class=quote> <summary>Source code in <code>client/ayon_core/tools/utils/lib.py</code></summary> <div class=highlight><table class=highlighttable><tr><td class=linenos><div class=linenodiv><pre><span></span><span class=normal>581</span>
+<span class=normal>582</span>
+<span class=normal>583</span>
+<span class=normal>584</span>
+<span class=normal>585</span>
+<span class=normal>586</span>
+<span class=normal>587</span>
+<span class=normal>588</span>
+<span class=normal>589</span>
+<span class=normal>590</span>
+<span class=normal>591</span>
+<span class=normal>592</span></pre></div></td><td class=code><div><pre><span></span><code><span class=k>def</span><span class=w> </span><span class=nf>get_qta_icon_by_name_and_color</span><span class=p>(</span><span class=n>icon_name</span><span class=p>,</span> <span class=n>icon_color</span><span class=p>):</span>
+<span class=w>    </span><span class=sd>&quot;&quot;&quot;Returns icon from cache or creates new one.</span>
+
+<span class=sd>    Args:</span>
+<span class=sd>        icon_name (str): Icon name.</span>
+<span class=sd>        icon_color (str): Icon color.</span>
+
+<span class=sd>    Returns:</span>
+<span class=sd>        QtGui.QIcon: Icon.</span>
+
+<span class=sd>    &quot;&quot;&quot;</span>
+    <span class=k>return</span> <span class=n>_IconsCache</span><span class=o>.</span><span class=n>get_qta_icon_by_name_and_color</span><span class=p>(</span><span class=n>icon_name</span><span class=p>,</span> <span class=n>icon_color</span><span class=p>)</span>
+</code></pre></div></td></tr></table></div> </details> </div> </div> <div class="doc doc-object doc-function"> <h2 id=client.ayon_core.tools.utils.lib.get_warning_pixmap class="doc doc-heading"> <code class="highlight language-python"><span class=n>get_warning_pixmap</span><span class=p>(</span><span class=n>color</span><span class=o>=</span><span class=kc>None</span><span class=p>)</span></code> </h2> <div class="doc doc-contents "> <p>Warning icon as QPixmap.</p> <p><span class=doc-section-title>Parameters:</span></p> <table> <thead> <tr> <th>Name</th> <th>Type</th> <th>Description</th> <th>Default</th> </tr> </thead> <tbody> <tr class=doc-section-item> <td> <code>color(QtGui.QColor)</code> </td> <td> </td> <td> <div class=doc-md-description> <p>Color that will be used to paint warning icon.</p> </div> </td> <td> <em>required</em> </td> </tr> </tbody> </table> <details class=quote> <summary>Source code in <code>client/ayon_core/tools/utils/lib.py</code></summary> <div class=highlight><table class=highlighttable><tr><td class=linenos><div class=linenodiv><pre><span></span><span class=normal>404</span>
+<span class=normal>405</span>
+<span class=normal>406</span>
+<span class=normal>407</span>
+<span class=normal>408</span>
+<span class=normal>409</span>
+<span class=normal>410</span>
+<span class=normal>411</span>
+<span class=normal>412</span>
+<span class=normal>413</span>
+<span class=normal>414</span>
+<span class=normal>415</span></pre></div></td><td class=code><div><pre><span></span><code><span class=k>def</span><span class=w> </span><span class=nf>get_warning_pixmap</span><span class=p>(</span><span class=n>color</span><span class=o>=</span><span class=kc>None</span><span class=p>):</span>
+<span class=w>    </span><span class=sd>&quot;&quot;&quot;Warning icon as QPixmap.</span>
+
+<span class=sd>    Args:</span>
+<span class=sd>        color(QtGui.QColor): Color that will be used to paint warning icon.</span>
+<span class=sd>    &quot;&quot;&quot;</span>
+    <span class=n>src_image_path</span> <span class=o>=</span> <span class=n>get_image_path</span><span class=p>(</span><span class=s2>&quot;warning.png&quot;</span><span class=p>)</span>
+    <span class=n>src_image</span> <span class=o>=</span> <span class=n>QtGui</span><span class=o>.</span><span class=n>QImage</span><span class=p>(</span><span class=n>src_image_path</span><span class=p>)</span>
+    <span class=k>if</span> <span class=n>color</span> <span class=ow>is</span> <span class=kc>None</span><span class=p>:</span>
+        <span class=n>color</span> <span class=o>=</span> <span class=n>get_objected_colors</span><span class=p>(</span><span class=s2>&quot;delete-btn-bg&quot;</span><span class=p>)</span><span class=o>.</span><span class=n>get_qcolor</span><span class=p>()</span>
+
+    <span class=k>return</span> <span class=n>paint_image_with_color</span><span class=p>(</span><span class=n>src_image</span><span class=p>,</span> <span class=n>color</span><span class=p>)</span>
+</code></pre></div></td></tr></table></div> </details> </div> </div> <div class="doc doc-object doc-function"> <h2 id=client.ayon_core.tools.utils.lib.html_escape class="doc doc-heading"> <code class="highlight language-python"><span class=n>html_escape</span><span class=p>(</span><span class=n>text</span><span class=p>)</span></code> </h2> <div class="doc doc-contents "> <p>Basic escape of html syntax symbols in text.</p> <details class=quote> <summary>Source code in <code>client/ayon_core/tools/utils/lib.py</code></summary> <div class=highlight><table class=highlighttable><tr><td class=linenos><div class=linenodiv><pre><span></span><span class=normal>64</span>
+<span class=normal>65</span>
+<span class=normal>66</span>
+<span class=normal>67</span>
+<span class=normal>68</span>
+<span class=normal>69</span>
+<span class=normal>70</span>
+<span class=normal>71</span>
+<span class=normal>72</span>
+<span class=normal>73</span>
+<span class=normal>74</span></pre></div></td><td class=code><div><pre><span></span><code><span class=k>def</span><span class=w> </span><span class=nf>html_escape</span><span class=p>(</span><span class=n>text</span><span class=p>):</span>
+<span class=w>    </span><span class=sd>&quot;&quot;&quot;Basic escape of html syntax symbols in text.&quot;&quot;&quot;</span>
+
+    <span class=k>return</span> <span class=p>(</span>
+        <span class=n>text</span>
+        <span class=o>.</span><span class=n>replace</span><span class=p>(</span><span class=s2>&quot;&amp;&quot;</span><span class=p>,</span> <span class=s2>&quot;&amp;amp;&quot;</span><span class=p>)</span>
+        <span class=o>.</span><span class=n>replace</span><span class=p>(</span><span class=s2>&quot;&lt;&quot;</span><span class=p>,</span> <span class=s2>&quot;&amp;lt;&quot;</span><span class=p>)</span>
+        <span class=o>.</span><span class=n>replace</span><span class=p>(</span><span class=s2>&quot;&gt;&quot;</span><span class=p>,</span> <span class=s2>&quot;&amp;gt;&quot;</span><span class=p>)</span>
+        <span class=o>.</span><span class=n>replace</span><span class=p>(</span><span class=s1>&#39;&quot;&#39;</span><span class=p>,</span> <span class=s2>&quot;&amp;quot;&quot;</span><span class=p>)</span>
+        <span class=o>.</span><span class=n>replace</span><span class=p>(</span><span class=s2>&quot;&#39;&quot;</span><span class=p>,</span> <span class=s2>&quot;&amp;#x27;&quot;</span><span class=p>)</span>
+    <span class=p>)</span>
+</code></pre></div></td></tr></table></div> </details> </div> </div> <div class="doc doc-object doc-function"> <h2 id=client.ayon_core.tools.utils.lib.iter_model_rows class="doc doc-heading"> <code class="highlight language-python"><span class=n>iter_model_rows</span><span class=p>(</span><span class=n>model</span><span class=p>,</span> <span class=n>column</span><span class=o>=</span><span class=mi>0</span><span class=p>,</span> <span class=n>include_root</span><span class=o>=</span><span class=kc>False</span><span class=p>)</span></code> </h2> <div class="doc doc-contents "> <p>Iterate over all row indices in a model</p> <details class=quote> <summary>Source code in <code>client/ayon_core/tools/utils/lib.py</code></summary> <div class=highlight><table class=highlighttable><tr><td class=linenos><div class=linenodiv><pre><span></span><span class=normal>199</span>
+<span class=normal>200</span>
+<span class=normal>201</span>
+<span class=normal>202</span>
+<span class=normal>203</span>
+<span class=normal>204</span>
+<span class=normal>205</span>
+<span class=normal>206</span>
+<span class=normal>207</span>
+<span class=normal>208</span>
+<span class=normal>209</span>
+<span class=normal>210</span>
+<span class=normal>211</span>
+<span class=normal>212</span>
+<span class=normal>213</span></pre></div></td><td class=code><div><pre><span></span><code><span class=k>def</span><span class=w> </span><span class=nf>iter_model_rows</span><span class=p>(</span><span class=n>model</span><span class=p>,</span> <span class=n>column</span><span class=o>=</span><span class=mi>0</span><span class=p>,</span> <span class=n>include_root</span><span class=o>=</span><span class=kc>False</span><span class=p>):</span>
+<span class=w>    </span><span class=sd>&quot;&quot;&quot;Iterate over all row indices in a model&quot;&quot;&quot;</span>
+    <span class=n>indexes_queue</span> <span class=o>=</span> <span class=n>collections</span><span class=o>.</span><span class=n>deque</span><span class=p>()</span>
+    <span class=c1># start iteration at root</span>
+    <span class=n>indexes_queue</span><span class=o>.</span><span class=n>append</span><span class=p>(</span><span class=n>QtCore</span><span class=o>.</span><span class=n>QModelIndex</span><span class=p>())</span>
+    <span class=k>while</span> <span class=n>indexes_queue</span><span class=p>:</span>
+        <span class=n>index</span> <span class=o>=</span> <span class=n>indexes_queue</span><span class=o>.</span><span class=n>popleft</span><span class=p>()</span>
+        <span class=c1># Add children to the iterations</span>
+        <span class=k>for</span> <span class=n>child_row</span> <span class=ow>in</span> <span class=nb>range</span><span class=p>(</span><span class=n>model</span><span class=o>.</span><span class=n>rowCount</span><span class=p>(</span><span class=n>index</span><span class=p>)):</span>
+            <span class=n>indexes_queue</span><span class=o>.</span><span class=n>append</span><span class=p>(</span><span class=n>model</span><span class=o>.</span><span class=n>index</span><span class=p>(</span><span class=n>child_row</span><span class=p>,</span> <span class=n>column</span><span class=p>,</span> <span class=n>index</span><span class=p>))</span>
+
+        <span class=k>if</span> <span class=ow>not</span> <span class=n>include_root</span> <span class=ow>and</span> <span class=ow>not</span> <span class=n>index</span><span class=o>.</span><span class=n>isValid</span><span class=p>():</span>
+            <span class=k>continue</span>
+
+        <span class=k>yield</span> <span class=n>index</span>
+</code></pre></div></td></tr></table></div> </details> </div> </div> <div class="doc doc-object doc-function"> <h2 id=client.ayon_core.tools.utils.lib.paint_image_with_color class="doc doc-heading"> <code class="highlight language-python"><span class=n>paint_image_with_color</span><span class=p>(</span><span class=n>image</span><span class=p>,</span> <span class=n>color</span><span class=p>)</span></code> </h2> <div class="doc doc-contents "> <p>Redraw image with single color using it's alpha.</p> <p>It is expected that input image is singlecolor image with alpha.</p> <p><span class=doc-section-title>Parameters:</span></p> <table> <thead> <tr> <th>Name</th> <th>Type</th> <th>Description</th> <th>Default</th> </tr> </thead> <tbody> <tr class=doc-section-item> <td> <code>image</code> </td> <td> <code><span title=QImage>QImage</span></code> </td> <td> <div class=doc-md-description> <p>Loaded image with alpha.</p> </div> </td> <td> <em>required</em> </td> </tr> <tr class=doc-section-item> <td> <code>color</code> </td> <td> <code><span title=QColor>QColor</span></code> </td> <td> <div class=doc-md-description> <p>Color that will be used to paint image.</p> </div> </td> <td> <em>required</em> </td> </tr> </tbody> </table> <details class=quote> <summary>Source code in <code>client/ayon_core/tools/utils/lib.py</code></summary> <div class=highlight><table class=highlighttable><tr><td class=linenos><div class=linenodiv><pre><span></span><span class=normal> 90</span>
+<span class=normal> 91</span>
+<span class=normal> 92</span>
+<span class=normal> 93</span>
+<span class=normal> 94</span>
+<span class=normal> 95</span>
+<span class=normal> 96</span>
+<span class=normal> 97</span>
+<span class=normal> 98</span>
+<span class=normal> 99</span>
+<span class=normal>100</span>
+<span class=normal>101</span>
+<span class=normal>102</span>
+<span class=normal>103</span>
+<span class=normal>104</span>
+<span class=normal>105</span>
+<span class=normal>106</span>
+<span class=normal>107</span>
+<span class=normal>108</span>
+<span class=normal>109</span>
+<span class=normal>110</span>
+<span class=normal>111</span>
+<span class=normal>112</span>
+<span class=normal>113</span>
+<span class=normal>114</span>
+<span class=normal>115</span>
+<span class=normal>116</span>
+<span class=normal>117</span>
+<span class=normal>118</span>
+<span class=normal>119</span>
+<span class=normal>120</span>
+<span class=normal>121</span>
+<span class=normal>122</span>
+<span class=normal>123</span>
+<span class=normal>124</span></pre></div></td><td class=code><div><pre><span></span><code><span class=k>def</span><span class=w> </span><span class=nf>paint_image_with_color</span><span class=p>(</span><span class=n>image</span><span class=p>,</span> <span class=n>color</span><span class=p>):</span>
+<span class=w>    </span><span class=sd>&quot;&quot;&quot;Redraw image with single color using it&#39;s alpha.</span>
+
+<span class=sd>    It is expected that input image is singlecolor image with alpha.</span>
+
+<span class=sd>    Args:</span>
+<span class=sd>        image (QImage): Loaded image with alpha.</span>
+<span class=sd>        color (QColor): Color that will be used to paint image.</span>
+<span class=sd>    &quot;&quot;&quot;</span>
+    <span class=n>width</span> <span class=o>=</span> <span class=n>image</span><span class=o>.</span><span class=n>width</span><span class=p>()</span>
+    <span class=n>height</span> <span class=o>=</span> <span class=n>image</span><span class=o>.</span><span class=n>height</span><span class=p>()</span>
+
+    <span class=n>alpha_mask</span> <span class=o>=</span> <span class=n>image</span><span class=o>.</span><span class=n>createAlphaMask</span><span class=p>()</span>
+    <span class=n>alpha_region</span> <span class=o>=</span> <span class=n>QtGui</span><span class=o>.</span><span class=n>QRegion</span><span class=p>(</span><span class=n>QtGui</span><span class=o>.</span><span class=n>QBitmap</span><span class=o>.</span><span class=n>fromImage</span><span class=p>(</span><span class=n>alpha_mask</span><span class=p>))</span>
+
+    <span class=n>pixmap</span> <span class=o>=</span> <span class=n>QtGui</span><span class=o>.</span><span class=n>QPixmap</span><span class=p>(</span><span class=n>width</span><span class=p>,</span> <span class=n>height</span><span class=p>)</span>
+    <span class=n>pixmap</span><span class=o>.</span><span class=n>fill</span><span class=p>(</span><span class=n>QtCore</span><span class=o>.</span><span class=n>Qt</span><span class=o>.</span><span class=n>transparent</span><span class=p>)</span>
+
+    <span class=n>painter</span> <span class=o>=</span> <span class=n>QtGui</span><span class=o>.</span><span class=n>QPainter</span><span class=p>(</span><span class=n>pixmap</span><span class=p>)</span>
+    <span class=n>render_hints</span> <span class=o>=</span> <span class=p>(</span>
+        <span class=n>QtGui</span><span class=o>.</span><span class=n>QPainter</span><span class=o>.</span><span class=n>Antialiasing</span>
+        <span class=o>|</span> <span class=n>QtGui</span><span class=o>.</span><span class=n>QPainter</span><span class=o>.</span><span class=n>SmoothPixmapTransform</span>
+    <span class=p>)</span>
+    <span class=c1># Deprecated since 5.14</span>
+    <span class=k>if</span> <span class=nb>hasattr</span><span class=p>(</span><span class=n>QtGui</span><span class=o>.</span><span class=n>QPainter</span><span class=p>,</span> <span class=s2>&quot;HighQualityAntialiasing&quot;</span><span class=p>):</span>
+        <span class=n>render_hints</span> <span class=o>|=</span> <span class=n>QtGui</span><span class=o>.</span><span class=n>QPainter</span><span class=o>.</span><span class=n>HighQualityAntialiasing</span>
+    <span class=n>painter</span><span class=o>.</span><span class=n>setRenderHints</span><span class=p>(</span><span class=n>render_hints</span><span class=p>)</span>
+
+    <span class=n>painter</span><span class=o>.</span><span class=n>setClipRegion</span><span class=p>(</span><span class=n>alpha_region</span><span class=p>)</span>
+    <span class=n>painter</span><span class=o>.</span><span class=n>setPen</span><span class=p>(</span><span class=n>QtCore</span><span class=o>.</span><span class=n>Qt</span><span class=o>.</span><span class=n>NoPen</span><span class=p>)</span>
+    <span class=n>painter</span><span class=o>.</span><span class=n>setBrush</span><span class=p>(</span><span class=n>color</span><span class=p>)</span>
+    <span class=n>painter</span><span class=o>.</span><span class=n>drawRect</span><span class=p>(</span><span class=n>QtCore</span><span class=o>.</span><span class=n>QRect</span><span class=p>(</span><span class=mi>0</span><span class=p>,</span> <span class=mi>0</span><span class=p>,</span> <span class=n>width</span><span class=p>,</span> <span class=n>height</span><span class=p>))</span>
+    <span class=n>painter</span><span class=o>.</span><span class=n>end</span><span class=p>()</span>
+
+    <span class=k>return</span> <span class=n>pixmap</span>
+</code></pre></div></td></tr></table></div> </details> </div> </div> <div class="doc doc-object doc-function"> <h2 id=client.ayon_core.tools.utils.lib.preserve_expanded_rows class="doc doc-heading"> <code class="highlight language-python"><span class=n>preserve_expanded_rows</span><span class=p>(</span><span class=n>tree_view</span><span class=p>,</span> <span class=n>column</span><span class=o>=</span><span class=mi>0</span><span class=p>,</span> <span class=n>role</span><span class=o>=</span><span class=kc>None</span><span class=p>)</span></code> </h2> <div class="doc doc-contents "> <p>Preserves expanded row in QTreeView by column's data role.</p> <p>This function is created to maintain the expand vs collapse status of the model items. When refresh is triggered the items which are expanded will stay expanded and vice versa.</p> <p><span class=doc-section-title>Parameters:</span></p> <table> <thead> <tr> <th>Name</th> <th>Type</th> <th>Description</th> <th>Default</th> </tr> </thead> <tbody> <tr class=doc-section-item> <td> <code>tree_view</code> </td> <td> <code><span title=QWidgets.QTreeView>QTreeView</span></code> </td> <td> <div class=doc-md-description> <p>the tree view which is nested in the application</p> </div> </td> <td> <em>required</em> </td> </tr> <tr class=doc-section-item> <td> <code>column</code> </td> <td> <code><span title=int>int</span></code> </td> <td> <div class=doc-md-description> <p>the column to retrieve the data from</p> </div> </td> <td> <code>0</code> </td> </tr> <tr class=doc-section-item> <td> <code>role</code> </td> <td> <code><span title=int>int</span></code> </td> <td> <div class=doc-md-description> <p>the role which dictates what will be returned</p> </div> </td> <td> <code>None</code> </td> </tr> </tbody> </table> <p><span class=doc-section-title>Returns:</span></p> <table> <thead> <tr> <th>Type</th> <th>Description</th> </tr> </thead> <tbody> <tr class=doc-section-item> <td> </td> <td> <div class=doc-md-description> <p>None</p> </div> </td> </tr> </tbody> </table> <details class=quote> <summary>Source code in <code>client/ayon_core/tools/utils/lib.py</code></summary> <div class=highlight><table class=highlighttable><tr><td class=linenos><div class=linenodiv><pre><span></span><span class=normal>216</span>
+<span class=normal>217</span>
+<span class=normal>218</span>
+<span class=normal>219</span>
+<span class=normal>220</span>
+<span class=normal>221</span>
+<span class=normal>222</span>
+<span class=normal>223</span>
+<span class=normal>224</span>
+<span class=normal>225</span>
+<span class=normal>226</span>
+<span class=normal>227</span>
+<span class=normal>228</span>
+<span class=normal>229</span>
+<span class=normal>230</span>
+<span class=normal>231</span>
+<span class=normal>232</span>
+<span class=normal>233</span>
+<span class=normal>234</span>
+<span class=normal>235</span>
+<span class=normal>236</span>
+<span class=normal>237</span>
+<span class=normal>238</span>
+<span class=normal>239</span>
+<span class=normal>240</span>
+<span class=normal>241</span>
+<span class=normal>242</span>
+<span class=normal>243</span>
+<span class=normal>244</span>
+<span class=normal>245</span>
+<span class=normal>246</span>
+<span class=normal>247</span>
+<span class=normal>248</span>
+<span class=normal>249</span>
+<span class=normal>250</span>
+<span class=normal>251</span>
+<span class=normal>252</span>
+<span class=normal>253</span>
+<span class=normal>254</span>
+<span class=normal>255</span>
+<span class=normal>256</span>
+<span class=normal>257</span></pre></div></td><td class=code><div><pre><span></span><code><span class=nd>@contextlib</span><span class=o>.</span><span class=n>contextmanager</span>
+<span class=k>def</span><span class=w> </span><span class=nf>preserve_expanded_rows</span><span class=p>(</span><span class=n>tree_view</span><span class=p>,</span> <span class=n>column</span><span class=o>=</span><span class=mi>0</span><span class=p>,</span> <span class=n>role</span><span class=o>=</span><span class=kc>None</span><span class=p>):</span>
+<span class=w>    </span><span class=sd>&quot;&quot;&quot;Preserves expanded row in QTreeView by column&#39;s data role.</span>
+
+<span class=sd>    This function is created to maintain the expand vs collapse status of</span>
+<span class=sd>    the model items. When refresh is triggered the items which are expanded</span>
+<span class=sd>    will stay expanded and vice versa.</span>
+
+<span class=sd>    Arguments:</span>
+<span class=sd>        tree_view (QWidgets.QTreeView): the tree view which is</span>
+<span class=sd>            nested in the application</span>
+<span class=sd>        column (int): the column to retrieve the data from</span>
+<span class=sd>        role (int): the role which dictates what will be returned</span>
+
+<span class=sd>    Returns:</span>
+<span class=sd>        None</span>
+
+<span class=sd>    &quot;&quot;&quot;</span>
+    <span class=k>if</span> <span class=n>role</span> <span class=ow>is</span> <span class=kc>None</span><span class=p>:</span>
+        <span class=n>role</span> <span class=o>=</span> <span class=n>QtCore</span><span class=o>.</span><span class=n>Qt</span><span class=o>.</span><span class=n>DisplayRole</span>
+    <span class=n>model</span> <span class=o>=</span> <span class=n>tree_view</span><span class=o>.</span><span class=n>model</span><span class=p>()</span>
+
+    <span class=n>expanded</span> <span class=o>=</span> <span class=nb>set</span><span class=p>()</span>
+
+    <span class=k>for</span> <span class=n>index</span> <span class=ow>in</span> <span class=n>iter_model_rows</span><span class=p>(</span><span class=n>model</span><span class=p>,</span> <span class=n>column</span><span class=o>=</span><span class=n>column</span><span class=p>,</span> <span class=n>include_root</span><span class=o>=</span><span class=kc>False</span><span class=p>):</span>
+        <span class=k>if</span> <span class=n>tree_view</span><span class=o>.</span><span class=n>isExpanded</span><span class=p>(</span><span class=n>index</span><span class=p>):</span>
+            <span class=n>value</span> <span class=o>=</span> <span class=n>index</span><span class=o>.</span><span class=n>data</span><span class=p>(</span><span class=n>role</span><span class=p>)</span>
+            <span class=n>expanded</span><span class=o>.</span><span class=n>add</span><span class=p>(</span><span class=n>value</span><span class=p>)</span>
+
+    <span class=k>try</span><span class=p>:</span>
+        <span class=k>yield</span>
+    <span class=k>finally</span><span class=p>:</span>
+        <span class=k>if</span> <span class=ow>not</span> <span class=n>expanded</span><span class=p>:</span>
+            <span class=k>return</span>
+
+        <span class=k>for</span> <span class=n>index</span> <span class=ow>in</span> <span class=n>iter_model_rows</span><span class=p>(</span><span class=n>model</span><span class=p>,</span> <span class=n>column</span><span class=o>=</span><span class=n>column</span><span class=p>,</span> <span class=n>include_root</span><span class=o>=</span><span class=kc>False</span><span class=p>):</span>
+            <span class=n>value</span> <span class=o>=</span> <span class=n>index</span><span class=o>.</span><span class=n>data</span><span class=p>(</span><span class=n>role</span><span class=p>)</span>
+            <span class=n>state</span> <span class=o>=</span> <span class=n>value</span> <span class=ow>in</span> <span class=n>expanded</span>
+            <span class=k>if</span> <span class=n>state</span><span class=p>:</span>
+                <span class=n>tree_view</span><span class=o>.</span><span class=n>expand</span><span class=p>(</span><span class=n>index</span><span class=p>)</span>
+            <span class=k>else</span><span class=p>:</span>
+                <span class=n>tree_view</span><span class=o>.</span><span class=n>collapse</span><span class=p>(</span><span class=n>index</span><span class=p>)</span>
+</code></pre></div></td></tr></table></div> </details> </div> </div> <div class="doc doc-object doc-function"> <h2 id=client.ayon_core.tools.utils.lib.preserve_selection class="doc doc-heading"> <code class="highlight language-python"><span class=n>preserve_selection</span><span class=p>(</span><span class=n>tree_view</span><span class=p>,</span> <span class=n>column</span><span class=o>=</span><span class=mi>0</span><span class=p>,</span> <span class=n>role</span><span class=o>=</span><span class=kc>None</span><span class=p>,</span> <span class=n>current_index</span><span class=o>=</span><span class=kc>True</span><span class=p>)</span></code> </h2> <div class="doc doc-contents "> <p>Preserves row selection in QTreeView by column's data role.</p> <p>This function is created to maintain the selection status of the model items. When refresh is triggered the items which are expanded will stay expanded and vice versa.</p> <pre><code>tree_view (QWidgets.QTreeView): the tree view nested in the application
+column (int): the column to retrieve the data from
+role (int): the role which dictates what will be returned
+</code></pre> <p><span class=doc-section-title>Returns:</span></p> <table> <thead> <tr> <th>Type</th> <th>Description</th> </tr> </thead> <tbody> <tr class=doc-section-item> <td> </td> <td> <div class=doc-md-description> <p>None</p> </div> </td> </tr> </tbody> </table> <details class=quote> <summary>Source code in <code>client/ayon_core/tools/utils/lib.py</code></summary> <div class=highlight><table class=highlighttable><tr><td class=linenos><div class=linenodiv><pre><span></span><span class=normal>260</span>
+<span class=normal>261</span>
+<span class=normal>262</span>
+<span class=normal>263</span>
+<span class=normal>264</span>
+<span class=normal>265</span>
+<span class=normal>266</span>
+<span class=normal>267</span>
+<span class=normal>268</span>
+<span class=normal>269</span>
+<span class=normal>270</span>
+<span class=normal>271</span>
+<span class=normal>272</span>
+<span class=normal>273</span>
+<span class=normal>274</span>
+<span class=normal>275</span>
+<span class=normal>276</span>
+<span class=normal>277</span>
+<span class=normal>278</span>
+<span class=normal>279</span>
+<span class=normal>280</span>
+<span class=normal>281</span>
+<span class=normal>282</span>
+<span class=normal>283</span>
+<span class=normal>284</span>
+<span class=normal>285</span>
+<span class=normal>286</span>
+<span class=normal>287</span>
+<span class=normal>288</span>
+<span class=normal>289</span>
+<span class=normal>290</span>
+<span class=normal>291</span>
+<span class=normal>292</span>
+<span class=normal>293</span>
+<span class=normal>294</span>
+<span class=normal>295</span>
+<span class=normal>296</span>
+<span class=normal>297</span>
+<span class=normal>298</span>
+<span class=normal>299</span>
+<span class=normal>300</span>
+<span class=normal>301</span>
+<span class=normal>302</span>
+<span class=normal>303</span>
+<span class=normal>304</span>
+<span class=normal>305</span>
+<span class=normal>306</span>
+<span class=normal>307</span>
+<span class=normal>308</span>
+<span class=normal>309</span>
+<span class=normal>310</span>
+<span class=normal>311</span>
+<span class=normal>312</span>
+<span class=normal>313</span></pre></div></td><td class=code><div><pre><span></span><code><span class=nd>@contextlib</span><span class=o>.</span><span class=n>contextmanager</span>
+<span class=k>def</span><span class=w> </span><span class=nf>preserve_selection</span><span class=p>(</span><span class=n>tree_view</span><span class=p>,</span> <span class=n>column</span><span class=o>=</span><span class=mi>0</span><span class=p>,</span> <span class=n>role</span><span class=o>=</span><span class=kc>None</span><span class=p>,</span> <span class=n>current_index</span><span class=o>=</span><span class=kc>True</span><span class=p>):</span>
+<span class=w>    </span><span class=sd>&quot;&quot;&quot;Preserves row selection in QTreeView by column&#39;s data role.</span>
+
+<span class=sd>    This function is created to maintain the selection status of</span>
+<span class=sd>    the model items. When refresh is triggered the items which are expanded</span>
+<span class=sd>    will stay expanded and vice versa.</span>
+
+<span class=sd>        tree_view (QWidgets.QTreeView): the tree view nested in the application</span>
+<span class=sd>        column (int): the column to retrieve the data from</span>
+<span class=sd>        role (int): the role which dictates what will be returned</span>
+
+<span class=sd>    Returns:</span>
+<span class=sd>        None</span>
+
+<span class=sd>    &quot;&quot;&quot;</span>
+    <span class=k>if</span> <span class=n>role</span> <span class=ow>is</span> <span class=kc>None</span><span class=p>:</span>
+        <span class=n>role</span> <span class=o>=</span> <span class=n>QtCore</span><span class=o>.</span><span class=n>Qt</span><span class=o>.</span><span class=n>DisplayRole</span>
+    <span class=n>model</span> <span class=o>=</span> <span class=n>tree_view</span><span class=o>.</span><span class=n>model</span><span class=p>()</span>
+    <span class=n>selection_model</span> <span class=o>=</span> <span class=n>tree_view</span><span class=o>.</span><span class=n>selectionModel</span><span class=p>()</span>
+    <span class=n>flags</span> <span class=o>=</span> <span class=p>(</span>
+        <span class=n>QtCore</span><span class=o>.</span><span class=n>QItemSelectionModel</span><span class=o>.</span><span class=n>Select</span>
+        <span class=o>|</span> <span class=n>QtCore</span><span class=o>.</span><span class=n>QItemSelectionModel</span><span class=o>.</span><span class=n>Rows</span>
+    <span class=p>)</span>
+
+    <span class=k>if</span> <span class=n>current_index</span><span class=p>:</span>
+        <span class=n>current_index_value</span> <span class=o>=</span> <span class=n>tree_view</span><span class=o>.</span><span class=n>currentIndex</span><span class=p>()</span><span class=o>.</span><span class=n>data</span><span class=p>(</span><span class=n>role</span><span class=p>)</span>
+    <span class=k>else</span><span class=p>:</span>
+        <span class=n>current_index_value</span> <span class=o>=</span> <span class=kc>None</span>
+
+    <span class=n>selected_rows</span> <span class=o>=</span> <span class=n>selection_model</span><span class=o>.</span><span class=n>selectedRows</span><span class=p>()</span>
+    <span class=k>if</span> <span class=ow>not</span> <span class=n>selected_rows</span><span class=p>:</span>
+        <span class=k>yield</span>
+        <span class=k>return</span>
+
+    <span class=n>selected</span> <span class=o>=</span> <span class=nb>set</span><span class=p>(</span><span class=n>row</span><span class=o>.</span><span class=n>data</span><span class=p>(</span><span class=n>role</span><span class=p>)</span> <span class=k>for</span> <span class=n>row</span> <span class=ow>in</span> <span class=n>selected_rows</span><span class=p>)</span>
+    <span class=k>try</span><span class=p>:</span>
+        <span class=k>yield</span>
+    <span class=k>finally</span><span class=p>:</span>
+        <span class=k>if</span> <span class=ow>not</span> <span class=n>selected</span><span class=p>:</span>
+            <span class=k>return</span>
+
+        <span class=c1># Go through all indices, select the ones with similar data</span>
+        <span class=k>for</span> <span class=n>index</span> <span class=ow>in</span> <span class=n>iter_model_rows</span><span class=p>(</span><span class=n>model</span><span class=p>,</span> <span class=n>column</span><span class=o>=</span><span class=n>column</span><span class=p>,</span> <span class=n>include_root</span><span class=o>=</span><span class=kc>False</span><span class=p>):</span>
+            <span class=n>value</span> <span class=o>=</span> <span class=n>index</span><span class=o>.</span><span class=n>data</span><span class=p>(</span><span class=n>role</span><span class=p>)</span>
+            <span class=n>state</span> <span class=o>=</span> <span class=n>value</span> <span class=ow>in</span> <span class=n>selected</span>
+            <span class=k>if</span> <span class=n>state</span><span class=p>:</span>
+                <span class=n>tree_view</span><span class=o>.</span><span class=n>scrollTo</span><span class=p>(</span><span class=n>index</span><span class=p>)</span>  <span class=c1># Ensure item is visible</span>
+                <span class=n>selection_model</span><span class=o>.</span><span class=n>select</span><span class=p>(</span><span class=n>index</span><span class=p>,</span> <span class=n>flags</span><span class=p>)</span>
+
+            <span class=k>if</span> <span class=n>current_index_value</span> <span class=ow>and</span> <span class=n>value</span> <span class=o>==</span> <span class=n>current_index_value</span><span class=p>:</span>
+                <span class=n>selection_model</span><span class=o>.</span><span class=n>setCurrentIndex</span><span class=p>(</span>
+                    <span class=n>index</span><span class=p>,</span> <span class=n>selection_model</span><span class=o>.</span><span class=n>NoUpdate</span>
+                <span class=p>)</span>
+</code></pre></div></td></tr></table></div> </details> </div> </div> <div class="doc doc-object doc-function"> <h2 id=client.ayon_core.tools.utils.lib.set_style_property class="doc doc-heading"> <code class="highlight language-python"><span class=n>set_style_property</span><span class=p>(</span><span class=n>widget</span><span class=p>,</span> <span class=n>property_name</span><span class=p>,</span> <span class=n>property_value</span><span class=p>)</span></code> </h2> <div class="doc doc-contents "> <p>Set widget's property that may affect style.</p> <p>If current property value is different then style of widget is polished.</p> <details class=quote> <summary>Source code in <code>client/ayon_core/tools/utils/lib.py</code></summary> <div class=highlight><table class=highlighttable><tr><td class=linenos><div class=linenodiv><pre><span></span><span class=normal>77</span>
+<span class=normal>78</span>
+<span class=normal>79</span>
+<span class=normal>80</span>
+<span class=normal>81</span>
+<span class=normal>82</span>
+<span class=normal>83</span>
+<span class=normal>84</span>
+<span class=normal>85</span>
+<span class=normal>86</span>
+<span class=normal>87</span></pre></div></td><td class=code><div><pre><span></span><code><span class=k>def</span><span class=w> </span><span class=nf>set_style_property</span><span class=p>(</span><span class=n>widget</span><span class=p>,</span> <span class=n>property_name</span><span class=p>,</span> <span class=n>property_value</span><span class=p>):</span>
+<span class=w>    </span><span class=sd>&quot;&quot;&quot;Set widget&#39;s property that may affect style.</span>
+
+<span class=sd>    If current property value is different then style of widget is polished.</span>
+<span class=sd>    &quot;&quot;&quot;</span>
+    <span class=n>cur_value</span> <span class=o>=</span> <span class=n>widget</span><span class=o>.</span><span class=n>property</span><span class=p>(</span><span class=n>property_name</span><span class=p>)</span>
+    <span class=k>if</span> <span class=n>cur_value</span> <span class=o>==</span> <span class=n>property_value</span><span class=p>:</span>
+        <span class=k>return</span>
+    <span class=n>widget</span><span class=o>.</span><span class=n>setProperty</span><span class=p>(</span><span class=n>property_name</span><span class=p>,</span> <span class=n>property_value</span><span class=p>)</span>
+    <span class=n>style</span> <span class=o>=</span> <span class=n>widget</span><span class=o>.</span><span class=n>style</span><span class=p>()</span>
+    <span class=n>style</span><span class=o>.</span><span class=n>polish</span><span class=p>(</span><span class=n>widget</span><span class=p>)</span>
+</code></pre></div></td></tr></table></div> </details> </div> </div> </div> </div> </div> </article> </div> <script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script> </div> </main> <footer class=md-footer> <div class="md-footer-meta md-typeset"> <div class="md-footer-meta__inner md-grid"> <div class=md-copyright> Made with <a href=https://squidfunk.github.io/mkdocs-material/ target=_blank rel=noopener> Material for MkDocs </a> </div> </div> </div> </footer> </div> <div class=md-dialog data-md-component=dialog> <div class="md-dialog__inner md-typeset"></div> </div> <script id=__config type=application/json>{"base": "../../../../..", "features": ["navigation.sections", "navigation.path", "navigation.prune"], "search": "../../../../../assets/javascripts/workers/search.f8cc74c7.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script> <script src=../../../../../assets/javascripts/bundle.c8b220af.min.js></script> </body> </html>

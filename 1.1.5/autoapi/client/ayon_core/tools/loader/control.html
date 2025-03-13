@@ -1,0 +1,861 @@
+<!doctype html><html lang=en class=no-js> <head><meta charset=utf-8><meta name=viewport content="width=device-width,initial-scale=1"><link rel=prev href=abstract.html><link rel=next href=models/index.html><link rel=icon href=../../../../../img/favicon.ico><meta name=generator content="mkdocs-1.6.1, mkdocs-material-9.6.8"><title>control - ayon-core</title><link rel=stylesheet href=../../../../../assets/stylesheets/main.8608ea7d.min.css><link rel=stylesheet href=../../../../../assets/stylesheets/palette.06af60db.min.css><script src=https://unpkg.com/iframe-worker/shim></script><link rel=preconnect href=https://fonts.gstatic.com crossorigin><link rel=stylesheet href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback"><style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style><link rel=stylesheet href=../../../../../assets/_mkdocstrings.css><link rel=stylesheet href=../../../../../css/custom.css><script>__md_scope=new URL("../../../../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script></head> <body dir=ltr data-md-color-scheme=slate data-md-color-primary=indigo data-md-color-accent=indigo> <input class=md-toggle data-md-toggle=drawer type=checkbox id=__drawer autocomplete=off> <input class=md-toggle data-md-toggle=search type=checkbox id=__search autocomplete=off> <label class=md-overlay for=__drawer></label> <div data-md-component=skip> <a href=#client.ayon_core.tools.loader.control class=md-skip> Skip to content </a> </div> <div data-md-component=announce> </div> <div data-md-color-scheme=default data-md-component=outdated hidden> </div> <header class="md-header md-header--shadow" data-md-component=header> <nav class="md-header__inner md-grid" aria-label=Header> <a href=../../../../../index.html title=ayon-core class="md-header__button md-logo" aria-label=ayon-core data-md-component=logo> <img src=../../../../../img/ay-symbol-blackw-full.png alt=logo> </a> <label class="md-header__button md-icon" for=__drawer> <svg xmlns=http://www.w3.org/2000/svg viewbox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg> </label> <div class=md-header__title data-md-component=header-title> <div class=md-header__ellipsis> <div class=md-header__topic> <span class=md-ellipsis> ayon-core </span> </div> <div class=md-header__topic data-md-component=header-topic> <span class=md-ellipsis> control </span> </div> </div> </div> <form class=md-header__option data-md-component=palette> <input class=md-option data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme=slate data-md-color-primary=indigo data-md-color-accent=indigo aria-label="Switch to light mode" type=radio name=__palette id=__palette_0> <label class="md-header__button md-icon" title="Switch to light mode" for=__palette_1 hidden> <svg xmlns=http://www.w3.org/2000/svg viewbox="0 0 24 24"><path d="M17 6H7c-3.31 0-6 2.69-6 6s2.69 6 6 6h10c3.31 0 6-2.69 6-6s-2.69-6-6-6m0 10H7c-2.21 0-4-1.79-4-4s1.79-4 4-4h10c2.21 0 4 1.79 4 4s-1.79 4-4 4M7 9c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3"/></svg> </label> <input class=md-option data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme=default data-md-color-primary=indigo data-md-color-accent=indigo aria-label="Switch to dark mode" type=radio name=__palette id=__palette_1> <label class="md-header__button md-icon" title="Switch to dark mode" for=__palette_0 hidden> <svg xmlns=http://www.w3.org/2000/svg viewbox="0 0 24 24"><path d="M17 7H7a5 5 0 0 0-5 5 5 5 0 0 0 5 5h10a5 5 0 0 0 5-5 5 5 0 0 0-5-5m0 8a3 3 0 0 1-3-3 3 3 0 0 1 3-3 3 3 0 0 1 3 3 3 3 0 0 1-3 3"/></svg> </label> </form> <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script> <label class="md-header__button md-icon" for=__search> <svg xmlns=http://www.w3.org/2000/svg viewbox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg> </label> <div class=md-search data-md-component=search role=dialog> <label class=md-search__overlay for=__search></label> <div class=md-search__inner role=search> <form class=md-search__form name=search> <input type=text class=md-search__input name=query aria-label=Search placeholder=Search autocapitalize=off autocorrect=off autocomplete=off spellcheck=false data-md-component=search-query required> <label class="md-search__icon md-icon" for=__search> <svg xmlns=http://www.w3.org/2000/svg viewbox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg> <svg xmlns=http://www.w3.org/2000/svg viewbox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg> </label> <nav class=md-search__options aria-label=Search> <button type=reset class="md-search__icon md-icon" title=Clear aria-label=Clear tabindex=-1> <svg xmlns=http://www.w3.org/2000/svg viewbox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg> </button> </nav> </form> <div class=md-search__output> <div class=md-search__scrollwrap tabindex=0 data-md-scrollfix> <div class=md-search-result data-md-component=search-result> <div class=md-search-result__meta> Initializing search </div> <ol class=md-search-result__list role=presentation></ol> </div> </div> </div> </div> </div> </nav> </header> <div class=md-container data-md-component=container> <main class=md-main data-md-component=main> <div class="md-main__inner md-grid"> <div class="md-sidebar md-sidebar--primary" data-md-component=sidebar data-md-type=navigation> <div class=md-sidebar__scrollwrap> <div class=md-sidebar__inner> <nav class="md-nav md-nav--primary" aria-label=Navigation data-md-level=0> <label class=md-nav__title for=__drawer> <a href=../../../../../index.html title=ayon-core class="md-nav__button md-logo" aria-label=ayon-core data-md-component=logo> <img src=../../../../../img/ay-symbol-blackw-full.png alt=logo> </a> ayon-core </label> <ul class=md-nav__list data-md-scrollfix> <li class=md-nav__item> <a href=../../../../../index.html class=md-nav__link> <span class=md-ellipsis> Home </span> </a> </li> <li class=md-nav__item> <a href=../../../../../license.html class=md-nav__link> <span class=md-ellipsis> License </span> </a> </li> <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested"> <input class="md-nav__toggle md-toggle " type=checkbox id=__nav_3 checked> <label class=md-nav__link for=__nav_3 id=__nav_3_label tabindex> <span class=md-ellipsis> Reference </span> <span class="md-nav__icon md-icon"></span> </label> <nav class=md-nav data-md-level=1 aria-labelledby=__nav_3_label aria-expanded=true> <label class=md-nav__title for=__nav_3> <span class="md-nav__icon md-icon"></span> Reference </label> <ul class=md-nav__list data-md-scrollfix> <li class="md-nav__item md-nav__item--active md-nav__item--nested"> <input class="md-nav__toggle md-toggle " type=checkbox id=__nav_3_1 checked> <div class="md-nav__link md-nav__container"> <a href=../../../index.html class="md-nav__link "> <span class=md-ellipsis> client </span> </a> <label class="md-nav__link " for=__nav_3_1 id=__nav_3_1_label tabindex=0> <span class="md-nav__icon md-icon"></span> </label> </div> <nav class=md-nav data-md-level=2 aria-labelledby=__nav_3_1_label aria-expanded=true> <label class=md-nav__title for=__nav_3_1> <span class="md-nav__icon md-icon"></span> client </label> <ul class=md-nav__list data-md-scrollfix> <li class="md-nav__item md-nav__item--active md-nav__item--nested"> <input class="md-nav__toggle md-toggle " type=checkbox id=__nav_3_1_1 checked> <div class="md-nav__link md-nav__container"> <a href=../../index.html class="md-nav__link "> <span class=md-ellipsis> ayon_core </span> </a> <label class="md-nav__link " for=__nav_3_1_1 id=__nav_3_1_1_label tabindex=0> <span class="md-nav__icon md-icon"></span> </label> </div> <nav class=md-nav data-md-level=3 aria-labelledby=__nav_3_1_1_label aria-expanded=true> <label class=md-nav__title for=__nav_3_1_1> <span class="md-nav__icon md-icon"></span> ayon_core </label> <ul class=md-nav__list data-md-scrollfix> <li class=md-nav__item> <a href=../../__main__.html class=md-nav__link> <span class=md-ellipsis> __main__ </span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../../addon/base.html class=md-nav__link> <span class=md-ellipsis> addon </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class=md-nav__item> <a href=../../cli.html class=md-nav__link> <span class=md-ellipsis> cli </span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../../hooks/pre_add_last_workfile_arg.html class=md-nav__link> <span class=md-ellipsis> hooks </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../../host/dirmap.html class=md-nav__link> <span class=md-ellipsis> host </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../../lib/attribute_definitions.html class=md-nav__link> <span class=md-ellipsis> lib </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../../pipeline/actions.html class=md-nav__link> <span class=md-ellipsis> pipeline </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../../plugins/actions/open_file_explorer.html class=md-nav__link> <span class=md-ellipsis> plugins </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../../resources/app_icons/index.html class=md-nav__link> <span class=md-ellipsis> resources </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../../scripts/ocio_wrapper.html class=md-nav__link> <span class=md-ellipsis> scripts </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../../settings/lib.html class=md-nav__link> <span class=md-ellipsis> settings </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../../style/color_defs.html class=md-nav__link> <span class=md-ellipsis> style </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../../tests/conftest.html class=md-nav__link> <span class=md-ellipsis> tests </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class="md-nav__item md-nav__item--active md-nav__item--nested"> <input class="md-nav__toggle md-toggle " type=checkbox id=__nav_3_1_1_14 checked> <div class="md-nav__link md-nav__container"> <a href=../index.html class="md-nav__link "> <span class=md-ellipsis> tools </span> </a> <label class="md-nav__link " for=__nav_3_1_1_14 id=__nav_3_1_1_14_label tabindex=0> <span class="md-nav__icon md-icon"></span> </label> </div> <nav class=md-nav data-md-level=4 aria-labelledby=__nav_3_1_1_14_label aria-expanded=true> <label class=md-nav__title for=__nav_3_1_1_14> <span class="md-nav__icon md-icon"></span> tools </label> <ul class=md-nav__list data-md-scrollfix> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../attribute_defs/_constants.html class=md-nav__link> <span class=md-ellipsis> attribute_defs </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../common_models/cache.html class=md-nav__link> <span class=md-ellipsis> common_models </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../console_interpreter/abstract.html class=md-nav__link> <span class=md-ellipsis> console_interpreter </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../context_dialog/window.html class=md-nav__link> <span class=md-ellipsis> context_dialog </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../creator/constants.html class=md-nav__link> <span class=md-ellipsis> creator </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../experimental_tools/dialog.html class=md-nav__link> <span class=md-ellipsis> experimental_tools </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class=md-nav__item> <a href=../flickcharm.html class=md-nav__link> <span class=md-ellipsis> flickcharm </span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../launcher/abstract.html class=md-nav__link> <span class=md-ellipsis> launcher </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class="md-nav__item md-nav__item--active md-nav__item--nested"> <input class="md-nav__toggle md-toggle " type=checkbox id=__nav_3_1_1_14_9 checked> <div class="md-nav__link md-nav__container"> <a href=index.html class="md-nav__link "> <span class=md-ellipsis> loader </span> </a> <label class="md-nav__link " for=__nav_3_1_1_14_9 id=__nav_3_1_1_14_9_label tabindex=0> <span class="md-nav__icon md-icon"></span> </label> </div> <nav class=md-nav data-md-level=5 aria-labelledby=__nav_3_1_1_14_9_label aria-expanded=true> <label class=md-nav__title for=__nav_3_1_1_14_9> <span class="md-nav__icon md-icon"></span> loader </label> <ul class=md-nav__list data-md-scrollfix> <li class=md-nav__item> <a href=abstract.html class=md-nav__link> <span class=md-ellipsis> abstract </span> </a> </li> <li class="md-nav__item md-nav__item--active"> <input class="md-nav__toggle md-toggle" type=checkbox id=__toc> <label class="md-nav__link md-nav__link--active" for=__toc> <span class=md-ellipsis> control </span> <span class="md-nav__icon md-icon"></span> </label> <a href=control.html class="md-nav__link md-nav__link--active"> <span class=md-ellipsis> control </span> </a> <nav class="md-nav md-nav--secondary" aria-label="Table of contents"> <label class=md-nav__title for=__toc> <span class="md-nav__icon md-icon"></span> Table of contents </label> <ul class=md-nav__list data-md-component=toc data-md-scrollfix> <li class=md-nav__item> <a href=#client.ayon_core.tools.loader.control class=md-nav__link> <span class=md-ellipsis> control </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.tools.loader.control.LoaderController class=md-nav__link> <span class=md-ellipsis> LoaderController </span> </a> <nav class=md-nav aria-label=LoaderController> <ul class=md-nav__list> <li class=md-nav__item> <a href=#client.ayon_core.tools.loader.control.LoaderController.emit_event class=md-nav__link> <span class=md-ellipsis> emit_event </span> </a> </li> </ul> </nav> </li> </ul> </nav> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=models/actions.html class=md-nav__link> <span class=md-ellipsis> models </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=ui/_multicombobox.html class=md-nav__link> <span class=md-ellipsis> ui </span> <span class="md-nav__icon md-icon"></span> </a> </li> </ul> </nav> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../publisher/abstract.html class=md-nav__link> <span class=md-ellipsis> publisher </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../push_to_project/control.html class=md-nav__link> <span class=md-ellipsis> push_to_project </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../resources/images/index.html class=md-nav__link> <span class=md-ellipsis> resources </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../sceneinventory/control.html class=md-nav__link> <span class=md-ellipsis> sceneinventory </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../stdout_broker/app.html class=md-nav__link> <span class=md-ellipsis> stdout_broker </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../subsetmanager/model.html class=md-nav__link> <span class=md-ellipsis> subsetmanager </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../texture_copy/app.html class=md-nav__link> <span class=md-ellipsis> texture_copy </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../tray/lib.html class=md-nav__link> <span class=md-ellipsis> tray </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../utils/color_widgets/color_inputs.html class=md-nav__link> <span class=md-ellipsis> utils </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../workfile_template_build/lib.html class=md-nav__link> <span class=md-ellipsis> workfile_template_build </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../workfiles/abstract.html class=md-nav__link> <span class=md-ellipsis> workfiles </span> <span class="md-nav__icon md-icon"></span> </a> </li> </ul> </nav> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../../vendor/python/qargparse.html class=md-nav__link> <span class=md-ellipsis> vendor </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class=md-nav__item> <a href=../../version.html class=md-nav__link> <span class=md-ellipsis> version </span> </a> </li> </ul> </nav> </li> </ul> </nav> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../../../../server/settings/conversion.html class=md-nav__link> <span class=md-ellipsis> server </span> <span class="md-nav__icon md-icon"></span> </a> </li> </ul> </nav> </li> </ul> </nav> </div> </div> </div> <div class="md-sidebar md-sidebar--secondary" data-md-component=sidebar data-md-type=toc> <div class=md-sidebar__scrollwrap> <div class=md-sidebar__inner> <nav class="md-nav md-nav--secondary" aria-label="Table of contents"> <label class=md-nav__title for=__toc> <span class="md-nav__icon md-icon"></span> Table of contents </label> <ul class=md-nav__list data-md-component=toc data-md-scrollfix> <li class=md-nav__item> <a href=#client.ayon_core.tools.loader.control class=md-nav__link> <span class=md-ellipsis> control </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.tools.loader.control.LoaderController class=md-nav__link> <span class=md-ellipsis> LoaderController </span> </a> <nav class=md-nav aria-label=LoaderController> <ul class=md-nav__list> <li class=md-nav__item> <a href=#client.ayon_core.tools.loader.control.LoaderController.emit_event class=md-nav__link> <span class=md-ellipsis> emit_event </span> </a> </li> </ul> </nav> </li> </ul> </nav> </div> </div> </div> <div class=md-content data-md-component=content> <article class="md-content__inner md-typeset"> <h1>control</h1> <div class="doc doc-object doc-module"> <a id=client.ayon_core.tools.loader.control></a> <div class="doc doc-contents first"> <div class="doc doc-children"> <div class="doc doc-object doc-class"> <h2 id=client.ayon_core.tools.loader.control.LoaderController class="doc doc-heading"> <code>LoaderController</code> </h2> <div class="doc doc-contents "> <p class="doc doc-class-bases"> Bases: <code><a class="autorefs autorefs-internal" title="BackendLoaderController (client.ayon_core.tools.loader.abstract.BackendLoaderController)" href=abstract.html#client.ayon_core.tools.loader.abstract.BackendLoaderController>BackendLoaderController</a></code>, <code><a class="autorefs autorefs-internal" title="FrontendLoaderController (client.ayon_core.tools.loader.abstract.FrontendLoaderController)" href=abstract.html#client.ayon_core.tools.loader.abstract.FrontendLoaderController>FrontendLoaderController</a></code></p> <p><span class=doc-section-title>Parameters:</span></p> <table> <thead> <tr> <th>Name</th> <th>Type</th> <th>Description</th> <th>Default</th> </tr> </thead> <tbody> <tr class=doc-section-item> <td> <code>host</code> </td> <td> <code><span title=Optional>Optional</span>[<span title=AbstractHost>AbstractHost</span>]</code> </td> <td> <div class=doc-md-description> <p>Host object. Defaults to None.</p> </div> </td> <td> <code>None</code> </td> </tr> </tbody> </table> <details class=quote> <summary>Source code in <code>client/ayon_core/tools/loader/control.py</code></summary> <div class=highlight><table class=highlighttable><tr><td class=linenos><div class=linenodiv><pre><span></span><span class=normal> 96</span>
+<span class=normal> 97</span>
+<span class=normal> 98</span>
+<span class=normal> 99</span>
+<span class=normal>100</span>
+<span class=normal>101</span>
+<span class=normal>102</span>
+<span class=normal>103</span>
+<span class=normal>104</span>
+<span class=normal>105</span>
+<span class=normal>106</span>
+<span class=normal>107</span>
+<span class=normal>108</span>
+<span class=normal>109</span>
+<span class=normal>110</span>
+<span class=normal>111</span>
+<span class=normal>112</span>
+<span class=normal>113</span>
+<span class=normal>114</span>
+<span class=normal>115</span>
+<span class=normal>116</span>
+<span class=normal>117</span>
+<span class=normal>118</span>
+<span class=normal>119</span>
+<span class=normal>120</span>
+<span class=normal>121</span>
+<span class=normal>122</span>
+<span class=normal>123</span>
+<span class=normal>124</span>
+<span class=normal>125</span>
+<span class=normal>126</span>
+<span class=normal>127</span>
+<span class=normal>128</span>
+<span class=normal>129</span>
+<span class=normal>130</span>
+<span class=normal>131</span>
+<span class=normal>132</span>
+<span class=normal>133</span>
+<span class=normal>134</span>
+<span class=normal>135</span>
+<span class=normal>136</span>
+<span class=normal>137</span>
+<span class=normal>138</span>
+<span class=normal>139</span>
+<span class=normal>140</span>
+<span class=normal>141</span>
+<span class=normal>142</span>
+<span class=normal>143</span>
+<span class=normal>144</span>
+<span class=normal>145</span>
+<span class=normal>146</span>
+<span class=normal>147</span>
+<span class=normal>148</span>
+<span class=normal>149</span>
+<span class=normal>150</span>
+<span class=normal>151</span>
+<span class=normal>152</span>
+<span class=normal>153</span>
+<span class=normal>154</span>
+<span class=normal>155</span>
+<span class=normal>156</span>
+<span class=normal>157</span>
+<span class=normal>158</span>
+<span class=normal>159</span>
+<span class=normal>160</span>
+<span class=normal>161</span>
+<span class=normal>162</span>
+<span class=normal>163</span>
+<span class=normal>164</span>
+<span class=normal>165</span>
+<span class=normal>166</span>
+<span class=normal>167</span>
+<span class=normal>168</span>
+<span class=normal>169</span>
+<span class=normal>170</span>
+<span class=normal>171</span>
+<span class=normal>172</span>
+<span class=normal>173</span>
+<span class=normal>174</span>
+<span class=normal>175</span>
+<span class=normal>176</span>
+<span class=normal>177</span>
+<span class=normal>178</span>
+<span class=normal>179</span>
+<span class=normal>180</span>
+<span class=normal>181</span>
+<span class=normal>182</span>
+<span class=normal>183</span>
+<span class=normal>184</span>
+<span class=normal>185</span>
+<span class=normal>186</span>
+<span class=normal>187</span>
+<span class=normal>188</span>
+<span class=normal>189</span>
+<span class=normal>190</span>
+<span class=normal>191</span>
+<span class=normal>192</span>
+<span class=normal>193</span>
+<span class=normal>194</span>
+<span class=normal>195</span>
+<span class=normal>196</span>
+<span class=normal>197</span>
+<span class=normal>198</span>
+<span class=normal>199</span>
+<span class=normal>200</span>
+<span class=normal>201</span>
+<span class=normal>202</span>
+<span class=normal>203</span>
+<span class=normal>204</span>
+<span class=normal>205</span>
+<span class=normal>206</span>
+<span class=normal>207</span>
+<span class=normal>208</span>
+<span class=normal>209</span>
+<span class=normal>210</span>
+<span class=normal>211</span>
+<span class=normal>212</span>
+<span class=normal>213</span>
+<span class=normal>214</span>
+<span class=normal>215</span>
+<span class=normal>216</span>
+<span class=normal>217</span>
+<span class=normal>218</span>
+<span class=normal>219</span>
+<span class=normal>220</span>
+<span class=normal>221</span>
+<span class=normal>222</span>
+<span class=normal>223</span>
+<span class=normal>224</span>
+<span class=normal>225</span>
+<span class=normal>226</span>
+<span class=normal>227</span>
+<span class=normal>228</span>
+<span class=normal>229</span>
+<span class=normal>230</span>
+<span class=normal>231</span>
+<span class=normal>232</span>
+<span class=normal>233</span>
+<span class=normal>234</span>
+<span class=normal>235</span>
+<span class=normal>236</span>
+<span class=normal>237</span>
+<span class=normal>238</span>
+<span class=normal>239</span>
+<span class=normal>240</span>
+<span class=normal>241</span>
+<span class=normal>242</span>
+<span class=normal>243</span>
+<span class=normal>244</span>
+<span class=normal>245</span>
+<span class=normal>246</span>
+<span class=normal>247</span>
+<span class=normal>248</span>
+<span class=normal>249</span>
+<span class=normal>250</span>
+<span class=normal>251</span>
+<span class=normal>252</span>
+<span class=normal>253</span>
+<span class=normal>254</span>
+<span class=normal>255</span>
+<span class=normal>256</span>
+<span class=normal>257</span>
+<span class=normal>258</span>
+<span class=normal>259</span>
+<span class=normal>260</span>
+<span class=normal>261</span>
+<span class=normal>262</span>
+<span class=normal>263</span>
+<span class=normal>264</span>
+<span class=normal>265</span>
+<span class=normal>266</span>
+<span class=normal>267</span>
+<span class=normal>268</span>
+<span class=normal>269</span>
+<span class=normal>270</span>
+<span class=normal>271</span>
+<span class=normal>272</span>
+<span class=normal>273</span>
+<span class=normal>274</span>
+<span class=normal>275</span>
+<span class=normal>276</span>
+<span class=normal>277</span>
+<span class=normal>278</span>
+<span class=normal>279</span>
+<span class=normal>280</span>
+<span class=normal>281</span>
+<span class=normal>282</span>
+<span class=normal>283</span>
+<span class=normal>284</span>
+<span class=normal>285</span>
+<span class=normal>286</span>
+<span class=normal>287</span>
+<span class=normal>288</span>
+<span class=normal>289</span>
+<span class=normal>290</span>
+<span class=normal>291</span>
+<span class=normal>292</span>
+<span class=normal>293</span>
+<span class=normal>294</span>
+<span class=normal>295</span>
+<span class=normal>296</span>
+<span class=normal>297</span>
+<span class=normal>298</span>
+<span class=normal>299</span>
+<span class=normal>300</span>
+<span class=normal>301</span>
+<span class=normal>302</span>
+<span class=normal>303</span>
+<span class=normal>304</span>
+<span class=normal>305</span>
+<span class=normal>306</span>
+<span class=normal>307</span>
+<span class=normal>308</span>
+<span class=normal>309</span>
+<span class=normal>310</span>
+<span class=normal>311</span>
+<span class=normal>312</span>
+<span class=normal>313</span>
+<span class=normal>314</span>
+<span class=normal>315</span>
+<span class=normal>316</span>
+<span class=normal>317</span>
+<span class=normal>318</span>
+<span class=normal>319</span>
+<span class=normal>320</span>
+<span class=normal>321</span>
+<span class=normal>322</span>
+<span class=normal>323</span>
+<span class=normal>324</span>
+<span class=normal>325</span>
+<span class=normal>326</span>
+<span class=normal>327</span>
+<span class=normal>328</span>
+<span class=normal>329</span>
+<span class=normal>330</span>
+<span class=normal>331</span>
+<span class=normal>332</span>
+<span class=normal>333</span>
+<span class=normal>334</span>
+<span class=normal>335</span>
+<span class=normal>336</span>
+<span class=normal>337</span>
+<span class=normal>338</span>
+<span class=normal>339</span>
+<span class=normal>340</span>
+<span class=normal>341</span>
+<span class=normal>342</span>
+<span class=normal>343</span>
+<span class=normal>344</span>
+<span class=normal>345</span>
+<span class=normal>346</span>
+<span class=normal>347</span>
+<span class=normal>348</span>
+<span class=normal>349</span>
+<span class=normal>350</span>
+<span class=normal>351</span>
+<span class=normal>352</span>
+<span class=normal>353</span>
+<span class=normal>354</span>
+<span class=normal>355</span>
+<span class=normal>356</span>
+<span class=normal>357</span>
+<span class=normal>358</span>
+<span class=normal>359</span>
+<span class=normal>360</span>
+<span class=normal>361</span>
+<span class=normal>362</span>
+<span class=normal>363</span>
+<span class=normal>364</span>
+<span class=normal>365</span>
+<span class=normal>366</span>
+<span class=normal>367</span>
+<span class=normal>368</span>
+<span class=normal>369</span>
+<span class=normal>370</span>
+<span class=normal>371</span>
+<span class=normal>372</span>
+<span class=normal>373</span>
+<span class=normal>374</span>
+<span class=normal>375</span>
+<span class=normal>376</span>
+<span class=normal>377</span>
+<span class=normal>378</span>
+<span class=normal>379</span>
+<span class=normal>380</span>
+<span class=normal>381</span>
+<span class=normal>382</span>
+<span class=normal>383</span>
+<span class=normal>384</span>
+<span class=normal>385</span>
+<span class=normal>386</span>
+<span class=normal>387</span>
+<span class=normal>388</span>
+<span class=normal>389</span>
+<span class=normal>390</span>
+<span class=normal>391</span>
+<span class=normal>392</span>
+<span class=normal>393</span>
+<span class=normal>394</span>
+<span class=normal>395</span>
+<span class=normal>396</span>
+<span class=normal>397</span>
+<span class=normal>398</span>
+<span class=normal>399</span>
+<span class=normal>400</span>
+<span class=normal>401</span>
+<span class=normal>402</span>
+<span class=normal>403</span>
+<span class=normal>404</span>
+<span class=normal>405</span>
+<span class=normal>406</span>
+<span class=normal>407</span>
+<span class=normal>408</span>
+<span class=normal>409</span>
+<span class=normal>410</span>
+<span class=normal>411</span>
+<span class=normal>412</span>
+<span class=normal>413</span>
+<span class=normal>414</span>
+<span class=normal>415</span>
+<span class=normal>416</span>
+<span class=normal>417</span>
+<span class=normal>418</span>
+<span class=normal>419</span>
+<span class=normal>420</span>
+<span class=normal>421</span>
+<span class=normal>422</span>
+<span class=normal>423</span>
+<span class=normal>424</span>
+<span class=normal>425</span>
+<span class=normal>426</span>
+<span class=normal>427</span>
+<span class=normal>428</span>
+<span class=normal>429</span>
+<span class=normal>430</span>
+<span class=normal>431</span>
+<span class=normal>432</span>
+<span class=normal>433</span>
+<span class=normal>434</span>
+<span class=normal>435</span>
+<span class=normal>436</span>
+<span class=normal>437</span>
+<span class=normal>438</span>
+<span class=normal>439</span>
+<span class=normal>440</span>
+<span class=normal>441</span>
+<span class=normal>442</span>
+<span class=normal>443</span>
+<span class=normal>444</span>
+<span class=normal>445</span>
+<span class=normal>446</span>
+<span class=normal>447</span>
+<span class=normal>448</span>
+<span class=normal>449</span>
+<span class=normal>450</span>
+<span class=normal>451</span>
+<span class=normal>452</span>
+<span class=normal>453</span>
+<span class=normal>454</span>
+<span class=normal>455</span>
+<span class=normal>456</span>
+<span class=normal>457</span>
+<span class=normal>458</span>
+<span class=normal>459</span>
+<span class=normal>460</span>
+<span class=normal>461</span>
+<span class=normal>462</span>
+<span class=normal>463</span>
+<span class=normal>464</span>
+<span class=normal>465</span>
+<span class=normal>466</span>
+<span class=normal>467</span>
+<span class=normal>468</span>
+<span class=normal>469</span>
+<span class=normal>470</span>
+<span class=normal>471</span>
+<span class=normal>472</span>
+<span class=normal>473</span>
+<span class=normal>474</span>
+<span class=normal>475</span>
+<span class=normal>476</span>
+<span class=normal>477</span>
+<span class=normal>478</span>
+<span class=normal>479</span>
+<span class=normal>480</span>
+<span class=normal>481</span>
+<span class=normal>482</span>
+<span class=normal>483</span>
+<span class=normal>484</span>
+<span class=normal>485</span>
+<span class=normal>486</span>
+<span class=normal>487</span>
+<span class=normal>488</span>
+<span class=normal>489</span>
+<span class=normal>490</span>
+<span class=normal>491</span>
+<span class=normal>492</span>
+<span class=normal>493</span>
+<span class=normal>494</span>
+<span class=normal>495</span>
+<span class=normal>496</span>
+<span class=normal>497</span>
+<span class=normal>498</span>
+<span class=normal>499</span>
+<span class=normal>500</span>
+<span class=normal>501</span>
+<span class=normal>502</span>
+<span class=normal>503</span>
+<span class=normal>504</span>
+<span class=normal>505</span>
+<span class=normal>506</span>
+<span class=normal>507</span>
+<span class=normal>508</span>
+<span class=normal>509</span>
+<span class=normal>510</span>
+<span class=normal>511</span>
+<span class=normal>512</span>
+<span class=normal>513</span>
+<span class=normal>514</span>
+<span class=normal>515</span>
+<span class=normal>516</span>
+<span class=normal>517</span>
+<span class=normal>518</span>
+<span class=normal>519</span>
+<span class=normal>520</span></pre></div></td><td class=code><div><pre><span></span><code><span class=k>class</span><span class=w> </span><span class=nc>LoaderController</span><span class=p>(</span><span class=n>BackendLoaderController</span><span class=p>,</span> <span class=n>FrontendLoaderController</span><span class=p>):</span>
+<span class=w>    </span><span class=sd>&quot;&quot;&quot;</span>
+
+<span class=sd>    Args:</span>
+<span class=sd>        host (Optional[AbstractHost]): Host object. Defaults to None.</span>
+<span class=sd>    &quot;&quot;&quot;</span>
+
+    <span class=k>def</span><span class=w> </span><span class=fm>__init__</span><span class=p>(</span><span class=bp>self</span><span class=p>,</span> <span class=n>host</span><span class=o>=</span><span class=kc>None</span><span class=p>):</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>_log</span> <span class=o>=</span> <span class=kc>None</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>_host</span> <span class=o>=</span> <span class=n>host</span>
+
+        <span class=bp>self</span><span class=o>.</span><span class=n>_event_system</span> <span class=o>=</span> <span class=bp>self</span><span class=o>.</span><span class=n>_create_event_system</span><span class=p>()</span>
+
+        <span class=bp>self</span><span class=o>.</span><span class=n>_project_anatomy_cache</span> <span class=o>=</span> <span class=n>NestedCacheItem</span><span class=p>(</span>
+            <span class=n>levels</span><span class=o>=</span><span class=mi>1</span><span class=p>,</span> <span class=n>lifetime</span><span class=o>=</span><span class=mi>60</span><span class=p>)</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>_loaded_products_cache</span> <span class=o>=</span> <span class=n>CacheItem</span><span class=p>(</span>
+            <span class=n>default_factory</span><span class=o>=</span><span class=nb>set</span><span class=p>,</span> <span class=n>lifetime</span><span class=o>=</span><span class=mi>60</span><span class=p>)</span>
+
+        <span class=bp>self</span><span class=o>.</span><span class=n>_selection_model</span> <span class=o>=</span> <span class=n>SelectionModel</span><span class=p>(</span><span class=bp>self</span><span class=p>)</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>_expected_selection</span> <span class=o>=</span> <span class=n>ExpectedSelection</span><span class=p>(</span><span class=bp>self</span><span class=p>)</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>_projects_model</span> <span class=o>=</span> <span class=n>ProjectsModel</span><span class=p>(</span><span class=bp>self</span><span class=p>)</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>_hierarchy_model</span> <span class=o>=</span> <span class=n>HierarchyModel</span><span class=p>(</span><span class=bp>self</span><span class=p>)</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>_products_model</span> <span class=o>=</span> <span class=n>ProductsModel</span><span class=p>(</span><span class=bp>self</span><span class=p>)</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>_loader_actions_model</span> <span class=o>=</span> <span class=n>LoaderActionsModel</span><span class=p>(</span><span class=bp>self</span><span class=p>)</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>_thumbnails_model</span> <span class=o>=</span> <span class=n>ThumbnailsModel</span><span class=p>()</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>_sitesync_model</span> <span class=o>=</span> <span class=n>SiteSyncModel</span><span class=p>(</span><span class=bp>self</span><span class=p>)</span>
+
+    <span class=nd>@property</span>
+    <span class=k>def</span><span class=w> </span><span class=nf>log</span><span class=p>(</span><span class=bp>self</span><span class=p>):</span>
+        <span class=k>if</span> <span class=bp>self</span><span class=o>.</span><span class=n>_log</span> <span class=ow>is</span> <span class=kc>None</span><span class=p>:</span>
+            <span class=bp>self</span><span class=o>.</span><span class=n>_log</span> <span class=o>=</span> <span class=n>logging</span><span class=o>.</span><span class=n>getLogger</span><span class=p>(</span><span class=bp>self</span><span class=o>.</span><span class=vm>__class__</span><span class=o>.</span><span class=vm>__name__</span><span class=p>)</span>
+        <span class=k>return</span> <span class=bp>self</span><span class=o>.</span><span class=n>_log</span>
+
+    <span class=c1># ---------------------------------</span>
+    <span class=c1># Implementation of abstract methods</span>
+    <span class=c1># ---------------------------------</span>
+    <span class=c1># Events system</span>
+    <span class=k>def</span><span class=w> </span><span class=nf>emit_event</span><span class=p>(</span><span class=bp>self</span><span class=p>,</span> <span class=n>topic</span><span class=p>,</span> <span class=n>data</span><span class=o>=</span><span class=kc>None</span><span class=p>,</span> <span class=n>source</span><span class=o>=</span><span class=kc>None</span><span class=p>):</span>
+<span class=w>        </span><span class=sd>&quot;&quot;&quot;Use implemented event system to trigger event.&quot;&quot;&quot;</span>
+
+        <span class=k>if</span> <span class=n>data</span> <span class=ow>is</span> <span class=kc>None</span><span class=p>:</span>
+            <span class=n>data</span> <span class=o>=</span> <span class=p>{}</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>_event_system</span><span class=o>.</span><span class=n>emit</span><span class=p>(</span><span class=n>topic</span><span class=p>,</span> <span class=n>data</span><span class=p>,</span> <span class=n>source</span><span class=p>)</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>register_event_callback</span><span class=p>(</span><span class=bp>self</span><span class=p>,</span> <span class=n>topic</span><span class=p>,</span> <span class=n>callback</span><span class=p>):</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>_event_system</span><span class=o>.</span><span class=n>add_callback</span><span class=p>(</span><span class=n>topic</span><span class=p>,</span> <span class=n>callback</span><span class=p>)</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>reset</span><span class=p>(</span><span class=bp>self</span><span class=p>):</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>_emit_event</span><span class=p>(</span><span class=s2>&quot;controller.reset.started&quot;</span><span class=p>)</span>
+
+        <span class=n>project_name</span> <span class=o>=</span> <span class=bp>self</span><span class=o>.</span><span class=n>get_selected_project_name</span><span class=p>()</span>
+        <span class=n>folder_ids</span> <span class=o>=</span> <span class=bp>self</span><span class=o>.</span><span class=n>get_selected_folder_ids</span><span class=p>()</span>
+
+        <span class=bp>self</span><span class=o>.</span><span class=n>_project_anatomy_cache</span><span class=o>.</span><span class=n>reset</span><span class=p>()</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>_loaded_products_cache</span><span class=o>.</span><span class=n>reset</span><span class=p>()</span>
+
+        <span class=bp>self</span><span class=o>.</span><span class=n>_products_model</span><span class=o>.</span><span class=n>reset</span><span class=p>()</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>_hierarchy_model</span><span class=o>.</span><span class=n>reset</span><span class=p>()</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>_loader_actions_model</span><span class=o>.</span><span class=n>reset</span><span class=p>()</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>_projects_model</span><span class=o>.</span><span class=n>reset</span><span class=p>()</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>_thumbnails_model</span><span class=o>.</span><span class=n>reset</span><span class=p>()</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>_sitesync_model</span><span class=o>.</span><span class=n>reset</span><span class=p>()</span>
+
+        <span class=bp>self</span><span class=o>.</span><span class=n>_projects_model</span><span class=o>.</span><span class=n>refresh</span><span class=p>()</span>
+
+        <span class=k>if</span> <span class=ow>not</span> <span class=n>project_name</span> <span class=ow>and</span> <span class=ow>not</span> <span class=n>folder_ids</span><span class=p>:</span>
+            <span class=n>context</span> <span class=o>=</span> <span class=bp>self</span><span class=o>.</span><span class=n>get_current_context</span><span class=p>()</span>
+            <span class=n>project_name</span> <span class=o>=</span> <span class=n>context</span><span class=p>[</span><span class=s2>&quot;project_name&quot;</span><span class=p>]</span>
+            <span class=n>folder_id</span> <span class=o>=</span> <span class=n>context</span><span class=p>[</span><span class=s2>&quot;folder_id&quot;</span><span class=p>]</span>
+            <span class=bp>self</span><span class=o>.</span><span class=n>set_expected_selection</span><span class=p>(</span><span class=n>project_name</span><span class=p>,</span> <span class=n>folder_id</span><span class=p>)</span>
+
+        <span class=bp>self</span><span class=o>.</span><span class=n>_emit_event</span><span class=p>(</span><span class=s2>&quot;controller.reset.finished&quot;</span><span class=p>)</span>
+
+    <span class=c1># Expected selection helpers</span>
+    <span class=k>def</span><span class=w> </span><span class=nf>get_expected_selection_data</span><span class=p>(</span><span class=bp>self</span><span class=p>):</span>
+        <span class=k>return</span> <span class=bp>self</span><span class=o>.</span><span class=n>_expected_selection</span><span class=o>.</span><span class=n>get_expected_selection_data</span><span class=p>()</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>set_expected_selection</span><span class=p>(</span><span class=bp>self</span><span class=p>,</span> <span class=n>project_name</span><span class=p>,</span> <span class=n>folder_id</span><span class=p>):</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>_expected_selection</span><span class=o>.</span><span class=n>set_expected_selection</span><span class=p>(</span>
+            <span class=n>project_name</span><span class=p>,</span> <span class=n>folder_id</span>
+        <span class=p>)</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>expected_project_selected</span><span class=p>(</span><span class=bp>self</span><span class=p>,</span> <span class=n>project_name</span><span class=p>):</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>_expected_selection</span><span class=o>.</span><span class=n>expected_project_selected</span><span class=p>(</span><span class=n>project_name</span><span class=p>)</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>expected_folder_selected</span><span class=p>(</span><span class=bp>self</span><span class=p>,</span> <span class=n>folder_id</span><span class=p>):</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>_expected_selection</span><span class=o>.</span><span class=n>expected_folder_selected</span><span class=p>(</span><span class=n>folder_id</span><span class=p>)</span>
+
+    <span class=c1># Entity model wrappers</span>
+    <span class=k>def</span><span class=w> </span><span class=nf>get_project_items</span><span class=p>(</span><span class=bp>self</span><span class=p>,</span> <span class=n>sender</span><span class=o>=</span><span class=kc>None</span><span class=p>):</span>
+        <span class=k>return</span> <span class=bp>self</span><span class=o>.</span><span class=n>_projects_model</span><span class=o>.</span><span class=n>get_project_items</span><span class=p>(</span><span class=n>sender</span><span class=p>)</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>get_folder_type_items</span><span class=p>(</span><span class=bp>self</span><span class=p>,</span> <span class=n>project_name</span><span class=p>,</span> <span class=n>sender</span><span class=o>=</span><span class=kc>None</span><span class=p>):</span>
+        <span class=k>return</span> <span class=bp>self</span><span class=o>.</span><span class=n>_projects_model</span><span class=o>.</span><span class=n>get_folder_type_items</span><span class=p>(</span>
+            <span class=n>project_name</span><span class=p>,</span> <span class=n>sender</span>
+        <span class=p>)</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>get_project_status_items</span><span class=p>(</span><span class=bp>self</span><span class=p>,</span> <span class=n>project_name</span><span class=p>,</span> <span class=n>sender</span><span class=o>=</span><span class=kc>None</span><span class=p>):</span>
+        <span class=k>return</span> <span class=bp>self</span><span class=o>.</span><span class=n>_projects_model</span><span class=o>.</span><span class=n>get_project_status_items</span><span class=p>(</span>
+            <span class=n>project_name</span><span class=p>,</span> <span class=n>sender</span>
+        <span class=p>)</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>get_folder_items</span><span class=p>(</span><span class=bp>self</span><span class=p>,</span> <span class=n>project_name</span><span class=p>,</span> <span class=n>sender</span><span class=o>=</span><span class=kc>None</span><span class=p>):</span>
+        <span class=k>return</span> <span class=bp>self</span><span class=o>.</span><span class=n>_hierarchy_model</span><span class=o>.</span><span class=n>get_folder_items</span><span class=p>(</span><span class=n>project_name</span><span class=p>,</span> <span class=n>sender</span><span class=p>)</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>get_task_items</span><span class=p>(</span><span class=bp>self</span><span class=p>,</span> <span class=n>project_name</span><span class=p>,</span> <span class=n>folder_ids</span><span class=p>,</span> <span class=n>sender</span><span class=o>=</span><span class=kc>None</span><span class=p>):</span>
+        <span class=n>output</span> <span class=o>=</span> <span class=p>[]</span>
+        <span class=k>for</span> <span class=n>folder_id</span> <span class=ow>in</span> <span class=n>folder_ids</span><span class=p>:</span>
+            <span class=n>output</span><span class=o>.</span><span class=n>extend</span><span class=p>(</span><span class=bp>self</span><span class=o>.</span><span class=n>_hierarchy_model</span><span class=o>.</span><span class=n>get_task_items</span><span class=p>(</span>
+                <span class=n>project_name</span><span class=p>,</span> <span class=n>folder_id</span><span class=p>,</span> <span class=n>sender</span>
+            <span class=p>))</span>
+        <span class=k>return</span> <span class=n>output</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>get_task_type_items</span><span class=p>(</span><span class=bp>self</span><span class=p>,</span> <span class=n>project_name</span><span class=p>,</span> <span class=n>sender</span><span class=o>=</span><span class=kc>None</span><span class=p>):</span>
+        <span class=k>return</span> <span class=bp>self</span><span class=o>.</span><span class=n>_projects_model</span><span class=o>.</span><span class=n>get_task_type_items</span><span class=p>(</span>
+            <span class=n>project_name</span><span class=p>,</span> <span class=n>sender</span>
+        <span class=p>)</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>get_folder_labels</span><span class=p>(</span><span class=bp>self</span><span class=p>,</span> <span class=n>project_name</span><span class=p>,</span> <span class=n>folder_ids</span><span class=p>):</span>
+        <span class=n>folder_items_by_id</span> <span class=o>=</span> <span class=bp>self</span><span class=o>.</span><span class=n>_hierarchy_model</span><span class=o>.</span><span class=n>get_folder_items_by_id</span><span class=p>(</span>
+            <span class=n>project_name</span><span class=p>,</span> <span class=n>folder_ids</span>
+        <span class=p>)</span>
+        <span class=n>output</span> <span class=o>=</span> <span class=p>{}</span>
+        <span class=k>for</span> <span class=n>folder_id</span><span class=p>,</span> <span class=n>folder_item</span> <span class=ow>in</span> <span class=n>folder_items_by_id</span><span class=o>.</span><span class=n>items</span><span class=p>():</span>
+            <span class=n>label</span> <span class=o>=</span> <span class=kc>None</span>
+            <span class=k>if</span> <span class=n>folder_item</span> <span class=ow>is</span> <span class=ow>not</span> <span class=kc>None</span><span class=p>:</span>
+                <span class=n>label</span> <span class=o>=</span> <span class=n>folder_item</span><span class=o>.</span><span class=n>label</span>
+            <span class=n>output</span><span class=p>[</span><span class=n>folder_id</span><span class=p>]</span> <span class=o>=</span> <span class=n>label</span>
+        <span class=k>return</span> <span class=n>output</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>get_product_items</span><span class=p>(</span><span class=bp>self</span><span class=p>,</span> <span class=n>project_name</span><span class=p>,</span> <span class=n>folder_ids</span><span class=p>,</span> <span class=n>sender</span><span class=o>=</span><span class=kc>None</span><span class=p>):</span>
+        <span class=k>return</span> <span class=bp>self</span><span class=o>.</span><span class=n>_products_model</span><span class=o>.</span><span class=n>get_product_items</span><span class=p>(</span>
+            <span class=n>project_name</span><span class=p>,</span> <span class=n>folder_ids</span><span class=p>,</span> <span class=n>sender</span><span class=p>)</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>get_product_item</span><span class=p>(</span><span class=bp>self</span><span class=p>,</span> <span class=n>project_name</span><span class=p>,</span> <span class=n>product_id</span><span class=p>):</span>
+        <span class=k>return</span> <span class=bp>self</span><span class=o>.</span><span class=n>_products_model</span><span class=o>.</span><span class=n>get_product_item</span><span class=p>(</span>
+            <span class=n>project_name</span><span class=p>,</span> <span class=n>product_id</span>
+        <span class=p>)</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>get_product_type_items</span><span class=p>(</span><span class=bp>self</span><span class=p>,</span> <span class=n>project_name</span><span class=p>):</span>
+        <span class=k>return</span> <span class=bp>self</span><span class=o>.</span><span class=n>_products_model</span><span class=o>.</span><span class=n>get_product_type_items</span><span class=p>(</span><span class=n>project_name</span><span class=p>)</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>get_representation_items</span><span class=p>(</span>
+        <span class=bp>self</span><span class=p>,</span> <span class=n>project_name</span><span class=p>,</span> <span class=n>version_ids</span><span class=p>,</span> <span class=n>sender</span><span class=o>=</span><span class=kc>None</span>
+    <span class=p>):</span>
+        <span class=k>return</span> <span class=bp>self</span><span class=o>.</span><span class=n>_products_model</span><span class=o>.</span><span class=n>get_repre_items</span><span class=p>(</span>
+            <span class=n>project_name</span><span class=p>,</span> <span class=n>version_ids</span><span class=p>,</span> <span class=n>sender</span>
+        <span class=p>)</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>get_versions_representation_count</span><span class=p>(</span>
+        <span class=bp>self</span><span class=p>,</span> <span class=n>project_name</span><span class=p>,</span> <span class=n>version_ids</span><span class=p>,</span> <span class=n>sender</span><span class=o>=</span><span class=kc>None</span>
+    <span class=p>):</span>
+        <span class=k>return</span> <span class=bp>self</span><span class=o>.</span><span class=n>_products_model</span><span class=o>.</span><span class=n>get_versions_repre_count</span><span class=p>(</span>
+            <span class=n>project_name</span><span class=p>,</span> <span class=n>version_ids</span><span class=p>,</span> <span class=n>sender</span>
+        <span class=p>)</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>get_folder_thumbnail_ids</span><span class=p>(</span><span class=bp>self</span><span class=p>,</span> <span class=n>project_name</span><span class=p>,</span> <span class=n>folder_ids</span><span class=p>):</span>
+        <span class=k>return</span> <span class=bp>self</span><span class=o>.</span><span class=n>_thumbnails_model</span><span class=o>.</span><span class=n>get_folder_thumbnail_ids</span><span class=p>(</span>
+            <span class=n>project_name</span><span class=p>,</span> <span class=n>folder_ids</span>
+        <span class=p>)</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>get_version_thumbnail_ids</span><span class=p>(</span><span class=bp>self</span><span class=p>,</span> <span class=n>project_name</span><span class=p>,</span> <span class=n>version_ids</span><span class=p>):</span>
+        <span class=k>return</span> <span class=bp>self</span><span class=o>.</span><span class=n>_thumbnails_model</span><span class=o>.</span><span class=n>get_version_thumbnail_ids</span><span class=p>(</span>
+            <span class=n>project_name</span><span class=p>,</span> <span class=n>version_ids</span>
+        <span class=p>)</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>get_thumbnail_path</span><span class=p>(</span><span class=bp>self</span><span class=p>,</span> <span class=n>project_name</span><span class=p>,</span> <span class=n>thumbnail_id</span><span class=p>):</span>
+        <span class=k>return</span> <span class=bp>self</span><span class=o>.</span><span class=n>_thumbnails_model</span><span class=o>.</span><span class=n>get_thumbnail_path</span><span class=p>(</span>
+            <span class=n>project_name</span><span class=p>,</span> <span class=n>thumbnail_id</span>
+        <span class=p>)</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>change_products_group</span><span class=p>(</span><span class=bp>self</span><span class=p>,</span> <span class=n>project_name</span><span class=p>,</span> <span class=n>product_ids</span><span class=p>,</span> <span class=n>group_name</span><span class=p>):</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>_products_model</span><span class=o>.</span><span class=n>change_products_group</span><span class=p>(</span>
+            <span class=n>project_name</span><span class=p>,</span> <span class=n>product_ids</span><span class=p>,</span> <span class=n>group_name</span>
+        <span class=p>)</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>get_versions_action_items</span><span class=p>(</span><span class=bp>self</span><span class=p>,</span> <span class=n>project_name</span><span class=p>,</span> <span class=n>version_ids</span><span class=p>):</span>
+        <span class=k>return</span> <span class=bp>self</span><span class=o>.</span><span class=n>_loader_actions_model</span><span class=o>.</span><span class=n>get_versions_action_items</span><span class=p>(</span>
+            <span class=n>project_name</span><span class=p>,</span> <span class=n>version_ids</span><span class=p>)</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>get_representations_action_items</span><span class=p>(</span>
+            <span class=bp>self</span><span class=p>,</span> <span class=n>project_name</span><span class=p>,</span> <span class=n>representation_ids</span><span class=p>):</span>
+        <span class=n>action_items</span> <span class=o>=</span> <span class=p>(</span>
+            <span class=bp>self</span><span class=o>.</span><span class=n>_loader_actions_model</span><span class=o>.</span><span class=n>get_representations_action_items</span><span class=p>(</span>
+                <span class=n>project_name</span><span class=p>,</span> <span class=n>representation_ids</span><span class=p>)</span>
+        <span class=p>)</span>
+
+        <span class=n>action_items</span><span class=o>.</span><span class=n>extend</span><span class=p>(</span><span class=bp>self</span><span class=o>.</span><span class=n>_sitesync_model</span><span class=o>.</span><span class=n>get_sitesync_action_items</span><span class=p>(</span>
+            <span class=n>project_name</span><span class=p>,</span> <span class=n>representation_ids</span><span class=p>)</span>
+        <span class=p>)</span>
+
+        <span class=k>return</span> <span class=n>action_items</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>trigger_action_item</span><span class=p>(</span>
+        <span class=bp>self</span><span class=p>,</span>
+        <span class=n>identifier</span><span class=p>,</span>
+        <span class=n>options</span><span class=p>,</span>
+        <span class=n>project_name</span><span class=p>,</span>
+        <span class=n>version_ids</span><span class=p>,</span>
+        <span class=n>representation_ids</span>
+    <span class=p>):</span>
+        <span class=k>if</span> <span class=bp>self</span><span class=o>.</span><span class=n>_sitesync_model</span><span class=o>.</span><span class=n>is_sitesync_action</span><span class=p>(</span><span class=n>identifier</span><span class=p>):</span>
+            <span class=bp>self</span><span class=o>.</span><span class=n>_sitesync_model</span><span class=o>.</span><span class=n>trigger_action_item</span><span class=p>(</span>
+                <span class=n>identifier</span><span class=p>,</span>
+                <span class=n>project_name</span><span class=p>,</span>
+                <span class=n>representation_ids</span>
+            <span class=p>)</span>
+            <span class=k>return</span>
+
+        <span class=bp>self</span><span class=o>.</span><span class=n>_loader_actions_model</span><span class=o>.</span><span class=n>trigger_action_item</span><span class=p>(</span>
+            <span class=n>identifier</span><span class=p>,</span>
+            <span class=n>options</span><span class=p>,</span>
+            <span class=n>project_name</span><span class=p>,</span>
+            <span class=n>version_ids</span><span class=p>,</span>
+            <span class=n>representation_ids</span>
+        <span class=p>)</span>
+
+    <span class=c1># Selection model wrappers</span>
+    <span class=k>def</span><span class=w> </span><span class=nf>get_selected_project_name</span><span class=p>(</span><span class=bp>self</span><span class=p>):</span>
+        <span class=k>return</span> <span class=bp>self</span><span class=o>.</span><span class=n>_selection_model</span><span class=o>.</span><span class=n>get_selected_project_name</span><span class=p>()</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>set_selected_project</span><span class=p>(</span><span class=bp>self</span><span class=p>,</span> <span class=n>project_name</span><span class=p>):</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>_selection_model</span><span class=o>.</span><span class=n>set_selected_project</span><span class=p>(</span><span class=n>project_name</span><span class=p>)</span>
+
+    <span class=c1># Selection model wrappers</span>
+    <span class=k>def</span><span class=w> </span><span class=nf>get_selected_folder_ids</span><span class=p>(</span><span class=bp>self</span><span class=p>):</span>
+        <span class=k>return</span> <span class=bp>self</span><span class=o>.</span><span class=n>_selection_model</span><span class=o>.</span><span class=n>get_selected_folder_ids</span><span class=p>()</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>set_selected_folders</span><span class=p>(</span><span class=bp>self</span><span class=p>,</span> <span class=n>folder_ids</span><span class=p>):</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>_selection_model</span><span class=o>.</span><span class=n>set_selected_folders</span><span class=p>(</span><span class=n>folder_ids</span><span class=p>)</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>get_selected_task_ids</span><span class=p>(</span><span class=bp>self</span><span class=p>):</span>
+        <span class=k>return</span> <span class=bp>self</span><span class=o>.</span><span class=n>_selection_model</span><span class=o>.</span><span class=n>get_selected_task_ids</span><span class=p>()</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>set_selected_tasks</span><span class=p>(</span><span class=bp>self</span><span class=p>,</span> <span class=n>task_ids</span><span class=p>):</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>_selection_model</span><span class=o>.</span><span class=n>set_selected_tasks</span><span class=p>(</span><span class=n>task_ids</span><span class=p>)</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>get_selected_version_ids</span><span class=p>(</span><span class=bp>self</span><span class=p>):</span>
+        <span class=k>return</span> <span class=bp>self</span><span class=o>.</span><span class=n>_selection_model</span><span class=o>.</span><span class=n>get_selected_version_ids</span><span class=p>()</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>set_selected_versions</span><span class=p>(</span><span class=bp>self</span><span class=p>,</span> <span class=n>version_ids</span><span class=p>):</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>_selection_model</span><span class=o>.</span><span class=n>set_selected_versions</span><span class=p>(</span><span class=n>version_ids</span><span class=p>)</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>get_selected_representation_ids</span><span class=p>(</span><span class=bp>self</span><span class=p>):</span>
+        <span class=k>return</span> <span class=bp>self</span><span class=o>.</span><span class=n>_selection_model</span><span class=o>.</span><span class=n>get_selected_representation_ids</span><span class=p>()</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>set_selected_representations</span><span class=p>(</span><span class=bp>self</span><span class=p>,</span> <span class=n>repre_ids</span><span class=p>):</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>_selection_model</span><span class=o>.</span><span class=n>set_selected_representations</span><span class=p>(</span><span class=n>repre_ids</span><span class=p>)</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>fill_root_in_source</span><span class=p>(</span><span class=bp>self</span><span class=p>,</span> <span class=n>source</span><span class=p>):</span>
+        <span class=n>project_name</span> <span class=o>=</span> <span class=bp>self</span><span class=o>.</span><span class=n>get_selected_project_name</span><span class=p>()</span>
+        <span class=n>anatomy</span> <span class=o>=</span> <span class=bp>self</span><span class=o>.</span><span class=n>_get_project_anatomy</span><span class=p>(</span><span class=n>project_name</span><span class=p>)</span>
+        <span class=k>if</span> <span class=n>anatomy</span> <span class=ow>is</span> <span class=kc>None</span><span class=p>:</span>
+            <span class=k>return</span> <span class=n>source</span>
+
+        <span class=k>try</span><span class=p>:</span>
+            <span class=k>return</span> <span class=n>anatomy</span><span class=o>.</span><span class=n>fill_root</span><span class=p>(</span><span class=n>source</span><span class=p>)</span>
+        <span class=k>except</span> <span class=ne>Exception</span><span class=p>:</span>
+            <span class=k>return</span> <span class=n>source</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>get_current_context</span><span class=p>(</span><span class=bp>self</span><span class=p>):</span>
+        <span class=k>if</span> <span class=bp>self</span><span class=o>.</span><span class=n>_host</span> <span class=ow>is</span> <span class=kc>None</span><span class=p>:</span>
+            <span class=k>return</span> <span class=p>{</span>
+                <span class=s2>&quot;project_name&quot;</span><span class=p>:</span> <span class=kc>None</span><span class=p>,</span>
+                <span class=s2>&quot;folder_id&quot;</span><span class=p>:</span> <span class=kc>None</span><span class=p>,</span>
+                <span class=s2>&quot;task_name&quot;</span><span class=p>:</span> <span class=kc>None</span><span class=p>,</span>
+            <span class=p>}</span>
+        <span class=k>if</span> <span class=nb>hasattr</span><span class=p>(</span><span class=bp>self</span><span class=o>.</span><span class=n>_host</span><span class=p>,</span> <span class=s2>&quot;get_current_context&quot;</span><span class=p>):</span>
+            <span class=n>context</span> <span class=o>=</span> <span class=bp>self</span><span class=o>.</span><span class=n>_host</span><span class=o>.</span><span class=n>get_current_context</span><span class=p>()</span>
+        <span class=k>else</span><span class=p>:</span>
+            <span class=n>context</span> <span class=o>=</span> <span class=n>get_current_context</span><span class=p>()</span>
+        <span class=n>folder_id</span> <span class=o>=</span> <span class=kc>None</span>
+        <span class=n>project_name</span> <span class=o>=</span> <span class=n>context</span><span class=o>.</span><span class=n>get</span><span class=p>(</span><span class=s2>&quot;project_name&quot;</span><span class=p>)</span>
+        <span class=n>folder_path</span> <span class=o>=</span> <span class=n>context</span><span class=o>.</span><span class=n>get</span><span class=p>(</span><span class=s2>&quot;folder_path&quot;</span><span class=p>)</span>
+        <span class=k>if</span> <span class=n>project_name</span> <span class=ow>and</span> <span class=n>folder_path</span><span class=p>:</span>
+            <span class=n>folder_entity</span> <span class=o>=</span> <span class=n>ayon_api</span><span class=o>.</span><span class=n>get_folder_by_path</span><span class=p>(</span>
+                <span class=n>project_name</span><span class=p>,</span> <span class=n>folder_path</span><span class=p>,</span> <span class=n>fields</span><span class=o>=</span><span class=p>[</span><span class=s2>&quot;id&quot;</span><span class=p>]</span>
+            <span class=p>)</span>
+            <span class=k>if</span> <span class=n>folder_entity</span><span class=p>:</span>
+                <span class=n>folder_id</span> <span class=o>=</span> <span class=n>folder_entity</span><span class=p>[</span><span class=s2>&quot;id&quot;</span><span class=p>]</span>
+        <span class=k>return</span> <span class=p>{</span>
+            <span class=s2>&quot;project_name&quot;</span><span class=p>:</span> <span class=n>project_name</span><span class=p>,</span>
+            <span class=s2>&quot;folder_id&quot;</span><span class=p>:</span> <span class=n>folder_id</span><span class=p>,</span>
+            <span class=s2>&quot;task_name&quot;</span><span class=p>:</span> <span class=n>context</span><span class=o>.</span><span class=n>get</span><span class=p>(</span><span class=s2>&quot;task_name&quot;</span><span class=p>),</span>
+        <span class=p>}</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>get_loaded_product_ids</span><span class=p>(</span><span class=bp>self</span><span class=p>):</span>
+        <span class=k>if</span> <span class=bp>self</span><span class=o>.</span><span class=n>_host</span> <span class=ow>is</span> <span class=kc>None</span><span class=p>:</span>
+            <span class=k>return</span> <span class=nb>set</span><span class=p>()</span>
+
+        <span class=n>context</span> <span class=o>=</span> <span class=bp>self</span><span class=o>.</span><span class=n>get_current_context</span><span class=p>()</span>
+        <span class=n>project_name</span> <span class=o>=</span> <span class=n>context</span><span class=p>[</span><span class=s2>&quot;project_name&quot;</span><span class=p>]</span>
+        <span class=k>if</span> <span class=ow>not</span> <span class=n>project_name</span><span class=p>:</span>
+            <span class=k>return</span> <span class=nb>set</span><span class=p>()</span>
+
+        <span class=k>if</span> <span class=ow>not</span> <span class=bp>self</span><span class=o>.</span><span class=n>_loaded_products_cache</span><span class=o>.</span><span class=n>is_valid</span><span class=p>:</span>
+            <span class=k>try</span><span class=p>:</span>
+                <span class=k>if</span> <span class=nb>isinstance</span><span class=p>(</span><span class=bp>self</span><span class=o>.</span><span class=n>_host</span><span class=p>,</span> <span class=n>ILoadHost</span><span class=p>):</span>
+                    <span class=n>containers</span> <span class=o>=</span> <span class=bp>self</span><span class=o>.</span><span class=n>_host</span><span class=o>.</span><span class=n>get_containers</span><span class=p>()</span>
+                <span class=k>else</span><span class=p>:</span>
+                    <span class=n>containers</span> <span class=o>=</span> <span class=bp>self</span><span class=o>.</span><span class=n>_host</span><span class=o>.</span><span class=n>ls</span><span class=p>()</span>
+
+            <span class=k>except</span> <span class=ne>BaseException</span><span class=p>:</span>
+                <span class=bp>self</span><span class=o>.</span><span class=n>log</span><span class=o>.</span><span class=n>error</span><span class=p>(</span>
+                    <span class=s2>&quot;Failed to collect loaded products.&quot;</span><span class=p>,</span> <span class=n>exc_info</span><span class=o>=</span><span class=kc>True</span>
+                <span class=p>)</span>
+                <span class=n>containers</span> <span class=o>=</span> <span class=p>[]</span>
+
+            <span class=n>repre_ids</span> <span class=o>=</span> <span class=nb>set</span><span class=p>()</span>
+            <span class=k>for</span> <span class=n>container</span> <span class=ow>in</span> <span class=n>containers</span><span class=p>:</span>
+                <span class=k>try</span><span class=p>:</span>
+                    <span class=n>repre_id</span> <span class=o>=</span> <span class=n>container</span><span class=o>.</span><span class=n>get</span><span class=p>(</span><span class=s2>&quot;representation&quot;</span><span class=p>)</span>
+                    <span class=c1># Ignore invalid representation ids.</span>
+                    <span class=c1># - invalid representation ids may be available if e.g. is</span>
+                    <span class=c1>#   opened scene from OpenPype whe &#39;ObjectId&#39; was used</span>
+                    <span class=c1>#   instead of &#39;uuid&#39;.</span>
+                    <span class=c1># NOTE: Server call would crash if there is any invalid id.</span>
+                    <span class=c1>#   That would cause crash we won&#39;t get any information.</span>
+                    <span class=n>uuid</span><span class=o>.</span><span class=n>UUID</span><span class=p>(</span><span class=n>repre_id</span><span class=p>)</span>
+                    <span class=n>repre_ids</span><span class=o>.</span><span class=n>add</span><span class=p>(</span><span class=n>repre_id</span><span class=p>)</span>
+                <span class=k>except</span> <span class=p>(</span><span class=ne>ValueError</span><span class=p>,</span> <span class=ne>TypeError</span><span class=p>,</span> <span class=ne>AttributeError</span><span class=p>):</span>
+                    <span class=k>pass</span>
+
+            <span class=n>product_ids</span> <span class=o>=</span> <span class=bp>self</span><span class=o>.</span><span class=n>_products_model</span><span class=o>.</span><span class=n>get_product_ids_by_repre_ids</span><span class=p>(</span>
+                <span class=n>project_name</span><span class=p>,</span> <span class=n>repre_ids</span>
+            <span class=p>)</span>
+            <span class=bp>self</span><span class=o>.</span><span class=n>_loaded_products_cache</span><span class=o>.</span><span class=n>update_data</span><span class=p>(</span><span class=n>product_ids</span><span class=p>)</span>
+        <span class=k>return</span> <span class=bp>self</span><span class=o>.</span><span class=n>_loaded_products_cache</span><span class=o>.</span><span class=n>get_data</span><span class=p>()</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>is_sitesync_enabled</span><span class=p>(</span><span class=bp>self</span><span class=p>,</span> <span class=n>project_name</span><span class=o>=</span><span class=kc>None</span><span class=p>):</span>
+        <span class=k>return</span> <span class=bp>self</span><span class=o>.</span><span class=n>_sitesync_model</span><span class=o>.</span><span class=n>is_sitesync_enabled</span><span class=p>(</span><span class=n>project_name</span><span class=p>)</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>get_active_site_icon_def</span><span class=p>(</span><span class=bp>self</span><span class=p>,</span> <span class=n>project_name</span><span class=p>):</span>
+        <span class=k>return</span> <span class=bp>self</span><span class=o>.</span><span class=n>_sitesync_model</span><span class=o>.</span><span class=n>get_active_site_icon_def</span><span class=p>(</span><span class=n>project_name</span><span class=p>)</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>get_remote_site_icon_def</span><span class=p>(</span><span class=bp>self</span><span class=p>,</span> <span class=n>project_name</span><span class=p>):</span>
+        <span class=k>return</span> <span class=bp>self</span><span class=o>.</span><span class=n>_sitesync_model</span><span class=o>.</span><span class=n>get_remote_site_icon_def</span><span class=p>(</span><span class=n>project_name</span><span class=p>)</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>get_version_sync_availability</span><span class=p>(</span><span class=bp>self</span><span class=p>,</span> <span class=n>project_name</span><span class=p>,</span> <span class=n>version_ids</span><span class=p>):</span>
+        <span class=k>return</span> <span class=bp>self</span><span class=o>.</span><span class=n>_sitesync_model</span><span class=o>.</span><span class=n>get_version_sync_availability</span><span class=p>(</span>
+            <span class=n>project_name</span><span class=p>,</span> <span class=n>version_ids</span>
+        <span class=p>)</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>get_representations_sync_status</span><span class=p>(</span>
+        <span class=bp>self</span><span class=p>,</span> <span class=n>project_name</span><span class=p>,</span> <span class=n>representation_ids</span>
+    <span class=p>):</span>
+        <span class=k>return</span> <span class=bp>self</span><span class=o>.</span><span class=n>_sitesync_model</span><span class=o>.</span><span class=n>get_representations_sync_status</span><span class=p>(</span>
+            <span class=n>project_name</span><span class=p>,</span> <span class=n>representation_ids</span>
+        <span class=p>)</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>is_loaded_products_supported</span><span class=p>(</span><span class=bp>self</span><span class=p>):</span>
+        <span class=k>return</span> <span class=bp>self</span><span class=o>.</span><span class=n>_host</span> <span class=ow>is</span> <span class=ow>not</span> <span class=kc>None</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>is_standard_projects_filter_enabled</span><span class=p>(</span><span class=bp>self</span><span class=p>):</span>
+        <span class=k>return</span> <span class=bp>self</span><span class=o>.</span><span class=n>_host</span> <span class=ow>is</span> <span class=ow>not</span> <span class=kc>None</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>_get_project_anatomy</span><span class=p>(</span><span class=bp>self</span><span class=p>,</span> <span class=n>project_name</span><span class=p>):</span>
+        <span class=k>if</span> <span class=ow>not</span> <span class=n>project_name</span><span class=p>:</span>
+            <span class=k>return</span> <span class=kc>None</span>
+        <span class=n>cache</span> <span class=o>=</span> <span class=bp>self</span><span class=o>.</span><span class=n>_project_anatomy_cache</span><span class=p>[</span><span class=n>project_name</span><span class=p>]</span>
+        <span class=k>if</span> <span class=ow>not</span> <span class=n>cache</span><span class=o>.</span><span class=n>is_valid</span><span class=p>:</span>
+            <span class=n>cache</span><span class=o>.</span><span class=n>update_data</span><span class=p>(</span><span class=n>Anatomy</span><span class=p>(</span><span class=n>project_name</span><span class=p>))</span>
+        <span class=k>return</span> <span class=n>cache</span><span class=o>.</span><span class=n>get_data</span><span class=p>()</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>_create_event_system</span><span class=p>(</span><span class=bp>self</span><span class=p>):</span>
+        <span class=k>return</span> <span class=n>QueuedEventSystem</span><span class=p>()</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>_emit_event</span><span class=p>(</span><span class=bp>self</span><span class=p>,</span> <span class=n>topic</span><span class=p>,</span> <span class=n>data</span><span class=o>=</span><span class=kc>None</span><span class=p>):</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>_event_system</span><span class=o>.</span><span class=n>emit</span><span class=p>(</span><span class=n>topic</span><span class=p>,</span> <span class=n>data</span> <span class=ow>or</span> <span class=p>{},</span> <span class=s2>&quot;controller&quot;</span><span class=p>)</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>get_product_types_filter</span><span class=p>(</span><span class=bp>self</span><span class=p>):</span>
+        <span class=n>output</span> <span class=o>=</span> <span class=n>ProductTypesFilter</span><span class=p>(</span>
+            <span class=n>is_allow_list</span><span class=o>=</span><span class=kc>False</span><span class=p>,</span>
+            <span class=n>product_types</span><span class=o>=</span><span class=p>[]</span>
+        <span class=p>)</span>
+        <span class=c1># Without host is not determined context</span>
+        <span class=k>if</span> <span class=bp>self</span><span class=o>.</span><span class=n>_host</span> <span class=ow>is</span> <span class=kc>None</span><span class=p>:</span>
+            <span class=k>return</span> <span class=n>output</span>
+
+        <span class=n>context</span> <span class=o>=</span> <span class=bp>self</span><span class=o>.</span><span class=n>get_current_context</span><span class=p>()</span>
+        <span class=n>project_name</span> <span class=o>=</span> <span class=n>context</span><span class=o>.</span><span class=n>get</span><span class=p>(</span><span class=s2>&quot;project_name&quot;</span><span class=p>)</span>
+        <span class=k>if</span> <span class=ow>not</span> <span class=n>project_name</span><span class=p>:</span>
+            <span class=k>return</span> <span class=n>output</span>
+        <span class=n>settings</span> <span class=o>=</span> <span class=n>get_project_settings</span><span class=p>(</span><span class=n>project_name</span><span class=p>)</span>
+        <span class=n>profiles</span> <span class=o>=</span> <span class=p>(</span>
+            <span class=n>settings</span>
+            <span class=p>[</span><span class=s2>&quot;core&quot;</span><span class=p>]</span>
+            <span class=p>[</span><span class=s2>&quot;tools&quot;</span><span class=p>]</span>
+            <span class=p>[</span><span class=s2>&quot;loader&quot;</span><span class=p>]</span>
+            <span class=p>[</span><span class=s2>&quot;product_type_filter_profiles&quot;</span><span class=p>]</span>
+        <span class=p>)</span>
+        <span class=k>if</span> <span class=ow>not</span> <span class=n>profiles</span><span class=p>:</span>
+            <span class=k>return</span> <span class=n>output</span>
+
+        <span class=n>folder_id</span> <span class=o>=</span> <span class=n>context</span><span class=o>.</span><span class=n>get</span><span class=p>(</span><span class=s2>&quot;folder_id&quot;</span><span class=p>)</span>
+        <span class=n>task_name</span> <span class=o>=</span> <span class=n>context</span><span class=o>.</span><span class=n>get</span><span class=p>(</span><span class=s2>&quot;task_name&quot;</span><span class=p>)</span>
+        <span class=n>task_type</span> <span class=o>=</span> <span class=kc>None</span>
+        <span class=k>if</span> <span class=n>folder_id</span> <span class=ow>and</span> <span class=n>task_name</span><span class=p>:</span>
+            <span class=n>task_entity</span> <span class=o>=</span> <span class=n>ayon_api</span><span class=o>.</span><span class=n>get_task_by_name</span><span class=p>(</span>
+                <span class=n>project_name</span><span class=p>,</span>
+                <span class=n>folder_id</span><span class=p>,</span>
+                <span class=n>task_name</span><span class=p>,</span>
+                <span class=n>fields</span><span class=o>=</span><span class=p>{</span><span class=s2>&quot;taskType&quot;</span><span class=p>}</span>
+            <span class=p>)</span>
+            <span class=k>if</span> <span class=n>task_entity</span><span class=p>:</span>
+                <span class=n>task_type</span> <span class=o>=</span> <span class=n>task_entity</span><span class=o>.</span><span class=n>get</span><span class=p>(</span><span class=s2>&quot;taskType&quot;</span><span class=p>)</span>
+
+        <span class=n>host_name</span> <span class=o>=</span> <span class=nb>getattr</span><span class=p>(</span><span class=bp>self</span><span class=o>.</span><span class=n>_host</span><span class=p>,</span> <span class=s2>&quot;name&quot;</span><span class=p>,</span> <span class=n>get_current_host_name</span><span class=p>())</span>
+        <span class=n>profile</span> <span class=o>=</span> <span class=n>filter_profiles</span><span class=p>(</span>
+            <span class=n>profiles</span><span class=p>,</span>
+            <span class=p>{</span>
+                <span class=s2>&quot;hosts&quot;</span><span class=p>:</span> <span class=n>host_name</span><span class=p>,</span>
+                <span class=s2>&quot;task_types&quot;</span><span class=p>:</span> <span class=n>task_type</span><span class=p>,</span>
+            <span class=p>}</span>
+        <span class=p>)</span>
+        <span class=k>if</span> <span class=n>profile</span><span class=p>:</span>
+            <span class=c1># TODO remove &#39;is_include&#39; after release &#39;0.4.3&#39;</span>
+            <span class=n>is_allow_list</span> <span class=o>=</span> <span class=n>profile</span><span class=o>.</span><span class=n>get</span><span class=p>(</span><span class=s2>&quot;is_include&quot;</span><span class=p>)</span>
+            <span class=k>if</span> <span class=n>is_allow_list</span> <span class=ow>is</span> <span class=kc>None</span><span class=p>:</span>
+                <span class=n>is_allow_list</span> <span class=o>=</span> <span class=n>profile</span><span class=p>[</span><span class=s2>&quot;filter_type&quot;</span><span class=p>]</span> <span class=o>==</span> <span class=s2>&quot;is_allow_list&quot;</span>
+            <span class=n>output</span> <span class=o>=</span> <span class=n>ProductTypesFilter</span><span class=p>(</span>
+                <span class=n>is_allow_list</span><span class=o>=</span><span class=n>is_allow_list</span><span class=p>,</span>
+                <span class=n>product_types</span><span class=o>=</span><span class=n>profile</span><span class=p>[</span><span class=s2>&quot;filter_product_types&quot;</span><span class=p>]</span>
+            <span class=p>)</span>
+        <span class=k>return</span> <span class=n>output</span>
+</code></pre></div></td></tr></table></div> </details> <div class="doc doc-children"> <div class="doc doc-object doc-function"> <h3 id=client.ayon_core.tools.loader.control.LoaderController.emit_event class="doc doc-heading"> <code class="highlight language-python"><span class=n>emit_event</span><span class=p>(</span><span class=n>topic</span><span class=p>,</span> <span class=n>data</span><span class=o>=</span><span class=kc>None</span><span class=p>,</span> <span class=n>source</span><span class=o>=</span><span class=kc>None</span><span class=p>)</span></code> </h3> <div class="doc doc-contents "> <p>Use implemented event system to trigger event.</p> <details class=quote> <summary>Source code in <code>client/ayon_core/tools/loader/control.py</code></summary> <div class=highlight><table class=highlighttable><tr><td class=linenos><div class=linenodiv><pre><span></span><span class=normal>133</span>
+<span class=normal>134</span>
+<span class=normal>135</span>
+<span class=normal>136</span>
+<span class=normal>137</span>
+<span class=normal>138</span></pre></div></td><td class=code><div><pre><span></span><code><span class=k>def</span><span class=w> </span><span class=nf>emit_event</span><span class=p>(</span><span class=bp>self</span><span class=p>,</span> <span class=n>topic</span><span class=p>,</span> <span class=n>data</span><span class=o>=</span><span class=kc>None</span><span class=p>,</span> <span class=n>source</span><span class=o>=</span><span class=kc>None</span><span class=p>):</span>
+<span class=w>    </span><span class=sd>&quot;&quot;&quot;Use implemented event system to trigger event.&quot;&quot;&quot;</span>
+
+    <span class=k>if</span> <span class=n>data</span> <span class=ow>is</span> <span class=kc>None</span><span class=p>:</span>
+        <span class=n>data</span> <span class=o>=</span> <span class=p>{}</span>
+    <span class=bp>self</span><span class=o>.</span><span class=n>_event_system</span><span class=o>.</span><span class=n>emit</span><span class=p>(</span><span class=n>topic</span><span class=p>,</span> <span class=n>data</span><span class=p>,</span> <span class=n>source</span><span class=p>)</span>
+</code></pre></div></td></tr></table></div> </details> </div> </div> </div> </div> </div> </div> </div> </div> </article> </div> <script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script> </div> </main> <footer class=md-footer> <div class="md-footer-meta md-typeset"> <div class="md-footer-meta__inner md-grid"> <div class=md-copyright> Made with <a href=https://squidfunk.github.io/mkdocs-material/ target=_blank rel=noopener> Material for MkDocs </a> </div> </div> </div> </footer> </div> <div class=md-dialog data-md-component=dialog> <div class="md-dialog__inner md-typeset"></div> </div> <script id=__config type=application/json>{"base": "../../../../..", "features": ["navigation.sections", "navigation.path", "navigation.prune"], "search": "../../../../../assets/javascripts/workers/search.f8cc74c7.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script> <script src=../../../../../assets/javascripts/bundle.c8b220af.min.js></script> </body> </html>

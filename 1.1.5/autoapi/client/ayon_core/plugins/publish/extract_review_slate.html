@@ -1,0 +1,1489 @@
+<!doctype html><html lang=en class=no-js> <head><meta charset=utf-8><meta name=viewport content="width=device-width,initial-scale=1"><link rel=prev href=extract_review.html><link rel=next href=extract_scanline_exr.html><link rel=icon href=../../../../../img/favicon.ico><meta name=generator content="mkdocs-1.6.1, mkdocs-material-9.6.8"><title>extract_review_slate - ayon-core</title><link rel=stylesheet href=../../../../../assets/stylesheets/main.8608ea7d.min.css><link rel=stylesheet href=../../../../../assets/stylesheets/palette.06af60db.min.css><script src=https://unpkg.com/iframe-worker/shim></script><link rel=preconnect href=https://fonts.gstatic.com crossorigin><link rel=stylesheet href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback"><style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style><link rel=stylesheet href=../../../../../assets/_mkdocstrings.css><link rel=stylesheet href=../../../../../css/custom.css><script>__md_scope=new URL("../../../../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script></head> <body dir=ltr data-md-color-scheme=slate data-md-color-primary=indigo data-md-color-accent=indigo> <input class=md-toggle data-md-toggle=drawer type=checkbox id=__drawer autocomplete=off> <input class=md-toggle data-md-toggle=search type=checkbox id=__search autocomplete=off> <label class=md-overlay for=__drawer></label> <div data-md-component=skip> <a href=#client.ayon_core.plugins.publish.extract_review_slate class=md-skip> Skip to content </a> </div> <div data-md-component=announce> </div> <div data-md-color-scheme=default data-md-component=outdated hidden> </div> <header class="md-header md-header--shadow" data-md-component=header> <nav class="md-header__inner md-grid" aria-label=Header> <a href=../../../../../index.html title=ayon-core class="md-header__button md-logo" aria-label=ayon-core data-md-component=logo> <img src=../../../../../img/ay-symbol-blackw-full.png alt=logo> </a> <label class="md-header__button md-icon" for=__drawer> <svg xmlns=http://www.w3.org/2000/svg viewbox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg> </label> <div class=md-header__title data-md-component=header-title> <div class=md-header__ellipsis> <div class=md-header__topic> <span class=md-ellipsis> ayon-core </span> </div> <div class=md-header__topic data-md-component=header-topic> <span class=md-ellipsis> extract_review_slate </span> </div> </div> </div> <form class=md-header__option data-md-component=palette> <input class=md-option data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme=slate data-md-color-primary=indigo data-md-color-accent=indigo aria-label="Switch to light mode" type=radio name=__palette id=__palette_0> <label class="md-header__button md-icon" title="Switch to light mode" for=__palette_1 hidden> <svg xmlns=http://www.w3.org/2000/svg viewbox="0 0 24 24"><path d="M17 6H7c-3.31 0-6 2.69-6 6s2.69 6 6 6h10c3.31 0 6-2.69 6-6s-2.69-6-6-6m0 10H7c-2.21 0-4-1.79-4-4s1.79-4 4-4h10c2.21 0 4 1.79 4 4s-1.79 4-4 4M7 9c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3"/></svg> </label> <input class=md-option data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme=default data-md-color-primary=indigo data-md-color-accent=indigo aria-label="Switch to dark mode" type=radio name=__palette id=__palette_1> <label class="md-header__button md-icon" title="Switch to dark mode" for=__palette_0 hidden> <svg xmlns=http://www.w3.org/2000/svg viewbox="0 0 24 24"><path d="M17 7H7a5 5 0 0 0-5 5 5 5 0 0 0 5 5h10a5 5 0 0 0 5-5 5 5 0 0 0-5-5m0 8a3 3 0 0 1-3-3 3 3 0 0 1 3-3 3 3 0 0 1 3 3 3 3 0 0 1-3 3"/></svg> </label> </form> <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script> <label class="md-header__button md-icon" for=__search> <svg xmlns=http://www.w3.org/2000/svg viewbox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg> </label> <div class=md-search data-md-component=search role=dialog> <label class=md-search__overlay for=__search></label> <div class=md-search__inner role=search> <form class=md-search__form name=search> <input type=text class=md-search__input name=query aria-label=Search placeholder=Search autocapitalize=off autocorrect=off autocomplete=off spellcheck=false data-md-component=search-query required> <label class="md-search__icon md-icon" for=__search> <svg xmlns=http://www.w3.org/2000/svg viewbox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg> <svg xmlns=http://www.w3.org/2000/svg viewbox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg> </label> <nav class=md-search__options aria-label=Search> <button type=reset class="md-search__icon md-icon" title=Clear aria-label=Clear tabindex=-1> <svg xmlns=http://www.w3.org/2000/svg viewbox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg> </button> </nav> </form> <div class=md-search__output> <div class=md-search__scrollwrap tabindex=0 data-md-scrollfix> <div class=md-search-result data-md-component=search-result> <div class=md-search-result__meta> Initializing search </div> <ol class=md-search-result__list role=presentation></ol> </div> </div> </div> </div> </div> </nav> </header> <div class=md-container data-md-component=container> <main class=md-main data-md-component=main> <div class="md-main__inner md-grid"> <div class="md-sidebar md-sidebar--primary" data-md-component=sidebar data-md-type=navigation> <div class=md-sidebar__scrollwrap> <div class=md-sidebar__inner> <nav class="md-nav md-nav--primary" aria-label=Navigation data-md-level=0> <label class=md-nav__title for=__drawer> <a href=../../../../../index.html title=ayon-core class="md-nav__button md-logo" aria-label=ayon-core data-md-component=logo> <img src=../../../../../img/ay-symbol-blackw-full.png alt=logo> </a> ayon-core </label> <ul class=md-nav__list data-md-scrollfix> <li class=md-nav__item> <a href=../../../../../index.html class=md-nav__link> <span class=md-ellipsis> Home </span> </a> </li> <li class=md-nav__item> <a href=../../../../../license.html class=md-nav__link> <span class=md-ellipsis> License </span> </a> </li> <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested"> <input class="md-nav__toggle md-toggle " type=checkbox id=__nav_3 checked> <label class=md-nav__link for=__nav_3 id=__nav_3_label tabindex> <span class=md-ellipsis> Reference </span> <span class="md-nav__icon md-icon"></span> </label> <nav class=md-nav data-md-level=1 aria-labelledby=__nav_3_label aria-expanded=true> <label class=md-nav__title for=__nav_3> <span class="md-nav__icon md-icon"></span> Reference </label> <ul class=md-nav__list data-md-scrollfix> <li class="md-nav__item md-nav__item--active md-nav__item--nested"> <input class="md-nav__toggle md-toggle " type=checkbox id=__nav_3_1 checked> <div class="md-nav__link md-nav__container"> <a href=../../../index.html class="md-nav__link "> <span class=md-ellipsis> client </span> </a> <label class="md-nav__link " for=__nav_3_1 id=__nav_3_1_label tabindex=0> <span class="md-nav__icon md-icon"></span> </label> </div> <nav class=md-nav data-md-level=2 aria-labelledby=__nav_3_1_label aria-expanded=true> <label class=md-nav__title for=__nav_3_1> <span class="md-nav__icon md-icon"></span> client </label> <ul class=md-nav__list data-md-scrollfix> <li class="md-nav__item md-nav__item--active md-nav__item--nested"> <input class="md-nav__toggle md-toggle " type=checkbox id=__nav_3_1_1 checked> <div class="md-nav__link md-nav__container"> <a href=../../index.html class="md-nav__link "> <span class=md-ellipsis> ayon_core </span> </a> <label class="md-nav__link " for=__nav_3_1_1 id=__nav_3_1_1_label tabindex=0> <span class="md-nav__icon md-icon"></span> </label> </div> <nav class=md-nav data-md-level=3 aria-labelledby=__nav_3_1_1_label aria-expanded=true> <label class=md-nav__title for=__nav_3_1_1> <span class="md-nav__icon md-icon"></span> ayon_core </label> <ul class=md-nav__list data-md-scrollfix> <li class=md-nav__item> <a href=../../__main__.html class=md-nav__link> <span class=md-ellipsis> __main__ </span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../../addon/base.html class=md-nav__link> <span class=md-ellipsis> addon </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class=md-nav__item> <a href=../../cli.html class=md-nav__link> <span class=md-ellipsis> cli </span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../../hooks/pre_add_last_workfile_arg.html class=md-nav__link> <span class=md-ellipsis> hooks </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../../host/dirmap.html class=md-nav__link> <span class=md-ellipsis> host </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../../lib/attribute_definitions.html class=md-nav__link> <span class=md-ellipsis> lib </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../../pipeline/actions.html class=md-nav__link> <span class=md-ellipsis> pipeline </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class="md-nav__item md-nav__item--active md-nav__item--nested"> <input class="md-nav__toggle md-toggle " type=checkbox id=__nav_3_1_1_8 checked> <div class="md-nav__link md-nav__container"> <a href=../index.html class="md-nav__link "> <span class=md-ellipsis> plugins </span> </a> <label class="md-nav__link " for=__nav_3_1_1_8 id=__nav_3_1_1_8_label tabindex=0> <span class="md-nav__icon md-icon"></span> </label> </div> <nav class=md-nav data-md-level=4 aria-labelledby=__nav_3_1_1_8_label aria-expanded=true> <label class=md-nav__title for=__nav_3_1_1_8> <span class="md-nav__icon md-icon"></span> plugins </label> <ul class=md-nav__list data-md-scrollfix> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../actions/open_file_explorer.html class=md-nav__link> <span class=md-ellipsis> actions </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../inventory/remove_and_load.html class=md-nav__link> <span class=md-ellipsis> inventory </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../load/copy_file.html class=md-nav__link> <span class=md-ellipsis> load </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class="md-nav__item md-nav__item--active md-nav__item--nested"> <input class="md-nav__toggle md-toggle " type=checkbox id=__nav_3_1_1_8_4 checked> <div class="md-nav__link md-nav__container"> <a href=index.html class="md-nav__link "> <span class=md-ellipsis> publish </span> </a> <label class="md-nav__link " for=__nav_3_1_1_8_4 id=__nav_3_1_1_8_4_label tabindex=0> <span class="md-nav__icon md-icon"></span> </label> </div> <nav class=md-nav data-md-level=5 aria-labelledby=__nav_3_1_1_8_4_label aria-expanded=true> <label class=md-nav__title for=__nav_3_1_1_8_4> <span class="md-nav__icon md-icon"></span> publish </label> <ul class=md-nav__list data-md-scrollfix> <li class=md-nav__item> <a href=cleanup.html class=md-nav__link> <span class=md-ellipsis> cleanup </span> </a> </li> <li class=md-nav__item> <a href=cleanup_explicit.html class=md-nav__link> <span class=md-ellipsis> cleanup_explicit </span> </a> </li> <li class=md-nav__item> <a href=cleanup_farm.html class=md-nav__link> <span class=md-ellipsis> cleanup_farm </span> </a> </li> <li class=md-nav__item> <a href=collect_addons.html class=md-nav__link> <span class=md-ellipsis> collect_addons </span> </a> </li> <li class=md-nav__item> <a href=collect_anatomy_context_data.html class=md-nav__link> <span class=md-ellipsis> collect_anatomy_context_data </span> </a> </li> <li class=md-nav__item> <a href=collect_anatomy_instance_data.html class=md-nav__link> <span class=md-ellipsis> collect_anatomy_instance_data </span> </a> </li> <li class=md-nav__item> <a href=collect_anatomy_object.html class=md-nav__link> <span class=md-ellipsis> collect_anatomy_object </span> </a> </li> <li class=md-nav__item> <a href=collect_audio.html class=md-nav__link> <span class=md-ellipsis> collect_audio </span> </a> </li> <li class=md-nav__item> <a href=collect_cleanup_keys.html class=md-nav__link> <span class=md-ellipsis> collect_cleanup_keys </span> </a> </li> <li class=md-nav__item> <a href=collect_comment.html class=md-nav__link> <span class=md-ellipsis> collect_comment </span> </a> </li> <li class=md-nav__item> <a href=collect_context_entities.html class=md-nav__link> <span class=md-ellipsis> collect_context_entities </span> </a> </li> <li class=md-nav__item> <a href=collect_context_label.html class=md-nav__link> <span class=md-ellipsis> collect_context_label </span> </a> </li> <li class=md-nav__item> <a href=collect_current_ayon_user.html class=md-nav__link> <span class=md-ellipsis> collect_current_ayon_user </span> </a> </li> <li class=md-nav__item> <a href=collect_current_context.html class=md-nav__link> <span class=md-ellipsis> collect_current_context </span> </a> </li> <li class=md-nav__item> <a href=collect_current_shell_file.html class=md-nav__link> <span class=md-ellipsis> collect_current_shell_file </span> </a> </li> <li class=md-nav__item> <a href=collect_datetime_data.html class=md-nav__link> <span class=md-ellipsis> collect_datetime_data </span> </a> </li> <li class=md-nav__item> <a href=collect_farm_env_variables.html class=md-nav__link> <span class=md-ellipsis> collect_farm_env_variables </span> </a> </li> <li class=md-nav__item> <a href=collect_farm_target.html class=md-nav__link> <span class=md-ellipsis> collect_farm_target </span> </a> </li> <li class=md-nav__item> <a href=collect_frames_fix.html class=md-nav__link> <span class=md-ellipsis> collect_frames_fix </span> </a> </li> <li class=md-nav__item> <a href=collect_from_create_context.html class=md-nav__link> <span class=md-ellipsis> collect_from_create_context </span> </a> </li> <li class=md-nav__item> <a href=collect_hierarchy.html class=md-nav__link> <span class=md-ellipsis> collect_hierarchy </span> </a> </li> <li class=md-nav__item> <a href=collect_host_name.html class=md-nav__link> <span class=md-ellipsis> collect_host_name </span> </a> </li> <li class=md-nav__item> <a href=collect_input_representations_to_versions.html class=md-nav__link> <span class=md-ellipsis> collect_input_representations_to_versions </span> </a> </li> <li class=md-nav__item> <a href=collect_machine_name.html class=md-nav__link> <span class=md-ellipsis> collect_machine_name </span> </a> </li> <li class=md-nav__item> <a href=collect_managed_staging_dir.html class=md-nav__link> <span class=md-ellipsis> collect_managed_staging_dir </span> </a> </li> <li class=md-nav__item> <a href=collect_otio_frame_ranges.html class=md-nav__link> <span class=md-ellipsis> collect_otio_frame_ranges </span> </a> </li> <li class=md-nav__item> <a href=collect_otio_review.html class=md-nav__link> <span class=md-ellipsis> collect_otio_review </span> </a> </li> <li class=md-nav__item> <a href=collect_otio_subset_resources.html class=md-nav__link> <span class=md-ellipsis> collect_otio_subset_resources </span> </a> </li> <li class=md-nav__item> <a href=collect_rendered_files.html class=md-nav__link> <span class=md-ellipsis> collect_rendered_files </span> </a> </li> <li class=md-nav__item> <a href=collect_resources_path.html class=md-nav__link> <span class=md-ellipsis> collect_resources_path </span> </a> </li> <li class=md-nav__item> <a href=collect_scene_loaded_versions.html class=md-nav__link> <span class=md-ellipsis> collect_scene_loaded_versions </span> </a> </li> <li class=md-nav__item> <a href=collect_scene_version.html class=md-nav__link> <span class=md-ellipsis> collect_scene_version </span> </a> </li> <li class=md-nav__item> <a href=collect_settings.html class=md-nav__link> <span class=md-ellipsis> collect_settings </span> </a> </li> <li class=md-nav__item> <a href=collect_shell_workspace.html class=md-nav__link> <span class=md-ellipsis> collect_shell_workspace </span> </a> </li> <li class=md-nav__item> <a href=collect_source_for_source.html class=md-nav__link> <span class=md-ellipsis> collect_source_for_source </span> </a> </li> <li class=md-nav__item> <a href=collect_time.html class=md-nav__link> <span class=md-ellipsis> collect_time </span> </a> </li> <li class=md-nav__item> <a href=extract_burnin.html class=md-nav__link> <span class=md-ellipsis> extract_burnin </span> </a> </li> <li class=md-nav__item> <a href=extract_color_transcode.html class=md-nav__link> <span class=md-ellipsis> extract_color_transcode </span> </a> </li> <li class=md-nav__item> <a href=extract_colorspace_data.html class=md-nav__link> <span class=md-ellipsis> extract_colorspace_data </span> </a> </li> <li class=md-nav__item> <a href=extract_hierarchy_to_ayon.html class=md-nav__link> <span class=md-ellipsis> extract_hierarchy_to_ayon </span> </a> </li> <li class=md-nav__item> <a href=extract_otio_audio_tracks.html class=md-nav__link> <span class=md-ellipsis> extract_otio_audio_tracks </span> </a> </li> <li class=md-nav__item> <a href=extract_otio_file.html class=md-nav__link> <span class=md-ellipsis> extract_otio_file </span> </a> </li> <li class=md-nav__item> <a href=extract_otio_review.html class=md-nav__link> <span class=md-ellipsis> extract_otio_review </span> </a> </li> <li class=md-nav__item> <a href=extract_otio_trimming_video.html class=md-nav__link> <span class=md-ellipsis> extract_otio_trimming_video </span> </a> </li> <li class=md-nav__item> <a href=extract_review.html class=md-nav__link> <span class=md-ellipsis> extract_review </span> </a> </li> <li class="md-nav__item md-nav__item--active"> <input class="md-nav__toggle md-toggle" type=checkbox id=__toc> <label class="md-nav__link md-nav__link--active" for=__toc> <span class=md-ellipsis> extract_review_slate </span> <span class="md-nav__icon md-icon"></span> </label> <a href=extract_review_slate.html class="md-nav__link md-nav__link--active"> <span class=md-ellipsis> extract_review_slate </span> </a> <nav class="md-nav md-nav--secondary" aria-label="Table of contents"> <label class=md-nav__title for=__toc> <span class="md-nav__icon md-icon"></span> Table of contents </label> <ul class=md-nav__list data-md-component=toc data-md-scrollfix> <li class=md-nav__item> <a href=#client.ayon_core.plugins.publish.extract_review_slate class=md-nav__link> <span class=md-ellipsis> extract_review_slate </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.plugins.publish.extract_review_slate.ExtractReviewSlate class=md-nav__link> <span class=md-ellipsis> ExtractReviewSlate </span> </a> <nav class=md-nav aria-label=ExtractReviewSlate> <ul class=md-nav__list> <li class=md-nav__item> <a href=#client.ayon_core.plugins.publish.extract_review_slate.ExtractReviewSlate._get_format_codec_args class=md-nav__link> <span class=md-ellipsis> _get_format_codec_args </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.plugins.publish.extract_review_slate.ExtractReviewSlate._tc_offset class=md-nav__link> <span class=md-ellipsis> _tc_offset </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.plugins.publish.extract_review_slate.ExtractReviewSlate.add_video_filter_args class=md-nav__link> <span class=md-ellipsis> add_video_filter_args </span> </a> </li> </ul> </nav> </li> </ul> </nav> </li> <li class=md-nav__item> <a href=extract_scanline_exr.html class=md-nav__link> <span class=md-ellipsis> extract_scanline_exr </span> </a> </li> <li class=md-nav__item> <a href=extract_slate_data.html class=md-nav__link> <span class=md-ellipsis> extract_slate_data </span> </a> </li> <li class=md-nav__item> <a href=extract_thumbnail.html class=md-nav__link> <span class=md-ellipsis> extract_thumbnail </span> </a> </li> <li class=md-nav__item> <a href=extract_thumbnail_from_source.html class=md-nav__link> <span class=md-ellipsis> extract_thumbnail_from_source </span> </a> </li> <li class=md-nav__item> <a href=extract_usd_layer_contributions.html class=md-nav__link> <span class=md-ellipsis> extract_usd_layer_contributions </span> </a> </li> <li class=md-nav__item> <a href=help/index.html class=md-nav__link> <span class=md-ellipsis> help </span> </a> </li> <li class=md-nav__item> <a href=integrate.html class=md-nav__link> <span class=md-ellipsis> integrate </span> </a> </li> <li class=md-nav__item> <a href=integrate_hero_version.html class=md-nav__link> <span class=md-ellipsis> integrate_hero_version </span> </a> </li> <li class=md-nav__item> <a href=integrate_inputlinks.html class=md-nav__link> <span class=md-ellipsis> integrate_inputlinks </span> </a> </li> <li class=md-nav__item> <a href=integrate_product_group.html class=md-nav__link> <span class=md-ellipsis> integrate_product_group </span> </a> </li> <li class=md-nav__item> <a href=integrate_resources_path.html class=md-nav__link> <span class=md-ellipsis> integrate_resources_path </span> </a> </li> <li class=md-nav__item> <a href=integrate_review.html class=md-nav__link> <span class=md-ellipsis> integrate_review </span> </a> </li> <li class=md-nav__item> <a href=integrate_thumbnail.html class=md-nav__link> <span class=md-ellipsis> integrate_thumbnail </span> </a> </li> <li class=md-nav__item> <a href=integrate_version_attrs.html class=md-nav__link> <span class=md-ellipsis> integrate_version_attrs </span> </a> </li> <li class=md-nav__item> <a href=preintegrate_thumbnail_representation.html class=md-nav__link> <span class=md-ellipsis> preintegrate_thumbnail_representation </span> </a> </li> <li class=md-nav__item> <a href=repair_unicode_strings.html class=md-nav__link> <span class=md-ellipsis> repair_unicode_strings </span> </a> </li> <li class=md-nav__item> <a href=validate_asset_docs.html class=md-nav__link> <span class=md-ellipsis> validate_asset_docs </span> </a> </li> <li class=md-nav__item> <a href=validate_containers.html class=md-nav__link> <span class=md-ellipsis> validate_containers </span> </a> </li> <li class=md-nav__item> <a href=validate_file_saved.html class=md-nav__link> <span class=md-ellipsis> validate_file_saved </span> </a> </li> <li class=md-nav__item> <a href=validate_filesequences.html class=md-nav__link> <span class=md-ellipsis> validate_filesequences </span> </a> </li> <li class=md-nav__item> <a href=validate_intent.html class=md-nav__link> <span class=md-ellipsis> validate_intent </span> </a> </li> <li class=md-nav__item> <a href=validate_publish_dir.html class=md-nav__link> <span class=md-ellipsis> validate_publish_dir </span> </a> </li> <li class=md-nav__item> <a href=validate_resources.html class=md-nav__link> <span class=md-ellipsis> validate_resources </span> </a> </li> <li class=md-nav__item> <a href=validate_unique_subsets.html class=md-nav__link> <span class=md-ellipsis> validate_unique_subsets </span> </a> </li> <li class=md-nav__item> <a href=validate_version.html class=md-nav__link> <span class=md-ellipsis> validate_version </span> </a> </li> </ul> </nav> </li> </ul> </nav> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../../resources/app_icons/index.html class=md-nav__link> <span class=md-ellipsis> resources </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../../scripts/ocio_wrapper.html class=md-nav__link> <span class=md-ellipsis> scripts </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../../settings/lib.html class=md-nav__link> <span class=md-ellipsis> settings </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../../style/color_defs.html class=md-nav__link> <span class=md-ellipsis> style </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../../tests/conftest.html class=md-nav__link> <span class=md-ellipsis> tests </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../../tools/attribute_defs/_constants.html class=md-nav__link> <span class=md-ellipsis> tools </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../../vendor/python/qargparse.html class=md-nav__link> <span class=md-ellipsis> vendor </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class=md-nav__item> <a href=../../version.html class=md-nav__link> <span class=md-ellipsis> version </span> </a> </li> </ul> </nav> </li> </ul> </nav> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../../../../server/settings/conversion.html class=md-nav__link> <span class=md-ellipsis> server </span> <span class="md-nav__icon md-icon"></span> </a> </li> </ul> </nav> </li> </ul> </nav> </div> </div> </div> <div class="md-sidebar md-sidebar--secondary" data-md-component=sidebar data-md-type=toc> <div class=md-sidebar__scrollwrap> <div class=md-sidebar__inner> <nav class="md-nav md-nav--secondary" aria-label="Table of contents"> <label class=md-nav__title for=__toc> <span class="md-nav__icon md-icon"></span> Table of contents </label> <ul class=md-nav__list data-md-component=toc data-md-scrollfix> <li class=md-nav__item> <a href=#client.ayon_core.plugins.publish.extract_review_slate class=md-nav__link> <span class=md-ellipsis> extract_review_slate </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.plugins.publish.extract_review_slate.ExtractReviewSlate class=md-nav__link> <span class=md-ellipsis> ExtractReviewSlate </span> </a> <nav class=md-nav aria-label=ExtractReviewSlate> <ul class=md-nav__list> <li class=md-nav__item> <a href=#client.ayon_core.plugins.publish.extract_review_slate.ExtractReviewSlate._get_format_codec_args class=md-nav__link> <span class=md-ellipsis> _get_format_codec_args </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.plugins.publish.extract_review_slate.ExtractReviewSlate._tc_offset class=md-nav__link> <span class=md-ellipsis> _tc_offset </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.plugins.publish.extract_review_slate.ExtractReviewSlate.add_video_filter_args class=md-nav__link> <span class=md-ellipsis> add_video_filter_args </span> </a> </li> </ul> </nav> </li> </ul> </nav> </div> </div> </div> <div class=md-content data-md-component=content> <article class="md-content__inner md-typeset"> <h1>extract_review_slate</h1> <div class="doc doc-object doc-module"> <a id=client.ayon_core.plugins.publish.extract_review_slate></a> <div class="doc doc-contents first"> <div class="doc doc-children"> <div class="doc doc-object doc-class"> <h2 id=client.ayon_core.plugins.publish.extract_review_slate.ExtractReviewSlate class="doc doc-heading"> <code>ExtractReviewSlate</code> </h2> <div class="doc doc-contents "> <p class="doc doc-class-bases"> Bases: <code><span title=ayon_core.pipeline.publish.Extractor>Extractor</span></code></p> <p>Will add slate frame at the start of the video files</p> <details class=quote> <summary>Source code in <code>client/ayon_core/plugins/publish/extract_review_slate.py</code></summary> <div class=highlight><table class=highlighttable><tr><td class=linenos><div class=linenodiv><pre><span></span><span class=normal> 21</span>
+<span class=normal> 22</span>
+<span class=normal> 23</span>
+<span class=normal> 24</span>
+<span class=normal> 25</span>
+<span class=normal> 26</span>
+<span class=normal> 27</span>
+<span class=normal> 28</span>
+<span class=normal> 29</span>
+<span class=normal> 30</span>
+<span class=normal> 31</span>
+<span class=normal> 32</span>
+<span class=normal> 33</span>
+<span class=normal> 34</span>
+<span class=normal> 35</span>
+<span class=normal> 36</span>
+<span class=normal> 37</span>
+<span class=normal> 38</span>
+<span class=normal> 39</span>
+<span class=normal> 40</span>
+<span class=normal> 41</span>
+<span class=normal> 42</span>
+<span class=normal> 43</span>
+<span class=normal> 44</span>
+<span class=normal> 45</span>
+<span class=normal> 46</span>
+<span class=normal> 47</span>
+<span class=normal> 48</span>
+<span class=normal> 49</span>
+<span class=normal> 50</span>
+<span class=normal> 51</span>
+<span class=normal> 52</span>
+<span class=normal> 53</span>
+<span class=normal> 54</span>
+<span class=normal> 55</span>
+<span class=normal> 56</span>
+<span class=normal> 57</span>
+<span class=normal> 58</span>
+<span class=normal> 59</span>
+<span class=normal> 60</span>
+<span class=normal> 61</span>
+<span class=normal> 62</span>
+<span class=normal> 63</span>
+<span class=normal> 64</span>
+<span class=normal> 65</span>
+<span class=normal> 66</span>
+<span class=normal> 67</span>
+<span class=normal> 68</span>
+<span class=normal> 69</span>
+<span class=normal> 70</span>
+<span class=normal> 71</span>
+<span class=normal> 72</span>
+<span class=normal> 73</span>
+<span class=normal> 74</span>
+<span class=normal> 75</span>
+<span class=normal> 76</span>
+<span class=normal> 77</span>
+<span class=normal> 78</span>
+<span class=normal> 79</span>
+<span class=normal> 80</span>
+<span class=normal> 81</span>
+<span class=normal> 82</span>
+<span class=normal> 83</span>
+<span class=normal> 84</span>
+<span class=normal> 85</span>
+<span class=normal> 86</span>
+<span class=normal> 87</span>
+<span class=normal> 88</span>
+<span class=normal> 89</span>
+<span class=normal> 90</span>
+<span class=normal> 91</span>
+<span class=normal> 92</span>
+<span class=normal> 93</span>
+<span class=normal> 94</span>
+<span class=normal> 95</span>
+<span class=normal> 96</span>
+<span class=normal> 97</span>
+<span class=normal> 98</span>
+<span class=normal> 99</span>
+<span class=normal>100</span>
+<span class=normal>101</span>
+<span class=normal>102</span>
+<span class=normal>103</span>
+<span class=normal>104</span>
+<span class=normal>105</span>
+<span class=normal>106</span>
+<span class=normal>107</span>
+<span class=normal>108</span>
+<span class=normal>109</span>
+<span class=normal>110</span>
+<span class=normal>111</span>
+<span class=normal>112</span>
+<span class=normal>113</span>
+<span class=normal>114</span>
+<span class=normal>115</span>
+<span class=normal>116</span>
+<span class=normal>117</span>
+<span class=normal>118</span>
+<span class=normal>119</span>
+<span class=normal>120</span>
+<span class=normal>121</span>
+<span class=normal>122</span>
+<span class=normal>123</span>
+<span class=normal>124</span>
+<span class=normal>125</span>
+<span class=normal>126</span>
+<span class=normal>127</span>
+<span class=normal>128</span>
+<span class=normal>129</span>
+<span class=normal>130</span>
+<span class=normal>131</span>
+<span class=normal>132</span>
+<span class=normal>133</span>
+<span class=normal>134</span>
+<span class=normal>135</span>
+<span class=normal>136</span>
+<span class=normal>137</span>
+<span class=normal>138</span>
+<span class=normal>139</span>
+<span class=normal>140</span>
+<span class=normal>141</span>
+<span class=normal>142</span>
+<span class=normal>143</span>
+<span class=normal>144</span>
+<span class=normal>145</span>
+<span class=normal>146</span>
+<span class=normal>147</span>
+<span class=normal>148</span>
+<span class=normal>149</span>
+<span class=normal>150</span>
+<span class=normal>151</span>
+<span class=normal>152</span>
+<span class=normal>153</span>
+<span class=normal>154</span>
+<span class=normal>155</span>
+<span class=normal>156</span>
+<span class=normal>157</span>
+<span class=normal>158</span>
+<span class=normal>159</span>
+<span class=normal>160</span>
+<span class=normal>161</span>
+<span class=normal>162</span>
+<span class=normal>163</span>
+<span class=normal>164</span>
+<span class=normal>165</span>
+<span class=normal>166</span>
+<span class=normal>167</span>
+<span class=normal>168</span>
+<span class=normal>169</span>
+<span class=normal>170</span>
+<span class=normal>171</span>
+<span class=normal>172</span>
+<span class=normal>173</span>
+<span class=normal>174</span>
+<span class=normal>175</span>
+<span class=normal>176</span>
+<span class=normal>177</span>
+<span class=normal>178</span>
+<span class=normal>179</span>
+<span class=normal>180</span>
+<span class=normal>181</span>
+<span class=normal>182</span>
+<span class=normal>183</span>
+<span class=normal>184</span>
+<span class=normal>185</span>
+<span class=normal>186</span>
+<span class=normal>187</span>
+<span class=normal>188</span>
+<span class=normal>189</span>
+<span class=normal>190</span>
+<span class=normal>191</span>
+<span class=normal>192</span>
+<span class=normal>193</span>
+<span class=normal>194</span>
+<span class=normal>195</span>
+<span class=normal>196</span>
+<span class=normal>197</span>
+<span class=normal>198</span>
+<span class=normal>199</span>
+<span class=normal>200</span>
+<span class=normal>201</span>
+<span class=normal>202</span>
+<span class=normal>203</span>
+<span class=normal>204</span>
+<span class=normal>205</span>
+<span class=normal>206</span>
+<span class=normal>207</span>
+<span class=normal>208</span>
+<span class=normal>209</span>
+<span class=normal>210</span>
+<span class=normal>211</span>
+<span class=normal>212</span>
+<span class=normal>213</span>
+<span class=normal>214</span>
+<span class=normal>215</span>
+<span class=normal>216</span>
+<span class=normal>217</span>
+<span class=normal>218</span>
+<span class=normal>219</span>
+<span class=normal>220</span>
+<span class=normal>221</span>
+<span class=normal>222</span>
+<span class=normal>223</span>
+<span class=normal>224</span>
+<span class=normal>225</span>
+<span class=normal>226</span>
+<span class=normal>227</span>
+<span class=normal>228</span>
+<span class=normal>229</span>
+<span class=normal>230</span>
+<span class=normal>231</span>
+<span class=normal>232</span>
+<span class=normal>233</span>
+<span class=normal>234</span>
+<span class=normal>235</span>
+<span class=normal>236</span>
+<span class=normal>237</span>
+<span class=normal>238</span>
+<span class=normal>239</span>
+<span class=normal>240</span>
+<span class=normal>241</span>
+<span class=normal>242</span>
+<span class=normal>243</span>
+<span class=normal>244</span>
+<span class=normal>245</span>
+<span class=normal>246</span>
+<span class=normal>247</span>
+<span class=normal>248</span>
+<span class=normal>249</span>
+<span class=normal>250</span>
+<span class=normal>251</span>
+<span class=normal>252</span>
+<span class=normal>253</span>
+<span class=normal>254</span>
+<span class=normal>255</span>
+<span class=normal>256</span>
+<span class=normal>257</span>
+<span class=normal>258</span>
+<span class=normal>259</span>
+<span class=normal>260</span>
+<span class=normal>261</span>
+<span class=normal>262</span>
+<span class=normal>263</span>
+<span class=normal>264</span>
+<span class=normal>265</span>
+<span class=normal>266</span>
+<span class=normal>267</span>
+<span class=normal>268</span>
+<span class=normal>269</span>
+<span class=normal>270</span>
+<span class=normal>271</span>
+<span class=normal>272</span>
+<span class=normal>273</span>
+<span class=normal>274</span>
+<span class=normal>275</span>
+<span class=normal>276</span>
+<span class=normal>277</span>
+<span class=normal>278</span>
+<span class=normal>279</span>
+<span class=normal>280</span>
+<span class=normal>281</span>
+<span class=normal>282</span>
+<span class=normal>283</span>
+<span class=normal>284</span>
+<span class=normal>285</span>
+<span class=normal>286</span>
+<span class=normal>287</span>
+<span class=normal>288</span>
+<span class=normal>289</span>
+<span class=normal>290</span>
+<span class=normal>291</span>
+<span class=normal>292</span>
+<span class=normal>293</span>
+<span class=normal>294</span>
+<span class=normal>295</span>
+<span class=normal>296</span>
+<span class=normal>297</span>
+<span class=normal>298</span>
+<span class=normal>299</span>
+<span class=normal>300</span>
+<span class=normal>301</span>
+<span class=normal>302</span>
+<span class=normal>303</span>
+<span class=normal>304</span>
+<span class=normal>305</span>
+<span class=normal>306</span>
+<span class=normal>307</span>
+<span class=normal>308</span>
+<span class=normal>309</span>
+<span class=normal>310</span>
+<span class=normal>311</span>
+<span class=normal>312</span>
+<span class=normal>313</span>
+<span class=normal>314</span>
+<span class=normal>315</span>
+<span class=normal>316</span>
+<span class=normal>317</span>
+<span class=normal>318</span>
+<span class=normal>319</span>
+<span class=normal>320</span>
+<span class=normal>321</span>
+<span class=normal>322</span>
+<span class=normal>323</span>
+<span class=normal>324</span>
+<span class=normal>325</span>
+<span class=normal>326</span>
+<span class=normal>327</span>
+<span class=normal>328</span>
+<span class=normal>329</span>
+<span class=normal>330</span>
+<span class=normal>331</span>
+<span class=normal>332</span>
+<span class=normal>333</span>
+<span class=normal>334</span>
+<span class=normal>335</span>
+<span class=normal>336</span>
+<span class=normal>337</span>
+<span class=normal>338</span>
+<span class=normal>339</span>
+<span class=normal>340</span>
+<span class=normal>341</span>
+<span class=normal>342</span>
+<span class=normal>343</span>
+<span class=normal>344</span>
+<span class=normal>345</span>
+<span class=normal>346</span>
+<span class=normal>347</span>
+<span class=normal>348</span>
+<span class=normal>349</span>
+<span class=normal>350</span>
+<span class=normal>351</span>
+<span class=normal>352</span>
+<span class=normal>353</span>
+<span class=normal>354</span>
+<span class=normal>355</span>
+<span class=normal>356</span>
+<span class=normal>357</span>
+<span class=normal>358</span>
+<span class=normal>359</span>
+<span class=normal>360</span>
+<span class=normal>361</span>
+<span class=normal>362</span>
+<span class=normal>363</span>
+<span class=normal>364</span>
+<span class=normal>365</span>
+<span class=normal>366</span>
+<span class=normal>367</span>
+<span class=normal>368</span>
+<span class=normal>369</span>
+<span class=normal>370</span>
+<span class=normal>371</span>
+<span class=normal>372</span>
+<span class=normal>373</span>
+<span class=normal>374</span>
+<span class=normal>375</span>
+<span class=normal>376</span>
+<span class=normal>377</span>
+<span class=normal>378</span>
+<span class=normal>379</span>
+<span class=normal>380</span>
+<span class=normal>381</span>
+<span class=normal>382</span>
+<span class=normal>383</span>
+<span class=normal>384</span>
+<span class=normal>385</span>
+<span class=normal>386</span>
+<span class=normal>387</span>
+<span class=normal>388</span>
+<span class=normal>389</span>
+<span class=normal>390</span>
+<span class=normal>391</span>
+<span class=normal>392</span>
+<span class=normal>393</span>
+<span class=normal>394</span>
+<span class=normal>395</span>
+<span class=normal>396</span>
+<span class=normal>397</span>
+<span class=normal>398</span>
+<span class=normal>399</span>
+<span class=normal>400</span>
+<span class=normal>401</span>
+<span class=normal>402</span>
+<span class=normal>403</span>
+<span class=normal>404</span>
+<span class=normal>405</span>
+<span class=normal>406</span>
+<span class=normal>407</span>
+<span class=normal>408</span>
+<span class=normal>409</span>
+<span class=normal>410</span>
+<span class=normal>411</span>
+<span class=normal>412</span>
+<span class=normal>413</span>
+<span class=normal>414</span>
+<span class=normal>415</span>
+<span class=normal>416</span>
+<span class=normal>417</span>
+<span class=normal>418</span>
+<span class=normal>419</span>
+<span class=normal>420</span>
+<span class=normal>421</span>
+<span class=normal>422</span>
+<span class=normal>423</span>
+<span class=normal>424</span>
+<span class=normal>425</span>
+<span class=normal>426</span>
+<span class=normal>427</span>
+<span class=normal>428</span>
+<span class=normal>429</span>
+<span class=normal>430</span>
+<span class=normal>431</span>
+<span class=normal>432</span>
+<span class=normal>433</span>
+<span class=normal>434</span>
+<span class=normal>435</span>
+<span class=normal>436</span>
+<span class=normal>437</span>
+<span class=normal>438</span>
+<span class=normal>439</span>
+<span class=normal>440</span>
+<span class=normal>441</span>
+<span class=normal>442</span>
+<span class=normal>443</span>
+<span class=normal>444</span>
+<span class=normal>445</span>
+<span class=normal>446</span>
+<span class=normal>447</span>
+<span class=normal>448</span>
+<span class=normal>449</span>
+<span class=normal>450</span>
+<span class=normal>451</span>
+<span class=normal>452</span>
+<span class=normal>453</span>
+<span class=normal>454</span>
+<span class=normal>455</span>
+<span class=normal>456</span>
+<span class=normal>457</span>
+<span class=normal>458</span>
+<span class=normal>459</span>
+<span class=normal>460</span>
+<span class=normal>461</span>
+<span class=normal>462</span>
+<span class=normal>463</span>
+<span class=normal>464</span>
+<span class=normal>465</span>
+<span class=normal>466</span>
+<span class=normal>467</span>
+<span class=normal>468</span>
+<span class=normal>469</span>
+<span class=normal>470</span>
+<span class=normal>471</span>
+<span class=normal>472</span>
+<span class=normal>473</span>
+<span class=normal>474</span>
+<span class=normal>475</span>
+<span class=normal>476</span>
+<span class=normal>477</span>
+<span class=normal>478</span>
+<span class=normal>479</span>
+<span class=normal>480</span>
+<span class=normal>481</span>
+<span class=normal>482</span>
+<span class=normal>483</span>
+<span class=normal>484</span>
+<span class=normal>485</span>
+<span class=normal>486</span>
+<span class=normal>487</span>
+<span class=normal>488</span>
+<span class=normal>489</span>
+<span class=normal>490</span>
+<span class=normal>491</span>
+<span class=normal>492</span>
+<span class=normal>493</span>
+<span class=normal>494</span>
+<span class=normal>495</span>
+<span class=normal>496</span>
+<span class=normal>497</span>
+<span class=normal>498</span>
+<span class=normal>499</span>
+<span class=normal>500</span>
+<span class=normal>501</span>
+<span class=normal>502</span>
+<span class=normal>503</span>
+<span class=normal>504</span>
+<span class=normal>505</span>
+<span class=normal>506</span>
+<span class=normal>507</span>
+<span class=normal>508</span>
+<span class=normal>509</span>
+<span class=normal>510</span>
+<span class=normal>511</span>
+<span class=normal>512</span>
+<span class=normal>513</span>
+<span class=normal>514</span>
+<span class=normal>515</span>
+<span class=normal>516</span>
+<span class=normal>517</span>
+<span class=normal>518</span>
+<span class=normal>519</span>
+<span class=normal>520</span>
+<span class=normal>521</span>
+<span class=normal>522</span>
+<span class=normal>523</span>
+<span class=normal>524</span>
+<span class=normal>525</span>
+<span class=normal>526</span>
+<span class=normal>527</span>
+<span class=normal>528</span>
+<span class=normal>529</span>
+<span class=normal>530</span>
+<span class=normal>531</span>
+<span class=normal>532</span>
+<span class=normal>533</span>
+<span class=normal>534</span>
+<span class=normal>535</span>
+<span class=normal>536</span>
+<span class=normal>537</span>
+<span class=normal>538</span>
+<span class=normal>539</span>
+<span class=normal>540</span>
+<span class=normal>541</span>
+<span class=normal>542</span>
+<span class=normal>543</span>
+<span class=normal>544</span>
+<span class=normal>545</span>
+<span class=normal>546</span>
+<span class=normal>547</span>
+<span class=normal>548</span>
+<span class=normal>549</span>
+<span class=normal>550</span>
+<span class=normal>551</span>
+<span class=normal>552</span>
+<span class=normal>553</span>
+<span class=normal>554</span>
+<span class=normal>555</span>
+<span class=normal>556</span>
+<span class=normal>557</span>
+<span class=normal>558</span>
+<span class=normal>559</span>
+<span class=normal>560</span>
+<span class=normal>561</span>
+<span class=normal>562</span>
+<span class=normal>563</span>
+<span class=normal>564</span>
+<span class=normal>565</span>
+<span class=normal>566</span>
+<span class=normal>567</span>
+<span class=normal>568</span>
+<span class=normal>569</span>
+<span class=normal>570</span>
+<span class=normal>571</span>
+<span class=normal>572</span>
+<span class=normal>573</span>
+<span class=normal>574</span>
+<span class=normal>575</span>
+<span class=normal>576</span>
+<span class=normal>577</span>
+<span class=normal>578</span>
+<span class=normal>579</span>
+<span class=normal>580</span>
+<span class=normal>581</span>
+<span class=normal>582</span>
+<span class=normal>583</span>
+<span class=normal>584</span>
+<span class=normal>585</span>
+<span class=normal>586</span>
+<span class=normal>587</span>
+<span class=normal>588</span>
+<span class=normal>589</span>
+<span class=normal>590</span>
+<span class=normal>591</span>
+<span class=normal>592</span>
+<span class=normal>593</span>
+<span class=normal>594</span>
+<span class=normal>595</span>
+<span class=normal>596</span>
+<span class=normal>597</span>
+<span class=normal>598</span>
+<span class=normal>599</span>
+<span class=normal>600</span>
+<span class=normal>601</span>
+<span class=normal>602</span>
+<span class=normal>603</span>
+<span class=normal>604</span>
+<span class=normal>605</span>
+<span class=normal>606</span>
+<span class=normal>607</span>
+<span class=normal>608</span>
+<span class=normal>609</span>
+<span class=normal>610</span>
+<span class=normal>611</span>
+<span class=normal>612</span>
+<span class=normal>613</span>
+<span class=normal>614</span>
+<span class=normal>615</span>
+<span class=normal>616</span>
+<span class=normal>617</span>
+<span class=normal>618</span>
+<span class=normal>619</span>
+<span class=normal>620</span>
+<span class=normal>621</span>
+<span class=normal>622</span>
+<span class=normal>623</span>
+<span class=normal>624</span>
+<span class=normal>625</span>
+<span class=normal>626</span>
+<span class=normal>627</span>
+<span class=normal>628</span>
+<span class=normal>629</span>
+<span class=normal>630</span>
+<span class=normal>631</span>
+<span class=normal>632</span>
+<span class=normal>633</span>
+<span class=normal>634</span>
+<span class=normal>635</span>
+<span class=normal>636</span>
+<span class=normal>637</span>
+<span class=normal>638</span>
+<span class=normal>639</span>
+<span class=normal>640</span>
+<span class=normal>641</span>
+<span class=normal>642</span>
+<span class=normal>643</span>
+<span class=normal>644</span>
+<span class=normal>645</span>
+<span class=normal>646</span>
+<span class=normal>647</span>
+<span class=normal>648</span>
+<span class=normal>649</span>
+<span class=normal>650</span>
+<span class=normal>651</span>
+<span class=normal>652</span>
+<span class=normal>653</span>
+<span class=normal>654</span>
+<span class=normal>655</span>
+<span class=normal>656</span>
+<span class=normal>657</span>
+<span class=normal>658</span>
+<span class=normal>659</span>
+<span class=normal>660</span>
+<span class=normal>661</span>
+<span class=normal>662</span>
+<span class=normal>663</span>
+<span class=normal>664</span></pre></div></td><td class=code><div><pre><span></span><code><span class=k>class</span><span class=w> </span><span class=nc>ExtractReviewSlate</span><span class=p>(</span><span class=n>publish</span><span class=o>.</span><span class=n>Extractor</span><span class=p>):</span>
+<span class=w>    </span><span class=sd>&quot;&quot;&quot;</span>
+<span class=sd>    Will add slate frame at the start of the video files</span>
+<span class=sd>    &quot;&quot;&quot;</span>
+
+    <span class=n>label</span> <span class=o>=</span> <span class=s2>&quot;Review with Slate frame&quot;</span>
+    <span class=n>order</span> <span class=o>=</span> <span class=n>pyblish</span><span class=o>.</span><span class=n>api</span><span class=o>.</span><span class=n>ExtractorOrder</span> <span class=o>+</span> <span class=mf>0.031</span>
+    <span class=n>families</span> <span class=o>=</span> <span class=p>[</span><span class=s2>&quot;slate&quot;</span><span class=p>,</span> <span class=s2>&quot;review&quot;</span><span class=p>]</span>
+    <span class=n>match</span> <span class=o>=</span> <span class=n>pyblish</span><span class=o>.</span><span class=n>api</span><span class=o>.</span><span class=n>Subset</span>
+
+    <span class=n>SUFFIX</span> <span class=o>=</span> <span class=s2>&quot;_slate&quot;</span>
+
+    <span class=n>hosts</span> <span class=o>=</span> <span class=p>[</span><span class=s2>&quot;nuke&quot;</span><span class=p>,</span> <span class=s2>&quot;shell&quot;</span><span class=p>]</span>
+    <span class=n>optional</span> <span class=o>=</span> <span class=kc>True</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>process</span><span class=p>(</span><span class=bp>self</span><span class=p>,</span> <span class=n>instance</span><span class=p>):</span>
+        <span class=n>inst_data</span> <span class=o>=</span> <span class=n>instance</span><span class=o>.</span><span class=n>data</span>
+        <span class=k>if</span> <span class=s2>&quot;representations&quot;</span> <span class=ow>not</span> <span class=ow>in</span> <span class=n>inst_data</span><span class=p>:</span>
+            <span class=k>raise</span> <span class=ne>RuntimeError</span><span class=p>(</span><span class=s2>&quot;Burnin needs already created mov to work on.&quot;</span><span class=p>)</span>
+
+        <span class=c1># get slates frame from upstream</span>
+        <span class=n>slates_data</span> <span class=o>=</span> <span class=n>inst_data</span><span class=o>.</span><span class=n>get</span><span class=p>(</span><span class=s2>&quot;slateFrames&quot;</span><span class=p>)</span>
+        <span class=k>if</span> <span class=ow>not</span> <span class=n>slates_data</span><span class=p>:</span>
+            <span class=c1># make it backward compatible and open for slates generator</span>
+            <span class=c1># premium plugin</span>
+            <span class=n>slates_data</span> <span class=o>=</span> <span class=p>{</span>
+                <span class=s2>&quot;*&quot;</span><span class=p>:</span> <span class=n>inst_data</span><span class=p>[</span><span class=s2>&quot;slateFrame&quot;</span><span class=p>]</span>
+            <span class=p>}</span>
+
+        <span class=bp>self</span><span class=o>.</span><span class=n>log</span><span class=o>.</span><span class=n>debug</span><span class=p>(</span><span class=s2>&quot;_ slates_data: </span><span class=si>{}</span><span class=s2>&quot;</span><span class=o>.</span><span class=n>format</span><span class=p>(</span><span class=n>pformat</span><span class=p>(</span><span class=n>slates_data</span><span class=p>)))</span>
+
+        <span class=k>if</span> <span class=s2>&quot;reviewToWidth&quot;</span> <span class=ow>in</span> <span class=n>inst_data</span><span class=p>:</span>
+            <span class=n>use_legacy_code</span> <span class=o>=</span> <span class=kc>True</span>
+        <span class=k>else</span><span class=p>:</span>
+            <span class=n>use_legacy_code</span> <span class=o>=</span> <span class=kc>False</span>
+
+        <span class=n>pixel_aspect</span> <span class=o>=</span> <span class=n>inst_data</span><span class=o>.</span><span class=n>get</span><span class=p>(</span><span class=s2>&quot;pixelAspect&quot;</span><span class=p>,</span> <span class=mi>1</span><span class=p>)</span>
+        <span class=n>fps</span> <span class=o>=</span> <span class=n>inst_data</span><span class=o>.</span><span class=n>get</span><span class=p>(</span><span class=s2>&quot;fps&quot;</span><span class=p>)</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>log</span><span class=o>.</span><span class=n>debug</span><span class=p>(</span><span class=s2>&quot;fps </span><span class=si>{}</span><span class=s2> &quot;</span><span class=o>.</span><span class=n>format</span><span class=p>(</span><span class=n>fps</span><span class=p>))</span>
+
+        <span class=k>for</span> <span class=n>idx</span><span class=p>,</span> <span class=n>repre</span> <span class=ow>in</span> <span class=nb>enumerate</span><span class=p>(</span><span class=n>inst_data</span><span class=p>[</span><span class=s2>&quot;representations&quot;</span><span class=p>]):</span>
+            <span class=bp>self</span><span class=o>.</span><span class=n>log</span><span class=o>.</span><span class=n>debug</span><span class=p>(</span><span class=s2>&quot;repre (</span><span class=si>{}</span><span class=s2>): `</span><span class=si>{}</span><span class=s2>`&quot;</span><span class=o>.</span><span class=n>format</span><span class=p>(</span><span class=n>idx</span> <span class=o>+</span> <span class=mi>1</span><span class=p>,</span> <span class=n>repre</span><span class=p>))</span>
+
+            <span class=n>p_tags</span> <span class=o>=</span> <span class=n>repre</span><span class=o>.</span><span class=n>get</span><span class=p>(</span><span class=s2>&quot;tags&quot;</span><span class=p>,</span> <span class=p>[])</span>
+            <span class=k>if</span> <span class=s2>&quot;slate-frame&quot;</span> <span class=ow>not</span> <span class=ow>in</span> <span class=n>p_tags</span><span class=p>:</span>
+                <span class=k>continue</span>
+
+            <span class=c1># get repre file</span>
+            <span class=n>stagingdir</span> <span class=o>=</span> <span class=n>repre</span><span class=p>[</span><span class=s2>&quot;stagingDir&quot;</span><span class=p>]</span>
+            <span class=n>input_file</span> <span class=o>=</span> <span class=s2>&quot;</span><span class=si>{0}</span><span class=s2>&quot;</span><span class=o>.</span><span class=n>format</span><span class=p>(</span><span class=n>repre</span><span class=p>[</span><span class=s2>&quot;files&quot;</span><span class=p>])</span>
+            <span class=n>input_path</span> <span class=o>=</span> <span class=n>os</span><span class=o>.</span><span class=n>path</span><span class=o>.</span><span class=n>join</span><span class=p>(</span>
+                <span class=n>os</span><span class=o>.</span><span class=n>path</span><span class=o>.</span><span class=n>normpath</span><span class=p>(</span><span class=n>stagingdir</span><span class=p>),</span> <span class=n>repre</span><span class=p>[</span><span class=s2>&quot;files&quot;</span><span class=p>])</span>
+            <span class=bp>self</span><span class=o>.</span><span class=n>log</span><span class=o>.</span><span class=n>debug</span><span class=p>(</span><span class=s2>&quot;__ input_path: </span><span class=si>{}</span><span class=s2>&quot;</span><span class=o>.</span><span class=n>format</span><span class=p>(</span><span class=n>input_path</span><span class=p>))</span>
+
+            <span class=n>streams</span> <span class=o>=</span> <span class=n>get_ffprobe_streams</span><span class=p>(</span>
+                <span class=n>input_path</span><span class=p>,</span> <span class=bp>self</span><span class=o>.</span><span class=n>log</span>
+            <span class=p>)</span>
+            <span class=c1># get slate data</span>
+            <span class=n>slate_path</span> <span class=o>=</span> <span class=bp>self</span><span class=o>.</span><span class=n>_get_slate_path</span><span class=p>(</span><span class=n>input_file</span><span class=p>,</span> <span class=n>slates_data</span><span class=p>)</span>
+            <span class=bp>self</span><span class=o>.</span><span class=n>log</span><span class=o>.</span><span class=n>debug</span><span class=p>(</span><span class=s2>&quot;_ slate_path: </span><span class=si>{}</span><span class=s2>&quot;</span><span class=o>.</span><span class=n>format</span><span class=p>(</span><span class=n>slate_path</span><span class=p>))</span>
+
+            <span class=n>slate_width</span><span class=p>,</span> <span class=n>slate_height</span> <span class=o>=</span> <span class=bp>self</span><span class=o>.</span><span class=n>_get_slates_resolution</span><span class=p>(</span><span class=n>slate_path</span><span class=p>)</span>
+
+            <span class=c1># Get video metadata</span>
+            <span class=p>(</span>
+                <span class=n>input_width</span><span class=p>,</span>
+                <span class=n>input_height</span><span class=p>,</span>
+                <span class=n>input_timecode</span><span class=p>,</span>
+                <span class=n>input_frame_rate</span><span class=p>,</span>
+                <span class=n>input_pixel_aspect</span>
+            <span class=p>)</span> <span class=o>=</span> <span class=bp>self</span><span class=o>.</span><span class=n>_get_video_metadata</span><span class=p>(</span><span class=n>streams</span><span class=p>)</span>
+            <span class=k>if</span> <span class=n>input_pixel_aspect</span><span class=p>:</span>
+                <span class=n>pixel_aspect</span> <span class=o>=</span> <span class=n>input_pixel_aspect</span>
+
+            <span class=c1># Raise exception of any stream didn&#39;t define input resolution</span>
+            <span class=k>if</span> <span class=n>input_width</span> <span class=ow>is</span> <span class=kc>None</span><span class=p>:</span>
+                <span class=k>raise</span> <span class=n>KnownPublishError</span><span class=p>(</span>
+                    <span class=s2>&quot;FFprobe couldn&#39;t read resolution from input file: </span><span class=se>\&quot;</span><span class=si>{}</span><span class=se>\&quot;</span><span class=s2>&quot;</span>
+                    <span class=o>.</span><span class=n>format</span><span class=p>(</span><span class=n>input_path</span><span class=p>)</span>
+                <span class=p>)</span>
+
+            <span class=p>(</span>
+                <span class=n>audio_codec</span><span class=p>,</span>
+                <span class=n>audio_channels</span><span class=p>,</span>
+                <span class=n>audio_sample_rate</span><span class=p>,</span>
+                <span class=n>audio_channel_layout</span><span class=p>,</span>
+                <span class=n>input_audio</span>
+            <span class=p>)</span> <span class=o>=</span> <span class=bp>self</span><span class=o>.</span><span class=n>_get_audio_metadata</span><span class=p>(</span><span class=n>streams</span><span class=p>)</span>
+
+            <span class=c1># values are set in ExtractReview</span>
+            <span class=k>if</span> <span class=n>use_legacy_code</span><span class=p>:</span>
+                <span class=n>to_width</span> <span class=o>=</span> <span class=n>inst_data</span><span class=p>[</span><span class=s2>&quot;reviewToWidth&quot;</span><span class=p>]</span>
+                <span class=n>to_height</span> <span class=o>=</span> <span class=n>inst_data</span><span class=p>[</span><span class=s2>&quot;reviewToHeight&quot;</span><span class=p>]</span>
+            <span class=k>else</span><span class=p>:</span>
+                <span class=n>to_width</span> <span class=o>=</span> <span class=n>input_width</span>
+                <span class=n>to_height</span> <span class=o>=</span> <span class=n>input_height</span>
+
+            <span class=bp>self</span><span class=o>.</span><span class=n>log</span><span class=o>.</span><span class=n>debug</span><span class=p>(</span><span class=s2>&quot;to_width: `</span><span class=si>{}</span><span class=s2>`&quot;</span><span class=o>.</span><span class=n>format</span><span class=p>(</span><span class=n>to_width</span><span class=p>))</span>
+            <span class=bp>self</span><span class=o>.</span><span class=n>log</span><span class=o>.</span><span class=n>debug</span><span class=p>(</span><span class=s2>&quot;to_height: `</span><span class=si>{}</span><span class=s2>`&quot;</span><span class=o>.</span><span class=n>format</span><span class=p>(</span><span class=n>to_height</span><span class=p>))</span>
+
+            <span class=c1># defining image ratios</span>
+            <span class=n>resolution_ratio</span> <span class=o>=</span> <span class=p>(</span>
+                <span class=p>(</span><span class=nb>float</span><span class=p>(</span><span class=n>slate_width</span><span class=p>)</span> <span class=o>*</span> <span class=n>pixel_aspect</span><span class=p>)</span> <span class=o>/</span> <span class=n>slate_height</span>
+            <span class=p>)</span>
+            <span class=n>delivery_ratio</span> <span class=o>=</span> <span class=nb>float</span><span class=p>(</span><span class=n>to_width</span><span class=p>)</span> <span class=o>/</span> <span class=nb>float</span><span class=p>(</span><span class=n>to_height</span><span class=p>)</span>
+            <span class=bp>self</span><span class=o>.</span><span class=n>log</span><span class=o>.</span><span class=n>debug</span><span class=p>(</span><span class=s2>&quot;resolution_ratio: `</span><span class=si>{}</span><span class=s2>`&quot;</span><span class=o>.</span><span class=n>format</span><span class=p>(</span><span class=n>resolution_ratio</span><span class=p>))</span>
+            <span class=bp>self</span><span class=o>.</span><span class=n>log</span><span class=o>.</span><span class=n>debug</span><span class=p>(</span><span class=s2>&quot;delivery_ratio: `</span><span class=si>{}</span><span class=s2>`&quot;</span><span class=o>.</span><span class=n>format</span><span class=p>(</span><span class=n>delivery_ratio</span><span class=p>))</span>
+
+            <span class=c1># get scale factor</span>
+            <span class=n>scale_factor_by_height</span> <span class=o>=</span> <span class=nb>float</span><span class=p>(</span><span class=n>to_height</span><span class=p>)</span> <span class=o>/</span> <span class=n>slate_height</span>
+            <span class=n>scale_factor_by_width</span> <span class=o>=</span> <span class=nb>float</span><span class=p>(</span><span class=n>to_width</span><span class=p>)</span> <span class=o>/</span> <span class=p>(</span>
+                <span class=n>slate_width</span> <span class=o>*</span> <span class=n>pixel_aspect</span>
+            <span class=p>)</span>
+
+            <span class=c1># shorten two decimals long float number for testing conditions</span>
+            <span class=n>resolution_ratio_test</span> <span class=o>=</span> <span class=nb>float</span><span class=p>(</span><span class=s2>&quot;</span><span class=si>{:0.2f}</span><span class=s2>&quot;</span><span class=o>.</span><span class=n>format</span><span class=p>(</span><span class=n>resolution_ratio</span><span class=p>))</span>
+            <span class=n>delivery_ratio_test</span> <span class=o>=</span> <span class=nb>float</span><span class=p>(</span><span class=s2>&quot;</span><span class=si>{:0.2f}</span><span class=s2>&quot;</span><span class=o>.</span><span class=n>format</span><span class=p>(</span><span class=n>delivery_ratio</span><span class=p>))</span>
+
+            <span class=bp>self</span><span class=o>.</span><span class=n>log</span><span class=o>.</span><span class=n>debug</span><span class=p>(</span><span class=s2>&quot;__ scale_factor_by_width: `</span><span class=si>{}</span><span class=s2>`&quot;</span><span class=o>.</span><span class=n>format</span><span class=p>(</span>
+                <span class=n>scale_factor_by_width</span>
+            <span class=p>))</span>
+            <span class=bp>self</span><span class=o>.</span><span class=n>log</span><span class=o>.</span><span class=n>debug</span><span class=p>(</span><span class=s2>&quot;__ scale_factor_by_height: `</span><span class=si>{}</span><span class=s2>`&quot;</span><span class=o>.</span><span class=n>format</span><span class=p>(</span>
+                <span class=n>scale_factor_by_height</span>
+            <span class=p>))</span>
+
+            <span class=n>_remove_at_end</span> <span class=o>=</span> <span class=p>[]</span>
+
+            <span class=n>ext</span> <span class=o>=</span> <span class=n>os</span><span class=o>.</span><span class=n>path</span><span class=o>.</span><span class=n>splitext</span><span class=p>(</span><span class=n>input_file</span><span class=p>)[</span><span class=mi>1</span><span class=p>]</span>
+            <span class=n>output_file</span> <span class=o>=</span> <span class=n>input_file</span><span class=o>.</span><span class=n>replace</span><span class=p>(</span><span class=n>ext</span><span class=p>,</span> <span class=s2>&quot;&quot;</span><span class=p>)</span> <span class=o>+</span> <span class=bp>self</span><span class=o>.</span><span class=n>SUFFIX</span> <span class=o>+</span> <span class=n>ext</span>
+
+            <span class=n>_remove_at_end</span><span class=o>.</span><span class=n>append</span><span class=p>(</span><span class=n>input_path</span><span class=p>)</span>
+
+            <span class=n>output_path</span> <span class=o>=</span> <span class=n>os</span><span class=o>.</span><span class=n>path</span><span class=o>.</span><span class=n>join</span><span class=p>(</span>
+                <span class=n>os</span><span class=o>.</span><span class=n>path</span><span class=o>.</span><span class=n>normpath</span><span class=p>(</span><span class=n>stagingdir</span><span class=p>),</span> <span class=n>output_file</span><span class=p>)</span>
+            <span class=bp>self</span><span class=o>.</span><span class=n>log</span><span class=o>.</span><span class=n>debug</span><span class=p>(</span><span class=s2>&quot;__ output_path: </span><span class=si>{}</span><span class=s2>&quot;</span><span class=o>.</span><span class=n>format</span><span class=p>(</span><span class=n>output_path</span><span class=p>))</span>
+
+            <span class=n>input_args</span> <span class=o>=</span> <span class=p>[]</span>
+            <span class=n>output_args</span> <span class=o>=</span> <span class=p>[]</span>
+
+            <span class=c1># preset&#39;s input data</span>
+            <span class=k>if</span> <span class=n>use_legacy_code</span><span class=p>:</span>
+                <span class=n>input_args</span><span class=o>.</span><span class=n>extend</span><span class=p>(</span><span class=n>repre</span><span class=p>[</span><span class=s2>&quot;_profile&quot;</span><span class=p>]</span><span class=o>.</span><span class=n>get</span><span class=p>(</span><span class=s1>&#39;input&#39;</span><span class=p>,</span> <span class=p>[]))</span>
+            <span class=k>else</span><span class=p>:</span>
+                <span class=n>input_args</span><span class=o>.</span><span class=n>extend</span><span class=p>(</span><span class=n>repre</span><span class=p>[</span><span class=s2>&quot;outputDef&quot;</span><span class=p>]</span><span class=o>.</span><span class=n>get</span><span class=p>(</span><span class=s1>&#39;input&#39;</span><span class=p>,</span> <span class=p>[]))</span>
+
+            <span class=n>input_args</span><span class=o>.</span><span class=n>extend</span><span class=p>([</span>
+                <span class=s2>&quot;-loop&quot;</span><span class=p>,</span> <span class=s2>&quot;1&quot;</span><span class=p>,</span>
+                <span class=s2>&quot;-i&quot;</span><span class=p>,</span> <span class=n>path_to_subprocess_arg</span><span class=p>(</span><span class=n>slate_path</span><span class=p>),</span>
+                <span class=s2>&quot;-r&quot;</span><span class=p>,</span> <span class=nb>str</span><span class=p>(</span><span class=n>input_frame_rate</span><span class=p>),</span>
+                <span class=s2>&quot;-frames:v&quot;</span><span class=p>,</span> <span class=s2>&quot;1&quot;</span><span class=p>,</span>
+            <span class=p>])</span>
+
+            <span class=c1># add timecode from source to the slate, substract one frame</span>
+            <span class=n>offset_timecode</span> <span class=o>=</span> <span class=s2>&quot;&quot;</span>
+            <span class=k>if</span> <span class=n>input_timecode</span><span class=p>:</span>
+                <span class=n>offset_timecode</span> <span class=o>=</span> <span class=bp>self</span><span class=o>.</span><span class=n>_tc_offset</span><span class=p>(</span>
+                    <span class=nb>str</span><span class=p>(</span><span class=n>input_timecode</span><span class=p>),</span>
+                    <span class=n>framerate</span><span class=o>=</span><span class=n>fps</span><span class=p>,</span>
+                    <span class=n>frame_offset</span><span class=o>=-</span><span class=mi>1</span>
+                <span class=p>)</span>
+                <span class=bp>self</span><span class=o>.</span><span class=n>log</span><span class=o>.</span><span class=n>debug</span><span class=p>(</span><span class=s2>&quot;Slate Timecode: `</span><span class=si>{}</span><span class=s2>`&quot;</span><span class=o>.</span><span class=n>format</span><span class=p>(</span>
+                    <span class=n>offset_timecode</span>
+                <span class=p>))</span>
+
+            <span class=k>if</span> <span class=n>use_legacy_code</span><span class=p>:</span>
+                <span class=n>format_args</span> <span class=o>=</span> <span class=p>[]</span>
+                <span class=n>codec_args</span> <span class=o>=</span> <span class=n>repre</span><span class=p>[</span><span class=s2>&quot;_profile&quot;</span><span class=p>]</span><span class=o>.</span><span class=n>get</span><span class=p>(</span><span class=s1>&#39;codec&#39;</span><span class=p>,</span> <span class=p>[])</span>
+                <span class=n>output_args</span><span class=o>.</span><span class=n>extend</span><span class=p>(</span><span class=n>codec_args</span><span class=p>)</span>
+                <span class=c1># preset&#39;s output data</span>
+                <span class=n>output_args</span><span class=o>.</span><span class=n>extend</span><span class=p>(</span><span class=n>repre</span><span class=p>[</span><span class=s2>&quot;_profile&quot;</span><span class=p>]</span><span class=o>.</span><span class=n>get</span><span class=p>(</span><span class=s1>&#39;output&#39;</span><span class=p>,</span> <span class=p>[]))</span>
+            <span class=k>else</span><span class=p>:</span>
+                <span class=c1># Codecs are copied from source for whole input</span>
+                <span class=n>format_args</span><span class=p>,</span> <span class=n>codec_args</span> <span class=o>=</span> <span class=bp>self</span><span class=o>.</span><span class=n>_get_format_codec_args</span><span class=p>(</span><span class=n>repre</span><span class=p>)</span>
+                <span class=n>output_args</span><span class=o>.</span><span class=n>extend</span><span class=p>(</span><span class=n>format_args</span><span class=p>)</span>
+                <span class=n>output_args</span><span class=o>.</span><span class=n>extend</span><span class=p>(</span><span class=n>codec_args</span><span class=p>)</span>
+
+            <span class=c1># make sure colors are correct</span>
+            <span class=n>output_args</span><span class=o>.</span><span class=n>extend</span><span class=p>([</span>
+                <span class=s2>&quot;-color_primaries&quot;</span><span class=p>,</span> <span class=s2>&quot;bt709&quot;</span><span class=p>,</span>
+                <span class=s2>&quot;-color_trc&quot;</span><span class=p>,</span> <span class=s2>&quot;bt709&quot;</span><span class=p>,</span>
+                <span class=s2>&quot;-colorspace&quot;</span><span class=p>,</span> <span class=s2>&quot;bt709&quot;</span><span class=p>,</span>
+            <span class=p>])</span>
+
+            <span class=c1># scaling none square pixels and 1920 width</span>
+            <span class=k>if</span> <span class=p>(</span>
+                <span class=c1># Always scale slate if not legacy</span>
+                <span class=ow>not</span> <span class=n>use_legacy_code</span> <span class=ow>or</span>
+                <span class=c1># Legacy code required reformat tag</span>
+                <span class=p>(</span><span class=n>use_legacy_code</span> <span class=ow>and</span> <span class=s2>&quot;reformat&quot;</span> <span class=ow>in</span> <span class=n>p_tags</span><span class=p>)</span>
+            <span class=p>):</span>
+                <span class=k>if</span> <span class=n>resolution_ratio_test</span> <span class=o>&lt;</span> <span class=n>delivery_ratio_test</span><span class=p>:</span>
+                    <span class=bp>self</span><span class=o>.</span><span class=n>log</span><span class=o>.</span><span class=n>debug</span><span class=p>(</span><span class=s2>&quot;lower then delivery&quot;</span><span class=p>)</span>
+                    <span class=n>width_scale</span> <span class=o>=</span> <span class=nb>int</span><span class=p>(</span><span class=n>slate_width</span> <span class=o>*</span> <span class=n>scale_factor_by_height</span><span class=p>)</span>
+                    <span class=n>width_half_pad</span> <span class=o>=</span> <span class=nb>int</span><span class=p>((</span><span class=n>to_width</span> <span class=o>-</span> <span class=n>width_scale</span><span class=p>)</span> <span class=o>/</span> <span class=mi>2</span><span class=p>)</span>
+                    <span class=n>height_scale</span> <span class=o>=</span> <span class=n>to_height</span>
+                    <span class=n>height_half_pad</span> <span class=o>=</span> <span class=mi>0</span>
+                <span class=k>else</span><span class=p>:</span>
+                    <span class=bp>self</span><span class=o>.</span><span class=n>log</span><span class=o>.</span><span class=n>debug</span><span class=p>(</span><span class=s2>&quot;heigher then delivery&quot;</span><span class=p>)</span>
+                    <span class=n>width_scale</span> <span class=o>=</span> <span class=n>to_width</span>
+                    <span class=n>width_half_pad</span> <span class=o>=</span> <span class=mi>0</span>
+                    <span class=n>height_scale</span> <span class=o>=</span> <span class=nb>int</span><span class=p>(</span><span class=n>slate_height</span> <span class=o>*</span> <span class=n>scale_factor_by_width</span><span class=p>)</span>
+                    <span class=n>height_half_pad</span> <span class=o>=</span> <span class=nb>int</span><span class=p>((</span><span class=n>to_height</span> <span class=o>-</span> <span class=n>height_scale</span><span class=p>)</span> <span class=o>/</span> <span class=mi>2</span><span class=p>)</span>
+
+                <span class=bp>self</span><span class=o>.</span><span class=n>log</span><span class=o>.</span><span class=n>debug</span><span class=p>(</span>
+                    <span class=s2>&quot;__ width_scale: `</span><span class=si>{}</span><span class=s2>`&quot;</span><span class=o>.</span><span class=n>format</span><span class=p>(</span><span class=n>width_scale</span><span class=p>)</span>
+                <span class=p>)</span>
+                <span class=bp>self</span><span class=o>.</span><span class=n>log</span><span class=o>.</span><span class=n>debug</span><span class=p>(</span>
+                    <span class=s2>&quot;__ width_half_pad: `</span><span class=si>{}</span><span class=s2>`&quot;</span><span class=o>.</span><span class=n>format</span><span class=p>(</span><span class=n>width_half_pad</span><span class=p>)</span>
+                <span class=p>)</span>
+                <span class=bp>self</span><span class=o>.</span><span class=n>log</span><span class=o>.</span><span class=n>debug</span><span class=p>(</span>
+                    <span class=s2>&quot;__ height_scale: `</span><span class=si>{}</span><span class=s2>`&quot;</span><span class=o>.</span><span class=n>format</span><span class=p>(</span><span class=n>height_scale</span><span class=p>)</span>
+                <span class=p>)</span>
+                <span class=bp>self</span><span class=o>.</span><span class=n>log</span><span class=o>.</span><span class=n>debug</span><span class=p>(</span>
+                    <span class=s2>&quot;__ height_half_pad: `</span><span class=si>{}</span><span class=s2>`&quot;</span><span class=o>.</span><span class=n>format</span><span class=p>(</span><span class=n>height_half_pad</span><span class=p>)</span>
+                <span class=p>)</span>
+
+                <span class=n>scaling_arg</span> <span class=o>=</span> <span class=p>(</span>
+                    <span class=s2>&quot;scale=</span><span class=si>{0}</span><span class=s2>x</span><span class=si>{1}</span><span class=s2>:flags=lanczos&quot;</span>
+                    <span class=s2>&quot;:out_color_matrix=bt709&quot;</span>
+                    <span class=s2>&quot;,pad=</span><span class=si>{2}</span><span class=s2>:</span><span class=si>{3}</span><span class=s2>:</span><span class=si>{4}</span><span class=s2>:</span><span class=si>{5}</span><span class=s2>:black&quot;</span>
+                    <span class=s2>&quot;,setsar=1&quot;</span>
+                    <span class=s2>&quot;,fps=</span><span class=si>{6}</span><span class=s2>&quot;</span>
+                <span class=p>)</span><span class=o>.</span><span class=n>format</span><span class=p>(</span>
+                    <span class=n>width_scale</span><span class=p>,</span>
+                    <span class=n>height_scale</span><span class=p>,</span>
+                    <span class=n>to_width</span><span class=p>,</span>
+                    <span class=n>to_height</span><span class=p>,</span>
+                    <span class=n>width_half_pad</span><span class=p>,</span>
+                    <span class=n>height_half_pad</span><span class=p>,</span>
+                    <span class=n>input_frame_rate</span>
+                <span class=p>)</span>
+
+                <span class=n>vf_back</span> <span class=o>=</span> <span class=bp>self</span><span class=o>.</span><span class=n>add_video_filter_args</span><span class=p>(</span><span class=n>output_args</span><span class=p>,</span> <span class=n>scaling_arg</span><span class=p>)</span>
+                <span class=c1># add it to output_args</span>
+                <span class=n>output_args</span><span class=o>.</span><span class=n>insert</span><span class=p>(</span><span class=mi>0</span><span class=p>,</span> <span class=n>vf_back</span><span class=p>)</span>
+
+            <span class=c1># overrides output file</span>
+            <span class=n>output_args</span><span class=o>.</span><span class=n>append</span><span class=p>(</span><span class=s2>&quot;-y&quot;</span><span class=p>)</span>
+
+            <span class=n>slate_v_path</span> <span class=o>=</span> <span class=n>slate_path</span><span class=o>.</span><span class=n>replace</span><span class=p>(</span><span class=s2>&quot;.png&quot;</span><span class=p>,</span> <span class=n>ext</span><span class=p>)</span>
+            <span class=n>output_args</span><span class=o>.</span><span class=n>append</span><span class=p>(</span>
+                <span class=n>path_to_subprocess_arg</span><span class=p>(</span><span class=n>slate_v_path</span><span class=p>)</span>
+            <span class=p>)</span>
+            <span class=n>_remove_at_end</span><span class=o>.</span><span class=n>append</span><span class=p>(</span><span class=n>slate_v_path</span><span class=p>)</span>
+
+            <span class=n>slate_args</span> <span class=o>=</span> <span class=p>[</span>
+                <span class=n>subprocess</span><span class=o>.</span><span class=n>list2cmdline</span><span class=p>(</span><span class=n>get_ffmpeg_tool_args</span><span class=p>(</span><span class=s2>&quot;ffmpeg&quot;</span><span class=p>)),</span>
+                <span class=s2>&quot; &quot;</span><span class=o>.</span><span class=n>join</span><span class=p>(</span><span class=n>input_args</span><span class=p>),</span>
+                <span class=s2>&quot; &quot;</span><span class=o>.</span><span class=n>join</span><span class=p>(</span><span class=n>output_args</span><span class=p>)</span>
+            <span class=p>]</span>
+            <span class=n>slate_subprocess_cmd</span> <span class=o>=</span> <span class=s2>&quot; &quot;</span><span class=o>.</span><span class=n>join</span><span class=p>(</span><span class=n>slate_args</span><span class=p>)</span>
+
+            <span class=c1># run slate generation subprocess</span>
+            <span class=bp>self</span><span class=o>.</span><span class=n>log</span><span class=o>.</span><span class=n>debug</span><span class=p>(</span>
+                <span class=s2>&quot;Slate Executing: </span><span class=si>{}</span><span class=s2>&quot;</span><span class=o>.</span><span class=n>format</span><span class=p>(</span><span class=n>slate_subprocess_cmd</span><span class=p>)</span>
+            <span class=p>)</span>
+            <span class=n>run_subprocess</span><span class=p>(</span>
+                <span class=n>slate_subprocess_cmd</span><span class=p>,</span> <span class=n>shell</span><span class=o>=</span><span class=kc>True</span><span class=p>,</span> <span class=n>logger</span><span class=o>=</span><span class=bp>self</span><span class=o>.</span><span class=n>log</span>
+            <span class=p>)</span>
+
+            <span class=c1># Create slate with silent audio track</span>
+            <span class=k>if</span> <span class=n>input_audio</span><span class=p>:</span>
+                <span class=c1># silent slate output path</span>
+                <span class=n>slate_silent_path</span> <span class=o>=</span> <span class=s2>&quot;_silent&quot;</span><span class=o>.</span><span class=n>join</span><span class=p>(</span>
+                    <span class=n>os</span><span class=o>.</span><span class=n>path</span><span class=o>.</span><span class=n>splitext</span><span class=p>(</span><span class=n>slate_v_path</span><span class=p>))</span>
+                <span class=n>_remove_at_end</span><span class=o>.</span><span class=n>append</span><span class=p>(</span><span class=n>slate_silent_path</span><span class=p>)</span>
+                <span class=bp>self</span><span class=o>.</span><span class=n>_create_silent_slate</span><span class=p>(</span>
+                    <span class=n>slate_v_path</span><span class=p>,</span>
+                    <span class=n>slate_silent_path</span><span class=p>,</span>
+                    <span class=n>audio_codec</span><span class=p>,</span>
+                    <span class=n>audio_channels</span><span class=p>,</span>
+                    <span class=n>audio_sample_rate</span><span class=p>,</span>
+                    <span class=n>audio_channel_layout</span><span class=p>,</span>
+                    <span class=n>input_frame_rate</span>
+                <span class=p>)</span>
+
+                <span class=c1># replace slate with silent slate for concat</span>
+                <span class=n>slate_v_path</span> <span class=o>=</span> <span class=n>slate_silent_path</span>
+
+            <span class=c1># concat slate and videos together with concat filter</span>
+            <span class=c1># this will reencode the output</span>
+            <span class=k>if</span> <span class=n>input_audio</span><span class=p>:</span>
+                <span class=n>fmap</span> <span class=o>=</span> <span class=p>[</span>
+                    <span class=s2>&quot;-filter_complex&quot;</span><span class=p>,</span>
+                    <span class=s2>&quot;[0:v] [0:a] [1:v] [1:a] concat=n=2:v=1:a=1 [v] [a]&quot;</span><span class=p>,</span>
+                    <span class=s2>&quot;-map&quot;</span><span class=p>,</span> <span class=s1>&#39;[v]&#39;</span><span class=p>,</span>
+                    <span class=s2>&quot;-map&quot;</span><span class=p>,</span> <span class=s1>&#39;[a]&#39;</span>
+                <span class=p>]</span>
+            <span class=k>else</span><span class=p>:</span>
+                <span class=n>fmap</span> <span class=o>=</span> <span class=p>[</span>
+                    <span class=s2>&quot;-filter_complex&quot;</span><span class=p>,</span>
+                    <span class=s2>&quot;[0:v] [1:v] concat=n=2:v=1:a=0 [v]&quot;</span><span class=p>,</span>
+                    <span class=s2>&quot;-map&quot;</span><span class=p>,</span> <span class=s1>&#39;[v]&#39;</span>
+                <span class=p>]</span>
+            <span class=n>concat_args</span> <span class=o>=</span> <span class=n>get_ffmpeg_tool_args</span><span class=p>(</span>
+                <span class=s2>&quot;ffmpeg&quot;</span><span class=p>,</span>
+                <span class=s2>&quot;-y&quot;</span><span class=p>,</span>
+                <span class=s2>&quot;-i&quot;</span><span class=p>,</span> <span class=n>slate_v_path</span><span class=p>,</span>
+                <span class=s2>&quot;-i&quot;</span><span class=p>,</span> <span class=n>input_path</span><span class=p>,</span>
+            <span class=p>)</span>
+            <span class=n>concat_args</span><span class=o>.</span><span class=n>extend</span><span class=p>(</span><span class=n>fmap</span><span class=p>)</span>
+            <span class=k>if</span> <span class=n>offset_timecode</span><span class=p>:</span>
+                <span class=n>concat_args</span><span class=o>.</span><span class=n>extend</span><span class=p>([</span><span class=s2>&quot;-timecode&quot;</span><span class=p>,</span> <span class=n>offset_timecode</span><span class=p>])</span>
+            <span class=c1># NOTE: Added because of OP Atom demuxers</span>
+            <span class=c1># Add format arguments if there are any</span>
+            <span class=c1># - keep format of output</span>
+            <span class=k>if</span> <span class=n>format_args</span><span class=p>:</span>
+                <span class=n>concat_args</span><span class=o>.</span><span class=n>extend</span><span class=p>(</span><span class=n>format_args</span><span class=p>)</span>
+
+            <span class=k>if</span> <span class=n>codec_args</span><span class=p>:</span>
+                <span class=n>concat_args</span><span class=o>.</span><span class=n>extend</span><span class=p>(</span><span class=n>codec_args</span><span class=p>)</span>
+
+            <span class=c1># Use arguments from ffmpeg preset</span>
+            <span class=n>source_ffmpeg_cmd</span> <span class=o>=</span> <span class=n>repre</span><span class=o>.</span><span class=n>get</span><span class=p>(</span><span class=s2>&quot;ffmpeg_cmd&quot;</span><span class=p>)</span>
+            <span class=k>if</span> <span class=n>source_ffmpeg_cmd</span><span class=p>:</span>
+                <span class=n>copy_args</span> <span class=o>=</span> <span class=p>(</span>
+                    <span class=s2>&quot;-metadata&quot;</span><span class=p>,</span>
+                    <span class=s2>&quot;-metadata:s:v:0&quot;</span><span class=p>,</span>
+                    <span class=s2>&quot;-b:v&quot;</span><span class=p>,</span>
+                    <span class=s2>&quot;-b:a&quot;</span><span class=p>,</span>
+                <span class=p>)</span>
+                <span class=n>args</span> <span class=o>=</span> <span class=n>source_ffmpeg_cmd</span><span class=o>.</span><span class=n>split</span><span class=p>(</span><span class=s2>&quot; &quot;</span><span class=p>)</span>
+                <span class=k>for</span> <span class=n>indx</span><span class=p>,</span> <span class=n>arg</span> <span class=ow>in</span> <span class=nb>enumerate</span><span class=p>(</span><span class=n>args</span><span class=p>):</span>
+                    <span class=k>if</span> <span class=n>arg</span> <span class=ow>in</span> <span class=n>copy_args</span><span class=p>:</span>
+                        <span class=n>concat_args</span><span class=o>.</span><span class=n>append</span><span class=p>(</span><span class=n>arg</span><span class=p>)</span>
+                        <span class=c1># assumes arg has one parameter</span>
+                        <span class=n>concat_args</span><span class=o>.</span><span class=n>append</span><span class=p>(</span><span class=n>args</span><span class=p>[</span><span class=n>indx</span> <span class=o>+</span> <span class=mi>1</span><span class=p>])</span>
+
+            <span class=c1># add final output path</span>
+            <span class=n>concat_args</span><span class=o>.</span><span class=n>append</span><span class=p>(</span><span class=n>output_path</span><span class=p>)</span>
+
+            <span class=c1># ffmpeg concat subprocess</span>
+            <span class=bp>self</span><span class=o>.</span><span class=n>log</span><span class=o>.</span><span class=n>debug</span><span class=p>(</span>
+                <span class=s2>&quot;Executing concat filter: </span><span class=si>{}</span><span class=s2>&quot;</span><span class=o>.</span><span class=n>format</span>
+                <span class=p>(</span><span class=s2>&quot; &quot;</span><span class=o>.</span><span class=n>join</span><span class=p>(</span><span class=n>concat_args</span><span class=p>))</span>
+            <span class=p>)</span>
+            <span class=n>run_subprocess</span><span class=p>(</span>
+                <span class=n>concat_args</span><span class=p>,</span> <span class=n>logger</span><span class=o>=</span><span class=bp>self</span><span class=o>.</span><span class=n>log</span>
+            <span class=p>)</span>
+
+            <span class=bp>self</span><span class=o>.</span><span class=n>log</span><span class=o>.</span><span class=n>debug</span><span class=p>(</span><span class=s2>&quot;__ repre[tags]: </span><span class=si>{}</span><span class=s2>&quot;</span><span class=o>.</span><span class=n>format</span><span class=p>(</span><span class=n>repre</span><span class=p>[</span><span class=s2>&quot;tags&quot;</span><span class=p>]))</span>
+            <span class=n>repre_update</span> <span class=o>=</span> <span class=p>{</span>
+                <span class=s2>&quot;files&quot;</span><span class=p>:</span> <span class=n>output_file</span><span class=p>,</span>
+                <span class=s2>&quot;name&quot;</span><span class=p>:</span> <span class=n>repre</span><span class=p>[</span><span class=s2>&quot;name&quot;</span><span class=p>],</span>
+                <span class=s2>&quot;tags&quot;</span><span class=p>:</span> <span class=p>[</span><span class=n>x</span> <span class=k>for</span> <span class=n>x</span> <span class=ow>in</span> <span class=n>repre</span><span class=p>[</span><span class=s2>&quot;tags&quot;</span><span class=p>]</span> <span class=k>if</span> <span class=n>x</span> <span class=o>!=</span> <span class=s2>&quot;delete&quot;</span><span class=p>]</span>
+            <span class=p>}</span>
+            <span class=n>inst_data</span><span class=p>[</span><span class=s2>&quot;representations&quot;</span><span class=p>][</span><span class=n>idx</span><span class=p>]</span><span class=o>.</span><span class=n>update</span><span class=p>(</span><span class=n>repre_update</span><span class=p>)</span>
+            <span class=bp>self</span><span class=o>.</span><span class=n>log</span><span class=o>.</span><span class=n>debug</span><span class=p>(</span>
+                <span class=s2>&quot;_ representation </span><span class=si>{}</span><span class=s2>: `</span><span class=si>{}</span><span class=s2>`&quot;</span><span class=o>.</span><span class=n>format</span><span class=p>(</span>
+                    <span class=n>idx</span><span class=p>,</span> <span class=n>inst_data</span><span class=p>[</span><span class=s2>&quot;representations&quot;</span><span class=p>][</span><span class=n>idx</span><span class=p>]))</span>
+
+            <span class=c1># removing temp files</span>
+            <span class=k>for</span> <span class=n>f</span> <span class=ow>in</span> <span class=n>_remove_at_end</span><span class=p>:</span>
+                <span class=n>os</span><span class=o>.</span><span class=n>remove</span><span class=p>(</span><span class=n>f</span><span class=p>)</span>
+                <span class=bp>self</span><span class=o>.</span><span class=n>log</span><span class=o>.</span><span class=n>debug</span><span class=p>(</span><span class=s2>&quot;Removed: `</span><span class=si>{}</span><span class=s2>`&quot;</span><span class=o>.</span><span class=n>format</span><span class=p>(</span><span class=n>f</span><span class=p>))</span>
+
+        <span class=c1># Remove any representations tagged for deletion.</span>
+        <span class=k>for</span> <span class=n>repre</span> <span class=ow>in</span> <span class=n>inst_data</span><span class=o>.</span><span class=n>get</span><span class=p>(</span><span class=s2>&quot;representations&quot;</span><span class=p>,</span> <span class=p>[]):</span>
+            <span class=n>tags</span> <span class=o>=</span> <span class=n>repre</span><span class=o>.</span><span class=n>get</span><span class=p>(</span><span class=s2>&quot;tags&quot;</span><span class=p>,</span> <span class=p>[])</span>
+            <span class=k>if</span> <span class=s2>&quot;delete&quot;</span> <span class=ow>not</span> <span class=ow>in</span> <span class=n>tags</span><span class=p>:</span>
+                <span class=k>continue</span>
+            <span class=k>if</span> <span class=s2>&quot;need_thumbnail&quot;</span> <span class=ow>in</span> <span class=n>tags</span><span class=p>:</span>
+                <span class=k>continue</span>
+            <span class=bp>self</span><span class=o>.</span><span class=n>log</span><span class=o>.</span><span class=n>debug</span><span class=p>(</span><span class=s2>&quot;Removing representation: </span><span class=si>{}</span><span class=s2>&quot;</span><span class=o>.</span><span class=n>format</span><span class=p>(</span><span class=n>repre</span><span class=p>))</span>
+            <span class=n>inst_data</span><span class=p>[</span><span class=s2>&quot;representations&quot;</span><span class=p>]</span><span class=o>.</span><span class=n>remove</span><span class=p>(</span><span class=n>repre</span><span class=p>)</span>
+
+        <span class=bp>self</span><span class=o>.</span><span class=n>log</span><span class=o>.</span><span class=n>debug</span><span class=p>(</span><span class=n>inst_data</span><span class=p>[</span><span class=s2>&quot;representations&quot;</span><span class=p>])</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>_get_slate_path</span><span class=p>(</span><span class=bp>self</span><span class=p>,</span> <span class=n>input_file</span><span class=p>,</span> <span class=n>slates_data</span><span class=p>):</span>
+        <span class=n>slate_path</span> <span class=o>=</span> <span class=kc>None</span>
+        <span class=k>for</span> <span class=n>sl_n</span><span class=p>,</span> <span class=n>_slate_path</span> <span class=ow>in</span> <span class=n>slates_data</span><span class=o>.</span><span class=n>items</span><span class=p>():</span>
+            <span class=k>if</span> <span class=s2>&quot;*&quot;</span> <span class=ow>in</span> <span class=n>sl_n</span><span class=p>:</span>
+                <span class=n>slate_path</span> <span class=o>=</span> <span class=n>_slate_path</span>
+                <span class=k>break</span>
+            <span class=k>elif</span> <span class=n>re</span><span class=o>.</span><span class=n>search</span><span class=p>(</span><span class=n>sl_n</span><span class=p>,</span> <span class=n>input_file</span><span class=p>):</span>
+                <span class=n>slate_path</span> <span class=o>=</span> <span class=n>_slate_path</span>
+                <span class=k>break</span>
+
+        <span class=k>if</span> <span class=ow>not</span> <span class=n>slate_path</span><span class=p>:</span>
+            <span class=k>raise</span> <span class=ne>AttributeError</span><span class=p>(</span>
+                <span class=s2>&quot;Missing slates paths: </span><span class=si>{}</span><span class=s2>&quot;</span><span class=o>.</span><span class=n>format</span><span class=p>(</span><span class=n>slates_data</span><span class=p>))</span>
+
+        <span class=k>return</span> <span class=n>slate_path</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>_get_slates_resolution</span><span class=p>(</span><span class=bp>self</span><span class=p>,</span> <span class=n>slate_path</span><span class=p>):</span>
+        <span class=n>slate_streams</span> <span class=o>=</span> <span class=n>get_ffprobe_streams</span><span class=p>(</span><span class=n>slate_path</span><span class=p>,</span> <span class=bp>self</span><span class=o>.</span><span class=n>log</span><span class=p>)</span>
+        <span class=c1># Try to find first stream with defined &#39;width&#39; and &#39;height&#39;</span>
+        <span class=c1># - this is to avoid order of streams where audio can be as first</span>
+        <span class=c1># - there may be a better way (checking `codec_type`?)+</span>
+        <span class=n>slate_width</span> <span class=o>=</span> <span class=kc>None</span>
+        <span class=n>slate_height</span> <span class=o>=</span> <span class=kc>None</span>
+        <span class=k>for</span> <span class=n>slate_stream</span> <span class=ow>in</span> <span class=n>slate_streams</span><span class=p>:</span>
+            <span class=k>if</span> <span class=s2>&quot;width&quot;</span> <span class=ow>in</span> <span class=n>slate_stream</span> <span class=ow>and</span> <span class=s2>&quot;height&quot;</span> <span class=ow>in</span> <span class=n>slate_stream</span><span class=p>:</span>
+                <span class=n>slate_width</span> <span class=o>=</span> <span class=nb>int</span><span class=p>(</span><span class=n>slate_stream</span><span class=p>[</span><span class=s2>&quot;width&quot;</span><span class=p>])</span>
+                <span class=n>slate_height</span> <span class=o>=</span> <span class=nb>int</span><span class=p>(</span><span class=n>slate_stream</span><span class=p>[</span><span class=s2>&quot;height&quot;</span><span class=p>])</span>
+                <span class=k>break</span>
+
+        <span class=c1># Raise exception of any stream didn&#39;t define input resolution</span>
+        <span class=k>if</span> <span class=n>slate_width</span> <span class=ow>is</span> <span class=kc>None</span><span class=p>:</span>
+            <span class=k>raise</span> <span class=ne>AssertionError</span><span class=p>((</span>
+                <span class=s2>&quot;FFprobe couldn&#39;t read resolution from input file: </span><span class=se>\&quot;</span><span class=si>{}</span><span class=se>\&quot;</span><span class=s2>&quot;</span>
+            <span class=p>)</span><span class=o>.</span><span class=n>format</span><span class=p>(</span><span class=n>slate_path</span><span class=p>))</span>
+
+        <span class=k>return</span> <span class=p>(</span><span class=n>slate_width</span><span class=p>,</span> <span class=n>slate_height</span><span class=p>)</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>_get_video_metadata</span><span class=p>(</span><span class=bp>self</span><span class=p>,</span> <span class=n>streams</span><span class=p>):</span>
+        <span class=n>input_timecode</span> <span class=o>=</span> <span class=s2>&quot;&quot;</span>
+        <span class=n>input_width</span> <span class=o>=</span> <span class=kc>None</span>
+        <span class=n>input_height</span> <span class=o>=</span> <span class=kc>None</span>
+        <span class=n>input_frame_rate</span> <span class=o>=</span> <span class=kc>None</span>
+        <span class=n>input_pixel_aspect</span> <span class=o>=</span> <span class=kc>None</span>
+        <span class=k>for</span> <span class=n>stream</span> <span class=ow>in</span> <span class=n>streams</span><span class=p>:</span>
+            <span class=k>if</span> <span class=n>stream</span><span class=o>.</span><span class=n>get</span><span class=p>(</span><span class=s2>&quot;codec_type&quot;</span><span class=p>)</span> <span class=o>!=</span> <span class=s2>&quot;video&quot;</span><span class=p>:</span>
+                <span class=k>continue</span>
+            <span class=bp>self</span><span class=o>.</span><span class=n>log</span><span class=o>.</span><span class=n>debug</span><span class=p>(</span><span class=s2>&quot;FFprobe Video: </span><span class=si>{}</span><span class=s2>&quot;</span><span class=o>.</span><span class=n>format</span><span class=p>(</span><span class=n>stream</span><span class=p>))</span>
+
+            <span class=k>if</span> <span class=s2>&quot;width&quot;</span> <span class=ow>not</span> <span class=ow>in</span> <span class=n>stream</span> <span class=ow>or</span> <span class=s2>&quot;height&quot;</span> <span class=ow>not</span> <span class=ow>in</span> <span class=n>stream</span><span class=p>:</span>
+                <span class=k>continue</span>
+            <span class=n>width</span> <span class=o>=</span> <span class=nb>int</span><span class=p>(</span><span class=n>stream</span><span class=p>[</span><span class=s2>&quot;width&quot;</span><span class=p>])</span>
+            <span class=n>height</span> <span class=o>=</span> <span class=nb>int</span><span class=p>(</span><span class=n>stream</span><span class=p>[</span><span class=s2>&quot;height&quot;</span><span class=p>])</span>
+            <span class=k>if</span> <span class=ow>not</span> <span class=n>width</span> <span class=ow>or</span> <span class=ow>not</span> <span class=n>height</span><span class=p>:</span>
+                <span class=k>continue</span>
+
+            <span class=c1># Make sure that width and height are captured even if frame rate</span>
+            <span class=c1>#    is not available</span>
+            <span class=n>input_width</span> <span class=o>=</span> <span class=n>width</span>
+            <span class=n>input_height</span> <span class=o>=</span> <span class=n>height</span>
+
+            <span class=n>input_pixel_aspect</span> <span class=o>=</span> <span class=n>stream</span><span class=o>.</span><span class=n>get</span><span class=p>(</span><span class=s2>&quot;sample_aspect_ratio&quot;</span><span class=p>)</span>
+            <span class=k>if</span> <span class=n>input_pixel_aspect</span> <span class=ow>is</span> <span class=ow>not</span> <span class=kc>None</span><span class=p>:</span>
+                <span class=k>try</span><span class=p>:</span>
+                    <span class=n>input_pixel_aspect</span> <span class=o>=</span> <span class=nb>float</span><span class=p>(</span>
+                        <span class=nb>eval</span><span class=p>(</span><span class=nb>str</span><span class=p>(</span><span class=n>input_pixel_aspect</span><span class=p>)</span><span class=o>.</span><span class=n>replace</span><span class=p>(</span><span class=s1>&#39;:&#39;</span><span class=p>,</span> <span class=s1>&#39;/&#39;</span><span class=p>)))</span>
+                <span class=k>except</span> <span class=ne>Exception</span><span class=p>:</span>
+                    <span class=bp>self</span><span class=o>.</span><span class=n>log</span><span class=o>.</span><span class=n>debug</span><span class=p>(</span>
+                        <span class=s2>&quot;__Converting pixel aspect to float failed: </span><span class=si>{}</span><span class=s2>&quot;</span><span class=o>.</span><span class=n>format</span><span class=p>(</span>
+                            <span class=n>input_pixel_aspect</span><span class=p>))</span>
+
+            <span class=n>tags</span> <span class=o>=</span> <span class=n>stream</span><span class=o>.</span><span class=n>get</span><span class=p>(</span><span class=s2>&quot;tags&quot;</span><span class=p>)</span> <span class=ow>or</span> <span class=p>{}</span>
+            <span class=n>input_timecode</span> <span class=o>=</span> <span class=n>tags</span><span class=o>.</span><span class=n>get</span><span class=p>(</span><span class=s2>&quot;timecode&quot;</span><span class=p>)</span> <span class=ow>or</span> <span class=s2>&quot;&quot;</span>
+
+            <span class=n>input_frame_rate</span> <span class=o>=</span> <span class=n>stream</span><span class=o>.</span><span class=n>get</span><span class=p>(</span><span class=s2>&quot;r_frame_rate&quot;</span><span class=p>)</span>
+            <span class=k>if</span> <span class=n>input_frame_rate</span> <span class=ow>is</span> <span class=ow>not</span> <span class=kc>None</span><span class=p>:</span>
+                <span class=k>break</span>
+        <span class=k>return</span> <span class=p>(</span>
+            <span class=n>input_width</span><span class=p>,</span>
+            <span class=n>input_height</span><span class=p>,</span>
+            <span class=n>input_timecode</span><span class=p>,</span>
+            <span class=n>input_frame_rate</span><span class=p>,</span>
+            <span class=n>input_pixel_aspect</span>
+        <span class=p>)</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>_get_audio_metadata</span><span class=p>(</span><span class=bp>self</span><span class=p>,</span> <span class=n>streams</span><span class=p>):</span>
+        <span class=c1># Get audio metadata</span>
+        <span class=n>audio_codec</span> <span class=o>=</span> <span class=kc>None</span>
+        <span class=n>audio_channels</span> <span class=o>=</span> <span class=kc>None</span>
+        <span class=n>audio_sample_rate</span> <span class=o>=</span> <span class=kc>None</span>
+        <span class=n>audio_channel_layout</span> <span class=o>=</span> <span class=kc>None</span>
+        <span class=n>input_audio</span> <span class=o>=</span> <span class=kc>False</span>
+
+        <span class=k>for</span> <span class=n>stream</span> <span class=ow>in</span> <span class=n>streams</span><span class=p>:</span>
+            <span class=k>if</span> <span class=n>stream</span><span class=o>.</span><span class=n>get</span><span class=p>(</span><span class=s2>&quot;codec_type&quot;</span><span class=p>)</span> <span class=o>!=</span> <span class=s2>&quot;audio&quot;</span><span class=p>:</span>
+                <span class=k>continue</span>
+            <span class=bp>self</span><span class=o>.</span><span class=n>log</span><span class=o>.</span><span class=n>debug</span><span class=p>(</span><span class=s2>&quot;__Ffprobe Audio: </span><span class=si>{}</span><span class=s2>&quot;</span><span class=o>.</span><span class=n>format</span><span class=p>(</span><span class=n>stream</span><span class=p>))</span>
+
+            <span class=k>if</span> <span class=nb>all</span><span class=p>(</span>
+                <span class=n>stream</span><span class=o>.</span><span class=n>get</span><span class=p>(</span><span class=n>key</span><span class=p>)</span>
+                <span class=k>for</span> <span class=n>key</span> <span class=ow>in</span> <span class=p>(</span>
+                    <span class=s2>&quot;codec_name&quot;</span><span class=p>,</span>
+                    <span class=s2>&quot;channels&quot;</span><span class=p>,</span>
+                    <span class=s2>&quot;sample_rate&quot;</span><span class=p>,</span>
+                    <span class=s2>&quot;channel_layout&quot;</span><span class=p>,</span>
+                <span class=p>)</span>
+            <span class=p>):</span>
+                <span class=n>audio_codec</span> <span class=o>=</span> <span class=n>stream</span><span class=p>[</span><span class=s2>&quot;codec_name&quot;</span><span class=p>]</span>
+                <span class=n>audio_channels</span> <span class=o>=</span> <span class=n>stream</span><span class=p>[</span><span class=s2>&quot;channels&quot;</span><span class=p>]</span>
+                <span class=n>audio_sample_rate</span> <span class=o>=</span> <span class=n>stream</span><span class=p>[</span><span class=s2>&quot;sample_rate&quot;</span><span class=p>]</span>
+                <span class=n>audio_channel_layout</span> <span class=o>=</span> <span class=n>stream</span><span class=p>[</span><span class=s2>&quot;channel_layout&quot;</span><span class=p>]</span>
+                <span class=n>input_audio</span> <span class=o>=</span> <span class=kc>True</span>
+                <span class=k>break</span>
+
+        <span class=k>return</span> <span class=p>(</span>
+            <span class=n>audio_codec</span><span class=p>,</span>
+            <span class=n>audio_channels</span><span class=p>,</span>
+            <span class=n>audio_sample_rate</span><span class=p>,</span>
+            <span class=n>audio_channel_layout</span><span class=p>,</span>
+            <span class=n>input_audio</span><span class=p>,</span>
+        <span class=p>)</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>_create_silent_slate</span><span class=p>(</span>
+        <span class=bp>self</span><span class=p>,</span>
+        <span class=n>src_path</span><span class=p>,</span>
+        <span class=n>dst_path</span><span class=p>,</span>
+        <span class=n>audio_codec</span><span class=p>,</span>
+        <span class=n>audio_channels</span><span class=p>,</span>
+        <span class=n>audio_sample_rate</span><span class=p>,</span>
+        <span class=n>audio_channel_layout</span><span class=p>,</span>
+        <span class=n>input_frame_rate</span>
+    <span class=p>):</span>
+        <span class=c1># Get duration of one frame in micro seconds</span>
+        <span class=n>items</span> <span class=o>=</span> <span class=n>input_frame_rate</span><span class=o>.</span><span class=n>split</span><span class=p>(</span><span class=s2>&quot;/&quot;</span><span class=p>)</span>
+        <span class=k>if</span> <span class=nb>len</span><span class=p>(</span><span class=n>items</span><span class=p>)</span> <span class=o>==</span> <span class=mi>1</span><span class=p>:</span>
+            <span class=n>one_frame_duration</span> <span class=o>=</span> <span class=mf>1.0</span> <span class=o>/</span> <span class=nb>float</span><span class=p>(</span><span class=n>items</span><span class=p>[</span><span class=mi>0</span><span class=p>])</span>
+        <span class=k>elif</span> <span class=nb>len</span><span class=p>(</span><span class=n>items</span><span class=p>)</span> <span class=o>==</span> <span class=mi>2</span><span class=p>:</span>
+            <span class=n>one_frame_duration</span> <span class=o>=</span> <span class=nb>float</span><span class=p>(</span><span class=n>items</span><span class=p>[</span><span class=mi>1</span><span class=p>])</span> <span class=o>/</span> <span class=nb>float</span><span class=p>(</span><span class=n>items</span><span class=p>[</span><span class=mi>0</span><span class=p>])</span>
+        <span class=k>else</span><span class=p>:</span>
+            <span class=n>one_frame_duration</span> <span class=o>=</span> <span class=kc>None</span>
+
+        <span class=k>if</span> <span class=n>one_frame_duration</span> <span class=ow>is</span> <span class=kc>None</span><span class=p>:</span>
+            <span class=n>one_frame_duration</span> <span class=o>=</span> <span class=s2>&quot;40000us&quot;</span>
+        <span class=k>else</span><span class=p>:</span>
+            <span class=n>one_frame_duration</span> <span class=o>*=</span> <span class=mi>1000000</span>
+            <span class=n>one_frame_duration</span> <span class=o>=</span> <span class=nb>str</span><span class=p>(</span><span class=nb>int</span><span class=p>(</span><span class=n>one_frame_duration</span><span class=p>))</span> <span class=o>+</span> <span class=s2>&quot;us&quot;</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>log</span><span class=o>.</span><span class=n>debug</span><span class=p>(</span><span class=s2>&quot;One frame duration is </span><span class=si>{}</span><span class=s2>&quot;</span><span class=o>.</span><span class=n>format</span><span class=p>(</span><span class=n>one_frame_duration</span><span class=p>))</span>
+
+        <span class=n>slate_silent_args</span> <span class=o>=</span> <span class=n>get_ffmpeg_tool_args</span><span class=p>(</span>
+            <span class=s2>&quot;ffmpeg&quot;</span><span class=p>,</span>
+            <span class=s2>&quot;-i&quot;</span><span class=p>,</span> <span class=n>src_path</span><span class=p>,</span>
+            <span class=s2>&quot;-f&quot;</span><span class=p>,</span> <span class=s2>&quot;lavfi&quot;</span><span class=p>,</span> <span class=s2>&quot;-i&quot;</span><span class=p>,</span>
+            <span class=s2>&quot;anullsrc=r=</span><span class=si>{}</span><span class=s2>:cl=</span><span class=si>{}</span><span class=s2>:d=</span><span class=si>{}</span><span class=s2>&quot;</span><span class=o>.</span><span class=n>format</span><span class=p>(</span>
+                <span class=n>audio_sample_rate</span><span class=p>,</span>
+                <span class=n>audio_channel_layout</span><span class=p>,</span>
+                <span class=n>one_frame_duration</span>
+            <span class=p>),</span>
+            <span class=s2>&quot;-c:v&quot;</span><span class=p>,</span> <span class=s2>&quot;copy&quot;</span><span class=p>,</span>
+            <span class=s2>&quot;-c:a&quot;</span><span class=p>,</span> <span class=n>audio_codec</span><span class=p>,</span>
+            <span class=s2>&quot;-map&quot;</span><span class=p>,</span> <span class=s2>&quot;0:v&quot;</span><span class=p>,</span>
+            <span class=s2>&quot;-map&quot;</span><span class=p>,</span> <span class=s2>&quot;1:a&quot;</span><span class=p>,</span>
+            <span class=s2>&quot;-shortest&quot;</span><span class=p>,</span>
+            <span class=s2>&quot;-y&quot;</span><span class=p>,</span>
+            <span class=n>dst_path</span>
+        <span class=p>)</span>
+        <span class=c1># run slate generation subprocess</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>log</span><span class=o>.</span><span class=n>debug</span><span class=p>(</span><span class=s2>&quot;Silent Slate Executing: </span><span class=si>{}</span><span class=s2>&quot;</span><span class=o>.</span><span class=n>format</span><span class=p>(</span>
+            <span class=s2>&quot; &quot;</span><span class=o>.</span><span class=n>join</span><span class=p>(</span><span class=n>slate_silent_args</span><span class=p>)</span>
+        <span class=p>))</span>
+        <span class=n>run_subprocess</span><span class=p>(</span>
+            <span class=n>slate_silent_args</span><span class=p>,</span> <span class=n>logger</span><span class=o>=</span><span class=bp>self</span><span class=o>.</span><span class=n>log</span>
+        <span class=p>)</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>add_video_filter_args</span><span class=p>(</span><span class=bp>self</span><span class=p>,</span> <span class=n>args</span><span class=p>,</span> <span class=n>inserting_arg</span><span class=p>):</span>
+<span class=w>        </span><span class=sd>&quot;&quot;&quot;</span>
+<span class=sd>        Fixing video filter argumets to be one long string</span>
+
+<span class=sd>        Args:</span>
+<span class=sd>            args (list): list of string arguments</span>
+<span class=sd>            inserting_arg (str): string argument we want to add</span>
+<span class=sd>                                 (without flag `-vf`)</span>
+
+<span class=sd>        Returns:</span>
+<span class=sd>            str: long joined argument to be added back to list of arguments</span>
+
+<span class=sd>        &quot;&quot;&quot;</span>
+        <span class=c1># find all video format settings</span>
+        <span class=n>vf_settings</span> <span class=o>=</span> <span class=p>[</span><span class=n>p</span> <span class=k>for</span> <span class=n>p</span> <span class=ow>in</span> <span class=n>args</span>
+                       <span class=k>for</span> <span class=n>v</span> <span class=ow>in</span> <span class=p>[</span><span class=s2>&quot;-filter:v&quot;</span><span class=p>,</span> <span class=s2>&quot;-vf&quot;</span><span class=p>]</span>
+                       <span class=k>if</span> <span class=n>v</span> <span class=ow>in</span> <span class=n>p</span><span class=p>]</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>log</span><span class=o>.</span><span class=n>debug</span><span class=p>(</span><span class=s2>&quot;_ vf_settings: `</span><span class=si>{}</span><span class=s2>`&quot;</span><span class=o>.</span><span class=n>format</span><span class=p>(</span><span class=n>vf_settings</span><span class=p>))</span>
+
+        <span class=c1># remove them from output args list</span>
+        <span class=k>for</span> <span class=n>p</span> <span class=ow>in</span> <span class=n>vf_settings</span><span class=p>:</span>
+            <span class=bp>self</span><span class=o>.</span><span class=n>log</span><span class=o>.</span><span class=n>debug</span><span class=p>(</span><span class=s2>&quot;_ remove p: `</span><span class=si>{}</span><span class=s2>`&quot;</span><span class=o>.</span><span class=n>format</span><span class=p>(</span><span class=n>p</span><span class=p>))</span>
+            <span class=n>args</span><span class=o>.</span><span class=n>remove</span><span class=p>(</span><span class=n>p</span><span class=p>)</span>
+            <span class=bp>self</span><span class=o>.</span><span class=n>log</span><span class=o>.</span><span class=n>debug</span><span class=p>(</span><span class=s2>&quot;_ args: `</span><span class=si>{}</span><span class=s2>`&quot;</span><span class=o>.</span><span class=n>format</span><span class=p>(</span><span class=n>args</span><span class=p>))</span>
+
+        <span class=c1># strip them from all flags</span>
+        <span class=n>vf_fixed</span> <span class=o>=</span> <span class=p>[</span><span class=n>p</span><span class=o>.</span><span class=n>replace</span><span class=p>(</span><span class=s2>&quot;-vf &quot;</span><span class=p>,</span> <span class=s2>&quot;&quot;</span><span class=p>)</span><span class=o>.</span><span class=n>replace</span><span class=p>(</span><span class=s2>&quot;-filter:v &quot;</span><span class=p>,</span> <span class=s2>&quot;&quot;</span><span class=p>)</span>
+                    <span class=k>for</span> <span class=n>p</span> <span class=ow>in</span> <span class=n>vf_settings</span><span class=p>]</span>
+
+        <span class=bp>self</span><span class=o>.</span><span class=n>log</span><span class=o>.</span><span class=n>debug</span><span class=p>(</span><span class=s2>&quot;_ vf_fixed: `</span><span class=si>{}</span><span class=s2>`&quot;</span><span class=o>.</span><span class=n>format</span><span class=p>(</span><span class=n>vf_fixed</span><span class=p>))</span>
+        <span class=n>vf_fixed</span><span class=o>.</span><span class=n>insert</span><span class=p>(</span><span class=mi>0</span><span class=p>,</span> <span class=n>inserting_arg</span><span class=p>)</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>log</span><span class=o>.</span><span class=n>debug</span><span class=p>(</span><span class=s2>&quot;_ vf_fixed: `</span><span class=si>{}</span><span class=s2>`&quot;</span><span class=o>.</span><span class=n>format</span><span class=p>(</span><span class=n>vf_fixed</span><span class=p>))</span>
+        <span class=c1># create new video filter setting</span>
+        <span class=n>vf_back</span> <span class=o>=</span> <span class=s2>&quot;-vf &quot;</span> <span class=o>+</span> <span class=s2>&quot;,&quot;</span><span class=o>.</span><span class=n>join</span><span class=p>(</span><span class=n>vf_fixed</span><span class=p>)</span>
+
+        <span class=k>return</span> <span class=n>vf_back</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>_get_format_codec_args</span><span class=p>(</span><span class=bp>self</span><span class=p>,</span> <span class=n>repre</span><span class=p>):</span>
+<span class=w>        </span><span class=sd>&quot;&quot;&quot;Detect possible codec arguments from representation.&quot;&quot;&quot;</span>
+        <span class=n>codec_args</span> <span class=o>=</span> <span class=p>[]</span>
+
+        <span class=c1># Get one filename of representation files</span>
+        <span class=n>filename</span> <span class=o>=</span> <span class=n>repre</span><span class=p>[</span><span class=s2>&quot;files&quot;</span><span class=p>]</span>
+        <span class=c1># If files is list then pick first filename in list</span>
+        <span class=k>if</span> <span class=nb>isinstance</span><span class=p>(</span><span class=n>filename</span><span class=p>,</span> <span class=p>(</span><span class=nb>tuple</span><span class=p>,</span> <span class=nb>list</span><span class=p>)):</span>
+            <span class=n>filename</span> <span class=o>=</span> <span class=n>filename</span><span class=p>[</span><span class=mi>0</span><span class=p>]</span>
+        <span class=c1># Get full path to the file</span>
+        <span class=n>full_input_path</span> <span class=o>=</span> <span class=n>os</span><span class=o>.</span><span class=n>path</span><span class=o>.</span><span class=n>join</span><span class=p>(</span><span class=n>repre</span><span class=p>[</span><span class=s2>&quot;stagingDir&quot;</span><span class=p>],</span> <span class=n>filename</span><span class=p>)</span>
+
+        <span class=k>try</span><span class=p>:</span>
+            <span class=c1># Get information about input file via ffprobe tool</span>
+            <span class=n>ffprobe_data</span> <span class=o>=</span> <span class=n>get_ffprobe_data</span><span class=p>(</span><span class=n>full_input_path</span><span class=p>,</span> <span class=bp>self</span><span class=o>.</span><span class=n>log</span><span class=p>)</span>
+        <span class=k>except</span> <span class=ne>Exception</span><span class=p>:</span>
+            <span class=bp>self</span><span class=o>.</span><span class=n>log</span><span class=o>.</span><span class=n>warning</span><span class=p>(</span>
+                <span class=s2>&quot;Could not get codec data from input.&quot;</span><span class=p>,</span>
+                <span class=n>exc_info</span><span class=o>=</span><span class=kc>True</span>
+            <span class=p>)</span>
+            <span class=k>return</span> <span class=n>codec_args</span>
+
+        <span class=n>source_ffmpeg_cmd</span> <span class=o>=</span> <span class=n>repre</span><span class=o>.</span><span class=n>get</span><span class=p>(</span><span class=s2>&quot;ffmpeg_cmd&quot;</span><span class=p>)</span>
+        <span class=n>format_args</span> <span class=o>=</span> <span class=n>get_ffmpeg_format_args</span><span class=p>(</span><span class=n>ffprobe_data</span><span class=p>,</span> <span class=n>source_ffmpeg_cmd</span><span class=p>)</span>
+        <span class=n>codec_args</span> <span class=o>=</span> <span class=n>get_ffmpeg_codec_args</span><span class=p>(</span>
+            <span class=n>ffprobe_data</span><span class=p>,</span> <span class=n>source_ffmpeg_cmd</span><span class=p>,</span> <span class=n>logger</span><span class=o>=</span><span class=bp>self</span><span class=o>.</span><span class=n>log</span>
+        <span class=p>)</span>
+
+        <span class=k>return</span> <span class=n>format_args</span><span class=p>,</span> <span class=n>codec_args</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>_tc_offset</span><span class=p>(</span><span class=bp>self</span><span class=p>,</span> <span class=n>timecode</span><span class=p>,</span> <span class=n>framerate</span><span class=o>=</span><span class=mf>24.0</span><span class=p>,</span> <span class=n>frame_offset</span><span class=o>=-</span><span class=mi>1</span><span class=p>):</span>
+<span class=w>        </span><span class=sd>&quot;&quot;&quot;Offsets timecode by frame&quot;&quot;&quot;</span>
+        <span class=k>def</span><span class=w> </span><span class=nf>_seconds</span><span class=p>(</span><span class=n>value</span><span class=p>,</span> <span class=n>framerate</span><span class=p>):</span>
+            <span class=k>if</span> <span class=nb>isinstance</span><span class=p>(</span><span class=n>value</span><span class=p>,</span> <span class=nb>str</span><span class=p>):</span>
+                <span class=n>_zip_ft</span> <span class=o>=</span> <span class=nb>zip</span><span class=p>((</span><span class=mi>3600</span><span class=p>,</span> <span class=mi>60</span><span class=p>,</span> <span class=mi>1</span><span class=p>,</span> <span class=mi>1</span> <span class=o>/</span> <span class=n>framerate</span><span class=p>),</span> <span class=n>value</span><span class=o>.</span><span class=n>split</span><span class=p>(</span><span class=s1>&#39;:&#39;</span><span class=p>))</span>
+                <span class=n>_s</span> <span class=o>=</span> <span class=nb>sum</span><span class=p>(</span><span class=n>f</span> <span class=o>*</span> <span class=nb>float</span><span class=p>(</span><span class=n>t</span><span class=p>)</span> <span class=k>for</span> <span class=n>f</span><span class=p>,</span> <span class=n>t</span> <span class=ow>in</span> <span class=n>_zip_ft</span><span class=p>)</span>
+            <span class=k>elif</span> <span class=nb>isinstance</span><span class=p>(</span><span class=n>value</span><span class=p>,</span> <span class=p>(</span><span class=nb>int</span><span class=p>,</span> <span class=nb>float</span><span class=p>)):</span>
+                <span class=n>_s</span> <span class=o>=</span> <span class=n>value</span> <span class=o>/</span> <span class=n>framerate</span>
+            <span class=k>else</span><span class=p>:</span>
+                <span class=n>_s</span> <span class=o>=</span> <span class=mi>0</span>
+            <span class=k>return</span> <span class=n>_s</span>
+
+        <span class=k>def</span><span class=w> </span><span class=nf>_frames</span><span class=p>(</span><span class=n>seconds</span><span class=p>,</span> <span class=n>framerate</span><span class=p>,</span> <span class=n>frame_offset</span><span class=p>):</span>
+            <span class=n>_f</span> <span class=o>=</span> <span class=n>seconds</span> <span class=o>*</span> <span class=n>framerate</span> <span class=o>+</span> <span class=n>frame_offset</span>
+            <span class=k>if</span> <span class=n>_f</span> <span class=o>&lt;</span> <span class=mi>0</span><span class=p>:</span>
+                <span class=n>_f</span> <span class=o>=</span> <span class=n>framerate</span> <span class=o>*</span> <span class=mi>60</span> <span class=o>*</span> <span class=mi>60</span> <span class=o>*</span> <span class=mi>24</span> <span class=o>+</span> <span class=n>_f</span>
+            <span class=k>return</span> <span class=n>_f</span>
+
+        <span class=k>def</span><span class=w> </span><span class=nf>_timecode</span><span class=p>(</span><span class=n>seconds</span><span class=p>,</span> <span class=n>framerate</span><span class=p>):</span>
+            <span class=k>return</span> <span class=s1>&#39;</span><span class=si>{h:02d}</span><span class=s1>:</span><span class=si>{m:02d}</span><span class=s1>:</span><span class=si>{s:02d}</span><span class=s1>:</span><span class=si>{f:02d}</span><span class=s1>&#39;</span><span class=o>.</span><span class=n>format</span><span class=p>(</span>
+                <span class=n>h</span><span class=o>=</span><span class=nb>int</span><span class=p>(</span><span class=n>seconds</span> <span class=o>/</span> <span class=mi>3600</span><span class=p>),</span>
+                <span class=n>m</span><span class=o>=</span><span class=nb>int</span><span class=p>(</span><span class=n>seconds</span> <span class=o>/</span> <span class=mi>60</span> <span class=o>%</span> <span class=mi>60</span><span class=p>),</span>
+                <span class=n>s</span><span class=o>=</span><span class=nb>int</span><span class=p>(</span><span class=n>seconds</span> <span class=o>%</span> <span class=mi>60</span><span class=p>),</span>
+                <span class=n>f</span><span class=o>=</span><span class=nb>int</span><span class=p>(</span><span class=nb>round</span><span class=p>((</span><span class=n>seconds</span> <span class=o>-</span> <span class=nb>int</span><span class=p>(</span><span class=n>seconds</span><span class=p>))</span> <span class=o>*</span> <span class=n>framerate</span><span class=p>)))</span>
+        <span class=n>drop</span> <span class=o>=</span> <span class=kc>False</span>
+        <span class=k>if</span> <span class=s1>&#39;;&#39;</span> <span class=ow>in</span> <span class=n>timecode</span><span class=p>:</span>
+            <span class=n>timecode</span> <span class=o>=</span> <span class=n>timecode</span><span class=o>.</span><span class=n>replace</span><span class=p>(</span><span class=s1>&#39;;&#39;</span><span class=p>,</span> <span class=s1>&#39;:&#39;</span><span class=p>)</span>
+            <span class=n>drop</span> <span class=o>=</span> <span class=kc>True</span>
+        <span class=n>frames</span> <span class=o>=</span> <span class=n>_frames</span><span class=p>(</span>
+            <span class=n>_seconds</span><span class=p>(</span><span class=n>timecode</span><span class=p>,</span> <span class=n>framerate</span><span class=p>),</span>
+            <span class=n>framerate</span><span class=p>,</span>
+            <span class=n>frame_offset</span>
+        <span class=p>)</span>
+        <span class=n>tc</span> <span class=o>=</span> <span class=n>_timecode</span><span class=p>(</span><span class=n>_seconds</span><span class=p>(</span><span class=n>frames</span><span class=p>,</span> <span class=n>framerate</span><span class=p>),</span> <span class=n>framerate</span><span class=p>)</span>
+        <span class=k>if</span> <span class=n>drop</span><span class=p>:</span>
+            <span class=n>tc</span> <span class=o>=</span> <span class=s1>&#39;;&#39;</span><span class=o>.</span><span class=n>join</span><span class=p>(</span><span class=n>tc</span><span class=o>.</span><span class=n>rsplit</span><span class=p>(</span><span class=s1>&#39;:&#39;</span><span class=p>,</span> <span class=mi>1</span><span class=p>))</span>
+        <span class=k>return</span> <span class=n>tc</span>
+</code></pre></div></td></tr></table></div> </details> <div class="doc doc-children"> <div class="doc doc-object doc-function"> <h3 id=client.ayon_core.plugins.publish.extract_review_slate.ExtractReviewSlate._get_format_codec_args class="doc doc-heading"> <code class="highlight language-python"><span class=n>_get_format_codec_args</span><span class=p>(</span><span class=n>repre</span><span class=p>)</span></code> </h3> <div class="doc doc-contents "> <p>Detect possible codec arguments from representation.</p> <details class=quote> <summary>Source code in <code>client/ayon_core/plugins/publish/extract_review_slate.py</code></summary> <div class=highlight><table class=highlighttable><tr><td class=linenos><div class=linenodiv><pre><span></span><span class=normal>598</span>
+<span class=normal>599</span>
+<span class=normal>600</span>
+<span class=normal>601</span>
+<span class=normal>602</span>
+<span class=normal>603</span>
+<span class=normal>604</span>
+<span class=normal>605</span>
+<span class=normal>606</span>
+<span class=normal>607</span>
+<span class=normal>608</span>
+<span class=normal>609</span>
+<span class=normal>610</span>
+<span class=normal>611</span>
+<span class=normal>612</span>
+<span class=normal>613</span>
+<span class=normal>614</span>
+<span class=normal>615</span>
+<span class=normal>616</span>
+<span class=normal>617</span>
+<span class=normal>618</span>
+<span class=normal>619</span>
+<span class=normal>620</span>
+<span class=normal>621</span>
+<span class=normal>622</span>
+<span class=normal>623</span>
+<span class=normal>624</span>
+<span class=normal>625</span>
+<span class=normal>626</span></pre></div></td><td class=code><div><pre><span></span><code><span class=k>def</span><span class=w> </span><span class=nf>_get_format_codec_args</span><span class=p>(</span><span class=bp>self</span><span class=p>,</span> <span class=n>repre</span><span class=p>):</span>
+<span class=w>    </span><span class=sd>&quot;&quot;&quot;Detect possible codec arguments from representation.&quot;&quot;&quot;</span>
+    <span class=n>codec_args</span> <span class=o>=</span> <span class=p>[]</span>
+
+    <span class=c1># Get one filename of representation files</span>
+    <span class=n>filename</span> <span class=o>=</span> <span class=n>repre</span><span class=p>[</span><span class=s2>&quot;files&quot;</span><span class=p>]</span>
+    <span class=c1># If files is list then pick first filename in list</span>
+    <span class=k>if</span> <span class=nb>isinstance</span><span class=p>(</span><span class=n>filename</span><span class=p>,</span> <span class=p>(</span><span class=nb>tuple</span><span class=p>,</span> <span class=nb>list</span><span class=p>)):</span>
+        <span class=n>filename</span> <span class=o>=</span> <span class=n>filename</span><span class=p>[</span><span class=mi>0</span><span class=p>]</span>
+    <span class=c1># Get full path to the file</span>
+    <span class=n>full_input_path</span> <span class=o>=</span> <span class=n>os</span><span class=o>.</span><span class=n>path</span><span class=o>.</span><span class=n>join</span><span class=p>(</span><span class=n>repre</span><span class=p>[</span><span class=s2>&quot;stagingDir&quot;</span><span class=p>],</span> <span class=n>filename</span><span class=p>)</span>
+
+    <span class=k>try</span><span class=p>:</span>
+        <span class=c1># Get information about input file via ffprobe tool</span>
+        <span class=n>ffprobe_data</span> <span class=o>=</span> <span class=n>get_ffprobe_data</span><span class=p>(</span><span class=n>full_input_path</span><span class=p>,</span> <span class=bp>self</span><span class=o>.</span><span class=n>log</span><span class=p>)</span>
+    <span class=k>except</span> <span class=ne>Exception</span><span class=p>:</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>log</span><span class=o>.</span><span class=n>warning</span><span class=p>(</span>
+            <span class=s2>&quot;Could not get codec data from input.&quot;</span><span class=p>,</span>
+            <span class=n>exc_info</span><span class=o>=</span><span class=kc>True</span>
+        <span class=p>)</span>
+        <span class=k>return</span> <span class=n>codec_args</span>
+
+    <span class=n>source_ffmpeg_cmd</span> <span class=o>=</span> <span class=n>repre</span><span class=o>.</span><span class=n>get</span><span class=p>(</span><span class=s2>&quot;ffmpeg_cmd&quot;</span><span class=p>)</span>
+    <span class=n>format_args</span> <span class=o>=</span> <span class=n>get_ffmpeg_format_args</span><span class=p>(</span><span class=n>ffprobe_data</span><span class=p>,</span> <span class=n>source_ffmpeg_cmd</span><span class=p>)</span>
+    <span class=n>codec_args</span> <span class=o>=</span> <span class=n>get_ffmpeg_codec_args</span><span class=p>(</span>
+        <span class=n>ffprobe_data</span><span class=p>,</span> <span class=n>source_ffmpeg_cmd</span><span class=p>,</span> <span class=n>logger</span><span class=o>=</span><span class=bp>self</span><span class=o>.</span><span class=n>log</span>
+    <span class=p>)</span>
+
+    <span class=k>return</span> <span class=n>format_args</span><span class=p>,</span> <span class=n>codec_args</span>
+</code></pre></div></td></tr></table></div> </details> </div> </div> <div class="doc doc-object doc-function"> <h3 id=client.ayon_core.plugins.publish.extract_review_slate.ExtractReviewSlate._tc_offset class="doc doc-heading"> <code class="highlight language-python"><span class=n>_tc_offset</span><span class=p>(</span><span class=n>timecode</span><span class=p>,</span> <span class=n>framerate</span><span class=o>=</span><span class=mf>24.0</span><span class=p>,</span> <span class=n>frame_offset</span><span class=o>=-</span><span class=mi>1</span><span class=p>)</span></code> </h3> <div class="doc doc-contents "> <p>Offsets timecode by frame</p> <details class=quote> <summary>Source code in <code>client/ayon_core/plugins/publish/extract_review_slate.py</code></summary> <div class=highlight><table class=highlighttable><tr><td class=linenos><div class=linenodiv><pre><span></span><span class=normal>628</span>
+<span class=normal>629</span>
+<span class=normal>630</span>
+<span class=normal>631</span>
+<span class=normal>632</span>
+<span class=normal>633</span>
+<span class=normal>634</span>
+<span class=normal>635</span>
+<span class=normal>636</span>
+<span class=normal>637</span>
+<span class=normal>638</span>
+<span class=normal>639</span>
+<span class=normal>640</span>
+<span class=normal>641</span>
+<span class=normal>642</span>
+<span class=normal>643</span>
+<span class=normal>644</span>
+<span class=normal>645</span>
+<span class=normal>646</span>
+<span class=normal>647</span>
+<span class=normal>648</span>
+<span class=normal>649</span>
+<span class=normal>650</span>
+<span class=normal>651</span>
+<span class=normal>652</span>
+<span class=normal>653</span>
+<span class=normal>654</span>
+<span class=normal>655</span>
+<span class=normal>656</span>
+<span class=normal>657</span>
+<span class=normal>658</span>
+<span class=normal>659</span>
+<span class=normal>660</span>
+<span class=normal>661</span>
+<span class=normal>662</span>
+<span class=normal>663</span>
+<span class=normal>664</span></pre></div></td><td class=code><div><pre><span></span><code><span class=k>def</span><span class=w> </span><span class=nf>_tc_offset</span><span class=p>(</span><span class=bp>self</span><span class=p>,</span> <span class=n>timecode</span><span class=p>,</span> <span class=n>framerate</span><span class=o>=</span><span class=mf>24.0</span><span class=p>,</span> <span class=n>frame_offset</span><span class=o>=-</span><span class=mi>1</span><span class=p>):</span>
+<span class=w>    </span><span class=sd>&quot;&quot;&quot;Offsets timecode by frame&quot;&quot;&quot;</span>
+    <span class=k>def</span><span class=w> </span><span class=nf>_seconds</span><span class=p>(</span><span class=n>value</span><span class=p>,</span> <span class=n>framerate</span><span class=p>):</span>
+        <span class=k>if</span> <span class=nb>isinstance</span><span class=p>(</span><span class=n>value</span><span class=p>,</span> <span class=nb>str</span><span class=p>):</span>
+            <span class=n>_zip_ft</span> <span class=o>=</span> <span class=nb>zip</span><span class=p>((</span><span class=mi>3600</span><span class=p>,</span> <span class=mi>60</span><span class=p>,</span> <span class=mi>1</span><span class=p>,</span> <span class=mi>1</span> <span class=o>/</span> <span class=n>framerate</span><span class=p>),</span> <span class=n>value</span><span class=o>.</span><span class=n>split</span><span class=p>(</span><span class=s1>&#39;:&#39;</span><span class=p>))</span>
+            <span class=n>_s</span> <span class=o>=</span> <span class=nb>sum</span><span class=p>(</span><span class=n>f</span> <span class=o>*</span> <span class=nb>float</span><span class=p>(</span><span class=n>t</span><span class=p>)</span> <span class=k>for</span> <span class=n>f</span><span class=p>,</span> <span class=n>t</span> <span class=ow>in</span> <span class=n>_zip_ft</span><span class=p>)</span>
+        <span class=k>elif</span> <span class=nb>isinstance</span><span class=p>(</span><span class=n>value</span><span class=p>,</span> <span class=p>(</span><span class=nb>int</span><span class=p>,</span> <span class=nb>float</span><span class=p>)):</span>
+            <span class=n>_s</span> <span class=o>=</span> <span class=n>value</span> <span class=o>/</span> <span class=n>framerate</span>
+        <span class=k>else</span><span class=p>:</span>
+            <span class=n>_s</span> <span class=o>=</span> <span class=mi>0</span>
+        <span class=k>return</span> <span class=n>_s</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>_frames</span><span class=p>(</span><span class=n>seconds</span><span class=p>,</span> <span class=n>framerate</span><span class=p>,</span> <span class=n>frame_offset</span><span class=p>):</span>
+        <span class=n>_f</span> <span class=o>=</span> <span class=n>seconds</span> <span class=o>*</span> <span class=n>framerate</span> <span class=o>+</span> <span class=n>frame_offset</span>
+        <span class=k>if</span> <span class=n>_f</span> <span class=o>&lt;</span> <span class=mi>0</span><span class=p>:</span>
+            <span class=n>_f</span> <span class=o>=</span> <span class=n>framerate</span> <span class=o>*</span> <span class=mi>60</span> <span class=o>*</span> <span class=mi>60</span> <span class=o>*</span> <span class=mi>24</span> <span class=o>+</span> <span class=n>_f</span>
+        <span class=k>return</span> <span class=n>_f</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>_timecode</span><span class=p>(</span><span class=n>seconds</span><span class=p>,</span> <span class=n>framerate</span><span class=p>):</span>
+        <span class=k>return</span> <span class=s1>&#39;</span><span class=si>{h:02d}</span><span class=s1>:</span><span class=si>{m:02d}</span><span class=s1>:</span><span class=si>{s:02d}</span><span class=s1>:</span><span class=si>{f:02d}</span><span class=s1>&#39;</span><span class=o>.</span><span class=n>format</span><span class=p>(</span>
+            <span class=n>h</span><span class=o>=</span><span class=nb>int</span><span class=p>(</span><span class=n>seconds</span> <span class=o>/</span> <span class=mi>3600</span><span class=p>),</span>
+            <span class=n>m</span><span class=o>=</span><span class=nb>int</span><span class=p>(</span><span class=n>seconds</span> <span class=o>/</span> <span class=mi>60</span> <span class=o>%</span> <span class=mi>60</span><span class=p>),</span>
+            <span class=n>s</span><span class=o>=</span><span class=nb>int</span><span class=p>(</span><span class=n>seconds</span> <span class=o>%</span> <span class=mi>60</span><span class=p>),</span>
+            <span class=n>f</span><span class=o>=</span><span class=nb>int</span><span class=p>(</span><span class=nb>round</span><span class=p>((</span><span class=n>seconds</span> <span class=o>-</span> <span class=nb>int</span><span class=p>(</span><span class=n>seconds</span><span class=p>))</span> <span class=o>*</span> <span class=n>framerate</span><span class=p>)))</span>
+    <span class=n>drop</span> <span class=o>=</span> <span class=kc>False</span>
+    <span class=k>if</span> <span class=s1>&#39;;&#39;</span> <span class=ow>in</span> <span class=n>timecode</span><span class=p>:</span>
+        <span class=n>timecode</span> <span class=o>=</span> <span class=n>timecode</span><span class=o>.</span><span class=n>replace</span><span class=p>(</span><span class=s1>&#39;;&#39;</span><span class=p>,</span> <span class=s1>&#39;:&#39;</span><span class=p>)</span>
+        <span class=n>drop</span> <span class=o>=</span> <span class=kc>True</span>
+    <span class=n>frames</span> <span class=o>=</span> <span class=n>_frames</span><span class=p>(</span>
+        <span class=n>_seconds</span><span class=p>(</span><span class=n>timecode</span><span class=p>,</span> <span class=n>framerate</span><span class=p>),</span>
+        <span class=n>framerate</span><span class=p>,</span>
+        <span class=n>frame_offset</span>
+    <span class=p>)</span>
+    <span class=n>tc</span> <span class=o>=</span> <span class=n>_timecode</span><span class=p>(</span><span class=n>_seconds</span><span class=p>(</span><span class=n>frames</span><span class=p>,</span> <span class=n>framerate</span><span class=p>),</span> <span class=n>framerate</span><span class=p>)</span>
+    <span class=k>if</span> <span class=n>drop</span><span class=p>:</span>
+        <span class=n>tc</span> <span class=o>=</span> <span class=s1>&#39;;&#39;</span><span class=o>.</span><span class=n>join</span><span class=p>(</span><span class=n>tc</span><span class=o>.</span><span class=n>rsplit</span><span class=p>(</span><span class=s1>&#39;:&#39;</span><span class=p>,</span> <span class=mi>1</span><span class=p>))</span>
+    <span class=k>return</span> <span class=n>tc</span>
+</code></pre></div></td></tr></table></div> </details> </div> </div> <div class="doc doc-object doc-function"> <h3 id=client.ayon_core.plugins.publish.extract_review_slate.ExtractReviewSlate.add_video_filter_args class="doc doc-heading"> <code class="highlight language-python"><span class=n>add_video_filter_args</span><span class=p>(</span><span class=n>args</span><span class=p>,</span> <span class=n>inserting_arg</span><span class=p>)</span></code> </h3> <div class="doc doc-contents "> <p>Fixing video filter argumets to be one long string</p> <p><span class=doc-section-title>Parameters:</span></p> <table> <thead> <tr> <th>Name</th> <th>Type</th> <th>Description</th> <th>Default</th> </tr> </thead> <tbody> <tr class=doc-section-item> <td> <code>args</code> </td> <td> <code><span title=list>list</span></code> </td> <td> <div class=doc-md-description> <p>list of string arguments</p> </div> </td> <td> <em>required</em> </td> </tr> <tr class=doc-section-item> <td> <code>inserting_arg</code> </td> <td> <code><span title=str>str</span></code> </td> <td> <div class=doc-md-description> <p>string argument we want to add (without flag <code>-vf</code>)</p> </div> </td> <td> <em>required</em> </td> </tr> </tbody> </table> <p><span class=doc-section-title>Returns:</span></p> <table> <thead> <tr> <th>Name</th> <th>Type</th> <th>Description</th> </tr> </thead> <tbody> <tr class=doc-section-item> <td><code>str</code></td> <td> </td> <td> <div class=doc-md-description> <p>long joined argument to be added back to list of arguments</p> </div> </td> </tr> </tbody> </table> <details class=quote> <summary>Source code in <code>client/ayon_core/plugins/publish/extract_review_slate.py</code></summary> <div class=highlight><table class=highlighttable><tr><td class=linenos><div class=linenodiv><pre><span></span><span class=normal>561</span>
+<span class=normal>562</span>
+<span class=normal>563</span>
+<span class=normal>564</span>
+<span class=normal>565</span>
+<span class=normal>566</span>
+<span class=normal>567</span>
+<span class=normal>568</span>
+<span class=normal>569</span>
+<span class=normal>570</span>
+<span class=normal>571</span>
+<span class=normal>572</span>
+<span class=normal>573</span>
+<span class=normal>574</span>
+<span class=normal>575</span>
+<span class=normal>576</span>
+<span class=normal>577</span>
+<span class=normal>578</span>
+<span class=normal>579</span>
+<span class=normal>580</span>
+<span class=normal>581</span>
+<span class=normal>582</span>
+<span class=normal>583</span>
+<span class=normal>584</span>
+<span class=normal>585</span>
+<span class=normal>586</span>
+<span class=normal>587</span>
+<span class=normal>588</span>
+<span class=normal>589</span>
+<span class=normal>590</span>
+<span class=normal>591</span>
+<span class=normal>592</span>
+<span class=normal>593</span>
+<span class=normal>594</span>
+<span class=normal>595</span>
+<span class=normal>596</span></pre></div></td><td class=code><div><pre><span></span><code><span class=k>def</span><span class=w> </span><span class=nf>add_video_filter_args</span><span class=p>(</span><span class=bp>self</span><span class=p>,</span> <span class=n>args</span><span class=p>,</span> <span class=n>inserting_arg</span><span class=p>):</span>
+<span class=w>    </span><span class=sd>&quot;&quot;&quot;</span>
+<span class=sd>    Fixing video filter argumets to be one long string</span>
+
+<span class=sd>    Args:</span>
+<span class=sd>        args (list): list of string arguments</span>
+<span class=sd>        inserting_arg (str): string argument we want to add</span>
+<span class=sd>                             (without flag `-vf`)</span>
+
+<span class=sd>    Returns:</span>
+<span class=sd>        str: long joined argument to be added back to list of arguments</span>
+
+<span class=sd>    &quot;&quot;&quot;</span>
+    <span class=c1># find all video format settings</span>
+    <span class=n>vf_settings</span> <span class=o>=</span> <span class=p>[</span><span class=n>p</span> <span class=k>for</span> <span class=n>p</span> <span class=ow>in</span> <span class=n>args</span>
+                   <span class=k>for</span> <span class=n>v</span> <span class=ow>in</span> <span class=p>[</span><span class=s2>&quot;-filter:v&quot;</span><span class=p>,</span> <span class=s2>&quot;-vf&quot;</span><span class=p>]</span>
+                   <span class=k>if</span> <span class=n>v</span> <span class=ow>in</span> <span class=n>p</span><span class=p>]</span>
+    <span class=bp>self</span><span class=o>.</span><span class=n>log</span><span class=o>.</span><span class=n>debug</span><span class=p>(</span><span class=s2>&quot;_ vf_settings: `</span><span class=si>{}</span><span class=s2>`&quot;</span><span class=o>.</span><span class=n>format</span><span class=p>(</span><span class=n>vf_settings</span><span class=p>))</span>
+
+    <span class=c1># remove them from output args list</span>
+    <span class=k>for</span> <span class=n>p</span> <span class=ow>in</span> <span class=n>vf_settings</span><span class=p>:</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>log</span><span class=o>.</span><span class=n>debug</span><span class=p>(</span><span class=s2>&quot;_ remove p: `</span><span class=si>{}</span><span class=s2>`&quot;</span><span class=o>.</span><span class=n>format</span><span class=p>(</span><span class=n>p</span><span class=p>))</span>
+        <span class=n>args</span><span class=o>.</span><span class=n>remove</span><span class=p>(</span><span class=n>p</span><span class=p>)</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>log</span><span class=o>.</span><span class=n>debug</span><span class=p>(</span><span class=s2>&quot;_ args: `</span><span class=si>{}</span><span class=s2>`&quot;</span><span class=o>.</span><span class=n>format</span><span class=p>(</span><span class=n>args</span><span class=p>))</span>
+
+    <span class=c1># strip them from all flags</span>
+    <span class=n>vf_fixed</span> <span class=o>=</span> <span class=p>[</span><span class=n>p</span><span class=o>.</span><span class=n>replace</span><span class=p>(</span><span class=s2>&quot;-vf &quot;</span><span class=p>,</span> <span class=s2>&quot;&quot;</span><span class=p>)</span><span class=o>.</span><span class=n>replace</span><span class=p>(</span><span class=s2>&quot;-filter:v &quot;</span><span class=p>,</span> <span class=s2>&quot;&quot;</span><span class=p>)</span>
+                <span class=k>for</span> <span class=n>p</span> <span class=ow>in</span> <span class=n>vf_settings</span><span class=p>]</span>
+
+    <span class=bp>self</span><span class=o>.</span><span class=n>log</span><span class=o>.</span><span class=n>debug</span><span class=p>(</span><span class=s2>&quot;_ vf_fixed: `</span><span class=si>{}</span><span class=s2>`&quot;</span><span class=o>.</span><span class=n>format</span><span class=p>(</span><span class=n>vf_fixed</span><span class=p>))</span>
+    <span class=n>vf_fixed</span><span class=o>.</span><span class=n>insert</span><span class=p>(</span><span class=mi>0</span><span class=p>,</span> <span class=n>inserting_arg</span><span class=p>)</span>
+    <span class=bp>self</span><span class=o>.</span><span class=n>log</span><span class=o>.</span><span class=n>debug</span><span class=p>(</span><span class=s2>&quot;_ vf_fixed: `</span><span class=si>{}</span><span class=s2>`&quot;</span><span class=o>.</span><span class=n>format</span><span class=p>(</span><span class=n>vf_fixed</span><span class=p>))</span>
+    <span class=c1># create new video filter setting</span>
+    <span class=n>vf_back</span> <span class=o>=</span> <span class=s2>&quot;-vf &quot;</span> <span class=o>+</span> <span class=s2>&quot;,&quot;</span><span class=o>.</span><span class=n>join</span><span class=p>(</span><span class=n>vf_fixed</span><span class=p>)</span>
+
+    <span class=k>return</span> <span class=n>vf_back</span>
+</code></pre></div></td></tr></table></div> </details> </div> </div> </div> </div> </div> </div> </div> </div> </article> </div> <script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script> </div> </main> <footer class=md-footer> <div class="md-footer-meta md-typeset"> <div class="md-footer-meta__inner md-grid"> <div class=md-copyright> Made with <a href=https://squidfunk.github.io/mkdocs-material/ target=_blank rel=noopener> Material for MkDocs </a> </div> </div> </div> </footer> </div> <div class=md-dialog data-md-component=dialog> <div class="md-dialog__inner md-typeset"></div> </div> <script id=__config type=application/json>{"base": "../../../../..", "features": ["navigation.sections", "navigation.path", "navigation.prune"], "search": "../../../../../assets/javascripts/workers/search.f8cc74c7.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script> <script src=../../../../../assets/javascripts/bundle.c8b220af.min.js></script> </body> </html>

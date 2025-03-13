@@ -1,0 +1,1037 @@
+<!doctype html><html lang=en class=no-js> <head><meta charset=utf-8><meta name=viewport content="width=device-width,initial-scale=1"><link rel=prev href=overlay_messages.html><link rel=next href=sliders.html><link rel=icon href=../../../../../img/favicon.ico><meta name=generator content="mkdocs-1.6.1, mkdocs-material-9.6.8"><title>projects_widget - ayon-core</title><link rel=stylesheet href=../../../../../assets/stylesheets/main.8608ea7d.min.css><link rel=stylesheet href=../../../../../assets/stylesheets/palette.06af60db.min.css><script src=https://unpkg.com/iframe-worker/shim></script><link rel=preconnect href=https://fonts.gstatic.com crossorigin><link rel=stylesheet href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback"><style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style><link rel=stylesheet href=../../../../../assets/_mkdocstrings.css><link rel=stylesheet href=../../../../../css/custom.css><script>__md_scope=new URL("../../../../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script></head> <body dir=ltr data-md-color-scheme=slate data-md-color-primary=indigo data-md-color-accent=indigo> <input class=md-toggle data-md-toggle=drawer type=checkbox id=__drawer autocomplete=off> <input class=md-toggle data-md-toggle=search type=checkbox id=__search autocomplete=off> <label class=md-overlay for=__drawer></label> <div data-md-component=skip> <a href=#client.ayon_core.tools.utils.projects_widget class=md-skip> Skip to content </a> </div> <div data-md-component=announce> </div> <div data-md-color-scheme=default data-md-component=outdated hidden> </div> <header class="md-header md-header--shadow" data-md-component=header> <nav class="md-header__inner md-grid" aria-label=Header> <a href=../../../../../index.html title=ayon-core class="md-header__button md-logo" aria-label=ayon-core data-md-component=logo> <img src=../../../../../img/ay-symbol-blackw-full.png alt=logo> </a> <label class="md-header__button md-icon" for=__drawer> <svg xmlns=http://www.w3.org/2000/svg viewbox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg> </label> <div class=md-header__title data-md-component=header-title> <div class=md-header__ellipsis> <div class=md-header__topic> <span class=md-ellipsis> ayon-core </span> </div> <div class=md-header__topic data-md-component=header-topic> <span class=md-ellipsis> projects_widget </span> </div> </div> </div> <form class=md-header__option data-md-component=palette> <input class=md-option data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme=slate data-md-color-primary=indigo data-md-color-accent=indigo aria-label="Switch to light mode" type=radio name=__palette id=__palette_0> <label class="md-header__button md-icon" title="Switch to light mode" for=__palette_1 hidden> <svg xmlns=http://www.w3.org/2000/svg viewbox="0 0 24 24"><path d="M17 6H7c-3.31 0-6 2.69-6 6s2.69 6 6 6h10c3.31 0 6-2.69 6-6s-2.69-6-6-6m0 10H7c-2.21 0-4-1.79-4-4s1.79-4 4-4h10c2.21 0 4 1.79 4 4s-1.79 4-4 4M7 9c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3"/></svg> </label> <input class=md-option data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme=default data-md-color-primary=indigo data-md-color-accent=indigo aria-label="Switch to dark mode" type=radio name=__palette id=__palette_1> <label class="md-header__button md-icon" title="Switch to dark mode" for=__palette_0 hidden> <svg xmlns=http://www.w3.org/2000/svg viewbox="0 0 24 24"><path d="M17 7H7a5 5 0 0 0-5 5 5 5 0 0 0 5 5h10a5 5 0 0 0 5-5 5 5 0 0 0-5-5m0 8a3 3 0 0 1-3-3 3 3 0 0 1 3-3 3 3 0 0 1 3 3 3 3 0 0 1-3 3"/></svg> </label> </form> <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script> <label class="md-header__button md-icon" for=__search> <svg xmlns=http://www.w3.org/2000/svg viewbox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg> </label> <div class=md-search data-md-component=search role=dialog> <label class=md-search__overlay for=__search></label> <div class=md-search__inner role=search> <form class=md-search__form name=search> <input type=text class=md-search__input name=query aria-label=Search placeholder=Search autocapitalize=off autocorrect=off autocomplete=off spellcheck=false data-md-component=search-query required> <label class="md-search__icon md-icon" for=__search> <svg xmlns=http://www.w3.org/2000/svg viewbox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg> <svg xmlns=http://www.w3.org/2000/svg viewbox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg> </label> <nav class=md-search__options aria-label=Search> <button type=reset class="md-search__icon md-icon" title=Clear aria-label=Clear tabindex=-1> <svg xmlns=http://www.w3.org/2000/svg viewbox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg> </button> </nav> </form> <div class=md-search__output> <div class=md-search__scrollwrap tabindex=0 data-md-scrollfix> <div class=md-search-result data-md-component=search-result> <div class=md-search-result__meta> Initializing search </div> <ol class=md-search-result__list role=presentation></ol> </div> </div> </div> </div> </div> </nav> </header> <div class=md-container data-md-component=container> <main class=md-main data-md-component=main> <div class="md-main__inner md-grid"> <div class="md-sidebar md-sidebar--primary" data-md-component=sidebar data-md-type=navigation> <div class=md-sidebar__scrollwrap> <div class=md-sidebar__inner> <nav class="md-nav md-nav--primary" aria-label=Navigation data-md-level=0> <label class=md-nav__title for=__drawer> <a href=../../../../../index.html title=ayon-core class="md-nav__button md-logo" aria-label=ayon-core data-md-component=logo> <img src=../../../../../img/ay-symbol-blackw-full.png alt=logo> </a> ayon-core </label> <ul class=md-nav__list data-md-scrollfix> <li class=md-nav__item> <a href=../../../../../index.html class=md-nav__link> <span class=md-ellipsis> Home </span> </a> </li> <li class=md-nav__item> <a href=../../../../../license.html class=md-nav__link> <span class=md-ellipsis> License </span> </a> </li> <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested"> <input class="md-nav__toggle md-toggle " type=checkbox id=__nav_3 checked> <label class=md-nav__link for=__nav_3 id=__nav_3_label tabindex> <span class=md-ellipsis> Reference </span> <span class="md-nav__icon md-icon"></span> </label> <nav class=md-nav data-md-level=1 aria-labelledby=__nav_3_label aria-expanded=true> <label class=md-nav__title for=__nav_3> <span class="md-nav__icon md-icon"></span> Reference </label> <ul class=md-nav__list data-md-scrollfix> <li class="md-nav__item md-nav__item--active md-nav__item--nested"> <input class="md-nav__toggle md-toggle " type=checkbox id=__nav_3_1 checked> <div class="md-nav__link md-nav__container"> <a href=../../../index.html class="md-nav__link "> <span class=md-ellipsis> client </span> </a> <label class="md-nav__link " for=__nav_3_1 id=__nav_3_1_label tabindex=0> <span class="md-nav__icon md-icon"></span> </label> </div> <nav class=md-nav data-md-level=2 aria-labelledby=__nav_3_1_label aria-expanded=true> <label class=md-nav__title for=__nav_3_1> <span class="md-nav__icon md-icon"></span> client </label> <ul class=md-nav__list data-md-scrollfix> <li class="md-nav__item md-nav__item--active md-nav__item--nested"> <input class="md-nav__toggle md-toggle " type=checkbox id=__nav_3_1_1 checked> <div class="md-nav__link md-nav__container"> <a href=../../index.html class="md-nav__link "> <span class=md-ellipsis> ayon_core </span> </a> <label class="md-nav__link " for=__nav_3_1_1 id=__nav_3_1_1_label tabindex=0> <span class="md-nav__icon md-icon"></span> </label> </div> <nav class=md-nav data-md-level=3 aria-labelledby=__nav_3_1_1_label aria-expanded=true> <label class=md-nav__title for=__nav_3_1_1> <span class="md-nav__icon md-icon"></span> ayon_core </label> <ul class=md-nav__list data-md-scrollfix> <li class=md-nav__item> <a href=../../__main__.html class=md-nav__link> <span class=md-ellipsis> __main__ </span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../../addon/base.html class=md-nav__link> <span class=md-ellipsis> addon </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class=md-nav__item> <a href=../../cli.html class=md-nav__link> <span class=md-ellipsis> cli </span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../../hooks/pre_add_last_workfile_arg.html class=md-nav__link> <span class=md-ellipsis> hooks </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../../host/dirmap.html class=md-nav__link> <span class=md-ellipsis> host </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../../lib/attribute_definitions.html class=md-nav__link> <span class=md-ellipsis> lib </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../../pipeline/actions.html class=md-nav__link> <span class=md-ellipsis> pipeline </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../../plugins/actions/open_file_explorer.html class=md-nav__link> <span class=md-ellipsis> plugins </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../../resources/app_icons/index.html class=md-nav__link> <span class=md-ellipsis> resources </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../../scripts/ocio_wrapper.html class=md-nav__link> <span class=md-ellipsis> scripts </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../../settings/lib.html class=md-nav__link> <span class=md-ellipsis> settings </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../../style/color_defs.html class=md-nav__link> <span class=md-ellipsis> style </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../../tests/conftest.html class=md-nav__link> <span class=md-ellipsis> tests </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class="md-nav__item md-nav__item--active md-nav__item--nested"> <input class="md-nav__toggle md-toggle " type=checkbox id=__nav_3_1_1_14 checked> <div class="md-nav__link md-nav__container"> <a href=../index.html class="md-nav__link "> <span class=md-ellipsis> tools </span> </a> <label class="md-nav__link " for=__nav_3_1_1_14 id=__nav_3_1_1_14_label tabindex=0> <span class="md-nav__icon md-icon"></span> </label> </div> <nav class=md-nav data-md-level=4 aria-labelledby=__nav_3_1_1_14_label aria-expanded=true> <label class=md-nav__title for=__nav_3_1_1_14> <span class="md-nav__icon md-icon"></span> tools </label> <ul class=md-nav__list data-md-scrollfix> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../attribute_defs/_constants.html class=md-nav__link> <span class=md-ellipsis> attribute_defs </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../common_models/cache.html class=md-nav__link> <span class=md-ellipsis> common_models </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../console_interpreter/abstract.html class=md-nav__link> <span class=md-ellipsis> console_interpreter </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../context_dialog/window.html class=md-nav__link> <span class=md-ellipsis> context_dialog </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../creator/constants.html class=md-nav__link> <span class=md-ellipsis> creator </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../experimental_tools/dialog.html class=md-nav__link> <span class=md-ellipsis> experimental_tools </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class=md-nav__item> <a href=../flickcharm.html class=md-nav__link> <span class=md-ellipsis> flickcharm </span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../launcher/abstract.html class=md-nav__link> <span class=md-ellipsis> launcher </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../loader/abstract.html class=md-nav__link> <span class=md-ellipsis> loader </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../publisher/abstract.html class=md-nav__link> <span class=md-ellipsis> publisher </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../push_to_project/control.html class=md-nav__link> <span class=md-ellipsis> push_to_project </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../resources/images/index.html class=md-nav__link> <span class=md-ellipsis> resources </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../sceneinventory/control.html class=md-nav__link> <span class=md-ellipsis> sceneinventory </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../stdout_broker/app.html class=md-nav__link> <span class=md-ellipsis> stdout_broker </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../subsetmanager/model.html class=md-nav__link> <span class=md-ellipsis> subsetmanager </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../texture_copy/app.html class=md-nav__link> <span class=md-ellipsis> texture_copy </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../tray/lib.html class=md-nav__link> <span class=md-ellipsis> tray </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class="md-nav__item md-nav__item--active md-nav__item--nested"> <input class="md-nav__toggle md-toggle " type=checkbox id=__nav_3_1_1_14_18 checked> <div class="md-nav__link md-nav__container"> <a href=index.html class="md-nav__link "> <span class=md-ellipsis> utils </span> </a> <label class="md-nav__link " for=__nav_3_1_1_14_18 id=__nav_3_1_1_14_18_label tabindex=0> <span class="md-nav__icon md-icon"></span> </label> </div> <nav class=md-nav data-md-level=5 aria-labelledby=__nav_3_1_1_14_18_label aria-expanded=true> <label class=md-nav__title for=__nav_3_1_1_14_18> <span class="md-nav__icon md-icon"></span> utils </label> <ul class=md-nav__list data-md-scrollfix> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=color_widgets/color_inputs.html class=md-nav__link> <span class=md-ellipsis> color_widgets </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class=md-nav__item> <a href=constants.html class=md-nav__link> <span class=md-ellipsis> constants </span> </a> </li> <li class=md-nav__item> <a href=delegates.html class=md-nav__link> <span class=md-ellipsis> delegates </span> </a> </li> <li class=md-nav__item> <a href=dialogs.html class=md-nav__link> <span class=md-ellipsis> dialogs </span> </a> </li> <li class=md-nav__item> <a href=error_dialog.html class=md-nav__link> <span class=md-ellipsis> error_dialog </span> </a> </li> <li class=md-nav__item> <a href=folders_widget.html class=md-nav__link> <span class=md-ellipsis> folders_widget </span> </a> </li> <li class=md-nav__item> <a href=host_tools.html class=md-nav__link> <span class=md-ellipsis> host_tools </span> </a> </li> <li class=md-nav__item> <a href=images/index.html class=md-nav__link> <span class=md-ellipsis> images </span> </a> </li> <li class=md-nav__item> <a href=layouts.html class=md-nav__link> <span class=md-ellipsis> layouts </span> </a> </li> <li class=md-nav__item> <a href=lib.html class=md-nav__link> <span class=md-ellipsis> lib </span> </a> </li> <li class=md-nav__item> <a href=models.html class=md-nav__link> <span class=md-ellipsis> models </span> </a> </li> <li class=md-nav__item> <a href=multiselection_combobox.html class=md-nav__link> <span class=md-ellipsis> multiselection_combobox </span> </a> </li> <li class=md-nav__item> <a href=nice_checkbox.html class=md-nav__link> <span class=md-ellipsis> nice_checkbox </span> </a> </li> <li class=md-nav__item> <a href=overlay_messages.html class=md-nav__link> <span class=md-ellipsis> overlay_messages </span> </a> </li> <li class="md-nav__item md-nav__item--active"> <input class="md-nav__toggle md-toggle" type=checkbox id=__toc> <label class="md-nav__link md-nav__link--active" for=__toc> <span class=md-ellipsis> projects_widget </span> <span class="md-nav__icon md-icon"></span> </label> <a href=projects_widget.html class="md-nav__link md-nav__link--active"> <span class=md-ellipsis> projects_widget </span> </a> <nav class="md-nav md-nav--secondary" aria-label="Table of contents"> <label class=md-nav__title for=__toc> <span class="md-nav__icon md-icon"></span> Table of contents </label> <ul class=md-nav__list data-md-component=toc data-md-scrollfix> <li class=md-nav__item> <a href=#client.ayon_core.tools.utils.projects_widget class=md-nav__link> <span class=md-ellipsis> projects_widget </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.tools.utils.projects_widget.ProjectsCombobox class=md-nav__link> <span class=md-ellipsis> ProjectsCombobox </span> </a> <nav class=md-nav aria-label=ProjectsCombobox> <ul class=md-nav__list> <li class=md-nav__item> <a href=#client.ayon_core.tools.utils.projects_widget.ProjectsCombobox.get_selected_project_name class=md-nav__link> <span class=md-ellipsis> get_selected_project_name </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.tools.utils.projects_widget.ProjectsCombobox.set_listen_to_selection_change class=md-nav__link> <span class=md-ellipsis> set_listen_to_selection_change </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.tools.utils.projects_widget.ProjectsCombobox.set_selection class=md-nav__link> <span class=md-ellipsis> set_selection </span> </a> </li> </ul> </nav> </li> <li class=md-nav__item> <a href=#client.ayon_core.tools.utils.projects_widget.ProjectsQtModel class=md-nav__link> <span class=md-ellipsis> ProjectsQtModel </span> </a> <nav class=md-nav aria-label=ProjectsQtModel> <ul class=md-nav__list> <li class=md-nav__item> <a href=#client.ayon_core.tools.utils.projects_widget.ProjectsQtModel.get_index_by_project_name class=md-nav__link> <span class=md-ellipsis> get_index_by_project_name </span> </a> </li> </ul> </nav> </li> </ul> </nav> </li> <li class=md-nav__item> <a href=sliders.html class=md-nav__link> <span class=md-ellipsis> sliders </span> </a> </li> <li class=md-nav__item> <a href=tasks_widget.html class=md-nav__link> <span class=md-ellipsis> tasks_widget </span> </a> </li> <li class=md-nav__item> <a href=thumbnail_paint_widget.html class=md-nav__link> <span class=md-ellipsis> thumbnail_paint_widget </span> </a> </li> <li class=md-nav__item> <a href=views.html class=md-nav__link> <span class=md-ellipsis> views </span> </a> </li> <li class=md-nav__item> <a href=widgets.html class=md-nav__link> <span class=md-ellipsis> widgets </span> </a> </li> </ul> </nav> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../workfile_template_build/lib.html class=md-nav__link> <span class=md-ellipsis> workfile_template_build </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../workfiles/abstract.html class=md-nav__link> <span class=md-ellipsis> workfiles </span> <span class="md-nav__icon md-icon"></span> </a> </li> </ul> </nav> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../../vendor/python/qargparse.html class=md-nav__link> <span class=md-ellipsis> vendor </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class=md-nav__item> <a href=../../version.html class=md-nav__link> <span class=md-ellipsis> version </span> </a> </li> </ul> </nav> </li> </ul> </nav> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../../../../server/settings/conversion.html class=md-nav__link> <span class=md-ellipsis> server </span> <span class="md-nav__icon md-icon"></span> </a> </li> </ul> </nav> </li> </ul> </nav> </div> </div> </div> <div class="md-sidebar md-sidebar--secondary" data-md-component=sidebar data-md-type=toc> <div class=md-sidebar__scrollwrap> <div class=md-sidebar__inner> <nav class="md-nav md-nav--secondary" aria-label="Table of contents"> <label class=md-nav__title for=__toc> <span class="md-nav__icon md-icon"></span> Table of contents </label> <ul class=md-nav__list data-md-component=toc data-md-scrollfix> <li class=md-nav__item> <a href=#client.ayon_core.tools.utils.projects_widget class=md-nav__link> <span class=md-ellipsis> projects_widget </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.tools.utils.projects_widget.ProjectsCombobox class=md-nav__link> <span class=md-ellipsis> ProjectsCombobox </span> </a> <nav class=md-nav aria-label=ProjectsCombobox> <ul class=md-nav__list> <li class=md-nav__item> <a href=#client.ayon_core.tools.utils.projects_widget.ProjectsCombobox.get_selected_project_name class=md-nav__link> <span class=md-ellipsis> get_selected_project_name </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.tools.utils.projects_widget.ProjectsCombobox.set_listen_to_selection_change class=md-nav__link> <span class=md-ellipsis> set_listen_to_selection_change </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.tools.utils.projects_widget.ProjectsCombobox.set_selection class=md-nav__link> <span class=md-ellipsis> set_selection </span> </a> </li> </ul> </nav> </li> <li class=md-nav__item> <a href=#client.ayon_core.tools.utils.projects_widget.ProjectsQtModel class=md-nav__link> <span class=md-ellipsis> ProjectsQtModel </span> </a> <nav class=md-nav aria-label=ProjectsQtModel> <ul class=md-nav__list> <li class=md-nav__item> <a href=#client.ayon_core.tools.utils.projects_widget.ProjectsQtModel.get_index_by_project_name class=md-nav__link> <span class=md-ellipsis> get_index_by_project_name </span> </a> </li> </ul> </nav> </li> </ul> </nav> </div> </div> </div> <div class=md-content data-md-component=content> <article class="md-content__inner md-typeset"> <h1>projects_widget</h1> <div class="doc doc-object doc-module"> <a id=client.ayon_core.tools.utils.projects_widget></a> <div class="doc doc-contents first"> <div class="doc doc-children"> <div class="doc doc-object doc-class"> <h2 id=client.ayon_core.tools.utils.projects_widget.ProjectsCombobox class="doc doc-heading"> <code>ProjectsCombobox</code> </h2> <div class="doc doc-contents "> <p class="doc doc-class-bases"> Bases: <code><span title=qtpy.QtWidgets.QWidget>QWidget</span></code></p> <details class=quote> <summary>Source code in <code>client/ayon_core/tools/utils/projects_widget.py</code></summary> <div class=highlight><table class=highlighttable><tr><td class=linenos><div class=linenodiv><pre><span></span><span class=normal>417</span>
+<span class=normal>418</span>
+<span class=normal>419</span>
+<span class=normal>420</span>
+<span class=normal>421</span>
+<span class=normal>422</span>
+<span class=normal>423</span>
+<span class=normal>424</span>
+<span class=normal>425</span>
+<span class=normal>426</span>
+<span class=normal>427</span>
+<span class=normal>428</span>
+<span class=normal>429</span>
+<span class=normal>430</span>
+<span class=normal>431</span>
+<span class=normal>432</span>
+<span class=normal>433</span>
+<span class=normal>434</span>
+<span class=normal>435</span>
+<span class=normal>436</span>
+<span class=normal>437</span>
+<span class=normal>438</span>
+<span class=normal>439</span>
+<span class=normal>440</span>
+<span class=normal>441</span>
+<span class=normal>442</span>
+<span class=normal>443</span>
+<span class=normal>444</span>
+<span class=normal>445</span>
+<span class=normal>446</span>
+<span class=normal>447</span>
+<span class=normal>448</span>
+<span class=normal>449</span>
+<span class=normal>450</span>
+<span class=normal>451</span>
+<span class=normal>452</span>
+<span class=normal>453</span>
+<span class=normal>454</span>
+<span class=normal>455</span>
+<span class=normal>456</span>
+<span class=normal>457</span>
+<span class=normal>458</span>
+<span class=normal>459</span>
+<span class=normal>460</span>
+<span class=normal>461</span>
+<span class=normal>462</span>
+<span class=normal>463</span>
+<span class=normal>464</span>
+<span class=normal>465</span>
+<span class=normal>466</span>
+<span class=normal>467</span>
+<span class=normal>468</span>
+<span class=normal>469</span>
+<span class=normal>470</span>
+<span class=normal>471</span>
+<span class=normal>472</span>
+<span class=normal>473</span>
+<span class=normal>474</span>
+<span class=normal>475</span>
+<span class=normal>476</span>
+<span class=normal>477</span>
+<span class=normal>478</span>
+<span class=normal>479</span>
+<span class=normal>480</span>
+<span class=normal>481</span>
+<span class=normal>482</span>
+<span class=normal>483</span>
+<span class=normal>484</span>
+<span class=normal>485</span>
+<span class=normal>486</span>
+<span class=normal>487</span>
+<span class=normal>488</span>
+<span class=normal>489</span>
+<span class=normal>490</span>
+<span class=normal>491</span>
+<span class=normal>492</span>
+<span class=normal>493</span>
+<span class=normal>494</span>
+<span class=normal>495</span>
+<span class=normal>496</span>
+<span class=normal>497</span>
+<span class=normal>498</span>
+<span class=normal>499</span>
+<span class=normal>500</span>
+<span class=normal>501</span>
+<span class=normal>502</span>
+<span class=normal>503</span>
+<span class=normal>504</span>
+<span class=normal>505</span>
+<span class=normal>506</span>
+<span class=normal>507</span>
+<span class=normal>508</span>
+<span class=normal>509</span>
+<span class=normal>510</span>
+<span class=normal>511</span>
+<span class=normal>512</span>
+<span class=normal>513</span>
+<span class=normal>514</span>
+<span class=normal>515</span>
+<span class=normal>516</span>
+<span class=normal>517</span>
+<span class=normal>518</span>
+<span class=normal>519</span>
+<span class=normal>520</span>
+<span class=normal>521</span>
+<span class=normal>522</span>
+<span class=normal>523</span>
+<span class=normal>524</span>
+<span class=normal>525</span>
+<span class=normal>526</span>
+<span class=normal>527</span>
+<span class=normal>528</span>
+<span class=normal>529</span>
+<span class=normal>530</span>
+<span class=normal>531</span>
+<span class=normal>532</span>
+<span class=normal>533</span>
+<span class=normal>534</span>
+<span class=normal>535</span>
+<span class=normal>536</span>
+<span class=normal>537</span>
+<span class=normal>538</span>
+<span class=normal>539</span>
+<span class=normal>540</span>
+<span class=normal>541</span>
+<span class=normal>542</span>
+<span class=normal>543</span>
+<span class=normal>544</span>
+<span class=normal>545</span>
+<span class=normal>546</span>
+<span class=normal>547</span>
+<span class=normal>548</span>
+<span class=normal>549</span>
+<span class=normal>550</span>
+<span class=normal>551</span>
+<span class=normal>552</span>
+<span class=normal>553</span>
+<span class=normal>554</span>
+<span class=normal>555</span>
+<span class=normal>556</span>
+<span class=normal>557</span>
+<span class=normal>558</span>
+<span class=normal>559</span>
+<span class=normal>560</span>
+<span class=normal>561</span>
+<span class=normal>562</span>
+<span class=normal>563</span>
+<span class=normal>564</span>
+<span class=normal>565</span>
+<span class=normal>566</span>
+<span class=normal>567</span>
+<span class=normal>568</span>
+<span class=normal>569</span>
+<span class=normal>570</span>
+<span class=normal>571</span>
+<span class=normal>572</span>
+<span class=normal>573</span>
+<span class=normal>574</span>
+<span class=normal>575</span>
+<span class=normal>576</span>
+<span class=normal>577</span>
+<span class=normal>578</span>
+<span class=normal>579</span>
+<span class=normal>580</span>
+<span class=normal>581</span>
+<span class=normal>582</span>
+<span class=normal>583</span>
+<span class=normal>584</span>
+<span class=normal>585</span>
+<span class=normal>586</span>
+<span class=normal>587</span>
+<span class=normal>588</span>
+<span class=normal>589</span>
+<span class=normal>590</span>
+<span class=normal>591</span>
+<span class=normal>592</span>
+<span class=normal>593</span>
+<span class=normal>594</span>
+<span class=normal>595</span>
+<span class=normal>596</span>
+<span class=normal>597</span>
+<span class=normal>598</span>
+<span class=normal>599</span>
+<span class=normal>600</span>
+<span class=normal>601</span>
+<span class=normal>602</span>
+<span class=normal>603</span>
+<span class=normal>604</span>
+<span class=normal>605</span>
+<span class=normal>606</span>
+<span class=normal>607</span>
+<span class=normal>608</span>
+<span class=normal>609</span>
+<span class=normal>610</span>
+<span class=normal>611</span>
+<span class=normal>612</span></pre></div></td><td class=code><div><pre><span></span><code><span class=k>class</span><span class=w> </span><span class=nc>ProjectsCombobox</span><span class=p>(</span><span class=n>QtWidgets</span><span class=o>.</span><span class=n>QWidget</span><span class=p>):</span>
+    <span class=n>refreshed</span> <span class=o>=</span> <span class=n>QtCore</span><span class=o>.</span><span class=n>Signal</span><span class=p>()</span>
+    <span class=n>selection_changed</span> <span class=o>=</span> <span class=n>QtCore</span><span class=o>.</span><span class=n>Signal</span><span class=p>()</span>
+
+    <span class=k>def</span><span class=w> </span><span class=fm>__init__</span><span class=p>(</span><span class=bp>self</span><span class=p>,</span> <span class=n>controller</span><span class=p>,</span> <span class=n>parent</span><span class=p>,</span> <span class=n>handle_expected_selection</span><span class=o>=</span><span class=kc>False</span><span class=p>):</span>
+        <span class=nb>super</span><span class=p>(</span><span class=n>ProjectsCombobox</span><span class=p>,</span> <span class=bp>self</span><span class=p>)</span><span class=o>.</span><span class=fm>__init__</span><span class=p>(</span><span class=n>parent</span><span class=p>)</span>
+
+        <span class=n>projects_combobox</span> <span class=o>=</span> <span class=n>QtWidgets</span><span class=o>.</span><span class=n>QComboBox</span><span class=p>(</span><span class=bp>self</span><span class=p>)</span>
+        <span class=n>combobox_delegate</span> <span class=o>=</span> <span class=n>QtWidgets</span><span class=o>.</span><span class=n>QStyledItemDelegate</span><span class=p>(</span><span class=n>projects_combobox</span><span class=p>)</span>
+        <span class=n>projects_combobox</span><span class=o>.</span><span class=n>setItemDelegate</span><span class=p>(</span><span class=n>combobox_delegate</span><span class=p>)</span>
+        <span class=n>projects_model</span> <span class=o>=</span> <span class=n>ProjectsQtModel</span><span class=p>(</span><span class=n>controller</span><span class=p>)</span>
+        <span class=n>projects_proxy_model</span> <span class=o>=</span> <span class=n>ProjectSortFilterProxy</span><span class=p>()</span>
+        <span class=n>projects_proxy_model</span><span class=o>.</span><span class=n>setSourceModel</span><span class=p>(</span><span class=n>projects_model</span><span class=p>)</span>
+        <span class=n>projects_combobox</span><span class=o>.</span><span class=n>setModel</span><span class=p>(</span><span class=n>projects_proxy_model</span><span class=p>)</span>
+
+        <span class=n>main_layout</span> <span class=o>=</span> <span class=n>QtWidgets</span><span class=o>.</span><span class=n>QHBoxLayout</span><span class=p>(</span><span class=bp>self</span><span class=p>)</span>
+        <span class=n>main_layout</span><span class=o>.</span><span class=n>setContentsMargins</span><span class=p>(</span><span class=mi>0</span><span class=p>,</span> <span class=mi>0</span><span class=p>,</span> <span class=mi>0</span><span class=p>,</span> <span class=mi>0</span><span class=p>)</span>
+        <span class=n>main_layout</span><span class=o>.</span><span class=n>addWidget</span><span class=p>(</span><span class=n>projects_combobox</span><span class=p>,</span> <span class=mi>1</span><span class=p>)</span>
+
+        <span class=n>projects_model</span><span class=o>.</span><span class=n>refreshed</span><span class=o>.</span><span class=n>connect</span><span class=p>(</span><span class=bp>self</span><span class=o>.</span><span class=n>_on_model_refresh</span><span class=p>)</span>
+
+        <span class=n>controller</span><span class=o>.</span><span class=n>register_event_callback</span><span class=p>(</span>
+            <span class=s2>&quot;projects.refresh.finished&quot;</span><span class=p>,</span>
+            <span class=bp>self</span><span class=o>.</span><span class=n>_on_projects_refresh_finished</span>
+        <span class=p>)</span>
+        <span class=n>controller</span><span class=o>.</span><span class=n>register_event_callback</span><span class=p>(</span>
+            <span class=s2>&quot;controller.refresh.finished&quot;</span><span class=p>,</span>
+            <span class=bp>self</span><span class=o>.</span><span class=n>_on_controller_refresh</span>
+        <span class=p>)</span>
+        <span class=n>controller</span><span class=o>.</span><span class=n>register_event_callback</span><span class=p>(</span>
+            <span class=s2>&quot;expected_selection_changed&quot;</span><span class=p>,</span>
+            <span class=bp>self</span><span class=o>.</span><span class=n>_on_expected_selection_change</span>
+        <span class=p>)</span>
+
+        <span class=n>projects_combobox</span><span class=o>.</span><span class=n>currentIndexChanged</span><span class=o>.</span><span class=n>connect</span><span class=p>(</span>
+            <span class=bp>self</span><span class=o>.</span><span class=n>_on_current_index_changed</span>
+        <span class=p>)</span>
+
+        <span class=bp>self</span><span class=o>.</span><span class=n>_controller</span> <span class=o>=</span> <span class=n>controller</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>_listen_selection_change</span> <span class=o>=</span> <span class=kc>True</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>_select_item_visible</span> <span class=o>=</span> <span class=kc>False</span>
+
+        <span class=bp>self</span><span class=o>.</span><span class=n>_handle_expected_selection</span> <span class=o>=</span> <span class=n>handle_expected_selection</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>_expected_selection</span> <span class=o>=</span> <span class=kc>None</span>
+
+        <span class=bp>self</span><span class=o>.</span><span class=n>_projects_combobox</span> <span class=o>=</span> <span class=n>projects_combobox</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>_projects_model</span> <span class=o>=</span> <span class=n>projects_model</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>_projects_proxy_model</span> <span class=o>=</span> <span class=n>projects_proxy_model</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>_combobox_delegate</span> <span class=o>=</span> <span class=n>combobox_delegate</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>refresh</span><span class=p>(</span><span class=bp>self</span><span class=p>):</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>_projects_model</span><span class=o>.</span><span class=n>refresh</span><span class=p>()</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>set_selection</span><span class=p>(</span><span class=bp>self</span><span class=p>,</span> <span class=n>project_name</span><span class=p>):</span>
+<span class=w>        </span><span class=sd>&quot;&quot;&quot;Set selection to a given project.</span>
+
+<span class=sd>        Selection change is ignored if project is not found.</span>
+
+<span class=sd>        Args:</span>
+<span class=sd>            project_name (str): Name of project.</span>
+
+<span class=sd>        Returns:</span>
+<span class=sd>            bool: True if selection was changed, False otherwise. NOTE:</span>
+<span class=sd>                Selection may not be changed if project is not found, or if</span>
+<span class=sd>                project is already selected.</span>
+<span class=sd>        &quot;&quot;&quot;</span>
+
+        <span class=n>idx</span> <span class=o>=</span> <span class=bp>self</span><span class=o>.</span><span class=n>_projects_combobox</span><span class=o>.</span><span class=n>findData</span><span class=p>(</span>
+            <span class=n>project_name</span><span class=p>,</span> <span class=n>PROJECT_NAME_ROLE</span><span class=p>)</span>
+        <span class=k>if</span> <span class=n>idx</span> <span class=o>&lt;</span> <span class=mi>0</span><span class=p>:</span>
+            <span class=k>return</span> <span class=kc>False</span>
+        <span class=k>if</span> <span class=n>idx</span> <span class=o>!=</span> <span class=bp>self</span><span class=o>.</span><span class=n>_projects_combobox</span><span class=o>.</span><span class=n>currentIndex</span><span class=p>():</span>
+            <span class=bp>self</span><span class=o>.</span><span class=n>_projects_combobox</span><span class=o>.</span><span class=n>setCurrentIndex</span><span class=p>(</span><span class=n>idx</span><span class=p>)</span>
+            <span class=k>return</span> <span class=kc>True</span>
+        <span class=k>return</span> <span class=kc>False</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>set_listen_to_selection_change</span><span class=p>(</span><span class=bp>self</span><span class=p>,</span> <span class=n>listen</span><span class=p>):</span>
+<span class=w>        </span><span class=sd>&quot;&quot;&quot;Disable listening to changes of the selection.</span>
+
+<span class=sd>        Because combobox is triggering selection change when it&#39;s model</span>
+<span class=sd>        is refreshed, it&#39;s necessary to disable listening to selection for</span>
+<span class=sd>        some cases, e.g. when is on a different page of UI and should be just</span>
+<span class=sd>        refreshed.</span>
+
+<span class=sd>        Args:</span>
+<span class=sd>            listen (bool): Enable or disable listening to selection changes.</span>
+<span class=sd>        &quot;&quot;&quot;</span>
+
+        <span class=bp>self</span><span class=o>.</span><span class=n>_listen_selection_change</span> <span class=o>=</span> <span class=n>listen</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>get_selected_project_name</span><span class=p>(</span><span class=bp>self</span><span class=p>):</span>
+<span class=w>        </span><span class=sd>&quot;&quot;&quot;Name of selected project.</span>
+
+<span class=sd>        Returns:</span>
+<span class=sd>            Union[str, None]: Name of selected project, or None if no project</span>
+<span class=sd>        &quot;&quot;&quot;</span>
+
+        <span class=n>idx</span> <span class=o>=</span> <span class=bp>self</span><span class=o>.</span><span class=n>_projects_combobox</span><span class=o>.</span><span class=n>currentIndex</span><span class=p>()</span>
+        <span class=k>if</span> <span class=n>idx</span> <span class=o>&lt;</span> <span class=mi>0</span><span class=p>:</span>
+            <span class=k>return</span> <span class=kc>None</span>
+        <span class=k>return</span> <span class=bp>self</span><span class=o>.</span><span class=n>_projects_combobox</span><span class=o>.</span><span class=n>itemData</span><span class=p>(</span><span class=n>idx</span><span class=p>,</span> <span class=n>PROJECT_NAME_ROLE</span><span class=p>)</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>set_current_context_project</span><span class=p>(</span><span class=bp>self</span><span class=p>,</span> <span class=n>project_name</span><span class=p>):</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>_projects_model</span><span class=o>.</span><span class=n>set_current_context_project</span><span class=p>(</span><span class=n>project_name</span><span class=p>)</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>_projects_proxy_model</span><span class=o>.</span><span class=n>invalidateFilter</span><span class=p>()</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>set_select_item_visible</span><span class=p>(</span><span class=bp>self</span><span class=p>,</span> <span class=n>visible</span><span class=p>):</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>_select_item_visible</span> <span class=o>=</span> <span class=n>visible</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>_projects_model</span><span class=o>.</span><span class=n>set_select_item_visible</span><span class=p>(</span><span class=n>visible</span><span class=p>)</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>_update_select_item_visiblity</span><span class=p>()</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>set_libraries_separator_visible</span><span class=p>(</span><span class=bp>self</span><span class=p>,</span> <span class=n>visible</span><span class=p>):</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>_projects_model</span><span class=o>.</span><span class=n>set_libraries_separator_visible</span><span class=p>(</span><span class=n>visible</span><span class=p>)</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>is_active_filter_enabled</span><span class=p>(</span><span class=bp>self</span><span class=p>):</span>
+        <span class=k>return</span> <span class=bp>self</span><span class=o>.</span><span class=n>_projects_proxy_model</span><span class=o>.</span><span class=n>is_active_filter_enabled</span><span class=p>()</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>set_active_filter_enabled</span><span class=p>(</span><span class=bp>self</span><span class=p>,</span> <span class=n>enabled</span><span class=p>):</span>
+        <span class=k>return</span> <span class=bp>self</span><span class=o>.</span><span class=n>_projects_proxy_model</span><span class=o>.</span><span class=n>set_active_filter_enabled</span><span class=p>(</span><span class=n>enabled</span><span class=p>)</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>set_standard_filter_enabled</span><span class=p>(</span><span class=bp>self</span><span class=p>,</span> <span class=n>enabled</span><span class=p>):</span>
+        <span class=k>return</span> <span class=bp>self</span><span class=o>.</span><span class=n>_projects_proxy_model</span><span class=o>.</span><span class=n>set_standard_filter_enabled</span><span class=p>(</span><span class=n>enabled</span><span class=p>)</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>set_library_filter_enabled</span><span class=p>(</span><span class=bp>self</span><span class=p>,</span> <span class=n>enabled</span><span class=p>):</span>
+        <span class=k>return</span> <span class=bp>self</span><span class=o>.</span><span class=n>_projects_proxy_model</span><span class=o>.</span><span class=n>set_library_filter_enabled</span><span class=p>(</span><span class=n>enabled</span><span class=p>)</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>_update_select_item_visiblity</span><span class=p>(</span><span class=bp>self</span><span class=p>,</span> <span class=o>**</span><span class=n>kwargs</span><span class=p>):</span>
+        <span class=k>if</span> <span class=ow>not</span> <span class=bp>self</span><span class=o>.</span><span class=n>_select_item_visible</span><span class=p>:</span>
+            <span class=k>return</span>
+        <span class=k>if</span> <span class=s2>&quot;project_name&quot;</span> <span class=ow>not</span> <span class=ow>in</span> <span class=n>kwargs</span><span class=p>:</span>
+            <span class=n>project_name</span> <span class=o>=</span> <span class=bp>self</span><span class=o>.</span><span class=n>get_selected_project_name</span><span class=p>()</span>
+        <span class=k>else</span><span class=p>:</span>
+            <span class=n>project_name</span> <span class=o>=</span> <span class=n>kwargs</span><span class=o>.</span><span class=n>get</span><span class=p>(</span><span class=s2>&quot;project_name&quot;</span><span class=p>)</span>
+
+        <span class=c1># Hide the item if a project is selected</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>_projects_model</span><span class=o>.</span><span class=n>set_selected_project</span><span class=p>(</span><span class=n>project_name</span><span class=p>)</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>_on_current_index_changed</span><span class=p>(</span><span class=bp>self</span><span class=p>,</span> <span class=n>idx</span><span class=p>):</span>
+        <span class=k>if</span> <span class=ow>not</span> <span class=bp>self</span><span class=o>.</span><span class=n>_listen_selection_change</span><span class=p>:</span>
+            <span class=k>return</span>
+        <span class=n>project_name</span> <span class=o>=</span> <span class=bp>self</span><span class=o>.</span><span class=n>_projects_combobox</span><span class=o>.</span><span class=n>itemData</span><span class=p>(</span>
+            <span class=n>idx</span><span class=p>,</span> <span class=n>PROJECT_NAME_ROLE</span><span class=p>)</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>_update_select_item_visiblity</span><span class=p>(</span><span class=n>project_name</span><span class=o>=</span><span class=n>project_name</span><span class=p>)</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>_controller</span><span class=o>.</span><span class=n>set_selected_project</span><span class=p>(</span><span class=n>project_name</span><span class=p>)</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>selection_changed</span><span class=o>.</span><span class=n>emit</span><span class=p>()</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>_on_model_refresh</span><span class=p>(</span><span class=bp>self</span><span class=p>):</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>_projects_proxy_model</span><span class=o>.</span><span class=n>sort</span><span class=p>(</span><span class=mi>0</span><span class=p>)</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>_projects_proxy_model</span><span class=o>.</span><span class=n>invalidateFilter</span><span class=p>()</span>
+        <span class=k>if</span> <span class=bp>self</span><span class=o>.</span><span class=n>_expected_selection</span><span class=p>:</span>
+            <span class=bp>self</span><span class=o>.</span><span class=n>_set_expected_selection</span><span class=p>()</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>_update_select_item_visiblity</span><span class=p>()</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>refreshed</span><span class=o>.</span><span class=n>emit</span><span class=p>()</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>_on_projects_refresh_finished</span><span class=p>(</span><span class=bp>self</span><span class=p>,</span> <span class=n>event</span><span class=p>):</span>
+        <span class=k>if</span> <span class=n>event</span><span class=p>[</span><span class=s2>&quot;sender&quot;</span><span class=p>]</span> <span class=o>!=</span> <span class=n>PROJECTS_MODEL_SENDER</span><span class=p>:</span>
+            <span class=bp>self</span><span class=o>.</span><span class=n>_projects_model</span><span class=o>.</span><span class=n>refresh</span><span class=p>()</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>_on_controller_refresh</span><span class=p>(</span><span class=bp>self</span><span class=p>):</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>_update_expected_selection</span><span class=p>()</span>
+
+    <span class=c1># Expected selection handling</span>
+    <span class=k>def</span><span class=w> </span><span class=nf>_on_expected_selection_change</span><span class=p>(</span><span class=bp>self</span><span class=p>,</span> <span class=n>event</span><span class=p>):</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>_update_expected_selection</span><span class=p>(</span><span class=n>event</span><span class=o>.</span><span class=n>data</span><span class=p>)</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>_set_expected_selection</span><span class=p>(</span><span class=bp>self</span><span class=p>):</span>
+        <span class=k>if</span> <span class=ow>not</span> <span class=bp>self</span><span class=o>.</span><span class=n>_handle_expected_selection</span><span class=p>:</span>
+            <span class=k>return</span>
+        <span class=n>project_name</span> <span class=o>=</span> <span class=bp>self</span><span class=o>.</span><span class=n>_expected_selection</span>
+        <span class=k>if</span> <span class=n>project_name</span> <span class=ow>is</span> <span class=ow>not</span> <span class=kc>None</span><span class=p>:</span>
+            <span class=k>if</span> <span class=n>project_name</span> <span class=o>!=</span> <span class=bp>self</span><span class=o>.</span><span class=n>get_selected_project_name</span><span class=p>():</span>
+                <span class=bp>self</span><span class=o>.</span><span class=n>set_selection</span><span class=p>(</span><span class=n>project_name</span><span class=p>)</span>
+            <span class=k>else</span><span class=p>:</span>
+                <span class=c1># Fake project change</span>
+                <span class=bp>self</span><span class=o>.</span><span class=n>_on_current_index_changed</span><span class=p>(</span>
+                    <span class=bp>self</span><span class=o>.</span><span class=n>_projects_combobox</span><span class=o>.</span><span class=n>currentIndex</span><span class=p>()</span>
+                <span class=p>)</span>
+
+        <span class=bp>self</span><span class=o>.</span><span class=n>_controller</span><span class=o>.</span><span class=n>expected_project_selected</span><span class=p>(</span><span class=n>project_name</span><span class=p>)</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>_update_expected_selection</span><span class=p>(</span><span class=bp>self</span><span class=p>,</span> <span class=n>expected_data</span><span class=o>=</span><span class=kc>None</span><span class=p>):</span>
+        <span class=k>if</span> <span class=ow>not</span> <span class=bp>self</span><span class=o>.</span><span class=n>_handle_expected_selection</span><span class=p>:</span>
+            <span class=k>return</span>
+        <span class=k>if</span> <span class=n>expected_data</span> <span class=ow>is</span> <span class=kc>None</span><span class=p>:</span>
+            <span class=n>expected_data</span> <span class=o>=</span> <span class=bp>self</span><span class=o>.</span><span class=n>_controller</span><span class=o>.</span><span class=n>get_expected_selection_data</span><span class=p>()</span>
+
+        <span class=n>project_data</span> <span class=o>=</span> <span class=n>expected_data</span><span class=o>.</span><span class=n>get</span><span class=p>(</span><span class=s2>&quot;project&quot;</span><span class=p>)</span>
+        <span class=k>if</span> <span class=p>(</span>
+            <span class=ow>not</span> <span class=n>project_data</span>
+            <span class=ow>or</span> <span class=ow>not</span> <span class=n>project_data</span><span class=p>[</span><span class=s2>&quot;current&quot;</span><span class=p>]</span>
+            <span class=ow>or</span> <span class=n>project_data</span><span class=p>[</span><span class=s2>&quot;selected&quot;</span><span class=p>]</span>
+        <span class=p>):</span>
+            <span class=k>return</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>_expected_selection</span> <span class=o>=</span> <span class=n>project_data</span><span class=p>[</span><span class=s2>&quot;name&quot;</span><span class=p>]</span>
+        <span class=k>if</span> <span class=ow>not</span> <span class=bp>self</span><span class=o>.</span><span class=n>_projects_model</span><span class=o>.</span><span class=n>is_refreshing</span><span class=p>:</span>
+            <span class=bp>self</span><span class=o>.</span><span class=n>_set_expected_selection</span><span class=p>()</span>
+</code></pre></div></td></tr></table></div> </details> <div class="doc doc-children"> <div class="doc doc-object doc-function"> <h3 id=client.ayon_core.tools.utils.projects_widget.ProjectsCombobox.get_selected_project_name class="doc doc-heading"> <code class="highlight language-python"><span class=n>get_selected_project_name</span><span class=p>()</span></code> </h3> <div class="doc doc-contents "> <p>Name of selected project.</p> <p><span class=doc-section-title>Returns:</span></p> <table> <thead> <tr> <th>Type</th> <th>Description</th> </tr> </thead> <tbody> <tr class=doc-section-item> <td> </td> <td> <div class=doc-md-description> <p>Union[str, None]: Name of selected project, or None if no project</p> </div> </td> </tr> </tbody> </table> <details class=quote> <summary>Source code in <code>client/ayon_core/tools/utils/projects_widget.py</code></summary> <div class=highlight><table class=highlighttable><tr><td class=linenos><div class=linenodiv><pre><span></span><span class=normal>507</span>
+<span class=normal>508</span>
+<span class=normal>509</span>
+<span class=normal>510</span>
+<span class=normal>511</span>
+<span class=normal>512</span>
+<span class=normal>513</span>
+<span class=normal>514</span>
+<span class=normal>515</span>
+<span class=normal>516</span>
+<span class=normal>517</span></pre></div></td><td class=code><div><pre><span></span><code><span class=k>def</span><span class=w> </span><span class=nf>get_selected_project_name</span><span class=p>(</span><span class=bp>self</span><span class=p>):</span>
+<span class=w>    </span><span class=sd>&quot;&quot;&quot;Name of selected project.</span>
+
+<span class=sd>    Returns:</span>
+<span class=sd>        Union[str, None]: Name of selected project, or None if no project</span>
+<span class=sd>    &quot;&quot;&quot;</span>
+
+    <span class=n>idx</span> <span class=o>=</span> <span class=bp>self</span><span class=o>.</span><span class=n>_projects_combobox</span><span class=o>.</span><span class=n>currentIndex</span><span class=p>()</span>
+    <span class=k>if</span> <span class=n>idx</span> <span class=o>&lt;</span> <span class=mi>0</span><span class=p>:</span>
+        <span class=k>return</span> <span class=kc>None</span>
+    <span class=k>return</span> <span class=bp>self</span><span class=o>.</span><span class=n>_projects_combobox</span><span class=o>.</span><span class=n>itemData</span><span class=p>(</span><span class=n>idx</span><span class=p>,</span> <span class=n>PROJECT_NAME_ROLE</span><span class=p>)</span>
+</code></pre></div></td></tr></table></div> </details> </div> </div> <div class="doc doc-object doc-function"> <h3 id=client.ayon_core.tools.utils.projects_widget.ProjectsCombobox.set_listen_to_selection_change class="doc doc-heading"> <code class="highlight language-python"><span class=n>set_listen_to_selection_change</span><span class=p>(</span><span class=n>listen</span><span class=p>)</span></code> </h3> <div class="doc doc-contents "> <p>Disable listening to changes of the selection.</p> <p>Because combobox is triggering selection change when it's model is refreshed, it's necessary to disable listening to selection for some cases, e.g. when is on a different page of UI and should be just refreshed.</p> <p><span class=doc-section-title>Parameters:</span></p> <table> <thead> <tr> <th>Name</th> <th>Type</th> <th>Description</th> <th>Default</th> </tr> </thead> <tbody> <tr class=doc-section-item> <td> <code>listen</code> </td> <td> <code><span title=bool>bool</span></code> </td> <td> <div class=doc-md-description> <p>Enable or disable listening to selection changes.</p> </div> </td> <td> <em>required</em> </td> </tr> </tbody> </table> <details class=quote> <summary>Source code in <code>client/ayon_core/tools/utils/projects_widget.py</code></summary> <div class=highlight><table class=highlighttable><tr><td class=linenos><div class=linenodiv><pre><span></span><span class=normal>493</span>
+<span class=normal>494</span>
+<span class=normal>495</span>
+<span class=normal>496</span>
+<span class=normal>497</span>
+<span class=normal>498</span>
+<span class=normal>499</span>
+<span class=normal>500</span>
+<span class=normal>501</span>
+<span class=normal>502</span>
+<span class=normal>503</span>
+<span class=normal>504</span>
+<span class=normal>505</span></pre></div></td><td class=code><div><pre><span></span><code><span class=k>def</span><span class=w> </span><span class=nf>set_listen_to_selection_change</span><span class=p>(</span><span class=bp>self</span><span class=p>,</span> <span class=n>listen</span><span class=p>):</span>
+<span class=w>    </span><span class=sd>&quot;&quot;&quot;Disable listening to changes of the selection.</span>
+
+<span class=sd>    Because combobox is triggering selection change when it&#39;s model</span>
+<span class=sd>    is refreshed, it&#39;s necessary to disable listening to selection for</span>
+<span class=sd>    some cases, e.g. when is on a different page of UI and should be just</span>
+<span class=sd>    refreshed.</span>
+
+<span class=sd>    Args:</span>
+<span class=sd>        listen (bool): Enable or disable listening to selection changes.</span>
+<span class=sd>    &quot;&quot;&quot;</span>
+
+    <span class=bp>self</span><span class=o>.</span><span class=n>_listen_selection_change</span> <span class=o>=</span> <span class=n>listen</span>
+</code></pre></div></td></tr></table></div> </details> </div> </div> <div class="doc doc-object doc-function"> <h3 id=client.ayon_core.tools.utils.projects_widget.ProjectsCombobox.set_selection class="doc doc-heading"> <code class="highlight language-python"><span class=n>set_selection</span><span class=p>(</span><span class=n>project_name</span><span class=p>)</span></code> </h3> <div class="doc doc-contents "> <p>Set selection to a given project.</p> <p>Selection change is ignored if project is not found.</p> <p><span class=doc-section-title>Parameters:</span></p> <table> <thead> <tr> <th>Name</th> <th>Type</th> <th>Description</th> <th>Default</th> </tr> </thead> <tbody> <tr class=doc-section-item> <td> <code>project_name</code> </td> <td> <code><span title=str>str</span></code> </td> <td> <div class=doc-md-description> <p>Name of project.</p> </div> </td> <td> <em>required</em> </td> </tr> </tbody> </table> <p><span class=doc-section-title>Returns:</span></p> <table> <thead> <tr> <th>Name</th> <th>Type</th> <th>Description</th> </tr> </thead> <tbody> <tr class=doc-section-item> <td><code>bool</code></td> <td> </td> <td> <div class=doc-md-description> <p>True if selection was changed, False otherwise. NOTE: Selection may not be changed if project is not found, or if project is already selected.</p> </div> </td> </tr> </tbody> </table> <details class=quote> <summary>Source code in <code>client/ayon_core/tools/utils/projects_widget.py</code></summary> <div class=highlight><table class=highlighttable><tr><td class=linenos><div class=linenodiv><pre><span></span><span class=normal>470</span>
+<span class=normal>471</span>
+<span class=normal>472</span>
+<span class=normal>473</span>
+<span class=normal>474</span>
+<span class=normal>475</span>
+<span class=normal>476</span>
+<span class=normal>477</span>
+<span class=normal>478</span>
+<span class=normal>479</span>
+<span class=normal>480</span>
+<span class=normal>481</span>
+<span class=normal>482</span>
+<span class=normal>483</span>
+<span class=normal>484</span>
+<span class=normal>485</span>
+<span class=normal>486</span>
+<span class=normal>487</span>
+<span class=normal>488</span>
+<span class=normal>489</span>
+<span class=normal>490</span>
+<span class=normal>491</span></pre></div></td><td class=code><div><pre><span></span><code><span class=k>def</span><span class=w> </span><span class=nf>set_selection</span><span class=p>(</span><span class=bp>self</span><span class=p>,</span> <span class=n>project_name</span><span class=p>):</span>
+<span class=w>    </span><span class=sd>&quot;&quot;&quot;Set selection to a given project.</span>
+
+<span class=sd>    Selection change is ignored if project is not found.</span>
+
+<span class=sd>    Args:</span>
+<span class=sd>        project_name (str): Name of project.</span>
+
+<span class=sd>    Returns:</span>
+<span class=sd>        bool: True if selection was changed, False otherwise. NOTE:</span>
+<span class=sd>            Selection may not be changed if project is not found, or if</span>
+<span class=sd>            project is already selected.</span>
+<span class=sd>    &quot;&quot;&quot;</span>
+
+    <span class=n>idx</span> <span class=o>=</span> <span class=bp>self</span><span class=o>.</span><span class=n>_projects_combobox</span><span class=o>.</span><span class=n>findData</span><span class=p>(</span>
+        <span class=n>project_name</span><span class=p>,</span> <span class=n>PROJECT_NAME_ROLE</span><span class=p>)</span>
+    <span class=k>if</span> <span class=n>idx</span> <span class=o>&lt;</span> <span class=mi>0</span><span class=p>:</span>
+        <span class=k>return</span> <span class=kc>False</span>
+    <span class=k>if</span> <span class=n>idx</span> <span class=o>!=</span> <span class=bp>self</span><span class=o>.</span><span class=n>_projects_combobox</span><span class=o>.</span><span class=n>currentIndex</span><span class=p>():</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>_projects_combobox</span><span class=o>.</span><span class=n>setCurrentIndex</span><span class=p>(</span><span class=n>idx</span><span class=p>)</span>
+        <span class=k>return</span> <span class=kc>True</span>
+    <span class=k>return</span> <span class=kc>False</span>
+</code></pre></div></td></tr></table></div> </details> </div> </div> </div> </div> </div> <div class="doc doc-object doc-class"> <h2 id=client.ayon_core.tools.utils.projects_widget.ProjectsQtModel class="doc doc-heading"> <code>ProjectsQtModel</code> </h2> <div class="doc doc-contents "> <p class="doc doc-class-bases"> Bases: <code><span title=qtpy.QtGui.QStandardItemModel>QStandardItemModel</span></code></p> <details class=quote> <summary>Source code in <code>client/ayon_core/tools/utils/projects_widget.py</code></summary> <div class=highlight><table class=highlighttable><tr><td class=linenos><div class=linenodiv><pre><span></span><span class=normal> 14</span>
+<span class=normal> 15</span>
+<span class=normal> 16</span>
+<span class=normal> 17</span>
+<span class=normal> 18</span>
+<span class=normal> 19</span>
+<span class=normal> 20</span>
+<span class=normal> 21</span>
+<span class=normal> 22</span>
+<span class=normal> 23</span>
+<span class=normal> 24</span>
+<span class=normal> 25</span>
+<span class=normal> 26</span>
+<span class=normal> 27</span>
+<span class=normal> 28</span>
+<span class=normal> 29</span>
+<span class=normal> 30</span>
+<span class=normal> 31</span>
+<span class=normal> 32</span>
+<span class=normal> 33</span>
+<span class=normal> 34</span>
+<span class=normal> 35</span>
+<span class=normal> 36</span>
+<span class=normal> 37</span>
+<span class=normal> 38</span>
+<span class=normal> 39</span>
+<span class=normal> 40</span>
+<span class=normal> 41</span>
+<span class=normal> 42</span>
+<span class=normal> 43</span>
+<span class=normal> 44</span>
+<span class=normal> 45</span>
+<span class=normal> 46</span>
+<span class=normal> 47</span>
+<span class=normal> 48</span>
+<span class=normal> 49</span>
+<span class=normal> 50</span>
+<span class=normal> 51</span>
+<span class=normal> 52</span>
+<span class=normal> 53</span>
+<span class=normal> 54</span>
+<span class=normal> 55</span>
+<span class=normal> 56</span>
+<span class=normal> 57</span>
+<span class=normal> 58</span>
+<span class=normal> 59</span>
+<span class=normal> 60</span>
+<span class=normal> 61</span>
+<span class=normal> 62</span>
+<span class=normal> 63</span>
+<span class=normal> 64</span>
+<span class=normal> 65</span>
+<span class=normal> 66</span>
+<span class=normal> 67</span>
+<span class=normal> 68</span>
+<span class=normal> 69</span>
+<span class=normal> 70</span>
+<span class=normal> 71</span>
+<span class=normal> 72</span>
+<span class=normal> 73</span>
+<span class=normal> 74</span>
+<span class=normal> 75</span>
+<span class=normal> 76</span>
+<span class=normal> 77</span>
+<span class=normal> 78</span>
+<span class=normal> 79</span>
+<span class=normal> 80</span>
+<span class=normal> 81</span>
+<span class=normal> 82</span>
+<span class=normal> 83</span>
+<span class=normal> 84</span>
+<span class=normal> 85</span>
+<span class=normal> 86</span>
+<span class=normal> 87</span>
+<span class=normal> 88</span>
+<span class=normal> 89</span>
+<span class=normal> 90</span>
+<span class=normal> 91</span>
+<span class=normal> 92</span>
+<span class=normal> 93</span>
+<span class=normal> 94</span>
+<span class=normal> 95</span>
+<span class=normal> 96</span>
+<span class=normal> 97</span>
+<span class=normal> 98</span>
+<span class=normal> 99</span>
+<span class=normal>100</span>
+<span class=normal>101</span>
+<span class=normal>102</span>
+<span class=normal>103</span>
+<span class=normal>104</span>
+<span class=normal>105</span>
+<span class=normal>106</span>
+<span class=normal>107</span>
+<span class=normal>108</span>
+<span class=normal>109</span>
+<span class=normal>110</span>
+<span class=normal>111</span>
+<span class=normal>112</span>
+<span class=normal>113</span>
+<span class=normal>114</span>
+<span class=normal>115</span>
+<span class=normal>116</span>
+<span class=normal>117</span>
+<span class=normal>118</span>
+<span class=normal>119</span>
+<span class=normal>120</span>
+<span class=normal>121</span>
+<span class=normal>122</span>
+<span class=normal>123</span>
+<span class=normal>124</span>
+<span class=normal>125</span>
+<span class=normal>126</span>
+<span class=normal>127</span>
+<span class=normal>128</span>
+<span class=normal>129</span>
+<span class=normal>130</span>
+<span class=normal>131</span>
+<span class=normal>132</span>
+<span class=normal>133</span>
+<span class=normal>134</span>
+<span class=normal>135</span>
+<span class=normal>136</span>
+<span class=normal>137</span>
+<span class=normal>138</span>
+<span class=normal>139</span>
+<span class=normal>140</span>
+<span class=normal>141</span>
+<span class=normal>142</span>
+<span class=normal>143</span>
+<span class=normal>144</span>
+<span class=normal>145</span>
+<span class=normal>146</span>
+<span class=normal>147</span>
+<span class=normal>148</span>
+<span class=normal>149</span>
+<span class=normal>150</span>
+<span class=normal>151</span>
+<span class=normal>152</span>
+<span class=normal>153</span>
+<span class=normal>154</span>
+<span class=normal>155</span>
+<span class=normal>156</span>
+<span class=normal>157</span>
+<span class=normal>158</span>
+<span class=normal>159</span>
+<span class=normal>160</span>
+<span class=normal>161</span>
+<span class=normal>162</span>
+<span class=normal>163</span>
+<span class=normal>164</span>
+<span class=normal>165</span>
+<span class=normal>166</span>
+<span class=normal>167</span>
+<span class=normal>168</span>
+<span class=normal>169</span>
+<span class=normal>170</span>
+<span class=normal>171</span>
+<span class=normal>172</span>
+<span class=normal>173</span>
+<span class=normal>174</span>
+<span class=normal>175</span>
+<span class=normal>176</span>
+<span class=normal>177</span>
+<span class=normal>178</span>
+<span class=normal>179</span>
+<span class=normal>180</span>
+<span class=normal>181</span>
+<span class=normal>182</span>
+<span class=normal>183</span>
+<span class=normal>184</span>
+<span class=normal>185</span>
+<span class=normal>186</span>
+<span class=normal>187</span>
+<span class=normal>188</span>
+<span class=normal>189</span>
+<span class=normal>190</span>
+<span class=normal>191</span>
+<span class=normal>192</span>
+<span class=normal>193</span>
+<span class=normal>194</span>
+<span class=normal>195</span>
+<span class=normal>196</span>
+<span class=normal>197</span>
+<span class=normal>198</span>
+<span class=normal>199</span>
+<span class=normal>200</span>
+<span class=normal>201</span>
+<span class=normal>202</span>
+<span class=normal>203</span>
+<span class=normal>204</span>
+<span class=normal>205</span>
+<span class=normal>206</span>
+<span class=normal>207</span>
+<span class=normal>208</span>
+<span class=normal>209</span>
+<span class=normal>210</span>
+<span class=normal>211</span>
+<span class=normal>212</span>
+<span class=normal>213</span>
+<span class=normal>214</span>
+<span class=normal>215</span>
+<span class=normal>216</span>
+<span class=normal>217</span>
+<span class=normal>218</span>
+<span class=normal>219</span>
+<span class=normal>220</span>
+<span class=normal>221</span>
+<span class=normal>222</span>
+<span class=normal>223</span>
+<span class=normal>224</span>
+<span class=normal>225</span>
+<span class=normal>226</span>
+<span class=normal>227</span>
+<span class=normal>228</span>
+<span class=normal>229</span>
+<span class=normal>230</span>
+<span class=normal>231</span>
+<span class=normal>232</span>
+<span class=normal>233</span>
+<span class=normal>234</span>
+<span class=normal>235</span>
+<span class=normal>236</span>
+<span class=normal>237</span>
+<span class=normal>238</span>
+<span class=normal>239</span>
+<span class=normal>240</span>
+<span class=normal>241</span>
+<span class=normal>242</span>
+<span class=normal>243</span>
+<span class=normal>244</span>
+<span class=normal>245</span>
+<span class=normal>246</span>
+<span class=normal>247</span>
+<span class=normal>248</span>
+<span class=normal>249</span>
+<span class=normal>250</span>
+<span class=normal>251</span>
+<span class=normal>252</span>
+<span class=normal>253</span>
+<span class=normal>254</span>
+<span class=normal>255</span>
+<span class=normal>256</span>
+<span class=normal>257</span>
+<span class=normal>258</span>
+<span class=normal>259</span>
+<span class=normal>260</span>
+<span class=normal>261</span>
+<span class=normal>262</span>
+<span class=normal>263</span>
+<span class=normal>264</span>
+<span class=normal>265</span>
+<span class=normal>266</span>
+<span class=normal>267</span>
+<span class=normal>268</span>
+<span class=normal>269</span>
+<span class=normal>270</span>
+<span class=normal>271</span>
+<span class=normal>272</span>
+<span class=normal>273</span>
+<span class=normal>274</span>
+<span class=normal>275</span>
+<span class=normal>276</span>
+<span class=normal>277</span></pre></div></td><td class=code><div><pre><span></span><code><span class=k>class</span><span class=w> </span><span class=nc>ProjectsQtModel</span><span class=p>(</span><span class=n>QtGui</span><span class=o>.</span><span class=n>QStandardItemModel</span><span class=p>):</span>
+    <span class=n>refreshed</span> <span class=o>=</span> <span class=n>QtCore</span><span class=o>.</span><span class=n>Signal</span><span class=p>()</span>
+
+    <span class=k>def</span><span class=w> </span><span class=fm>__init__</span><span class=p>(</span><span class=bp>self</span><span class=p>,</span> <span class=n>controller</span><span class=p>):</span>
+        <span class=nb>super</span><span class=p>(</span><span class=n>ProjectsQtModel</span><span class=p>,</span> <span class=bp>self</span><span class=p>)</span><span class=o>.</span><span class=fm>__init__</span><span class=p>()</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>_controller</span> <span class=o>=</span> <span class=n>controller</span>
+
+        <span class=bp>self</span><span class=o>.</span><span class=n>_project_items</span> <span class=o>=</span> <span class=p>{}</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>_has_libraries</span> <span class=o>=</span> <span class=kc>False</span>
+
+        <span class=bp>self</span><span class=o>.</span><span class=n>_empty_item</span> <span class=o>=</span> <span class=kc>None</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>_empty_item_added</span> <span class=o>=</span> <span class=kc>False</span>
+
+        <span class=bp>self</span><span class=o>.</span><span class=n>_select_item</span> <span class=o>=</span> <span class=kc>None</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>_select_item_added</span> <span class=o>=</span> <span class=kc>False</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>_select_item_visible</span> <span class=o>=</span> <span class=kc>None</span>
+
+        <span class=bp>self</span><span class=o>.</span><span class=n>_libraries_sep_item</span> <span class=o>=</span> <span class=kc>None</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>_libraries_sep_item_added</span> <span class=o>=</span> <span class=kc>False</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>_libraries_sep_item_visible</span> <span class=o>=</span> <span class=kc>False</span>
+
+        <span class=bp>self</span><span class=o>.</span><span class=n>_current_context_project</span> <span class=o>=</span> <span class=kc>None</span>
+
+        <span class=bp>self</span><span class=o>.</span><span class=n>_selected_project</span> <span class=o>=</span> <span class=kc>None</span>
+
+        <span class=bp>self</span><span class=o>.</span><span class=n>_refresh_thread</span> <span class=o>=</span> <span class=kc>None</span>
+
+    <span class=nd>@property</span>
+    <span class=k>def</span><span class=w> </span><span class=nf>is_refreshing</span><span class=p>(</span><span class=bp>self</span><span class=p>):</span>
+        <span class=k>return</span> <span class=bp>self</span><span class=o>.</span><span class=n>_refresh_thread</span> <span class=ow>is</span> <span class=ow>not</span> <span class=kc>None</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>refresh</span><span class=p>(</span><span class=bp>self</span><span class=p>):</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>_refresh</span><span class=p>()</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>has_content</span><span class=p>(</span><span class=bp>self</span><span class=p>):</span>
+        <span class=k>return</span> <span class=nb>len</span><span class=p>(</span><span class=bp>self</span><span class=o>.</span><span class=n>_project_items</span><span class=p>)</span> <span class=o>&gt;</span> <span class=mi>0</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>get_index_by_project_name</span><span class=p>(</span><span class=bp>self</span><span class=p>,</span> <span class=n>project_name</span><span class=p>):</span>
+<span class=w>        </span><span class=sd>&quot;&quot;&quot;Get index of project by name.</span>
+
+<span class=sd>        Args:</span>
+<span class=sd>            project_name (str): Project name.</span>
+
+<span class=sd>        Returns:</span>
+<span class=sd>            QtCore.QModelIndex: Index of project item. Index is not valid</span>
+<span class=sd>                if project is not found.</span>
+
+<span class=sd>        &quot;&quot;&quot;</span>
+        <span class=n>item</span> <span class=o>=</span> <span class=bp>self</span><span class=o>.</span><span class=n>_project_items</span><span class=o>.</span><span class=n>get</span><span class=p>(</span><span class=n>project_name</span><span class=p>)</span>
+        <span class=k>if</span> <span class=n>item</span> <span class=ow>is</span> <span class=kc>None</span><span class=p>:</span>
+            <span class=k>return</span> <span class=n>QtCore</span><span class=o>.</span><span class=n>QModelIndex</span><span class=p>()</span>
+        <span class=k>return</span> <span class=bp>self</span><span class=o>.</span><span class=n>indexFromItem</span><span class=p>(</span><span class=n>item</span><span class=p>)</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>set_select_item_visible</span><span class=p>(</span><span class=bp>self</span><span class=p>,</span> <span class=n>visible</span><span class=p>):</span>
+        <span class=k>if</span> <span class=bp>self</span><span class=o>.</span><span class=n>_select_item_visible</span> <span class=ow>is</span> <span class=n>visible</span><span class=p>:</span>
+            <span class=k>return</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>_select_item_visible</span> <span class=o>=</span> <span class=n>visible</span>
+
+        <span class=k>if</span> <span class=bp>self</span><span class=o>.</span><span class=n>_selected_project</span> <span class=ow>is</span> <span class=kc>None</span><span class=p>:</span>
+            <span class=bp>self</span><span class=o>.</span><span class=n>_add_select_item</span><span class=p>()</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>set_libraries_separator_visible</span><span class=p>(</span><span class=bp>self</span><span class=p>,</span> <span class=n>visible</span><span class=p>):</span>
+        <span class=k>if</span> <span class=bp>self</span><span class=o>.</span><span class=n>_libraries_sep_item_visible</span> <span class=ow>is</span> <span class=n>visible</span><span class=p>:</span>
+            <span class=k>return</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>_libraries_sep_item_visible</span> <span class=o>=</span> <span class=n>visible</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>set_selected_project</span><span class=p>(</span><span class=bp>self</span><span class=p>,</span> <span class=n>project_name</span><span class=p>):</span>
+        <span class=k>if</span> <span class=ow>not</span> <span class=bp>self</span><span class=o>.</span><span class=n>_select_item_visible</span><span class=p>:</span>
+            <span class=k>return</span>
+
+        <span class=bp>self</span><span class=o>.</span><span class=n>_selected_project</span> <span class=o>=</span> <span class=n>project_name</span>
+        <span class=k>if</span> <span class=n>project_name</span> <span class=ow>is</span> <span class=kc>None</span><span class=p>:</span>
+            <span class=bp>self</span><span class=o>.</span><span class=n>_add_select_item</span><span class=p>()</span>
+        <span class=k>else</span><span class=p>:</span>
+            <span class=bp>self</span><span class=o>.</span><span class=n>_remove_select_item</span><span class=p>()</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>set_current_context_project</span><span class=p>(</span><span class=bp>self</span><span class=p>,</span> <span class=n>project_name</span><span class=p>):</span>
+        <span class=k>if</span> <span class=n>project_name</span> <span class=o>==</span> <span class=bp>self</span><span class=o>.</span><span class=n>_current_context_project</span><span class=p>:</span>
+            <span class=k>return</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>_unset_current_context_project</span><span class=p>(</span><span class=bp>self</span><span class=o>.</span><span class=n>_current_context_project</span><span class=p>)</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>_current_context_project</span> <span class=o>=</span> <span class=n>project_name</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>_set_current_context_project</span><span class=p>(</span><span class=n>project_name</span><span class=p>)</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>_set_current_context_project</span><span class=p>(</span><span class=bp>self</span><span class=p>,</span> <span class=n>project_name</span><span class=p>):</span>
+        <span class=n>item</span> <span class=o>=</span> <span class=bp>self</span><span class=o>.</span><span class=n>_project_items</span><span class=o>.</span><span class=n>get</span><span class=p>(</span><span class=n>project_name</span><span class=p>)</span>
+        <span class=k>if</span> <span class=n>item</span> <span class=ow>is</span> <span class=kc>None</span><span class=p>:</span>
+            <span class=k>return</span>
+        <span class=n>item</span><span class=o>.</span><span class=n>setData</span><span class=p>(</span><span class=kc>True</span><span class=p>,</span> <span class=n>PROJECT_IS_CURRENT_ROLE</span><span class=p>)</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>_unset_current_context_project</span><span class=p>(</span><span class=bp>self</span><span class=p>,</span> <span class=n>project_name</span><span class=p>):</span>
+        <span class=n>item</span> <span class=o>=</span> <span class=bp>self</span><span class=o>.</span><span class=n>_project_items</span><span class=o>.</span><span class=n>get</span><span class=p>(</span><span class=n>project_name</span><span class=p>)</span>
+        <span class=k>if</span> <span class=n>item</span> <span class=ow>is</span> <span class=kc>None</span><span class=p>:</span>
+            <span class=k>return</span>
+        <span class=n>item</span><span class=o>.</span><span class=n>setData</span><span class=p>(</span><span class=kc>False</span><span class=p>,</span> <span class=n>PROJECT_IS_CURRENT_ROLE</span><span class=p>)</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>_add_empty_item</span><span class=p>(</span><span class=bp>self</span><span class=p>):</span>
+        <span class=k>if</span> <span class=bp>self</span><span class=o>.</span><span class=n>_empty_item_added</span><span class=p>:</span>
+            <span class=k>return</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>_empty_item_added</span> <span class=o>=</span> <span class=kc>True</span>
+        <span class=n>item</span> <span class=o>=</span> <span class=bp>self</span><span class=o>.</span><span class=n>_get_empty_item</span><span class=p>()</span>
+        <span class=n>root_item</span> <span class=o>=</span> <span class=bp>self</span><span class=o>.</span><span class=n>invisibleRootItem</span><span class=p>()</span>
+        <span class=n>root_item</span><span class=o>.</span><span class=n>appendRow</span><span class=p>(</span><span class=n>item</span><span class=p>)</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>_remove_empty_item</span><span class=p>(</span><span class=bp>self</span><span class=p>):</span>
+        <span class=k>if</span> <span class=ow>not</span> <span class=bp>self</span><span class=o>.</span><span class=n>_empty_item_added</span><span class=p>:</span>
+            <span class=k>return</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>_empty_item_added</span> <span class=o>=</span> <span class=kc>False</span>
+        <span class=n>root_item</span> <span class=o>=</span> <span class=bp>self</span><span class=o>.</span><span class=n>invisibleRootItem</span><span class=p>()</span>
+        <span class=n>item</span> <span class=o>=</span> <span class=bp>self</span><span class=o>.</span><span class=n>_get_empty_item</span><span class=p>()</span>
+        <span class=n>root_item</span><span class=o>.</span><span class=n>takeRow</span><span class=p>(</span><span class=n>item</span><span class=o>.</span><span class=n>row</span><span class=p>())</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>_get_empty_item</span><span class=p>(</span><span class=bp>self</span><span class=p>):</span>
+        <span class=k>if</span> <span class=bp>self</span><span class=o>.</span><span class=n>_empty_item</span> <span class=ow>is</span> <span class=kc>None</span><span class=p>:</span>
+            <span class=n>item</span> <span class=o>=</span> <span class=n>QtGui</span><span class=o>.</span><span class=n>QStandardItem</span><span class=p>(</span><span class=s2>&quot;&lt; No projects &gt;&quot;</span><span class=p>)</span>
+            <span class=n>item</span><span class=o>.</span><span class=n>setFlags</span><span class=p>(</span><span class=n>QtCore</span><span class=o>.</span><span class=n>Qt</span><span class=o>.</span><span class=n>NoItemFlags</span><span class=p>)</span>
+            <span class=bp>self</span><span class=o>.</span><span class=n>_empty_item</span> <span class=o>=</span> <span class=n>item</span>
+        <span class=k>return</span> <span class=bp>self</span><span class=o>.</span><span class=n>_empty_item</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>_get_library_sep_item</span><span class=p>(</span><span class=bp>self</span><span class=p>):</span>
+        <span class=k>if</span> <span class=bp>self</span><span class=o>.</span><span class=n>_libraries_sep_item</span> <span class=ow>is</span> <span class=ow>not</span> <span class=kc>None</span><span class=p>:</span>
+            <span class=k>return</span> <span class=bp>self</span><span class=o>.</span><span class=n>_libraries_sep_item</span>
+
+        <span class=n>item</span> <span class=o>=</span> <span class=n>QtGui</span><span class=o>.</span><span class=n>QStandardItem</span><span class=p>()</span>
+        <span class=n>item</span><span class=o>.</span><span class=n>setData</span><span class=p>(</span><span class=s2>&quot;Libraries&quot;</span><span class=p>,</span> <span class=n>QtCore</span><span class=o>.</span><span class=n>Qt</span><span class=o>.</span><span class=n>DisplayRole</span><span class=p>)</span>
+        <span class=n>item</span><span class=o>.</span><span class=n>setData</span><span class=p>(</span><span class=kc>True</span><span class=p>,</span> <span class=n>LIBRARY_PROJECT_SEPARATOR_ROLE</span><span class=p>)</span>
+        <span class=n>item</span><span class=o>.</span><span class=n>setFlags</span><span class=p>(</span><span class=n>QtCore</span><span class=o>.</span><span class=n>Qt</span><span class=o>.</span><span class=n>NoItemFlags</span><span class=p>)</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>_libraries_sep_item</span> <span class=o>=</span> <span class=n>item</span>
+        <span class=k>return</span> <span class=n>item</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>_add_library_sep_item</span><span class=p>(</span><span class=bp>self</span><span class=p>):</span>
+        <span class=k>if</span> <span class=p>(</span>
+            <span class=ow>not</span> <span class=bp>self</span><span class=o>.</span><span class=n>_libraries_sep_item_visible</span>
+            <span class=ow>or</span> <span class=bp>self</span><span class=o>.</span><span class=n>_libraries_sep_item_added</span>
+        <span class=p>):</span>
+            <span class=k>return</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>_libraries_sep_item_added</span> <span class=o>=</span> <span class=kc>True</span>
+        <span class=n>item</span> <span class=o>=</span> <span class=bp>self</span><span class=o>.</span><span class=n>_get_library_sep_item</span><span class=p>()</span>
+        <span class=n>root_item</span> <span class=o>=</span> <span class=bp>self</span><span class=o>.</span><span class=n>invisibleRootItem</span><span class=p>()</span>
+        <span class=n>root_item</span><span class=o>.</span><span class=n>appendRow</span><span class=p>(</span><span class=n>item</span><span class=p>)</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>_remove_library_sep_item</span><span class=p>(</span><span class=bp>self</span><span class=p>):</span>
+        <span class=k>if</span> <span class=p>(</span>
+            <span class=ow>not</span> <span class=bp>self</span><span class=o>.</span><span class=n>_libraries_sep_item_added</span>
+        <span class=p>):</span>
+            <span class=k>return</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>_libraries_sep_item_added</span> <span class=o>=</span> <span class=kc>False</span>
+        <span class=n>item</span> <span class=o>=</span> <span class=bp>self</span><span class=o>.</span><span class=n>_get_library_sep_item</span><span class=p>()</span>
+        <span class=n>root_item</span> <span class=o>=</span> <span class=bp>self</span><span class=o>.</span><span class=n>invisibleRootItem</span><span class=p>()</span>
+        <span class=n>root_item</span><span class=o>.</span><span class=n>takeRow</span><span class=p>(</span><span class=n>item</span><span class=o>.</span><span class=n>row</span><span class=p>())</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>_add_select_item</span><span class=p>(</span><span class=bp>self</span><span class=p>):</span>
+        <span class=k>if</span> <span class=bp>self</span><span class=o>.</span><span class=n>_select_item_added</span><span class=p>:</span>
+            <span class=k>return</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>_select_item_added</span> <span class=o>=</span> <span class=kc>True</span>
+        <span class=n>item</span> <span class=o>=</span> <span class=bp>self</span><span class=o>.</span><span class=n>_get_select_item</span><span class=p>()</span>
+        <span class=n>root_item</span> <span class=o>=</span> <span class=bp>self</span><span class=o>.</span><span class=n>invisibleRootItem</span><span class=p>()</span>
+        <span class=n>root_item</span><span class=o>.</span><span class=n>appendRow</span><span class=p>(</span><span class=n>item</span><span class=p>)</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>_remove_select_item</span><span class=p>(</span><span class=bp>self</span><span class=p>):</span>
+        <span class=k>if</span> <span class=ow>not</span> <span class=bp>self</span><span class=o>.</span><span class=n>_select_item_added</span><span class=p>:</span>
+            <span class=k>return</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>_select_item_added</span> <span class=o>=</span> <span class=kc>False</span>
+        <span class=n>root_item</span> <span class=o>=</span> <span class=bp>self</span><span class=o>.</span><span class=n>invisibleRootItem</span><span class=p>()</span>
+        <span class=n>item</span> <span class=o>=</span> <span class=bp>self</span><span class=o>.</span><span class=n>_get_select_item</span><span class=p>()</span>
+        <span class=n>root_item</span><span class=o>.</span><span class=n>takeRow</span><span class=p>(</span><span class=n>item</span><span class=o>.</span><span class=n>row</span><span class=p>())</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>_get_select_item</span><span class=p>(</span><span class=bp>self</span><span class=p>):</span>
+        <span class=k>if</span> <span class=bp>self</span><span class=o>.</span><span class=n>_select_item</span> <span class=ow>is</span> <span class=kc>None</span><span class=p>:</span>
+            <span class=n>item</span> <span class=o>=</span> <span class=n>QtGui</span><span class=o>.</span><span class=n>QStandardItem</span><span class=p>(</span><span class=s2>&quot;&lt; Select project &gt;&quot;</span><span class=p>)</span>
+            <span class=n>item</span><span class=o>.</span><span class=n>setEditable</span><span class=p>(</span><span class=kc>False</span><span class=p>)</span>
+            <span class=bp>self</span><span class=o>.</span><span class=n>_select_item</span> <span class=o>=</span> <span class=n>item</span>
+        <span class=k>return</span> <span class=bp>self</span><span class=o>.</span><span class=n>_select_item</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>_refresh</span><span class=p>(</span><span class=bp>self</span><span class=p>):</span>
+        <span class=k>if</span> <span class=bp>self</span><span class=o>.</span><span class=n>_refresh_thread</span> <span class=ow>is</span> <span class=ow>not</span> <span class=kc>None</span><span class=p>:</span>
+            <span class=k>return</span>
+
+        <span class=n>refresh_thread</span> <span class=o>=</span> <span class=n>RefreshThread</span><span class=p>(</span>
+            <span class=s2>&quot;projects&quot;</span><span class=p>,</span> <span class=bp>self</span><span class=o>.</span><span class=n>_query_project_items</span>
+        <span class=p>)</span>
+        <span class=n>refresh_thread</span><span class=o>.</span><span class=n>refresh_finished</span><span class=o>.</span><span class=n>connect</span><span class=p>(</span><span class=bp>self</span><span class=o>.</span><span class=n>_refresh_finished</span><span class=p>)</span>
+
+        <span class=bp>self</span><span class=o>.</span><span class=n>_refresh_thread</span> <span class=o>=</span> <span class=n>refresh_thread</span>
+        <span class=n>refresh_thread</span><span class=o>.</span><span class=n>start</span><span class=p>()</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>_query_project_items</span><span class=p>(</span><span class=bp>self</span><span class=p>):</span>
+        <span class=k>return</span> <span class=bp>self</span><span class=o>.</span><span class=n>_controller</span><span class=o>.</span><span class=n>get_project_items</span><span class=p>(</span>
+            <span class=n>sender</span><span class=o>=</span><span class=n>PROJECTS_MODEL_SENDER</span>
+        <span class=p>)</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>_refresh_finished</span><span class=p>(</span><span class=bp>self</span><span class=p>):</span>
+        <span class=c1># TODO check if failed</span>
+        <span class=n>result</span> <span class=o>=</span> <span class=bp>self</span><span class=o>.</span><span class=n>_refresh_thread</span><span class=o>.</span><span class=n>get_result</span><span class=p>()</span>
+        <span class=k>if</span> <span class=n>result</span> <span class=ow>is</span> <span class=ow>not</span> <span class=kc>None</span><span class=p>:</span>
+            <span class=bp>self</span><span class=o>.</span><span class=n>_fill_items</span><span class=p>(</span><span class=n>result</span><span class=p>)</span>
+
+        <span class=bp>self</span><span class=o>.</span><span class=n>_refresh_thread</span> <span class=o>=</span> <span class=kc>None</span>
+        <span class=k>if</span> <span class=n>result</span> <span class=ow>is</span> <span class=kc>None</span><span class=p>:</span>
+            <span class=bp>self</span><span class=o>.</span><span class=n>_refresh</span><span class=p>()</span>
+        <span class=k>else</span><span class=p>:</span>
+            <span class=bp>self</span><span class=o>.</span><span class=n>refreshed</span><span class=o>.</span><span class=n>emit</span><span class=p>()</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>_fill_items</span><span class=p>(</span><span class=bp>self</span><span class=p>,</span> <span class=n>project_items</span><span class=p>):</span>
+        <span class=n>new_project_names</span> <span class=o>=</span> <span class=p>{</span>
+            <span class=n>project_item</span><span class=o>.</span><span class=n>name</span>
+            <span class=k>for</span> <span class=n>project_item</span> <span class=ow>in</span> <span class=n>project_items</span>
+        <span class=p>}</span>
+
+        <span class=c1># Handle &quot;Select item&quot; visibility</span>
+        <span class=k>if</span> <span class=bp>self</span><span class=o>.</span><span class=n>_select_item_visible</span><span class=p>:</span>
+            <span class=c1># Add select project. if previously selected project is not in</span>
+            <span class=c1>#   project items</span>
+            <span class=k>if</span> <span class=bp>self</span><span class=o>.</span><span class=n>_selected_project</span> <span class=ow>not</span> <span class=ow>in</span> <span class=n>new_project_names</span><span class=p>:</span>
+                <span class=bp>self</span><span class=o>.</span><span class=n>_add_select_item</span><span class=p>()</span>
+            <span class=k>else</span><span class=p>:</span>
+                <span class=bp>self</span><span class=o>.</span><span class=n>_remove_select_item</span><span class=p>()</span>
+
+        <span class=n>root_item</span> <span class=o>=</span> <span class=bp>self</span><span class=o>.</span><span class=n>invisibleRootItem</span><span class=p>()</span>
+
+        <span class=n>items_to_remove</span> <span class=o>=</span> <span class=nb>set</span><span class=p>(</span><span class=bp>self</span><span class=o>.</span><span class=n>_project_items</span><span class=o>.</span><span class=n>keys</span><span class=p>())</span> <span class=o>-</span> <span class=n>new_project_names</span>
+        <span class=k>for</span> <span class=n>project_name</span> <span class=ow>in</span> <span class=n>items_to_remove</span><span class=p>:</span>
+            <span class=n>item</span> <span class=o>=</span> <span class=bp>self</span><span class=o>.</span><span class=n>_project_items</span><span class=o>.</span><span class=n>pop</span><span class=p>(</span><span class=n>project_name</span><span class=p>)</span>
+            <span class=n>root_item</span><span class=o>.</span><span class=n>takeRow</span><span class=p>(</span><span class=n>item</span><span class=o>.</span><span class=n>row</span><span class=p>())</span>
+
+        <span class=n>has_library_project</span> <span class=o>=</span> <span class=kc>False</span>
+        <span class=n>new_items</span> <span class=o>=</span> <span class=p>[]</span>
+        <span class=k>for</span> <span class=n>project_item</span> <span class=ow>in</span> <span class=n>project_items</span><span class=p>:</span>
+            <span class=n>project_name</span> <span class=o>=</span> <span class=n>project_item</span><span class=o>.</span><span class=n>name</span>
+            <span class=n>item</span> <span class=o>=</span> <span class=bp>self</span><span class=o>.</span><span class=n>_project_items</span><span class=o>.</span><span class=n>get</span><span class=p>(</span><span class=n>project_name</span><span class=p>)</span>
+            <span class=k>if</span> <span class=n>project_item</span><span class=o>.</span><span class=n>is_library</span><span class=p>:</span>
+                <span class=n>has_library_project</span> <span class=o>=</span> <span class=kc>True</span>
+            <span class=k>if</span> <span class=n>item</span> <span class=ow>is</span> <span class=kc>None</span><span class=p>:</span>
+                <span class=n>item</span> <span class=o>=</span> <span class=n>QtGui</span><span class=o>.</span><span class=n>QStandardItem</span><span class=p>()</span>
+                <span class=n>item</span><span class=o>.</span><span class=n>setEditable</span><span class=p>(</span><span class=kc>False</span><span class=p>)</span>
+                <span class=n>new_items</span><span class=o>.</span><span class=n>append</span><span class=p>(</span><span class=n>item</span><span class=p>)</span>
+            <span class=n>icon</span> <span class=o>=</span> <span class=n>get_qt_icon</span><span class=p>(</span><span class=n>project_item</span><span class=o>.</span><span class=n>icon</span><span class=p>)</span>
+            <span class=n>item</span><span class=o>.</span><span class=n>setData</span><span class=p>(</span><span class=n>project_name</span><span class=p>,</span> <span class=n>QtCore</span><span class=o>.</span><span class=n>Qt</span><span class=o>.</span><span class=n>DisplayRole</span><span class=p>)</span>
+            <span class=n>item</span><span class=o>.</span><span class=n>setData</span><span class=p>(</span><span class=n>icon</span><span class=p>,</span> <span class=n>QtCore</span><span class=o>.</span><span class=n>Qt</span><span class=o>.</span><span class=n>DecorationRole</span><span class=p>)</span>
+            <span class=n>item</span><span class=o>.</span><span class=n>setData</span><span class=p>(</span><span class=n>project_name</span><span class=p>,</span> <span class=n>PROJECT_NAME_ROLE</span><span class=p>)</span>
+            <span class=n>item</span><span class=o>.</span><span class=n>setData</span><span class=p>(</span><span class=n>project_item</span><span class=o>.</span><span class=n>active</span><span class=p>,</span> <span class=n>PROJECT_IS_ACTIVE_ROLE</span><span class=p>)</span>
+            <span class=n>item</span><span class=o>.</span><span class=n>setData</span><span class=p>(</span><span class=n>project_item</span><span class=o>.</span><span class=n>is_library</span><span class=p>,</span> <span class=n>PROJECT_IS_LIBRARY_ROLE</span><span class=p>)</span>
+            <span class=n>is_current</span> <span class=o>=</span> <span class=n>project_name</span> <span class=o>==</span> <span class=bp>self</span><span class=o>.</span><span class=n>_current_context_project</span>
+            <span class=n>item</span><span class=o>.</span><span class=n>setData</span><span class=p>(</span><span class=n>is_current</span><span class=p>,</span> <span class=n>PROJECT_IS_CURRENT_ROLE</span><span class=p>)</span>
+            <span class=bp>self</span><span class=o>.</span><span class=n>_project_items</span><span class=p>[</span><span class=n>project_name</span><span class=p>]</span> <span class=o>=</span> <span class=n>item</span>
+
+        <span class=bp>self</span><span class=o>.</span><span class=n>_set_current_context_project</span><span class=p>(</span><span class=bp>self</span><span class=o>.</span><span class=n>_current_context_project</span><span class=p>)</span>
+
+        <span class=bp>self</span><span class=o>.</span><span class=n>_has_libraries</span> <span class=o>=</span> <span class=n>has_library_project</span>
+
+        <span class=k>if</span> <span class=n>new_items</span><span class=p>:</span>
+            <span class=n>root_item</span><span class=o>.</span><span class=n>appendRows</span><span class=p>(</span><span class=n>new_items</span><span class=p>)</span>
+
+        <span class=k>if</span> <span class=bp>self</span><span class=o>.</span><span class=n>has_content</span><span class=p>():</span>
+            <span class=c1># Make sure &quot;No projects&quot; item is removed</span>
+            <span class=bp>self</span><span class=o>.</span><span class=n>_remove_empty_item</span><span class=p>()</span>
+            <span class=k>if</span> <span class=n>has_library_project</span><span class=p>:</span>
+                <span class=bp>self</span><span class=o>.</span><span class=n>_add_library_sep_item</span><span class=p>()</span>
+            <span class=k>else</span><span class=p>:</span>
+                <span class=bp>self</span><span class=o>.</span><span class=n>_remove_library_sep_item</span><span class=p>()</span>
+        <span class=k>else</span><span class=p>:</span>
+            <span class=c1># Keep only &quot;No projects&quot; item</span>
+            <span class=bp>self</span><span class=o>.</span><span class=n>_add_empty_item</span><span class=p>()</span>
+            <span class=bp>self</span><span class=o>.</span><span class=n>_remove_select_item</span><span class=p>()</span>
+            <span class=bp>self</span><span class=o>.</span><span class=n>_remove_library_sep_item</span><span class=p>()</span>
+</code></pre></div></td></tr></table></div> </details> <div class="doc doc-children"> <div class="doc doc-object doc-function"> <h3 id=client.ayon_core.tools.utils.projects_widget.ProjectsQtModel.get_index_by_project_name class="doc doc-heading"> <code class="highlight language-python"><span class=n>get_index_by_project_name</span><span class=p>(</span><span class=n>project_name</span><span class=p>)</span></code> </h3> <div class="doc doc-contents "> <p>Get index of project by name.</p> <p><span class=doc-section-title>Parameters:</span></p> <table> <thead> <tr> <th>Name</th> <th>Type</th> <th>Description</th> <th>Default</th> </tr> </thead> <tbody> <tr class=doc-section-item> <td> <code>project_name</code> </td> <td> <code><span title=str>str</span></code> </td> <td> <div class=doc-md-description> <p>Project name.</p> </div> </td> <td> <em>required</em> </td> </tr> </tbody> </table> <p><span class=doc-section-title>Returns:</span></p> <table> <thead> <tr> <th>Type</th> <th>Description</th> </tr> </thead> <tbody> <tr class=doc-section-item> <td> </td> <td> <div class=doc-md-description> <p>QtCore.QModelIndex: Index of project item. Index is not valid if project is not found.</p> </div> </td> </tr> </tbody> </table> <details class=quote> <summary>Source code in <code>client/ayon_core/tools/utils/projects_widget.py</code></summary> <div class=highlight><table class=highlighttable><tr><td class=linenos><div class=linenodiv><pre><span></span><span class=normal>51</span>
+<span class=normal>52</span>
+<span class=normal>53</span>
+<span class=normal>54</span>
+<span class=normal>55</span>
+<span class=normal>56</span>
+<span class=normal>57</span>
+<span class=normal>58</span>
+<span class=normal>59</span>
+<span class=normal>60</span>
+<span class=normal>61</span>
+<span class=normal>62</span>
+<span class=normal>63</span>
+<span class=normal>64</span>
+<span class=normal>65</span></pre></div></td><td class=code><div><pre><span></span><code><span class=k>def</span><span class=w> </span><span class=nf>get_index_by_project_name</span><span class=p>(</span><span class=bp>self</span><span class=p>,</span> <span class=n>project_name</span><span class=p>):</span>
+<span class=w>    </span><span class=sd>&quot;&quot;&quot;Get index of project by name.</span>
+
+<span class=sd>    Args:</span>
+<span class=sd>        project_name (str): Project name.</span>
+
+<span class=sd>    Returns:</span>
+<span class=sd>        QtCore.QModelIndex: Index of project item. Index is not valid</span>
+<span class=sd>            if project is not found.</span>
+
+<span class=sd>    &quot;&quot;&quot;</span>
+    <span class=n>item</span> <span class=o>=</span> <span class=bp>self</span><span class=o>.</span><span class=n>_project_items</span><span class=o>.</span><span class=n>get</span><span class=p>(</span><span class=n>project_name</span><span class=p>)</span>
+    <span class=k>if</span> <span class=n>item</span> <span class=ow>is</span> <span class=kc>None</span><span class=p>:</span>
+        <span class=k>return</span> <span class=n>QtCore</span><span class=o>.</span><span class=n>QModelIndex</span><span class=p>()</span>
+    <span class=k>return</span> <span class=bp>self</span><span class=o>.</span><span class=n>indexFromItem</span><span class=p>(</span><span class=n>item</span><span class=p>)</span>
+</code></pre></div></td></tr></table></div> </details> </div> </div> </div> </div> </div> </div> </div> </div> </article> </div> <script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script> </div> </main> <footer class=md-footer> <div class="md-footer-meta md-typeset"> <div class="md-footer-meta__inner md-grid"> <div class=md-copyright> Made with <a href=https://squidfunk.github.io/mkdocs-material/ target=_blank rel=noopener> Material for MkDocs </a> </div> </div> </div> </footer> </div> <div class=md-dialog data-md-component=dialog> <div class="md-dialog__inner md-typeset"></div> </div> <script id=__config type=application/json>{"base": "../../../../..", "features": ["navigation.sections", "navigation.path", "navigation.prune"], "search": "../../../../../assets/javascripts/workers/search.f8cc74c7.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script> <script src=../../../../../assets/javascripts/bundle.c8b220af.min.js></script> </body> </html>

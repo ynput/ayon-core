@@ -1,0 +1,1710 @@
+<!doctype html><html lang=en class=no-js> <head><meta charset=utf-8><meta name=viewport content="width=device-width,initial-scale=1"><link rel=prev href=index.html><link rel=next href=actions_utils.html><link rel=icon href=../../../../../../img/favicon.ico><meta name=generator content="mkdocs-1.6.1, mkdocs-material-9.6.8"><title>_multicombobox - ayon-core</title><link rel=stylesheet href=../../../../../../assets/stylesheets/main.8608ea7d.min.css><link rel=stylesheet href=../../../../../../assets/stylesheets/palette.06af60db.min.css><script src=https://unpkg.com/iframe-worker/shim></script><link rel=preconnect href=https://fonts.gstatic.com crossorigin><link rel=stylesheet href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback"><style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style><link rel=stylesheet href=../../../../../../assets/_mkdocstrings.css><link rel=stylesheet href=../../../../../../css/custom.css><script>__md_scope=new URL("../../../../../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script></head> <body dir=ltr data-md-color-scheme=slate data-md-color-primary=indigo data-md-color-accent=indigo> <input class=md-toggle data-md-toggle=drawer type=checkbox id=__drawer autocomplete=off> <input class=md-toggle data-md-toggle=search type=checkbox id=__search autocomplete=off> <label class=md-overlay for=__drawer></label> <div data-md-component=skip> <a href=#client.ayon_core.tools.loader.ui._multicombobox class=md-skip> Skip to content </a> </div> <div data-md-component=announce> </div> <div data-md-color-scheme=default data-md-component=outdated hidden> </div> <header class="md-header md-header--shadow" data-md-component=header> <nav class="md-header__inner md-grid" aria-label=Header> <a href=../../../../../../index.html title=ayon-core class="md-header__button md-logo" aria-label=ayon-core data-md-component=logo> <img src=../../../../../../img/ay-symbol-blackw-full.png alt=logo> </a> <label class="md-header__button md-icon" for=__drawer> <svg xmlns=http://www.w3.org/2000/svg viewbox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg> </label> <div class=md-header__title data-md-component=header-title> <div class=md-header__ellipsis> <div class=md-header__topic> <span class=md-ellipsis> ayon-core </span> </div> <div class=md-header__topic data-md-component=header-topic> <span class=md-ellipsis> _multicombobox </span> </div> </div> </div> <form class=md-header__option data-md-component=palette> <input class=md-option data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme=slate data-md-color-primary=indigo data-md-color-accent=indigo aria-label="Switch to light mode" type=radio name=__palette id=__palette_0> <label class="md-header__button md-icon" title="Switch to light mode" for=__palette_1 hidden> <svg xmlns=http://www.w3.org/2000/svg viewbox="0 0 24 24"><path d="M17 6H7c-3.31 0-6 2.69-6 6s2.69 6 6 6h10c3.31 0 6-2.69 6-6s-2.69-6-6-6m0 10H7c-2.21 0-4-1.79-4-4s1.79-4 4-4h10c2.21 0 4 1.79 4 4s-1.79 4-4 4M7 9c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3"/></svg> </label> <input class=md-option data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme=default data-md-color-primary=indigo data-md-color-accent=indigo aria-label="Switch to dark mode" type=radio name=__palette id=__palette_1> <label class="md-header__button md-icon" title="Switch to dark mode" for=__palette_0 hidden> <svg xmlns=http://www.w3.org/2000/svg viewbox="0 0 24 24"><path d="M17 7H7a5 5 0 0 0-5 5 5 5 0 0 0 5 5h10a5 5 0 0 0 5-5 5 5 0 0 0-5-5m0 8a3 3 0 0 1-3-3 3 3 0 0 1 3-3 3 3 0 0 1 3 3 3 3 0 0 1-3 3"/></svg> </label> </form> <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script> <label class="md-header__button md-icon" for=__search> <svg xmlns=http://www.w3.org/2000/svg viewbox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg> </label> <div class=md-search data-md-component=search role=dialog> <label class=md-search__overlay for=__search></label> <div class=md-search__inner role=search> <form class=md-search__form name=search> <input type=text class=md-search__input name=query aria-label=Search placeholder=Search autocapitalize=off autocorrect=off autocomplete=off spellcheck=false data-md-component=search-query required> <label class="md-search__icon md-icon" for=__search> <svg xmlns=http://www.w3.org/2000/svg viewbox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg> <svg xmlns=http://www.w3.org/2000/svg viewbox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg> </label> <nav class=md-search__options aria-label=Search> <button type=reset class="md-search__icon md-icon" title=Clear aria-label=Clear tabindex=-1> <svg xmlns=http://www.w3.org/2000/svg viewbox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg> </button> </nav> </form> <div class=md-search__output> <div class=md-search__scrollwrap tabindex=0 data-md-scrollfix> <div class=md-search-result data-md-component=search-result> <div class=md-search-result__meta> Initializing search </div> <ol class=md-search-result__list role=presentation></ol> </div> </div> </div> </div> </div> </nav> </header> <div class=md-container data-md-component=container> <main class=md-main data-md-component=main> <div class="md-main__inner md-grid"> <div class="md-sidebar md-sidebar--primary" data-md-component=sidebar data-md-type=navigation> <div class=md-sidebar__scrollwrap> <div class=md-sidebar__inner> <nav class="md-nav md-nav--primary" aria-label=Navigation data-md-level=0> <label class=md-nav__title for=__drawer> <a href=../../../../../../index.html title=ayon-core class="md-nav__button md-logo" aria-label=ayon-core data-md-component=logo> <img src=../../../../../../img/ay-symbol-blackw-full.png alt=logo> </a> ayon-core </label> <ul class=md-nav__list data-md-scrollfix> <li class=md-nav__item> <a href=../../../../../../index.html class=md-nav__link> <span class=md-ellipsis> Home </span> </a> </li> <li class=md-nav__item> <a href=../../../../../../license.html class=md-nav__link> <span class=md-ellipsis> License </span> </a> </li> <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested"> <input class="md-nav__toggle md-toggle " type=checkbox id=__nav_3 checked> <label class=md-nav__link for=__nav_3 id=__nav_3_label tabindex> <span class=md-ellipsis> Reference </span> <span class="md-nav__icon md-icon"></span> </label> <nav class=md-nav data-md-level=1 aria-labelledby=__nav_3_label aria-expanded=true> <label class=md-nav__title for=__nav_3> <span class="md-nav__icon md-icon"></span> Reference </label> <ul class=md-nav__list data-md-scrollfix> <li class="md-nav__item md-nav__item--active md-nav__item--nested"> <input class="md-nav__toggle md-toggle " type=checkbox id=__nav_3_1 checked> <div class="md-nav__link md-nav__container"> <a href=../../../../index.html class="md-nav__link "> <span class=md-ellipsis> client </span> </a> <label class="md-nav__link " for=__nav_3_1 id=__nav_3_1_label tabindex=0> <span class="md-nav__icon md-icon"></span> </label> </div> <nav class=md-nav data-md-level=2 aria-labelledby=__nav_3_1_label aria-expanded=true> <label class=md-nav__title for=__nav_3_1> <span class="md-nav__icon md-icon"></span> client </label> <ul class=md-nav__list data-md-scrollfix> <li class="md-nav__item md-nav__item--active md-nav__item--nested"> <input class="md-nav__toggle md-toggle " type=checkbox id=__nav_3_1_1 checked> <div class="md-nav__link md-nav__container"> <a href=../../../index.html class="md-nav__link "> <span class=md-ellipsis> ayon_core </span> </a> <label class="md-nav__link " for=__nav_3_1_1 id=__nav_3_1_1_label tabindex=0> <span class="md-nav__icon md-icon"></span> </label> </div> <nav class=md-nav data-md-level=3 aria-labelledby=__nav_3_1_1_label aria-expanded=true> <label class=md-nav__title for=__nav_3_1_1> <span class="md-nav__icon md-icon"></span> ayon_core </label> <ul class=md-nav__list data-md-scrollfix> <li class=md-nav__item> <a href=../../../__main__.html class=md-nav__link> <span class=md-ellipsis> __main__ </span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../../../addon/base.html class=md-nav__link> <span class=md-ellipsis> addon </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class=md-nav__item> <a href=../../../cli.html class=md-nav__link> <span class=md-ellipsis> cli </span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../../../hooks/pre_add_last_workfile_arg.html class=md-nav__link> <span class=md-ellipsis> hooks </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../../../host/dirmap.html class=md-nav__link> <span class=md-ellipsis> host </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../../../lib/attribute_definitions.html class=md-nav__link> <span class=md-ellipsis> lib </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../../../pipeline/actions.html class=md-nav__link> <span class=md-ellipsis> pipeline </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../../../plugins/actions/open_file_explorer.html class=md-nav__link> <span class=md-ellipsis> plugins </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../../../resources/app_icons/index.html class=md-nav__link> <span class=md-ellipsis> resources </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../../../scripts/ocio_wrapper.html class=md-nav__link> <span class=md-ellipsis> scripts </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../../../settings/lib.html class=md-nav__link> <span class=md-ellipsis> settings </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../../../style/color_defs.html class=md-nav__link> <span class=md-ellipsis> style </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../../../tests/conftest.html class=md-nav__link> <span class=md-ellipsis> tests </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class="md-nav__item md-nav__item--active md-nav__item--nested"> <input class="md-nav__toggle md-toggle " type=checkbox id=__nav_3_1_1_14 checked> <div class="md-nav__link md-nav__container"> <a href=../../index.html class="md-nav__link "> <span class=md-ellipsis> tools </span> </a> <label class="md-nav__link " for=__nav_3_1_1_14 id=__nav_3_1_1_14_label tabindex=0> <span class="md-nav__icon md-icon"></span> </label> </div> <nav class=md-nav data-md-level=4 aria-labelledby=__nav_3_1_1_14_label aria-expanded=true> <label class=md-nav__title for=__nav_3_1_1_14> <span class="md-nav__icon md-icon"></span> tools </label> <ul class=md-nav__list data-md-scrollfix> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../../attribute_defs/_constants.html class=md-nav__link> <span class=md-ellipsis> attribute_defs </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../../common_models/cache.html class=md-nav__link> <span class=md-ellipsis> common_models </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../../console_interpreter/abstract.html class=md-nav__link> <span class=md-ellipsis> console_interpreter </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../../context_dialog/window.html class=md-nav__link> <span class=md-ellipsis> context_dialog </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../../creator/constants.html class=md-nav__link> <span class=md-ellipsis> creator </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../../experimental_tools/dialog.html class=md-nav__link> <span class=md-ellipsis> experimental_tools </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class=md-nav__item> <a href=../../flickcharm.html class=md-nav__link> <span class=md-ellipsis> flickcharm </span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../../launcher/abstract.html class=md-nav__link> <span class=md-ellipsis> launcher </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class="md-nav__item md-nav__item--active md-nav__item--nested"> <input class="md-nav__toggle md-toggle " type=checkbox id=__nav_3_1_1_14_9 checked> <div class="md-nav__link md-nav__container"> <a href=../index.html class="md-nav__link "> <span class=md-ellipsis> loader </span> </a> <label class="md-nav__link " for=__nav_3_1_1_14_9 id=__nav_3_1_1_14_9_label tabindex=0> <span class="md-nav__icon md-icon"></span> </label> </div> <nav class=md-nav data-md-level=5 aria-labelledby=__nav_3_1_1_14_9_label aria-expanded=true> <label class=md-nav__title for=__nav_3_1_1_14_9> <span class="md-nav__icon md-icon"></span> loader </label> <ul class=md-nav__list data-md-scrollfix> <li class=md-nav__item> <a href=../abstract.html class=md-nav__link> <span class=md-ellipsis> abstract </span> </a> </li> <li class=md-nav__item> <a href=../control.html class=md-nav__link> <span class=md-ellipsis> control </span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../models/actions.html class=md-nav__link> <span class=md-ellipsis> models </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class="md-nav__item md-nav__item--active md-nav__item--nested"> <input class="md-nav__toggle md-toggle " type=checkbox id=__nav_3_1_1_14_9_4 checked> <div class="md-nav__link md-nav__container"> <a href=index.html class="md-nav__link "> <span class=md-ellipsis> ui </span> </a> <label class="md-nav__link " for=__nav_3_1_1_14_9_4 id=__nav_3_1_1_14_9_4_label tabindex=0> <span class="md-nav__icon md-icon"></span> </label> </div> <nav class=md-nav data-md-level=6 aria-labelledby=__nav_3_1_1_14_9_4_label aria-expanded=true> <label class=md-nav__title for=__nav_3_1_1_14_9_4> <span class="md-nav__icon md-icon"></span> ui </label> <ul class=md-nav__list data-md-scrollfix> <li class="md-nav__item md-nav__item--active"> <input class="md-nav__toggle md-toggle" type=checkbox id=__toc> <label class="md-nav__link md-nav__link--active" for=__toc> <span class=md-ellipsis> _multicombobox </span> <span class="md-nav__icon md-icon"></span> </label> <a href=_multicombobox.html class="md-nav__link md-nav__link--active"> <span class=md-ellipsis> _multicombobox </span> </a> <nav class="md-nav md-nav--secondary" aria-label="Table of contents"> <label class=md-nav__title for=__toc> <span class="md-nav__icon md-icon"></span> Table of contents </label> <ul class=md-nav__list data-md-component=toc data-md-scrollfix> <li class=md-nav__item> <a href=#client.ayon_core.tools.loader.ui._multicombobox class=md-nav__link> <span class=md-ellipsis> _multicombobox </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.tools.loader.ui._multicombobox.CustomPaintDelegate class=md-nav__link> <span class=md-ellipsis> CustomPaintDelegate </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.tools.loader.ui._multicombobox.CustomPaintMultiselectComboBox class=md-nav__link> <span class=md-ellipsis> CustomPaintMultiselectComboBox </span> </a> <nav class=md-nav aria-label=CustomPaintMultiselectComboBox> <ul class=md-nav__list> <li class=md-nav__item> <a href=#client.ayon_core.tools.loader.ui._multicombobox.CustomPaintMultiselectComboBox.eventFilter class=md-nav__link> <span class=md-ellipsis> eventFilter </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.tools.loader.ui._multicombobox.CustomPaintMultiselectComboBox.get_value_info class=md-nav__link> <span class=md-ellipsis> get_value_info </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.tools.loader.ui._multicombobox.CustomPaintMultiselectComboBox.hidePopup class=md-nav__link> <span class=md-ellipsis> hidePopup </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.tools.loader.ui._multicombobox.CustomPaintMultiselectComboBox.mousePressEvent class=md-nav__link> <span class=md-ellipsis> mousePressEvent </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.tools.loader.ui._multicombobox.CustomPaintMultiselectComboBox.paintEvent class=md-nav__link> <span class=md-ellipsis> paintEvent </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.tools.loader.ui._multicombobox.CustomPaintMultiselectComboBox.set_all_unchecked_as_checked class=md-nav__link> <span class=md-ellipsis> set_all_unchecked_as_checked </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.tools.loader.ui._multicombobox.CustomPaintMultiselectComboBox.set_custom_text class=md-nav__link> <span class=md-ellipsis> set_custom_text </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.tools.loader.ui._multicombobox.CustomPaintMultiselectComboBox.set_placeholder_text class=md-nav__link> <span class=md-ellipsis> set_placeholder_text </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.tools.loader.ui._multicombobox.CustomPaintMultiselectComboBox.showPopup class=md-nav__link> <span class=md-ellipsis> showPopup </span> </a> </li> </ul> </nav> </li> </ul> </nav> </li> <li class=md-nav__item> <a href=actions_utils.html class=md-nav__link> <span class=md-ellipsis> actions_utils </span> </a> </li> <li class=md-nav__item> <a href=folders_widget.html class=md-nav__link> <span class=md-ellipsis> folders_widget </span> </a> </li> <li class=md-nav__item> <a href=info_widget.html class=md-nav__link> <span class=md-ellipsis> info_widget </span> </a> </li> <li class=md-nav__item> <a href=product_group_dialog.html class=md-nav__link> <span class=md-ellipsis> product_group_dialog </span> </a> </li> <li class=md-nav__item> <a href=product_types_combo.html class=md-nav__link> <span class=md-ellipsis> product_types_combo </span> </a> </li> <li class=md-nav__item> <a href=products_delegates.html class=md-nav__link> <span class=md-ellipsis> products_delegates </span> </a> </li> <li class=md-nav__item> <a href=products_model.html class=md-nav__link> <span class=md-ellipsis> products_model </span> </a> </li> <li class=md-nav__item> <a href=products_widget.html class=md-nav__link> <span class=md-ellipsis> products_widget </span> </a> </li> <li class=md-nav__item> <a href=repres_widget.html class=md-nav__link> <span class=md-ellipsis> repres_widget </span> </a> </li> <li class=md-nav__item> <a href=statuses_combo.html class=md-nav__link> <span class=md-ellipsis> statuses_combo </span> </a> </li> <li class=md-nav__item> <a href=tasks_widget.html class=md-nav__link> <span class=md-ellipsis> tasks_widget </span> </a> </li> <li class=md-nav__item> <a href=window.html class=md-nav__link> <span class=md-ellipsis> window </span> </a> </li> </ul> </nav> </li> </ul> </nav> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../../publisher/abstract.html class=md-nav__link> <span class=md-ellipsis> publisher </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../../push_to_project/control.html class=md-nav__link> <span class=md-ellipsis> push_to_project </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../../resources/images/index.html class=md-nav__link> <span class=md-ellipsis> resources </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../../sceneinventory/control.html class=md-nav__link> <span class=md-ellipsis> sceneinventory </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../../stdout_broker/app.html class=md-nav__link> <span class=md-ellipsis> stdout_broker </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../../subsetmanager/model.html class=md-nav__link> <span class=md-ellipsis> subsetmanager </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../../texture_copy/app.html class=md-nav__link> <span class=md-ellipsis> texture_copy </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../../tray/lib.html class=md-nav__link> <span class=md-ellipsis> tray </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../../utils/color_widgets/color_inputs.html class=md-nav__link> <span class=md-ellipsis> utils </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../../workfile_template_build/lib.html class=md-nav__link> <span class=md-ellipsis> workfile_template_build </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../../workfiles/abstract.html class=md-nav__link> <span class=md-ellipsis> workfiles </span> <span class="md-nav__icon md-icon"></span> </a> </li> </ul> </nav> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../../../vendor/python/qargparse.html class=md-nav__link> <span class=md-ellipsis> vendor </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class=md-nav__item> <a href=../../../version.html class=md-nav__link> <span class=md-ellipsis> version </span> </a> </li> </ul> </nav> </li> </ul> </nav> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../../../../../server/settings/conversion.html class=md-nav__link> <span class=md-ellipsis> server </span> <span class="md-nav__icon md-icon"></span> </a> </li> </ul> </nav> </li> </ul> </nav> </div> </div> </div> <div class="md-sidebar md-sidebar--secondary" data-md-component=sidebar data-md-type=toc> <div class=md-sidebar__scrollwrap> <div class=md-sidebar__inner> <nav class="md-nav md-nav--secondary" aria-label="Table of contents"> <label class=md-nav__title for=__toc> <span class="md-nav__icon md-icon"></span> Table of contents </label> <ul class=md-nav__list data-md-component=toc data-md-scrollfix> <li class=md-nav__item> <a href=#client.ayon_core.tools.loader.ui._multicombobox class=md-nav__link> <span class=md-ellipsis> _multicombobox </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.tools.loader.ui._multicombobox.CustomPaintDelegate class=md-nav__link> <span class=md-ellipsis> CustomPaintDelegate </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.tools.loader.ui._multicombobox.CustomPaintMultiselectComboBox class=md-nav__link> <span class=md-ellipsis> CustomPaintMultiselectComboBox </span> </a> <nav class=md-nav aria-label=CustomPaintMultiselectComboBox> <ul class=md-nav__list> <li class=md-nav__item> <a href=#client.ayon_core.tools.loader.ui._multicombobox.CustomPaintMultiselectComboBox.eventFilter class=md-nav__link> <span class=md-ellipsis> eventFilter </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.tools.loader.ui._multicombobox.CustomPaintMultiselectComboBox.get_value_info class=md-nav__link> <span class=md-ellipsis> get_value_info </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.tools.loader.ui._multicombobox.CustomPaintMultiselectComboBox.hidePopup class=md-nav__link> <span class=md-ellipsis> hidePopup </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.tools.loader.ui._multicombobox.CustomPaintMultiselectComboBox.mousePressEvent class=md-nav__link> <span class=md-ellipsis> mousePressEvent </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.tools.loader.ui._multicombobox.CustomPaintMultiselectComboBox.paintEvent class=md-nav__link> <span class=md-ellipsis> paintEvent </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.tools.loader.ui._multicombobox.CustomPaintMultiselectComboBox.set_all_unchecked_as_checked class=md-nav__link> <span class=md-ellipsis> set_all_unchecked_as_checked </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.tools.loader.ui._multicombobox.CustomPaintMultiselectComboBox.set_custom_text class=md-nav__link> <span class=md-ellipsis> set_custom_text </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.tools.loader.ui._multicombobox.CustomPaintMultiselectComboBox.set_placeholder_text class=md-nav__link> <span class=md-ellipsis> set_placeholder_text </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.tools.loader.ui._multicombobox.CustomPaintMultiselectComboBox.showPopup class=md-nav__link> <span class=md-ellipsis> showPopup </span> </a> </li> </ul> </nav> </li> </ul> </nav> </div> </div> </div> <div class=md-content data-md-component=content> <article class="md-content__inner md-typeset"> <h1>_multicombobox</h1> <div class="doc doc-object doc-module"> <a id=client.ayon_core.tools.loader.ui._multicombobox></a> <div class="doc doc-contents first"> <div class="doc doc-children"> <div class="doc doc-object doc-class"> <h2 id=client.ayon_core.tools.loader.ui._multicombobox.CustomPaintDelegate class="doc doc-heading"> <code>CustomPaintDelegate</code> </h2> <div class="doc doc-contents "> <p class="doc doc-class-bases"> Bases: <code><span title=qtpy.QtWidgets.QStyledItemDelegate>QStyledItemDelegate</span></code></p> <p>Delegate showing status name and short name.</p> <details class=quote> <summary>Source code in <code>client/ayon_core/tools/loader/ui/_multicombobox.py</code></summary> <div class=highlight><table class=highlighttable><tr><td class=linenos><div class=linenodiv><pre><span></span><span class=normal>277</span>
+<span class=normal>278</span>
+<span class=normal>279</span>
+<span class=normal>280</span>
+<span class=normal>281</span>
+<span class=normal>282</span>
+<span class=normal>283</span>
+<span class=normal>284</span>
+<span class=normal>285</span>
+<span class=normal>286</span>
+<span class=normal>287</span>
+<span class=normal>288</span>
+<span class=normal>289</span>
+<span class=normal>290</span>
+<span class=normal>291</span>
+<span class=normal>292</span>
+<span class=normal>293</span>
+<span class=normal>294</span>
+<span class=normal>295</span>
+<span class=normal>296</span>
+<span class=normal>297</span>
+<span class=normal>298</span>
+<span class=normal>299</span>
+<span class=normal>300</span>
+<span class=normal>301</span>
+<span class=normal>302</span>
+<span class=normal>303</span>
+<span class=normal>304</span>
+<span class=normal>305</span>
+<span class=normal>306</span>
+<span class=normal>307</span>
+<span class=normal>308</span>
+<span class=normal>309</span>
+<span class=normal>310</span>
+<span class=normal>311</span>
+<span class=normal>312</span>
+<span class=normal>313</span>
+<span class=normal>314</span>
+<span class=normal>315</span>
+<span class=normal>316</span>
+<span class=normal>317</span>
+<span class=normal>318</span>
+<span class=normal>319</span>
+<span class=normal>320</span>
+<span class=normal>321</span>
+<span class=normal>322</span>
+<span class=normal>323</span>
+<span class=normal>324</span>
+<span class=normal>325</span>
+<span class=normal>326</span>
+<span class=normal>327</span>
+<span class=normal>328</span>
+<span class=normal>329</span>
+<span class=normal>330</span>
+<span class=normal>331</span>
+<span class=normal>332</span>
+<span class=normal>333</span>
+<span class=normal>334</span>
+<span class=normal>335</span>
+<span class=normal>336</span>
+<span class=normal>337</span>
+<span class=normal>338</span>
+<span class=normal>339</span>
+<span class=normal>340</span>
+<span class=normal>341</span>
+<span class=normal>342</span>
+<span class=normal>343</span>
+<span class=normal>344</span>
+<span class=normal>345</span>
+<span class=normal>346</span>
+<span class=normal>347</span>
+<span class=normal>348</span>
+<span class=normal>349</span>
+<span class=normal>350</span>
+<span class=normal>351</span>
+<span class=normal>352</span>
+<span class=normal>353</span>
+<span class=normal>354</span>
+<span class=normal>355</span>
+<span class=normal>356</span>
+<span class=normal>357</span>
+<span class=normal>358</span>
+<span class=normal>359</span>
+<span class=normal>360</span>
+<span class=normal>361</span>
+<span class=normal>362</span>
+<span class=normal>363</span>
+<span class=normal>364</span>
+<span class=normal>365</span>
+<span class=normal>366</span>
+<span class=normal>367</span>
+<span class=normal>368</span>
+<span class=normal>369</span>
+<span class=normal>370</span>
+<span class=normal>371</span>
+<span class=normal>372</span>
+<span class=normal>373</span>
+<span class=normal>374</span>
+<span class=normal>375</span>
+<span class=normal>376</span>
+<span class=normal>377</span>
+<span class=normal>378</span>
+<span class=normal>379</span>
+<span class=normal>380</span>
+<span class=normal>381</span>
+<span class=normal>382</span>
+<span class=normal>383</span>
+<span class=normal>384</span>
+<span class=normal>385</span>
+<span class=normal>386</span>
+<span class=normal>387</span>
+<span class=normal>388</span>
+<span class=normal>389</span>
+<span class=normal>390</span>
+<span class=normal>391</span>
+<span class=normal>392</span>
+<span class=normal>393</span>
+<span class=normal>394</span>
+<span class=normal>395</span>
+<span class=normal>396</span>
+<span class=normal>397</span>
+<span class=normal>398</span>
+<span class=normal>399</span>
+<span class=normal>400</span>
+<span class=normal>401</span>
+<span class=normal>402</span>
+<span class=normal>403</span>
+<span class=normal>404</span>
+<span class=normal>405</span>
+<span class=normal>406</span>
+<span class=normal>407</span>
+<span class=normal>408</span>
+<span class=normal>409</span>
+<span class=normal>410</span>
+<span class=normal>411</span>
+<span class=normal>412</span>
+<span class=normal>413</span>
+<span class=normal>414</span>
+<span class=normal>415</span>
+<span class=normal>416</span>
+<span class=normal>417</span>
+<span class=normal>418</span>
+<span class=normal>419</span>
+<span class=normal>420</span>
+<span class=normal>421</span>
+<span class=normal>422</span>
+<span class=normal>423</span>
+<span class=normal>424</span>
+<span class=normal>425</span>
+<span class=normal>426</span>
+<span class=normal>427</span>
+<span class=normal>428</span>
+<span class=normal>429</span>
+<span class=normal>430</span>
+<span class=normal>431</span>
+<span class=normal>432</span>
+<span class=normal>433</span>
+<span class=normal>434</span>
+<span class=normal>435</span>
+<span class=normal>436</span>
+<span class=normal>437</span>
+<span class=normal>438</span>
+<span class=normal>439</span>
+<span class=normal>440</span>
+<span class=normal>441</span>
+<span class=normal>442</span>
+<span class=normal>443</span>
+<span class=normal>444</span>
+<span class=normal>445</span>
+<span class=normal>446</span>
+<span class=normal>447</span>
+<span class=normal>448</span>
+<span class=normal>449</span>
+<span class=normal>450</span>
+<span class=normal>451</span>
+<span class=normal>452</span>
+<span class=normal>453</span>
+<span class=normal>454</span>
+<span class=normal>455</span>
+<span class=normal>456</span>
+<span class=normal>457</span>
+<span class=normal>458</span>
+<span class=normal>459</span>
+<span class=normal>460</span>
+<span class=normal>461</span>
+<span class=normal>462</span>
+<span class=normal>463</span>
+<span class=normal>464</span>
+<span class=normal>465</span>
+<span class=normal>466</span>
+<span class=normal>467</span>
+<span class=normal>468</span>
+<span class=normal>469</span>
+<span class=normal>470</span>
+<span class=normal>471</span>
+<span class=normal>472</span>
+<span class=normal>473</span>
+<span class=normal>474</span>
+<span class=normal>475</span>
+<span class=normal>476</span>
+<span class=normal>477</span>
+<span class=normal>478</span>
+<span class=normal>479</span>
+<span class=normal>480</span>
+<span class=normal>481</span>
+<span class=normal>482</span>
+<span class=normal>483</span>
+<span class=normal>484</span>
+<span class=normal>485</span>
+<span class=normal>486</span>
+<span class=normal>487</span>
+<span class=normal>488</span>
+<span class=normal>489</span>
+<span class=normal>490</span>
+<span class=normal>491</span>
+<span class=normal>492</span>
+<span class=normal>493</span>
+<span class=normal>494</span>
+<span class=normal>495</span>
+<span class=normal>496</span>
+<span class=normal>497</span>
+<span class=normal>498</span></pre></div></td><td class=code><div><pre><span></span><code><span class=k>class</span><span class=w> </span><span class=nc>CustomPaintDelegate</span><span class=p>(</span><span class=n>QtWidgets</span><span class=o>.</span><span class=n>QStyledItemDelegate</span><span class=p>):</span>
+<span class=w>    </span><span class=sd>&quot;&quot;&quot;Delegate showing status name and short name.&quot;&quot;&quot;</span>
+    <span class=n>_empty_icon</span> <span class=o>=</span> <span class=kc>None</span>
+    <span class=n>_checked_value</span> <span class=o>=</span> <span class=n>checkstate_enum_to_int</span><span class=p>(</span><span class=n>QtCore</span><span class=o>.</span><span class=n>Qt</span><span class=o>.</span><span class=n>Checked</span><span class=p>)</span>
+    <span class=n>_checked_bg_color</span> <span class=o>=</span> <span class=n>QtGui</span><span class=o>.</span><span class=n>QColor</span><span class=p>(</span><span class=s2>&quot;#2C3B4C&quot;</span><span class=p>)</span>
+
+    <span class=k>def</span><span class=w> </span><span class=fm>__init__</span><span class=p>(</span>
+        <span class=bp>self</span><span class=p>,</span>
+        <span class=n>text_role</span><span class=p>:</span> <span class=nb>int</span><span class=p>,</span>
+        <span class=n>short_text_role</span><span class=p>:</span> <span class=nb>int</span><span class=p>,</span>
+        <span class=n>text_color_role</span><span class=p>:</span> <span class=nb>int</span><span class=p>,</span>
+        <span class=n>icon_role</span><span class=p>:</span> <span class=nb>int</span><span class=p>,</span>
+        <span class=n>item_type_role</span><span class=p>:</span> <span class=n>Optional</span><span class=p>[</span><span class=nb>int</span><span class=p>]</span> <span class=o>=</span> <span class=kc>None</span><span class=p>,</span>
+        <span class=n>parent</span><span class=o>=</span><span class=kc>None</span>
+    <span class=p>):</span>
+        <span class=nb>super</span><span class=p>()</span><span class=o>.</span><span class=fm>__init__</span><span class=p>(</span><span class=n>parent</span><span class=p>)</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>_text_role</span> <span class=o>=</span> <span class=n>text_role</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>_text_color_role</span> <span class=o>=</span> <span class=n>text_color_role</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>_short_text_role</span> <span class=o>=</span> <span class=n>short_text_role</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>_icon_role</span> <span class=o>=</span> <span class=n>icon_role</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>_item_type_role</span> <span class=o>=</span> <span class=n>item_type_role</span>
+
+    <span class=nd>@classmethod</span>
+    <span class=k>def</span><span class=w> </span><span class=nf>_get_empty_icon</span><span class=p>(</span><span class=bp>cls</span><span class=p>):</span>
+        <span class=k>if</span> <span class=bp>cls</span><span class=o>.</span><span class=n>_empty_icon</span> <span class=ow>is</span> <span class=kc>None</span><span class=p>:</span>
+            <span class=n>pix</span> <span class=o>=</span> <span class=n>QtGui</span><span class=o>.</span><span class=n>QPixmap</span><span class=p>(</span><span class=mi>1</span><span class=p>,</span> <span class=mi>1</span><span class=p>)</span>
+            <span class=n>pix</span><span class=o>.</span><span class=n>fill</span><span class=p>(</span><span class=n>QtCore</span><span class=o>.</span><span class=n>Qt</span><span class=o>.</span><span class=n>transparent</span><span class=p>)</span>
+            <span class=bp>cls</span><span class=o>.</span><span class=n>_empty_icon</span> <span class=o>=</span> <span class=n>QtGui</span><span class=o>.</span><span class=n>QIcon</span><span class=p>(</span><span class=n>pix</span><span class=p>)</span>
+        <span class=k>return</span> <span class=bp>cls</span><span class=o>.</span><span class=n>_empty_icon</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>paint</span><span class=p>(</span><span class=bp>self</span><span class=p>,</span> <span class=n>painter</span><span class=p>,</span> <span class=n>option</span><span class=p>,</span> <span class=n>index</span><span class=p>):</span>
+        <span class=n>item_type</span> <span class=o>=</span> <span class=kc>None</span>
+        <span class=k>if</span> <span class=bp>self</span><span class=o>.</span><span class=n>_item_type_role</span> <span class=ow>is</span> <span class=ow>not</span> <span class=kc>None</span><span class=p>:</span>
+            <span class=n>item_type</span> <span class=o>=</span> <span class=n>index</span><span class=o>.</span><span class=n>data</span><span class=p>(</span><span class=bp>self</span><span class=o>.</span><span class=n>_item_type_role</span><span class=p>)</span>
+
+        <span class=k>if</span> <span class=n>item_type</span> <span class=ow>is</span> <span class=kc>None</span><span class=p>:</span>
+            <span class=n>item_type</span> <span class=o>=</span> <span class=n>VALUE_ITEM_TYPE</span>
+
+        <span class=k>if</span> <span class=n>item_type</span> <span class=o>==</span> <span class=n>STANDARD_ITEM_TYPE</span><span class=p>:</span>
+            <span class=nb>super</span><span class=p>()</span><span class=o>.</span><span class=n>paint</span><span class=p>(</span><span class=n>painter</span><span class=p>,</span> <span class=n>option</span><span class=p>,</span> <span class=n>index</span><span class=p>)</span>
+            <span class=k>return</span>
+
+        <span class=k>elif</span> <span class=n>item_type</span> <span class=o>==</span> <span class=n>SEPARATOR_ITEM_TYPE</span><span class=p>:</span>
+            <span class=bp>self</span><span class=o>.</span><span class=n>_paint_separator</span><span class=p>(</span><span class=n>painter</span><span class=p>,</span> <span class=n>option</span><span class=p>,</span> <span class=n>index</span><span class=p>)</span>
+            <span class=k>return</span>
+
+        <span class=k>if</span> <span class=n>option</span><span class=o>.</span><span class=n>widget</span><span class=p>:</span>
+            <span class=n>style</span> <span class=o>=</span> <span class=n>option</span><span class=o>.</span><span class=n>widget</span><span class=o>.</span><span class=n>style</span><span class=p>()</span>
+        <span class=k>else</span><span class=p>:</span>
+            <span class=n>style</span> <span class=o>=</span> <span class=n>QtWidgets</span><span class=o>.</span><span class=n>QApplication</span><span class=o>.</span><span class=n>style</span><span class=p>()</span>
+
+        <span class=bp>self</span><span class=o>.</span><span class=n>initStyleOption</span><span class=p>(</span><span class=n>option</span><span class=p>,</span> <span class=n>index</span><span class=p>)</span>
+
+        <span class=n>mode</span> <span class=o>=</span> <span class=n>QtGui</span><span class=o>.</span><span class=n>QIcon</span><span class=o>.</span><span class=n>Normal</span>
+        <span class=k>if</span> <span class=ow>not</span> <span class=p>(</span><span class=n>option</span><span class=o>.</span><span class=n>state</span> <span class=o>&amp;</span> <span class=n>QtWidgets</span><span class=o>.</span><span class=n>QStyle</span><span class=o>.</span><span class=n>State_Enabled</span><span class=p>):</span>
+            <span class=n>mode</span> <span class=o>=</span> <span class=n>QtGui</span><span class=o>.</span><span class=n>QIcon</span><span class=o>.</span><span class=n>Disabled</span>
+        <span class=k>elif</span> <span class=n>option</span><span class=o>.</span><span class=n>state</span> <span class=o>&amp;</span> <span class=n>QtWidgets</span><span class=o>.</span><span class=n>QStyle</span><span class=o>.</span><span class=n>State_Selected</span><span class=p>:</span>
+            <span class=n>mode</span> <span class=o>=</span> <span class=n>QtGui</span><span class=o>.</span><span class=n>QIcon</span><span class=o>.</span><span class=n>Selected</span>
+        <span class=n>state</span> <span class=o>=</span> <span class=n>QtGui</span><span class=o>.</span><span class=n>QIcon</span><span class=o>.</span><span class=n>Off</span>
+        <span class=k>if</span> <span class=n>option</span><span class=o>.</span><span class=n>state</span> <span class=o>&amp;</span> <span class=n>QtWidgets</span><span class=o>.</span><span class=n>QStyle</span><span class=o>.</span><span class=n>State_Open</span><span class=p>:</span>
+            <span class=n>state</span> <span class=o>=</span> <span class=n>QtGui</span><span class=o>.</span><span class=n>QIcon</span><span class=o>.</span><span class=n>On</span>
+        <span class=n>icon</span> <span class=o>=</span> <span class=bp>self</span><span class=o>.</span><span class=n>_get_index_icon</span><span class=p>(</span><span class=n>index</span><span class=p>)</span>
+        <span class=k>if</span> <span class=n>icon</span> <span class=ow>is</span> <span class=kc>None</span> <span class=ow>or</span> <span class=n>icon</span><span class=o>.</span><span class=n>isNull</span><span class=p>():</span>
+            <span class=n>icon</span> <span class=o>=</span> <span class=bp>self</span><span class=o>.</span><span class=n>_get_empty_icon</span><span class=p>()</span>
+
+        <span class=n>option</span><span class=o>.</span><span class=n>features</span> <span class=o>|=</span> <span class=n>QtWidgets</span><span class=o>.</span><span class=n>QStyleOptionViewItem</span><span class=o>.</span><span class=n>HasDecoration</span>
+
+        <span class=c1># Disable visible check indicator</span>
+        <span class=c1># - checkstate is displayed by background color</span>
+        <span class=n>option</span><span class=o>.</span><span class=n>features</span> <span class=o>&amp;=</span> <span class=p>(</span>
+            <span class=o>~</span><span class=n>QtWidgets</span><span class=o>.</span><span class=n>QStyleOptionViewItem</span><span class=o>.</span><span class=n>HasCheckIndicator</span>
+        <span class=p>)</span>
+
+        <span class=n>option</span><span class=o>.</span><span class=n>icon</span> <span class=o>=</span> <span class=n>icon</span>
+        <span class=n>act_size</span> <span class=o>=</span> <span class=n>icon</span><span class=o>.</span><span class=n>actualSize</span><span class=p>(</span><span class=n>option</span><span class=o>.</span><span class=n>decorationSize</span><span class=p>,</span> <span class=n>mode</span><span class=p>,</span> <span class=n>state</span><span class=p>)</span>
+        <span class=n>option</span><span class=o>.</span><span class=n>decorationSize</span> <span class=o>=</span> <span class=n>QtCore</span><span class=o>.</span><span class=n>QSize</span><span class=p>(</span>
+            <span class=nb>min</span><span class=p>(</span><span class=n>option</span><span class=o>.</span><span class=n>decorationSize</span><span class=o>.</span><span class=n>width</span><span class=p>(),</span> <span class=n>act_size</span><span class=o>.</span><span class=n>width</span><span class=p>()),</span>
+            <span class=nb>min</span><span class=p>(</span><span class=n>option</span><span class=o>.</span><span class=n>decorationSize</span><span class=o>.</span><span class=n>height</span><span class=p>(),</span> <span class=n>act_size</span><span class=o>.</span><span class=n>height</span><span class=p>())</span>
+        <span class=p>)</span>
+
+        <span class=n>text</span> <span class=o>=</span> <span class=bp>self</span><span class=o>.</span><span class=n>_get_index_name</span><span class=p>(</span><span class=n>index</span><span class=p>)</span>
+        <span class=k>if</span> <span class=n>text</span><span class=p>:</span>
+            <span class=n>option</span><span class=o>.</span><span class=n>features</span> <span class=o>|=</span> <span class=n>QtWidgets</span><span class=o>.</span><span class=n>QStyleOptionViewItem</span><span class=o>.</span><span class=n>HasDisplay</span>
+            <span class=n>option</span><span class=o>.</span><span class=n>text</span> <span class=o>=</span> <span class=n>text</span>
+
+        <span class=n>painter</span><span class=o>.</span><span class=n>save</span><span class=p>()</span>
+        <span class=n>painter</span><span class=o>.</span><span class=n>setClipRect</span><span class=p>(</span><span class=n>option</span><span class=o>.</span><span class=n>rect</span><span class=p>)</span>
+
+        <span class=n>is_checked</span> <span class=o>=</span> <span class=p>(</span>
+            <span class=n>index</span><span class=o>.</span><span class=n>data</span><span class=p>(</span><span class=n>QtCore</span><span class=o>.</span><span class=n>Qt</span><span class=o>.</span><span class=n>CheckStateRole</span><span class=p>)</span> <span class=o>==</span> <span class=bp>self</span><span class=o>.</span><span class=n>_checked_value</span>
+        <span class=p>)</span>
+        <span class=k>if</span> <span class=n>is_checked</span><span class=p>:</span>
+            <span class=n>painter</span><span class=o>.</span><span class=n>fillRect</span><span class=p>(</span><span class=n>option</span><span class=o>.</span><span class=n>rect</span><span class=p>,</span> <span class=bp>self</span><span class=o>.</span><span class=n>_checked_bg_color</span><span class=p>)</span>
+
+        <span class=n>icon_rect</span> <span class=o>=</span> <span class=n>style</span><span class=o>.</span><span class=n>subElementRect</span><span class=p>(</span>
+            <span class=n>QtWidgets</span><span class=o>.</span><span class=n>QCommonStyle</span><span class=o>.</span><span class=n>SE_ItemViewItemDecoration</span><span class=p>,</span>
+            <span class=n>option</span><span class=p>,</span>
+            <span class=n>option</span><span class=o>.</span><span class=n>widget</span>
+        <span class=p>)</span>
+        <span class=n>text_rect</span> <span class=o>=</span> <span class=n>style</span><span class=o>.</span><span class=n>subElementRect</span><span class=p>(</span>
+            <span class=n>QtWidgets</span><span class=o>.</span><span class=n>QCommonStyle</span><span class=o>.</span><span class=n>SE_ItemViewItemText</span><span class=p>,</span>
+            <span class=n>option</span><span class=p>,</span>
+            <span class=n>option</span><span class=o>.</span><span class=n>widget</span>
+        <span class=p>)</span>
+
+        <span class=c1># Draw background</span>
+        <span class=n>style</span><span class=o>.</span><span class=n>drawPrimitive</span><span class=p>(</span>
+            <span class=n>QtWidgets</span><span class=o>.</span><span class=n>QCommonStyle</span><span class=o>.</span><span class=n>PE_PanelItemViewItem</span><span class=p>,</span>
+            <span class=n>option</span><span class=p>,</span>
+            <span class=n>painter</span><span class=p>,</span>
+            <span class=n>option</span><span class=o>.</span><span class=n>widget</span>
+        <span class=p>)</span>
+
+        <span class=c1># Draw icon</span>
+        <span class=n>option</span><span class=o>.</span><span class=n>icon</span><span class=o>.</span><span class=n>paint</span><span class=p>(</span>
+            <span class=n>painter</span><span class=p>,</span>
+            <span class=n>icon_rect</span><span class=p>,</span>
+            <span class=n>option</span><span class=o>.</span><span class=n>decorationAlignment</span><span class=p>,</span>
+            <span class=n>mode</span><span class=p>,</span>
+            <span class=n>state</span>
+        <span class=p>)</span>
+        <span class=n>fm</span> <span class=o>=</span> <span class=n>QtGui</span><span class=o>.</span><span class=n>QFontMetrics</span><span class=p>(</span><span class=n>option</span><span class=o>.</span><span class=n>font</span><span class=p>)</span>
+        <span class=k>if</span> <span class=n>text_rect</span><span class=o>.</span><span class=n>width</span><span class=p>()</span> <span class=o>&lt;</span> <span class=n>fm</span><span class=o>.</span><span class=n>width</span><span class=p>(</span><span class=n>text</span><span class=p>):</span>
+            <span class=n>text</span> <span class=o>=</span> <span class=bp>self</span><span class=o>.</span><span class=n>_get_index_short_name</span><span class=p>(</span><span class=n>index</span><span class=p>)</span>
+            <span class=k>if</span> <span class=ow>not</span> <span class=n>text</span> <span class=ow>or</span> <span class=n>text_rect</span><span class=o>.</span><span class=n>width</span><span class=p>()</span> <span class=o>&lt;</span> <span class=n>fm</span><span class=o>.</span><span class=n>width</span><span class=p>(</span><span class=n>text</span><span class=p>):</span>
+                <span class=n>text</span> <span class=o>=</span> <span class=s2>&quot;&quot;</span>
+
+        <span class=n>fg_color</span> <span class=o>=</span> <span class=bp>self</span><span class=o>.</span><span class=n>_get_index_text_color</span><span class=p>(</span><span class=n>index</span><span class=p>)</span>
+        <span class=n>pen</span> <span class=o>=</span> <span class=n>painter</span><span class=o>.</span><span class=n>pen</span><span class=p>()</span>
+        <span class=n>pen</span><span class=o>.</span><span class=n>setColor</span><span class=p>(</span><span class=n>fg_color</span><span class=p>)</span>
+        <span class=n>painter</span><span class=o>.</span><span class=n>setPen</span><span class=p>(</span><span class=n>pen</span><span class=p>)</span>
+
+        <span class=n>painter</span><span class=o>.</span><span class=n>drawText</span><span class=p>(</span>
+            <span class=n>text_rect</span><span class=p>,</span>
+            <span class=n>option</span><span class=o>.</span><span class=n>displayAlignment</span><span class=p>,</span>
+            <span class=n>text</span>
+        <span class=p>)</span>
+
+        <span class=k>if</span> <span class=n>option</span><span class=o>.</span><span class=n>state</span> <span class=o>&amp;</span> <span class=n>QtWidgets</span><span class=o>.</span><span class=n>QStyle</span><span class=o>.</span><span class=n>State_HasFocus</span><span class=p>:</span>
+            <span class=n>focus_opt</span> <span class=o>=</span> <span class=n>QtWidgets</span><span class=o>.</span><span class=n>QStyleOptionFocusRect</span><span class=p>()</span>
+            <span class=n>focus_opt</span><span class=o>.</span><span class=n>state</span> <span class=o>=</span> <span class=n>option</span><span class=o>.</span><span class=n>state</span>
+            <span class=n>focus_opt</span><span class=o>.</span><span class=n>direction</span> <span class=o>=</span> <span class=n>option</span><span class=o>.</span><span class=n>direction</span>
+            <span class=n>focus_opt</span><span class=o>.</span><span class=n>rect</span> <span class=o>=</span> <span class=n>option</span><span class=o>.</span><span class=n>rect</span>
+            <span class=n>focus_opt</span><span class=o>.</span><span class=n>fontMetrics</span> <span class=o>=</span> <span class=n>option</span><span class=o>.</span><span class=n>fontMetrics</span>
+            <span class=n>focus_opt</span><span class=o>.</span><span class=n>palette</span> <span class=o>=</span> <span class=n>option</span><span class=o>.</span><span class=n>palette</span>
+
+            <span class=n>focus_opt</span><span class=o>.</span><span class=n>rect</span> <span class=o>=</span> <span class=n>style</span><span class=o>.</span><span class=n>subElementRect</span><span class=p>(</span>
+                <span class=n>QtWidgets</span><span class=o>.</span><span class=n>QCommonStyle</span><span class=o>.</span><span class=n>SE_ItemViewItemFocusRect</span><span class=p>,</span>
+                <span class=n>option</span><span class=p>,</span>
+                <span class=n>option</span><span class=o>.</span><span class=n>widget</span>
+            <span class=p>)</span>
+            <span class=n>focus_opt</span><span class=o>.</span><span class=n>state</span> <span class=o>|=</span> <span class=p>(</span>
+                <span class=n>QtWidgets</span><span class=o>.</span><span class=n>QStyle</span><span class=o>.</span><span class=n>State_KeyboardFocusChange</span>
+                <span class=o>|</span> <span class=n>QtWidgets</span><span class=o>.</span><span class=n>QStyle</span><span class=o>.</span><span class=n>State_Item</span>
+            <span class=p>)</span>
+            <span class=n>focus_opt</span><span class=o>.</span><span class=n>backgroundColor</span> <span class=o>=</span> <span class=n>option</span><span class=o>.</span><span class=n>palette</span><span class=o>.</span><span class=n>color</span><span class=p>(</span>
+                <span class=p>(</span>
+                    <span class=n>QtGui</span><span class=o>.</span><span class=n>QPalette</span><span class=o>.</span><span class=n>Normal</span>
+                    <span class=k>if</span> <span class=n>option</span><span class=o>.</span><span class=n>state</span> <span class=o>&amp;</span> <span class=n>QtWidgets</span><span class=o>.</span><span class=n>QStyle</span><span class=o>.</span><span class=n>State_Enabled</span>
+                    <span class=k>else</span> <span class=n>QtGui</span><span class=o>.</span><span class=n>QPalette</span><span class=o>.</span><span class=n>Disabled</span>
+                <span class=p>),</span>
+                <span class=p>(</span>
+                    <span class=n>QtGui</span><span class=o>.</span><span class=n>QPalette</span><span class=o>.</span><span class=n>Highlight</span>
+                    <span class=k>if</span> <span class=n>option</span><span class=o>.</span><span class=n>state</span> <span class=o>&amp;</span> <span class=n>QtWidgets</span><span class=o>.</span><span class=n>QStyle</span><span class=o>.</span><span class=n>State_Selected</span>
+                    <span class=k>else</span> <span class=n>QtGui</span><span class=o>.</span><span class=n>QPalette</span><span class=o>.</span><span class=n>Window</span>
+                <span class=p>)</span>
+            <span class=p>)</span>
+            <span class=n>style</span><span class=o>.</span><span class=n>drawPrimitive</span><span class=p>(</span>
+                <span class=n>QtWidgets</span><span class=o>.</span><span class=n>QCommonStyle</span><span class=o>.</span><span class=n>PE_FrameFocusRect</span><span class=p>,</span>
+                <span class=n>focus_opt</span><span class=p>,</span>
+                <span class=n>painter</span><span class=p>,</span>
+                <span class=n>option</span><span class=o>.</span><span class=n>widget</span>
+            <span class=p>)</span>
+
+        <span class=n>painter</span><span class=o>.</span><span class=n>restore</span><span class=p>()</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>_paint_separator</span><span class=p>(</span><span class=bp>self</span><span class=p>,</span> <span class=n>painter</span><span class=p>,</span> <span class=n>option</span><span class=p>,</span> <span class=n>index</span><span class=p>):</span>
+        <span class=n>painter</span><span class=o>.</span><span class=n>save</span><span class=p>()</span>
+        <span class=n>painter</span><span class=o>.</span><span class=n>setClipRect</span><span class=p>(</span><span class=n>option</span><span class=o>.</span><span class=n>rect</span><span class=p>)</span>
+
+        <span class=n>style</span> <span class=o>=</span> <span class=n>option</span><span class=o>.</span><span class=n>widget</span><span class=o>.</span><span class=n>style</span><span class=p>()</span>
+        <span class=n>style</span><span class=o>.</span><span class=n>drawPrimitive</span><span class=p>(</span>
+            <span class=n>QtWidgets</span><span class=o>.</span><span class=n>QCommonStyle</span><span class=o>.</span><span class=n>PE_PanelItemViewItem</span><span class=p>,</span>
+            <span class=n>option</span><span class=p>,</span>
+            <span class=n>painter</span><span class=p>,</span>
+            <span class=n>option</span><span class=o>.</span><span class=n>widget</span>
+        <span class=p>)</span>
+
+        <span class=n>pen</span> <span class=o>=</span> <span class=n>painter</span><span class=o>.</span><span class=n>pen</span><span class=p>()</span>
+        <span class=n>pen</span><span class=o>.</span><span class=n>setWidth</span><span class=p>(</span><span class=mi>2</span><span class=p>)</span>
+        <span class=n>painter</span><span class=o>.</span><span class=n>setPen</span><span class=p>(</span><span class=n>pen</span><span class=p>)</span>
+        <span class=n>mid_y</span> <span class=o>=</span> <span class=p>(</span><span class=n>option</span><span class=o>.</span><span class=n>rect</span><span class=o>.</span><span class=n>top</span><span class=p>()</span> <span class=o>+</span> <span class=n>option</span><span class=o>.</span><span class=n>rect</span><span class=o>.</span><span class=n>bottom</span><span class=p>())</span> <span class=o>*</span> <span class=mf>0.5</span>
+        <span class=n>painter</span><span class=o>.</span><span class=n>drawLine</span><span class=p>(</span>
+            <span class=n>QtCore</span><span class=o>.</span><span class=n>QPointF</span><span class=p>(</span><span class=n>option</span><span class=o>.</span><span class=n>rect</span><span class=o>.</span><span class=n>left</span><span class=p>(),</span> <span class=n>mid_y</span><span class=p>),</span>
+            <span class=n>QtCore</span><span class=o>.</span><span class=n>QPointF</span><span class=p>(</span><span class=n>option</span><span class=o>.</span><span class=n>rect</span><span class=o>.</span><span class=n>right</span><span class=p>(),</span> <span class=n>mid_y</span><span class=p>)</span>
+        <span class=p>)</span>
+
+        <span class=n>painter</span><span class=o>.</span><span class=n>restore</span><span class=p>()</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>_get_index_name</span><span class=p>(</span><span class=bp>self</span><span class=p>,</span> <span class=n>index</span><span class=p>):</span>
+        <span class=k>return</span> <span class=n>index</span><span class=o>.</span><span class=n>data</span><span class=p>(</span><span class=bp>self</span><span class=o>.</span><span class=n>_text_role</span><span class=p>)</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>_get_index_short_name</span><span class=p>(</span><span class=bp>self</span><span class=p>,</span> <span class=n>index</span><span class=p>):</span>
+        <span class=k>if</span> <span class=bp>self</span><span class=o>.</span><span class=n>_short_text_role</span> <span class=ow>is</span> <span class=kc>None</span><span class=p>:</span>
+            <span class=k>return</span> <span class=kc>None</span>
+        <span class=k>return</span> <span class=n>index</span><span class=o>.</span><span class=n>data</span><span class=p>(</span><span class=bp>self</span><span class=o>.</span><span class=n>_short_text_role</span><span class=p>)</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>_get_index_text_color</span><span class=p>(</span><span class=bp>self</span><span class=p>,</span> <span class=n>index</span><span class=p>):</span>
+        <span class=n>color</span> <span class=o>=</span> <span class=kc>None</span>
+        <span class=k>if</span> <span class=bp>self</span><span class=o>.</span><span class=n>_text_color_role</span> <span class=ow>is</span> <span class=ow>not</span> <span class=kc>None</span><span class=p>:</span>
+            <span class=n>color</span> <span class=o>=</span> <span class=n>index</span><span class=o>.</span><span class=n>data</span><span class=p>(</span><span class=bp>self</span><span class=o>.</span><span class=n>_text_color_role</span><span class=p>)</span>
+        <span class=k>if</span> <span class=n>color</span> <span class=ow>is</span> <span class=ow>not</span> <span class=kc>None</span><span class=p>:</span>
+            <span class=k>return</span> <span class=n>QtGui</span><span class=o>.</span><span class=n>QColor</span><span class=p>(</span><span class=n>color</span><span class=p>)</span>
+        <span class=k>return</span> <span class=n>QtGui</span><span class=o>.</span><span class=n>QColor</span><span class=p>(</span><span class=n>QtCore</span><span class=o>.</span><span class=n>Qt</span><span class=o>.</span><span class=n>white</span><span class=p>)</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>_get_index_icon</span><span class=p>(</span><span class=bp>self</span><span class=p>,</span> <span class=n>index</span><span class=p>):</span>
+        <span class=n>icon</span> <span class=o>=</span> <span class=kc>None</span>
+        <span class=k>if</span> <span class=bp>self</span><span class=o>.</span><span class=n>_icon_role</span> <span class=ow>is</span> <span class=ow>not</span> <span class=kc>None</span><span class=p>:</span>
+            <span class=n>icon</span> <span class=o>=</span> <span class=n>index</span><span class=o>.</span><span class=n>data</span><span class=p>(</span><span class=bp>self</span><span class=o>.</span><span class=n>_icon_role</span><span class=p>)</span>
+        <span class=k>if</span> <span class=n>icon</span> <span class=ow>is</span> <span class=kc>None</span><span class=p>:</span>
+            <span class=k>return</span> <span class=n>QtGui</span><span class=o>.</span><span class=n>QIcon</span><span class=p>()</span>
+        <span class=k>return</span> <span class=n>icon</span>
+</code></pre></div></td></tr></table></div> </details> <div class="doc doc-children"> </div> </div> </div> <div class="doc doc-object doc-class"> <h2 id=client.ayon_core.tools.loader.ui._multicombobox.CustomPaintMultiselectComboBox class="doc doc-heading"> <code>CustomPaintMultiselectComboBox</code> </h2> <div class="doc doc-contents "> <p class="doc doc-class-bases"> Bases: <code><span title=qtpy.QtWidgets.QComboBox>QComboBox</span></code></p> <details class=quote> <summary>Source code in <code>client/ayon_core/tools/loader/ui/_multicombobox.py</code></summary> <div class=highlight><table class=highlighttable><tr><td class=linenos><div class=linenodiv><pre><span></span><span class=normal>501</span>
+<span class=normal>502</span>
+<span class=normal>503</span>
+<span class=normal>504</span>
+<span class=normal>505</span>
+<span class=normal>506</span>
+<span class=normal>507</span>
+<span class=normal>508</span>
+<span class=normal>509</span>
+<span class=normal>510</span>
+<span class=normal>511</span>
+<span class=normal>512</span>
+<span class=normal>513</span>
+<span class=normal>514</span>
+<span class=normal>515</span>
+<span class=normal>516</span>
+<span class=normal>517</span>
+<span class=normal>518</span>
+<span class=normal>519</span>
+<span class=normal>520</span>
+<span class=normal>521</span>
+<span class=normal>522</span>
+<span class=normal>523</span>
+<span class=normal>524</span>
+<span class=normal>525</span>
+<span class=normal>526</span>
+<span class=normal>527</span>
+<span class=normal>528</span>
+<span class=normal>529</span>
+<span class=normal>530</span>
+<span class=normal>531</span>
+<span class=normal>532</span>
+<span class=normal>533</span>
+<span class=normal>534</span>
+<span class=normal>535</span>
+<span class=normal>536</span>
+<span class=normal>537</span>
+<span class=normal>538</span>
+<span class=normal>539</span>
+<span class=normal>540</span>
+<span class=normal>541</span>
+<span class=normal>542</span>
+<span class=normal>543</span>
+<span class=normal>544</span>
+<span class=normal>545</span>
+<span class=normal>546</span>
+<span class=normal>547</span>
+<span class=normal>548</span>
+<span class=normal>549</span>
+<span class=normal>550</span>
+<span class=normal>551</span>
+<span class=normal>552</span>
+<span class=normal>553</span>
+<span class=normal>554</span>
+<span class=normal>555</span>
+<span class=normal>556</span>
+<span class=normal>557</span>
+<span class=normal>558</span>
+<span class=normal>559</span>
+<span class=normal>560</span>
+<span class=normal>561</span>
+<span class=normal>562</span>
+<span class=normal>563</span>
+<span class=normal>564</span>
+<span class=normal>565</span>
+<span class=normal>566</span>
+<span class=normal>567</span>
+<span class=normal>568</span>
+<span class=normal>569</span>
+<span class=normal>570</span>
+<span class=normal>571</span>
+<span class=normal>572</span>
+<span class=normal>573</span>
+<span class=normal>574</span>
+<span class=normal>575</span>
+<span class=normal>576</span>
+<span class=normal>577</span>
+<span class=normal>578</span>
+<span class=normal>579</span>
+<span class=normal>580</span>
+<span class=normal>581</span>
+<span class=normal>582</span>
+<span class=normal>583</span>
+<span class=normal>584</span>
+<span class=normal>585</span>
+<span class=normal>586</span>
+<span class=normal>587</span>
+<span class=normal>588</span>
+<span class=normal>589</span>
+<span class=normal>590</span>
+<span class=normal>591</span>
+<span class=normal>592</span>
+<span class=normal>593</span>
+<span class=normal>594</span>
+<span class=normal>595</span>
+<span class=normal>596</span>
+<span class=normal>597</span>
+<span class=normal>598</span>
+<span class=normal>599</span>
+<span class=normal>600</span>
+<span class=normal>601</span>
+<span class=normal>602</span>
+<span class=normal>603</span>
+<span class=normal>604</span>
+<span class=normal>605</span>
+<span class=normal>606</span>
+<span class=normal>607</span>
+<span class=normal>608</span>
+<span class=normal>609</span>
+<span class=normal>610</span>
+<span class=normal>611</span>
+<span class=normal>612</span>
+<span class=normal>613</span>
+<span class=normal>614</span>
+<span class=normal>615</span>
+<span class=normal>616</span>
+<span class=normal>617</span>
+<span class=normal>618</span>
+<span class=normal>619</span>
+<span class=normal>620</span>
+<span class=normal>621</span>
+<span class=normal>622</span>
+<span class=normal>623</span>
+<span class=normal>624</span>
+<span class=normal>625</span>
+<span class=normal>626</span>
+<span class=normal>627</span>
+<span class=normal>628</span>
+<span class=normal>629</span>
+<span class=normal>630</span>
+<span class=normal>631</span>
+<span class=normal>632</span>
+<span class=normal>633</span>
+<span class=normal>634</span>
+<span class=normal>635</span>
+<span class=normal>636</span>
+<span class=normal>637</span>
+<span class=normal>638</span>
+<span class=normal>639</span>
+<span class=normal>640</span>
+<span class=normal>641</span>
+<span class=normal>642</span>
+<span class=normal>643</span>
+<span class=normal>644</span>
+<span class=normal>645</span>
+<span class=normal>646</span>
+<span class=normal>647</span>
+<span class=normal>648</span>
+<span class=normal>649</span>
+<span class=normal>650</span>
+<span class=normal>651</span>
+<span class=normal>652</span>
+<span class=normal>653</span>
+<span class=normal>654</span>
+<span class=normal>655</span>
+<span class=normal>656</span>
+<span class=normal>657</span>
+<span class=normal>658</span>
+<span class=normal>659</span>
+<span class=normal>660</span>
+<span class=normal>661</span>
+<span class=normal>662</span>
+<span class=normal>663</span>
+<span class=normal>664</span>
+<span class=normal>665</span>
+<span class=normal>666</span>
+<span class=normal>667</span>
+<span class=normal>668</span>
+<span class=normal>669</span>
+<span class=normal>670</span>
+<span class=normal>671</span>
+<span class=normal>672</span>
+<span class=normal>673</span>
+<span class=normal>674</span>
+<span class=normal>675</span>
+<span class=normal>676</span>
+<span class=normal>677</span>
+<span class=normal>678</span>
+<span class=normal>679</span>
+<span class=normal>680</span>
+<span class=normal>681</span>
+<span class=normal>682</span>
+<span class=normal>683</span>
+<span class=normal>684</span>
+<span class=normal>685</span>
+<span class=normal>686</span>
+<span class=normal>687</span>
+<span class=normal>688</span>
+<span class=normal>689</span>
+<span class=normal>690</span>
+<span class=normal>691</span>
+<span class=normal>692</span>
+<span class=normal>693</span>
+<span class=normal>694</span>
+<span class=normal>695</span>
+<span class=normal>696</span>
+<span class=normal>697</span>
+<span class=normal>698</span>
+<span class=normal>699</span>
+<span class=normal>700</span>
+<span class=normal>701</span>
+<span class=normal>702</span>
+<span class=normal>703</span>
+<span class=normal>704</span>
+<span class=normal>705</span>
+<span class=normal>706</span>
+<span class=normal>707</span>
+<span class=normal>708</span>
+<span class=normal>709</span>
+<span class=normal>710</span>
+<span class=normal>711</span>
+<span class=normal>712</span>
+<span class=normal>713</span>
+<span class=normal>714</span>
+<span class=normal>715</span>
+<span class=normal>716</span>
+<span class=normal>717</span>
+<span class=normal>718</span>
+<span class=normal>719</span>
+<span class=normal>720</span>
+<span class=normal>721</span>
+<span class=normal>722</span>
+<span class=normal>723</span>
+<span class=normal>724</span>
+<span class=normal>725</span>
+<span class=normal>726</span>
+<span class=normal>727</span>
+<span class=normal>728</span>
+<span class=normal>729</span>
+<span class=normal>730</span>
+<span class=normal>731</span>
+<span class=normal>732</span>
+<span class=normal>733</span>
+<span class=normal>734</span>
+<span class=normal>735</span>
+<span class=normal>736</span>
+<span class=normal>737</span>
+<span class=normal>738</span>
+<span class=normal>739</span>
+<span class=normal>740</span>
+<span class=normal>741</span>
+<span class=normal>742</span>
+<span class=normal>743</span>
+<span class=normal>744</span>
+<span class=normal>745</span>
+<span class=normal>746</span>
+<span class=normal>747</span>
+<span class=normal>748</span>
+<span class=normal>749</span>
+<span class=normal>750</span>
+<span class=normal>751</span>
+<span class=normal>752</span>
+<span class=normal>753</span>
+<span class=normal>754</span>
+<span class=normal>755</span>
+<span class=normal>756</span>
+<span class=normal>757</span>
+<span class=normal>758</span>
+<span class=normal>759</span>
+<span class=normal>760</span>
+<span class=normal>761</span>
+<span class=normal>762</span>
+<span class=normal>763</span>
+<span class=normal>764</span>
+<span class=normal>765</span>
+<span class=normal>766</span>
+<span class=normal>767</span>
+<span class=normal>768</span>
+<span class=normal>769</span>
+<span class=normal>770</span>
+<span class=normal>771</span>
+<span class=normal>772</span>
+<span class=normal>773</span>
+<span class=normal>774</span>
+<span class=normal>775</span>
+<span class=normal>776</span>
+<span class=normal>777</span>
+<span class=normal>778</span>
+<span class=normal>779</span>
+<span class=normal>780</span>
+<span class=normal>781</span>
+<span class=normal>782</span>
+<span class=normal>783</span>
+<span class=normal>784</span>
+<span class=normal>785</span>
+<span class=normal>786</span>
+<span class=normal>787</span>
+<span class=normal>788</span>
+<span class=normal>789</span>
+<span class=normal>790</span>
+<span class=normal>791</span>
+<span class=normal>792</span>
+<span class=normal>793</span>
+<span class=normal>794</span>
+<span class=normal>795</span>
+<span class=normal>796</span>
+<span class=normal>797</span>
+<span class=normal>798</span>
+<span class=normal>799</span>
+<span class=normal>800</span>
+<span class=normal>801</span>
+<span class=normal>802</span>
+<span class=normal>803</span>
+<span class=normal>804</span>
+<span class=normal>805</span>
+<span class=normal>806</span>
+<span class=normal>807</span>
+<span class=normal>808</span>
+<span class=normal>809</span>
+<span class=normal>810</span>
+<span class=normal>811</span>
+<span class=normal>812</span>
+<span class=normal>813</span>
+<span class=normal>814</span>
+<span class=normal>815</span>
+<span class=normal>816</span>
+<span class=normal>817</span>
+<span class=normal>818</span>
+<span class=normal>819</span>
+<span class=normal>820</span>
+<span class=normal>821</span>
+<span class=normal>822</span>
+<span class=normal>823</span>
+<span class=normal>824</span>
+<span class=normal>825</span>
+<span class=normal>826</span>
+<span class=normal>827</span>
+<span class=normal>828</span>
+<span class=normal>829</span>
+<span class=normal>830</span>
+<span class=normal>831</span>
+<span class=normal>832</span>
+<span class=normal>833</span>
+<span class=normal>834</span>
+<span class=normal>835</span>
+<span class=normal>836</span>
+<span class=normal>837</span>
+<span class=normal>838</span>
+<span class=normal>839</span>
+<span class=normal>840</span>
+<span class=normal>841</span>
+<span class=normal>842</span>
+<span class=normal>843</span>
+<span class=normal>844</span>
+<span class=normal>845</span>
+<span class=normal>846</span>
+<span class=normal>847</span>
+<span class=normal>848</span>
+<span class=normal>849</span>
+<span class=normal>850</span>
+<span class=normal>851</span>
+<span class=normal>852</span>
+<span class=normal>853</span>
+<span class=normal>854</span>
+<span class=normal>855</span>
+<span class=normal>856</span>
+<span class=normal>857</span>
+<span class=normal>858</span>
+<span class=normal>859</span>
+<span class=normal>860</span>
+<span class=normal>861</span>
+<span class=normal>862</span>
+<span class=normal>863</span>
+<span class=normal>864</span>
+<span class=normal>865</span>
+<span class=normal>866</span>
+<span class=normal>867</span>
+<span class=normal>868</span>
+<span class=normal>869</span>
+<span class=normal>870</span>
+<span class=normal>871</span>
+<span class=normal>872</span>
+<span class=normal>873</span>
+<span class=normal>874</span>
+<span class=normal>875</span>
+<span class=normal>876</span>
+<span class=normal>877</span>
+<span class=normal>878</span>
+<span class=normal>879</span>
+<span class=normal>880</span>
+<span class=normal>881</span>
+<span class=normal>882</span>
+<span class=normal>883</span>
+<span class=normal>884</span>
+<span class=normal>885</span>
+<span class=normal>886</span>
+<span class=normal>887</span>
+<span class=normal>888</span>
+<span class=normal>889</span>
+<span class=normal>890</span>
+<span class=normal>891</span>
+<span class=normal>892</span>
+<span class=normal>893</span>
+<span class=normal>894</span>
+<span class=normal>895</span>
+<span class=normal>896</span>
+<span class=normal>897</span>
+<span class=normal>898</span>
+<span class=normal>899</span>
+<span class=normal>900</span>
+<span class=normal>901</span>
+<span class=normal>902</span>
+<span class=normal>903</span>
+<span class=normal>904</span>
+<span class=normal>905</span>
+<span class=normal>906</span>
+<span class=normal>907</span>
+<span class=normal>908</span>
+<span class=normal>909</span>
+<span class=normal>910</span>
+<span class=normal>911</span>
+<span class=normal>912</span>
+<span class=normal>913</span>
+<span class=normal>914</span>
+<span class=normal>915</span>
+<span class=normal>916</span>
+<span class=normal>917</span>
+<span class=normal>918</span>
+<span class=normal>919</span>
+<span class=normal>920</span>
+<span class=normal>921</span>
+<span class=normal>922</span>
+<span class=normal>923</span>
+<span class=normal>924</span>
+<span class=normal>925</span>
+<span class=normal>926</span>
+<span class=normal>927</span>
+<span class=normal>928</span>
+<span class=normal>929</span>
+<span class=normal>930</span>
+<span class=normal>931</span>
+<span class=normal>932</span>
+<span class=normal>933</span>
+<span class=normal>934</span>
+<span class=normal>935</span>
+<span class=normal>936</span>
+<span class=normal>937</span>
+<span class=normal>938</span>
+<span class=normal>939</span>
+<span class=normal>940</span>
+<span class=normal>941</span>
+<span class=normal>942</span>
+<span class=normal>943</span>
+<span class=normal>944</span>
+<span class=normal>945</span>
+<span class=normal>946</span>
+<span class=normal>947</span>
+<span class=normal>948</span>
+<span class=normal>949</span>
+<span class=normal>950</span>
+<span class=normal>951</span>
+<span class=normal>952</span>
+<span class=normal>953</span>
+<span class=normal>954</span>
+<span class=normal>955</span>
+<span class=normal>956</span>
+<span class=normal>957</span>
+<span class=normal>958</span>
+<span class=normal>959</span>
+<span class=normal>960</span>
+<span class=normal>961</span>
+<span class=normal>962</span>
+<span class=normal>963</span>
+<span class=normal>964</span>
+<span class=normal>965</span>
+<span class=normal>966</span>
+<span class=normal>967</span>
+<span class=normal>968</span>
+<span class=normal>969</span>
+<span class=normal>970</span>
+<span class=normal>971</span>
+<span class=normal>972</span>
+<span class=normal>973</span>
+<span class=normal>974</span>
+<span class=normal>975</span>
+<span class=normal>976</span>
+<span class=normal>977</span>
+<span class=normal>978</span>
+<span class=normal>979</span>
+<span class=normal>980</span>
+<span class=normal>981</span>
+<span class=normal>982</span>
+<span class=normal>983</span></pre></div></td><td class=code><div><pre><span></span><code><span class=k>class</span><span class=w> </span><span class=nc>CustomPaintMultiselectComboBox</span><span class=p>(</span><span class=n>QtWidgets</span><span class=o>.</span><span class=n>QComboBox</span><span class=p>):</span>
+    <span class=n>value_changed</span> <span class=o>=</span> <span class=n>QtCore</span><span class=o>.</span><span class=n>Signal</span><span class=p>()</span>
+    <span class=n>focused_in</span> <span class=o>=</span> <span class=n>QtCore</span><span class=o>.</span><span class=n>Signal</span><span class=p>()</span>
+
+    <span class=n>ignored_keys</span> <span class=o>=</span> <span class=p>{</span>
+        <span class=n>QtCore</span><span class=o>.</span><span class=n>Qt</span><span class=o>.</span><span class=n>Key_Up</span><span class=p>,</span>
+        <span class=n>QtCore</span><span class=o>.</span><span class=n>Qt</span><span class=o>.</span><span class=n>Key_Down</span><span class=p>,</span>
+        <span class=n>QtCore</span><span class=o>.</span><span class=n>Qt</span><span class=o>.</span><span class=n>Key_PageDown</span><span class=p>,</span>
+        <span class=n>QtCore</span><span class=o>.</span><span class=n>Qt</span><span class=o>.</span><span class=n>Key_PageUp</span><span class=p>,</span>
+        <span class=n>QtCore</span><span class=o>.</span><span class=n>Qt</span><span class=o>.</span><span class=n>Key_Home</span><span class=p>,</span>
+        <span class=n>QtCore</span><span class=o>.</span><span class=n>Qt</span><span class=o>.</span><span class=n>Key_End</span><span class=p>,</span>
+    <span class=p>}</span>
+    <span class=n>_top_bottom_margins</span> <span class=o>=</span> <span class=mi>1</span>
+    <span class=n>_top_bottom_padding</span> <span class=o>=</span> <span class=mi>2</span>
+    <span class=n>_left_right_padding</span> <span class=o>=</span> <span class=mi>3</span>
+    <span class=n>_item_bg_color</span> <span class=o>=</span> <span class=n>QtGui</span><span class=o>.</span><span class=n>QColor</span><span class=p>(</span><span class=s2>&quot;#31424e&quot;</span><span class=p>)</span>
+
+    <span class=k>def</span><span class=w> </span><span class=fm>__init__</span><span class=p>(</span>
+        <span class=bp>self</span><span class=p>,</span>
+        <span class=n>text_role</span><span class=p>,</span>
+        <span class=n>short_text_role</span><span class=p>,</span>
+        <span class=n>text_color_role</span><span class=p>,</span>
+        <span class=n>icon_role</span><span class=p>,</span>
+        <span class=n>value_role</span><span class=o>=</span><span class=kc>None</span><span class=p>,</span>
+        <span class=n>item_type_role</span><span class=o>=</span><span class=kc>None</span><span class=p>,</span>
+        <span class=n>model</span><span class=o>=</span><span class=kc>None</span><span class=p>,</span>
+        <span class=n>placeholder</span><span class=o>=</span><span class=kc>None</span><span class=p>,</span>
+        <span class=n>parent</span><span class=o>=</span><span class=kc>None</span><span class=p>,</span>
+    <span class=p>):</span>
+        <span class=nb>super</span><span class=p>()</span><span class=o>.</span><span class=fm>__init__</span><span class=p>(</span><span class=n>parent</span><span class=o>=</span><span class=n>parent</span><span class=p>)</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>setFocusPolicy</span><span class=p>(</span><span class=n>QtCore</span><span class=o>.</span><span class=n>Qt</span><span class=o>.</span><span class=n>StrongFocus</span><span class=p>)</span>
+
+        <span class=k>if</span> <span class=n>model</span> <span class=ow>is</span> <span class=ow>not</span> <span class=kc>None</span><span class=p>:</span>
+            <span class=bp>self</span><span class=o>.</span><span class=n>setModel</span><span class=p>(</span><span class=n>model</span><span class=p>)</span>
+
+        <span class=n>combo_view</span> <span class=o>=</span> <span class=n>QtWidgets</span><span class=o>.</span><span class=n>QListView</span><span class=p>(</span><span class=bp>self</span><span class=p>)</span>
+
+        <span class=bp>self</span><span class=o>.</span><span class=n>setView</span><span class=p>(</span><span class=n>combo_view</span><span class=p>)</span>
+
+        <span class=n>item_delegate</span> <span class=o>=</span> <span class=n>CustomPaintDelegate</span><span class=p>(</span>
+            <span class=n>text_role</span><span class=o>=</span><span class=n>text_role</span><span class=p>,</span>
+            <span class=n>short_text_role</span><span class=o>=</span><span class=n>short_text_role</span><span class=p>,</span>
+            <span class=n>text_color_role</span><span class=o>=</span><span class=n>text_color_role</span><span class=p>,</span>
+            <span class=n>icon_role</span><span class=o>=</span><span class=n>icon_role</span><span class=p>,</span>
+            <span class=n>item_type_role</span><span class=o>=</span><span class=n>item_type_role</span><span class=p>,</span>
+            <span class=n>parent</span><span class=o>=</span><span class=n>combo_view</span><span class=p>,</span>
+        <span class=p>)</span>
+        <span class=n>combo_view</span><span class=o>.</span><span class=n>setItemDelegateForColumn</span><span class=p>(</span><span class=mi>0</span><span class=p>,</span> <span class=n>item_delegate</span><span class=p>)</span>
+
+        <span class=k>if</span> <span class=n>value_role</span> <span class=ow>is</span> <span class=kc>None</span><span class=p>:</span>
+            <span class=n>value_role</span> <span class=o>=</span> <span class=n>text_role</span>
+
+        <span class=bp>self</span><span class=o>.</span><span class=n>_combo_view</span> <span class=o>=</span> <span class=n>combo_view</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>_item_delegate</span> <span class=o>=</span> <span class=n>item_delegate</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>_value_role</span> <span class=o>=</span> <span class=n>value_role</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>_text_role</span> <span class=o>=</span> <span class=n>text_role</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>_short_text_role</span> <span class=o>=</span> <span class=n>short_text_role</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>_text_color_role</span> <span class=o>=</span> <span class=n>text_color_role</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>_icon_role</span> <span class=o>=</span> <span class=n>icon_role</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>_item_type_role</span> <span class=o>=</span> <span class=n>item_type_role</span>
+
+        <span class=bp>self</span><span class=o>.</span><span class=n>_popup_is_shown</span> <span class=o>=</span> <span class=kc>False</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>_block_mouse_release_timer</span> <span class=o>=</span> <span class=n>QtCore</span><span class=o>.</span><span class=n>QTimer</span><span class=p>(</span><span class=bp>self</span><span class=p>,</span> <span class=n>singleShot</span><span class=o>=</span><span class=kc>True</span><span class=p>)</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>_initial_mouse_pos</span> <span class=o>=</span> <span class=kc>None</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>_placeholder_text</span> <span class=o>=</span> <span class=n>placeholder</span>
+
+        <span class=bp>self</span><span class=o>.</span><span class=n>_custom_text</span> <span class=o>=</span> <span class=kc>None</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>_all_unchecked_as_checked</span> <span class=o>=</span> <span class=kc>True</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>all_unchecked_as_checked</span><span class=p>(</span><span class=bp>self</span><span class=p>)</span> <span class=o>-&gt;</span> <span class=nb>bool</span><span class=p>:</span>
+        <span class=k>return</span> <span class=bp>self</span><span class=o>.</span><span class=n>_all_unchecked_as_checked</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>set_all_unchecked_as_checked</span><span class=p>(</span><span class=bp>self</span><span class=p>,</span> <span class=n>value</span><span class=p>:</span> <span class=nb>bool</span><span class=p>):</span>
+<span class=w>        </span><span class=sd>&quot;&quot;&quot;Set if all unchecked items should be treated as checked.</span>
+
+<span class=sd>        Args:</span>
+<span class=sd>            value (bool): If True, all unchecked items will be treated</span>
+<span class=sd>                as checked.</span>
+
+<span class=sd>        &quot;&quot;&quot;</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>_all_unchecked_as_checked</span> <span class=o>=</span> <span class=n>value</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>get_placeholder_text</span><span class=p>(</span><span class=bp>self</span><span class=p>)</span> <span class=o>-&gt;</span> <span class=n>Optional</span><span class=p>[</span><span class=nb>str</span><span class=p>]:</span>
+        <span class=k>return</span> <span class=bp>self</span><span class=o>.</span><span class=n>_placeholder_text</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>set_placeholder_text</span><span class=p>(</span><span class=bp>self</span><span class=p>,</span> <span class=n>text</span><span class=p>:</span> <span class=n>Optional</span><span class=p>[</span><span class=nb>str</span><span class=p>]):</span>
+<span class=w>        </span><span class=sd>&quot;&quot;&quot;Set the placeholder text.</span>
+
+<span class=sd>        Text shown when nothing is selected.</span>
+
+<span class=sd>        Args:</span>
+<span class=sd>            text (str | None): The placeholder text.</span>
+
+<span class=sd>        &quot;&quot;&quot;</span>
+        <span class=k>if</span> <span class=n>text</span> <span class=o>==</span> <span class=bp>self</span><span class=o>.</span><span class=n>_placeholder_text</span><span class=p>:</span>
+            <span class=k>return</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>_placeholder_text</span> <span class=o>=</span> <span class=n>text</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>repaint</span><span class=p>()</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>set_custom_text</span><span class=p>(</span><span class=bp>self</span><span class=p>,</span> <span class=n>text</span><span class=p>:</span> <span class=n>Optional</span><span class=p>[</span><span class=nb>str</span><span class=p>]):</span>
+<span class=w>        </span><span class=sd>&quot;&quot;&quot;Set the placeholder text.</span>
+
+<span class=sd>        Text always shown in combobox field.</span>
+
+<span class=sd>        Args:</span>
+<span class=sd>            text (str | None): The text. Use &#39;None&#39; to reset to default.</span>
+
+<span class=sd>        &quot;&quot;&quot;</span>
+        <span class=k>if</span> <span class=n>text</span> <span class=o>==</span> <span class=bp>self</span><span class=o>.</span><span class=n>_custom_text</span><span class=p>:</span>
+            <span class=k>return</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>_custom_text</span> <span class=o>=</span> <span class=n>text</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>repaint</span><span class=p>()</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>focusInEvent</span><span class=p>(</span><span class=bp>self</span><span class=p>,</span> <span class=n>event</span><span class=p>):</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>focused_in</span><span class=o>.</span><span class=n>emit</span><span class=p>()</span>
+        <span class=k>return</span> <span class=nb>super</span><span class=p>()</span><span class=o>.</span><span class=n>focusInEvent</span><span class=p>(</span><span class=n>event</span><span class=p>)</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>mousePressEvent</span><span class=p>(</span><span class=bp>self</span><span class=p>,</span> <span class=n>event</span><span class=p>):</span>
+<span class=w>        </span><span class=sd>&quot;&quot;&quot;Reimplemented.&quot;&quot;&quot;</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>_popup_is_shown</span> <span class=o>=</span> <span class=kc>False</span>
+        <span class=nb>super</span><span class=p>()</span><span class=o>.</span><span class=n>mousePressEvent</span><span class=p>(</span><span class=n>event</span><span class=p>)</span>
+        <span class=k>if</span> <span class=bp>self</span><span class=o>.</span><span class=n>_popup_is_shown</span><span class=p>:</span>
+            <span class=bp>self</span><span class=o>.</span><span class=n>_initial_mouse_pos</span> <span class=o>=</span> <span class=bp>self</span><span class=o>.</span><span class=n>mapToGlobal</span><span class=p>(</span><span class=n>event</span><span class=o>.</span><span class=n>pos</span><span class=p>())</span>
+            <span class=bp>self</span><span class=o>.</span><span class=n>_block_mouse_release_timer</span><span class=o>.</span><span class=n>start</span><span class=p>(</span>
+                <span class=n>QtWidgets</span><span class=o>.</span><span class=n>QApplication</span><span class=o>.</span><span class=n>doubleClickInterval</span><span class=p>()</span>
+            <span class=p>)</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>showPopup</span><span class=p>(</span><span class=bp>self</span><span class=p>):</span>
+<span class=w>        </span><span class=sd>&quot;&quot;&quot;Reimplemented.&quot;&quot;&quot;</span>
+        <span class=nb>super</span><span class=p>()</span><span class=o>.</span><span class=n>showPopup</span><span class=p>()</span>
+        <span class=n>view</span> <span class=o>=</span> <span class=bp>self</span><span class=o>.</span><span class=n>view</span><span class=p>()</span>
+        <span class=n>view</span><span class=o>.</span><span class=n>installEventFilter</span><span class=p>(</span><span class=bp>self</span><span class=p>)</span>
+        <span class=n>view</span><span class=o>.</span><span class=n>viewport</span><span class=p>()</span><span class=o>.</span><span class=n>installEventFilter</span><span class=p>(</span><span class=bp>self</span><span class=p>)</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>_popup_is_shown</span> <span class=o>=</span> <span class=kc>True</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>hidePopup</span><span class=p>(</span><span class=bp>self</span><span class=p>):</span>
+<span class=w>        </span><span class=sd>&quot;&quot;&quot;Reimplemented.&quot;&quot;&quot;</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>view</span><span class=p>()</span><span class=o>.</span><span class=n>removeEventFilter</span><span class=p>(</span><span class=bp>self</span><span class=p>)</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>view</span><span class=p>()</span><span class=o>.</span><span class=n>viewport</span><span class=p>()</span><span class=o>.</span><span class=n>removeEventFilter</span><span class=p>(</span><span class=bp>self</span><span class=p>)</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>_popup_is_shown</span> <span class=o>=</span> <span class=kc>False</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>_initial_mouse_pos</span> <span class=o>=</span> <span class=kc>None</span>
+        <span class=nb>super</span><span class=p>()</span><span class=o>.</span><span class=n>hidePopup</span><span class=p>()</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>view</span><span class=p>()</span><span class=o>.</span><span class=n>clearFocus</span><span class=p>()</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>_event_popup_shown</span><span class=p>(</span><span class=bp>self</span><span class=p>,</span> <span class=n>obj</span><span class=p>,</span> <span class=n>event</span><span class=p>):</span>
+        <span class=k>if</span> <span class=ow>not</span> <span class=bp>self</span><span class=o>.</span><span class=n>_popup_is_shown</span><span class=p>:</span>
+            <span class=k>return</span>
+
+        <span class=n>current_index</span> <span class=o>=</span> <span class=bp>self</span><span class=o>.</span><span class=n>view</span><span class=p>()</span><span class=o>.</span><span class=n>currentIndex</span><span class=p>()</span>
+        <span class=n>model</span> <span class=o>=</span> <span class=bp>self</span><span class=o>.</span><span class=n>model</span><span class=p>()</span>
+
+        <span class=k>if</span> <span class=n>event</span><span class=o>.</span><span class=n>type</span><span class=p>()</span> <span class=o>==</span> <span class=n>QtCore</span><span class=o>.</span><span class=n>QEvent</span><span class=o>.</span><span class=n>MouseMove</span><span class=p>:</span>
+            <span class=k>if</span> <span class=p>(</span>
+                <span class=bp>self</span><span class=o>.</span><span class=n>view</span><span class=p>()</span><span class=o>.</span><span class=n>isVisible</span><span class=p>()</span>
+                <span class=ow>and</span> <span class=bp>self</span><span class=o>.</span><span class=n>_initial_mouse_pos</span> <span class=ow>is</span> <span class=ow>not</span> <span class=kc>None</span>
+                <span class=ow>and</span> <span class=bp>self</span><span class=o>.</span><span class=n>_block_mouse_release_timer</span><span class=o>.</span><span class=n>isActive</span><span class=p>()</span>
+            <span class=p>):</span>
+                <span class=n>diff</span> <span class=o>=</span> <span class=n>obj</span><span class=o>.</span><span class=n>mapToGlobal</span><span class=p>(</span><span class=n>event</span><span class=o>.</span><span class=n>pos</span><span class=p>())</span> <span class=o>-</span> <span class=bp>self</span><span class=o>.</span><span class=n>_initial_mouse_pos</span>
+                <span class=k>if</span> <span class=n>diff</span><span class=o>.</span><span class=n>manhattanLength</span><span class=p>()</span> <span class=o>&gt;</span> <span class=mi>9</span><span class=p>:</span>
+                    <span class=bp>self</span><span class=o>.</span><span class=n>_block_mouse_release_timer</span><span class=o>.</span><span class=n>stop</span><span class=p>()</span>
+            <span class=k>return</span>
+
+        <span class=n>index_flags</span> <span class=o>=</span> <span class=n>current_index</span><span class=o>.</span><span class=n>flags</span><span class=p>()</span>
+        <span class=n>state</span> <span class=o>=</span> <span class=n>checkstate_int_to_enum</span><span class=p>(</span>
+            <span class=n>current_index</span><span class=o>.</span><span class=n>data</span><span class=p>(</span><span class=n>QtCore</span><span class=o>.</span><span class=n>Qt</span><span class=o>.</span><span class=n>CheckStateRole</span><span class=p>)</span>
+        <span class=p>)</span>
+
+        <span class=n>new_state</span> <span class=o>=</span> <span class=kc>None</span>
+
+        <span class=k>if</span> <span class=n>event</span><span class=o>.</span><span class=n>type</span><span class=p>()</span> <span class=o>==</span> <span class=n>QtCore</span><span class=o>.</span><span class=n>QEvent</span><span class=o>.</span><span class=n>MouseButtonRelease</span><span class=p>:</span>
+            <span class=n>new_state</span> <span class=o>=</span> <span class=bp>self</span><span class=o>.</span><span class=n>_mouse_released_event_handle</span><span class=p>(</span>
+                <span class=n>event</span><span class=p>,</span> <span class=n>current_index</span><span class=p>,</span> <span class=n>index_flags</span><span class=p>,</span> <span class=n>state</span>
+            <span class=p>)</span>
+
+        <span class=k>elif</span> <span class=n>event</span><span class=o>.</span><span class=n>type</span><span class=p>()</span> <span class=o>==</span> <span class=n>QtCore</span><span class=o>.</span><span class=n>QEvent</span><span class=o>.</span><span class=n>KeyPress</span><span class=p>:</span>
+            <span class=n>new_state</span> <span class=o>=</span> <span class=bp>self</span><span class=o>.</span><span class=n>_key_press_event_handler</span><span class=p>(</span>
+                <span class=n>event</span><span class=p>,</span> <span class=n>current_index</span><span class=p>,</span> <span class=n>index_flags</span><span class=p>,</span> <span class=n>state</span>
+            <span class=p>)</span>
+
+        <span class=k>if</span> <span class=n>new_state</span> <span class=ow>is</span> <span class=ow>not</span> <span class=kc>None</span><span class=p>:</span>
+            <span class=n>model</span><span class=o>.</span><span class=n>setData</span><span class=p>(</span><span class=n>current_index</span><span class=p>,</span> <span class=n>new_state</span><span class=p>,</span> <span class=n>QtCore</span><span class=o>.</span><span class=n>Qt</span><span class=o>.</span><span class=n>CheckStateRole</span><span class=p>)</span>
+            <span class=bp>self</span><span class=o>.</span><span class=n>view</span><span class=p>()</span><span class=o>.</span><span class=n>update</span><span class=p>(</span><span class=n>current_index</span><span class=p>)</span>
+            <span class=bp>self</span><span class=o>.</span><span class=n>repaint</span><span class=p>()</span>
+            <span class=bp>self</span><span class=o>.</span><span class=n>value_changed</span><span class=o>.</span><span class=n>emit</span><span class=p>()</span>
+            <span class=k>return</span> <span class=kc>True</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>eventFilter</span><span class=p>(</span><span class=bp>self</span><span class=p>,</span> <span class=n>obj</span><span class=p>,</span> <span class=n>event</span><span class=p>):</span>
+<span class=w>        </span><span class=sd>&quot;&quot;&quot;Reimplemented.&quot;&quot;&quot;</span>
+        <span class=n>result</span> <span class=o>=</span> <span class=bp>self</span><span class=o>.</span><span class=n>_event_popup_shown</span><span class=p>(</span><span class=n>obj</span><span class=p>,</span> <span class=n>event</span><span class=p>)</span>
+        <span class=k>if</span> <span class=n>result</span> <span class=ow>is</span> <span class=ow>not</span> <span class=kc>None</span><span class=p>:</span>
+            <span class=k>return</span> <span class=n>result</span>
+
+        <span class=k>return</span> <span class=nb>super</span><span class=p>()</span><span class=o>.</span><span class=n>eventFilter</span><span class=p>(</span><span class=n>obj</span><span class=p>,</span> <span class=n>event</span><span class=p>)</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>addItem</span><span class=p>(</span><span class=bp>self</span><span class=p>,</span> <span class=o>*</span><span class=n>args</span><span class=p>,</span> <span class=o>**</span><span class=n>kwargs</span><span class=p>):</span>
+        <span class=n>idx</span> <span class=o>=</span> <span class=bp>self</span><span class=o>.</span><span class=n>count</span><span class=p>()</span>
+        <span class=nb>super</span><span class=p>()</span><span class=o>.</span><span class=n>addItem</span><span class=p>(</span><span class=o>*</span><span class=n>args</span><span class=p>,</span> <span class=o>**</span><span class=n>kwargs</span><span class=p>)</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>model</span><span class=p>()</span><span class=o>.</span><span class=n>item</span><span class=p>(</span><span class=n>idx</span><span class=p>)</span><span class=o>.</span><span class=n>setCheckable</span><span class=p>(</span><span class=kc>True</span><span class=p>)</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>paintEvent</span><span class=p>(</span><span class=bp>self</span><span class=p>,</span> <span class=n>event</span><span class=p>):</span>
+<span class=w>        </span><span class=sd>&quot;&quot;&quot;Reimplemented.&quot;&quot;&quot;</span>
+        <span class=n>painter</span> <span class=o>=</span> <span class=n>QtWidgets</span><span class=o>.</span><span class=n>QStylePainter</span><span class=p>(</span><span class=bp>self</span><span class=p>)</span>
+        <span class=n>option</span> <span class=o>=</span> <span class=n>QtWidgets</span><span class=o>.</span><span class=n>QStyleOptionComboBox</span><span class=p>()</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>initStyleOption</span><span class=p>(</span><span class=n>option</span><span class=p>)</span>
+        <span class=n>painter</span><span class=o>.</span><span class=n>drawComplexControl</span><span class=p>(</span><span class=n>QtWidgets</span><span class=o>.</span><span class=n>QStyle</span><span class=o>.</span><span class=n>CC_ComboBox</span><span class=p>,</span> <span class=n>option</span><span class=p>)</span>
+
+        <span class=n>idxs</span> <span class=o>=</span> <span class=bp>self</span><span class=o>.</span><span class=n>_get_checked_idx</span><span class=p>()</span>
+        <span class=c1># draw the icon and text</span>
+        <span class=n>draw_items</span> <span class=o>=</span> <span class=kc>False</span>
+        <span class=n>combotext</span> <span class=o>=</span> <span class=kc>None</span>
+        <span class=k>if</span> <span class=bp>self</span><span class=o>.</span><span class=n>_custom_text</span> <span class=ow>is</span> <span class=ow>not</span> <span class=kc>None</span><span class=p>:</span>
+            <span class=n>combotext</span> <span class=o>=</span> <span class=bp>self</span><span class=o>.</span><span class=n>_custom_text</span>
+        <span class=k>elif</span> <span class=ow>not</span> <span class=n>idxs</span><span class=p>:</span>
+            <span class=n>combotext</span> <span class=o>=</span> <span class=bp>self</span><span class=o>.</span><span class=n>_placeholder_text</span>
+        <span class=k>else</span><span class=p>:</span>
+            <span class=n>draw_items</span> <span class=o>=</span> <span class=kc>True</span>
+
+        <span class=n>content_field_rect</span> <span class=o>=</span> <span class=bp>self</span><span class=o>.</span><span class=n>style</span><span class=p>()</span><span class=o>.</span><span class=n>subControlRect</span><span class=p>(</span>
+            <span class=n>QtWidgets</span><span class=o>.</span><span class=n>QStyle</span><span class=o>.</span><span class=n>CC_ComboBox</span><span class=p>,</span>
+            <span class=n>option</span><span class=p>,</span>
+            <span class=n>QtWidgets</span><span class=o>.</span><span class=n>QStyle</span><span class=o>.</span><span class=n>SC_ComboBoxEditField</span>
+        <span class=p>)</span><span class=o>.</span><span class=n>adjusted</span><span class=p>(</span><span class=mi>1</span><span class=p>,</span> <span class=mi>0</span><span class=p>,</span> <span class=o>-</span><span class=mi>1</span><span class=p>,</span> <span class=mi>0</span><span class=p>)</span>
+
+        <span class=k>if</span> <span class=n>draw_items</span><span class=p>:</span>
+            <span class=bp>self</span><span class=o>.</span><span class=n>_paint_items</span><span class=p>(</span><span class=n>painter</span><span class=p>,</span> <span class=n>idxs</span><span class=p>,</span> <span class=n>content_field_rect</span><span class=p>)</span>
+        <span class=k>else</span><span class=p>:</span>
+            <span class=n>color</span> <span class=o>=</span> <span class=n>option</span><span class=o>.</span><span class=n>palette</span><span class=o>.</span><span class=n>color</span><span class=p>(</span><span class=n>QtGui</span><span class=o>.</span><span class=n>QPalette</span><span class=o>.</span><span class=n>Text</span><span class=p>)</span>
+            <span class=n>color</span><span class=o>.</span><span class=n>setAlpha</span><span class=p>(</span><span class=mi>67</span><span class=p>)</span>
+            <span class=n>pen</span> <span class=o>=</span> <span class=n>painter</span><span class=o>.</span><span class=n>pen</span><span class=p>()</span>
+            <span class=n>pen</span><span class=o>.</span><span class=n>setColor</span><span class=p>(</span><span class=n>color</span><span class=p>)</span>
+            <span class=n>painter</span><span class=o>.</span><span class=n>setPen</span><span class=p>(</span><span class=n>pen</span><span class=p>)</span>
+            <span class=n>painter</span><span class=o>.</span><span class=n>drawText</span><span class=p>(</span>
+                <span class=n>content_field_rect</span><span class=p>,</span>
+                <span class=n>QtCore</span><span class=o>.</span><span class=n>Qt</span><span class=o>.</span><span class=n>AlignLeft</span> <span class=o>|</span> <span class=n>QtCore</span><span class=o>.</span><span class=n>Qt</span><span class=o>.</span><span class=n>AlignVCenter</span><span class=p>,</span>
+                <span class=n>combotext</span>
+            <span class=p>)</span>
+
+        <span class=n>painter</span><span class=o>.</span><span class=n>end</span><span class=p>()</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>_paint_items</span><span class=p>(</span><span class=bp>self</span><span class=p>,</span> <span class=n>painter</span><span class=p>,</span> <span class=n>indexes</span><span class=p>,</span> <span class=n>content_rect</span><span class=p>):</span>
+        <span class=n>origin_rect</span> <span class=o>=</span> <span class=n>QtCore</span><span class=o>.</span><span class=n>QRect</span><span class=p>(</span><span class=n>content_rect</span><span class=p>)</span>
+
+        <span class=n>model</span> <span class=o>=</span> <span class=bp>self</span><span class=o>.</span><span class=n>model</span><span class=p>()</span>
+        <span class=n>available_width</span> <span class=o>=</span> <span class=n>content_rect</span><span class=o>.</span><span class=n>width</span><span class=p>()</span>
+        <span class=n>total_used_width</span> <span class=o>=</span> <span class=mi>0</span>
+
+        <span class=n>painter</span><span class=o>.</span><span class=n>save</span><span class=p>()</span>
+
+        <span class=n>spacing</span> <span class=o>=</span> <span class=mi>2</span>
+
+        <span class=k>for</span> <span class=n>idx</span> <span class=ow>in</span> <span class=n>indexes</span><span class=p>:</span>
+            <span class=n>index</span> <span class=o>=</span> <span class=n>model</span><span class=o>.</span><span class=n>index</span><span class=p>(</span><span class=n>idx</span><span class=p>,</span> <span class=mi>0</span><span class=p>)</span>
+            <span class=k>if</span> <span class=ow>not</span> <span class=n>index</span><span class=o>.</span><span class=n>isValid</span><span class=p>():</span>
+                <span class=k>continue</span>
+
+            <span class=n>icon</span> <span class=o>=</span> <span class=n>index</span><span class=o>.</span><span class=n>data</span><span class=p>(</span><span class=bp>self</span><span class=o>.</span><span class=n>_icon_role</span><span class=p>)</span>
+            <span class=n>text</span> <span class=o>=</span> <span class=n>index</span><span class=o>.</span><span class=n>data</span><span class=p>(</span><span class=bp>self</span><span class=o>.</span><span class=n>_text_role</span><span class=p>)</span>
+            <span class=n>valid_icon</span> <span class=o>=</span> <span class=n>icon</span> <span class=ow>is</span> <span class=ow>not</span> <span class=kc>None</span> <span class=ow>and</span> <span class=ow>not</span> <span class=n>icon</span><span class=o>.</span><span class=n>isNull</span><span class=p>()</span>
+            <span class=k>if</span> <span class=n>valid_icon</span><span class=p>:</span>
+                <span class=n>sizes</span> <span class=o>=</span> <span class=n>icon</span><span class=o>.</span><span class=n>availableSizes</span><span class=p>()</span>
+                <span class=k>if</span> <span class=n>sizes</span><span class=p>:</span>
+                    <span class=n>valid_icon</span> <span class=o>=</span> <span class=nb>any</span><span class=p>(</span><span class=n>size</span><span class=o>.</span><span class=n>width</span><span class=p>()</span> <span class=o>&gt;</span> <span class=mi>1</span> <span class=k>for</span> <span class=n>size</span> <span class=ow>in</span> <span class=n>sizes</span><span class=p>)</span>
+
+            <span class=k>if</span> <span class=n>valid_icon</span><span class=p>:</span>
+                <span class=n>metrics</span> <span class=o>=</span> <span class=bp>self</span><span class=o>.</span><span class=n>fontMetrics</span><span class=p>()</span>
+                <span class=n>icon_rect</span> <span class=o>=</span> <span class=n>QtCore</span><span class=o>.</span><span class=n>QRect</span><span class=p>(</span><span class=n>content_rect</span><span class=p>)</span>
+                <span class=n>diff</span> <span class=o>=</span> <span class=n>icon_rect</span><span class=o>.</span><span class=n>height</span><span class=p>()</span> <span class=o>-</span> <span class=n>metrics</span><span class=o>.</span><span class=n>height</span><span class=p>()</span>
+                <span class=k>if</span> <span class=n>diff</span> <span class=o>&lt;</span> <span class=mi>0</span><span class=p>:</span>
+                    <span class=n>diff</span> <span class=o>=</span> <span class=mi>0</span>
+                <span class=n>top_offset</span> <span class=o>=</span> <span class=n>diff</span> <span class=o>//</span> <span class=mi>2</span>
+                <span class=n>bottom_offset</span> <span class=o>=</span> <span class=n>diff</span> <span class=o>-</span> <span class=n>top_offset</span>
+                <span class=n>icon_rect</span><span class=o>.</span><span class=n>adjust</span><span class=p>(</span><span class=mi>0</span><span class=p>,</span> <span class=n>top_offset</span><span class=p>,</span> <span class=mi>0</span><span class=p>,</span> <span class=o>-</span><span class=n>bottom_offset</span><span class=p>)</span>
+                <span class=n>used_width</span> <span class=o>=</span> <span class=n>metrics</span><span class=o>.</span><span class=n>height</span><span class=p>()</span>
+                <span class=k>if</span> <span class=n>total_used_width</span> <span class=o>&gt;</span> <span class=mi>0</span><span class=p>:</span>
+                    <span class=n>total_used_width</span> <span class=o>+=</span> <span class=n>spacing</span>
+                <span class=n>total_used_width</span> <span class=o>+=</span> <span class=n>used_width</span>
+                <span class=k>if</span> <span class=n>total_used_width</span> <span class=o>&gt;</span> <span class=n>available_width</span><span class=p>:</span>
+                    <span class=k>break</span>
+
+                <span class=n>icon_rect</span><span class=o>.</span><span class=n>setWidth</span><span class=p>(</span><span class=n>used_width</span><span class=p>)</span>
+                <span class=n>icon</span><span class=o>.</span><span class=n>paint</span><span class=p>(</span>
+                    <span class=n>painter</span><span class=p>,</span>
+                    <span class=n>icon_rect</span><span class=p>,</span>
+                    <span class=n>QtCore</span><span class=o>.</span><span class=n>Qt</span><span class=o>.</span><span class=n>AlignCenter</span><span class=p>,</span>
+                    <span class=n>QtGui</span><span class=o>.</span><span class=n>QIcon</span><span class=o>.</span><span class=n>Normal</span><span class=p>,</span>
+                    <span class=n>QtGui</span><span class=o>.</span><span class=n>QIcon</span><span class=o>.</span><span class=n>On</span>
+                <span class=p>)</span>
+                <span class=n>content_rect</span><span class=o>.</span><span class=n>setLeft</span><span class=p>(</span><span class=n>icon_rect</span><span class=o>.</span><span class=n>right</span><span class=p>()</span> <span class=o>+</span> <span class=n>spacing</span><span class=p>)</span>
+
+            <span class=k>elif</span> <span class=n>text</span><span class=p>:</span>
+                <span class=n>bg_height</span> <span class=o>=</span> <span class=p>(</span>
+                    <span class=n>content_rect</span><span class=o>.</span><span class=n>height</span><span class=p>()</span>
+                    <span class=o>-</span> <span class=p>(</span><span class=mi>2</span> <span class=o>*</span> <span class=bp>self</span><span class=o>.</span><span class=n>_top_bottom_margins</span><span class=p>)</span>
+                <span class=p>)</span>
+                <span class=n>font_height</span> <span class=o>=</span> <span class=n>bg_height</span> <span class=o>-</span> <span class=p>(</span><span class=mi>2</span> <span class=o>*</span> <span class=bp>self</span><span class=o>.</span><span class=n>_top_bottom_padding</span><span class=p>)</span>
+
+                <span class=n>bg_top_y</span> <span class=o>=</span> <span class=n>content_rect</span><span class=o>.</span><span class=n>y</span><span class=p>()</span> <span class=o>+</span> <span class=bp>self</span><span class=o>.</span><span class=n>_top_bottom_margins</span>
+
+                <span class=n>font</span> <span class=o>=</span> <span class=bp>self</span><span class=o>.</span><span class=n>font</span><span class=p>()</span>
+                <span class=n>font</span><span class=o>.</span><span class=n>setPixelSize</span><span class=p>(</span><span class=n>font_height</span><span class=p>)</span>
+                <span class=n>metrics</span> <span class=o>=</span> <span class=n>QtGui</span><span class=o>.</span><span class=n>QFontMetrics</span><span class=p>(</span><span class=n>font</span><span class=p>)</span>
+                <span class=n>painter</span><span class=o>.</span><span class=n>setFont</span><span class=p>(</span><span class=n>font</span><span class=p>)</span>
+
+                <span class=n>label_rect</span> <span class=o>=</span> <span class=n>metrics</span><span class=o>.</span><span class=n>boundingRect</span><span class=p>(</span><span class=n>text</span><span class=p>)</span>
+
+                <span class=n>bg_width</span> <span class=o>=</span> <span class=n>label_rect</span><span class=o>.</span><span class=n>width</span><span class=p>()</span> <span class=o>+</span> <span class=p>(</span><span class=mi>2</span> <span class=o>*</span> <span class=bp>self</span><span class=o>.</span><span class=n>_left_right_padding</span><span class=p>)</span>
+                <span class=k>if</span> <span class=n>total_used_width</span> <span class=o>&gt;</span> <span class=mi>0</span><span class=p>:</span>
+                    <span class=n>total_used_width</span> <span class=o>+=</span> <span class=n>spacing</span>
+                <span class=n>total_used_width</span> <span class=o>+=</span> <span class=n>bg_width</span>
+                <span class=k>if</span> <span class=n>total_used_width</span> <span class=o>&gt;</span> <span class=n>available_width</span><span class=p>:</span>
+                    <span class=k>break</span>
+
+                <span class=n>bg_rect</span> <span class=o>=</span> <span class=n>QtCore</span><span class=o>.</span><span class=n>QRectF</span><span class=p>(</span><span class=n>label_rect</span><span class=p>)</span>
+                <span class=n>bg_rect</span><span class=o>.</span><span class=n>moveTop</span><span class=p>(</span><span class=n>bg_top_y</span><span class=p>)</span>
+                <span class=n>bg_rect</span><span class=o>.</span><span class=n>moveLeft</span><span class=p>(</span><span class=n>content_rect</span><span class=o>.</span><span class=n>left</span><span class=p>())</span>
+                <span class=n>bg_rect</span><span class=o>.</span><span class=n>setWidth</span><span class=p>(</span><span class=n>bg_width</span><span class=p>)</span>
+                <span class=n>bg_rect</span><span class=o>.</span><span class=n>setHeight</span><span class=p>(</span><span class=n>bg_height</span><span class=p>)</span>
+
+                <span class=n>label_rect</span><span class=o>.</span><span class=n>moveTop</span><span class=p>(</span><span class=n>bg_top_y</span><span class=p>)</span>
+                <span class=n>label_rect</span><span class=o>.</span><span class=n>moveLeft</span><span class=p>(</span>
+                    <span class=n>content_rect</span><span class=o>.</span><span class=n>left</span><span class=p>()</span> <span class=o>+</span> <span class=bp>self</span><span class=o>.</span><span class=n>_left_right_padding</span>
+                <span class=p>)</span>
+
+                <span class=n>path</span> <span class=o>=</span> <span class=n>QtGui</span><span class=o>.</span><span class=n>QPainterPath</span><span class=p>()</span>
+                <span class=n>path</span><span class=o>.</span><span class=n>addRoundedRect</span><span class=p>(</span><span class=n>bg_rect</span><span class=p>,</span> <span class=mi>5</span><span class=p>,</span> <span class=mi>5</span><span class=p>)</span>
+
+                <span class=n>painter</span><span class=o>.</span><span class=n>fillPath</span><span class=p>(</span><span class=n>path</span><span class=p>,</span> <span class=bp>self</span><span class=o>.</span><span class=n>_item_bg_color</span><span class=p>)</span>
+                <span class=n>painter</span><span class=o>.</span><span class=n>drawText</span><span class=p>(</span><span class=n>label_rect</span><span class=p>,</span> <span class=n>QtCore</span><span class=o>.</span><span class=n>Qt</span><span class=o>.</span><span class=n>AlignCenter</span><span class=p>,</span> <span class=n>text</span><span class=p>)</span>
+
+                <span class=n>content_rect</span><span class=o>.</span><span class=n>setLeft</span><span class=p>(</span><span class=n>bg_rect</span><span class=o>.</span><span class=n>right</span><span class=p>()</span> <span class=o>+</span> <span class=n>spacing</span><span class=p>)</span>
+
+        <span class=n>painter</span><span class=o>.</span><span class=n>restore</span><span class=p>()</span>
+
+        <span class=k>if</span> <span class=n>total_used_width</span> <span class=o>&gt;</span> <span class=n>available_width</span><span class=p>:</span>
+            <span class=n>ellide_dots</span> <span class=o>=</span> <span class=nb>chr</span><span class=p>(</span><span class=mh>0x2026</span><span class=p>)</span>
+            <span class=n>painter</span><span class=o>.</span><span class=n>drawText</span><span class=p>(</span><span class=n>origin_rect</span><span class=p>,</span> <span class=n>QtCore</span><span class=o>.</span><span class=n>Qt</span><span class=o>.</span><span class=n>AlignRight</span><span class=p>,</span> <span class=n>ellide_dots</span><span class=p>)</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>setItemCheckState</span><span class=p>(</span><span class=bp>self</span><span class=p>,</span> <span class=n>index</span><span class=p>,</span> <span class=n>state</span><span class=p>):</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>setItemData</span><span class=p>(</span><span class=n>index</span><span class=p>,</span> <span class=n>state</span><span class=p>,</span> <span class=n>QtCore</span><span class=o>.</span><span class=n>Qt</span><span class=o>.</span><span class=n>CheckStateRole</span><span class=p>)</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>set_value</span><span class=p>(</span>
+        <span class=bp>self</span><span class=p>,</span>
+        <span class=n>values</span><span class=p>:</span> <span class=n>Optional</span><span class=p>[</span><span class=n>Iterable</span><span class=p>[</span><span class=n>Any</span><span class=p>]],</span>
+        <span class=n>role</span><span class=p>:</span> <span class=n>Optional</span><span class=p>[</span><span class=nb>int</span><span class=p>]</span> <span class=o>=</span> <span class=kc>None</span><span class=p>,</span>
+    <span class=p>):</span>
+        <span class=k>if</span> <span class=n>role</span> <span class=ow>is</span> <span class=kc>None</span><span class=p>:</span>
+            <span class=n>role</span> <span class=o>=</span> <span class=bp>self</span><span class=o>.</span><span class=n>_value_role</span>
+
+        <span class=k>for</span> <span class=n>idx</span> <span class=ow>in</span> <span class=nb>range</span><span class=p>(</span><span class=bp>self</span><span class=o>.</span><span class=n>count</span><span class=p>()):</span>
+            <span class=n>value</span> <span class=o>=</span> <span class=bp>self</span><span class=o>.</span><span class=n>itemData</span><span class=p>(</span><span class=n>idx</span><span class=p>,</span> <span class=n>role</span><span class=o>=</span><span class=n>role</span><span class=p>)</span>
+            <span class=n>check_state</span> <span class=o>=</span> <span class=n>CHECKED_INT</span>
+            <span class=k>if</span> <span class=n>values</span> <span class=ow>is</span> <span class=kc>None</span> <span class=ow>or</span> <span class=n>value</span> <span class=ow>not</span> <span class=ow>in</span> <span class=n>values</span><span class=p>:</span>
+                <span class=n>check_state</span> <span class=o>=</span> <span class=n>UNCHECKED_INT</span>
+            <span class=bp>self</span><span class=o>.</span><span class=n>setItemData</span><span class=p>(</span><span class=n>idx</span><span class=p>,</span> <span class=n>check_state</span><span class=p>,</span> <span class=n>QtCore</span><span class=o>.</span><span class=n>Qt</span><span class=o>.</span><span class=n>CheckStateRole</span><span class=p>)</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>repaint</span><span class=p>()</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>get_value_info</span><span class=p>(</span>
+        <span class=bp>self</span><span class=p>,</span>
+        <span class=n>role</span><span class=p>:</span> <span class=n>Optional</span><span class=p>[</span><span class=nb>int</span><span class=p>]</span> <span class=o>=</span> <span class=kc>None</span><span class=p>,</span>
+        <span class=n>propagate_all_unchecked_as_checked</span><span class=p>:</span> <span class=nb>bool</span> <span class=o>=</span> <span class=kc>None</span>
+    <span class=p>)</span> <span class=o>-&gt;</span> <span class=n>List</span><span class=p>[</span><span class=n>Tuple</span><span class=p>[</span><span class=n>Any</span><span class=p>,</span> <span class=nb>bool</span><span class=p>]]:</span>
+<span class=w>        </span><span class=sd>&quot;&quot;&quot;Get the values and their checked state.</span>
+
+<span class=sd>        Args:</span>
+<span class=sd>            role (int | None): The role to get the values from.</span>
+<span class=sd>                If None, the default value role is used.</span>
+<span class=sd>            propagate_all_unchecked_as_checked (bool | None): If True,</span>
+<span class=sd>                all unchecked items will be treated as checked.</span>
+<span class=sd>                If None, the current value of</span>
+<span class=sd>                &#39;propagate_all_unchecked_as_checked&#39; is used.</span>
+
+<span class=sd>        Returns:</span>
+<span class=sd>            List[Tuple[Any, bool]]: The values and their checked state.</span>
+
+<span class=sd>        &quot;&quot;&quot;</span>
+        <span class=k>if</span> <span class=n>role</span> <span class=ow>is</span> <span class=kc>None</span><span class=p>:</span>
+            <span class=n>role</span> <span class=o>=</span> <span class=bp>self</span><span class=o>.</span><span class=n>_value_role</span>
+
+        <span class=k>if</span> <span class=n>propagate_all_unchecked_as_checked</span> <span class=ow>is</span> <span class=kc>None</span><span class=p>:</span>
+            <span class=n>propagate_all_unchecked_as_checked</span> <span class=o>=</span> <span class=p>(</span>
+                <span class=bp>self</span><span class=o>.</span><span class=n>_all_unchecked_as_checked</span>
+            <span class=p>)</span>
+
+        <span class=n>items</span> <span class=o>=</span> <span class=p>[]</span>
+        <span class=n>all_unchecked</span> <span class=o>=</span> <span class=kc>True</span>
+        <span class=k>for</span> <span class=n>idx</span> <span class=ow>in</span> <span class=nb>range</span><span class=p>(</span><span class=bp>self</span><span class=o>.</span><span class=n>count</span><span class=p>()):</span>
+            <span class=n>item_type</span> <span class=o>=</span> <span class=bp>self</span><span class=o>.</span><span class=n>itemData</span><span class=p>(</span><span class=n>idx</span><span class=p>,</span> <span class=n>role</span><span class=o>=</span><span class=bp>self</span><span class=o>.</span><span class=n>_item_type_role</span><span class=p>)</span>
+            <span class=k>if</span> <span class=n>item_type</span> <span class=ow>is</span> <span class=ow>not</span> <span class=kc>None</span> <span class=ow>and</span> <span class=n>item_type</span> <span class=o>!=</span> <span class=n>VALUE_ITEM_TYPE</span><span class=p>:</span>
+                <span class=k>continue</span>
+
+            <span class=n>state</span> <span class=o>=</span> <span class=n>checkstate_int_to_enum</span><span class=p>(</span>
+                <span class=bp>self</span><span class=o>.</span><span class=n>itemData</span><span class=p>(</span><span class=n>idx</span><span class=p>,</span> <span class=n>role</span><span class=o>=</span><span class=n>QtCore</span><span class=o>.</span><span class=n>Qt</span><span class=o>.</span><span class=n>CheckStateRole</span><span class=p>)</span>
+            <span class=p>)</span>
+            <span class=n>checked</span> <span class=o>=</span> <span class=n>state</span> <span class=o>==</span> <span class=n>QtCore</span><span class=o>.</span><span class=n>Qt</span><span class=o>.</span><span class=n>Checked</span>
+            <span class=k>if</span> <span class=n>checked</span><span class=p>:</span>
+                <span class=n>all_unchecked</span> <span class=o>=</span> <span class=kc>False</span>
+            <span class=n>items</span><span class=o>.</span><span class=n>append</span><span class=p>(</span>
+                <span class=p>(</span><span class=bp>self</span><span class=o>.</span><span class=n>itemData</span><span class=p>(</span><span class=n>idx</span><span class=p>,</span> <span class=n>role</span><span class=o>=</span><span class=n>role</span><span class=p>),</span> <span class=n>checked</span><span class=p>)</span>
+            <span class=p>)</span>
+
+        <span class=k>if</span> <span class=n>propagate_all_unchecked_as_checked</span> <span class=ow>and</span> <span class=n>all_unchecked</span><span class=p>:</span>
+            <span class=n>items</span> <span class=o>=</span> <span class=p>[</span>
+                <span class=p>(</span><span class=n>value</span><span class=p>,</span> <span class=kc>True</span><span class=p>)</span>
+                <span class=k>for</span> <span class=n>value</span><span class=p>,</span> <span class=n>checked</span> <span class=ow>in</span> <span class=n>items</span>
+            <span class=p>]</span>
+        <span class=k>return</span> <span class=n>items</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>get_value</span><span class=p>(</span><span class=bp>self</span><span class=p>,</span> <span class=n>role</span><span class=o>=</span><span class=kc>None</span><span class=p>):</span>
+        <span class=k>if</span> <span class=n>role</span> <span class=ow>is</span> <span class=kc>None</span><span class=p>:</span>
+            <span class=n>role</span> <span class=o>=</span> <span class=bp>self</span><span class=o>.</span><span class=n>_value_role</span>
+
+        <span class=k>return</span> <span class=p>[</span>
+            <span class=n>value</span>
+            <span class=k>for</span> <span class=n>value</span><span class=p>,</span> <span class=n>checked</span> <span class=ow>in</span> <span class=bp>self</span><span class=o>.</span><span class=n>get_value_info</span><span class=p>(</span><span class=n>role</span><span class=p>)</span>
+            <span class=k>if</span> <span class=n>checked</span>
+        <span class=p>]</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>wheelEvent</span><span class=p>(</span><span class=bp>self</span><span class=p>,</span> <span class=n>event</span><span class=p>):</span>
+        <span class=n>event</span><span class=o>.</span><span class=n>ignore</span><span class=p>()</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>keyPressEvent</span><span class=p>(</span><span class=bp>self</span><span class=p>,</span> <span class=n>event</span><span class=p>):</span>
+        <span class=k>if</span> <span class=p>(</span>
+            <span class=n>event</span><span class=o>.</span><span class=n>key</span><span class=p>()</span> <span class=o>==</span> <span class=n>QtCore</span><span class=o>.</span><span class=n>Qt</span><span class=o>.</span><span class=n>Key_Down</span>
+            <span class=ow>and</span> <span class=n>event</span><span class=o>.</span><span class=n>modifiers</span><span class=p>()</span> <span class=o>&amp;</span> <span class=n>QtCore</span><span class=o>.</span><span class=n>Qt</span><span class=o>.</span><span class=n>AltModifier</span>
+        <span class=p>):</span>
+            <span class=k>return</span> <span class=bp>self</span><span class=o>.</span><span class=n>showPopup</span><span class=p>()</span>
+
+        <span class=k>if</span> <span class=n>event</span><span class=o>.</span><span class=n>key</span><span class=p>()</span> <span class=ow>in</span> <span class=bp>self</span><span class=o>.</span><span class=n>ignored_keys</span><span class=p>:</span>
+            <span class=k>return</span> <span class=n>event</span><span class=o>.</span><span class=n>ignore</span><span class=p>()</span>
+
+        <span class=k>return</span> <span class=nb>super</span><span class=p>()</span><span class=o>.</span><span class=n>keyPressEvent</span><span class=p>(</span><span class=n>event</span><span class=p>)</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>_get_checked_idx</span><span class=p>(</span><span class=bp>self</span><span class=p>)</span> <span class=o>-&gt;</span> <span class=n>List</span><span class=p>[</span><span class=nb>int</span><span class=p>]:</span>
+        <span class=n>checked_indexes</span> <span class=o>=</span> <span class=p>[]</span>
+        <span class=k>for</span> <span class=n>idx</span> <span class=ow>in</span> <span class=nb>range</span><span class=p>(</span><span class=bp>self</span><span class=o>.</span><span class=n>count</span><span class=p>()):</span>
+            <span class=n>item_type</span> <span class=o>=</span> <span class=bp>self</span><span class=o>.</span><span class=n>itemData</span><span class=p>(</span><span class=n>idx</span><span class=p>,</span> <span class=n>role</span><span class=o>=</span><span class=bp>self</span><span class=o>.</span><span class=n>_item_type_role</span><span class=p>)</span>
+            <span class=k>if</span> <span class=n>item_type</span> <span class=ow>is</span> <span class=ow>not</span> <span class=kc>None</span> <span class=ow>and</span> <span class=n>item_type</span> <span class=o>!=</span> <span class=n>VALUE_ITEM_TYPE</span><span class=p>:</span>
+                <span class=k>continue</span>
+
+            <span class=n>state</span> <span class=o>=</span> <span class=n>checkstate_int_to_enum</span><span class=p>(</span>
+                <span class=bp>self</span><span class=o>.</span><span class=n>itemData</span><span class=p>(</span><span class=n>idx</span><span class=p>,</span> <span class=n>role</span><span class=o>=</span><span class=n>QtCore</span><span class=o>.</span><span class=n>Qt</span><span class=o>.</span><span class=n>CheckStateRole</span><span class=p>)</span>
+            <span class=p>)</span>
+            <span class=k>if</span> <span class=n>state</span> <span class=o>==</span> <span class=n>QtCore</span><span class=o>.</span><span class=n>Qt</span><span class=o>.</span><span class=n>Checked</span><span class=p>:</span>
+                <span class=n>checked_indexes</span><span class=o>.</span><span class=n>append</span><span class=p>(</span><span class=n>idx</span><span class=p>)</span>
+        <span class=k>return</span> <span class=n>checked_indexes</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>_mouse_released_event_handle</span><span class=p>(</span>
+        <span class=bp>self</span><span class=p>,</span> <span class=n>event</span><span class=p>,</span> <span class=n>current_index</span><span class=p>,</span> <span class=n>index_flags</span><span class=p>,</span> <span class=n>state</span>
+    <span class=p>):</span>
+        <span class=k>if</span> <span class=p>(</span>
+            <span class=bp>self</span><span class=o>.</span><span class=n>_block_mouse_release_timer</span><span class=o>.</span><span class=n>isActive</span><span class=p>()</span>
+            <span class=ow>or</span> <span class=ow>not</span> <span class=n>current_index</span><span class=o>.</span><span class=n>isValid</span><span class=p>()</span>
+            <span class=ow>or</span> <span class=ow>not</span> <span class=bp>self</span><span class=o>.</span><span class=n>view</span><span class=p>()</span><span class=o>.</span><span class=n>isVisible</span><span class=p>()</span>
+            <span class=ow>or</span> <span class=ow>not</span> <span class=bp>self</span><span class=o>.</span><span class=n>view</span><span class=p>()</span><span class=o>.</span><span class=n>rect</span><span class=p>()</span><span class=o>.</span><span class=n>contains</span><span class=p>(</span><span class=n>event</span><span class=o>.</span><span class=n>pos</span><span class=p>())</span>
+            <span class=ow>or</span> <span class=ow>not</span> <span class=n>index_flags</span> <span class=o>&amp;</span> <span class=n>QtCore</span><span class=o>.</span><span class=n>Qt</span><span class=o>.</span><span class=n>ItemIsSelectable</span>
+            <span class=ow>or</span> <span class=ow>not</span> <span class=n>index_flags</span> <span class=o>&amp;</span> <span class=n>QtCore</span><span class=o>.</span><span class=n>Qt</span><span class=o>.</span><span class=n>ItemIsEnabled</span>
+            <span class=ow>or</span> <span class=ow>not</span> <span class=n>index_flags</span> <span class=o>&amp;</span> <span class=n>QtCore</span><span class=o>.</span><span class=n>Qt</span><span class=o>.</span><span class=n>ItemIsUserCheckable</span>
+        <span class=p>):</span>
+            <span class=k>return</span> <span class=kc>None</span>
+
+        <span class=k>if</span> <span class=n>state</span> <span class=o>==</span> <span class=n>QtCore</span><span class=o>.</span><span class=n>Qt</span><span class=o>.</span><span class=n>Checked</span><span class=p>:</span>
+            <span class=k>return</span> <span class=n>UNCHECKED_INT</span>
+        <span class=k>return</span> <span class=n>CHECKED_INT</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>_key_press_event_handler</span><span class=p>(</span>
+        <span class=bp>self</span><span class=p>,</span> <span class=n>event</span><span class=p>,</span> <span class=n>current_index</span><span class=p>,</span> <span class=n>index_flags</span><span class=p>,</span> <span class=n>state</span>
+    <span class=p>):</span>
+        <span class=c1># TODO: handle QtCore.Qt.Key_Enter, Key_Return?</span>
+        <span class=k>if</span> <span class=n>event</span><span class=o>.</span><span class=n>key</span><span class=p>()</span> <span class=o>!=</span> <span class=n>QtCore</span><span class=o>.</span><span class=n>Qt</span><span class=o>.</span><span class=n>Key_Space</span><span class=p>:</span>
+            <span class=k>return</span> <span class=kc>None</span>
+
+        <span class=k>if</span> <span class=p>(</span>
+            <span class=n>index_flags</span> <span class=o>&amp;</span> <span class=n>QtCore</span><span class=o>.</span><span class=n>Qt</span><span class=o>.</span><span class=n>ItemIsUserCheckable</span>
+            <span class=ow>and</span> <span class=n>index_flags</span> <span class=o>&amp;</span> <span class=n>ITEM_IS_USER_TRISTATE</span>
+        <span class=p>):</span>
+            <span class=k>return</span> <span class=p>(</span><span class=n>checkstate_enum_to_int</span><span class=p>(</span><span class=n>state</span><span class=p>)</span> <span class=o>+</span> <span class=mi>1</span><span class=p>)</span> <span class=o>%</span> <span class=mi>3</span>
+
+        <span class=k>if</span> <span class=n>index_flags</span> <span class=o>&amp;</span> <span class=n>QtCore</span><span class=o>.</span><span class=n>Qt</span><span class=o>.</span><span class=n>ItemIsUserCheckable</span><span class=p>:</span>
+            <span class=c1># toggle the current items check state</span>
+            <span class=k>if</span> <span class=n>state</span> <span class=o>!=</span> <span class=n>QtCore</span><span class=o>.</span><span class=n>Qt</span><span class=o>.</span><span class=n>Checked</span><span class=p>:</span>
+                <span class=k>return</span> <span class=n>CHECKED_INT</span>
+            <span class=k>return</span> <span class=n>UNCHECKED_INT</span>
+        <span class=k>return</span> <span class=kc>None</span>
+</code></pre></div></td></tr></table></div> </details> <div class="doc doc-children"> <div class="doc doc-object doc-function"> <h3 id=client.ayon_core.tools.loader.ui._multicombobox.CustomPaintMultiselectComboBox.eventFilter class="doc doc-heading"> <code class="highlight language-python"><span class=n>eventFilter</span><span class=p>(</span><span class=n>obj</span><span class=p>,</span> <span class=n>event</span><span class=p>)</span></code> </h3> <div class="doc doc-contents "> <p>Reimplemented.</p> <details class=quote> <summary>Source code in <code>client/ayon_core/tools/loader/ui/_multicombobox.py</code></summary> <div class=highlight><table class=highlighttable><tr><td class=linenos><div class=linenodiv><pre><span></span><span class=normal>687</span>
+<span class=normal>688</span>
+<span class=normal>689</span>
+<span class=normal>690</span>
+<span class=normal>691</span>
+<span class=normal>692</span>
+<span class=normal>693</span></pre></div></td><td class=code><div><pre><span></span><code><span class=k>def</span><span class=w> </span><span class=nf>eventFilter</span><span class=p>(</span><span class=bp>self</span><span class=p>,</span> <span class=n>obj</span><span class=p>,</span> <span class=n>event</span><span class=p>):</span>
+<span class=w>    </span><span class=sd>&quot;&quot;&quot;Reimplemented.&quot;&quot;&quot;</span>
+    <span class=n>result</span> <span class=o>=</span> <span class=bp>self</span><span class=o>.</span><span class=n>_event_popup_shown</span><span class=p>(</span><span class=n>obj</span><span class=p>,</span> <span class=n>event</span><span class=p>)</span>
+    <span class=k>if</span> <span class=n>result</span> <span class=ow>is</span> <span class=ow>not</span> <span class=kc>None</span><span class=p>:</span>
+        <span class=k>return</span> <span class=n>result</span>
+
+    <span class=k>return</span> <span class=nb>super</span><span class=p>()</span><span class=o>.</span><span class=n>eventFilter</span><span class=p>(</span><span class=n>obj</span><span class=p>,</span> <span class=n>event</span><span class=p>)</span>
+</code></pre></div></td></tr></table></div> </details> </div> </div> <div class="doc doc-object doc-function"> <h3 id=client.ayon_core.tools.loader.ui._multicombobox.CustomPaintMultiselectComboBox.get_value_info class="doc doc-heading"> <code class="highlight language-python"><span class=n>get_value_info</span><span class=p>(</span><span class=n>role</span><span class=o>=</span><span class=kc>None</span><span class=p>,</span> <span class=n>propagate_all_unchecked_as_checked</span><span class=o>=</span><span class=kc>None</span><span class=p>)</span></code> </h3> <div class="doc doc-contents "> <p>Get the values and their checked state.</p> <p><span class=doc-section-title>Parameters:</span></p> <table> <thead> <tr> <th>Name</th> <th>Type</th> <th>Description</th> <th>Default</th> </tr> </thead> <tbody> <tr class=doc-section-item> <td> <code>role</code> </td> <td> <code><span title=int>int</span> | None</code> </td> <td> <div class=doc-md-description> <p>The role to get the values from. If None, the default value role is used.</p> </div> </td> <td> <code>None</code> </td> </tr> <tr class=doc-section-item> <td> <code>propagate_all_unchecked_as_checked</code> </td> <td> <code><span title=bool>bool</span> | None</code> </td> <td> <div class=doc-md-description> <p>If True, all unchecked items will be treated as checked. If None, the current value of 'propagate_all_unchecked_as_checked' is used.</p> </div> </td> <td> <code>None</code> </td> </tr> </tbody> </table> <p><span class=doc-section-title>Returns:</span></p> <table> <thead> <tr> <th>Type</th> <th>Description</th> </tr> </thead> <tbody> <tr class=doc-section-item> <td> <code><span title=typing.List>List</span>[<span title=typing.Tuple>Tuple</span>[<span title=typing.Any>Any</span>, <span title=bool>bool</span>]]</code> </td> <td> <div class=doc-md-description> <p>List[Tuple[Any, bool]]: The values and their checked state.</p> </div> </td> </tr> </tbody> </table> <details class=quote> <summary>Source code in <code>client/ayon_core/tools/loader/ui/_multicombobox.py</code></summary> <div class=highlight><table class=highlighttable><tr><td class=linenos><div class=linenodiv><pre><span></span><span class=normal>857</span>
+<span class=normal>858</span>
+<span class=normal>859</span>
+<span class=normal>860</span>
+<span class=normal>861</span>
+<span class=normal>862</span>
+<span class=normal>863</span>
+<span class=normal>864</span>
+<span class=normal>865</span>
+<span class=normal>866</span>
+<span class=normal>867</span>
+<span class=normal>868</span>
+<span class=normal>869</span>
+<span class=normal>870</span>
+<span class=normal>871</span>
+<span class=normal>872</span>
+<span class=normal>873</span>
+<span class=normal>874</span>
+<span class=normal>875</span>
+<span class=normal>876</span>
+<span class=normal>877</span>
+<span class=normal>878</span>
+<span class=normal>879</span>
+<span class=normal>880</span>
+<span class=normal>881</span>
+<span class=normal>882</span>
+<span class=normal>883</span>
+<span class=normal>884</span>
+<span class=normal>885</span>
+<span class=normal>886</span>
+<span class=normal>887</span>
+<span class=normal>888</span>
+<span class=normal>889</span>
+<span class=normal>890</span>
+<span class=normal>891</span>
+<span class=normal>892</span>
+<span class=normal>893</span>
+<span class=normal>894</span>
+<span class=normal>895</span>
+<span class=normal>896</span>
+<span class=normal>897</span>
+<span class=normal>898</span>
+<span class=normal>899</span>
+<span class=normal>900</span>
+<span class=normal>901</span>
+<span class=normal>902</span>
+<span class=normal>903</span>
+<span class=normal>904</span>
+<span class=normal>905</span>
+<span class=normal>906</span></pre></div></td><td class=code><div><pre><span></span><code><span class=k>def</span><span class=w> </span><span class=nf>get_value_info</span><span class=p>(</span>
+    <span class=bp>self</span><span class=p>,</span>
+    <span class=n>role</span><span class=p>:</span> <span class=n>Optional</span><span class=p>[</span><span class=nb>int</span><span class=p>]</span> <span class=o>=</span> <span class=kc>None</span><span class=p>,</span>
+    <span class=n>propagate_all_unchecked_as_checked</span><span class=p>:</span> <span class=nb>bool</span> <span class=o>=</span> <span class=kc>None</span>
+<span class=p>)</span> <span class=o>-&gt;</span> <span class=n>List</span><span class=p>[</span><span class=n>Tuple</span><span class=p>[</span><span class=n>Any</span><span class=p>,</span> <span class=nb>bool</span><span class=p>]]:</span>
+<span class=w>    </span><span class=sd>&quot;&quot;&quot;Get the values and their checked state.</span>
+
+<span class=sd>    Args:</span>
+<span class=sd>        role (int | None): The role to get the values from.</span>
+<span class=sd>            If None, the default value role is used.</span>
+<span class=sd>        propagate_all_unchecked_as_checked (bool | None): If True,</span>
+<span class=sd>            all unchecked items will be treated as checked.</span>
+<span class=sd>            If None, the current value of</span>
+<span class=sd>            &#39;propagate_all_unchecked_as_checked&#39; is used.</span>
+
+<span class=sd>    Returns:</span>
+<span class=sd>        List[Tuple[Any, bool]]: The values and their checked state.</span>
+
+<span class=sd>    &quot;&quot;&quot;</span>
+    <span class=k>if</span> <span class=n>role</span> <span class=ow>is</span> <span class=kc>None</span><span class=p>:</span>
+        <span class=n>role</span> <span class=o>=</span> <span class=bp>self</span><span class=o>.</span><span class=n>_value_role</span>
+
+    <span class=k>if</span> <span class=n>propagate_all_unchecked_as_checked</span> <span class=ow>is</span> <span class=kc>None</span><span class=p>:</span>
+        <span class=n>propagate_all_unchecked_as_checked</span> <span class=o>=</span> <span class=p>(</span>
+            <span class=bp>self</span><span class=o>.</span><span class=n>_all_unchecked_as_checked</span>
+        <span class=p>)</span>
+
+    <span class=n>items</span> <span class=o>=</span> <span class=p>[]</span>
+    <span class=n>all_unchecked</span> <span class=o>=</span> <span class=kc>True</span>
+    <span class=k>for</span> <span class=n>idx</span> <span class=ow>in</span> <span class=nb>range</span><span class=p>(</span><span class=bp>self</span><span class=o>.</span><span class=n>count</span><span class=p>()):</span>
+        <span class=n>item_type</span> <span class=o>=</span> <span class=bp>self</span><span class=o>.</span><span class=n>itemData</span><span class=p>(</span><span class=n>idx</span><span class=p>,</span> <span class=n>role</span><span class=o>=</span><span class=bp>self</span><span class=o>.</span><span class=n>_item_type_role</span><span class=p>)</span>
+        <span class=k>if</span> <span class=n>item_type</span> <span class=ow>is</span> <span class=ow>not</span> <span class=kc>None</span> <span class=ow>and</span> <span class=n>item_type</span> <span class=o>!=</span> <span class=n>VALUE_ITEM_TYPE</span><span class=p>:</span>
+            <span class=k>continue</span>
+
+        <span class=n>state</span> <span class=o>=</span> <span class=n>checkstate_int_to_enum</span><span class=p>(</span>
+            <span class=bp>self</span><span class=o>.</span><span class=n>itemData</span><span class=p>(</span><span class=n>idx</span><span class=p>,</span> <span class=n>role</span><span class=o>=</span><span class=n>QtCore</span><span class=o>.</span><span class=n>Qt</span><span class=o>.</span><span class=n>CheckStateRole</span><span class=p>)</span>
+        <span class=p>)</span>
+        <span class=n>checked</span> <span class=o>=</span> <span class=n>state</span> <span class=o>==</span> <span class=n>QtCore</span><span class=o>.</span><span class=n>Qt</span><span class=o>.</span><span class=n>Checked</span>
+        <span class=k>if</span> <span class=n>checked</span><span class=p>:</span>
+            <span class=n>all_unchecked</span> <span class=o>=</span> <span class=kc>False</span>
+        <span class=n>items</span><span class=o>.</span><span class=n>append</span><span class=p>(</span>
+            <span class=p>(</span><span class=bp>self</span><span class=o>.</span><span class=n>itemData</span><span class=p>(</span><span class=n>idx</span><span class=p>,</span> <span class=n>role</span><span class=o>=</span><span class=n>role</span><span class=p>),</span> <span class=n>checked</span><span class=p>)</span>
+        <span class=p>)</span>
+
+    <span class=k>if</span> <span class=n>propagate_all_unchecked_as_checked</span> <span class=ow>and</span> <span class=n>all_unchecked</span><span class=p>:</span>
+        <span class=n>items</span> <span class=o>=</span> <span class=p>[</span>
+            <span class=p>(</span><span class=n>value</span><span class=p>,</span> <span class=kc>True</span><span class=p>)</span>
+            <span class=k>for</span> <span class=n>value</span><span class=p>,</span> <span class=n>checked</span> <span class=ow>in</span> <span class=n>items</span>
+        <span class=p>]</span>
+    <span class=k>return</span> <span class=n>items</span>
+</code></pre></div></td></tr></table></div> </details> </div> </div> <div class="doc doc-object doc-function"> <h3 id=client.ayon_core.tools.loader.ui._multicombobox.CustomPaintMultiselectComboBox.hidePopup class="doc doc-heading"> <code class="highlight language-python"><span class=n>hidePopup</span><span class=p>()</span></code> </h3> <div class="doc doc-contents "> <p>Reimplemented.</p> <details class=quote> <summary>Source code in <code>client/ayon_core/tools/loader/ui/_multicombobox.py</code></summary> <div class=highlight><table class=highlighttable><tr><td class=linenos><div class=linenodiv><pre><span></span><span class=normal>636</span>
+<span class=normal>637</span>
+<span class=normal>638</span>
+<span class=normal>639</span>
+<span class=normal>640</span>
+<span class=normal>641</span>
+<span class=normal>642</span>
+<span class=normal>643</span></pre></div></td><td class=code><div><pre><span></span><code><span class=k>def</span><span class=w> </span><span class=nf>hidePopup</span><span class=p>(</span><span class=bp>self</span><span class=p>):</span>
+<span class=w>    </span><span class=sd>&quot;&quot;&quot;Reimplemented.&quot;&quot;&quot;</span>
+    <span class=bp>self</span><span class=o>.</span><span class=n>view</span><span class=p>()</span><span class=o>.</span><span class=n>removeEventFilter</span><span class=p>(</span><span class=bp>self</span><span class=p>)</span>
+    <span class=bp>self</span><span class=o>.</span><span class=n>view</span><span class=p>()</span><span class=o>.</span><span class=n>viewport</span><span class=p>()</span><span class=o>.</span><span class=n>removeEventFilter</span><span class=p>(</span><span class=bp>self</span><span class=p>)</span>
+    <span class=bp>self</span><span class=o>.</span><span class=n>_popup_is_shown</span> <span class=o>=</span> <span class=kc>False</span>
+    <span class=bp>self</span><span class=o>.</span><span class=n>_initial_mouse_pos</span> <span class=o>=</span> <span class=kc>None</span>
+    <span class=nb>super</span><span class=p>()</span><span class=o>.</span><span class=n>hidePopup</span><span class=p>()</span>
+    <span class=bp>self</span><span class=o>.</span><span class=n>view</span><span class=p>()</span><span class=o>.</span><span class=n>clearFocus</span><span class=p>()</span>
+</code></pre></div></td></tr></table></div> </details> </div> </div> <div class="doc doc-object doc-function"> <h3 id=client.ayon_core.tools.loader.ui._multicombobox.CustomPaintMultiselectComboBox.mousePressEvent class="doc doc-heading"> <code class="highlight language-python"><span class=n>mousePressEvent</span><span class=p>(</span><span class=n>event</span><span class=p>)</span></code> </h3> <div class="doc doc-contents "> <p>Reimplemented.</p> <details class=quote> <summary>Source code in <code>client/ayon_core/tools/loader/ui/_multicombobox.py</code></summary> <div class=highlight><table class=highlighttable><tr><td class=linenos><div class=linenodiv><pre><span></span><span class=normal>618</span>
+<span class=normal>619</span>
+<span class=normal>620</span>
+<span class=normal>621</span>
+<span class=normal>622</span>
+<span class=normal>623</span>
+<span class=normal>624</span>
+<span class=normal>625</span>
+<span class=normal>626</span></pre></div></td><td class=code><div><pre><span></span><code><span class=k>def</span><span class=w> </span><span class=nf>mousePressEvent</span><span class=p>(</span><span class=bp>self</span><span class=p>,</span> <span class=n>event</span><span class=p>):</span>
+<span class=w>    </span><span class=sd>&quot;&quot;&quot;Reimplemented.&quot;&quot;&quot;</span>
+    <span class=bp>self</span><span class=o>.</span><span class=n>_popup_is_shown</span> <span class=o>=</span> <span class=kc>False</span>
+    <span class=nb>super</span><span class=p>()</span><span class=o>.</span><span class=n>mousePressEvent</span><span class=p>(</span><span class=n>event</span><span class=p>)</span>
+    <span class=k>if</span> <span class=bp>self</span><span class=o>.</span><span class=n>_popup_is_shown</span><span class=p>:</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>_initial_mouse_pos</span> <span class=o>=</span> <span class=bp>self</span><span class=o>.</span><span class=n>mapToGlobal</span><span class=p>(</span><span class=n>event</span><span class=o>.</span><span class=n>pos</span><span class=p>())</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>_block_mouse_release_timer</span><span class=o>.</span><span class=n>start</span><span class=p>(</span>
+            <span class=n>QtWidgets</span><span class=o>.</span><span class=n>QApplication</span><span class=o>.</span><span class=n>doubleClickInterval</span><span class=p>()</span>
+        <span class=p>)</span>
+</code></pre></div></td></tr></table></div> </details> </div> </div> <div class="doc doc-object doc-function"> <h3 id=client.ayon_core.tools.loader.ui._multicombobox.CustomPaintMultiselectComboBox.paintEvent class="doc doc-heading"> <code class="highlight language-python"><span class=n>paintEvent</span><span class=p>(</span><span class=n>event</span><span class=p>)</span></code> </h3> <div class="doc doc-contents "> <p>Reimplemented.</p> <details class=quote> <summary>Source code in <code>client/ayon_core/tools/loader/ui/_multicombobox.py</code></summary> <div class=highlight><table class=highlighttable><tr><td class=linenos><div class=linenodiv><pre><span></span><span class=normal>700</span>
+<span class=normal>701</span>
+<span class=normal>702</span>
+<span class=normal>703</span>
+<span class=normal>704</span>
+<span class=normal>705</span>
+<span class=normal>706</span>
+<span class=normal>707</span>
+<span class=normal>708</span>
+<span class=normal>709</span>
+<span class=normal>710</span>
+<span class=normal>711</span>
+<span class=normal>712</span>
+<span class=normal>713</span>
+<span class=normal>714</span>
+<span class=normal>715</span>
+<span class=normal>716</span>
+<span class=normal>717</span>
+<span class=normal>718</span>
+<span class=normal>719</span>
+<span class=normal>720</span>
+<span class=normal>721</span>
+<span class=normal>722</span>
+<span class=normal>723</span>
+<span class=normal>724</span>
+<span class=normal>725</span>
+<span class=normal>726</span>
+<span class=normal>727</span>
+<span class=normal>728</span>
+<span class=normal>729</span>
+<span class=normal>730</span>
+<span class=normal>731</span>
+<span class=normal>732</span>
+<span class=normal>733</span>
+<span class=normal>734</span>
+<span class=normal>735</span>
+<span class=normal>736</span>
+<span class=normal>737</span>
+<span class=normal>738</span></pre></div></td><td class=code><div><pre><span></span><code><span class=k>def</span><span class=w> </span><span class=nf>paintEvent</span><span class=p>(</span><span class=bp>self</span><span class=p>,</span> <span class=n>event</span><span class=p>):</span>
+<span class=w>    </span><span class=sd>&quot;&quot;&quot;Reimplemented.&quot;&quot;&quot;</span>
+    <span class=n>painter</span> <span class=o>=</span> <span class=n>QtWidgets</span><span class=o>.</span><span class=n>QStylePainter</span><span class=p>(</span><span class=bp>self</span><span class=p>)</span>
+    <span class=n>option</span> <span class=o>=</span> <span class=n>QtWidgets</span><span class=o>.</span><span class=n>QStyleOptionComboBox</span><span class=p>()</span>
+    <span class=bp>self</span><span class=o>.</span><span class=n>initStyleOption</span><span class=p>(</span><span class=n>option</span><span class=p>)</span>
+    <span class=n>painter</span><span class=o>.</span><span class=n>drawComplexControl</span><span class=p>(</span><span class=n>QtWidgets</span><span class=o>.</span><span class=n>QStyle</span><span class=o>.</span><span class=n>CC_ComboBox</span><span class=p>,</span> <span class=n>option</span><span class=p>)</span>
+
+    <span class=n>idxs</span> <span class=o>=</span> <span class=bp>self</span><span class=o>.</span><span class=n>_get_checked_idx</span><span class=p>()</span>
+    <span class=c1># draw the icon and text</span>
+    <span class=n>draw_items</span> <span class=o>=</span> <span class=kc>False</span>
+    <span class=n>combotext</span> <span class=o>=</span> <span class=kc>None</span>
+    <span class=k>if</span> <span class=bp>self</span><span class=o>.</span><span class=n>_custom_text</span> <span class=ow>is</span> <span class=ow>not</span> <span class=kc>None</span><span class=p>:</span>
+        <span class=n>combotext</span> <span class=o>=</span> <span class=bp>self</span><span class=o>.</span><span class=n>_custom_text</span>
+    <span class=k>elif</span> <span class=ow>not</span> <span class=n>idxs</span><span class=p>:</span>
+        <span class=n>combotext</span> <span class=o>=</span> <span class=bp>self</span><span class=o>.</span><span class=n>_placeholder_text</span>
+    <span class=k>else</span><span class=p>:</span>
+        <span class=n>draw_items</span> <span class=o>=</span> <span class=kc>True</span>
+
+    <span class=n>content_field_rect</span> <span class=o>=</span> <span class=bp>self</span><span class=o>.</span><span class=n>style</span><span class=p>()</span><span class=o>.</span><span class=n>subControlRect</span><span class=p>(</span>
+        <span class=n>QtWidgets</span><span class=o>.</span><span class=n>QStyle</span><span class=o>.</span><span class=n>CC_ComboBox</span><span class=p>,</span>
+        <span class=n>option</span><span class=p>,</span>
+        <span class=n>QtWidgets</span><span class=o>.</span><span class=n>QStyle</span><span class=o>.</span><span class=n>SC_ComboBoxEditField</span>
+    <span class=p>)</span><span class=o>.</span><span class=n>adjusted</span><span class=p>(</span><span class=mi>1</span><span class=p>,</span> <span class=mi>0</span><span class=p>,</span> <span class=o>-</span><span class=mi>1</span><span class=p>,</span> <span class=mi>0</span><span class=p>)</span>
+
+    <span class=k>if</span> <span class=n>draw_items</span><span class=p>:</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>_paint_items</span><span class=p>(</span><span class=n>painter</span><span class=p>,</span> <span class=n>idxs</span><span class=p>,</span> <span class=n>content_field_rect</span><span class=p>)</span>
+    <span class=k>else</span><span class=p>:</span>
+        <span class=n>color</span> <span class=o>=</span> <span class=n>option</span><span class=o>.</span><span class=n>palette</span><span class=o>.</span><span class=n>color</span><span class=p>(</span><span class=n>QtGui</span><span class=o>.</span><span class=n>QPalette</span><span class=o>.</span><span class=n>Text</span><span class=p>)</span>
+        <span class=n>color</span><span class=o>.</span><span class=n>setAlpha</span><span class=p>(</span><span class=mi>67</span><span class=p>)</span>
+        <span class=n>pen</span> <span class=o>=</span> <span class=n>painter</span><span class=o>.</span><span class=n>pen</span><span class=p>()</span>
+        <span class=n>pen</span><span class=o>.</span><span class=n>setColor</span><span class=p>(</span><span class=n>color</span><span class=p>)</span>
+        <span class=n>painter</span><span class=o>.</span><span class=n>setPen</span><span class=p>(</span><span class=n>pen</span><span class=p>)</span>
+        <span class=n>painter</span><span class=o>.</span><span class=n>drawText</span><span class=p>(</span>
+            <span class=n>content_field_rect</span><span class=p>,</span>
+            <span class=n>QtCore</span><span class=o>.</span><span class=n>Qt</span><span class=o>.</span><span class=n>AlignLeft</span> <span class=o>|</span> <span class=n>QtCore</span><span class=o>.</span><span class=n>Qt</span><span class=o>.</span><span class=n>AlignVCenter</span><span class=p>,</span>
+            <span class=n>combotext</span>
+        <span class=p>)</span>
+
+    <span class=n>painter</span><span class=o>.</span><span class=n>end</span><span class=p>()</span>
+</code></pre></div></td></tr></table></div> </details> </div> </div> <div class="doc doc-object doc-function"> <h3 id=client.ayon_core.tools.loader.ui._multicombobox.CustomPaintMultiselectComboBox.set_all_unchecked_as_checked class="doc doc-heading"> <code class="highlight language-python"><span class=n>set_all_unchecked_as_checked</span><span class=p>(</span><span class=n>value</span><span class=p>)</span></code> </h3> <div class="doc doc-contents "> <p>Set if all unchecked items should be treated as checked.</p> <p><span class=doc-section-title>Parameters:</span></p> <table> <thead> <tr> <th>Name</th> <th>Type</th> <th>Description</th> <th>Default</th> </tr> </thead> <tbody> <tr class=doc-section-item> <td> <code>value</code> </td> <td> <code><span title=bool>bool</span></code> </td> <td> <div class=doc-md-description> <p>If True, all unchecked items will be treated as checked.</p> </div> </td> <td> <em>required</em> </td> </tr> </tbody> </table> <details class=quote> <summary>Source code in <code>client/ayon_core/tools/loader/ui/_multicombobox.py</code></summary> <div class=highlight><table class=highlighttable><tr><td class=linenos><div class=linenodiv><pre><span></span><span class=normal>573</span>
+<span class=normal>574</span>
+<span class=normal>575</span>
+<span class=normal>576</span>
+<span class=normal>577</span>
+<span class=normal>578</span>
+<span class=normal>579</span>
+<span class=normal>580</span>
+<span class=normal>581</span></pre></div></td><td class=code><div><pre><span></span><code><span class=k>def</span><span class=w> </span><span class=nf>set_all_unchecked_as_checked</span><span class=p>(</span><span class=bp>self</span><span class=p>,</span> <span class=n>value</span><span class=p>:</span> <span class=nb>bool</span><span class=p>):</span>
+<span class=w>    </span><span class=sd>&quot;&quot;&quot;Set if all unchecked items should be treated as checked.</span>
+
+<span class=sd>    Args:</span>
+<span class=sd>        value (bool): If True, all unchecked items will be treated</span>
+<span class=sd>            as checked.</span>
+
+<span class=sd>    &quot;&quot;&quot;</span>
+    <span class=bp>self</span><span class=o>.</span><span class=n>_all_unchecked_as_checked</span> <span class=o>=</span> <span class=n>value</span>
+</code></pre></div></td></tr></table></div> </details> </div> </div> <div class="doc doc-object doc-function"> <h3 id=client.ayon_core.tools.loader.ui._multicombobox.CustomPaintMultiselectComboBox.set_custom_text class="doc doc-heading"> <code class="highlight language-python"><span class=n>set_custom_text</span><span class=p>(</span><span class=n>text</span><span class=p>)</span></code> </h3> <div class="doc doc-contents "> <p>Set the placeholder text.</p> <p>Text always shown in combobox field.</p> <p><span class=doc-section-title>Parameters:</span></p> <table> <thead> <tr> <th>Name</th> <th>Type</th> <th>Description</th> <th>Default</th> </tr> </thead> <tbody> <tr class=doc-section-item> <td> <code>text</code> </td> <td> <code><span title=str>str</span> | None</code> </td> <td> <div class=doc-md-description> <p>The text. Use 'None' to reset to default.</p> </div> </td> <td> <em>required</em> </td> </tr> </tbody> </table> <details class=quote> <summary>Source code in <code>client/ayon_core/tools/loader/ui/_multicombobox.py</code></summary> <div class=highlight><table class=highlighttable><tr><td class=linenos><div class=linenodiv><pre><span></span><span class=normal>600</span>
+<span class=normal>601</span>
+<span class=normal>602</span>
+<span class=normal>603</span>
+<span class=normal>604</span>
+<span class=normal>605</span>
+<span class=normal>606</span>
+<span class=normal>607</span>
+<span class=normal>608</span>
+<span class=normal>609</span>
+<span class=normal>610</span>
+<span class=normal>611</span>
+<span class=normal>612</span></pre></div></td><td class=code><div><pre><span></span><code><span class=k>def</span><span class=w> </span><span class=nf>set_custom_text</span><span class=p>(</span><span class=bp>self</span><span class=p>,</span> <span class=n>text</span><span class=p>:</span> <span class=n>Optional</span><span class=p>[</span><span class=nb>str</span><span class=p>]):</span>
+<span class=w>    </span><span class=sd>&quot;&quot;&quot;Set the placeholder text.</span>
+
+<span class=sd>    Text always shown in combobox field.</span>
+
+<span class=sd>    Args:</span>
+<span class=sd>        text (str | None): The text. Use &#39;None&#39; to reset to default.</span>
+
+<span class=sd>    &quot;&quot;&quot;</span>
+    <span class=k>if</span> <span class=n>text</span> <span class=o>==</span> <span class=bp>self</span><span class=o>.</span><span class=n>_custom_text</span><span class=p>:</span>
+        <span class=k>return</span>
+    <span class=bp>self</span><span class=o>.</span><span class=n>_custom_text</span> <span class=o>=</span> <span class=n>text</span>
+    <span class=bp>self</span><span class=o>.</span><span class=n>repaint</span><span class=p>()</span>
+</code></pre></div></td></tr></table></div> </details> </div> </div> <div class="doc doc-object doc-function"> <h3 id=client.ayon_core.tools.loader.ui._multicombobox.CustomPaintMultiselectComboBox.set_placeholder_text class="doc doc-heading"> <code class="highlight language-python"><span class=n>set_placeholder_text</span><span class=p>(</span><span class=n>text</span><span class=p>)</span></code> </h3> <div class="doc doc-contents "> <p>Set the placeholder text.</p> <p>Text shown when nothing is selected.</p> <p><span class=doc-section-title>Parameters:</span></p> <table> <thead> <tr> <th>Name</th> <th>Type</th> <th>Description</th> <th>Default</th> </tr> </thead> <tbody> <tr class=doc-section-item> <td> <code>text</code> </td> <td> <code><span title=str>str</span> | None</code> </td> <td> <div class=doc-md-description> <p>The placeholder text.</p> </div> </td> <td> <em>required</em> </td> </tr> </tbody> </table> <details class=quote> <summary>Source code in <code>client/ayon_core/tools/loader/ui/_multicombobox.py</code></summary> <div class=highlight><table class=highlighttable><tr><td class=linenos><div class=linenodiv><pre><span></span><span class=normal>586</span>
+<span class=normal>587</span>
+<span class=normal>588</span>
+<span class=normal>589</span>
+<span class=normal>590</span>
+<span class=normal>591</span>
+<span class=normal>592</span>
+<span class=normal>593</span>
+<span class=normal>594</span>
+<span class=normal>595</span>
+<span class=normal>596</span>
+<span class=normal>597</span>
+<span class=normal>598</span></pre></div></td><td class=code><div><pre><span></span><code><span class=k>def</span><span class=w> </span><span class=nf>set_placeholder_text</span><span class=p>(</span><span class=bp>self</span><span class=p>,</span> <span class=n>text</span><span class=p>:</span> <span class=n>Optional</span><span class=p>[</span><span class=nb>str</span><span class=p>]):</span>
+<span class=w>    </span><span class=sd>&quot;&quot;&quot;Set the placeholder text.</span>
+
+<span class=sd>    Text shown when nothing is selected.</span>
+
+<span class=sd>    Args:</span>
+<span class=sd>        text (str | None): The placeholder text.</span>
+
+<span class=sd>    &quot;&quot;&quot;</span>
+    <span class=k>if</span> <span class=n>text</span> <span class=o>==</span> <span class=bp>self</span><span class=o>.</span><span class=n>_placeholder_text</span><span class=p>:</span>
+        <span class=k>return</span>
+    <span class=bp>self</span><span class=o>.</span><span class=n>_placeholder_text</span> <span class=o>=</span> <span class=n>text</span>
+    <span class=bp>self</span><span class=o>.</span><span class=n>repaint</span><span class=p>()</span>
+</code></pre></div></td></tr></table></div> </details> </div> </div> <div class="doc doc-object doc-function"> <h3 id=client.ayon_core.tools.loader.ui._multicombobox.CustomPaintMultiselectComboBox.showPopup class="doc doc-heading"> <code class="highlight language-python"><span class=n>showPopup</span><span class=p>()</span></code> </h3> <div class="doc doc-contents "> <p>Reimplemented.</p> <details class=quote> <summary>Source code in <code>client/ayon_core/tools/loader/ui/_multicombobox.py</code></summary> <div class=highlight><table class=highlighttable><tr><td class=linenos><div class=linenodiv><pre><span></span><span class=normal>628</span>
+<span class=normal>629</span>
+<span class=normal>630</span>
+<span class=normal>631</span>
+<span class=normal>632</span>
+<span class=normal>633</span>
+<span class=normal>634</span></pre></div></td><td class=code><div><pre><span></span><code><span class=k>def</span><span class=w> </span><span class=nf>showPopup</span><span class=p>(</span><span class=bp>self</span><span class=p>):</span>
+<span class=w>    </span><span class=sd>&quot;&quot;&quot;Reimplemented.&quot;&quot;&quot;</span>
+    <span class=nb>super</span><span class=p>()</span><span class=o>.</span><span class=n>showPopup</span><span class=p>()</span>
+    <span class=n>view</span> <span class=o>=</span> <span class=bp>self</span><span class=o>.</span><span class=n>view</span><span class=p>()</span>
+    <span class=n>view</span><span class=o>.</span><span class=n>installEventFilter</span><span class=p>(</span><span class=bp>self</span><span class=p>)</span>
+    <span class=n>view</span><span class=o>.</span><span class=n>viewport</span><span class=p>()</span><span class=o>.</span><span class=n>installEventFilter</span><span class=p>(</span><span class=bp>self</span><span class=p>)</span>
+    <span class=bp>self</span><span class=o>.</span><span class=n>_popup_is_shown</span> <span class=o>=</span> <span class=kc>True</span>
+</code></pre></div></td></tr></table></div> </details> </div> </div> </div> </div> </div> </div> </div> </div> </article> </div> <script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script> </div> </main> <footer class=md-footer> <div class="md-footer-meta md-typeset"> <div class="md-footer-meta__inner md-grid"> <div class=md-copyright> Made with <a href=https://squidfunk.github.io/mkdocs-material/ target=_blank rel=noopener> Material for MkDocs </a> </div> </div> </div> </footer> </div> <div class=md-dialog data-md-component=dialog> <div class="md-dialog__inner md-typeset"></div> </div> <script id=__config type=application/json>{"base": "../../../../../..", "features": ["navigation.sections", "navigation.path", "navigation.prune"], "search": "../../../../../../assets/javascripts/workers/search.f8cc74c7.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script> <script src=../../../../../../assets/javascripts/bundle.c8b220af.min.js></script> </body> </html>

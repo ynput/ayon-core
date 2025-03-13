@@ -1,0 +1,986 @@
+<!doctype html><html lang=en class=no-js> <head><meta charset=utf-8><meta name=viewport content="width=device-width,initial-scale=1"><link rel=prev href=thumbnail_widget.html><link rel=next href=../window.html><link rel=icon href=../../../../../../img/favicon.ico><meta name=generator content="mkdocs-1.6.1, mkdocs-material-9.6.8"><title>widgets - ayon-core</title><link rel=stylesheet href=../../../../../../assets/stylesheets/main.8608ea7d.min.css><link rel=stylesheet href=../../../../../../assets/stylesheets/palette.06af60db.min.css><script src=https://unpkg.com/iframe-worker/shim></script><link rel=preconnect href=https://fonts.gstatic.com crossorigin><link rel=stylesheet href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback"><style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style><link rel=stylesheet href=../../../../../../assets/_mkdocstrings.css><link rel=stylesheet href=../../../../../../css/custom.css><script>__md_scope=new URL("../../../../../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script></head> <body dir=ltr data-md-color-scheme=slate data-md-color-primary=indigo data-md-color-accent=indigo> <input class=md-toggle data-md-toggle=drawer type=checkbox id=__drawer autocomplete=off> <input class=md-toggle data-md-toggle=search type=checkbox id=__search autocomplete=off> <label class=md-overlay for=__drawer></label> <div data-md-component=skip> <a href=#client.ayon_core.tools.publisher.widgets.widgets class=md-skip> Skip to content </a> </div> <div data-md-component=announce> </div> <div data-md-color-scheme=default data-md-component=outdated hidden> </div> <header class="md-header md-header--shadow" data-md-component=header> <nav class="md-header__inner md-grid" aria-label=Header> <a href=../../../../../../index.html title=ayon-core class="md-header__button md-logo" aria-label=ayon-core data-md-component=logo> <img src=../../../../../../img/ay-symbol-blackw-full.png alt=logo> </a> <label class="md-header__button md-icon" for=__drawer> <svg xmlns=http://www.w3.org/2000/svg viewbox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg> </label> <div class=md-header__title data-md-component=header-title> <div class=md-header__ellipsis> <div class=md-header__topic> <span class=md-ellipsis> ayon-core </span> </div> <div class=md-header__topic data-md-component=header-topic> <span class=md-ellipsis> widgets </span> </div> </div> </div> <form class=md-header__option data-md-component=palette> <input class=md-option data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme=slate data-md-color-primary=indigo data-md-color-accent=indigo aria-label="Switch to light mode" type=radio name=__palette id=__palette_0> <label class="md-header__button md-icon" title="Switch to light mode" for=__palette_1 hidden> <svg xmlns=http://www.w3.org/2000/svg viewbox="0 0 24 24"><path d="M17 6H7c-3.31 0-6 2.69-6 6s2.69 6 6 6h10c3.31 0 6-2.69 6-6s-2.69-6-6-6m0 10H7c-2.21 0-4-1.79-4-4s1.79-4 4-4h10c2.21 0 4 1.79 4 4s-1.79 4-4 4M7 9c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3"/></svg> </label> <input class=md-option data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme=default data-md-color-primary=indigo data-md-color-accent=indigo aria-label="Switch to dark mode" type=radio name=__palette id=__palette_1> <label class="md-header__button md-icon" title="Switch to dark mode" for=__palette_0 hidden> <svg xmlns=http://www.w3.org/2000/svg viewbox="0 0 24 24"><path d="M17 7H7a5 5 0 0 0-5 5 5 5 0 0 0 5 5h10a5 5 0 0 0 5-5 5 5 0 0 0-5-5m0 8a3 3 0 0 1-3-3 3 3 0 0 1 3-3 3 3 0 0 1 3 3 3 3 0 0 1-3 3"/></svg> </label> </form> <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script> <label class="md-header__button md-icon" for=__search> <svg xmlns=http://www.w3.org/2000/svg viewbox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg> </label> <div class=md-search data-md-component=search role=dialog> <label class=md-search__overlay for=__search></label> <div class=md-search__inner role=search> <form class=md-search__form name=search> <input type=text class=md-search__input name=query aria-label=Search placeholder=Search autocapitalize=off autocorrect=off autocomplete=off spellcheck=false data-md-component=search-query required> <label class="md-search__icon md-icon" for=__search> <svg xmlns=http://www.w3.org/2000/svg viewbox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg> <svg xmlns=http://www.w3.org/2000/svg viewbox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg> </label> <nav class=md-search__options aria-label=Search> <button type=reset class="md-search__icon md-icon" title=Clear aria-label=Clear tabindex=-1> <svg xmlns=http://www.w3.org/2000/svg viewbox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg> </button> </nav> </form> <div class=md-search__output> <div class=md-search__scrollwrap tabindex=0 data-md-scrollfix> <div class=md-search-result data-md-component=search-result> <div class=md-search-result__meta> Initializing search </div> <ol class=md-search-result__list role=presentation></ol> </div> </div> </div> </div> </div> </nav> </header> <div class=md-container data-md-component=container> <main class=md-main data-md-component=main> <div class="md-main__inner md-grid"> <div class="md-sidebar md-sidebar--primary" data-md-component=sidebar data-md-type=navigation> <div class=md-sidebar__scrollwrap> <div class=md-sidebar__inner> <nav class="md-nav md-nav--primary" aria-label=Navigation data-md-level=0> <label class=md-nav__title for=__drawer> <a href=../../../../../../index.html title=ayon-core class="md-nav__button md-logo" aria-label=ayon-core data-md-component=logo> <img src=../../../../../../img/ay-symbol-blackw-full.png alt=logo> </a> ayon-core </label> <ul class=md-nav__list data-md-scrollfix> <li class=md-nav__item> <a href=../../../../../../index.html class=md-nav__link> <span class=md-ellipsis> Home </span> </a> </li> <li class=md-nav__item> <a href=../../../../../../license.html class=md-nav__link> <span class=md-ellipsis> License </span> </a> </li> <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested"> <input class="md-nav__toggle md-toggle " type=checkbox id=__nav_3 checked> <label class=md-nav__link for=__nav_3 id=__nav_3_label tabindex> <span class=md-ellipsis> Reference </span> <span class="md-nav__icon md-icon"></span> </label> <nav class=md-nav data-md-level=1 aria-labelledby=__nav_3_label aria-expanded=true> <label class=md-nav__title for=__nav_3> <span class="md-nav__icon md-icon"></span> Reference </label> <ul class=md-nav__list data-md-scrollfix> <li class="md-nav__item md-nav__item--active md-nav__item--nested"> <input class="md-nav__toggle md-toggle " type=checkbox id=__nav_3_1 checked> <div class="md-nav__link md-nav__container"> <a href=../../../../index.html class="md-nav__link "> <span class=md-ellipsis> client </span> </a> <label class="md-nav__link " for=__nav_3_1 id=__nav_3_1_label tabindex=0> <span class="md-nav__icon md-icon"></span> </label> </div> <nav class=md-nav data-md-level=2 aria-labelledby=__nav_3_1_label aria-expanded=true> <label class=md-nav__title for=__nav_3_1> <span class="md-nav__icon md-icon"></span> client </label> <ul class=md-nav__list data-md-scrollfix> <li class="md-nav__item md-nav__item--active md-nav__item--nested"> <input class="md-nav__toggle md-toggle " type=checkbox id=__nav_3_1_1 checked> <div class="md-nav__link md-nav__container"> <a href=../../../index.html class="md-nav__link "> <span class=md-ellipsis> ayon_core </span> </a> <label class="md-nav__link " for=__nav_3_1_1 id=__nav_3_1_1_label tabindex=0> <span class="md-nav__icon md-icon"></span> </label> </div> <nav class=md-nav data-md-level=3 aria-labelledby=__nav_3_1_1_label aria-expanded=true> <label class=md-nav__title for=__nav_3_1_1> <span class="md-nav__icon md-icon"></span> ayon_core </label> <ul class=md-nav__list data-md-scrollfix> <li class=md-nav__item> <a href=../../../__main__.html class=md-nav__link> <span class=md-ellipsis> __main__ </span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../../../addon/base.html class=md-nav__link> <span class=md-ellipsis> addon </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class=md-nav__item> <a href=../../../cli.html class=md-nav__link> <span class=md-ellipsis> cli </span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../../../hooks/pre_add_last_workfile_arg.html class=md-nav__link> <span class=md-ellipsis> hooks </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../../../host/dirmap.html class=md-nav__link> <span class=md-ellipsis> host </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../../../lib/attribute_definitions.html class=md-nav__link> <span class=md-ellipsis> lib </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../../../pipeline/actions.html class=md-nav__link> <span class=md-ellipsis> pipeline </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../../../plugins/actions/open_file_explorer.html class=md-nav__link> <span class=md-ellipsis> plugins </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../../../resources/app_icons/index.html class=md-nav__link> <span class=md-ellipsis> resources </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../../../scripts/ocio_wrapper.html class=md-nav__link> <span class=md-ellipsis> scripts </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../../../settings/lib.html class=md-nav__link> <span class=md-ellipsis> settings </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../../../style/color_defs.html class=md-nav__link> <span class=md-ellipsis> style </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../../../tests/conftest.html class=md-nav__link> <span class=md-ellipsis> tests </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class="md-nav__item md-nav__item--active md-nav__item--nested"> <input class="md-nav__toggle md-toggle " type=checkbox id=__nav_3_1_1_14 checked> <div class="md-nav__link md-nav__container"> <a href=../../index.html class="md-nav__link "> <span class=md-ellipsis> tools </span> </a> <label class="md-nav__link " for=__nav_3_1_1_14 id=__nav_3_1_1_14_label tabindex=0> <span class="md-nav__icon md-icon"></span> </label> </div> <nav class=md-nav data-md-level=4 aria-labelledby=__nav_3_1_1_14_label aria-expanded=true> <label class=md-nav__title for=__nav_3_1_1_14> <span class="md-nav__icon md-icon"></span> tools </label> <ul class=md-nav__list data-md-scrollfix> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../../attribute_defs/_constants.html class=md-nav__link> <span class=md-ellipsis> attribute_defs </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../../common_models/cache.html class=md-nav__link> <span class=md-ellipsis> common_models </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../../console_interpreter/abstract.html class=md-nav__link> <span class=md-ellipsis> console_interpreter </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../../context_dialog/window.html class=md-nav__link> <span class=md-ellipsis> context_dialog </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../../creator/constants.html class=md-nav__link> <span class=md-ellipsis> creator </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../../experimental_tools/dialog.html class=md-nav__link> <span class=md-ellipsis> experimental_tools </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class=md-nav__item> <a href=../../flickcharm.html class=md-nav__link> <span class=md-ellipsis> flickcharm </span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../../launcher/abstract.html class=md-nav__link> <span class=md-ellipsis> launcher </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../../loader/abstract.html class=md-nav__link> <span class=md-ellipsis> loader </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class="md-nav__item md-nav__item--active md-nav__item--nested"> <input class="md-nav__toggle md-toggle " type=checkbox id=__nav_3_1_1_14_10 checked> <div class="md-nav__link md-nav__container"> <a href=../index.html class="md-nav__link "> <span class=md-ellipsis> publisher </span> </a> <label class="md-nav__link " for=__nav_3_1_1_14_10 id=__nav_3_1_1_14_10_label tabindex=0> <span class="md-nav__icon md-icon"></span> </label> </div> <nav class=md-nav data-md-level=5 aria-labelledby=__nav_3_1_1_14_10_label aria-expanded=true> <label class=md-nav__title for=__nav_3_1_1_14_10> <span class="md-nav__icon md-icon"></span> publisher </label> <ul class=md-nav__list data-md-scrollfix> <li class=md-nav__item> <a href=../abstract.html class=md-nav__link> <span class=md-ellipsis> abstract </span> </a> </li> <li class=md-nav__item> <a href=../app.html class=md-nav__link> <span class=md-ellipsis> app </span> </a> </li> <li class=md-nav__item> <a href=../constants.html class=md-nav__link> <span class=md-ellipsis> constants </span> </a> </li> <li class=md-nav__item> <a href=../control.html class=md-nav__link> <span class=md-ellipsis> control </span> </a> </li> <li class=md-nav__item> <a href=../control_qt.html class=md-nav__link> <span class=md-ellipsis> control_qt </span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../models/create.html class=md-nav__link> <span class=md-ellipsis> models </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../publish_report_viewer/constants.html class=md-nav__link> <span class=md-ellipsis> publish_report_viewer </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class="md-nav__item md-nav__item--active md-nav__item--nested"> <input class="md-nav__toggle md-toggle " type=checkbox id=__nav_3_1_1_14_10_8 checked> <div class="md-nav__link md-nav__container"> <a href=index.html class="md-nav__link "> <span class=md-ellipsis> widgets </span> </a> <label class="md-nav__link " for=__nav_3_1_1_14_10_8 id=__nav_3_1_1_14_10_8_label tabindex=0> <span class="md-nav__icon md-icon"></span> </label> </div> <nav class=md-nav data-md-level=6 aria-labelledby=__nav_3_1_1_14_10_8_label aria-expanded=true> <label class=md-nav__title for=__nav_3_1_1_14_10_8> <span class="md-nav__icon md-icon"></span> widgets </label> <ul class=md-nav__list data-md-scrollfix> <li class=md-nav__item> <a href=border_label_widget.html class=md-nav__link> <span class=md-ellipsis> border_label_widget </span> </a> </li> <li class=md-nav__item> <a href=card_view_widgets.html class=md-nav__link> <span class=md-ellipsis> card_view_widgets </span> </a> </li> <li class=md-nav__item> <a href=create_context_widgets.html class=md-nav__link> <span class=md-ellipsis> create_context_widgets </span> </a> </li> <li class=md-nav__item> <a href=create_widget.html class=md-nav__link> <span class=md-ellipsis> create_widget </span> </a> </li> <li class=md-nav__item> <a href=folders_dialog.html class=md-nav__link> <span class=md-ellipsis> folders_dialog </span> </a> </li> <li class=md-nav__item> <a href=help_widget.html class=md-nav__link> <span class=md-ellipsis> help_widget </span> </a> </li> <li class=md-nav__item> <a href=icons.html class=md-nav__link> <span class=md-ellipsis> icons </span> </a> </li> <li class=md-nav__item> <a href=images/index.html class=md-nav__link> <span class=md-ellipsis> images </span> </a> </li> <li class=md-nav__item> <a href=list_view_widgets.html class=md-nav__link> <span class=md-ellipsis> list_view_widgets </span> </a> </li> <li class=md-nav__item> <a href=overview_widget.html class=md-nav__link> <span class=md-ellipsis> overview_widget </span> </a> </li> <li class=md-nav__item> <a href=precreate_widget.html class=md-nav__link> <span class=md-ellipsis> precreate_widget </span> </a> </li> <li class=md-nav__item> <a href=product_attributes.html class=md-nav__link> <span class=md-ellipsis> product_attributes </span> </a> </li> <li class=md-nav__item> <a href=product_context.html class=md-nav__link> <span class=md-ellipsis> product_context </span> </a> </li> <li class=md-nav__item> <a href=product_info.html class=md-nav__link> <span class=md-ellipsis> product_info </span> </a> </li> <li class=md-nav__item> <a href=publish_frame.html class=md-nav__link> <span class=md-ellipsis> publish_frame </span> </a> </li> <li class=md-nav__item> <a href=report_page.html class=md-nav__link> <span class=md-ellipsis> report_page </span> </a> </li> <li class=md-nav__item> <a href=screenshot_widget.html class=md-nav__link> <span class=md-ellipsis> screenshot_widget </span> </a> </li> <li class=md-nav__item> <a href=tabs_widget.html class=md-nav__link> <span class=md-ellipsis> tabs_widget </span> </a> </li> <li class=md-nav__item> <a href=tasks_model.html class=md-nav__link> <span class=md-ellipsis> tasks_model </span> </a> </li> <li class=md-nav__item> <a href=thumbnail_widget.html class=md-nav__link> <span class=md-ellipsis> thumbnail_widget </span> </a> </li> <li class="md-nav__item md-nav__item--active"> <input class="md-nav__toggle md-toggle" type=checkbox id=__toc> <label class="md-nav__link md-nav__link--active" for=__toc> <span class=md-ellipsis> widgets </span> <span class="md-nav__icon md-icon"></span> </label> <a href=widgets.html class="md-nav__link md-nav__link--active"> <span class=md-ellipsis> widgets </span> </a> <nav class="md-nav md-nav--secondary" aria-label="Table of contents"> <label class=md-nav__title for=__toc> <span class="md-nav__icon md-icon"></span> Table of contents </label> <ul class=md-nav__list data-md-component=toc data-md-scrollfix> <li class=md-nav__item> <a href=#client.ayon_core.tools.publisher.widgets.widgets class=md-nav__link> <span class=md-ellipsis> widgets </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.tools.publisher.widgets.widgets.AbstractInstanceView class=md-nav__link> <span class=md-ellipsis> AbstractInstanceView </span> </a> <nav class=md-nav aria-label=AbstractInstanceView> <ul class=md-nav__list> <li class=md-nav__item> <a href=#client.ayon_core.tools.publisher.widgets.widgets.AbstractInstanceView.get_selected_items class=md-nav__link> <span class=md-ellipsis> get_selected_items </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.tools.publisher.widgets.widgets.AbstractInstanceView.has_items class=md-nav__link> <span class=md-ellipsis> has_items </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.tools.publisher.widgets.widgets.AbstractInstanceView.refresh class=md-nav__link> <span class=md-ellipsis> refresh </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.tools.publisher.widgets.widgets.AbstractInstanceView.set_active_toggle_enabled class=md-nav__link> <span class=md-ellipsis> set_active_toggle_enabled </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.tools.publisher.widgets.widgets.AbstractInstanceView.set_refreshed class=md-nav__link> <span class=md-ellipsis> set_refreshed </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.tools.publisher.widgets.widgets.AbstractInstanceView.set_selected_items class=md-nav__link> <span class=md-ellipsis> set_selected_items </span> </a> </li> </ul> </nav> </li> <li class=md-nav__item> <a href=#client.ayon_core.tools.publisher.widgets.widgets.ChangeViewBtn class=md-nav__link> <span class=md-ellipsis> ChangeViewBtn </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.tools.publisher.widgets.widgets.ClickableLineEdit class=md-nav__link> <span class=md-ellipsis> ClickableLineEdit </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.tools.publisher.widgets.widgets.ContextWarningLabel class=md-nav__link> <span class=md-ellipsis> ContextWarningLabel </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.tools.publisher.widgets.widgets.CreateBtn class=md-nav__link> <span class=md-ellipsis> CreateBtn </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.tools.publisher.widgets.widgets.CreateInstanceBtn class=md-nav__link> <span class=md-ellipsis> CreateInstanceBtn </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.tools.publisher.widgets.widgets.IconValuePixmapLabel class=md-nav__link> <span class=md-ellipsis> IconValuePixmapLabel </span> </a> <nav class=md-nav aria-label=IconValuePixmapLabel> <ul class=md-nav__list> <li class=md-nav__item> <a href=#client.ayon_core.tools.publisher.widgets.widgets.IconValuePixmapLabel.set_icon_def class=md-nav__link> <span class=md-ellipsis> set_icon_def </span> </a> </li> </ul> </nav> </li> <li class=md-nav__item> <a href=#client.ayon_core.tools.publisher.widgets.widgets.MultipleItemWidget class=md-nav__link> <span class=md-ellipsis> MultipleItemWidget </span> </a> <nav class=md-nav aria-label=MultipleItemWidget> <ul class=md-nav__list> <li class=md-nav__item> <a href=#client.ayon_core.tools.publisher.widgets.widgets.MultipleItemWidget.set_value class=md-nav__link> <span class=md-ellipsis> set_value </span> </a> </li> </ul> </nav> </li> <li class=md-nav__item> <a href=#client.ayon_core.tools.publisher.widgets.widgets.PublishBtn class=md-nav__link> <span class=md-ellipsis> PublishBtn </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.tools.publisher.widgets.widgets.PublishIconBtn class=md-nav__link> <span class=md-ellipsis> PublishIconBtn </span> </a> <nav class=md-nav aria-label=PublishIconBtn> <ul class=md-nav__list> <li class=md-nav__item> <a href=#client.ayon_core.tools.publisher.widgets.widgets.PublishIconBtn.paint_image_with_color class=md-nav__link> <span class=md-ellipsis> paint_image_with_color </span> </a> </li> </ul> </nav> </li> <li class=md-nav__item> <a href=#client.ayon_core.tools.publisher.widgets.widgets.PublishReportBtn class=md-nav__link> <span class=md-ellipsis> PublishReportBtn </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.tools.publisher.widgets.widgets.RemoveInstanceBtn class=md-nav__link> <span class=md-ellipsis> RemoveInstanceBtn </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.tools.publisher.widgets.widgets.ResetBtn class=md-nav__link> <span class=md-ellipsis> ResetBtn </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.tools.publisher.widgets.widgets.SaveBtn class=md-nav__link> <span class=md-ellipsis> SaveBtn </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.tools.publisher.widgets.widgets.StopBtn class=md-nav__link> <span class=md-ellipsis> StopBtn </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.tools.publisher.widgets.widgets.ValidateBtn class=md-nav__link> <span class=md-ellipsis> ValidateBtn </span> </a> </li> </ul> </nav> </li> </ul> </nav> </li> <li class=md-nav__item> <a href=../window.html class=md-nav__link> <span class=md-ellipsis> window </span> </a> </li> </ul> </nav> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../../push_to_project/control.html class=md-nav__link> <span class=md-ellipsis> push_to_project </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../../resources/images/index.html class=md-nav__link> <span class=md-ellipsis> resources </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../../sceneinventory/control.html class=md-nav__link> <span class=md-ellipsis> sceneinventory </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../../stdout_broker/app.html class=md-nav__link> <span class=md-ellipsis> stdout_broker </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../../subsetmanager/model.html class=md-nav__link> <span class=md-ellipsis> subsetmanager </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../../texture_copy/app.html class=md-nav__link> <span class=md-ellipsis> texture_copy </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../../tray/lib.html class=md-nav__link> <span class=md-ellipsis> tray </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../../utils/color_widgets/color_inputs.html class=md-nav__link> <span class=md-ellipsis> utils </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../../workfile_template_build/lib.html class=md-nav__link> <span class=md-ellipsis> workfile_template_build </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../../workfiles/abstract.html class=md-nav__link> <span class=md-ellipsis> workfiles </span> <span class="md-nav__icon md-icon"></span> </a> </li> </ul> </nav> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../../../vendor/python/qargparse.html class=md-nav__link> <span class=md-ellipsis> vendor </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class=md-nav__item> <a href=../../../version.html class=md-nav__link> <span class=md-ellipsis> version </span> </a> </li> </ul> </nav> </li> </ul> </nav> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../../../../../server/settings/conversion.html class=md-nav__link> <span class=md-ellipsis> server </span> <span class="md-nav__icon md-icon"></span> </a> </li> </ul> </nav> </li> </ul> </nav> </div> </div> </div> <div class="md-sidebar md-sidebar--secondary" data-md-component=sidebar data-md-type=toc> <div class=md-sidebar__scrollwrap> <div class=md-sidebar__inner> <nav class="md-nav md-nav--secondary" aria-label="Table of contents"> <label class=md-nav__title for=__toc> <span class="md-nav__icon md-icon"></span> Table of contents </label> <ul class=md-nav__list data-md-component=toc data-md-scrollfix> <li class=md-nav__item> <a href=#client.ayon_core.tools.publisher.widgets.widgets class=md-nav__link> <span class=md-ellipsis> widgets </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.tools.publisher.widgets.widgets.AbstractInstanceView class=md-nav__link> <span class=md-ellipsis> AbstractInstanceView </span> </a> <nav class=md-nav aria-label=AbstractInstanceView> <ul class=md-nav__list> <li class=md-nav__item> <a href=#client.ayon_core.tools.publisher.widgets.widgets.AbstractInstanceView.get_selected_items class=md-nav__link> <span class=md-ellipsis> get_selected_items </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.tools.publisher.widgets.widgets.AbstractInstanceView.has_items class=md-nav__link> <span class=md-ellipsis> has_items </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.tools.publisher.widgets.widgets.AbstractInstanceView.refresh class=md-nav__link> <span class=md-ellipsis> refresh </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.tools.publisher.widgets.widgets.AbstractInstanceView.set_active_toggle_enabled class=md-nav__link> <span class=md-ellipsis> set_active_toggle_enabled </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.tools.publisher.widgets.widgets.AbstractInstanceView.set_refreshed class=md-nav__link> <span class=md-ellipsis> set_refreshed </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.tools.publisher.widgets.widgets.AbstractInstanceView.set_selected_items class=md-nav__link> <span class=md-ellipsis> set_selected_items </span> </a> </li> </ul> </nav> </li> <li class=md-nav__item> <a href=#client.ayon_core.tools.publisher.widgets.widgets.ChangeViewBtn class=md-nav__link> <span class=md-ellipsis> ChangeViewBtn </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.tools.publisher.widgets.widgets.ClickableLineEdit class=md-nav__link> <span class=md-ellipsis> ClickableLineEdit </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.tools.publisher.widgets.widgets.ContextWarningLabel class=md-nav__link> <span class=md-ellipsis> ContextWarningLabel </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.tools.publisher.widgets.widgets.CreateBtn class=md-nav__link> <span class=md-ellipsis> CreateBtn </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.tools.publisher.widgets.widgets.CreateInstanceBtn class=md-nav__link> <span class=md-ellipsis> CreateInstanceBtn </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.tools.publisher.widgets.widgets.IconValuePixmapLabel class=md-nav__link> <span class=md-ellipsis> IconValuePixmapLabel </span> </a> <nav class=md-nav aria-label=IconValuePixmapLabel> <ul class=md-nav__list> <li class=md-nav__item> <a href=#client.ayon_core.tools.publisher.widgets.widgets.IconValuePixmapLabel.set_icon_def class=md-nav__link> <span class=md-ellipsis> set_icon_def </span> </a> </li> </ul> </nav> </li> <li class=md-nav__item> <a href=#client.ayon_core.tools.publisher.widgets.widgets.MultipleItemWidget class=md-nav__link> <span class=md-ellipsis> MultipleItemWidget </span> </a> <nav class=md-nav aria-label=MultipleItemWidget> <ul class=md-nav__list> <li class=md-nav__item> <a href=#client.ayon_core.tools.publisher.widgets.widgets.MultipleItemWidget.set_value class=md-nav__link> <span class=md-ellipsis> set_value </span> </a> </li> </ul> </nav> </li> <li class=md-nav__item> <a href=#client.ayon_core.tools.publisher.widgets.widgets.PublishBtn class=md-nav__link> <span class=md-ellipsis> PublishBtn </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.tools.publisher.widgets.widgets.PublishIconBtn class=md-nav__link> <span class=md-ellipsis> PublishIconBtn </span> </a> <nav class=md-nav aria-label=PublishIconBtn> <ul class=md-nav__list> <li class=md-nav__item> <a href=#client.ayon_core.tools.publisher.widgets.widgets.PublishIconBtn.paint_image_with_color class=md-nav__link> <span class=md-ellipsis> paint_image_with_color </span> </a> </li> </ul> </nav> </li> <li class=md-nav__item> <a href=#client.ayon_core.tools.publisher.widgets.widgets.PublishReportBtn class=md-nav__link> <span class=md-ellipsis> PublishReportBtn </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.tools.publisher.widgets.widgets.RemoveInstanceBtn class=md-nav__link> <span class=md-ellipsis> RemoveInstanceBtn </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.tools.publisher.widgets.widgets.ResetBtn class=md-nav__link> <span class=md-ellipsis> ResetBtn </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.tools.publisher.widgets.widgets.SaveBtn class=md-nav__link> <span class=md-ellipsis> SaveBtn </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.tools.publisher.widgets.widgets.StopBtn class=md-nav__link> <span class=md-ellipsis> StopBtn </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.tools.publisher.widgets.widgets.ValidateBtn class=md-nav__link> <span class=md-ellipsis> ValidateBtn </span> </a> </li> </ul> </nav> </div> </div> </div> <div class=md-content data-md-component=content> <article class="md-content__inner md-typeset"> <h1>widgets</h1> <div class="doc doc-object doc-module"> <a id=client.ayon_core.tools.publisher.widgets.widgets></a> <div class="doc doc-contents first"> <div class="doc doc-children"> <div class="doc doc-object doc-class"> <h2 id=client.ayon_core.tools.publisher.widgets.widgets.AbstractInstanceView class="doc doc-heading"> <code>AbstractInstanceView</code> </h2> <div class="doc doc-contents "> <p class="doc doc-class-bases"> Bases: <code><span title=qtpy.QtWidgets.QWidget>QWidget</span></code></p> <p>Abstract class for instance view in creation part.</p> <details class=quote> <summary>Source code in <code>client/ayon_core/tools/publisher/widgets/widgets.py</code></summary> <div class=highlight><table class=highlighttable><tr><td class=linenos><div class=linenodiv><pre><span></span><span class=normal>298</span>
+<span class=normal>299</span>
+<span class=normal>300</span>
+<span class=normal>301</span>
+<span class=normal>302</span>
+<span class=normal>303</span>
+<span class=normal>304</span>
+<span class=normal>305</span>
+<span class=normal>306</span>
+<span class=normal>307</span>
+<span class=normal>308</span>
+<span class=normal>309</span>
+<span class=normal>310</span>
+<span class=normal>311</span>
+<span class=normal>312</span>
+<span class=normal>313</span>
+<span class=normal>314</span>
+<span class=normal>315</span>
+<span class=normal>316</span>
+<span class=normal>317</span>
+<span class=normal>318</span>
+<span class=normal>319</span>
+<span class=normal>320</span>
+<span class=normal>321</span>
+<span class=normal>322</span>
+<span class=normal>323</span>
+<span class=normal>324</span>
+<span class=normal>325</span>
+<span class=normal>326</span>
+<span class=normal>327</span>
+<span class=normal>328</span>
+<span class=normal>329</span>
+<span class=normal>330</span>
+<span class=normal>331</span>
+<span class=normal>332</span>
+<span class=normal>333</span>
+<span class=normal>334</span>
+<span class=normal>335</span>
+<span class=normal>336</span>
+<span class=normal>337</span>
+<span class=normal>338</span>
+<span class=normal>339</span>
+<span class=normal>340</span>
+<span class=normal>341</span>
+<span class=normal>342</span>
+<span class=normal>343</span>
+<span class=normal>344</span>
+<span class=normal>345</span>
+<span class=normal>346</span>
+<span class=normal>347</span>
+<span class=normal>348</span>
+<span class=normal>349</span>
+<span class=normal>350</span>
+<span class=normal>351</span>
+<span class=normal>352</span>
+<span class=normal>353</span>
+<span class=normal>354</span>
+<span class=normal>355</span>
+<span class=normal>356</span>
+<span class=normal>357</span>
+<span class=normal>358</span>
+<span class=normal>359</span>
+<span class=normal>360</span>
+<span class=normal>361</span>
+<span class=normal>362</span>
+<span class=normal>363</span>
+<span class=normal>364</span>
+<span class=normal>365</span>
+<span class=normal>366</span>
+<span class=normal>367</span>
+<span class=normal>368</span>
+<span class=normal>369</span>
+<span class=normal>370</span>
+<span class=normal>371</span></pre></div></td><td class=code><div><pre><span></span><code><span class=k>class</span><span class=w> </span><span class=nc>AbstractInstanceView</span><span class=p>(</span><span class=n>QtWidgets</span><span class=o>.</span><span class=n>QWidget</span><span class=p>):</span>
+<span class=w>    </span><span class=sd>&quot;&quot;&quot;Abstract class for instance view in creation part.&quot;&quot;&quot;</span>
+    <span class=n>selection_changed</span> <span class=o>=</span> <span class=n>QtCore</span><span class=o>.</span><span class=n>Signal</span><span class=p>()</span>
+    <span class=c1># Refreshed attribute is not changed by view itself</span>
+    <span class=c1># - widget which triggers `refresh` is changing the state</span>
+    <span class=c1># TODO store that information in widget which cares about refreshing</span>
+    <span class=n>refreshed</span> <span class=o>=</span> <span class=kc>False</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>set_refreshed</span><span class=p>(</span><span class=bp>self</span><span class=p>,</span> <span class=n>refreshed</span><span class=p>):</span>
+<span class=w>        </span><span class=sd>&quot;&quot;&quot;View is refreshed with last instances.</span>
+
+<span class=sd>        Views are not updated all the time. Only if are visible.</span>
+<span class=sd>        &quot;&quot;&quot;</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>refreshed</span> <span class=o>=</span> <span class=n>refreshed</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>refresh</span><span class=p>(</span><span class=bp>self</span><span class=p>):</span>
+<span class=w>        </span><span class=sd>&quot;&quot;&quot;Refresh instances in the view from current `CreatedContext`.&quot;&quot;&quot;</span>
+        <span class=k>raise</span> <span class=ne>NotImplementedError</span><span class=p>((</span>
+            <span class=s2>&quot;</span><span class=si>{}</span><span class=s2> Method &#39;refresh&#39; is not implemented.&quot;</span>
+        <span class=p>)</span><span class=o>.</span><span class=n>format</span><span class=p>(</span><span class=bp>self</span><span class=o>.</span><span class=vm>__class__</span><span class=o>.</span><span class=vm>__name__</span><span class=p>))</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>has_items</span><span class=p>(</span><span class=bp>self</span><span class=p>):</span>
+<span class=w>        </span><span class=sd>&quot;&quot;&quot;View has at least one item.</span>
+
+<span class=sd>        This is more a question for controller but is called from widget</span>
+<span class=sd>        which should probably should not use controller.</span>
+
+<span class=sd>        Returns:</span>
+<span class=sd>            bool: There is at least one instance or conversion item.</span>
+<span class=sd>        &quot;&quot;&quot;</span>
+
+        <span class=k>raise</span> <span class=ne>NotImplementedError</span><span class=p>((</span>
+            <span class=s2>&quot;</span><span class=si>{}</span><span class=s2> Method &#39;has_items&#39; is not implemented.&quot;</span>
+        <span class=p>)</span><span class=o>.</span><span class=n>format</span><span class=p>(</span><span class=bp>self</span><span class=o>.</span><span class=vm>__class__</span><span class=o>.</span><span class=vm>__name__</span><span class=p>))</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>get_selected_items</span><span class=p>(</span><span class=bp>self</span><span class=p>):</span>
+<span class=w>        </span><span class=sd>&quot;&quot;&quot;Selected instances required for callbacks.</span>
+
+<span class=sd>        Example: When delete button is clicked to know what should be deleted.</span>
+<span class=sd>        &quot;&quot;&quot;</span>
+
+        <span class=k>raise</span> <span class=ne>NotImplementedError</span><span class=p>((</span>
+            <span class=s2>&quot;</span><span class=si>{}</span><span class=s2> Method &#39;get_selected_items&#39; is not implemented.&quot;</span>
+        <span class=p>)</span><span class=o>.</span><span class=n>format</span><span class=p>(</span><span class=bp>self</span><span class=o>.</span><span class=vm>__class__</span><span class=o>.</span><span class=vm>__name__</span><span class=p>))</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>set_selected_items</span><span class=p>(</span>
+        <span class=bp>self</span><span class=p>,</span> <span class=n>instance_ids</span><span class=p>,</span> <span class=n>context_selected</span><span class=p>,</span> <span class=n>convertor_identifiers</span>
+    <span class=p>):</span>
+<span class=w>        </span><span class=sd>&quot;&quot;&quot;Change selection for instances and context.</span>
+
+<span class=sd>        Used to applying selection from one view to other.</span>
+
+<span class=sd>        Args:</span>
+<span class=sd>            instance_ids (List[str]): Selected instance ids.</span>
+<span class=sd>            context_selected (bool): Context is selected.</span>
+<span class=sd>            convertor_identifiers (List[str]): Selected convertor identifiers.</span>
+
+<span class=sd>        &quot;&quot;&quot;</span>
+        <span class=k>raise</span> <span class=ne>NotImplementedError</span><span class=p>((</span>
+            <span class=s2>&quot;</span><span class=si>{}</span><span class=s2> Method &#39;set_selected_items&#39; is not implemented.&quot;</span>
+        <span class=p>)</span><span class=o>.</span><span class=n>format</span><span class=p>(</span><span class=bp>self</span><span class=o>.</span><span class=vm>__class__</span><span class=o>.</span><span class=vm>__name__</span><span class=p>))</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>set_active_toggle_enabled</span><span class=p>(</span><span class=bp>self</span><span class=p>,</span> <span class=n>enabled</span><span class=p>):</span>
+<span class=w>        </span><span class=sd>&quot;&quot;&quot;Instances are disabled for changing enabled state.</span>
+
+<span class=sd>        Active state should stay the same until is &quot;unset&quot;.</span>
+
+<span class=sd>        Args:</span>
+<span class=sd>            enabled (bool): Instance state can be changed.</span>
+<span class=sd>        &quot;&quot;&quot;</span>
+
+        <span class=k>raise</span> <span class=ne>NotImplementedError</span><span class=p>((</span>
+            <span class=s2>&quot;</span><span class=si>{}</span><span class=s2> Method &#39;set_active_toggle_enabled&#39; is not implemented.&quot;</span>
+        <span class=p>)</span><span class=o>.</span><span class=n>format</span><span class=p>(</span><span class=bp>self</span><span class=o>.</span><span class=vm>__class__</span><span class=o>.</span><span class=vm>__name__</span><span class=p>))</span>
+</code></pre></div></td></tr></table></div> </details> <div class="doc doc-children"> <div class="doc doc-object doc-function"> <h3 id=client.ayon_core.tools.publisher.widgets.widgets.AbstractInstanceView.get_selected_items class="doc doc-heading"> <code class="highlight language-python"><span class=n>get_selected_items</span><span class=p>()</span></code> </h3> <div class="doc doc-contents "> <p>Selected instances required for callbacks.</p> <p>Example: When delete button is clicked to know what should be deleted.</p> <details class=quote> <summary>Source code in <code>client/ayon_core/tools/publisher/widgets/widgets.py</code></summary> <div class=highlight><table class=highlighttable><tr><td class=linenos><div class=linenodiv><pre><span></span><span class=normal>333</span>
+<span class=normal>334</span>
+<span class=normal>335</span>
+<span class=normal>336</span>
+<span class=normal>337</span>
+<span class=normal>338</span>
+<span class=normal>339</span>
+<span class=normal>340</span>
+<span class=normal>341</span></pre></div></td><td class=code><div><pre><span></span><code><span class=k>def</span><span class=w> </span><span class=nf>get_selected_items</span><span class=p>(</span><span class=bp>self</span><span class=p>):</span>
+<span class=w>    </span><span class=sd>&quot;&quot;&quot;Selected instances required for callbacks.</span>
+
+<span class=sd>    Example: When delete button is clicked to know what should be deleted.</span>
+<span class=sd>    &quot;&quot;&quot;</span>
+
+    <span class=k>raise</span> <span class=ne>NotImplementedError</span><span class=p>((</span>
+        <span class=s2>&quot;</span><span class=si>{}</span><span class=s2> Method &#39;get_selected_items&#39; is not implemented.&quot;</span>
+    <span class=p>)</span><span class=o>.</span><span class=n>format</span><span class=p>(</span><span class=bp>self</span><span class=o>.</span><span class=vm>__class__</span><span class=o>.</span><span class=vm>__name__</span><span class=p>))</span>
+</code></pre></div></td></tr></table></div> </details> </div> </div> <div class="doc doc-object doc-function"> <h3 id=client.ayon_core.tools.publisher.widgets.widgets.AbstractInstanceView.has_items class="doc doc-heading"> <code class="highlight language-python"><span class=n>has_items</span><span class=p>()</span></code> </h3> <div class="doc doc-contents "> <p>View has at least one item.</p> <p>This is more a question for controller but is called from widget which should probably should not use controller.</p> <p><span class=doc-section-title>Returns:</span></p> <table> <thead> <tr> <th>Name</th> <th>Type</th> <th>Description</th> </tr> </thead> <tbody> <tr class=doc-section-item> <td><code>bool</code></td> <td> </td> <td> <div class=doc-md-description> <p>There is at least one instance or conversion item.</p> </div> </td> </tr> </tbody> </table> <details class=quote> <summary>Source code in <code>client/ayon_core/tools/publisher/widgets/widgets.py</code></summary> <div class=highlight><table class=highlighttable><tr><td class=linenos><div class=linenodiv><pre><span></span><span class=normal>319</span>
+<span class=normal>320</span>
+<span class=normal>321</span>
+<span class=normal>322</span>
+<span class=normal>323</span>
+<span class=normal>324</span>
+<span class=normal>325</span>
+<span class=normal>326</span>
+<span class=normal>327</span>
+<span class=normal>328</span>
+<span class=normal>329</span>
+<span class=normal>330</span>
+<span class=normal>331</span></pre></div></td><td class=code><div><pre><span></span><code><span class=k>def</span><span class=w> </span><span class=nf>has_items</span><span class=p>(</span><span class=bp>self</span><span class=p>):</span>
+<span class=w>    </span><span class=sd>&quot;&quot;&quot;View has at least one item.</span>
+
+<span class=sd>    This is more a question for controller but is called from widget</span>
+<span class=sd>    which should probably should not use controller.</span>
+
+<span class=sd>    Returns:</span>
+<span class=sd>        bool: There is at least one instance or conversion item.</span>
+<span class=sd>    &quot;&quot;&quot;</span>
+
+    <span class=k>raise</span> <span class=ne>NotImplementedError</span><span class=p>((</span>
+        <span class=s2>&quot;</span><span class=si>{}</span><span class=s2> Method &#39;has_items&#39; is not implemented.&quot;</span>
+    <span class=p>)</span><span class=o>.</span><span class=n>format</span><span class=p>(</span><span class=bp>self</span><span class=o>.</span><span class=vm>__class__</span><span class=o>.</span><span class=vm>__name__</span><span class=p>))</span>
+</code></pre></div></td></tr></table></div> </details> </div> </div> <div class="doc doc-object doc-function"> <h3 id=client.ayon_core.tools.publisher.widgets.widgets.AbstractInstanceView.refresh class="doc doc-heading"> <code class="highlight language-python"><span class=n>refresh</span><span class=p>()</span></code> </h3> <div class="doc doc-contents "> <p>Refresh instances in the view from current <code>CreatedContext</code>.</p> <details class=quote> <summary>Source code in <code>client/ayon_core/tools/publisher/widgets/widgets.py</code></summary> <div class=highlight><table class=highlighttable><tr><td class=linenos><div class=linenodiv><pre><span></span><span class=normal>313</span>
+<span class=normal>314</span>
+<span class=normal>315</span>
+<span class=normal>316</span>
+<span class=normal>317</span></pre></div></td><td class=code><div><pre><span></span><code><span class=k>def</span><span class=w> </span><span class=nf>refresh</span><span class=p>(</span><span class=bp>self</span><span class=p>):</span>
+<span class=w>    </span><span class=sd>&quot;&quot;&quot;Refresh instances in the view from current `CreatedContext`.&quot;&quot;&quot;</span>
+    <span class=k>raise</span> <span class=ne>NotImplementedError</span><span class=p>((</span>
+        <span class=s2>&quot;</span><span class=si>{}</span><span class=s2> Method &#39;refresh&#39; is not implemented.&quot;</span>
+    <span class=p>)</span><span class=o>.</span><span class=n>format</span><span class=p>(</span><span class=bp>self</span><span class=o>.</span><span class=vm>__class__</span><span class=o>.</span><span class=vm>__name__</span><span class=p>))</span>
+</code></pre></div></td></tr></table></div> </details> </div> </div> <div class="doc doc-object doc-function"> <h3 id=client.ayon_core.tools.publisher.widgets.widgets.AbstractInstanceView.set_active_toggle_enabled class="doc doc-heading"> <code class="highlight language-python"><span class=n>set_active_toggle_enabled</span><span class=p>(</span><span class=n>enabled</span><span class=p>)</span></code> </h3> <div class="doc doc-contents "> <p>Instances are disabled for changing enabled state.</p> <p>Active state should stay the same until is "unset".</p> <p><span class=doc-section-title>Parameters:</span></p> <table> <thead> <tr> <th>Name</th> <th>Type</th> <th>Description</th> <th>Default</th> </tr> </thead> <tbody> <tr class=doc-section-item> <td> <code>enabled</code> </td> <td> <code><span title=bool>bool</span></code> </td> <td> <div class=doc-md-description> <p>Instance state can be changed.</p> </div> </td> <td> <em>required</em> </td> </tr> </tbody> </table> <details class=quote> <summary>Source code in <code>client/ayon_core/tools/publisher/widgets/widgets.py</code></summary> <div class=highlight><table class=highlighttable><tr><td class=linenos><div class=linenodiv><pre><span></span><span class=normal>360</span>
+<span class=normal>361</span>
+<span class=normal>362</span>
+<span class=normal>363</span>
+<span class=normal>364</span>
+<span class=normal>365</span>
+<span class=normal>366</span>
+<span class=normal>367</span>
+<span class=normal>368</span>
+<span class=normal>369</span>
+<span class=normal>370</span>
+<span class=normal>371</span></pre></div></td><td class=code><div><pre><span></span><code><span class=k>def</span><span class=w> </span><span class=nf>set_active_toggle_enabled</span><span class=p>(</span><span class=bp>self</span><span class=p>,</span> <span class=n>enabled</span><span class=p>):</span>
+<span class=w>    </span><span class=sd>&quot;&quot;&quot;Instances are disabled for changing enabled state.</span>
+
+<span class=sd>    Active state should stay the same until is &quot;unset&quot;.</span>
+
+<span class=sd>    Args:</span>
+<span class=sd>        enabled (bool): Instance state can be changed.</span>
+<span class=sd>    &quot;&quot;&quot;</span>
+
+    <span class=k>raise</span> <span class=ne>NotImplementedError</span><span class=p>((</span>
+        <span class=s2>&quot;</span><span class=si>{}</span><span class=s2> Method &#39;set_active_toggle_enabled&#39; is not implemented.&quot;</span>
+    <span class=p>)</span><span class=o>.</span><span class=n>format</span><span class=p>(</span><span class=bp>self</span><span class=o>.</span><span class=vm>__class__</span><span class=o>.</span><span class=vm>__name__</span><span class=p>))</span>
+</code></pre></div></td></tr></table></div> </details> </div> </div> <div class="doc doc-object doc-function"> <h3 id=client.ayon_core.tools.publisher.widgets.widgets.AbstractInstanceView.set_refreshed class="doc doc-heading"> <code class="highlight language-python"><span class=n>set_refreshed</span><span class=p>(</span><span class=n>refreshed</span><span class=p>)</span></code> </h3> <div class="doc doc-contents "> <p>View is refreshed with last instances.</p> <p>Views are not updated all the time. Only if are visible.</p> <details class=quote> <summary>Source code in <code>client/ayon_core/tools/publisher/widgets/widgets.py</code></summary> <div class=highlight><table class=highlighttable><tr><td class=linenos><div class=linenodiv><pre><span></span><span class=normal>306</span>
+<span class=normal>307</span>
+<span class=normal>308</span>
+<span class=normal>309</span>
+<span class=normal>310</span>
+<span class=normal>311</span></pre></div></td><td class=code><div><pre><span></span><code><span class=k>def</span><span class=w> </span><span class=nf>set_refreshed</span><span class=p>(</span><span class=bp>self</span><span class=p>,</span> <span class=n>refreshed</span><span class=p>):</span>
+<span class=w>    </span><span class=sd>&quot;&quot;&quot;View is refreshed with last instances.</span>
+
+<span class=sd>    Views are not updated all the time. Only if are visible.</span>
+<span class=sd>    &quot;&quot;&quot;</span>
+    <span class=bp>self</span><span class=o>.</span><span class=n>refreshed</span> <span class=o>=</span> <span class=n>refreshed</span>
+</code></pre></div></td></tr></table></div> </details> </div> </div> <div class="doc doc-object doc-function"> <h3 id=client.ayon_core.tools.publisher.widgets.widgets.AbstractInstanceView.set_selected_items class="doc doc-heading"> <code class="highlight language-python"><span class=n>set_selected_items</span><span class=p>(</span><span class=n>instance_ids</span><span class=p>,</span> <span class=n>context_selected</span><span class=p>,</span> <span class=n>convertor_identifiers</span><span class=p>)</span></code> </h3> <div class="doc doc-contents "> <p>Change selection for instances and context.</p> <p>Used to applying selection from one view to other.</p> <p><span class=doc-section-title>Parameters:</span></p> <table> <thead> <tr> <th>Name</th> <th>Type</th> <th>Description</th> <th>Default</th> </tr> </thead> <tbody> <tr class=doc-section-item> <td> <code>instance_ids</code> </td> <td> <code><span title=List>List</span>[<span title=str>str</span>]</code> </td> <td> <div class=doc-md-description> <p>Selected instance ids.</p> </div> </td> <td> <em>required</em> </td> </tr> <tr class=doc-section-item> <td> <code>context_selected</code> </td> <td> <code><span title=bool>bool</span></code> </td> <td> <div class=doc-md-description> <p>Context is selected.</p> </div> </td> <td> <em>required</em> </td> </tr> <tr class=doc-section-item> <td> <code>convertor_identifiers</code> </td> <td> <code><span title=List>List</span>[<span title=str>str</span>]</code> </td> <td> <div class=doc-md-description> <p>Selected convertor identifiers.</p> </div> </td> <td> <em>required</em> </td> </tr> </tbody> </table> <details class=quote> <summary>Source code in <code>client/ayon_core/tools/publisher/widgets/widgets.py</code></summary> <div class=highlight><table class=highlighttable><tr><td class=linenos><div class=linenodiv><pre><span></span><span class=normal>343</span>
+<span class=normal>344</span>
+<span class=normal>345</span>
+<span class=normal>346</span>
+<span class=normal>347</span>
+<span class=normal>348</span>
+<span class=normal>349</span>
+<span class=normal>350</span>
+<span class=normal>351</span>
+<span class=normal>352</span>
+<span class=normal>353</span>
+<span class=normal>354</span>
+<span class=normal>355</span>
+<span class=normal>356</span>
+<span class=normal>357</span>
+<span class=normal>358</span></pre></div></td><td class=code><div><pre><span></span><code><span class=k>def</span><span class=w> </span><span class=nf>set_selected_items</span><span class=p>(</span>
+    <span class=bp>self</span><span class=p>,</span> <span class=n>instance_ids</span><span class=p>,</span> <span class=n>context_selected</span><span class=p>,</span> <span class=n>convertor_identifiers</span>
+<span class=p>):</span>
+<span class=w>    </span><span class=sd>&quot;&quot;&quot;Change selection for instances and context.</span>
+
+<span class=sd>    Used to applying selection from one view to other.</span>
+
+<span class=sd>    Args:</span>
+<span class=sd>        instance_ids (List[str]): Selected instance ids.</span>
+<span class=sd>        context_selected (bool): Context is selected.</span>
+<span class=sd>        convertor_identifiers (List[str]): Selected convertor identifiers.</span>
+
+<span class=sd>    &quot;&quot;&quot;</span>
+    <span class=k>raise</span> <span class=ne>NotImplementedError</span><span class=p>((</span>
+        <span class=s2>&quot;</span><span class=si>{}</span><span class=s2> Method &#39;set_selected_items&#39; is not implemented.&quot;</span>
+    <span class=p>)</span><span class=o>.</span><span class=n>format</span><span class=p>(</span><span class=bp>self</span><span class=o>.</span><span class=vm>__class__</span><span class=o>.</span><span class=vm>__name__</span><span class=p>))</span>
+</code></pre></div></td></tr></table></div> </details> </div> </div> </div> </div> </div> <div class="doc doc-object doc-class"> <h2 id=client.ayon_core.tools.publisher.widgets.widgets.ChangeViewBtn class="doc doc-heading"> <code>ChangeViewBtn</code> </h2> <div class="doc doc-contents "> <p class="doc doc-class-bases"> Bases: <code><a class="autorefs autorefs-internal" title="PublishIconBtn (client.ayon_core.tools.publisher.widgets.widgets.PublishIconBtn)" href=#client.ayon_core.tools.publisher.widgets.widgets.PublishIconBtn>PublishIconBtn</a></code></p> <p>Create toggle view button.</p> <details class=quote> <summary>Source code in <code>client/ayon_core/tools/publisher/widgets/widgets.py</code></summary> <div class=highlight><table class=highlighttable><tr><td class=linenos><div class=linenodiv><pre><span></span><span class=normal>290</span>
+<span class=normal>291</span>
+<span class=normal>292</span>
+<span class=normal>293</span>
+<span class=normal>294</span>
+<span class=normal>295</span></pre></div></td><td class=code><div><pre><span></span><code><span class=k>class</span><span class=w> </span><span class=nc>ChangeViewBtn</span><span class=p>(</span><span class=n>PublishIconBtn</span><span class=p>):</span>
+<span class=w>    </span><span class=sd>&quot;&quot;&quot;Create toggle view button.&quot;&quot;&quot;</span>
+    <span class=k>def</span><span class=w> </span><span class=fm>__init__</span><span class=p>(</span><span class=bp>self</span><span class=p>,</span> <span class=n>parent</span><span class=o>=</span><span class=kc>None</span><span class=p>):</span>
+        <span class=n>icon_path</span> <span class=o>=</span> <span class=n>get_icon_path</span><span class=p>(</span><span class=s2>&quot;change_view&quot;</span><span class=p>)</span>
+        <span class=nb>super</span><span class=p>()</span><span class=o>.</span><span class=fm>__init__</span><span class=p>(</span><span class=n>icon_path</span><span class=p>,</span> <span class=n>parent</span><span class=p>)</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>setToolTip</span><span class=p>(</span><span class=s2>&quot;Swap between views&quot;</span><span class=p>)</span>
+</code></pre></div></td></tr></table></div> </details> <div class="doc doc-children"> </div> </div> </div> <div class="doc doc-object doc-class"> <h2 id=client.ayon_core.tools.publisher.widgets.widgets.ClickableLineEdit class="doc doc-heading"> <code>ClickableLineEdit</code> </h2> <div class="doc doc-contents "> <p class="doc doc-class-bases"> Bases: <code><span title=qtpy.QtWidgets.QLineEdit>QLineEdit</span></code></p> <p>QLineEdit capturing left mouse click.</p> <p>Triggers <code>clicked</code> signal on mouse click.</p> <details class=quote> <summary>Source code in <code>client/ayon_core/tools/publisher/widgets/widgets.py</code></summary> <div class=highlight><table class=highlighttable><tr><td class=linenos><div class=linenodiv><pre><span></span><span class=normal>374</span>
+<span class=normal>375</span>
+<span class=normal>376</span>
+<span class=normal>377</span>
+<span class=normal>378</span>
+<span class=normal>379</span>
+<span class=normal>380</span>
+<span class=normal>381</span>
+<span class=normal>382</span>
+<span class=normal>383</span>
+<span class=normal>384</span>
+<span class=normal>385</span>
+<span class=normal>386</span>
+<span class=normal>387</span>
+<span class=normal>388</span>
+<span class=normal>389</span>
+<span class=normal>390</span>
+<span class=normal>391</span>
+<span class=normal>392</span>
+<span class=normal>393</span>
+<span class=normal>394</span>
+<span class=normal>395</span>
+<span class=normal>396</span>
+<span class=normal>397</span>
+<span class=normal>398</span>
+<span class=normal>399</span>
+<span class=normal>400</span>
+<span class=normal>401</span>
+<span class=normal>402</span></pre></div></td><td class=code><div><pre><span></span><code><span class=k>class</span><span class=w> </span><span class=nc>ClickableLineEdit</span><span class=p>(</span><span class=n>QtWidgets</span><span class=o>.</span><span class=n>QLineEdit</span><span class=p>):</span>
+<span class=w>    </span><span class=sd>&quot;&quot;&quot;QLineEdit capturing left mouse click.</span>
+
+<span class=sd>    Triggers `clicked` signal on mouse click.</span>
+<span class=sd>    &quot;&quot;&quot;</span>
+    <span class=n>clicked</span> <span class=o>=</span> <span class=n>QtCore</span><span class=o>.</span><span class=n>Signal</span><span class=p>()</span>
+
+    <span class=k>def</span><span class=w> </span><span class=fm>__init__</span><span class=p>(</span><span class=bp>self</span><span class=p>,</span> <span class=o>*</span><span class=n>args</span><span class=p>,</span> <span class=o>**</span><span class=n>kwargs</span><span class=p>):</span>
+        <span class=nb>super</span><span class=p>()</span><span class=o>.</span><span class=fm>__init__</span><span class=p>(</span><span class=o>*</span><span class=n>args</span><span class=p>,</span> <span class=o>**</span><span class=n>kwargs</span><span class=p>)</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>setReadOnly</span><span class=p>(</span><span class=kc>True</span><span class=p>)</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>_mouse_pressed</span> <span class=o>=</span> <span class=kc>False</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>mousePressEvent</span><span class=p>(</span><span class=bp>self</span><span class=p>,</span> <span class=n>event</span><span class=p>):</span>
+        <span class=k>if</span> <span class=n>event</span><span class=o>.</span><span class=n>button</span><span class=p>()</span> <span class=o>==</span> <span class=n>QtCore</span><span class=o>.</span><span class=n>Qt</span><span class=o>.</span><span class=n>LeftButton</span><span class=p>:</span>
+            <span class=bp>self</span><span class=o>.</span><span class=n>_mouse_pressed</span> <span class=o>=</span> <span class=kc>True</span>
+        <span class=n>event</span><span class=o>.</span><span class=n>accept</span><span class=p>()</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>mouseMoveEvent</span><span class=p>(</span><span class=bp>self</span><span class=p>,</span> <span class=n>event</span><span class=p>):</span>
+        <span class=n>event</span><span class=o>.</span><span class=n>accept</span><span class=p>()</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>mouseReleaseEvent</span><span class=p>(</span><span class=bp>self</span><span class=p>,</span> <span class=n>event</span><span class=p>):</span>
+        <span class=k>if</span> <span class=bp>self</span><span class=o>.</span><span class=n>_mouse_pressed</span><span class=p>:</span>
+            <span class=bp>self</span><span class=o>.</span><span class=n>_mouse_pressed</span> <span class=o>=</span> <span class=kc>False</span>
+            <span class=k>if</span> <span class=bp>self</span><span class=o>.</span><span class=n>rect</span><span class=p>()</span><span class=o>.</span><span class=n>contains</span><span class=p>(</span><span class=n>event</span><span class=o>.</span><span class=n>pos</span><span class=p>()):</span>
+                <span class=bp>self</span><span class=o>.</span><span class=n>clicked</span><span class=o>.</span><span class=n>emit</span><span class=p>()</span>
+        <span class=n>event</span><span class=o>.</span><span class=n>accept</span><span class=p>()</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>mouseDoubleClickEvent</span><span class=p>(</span><span class=bp>self</span><span class=p>,</span> <span class=n>event</span><span class=p>):</span>
+        <span class=n>event</span><span class=o>.</span><span class=n>accept</span><span class=p>()</span>
+</code></pre></div></td></tr></table></div> </details> <div class="doc doc-children"> </div> </div> </div> <div class="doc doc-object doc-class"> <h2 id=client.ayon_core.tools.publisher.widgets.widgets.ContextWarningLabel class="doc doc-heading"> <code>ContextWarningLabel</code> </h2> <div class="doc doc-contents "> <p class="doc doc-class-bases"> Bases: <code><span title=client.ayon_core.tools.publisher.widgets.widgets.PublishPixmapLabel>PublishPixmapLabel</span></code></p> <p>Pixmap label with warning icon.</p> <details class=quote> <summary>Source code in <code>client/ayon_core/tools/publisher/widgets/widgets.py</code></summary> <div class=highlight><table class=highlighttable><tr><td class=linenos><div class=linenodiv><pre><span></span><span class=normal> 98</span>
+<span class=normal> 99</span>
+<span class=normal>100</span>
+<span class=normal>101</span>
+<span class=normal>102</span>
+<span class=normal>103</span>
+<span class=normal>104</span>
+<span class=normal>105</span>
+<span class=normal>106</span>
+<span class=normal>107</span>
+<span class=normal>108</span></pre></div></td><td class=code><div><pre><span></span><code><span class=k>class</span><span class=w> </span><span class=nc>ContextWarningLabel</span><span class=p>(</span><span class=n>PublishPixmapLabel</span><span class=p>):</span>
+<span class=w>    </span><span class=sd>&quot;&quot;&quot;Pixmap label with warning icon.&quot;&quot;&quot;</span>
+    <span class=k>def</span><span class=w> </span><span class=fm>__init__</span><span class=p>(</span><span class=bp>self</span><span class=p>,</span> <span class=n>parent</span><span class=p>):</span>
+        <span class=n>pix</span> <span class=o>=</span> <span class=n>get_pixmap</span><span class=p>(</span><span class=s2>&quot;warning&quot;</span><span class=p>)</span>
+
+        <span class=nb>super</span><span class=p>()</span><span class=o>.</span><span class=fm>__init__</span><span class=p>(</span><span class=n>pix</span><span class=p>,</span> <span class=n>parent</span><span class=p>)</span>
+
+        <span class=bp>self</span><span class=o>.</span><span class=n>setToolTip</span><span class=p>(</span>
+            <span class=s2>&quot;Contain invalid context. Please check details.&quot;</span>
+        <span class=p>)</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>setObjectName</span><span class=p>(</span><span class=s2>&quot;ProductTypeIconLabel&quot;</span><span class=p>)</span>
+</code></pre></div></td></tr></table></div> </details> <div class="doc doc-children"> </div> </div> </div> <div class="doc doc-object doc-class"> <h2 id=client.ayon_core.tools.publisher.widgets.widgets.CreateBtn class="doc doc-heading"> <code>CreateBtn</code> </h2> <div class="doc doc-contents "> <p class="doc doc-class-bases"> Bases: <code><a class="autorefs autorefs-internal" title="PublishIconBtn (client.ayon_core.tools.publisher.widgets.widgets.PublishIconBtn)" href=#client.ayon_core.tools.publisher.widgets.widgets.PublishIconBtn>PublishIconBtn</a></code></p> <p>Create instance button.</p> <details class=quote> <summary>Source code in <code>client/ayon_core/tools/publisher/widgets/widgets.py</code></summary> <div class=highlight><table class=highlighttable><tr><td class=linenos><div class=linenodiv><pre><span></span><span class=normal>184</span>
+<span class=normal>185</span>
+<span class=normal>186</span>
+<span class=normal>187</span>
+<span class=normal>188</span>
+<span class=normal>189</span>
+<span class=normal>190</span>
+<span class=normal>191</span></pre></div></td><td class=code><div><pre><span></span><code><span class=k>class</span><span class=w> </span><span class=nc>CreateBtn</span><span class=p>(</span><span class=n>PublishIconBtn</span><span class=p>):</span>
+<span class=w>    </span><span class=sd>&quot;&quot;&quot;Create instance button.&quot;&quot;&quot;</span>
+
+    <span class=k>def</span><span class=w> </span><span class=fm>__init__</span><span class=p>(</span><span class=bp>self</span><span class=p>,</span> <span class=n>parent</span><span class=o>=</span><span class=kc>None</span><span class=p>):</span>
+        <span class=n>icon_path</span> <span class=o>=</span> <span class=n>get_icon_path</span><span class=p>(</span><span class=s2>&quot;create&quot;</span><span class=p>)</span>
+        <span class=nb>super</span><span class=p>()</span><span class=o>.</span><span class=fm>__init__</span><span class=p>(</span><span class=n>icon_path</span><span class=p>,</span> <span class=s2>&quot;Create&quot;</span><span class=p>,</span> <span class=n>parent</span><span class=p>)</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>setToolTip</span><span class=p>(</span><span class=s2>&quot;Create new product/s&quot;</span><span class=p>)</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>setLayoutDirection</span><span class=p>(</span><span class=n>QtCore</span><span class=o>.</span><span class=n>Qt</span><span class=o>.</span><span class=n>RightToLeft</span><span class=p>)</span>
+</code></pre></div></td></tr></table></div> </details> <div class="doc doc-children"> </div> </div> </div> <div class="doc doc-object doc-class"> <h2 id=client.ayon_core.tools.publisher.widgets.widgets.CreateInstanceBtn class="doc doc-heading"> <code>CreateInstanceBtn</code> </h2> <div class="doc doc-contents "> <p class="doc doc-class-bases"> Bases: <code><a class="autorefs autorefs-internal" title="PublishIconBtn (client.ayon_core.tools.publisher.widgets.widgets.PublishIconBtn)" href=#client.ayon_core.tools.publisher.widgets.widgets.PublishIconBtn>PublishIconBtn</a></code></p> <p>Create add button.</p> <details class=quote> <summary>Source code in <code>client/ayon_core/tools/publisher/widgets/widgets.py</code></summary> <div class=highlight><table class=highlighttable><tr><td class=linenos><div class=linenodiv><pre><span></span><span class=normal>240</span>
+<span class=normal>241</span>
+<span class=normal>242</span>
+<span class=normal>243</span>
+<span class=normal>244</span>
+<span class=normal>245</span></pre></div></td><td class=code><div><pre><span></span><code><span class=k>class</span><span class=w> </span><span class=nc>CreateInstanceBtn</span><span class=p>(</span><span class=n>PublishIconBtn</span><span class=p>):</span>
+<span class=w>    </span><span class=sd>&quot;&quot;&quot;Create add button.&quot;&quot;&quot;</span>
+    <span class=k>def</span><span class=w> </span><span class=fm>__init__</span><span class=p>(</span><span class=bp>self</span><span class=p>,</span> <span class=n>parent</span><span class=o>=</span><span class=kc>None</span><span class=p>):</span>
+        <span class=n>icon_path</span> <span class=o>=</span> <span class=n>get_icon_path</span><span class=p>(</span><span class=s2>&quot;add&quot;</span><span class=p>)</span>
+        <span class=nb>super</span><span class=p>()</span><span class=o>.</span><span class=fm>__init__</span><span class=p>(</span><span class=n>icon_path</span><span class=p>,</span> <span class=n>parent</span><span class=p>)</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>setToolTip</span><span class=p>(</span><span class=s2>&quot;Create new instance&quot;</span><span class=p>)</span>
+</code></pre></div></td></tr></table></div> </details> <div class="doc doc-children"> </div> </div> </div> <div class="doc doc-object doc-class"> <h2 id=client.ayon_core.tools.publisher.widgets.widgets.IconValuePixmapLabel class="doc doc-heading"> <code>IconValuePixmapLabel</code> </h2> <div class="doc doc-contents "> <p class="doc doc-class-bases"> Bases: <code><span title=client.ayon_core.tools.publisher.widgets.widgets.PublishPixmapLabel>PublishPixmapLabel</span></code></p> <p>Label resizing to width and height of font.</p> <p>Handle icon parsing from creators/instances. Using of QAwesome module of path to images.</p> <details class=quote> <summary>Source code in <code>client/ayon_core/tools/publisher/widgets/widgets.py</code></summary> <div class=highlight><table class=highlighttable><tr><td class=linenos><div class=linenodiv><pre><span></span><span class=normal>64</span>
+<span class=normal>65</span>
+<span class=normal>66</span>
+<span class=normal>67</span>
+<span class=normal>68</span>
+<span class=normal>69</span>
+<span class=normal>70</span>
+<span class=normal>71</span>
+<span class=normal>72</span>
+<span class=normal>73</span>
+<span class=normal>74</span>
+<span class=normal>75</span>
+<span class=normal>76</span>
+<span class=normal>77</span>
+<span class=normal>78</span>
+<span class=normal>79</span>
+<span class=normal>80</span>
+<span class=normal>81</span>
+<span class=normal>82</span>
+<span class=normal>83</span>
+<span class=normal>84</span>
+<span class=normal>85</span>
+<span class=normal>86</span>
+<span class=normal>87</span>
+<span class=normal>88</span>
+<span class=normal>89</span>
+<span class=normal>90</span>
+<span class=normal>91</span>
+<span class=normal>92</span>
+<span class=normal>93</span>
+<span class=normal>94</span>
+<span class=normal>95</span></pre></div></td><td class=code><div><pre><span></span><code><span class=k>class</span><span class=w> </span><span class=nc>IconValuePixmapLabel</span><span class=p>(</span><span class=n>PublishPixmapLabel</span><span class=p>):</span>
+<span class=w>    </span><span class=sd>&quot;&quot;&quot;Label resizing to width and height of font.</span>
+
+<span class=sd>    Handle icon parsing from creators/instances. Using of QAwesome module</span>
+<span class=sd>    of path to images.</span>
+<span class=sd>    &quot;&quot;&quot;</span>
+    <span class=n>default_size</span> <span class=o>=</span> <span class=mi>200</span>
+
+    <span class=k>def</span><span class=w> </span><span class=fm>__init__</span><span class=p>(</span><span class=bp>self</span><span class=p>,</span> <span class=n>icon_def</span><span class=p>,</span> <span class=n>parent</span><span class=p>):</span>
+        <span class=n>source_pixmap</span> <span class=o>=</span> <span class=bp>self</span><span class=o>.</span><span class=n>_parse_icon_def</span><span class=p>(</span><span class=n>icon_def</span><span class=p>)</span>
+
+        <span class=nb>super</span><span class=p>()</span><span class=o>.</span><span class=fm>__init__</span><span class=p>(</span><span class=n>source_pixmap</span><span class=p>,</span> <span class=n>parent</span><span class=p>)</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>set_icon_def</span><span class=p>(</span><span class=bp>self</span><span class=p>,</span> <span class=n>icon_def</span><span class=p>):</span>
+<span class=w>        </span><span class=sd>&quot;&quot;&quot;Set icon by it&#39;s definition name.</span>
+
+<span class=sd>        Args:</span>
+<span class=sd>            icon_def (str): Name of FontAwesome icon or path to image.</span>
+<span class=sd>        &quot;&quot;&quot;</span>
+        <span class=n>source_pixmap</span> <span class=o>=</span> <span class=bp>self</span><span class=o>.</span><span class=n>_parse_icon_def</span><span class=p>(</span><span class=n>icon_def</span><span class=p>)</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>set_source_pixmap</span><span class=p>(</span><span class=n>source_pixmap</span><span class=p>)</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>_default_pixmap</span><span class=p>(</span><span class=bp>self</span><span class=p>):</span>
+        <span class=n>pix</span> <span class=o>=</span> <span class=n>QtGui</span><span class=o>.</span><span class=n>QPixmap</span><span class=p>(</span><span class=mi>1</span><span class=p>,</span> <span class=mi>1</span><span class=p>)</span>
+        <span class=n>pix</span><span class=o>.</span><span class=n>fill</span><span class=p>(</span><span class=n>QtCore</span><span class=o>.</span><span class=n>Qt</span><span class=o>.</span><span class=n>transparent</span><span class=p>)</span>
+        <span class=k>return</span> <span class=n>pix</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>_parse_icon_def</span><span class=p>(</span><span class=bp>self</span><span class=p>,</span> <span class=n>icon_def</span><span class=p>):</span>
+        <span class=n>icon</span> <span class=o>=</span> <span class=n>parse_icon_def</span><span class=p>(</span><span class=n>icon_def</span><span class=p>,</span> <span class=bp>self</span><span class=o>.</span><span class=n>default_size</span><span class=p>,</span> <span class=bp>self</span><span class=o>.</span><span class=n>default_size</span><span class=p>)</span>
+        <span class=k>if</span> <span class=n>icon</span><span class=p>:</span>
+            <span class=k>return</span> <span class=n>icon</span>
+        <span class=k>return</span> <span class=bp>self</span><span class=o>.</span><span class=n>_default_pixmap</span><span class=p>()</span>
+</code></pre></div></td></tr></table></div> </details> <div class="doc doc-children"> <div class="doc doc-object doc-function"> <h3 id=client.ayon_core.tools.publisher.widgets.widgets.IconValuePixmapLabel.set_icon_def class="doc doc-heading"> <code class="highlight language-python"><span class=n>set_icon_def</span><span class=p>(</span><span class=n>icon_def</span><span class=p>)</span></code> </h3> <div class="doc doc-contents "> <p>Set icon by it's definition name.</p> <p><span class=doc-section-title>Parameters:</span></p> <table> <thead> <tr> <th>Name</th> <th>Type</th> <th>Description</th> <th>Default</th> </tr> </thead> <tbody> <tr class=doc-section-item> <td> <code>icon_def</code> </td> <td> <code><span title=str>str</span></code> </td> <td> <div class=doc-md-description> <p>Name of FontAwesome icon or path to image.</p> </div> </td> <td> <em>required</em> </td> </tr> </tbody> </table> <details class=quote> <summary>Source code in <code>client/ayon_core/tools/publisher/widgets/widgets.py</code></summary> <div class=highlight><table class=highlighttable><tr><td class=linenos><div class=linenodiv><pre><span></span><span class=normal>77</span>
+<span class=normal>78</span>
+<span class=normal>79</span>
+<span class=normal>80</span>
+<span class=normal>81</span>
+<span class=normal>82</span>
+<span class=normal>83</span>
+<span class=normal>84</span></pre></div></td><td class=code><div><pre><span></span><code><span class=k>def</span><span class=w> </span><span class=nf>set_icon_def</span><span class=p>(</span><span class=bp>self</span><span class=p>,</span> <span class=n>icon_def</span><span class=p>):</span>
+<span class=w>    </span><span class=sd>&quot;&quot;&quot;Set icon by it&#39;s definition name.</span>
+
+<span class=sd>    Args:</span>
+<span class=sd>        icon_def (str): Name of FontAwesome icon or path to image.</span>
+<span class=sd>    &quot;&quot;&quot;</span>
+    <span class=n>source_pixmap</span> <span class=o>=</span> <span class=bp>self</span><span class=o>.</span><span class=n>_parse_icon_def</span><span class=p>(</span><span class=n>icon_def</span><span class=p>)</span>
+    <span class=bp>self</span><span class=o>.</span><span class=n>set_source_pixmap</span><span class=p>(</span><span class=n>source_pixmap</span><span class=p>)</span>
+</code></pre></div></td></tr></table></div> </details> </div> </div> </div> </div> </div> <div class="doc doc-object doc-class"> <h2 id=client.ayon_core.tools.publisher.widgets.widgets.MultipleItemWidget class="doc doc-heading"> <code>MultipleItemWidget</code> </h2> <div class="doc doc-contents "> <p class="doc doc-class-bases"> Bases: <code><span title=qtpy.QtWidgets.QWidget>QWidget</span></code></p> <p>Widget for immutable text which can have more than one value.</p> <p>Content may be bigger than widget's size and does not have scroll but has flick widget on top (is possible to move around with clicked mouse).</p> <details class=quote> <summary>Source code in <code>client/ayon_core/tools/publisher/widgets/widgets.py</code></summary> <div class=highlight><table class=highlighttable><tr><td class=linenos><div class=linenodiv><pre><span></span><span class=normal>405</span>
+<span class=normal>406</span>
+<span class=normal>407</span>
+<span class=normal>408</span>
+<span class=normal>409</span>
+<span class=normal>410</span>
+<span class=normal>411</span>
+<span class=normal>412</span>
+<span class=normal>413</span>
+<span class=normal>414</span>
+<span class=normal>415</span>
+<span class=normal>416</span>
+<span class=normal>417</span>
+<span class=normal>418</span>
+<span class=normal>419</span>
+<span class=normal>420</span>
+<span class=normal>421</span>
+<span class=normal>422</span>
+<span class=normal>423</span>
+<span class=normal>424</span>
+<span class=normal>425</span>
+<span class=normal>426</span>
+<span class=normal>427</span>
+<span class=normal>428</span>
+<span class=normal>429</span>
+<span class=normal>430</span>
+<span class=normal>431</span>
+<span class=normal>432</span>
+<span class=normal>433</span>
+<span class=normal>434</span>
+<span class=normal>435</span>
+<span class=normal>436</span>
+<span class=normal>437</span>
+<span class=normal>438</span>
+<span class=normal>439</span>
+<span class=normal>440</span>
+<span class=normal>441</span>
+<span class=normal>442</span>
+<span class=normal>443</span>
+<span class=normal>444</span>
+<span class=normal>445</span>
+<span class=normal>446</span>
+<span class=normal>447</span>
+<span class=normal>448</span>
+<span class=normal>449</span>
+<span class=normal>450</span>
+<span class=normal>451</span>
+<span class=normal>452</span>
+<span class=normal>453</span>
+<span class=normal>454</span>
+<span class=normal>455</span>
+<span class=normal>456</span>
+<span class=normal>457</span>
+<span class=normal>458</span>
+<span class=normal>459</span>
+<span class=normal>460</span>
+<span class=normal>461</span>
+<span class=normal>462</span>
+<span class=normal>463</span>
+<span class=normal>464</span>
+<span class=normal>465</span>
+<span class=normal>466</span>
+<span class=normal>467</span>
+<span class=normal>468</span>
+<span class=normal>469</span>
+<span class=normal>470</span>
+<span class=normal>471</span>
+<span class=normal>472</span>
+<span class=normal>473</span>
+<span class=normal>474</span>
+<span class=normal>475</span>
+<span class=normal>476</span>
+<span class=normal>477</span>
+<span class=normal>478</span>
+<span class=normal>479</span></pre></div></td><td class=code><div><pre><span></span><code><span class=k>class</span><span class=w> </span><span class=nc>MultipleItemWidget</span><span class=p>(</span><span class=n>QtWidgets</span><span class=o>.</span><span class=n>QWidget</span><span class=p>):</span>
+<span class=w>    </span><span class=sd>&quot;&quot;&quot;Widget for immutable text which can have more than one value.</span>
+
+<span class=sd>    Content may be bigger than widget&#39;s size and does not have scroll but has</span>
+<span class=sd>    flick widget on top (is possible to move around with clicked mouse).</span>
+<span class=sd>    &quot;&quot;&quot;</span>
+
+    <span class=k>def</span><span class=w> </span><span class=fm>__init__</span><span class=p>(</span><span class=bp>self</span><span class=p>,</span> <span class=n>parent</span><span class=p>):</span>
+        <span class=nb>super</span><span class=p>()</span><span class=o>.</span><span class=fm>__init__</span><span class=p>(</span><span class=n>parent</span><span class=p>)</span>
+
+        <span class=n>model</span> <span class=o>=</span> <span class=n>QtGui</span><span class=o>.</span><span class=n>QStandardItemModel</span><span class=p>()</span>
+
+        <span class=n>view</span> <span class=o>=</span> <span class=n>QtWidgets</span><span class=o>.</span><span class=n>QListView</span><span class=p>(</span><span class=bp>self</span><span class=p>)</span>
+        <span class=n>view</span><span class=o>.</span><span class=n>setObjectName</span><span class=p>(</span><span class=s2>&quot;MultipleItemView&quot;</span><span class=p>)</span>
+        <span class=n>view</span><span class=o>.</span><span class=n>setLayoutMode</span><span class=p>(</span><span class=n>QtWidgets</span><span class=o>.</span><span class=n>QListView</span><span class=o>.</span><span class=n>Batched</span><span class=p>)</span>
+        <span class=n>view</span><span class=o>.</span><span class=n>setViewMode</span><span class=p>(</span><span class=n>QtWidgets</span><span class=o>.</span><span class=n>QListView</span><span class=o>.</span><span class=n>IconMode</span><span class=p>)</span>
+        <span class=n>view</span><span class=o>.</span><span class=n>setResizeMode</span><span class=p>(</span><span class=n>QtWidgets</span><span class=o>.</span><span class=n>QListView</span><span class=o>.</span><span class=n>Adjust</span><span class=p>)</span>
+        <span class=n>view</span><span class=o>.</span><span class=n>setWrapping</span><span class=p>(</span><span class=kc>False</span><span class=p>)</span>
+        <span class=n>view</span><span class=o>.</span><span class=n>setSpacing</span><span class=p>(</span><span class=mi>2</span><span class=p>)</span>
+        <span class=n>view</span><span class=o>.</span><span class=n>setModel</span><span class=p>(</span><span class=n>model</span><span class=p>)</span>
+        <span class=n>view</span><span class=o>.</span><span class=n>setHorizontalScrollBarPolicy</span><span class=p>(</span><span class=n>QtCore</span><span class=o>.</span><span class=n>Qt</span><span class=o>.</span><span class=n>ScrollBarAlwaysOff</span><span class=p>)</span>
+        <span class=n>view</span><span class=o>.</span><span class=n>setVerticalScrollBarPolicy</span><span class=p>(</span><span class=n>QtCore</span><span class=o>.</span><span class=n>Qt</span><span class=o>.</span><span class=n>ScrollBarAlwaysOff</span><span class=p>)</span>
+
+        <span class=n>flick</span> <span class=o>=</span> <span class=n>FlickCharm</span><span class=p>(</span><span class=n>parent</span><span class=o>=</span><span class=n>view</span><span class=p>)</span>
+        <span class=n>flick</span><span class=o>.</span><span class=n>activateOn</span><span class=p>(</span><span class=n>view</span><span class=p>)</span>
+
+        <span class=n>layout</span> <span class=o>=</span> <span class=n>QtWidgets</span><span class=o>.</span><span class=n>QHBoxLayout</span><span class=p>(</span><span class=bp>self</span><span class=p>)</span>
+        <span class=n>layout</span><span class=o>.</span><span class=n>setContentsMargins</span><span class=p>(</span><span class=mi>0</span><span class=p>,</span> <span class=mi>0</span><span class=p>,</span> <span class=mi>0</span><span class=p>,</span> <span class=mi>0</span><span class=p>)</span>
+        <span class=n>layout</span><span class=o>.</span><span class=n>addWidget</span><span class=p>(</span><span class=n>view</span><span class=p>)</span>
+
+        <span class=n>model</span><span class=o>.</span><span class=n>rowsInserted</span><span class=o>.</span><span class=n>connect</span><span class=p>(</span><span class=bp>self</span><span class=o>.</span><span class=n>_on_insert</span><span class=p>)</span>
+
+        <span class=bp>self</span><span class=o>.</span><span class=n>_view</span> <span class=o>=</span> <span class=n>view</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>_model</span> <span class=o>=</span> <span class=n>model</span>
+
+        <span class=bp>self</span><span class=o>.</span><span class=n>_value</span> <span class=o>=</span> <span class=p>[]</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>_on_insert</span><span class=p>(</span><span class=bp>self</span><span class=p>):</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>_update_size</span><span class=p>()</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>_update_size</span><span class=p>(</span><span class=bp>self</span><span class=p>):</span>
+        <span class=n>model</span> <span class=o>=</span> <span class=bp>self</span><span class=o>.</span><span class=n>_view</span><span class=o>.</span><span class=n>model</span><span class=p>()</span>
+        <span class=k>if</span> <span class=n>model</span><span class=o>.</span><span class=n>rowCount</span><span class=p>()</span> <span class=o>==</span> <span class=mi>0</span><span class=p>:</span>
+            <span class=k>return</span>
+        <span class=n>height</span> <span class=o>=</span> <span class=bp>self</span><span class=o>.</span><span class=n>_view</span><span class=o>.</span><span class=n>sizeHintForRow</span><span class=p>(</span><span class=mi>0</span><span class=p>)</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>setMaximumHeight</span><span class=p>(</span><span class=n>height</span> <span class=o>+</span> <span class=p>(</span><span class=mi>2</span> <span class=o>*</span> <span class=bp>self</span><span class=o>.</span><span class=n>_view</span><span class=o>.</span><span class=n>spacing</span><span class=p>()))</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>showEvent</span><span class=p>(</span><span class=bp>self</span><span class=p>,</span> <span class=n>event</span><span class=p>):</span>
+        <span class=nb>super</span><span class=p>()</span><span class=o>.</span><span class=n>showEvent</span><span class=p>(</span><span class=n>event</span><span class=p>)</span>
+        <span class=n>tmp_item</span> <span class=o>=</span> <span class=kc>None</span>
+        <span class=k>if</span> <span class=ow>not</span> <span class=bp>self</span><span class=o>.</span><span class=n>_value</span><span class=p>:</span>
+            <span class=c1># Add temp item to be able calculate maximum height of widget</span>
+            <span class=n>tmp_item</span> <span class=o>=</span> <span class=n>QtGui</span><span class=o>.</span><span class=n>QStandardItem</span><span class=p>(</span><span class=s2>&quot;tmp&quot;</span><span class=p>)</span>
+            <span class=bp>self</span><span class=o>.</span><span class=n>_model</span><span class=o>.</span><span class=n>appendRow</span><span class=p>(</span><span class=n>tmp_item</span><span class=p>)</span>
+            <span class=bp>self</span><span class=o>.</span><span class=n>_update_size</span><span class=p>()</span>
+
+        <span class=k>if</span> <span class=n>tmp_item</span> <span class=ow>is</span> <span class=ow>not</span> <span class=kc>None</span><span class=p>:</span>
+            <span class=bp>self</span><span class=o>.</span><span class=n>_model</span><span class=o>.</span><span class=n>clear</span><span class=p>()</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>resizeEvent</span><span class=p>(</span><span class=bp>self</span><span class=p>,</span> <span class=n>event</span><span class=p>):</span>
+        <span class=nb>super</span><span class=p>()</span><span class=o>.</span><span class=n>resizeEvent</span><span class=p>(</span><span class=n>event</span><span class=p>)</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>_update_size</span><span class=p>()</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>set_value</span><span class=p>(</span><span class=bp>self</span><span class=p>,</span> <span class=n>value</span><span class=o>=</span><span class=kc>None</span><span class=p>):</span>
+<span class=w>        </span><span class=sd>&quot;&quot;&quot;Set value/s of currently selected instance.&quot;&quot;&quot;</span>
+        <span class=k>if</span> <span class=n>value</span> <span class=ow>is</span> <span class=kc>None</span><span class=p>:</span>
+            <span class=n>value</span> <span class=o>=</span> <span class=p>[]</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>_value</span> <span class=o>=</span> <span class=n>value</span>
+
+        <span class=bp>self</span><span class=o>.</span><span class=n>_model</span><span class=o>.</span><span class=n>clear</span><span class=p>()</span>
+        <span class=k>for</span> <span class=n>item_text</span> <span class=ow>in</span> <span class=n>value</span><span class=p>:</span>
+            <span class=n>item</span> <span class=o>=</span> <span class=n>QtGui</span><span class=o>.</span><span class=n>QStandardItem</span><span class=p>(</span><span class=n>item_text</span><span class=p>)</span>
+            <span class=n>item</span><span class=o>.</span><span class=n>setEditable</span><span class=p>(</span><span class=kc>False</span><span class=p>)</span>
+            <span class=n>item</span><span class=o>.</span><span class=n>setSelectable</span><span class=p>(</span><span class=kc>False</span><span class=p>)</span>
+            <span class=bp>self</span><span class=o>.</span><span class=n>_model</span><span class=o>.</span><span class=n>appendRow</span><span class=p>(</span><span class=n>item</span><span class=p>)</span>
+</code></pre></div></td></tr></table></div> </details> <div class="doc doc-children"> <div class="doc doc-object doc-function"> <h3 id=client.ayon_core.tools.publisher.widgets.widgets.MultipleItemWidget.set_value class="doc doc-heading"> <code class="highlight language-python"><span class=n>set_value</span><span class=p>(</span><span class=n>value</span><span class=o>=</span><span class=kc>None</span><span class=p>)</span></code> </h3> <div class="doc doc-contents "> <p>Set value/s of currently selected instance.</p> <details class=quote> <summary>Source code in <code>client/ayon_core/tools/publisher/widgets/widgets.py</code></summary> <div class=highlight><table class=highlighttable><tr><td class=linenos><div class=linenodiv><pre><span></span><span class=normal>468</span>
+<span class=normal>469</span>
+<span class=normal>470</span>
+<span class=normal>471</span>
+<span class=normal>472</span>
+<span class=normal>473</span>
+<span class=normal>474</span>
+<span class=normal>475</span>
+<span class=normal>476</span>
+<span class=normal>477</span>
+<span class=normal>478</span>
+<span class=normal>479</span></pre></div></td><td class=code><div><pre><span></span><code><span class=k>def</span><span class=w> </span><span class=nf>set_value</span><span class=p>(</span><span class=bp>self</span><span class=p>,</span> <span class=n>value</span><span class=o>=</span><span class=kc>None</span><span class=p>):</span>
+<span class=w>    </span><span class=sd>&quot;&quot;&quot;Set value/s of currently selected instance.&quot;&quot;&quot;</span>
+    <span class=k>if</span> <span class=n>value</span> <span class=ow>is</span> <span class=kc>None</span><span class=p>:</span>
+        <span class=n>value</span> <span class=o>=</span> <span class=p>[]</span>
+    <span class=bp>self</span><span class=o>.</span><span class=n>_value</span> <span class=o>=</span> <span class=n>value</span>
+
+    <span class=bp>self</span><span class=o>.</span><span class=n>_model</span><span class=o>.</span><span class=n>clear</span><span class=p>()</span>
+    <span class=k>for</span> <span class=n>item_text</span> <span class=ow>in</span> <span class=n>value</span><span class=p>:</span>
+        <span class=n>item</span> <span class=o>=</span> <span class=n>QtGui</span><span class=o>.</span><span class=n>QStandardItem</span><span class=p>(</span><span class=n>item_text</span><span class=p>)</span>
+        <span class=n>item</span><span class=o>.</span><span class=n>setEditable</span><span class=p>(</span><span class=kc>False</span><span class=p>)</span>
+        <span class=n>item</span><span class=o>.</span><span class=n>setSelectable</span><span class=p>(</span><span class=kc>False</span><span class=p>)</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>_model</span><span class=o>.</span><span class=n>appendRow</span><span class=p>(</span><span class=n>item</span><span class=p>)</span>
+</code></pre></div></td></tr></table></div> </details> </div> </div> </div> </div> </div> <div class="doc doc-object doc-class"> <h2 id=client.ayon_core.tools.publisher.widgets.widgets.PublishBtn class="doc doc-heading"> <code>PublishBtn</code> </h2> <div class="doc doc-contents "> <p class="doc doc-class-bases"> Bases: <code><a class="autorefs autorefs-internal" title="PublishIconBtn (client.ayon_core.tools.publisher.widgets.widgets.PublishIconBtn)" href=#client.ayon_core.tools.publisher.widgets.widgets.PublishIconBtn>PublishIconBtn</a></code></p> <p>Publish start publish button.</p> <details class=quote> <summary>Source code in <code>client/ayon_core/tools/publisher/widgets/widgets.py</code></summary> <div class=highlight><table class=highlighttable><tr><td class=linenos><div class=linenodiv><pre><span></span><span class=normal>232</span>
+<span class=normal>233</span>
+<span class=normal>234</span>
+<span class=normal>235</span>
+<span class=normal>236</span>
+<span class=normal>237</span></pre></div></td><td class=code><div><pre><span></span><code><span class=k>class</span><span class=w> </span><span class=nc>PublishBtn</span><span class=p>(</span><span class=n>PublishIconBtn</span><span class=p>):</span>
+<span class=w>    </span><span class=sd>&quot;&quot;&quot;Publish start publish button.&quot;&quot;&quot;</span>
+    <span class=k>def</span><span class=w> </span><span class=fm>__init__</span><span class=p>(</span><span class=bp>self</span><span class=p>,</span> <span class=n>parent</span><span class=o>=</span><span class=kc>None</span><span class=p>):</span>
+        <span class=n>icon_path</span> <span class=o>=</span> <span class=n>get_icon_path</span><span class=p>(</span><span class=s2>&quot;play&quot;</span><span class=p>)</span>
+        <span class=nb>super</span><span class=p>()</span><span class=o>.</span><span class=fm>__init__</span><span class=p>(</span><span class=n>icon_path</span><span class=p>,</span> <span class=s2>&quot;Publish&quot;</span><span class=p>,</span> <span class=n>parent</span><span class=p>)</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>setToolTip</span><span class=p>(</span><span class=s2>&quot;Publish&quot;</span><span class=p>)</span>
+</code></pre></div></td></tr></table></div> </details> <div class="doc doc-children"> </div> </div> </div> <div class="doc doc-object doc-class"> <h2 id=client.ayon_core.tools.publisher.widgets.widgets.PublishIconBtn class="doc doc-heading"> <code>PublishIconBtn</code> </h2> <div class="doc doc-contents "> <p class="doc doc-class-bases"> Bases: <code><span title=ayon_core.tools.utils.IconButton>IconButton</span></code></p> <p>Button using alpha of source image to redraw with different color.</p> <p>Main class for buttons showed in publisher.</p> <p>TODO: Add different states: - normal : before publishing - publishing : publishing is running - validation error : validation error happened - error : other error happened - success : publishing finished</p> <details class=quote> <summary>Source code in <code>client/ayon_core/tools/publisher/widgets/widgets.py</code></summary> <div class=highlight><table class=highlighttable><tr><td class=linenos><div class=linenodiv><pre><span></span><span class=normal>111</span>
+<span class=normal>112</span>
+<span class=normal>113</span>
+<span class=normal>114</span>
+<span class=normal>115</span>
+<span class=normal>116</span>
+<span class=normal>117</span>
+<span class=normal>118</span>
+<span class=normal>119</span>
+<span class=normal>120</span>
+<span class=normal>121</span>
+<span class=normal>122</span>
+<span class=normal>123</span>
+<span class=normal>124</span>
+<span class=normal>125</span>
+<span class=normal>126</span>
+<span class=normal>127</span>
+<span class=normal>128</span>
+<span class=normal>129</span>
+<span class=normal>130</span>
+<span class=normal>131</span>
+<span class=normal>132</span>
+<span class=normal>133</span>
+<span class=normal>134</span>
+<span class=normal>135</span>
+<span class=normal>136</span>
+<span class=normal>137</span>
+<span class=normal>138</span>
+<span class=normal>139</span>
+<span class=normal>140</span>
+<span class=normal>141</span>
+<span class=normal>142</span>
+<span class=normal>143</span>
+<span class=normal>144</span>
+<span class=normal>145</span>
+<span class=normal>146</span>
+<span class=normal>147</span>
+<span class=normal>148</span>
+<span class=normal>149</span>
+<span class=normal>150</span>
+<span class=normal>151</span>
+<span class=normal>152</span>
+<span class=normal>153</span>
+<span class=normal>154</span>
+<span class=normal>155</span>
+<span class=normal>156</span>
+<span class=normal>157</span>
+<span class=normal>158</span>
+<span class=normal>159</span>
+<span class=normal>160</span>
+<span class=normal>161</span>
+<span class=normal>162</span>
+<span class=normal>163</span>
+<span class=normal>164</span>
+<span class=normal>165</span>
+<span class=normal>166</span>
+<span class=normal>167</span>
+<span class=normal>168</span>
+<span class=normal>169</span>
+<span class=normal>170</span>
+<span class=normal>171</span>
+<span class=normal>172</span>
+<span class=normal>173</span>
+<span class=normal>174</span>
+<span class=normal>175</span>
+<span class=normal>176</span>
+<span class=normal>177</span>
+<span class=normal>178</span>
+<span class=normal>179</span>
+<span class=normal>180</span>
+<span class=normal>181</span></pre></div></td><td class=code><div><pre><span></span><code><span class=k>class</span><span class=w> </span><span class=nc>PublishIconBtn</span><span class=p>(</span><span class=n>IconButton</span><span class=p>):</span>
+<span class=w>    </span><span class=sd>&quot;&quot;&quot;Button using alpha of source image to redraw with different color.</span>
+
+<span class=sd>    Main class for buttons showed in publisher.</span>
+
+<span class=sd>    TODO:</span>
+<span class=sd>    Add different states:</span>
+<span class=sd>    - normal           : before publishing</span>
+<span class=sd>    - publishing       : publishing is running</span>
+<span class=sd>    - validation error : validation error happened</span>
+<span class=sd>    - error            : other error happened</span>
+<span class=sd>    - success          : publishing finished</span>
+<span class=sd>    &quot;&quot;&quot;</span>
+
+    <span class=k>def</span><span class=w> </span><span class=fm>__init__</span><span class=p>(</span><span class=bp>self</span><span class=p>,</span> <span class=n>pixmap_path</span><span class=p>,</span> <span class=o>*</span><span class=n>args</span><span class=p>,</span> <span class=o>**</span><span class=n>kwargs</span><span class=p>):</span>
+        <span class=nb>super</span><span class=p>()</span><span class=o>.</span><span class=fm>__init__</span><span class=p>(</span><span class=o>*</span><span class=n>args</span><span class=p>,</span> <span class=o>**</span><span class=n>kwargs</span><span class=p>)</span>
+
+        <span class=n>colors</span> <span class=o>=</span> <span class=n>get_objected_colors</span><span class=p>()</span>
+        <span class=n>icon</span> <span class=o>=</span> <span class=bp>self</span><span class=o>.</span><span class=n>generate_icon</span><span class=p>(</span>
+            <span class=n>pixmap_path</span><span class=p>,</span>
+            <span class=n>enabled_color</span><span class=o>=</span><span class=n>colors</span><span class=p>[</span><span class=s2>&quot;font&quot;</span><span class=p>]</span><span class=o>.</span><span class=n>get_qcolor</span><span class=p>(),</span>
+            <span class=n>disabled_color</span><span class=o>=</span><span class=n>colors</span><span class=p>[</span><span class=s2>&quot;font-disabled&quot;</span><span class=p>]</span><span class=o>.</span><span class=n>get_qcolor</span><span class=p>())</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>setIcon</span><span class=p>(</span><span class=n>icon</span><span class=p>)</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>generate_icon</span><span class=p>(</span><span class=bp>self</span><span class=p>,</span> <span class=n>pixmap_path</span><span class=p>,</span> <span class=n>enabled_color</span><span class=p>,</span> <span class=n>disabled_color</span><span class=p>):</span>
+        <span class=n>icon</span> <span class=o>=</span> <span class=n>QtGui</span><span class=o>.</span><span class=n>QIcon</span><span class=p>()</span>
+        <span class=n>image</span> <span class=o>=</span> <span class=n>QtGui</span><span class=o>.</span><span class=n>QImage</span><span class=p>(</span><span class=n>pixmap_path</span><span class=p>)</span>
+        <span class=n>enabled_pixmap</span> <span class=o>=</span> <span class=bp>self</span><span class=o>.</span><span class=n>paint_image_with_color</span><span class=p>(</span><span class=n>image</span><span class=p>,</span> <span class=n>enabled_color</span><span class=p>)</span>
+        <span class=n>icon</span><span class=o>.</span><span class=n>addPixmap</span><span class=p>(</span><span class=n>enabled_pixmap</span><span class=p>,</span> <span class=n>QtGui</span><span class=o>.</span><span class=n>QIcon</span><span class=o>.</span><span class=n>Normal</span><span class=p>)</span>
+        <span class=n>disabled_pixmap</span> <span class=o>=</span> <span class=bp>self</span><span class=o>.</span><span class=n>paint_image_with_color</span><span class=p>(</span><span class=n>image</span><span class=p>,</span> <span class=n>disabled_color</span><span class=p>)</span>
+        <span class=n>icon</span><span class=o>.</span><span class=n>addPixmap</span><span class=p>(</span><span class=n>disabled_pixmap</span><span class=p>,</span> <span class=n>QtGui</span><span class=o>.</span><span class=n>QIcon</span><span class=o>.</span><span class=n>Disabled</span><span class=p>)</span>
+        <span class=k>return</span> <span class=n>icon</span>
+
+    <span class=nd>@staticmethod</span>
+    <span class=k>def</span><span class=w> </span><span class=nf>paint_image_with_color</span><span class=p>(</span><span class=n>image</span><span class=p>,</span> <span class=n>color</span><span class=p>):</span>
+<span class=w>        </span><span class=sd>&quot;&quot;&quot;Redraw image with single color using it&#39;s alpha.</span>
+
+<span class=sd>        It is expected that input image is singlecolor image with alpha.</span>
+
+<span class=sd>        Args:</span>
+<span class=sd>            image (QImage): Loaded image with alpha.</span>
+<span class=sd>            color (QColor): Color that will be used to paint image.</span>
+<span class=sd>        &quot;&quot;&quot;</span>
+        <span class=n>width</span> <span class=o>=</span> <span class=n>image</span><span class=o>.</span><span class=n>width</span><span class=p>()</span>
+        <span class=n>height</span> <span class=o>=</span> <span class=n>image</span><span class=o>.</span><span class=n>height</span><span class=p>()</span>
+        <span class=n>partition</span> <span class=o>=</span> <span class=mi>8</span>
+        <span class=n>part_w</span> <span class=o>=</span> <span class=nb>int</span><span class=p>(</span><span class=n>width</span> <span class=o>/</span> <span class=n>partition</span><span class=p>)</span>
+        <span class=n>part_h</span> <span class=o>=</span> <span class=nb>int</span><span class=p>(</span><span class=n>height</span> <span class=o>/</span> <span class=n>partition</span><span class=p>)</span>
+        <span class=n>part_w</span> <span class=o>-=</span> <span class=n>part_w</span> <span class=o>%</span> <span class=mi>2</span>
+        <span class=n>part_h</span> <span class=o>-=</span> <span class=n>part_h</span> <span class=o>%</span> <span class=mi>2</span>
+        <span class=n>scaled_image</span> <span class=o>=</span> <span class=n>image</span><span class=o>.</span><span class=n>scaled</span><span class=p>(</span>
+            <span class=n>width</span> <span class=o>-</span> <span class=p>(</span><span class=mi>2</span> <span class=o>*</span> <span class=n>part_w</span><span class=p>),</span>
+            <span class=n>height</span> <span class=o>-</span> <span class=p>(</span><span class=mi>2</span> <span class=o>*</span> <span class=n>part_h</span><span class=p>),</span>
+            <span class=n>QtCore</span><span class=o>.</span><span class=n>Qt</span><span class=o>.</span><span class=n>IgnoreAspectRatio</span><span class=p>,</span>
+            <span class=n>QtCore</span><span class=o>.</span><span class=n>Qt</span><span class=o>.</span><span class=n>SmoothTransformation</span>
+        <span class=p>)</span>
+        <span class=n>alpha_mask</span> <span class=o>=</span> <span class=n>scaled_image</span><span class=o>.</span><span class=n>createAlphaMask</span><span class=p>()</span>
+        <span class=n>alpha_region</span> <span class=o>=</span> <span class=n>QtGui</span><span class=o>.</span><span class=n>QRegion</span><span class=p>(</span><span class=n>QtGui</span><span class=o>.</span><span class=n>QBitmap</span><span class=o>.</span><span class=n>fromImage</span><span class=p>(</span><span class=n>alpha_mask</span><span class=p>))</span>
+        <span class=n>alpha_region</span><span class=o>.</span><span class=n>translate</span><span class=p>(</span><span class=n>part_w</span><span class=p>,</span> <span class=n>part_h</span><span class=p>)</span>
+
+        <span class=n>pixmap</span> <span class=o>=</span> <span class=n>QtGui</span><span class=o>.</span><span class=n>QPixmap</span><span class=p>(</span><span class=n>width</span><span class=p>,</span> <span class=n>height</span><span class=p>)</span>
+        <span class=n>pixmap</span><span class=o>.</span><span class=n>fill</span><span class=p>(</span><span class=n>QtCore</span><span class=o>.</span><span class=n>Qt</span><span class=o>.</span><span class=n>transparent</span><span class=p>)</span>
+
+        <span class=n>painter</span> <span class=o>=</span> <span class=n>QtGui</span><span class=o>.</span><span class=n>QPainter</span><span class=p>(</span><span class=n>pixmap</span><span class=p>)</span>
+        <span class=n>painter</span><span class=o>.</span><span class=n>setClipRegion</span><span class=p>(</span><span class=n>alpha_region</span><span class=p>)</span>
+        <span class=n>painter</span><span class=o>.</span><span class=n>setPen</span><span class=p>(</span><span class=n>QtCore</span><span class=o>.</span><span class=n>Qt</span><span class=o>.</span><span class=n>NoPen</span><span class=p>)</span>
+        <span class=n>painter</span><span class=o>.</span><span class=n>setBrush</span><span class=p>(</span><span class=n>color</span><span class=p>)</span>
+        <span class=n>painter</span><span class=o>.</span><span class=n>drawRect</span><span class=p>(</span><span class=n>QtCore</span><span class=o>.</span><span class=n>QRect</span><span class=p>(</span><span class=mi>0</span><span class=p>,</span> <span class=mi>0</span><span class=p>,</span> <span class=n>width</span><span class=p>,</span> <span class=n>height</span><span class=p>))</span>
+        <span class=n>painter</span><span class=o>.</span><span class=n>end</span><span class=p>()</span>
+
+        <span class=k>return</span> <span class=n>pixmap</span>
+</code></pre></div></td></tr></table></div> </details> <div class="doc doc-children"> <div class="doc doc-object doc-function"> <h3 id=client.ayon_core.tools.publisher.widgets.widgets.PublishIconBtn.paint_image_with_color class="doc doc-heading"> <code class="highlight language-python"><span class=n>paint_image_with_color</span><span class=p>(</span><span class=n>image</span><span class=p>,</span> <span class=n>color</span><span class=p>)</span></code> <span class="doc doc-labels"> <small class="doc doc-label doc-label-staticmethod"><code>staticmethod</code></small> </span> </h3> <div class="doc doc-contents "> <p>Redraw image with single color using it's alpha.</p> <p>It is expected that input image is singlecolor image with alpha.</p> <p><span class=doc-section-title>Parameters:</span></p> <table> <thead> <tr> <th>Name</th> <th>Type</th> <th>Description</th> <th>Default</th> </tr> </thead> <tbody> <tr class=doc-section-item> <td> <code>image</code> </td> <td> <code><span title=QImage>QImage</span></code> </td> <td> <div class=doc-md-description> <p>Loaded image with alpha.</p> </div> </td> <td> <em>required</em> </td> </tr> <tr class=doc-section-item> <td> <code>color</code> </td> <td> <code><span title=QColor>QColor</span></code> </td> <td> <div class=doc-md-description> <p>Color that will be used to paint image.</p> </div> </td> <td> <em>required</em> </td> </tr> </tbody> </table> <details class=quote> <summary>Source code in <code>client/ayon_core/tools/publisher/widgets/widgets.py</code></summary> <div class=highlight><table class=highlighttable><tr><td class=linenos><div class=linenodiv><pre><span></span><span class=normal>144</span>
+<span class=normal>145</span>
+<span class=normal>146</span>
+<span class=normal>147</span>
+<span class=normal>148</span>
+<span class=normal>149</span>
+<span class=normal>150</span>
+<span class=normal>151</span>
+<span class=normal>152</span>
+<span class=normal>153</span>
+<span class=normal>154</span>
+<span class=normal>155</span>
+<span class=normal>156</span>
+<span class=normal>157</span>
+<span class=normal>158</span>
+<span class=normal>159</span>
+<span class=normal>160</span>
+<span class=normal>161</span>
+<span class=normal>162</span>
+<span class=normal>163</span>
+<span class=normal>164</span>
+<span class=normal>165</span>
+<span class=normal>166</span>
+<span class=normal>167</span>
+<span class=normal>168</span>
+<span class=normal>169</span>
+<span class=normal>170</span>
+<span class=normal>171</span>
+<span class=normal>172</span>
+<span class=normal>173</span>
+<span class=normal>174</span>
+<span class=normal>175</span>
+<span class=normal>176</span>
+<span class=normal>177</span>
+<span class=normal>178</span>
+<span class=normal>179</span>
+<span class=normal>180</span>
+<span class=normal>181</span></pre></div></td><td class=code><div><pre><span></span><code><span class=nd>@staticmethod</span>
+<span class=k>def</span><span class=w> </span><span class=nf>paint_image_with_color</span><span class=p>(</span><span class=n>image</span><span class=p>,</span> <span class=n>color</span><span class=p>):</span>
+<span class=w>    </span><span class=sd>&quot;&quot;&quot;Redraw image with single color using it&#39;s alpha.</span>
+
+<span class=sd>    It is expected that input image is singlecolor image with alpha.</span>
+
+<span class=sd>    Args:</span>
+<span class=sd>        image (QImage): Loaded image with alpha.</span>
+<span class=sd>        color (QColor): Color that will be used to paint image.</span>
+<span class=sd>    &quot;&quot;&quot;</span>
+    <span class=n>width</span> <span class=o>=</span> <span class=n>image</span><span class=o>.</span><span class=n>width</span><span class=p>()</span>
+    <span class=n>height</span> <span class=o>=</span> <span class=n>image</span><span class=o>.</span><span class=n>height</span><span class=p>()</span>
+    <span class=n>partition</span> <span class=o>=</span> <span class=mi>8</span>
+    <span class=n>part_w</span> <span class=o>=</span> <span class=nb>int</span><span class=p>(</span><span class=n>width</span> <span class=o>/</span> <span class=n>partition</span><span class=p>)</span>
+    <span class=n>part_h</span> <span class=o>=</span> <span class=nb>int</span><span class=p>(</span><span class=n>height</span> <span class=o>/</span> <span class=n>partition</span><span class=p>)</span>
+    <span class=n>part_w</span> <span class=o>-=</span> <span class=n>part_w</span> <span class=o>%</span> <span class=mi>2</span>
+    <span class=n>part_h</span> <span class=o>-=</span> <span class=n>part_h</span> <span class=o>%</span> <span class=mi>2</span>
+    <span class=n>scaled_image</span> <span class=o>=</span> <span class=n>image</span><span class=o>.</span><span class=n>scaled</span><span class=p>(</span>
+        <span class=n>width</span> <span class=o>-</span> <span class=p>(</span><span class=mi>2</span> <span class=o>*</span> <span class=n>part_w</span><span class=p>),</span>
+        <span class=n>height</span> <span class=o>-</span> <span class=p>(</span><span class=mi>2</span> <span class=o>*</span> <span class=n>part_h</span><span class=p>),</span>
+        <span class=n>QtCore</span><span class=o>.</span><span class=n>Qt</span><span class=o>.</span><span class=n>IgnoreAspectRatio</span><span class=p>,</span>
+        <span class=n>QtCore</span><span class=o>.</span><span class=n>Qt</span><span class=o>.</span><span class=n>SmoothTransformation</span>
+    <span class=p>)</span>
+    <span class=n>alpha_mask</span> <span class=o>=</span> <span class=n>scaled_image</span><span class=o>.</span><span class=n>createAlphaMask</span><span class=p>()</span>
+    <span class=n>alpha_region</span> <span class=o>=</span> <span class=n>QtGui</span><span class=o>.</span><span class=n>QRegion</span><span class=p>(</span><span class=n>QtGui</span><span class=o>.</span><span class=n>QBitmap</span><span class=o>.</span><span class=n>fromImage</span><span class=p>(</span><span class=n>alpha_mask</span><span class=p>))</span>
+    <span class=n>alpha_region</span><span class=o>.</span><span class=n>translate</span><span class=p>(</span><span class=n>part_w</span><span class=p>,</span> <span class=n>part_h</span><span class=p>)</span>
+
+    <span class=n>pixmap</span> <span class=o>=</span> <span class=n>QtGui</span><span class=o>.</span><span class=n>QPixmap</span><span class=p>(</span><span class=n>width</span><span class=p>,</span> <span class=n>height</span><span class=p>)</span>
+    <span class=n>pixmap</span><span class=o>.</span><span class=n>fill</span><span class=p>(</span><span class=n>QtCore</span><span class=o>.</span><span class=n>Qt</span><span class=o>.</span><span class=n>transparent</span><span class=p>)</span>
+
+    <span class=n>painter</span> <span class=o>=</span> <span class=n>QtGui</span><span class=o>.</span><span class=n>QPainter</span><span class=p>(</span><span class=n>pixmap</span><span class=p>)</span>
+    <span class=n>painter</span><span class=o>.</span><span class=n>setClipRegion</span><span class=p>(</span><span class=n>alpha_region</span><span class=p>)</span>
+    <span class=n>painter</span><span class=o>.</span><span class=n>setPen</span><span class=p>(</span><span class=n>QtCore</span><span class=o>.</span><span class=n>Qt</span><span class=o>.</span><span class=n>NoPen</span><span class=p>)</span>
+    <span class=n>painter</span><span class=o>.</span><span class=n>setBrush</span><span class=p>(</span><span class=n>color</span><span class=p>)</span>
+    <span class=n>painter</span><span class=o>.</span><span class=n>drawRect</span><span class=p>(</span><span class=n>QtCore</span><span class=o>.</span><span class=n>QRect</span><span class=p>(</span><span class=mi>0</span><span class=p>,</span> <span class=mi>0</span><span class=p>,</span> <span class=n>width</span><span class=p>,</span> <span class=n>height</span><span class=p>))</span>
+    <span class=n>painter</span><span class=o>.</span><span class=n>end</span><span class=p>()</span>
+
+    <span class=k>return</span> <span class=n>pixmap</span>
+</code></pre></div></td></tr></table></div> </details> </div> </div> </div> </div> </div> <div class="doc doc-object doc-class"> <h2 id=client.ayon_core.tools.publisher.widgets.widgets.PublishReportBtn class="doc doc-heading"> <code>PublishReportBtn</code> </h2> <div class="doc doc-contents "> <p class="doc doc-class-bases"> Bases: <code><a class="autorefs autorefs-internal" title="PublishIconBtn (client.ayon_core.tools.publisher.widgets.widgets.PublishIconBtn)" href=#client.ayon_core.tools.publisher.widgets.widgets.PublishIconBtn>PublishIconBtn</a></code></p> <p>Publish report button.</p> <details class=quote> <summary>Source code in <code>client/ayon_core/tools/publisher/widgets/widgets.py</code></summary> <div class=highlight><table class=highlighttable><tr><td class=linenos><div class=linenodiv><pre><span></span><span class=normal>248</span>
+<span class=normal>249</span>
+<span class=normal>250</span>
+<span class=normal>251</span>
+<span class=normal>252</span>
+<span class=normal>253</span>
+<span class=normal>254</span>
+<span class=normal>255</span>
+<span class=normal>256</span>
+<span class=normal>257</span>
+<span class=normal>258</span>
+<span class=normal>259</span>
+<span class=normal>260</span>
+<span class=normal>261</span>
+<span class=normal>262</span>
+<span class=normal>263</span>
+<span class=normal>264</span>
+<span class=normal>265</span>
+<span class=normal>266</span>
+<span class=normal>267</span>
+<span class=normal>268</span>
+<span class=normal>269</span>
+<span class=normal>270</span>
+<span class=normal>271</span>
+<span class=normal>272</span>
+<span class=normal>273</span>
+<span class=normal>274</span>
+<span class=normal>275</span>
+<span class=normal>276</span>
+<span class=normal>277</span>
+<span class=normal>278</span>
+<span class=normal>279</span></pre></div></td><td class=code><div><pre><span></span><code><span class=k>class</span><span class=w> </span><span class=nc>PublishReportBtn</span><span class=p>(</span><span class=n>PublishIconBtn</span><span class=p>):</span>
+<span class=w>    </span><span class=sd>&quot;&quot;&quot;Publish report button.&quot;&quot;&quot;</span>
+
+    <span class=n>triggered</span> <span class=o>=</span> <span class=n>QtCore</span><span class=o>.</span><span class=n>Signal</span><span class=p>(</span><span class=nb>str</span><span class=p>)</span>
+
+    <span class=k>def</span><span class=w> </span><span class=fm>__init__</span><span class=p>(</span><span class=bp>self</span><span class=p>,</span> <span class=n>parent</span><span class=o>=</span><span class=kc>None</span><span class=p>):</span>
+        <span class=n>icon_path</span> <span class=o>=</span> <span class=n>get_icon_path</span><span class=p>(</span><span class=s2>&quot;view_report&quot;</span><span class=p>)</span>
+        <span class=nb>super</span><span class=p>()</span><span class=o>.</span><span class=fm>__init__</span><span class=p>(</span><span class=n>icon_path</span><span class=p>,</span> <span class=n>parent</span><span class=p>)</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>setToolTip</span><span class=p>(</span><span class=s2>&quot;Copy report&quot;</span><span class=p>)</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>_actions</span> <span class=o>=</span> <span class=p>[]</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>add_action</span><span class=p>(</span><span class=bp>self</span><span class=p>,</span> <span class=n>label</span><span class=p>,</span> <span class=n>identifier</span><span class=p>):</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>_actions</span><span class=o>.</span><span class=n>append</span><span class=p>(</span>
+            <span class=p>(</span><span class=n>label</span><span class=p>,</span> <span class=n>identifier</span><span class=p>)</span>
+        <span class=p>)</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>_on_action_trigger</span><span class=p>(</span><span class=bp>self</span><span class=p>,</span> <span class=n>identifier</span><span class=p>):</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>triggered</span><span class=o>.</span><span class=n>emit</span><span class=p>(</span><span class=n>identifier</span><span class=p>)</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>mouseReleaseEvent</span><span class=p>(</span><span class=bp>self</span><span class=p>,</span> <span class=n>event</span><span class=p>):</span>
+        <span class=nb>super</span><span class=p>()</span><span class=o>.</span><span class=n>mouseReleaseEvent</span><span class=p>(</span><span class=n>event</span><span class=p>)</span>
+        <span class=n>menu</span> <span class=o>=</span> <span class=n>QtWidgets</span><span class=o>.</span><span class=n>QMenu</span><span class=p>(</span><span class=bp>self</span><span class=p>)</span>
+        <span class=n>actions</span> <span class=o>=</span> <span class=p>[]</span>
+        <span class=k>for</span> <span class=n>item</span> <span class=ow>in</span> <span class=bp>self</span><span class=o>.</span><span class=n>_actions</span><span class=p>:</span>
+            <span class=n>label</span><span class=p>,</span> <span class=n>identifier</span> <span class=o>=</span> <span class=n>item</span>
+            <span class=n>action</span> <span class=o>=</span> <span class=n>QtWidgets</span><span class=o>.</span><span class=n>QAction</span><span class=p>(</span><span class=n>label</span><span class=p>,</span> <span class=n>menu</span><span class=p>)</span>
+            <span class=n>action</span><span class=o>.</span><span class=n>triggered</span><span class=o>.</span><span class=n>connect</span><span class=p>(</span>
+                <span class=n>functools</span><span class=o>.</span><span class=n>partial</span><span class=p>(</span><span class=bp>self</span><span class=o>.</span><span class=n>_on_action_trigger</span><span class=p>,</span> <span class=n>identifier</span><span class=p>)</span>
+            <span class=p>)</span>
+            <span class=n>actions</span><span class=o>.</span><span class=n>append</span><span class=p>(</span><span class=n>action</span><span class=p>)</span>
+        <span class=n>menu</span><span class=o>.</span><span class=n>addActions</span><span class=p>(</span><span class=n>actions</span><span class=p>)</span>
+        <span class=n>menu</span><span class=o>.</span><span class=n>exec_</span><span class=p>(</span><span class=n>event</span><span class=o>.</span><span class=n>globalPos</span><span class=p>())</span>
+</code></pre></div></td></tr></table></div> </details> <div class="doc doc-children"> </div> </div> </div> <div class="doc doc-object doc-class"> <h2 id=client.ayon_core.tools.publisher.widgets.widgets.RemoveInstanceBtn class="doc doc-heading"> <code>RemoveInstanceBtn</code> </h2> <div class="doc doc-contents "> <p class="doc doc-class-bases"> Bases: <code><a class="autorefs autorefs-internal" title="PublishIconBtn (client.ayon_core.tools.publisher.widgets.widgets.PublishIconBtn)" href=#client.ayon_core.tools.publisher.widgets.widgets.PublishIconBtn>PublishIconBtn</a></code></p> <p>Create remove button.</p> <details class=quote> <summary>Source code in <code>client/ayon_core/tools/publisher/widgets/widgets.py</code></summary> <div class=highlight><table class=highlighttable><tr><td class=linenos><div class=linenodiv><pre><span></span><span class=normal>282</span>
+<span class=normal>283</span>
+<span class=normal>284</span>
+<span class=normal>285</span>
+<span class=normal>286</span>
+<span class=normal>287</span></pre></div></td><td class=code><div><pre><span></span><code><span class=k>class</span><span class=w> </span><span class=nc>RemoveInstanceBtn</span><span class=p>(</span><span class=n>PublishIconBtn</span><span class=p>):</span>
+<span class=w>    </span><span class=sd>&quot;&quot;&quot;Create remove button.&quot;&quot;&quot;</span>
+    <span class=k>def</span><span class=w> </span><span class=fm>__init__</span><span class=p>(</span><span class=bp>self</span><span class=p>,</span> <span class=n>parent</span><span class=o>=</span><span class=kc>None</span><span class=p>):</span>
+        <span class=n>icon_path</span> <span class=o>=</span> <span class=n>resources</span><span class=o>.</span><span class=n>get_icon_path</span><span class=p>(</span><span class=s2>&quot;delete&quot;</span><span class=p>)</span>
+        <span class=nb>super</span><span class=p>()</span><span class=o>.</span><span class=fm>__init__</span><span class=p>(</span><span class=n>icon_path</span><span class=p>,</span> <span class=n>parent</span><span class=p>)</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>setToolTip</span><span class=p>(</span><span class=s2>&quot;Remove selected instances&quot;</span><span class=p>)</span>
+</code></pre></div></td></tr></table></div> </details> <div class="doc doc-children"> </div> </div> </div> <div class="doc doc-object doc-class"> <h2 id=client.ayon_core.tools.publisher.widgets.widgets.ResetBtn class="doc doc-heading"> <code>ResetBtn</code> </h2> <div class="doc doc-contents "> <p class="doc doc-class-bases"> Bases: <code><a class="autorefs autorefs-internal" title="PublishIconBtn (client.ayon_core.tools.publisher.widgets.widgets.PublishIconBtn)" href=#client.ayon_core.tools.publisher.widgets.widgets.PublishIconBtn>PublishIconBtn</a></code></p> <p>Publish reset button.</p> <details class=quote> <summary>Source code in <code>client/ayon_core/tools/publisher/widgets/widgets.py</code></summary> <div class=highlight><table class=highlighttable><tr><td class=linenos><div class=linenodiv><pre><span></span><span class=normal>206</span>
+<span class=normal>207</span>
+<span class=normal>208</span>
+<span class=normal>209</span>
+<span class=normal>210</span>
+<span class=normal>211</span>
+<span class=normal>212</span>
+<span class=normal>213</span></pre></div></td><td class=code><div><pre><span></span><code><span class=k>class</span><span class=w> </span><span class=nc>ResetBtn</span><span class=p>(</span><span class=n>PublishIconBtn</span><span class=p>):</span>
+<span class=w>    </span><span class=sd>&quot;&quot;&quot;Publish reset button.&quot;&quot;&quot;</span>
+    <span class=k>def</span><span class=w> </span><span class=fm>__init__</span><span class=p>(</span><span class=bp>self</span><span class=p>,</span> <span class=n>parent</span><span class=o>=</span><span class=kc>None</span><span class=p>):</span>
+        <span class=n>icon_path</span> <span class=o>=</span> <span class=n>get_icon_path</span><span class=p>(</span><span class=s2>&quot;refresh&quot;</span><span class=p>)</span>
+        <span class=nb>super</span><span class=p>()</span><span class=o>.</span><span class=fm>__init__</span><span class=p>(</span><span class=n>icon_path</span><span class=p>,</span> <span class=n>parent</span><span class=p>)</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>setToolTip</span><span class=p>(</span>
+            <span class=s2>&quot;Reset &amp; discard changes (</span><span class=si>{}</span><span class=s2>)&quot;</span><span class=o>.</span><span class=n>format</span><span class=p>(</span><span class=n>ResetKeySequence</span><span class=o>.</span><span class=n>toString</span><span class=p>())</span>
+        <span class=p>)</span>
+</code></pre></div></td></tr></table></div> </details> <div class="doc doc-children"> </div> </div> </div> <div class="doc doc-object doc-class"> <h2 id=client.ayon_core.tools.publisher.widgets.widgets.SaveBtn class="doc doc-heading"> <code>SaveBtn</code> </h2> <div class="doc doc-contents "> <p class="doc doc-class-bases"> Bases: <code><a class="autorefs autorefs-internal" title="PublishIconBtn (client.ayon_core.tools.publisher.widgets.widgets.PublishIconBtn)" href=#client.ayon_core.tools.publisher.widgets.widgets.PublishIconBtn>PublishIconBtn</a></code></p> <p>Save context and instances information.</p> <details class=quote> <summary>Source code in <code>client/ayon_core/tools/publisher/widgets/widgets.py</code></summary> <div class=highlight><table class=highlighttable><tr><td class=linenos><div class=linenodiv><pre><span></span><span class=normal>194</span>
+<span class=normal>195</span>
+<span class=normal>196</span>
+<span class=normal>197</span>
+<span class=normal>198</span>
+<span class=normal>199</span>
+<span class=normal>200</span>
+<span class=normal>201</span>
+<span class=normal>202</span>
+<span class=normal>203</span></pre></div></td><td class=code><div><pre><span></span><code><span class=k>class</span><span class=w> </span><span class=nc>SaveBtn</span><span class=p>(</span><span class=n>PublishIconBtn</span><span class=p>):</span>
+<span class=w>    </span><span class=sd>&quot;&quot;&quot;Save context and instances information.&quot;&quot;&quot;</span>
+    <span class=k>def</span><span class=w> </span><span class=fm>__init__</span><span class=p>(</span><span class=bp>self</span><span class=p>,</span> <span class=n>parent</span><span class=o>=</span><span class=kc>None</span><span class=p>):</span>
+        <span class=n>icon_path</span> <span class=o>=</span> <span class=n>get_icon_path</span><span class=p>(</span><span class=s2>&quot;save&quot;</span><span class=p>)</span>
+        <span class=nb>super</span><span class=p>()</span><span class=o>.</span><span class=fm>__init__</span><span class=p>(</span><span class=n>icon_path</span><span class=p>,</span> <span class=n>parent</span><span class=p>)</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>setToolTip</span><span class=p>(</span>
+            <span class=s2>&quot;Save changes (</span><span class=si>{}</span><span class=s2>)&quot;</span><span class=o>.</span><span class=n>format</span><span class=p>(</span>
+                <span class=n>QtGui</span><span class=o>.</span><span class=n>QKeySequence</span><span class=p>(</span><span class=n>QtGui</span><span class=o>.</span><span class=n>QKeySequence</span><span class=o>.</span><span class=n>Save</span><span class=p>)</span><span class=o>.</span><span class=n>toString</span><span class=p>()</span>
+            <span class=p>)</span>
+        <span class=p>)</span>
+</code></pre></div></td></tr></table></div> </details> <div class="doc doc-children"> </div> </div> </div> <div class="doc doc-object doc-class"> <h2 id=client.ayon_core.tools.publisher.widgets.widgets.StopBtn class="doc doc-heading"> <code>StopBtn</code> </h2> <div class="doc doc-contents "> <p class="doc doc-class-bases"> Bases: <code><a class="autorefs autorefs-internal" title="PublishIconBtn (client.ayon_core.tools.publisher.widgets.widgets.PublishIconBtn)" href=#client.ayon_core.tools.publisher.widgets.widgets.PublishIconBtn>PublishIconBtn</a></code></p> <p>Publish stop button.</p> <details class=quote> <summary>Source code in <code>client/ayon_core/tools/publisher/widgets/widgets.py</code></summary> <div class=highlight><table class=highlighttable><tr><td class=linenos><div class=linenodiv><pre><span></span><span class=normal>216</span>
+<span class=normal>217</span>
+<span class=normal>218</span>
+<span class=normal>219</span>
+<span class=normal>220</span>
+<span class=normal>221</span></pre></div></td><td class=code><div><pre><span></span><code><span class=k>class</span><span class=w> </span><span class=nc>StopBtn</span><span class=p>(</span><span class=n>PublishIconBtn</span><span class=p>):</span>
+<span class=w>    </span><span class=sd>&quot;&quot;&quot;Publish stop button.&quot;&quot;&quot;</span>
+    <span class=k>def</span><span class=w> </span><span class=fm>__init__</span><span class=p>(</span><span class=bp>self</span><span class=p>,</span> <span class=n>parent</span><span class=p>):</span>
+        <span class=n>icon_path</span> <span class=o>=</span> <span class=n>get_icon_path</span><span class=p>(</span><span class=s2>&quot;stop&quot;</span><span class=p>)</span>
+        <span class=nb>super</span><span class=p>()</span><span class=o>.</span><span class=fm>__init__</span><span class=p>(</span><span class=n>icon_path</span><span class=p>,</span> <span class=n>parent</span><span class=p>)</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>setToolTip</span><span class=p>(</span><span class=s2>&quot;Stop/Pause publishing&quot;</span><span class=p>)</span>
+</code></pre></div></td></tr></table></div> </details> <div class="doc doc-children"> </div> </div> </div> <div class="doc doc-object doc-class"> <h2 id=client.ayon_core.tools.publisher.widgets.widgets.ValidateBtn class="doc doc-heading"> <code>ValidateBtn</code> </h2> <div class="doc doc-contents "> <p class="doc doc-class-bases"> Bases: <code><a class="autorefs autorefs-internal" title="PublishIconBtn (client.ayon_core.tools.publisher.widgets.widgets.PublishIconBtn)" href=#client.ayon_core.tools.publisher.widgets.widgets.PublishIconBtn>PublishIconBtn</a></code></p> <p>Publish validate button.</p> <details class=quote> <summary>Source code in <code>client/ayon_core/tools/publisher/widgets/widgets.py</code></summary> <div class=highlight><table class=highlighttable><tr><td class=linenos><div class=linenodiv><pre><span></span><span class=normal>224</span>
+<span class=normal>225</span>
+<span class=normal>226</span>
+<span class=normal>227</span>
+<span class=normal>228</span>
+<span class=normal>229</span></pre></div></td><td class=code><div><pre><span></span><code><span class=k>class</span><span class=w> </span><span class=nc>ValidateBtn</span><span class=p>(</span><span class=n>PublishIconBtn</span><span class=p>):</span>
+<span class=w>    </span><span class=sd>&quot;&quot;&quot;Publish validate button.&quot;&quot;&quot;</span>
+    <span class=k>def</span><span class=w> </span><span class=fm>__init__</span><span class=p>(</span><span class=bp>self</span><span class=p>,</span> <span class=n>parent</span><span class=o>=</span><span class=kc>None</span><span class=p>):</span>
+        <span class=n>icon_path</span> <span class=o>=</span> <span class=n>get_icon_path</span><span class=p>(</span><span class=s2>&quot;validate&quot;</span><span class=p>)</span>
+        <span class=nb>super</span><span class=p>()</span><span class=o>.</span><span class=fm>__init__</span><span class=p>(</span><span class=n>icon_path</span><span class=p>,</span> <span class=n>parent</span><span class=p>)</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>setToolTip</span><span class=p>(</span><span class=s2>&quot;Validate&quot;</span><span class=p>)</span>
+</code></pre></div></td></tr></table></div> </details> <div class="doc doc-children"> </div> </div> </div> </div> </div> </div> </article> </div> <script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script> </div> </main> <footer class=md-footer> <div class="md-footer-meta md-typeset"> <div class="md-footer-meta__inner md-grid"> <div class=md-copyright> Made with <a href=https://squidfunk.github.io/mkdocs-material/ target=_blank rel=noopener> Material for MkDocs </a> </div> </div> </div> </footer> </div> <div class=md-dialog data-md-component=dialog> <div class="md-dialog__inner md-typeset"></div> </div> <script id=__config type=application/json>{"base": "../../../../../..", "features": ["navigation.sections", "navigation.path", "navigation.prune"], "search": "../../../../../../assets/javascripts/workers/search.f8cc74c7.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script> <script src=../../../../../../assets/javascripts/bundle.c8b220af.min.js></script> </body> </html>

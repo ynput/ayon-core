@@ -1,0 +1,621 @@
+<!doctype html><html lang=en class=no-js> <head><meta charset=utf-8><meta name=viewport content="width=device-width,initial-scale=1"><link rel=prev href=create/utils.html><link rel=next href=editorial.html><link rel=icon href=../../../../img/favicon.ico><meta name=generator content="mkdocs-1.6.1, mkdocs-material-9.6.8"><title>delivery - ayon-core</title><link rel=stylesheet href=../../../../assets/stylesheets/main.8608ea7d.min.css><link rel=stylesheet href=../../../../assets/stylesheets/palette.06af60db.min.css><script src=https://unpkg.com/iframe-worker/shim></script><link rel=preconnect href=https://fonts.gstatic.com crossorigin><link rel=stylesheet href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback"><style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style><link rel=stylesheet href=../../../../assets/_mkdocstrings.css><link rel=stylesheet href=../../../../css/custom.css><script>__md_scope=new URL("../../../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script></head> <body dir=ltr data-md-color-scheme=slate data-md-color-primary=indigo data-md-color-accent=indigo> <input class=md-toggle data-md-toggle=drawer type=checkbox id=__drawer autocomplete=off> <input class=md-toggle data-md-toggle=search type=checkbox id=__search autocomplete=off> <label class=md-overlay for=__drawer></label> <div data-md-component=skip> <a href=#client.ayon_core.pipeline.delivery class=md-skip> Skip to content </a> </div> <div data-md-component=announce> </div> <div data-md-color-scheme=default data-md-component=outdated hidden> </div> <header class="md-header md-header--shadow" data-md-component=header> <nav class="md-header__inner md-grid" aria-label=Header> <a href=../../../../index.html title=ayon-core class="md-header__button md-logo" aria-label=ayon-core data-md-component=logo> <img src=../../../../img/ay-symbol-blackw-full.png alt=logo> </a> <label class="md-header__button md-icon" for=__drawer> <svg xmlns=http://www.w3.org/2000/svg viewbox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg> </label> <div class=md-header__title data-md-component=header-title> <div class=md-header__ellipsis> <div class=md-header__topic> <span class=md-ellipsis> ayon-core </span> </div> <div class=md-header__topic data-md-component=header-topic> <span class=md-ellipsis> delivery </span> </div> </div> </div> <form class=md-header__option data-md-component=palette> <input class=md-option data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme=slate data-md-color-primary=indigo data-md-color-accent=indigo aria-label="Switch to light mode" type=radio name=__palette id=__palette_0> <label class="md-header__button md-icon" title="Switch to light mode" for=__palette_1 hidden> <svg xmlns=http://www.w3.org/2000/svg viewbox="0 0 24 24"><path d="M17 6H7c-3.31 0-6 2.69-6 6s2.69 6 6 6h10c3.31 0 6-2.69 6-6s-2.69-6-6-6m0 10H7c-2.21 0-4-1.79-4-4s1.79-4 4-4h10c2.21 0 4 1.79 4 4s-1.79 4-4 4M7 9c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3"/></svg> </label> <input class=md-option data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme=default data-md-color-primary=indigo data-md-color-accent=indigo aria-label="Switch to dark mode" type=radio name=__palette id=__palette_1> <label class="md-header__button md-icon" title="Switch to dark mode" for=__palette_0 hidden> <svg xmlns=http://www.w3.org/2000/svg viewbox="0 0 24 24"><path d="M17 7H7a5 5 0 0 0-5 5 5 5 0 0 0 5 5h10a5 5 0 0 0 5-5 5 5 0 0 0-5-5m0 8a3 3 0 0 1-3-3 3 3 0 0 1 3-3 3 3 0 0 1 3 3 3 3 0 0 1-3 3"/></svg> </label> </form> <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script> <label class="md-header__button md-icon" for=__search> <svg xmlns=http://www.w3.org/2000/svg viewbox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg> </label> <div class=md-search data-md-component=search role=dialog> <label class=md-search__overlay for=__search></label> <div class=md-search__inner role=search> <form class=md-search__form name=search> <input type=text class=md-search__input name=query aria-label=Search placeholder=Search autocapitalize=off autocorrect=off autocomplete=off spellcheck=false data-md-component=search-query required> <label class="md-search__icon md-icon" for=__search> <svg xmlns=http://www.w3.org/2000/svg viewbox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg> <svg xmlns=http://www.w3.org/2000/svg viewbox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg> </label> <nav class=md-search__options aria-label=Search> <button type=reset class="md-search__icon md-icon" title=Clear aria-label=Clear tabindex=-1> <svg xmlns=http://www.w3.org/2000/svg viewbox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg> </button> </nav> </form> <div class=md-search__output> <div class=md-search__scrollwrap tabindex=0 data-md-scrollfix> <div class=md-search-result data-md-component=search-result> <div class=md-search-result__meta> Initializing search </div> <ol class=md-search-result__list role=presentation></ol> </div> </div> </div> </div> </div> </nav> </header> <div class=md-container data-md-component=container> <main class=md-main data-md-component=main> <div class="md-main__inner md-grid"> <div class="md-sidebar md-sidebar--primary" data-md-component=sidebar data-md-type=navigation> <div class=md-sidebar__scrollwrap> <div class=md-sidebar__inner> <nav class="md-nav md-nav--primary" aria-label=Navigation data-md-level=0> <label class=md-nav__title for=__drawer> <a href=../../../../index.html title=ayon-core class="md-nav__button md-logo" aria-label=ayon-core data-md-component=logo> <img src=../../../../img/ay-symbol-blackw-full.png alt=logo> </a> ayon-core </label> <ul class=md-nav__list data-md-scrollfix> <li class=md-nav__item> <a href=../../../../index.html class=md-nav__link> <span class=md-ellipsis> Home </span> </a> </li> <li class=md-nav__item> <a href=../../../../license.html class=md-nav__link> <span class=md-ellipsis> License </span> </a> </li> <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested"> <input class="md-nav__toggle md-toggle " type=checkbox id=__nav_3 checked> <label class=md-nav__link for=__nav_3 id=__nav_3_label tabindex> <span class=md-ellipsis> Reference </span> <span class="md-nav__icon md-icon"></span> </label> <nav class=md-nav data-md-level=1 aria-labelledby=__nav_3_label aria-expanded=true> <label class=md-nav__title for=__nav_3> <span class="md-nav__icon md-icon"></span> Reference </label> <ul class=md-nav__list data-md-scrollfix> <li class="md-nav__item md-nav__item--active md-nav__item--nested"> <input class="md-nav__toggle md-toggle " type=checkbox id=__nav_3_1 checked> <div class="md-nav__link md-nav__container"> <a href=../../index.html class="md-nav__link "> <span class=md-ellipsis> client </span> </a> <label class="md-nav__link " for=__nav_3_1 id=__nav_3_1_label tabindex=0> <span class="md-nav__icon md-icon"></span> </label> </div> <nav class=md-nav data-md-level=2 aria-labelledby=__nav_3_1_label aria-expanded=true> <label class=md-nav__title for=__nav_3_1> <span class="md-nav__icon md-icon"></span> client </label> <ul class=md-nav__list data-md-scrollfix> <li class="md-nav__item md-nav__item--active md-nav__item--nested"> <input class="md-nav__toggle md-toggle " type=checkbox id=__nav_3_1_1 checked> <div class="md-nav__link md-nav__container"> <a href=../index.html class="md-nav__link "> <span class=md-ellipsis> ayon_core </span> </a> <label class="md-nav__link " for=__nav_3_1_1 id=__nav_3_1_1_label tabindex=0> <span class="md-nav__icon md-icon"></span> </label> </div> <nav class=md-nav data-md-level=3 aria-labelledby=__nav_3_1_1_label aria-expanded=true> <label class=md-nav__title for=__nav_3_1_1> <span class="md-nav__icon md-icon"></span> ayon_core </label> <ul class=md-nav__list data-md-scrollfix> <li class=md-nav__item> <a href=../__main__.html class=md-nav__link> <span class=md-ellipsis> __main__ </span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../addon/base.html class=md-nav__link> <span class=md-ellipsis> addon </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class=md-nav__item> <a href=../cli.html class=md-nav__link> <span class=md-ellipsis> cli </span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../hooks/pre_add_last_workfile_arg.html class=md-nav__link> <span class=md-ellipsis> hooks </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../host/dirmap.html class=md-nav__link> <span class=md-ellipsis> host </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../lib/attribute_definitions.html class=md-nav__link> <span class=md-ellipsis> lib </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class="md-nav__item md-nav__item--active md-nav__item--nested"> <input class="md-nav__toggle md-toggle " type=checkbox id=__nav_3_1_1_7 checked> <div class="md-nav__link md-nav__container"> <a href=index.html class="md-nav__link "> <span class=md-ellipsis> pipeline </span> </a> <label class="md-nav__link " for=__nav_3_1_1_7 id=__nav_3_1_1_7_label tabindex=0> <span class="md-nav__icon md-icon"></span> </label> </div> <nav class=md-nav data-md-level=4 aria-labelledby=__nav_3_1_1_7_label aria-expanded=true> <label class=md-nav__title for=__nav_3_1_1_7> <span class="md-nav__icon md-icon"></span> pipeline </label> <ul class=md-nav__list data-md-scrollfix> <li class=md-nav__item> <a href=actions.html class=md-nav__link> <span class=md-ellipsis> actions </span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=anatomy/anatomy.html class=md-nav__link> <span class=md-ellipsis> anatomy </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class=md-nav__item> <a href=colorspace.html class=md-nav__link> <span class=md-ellipsis> colorspace </span> </a> </li> <li class=md-nav__item> <a href=constants.html class=md-nav__link> <span class=md-ellipsis> constants </span> </a> </li> <li class=md-nav__item> <a href=context_tools.html class=md-nav__link> <span class=md-ellipsis> context_tools </span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=create/changes.html class=md-nav__link> <span class=md-ellipsis> create </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class="md-nav__item md-nav__item--active"> <input class="md-nav__toggle md-toggle" type=checkbox id=__toc> <label class="md-nav__link md-nav__link--active" for=__toc> <span class=md-ellipsis> delivery </span> <span class="md-nav__icon md-icon"></span> </label> <a href=delivery.html class="md-nav__link md-nav__link--active"> <span class=md-ellipsis> delivery </span> </a> <nav class="md-nav md-nav--secondary" aria-label="Table of contents"> <label class=md-nav__title for=__toc> <span class="md-nav__icon md-icon"></span> Table of contents </label> <ul class=md-nav__list data-md-component=toc data-md-scrollfix> <li class=md-nav__item> <a href=#client.ayon_core.pipeline.delivery class=md-nav__link> <span class=md-ellipsis> delivery </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.pipeline.delivery._copy_file class=md-nav__link> <span class=md-ellipsis> _copy_file </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.pipeline.delivery.check_destination_path class=md-nav__link> <span class=md-ellipsis> check_destination_path </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.pipeline.delivery.deliver_sequence class=md-nav__link> <span class=md-ellipsis> deliver_sequence </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.pipeline.delivery.deliver_single_file class=md-nav__link> <span class=md-ellipsis> deliver_single_file </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.pipeline.delivery.get_format_dict class=md-nav__link> <span class=md-ellipsis> get_format_dict </span> </a> </li> </ul> </nav> </li> <li class=md-nav__item> <a href=editorial.html class=md-nav__link> <span class=md-ellipsis> editorial </span> </a> </li> <li class=md-nav__item> <a href=entity_uri.html class=md-nav__link> <span class=md-ellipsis> entity_uri </span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=farm/patterning.html class=md-nav__link> <span class=md-ellipsis> farm </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=load/plugins.html class=md-nav__link> <span class=md-ellipsis> load </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class=md-nav__item> <a href=plugin_discover.html class=md-nav__link> <span class=md-ellipsis> plugin_discover </span> </a> </li> <li class=md-nav__item> <a href=project_folders.html class=md-nav__link> <span class=md-ellipsis> project_folders </span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=publish/abstract_collect_render.html class=md-nav__link> <span class=md-ellipsis> publish </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class=md-nav__item> <a href=schema/index.html class=md-nav__link> <span class=md-ellipsis> schema </span> </a> </li> <li class=md-nav__item> <a href=staging_dir.html class=md-nav__link> <span class=md-ellipsis> staging_dir </span> </a> </li> <li class=md-nav__item> <a href=tempdir.html class=md-nav__link> <span class=md-ellipsis> tempdir </span> </a> </li> <li class=md-nav__item> <a href=template_data.html class=md-nav__link> <span class=md-ellipsis> template_data </span> </a> </li> <li class=md-nav__item> <a href=thumbnails.html class=md-nav__link> <span class=md-ellipsis> thumbnails </span> </a> </li> <li class=md-nav__item> <a href=usdlib.html class=md-nav__link> <span class=md-ellipsis> usdlib </span> </a> </li> <li class=md-nav__item> <a href=version_start.html class=md-nav__link> <span class=md-ellipsis> version_start </span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=workfile/build_workfile.html class=md-nav__link> <span class=md-ellipsis> workfile </span> <span class="md-nav__icon md-icon"></span> </a> </li> </ul> </nav> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../plugins/actions/open_file_explorer.html class=md-nav__link> <span class=md-ellipsis> plugins </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../resources/app_icons/index.html class=md-nav__link> <span class=md-ellipsis> resources </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../scripts/ocio_wrapper.html class=md-nav__link> <span class=md-ellipsis> scripts </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../settings/lib.html class=md-nav__link> <span class=md-ellipsis> settings </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../style/color_defs.html class=md-nav__link> <span class=md-ellipsis> style </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../tests/conftest.html class=md-nav__link> <span class=md-ellipsis> tests </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../tools/attribute_defs/_constants.html class=md-nav__link> <span class=md-ellipsis> tools </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../vendor/python/qargparse.html class=md-nav__link> <span class=md-ellipsis> vendor </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class=md-nav__item> <a href=../version.html class=md-nav__link> <span class=md-ellipsis> version </span> </a> </li> </ul> </nav> </li> </ul> </nav> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../../../server/settings/conversion.html class=md-nav__link> <span class=md-ellipsis> server </span> <span class="md-nav__icon md-icon"></span> </a> </li> </ul> </nav> </li> </ul> </nav> </div> </div> </div> <div class="md-sidebar md-sidebar--secondary" data-md-component=sidebar data-md-type=toc> <div class=md-sidebar__scrollwrap> <div class=md-sidebar__inner> <nav class="md-nav md-nav--secondary" aria-label="Table of contents"> <label class=md-nav__title for=__toc> <span class="md-nav__icon md-icon"></span> Table of contents </label> <ul class=md-nav__list data-md-component=toc data-md-scrollfix> <li class=md-nav__item> <a href=#client.ayon_core.pipeline.delivery class=md-nav__link> <span class=md-ellipsis> delivery </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.pipeline.delivery._copy_file class=md-nav__link> <span class=md-ellipsis> _copy_file </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.pipeline.delivery.check_destination_path class=md-nav__link> <span class=md-ellipsis> check_destination_path </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.pipeline.delivery.deliver_sequence class=md-nav__link> <span class=md-ellipsis> deliver_sequence </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.pipeline.delivery.deliver_single_file class=md-nav__link> <span class=md-ellipsis> deliver_single_file </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.pipeline.delivery.get_format_dict class=md-nav__link> <span class=md-ellipsis> get_format_dict </span> </a> </li> </ul> </nav> </div> </div> </div> <div class=md-content data-md-component=content> <article class="md-content__inner md-typeset"> <h1>delivery</h1> <div class="doc doc-object doc-module"> <a id=client.ayon_core.pipeline.delivery></a> <div class="doc doc-contents first"> <p>Functions useful for delivery of published representations.</p> <div class="doc doc-children"> <div class="doc doc-object doc-function"> <h2 id=client.ayon_core.pipeline.delivery._copy_file class="doc doc-heading"> <code class="highlight language-python"><span class=n>_copy_file</span><span class=p>(</span><span class=n>src_path</span><span class=p>,</span> <span class=n>dst_path</span><span class=p>)</span></code> </h2> <div class="doc doc-contents "> <p>Hardlink file if possible(to save space), copy if not.</p> <p>Because of using hardlinks should not be function used in other parts of pipeline.</p> <details class=quote> <summary>Source code in <code>client/ayon_core/pipeline/delivery.py</code></summary> <div class=highlight><table class=highlighttable><tr><td class=linenos><div class=linenodiv><pre><span></span><span class=normal>21</span>
+<span class=normal>22</span>
+<span class=normal>23</span>
+<span class=normal>24</span>
+<span class=normal>25</span>
+<span class=normal>26</span>
+<span class=normal>27</span>
+<span class=normal>28</span>
+<span class=normal>29</span>
+<span class=normal>30</span>
+<span class=normal>31</span>
+<span class=normal>32</span>
+<span class=normal>33</span>
+<span class=normal>34</span>
+<span class=normal>35</span>
+<span class=normal>36</span></pre></div></td><td class=code><div><pre><span></span><code><span class=k>def</span><span class=w> </span><span class=nf>_copy_file</span><span class=p>(</span><span class=n>src_path</span><span class=p>,</span> <span class=n>dst_path</span><span class=p>):</span>
+<span class=w>    </span><span class=sd>&quot;&quot;&quot;Hardlink file if possible(to save space), copy if not.</span>
+
+<span class=sd>    Because of using hardlinks should not be function used in other parts</span>
+<span class=sd>    of pipeline.</span>
+<span class=sd>    &quot;&quot;&quot;</span>
+
+    <span class=k>if</span> <span class=n>os</span><span class=o>.</span><span class=n>path</span><span class=o>.</span><span class=n>exists</span><span class=p>(</span><span class=n>dst_path</span><span class=p>):</span>
+        <span class=k>return</span>
+    <span class=k>try</span><span class=p>:</span>
+        <span class=n>create_hard_link</span><span class=p>(</span>
+            <span class=n>src_path</span><span class=p>,</span>
+            <span class=n>dst_path</span>
+        <span class=p>)</span>
+    <span class=k>except</span> <span class=ne>OSError</span><span class=p>:</span>
+        <span class=n>shutil</span><span class=o>.</span><span class=n>copyfile</span><span class=p>(</span><span class=n>src_path</span><span class=p>,</span> <span class=n>dst_path</span><span class=p>)</span>
+</code></pre></div></td></tr></table></div> </details> </div> </div> <div class="doc doc-object doc-function"> <h2 id=client.ayon_core.pipeline.delivery.check_destination_path class="doc doc-heading"> <code class="highlight language-python"><span class=n>check_destination_path</span><span class=p>(</span><span class=n>repre_id</span><span class=p>,</span> <span class=n>anatomy</span><span class=p>,</span> <span class=n>anatomy_data</span><span class=p>,</span> <span class=n>datetime_data</span><span class=p>,</span> <span class=n>template_name</span><span class=p>)</span></code> </h2> <div class="doc doc-contents "> <p>Try to create destination path based on 'template_name'.</p> <p>In the case that path cannot be filled, template contains unmatched keys, provide error message to filter out repre later.</p> <p><span class=doc-section-title>Parameters:</span></p> <table> <thead> <tr> <th>Name</th> <th>Type</th> <th>Description</th> <th>Default</th> </tr> </thead> <tbody> <tr class=doc-section-item> <td> <code>repre_id</code> </td> <td> <code><span title=str>str</span></code> </td> <td> <div class=doc-md-description> <p>Representation id.</p> </div> </td> <td> <em>required</em> </td> </tr> <tr class=doc-section-item> <td> <code>anatomy</code> </td> <td> <code><a class="autorefs autorefs-internal" title="Anatomy (client.ayon_core.pipeline.anatomy.Anatomy)" href=anatomy/index.html#client.ayon_core.pipeline.anatomy.Anatomy>Anatomy</a></code> </td> <td> <div class=doc-md-description> <p>Project anatomy.</p> </div> </td> <td> <em>required</em> </td> </tr> <tr class=doc-section-item> <td> <code>anatomy_data</code> </td> <td> <code><span title=dict>dict</span></code> </td> <td> <div class=doc-md-description> <p>Template data to fill anatomy templates.</p> </div> </td> <td> <em>required</em> </td> </tr> <tr class=doc-section-item> <td> <code>datetime_data</code> </td> <td> <code><span title=dict>dict</span></code> </td> <td> <div class=doc-md-description> <p>Values with actual date.</p> </div> </td> <td> <em>required</em> </td> </tr> <tr class=doc-section-item> <td> <code>template_name</code> </td> <td> <code><span title=str>str</span></code> </td> <td> <div class=doc-md-description> <p>Name of template which should be used from anatomy templates.</p> </div> </td> <td> <em>required</em> </td> </tr> </tbody> </table> <p>Returns: Dict[str, List[str]]: Report of happened errors. Key is message title value is detailed information.</p> <details class=quote> <summary>Source code in <code>client/ayon_core/pipeline/delivery.py</code></summary> <div class=highlight><table class=highlighttable><tr><td class=linenos><div class=linenodiv><pre><span></span><span class=normal> 64</span>
+<span class=normal> 65</span>
+<span class=normal> 66</span>
+<span class=normal> 67</span>
+<span class=normal> 68</span>
+<span class=normal> 69</span>
+<span class=normal> 70</span>
+<span class=normal> 71</span>
+<span class=normal> 72</span>
+<span class=normal> 73</span>
+<span class=normal> 74</span>
+<span class=normal> 75</span>
+<span class=normal> 76</span>
+<span class=normal> 77</span>
+<span class=normal> 78</span>
+<span class=normal> 79</span>
+<span class=normal> 80</span>
+<span class=normal> 81</span>
+<span class=normal> 82</span>
+<span class=normal> 83</span>
+<span class=normal> 84</span>
+<span class=normal> 85</span>
+<span class=normal> 86</span>
+<span class=normal> 87</span>
+<span class=normal> 88</span>
+<span class=normal> 89</span>
+<span class=normal> 90</span>
+<span class=normal> 91</span>
+<span class=normal> 92</span>
+<span class=normal> 93</span>
+<span class=normal> 94</span>
+<span class=normal> 95</span>
+<span class=normal> 96</span>
+<span class=normal> 97</span>
+<span class=normal> 98</span>
+<span class=normal> 99</span>
+<span class=normal>100</span>
+<span class=normal>101</span>
+<span class=normal>102</span>
+<span class=normal>103</span>
+<span class=normal>104</span>
+<span class=normal>105</span>
+<span class=normal>106</span>
+<span class=normal>107</span>
+<span class=normal>108</span>
+<span class=normal>109</span>
+<span class=normal>110</span>
+<span class=normal>111</span>
+<span class=normal>112</span>
+<span class=normal>113</span>
+<span class=normal>114</span>
+<span class=normal>115</span>
+<span class=normal>116</span>
+<span class=normal>117</span>
+<span class=normal>118</span>
+<span class=normal>119</span>
+<span class=normal>120</span>
+<span class=normal>121</span>
+<span class=normal>122</span>
+<span class=normal>123</span></pre></div></td><td class=code><div><pre><span></span><code><span class=k>def</span><span class=w> </span><span class=nf>check_destination_path</span><span class=p>(</span>
+    <span class=n>repre_id</span><span class=p>,</span>
+    <span class=n>anatomy</span><span class=p>,</span>
+    <span class=n>anatomy_data</span><span class=p>,</span>
+    <span class=n>datetime_data</span><span class=p>,</span>
+    <span class=n>template_name</span>
+<span class=p>):</span>
+<span class=w>    </span><span class=sd>&quot;&quot;&quot; Try to create destination path based on &#39;template_name&#39;.</span>
+
+<span class=sd>    In the case that path cannot be filled, template contains unmatched</span>
+<span class=sd>    keys, provide error message to filter out repre later.</span>
+
+<span class=sd>    Args:</span>
+<span class=sd>        repre_id (str): Representation id.</span>
+<span class=sd>        anatomy (Anatomy): Project anatomy.</span>
+<span class=sd>        anatomy_data (dict): Template data to fill anatomy templates.</span>
+<span class=sd>        datetime_data (dict): Values with actual date.</span>
+<span class=sd>        template_name (str): Name of template which should be used from anatomy</span>
+<span class=sd>            templates.</span>
+<span class=sd>    Returns:</span>
+<span class=sd>        Dict[str, List[str]]: Report of happened errors. Key is message title</span>
+<span class=sd>            value is detailed information.</span>
+<span class=sd>    &quot;&quot;&quot;</span>
+
+    <span class=n>anatomy_data</span><span class=o>.</span><span class=n>update</span><span class=p>(</span><span class=n>datetime_data</span><span class=p>)</span>
+    <span class=n>path_template</span> <span class=o>=</span> <span class=n>anatomy</span><span class=o>.</span><span class=n>get_template_item</span><span class=p>(</span>
+        <span class=s2>&quot;delivery&quot;</span><span class=p>,</span> <span class=n>template_name</span><span class=p>,</span> <span class=s2>&quot;path&quot;</span>
+    <span class=p>)</span>
+    <span class=n>dest_path</span> <span class=o>=</span> <span class=n>path_template</span><span class=o>.</span><span class=n>format</span><span class=p>(</span><span class=n>anatomy_data</span><span class=p>)</span>
+    <span class=n>report_items</span> <span class=o>=</span> <span class=n>collections</span><span class=o>.</span><span class=n>defaultdict</span><span class=p>(</span><span class=nb>list</span><span class=p>)</span>
+
+    <span class=k>if</span> <span class=ow>not</span> <span class=n>dest_path</span><span class=o>.</span><span class=n>solved</span><span class=p>:</span>
+        <span class=n>msg</span> <span class=o>=</span> <span class=p>(</span>
+            <span class=s2>&quot;Missing keys in Representation&#39;s context&quot;</span>
+            <span class=s2>&quot; for anatomy template </span><span class=se>\&quot;</span><span class=si>{}</span><span class=se>\&quot;</span><span class=s2>.&quot;</span>
+        <span class=p>)</span><span class=o>.</span><span class=n>format</span><span class=p>(</span><span class=n>template_name</span><span class=p>)</span>
+
+        <span class=n>sub_msg</span> <span class=o>=</span> <span class=p>(</span>
+            <span class=s2>&quot;Representation: </span><span class=si>{}</span><span class=s2>&lt;br&gt;&quot;</span>
+        <span class=p>)</span><span class=o>.</span><span class=n>format</span><span class=p>(</span><span class=n>repre_id</span><span class=p>)</span>
+
+        <span class=k>if</span> <span class=n>dest_path</span><span class=o>.</span><span class=n>missing_keys</span><span class=p>:</span>
+            <span class=n>keys</span> <span class=o>=</span> <span class=s2>&quot;, &quot;</span><span class=o>.</span><span class=n>join</span><span class=p>(</span><span class=n>dest_path</span><span class=o>.</span><span class=n>missing_keys</span><span class=p>)</span>
+            <span class=n>sub_msg</span> <span class=o>+=</span> <span class=p>(</span>
+                <span class=s2>&quot;- Missing keys: </span><span class=se>\&quot;</span><span class=si>{}</span><span class=se>\&quot;</span><span class=s2>&lt;br&gt;&quot;</span>
+            <span class=p>)</span><span class=o>.</span><span class=n>format</span><span class=p>(</span><span class=n>keys</span><span class=p>)</span>
+
+        <span class=k>if</span> <span class=n>dest_path</span><span class=o>.</span><span class=n>invalid_types</span><span class=p>:</span>
+            <span class=n>items</span> <span class=o>=</span> <span class=p>[]</span>
+            <span class=k>for</span> <span class=n>key</span><span class=p>,</span> <span class=n>value</span> <span class=ow>in</span> <span class=n>dest_path</span><span class=o>.</span><span class=n>invalid_types</span><span class=o>.</span><span class=n>items</span><span class=p>():</span>
+                <span class=n>items</span><span class=o>.</span><span class=n>append</span><span class=p>(</span><span class=s2>&quot;</span><span class=se>\&quot;</span><span class=si>{}</span><span class=se>\&quot;</span><span class=s2> </span><span class=si>{}</span><span class=s2>&quot;</span><span class=o>.</span><span class=n>format</span><span class=p>(</span><span class=n>key</span><span class=p>,</span> <span class=nb>str</span><span class=p>(</span><span class=n>value</span><span class=p>)))</span>
+
+            <span class=n>keys</span> <span class=o>=</span> <span class=s2>&quot;, &quot;</span><span class=o>.</span><span class=n>join</span><span class=p>(</span><span class=n>items</span><span class=p>)</span>
+            <span class=n>sub_msg</span> <span class=o>+=</span> <span class=p>(</span>
+                <span class=s2>&quot;- Invalid value DataType: </span><span class=se>\&quot;</span><span class=si>{}</span><span class=se>\&quot;</span><span class=s2>&lt;br&gt;&quot;</span>
+            <span class=p>)</span><span class=o>.</span><span class=n>format</span><span class=p>(</span><span class=n>keys</span><span class=p>)</span>
+
+        <span class=n>report_items</span><span class=p>[</span><span class=n>msg</span><span class=p>]</span><span class=o>.</span><span class=n>append</span><span class=p>(</span><span class=n>sub_msg</span><span class=p>)</span>
+
+    <span class=k>return</span> <span class=n>report_items</span>
+</code></pre></div></td></tr></table></div> </details> </div> </div> <div class="doc doc-object doc-function"> <h2 id=client.ayon_core.pipeline.delivery.deliver_sequence class="doc doc-heading"> <code class="highlight language-python"><span class=n>deliver_sequence</span><span class=p>(</span><span class=n>src_path</span><span class=p>,</span> <span class=n>repre</span><span class=p>,</span> <span class=n>anatomy</span><span class=p>,</span> <span class=n>template_name</span><span class=p>,</span> <span class=n>anatomy_data</span><span class=p>,</span> <span class=n>format_dict</span><span class=p>,</span> <span class=n>report_items</span><span class=p>,</span> <span class=n>log</span><span class=p>,</span> <span class=n>has_renumbered_frame</span><span class=o>=</span><span class=kc>False</span><span class=p>,</span> <span class=n>new_frame_start</span><span class=o>=</span><span class=mi>0</span><span class=p>)</span></code> </h2> <div class="doc doc-contents "> <p>For Pype2(mainly - works in 3 too) where representation might not contain files.</p> <pre><code>Uses listing physical files (not 'files' on repre as a)might not be
+ present, b)might not be reliable for representation and copying them.
+
+ TODO Should be refactored when files are sufficient to drive all
+ representations.
+</code></pre> <p><span class=doc-section-title>Parameters:</span></p> <table> <thead> <tr> <th>Name</th> <th>Type</th> <th>Description</th> <th>Default</th> </tr> </thead> <tbody> <tr class=doc-section-item> <td> <code>src_path(str)</code> </td> <td> </td> <td> <div class=doc-md-description> <p>path of source representation file</p> </div> </td> <td> <em>required</em> </td> </tr> <tr class=doc-section-item> <td> <code>repre</code> </td> <td> <code><span title=dict>dict</span></code> </td> <td> <div class=doc-md-description> <p>full representation</p> </div> </td> <td> <em>required</em> </td> </tr> <tr class=doc-section-item> <td> <code>template_name</code> </td> <td> <code><span title=string>string</span></code> </td> <td> <div class=doc-md-description> <p>user selected delivery template name</p> </div> </td> <td> <em>required</em> </td> </tr> <tr class=doc-section-item> <td> <code>anatomy_data</code> </td> <td> <code><span title=dict>dict</span></code> </td> <td> <div class=doc-md-description> <p>data from repre to fill anatomy with</p> </div> </td> <td> <em>required</em> </td> </tr> <tr class=doc-section-item> <td> <code>format_dict</code> </td> <td> <code><span title=dict>dict</span></code> </td> <td> <div class=doc-md-description> <p>root dictionary with names and values</p> </div> </td> <td> <em>required</em> </td> </tr> <tr class=doc-section-item> <td> <code>report_items</code> </td> <td> <code><span title=collections.defaultdict>defaultdict</span></code> </td> <td> <div class=doc-md-description> <p>to return error messages</p> </div> </td> <td> <em>required</em> </td> </tr> <tr class=doc-section-item> <td> <code>log</code> </td> <td> <code><span title=logging.Logger>Logger</span></code> </td> <td> <div class=doc-md-description> <p>for log printing</p> </div> </td> <td> <em>required</em> </td> </tr> </tbody> </table> <p><span class=doc-section-title>Returns:</span></p> <table> <thead> <tr> <th>Type</th> <th>Description</th> </tr> </thead> <tbody> <tr class=doc-section-item> <td> </td> <td> <div class=doc-md-description> <p>(collections.defaultdict, int)</p> </div> </td> </tr> </tbody> </table> <details class=quote> <summary>Source code in <code>client/ayon_core/pipeline/delivery.py</code></summary> <div class=highlight><table class=highlighttable><tr><td class=linenos><div class=linenodiv><pre><span></span><span class=normal>186</span>
+<span class=normal>187</span>
+<span class=normal>188</span>
+<span class=normal>189</span>
+<span class=normal>190</span>
+<span class=normal>191</span>
+<span class=normal>192</span>
+<span class=normal>193</span>
+<span class=normal>194</span>
+<span class=normal>195</span>
+<span class=normal>196</span>
+<span class=normal>197</span>
+<span class=normal>198</span>
+<span class=normal>199</span>
+<span class=normal>200</span>
+<span class=normal>201</span>
+<span class=normal>202</span>
+<span class=normal>203</span>
+<span class=normal>204</span>
+<span class=normal>205</span>
+<span class=normal>206</span>
+<span class=normal>207</span>
+<span class=normal>208</span>
+<span class=normal>209</span>
+<span class=normal>210</span>
+<span class=normal>211</span>
+<span class=normal>212</span>
+<span class=normal>213</span>
+<span class=normal>214</span>
+<span class=normal>215</span>
+<span class=normal>216</span>
+<span class=normal>217</span>
+<span class=normal>218</span>
+<span class=normal>219</span>
+<span class=normal>220</span>
+<span class=normal>221</span>
+<span class=normal>222</span>
+<span class=normal>223</span>
+<span class=normal>224</span>
+<span class=normal>225</span>
+<span class=normal>226</span>
+<span class=normal>227</span>
+<span class=normal>228</span>
+<span class=normal>229</span>
+<span class=normal>230</span>
+<span class=normal>231</span>
+<span class=normal>232</span>
+<span class=normal>233</span>
+<span class=normal>234</span>
+<span class=normal>235</span>
+<span class=normal>236</span>
+<span class=normal>237</span>
+<span class=normal>238</span>
+<span class=normal>239</span>
+<span class=normal>240</span>
+<span class=normal>241</span>
+<span class=normal>242</span>
+<span class=normal>243</span>
+<span class=normal>244</span>
+<span class=normal>245</span>
+<span class=normal>246</span>
+<span class=normal>247</span>
+<span class=normal>248</span>
+<span class=normal>249</span>
+<span class=normal>250</span>
+<span class=normal>251</span>
+<span class=normal>252</span>
+<span class=normal>253</span>
+<span class=normal>254</span>
+<span class=normal>255</span>
+<span class=normal>256</span>
+<span class=normal>257</span>
+<span class=normal>258</span>
+<span class=normal>259</span>
+<span class=normal>260</span>
+<span class=normal>261</span>
+<span class=normal>262</span>
+<span class=normal>263</span>
+<span class=normal>264</span>
+<span class=normal>265</span>
+<span class=normal>266</span>
+<span class=normal>267</span>
+<span class=normal>268</span>
+<span class=normal>269</span>
+<span class=normal>270</span>
+<span class=normal>271</span>
+<span class=normal>272</span>
+<span class=normal>273</span>
+<span class=normal>274</span>
+<span class=normal>275</span>
+<span class=normal>276</span>
+<span class=normal>277</span>
+<span class=normal>278</span>
+<span class=normal>279</span>
+<span class=normal>280</span>
+<span class=normal>281</span>
+<span class=normal>282</span>
+<span class=normal>283</span>
+<span class=normal>284</span>
+<span class=normal>285</span>
+<span class=normal>286</span>
+<span class=normal>287</span>
+<span class=normal>288</span>
+<span class=normal>289</span>
+<span class=normal>290</span>
+<span class=normal>291</span>
+<span class=normal>292</span>
+<span class=normal>293</span>
+<span class=normal>294</span>
+<span class=normal>295</span>
+<span class=normal>296</span>
+<span class=normal>297</span>
+<span class=normal>298</span>
+<span class=normal>299</span>
+<span class=normal>300</span>
+<span class=normal>301</span>
+<span class=normal>302</span>
+<span class=normal>303</span>
+<span class=normal>304</span>
+<span class=normal>305</span>
+<span class=normal>306</span>
+<span class=normal>307</span>
+<span class=normal>308</span>
+<span class=normal>309</span>
+<span class=normal>310</span>
+<span class=normal>311</span>
+<span class=normal>312</span>
+<span class=normal>313</span>
+<span class=normal>314</span>
+<span class=normal>315</span>
+<span class=normal>316</span>
+<span class=normal>317</span>
+<span class=normal>318</span>
+<span class=normal>319</span>
+<span class=normal>320</span>
+<span class=normal>321</span>
+<span class=normal>322</span>
+<span class=normal>323</span>
+<span class=normal>324</span>
+<span class=normal>325</span>
+<span class=normal>326</span>
+<span class=normal>327</span>
+<span class=normal>328</span>
+<span class=normal>329</span>
+<span class=normal>330</span>
+<span class=normal>331</span>
+<span class=normal>332</span>
+<span class=normal>333</span>
+<span class=normal>334</span>
+<span class=normal>335</span>
+<span class=normal>336</span>
+<span class=normal>337</span>
+<span class=normal>338</span></pre></div></td><td class=code><div><pre><span></span><code><span class=k>def</span><span class=w> </span><span class=nf>deliver_sequence</span><span class=p>(</span>
+    <span class=n>src_path</span><span class=p>,</span>
+    <span class=n>repre</span><span class=p>,</span>
+    <span class=n>anatomy</span><span class=p>,</span>
+    <span class=n>template_name</span><span class=p>,</span>
+    <span class=n>anatomy_data</span><span class=p>,</span>
+    <span class=n>format_dict</span><span class=p>,</span>
+    <span class=n>report_items</span><span class=p>,</span>
+    <span class=n>log</span><span class=p>,</span>
+    <span class=n>has_renumbered_frame</span><span class=o>=</span><span class=kc>False</span><span class=p>,</span>
+    <span class=n>new_frame_start</span><span class=o>=</span><span class=mi>0</span>
+<span class=p>):</span>
+<span class=w>    </span><span class=sd>&quot;&quot;&quot; For Pype2(mainly - works in 3 too) where representation might not</span>
+<span class=sd>        contain files.</span>
+
+<span class=sd>        Uses listing physical files (not &#39;files&#39; on repre as a)might not be</span>
+<span class=sd>         present, b)might not be reliable for representation and copying them.</span>
+
+<span class=sd>         TODO Should be refactored when files are sufficient to drive all</span>
+<span class=sd>         representations.</span>
+
+<span class=sd>    Args:</span>
+<span class=sd>        src_path(str): path of source representation file</span>
+<span class=sd>        repre (dict): full representation</span>
+<span class=sd>        anatomy (Anatomy)</span>
+<span class=sd>        template_name (string): user selected delivery template name</span>
+<span class=sd>        anatomy_data (dict): data from repre to fill anatomy with</span>
+<span class=sd>        format_dict (dict): root dictionary with names and values</span>
+<span class=sd>        report_items (collections.defaultdict): to return error messages</span>
+<span class=sd>        log (logging.Logger): for log printing</span>
+
+<span class=sd>    Returns:</span>
+<span class=sd>        (collections.defaultdict, int)</span>
+<span class=sd>    &quot;&quot;&quot;</span>
+
+    <span class=n>src_path</span> <span class=o>=</span> <span class=n>os</span><span class=o>.</span><span class=n>path</span><span class=o>.</span><span class=n>normpath</span><span class=p>(</span><span class=n>src_path</span><span class=o>.</span><span class=n>replace</span><span class=p>(</span><span class=s2>&quot;</span><span class=se>\\</span><span class=s2>&quot;</span><span class=p>,</span> <span class=s2>&quot;/&quot;</span><span class=p>))</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>hash_path_exist</span><span class=p>(</span><span class=n>myPath</span><span class=p>):</span>
+        <span class=n>res</span> <span class=o>=</span> <span class=n>myPath</span><span class=o>.</span><span class=n>replace</span><span class=p>(</span><span class=s1>&#39;#&#39;</span><span class=p>,</span> <span class=s1>&#39;*&#39;</span><span class=p>)</span>
+        <span class=n>glob_search_results</span> <span class=o>=</span> <span class=n>glob</span><span class=o>.</span><span class=n>glob</span><span class=p>(</span><span class=n>res</span><span class=p>)</span>
+        <span class=k>if</span> <span class=nb>len</span><span class=p>(</span><span class=n>glob_search_results</span><span class=p>)</span> <span class=o>&gt;</span> <span class=mi>0</span><span class=p>:</span>
+            <span class=k>return</span> <span class=kc>True</span>
+        <span class=k>return</span> <span class=kc>False</span>
+
+    <span class=k>if</span> <span class=ow>not</span> <span class=n>hash_path_exist</span><span class=p>(</span><span class=n>src_path</span><span class=p>):</span>
+        <span class=n>msg</span> <span class=o>=</span> <span class=s2>&quot;</span><span class=si>{}</span><span class=s2> doesn&#39;t exist for </span><span class=si>{}</span><span class=s2>&quot;</span><span class=o>.</span><span class=n>format</span><span class=p>(</span>
+            <span class=n>src_path</span><span class=p>,</span> <span class=n>repre</span><span class=p>[</span><span class=s2>&quot;id&quot;</span><span class=p>])</span>
+        <span class=n>report_items</span><span class=p>[</span><span class=s2>&quot;Source file was not found&quot;</span><span class=p>]</span><span class=o>.</span><span class=n>append</span><span class=p>(</span><span class=n>msg</span><span class=p>)</span>
+        <span class=k>return</span> <span class=n>report_items</span><span class=p>,</span> <span class=mi>0</span>
+
+    <span class=n>delivery_template</span> <span class=o>=</span> <span class=n>anatomy</span><span class=o>.</span><span class=n>get_template_item</span><span class=p>(</span>
+        <span class=s2>&quot;delivery&quot;</span><span class=p>,</span> <span class=n>template_name</span><span class=p>,</span> <span class=s2>&quot;path&quot;</span><span class=p>,</span> <span class=n>default</span><span class=o>=</span><span class=kc>None</span>
+    <span class=p>)</span>
+    <span class=k>if</span> <span class=n>delivery_template</span> <span class=ow>is</span> <span class=kc>None</span><span class=p>:</span>
+        <span class=n>msg</span> <span class=o>=</span> <span class=p>(</span>
+            <span class=s2>&quot;Delivery template </span><span class=se>\&quot;</span><span class=si>{}</span><span class=se>\&quot;</span><span class=s2> in anatomy of project </span><span class=se>\&quot;</span><span class=si>{}</span><span class=se>\&quot;</span><span class=s2>&quot;</span>
+            <span class=s2>&quot; was not found&quot;</span>
+        <span class=p>)</span><span class=o>.</span><span class=n>format</span><span class=p>(</span><span class=n>template_name</span><span class=p>,</span> <span class=n>anatomy</span><span class=o>.</span><span class=n>project_name</span><span class=p>)</span>
+        <span class=n>report_items</span><span class=p>[</span><span class=s2>&quot;&quot;</span><span class=p>]</span><span class=o>.</span><span class=n>append</span><span class=p>(</span><span class=n>msg</span><span class=p>)</span>
+        <span class=k>return</span> <span class=n>report_items</span><span class=p>,</span> <span class=mi>0</span>
+
+    <span class=c1># Check if &#39;frame&#39; key is available in template which is required</span>
+    <span class=c1>#   for sequence delivery</span>
+    <span class=k>if</span> <span class=s2>&quot;{frame&quot;</span> <span class=ow>not</span> <span class=ow>in</span> <span class=n>delivery_template</span><span class=o>.</span><span class=n>template</span><span class=p>:</span>
+        <span class=n>msg</span> <span class=o>=</span> <span class=p>(</span>
+            <span class=s2>&quot;Delivery template </span><span class=se>\&quot;</span><span class=si>{}</span><span class=se>\&quot;</span><span class=s2> in anatomy of project </span><span class=se>\&quot;</span><span class=si>{}</span><span class=se>\&quot;</span><span class=s2>&quot;</span>
+            <span class=s2>&quot;does not contain &#39;{{frame}}&#39; key to fill. Delivery of sequence&quot;</span>
+            <span class=s2>&quot; can&#39;t be processed.&quot;</span>
+        <span class=p>)</span><span class=o>.</span><span class=n>format</span><span class=p>(</span><span class=n>template_name</span><span class=p>,</span> <span class=n>anatomy</span><span class=o>.</span><span class=n>project_name</span><span class=p>)</span>
+        <span class=n>report_items</span><span class=p>[</span><span class=s2>&quot;&quot;</span><span class=p>]</span><span class=o>.</span><span class=n>append</span><span class=p>(</span><span class=n>msg</span><span class=p>)</span>
+        <span class=k>return</span> <span class=n>report_items</span><span class=p>,</span> <span class=mi>0</span>
+
+    <span class=n>dir_path</span><span class=p>,</span> <span class=n>file_name</span> <span class=o>=</span> <span class=n>os</span><span class=o>.</span><span class=n>path</span><span class=o>.</span><span class=n>split</span><span class=p>(</span><span class=nb>str</span><span class=p>(</span><span class=n>src_path</span><span class=p>))</span>
+
+    <span class=n>context</span> <span class=o>=</span> <span class=n>repre</span><span class=p>[</span><span class=s2>&quot;context&quot;</span><span class=p>]</span>
+    <span class=n>ext</span> <span class=o>=</span> <span class=n>context</span><span class=o>.</span><span class=n>get</span><span class=p>(</span><span class=s2>&quot;ext&quot;</span><span class=p>,</span> <span class=n>context</span><span class=o>.</span><span class=n>get</span><span class=p>(</span><span class=s2>&quot;representation&quot;</span><span class=p>))</span>
+
+    <span class=k>if</span> <span class=ow>not</span> <span class=n>ext</span><span class=p>:</span>
+        <span class=n>msg</span> <span class=o>=</span> <span class=s2>&quot;Source extension not found, cannot find collection&quot;</span>
+        <span class=n>report_items</span><span class=p>[</span><span class=n>msg</span><span class=p>]</span><span class=o>.</span><span class=n>append</span><span class=p>(</span><span class=n>src_path</span><span class=p>)</span>
+        <span class=n>log</span><span class=o>.</span><span class=n>warning</span><span class=p>(</span><span class=s2>&quot;</span><span class=si>{}</span><span class=s2> &lt;</span><span class=si>{}</span><span class=s2>&gt;&quot;</span><span class=o>.</span><span class=n>format</span><span class=p>(</span><span class=n>msg</span><span class=p>,</span> <span class=n>context</span><span class=p>))</span>
+        <span class=k>return</span> <span class=n>report_items</span><span class=p>,</span> <span class=mi>0</span>
+
+    <span class=n>ext</span> <span class=o>=</span> <span class=s2>&quot;.&quot;</span> <span class=o>+</span> <span class=n>ext</span>
+    <span class=c1># context.representation could be .psd</span>
+    <span class=n>ext</span> <span class=o>=</span> <span class=n>ext</span><span class=o>.</span><span class=n>replace</span><span class=p>(</span><span class=s2>&quot;..&quot;</span><span class=p>,</span> <span class=s2>&quot;.&quot;</span><span class=p>)</span>
+
+    <span class=n>src_collections</span><span class=p>,</span> <span class=n>remainder</span> <span class=o>=</span> <span class=n>clique</span><span class=o>.</span><span class=n>assemble</span><span class=p>(</span><span class=n>os</span><span class=o>.</span><span class=n>listdir</span><span class=p>(</span><span class=n>dir_path</span><span class=p>))</span>
+    <span class=n>src_collection</span> <span class=o>=</span> <span class=kc>None</span>
+    <span class=k>for</span> <span class=n>col</span> <span class=ow>in</span> <span class=n>src_collections</span><span class=p>:</span>
+        <span class=k>if</span> <span class=n>col</span><span class=o>.</span><span class=n>tail</span> <span class=o>!=</span> <span class=n>ext</span><span class=p>:</span>
+            <span class=k>continue</span>
+
+        <span class=n>src_collection</span> <span class=o>=</span> <span class=n>col</span>
+        <span class=k>break</span>
+
+    <span class=k>if</span> <span class=n>src_collection</span> <span class=ow>is</span> <span class=kc>None</span><span class=p>:</span>
+        <span class=n>msg</span> <span class=o>=</span> <span class=s2>&quot;Source collection of files was not found&quot;</span>
+        <span class=n>report_items</span><span class=p>[</span><span class=n>msg</span><span class=p>]</span><span class=o>.</span><span class=n>append</span><span class=p>(</span><span class=n>src_path</span><span class=p>)</span>
+        <span class=n>log</span><span class=o>.</span><span class=n>warning</span><span class=p>(</span><span class=s2>&quot;</span><span class=si>{}</span><span class=s2> &lt;</span><span class=si>{}</span><span class=s2>&gt;&quot;</span><span class=o>.</span><span class=n>format</span><span class=p>(</span><span class=n>msg</span><span class=p>,</span> <span class=n>src_path</span><span class=p>))</span>
+        <span class=k>return</span> <span class=n>report_items</span><span class=p>,</span> <span class=mi>0</span>
+
+    <span class=n>frame_indicator</span> <span class=o>=</span> <span class=s2>&quot;@####@&quot;</span>
+
+    <span class=n>anatomy_data</span> <span class=o>=</span> <span class=n>copy</span><span class=o>.</span><span class=n>deepcopy</span><span class=p>(</span><span class=n>anatomy_data</span><span class=p>)</span>
+    <span class=n>anatomy_data</span><span class=p>[</span><span class=s2>&quot;frame&quot;</span><span class=p>]</span> <span class=o>=</span> <span class=n>frame_indicator</span>
+    <span class=k>if</span> <span class=n>format_dict</span><span class=p>:</span>
+        <span class=n>anatomy_data</span><span class=p>[</span><span class=s2>&quot;root&quot;</span><span class=p>]</span> <span class=o>=</span> <span class=n>format_dict</span><span class=p>[</span><span class=s2>&quot;root&quot;</span><span class=p>]</span>
+    <span class=n>delivery_path</span> <span class=o>=</span> <span class=n>delivery_template</span><span class=o>.</span><span class=n>format_strict</span><span class=p>(</span><span class=n>anatomy_data</span><span class=p>)</span>
+
+    <span class=n>delivery_path</span> <span class=o>=</span> <span class=n>os</span><span class=o>.</span><span class=n>path</span><span class=o>.</span><span class=n>normpath</span><span class=p>(</span><span class=n>delivery_path</span><span class=o>.</span><span class=n>replace</span><span class=p>(</span><span class=s2>&quot;</span><span class=se>\\</span><span class=s2>&quot;</span><span class=p>,</span> <span class=s2>&quot;/&quot;</span><span class=p>))</span>
+    <span class=n>delivery_folder</span> <span class=o>=</span> <span class=n>os</span><span class=o>.</span><span class=n>path</span><span class=o>.</span><span class=n>dirname</span><span class=p>(</span><span class=n>delivery_path</span><span class=p>)</span>
+    <span class=n>dst_head</span><span class=p>,</span> <span class=n>dst_tail</span> <span class=o>=</span> <span class=n>delivery_path</span><span class=o>.</span><span class=n>split</span><span class=p>(</span><span class=n>frame_indicator</span><span class=p>)</span>
+    <span class=n>dst_padding</span> <span class=o>=</span> <span class=n>src_collection</span><span class=o>.</span><span class=n>padding</span>
+    <span class=n>dst_collection</span> <span class=o>=</span> <span class=n>clique</span><span class=o>.</span><span class=n>Collection</span><span class=p>(</span>
+        <span class=n>head</span><span class=o>=</span><span class=n>dst_head</span><span class=p>,</span>
+        <span class=n>tail</span><span class=o>=</span><span class=n>dst_tail</span><span class=p>,</span>
+        <span class=n>padding</span><span class=o>=</span><span class=n>dst_padding</span>
+    <span class=p>)</span>
+
+    <span class=k>if</span> <span class=ow>not</span> <span class=n>os</span><span class=o>.</span><span class=n>path</span><span class=o>.</span><span class=n>exists</span><span class=p>(</span><span class=n>delivery_folder</span><span class=p>):</span>
+        <span class=n>os</span><span class=o>.</span><span class=n>makedirs</span><span class=p>(</span><span class=n>delivery_folder</span><span class=p>)</span>
+
+    <span class=n>src_head</span> <span class=o>=</span> <span class=n>src_collection</span><span class=o>.</span><span class=n>head</span>
+    <span class=n>src_tail</span> <span class=o>=</span> <span class=n>src_collection</span><span class=o>.</span><span class=n>tail</span>
+    <span class=n>uploaded</span> <span class=o>=</span> <span class=mi>0</span>
+    <span class=n>first_frame</span> <span class=o>=</span> <span class=nb>min</span><span class=p>(</span><span class=n>src_collection</span><span class=o>.</span><span class=n>indexes</span><span class=p>)</span>
+    <span class=k>for</span> <span class=n>index</span> <span class=ow>in</span> <span class=n>src_collection</span><span class=o>.</span><span class=n>indexes</span><span class=p>:</span>
+        <span class=n>src_padding</span> <span class=o>=</span> <span class=n>src_collection</span><span class=o>.</span><span class=n>format</span><span class=p>(</span><span class=s2>&quot;</span><span class=si>{padding}</span><span class=s2>&quot;</span><span class=p>)</span> <span class=o>%</span> <span class=n>index</span>
+        <span class=n>src_file_name</span> <span class=o>=</span> <span class=s2>&quot;</span><span class=si>{}{}{}</span><span class=s2>&quot;</span><span class=o>.</span><span class=n>format</span><span class=p>(</span><span class=n>src_head</span><span class=p>,</span> <span class=n>src_padding</span><span class=p>,</span> <span class=n>src_tail</span><span class=p>)</span>
+        <span class=n>src</span> <span class=o>=</span> <span class=n>os</span><span class=o>.</span><span class=n>path</span><span class=o>.</span><span class=n>normpath</span><span class=p>(</span>
+            <span class=n>os</span><span class=o>.</span><span class=n>path</span><span class=o>.</span><span class=n>join</span><span class=p>(</span><span class=n>dir_path</span><span class=p>,</span> <span class=n>src_file_name</span><span class=p>)</span>
+        <span class=p>)</span>
+        <span class=n>dst_index</span> <span class=o>=</span> <span class=n>index</span>
+        <span class=k>if</span> <span class=n>has_renumbered_frame</span><span class=p>:</span>
+            <span class=c1># Calculate offset between first frame and current frame</span>
+            <span class=c1># - &#39;0&#39; for first frame</span>
+            <span class=n>offset</span> <span class=o>=</span> <span class=n>new_frame_start</span> <span class=o>-</span> <span class=n>first_frame</span>
+            <span class=c1># Add offset to new frame start</span>
+            <span class=n>dst_index</span> <span class=o>=</span> <span class=n>index</span> <span class=o>+</span> <span class=n>offset</span>
+            <span class=k>if</span> <span class=n>dst_index</span> <span class=o>&lt;</span> <span class=mi>0</span><span class=p>:</span>
+                <span class=n>msg</span> <span class=o>=</span> <span class=s2>&quot;Renumber frame has a smaller number than original frame&quot;</span>     <span class=c1># noqa</span>
+                <span class=n>report_items</span><span class=p>[</span><span class=n>msg</span><span class=p>]</span><span class=o>.</span><span class=n>append</span><span class=p>(</span><span class=n>src_file_name</span><span class=p>)</span>
+                <span class=n>log</span><span class=o>.</span><span class=n>warning</span><span class=p>(</span><span class=s2>&quot;</span><span class=si>{}</span><span class=s2> &lt;</span><span class=si>{}</span><span class=s2>&gt;&quot;</span><span class=o>.</span><span class=n>format</span><span class=p>(</span><span class=n>msg</span><span class=p>,</span> <span class=n>context</span><span class=p>))</span>
+                <span class=k>return</span> <span class=n>report_items</span><span class=p>,</span> <span class=mi>0</span>
+        <span class=n>dst_padding</span> <span class=o>=</span> <span class=n>dst_collection</span><span class=o>.</span><span class=n>format</span><span class=p>(</span><span class=s2>&quot;</span><span class=si>{padding}</span><span class=s2>&quot;</span><span class=p>)</span> <span class=o>%</span> <span class=n>dst_index</span>
+        <span class=n>dst</span> <span class=o>=</span> <span class=s2>&quot;</span><span class=si>{}{}{}</span><span class=s2>&quot;</span><span class=o>.</span><span class=n>format</span><span class=p>(</span><span class=n>dst_head</span><span class=p>,</span> <span class=n>dst_padding</span><span class=p>,</span> <span class=n>dst_tail</span><span class=p>)</span>
+        <span class=n>log</span><span class=o>.</span><span class=n>debug</span><span class=p>(</span><span class=s2>&quot;Copying single: </span><span class=si>{}</span><span class=s2> -&gt; </span><span class=si>{}</span><span class=s2>&quot;</span><span class=o>.</span><span class=n>format</span><span class=p>(</span><span class=n>src</span><span class=p>,</span> <span class=n>dst</span><span class=p>))</span>
+        <span class=n>_copy_file</span><span class=p>(</span><span class=n>src</span><span class=p>,</span> <span class=n>dst</span><span class=p>)</span>
+
+        <span class=n>uploaded</span> <span class=o>+=</span> <span class=mi>1</span>
+
+    <span class=k>return</span> <span class=n>report_items</span><span class=p>,</span> <span class=n>uploaded</span>
+</code></pre></div></td></tr></table></div> </details> </div> </div> <div class="doc doc-object doc-function"> <h2 id=client.ayon_core.pipeline.delivery.deliver_single_file class="doc doc-heading"> <code class="highlight language-python"><span class=n>deliver_single_file</span><span class=p>(</span><span class=n>src_path</span><span class=p>,</span> <span class=n>repre</span><span class=p>,</span> <span class=n>anatomy</span><span class=p>,</span> <span class=n>template_name</span><span class=p>,</span> <span class=n>anatomy_data</span><span class=p>,</span> <span class=n>format_dict</span><span class=p>,</span> <span class=n>report_items</span><span class=p>,</span> <span class=n>log</span><span class=p>)</span></code> </h2> <div class="doc doc-contents "> <p>Copy single file to calculated path based on template</p> <p><span class=doc-section-title>Parameters:</span></p> <table> <thead> <tr> <th>Name</th> <th>Type</th> <th>Description</th> <th>Default</th> </tr> </thead> <tbody> <tr class=doc-section-item> <td> <code>src_path(str)</code> </td> <td> </td> <td> <div class=doc-md-description> <p>path of source representation file</p> </div> </td> <td> <em>required</em> </td> </tr> <tr class=doc-section-item> <td> <code>repre</code> </td> <td> <code><span title=dict>dict</span></code> </td> <td> <div class=doc-md-description> <p>full repre, used only in deliver_sequence, here only as to share same signature</p> </div> </td> <td> <em>required</em> </td> </tr> <tr class=doc-section-item> <td> <code>template_name</code> </td> <td> <code><span title=string>string</span></code> </td> <td> <div class=doc-md-description> <p>user selected delivery template name</p> </div> </td> <td> <em>required</em> </td> </tr> <tr class=doc-section-item> <td> <code>anatomy_data</code> </td> <td> <code><span title=dict>dict</span></code> </td> <td> <div class=doc-md-description> <p>data from repre to fill anatomy with</p> </div> </td> <td> <em>required</em> </td> </tr> <tr class=doc-section-item> <td> <code>format_dict</code> </td> <td> <code><span title=dict>dict</span></code> </td> <td> <div class=doc-md-description> <p>root dictionary with names and values</p> </div> </td> <td> <em>required</em> </td> </tr> <tr class=doc-section-item> <td> <code>report_items</code> </td> <td> <code><span title=collections.defaultdict>defaultdict</span></code> </td> <td> <div class=doc-md-description> <p>to return error messages</p> </div> </td> <td> <em>required</em> </td> </tr> <tr class=doc-section-item> <td> <code>log</code> </td> <td> <code><span title=logging.Logger>Logger</span></code> </td> <td> <div class=doc-md-description> <p>for log printing</p> </div> </td> <td> <em>required</em> </td> </tr> </tbody> </table> <p><span class=doc-section-title>Returns:</span></p> <table> <thead> <tr> <th>Type</th> <th>Description</th> </tr> </thead> <tbody> <tr class=doc-section-item> <td> </td> <td> <div class=doc-md-description> <p>(collections.defaultdict, int)</p> </div> </td> </tr> </tbody> </table> <details class=quote> <summary>Source code in <code>client/ayon_core/pipeline/delivery.py</code></summary> <div class=highlight><table class=highlighttable><tr><td class=linenos><div class=linenodiv><pre><span></span><span class=normal>126</span>
+<span class=normal>127</span>
+<span class=normal>128</span>
+<span class=normal>129</span>
+<span class=normal>130</span>
+<span class=normal>131</span>
+<span class=normal>132</span>
+<span class=normal>133</span>
+<span class=normal>134</span>
+<span class=normal>135</span>
+<span class=normal>136</span>
+<span class=normal>137</span>
+<span class=normal>138</span>
+<span class=normal>139</span>
+<span class=normal>140</span>
+<span class=normal>141</span>
+<span class=normal>142</span>
+<span class=normal>143</span>
+<span class=normal>144</span>
+<span class=normal>145</span>
+<span class=normal>146</span>
+<span class=normal>147</span>
+<span class=normal>148</span>
+<span class=normal>149</span>
+<span class=normal>150</span>
+<span class=normal>151</span>
+<span class=normal>152</span>
+<span class=normal>153</span>
+<span class=normal>154</span>
+<span class=normal>155</span>
+<span class=normal>156</span>
+<span class=normal>157</span>
+<span class=normal>158</span>
+<span class=normal>159</span>
+<span class=normal>160</span>
+<span class=normal>161</span>
+<span class=normal>162</span>
+<span class=normal>163</span>
+<span class=normal>164</span>
+<span class=normal>165</span>
+<span class=normal>166</span>
+<span class=normal>167</span>
+<span class=normal>168</span>
+<span class=normal>169</span>
+<span class=normal>170</span>
+<span class=normal>171</span>
+<span class=normal>172</span>
+<span class=normal>173</span>
+<span class=normal>174</span>
+<span class=normal>175</span>
+<span class=normal>176</span>
+<span class=normal>177</span>
+<span class=normal>178</span>
+<span class=normal>179</span>
+<span class=normal>180</span>
+<span class=normal>181</span>
+<span class=normal>182</span>
+<span class=normal>183</span></pre></div></td><td class=code><div><pre><span></span><code><span class=k>def</span><span class=w> </span><span class=nf>deliver_single_file</span><span class=p>(</span>
+    <span class=n>src_path</span><span class=p>,</span>
+    <span class=n>repre</span><span class=p>,</span>
+    <span class=n>anatomy</span><span class=p>,</span>
+    <span class=n>template_name</span><span class=p>,</span>
+    <span class=n>anatomy_data</span><span class=p>,</span>
+    <span class=n>format_dict</span><span class=p>,</span>
+    <span class=n>report_items</span><span class=p>,</span>
+    <span class=n>log</span>
+<span class=p>):</span>
+<span class=w>    </span><span class=sd>&quot;&quot;&quot;Copy single file to calculated path based on template</span>
+
+<span class=sd>    Args:</span>
+<span class=sd>        src_path(str): path of source representation file</span>
+<span class=sd>        repre (dict): full repre, used only in deliver_sequence, here only</span>
+<span class=sd>            as to share same signature</span>
+<span class=sd>        anatomy (Anatomy)</span>
+<span class=sd>        template_name (string): user selected delivery template name</span>
+<span class=sd>        anatomy_data (dict): data from repre to fill anatomy with</span>
+<span class=sd>        format_dict (dict): root dictionary with names and values</span>
+<span class=sd>        report_items (collections.defaultdict): to return error messages</span>
+<span class=sd>        log (logging.Logger): for log printing</span>
+
+<span class=sd>    Returns:</span>
+<span class=sd>        (collections.defaultdict, int)</span>
+<span class=sd>    &quot;&quot;&quot;</span>
+
+    <span class=c1># Make sure path is valid for all platforms</span>
+    <span class=n>src_path</span> <span class=o>=</span> <span class=n>os</span><span class=o>.</span><span class=n>path</span><span class=o>.</span><span class=n>normpath</span><span class=p>(</span><span class=n>src_path</span><span class=o>.</span><span class=n>replace</span><span class=p>(</span><span class=s2>&quot;</span><span class=se>\\</span><span class=s2>&quot;</span><span class=p>,</span> <span class=s2>&quot;/&quot;</span><span class=p>))</span>
+
+    <span class=k>if</span> <span class=ow>not</span> <span class=n>os</span><span class=o>.</span><span class=n>path</span><span class=o>.</span><span class=n>exists</span><span class=p>(</span><span class=n>src_path</span><span class=p>):</span>
+        <span class=n>msg</span> <span class=o>=</span> <span class=s2>&quot;</span><span class=si>{}</span><span class=s2> doesn&#39;t exist for </span><span class=si>{}</span><span class=s2>&quot;</span><span class=o>.</span><span class=n>format</span><span class=p>(</span><span class=n>src_path</span><span class=p>,</span> <span class=n>repre</span><span class=p>[</span><span class=s2>&quot;id&quot;</span><span class=p>])</span>
+        <span class=n>report_items</span><span class=p>[</span><span class=s2>&quot;Source file was not found&quot;</span><span class=p>]</span><span class=o>.</span><span class=n>append</span><span class=p>(</span><span class=n>msg</span><span class=p>)</span>
+        <span class=k>return</span> <span class=n>report_items</span><span class=p>,</span> <span class=mi>0</span>
+
+    <span class=k>if</span> <span class=n>format_dict</span><span class=p>:</span>
+        <span class=n>anatomy_data</span> <span class=o>=</span> <span class=n>copy</span><span class=o>.</span><span class=n>deepcopy</span><span class=p>(</span><span class=n>anatomy_data</span><span class=p>)</span>
+        <span class=n>anatomy_data</span><span class=p>[</span><span class=s2>&quot;root&quot;</span><span class=p>]</span> <span class=o>=</span> <span class=n>format_dict</span><span class=p>[</span><span class=s2>&quot;root&quot;</span><span class=p>]</span>
+    <span class=n>template_obj</span> <span class=o>=</span> <span class=n>anatomy</span><span class=o>.</span><span class=n>get_template_item</span><span class=p>(</span>
+        <span class=s2>&quot;delivery&quot;</span><span class=p>,</span> <span class=n>template_name</span><span class=p>,</span> <span class=s2>&quot;path&quot;</span>
+    <span class=p>)</span>
+    <span class=n>delivery_path</span> <span class=o>=</span> <span class=n>template_obj</span><span class=o>.</span><span class=n>format_strict</span><span class=p>(</span><span class=n>anatomy_data</span><span class=p>)</span>
+
+    <span class=c1># Backwards compatibility when extension contained `.`</span>
+    <span class=n>delivery_path</span> <span class=o>=</span> <span class=n>delivery_path</span><span class=o>.</span><span class=n>replace</span><span class=p>(</span><span class=s2>&quot;..&quot;</span><span class=p>,</span> <span class=s2>&quot;.&quot;</span><span class=p>)</span>
+    <span class=c1># Make sure path is valid for all platforms</span>
+    <span class=n>delivery_path</span> <span class=o>=</span> <span class=n>os</span><span class=o>.</span><span class=n>path</span><span class=o>.</span><span class=n>normpath</span><span class=p>(</span><span class=n>delivery_path</span><span class=o>.</span><span class=n>replace</span><span class=p>(</span><span class=s2>&quot;</span><span class=se>\\</span><span class=s2>&quot;</span><span class=p>,</span> <span class=s2>&quot;/&quot;</span><span class=p>))</span>
+    <span class=c1># Remove newlines from the end of the string to avoid OSError during copy</span>
+    <span class=n>delivery_path</span> <span class=o>=</span> <span class=n>delivery_path</span><span class=o>.</span><span class=n>rstrip</span><span class=p>()</span>
+
+    <span class=n>delivery_folder</span> <span class=o>=</span> <span class=n>os</span><span class=o>.</span><span class=n>path</span><span class=o>.</span><span class=n>dirname</span><span class=p>(</span><span class=n>delivery_path</span><span class=p>)</span>
+    <span class=k>if</span> <span class=ow>not</span> <span class=n>os</span><span class=o>.</span><span class=n>path</span><span class=o>.</span><span class=n>exists</span><span class=p>(</span><span class=n>delivery_folder</span><span class=p>):</span>
+        <span class=n>os</span><span class=o>.</span><span class=n>makedirs</span><span class=p>(</span><span class=n>delivery_folder</span><span class=p>)</span>
+
+    <span class=n>log</span><span class=o>.</span><span class=n>debug</span><span class=p>(</span><span class=s2>&quot;Copying single: </span><span class=si>{}</span><span class=s2> -&gt; </span><span class=si>{}</span><span class=s2>&quot;</span><span class=o>.</span><span class=n>format</span><span class=p>(</span><span class=n>src_path</span><span class=p>,</span> <span class=n>delivery_path</span><span class=p>))</span>
+    <span class=n>_copy_file</span><span class=p>(</span><span class=n>src_path</span><span class=p>,</span> <span class=n>delivery_path</span><span class=p>)</span>
+
+    <span class=k>return</span> <span class=n>report_items</span><span class=p>,</span> <span class=mi>1</span>
+</code></pre></div></td></tr></table></div> </details> </div> </div> <div class="doc doc-object doc-function"> <h2 id=client.ayon_core.pipeline.delivery.get_format_dict class="doc doc-heading"> <code class="highlight language-python"><span class=n>get_format_dict</span><span class=p>(</span><span class=n>anatomy</span><span class=p>,</span> <span class=n>location_path</span><span class=p>)</span></code> </h2> <div class="doc doc-contents "> <p>Returns replaced root values from user provider value.</p> <p><span class=doc-section-title>Parameters:</span></p> <table> <thead> <tr> <th>Name</th> <th>Type</th> <th>Description</th> <th>Default</th> </tr> </thead> <tbody> <tr class=doc-section-item> <td> <code>anatomy</code> </td> <td> <code><a class="autorefs autorefs-internal" title="Anatomy (client.ayon_core.pipeline.anatomy.Anatomy)" href=anatomy/index.html#client.ayon_core.pipeline.anatomy.Anatomy>Anatomy</a></code> </td> <td> <div class=doc-md-description> <p>Project anatomy.</p> </div> </td> <td> <em>required</em> </td> </tr> <tr class=doc-section-item> <td> <code>location_path</code> </td> <td> <code><span title=str>str</span></code> </td> <td> <div class=doc-md-description> <p>User provided value.</p> </div> </td> <td> <em>required</em> </td> </tr> </tbody> </table> <p><span class=doc-section-title>Returns:</span></p> <table> <thead> <tr> <th>Type</th> <th>Description</th> </tr> </thead> <tbody> <tr class=doc-section-item> <td> <code><span title=dict>dict</span></code> </td> <td> <div class=doc-md-description> <p>Prepared data for formatting of a template.</p> </div> </td> </tr> </tbody> </table> <details class=quote> <summary>Source code in <code>client/ayon_core/pipeline/delivery.py</code></summary> <div class=highlight><table class=highlighttable><tr><td class=linenos><div class=linenodiv><pre><span></span><span class=normal>39</span>
+<span class=normal>40</span>
+<span class=normal>41</span>
+<span class=normal>42</span>
+<span class=normal>43</span>
+<span class=normal>44</span>
+<span class=normal>45</span>
+<span class=normal>46</span>
+<span class=normal>47</span>
+<span class=normal>48</span>
+<span class=normal>49</span>
+<span class=normal>50</span>
+<span class=normal>51</span>
+<span class=normal>52</span>
+<span class=normal>53</span>
+<span class=normal>54</span>
+<span class=normal>55</span>
+<span class=normal>56</span>
+<span class=normal>57</span>
+<span class=normal>58</span>
+<span class=normal>59</span>
+<span class=normal>60</span>
+<span class=normal>61</span></pre></div></td><td class=code><div><pre><span></span><code><span class=k>def</span><span class=w> </span><span class=nf>get_format_dict</span><span class=p>(</span><span class=n>anatomy</span><span class=p>,</span> <span class=n>location_path</span><span class=p>):</span>
+<span class=w>    </span><span class=sd>&quot;&quot;&quot;Returns replaced root values from user provider value.</span>
+
+<span class=sd>    Args:</span>
+<span class=sd>        anatomy (Anatomy): Project anatomy.</span>
+<span class=sd>        location_path (str): User provided value.</span>
+
+<span class=sd>    Returns:</span>
+<span class=sd>        (dict): Prepared data for formatting of a template.</span>
+<span class=sd>    &quot;&quot;&quot;</span>
+
+    <span class=n>format_dict</span> <span class=o>=</span> <span class=p>{}</span>
+    <span class=k>if</span> <span class=ow>not</span> <span class=n>location_path</span><span class=p>:</span>
+        <span class=k>return</span> <span class=n>format_dict</span>
+
+    <span class=n>location_path</span> <span class=o>=</span> <span class=n>location_path</span><span class=o>.</span><span class=n>replace</span><span class=p>(</span><span class=s2>&quot;</span><span class=se>\\</span><span class=s2>&quot;</span><span class=p>,</span> <span class=s2>&quot;/&quot;</span><span class=p>)</span>
+    <span class=n>root_names</span> <span class=o>=</span> <span class=n>anatomy</span><span class=o>.</span><span class=n>root_names_from_templates</span><span class=p>(</span>
+        <span class=n>anatomy</span><span class=o>.</span><span class=n>templates</span><span class=p>[</span><span class=s2>&quot;delivery&quot;</span><span class=p>]</span>
+    <span class=p>)</span>
+    <span class=n>format_dict</span><span class=p>[</span><span class=s2>&quot;root&quot;</span><span class=p>]</span> <span class=o>=</span> <span class=p>{}</span>
+    <span class=k>for</span> <span class=n>name</span> <span class=ow>in</span> <span class=n>root_names</span><span class=p>:</span>
+        <span class=n>format_dict</span><span class=p>[</span><span class=s2>&quot;root&quot;</span><span class=p>][</span><span class=n>name</span><span class=p>]</span> <span class=o>=</span> <span class=n>location_path</span>
+    <span class=k>return</span> <span class=n>format_dict</span>
+</code></pre></div></td></tr></table></div> </details> </div> </div> </div> </div> </div> </article> </div> <script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script> </div> </main> <footer class=md-footer> <div class="md-footer-meta md-typeset"> <div class="md-footer-meta__inner md-grid"> <div class=md-copyright> Made with <a href=https://squidfunk.github.io/mkdocs-material/ target=_blank rel=noopener> Material for MkDocs </a> </div> </div> </div> </footer> </div> <div class=md-dialog data-md-component=dialog> <div class="md-dialog__inner md-typeset"></div> </div> <script id=__config type=application/json>{"base": "../../../..", "features": ["navigation.sections", "navigation.path", "navigation.prune"], "search": "../../../../assets/javascripts/workers/search.f8cc74c7.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script> <script src=../../../../assets/javascripts/bundle.c8b220af.min.js></script> </body> </html>
