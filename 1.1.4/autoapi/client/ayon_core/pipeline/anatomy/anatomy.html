@@ -1,0 +1,1635 @@
+<!doctype html><html lang=en class=no-js> <head><meta charset=utf-8><meta name=viewport content="width=device-width,initial-scale=1"><link rel=prev href=index.html><link rel=next href=exceptions.html><link rel=icon href=../../../../../img/favicon.ico><meta name=generator content="mkdocs-1.6.1, mkdocs-material-9.6.8"><title>anatomy - ayon-core</title><link rel=stylesheet href=../../../../../assets/stylesheets/main.8608ea7d.min.css><link rel=stylesheet href=../../../../../assets/stylesheets/palette.06af60db.min.css><script src=https://unpkg.com/iframe-worker/shim></script><link rel=preconnect href=https://fonts.gstatic.com crossorigin><link rel=stylesheet href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback"><style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style><link rel=stylesheet href=../../../../../assets/_mkdocstrings.css><link rel=stylesheet href=../../../../../css/custom.css><script>__md_scope=new URL("../../../../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script></head> <body dir=ltr data-md-color-scheme=slate data-md-color-primary=indigo data-md-color-accent=indigo> <input class=md-toggle data-md-toggle=drawer type=checkbox id=__drawer autocomplete=off> <input class=md-toggle data-md-toggle=search type=checkbox id=__search autocomplete=off> <label class=md-overlay for=__drawer></label> <div data-md-component=skip> <a href=#client.ayon_core.pipeline.anatomy.anatomy class=md-skip> Skip to content </a> </div> <div data-md-component=announce> </div> <div data-md-color-scheme=default data-md-component=outdated hidden> </div> <header class="md-header md-header--shadow" data-md-component=header> <nav class="md-header__inner md-grid" aria-label=Header> <a href=../../../../../index.html title=ayon-core class="md-header__button md-logo" aria-label=ayon-core data-md-component=logo> <img src=../../../../../img/ay-symbol-blackw-full.png alt=logo> </a> <label class="md-header__button md-icon" for=__drawer> <svg xmlns=http://www.w3.org/2000/svg viewbox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg> </label> <div class=md-header__title data-md-component=header-title> <div class=md-header__ellipsis> <div class=md-header__topic> <span class=md-ellipsis> ayon-core </span> </div> <div class=md-header__topic data-md-component=header-topic> <span class=md-ellipsis> anatomy </span> </div> </div> </div> <form class=md-header__option data-md-component=palette> <input class=md-option data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme=slate data-md-color-primary=indigo data-md-color-accent=indigo aria-label="Switch to light mode" type=radio name=__palette id=__palette_0> <label class="md-header__button md-icon" title="Switch to light mode" for=__palette_1 hidden> <svg xmlns=http://www.w3.org/2000/svg viewbox="0 0 24 24"><path d="M17 6H7c-3.31 0-6 2.69-6 6s2.69 6 6 6h10c3.31 0 6-2.69 6-6s-2.69-6-6-6m0 10H7c-2.21 0-4-1.79-4-4s1.79-4 4-4h10c2.21 0 4 1.79 4 4s-1.79 4-4 4M7 9c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3"/></svg> </label> <input class=md-option data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme=default data-md-color-primary=indigo data-md-color-accent=indigo aria-label="Switch to dark mode" type=radio name=__palette id=__palette_1> <label class="md-header__button md-icon" title="Switch to dark mode" for=__palette_0 hidden> <svg xmlns=http://www.w3.org/2000/svg viewbox="0 0 24 24"><path d="M17 7H7a5 5 0 0 0-5 5 5 5 0 0 0 5 5h10a5 5 0 0 0 5-5 5 5 0 0 0-5-5m0 8a3 3 0 0 1-3-3 3 3 0 0 1 3-3 3 3 0 0 1 3 3 3 3 0 0 1-3 3"/></svg> </label> </form> <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script> <label class="md-header__button md-icon" for=__search> <svg xmlns=http://www.w3.org/2000/svg viewbox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg> </label> <div class=md-search data-md-component=search role=dialog> <label class=md-search__overlay for=__search></label> <div class=md-search__inner role=search> <form class=md-search__form name=search> <input type=text class=md-search__input name=query aria-label=Search placeholder=Search autocapitalize=off autocorrect=off autocomplete=off spellcheck=false data-md-component=search-query required> <label class="md-search__icon md-icon" for=__search> <svg xmlns=http://www.w3.org/2000/svg viewbox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg> <svg xmlns=http://www.w3.org/2000/svg viewbox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg> </label> <nav class=md-search__options aria-label=Search> <button type=reset class="md-search__icon md-icon" title=Clear aria-label=Clear tabindex=-1> <svg xmlns=http://www.w3.org/2000/svg viewbox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg> </button> </nav> </form> <div class=md-search__output> <div class=md-search__scrollwrap tabindex=0 data-md-scrollfix> <div class=md-search-result data-md-component=search-result> <div class=md-search-result__meta> Initializing search </div> <ol class=md-search-result__list role=presentation></ol> </div> </div> </div> </div> </div> </nav> </header> <div class=md-container data-md-component=container> <main class=md-main data-md-component=main> <div class="md-main__inner md-grid"> <div class="md-sidebar md-sidebar--primary" data-md-component=sidebar data-md-type=navigation> <div class=md-sidebar__scrollwrap> <div class=md-sidebar__inner> <nav class="md-nav md-nav--primary" aria-label=Navigation data-md-level=0> <label class=md-nav__title for=__drawer> <a href=../../../../../index.html title=ayon-core class="md-nav__button md-logo" aria-label=ayon-core data-md-component=logo> <img src=../../../../../img/ay-symbol-blackw-full.png alt=logo> </a> ayon-core </label> <ul class=md-nav__list data-md-scrollfix> <li class=md-nav__item> <a href=../../../../../index.html class=md-nav__link> <span class=md-ellipsis> Home </span> </a> </li> <li class=md-nav__item> <a href=../../../../../license.html class=md-nav__link> <span class=md-ellipsis> License </span> </a> </li> <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested"> <input class="md-nav__toggle md-toggle " type=checkbox id=__nav_3 checked> <label class=md-nav__link for=__nav_3 id=__nav_3_label tabindex> <span class=md-ellipsis> Reference </span> <span class="md-nav__icon md-icon"></span> </label> <nav class=md-nav data-md-level=1 aria-labelledby=__nav_3_label aria-expanded=true> <label class=md-nav__title for=__nav_3> <span class="md-nav__icon md-icon"></span> Reference </label> <ul class=md-nav__list data-md-scrollfix> <li class="md-nav__item md-nav__item--active md-nav__item--nested"> <input class="md-nav__toggle md-toggle " type=checkbox id=__nav_3_1 checked> <div class="md-nav__link md-nav__container"> <a href=../../../index.html class="md-nav__link "> <span class=md-ellipsis> client </span> </a> <label class="md-nav__link " for=__nav_3_1 id=__nav_3_1_label tabindex=0> <span class="md-nav__icon md-icon"></span> </label> </div> <nav class=md-nav data-md-level=2 aria-labelledby=__nav_3_1_label aria-expanded=true> <label class=md-nav__title for=__nav_3_1> <span class="md-nav__icon md-icon"></span> client </label> <ul class=md-nav__list data-md-scrollfix> <li class="md-nav__item md-nav__item--active md-nav__item--nested"> <input class="md-nav__toggle md-toggle " type=checkbox id=__nav_3_1_1 checked> <div class="md-nav__link md-nav__container"> <a href=../../index.html class="md-nav__link "> <span class=md-ellipsis> ayon_core </span> </a> <label class="md-nav__link " for=__nav_3_1_1 id=__nav_3_1_1_label tabindex=0> <span class="md-nav__icon md-icon"></span> </label> </div> <nav class=md-nav data-md-level=3 aria-labelledby=__nav_3_1_1_label aria-expanded=true> <label class=md-nav__title for=__nav_3_1_1> <span class="md-nav__icon md-icon"></span> ayon_core </label> <ul class=md-nav__list data-md-scrollfix> <li class=md-nav__item> <a href=../../__main__.html class=md-nav__link> <span class=md-ellipsis> __main__ </span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../../addon/base.html class=md-nav__link> <span class=md-ellipsis> addon </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class=md-nav__item> <a href=../../cli.html class=md-nav__link> <span class=md-ellipsis> cli </span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../../hooks/pre_add_last_workfile_arg.html class=md-nav__link> <span class=md-ellipsis> hooks </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../../host/dirmap.html class=md-nav__link> <span class=md-ellipsis> host </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../../lib/attribute_definitions.html class=md-nav__link> <span class=md-ellipsis> lib </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class="md-nav__item md-nav__item--active md-nav__item--nested"> <input class="md-nav__toggle md-toggle " type=checkbox id=__nav_3_1_1_7 checked> <div class="md-nav__link md-nav__container"> <a href=../index.html class="md-nav__link "> <span class=md-ellipsis> pipeline </span> </a> <label class="md-nav__link " for=__nav_3_1_1_7 id=__nav_3_1_1_7_label tabindex=0> <span class="md-nav__icon md-icon"></span> </label> </div> <nav class=md-nav data-md-level=4 aria-labelledby=__nav_3_1_1_7_label aria-expanded=true> <label class=md-nav__title for=__nav_3_1_1_7> <span class="md-nav__icon md-icon"></span> pipeline </label> <ul class=md-nav__list data-md-scrollfix> <li class=md-nav__item> <a href=../actions.html class=md-nav__link> <span class=md-ellipsis> actions </span> </a> </li> <li class="md-nav__item md-nav__item--active md-nav__item--nested"> <input class="md-nav__toggle md-toggle " type=checkbox id=__nav_3_1_1_7_2 checked> <div class="md-nav__link md-nav__container"> <a href=index.html class="md-nav__link "> <span class=md-ellipsis> anatomy </span> </a> <label class="md-nav__link " for=__nav_3_1_1_7_2 id=__nav_3_1_1_7_2_label tabindex=0> <span class="md-nav__icon md-icon"></span> </label> </div> <nav class=md-nav data-md-level=5 aria-labelledby=__nav_3_1_1_7_2_label aria-expanded=true> <label class=md-nav__title for=__nav_3_1_1_7_2> <span class="md-nav__icon md-icon"></span> anatomy </label> <ul class=md-nav__list data-md-scrollfix> <li class="md-nav__item md-nav__item--active"> <input class="md-nav__toggle md-toggle" type=checkbox id=__toc> <label class="md-nav__link md-nav__link--active" for=__toc> <span class=md-ellipsis> anatomy </span> <span class="md-nav__icon md-icon"></span> </label> <a href=anatomy.html class="md-nav__link md-nav__link--active"> <span class=md-ellipsis> anatomy </span> </a> <nav class="md-nav md-nav--secondary" aria-label="Table of contents"> <label class=md-nav__title for=__toc> <span class="md-nav__icon md-icon"></span> Table of contents </label> <ul class=md-nav__list data-md-component=toc data-md-scrollfix> <li class=md-nav__item> <a href=#client.ayon_core.pipeline.anatomy.anatomy class=md-nav__link> <span class=md-ellipsis> anatomy </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.pipeline.anatomy.anatomy.Anatomy class=md-nav__link> <span class=md-ellipsis> Anatomy </span> </a> <nav class=md-nav aria-label=Anatomy> <ul class=md-nav__list> <li class=md-nav__item> <a href=#client.ayon_core.pipeline.anatomy.anatomy.Anatomy._get_site_root_overrides class=md-nav__link> <span class=md-ellipsis> _get_site_root_overrides </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.pipeline.anatomy.anatomy.Anatomy._get_studio_roots_overrides class=md-nav__link> <span class=md-ellipsis> _get_studio_roots_overrides </span> </a> </li> </ul> </nav> </li> <li class=md-nav__item> <a href=#client.ayon_core.pipeline.anatomy.anatomy.BaseAnatomy class=md-nav__link> <span class=md-ellipsis> BaseAnatomy </span> </a> <nav class=md-nav aria-label=BaseAnatomy> <ul class=md-nav__list> <li class=md-nav__item> <a href=#client.ayon_core.pipeline.anatomy.anatomy.BaseAnatomy.project_code class=md-nav__link> <span class=md-ellipsis> project_code </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.pipeline.anatomy.anatomy.BaseAnatomy.project_name class=md-nav__link> <span class=md-ellipsis> project_name </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.pipeline.anatomy.anatomy.BaseAnatomy.roots class=md-nav__link> <span class=md-ellipsis> roots </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.pipeline.anatomy.anatomy.BaseAnatomy.roots_obj class=md-nav__link> <span class=md-ellipsis> roots_obj </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.pipeline.anatomy.anatomy.BaseAnatomy.templates class=md-nav__link> <span class=md-ellipsis> templates </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.pipeline.anatomy.anatomy.BaseAnatomy.templates_obj class=md-nav__link> <span class=md-ellipsis> templates_obj </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.pipeline.anatomy.anatomy.BaseAnatomy._apply_local_settings_on_anatomy_data class=md-nav__link> <span class=md-ellipsis> _apply_local_settings_on_anatomy_data </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.pipeline.anatomy.anatomy.BaseAnatomy._prepare_anatomy_data class=md-nav__link> <span class=md-ellipsis> _prepare_anatomy_data </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.pipeline.anatomy.anatomy.BaseAnatomy._project_entity_to_anatomy_data class=md-nav__link> <span class=md-ellipsis> _project_entity_to_anatomy_data </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.pipeline.anatomy.anatomy.BaseAnatomy._root_keys_from_templates class=md-nav__link> <span class=md-ellipsis> _root_keys_from_templates </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.pipeline.anatomy.anatomy.BaseAnatomy.all_root_paths class=md-nav__link> <span class=md-ellipsis> all_root_paths </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.pipeline.anatomy.anatomy.BaseAnatomy.fill_root class=md-nav__link> <span class=md-ellipsis> fill_root </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.pipeline.anatomy.anatomy.BaseAnatomy.fill_root_with_path class=md-nav__link> <span class=md-ellipsis> fill_root_with_path </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.pipeline.anatomy.anatomy.BaseAnatomy.find_root_template_from_path class=md-nav__link> <span class=md-ellipsis> find_root_template_from_path </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.pipeline.anatomy.anatomy.BaseAnatomy.format class=md-nav__link> <span class=md-ellipsis> format </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.pipeline.anatomy.anatomy.BaseAnatomy.format_all class=md-nav__link> <span class=md-ellipsis> format_all </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.pipeline.anatomy.anatomy.BaseAnatomy.get_template_item class=md-nav__link> <span class=md-ellipsis> get_template_item </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.pipeline.anatomy.anatomy.BaseAnatomy.path_remapper class=md-nav__link> <span class=md-ellipsis> path_remapper </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.pipeline.anatomy.anatomy.BaseAnatomy.replace_root_with_env_key class=md-nav__link> <span class=md-ellipsis> replace_root_with_env_key </span> </a> <nav class=md-nav aria-label=replace_root_with_env_key> <ul class=md-nav__list> <li class=md-nav__item> <a href=#client.ayon_core.pipeline.anatomy.anatomy.BaseAnatomy.replace_root_with_env_key--example class=md-nav__link> <span class=md-ellipsis> Example: </span> </a> <nav class=md-nav aria-label=Example:> <ul class=md-nav__list> <li class=md-nav__item> <a href=#client.ayon_core.pipeline.anatomy.anatomy.BaseAnatomy.replace_root_with_env_key--project-with-roots class=md-nav__link> <span class=md-ellipsis> Project with roots: </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.pipeline.anatomy.anatomy.BaseAnatomy.replace_root_with_env_key--entered-filepath class=md-nav__link> <span class=md-ellipsis> Entered filepath </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.pipeline.anatomy.anatomy.BaseAnatomy.replace_root_with_env_key--entered-template class=md-nav__link> <span class=md-ellipsis> Entered template </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.pipeline.anatomy.anatomy.BaseAnatomy.replace_root_with_env_key--output class=md-nav__link> <span class=md-ellipsis> Output </span> </a> </li> </ul> </nav> </li> </ul> </nav> </li> <li class=md-nav__item> <a href=#client.ayon_core.pipeline.anatomy.anatomy.BaseAnatomy.root_environments class=md-nav__link> <span class=md-ellipsis> root_environments </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.pipeline.anatomy.anatomy.BaseAnatomy.root_environmets_fill_data class=md-nav__link> <span class=md-ellipsis> root_environmets_fill_data </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.pipeline.anatomy.anatomy.BaseAnatomy.root_names class=md-nav__link> <span class=md-ellipsis> root_names </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.pipeline.anatomy.anatomy.BaseAnatomy.root_names_from_templates class=md-nav__link> <span class=md-ellipsis> root_names_from_templates </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.pipeline.anatomy.anatomy.BaseAnatomy.root_value_for_template class=md-nav__link> <span class=md-ellipsis> root_value_for_template </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.pipeline.anatomy.anatomy.BaseAnatomy.set_root_environments class=md-nav__link> <span class=md-ellipsis> set_root_environments </span> </a> </li> </ul> </nav> </li> </ul> </nav> </li> <li class=md-nav__item> <a href=exceptions.html class=md-nav__link> <span class=md-ellipsis> exceptions </span> </a> </li> <li class=md-nav__item> <a href=roots.html class=md-nav__link> <span class=md-ellipsis> roots </span> </a> </li> <li class=md-nav__item> <a href=templates.html class=md-nav__link> <span class=md-ellipsis> templates </span> </a> </li> </ul> </nav> </li> <li class=md-nav__item> <a href=../colorspace.html class=md-nav__link> <span class=md-ellipsis> colorspace </span> </a> </li> <li class=md-nav__item> <a href=../constants.html class=md-nav__link> <span class=md-ellipsis> constants </span> </a> </li> <li class=md-nav__item> <a href=../context_tools.html class=md-nav__link> <span class=md-ellipsis> context_tools </span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../create/changes.html class=md-nav__link> <span class=md-ellipsis> create </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class=md-nav__item> <a href=../delivery.html class=md-nav__link> <span class=md-ellipsis> delivery </span> </a> </li> <li class=md-nav__item> <a href=../editorial.html class=md-nav__link> <span class=md-ellipsis> editorial </span> </a> </li> <li class=md-nav__item> <a href=../entity_uri.html class=md-nav__link> <span class=md-ellipsis> entity_uri </span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../farm/patterning.html class=md-nav__link> <span class=md-ellipsis> farm </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../load/plugins.html class=md-nav__link> <span class=md-ellipsis> load </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class=md-nav__item> <a href=../plugin_discover.html class=md-nav__link> <span class=md-ellipsis> plugin_discover </span> </a> </li> <li class=md-nav__item> <a href=../project_folders.html class=md-nav__link> <span class=md-ellipsis> project_folders </span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../publish/abstract_collect_render.html class=md-nav__link> <span class=md-ellipsis> publish </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class=md-nav__item> <a href=../schema/index.html class=md-nav__link> <span class=md-ellipsis> schema </span> </a> </li> <li class=md-nav__item> <a href=../staging_dir.html class=md-nav__link> <span class=md-ellipsis> staging_dir </span> </a> </li> <li class=md-nav__item> <a href=../tempdir.html class=md-nav__link> <span class=md-ellipsis> tempdir </span> </a> </li> <li class=md-nav__item> <a href=../template_data.html class=md-nav__link> <span class=md-ellipsis> template_data </span> </a> </li> <li class=md-nav__item> <a href=../thumbnails.html class=md-nav__link> <span class=md-ellipsis> thumbnails </span> </a> </li> <li class=md-nav__item> <a href=../usdlib.html class=md-nav__link> <span class=md-ellipsis> usdlib </span> </a> </li> <li class=md-nav__item> <a href=../version_start.html class=md-nav__link> <span class=md-ellipsis> version_start </span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../workfile/build_workfile.html class=md-nav__link> <span class=md-ellipsis> workfile </span> <span class="md-nav__icon md-icon"></span> </a> </li> </ul> </nav> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../../plugins/actions/open_file_explorer.html class=md-nav__link> <span class=md-ellipsis> plugins </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../../resources/app_icons/index.html class=md-nav__link> <span class=md-ellipsis> resources </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../../scripts/ocio_wrapper.html class=md-nav__link> <span class=md-ellipsis> scripts </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../../settings/lib.html class=md-nav__link> <span class=md-ellipsis> settings </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../../style/color_defs.html class=md-nav__link> <span class=md-ellipsis> style </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../../tests/conftest.html class=md-nav__link> <span class=md-ellipsis> tests </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../../tools/attribute_defs/_constants.html class=md-nav__link> <span class=md-ellipsis> tools </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../../vendor/python/qargparse.html class=md-nav__link> <span class=md-ellipsis> vendor </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class=md-nav__item> <a href=../../version.html class=md-nav__link> <span class=md-ellipsis> version </span> </a> </li> </ul> </nav> </li> </ul> </nav> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../../../../server/settings/conversion.html class=md-nav__link> <span class=md-ellipsis> server </span> <span class="md-nav__icon md-icon"></span> </a> </li> </ul> </nav> </li> </ul> </nav> </div> </div> </div> <div class="md-sidebar md-sidebar--secondary" data-md-component=sidebar data-md-type=toc> <div class=md-sidebar__scrollwrap> <div class=md-sidebar__inner> <nav class="md-nav md-nav--secondary" aria-label="Table of contents"> <label class=md-nav__title for=__toc> <span class="md-nav__icon md-icon"></span> Table of contents </label> <ul class=md-nav__list data-md-component=toc data-md-scrollfix> <li class=md-nav__item> <a href=#client.ayon_core.pipeline.anatomy.anatomy class=md-nav__link> <span class=md-ellipsis> anatomy </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.pipeline.anatomy.anatomy.Anatomy class=md-nav__link> <span class=md-ellipsis> Anatomy </span> </a> <nav class=md-nav aria-label=Anatomy> <ul class=md-nav__list> <li class=md-nav__item> <a href=#client.ayon_core.pipeline.anatomy.anatomy.Anatomy._get_site_root_overrides class=md-nav__link> <span class=md-ellipsis> _get_site_root_overrides </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.pipeline.anatomy.anatomy.Anatomy._get_studio_roots_overrides class=md-nav__link> <span class=md-ellipsis> _get_studio_roots_overrides </span> </a> </li> </ul> </nav> </li> <li class=md-nav__item> <a href=#client.ayon_core.pipeline.anatomy.anatomy.BaseAnatomy class=md-nav__link> <span class=md-ellipsis> BaseAnatomy </span> </a> <nav class=md-nav aria-label=BaseAnatomy> <ul class=md-nav__list> <li class=md-nav__item> <a href=#client.ayon_core.pipeline.anatomy.anatomy.BaseAnatomy.project_code class=md-nav__link> <span class=md-ellipsis> project_code </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.pipeline.anatomy.anatomy.BaseAnatomy.project_name class=md-nav__link> <span class=md-ellipsis> project_name </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.pipeline.anatomy.anatomy.BaseAnatomy.roots class=md-nav__link> <span class=md-ellipsis> roots </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.pipeline.anatomy.anatomy.BaseAnatomy.roots_obj class=md-nav__link> <span class=md-ellipsis> roots_obj </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.pipeline.anatomy.anatomy.BaseAnatomy.templates class=md-nav__link> <span class=md-ellipsis> templates </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.pipeline.anatomy.anatomy.BaseAnatomy.templates_obj class=md-nav__link> <span class=md-ellipsis> templates_obj </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.pipeline.anatomy.anatomy.BaseAnatomy._apply_local_settings_on_anatomy_data class=md-nav__link> <span class=md-ellipsis> _apply_local_settings_on_anatomy_data </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.pipeline.anatomy.anatomy.BaseAnatomy._prepare_anatomy_data class=md-nav__link> <span class=md-ellipsis> _prepare_anatomy_data </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.pipeline.anatomy.anatomy.BaseAnatomy._project_entity_to_anatomy_data class=md-nav__link> <span class=md-ellipsis> _project_entity_to_anatomy_data </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.pipeline.anatomy.anatomy.BaseAnatomy._root_keys_from_templates class=md-nav__link> <span class=md-ellipsis> _root_keys_from_templates </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.pipeline.anatomy.anatomy.BaseAnatomy.all_root_paths class=md-nav__link> <span class=md-ellipsis> all_root_paths </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.pipeline.anatomy.anatomy.BaseAnatomy.fill_root class=md-nav__link> <span class=md-ellipsis> fill_root </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.pipeline.anatomy.anatomy.BaseAnatomy.fill_root_with_path class=md-nav__link> <span class=md-ellipsis> fill_root_with_path </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.pipeline.anatomy.anatomy.BaseAnatomy.find_root_template_from_path class=md-nav__link> <span class=md-ellipsis> find_root_template_from_path </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.pipeline.anatomy.anatomy.BaseAnatomy.format class=md-nav__link> <span class=md-ellipsis> format </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.pipeline.anatomy.anatomy.BaseAnatomy.format_all class=md-nav__link> <span class=md-ellipsis> format_all </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.pipeline.anatomy.anatomy.BaseAnatomy.get_template_item class=md-nav__link> <span class=md-ellipsis> get_template_item </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.pipeline.anatomy.anatomy.BaseAnatomy.path_remapper class=md-nav__link> <span class=md-ellipsis> path_remapper </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.pipeline.anatomy.anatomy.BaseAnatomy.replace_root_with_env_key class=md-nav__link> <span class=md-ellipsis> replace_root_with_env_key </span> </a> <nav class=md-nav aria-label=replace_root_with_env_key> <ul class=md-nav__list> <li class=md-nav__item> <a href=#client.ayon_core.pipeline.anatomy.anatomy.BaseAnatomy.replace_root_with_env_key--example class=md-nav__link> <span class=md-ellipsis> Example: </span> </a> <nav class=md-nav aria-label=Example:> <ul class=md-nav__list> <li class=md-nav__item> <a href=#client.ayon_core.pipeline.anatomy.anatomy.BaseAnatomy.replace_root_with_env_key--project-with-roots class=md-nav__link> <span class=md-ellipsis> Project with roots: </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.pipeline.anatomy.anatomy.BaseAnatomy.replace_root_with_env_key--entered-filepath class=md-nav__link> <span class=md-ellipsis> Entered filepath </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.pipeline.anatomy.anatomy.BaseAnatomy.replace_root_with_env_key--entered-template class=md-nav__link> <span class=md-ellipsis> Entered template </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.pipeline.anatomy.anatomy.BaseAnatomy.replace_root_with_env_key--output class=md-nav__link> <span class=md-ellipsis> Output </span> </a> </li> </ul> </nav> </li> </ul> </nav> </li> <li class=md-nav__item> <a href=#client.ayon_core.pipeline.anatomy.anatomy.BaseAnatomy.root_environments class=md-nav__link> <span class=md-ellipsis> root_environments </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.pipeline.anatomy.anatomy.BaseAnatomy.root_environmets_fill_data class=md-nav__link> <span class=md-ellipsis> root_environmets_fill_data </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.pipeline.anatomy.anatomy.BaseAnatomy.root_names class=md-nav__link> <span class=md-ellipsis> root_names </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.pipeline.anatomy.anatomy.BaseAnatomy.root_names_from_templates class=md-nav__link> <span class=md-ellipsis> root_names_from_templates </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.pipeline.anatomy.anatomy.BaseAnatomy.root_value_for_template class=md-nav__link> <span class=md-ellipsis> root_value_for_template </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.pipeline.anatomy.anatomy.BaseAnatomy.set_root_environments class=md-nav__link> <span class=md-ellipsis> set_root_environments </span> </a> </li> </ul> </nav> </li> </ul> </nav> </div> </div> </div> <div class=md-content data-md-component=content> <article class="md-content__inner md-typeset"> <h1>anatomy</h1> <div class="doc doc-object doc-module"> <a id=client.ayon_core.pipeline.anatomy.anatomy></a> <div class="doc doc-contents first"> <div class="doc doc-children"> <div class="doc doc-object doc-class"> <h2 id=client.ayon_core.pipeline.anatomy.anatomy.Anatomy class="doc doc-heading"> <code>Anatomy</code> </h2> <div class="doc doc-contents "> <p class="doc doc-class-bases"> Bases: <code><a class="autorefs autorefs-internal" title="BaseAnatomy (client.ayon_core.pipeline.anatomy.anatomy.BaseAnatomy)" href=#client.ayon_core.pipeline.anatomy.anatomy.BaseAnatomy>BaseAnatomy</a></code></p> <details class=quote> <summary>Source code in <code>client/ayon_core/pipeline/anatomy/anatomy.py</code></summary> <div class=highlight><table class=highlighttable><tr><td class=linenos><div class=linenodiv><pre><span></span><span class=normal>405</span>
+<span class=normal>406</span>
+<span class=normal>407</span>
+<span class=normal>408</span>
+<span class=normal>409</span>
+<span class=normal>410</span>
+<span class=normal>411</span>
+<span class=normal>412</span>
+<span class=normal>413</span>
+<span class=normal>414</span>
+<span class=normal>415</span>
+<span class=normal>416</span>
+<span class=normal>417</span>
+<span class=normal>418</span>
+<span class=normal>419</span>
+<span class=normal>420</span>
+<span class=normal>421</span>
+<span class=normal>422</span>
+<span class=normal>423</span>
+<span class=normal>424</span>
+<span class=normal>425</span>
+<span class=normal>426</span>
+<span class=normal>427</span>
+<span class=normal>428</span>
+<span class=normal>429</span>
+<span class=normal>430</span>
+<span class=normal>431</span>
+<span class=normal>432</span>
+<span class=normal>433</span>
+<span class=normal>434</span>
+<span class=normal>435</span>
+<span class=normal>436</span>
+<span class=normal>437</span>
+<span class=normal>438</span>
+<span class=normal>439</span>
+<span class=normal>440</span>
+<span class=normal>441</span>
+<span class=normal>442</span>
+<span class=normal>443</span>
+<span class=normal>444</span>
+<span class=normal>445</span>
+<span class=normal>446</span>
+<span class=normal>447</span>
+<span class=normal>448</span>
+<span class=normal>449</span>
+<span class=normal>450</span>
+<span class=normal>451</span>
+<span class=normal>452</span>
+<span class=normal>453</span>
+<span class=normal>454</span>
+<span class=normal>455</span>
+<span class=normal>456</span>
+<span class=normal>457</span>
+<span class=normal>458</span>
+<span class=normal>459</span>
+<span class=normal>460</span>
+<span class=normal>461</span>
+<span class=normal>462</span>
+<span class=normal>463</span>
+<span class=normal>464</span>
+<span class=normal>465</span>
+<span class=normal>466</span>
+<span class=normal>467</span>
+<span class=normal>468</span>
+<span class=normal>469</span>
+<span class=normal>470</span>
+<span class=normal>471</span>
+<span class=normal>472</span>
+<span class=normal>473</span>
+<span class=normal>474</span>
+<span class=normal>475</span>
+<span class=normal>476</span>
+<span class=normal>477</span>
+<span class=normal>478</span>
+<span class=normal>479</span>
+<span class=normal>480</span>
+<span class=normal>481</span>
+<span class=normal>482</span>
+<span class=normal>483</span>
+<span class=normal>484</span>
+<span class=normal>485</span>
+<span class=normal>486</span>
+<span class=normal>487</span>
+<span class=normal>488</span>
+<span class=normal>489</span>
+<span class=normal>490</span>
+<span class=normal>491</span>
+<span class=normal>492</span>
+<span class=normal>493</span>
+<span class=normal>494</span>
+<span class=normal>495</span>
+<span class=normal>496</span>
+<span class=normal>497</span>
+<span class=normal>498</span>
+<span class=normal>499</span>
+<span class=normal>500</span>
+<span class=normal>501</span>
+<span class=normal>502</span>
+<span class=normal>503</span>
+<span class=normal>504</span>
+<span class=normal>505</span>
+<span class=normal>506</span>
+<span class=normal>507</span>
+<span class=normal>508</span>
+<span class=normal>509</span>
+<span class=normal>510</span></pre></div></td><td class=code><div><pre><span></span><code><span class=k>class</span><span class=w> </span><span class=nc>Anatomy</span><span class=p>(</span><span class=n>BaseAnatomy</span><span class=p>):</span>
+    <span class=n>_project_cache</span> <span class=o>=</span> <span class=n>NestedCacheItem</span><span class=p>(</span><span class=n>lifetime</span><span class=o>=</span><span class=mi>10</span><span class=p>)</span>
+    <span class=n>_sitesync_addon_cache</span> <span class=o>=</span> <span class=n>CacheItem</span><span class=p>(</span><span class=n>lifetime</span><span class=o>=</span><span class=mi>60</span><span class=p>)</span>
+    <span class=n>_default_site_id_cache</span> <span class=o>=</span> <span class=n>NestedCacheItem</span><span class=p>(</span><span class=n>lifetime</span><span class=o>=</span><span class=mi>60</span><span class=p>)</span>
+    <span class=n>_root_overrides_cache</span> <span class=o>=</span> <span class=n>NestedCacheItem</span><span class=p>(</span><span class=mi>2</span><span class=p>,</span> <span class=n>lifetime</span><span class=o>=</span><span class=mi>60</span><span class=p>)</span>
+
+    <span class=k>def</span><span class=w> </span><span class=fm>__init__</span><span class=p>(</span>
+        <span class=bp>self</span><span class=p>,</span> <span class=n>project_name</span><span class=o>=</span><span class=kc>None</span><span class=p>,</span> <span class=n>site_name</span><span class=o>=</span><span class=kc>None</span><span class=p>,</span> <span class=n>project_entity</span><span class=o>=</span><span class=kc>None</span>
+    <span class=p>):</span>
+        <span class=k>if</span> <span class=ow>not</span> <span class=n>project_name</span><span class=p>:</span>
+            <span class=n>project_name</span> <span class=o>=</span> <span class=n>os</span><span class=o>.</span><span class=n>environ</span><span class=o>.</span><span class=n>get</span><span class=p>(</span><span class=s2>&quot;AYON_PROJECT_NAME&quot;</span><span class=p>)</span>
+
+        <span class=k>if</span> <span class=ow>not</span> <span class=n>project_name</span><span class=p>:</span>
+            <span class=k>raise</span> <span class=n>ProjectNotSet</span><span class=p>((</span>
+                <span class=s2>&quot;Implementation bug: Project name is not set. Anatomy requires&quot;</span>
+                <span class=s2>&quot; to load data for specific project.&quot;</span>
+            <span class=p>))</span>
+
+        <span class=k>if</span> <span class=ow>not</span> <span class=n>project_entity</span><span class=p>:</span>
+            <span class=n>project_entity</span> <span class=o>=</span> <span class=bp>self</span><span class=o>.</span><span class=n>get_project_entity_from_cache</span><span class=p>(</span><span class=n>project_name</span><span class=p>)</span>
+        <span class=n>root_overrides</span> <span class=o>=</span> <span class=bp>self</span><span class=o>.</span><span class=n>_get_site_root_overrides</span><span class=p>(</span>
+            <span class=n>project_name</span><span class=p>,</span> <span class=n>site_name</span>
+        <span class=p>)</span>
+
+        <span class=nb>super</span><span class=p>(</span><span class=n>Anatomy</span><span class=p>,</span> <span class=bp>self</span><span class=p>)</span><span class=o>.</span><span class=fm>__init__</span><span class=p>(</span><span class=n>project_entity</span><span class=p>,</span> <span class=n>root_overrides</span><span class=p>)</span>
+
+    <span class=nd>@classmethod</span>
+    <span class=k>def</span><span class=w> </span><span class=nf>get_project_entity_from_cache</span><span class=p>(</span><span class=bp>cls</span><span class=p>,</span> <span class=n>project_name</span><span class=p>):</span>
+        <span class=n>project_cache</span> <span class=o>=</span> <span class=bp>cls</span><span class=o>.</span><span class=n>_project_cache</span><span class=p>[</span><span class=n>project_name</span><span class=p>]</span>
+        <span class=k>if</span> <span class=ow>not</span> <span class=n>project_cache</span><span class=o>.</span><span class=n>is_valid</span><span class=p>:</span>
+            <span class=n>project_cache</span><span class=o>.</span><span class=n>update_data</span><span class=p>(</span><span class=n>ayon_api</span><span class=o>.</span><span class=n>get_project</span><span class=p>(</span><span class=n>project_name</span><span class=p>))</span>
+        <span class=k>return</span> <span class=n>copy</span><span class=o>.</span><span class=n>deepcopy</span><span class=p>(</span><span class=n>project_cache</span><span class=o>.</span><span class=n>get_data</span><span class=p>())</span>
+
+    <span class=nd>@classmethod</span>
+    <span class=k>def</span><span class=w> </span><span class=nf>get_sitesync_addon</span><span class=p>(</span><span class=bp>cls</span><span class=p>):</span>
+        <span class=k>if</span> <span class=ow>not</span> <span class=bp>cls</span><span class=o>.</span><span class=n>_sitesync_addon_cache</span><span class=o>.</span><span class=n>is_valid</span><span class=p>:</span>
+            <span class=n>manager</span> <span class=o>=</span> <span class=n>AddonsManager</span><span class=p>()</span>
+            <span class=bp>cls</span><span class=o>.</span><span class=n>_sitesync_addon_cache</span><span class=o>.</span><span class=n>update_data</span><span class=p>(</span>
+                <span class=n>manager</span><span class=o>.</span><span class=n>get_enabled_addon</span><span class=p>(</span><span class=s2>&quot;sitesync&quot;</span><span class=p>)</span>
+            <span class=p>)</span>
+        <span class=k>return</span> <span class=bp>cls</span><span class=o>.</span><span class=n>_sitesync_addon_cache</span><span class=o>.</span><span class=n>get_data</span><span class=p>()</span>
+
+    <span class=nd>@classmethod</span>
+    <span class=k>def</span><span class=w> </span><span class=nf>_get_studio_roots_overrides</span><span class=p>(</span><span class=bp>cls</span><span class=p>,</span> <span class=n>project_name</span><span class=p>):</span>
+<span class=w>        </span><span class=sd>&quot;&quot;&quot;This would return &#39;studio&#39; site override by local settings.</span>
+
+<span class=sd>        Notes:</span>
+<span class=sd>            This logic handles local overrides of studio site which may be</span>
+<span class=sd>                available even when sync server is not enabled.</span>
+<span class=sd>            Handling of &#39;studio&#39; and &#39;local&#39; site was separated as preparation</span>
+<span class=sd>                for AYON development where that will be received from</span>
+<span class=sd>                separated sources.</span>
+
+<span class=sd>        Args:</span>
+<span class=sd>            project_name (str): Name of project.</span>
+
+<span class=sd>        Returns:</span>
+<span class=sd>            Union[Dict[str, str], None]): Local root overrides.</span>
+<span class=sd>        &quot;&quot;&quot;</span>
+        <span class=k>if</span> <span class=ow>not</span> <span class=n>project_name</span><span class=p>:</span>
+            <span class=k>return</span>
+        <span class=k>return</span> <span class=n>ayon_api</span><span class=o>.</span><span class=n>get_project_roots_for_site</span><span class=p>(</span>
+            <span class=n>project_name</span><span class=p>,</span> <span class=n>get_local_site_id</span><span class=p>()</span>
+        <span class=p>)</span>
+
+    <span class=nd>@classmethod</span>
+    <span class=k>def</span><span class=w> </span><span class=nf>_get_site_root_overrides</span><span class=p>(</span><span class=bp>cls</span><span class=p>,</span> <span class=n>project_name</span><span class=p>,</span> <span class=n>site_name</span><span class=p>):</span>
+<span class=w>        </span><span class=sd>&quot;&quot;&quot;Get root overrides for site.</span>
+
+<span class=sd>        Args:</span>
+<span class=sd>            project_name (str): Project name for which root overrides should be</span>
+<span class=sd>                received.</span>
+<span class=sd>            site_name (Union[str, None]): Name of site for which root overrides</span>
+<span class=sd>                should be returned.</span>
+<span class=sd>        &quot;&quot;&quot;</span>
+
+        <span class=c1># First check if sync server is available and enabled</span>
+        <span class=n>sitesync_addon</span> <span class=o>=</span> <span class=bp>cls</span><span class=o>.</span><span class=n>get_sitesync_addon</span><span class=p>()</span>
+        <span class=k>if</span> <span class=n>sitesync_addon</span> <span class=ow>is</span> <span class=kc>None</span> <span class=ow>or</span> <span class=ow>not</span> <span class=n>sitesync_addon</span><span class=o>.</span><span class=n>enabled</span><span class=p>:</span>
+            <span class=c1># QUESTION is ok to force &#39;studio&#39; when site sync is not enabled?</span>
+            <span class=n>site_name</span> <span class=o>=</span> <span class=s2>&quot;studio&quot;</span>
+
+        <span class=k>elif</span> <span class=ow>not</span> <span class=n>site_name</span><span class=p>:</span>
+            <span class=c1># Use sync server to receive active site name</span>
+            <span class=n>project_cache</span> <span class=o>=</span> <span class=bp>cls</span><span class=o>.</span><span class=n>_default_site_id_cache</span><span class=p>[</span><span class=n>project_name</span><span class=p>]</span>
+            <span class=k>if</span> <span class=ow>not</span> <span class=n>project_cache</span><span class=o>.</span><span class=n>is_valid</span><span class=p>:</span>
+                <span class=n>project_cache</span><span class=o>.</span><span class=n>update_data</span><span class=p>(</span>
+                    <span class=n>sitesync_addon</span><span class=o>.</span><span class=n>get_active_site_type</span><span class=p>(</span><span class=n>project_name</span><span class=p>)</span>
+                <span class=p>)</span>
+            <span class=n>site_name</span> <span class=o>=</span> <span class=n>project_cache</span><span class=o>.</span><span class=n>get_data</span><span class=p>()</span>
+
+        <span class=n>site_cache</span> <span class=o>=</span> <span class=bp>cls</span><span class=o>.</span><span class=n>_root_overrides_cache</span><span class=p>[</span><span class=n>project_name</span><span class=p>][</span><span class=n>site_name</span><span class=p>]</span>
+        <span class=k>if</span> <span class=ow>not</span> <span class=n>site_cache</span><span class=o>.</span><span class=n>is_valid</span><span class=p>:</span>
+            <span class=k>if</span> <span class=n>site_name</span> <span class=o>==</span> <span class=s2>&quot;studio&quot;</span><span class=p>:</span>
+                <span class=c1># Handle studio root overrides without sync server</span>
+                <span class=c1># - studio root overrides can be done even without sync server</span>
+                <span class=n>roots_overrides</span> <span class=o>=</span> <span class=bp>cls</span><span class=o>.</span><span class=n>_get_studio_roots_overrides</span><span class=p>(</span>
+                    <span class=n>project_name</span>
+                <span class=p>)</span>
+            <span class=k>else</span><span class=p>:</span>
+                <span class=c1># Ask sync server to get roots overrides</span>
+                <span class=n>roots_overrides</span> <span class=o>=</span> <span class=n>sitesync_addon</span><span class=o>.</span><span class=n>get_site_root_overrides</span><span class=p>(</span>
+                    <span class=n>project_name</span><span class=p>,</span> <span class=n>site_name</span>
+                <span class=p>)</span>
+            <span class=n>site_cache</span><span class=o>.</span><span class=n>update_data</span><span class=p>(</span><span class=n>roots_overrides</span><span class=p>)</span>
+        <span class=k>return</span> <span class=n>site_cache</span><span class=o>.</span><span class=n>get_data</span><span class=p>()</span>
+</code></pre></div></td></tr></table></div> </details> <div class="doc doc-children"> <div class="doc doc-object doc-function"> <h3 id=client.ayon_core.pipeline.anatomy.anatomy.Anatomy._get_site_root_overrides class="doc doc-heading"> <code class="highlight language-python"><span class=n>_get_site_root_overrides</span><span class=p>(</span><span class=n>project_name</span><span class=p>,</span> <span class=n>site_name</span><span class=p>)</span></code> <span class="doc doc-labels"> <small class="doc doc-label doc-label-classmethod"><code>classmethod</code></small> </span> </h3> <div class="doc doc-contents "> <p>Get root overrides for site.</p> <p><span class=doc-section-title>Parameters:</span></p> <table> <thead> <tr> <th>Name</th> <th>Type</th> <th>Description</th> <th>Default</th> </tr> </thead> <tbody> <tr class=doc-section-item> <td> <code>project_name</code> </td> <td> <code><span title=str>str</span></code> </td> <td> <div class=doc-md-description> <p>Project name for which root overrides should be received.</p> </div> </td> <td> <em>required</em> </td> </tr> <tr class=doc-section-item> <td> <code>site_name</code> </td> <td> <code><span title=Union>Union</span>[<span title=str>str</span>, None]</code> </td> <td> <div class=doc-md-description> <p>Name of site for which root overrides should be returned.</p> </div> </td> <td> <em>required</em> </td> </tr> </tbody> </table> <details class=quote> <summary>Source code in <code>client/ayon_core/pipeline/anatomy/anatomy.py</code></summary> <div class=highlight><table class=highlighttable><tr><td class=linenos><div class=linenodiv><pre><span></span><span class=normal>470</span>
+<span class=normal>471</span>
+<span class=normal>472</span>
+<span class=normal>473</span>
+<span class=normal>474</span>
+<span class=normal>475</span>
+<span class=normal>476</span>
+<span class=normal>477</span>
+<span class=normal>478</span>
+<span class=normal>479</span>
+<span class=normal>480</span>
+<span class=normal>481</span>
+<span class=normal>482</span>
+<span class=normal>483</span>
+<span class=normal>484</span>
+<span class=normal>485</span>
+<span class=normal>486</span>
+<span class=normal>487</span>
+<span class=normal>488</span>
+<span class=normal>489</span>
+<span class=normal>490</span>
+<span class=normal>491</span>
+<span class=normal>492</span>
+<span class=normal>493</span>
+<span class=normal>494</span>
+<span class=normal>495</span>
+<span class=normal>496</span>
+<span class=normal>497</span>
+<span class=normal>498</span>
+<span class=normal>499</span>
+<span class=normal>500</span>
+<span class=normal>501</span>
+<span class=normal>502</span>
+<span class=normal>503</span>
+<span class=normal>504</span>
+<span class=normal>505</span>
+<span class=normal>506</span>
+<span class=normal>507</span>
+<span class=normal>508</span>
+<span class=normal>509</span>
+<span class=normal>510</span></pre></div></td><td class=code><div><pre><span></span><code><span class=nd>@classmethod</span>
+<span class=k>def</span><span class=w> </span><span class=nf>_get_site_root_overrides</span><span class=p>(</span><span class=bp>cls</span><span class=p>,</span> <span class=n>project_name</span><span class=p>,</span> <span class=n>site_name</span><span class=p>):</span>
+<span class=w>    </span><span class=sd>&quot;&quot;&quot;Get root overrides for site.</span>
+
+<span class=sd>    Args:</span>
+<span class=sd>        project_name (str): Project name for which root overrides should be</span>
+<span class=sd>            received.</span>
+<span class=sd>        site_name (Union[str, None]): Name of site for which root overrides</span>
+<span class=sd>            should be returned.</span>
+<span class=sd>    &quot;&quot;&quot;</span>
+
+    <span class=c1># First check if sync server is available and enabled</span>
+    <span class=n>sitesync_addon</span> <span class=o>=</span> <span class=bp>cls</span><span class=o>.</span><span class=n>get_sitesync_addon</span><span class=p>()</span>
+    <span class=k>if</span> <span class=n>sitesync_addon</span> <span class=ow>is</span> <span class=kc>None</span> <span class=ow>or</span> <span class=ow>not</span> <span class=n>sitesync_addon</span><span class=o>.</span><span class=n>enabled</span><span class=p>:</span>
+        <span class=c1># QUESTION is ok to force &#39;studio&#39; when site sync is not enabled?</span>
+        <span class=n>site_name</span> <span class=o>=</span> <span class=s2>&quot;studio&quot;</span>
+
+    <span class=k>elif</span> <span class=ow>not</span> <span class=n>site_name</span><span class=p>:</span>
+        <span class=c1># Use sync server to receive active site name</span>
+        <span class=n>project_cache</span> <span class=o>=</span> <span class=bp>cls</span><span class=o>.</span><span class=n>_default_site_id_cache</span><span class=p>[</span><span class=n>project_name</span><span class=p>]</span>
+        <span class=k>if</span> <span class=ow>not</span> <span class=n>project_cache</span><span class=o>.</span><span class=n>is_valid</span><span class=p>:</span>
+            <span class=n>project_cache</span><span class=o>.</span><span class=n>update_data</span><span class=p>(</span>
+                <span class=n>sitesync_addon</span><span class=o>.</span><span class=n>get_active_site_type</span><span class=p>(</span><span class=n>project_name</span><span class=p>)</span>
+            <span class=p>)</span>
+        <span class=n>site_name</span> <span class=o>=</span> <span class=n>project_cache</span><span class=o>.</span><span class=n>get_data</span><span class=p>()</span>
+
+    <span class=n>site_cache</span> <span class=o>=</span> <span class=bp>cls</span><span class=o>.</span><span class=n>_root_overrides_cache</span><span class=p>[</span><span class=n>project_name</span><span class=p>][</span><span class=n>site_name</span><span class=p>]</span>
+    <span class=k>if</span> <span class=ow>not</span> <span class=n>site_cache</span><span class=o>.</span><span class=n>is_valid</span><span class=p>:</span>
+        <span class=k>if</span> <span class=n>site_name</span> <span class=o>==</span> <span class=s2>&quot;studio&quot;</span><span class=p>:</span>
+            <span class=c1># Handle studio root overrides without sync server</span>
+            <span class=c1># - studio root overrides can be done even without sync server</span>
+            <span class=n>roots_overrides</span> <span class=o>=</span> <span class=bp>cls</span><span class=o>.</span><span class=n>_get_studio_roots_overrides</span><span class=p>(</span>
+                <span class=n>project_name</span>
+            <span class=p>)</span>
+        <span class=k>else</span><span class=p>:</span>
+            <span class=c1># Ask sync server to get roots overrides</span>
+            <span class=n>roots_overrides</span> <span class=o>=</span> <span class=n>sitesync_addon</span><span class=o>.</span><span class=n>get_site_root_overrides</span><span class=p>(</span>
+                <span class=n>project_name</span><span class=p>,</span> <span class=n>site_name</span>
+            <span class=p>)</span>
+        <span class=n>site_cache</span><span class=o>.</span><span class=n>update_data</span><span class=p>(</span><span class=n>roots_overrides</span><span class=p>)</span>
+    <span class=k>return</span> <span class=n>site_cache</span><span class=o>.</span><span class=n>get_data</span><span class=p>()</span>
+</code></pre></div></td></tr></table></div> </details> </div> </div> <div class="doc doc-object doc-function"> <h3 id=client.ayon_core.pipeline.anatomy.anatomy.Anatomy._get_studio_roots_overrides class="doc doc-heading"> <code class="highlight language-python"><span class=n>_get_studio_roots_overrides</span><span class=p>(</span><span class=n>project_name</span><span class=p>)</span></code> <span class="doc doc-labels"> <small class="doc doc-label doc-label-classmethod"><code>classmethod</code></small> </span> </h3> <div class="doc doc-contents "> <p>This would return 'studio' site override by local settings.</p> <details class=notes open> <summary>Notes</summary> <p>This logic handles local overrides of studio site which may be available even when sync server is not enabled. Handling of 'studio' and 'local' site was separated as preparation for AYON development where that will be received from separated sources.</p> </details> <p><span class=doc-section-title>Parameters:</span></p> <table> <thead> <tr> <th>Name</th> <th>Type</th> <th>Description</th> <th>Default</th> </tr> </thead> <tbody> <tr class=doc-section-item> <td> <code>project_name</code> </td> <td> <code><span title=str>str</span></code> </td> <td> <div class=doc-md-description> <p>Name of project.</p> </div> </td> <td> <em>required</em> </td> </tr> </tbody> </table> <p><span class=doc-section-title>Returns:</span></p> <table> <thead> <tr> <th>Type</th> <th>Description</th> </tr> </thead> <tbody> <tr class=doc-section-item> <td> </td> <td> <div class=doc-md-description> <p>Union[Dict[str, str], None]): Local root overrides.</p> </div> </td> </tr> </tbody> </table> <details class=quote> <summary>Source code in <code>client/ayon_core/pipeline/anatomy/anatomy.py</code></summary> <div class=highlight><table class=highlighttable><tr><td class=linenos><div class=linenodiv><pre><span></span><span class=normal>447</span>
+<span class=normal>448</span>
+<span class=normal>449</span>
+<span class=normal>450</span>
+<span class=normal>451</span>
+<span class=normal>452</span>
+<span class=normal>453</span>
+<span class=normal>454</span>
+<span class=normal>455</span>
+<span class=normal>456</span>
+<span class=normal>457</span>
+<span class=normal>458</span>
+<span class=normal>459</span>
+<span class=normal>460</span>
+<span class=normal>461</span>
+<span class=normal>462</span>
+<span class=normal>463</span>
+<span class=normal>464</span>
+<span class=normal>465</span>
+<span class=normal>466</span>
+<span class=normal>467</span>
+<span class=normal>468</span></pre></div></td><td class=code><div><pre><span></span><code><span class=nd>@classmethod</span>
+<span class=k>def</span><span class=w> </span><span class=nf>_get_studio_roots_overrides</span><span class=p>(</span><span class=bp>cls</span><span class=p>,</span> <span class=n>project_name</span><span class=p>):</span>
+<span class=w>    </span><span class=sd>&quot;&quot;&quot;This would return &#39;studio&#39; site override by local settings.</span>
+
+<span class=sd>    Notes:</span>
+<span class=sd>        This logic handles local overrides of studio site which may be</span>
+<span class=sd>            available even when sync server is not enabled.</span>
+<span class=sd>        Handling of &#39;studio&#39; and &#39;local&#39; site was separated as preparation</span>
+<span class=sd>            for AYON development where that will be received from</span>
+<span class=sd>            separated sources.</span>
+
+<span class=sd>    Args:</span>
+<span class=sd>        project_name (str): Name of project.</span>
+
+<span class=sd>    Returns:</span>
+<span class=sd>        Union[Dict[str, str], None]): Local root overrides.</span>
+<span class=sd>    &quot;&quot;&quot;</span>
+    <span class=k>if</span> <span class=ow>not</span> <span class=n>project_name</span><span class=p>:</span>
+        <span class=k>return</span>
+    <span class=k>return</span> <span class=n>ayon_api</span><span class=o>.</span><span class=n>get_project_roots_for_site</span><span class=p>(</span>
+        <span class=n>project_name</span><span class=p>,</span> <span class=n>get_local_site_id</span><span class=p>()</span>
+    <span class=p>)</span>
+</code></pre></div></td></tr></table></div> </details> </div> </div> </div> </div> </div> <div class="doc doc-object doc-class"> <h2 id=client.ayon_core.pipeline.anatomy.anatomy.BaseAnatomy class="doc doc-heading"> <code>BaseAnatomy</code> </h2> <div class="doc doc-contents "> <p class="doc doc-class-bases"> Bases: <code><span title=object>object</span></code></p> <p>Anatomy module helps to keep project settings.</p> <p>Wraps key project specifications, AnatomyTemplates and AnatomyRoots.</p> <details class=quote> <summary>Source code in <code>client/ayon_core/pipeline/anatomy/anatomy.py</code></summary> <div class=highlight><table class=highlighttable><tr><td class=linenos><div class=linenodiv><pre><span></span><span class=normal> 25</span>
+<span class=normal> 26</span>
+<span class=normal> 27</span>
+<span class=normal> 28</span>
+<span class=normal> 29</span>
+<span class=normal> 30</span>
+<span class=normal> 31</span>
+<span class=normal> 32</span>
+<span class=normal> 33</span>
+<span class=normal> 34</span>
+<span class=normal> 35</span>
+<span class=normal> 36</span>
+<span class=normal> 37</span>
+<span class=normal> 38</span>
+<span class=normal> 39</span>
+<span class=normal> 40</span>
+<span class=normal> 41</span>
+<span class=normal> 42</span>
+<span class=normal> 43</span>
+<span class=normal> 44</span>
+<span class=normal> 45</span>
+<span class=normal> 46</span>
+<span class=normal> 47</span>
+<span class=normal> 48</span>
+<span class=normal> 49</span>
+<span class=normal> 50</span>
+<span class=normal> 51</span>
+<span class=normal> 52</span>
+<span class=normal> 53</span>
+<span class=normal> 54</span>
+<span class=normal> 55</span>
+<span class=normal> 56</span>
+<span class=normal> 57</span>
+<span class=normal> 58</span>
+<span class=normal> 59</span>
+<span class=normal> 60</span>
+<span class=normal> 61</span>
+<span class=normal> 62</span>
+<span class=normal> 63</span>
+<span class=normal> 64</span>
+<span class=normal> 65</span>
+<span class=normal> 66</span>
+<span class=normal> 67</span>
+<span class=normal> 68</span>
+<span class=normal> 69</span>
+<span class=normal> 70</span>
+<span class=normal> 71</span>
+<span class=normal> 72</span>
+<span class=normal> 73</span>
+<span class=normal> 74</span>
+<span class=normal> 75</span>
+<span class=normal> 76</span>
+<span class=normal> 77</span>
+<span class=normal> 78</span>
+<span class=normal> 79</span>
+<span class=normal> 80</span>
+<span class=normal> 81</span>
+<span class=normal> 82</span>
+<span class=normal> 83</span>
+<span class=normal> 84</span>
+<span class=normal> 85</span>
+<span class=normal> 86</span>
+<span class=normal> 87</span>
+<span class=normal> 88</span>
+<span class=normal> 89</span>
+<span class=normal> 90</span>
+<span class=normal> 91</span>
+<span class=normal> 92</span>
+<span class=normal> 93</span>
+<span class=normal> 94</span>
+<span class=normal> 95</span>
+<span class=normal> 96</span>
+<span class=normal> 97</span>
+<span class=normal> 98</span>
+<span class=normal> 99</span>
+<span class=normal>100</span>
+<span class=normal>101</span>
+<span class=normal>102</span>
+<span class=normal>103</span>
+<span class=normal>104</span>
+<span class=normal>105</span>
+<span class=normal>106</span>
+<span class=normal>107</span>
+<span class=normal>108</span>
+<span class=normal>109</span>
+<span class=normal>110</span>
+<span class=normal>111</span>
+<span class=normal>112</span>
+<span class=normal>113</span>
+<span class=normal>114</span>
+<span class=normal>115</span>
+<span class=normal>116</span>
+<span class=normal>117</span>
+<span class=normal>118</span>
+<span class=normal>119</span>
+<span class=normal>120</span>
+<span class=normal>121</span>
+<span class=normal>122</span>
+<span class=normal>123</span>
+<span class=normal>124</span>
+<span class=normal>125</span>
+<span class=normal>126</span>
+<span class=normal>127</span>
+<span class=normal>128</span>
+<span class=normal>129</span>
+<span class=normal>130</span>
+<span class=normal>131</span>
+<span class=normal>132</span>
+<span class=normal>133</span>
+<span class=normal>134</span>
+<span class=normal>135</span>
+<span class=normal>136</span>
+<span class=normal>137</span>
+<span class=normal>138</span>
+<span class=normal>139</span>
+<span class=normal>140</span>
+<span class=normal>141</span>
+<span class=normal>142</span>
+<span class=normal>143</span>
+<span class=normal>144</span>
+<span class=normal>145</span>
+<span class=normal>146</span>
+<span class=normal>147</span>
+<span class=normal>148</span>
+<span class=normal>149</span>
+<span class=normal>150</span>
+<span class=normal>151</span>
+<span class=normal>152</span>
+<span class=normal>153</span>
+<span class=normal>154</span>
+<span class=normal>155</span>
+<span class=normal>156</span>
+<span class=normal>157</span>
+<span class=normal>158</span>
+<span class=normal>159</span>
+<span class=normal>160</span>
+<span class=normal>161</span>
+<span class=normal>162</span>
+<span class=normal>163</span>
+<span class=normal>164</span>
+<span class=normal>165</span>
+<span class=normal>166</span>
+<span class=normal>167</span>
+<span class=normal>168</span>
+<span class=normal>169</span>
+<span class=normal>170</span>
+<span class=normal>171</span>
+<span class=normal>172</span>
+<span class=normal>173</span>
+<span class=normal>174</span>
+<span class=normal>175</span>
+<span class=normal>176</span>
+<span class=normal>177</span>
+<span class=normal>178</span>
+<span class=normal>179</span>
+<span class=normal>180</span>
+<span class=normal>181</span>
+<span class=normal>182</span>
+<span class=normal>183</span>
+<span class=normal>184</span>
+<span class=normal>185</span>
+<span class=normal>186</span>
+<span class=normal>187</span>
+<span class=normal>188</span>
+<span class=normal>189</span>
+<span class=normal>190</span>
+<span class=normal>191</span>
+<span class=normal>192</span>
+<span class=normal>193</span>
+<span class=normal>194</span>
+<span class=normal>195</span>
+<span class=normal>196</span>
+<span class=normal>197</span>
+<span class=normal>198</span>
+<span class=normal>199</span>
+<span class=normal>200</span>
+<span class=normal>201</span>
+<span class=normal>202</span>
+<span class=normal>203</span>
+<span class=normal>204</span>
+<span class=normal>205</span>
+<span class=normal>206</span>
+<span class=normal>207</span>
+<span class=normal>208</span>
+<span class=normal>209</span>
+<span class=normal>210</span>
+<span class=normal>211</span>
+<span class=normal>212</span>
+<span class=normal>213</span>
+<span class=normal>214</span>
+<span class=normal>215</span>
+<span class=normal>216</span>
+<span class=normal>217</span>
+<span class=normal>218</span>
+<span class=normal>219</span>
+<span class=normal>220</span>
+<span class=normal>221</span>
+<span class=normal>222</span>
+<span class=normal>223</span>
+<span class=normal>224</span>
+<span class=normal>225</span>
+<span class=normal>226</span>
+<span class=normal>227</span>
+<span class=normal>228</span>
+<span class=normal>229</span>
+<span class=normal>230</span>
+<span class=normal>231</span>
+<span class=normal>232</span>
+<span class=normal>233</span>
+<span class=normal>234</span>
+<span class=normal>235</span>
+<span class=normal>236</span>
+<span class=normal>237</span>
+<span class=normal>238</span>
+<span class=normal>239</span>
+<span class=normal>240</span>
+<span class=normal>241</span>
+<span class=normal>242</span>
+<span class=normal>243</span>
+<span class=normal>244</span>
+<span class=normal>245</span>
+<span class=normal>246</span>
+<span class=normal>247</span>
+<span class=normal>248</span>
+<span class=normal>249</span>
+<span class=normal>250</span>
+<span class=normal>251</span>
+<span class=normal>252</span>
+<span class=normal>253</span>
+<span class=normal>254</span>
+<span class=normal>255</span>
+<span class=normal>256</span>
+<span class=normal>257</span>
+<span class=normal>258</span>
+<span class=normal>259</span>
+<span class=normal>260</span>
+<span class=normal>261</span>
+<span class=normal>262</span>
+<span class=normal>263</span>
+<span class=normal>264</span>
+<span class=normal>265</span>
+<span class=normal>266</span>
+<span class=normal>267</span>
+<span class=normal>268</span>
+<span class=normal>269</span>
+<span class=normal>270</span>
+<span class=normal>271</span>
+<span class=normal>272</span>
+<span class=normal>273</span>
+<span class=normal>274</span>
+<span class=normal>275</span>
+<span class=normal>276</span>
+<span class=normal>277</span>
+<span class=normal>278</span>
+<span class=normal>279</span>
+<span class=normal>280</span>
+<span class=normal>281</span>
+<span class=normal>282</span>
+<span class=normal>283</span>
+<span class=normal>284</span>
+<span class=normal>285</span>
+<span class=normal>286</span>
+<span class=normal>287</span>
+<span class=normal>288</span>
+<span class=normal>289</span>
+<span class=normal>290</span>
+<span class=normal>291</span>
+<span class=normal>292</span>
+<span class=normal>293</span>
+<span class=normal>294</span>
+<span class=normal>295</span>
+<span class=normal>296</span>
+<span class=normal>297</span>
+<span class=normal>298</span>
+<span class=normal>299</span>
+<span class=normal>300</span>
+<span class=normal>301</span>
+<span class=normal>302</span>
+<span class=normal>303</span>
+<span class=normal>304</span>
+<span class=normal>305</span>
+<span class=normal>306</span>
+<span class=normal>307</span>
+<span class=normal>308</span>
+<span class=normal>309</span>
+<span class=normal>310</span>
+<span class=normal>311</span>
+<span class=normal>312</span>
+<span class=normal>313</span>
+<span class=normal>314</span>
+<span class=normal>315</span>
+<span class=normal>316</span>
+<span class=normal>317</span>
+<span class=normal>318</span>
+<span class=normal>319</span>
+<span class=normal>320</span>
+<span class=normal>321</span>
+<span class=normal>322</span>
+<span class=normal>323</span>
+<span class=normal>324</span>
+<span class=normal>325</span>
+<span class=normal>326</span>
+<span class=normal>327</span>
+<span class=normal>328</span>
+<span class=normal>329</span>
+<span class=normal>330</span>
+<span class=normal>331</span>
+<span class=normal>332</span>
+<span class=normal>333</span>
+<span class=normal>334</span>
+<span class=normal>335</span>
+<span class=normal>336</span>
+<span class=normal>337</span>
+<span class=normal>338</span>
+<span class=normal>339</span>
+<span class=normal>340</span>
+<span class=normal>341</span>
+<span class=normal>342</span>
+<span class=normal>343</span>
+<span class=normal>344</span>
+<span class=normal>345</span>
+<span class=normal>346</span>
+<span class=normal>347</span>
+<span class=normal>348</span>
+<span class=normal>349</span>
+<span class=normal>350</span>
+<span class=normal>351</span>
+<span class=normal>352</span>
+<span class=normal>353</span>
+<span class=normal>354</span>
+<span class=normal>355</span>
+<span class=normal>356</span>
+<span class=normal>357</span>
+<span class=normal>358</span>
+<span class=normal>359</span>
+<span class=normal>360</span>
+<span class=normal>361</span>
+<span class=normal>362</span>
+<span class=normal>363</span>
+<span class=normal>364</span>
+<span class=normal>365</span>
+<span class=normal>366</span>
+<span class=normal>367</span>
+<span class=normal>368</span>
+<span class=normal>369</span>
+<span class=normal>370</span>
+<span class=normal>371</span>
+<span class=normal>372</span>
+<span class=normal>373</span>
+<span class=normal>374</span>
+<span class=normal>375</span>
+<span class=normal>376</span>
+<span class=normal>377</span>
+<span class=normal>378</span>
+<span class=normal>379</span>
+<span class=normal>380</span>
+<span class=normal>381</span>
+<span class=normal>382</span>
+<span class=normal>383</span>
+<span class=normal>384</span>
+<span class=normal>385</span>
+<span class=normal>386</span>
+<span class=normal>387</span>
+<span class=normal>388</span>
+<span class=normal>389</span>
+<span class=normal>390</span>
+<span class=normal>391</span>
+<span class=normal>392</span>
+<span class=normal>393</span>
+<span class=normal>394</span>
+<span class=normal>395</span>
+<span class=normal>396</span>
+<span class=normal>397</span>
+<span class=normal>398</span>
+<span class=normal>399</span>
+<span class=normal>400</span>
+<span class=normal>401</span>
+<span class=normal>402</span></pre></div></td><td class=code><div><pre><span></span><code><span class=k>class</span><span class=w> </span><span class=nc>BaseAnatomy</span><span class=p>(</span><span class=nb>object</span><span class=p>):</span>
+<span class=w>    </span><span class=sd>&quot;&quot;&quot;Anatomy module helps to keep project settings.</span>
+
+<span class=sd>    Wraps key project specifications, AnatomyTemplates and AnatomyRoots.</span>
+<span class=sd>    &quot;&quot;&quot;</span>
+    <span class=n>root_key_regex</span> <span class=o>=</span> <span class=n>re</span><span class=o>.</span><span class=n>compile</span><span class=p>(</span><span class=sa>r</span><span class=s2>&quot;{(root?[^}]+)}&quot;</span><span class=p>)</span>
+    <span class=n>root_name_regex</span> <span class=o>=</span> <span class=n>re</span><span class=o>.</span><span class=n>compile</span><span class=p>(</span><span class=sa>r</span><span class=s2>&quot;root\[([^]]+)\]&quot;</span><span class=p>)</span>
+
+    <span class=k>def</span><span class=w> </span><span class=fm>__init__</span><span class=p>(</span><span class=bp>self</span><span class=p>,</span> <span class=n>project_entity</span><span class=p>,</span> <span class=n>root_overrides</span><span class=o>=</span><span class=kc>None</span><span class=p>):</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>_project_name</span> <span class=o>=</span> <span class=n>project_entity</span><span class=p>[</span><span class=s2>&quot;name&quot;</span><span class=p>]</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>_project_code</span> <span class=o>=</span> <span class=n>project_entity</span><span class=p>[</span><span class=s2>&quot;code&quot;</span><span class=p>]</span>
+
+        <span class=bp>self</span><span class=o>.</span><span class=n>_data</span> <span class=o>=</span> <span class=bp>self</span><span class=o>.</span><span class=n>_prepare_anatomy_data</span><span class=p>(</span>
+            <span class=n>project_entity</span><span class=p>,</span> <span class=n>root_overrides</span>
+        <span class=p>)</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>_templates_obj</span> <span class=o>=</span> <span class=n>AnatomyTemplates</span><span class=p>(</span><span class=bp>self</span><span class=p>)</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>_roots_obj</span> <span class=o>=</span> <span class=n>AnatomyRoots</span><span class=p>(</span><span class=bp>self</span><span class=p>)</span>
+
+    <span class=c1># Anatomy used as dictionary</span>
+    <span class=c1># - implemented only getters returning copy</span>
+    <span class=k>def</span><span class=w> </span><span class=fm>__getitem__</span><span class=p>(</span><span class=bp>self</span><span class=p>,</span> <span class=n>key</span><span class=p>):</span>
+        <span class=k>return</span> <span class=n>copy</span><span class=o>.</span><span class=n>deepcopy</span><span class=p>(</span><span class=bp>self</span><span class=o>.</span><span class=n>_data</span><span class=p>[</span><span class=n>key</span><span class=p>])</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>get</span><span class=p>(</span><span class=bp>self</span><span class=p>,</span> <span class=n>key</span><span class=p>,</span> <span class=n>default</span><span class=o>=</span><span class=kc>None</span><span class=p>):</span>
+        <span class=k>if</span> <span class=n>key</span> <span class=ow>not</span> <span class=ow>in</span> <span class=bp>self</span><span class=o>.</span><span class=n>_data</span><span class=p>:</span>
+            <span class=k>return</span> <span class=n>default</span>
+        <span class=k>return</span> <span class=n>copy</span><span class=o>.</span><span class=n>deepcopy</span><span class=p>(</span><span class=bp>self</span><span class=o>.</span><span class=n>_data</span><span class=p>[</span><span class=n>key</span><span class=p>])</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>keys</span><span class=p>(</span><span class=bp>self</span><span class=p>):</span>
+        <span class=k>return</span> <span class=n>copy</span><span class=o>.</span><span class=n>deepcopy</span><span class=p>(</span><span class=bp>self</span><span class=o>.</span><span class=n>_data</span><span class=p>)</span><span class=o>.</span><span class=n>keys</span><span class=p>()</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>values</span><span class=p>(</span><span class=bp>self</span><span class=p>):</span>
+        <span class=k>return</span> <span class=n>copy</span><span class=o>.</span><span class=n>deepcopy</span><span class=p>(</span><span class=bp>self</span><span class=o>.</span><span class=n>_data</span><span class=p>)</span><span class=o>.</span><span class=n>values</span><span class=p>()</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>items</span><span class=p>(</span><span class=bp>self</span><span class=p>):</span>
+        <span class=k>return</span> <span class=n>copy</span><span class=o>.</span><span class=n>deepcopy</span><span class=p>(</span><span class=bp>self</span><span class=o>.</span><span class=n>_data</span><span class=p>)</span><span class=o>.</span><span class=n>items</span><span class=p>()</span>
+
+    <span class=nd>@property</span>
+    <span class=k>def</span><span class=w> </span><span class=nf>project_name</span><span class=p>(</span><span class=bp>self</span><span class=p>):</span>
+<span class=w>        </span><span class=sd>&quot;&quot;&quot;Project name for which is anatomy prepared.</span>
+
+<span class=sd>        Returns:</span>
+<span class=sd>            str: Project name.</span>
+
+<span class=sd>        &quot;&quot;&quot;</span>
+        <span class=k>return</span> <span class=bp>self</span><span class=o>.</span><span class=n>_project_name</span>
+
+    <span class=nd>@property</span>
+    <span class=k>def</span><span class=w> </span><span class=nf>project_code</span><span class=p>(</span><span class=bp>self</span><span class=p>):</span>
+<span class=w>        </span><span class=sd>&quot;&quot;&quot;Project name for which is anatomy prepared.</span>
+
+<span class=sd>        Returns:</span>
+<span class=sd>            str: Project code.</span>
+
+<span class=sd>        &quot;&quot;&quot;</span>
+        <span class=k>return</span> <span class=bp>self</span><span class=o>.</span><span class=n>_project_code</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>_prepare_anatomy_data</span><span class=p>(</span><span class=bp>self</span><span class=p>,</span> <span class=n>project_entity</span><span class=p>,</span> <span class=n>root_overrides</span><span class=p>):</span>
+<span class=w>        </span><span class=sd>&quot;&quot;&quot;Prepare anatomy data for further processing.</span>
+
+<span class=sd>        Method added to replace `{task}` with `{task[name]}` in templates.</span>
+<span class=sd>        &quot;&quot;&quot;</span>
+
+        <span class=n>anatomy_data</span> <span class=o>=</span> <span class=bp>self</span><span class=o>.</span><span class=n>_project_entity_to_anatomy_data</span><span class=p>(</span><span class=n>project_entity</span><span class=p>)</span>
+
+        <span class=bp>self</span><span class=o>.</span><span class=n>_apply_local_settings_on_anatomy_data</span><span class=p>(</span>
+            <span class=n>anatomy_data</span><span class=p>,</span>
+            <span class=n>root_overrides</span>
+        <span class=p>)</span>
+
+        <span class=k>return</span> <span class=n>anatomy_data</span>
+
+    <span class=nd>@property</span>
+    <span class=k>def</span><span class=w> </span><span class=nf>templates</span><span class=p>(</span><span class=bp>self</span><span class=p>):</span>
+<span class=w>        </span><span class=sd>&quot;&quot;&quot;Wrap property `templates` of Anatomy&#39;s AnatomyTemplates instance.&quot;&quot;&quot;</span>
+        <span class=k>return</span> <span class=bp>self</span><span class=o>.</span><span class=n>_templates_obj</span><span class=o>.</span><span class=n>templates</span>
+
+    <span class=nd>@property</span>
+    <span class=k>def</span><span class=w> </span><span class=nf>templates_obj</span><span class=p>(</span><span class=bp>self</span><span class=p>):</span>
+<span class=w>        </span><span class=sd>&quot;&quot;&quot;Return `AnatomyTemplates` object of current Anatomy instance.&quot;&quot;&quot;</span>
+        <span class=k>return</span> <span class=bp>self</span><span class=o>.</span><span class=n>_templates_obj</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>get_template_item</span><span class=p>(</span><span class=bp>self</span><span class=p>,</span> <span class=o>*</span><span class=n>args</span><span class=p>,</span> <span class=o>**</span><span class=n>kwargs</span><span class=p>):</span>
+<span class=w>        </span><span class=sd>&quot;&quot;&quot;Get template item from category.</span>
+
+<span class=sd>        Args:</span>
+<span class=sd>            category_name (str): Category name.</span>
+<span class=sd>            template_name (str): Template name.</span>
+<span class=sd>            subkey (Optional[str]): Subkey name.</span>
+<span class=sd>            default (Any): Default value.</span>
+
+<span class=sd>        Returns:</span>
+<span class=sd>            Any: Template item, subkey value as AnatomyStringTemplate or None.</span>
+
+<span class=sd>        &quot;&quot;&quot;</span>
+        <span class=k>return</span> <span class=bp>self</span><span class=o>.</span><span class=n>_templates_obj</span><span class=o>.</span><span class=n>get_template_item</span><span class=p>(</span><span class=o>*</span><span class=n>args</span><span class=p>,</span> <span class=o>**</span><span class=n>kwargs</span><span class=p>)</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>format</span><span class=p>(</span><span class=bp>self</span><span class=p>,</span> <span class=o>*</span><span class=n>args</span><span class=p>,</span> <span class=o>**</span><span class=n>kwargs</span><span class=p>):</span>
+<span class=w>        </span><span class=sd>&quot;&quot;&quot;Wrap `format` method of Anatomy&#39;s `templates_obj`.&quot;&quot;&quot;</span>
+        <span class=k>return</span> <span class=bp>self</span><span class=o>.</span><span class=n>_templates_obj</span><span class=o>.</span><span class=n>format</span><span class=p>(</span><span class=o>*</span><span class=n>args</span><span class=p>,</span> <span class=o>**</span><span class=n>kwargs</span><span class=p>)</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>format_all</span><span class=p>(</span><span class=bp>self</span><span class=p>,</span> <span class=o>*</span><span class=n>args</span><span class=p>,</span> <span class=o>**</span><span class=n>kwargs</span><span class=p>):</span>
+<span class=w>        </span><span class=sd>&quot;&quot;&quot;Wrap `format_all` method of Anatomy&#39;s `templates_obj`.</span>
+
+<span class=sd>        Deprecated:</span>
+<span class=sd>            Use ``format`` method with ``strict=False`` instead.</span>
+
+<span class=sd>        &quot;&quot;&quot;</span>
+        <span class=k>return</span> <span class=bp>self</span><span class=o>.</span><span class=n>_templates_obj</span><span class=o>.</span><span class=n>format_all</span><span class=p>(</span><span class=o>*</span><span class=n>args</span><span class=p>,</span> <span class=o>**</span><span class=n>kwargs</span><span class=p>)</span>
+
+    <span class=nd>@property</span>
+    <span class=k>def</span><span class=w> </span><span class=nf>roots</span><span class=p>(</span><span class=bp>self</span><span class=p>):</span>
+<span class=w>        </span><span class=sd>&quot;&quot;&quot;Wrap `roots` property of Anatomy&#39;s `roots_obj`.&quot;&quot;&quot;</span>
+        <span class=k>return</span> <span class=bp>self</span><span class=o>.</span><span class=n>_roots_obj</span><span class=o>.</span><span class=n>roots</span>
+
+    <span class=nd>@property</span>
+    <span class=k>def</span><span class=w> </span><span class=nf>roots_obj</span><span class=p>(</span><span class=bp>self</span><span class=p>):</span>
+<span class=w>        </span><span class=sd>&quot;&quot;&quot;Roots wrapper object.</span>
+
+<span class=sd>        Returns:</span>
+<span class=sd>            AnatomyRoots: Roots wrapper.</span>
+
+<span class=sd>        &quot;&quot;&quot;</span>
+        <span class=k>return</span> <span class=bp>self</span><span class=o>.</span><span class=n>_roots_obj</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>root_environments</span><span class=p>(</span><span class=bp>self</span><span class=p>):</span>
+<span class=w>        </span><span class=sd>&quot;&quot;&quot;Return AYON_PROJECT_ROOT_* environments for current project.&quot;&quot;&quot;</span>
+        <span class=k>return</span> <span class=bp>self</span><span class=o>.</span><span class=n>_roots_obj</span><span class=o>.</span><span class=n>root_environments</span><span class=p>()</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>root_environmets_fill_data</span><span class=p>(</span><span class=bp>self</span><span class=p>,</span> <span class=n>template</span><span class=o>=</span><span class=kc>None</span><span class=p>):</span>
+<span class=w>        </span><span class=sd>&quot;&quot;&quot;Environment variable values in dictionary for rootless path.</span>
+
+<span class=sd>        Args:</span>
+<span class=sd>            template (str): Template for environment variable key fill.</span>
+<span class=sd>                By default is set to `&quot;${}&quot;`.</span>
+<span class=sd>        &quot;&quot;&quot;</span>
+        <span class=k>return</span> <span class=bp>self</span><span class=o>.</span><span class=n>roots_obj</span><span class=o>.</span><span class=n>root_environmets_fill_data</span><span class=p>(</span><span class=n>template</span><span class=p>)</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>find_root_template_from_path</span><span class=p>(</span><span class=bp>self</span><span class=p>,</span> <span class=o>*</span><span class=n>args</span><span class=p>,</span> <span class=o>**</span><span class=n>kwargs</span><span class=p>):</span>
+<span class=w>        </span><span class=sd>&quot;&quot;&quot;Wrapper for AnatomyRoots `find_root_template_from_path`.&quot;&quot;&quot;</span>
+        <span class=k>return</span> <span class=bp>self</span><span class=o>.</span><span class=n>roots_obj</span><span class=o>.</span><span class=n>find_root_template_from_path</span><span class=p>(</span><span class=o>*</span><span class=n>args</span><span class=p>,</span> <span class=o>**</span><span class=n>kwargs</span><span class=p>)</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>path_remapper</span><span class=p>(</span><span class=bp>self</span><span class=p>,</span> <span class=o>*</span><span class=n>args</span><span class=p>,</span> <span class=o>**</span><span class=n>kwargs</span><span class=p>):</span>
+<span class=w>        </span><span class=sd>&quot;&quot;&quot;Wrapper for AnatomyRoots `path_remapper`.&quot;&quot;&quot;</span>
+        <span class=k>return</span> <span class=bp>self</span><span class=o>.</span><span class=n>roots_obj</span><span class=o>.</span><span class=n>path_remapper</span><span class=p>(</span><span class=o>*</span><span class=n>args</span><span class=p>,</span> <span class=o>**</span><span class=n>kwargs</span><span class=p>)</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>all_root_paths</span><span class=p>(</span><span class=bp>self</span><span class=p>):</span>
+<span class=w>        </span><span class=sd>&quot;&quot;&quot;Wrapper for AnatomyRoots `all_root_paths`.&quot;&quot;&quot;</span>
+        <span class=k>return</span> <span class=bp>self</span><span class=o>.</span><span class=n>roots_obj</span><span class=o>.</span><span class=n>all_root_paths</span><span class=p>()</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>set_root_environments</span><span class=p>(</span><span class=bp>self</span><span class=p>):</span>
+<span class=w>        </span><span class=sd>&quot;&quot;&quot;Set AYON_PROJECT_ROOT_* environments for current project.&quot;&quot;&quot;</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>_roots_obj</span><span class=o>.</span><span class=n>set_root_environments</span><span class=p>()</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>root_names</span><span class=p>(</span><span class=bp>self</span><span class=p>):</span>
+<span class=w>        </span><span class=sd>&quot;&quot;&quot;Return root names for current project.&quot;&quot;&quot;</span>
+        <span class=k>return</span> <span class=bp>self</span><span class=o>.</span><span class=n>root_names_from_templates</span><span class=p>(</span><span class=bp>self</span><span class=o>.</span><span class=n>templates</span><span class=p>)</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>_root_keys_from_templates</span><span class=p>(</span><span class=bp>self</span><span class=p>,</span> <span class=n>data</span><span class=p>):</span>
+<span class=w>        </span><span class=sd>&quot;&quot;&quot;Extract root key from templates in data.</span>
+
+<span class=sd>        Args:</span>
+<span class=sd>            data (dict): Data that may contain templates as string.</span>
+
+<span class=sd>        Return:</span>
+<span class=sd>            set: Set of all root names from templates as strings.</span>
+
+<span class=sd>        Output example: `{&quot;root[work]&quot;, &quot;root[publish]&quot;}`</span>
+<span class=sd>        &quot;&quot;&quot;</span>
+
+        <span class=n>output</span> <span class=o>=</span> <span class=nb>set</span><span class=p>()</span>
+        <span class=n>keys_queue</span> <span class=o>=</span> <span class=n>collections</span><span class=o>.</span><span class=n>deque</span><span class=p>()</span>
+        <span class=n>keys_queue</span><span class=o>.</span><span class=n>append</span><span class=p>(</span><span class=n>data</span><span class=p>)</span>
+        <span class=k>while</span> <span class=n>keys_queue</span><span class=p>:</span>
+            <span class=n>queue_data</span> <span class=o>=</span> <span class=n>keys_queue</span><span class=o>.</span><span class=n>popleft</span><span class=p>()</span>
+            <span class=k>if</span> <span class=nb>isinstance</span><span class=p>(</span><span class=n>queue_data</span><span class=p>,</span> <span class=n>StringTemplate</span><span class=p>):</span>
+                <span class=n>queue_data</span> <span class=o>=</span> <span class=n>queue_data</span><span class=o>.</span><span class=n>template</span>
+
+            <span class=k>if</span> <span class=nb>isinstance</span><span class=p>(</span><span class=n>queue_data</span><span class=p>,</span> <span class=nb>dict</span><span class=p>):</span>
+                <span class=k>for</span> <span class=n>value</span> <span class=ow>in</span> <span class=n>queue_data</span><span class=o>.</span><span class=n>values</span><span class=p>():</span>
+                    <span class=n>keys_queue</span><span class=o>.</span><span class=n>append</span><span class=p>(</span><span class=n>value</span><span class=p>)</span>
+
+            <span class=k>elif</span> <span class=nb>isinstance</span><span class=p>(</span><span class=n>queue_data</span><span class=p>,</span> <span class=nb>str</span><span class=p>):</span>
+                <span class=k>for</span> <span class=n>group</span> <span class=ow>in</span> <span class=n>re</span><span class=o>.</span><span class=n>findall</span><span class=p>(</span><span class=bp>self</span><span class=o>.</span><span class=n>root_key_regex</span><span class=p>,</span> <span class=n>queue_data</span><span class=p>):</span>
+                    <span class=n>output</span><span class=o>.</span><span class=n>add</span><span class=p>(</span><span class=n>group</span><span class=p>)</span>
+
+        <span class=k>return</span> <span class=n>output</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>root_value_for_template</span><span class=p>(</span><span class=bp>self</span><span class=p>,</span> <span class=n>template</span><span class=p>):</span>
+<span class=w>        </span><span class=sd>&quot;&quot;&quot;Returns value of root key from template.&quot;&quot;&quot;</span>
+        <span class=k>if</span> <span class=nb>isinstance</span><span class=p>(</span><span class=n>template</span><span class=p>,</span> <span class=n>StringTemplate</span><span class=p>):</span>
+            <span class=n>template</span> <span class=o>=</span> <span class=n>template</span><span class=o>.</span><span class=n>template</span>
+        <span class=n>root_templates</span> <span class=o>=</span> <span class=p>[]</span>
+        <span class=k>for</span> <span class=n>group</span> <span class=ow>in</span> <span class=n>re</span><span class=o>.</span><span class=n>findall</span><span class=p>(</span><span class=bp>self</span><span class=o>.</span><span class=n>root_key_regex</span><span class=p>,</span> <span class=n>template</span><span class=p>):</span>
+            <span class=n>root_templates</span><span class=o>.</span><span class=n>append</span><span class=p>(</span><span class=s2>&quot;{&quot;</span> <span class=o>+</span> <span class=n>group</span> <span class=o>+</span> <span class=s2>&quot;}&quot;</span><span class=p>)</span>
+
+        <span class=k>if</span> <span class=ow>not</span> <span class=n>root_templates</span><span class=p>:</span>
+            <span class=k>return</span> <span class=kc>None</span>
+
+        <span class=k>return</span> <span class=n>root_templates</span><span class=p>[</span><span class=mi>0</span><span class=p>]</span><span class=o>.</span><span class=n>format</span><span class=p>(</span><span class=o>**</span><span class=p>{</span><span class=s2>&quot;root&quot;</span><span class=p>:</span> <span class=bp>self</span><span class=o>.</span><span class=n>roots</span><span class=p>})</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>root_names_from_templates</span><span class=p>(</span><span class=bp>self</span><span class=p>,</span> <span class=n>templates</span><span class=p>):</span>
+<span class=w>        </span><span class=sd>&quot;&quot;&quot;Extract root names form anatomy templates.</span>
+
+<span class=sd>        Returns None if values in templates contain only &quot;{root}&quot;.</span>
+<span class=sd>        Empty list is returned if there is no &quot;root&quot; in templates.</span>
+<span class=sd>        Else returns all root names from templates in list.</span>
+
+<span class=sd>        RootCombinationError is raised when templates contain both root types,</span>
+<span class=sd>        basic &quot;{root}&quot; and with root name specification &quot;{root[work]}&quot;.</span>
+
+<span class=sd>        Args:</span>
+<span class=sd>            templates (dict): Anatomy templates where roots are not filled.</span>
+
+<span class=sd>        Return:</span>
+<span class=sd>            list/None: List of all root names from templates as strings when</span>
+<span class=sd>            multiroot setup is used, otherwise None is returned.</span>
+<span class=sd>        &quot;&quot;&quot;</span>
+        <span class=n>roots</span> <span class=o>=</span> <span class=nb>list</span><span class=p>(</span><span class=bp>self</span><span class=o>.</span><span class=n>_root_keys_from_templates</span><span class=p>(</span><span class=n>templates</span><span class=p>))</span>
+        <span class=c1># Return empty list if no roots found in templates</span>
+        <span class=k>if</span> <span class=ow>not</span> <span class=n>roots</span><span class=p>:</span>
+            <span class=k>return</span> <span class=n>roots</span>
+
+        <span class=c1># Raise exception when root keys have roots with and without root name.</span>
+        <span class=c1># Invalid output example: [&quot;root&quot;, &quot;root[project]&quot;, &quot;root[render]&quot;]</span>
+        <span class=k>if</span> <span class=nb>len</span><span class=p>(</span><span class=n>roots</span><span class=p>)</span> <span class=o>&gt;</span> <span class=mi>1</span> <span class=ow>and</span> <span class=s2>&quot;root&quot;</span> <span class=ow>in</span> <span class=n>roots</span><span class=p>:</span>
+            <span class=k>raise</span> <span class=n>RootCombinationError</span><span class=p>(</span><span class=n>roots</span><span class=p>)</span>
+
+        <span class=c1># Return None if &quot;root&quot; without root name in templates</span>
+        <span class=k>if</span> <span class=nb>len</span><span class=p>(</span><span class=n>roots</span><span class=p>)</span> <span class=o>==</span> <span class=mi>1</span> <span class=ow>and</span> <span class=n>roots</span><span class=p>[</span><span class=mi>0</span><span class=p>]</span> <span class=o>==</span> <span class=s2>&quot;root&quot;</span><span class=p>:</span>
+            <span class=k>return</span> <span class=kc>None</span>
+
+        <span class=n>names</span> <span class=o>=</span> <span class=nb>set</span><span class=p>()</span>
+        <span class=k>for</span> <span class=n>root</span> <span class=ow>in</span> <span class=n>roots</span><span class=p>:</span>
+            <span class=k>for</span> <span class=n>group</span> <span class=ow>in</span> <span class=n>re</span><span class=o>.</span><span class=n>findall</span><span class=p>(</span><span class=bp>self</span><span class=o>.</span><span class=n>root_name_regex</span><span class=p>,</span> <span class=n>root</span><span class=p>):</span>
+                <span class=n>names</span><span class=o>.</span><span class=n>add</span><span class=p>(</span><span class=n>group</span><span class=p>)</span>
+        <span class=k>return</span> <span class=nb>list</span><span class=p>(</span><span class=n>names</span><span class=p>)</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>fill_root</span><span class=p>(</span><span class=bp>self</span><span class=p>,</span> <span class=n>template_path</span><span class=p>):</span>
+<span class=w>        </span><span class=sd>&quot;&quot;&quot;Fill template path where is only &quot;root&quot; key unfilled.</span>
+
+<span class=sd>        Args:</span>
+<span class=sd>            template_path (str): Path with &quot;root&quot; key in.</span>
+<span class=sd>                Example path: &quot;{root}/projects/MyProject/Shot01/Lighting/...&quot;</span>
+
+<span class=sd>        Return:</span>
+<span class=sd>            str: formatted path</span>
+<span class=sd>        &quot;&quot;&quot;</span>
+        <span class=c1># NOTE does not care if there are different keys than &quot;root&quot;</span>
+        <span class=k>return</span> <span class=n>template_path</span><span class=o>.</span><span class=n>format</span><span class=p>(</span><span class=o>**</span><span class=p>{</span><span class=s2>&quot;root&quot;</span><span class=p>:</span> <span class=bp>self</span><span class=o>.</span><span class=n>roots</span><span class=p>})</span>
+
+    <span class=nd>@classmethod</span>
+    <span class=k>def</span><span class=w> </span><span class=nf>fill_root_with_path</span><span class=p>(</span><span class=bp>cls</span><span class=p>,</span> <span class=n>rootless_path</span><span class=p>,</span> <span class=n>root_path</span><span class=p>):</span>
+<span class=w>        </span><span class=sd>&quot;&quot;&quot;Fill path without filled &quot;root&quot; key with passed path.</span>
+
+<span class=sd>        This is helper to fill root with different directory path than anatomy</span>
+<span class=sd>        has defined no matter if is single or multiroot.</span>
+
+<span class=sd>        Output path is same as input path if `rootless_path` does not contain</span>
+<span class=sd>        unfilled root key.</span>
+
+<span class=sd>        Args:</span>
+<span class=sd>            rootless_path (str): Path without filled &quot;root&quot; key. Example:</span>
+<span class=sd>                &quot;{root[work]}/MyProject/...&quot;</span>
+<span class=sd>            root_path (str): What should replace root key in `rootless_path`.</span>
+
+<span class=sd>        Returns:</span>
+<span class=sd>            str: Path with filled root.</span>
+<span class=sd>        &quot;&quot;&quot;</span>
+        <span class=n>output</span> <span class=o>=</span> <span class=nb>str</span><span class=p>(</span><span class=n>rootless_path</span><span class=p>)</span>
+        <span class=k>for</span> <span class=n>group</span> <span class=ow>in</span> <span class=n>re</span><span class=o>.</span><span class=n>findall</span><span class=p>(</span><span class=bp>cls</span><span class=o>.</span><span class=n>root_key_regex</span><span class=p>,</span> <span class=n>rootless_path</span><span class=p>):</span>
+            <span class=n>replacement</span> <span class=o>=</span> <span class=s2>&quot;{&quot;</span> <span class=o>+</span> <span class=n>group</span> <span class=o>+</span> <span class=s2>&quot;}&quot;</span>
+            <span class=n>output</span> <span class=o>=</span> <span class=n>output</span><span class=o>.</span><span class=n>replace</span><span class=p>(</span><span class=n>replacement</span><span class=p>,</span> <span class=n>root_path</span><span class=p>)</span>
+
+        <span class=k>return</span> <span class=n>output</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>replace_root_with_env_key</span><span class=p>(</span><span class=bp>self</span><span class=p>,</span> <span class=n>filepath</span><span class=p>,</span> <span class=n>template</span><span class=o>=</span><span class=kc>None</span><span class=p>):</span>
+<span class=w>        </span><span class=sd>&quot;&quot;&quot;Replace root of path with environment key.</span>
+
+<span class=sd>        # Example:</span>
+<span class=sd>        ## Project with roots:</span>
+<span class=sd>        ```</span>
+<span class=sd>        {</span>
+<span class=sd>            &quot;nas&quot;: {</span>
+<span class=sd>                &quot;windows&quot;: P:/projects&quot;,</span>
+<span class=sd>                ...</span>
+<span class=sd>            }</span>
+<span class=sd>            ...</span>
+<span class=sd>        }</span>
+<span class=sd>        ```</span>
+
+<span class=sd>        ## Entered filepath</span>
+<span class=sd>        &quot;P:/projects/project/folder/task/animation_v001.ma&quot;</span>
+
+<span class=sd>        ## Entered template</span>
+<span class=sd>        &quot;&lt;{}&gt;&quot;</span>
+
+<span class=sd>        ## Output</span>
+<span class=sd>        &quot;&lt;AYON_PROJECT_ROOT_NAS&gt;/project/folder/task/animation_v001.ma&quot;</span>
+
+<span class=sd>        Args:</span>
+<span class=sd>            filepath (str): Full file path where root should be replaced.</span>
+<span class=sd>            template (str): Optional template for environment key. Must</span>
+<span class=sd>                have one index format key.</span>
+<span class=sd>                Default value if not entered: &quot;${}&quot;</span>
+
+<span class=sd>        Returns:</span>
+<span class=sd>            str: Path where root is replaced with environment root key.</span>
+
+<span class=sd>        Raise:</span>
+<span class=sd>            ValueError: When project&#39;s roots were not found in entered path.</span>
+<span class=sd>        &quot;&quot;&quot;</span>
+        <span class=n>success</span><span class=p>,</span> <span class=n>rootless_path</span> <span class=o>=</span> <span class=bp>self</span><span class=o>.</span><span class=n>find_root_template_from_path</span><span class=p>(</span><span class=n>filepath</span><span class=p>)</span>
+        <span class=k>if</span> <span class=ow>not</span> <span class=n>success</span><span class=p>:</span>
+            <span class=k>raise</span> <span class=ne>ValueError</span><span class=p>(</span>
+                <span class=s2>&quot;</span><span class=si>{}</span><span class=s2>: Project&#39;s roots were not found in path: </span><span class=si>{}</span><span class=s2>&quot;</span><span class=o>.</span><span class=n>format</span><span class=p>(</span>
+                    <span class=bp>self</span><span class=o>.</span><span class=n>project_name</span><span class=p>,</span> <span class=n>filepath</span>
+                <span class=p>)</span>
+            <span class=p>)</span>
+
+        <span class=n>data</span> <span class=o>=</span> <span class=bp>self</span><span class=o>.</span><span class=n>root_environmets_fill_data</span><span class=p>(</span><span class=n>template</span><span class=p>)</span>
+        <span class=k>return</span> <span class=n>rootless_path</span><span class=o>.</span><span class=n>format</span><span class=p>(</span><span class=o>**</span><span class=n>data</span><span class=p>)</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>_project_entity_to_anatomy_data</span><span class=p>(</span><span class=bp>self</span><span class=p>,</span> <span class=n>project_entity</span><span class=p>):</span>
+<span class=w>        </span><span class=sd>&quot;&quot;&quot;Convert project document to anatomy data.</span>
+
+<span class=sd>        Probably should fill missing keys and values.</span>
+<span class=sd>        &quot;&quot;&quot;</span>
+
+        <span class=n>output</span> <span class=o>=</span> <span class=n>copy</span><span class=o>.</span><span class=n>deepcopy</span><span class=p>(</span><span class=n>project_entity</span><span class=p>[</span><span class=s2>&quot;config&quot;</span><span class=p>])</span>
+        <span class=c1># TODO remove AYON convertion</span>
+        <span class=n>task_types</span> <span class=o>=</span> <span class=n>copy</span><span class=o>.</span><span class=n>deepcopy</span><span class=p>(</span><span class=n>project_entity</span><span class=p>[</span><span class=s2>&quot;taskTypes&quot;</span><span class=p>])</span>
+        <span class=n>new_task_types</span> <span class=o>=</span> <span class=p>{}</span>
+        <span class=k>for</span> <span class=n>task_type</span> <span class=ow>in</span> <span class=n>task_types</span><span class=p>:</span>
+            <span class=n>name</span> <span class=o>=</span> <span class=n>task_type</span><span class=p>[</span><span class=s2>&quot;name&quot;</span><span class=p>]</span>
+            <span class=n>new_task_types</span><span class=p>[</span><span class=n>name</span><span class=p>]</span> <span class=o>=</span> <span class=n>task_type</span>
+        <span class=n>output</span><span class=p>[</span><span class=s2>&quot;tasks&quot;</span><span class=p>]</span> <span class=o>=</span> <span class=n>new_task_types</span>
+        <span class=n>output</span><span class=p>[</span><span class=s2>&quot;attributes&quot;</span><span class=p>]</span> <span class=o>=</span> <span class=n>copy</span><span class=o>.</span><span class=n>deepcopy</span><span class=p>(</span><span class=n>project_entity</span><span class=p>[</span><span class=s2>&quot;attrib&quot;</span><span class=p>])</span>
+
+        <span class=k>return</span> <span class=n>output</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>_apply_local_settings_on_anatomy_data</span><span class=p>(</span>
+        <span class=bp>self</span><span class=p>,</span> <span class=n>anatomy_data</span><span class=p>,</span> <span class=n>root_overrides</span>
+    <span class=p>):</span>
+<span class=w>        </span><span class=sd>&quot;&quot;&quot;Apply local settings on anatomy data.</span>
+
+<span class=sd>        ATM local settings can modify project roots. Project name is required</span>
+<span class=sd>        as local settings have data stored data by project&#39;s name.</span>
+
+<span class=sd>        Local settings override root values in this order:</span>
+<span class=sd>        1.) Check if local settings contain overrides for default project and</span>
+<span class=sd>            apply it&#39;s values on roots if there are any.</span>
+<span class=sd>        2.) If passed `project_name` is not None then check project specific</span>
+<span class=sd>            overrides in local settings for the project and apply it&#39;s value on</span>
+<span class=sd>            roots if there are any.</span>
+
+<span class=sd>        NOTE: Root values of default project from local settings are always</span>
+<span class=sd>        applied if are set.</span>
+
+<span class=sd>        Args:</span>
+<span class=sd>            anatomy_data (dict): Data for anatomy.</span>
+<span class=sd>            root_overrides (dict): Data of local settings.</span>
+<span class=sd>        &quot;&quot;&quot;</span>
+
+        <span class=c1># Skip processing if roots for current active site are not available in</span>
+        <span class=c1>#   local settings</span>
+        <span class=k>if</span> <span class=ow>not</span> <span class=n>root_overrides</span><span class=p>:</span>
+            <span class=k>return</span>
+
+        <span class=n>current_platform</span> <span class=o>=</span> <span class=n>platform</span><span class=o>.</span><span class=n>system</span><span class=p>()</span><span class=o>.</span><span class=n>lower</span><span class=p>()</span>
+
+        <span class=n>root_data</span> <span class=o>=</span> <span class=n>anatomy_data</span><span class=p>[</span><span class=s2>&quot;roots&quot;</span><span class=p>]</span>
+        <span class=k>for</span> <span class=n>root_name</span><span class=p>,</span> <span class=n>path</span> <span class=ow>in</span> <span class=n>root_overrides</span><span class=o>.</span><span class=n>items</span><span class=p>():</span>
+            <span class=k>if</span> <span class=n>root_name</span> <span class=ow>not</span> <span class=ow>in</span> <span class=n>root_data</span><span class=p>:</span>
+                <span class=k>continue</span>
+            <span class=n>anatomy_data</span><span class=p>[</span><span class=s2>&quot;roots&quot;</span><span class=p>][</span><span class=n>root_name</span><span class=p>][</span><span class=n>current_platform</span><span class=p>]</span> <span class=o>=</span> <span class=p>(</span>
+                <span class=n>path</span>
+            <span class=p>)</span>
+</code></pre></div></td></tr></table></div> </details> <div class="doc doc-children"> <div class="doc doc-object doc-attribute"> <h3 id=client.ayon_core.pipeline.anatomy.anatomy.BaseAnatomy.project_code class="doc doc-heading"> <code class="highlight language-python"><span class=n>project_code</span></code> <span class="doc doc-labels"> <small class="doc doc-label doc-label-property"><code>property</code></small> </span> </h3> <div class="doc doc-contents "> <p>Project name for which is anatomy prepared.</p> <p><span class=doc-section-title>Returns:</span></p> <table> <thead> <tr> <th>Name</th> <th>Type</th> <th>Description</th> </tr> </thead> <tbody> <tr class=doc-section-item> <td><code>str</code></td> <td> </td> <td> <div class=doc-md-description> <p>Project code.</p> </div> </td> </tr> </tbody> </table> </div> </div> <div class="doc doc-object doc-attribute"> <h3 id=client.ayon_core.pipeline.anatomy.anatomy.BaseAnatomy.project_name class="doc doc-heading"> <code class="highlight language-python"><span class=n>project_name</span></code> <span class="doc doc-labels"> <small class="doc doc-label doc-label-property"><code>property</code></small> </span> </h3> <div class="doc doc-contents "> <p>Project name for which is anatomy prepared.</p> <p><span class=doc-section-title>Returns:</span></p> <table> <thead> <tr> <th>Name</th> <th>Type</th> <th>Description</th> </tr> </thead> <tbody> <tr class=doc-section-item> <td><code>str</code></td> <td> </td> <td> <div class=doc-md-description> <p>Project name.</p> </div> </td> </tr> </tbody> </table> </div> </div> <div class="doc doc-object doc-attribute"> <h3 id=client.ayon_core.pipeline.anatomy.anatomy.BaseAnatomy.roots class="doc doc-heading"> <code class="highlight language-python"><span class=n>roots</span></code> <span class="doc doc-labels"> <small class="doc doc-label doc-label-property"><code>property</code></small> </span> </h3> <div class="doc doc-contents "> <p>Wrap <code>roots</code> property of Anatomy's <code>roots_obj</code>.</p> </div> </div> <div class="doc doc-object doc-attribute"> <h3 id=client.ayon_core.pipeline.anatomy.anatomy.BaseAnatomy.roots_obj class="doc doc-heading"> <code class="highlight language-python"><span class=n>roots_obj</span></code> <span class="doc doc-labels"> <small class="doc doc-label doc-label-property"><code>property</code></small> </span> </h3> <div class="doc doc-contents "> <p>Roots wrapper object.</p> <p><span class=doc-section-title>Returns:</span></p> <table> <thead> <tr> <th>Name</th> <th>Type</th> <th>Description</th> </tr> </thead> <tbody> <tr class=doc-section-item> <td><code>AnatomyRoots</code></td> <td> </td> <td> <div class=doc-md-description> <p>Roots wrapper.</p> </div> </td> </tr> </tbody> </table> </div> </div> <div class="doc doc-object doc-attribute"> <h3 id=client.ayon_core.pipeline.anatomy.anatomy.BaseAnatomy.templates class="doc doc-heading"> <code class="highlight language-python"><span class=n>templates</span></code> <span class="doc doc-labels"> <small class="doc doc-label doc-label-property"><code>property</code></small> </span> </h3> <div class="doc doc-contents "> <p>Wrap property <code>templates</code> of Anatomy's AnatomyTemplates instance.</p> </div> </div> <div class="doc doc-object doc-attribute"> <h3 id=client.ayon_core.pipeline.anatomy.anatomy.BaseAnatomy.templates_obj class="doc doc-heading"> <code class="highlight language-python"><span class=n>templates_obj</span></code> <span class="doc doc-labels"> <small class="doc doc-label doc-label-property"><code>property</code></small> </span> </h3> <div class="doc doc-contents "> <p>Return <code>AnatomyTemplates</code> object of current Anatomy instance.</p> </div> </div> <div class="doc doc-object doc-function"> <h3 id=client.ayon_core.pipeline.anatomy.anatomy.BaseAnatomy._apply_local_settings_on_anatomy_data class="doc doc-heading"> <code class="highlight language-python"><span class=n>_apply_local_settings_on_anatomy_data</span><span class=p>(</span><span class=n>anatomy_data</span><span class=p>,</span> <span class=n>root_overrides</span><span class=p>)</span></code> </h3> <div class="doc doc-contents "> <p>Apply local settings on anatomy data.</p> <p>ATM local settings can modify project roots. Project name is required as local settings have data stored data by project's name.</p> <p>Local settings override root values in this order: 1.) Check if local settings contain overrides for default project and apply it's values on roots if there are any. 2.) If passed <code>project_name</code> is not None then check project specific overrides in local settings for the project and apply it's value on roots if there are any.</p> <p>NOTE: Root values of default project from local settings are always applied if are set.</p> <p><span class=doc-section-title>Parameters:</span></p> <table> <thead> <tr> <th>Name</th> <th>Type</th> <th>Description</th> <th>Default</th> </tr> </thead> <tbody> <tr class=doc-section-item> <td> <code>anatomy_data</code> </td> <td> <code><span title=dict>dict</span></code> </td> <td> <div class=doc-md-description> <p>Data for anatomy.</p> </div> </td> <td> <em>required</em> </td> </tr> <tr class=doc-section-item> <td> <code>root_overrides</code> </td> <td> <code><span title=dict>dict</span></code> </td> <td> <div class=doc-md-description> <p>Data of local settings.</p> </div> </td> <td> <em>required</em> </td> </tr> </tbody> </table> <details class=quote> <summary>Source code in <code>client/ayon_core/pipeline/anatomy/anatomy.py</code></summary> <div class=highlight><table class=highlighttable><tr><td class=linenos><div class=linenodiv><pre><span></span><span class=normal>366</span>
+<span class=normal>367</span>
+<span class=normal>368</span>
+<span class=normal>369</span>
+<span class=normal>370</span>
+<span class=normal>371</span>
+<span class=normal>372</span>
+<span class=normal>373</span>
+<span class=normal>374</span>
+<span class=normal>375</span>
+<span class=normal>376</span>
+<span class=normal>377</span>
+<span class=normal>378</span>
+<span class=normal>379</span>
+<span class=normal>380</span>
+<span class=normal>381</span>
+<span class=normal>382</span>
+<span class=normal>383</span>
+<span class=normal>384</span>
+<span class=normal>385</span>
+<span class=normal>386</span>
+<span class=normal>387</span>
+<span class=normal>388</span>
+<span class=normal>389</span>
+<span class=normal>390</span>
+<span class=normal>391</span>
+<span class=normal>392</span>
+<span class=normal>393</span>
+<span class=normal>394</span>
+<span class=normal>395</span>
+<span class=normal>396</span>
+<span class=normal>397</span>
+<span class=normal>398</span>
+<span class=normal>399</span>
+<span class=normal>400</span>
+<span class=normal>401</span>
+<span class=normal>402</span></pre></div></td><td class=code><div><pre><span></span><code><span class=k>def</span><span class=w> </span><span class=nf>_apply_local_settings_on_anatomy_data</span><span class=p>(</span>
+    <span class=bp>self</span><span class=p>,</span> <span class=n>anatomy_data</span><span class=p>,</span> <span class=n>root_overrides</span>
+<span class=p>):</span>
+<span class=w>    </span><span class=sd>&quot;&quot;&quot;Apply local settings on anatomy data.</span>
+
+<span class=sd>    ATM local settings can modify project roots. Project name is required</span>
+<span class=sd>    as local settings have data stored data by project&#39;s name.</span>
+
+<span class=sd>    Local settings override root values in this order:</span>
+<span class=sd>    1.) Check if local settings contain overrides for default project and</span>
+<span class=sd>        apply it&#39;s values on roots if there are any.</span>
+<span class=sd>    2.) If passed `project_name` is not None then check project specific</span>
+<span class=sd>        overrides in local settings for the project and apply it&#39;s value on</span>
+<span class=sd>        roots if there are any.</span>
+
+<span class=sd>    NOTE: Root values of default project from local settings are always</span>
+<span class=sd>    applied if are set.</span>
+
+<span class=sd>    Args:</span>
+<span class=sd>        anatomy_data (dict): Data for anatomy.</span>
+<span class=sd>        root_overrides (dict): Data of local settings.</span>
+<span class=sd>    &quot;&quot;&quot;</span>
+
+    <span class=c1># Skip processing if roots for current active site are not available in</span>
+    <span class=c1>#   local settings</span>
+    <span class=k>if</span> <span class=ow>not</span> <span class=n>root_overrides</span><span class=p>:</span>
+        <span class=k>return</span>
+
+    <span class=n>current_platform</span> <span class=o>=</span> <span class=n>platform</span><span class=o>.</span><span class=n>system</span><span class=p>()</span><span class=o>.</span><span class=n>lower</span><span class=p>()</span>
+
+    <span class=n>root_data</span> <span class=o>=</span> <span class=n>anatomy_data</span><span class=p>[</span><span class=s2>&quot;roots&quot;</span><span class=p>]</span>
+    <span class=k>for</span> <span class=n>root_name</span><span class=p>,</span> <span class=n>path</span> <span class=ow>in</span> <span class=n>root_overrides</span><span class=o>.</span><span class=n>items</span><span class=p>():</span>
+        <span class=k>if</span> <span class=n>root_name</span> <span class=ow>not</span> <span class=ow>in</span> <span class=n>root_data</span><span class=p>:</span>
+            <span class=k>continue</span>
+        <span class=n>anatomy_data</span><span class=p>[</span><span class=s2>&quot;roots&quot;</span><span class=p>][</span><span class=n>root_name</span><span class=p>][</span><span class=n>current_platform</span><span class=p>]</span> <span class=o>=</span> <span class=p>(</span>
+            <span class=n>path</span>
+        <span class=p>)</span>
+</code></pre></div></td></tr></table></div> </details> </div> </div> <div class="doc doc-object doc-function"> <h3 id=client.ayon_core.pipeline.anatomy.anatomy.BaseAnatomy._prepare_anatomy_data class="doc doc-heading"> <code class="highlight language-python"><span class=n>_prepare_anatomy_data</span><span class=p>(</span><span class=n>project_entity</span><span class=p>,</span> <span class=n>root_overrides</span><span class=p>)</span></code> </h3> <div class="doc doc-contents "> <p>Prepare anatomy data for further processing.</p> <p>Method added to replace <code>{task}</code> with <code>{task[name]}</code> in templates.</p> <details class=quote> <summary>Source code in <code>client/ayon_core/pipeline/anatomy/anatomy.py</code></summary> <div class=highlight><table class=highlighttable><tr><td class=linenos><div class=linenodiv><pre><span></span><span class=normal>82</span>
+<span class=normal>83</span>
+<span class=normal>84</span>
+<span class=normal>85</span>
+<span class=normal>86</span>
+<span class=normal>87</span>
+<span class=normal>88</span>
+<span class=normal>89</span>
+<span class=normal>90</span>
+<span class=normal>91</span>
+<span class=normal>92</span>
+<span class=normal>93</span>
+<span class=normal>94</span>
+<span class=normal>95</span></pre></div></td><td class=code><div><pre><span></span><code><span class=k>def</span><span class=w> </span><span class=nf>_prepare_anatomy_data</span><span class=p>(</span><span class=bp>self</span><span class=p>,</span> <span class=n>project_entity</span><span class=p>,</span> <span class=n>root_overrides</span><span class=p>):</span>
+<span class=w>    </span><span class=sd>&quot;&quot;&quot;Prepare anatomy data for further processing.</span>
+
+<span class=sd>    Method added to replace `{task}` with `{task[name]}` in templates.</span>
+<span class=sd>    &quot;&quot;&quot;</span>
+
+    <span class=n>anatomy_data</span> <span class=o>=</span> <span class=bp>self</span><span class=o>.</span><span class=n>_project_entity_to_anatomy_data</span><span class=p>(</span><span class=n>project_entity</span><span class=p>)</span>
+
+    <span class=bp>self</span><span class=o>.</span><span class=n>_apply_local_settings_on_anatomy_data</span><span class=p>(</span>
+        <span class=n>anatomy_data</span><span class=p>,</span>
+        <span class=n>root_overrides</span>
+    <span class=p>)</span>
+
+    <span class=k>return</span> <span class=n>anatomy_data</span>
+</code></pre></div></td></tr></table></div> </details> </div> </div> <div class="doc doc-object doc-function"> <h3 id=client.ayon_core.pipeline.anatomy.anatomy.BaseAnatomy._project_entity_to_anatomy_data class="doc doc-heading"> <code class="highlight language-python"><span class=n>_project_entity_to_anatomy_data</span><span class=p>(</span><span class=n>project_entity</span><span class=p>)</span></code> </h3> <div class="doc doc-contents "> <p>Convert project document to anatomy data.</p> <p>Probably should fill missing keys and values.</p> <details class=quote> <summary>Source code in <code>client/ayon_core/pipeline/anatomy/anatomy.py</code></summary> <div class=highlight><table class=highlighttable><tr><td class=linenos><div class=linenodiv><pre><span></span><span class=normal>348</span>
+<span class=normal>349</span>
+<span class=normal>350</span>
+<span class=normal>351</span>
+<span class=normal>352</span>
+<span class=normal>353</span>
+<span class=normal>354</span>
+<span class=normal>355</span>
+<span class=normal>356</span>
+<span class=normal>357</span>
+<span class=normal>358</span>
+<span class=normal>359</span>
+<span class=normal>360</span>
+<span class=normal>361</span>
+<span class=normal>362</span>
+<span class=normal>363</span>
+<span class=normal>364</span></pre></div></td><td class=code><div><pre><span></span><code><span class=k>def</span><span class=w> </span><span class=nf>_project_entity_to_anatomy_data</span><span class=p>(</span><span class=bp>self</span><span class=p>,</span> <span class=n>project_entity</span><span class=p>):</span>
+<span class=w>    </span><span class=sd>&quot;&quot;&quot;Convert project document to anatomy data.</span>
+
+<span class=sd>    Probably should fill missing keys and values.</span>
+<span class=sd>    &quot;&quot;&quot;</span>
+
+    <span class=n>output</span> <span class=o>=</span> <span class=n>copy</span><span class=o>.</span><span class=n>deepcopy</span><span class=p>(</span><span class=n>project_entity</span><span class=p>[</span><span class=s2>&quot;config&quot;</span><span class=p>])</span>
+    <span class=c1># TODO remove AYON convertion</span>
+    <span class=n>task_types</span> <span class=o>=</span> <span class=n>copy</span><span class=o>.</span><span class=n>deepcopy</span><span class=p>(</span><span class=n>project_entity</span><span class=p>[</span><span class=s2>&quot;taskTypes&quot;</span><span class=p>])</span>
+    <span class=n>new_task_types</span> <span class=o>=</span> <span class=p>{}</span>
+    <span class=k>for</span> <span class=n>task_type</span> <span class=ow>in</span> <span class=n>task_types</span><span class=p>:</span>
+        <span class=n>name</span> <span class=o>=</span> <span class=n>task_type</span><span class=p>[</span><span class=s2>&quot;name&quot;</span><span class=p>]</span>
+        <span class=n>new_task_types</span><span class=p>[</span><span class=n>name</span><span class=p>]</span> <span class=o>=</span> <span class=n>task_type</span>
+    <span class=n>output</span><span class=p>[</span><span class=s2>&quot;tasks&quot;</span><span class=p>]</span> <span class=o>=</span> <span class=n>new_task_types</span>
+    <span class=n>output</span><span class=p>[</span><span class=s2>&quot;attributes&quot;</span><span class=p>]</span> <span class=o>=</span> <span class=n>copy</span><span class=o>.</span><span class=n>deepcopy</span><span class=p>(</span><span class=n>project_entity</span><span class=p>[</span><span class=s2>&quot;attrib&quot;</span><span class=p>])</span>
+
+    <span class=k>return</span> <span class=n>output</span>
+</code></pre></div></td></tr></table></div> </details> </div> </div> <div class="doc doc-object doc-function"> <h3 id=client.ayon_core.pipeline.anatomy.anatomy.BaseAnatomy._root_keys_from_templates class="doc doc-heading"> <code class="highlight language-python"><span class=n>_root_keys_from_templates</span><span class=p>(</span><span class=n>data</span><span class=p>)</span></code> </h3> <div class="doc doc-contents "> <p>Extract root key from templates in data.</p> <p><span class=doc-section-title>Parameters:</span></p> <table> <thead> <tr> <th>Name</th> <th>Type</th> <th>Description</th> <th>Default</th> </tr> </thead> <tbody> <tr class=doc-section-item> <td> <code>data</code> </td> <td> <code><span title=dict>dict</span></code> </td> <td> <div class=doc-md-description> <p>Data that may contain templates as string.</p> </div> </td> <td> <em>required</em> </td> </tr> </tbody> </table> <details class=return open> <summary>Return</summary> <p>set: Set of all root names from templates as strings.</p> </details> <p>Output example: <code>{"root[work]", "root[publish]"}</code></p> <details class=quote> <summary>Source code in <code>client/ayon_core/pipeline/anatomy/anatomy.py</code></summary> <div class=highlight><table class=highlighttable><tr><td class=linenos><div class=linenodiv><pre><span></span><span class=normal>183</span>
+<span class=normal>184</span>
+<span class=normal>185</span>
+<span class=normal>186</span>
+<span class=normal>187</span>
+<span class=normal>188</span>
+<span class=normal>189</span>
+<span class=normal>190</span>
+<span class=normal>191</span>
+<span class=normal>192</span>
+<span class=normal>193</span>
+<span class=normal>194</span>
+<span class=normal>195</span>
+<span class=normal>196</span>
+<span class=normal>197</span>
+<span class=normal>198</span>
+<span class=normal>199</span>
+<span class=normal>200</span>
+<span class=normal>201</span>
+<span class=normal>202</span>
+<span class=normal>203</span>
+<span class=normal>204</span>
+<span class=normal>205</span>
+<span class=normal>206</span>
+<span class=normal>207</span>
+<span class=normal>208</span>
+<span class=normal>209</span>
+<span class=normal>210</span>
+<span class=normal>211</span></pre></div></td><td class=code><div><pre><span></span><code><span class=k>def</span><span class=w> </span><span class=nf>_root_keys_from_templates</span><span class=p>(</span><span class=bp>self</span><span class=p>,</span> <span class=n>data</span><span class=p>):</span>
+<span class=w>    </span><span class=sd>&quot;&quot;&quot;Extract root key from templates in data.</span>
+
+<span class=sd>    Args:</span>
+<span class=sd>        data (dict): Data that may contain templates as string.</span>
+
+<span class=sd>    Return:</span>
+<span class=sd>        set: Set of all root names from templates as strings.</span>
+
+<span class=sd>    Output example: `{&quot;root[work]&quot;, &quot;root[publish]&quot;}`</span>
+<span class=sd>    &quot;&quot;&quot;</span>
+
+    <span class=n>output</span> <span class=o>=</span> <span class=nb>set</span><span class=p>()</span>
+    <span class=n>keys_queue</span> <span class=o>=</span> <span class=n>collections</span><span class=o>.</span><span class=n>deque</span><span class=p>()</span>
+    <span class=n>keys_queue</span><span class=o>.</span><span class=n>append</span><span class=p>(</span><span class=n>data</span><span class=p>)</span>
+    <span class=k>while</span> <span class=n>keys_queue</span><span class=p>:</span>
+        <span class=n>queue_data</span> <span class=o>=</span> <span class=n>keys_queue</span><span class=o>.</span><span class=n>popleft</span><span class=p>()</span>
+        <span class=k>if</span> <span class=nb>isinstance</span><span class=p>(</span><span class=n>queue_data</span><span class=p>,</span> <span class=n>StringTemplate</span><span class=p>):</span>
+            <span class=n>queue_data</span> <span class=o>=</span> <span class=n>queue_data</span><span class=o>.</span><span class=n>template</span>
+
+        <span class=k>if</span> <span class=nb>isinstance</span><span class=p>(</span><span class=n>queue_data</span><span class=p>,</span> <span class=nb>dict</span><span class=p>):</span>
+            <span class=k>for</span> <span class=n>value</span> <span class=ow>in</span> <span class=n>queue_data</span><span class=o>.</span><span class=n>values</span><span class=p>():</span>
+                <span class=n>keys_queue</span><span class=o>.</span><span class=n>append</span><span class=p>(</span><span class=n>value</span><span class=p>)</span>
+
+        <span class=k>elif</span> <span class=nb>isinstance</span><span class=p>(</span><span class=n>queue_data</span><span class=p>,</span> <span class=nb>str</span><span class=p>):</span>
+            <span class=k>for</span> <span class=n>group</span> <span class=ow>in</span> <span class=n>re</span><span class=o>.</span><span class=n>findall</span><span class=p>(</span><span class=bp>self</span><span class=o>.</span><span class=n>root_key_regex</span><span class=p>,</span> <span class=n>queue_data</span><span class=p>):</span>
+                <span class=n>output</span><span class=o>.</span><span class=n>add</span><span class=p>(</span><span class=n>group</span><span class=p>)</span>
+
+    <span class=k>return</span> <span class=n>output</span>
+</code></pre></div></td></tr></table></div> </details> </div> </div> <div class="doc doc-object doc-function"> <h3 id=client.ayon_core.pipeline.anatomy.anatomy.BaseAnatomy.all_root_paths class="doc doc-heading"> <code class="highlight language-python"><span class=n>all_root_paths</span><span class=p>()</span></code> </h3> <div class="doc doc-contents "> <p>Wrapper for AnatomyRoots <code>all_root_paths</code>.</p> <details class=quote> <summary>Source code in <code>client/ayon_core/pipeline/anatomy/anatomy.py</code></summary> <div class=highlight><table class=highlighttable><tr><td class=linenos><div class=linenodiv><pre><span></span><span class=normal>171</span>
+<span class=normal>172</span>
+<span class=normal>173</span></pre></div></td><td class=code><div><pre><span></span><code><span class=k>def</span><span class=w> </span><span class=nf>all_root_paths</span><span class=p>(</span><span class=bp>self</span><span class=p>):</span>
+<span class=w>    </span><span class=sd>&quot;&quot;&quot;Wrapper for AnatomyRoots `all_root_paths`.&quot;&quot;&quot;</span>
+    <span class=k>return</span> <span class=bp>self</span><span class=o>.</span><span class=n>roots_obj</span><span class=o>.</span><span class=n>all_root_paths</span><span class=p>()</span>
+</code></pre></div></td></tr></table></div> </details> </div> </div> <div class="doc doc-object doc-function"> <h3 id=client.ayon_core.pipeline.anatomy.anatomy.BaseAnatomy.fill_root class="doc doc-heading"> <code class="highlight language-python"><span class=n>fill_root</span><span class=p>(</span><span class=n>template_path</span><span class=p>)</span></code> </h3> <div class="doc doc-contents "> <p>Fill template path where is only "root" key unfilled.</p> <p><span class=doc-section-title>Parameters:</span></p> <table> <thead> <tr> <th>Name</th> <th>Type</th> <th>Description</th> <th>Default</th> </tr> </thead> <tbody> <tr class=doc-section-item> <td> <code>template_path</code> </td> <td> <code><span title=str>str</span></code> </td> <td> <div class=doc-md-description> <p>Path with "root" key in. Example path: "{root}/projects/MyProject/Shot01/Lighting/..."</p> </div> </td> <td> <em>required</em> </td> </tr> </tbody> </table> <details class=return open> <summary>Return</summary> <p>str: formatted path</p> </details> <details class=quote> <summary>Source code in <code>client/ayon_core/pipeline/anatomy/anatomy.py</code></summary> <div class=highlight><table class=highlighttable><tr><td class=linenos><div class=linenodiv><pre><span></span><span class=normal>263</span>
+<span class=normal>264</span>
+<span class=normal>265</span>
+<span class=normal>266</span>
+<span class=normal>267</span>
+<span class=normal>268</span>
+<span class=normal>269</span>
+<span class=normal>270</span>
+<span class=normal>271</span>
+<span class=normal>272</span>
+<span class=normal>273</span>
+<span class=normal>274</span></pre></div></td><td class=code><div><pre><span></span><code><span class=k>def</span><span class=w> </span><span class=nf>fill_root</span><span class=p>(</span><span class=bp>self</span><span class=p>,</span> <span class=n>template_path</span><span class=p>):</span>
+<span class=w>    </span><span class=sd>&quot;&quot;&quot;Fill template path where is only &quot;root&quot; key unfilled.</span>
+
+<span class=sd>    Args:</span>
+<span class=sd>        template_path (str): Path with &quot;root&quot; key in.</span>
+<span class=sd>            Example path: &quot;{root}/projects/MyProject/Shot01/Lighting/...&quot;</span>
+
+<span class=sd>    Return:</span>
+<span class=sd>        str: formatted path</span>
+<span class=sd>    &quot;&quot;&quot;</span>
+    <span class=c1># NOTE does not care if there are different keys than &quot;root&quot;</span>
+    <span class=k>return</span> <span class=n>template_path</span><span class=o>.</span><span class=n>format</span><span class=p>(</span><span class=o>**</span><span class=p>{</span><span class=s2>&quot;root&quot;</span><span class=p>:</span> <span class=bp>self</span><span class=o>.</span><span class=n>roots</span><span class=p>})</span>
+</code></pre></div></td></tr></table></div> </details> </div> </div> <div class="doc doc-object doc-function"> <h3 id=client.ayon_core.pipeline.anatomy.anatomy.BaseAnatomy.fill_root_with_path class="doc doc-heading"> <code class="highlight language-python"><span class=n>fill_root_with_path</span><span class=p>(</span><span class=n>rootless_path</span><span class=p>,</span> <span class=n>root_path</span><span class=p>)</span></code> <span class="doc doc-labels"> <small class="doc doc-label doc-label-classmethod"><code>classmethod</code></small> </span> </h3> <div class="doc doc-contents "> <p>Fill path without filled "root" key with passed path.</p> <p>This is helper to fill root with different directory path than anatomy has defined no matter if is single or multiroot.</p> <p>Output path is same as input path if <code>rootless_path</code> does not contain unfilled root key.</p> <p><span class=doc-section-title>Parameters:</span></p> <table> <thead> <tr> <th>Name</th> <th>Type</th> <th>Description</th> <th>Default</th> </tr> </thead> <tbody> <tr class=doc-section-item> <td> <code>rootless_path</code> </td> <td> <code><span title=str>str</span></code> </td> <td> <div class=doc-md-description> <p>Path without filled "root" key. Example: "{root[work]}/MyProject/..."</p> </div> </td> <td> <em>required</em> </td> </tr> <tr class=doc-section-item> <td> <code>root_path</code> </td> <td> <code><span title=str>str</span></code> </td> <td> <div class=doc-md-description> <p>What should replace root key in <code>rootless_path</code>.</p> </div> </td> <td> <em>required</em> </td> </tr> </tbody> </table> <p><span class=doc-section-title>Returns:</span></p> <table> <thead> <tr> <th>Name</th> <th>Type</th> <th>Description</th> </tr> </thead> <tbody> <tr class=doc-section-item> <td><code>str</code></td> <td> </td> <td> <div class=doc-md-description> <p>Path with filled root.</p> </div> </td> </tr> </tbody> </table> <details class=quote> <summary>Source code in <code>client/ayon_core/pipeline/anatomy/anatomy.py</code></summary> <div class=highlight><table class=highlighttable><tr><td class=linenos><div class=linenodiv><pre><span></span><span class=normal>276</span>
+<span class=normal>277</span>
+<span class=normal>278</span>
+<span class=normal>279</span>
+<span class=normal>280</span>
+<span class=normal>281</span>
+<span class=normal>282</span>
+<span class=normal>283</span>
+<span class=normal>284</span>
+<span class=normal>285</span>
+<span class=normal>286</span>
+<span class=normal>287</span>
+<span class=normal>288</span>
+<span class=normal>289</span>
+<span class=normal>290</span>
+<span class=normal>291</span>
+<span class=normal>292</span>
+<span class=normal>293</span>
+<span class=normal>294</span>
+<span class=normal>295</span>
+<span class=normal>296</span>
+<span class=normal>297</span>
+<span class=normal>298</span>
+<span class=normal>299</span></pre></div></td><td class=code><div><pre><span></span><code><span class=nd>@classmethod</span>
+<span class=k>def</span><span class=w> </span><span class=nf>fill_root_with_path</span><span class=p>(</span><span class=bp>cls</span><span class=p>,</span> <span class=n>rootless_path</span><span class=p>,</span> <span class=n>root_path</span><span class=p>):</span>
+<span class=w>    </span><span class=sd>&quot;&quot;&quot;Fill path without filled &quot;root&quot; key with passed path.</span>
+
+<span class=sd>    This is helper to fill root with different directory path than anatomy</span>
+<span class=sd>    has defined no matter if is single or multiroot.</span>
+
+<span class=sd>    Output path is same as input path if `rootless_path` does not contain</span>
+<span class=sd>    unfilled root key.</span>
+
+<span class=sd>    Args:</span>
+<span class=sd>        rootless_path (str): Path without filled &quot;root&quot; key. Example:</span>
+<span class=sd>            &quot;{root[work]}/MyProject/...&quot;</span>
+<span class=sd>        root_path (str): What should replace root key in `rootless_path`.</span>
+
+<span class=sd>    Returns:</span>
+<span class=sd>        str: Path with filled root.</span>
+<span class=sd>    &quot;&quot;&quot;</span>
+    <span class=n>output</span> <span class=o>=</span> <span class=nb>str</span><span class=p>(</span><span class=n>rootless_path</span><span class=p>)</span>
+    <span class=k>for</span> <span class=n>group</span> <span class=ow>in</span> <span class=n>re</span><span class=o>.</span><span class=n>findall</span><span class=p>(</span><span class=bp>cls</span><span class=o>.</span><span class=n>root_key_regex</span><span class=p>,</span> <span class=n>rootless_path</span><span class=p>):</span>
+        <span class=n>replacement</span> <span class=o>=</span> <span class=s2>&quot;{&quot;</span> <span class=o>+</span> <span class=n>group</span> <span class=o>+</span> <span class=s2>&quot;}&quot;</span>
+        <span class=n>output</span> <span class=o>=</span> <span class=n>output</span><span class=o>.</span><span class=n>replace</span><span class=p>(</span><span class=n>replacement</span><span class=p>,</span> <span class=n>root_path</span><span class=p>)</span>
+
+    <span class=k>return</span> <span class=n>output</span>
+</code></pre></div></td></tr></table></div> </details> </div> </div> <div class="doc doc-object doc-function"> <h3 id=client.ayon_core.pipeline.anatomy.anatomy.BaseAnatomy.find_root_template_from_path class="doc doc-heading"> <code class="highlight language-python"><span class=n>find_root_template_from_path</span><span class=p>(</span><span class=o>*</span><span class=n>args</span><span class=p>,</span> <span class=o>**</span><span class=n>kwargs</span><span class=p>)</span></code> </h3> <div class="doc doc-contents "> <p>Wrapper for AnatomyRoots <code>find_root_template_from_path</code>.</p> <details class=quote> <summary>Source code in <code>client/ayon_core/pipeline/anatomy/anatomy.py</code></summary> <div class=highlight><table class=highlighttable><tr><td class=linenos><div class=linenodiv><pre><span></span><span class=normal>163</span>
+<span class=normal>164</span>
+<span class=normal>165</span></pre></div></td><td class=code><div><pre><span></span><code><span class=k>def</span><span class=w> </span><span class=nf>find_root_template_from_path</span><span class=p>(</span><span class=bp>self</span><span class=p>,</span> <span class=o>*</span><span class=n>args</span><span class=p>,</span> <span class=o>**</span><span class=n>kwargs</span><span class=p>):</span>
+<span class=w>    </span><span class=sd>&quot;&quot;&quot;Wrapper for AnatomyRoots `find_root_template_from_path`.&quot;&quot;&quot;</span>
+    <span class=k>return</span> <span class=bp>self</span><span class=o>.</span><span class=n>roots_obj</span><span class=o>.</span><span class=n>find_root_template_from_path</span><span class=p>(</span><span class=o>*</span><span class=n>args</span><span class=p>,</span> <span class=o>**</span><span class=n>kwargs</span><span class=p>)</span>
+</code></pre></div></td></tr></table></div> </details> </div> </div> <div class="doc doc-object doc-function"> <h3 id=client.ayon_core.pipeline.anatomy.anatomy.BaseAnatomy.format class="doc doc-heading"> <code class="highlight language-python"><span class=nb>format</span><span class=p>(</span><span class=o>*</span><span class=n>args</span><span class=p>,</span> <span class=o>**</span><span class=n>kwargs</span><span class=p>)</span></code> </h3> <div class="doc doc-contents "> <p>Wrap <code>format</code> method of Anatomy's <code>templates_obj</code>.</p> <details class=quote> <summary>Source code in <code>client/ayon_core/pipeline/anatomy/anatomy.py</code></summary> <div class=highlight><table class=highlighttable><tr><td class=linenos><div class=linenodiv><pre><span></span><span class=normal>122</span>
+<span class=normal>123</span>
+<span class=normal>124</span></pre></div></td><td class=code><div><pre><span></span><code><span class=k>def</span><span class=w> </span><span class=nf>format</span><span class=p>(</span><span class=bp>self</span><span class=p>,</span> <span class=o>*</span><span class=n>args</span><span class=p>,</span> <span class=o>**</span><span class=n>kwargs</span><span class=p>):</span>
+<span class=w>    </span><span class=sd>&quot;&quot;&quot;Wrap `format` method of Anatomy&#39;s `templates_obj`.&quot;&quot;&quot;</span>
+    <span class=k>return</span> <span class=bp>self</span><span class=o>.</span><span class=n>_templates_obj</span><span class=o>.</span><span class=n>format</span><span class=p>(</span><span class=o>*</span><span class=n>args</span><span class=p>,</span> <span class=o>**</span><span class=n>kwargs</span><span class=p>)</span>
+</code></pre></div></td></tr></table></div> </details> </div> </div> <div class="doc doc-object doc-function"> <h3 id=client.ayon_core.pipeline.anatomy.anatomy.BaseAnatomy.format_all class="doc doc-heading"> <code class="highlight language-python"><span class=n>format_all</span><span class=p>(</span><span class=o>*</span><span class=n>args</span><span class=p>,</span> <span class=o>**</span><span class=n>kwargs</span><span class=p>)</span></code> </h3> <div class="doc doc-contents "> <p>Wrap <code>format_all</code> method of Anatomy's <code>templates_obj</code>.</p> <details class=deprecated open> <summary>Deprecated</summary> <p>Use <code>format</code> method with <code>strict=False</code> instead.</p> </details> <details class=quote> <summary>Source code in <code>client/ayon_core/pipeline/anatomy/anatomy.py</code></summary> <div class=highlight><table class=highlighttable><tr><td class=linenos><div class=linenodiv><pre><span></span><span class=normal>126</span>
+<span class=normal>127</span>
+<span class=normal>128</span>
+<span class=normal>129</span>
+<span class=normal>130</span>
+<span class=normal>131</span>
+<span class=normal>132</span>
+<span class=normal>133</span></pre></div></td><td class=code><div><pre><span></span><code><span class=k>def</span><span class=w> </span><span class=nf>format_all</span><span class=p>(</span><span class=bp>self</span><span class=p>,</span> <span class=o>*</span><span class=n>args</span><span class=p>,</span> <span class=o>**</span><span class=n>kwargs</span><span class=p>):</span>
+<span class=w>    </span><span class=sd>&quot;&quot;&quot;Wrap `format_all` method of Anatomy&#39;s `templates_obj`.</span>
+
+<span class=sd>    Deprecated:</span>
+<span class=sd>        Use ``format`` method with ``strict=False`` instead.</span>
+
+<span class=sd>    &quot;&quot;&quot;</span>
+    <span class=k>return</span> <span class=bp>self</span><span class=o>.</span><span class=n>_templates_obj</span><span class=o>.</span><span class=n>format_all</span><span class=p>(</span><span class=o>*</span><span class=n>args</span><span class=p>,</span> <span class=o>**</span><span class=n>kwargs</span><span class=p>)</span>
+</code></pre></div></td></tr></table></div> </details> </div> </div> <div class="doc doc-object doc-function"> <h3 id=client.ayon_core.pipeline.anatomy.anatomy.BaseAnatomy.get_template_item class="doc doc-heading"> <code class="highlight language-python"><span class=n>get_template_item</span><span class=p>(</span><span class=o>*</span><span class=n>args</span><span class=p>,</span> <span class=o>**</span><span class=n>kwargs</span><span class=p>)</span></code> </h3> <div class="doc doc-contents "> <p>Get template item from category.</p> <p><span class=doc-section-title>Parameters:</span></p> <table> <thead> <tr> <th>Name</th> <th>Type</th> <th>Description</th> <th>Default</th> </tr> </thead> <tbody> <tr class=doc-section-item> <td> <code>category_name</code> </td> <td> <code><span title=str>str</span></code> </td> <td> <div class=doc-md-description> <p>Category name.</p> </div> </td> <td> <em>required</em> </td> </tr> <tr class=doc-section-item> <td> <code>template_name</code> </td> <td> <code><span title=str>str</span></code> </td> <td> <div class=doc-md-description> <p>Template name.</p> </div> </td> <td> <em>required</em> </td> </tr> <tr class=doc-section-item> <td> <code>subkey</code> </td> <td> <code><span title=Optional>Optional</span>[<span title=str>str</span>]</code> </td> <td> <div class=doc-md-description> <p>Subkey name.</p> </div> </td> <td> <em>required</em> </td> </tr> <tr class=doc-section-item> <td> <code>default</code> </td> <td> <code><span title=Any>Any</span></code> </td> <td> <div class=doc-md-description> <p>Default value.</p> </div> </td> <td> <em>required</em> </td> </tr> </tbody> </table> <p><span class=doc-section-title>Returns:</span></p> <table> <thead> <tr> <th>Name</th> <th>Type</th> <th>Description</th> </tr> </thead> <tbody> <tr class=doc-section-item> <td><code>Any</code></td> <td> </td> <td> <div class=doc-md-description> <p>Template item, subkey value as AnatomyStringTemplate or None.</p> </div> </td> </tr> </tbody> </table> <details class=quote> <summary>Source code in <code>client/ayon_core/pipeline/anatomy/anatomy.py</code></summary> <div class=highlight><table class=highlighttable><tr><td class=linenos><div class=linenodiv><pre><span></span><span class=normal>107</span>
+<span class=normal>108</span>
+<span class=normal>109</span>
+<span class=normal>110</span>
+<span class=normal>111</span>
+<span class=normal>112</span>
+<span class=normal>113</span>
+<span class=normal>114</span>
+<span class=normal>115</span>
+<span class=normal>116</span>
+<span class=normal>117</span>
+<span class=normal>118</span>
+<span class=normal>119</span>
+<span class=normal>120</span></pre></div></td><td class=code><div><pre><span></span><code><span class=k>def</span><span class=w> </span><span class=nf>get_template_item</span><span class=p>(</span><span class=bp>self</span><span class=p>,</span> <span class=o>*</span><span class=n>args</span><span class=p>,</span> <span class=o>**</span><span class=n>kwargs</span><span class=p>):</span>
+<span class=w>    </span><span class=sd>&quot;&quot;&quot;Get template item from category.</span>
+
+<span class=sd>    Args:</span>
+<span class=sd>        category_name (str): Category name.</span>
+<span class=sd>        template_name (str): Template name.</span>
+<span class=sd>        subkey (Optional[str]): Subkey name.</span>
+<span class=sd>        default (Any): Default value.</span>
+
+<span class=sd>    Returns:</span>
+<span class=sd>        Any: Template item, subkey value as AnatomyStringTemplate or None.</span>
+
+<span class=sd>    &quot;&quot;&quot;</span>
+    <span class=k>return</span> <span class=bp>self</span><span class=o>.</span><span class=n>_templates_obj</span><span class=o>.</span><span class=n>get_template_item</span><span class=p>(</span><span class=o>*</span><span class=n>args</span><span class=p>,</span> <span class=o>**</span><span class=n>kwargs</span><span class=p>)</span>
+</code></pre></div></td></tr></table></div> </details> </div> </div> <div class="doc doc-object doc-function"> <h3 id=client.ayon_core.pipeline.anatomy.anatomy.BaseAnatomy.path_remapper class="doc doc-heading"> <code class="highlight language-python"><span class=n>path_remapper</span><span class=p>(</span><span class=o>*</span><span class=n>args</span><span class=p>,</span> <span class=o>**</span><span class=n>kwargs</span><span class=p>)</span></code> </h3> <div class="doc doc-contents "> <p>Wrapper for AnatomyRoots <code>path_remapper</code>.</p> <details class=quote> <summary>Source code in <code>client/ayon_core/pipeline/anatomy/anatomy.py</code></summary> <div class=highlight><table class=highlighttable><tr><td class=linenos><div class=linenodiv><pre><span></span><span class=normal>167</span>
+<span class=normal>168</span>
+<span class=normal>169</span></pre></div></td><td class=code><div><pre><span></span><code><span class=k>def</span><span class=w> </span><span class=nf>path_remapper</span><span class=p>(</span><span class=bp>self</span><span class=p>,</span> <span class=o>*</span><span class=n>args</span><span class=p>,</span> <span class=o>**</span><span class=n>kwargs</span><span class=p>):</span>
+<span class=w>    </span><span class=sd>&quot;&quot;&quot;Wrapper for AnatomyRoots `path_remapper`.&quot;&quot;&quot;</span>
+    <span class=k>return</span> <span class=bp>self</span><span class=o>.</span><span class=n>roots_obj</span><span class=o>.</span><span class=n>path_remapper</span><span class=p>(</span><span class=o>*</span><span class=n>args</span><span class=p>,</span> <span class=o>**</span><span class=n>kwargs</span><span class=p>)</span>
+</code></pre></div></td></tr></table></div> </details> </div> </div> <div class="doc doc-object doc-function"> <h3 id=client.ayon_core.pipeline.anatomy.anatomy.BaseAnatomy.replace_root_with_env_key class="doc doc-heading"> <code class="highlight language-python"><span class=n>replace_root_with_env_key</span><span class=p>(</span><span class=n>filepath</span><span class=p>,</span> <span class=n>template</span><span class=o>=</span><span class=kc>None</span><span class=p>)</span></code> </h3> <div class="doc doc-contents "> <p>Replace root of path with environment key.</p> <h4 id=client.ayon_core.pipeline.anatomy.anatomy.BaseAnatomy.replace_root_with_env_key--example>Example:</h4> <h5 id=client.ayon_core.pipeline.anatomy.anatomy.BaseAnatomy.replace_root_with_env_key--project-with-roots>Project with roots:</h5> <pre><code>{
+    &quot;nas&quot;: {
+        &quot;windows&quot;: P:/projects&quot;,
+        ...
+    }
+    ...
+}
+</code></pre> <h5 id=client.ayon_core.pipeline.anatomy.anatomy.BaseAnatomy.replace_root_with_env_key--entered-filepath>Entered filepath</h5> <p>"P:/projects/project/folder/task/animation_v001.ma"</p> <h5 id=client.ayon_core.pipeline.anatomy.anatomy.BaseAnatomy.replace_root_with_env_key--entered-template>Entered template</h5> <p>"&lt;{}&gt;"</p> <h5 id=client.ayon_core.pipeline.anatomy.anatomy.BaseAnatomy.replace_root_with_env_key--output>Output</h5> <p>"<ayon_project_root_nas>/project/folder/task/animation_v001.ma"</p> <p><span class=doc-section-title>Parameters:</span></p> <table> <thead> <tr> <th>Name</th> <th>Type</th> <th>Description</th> <th>Default</th> </tr> </thead> <tbody> <tr class=doc-section-item> <td> <code>filepath</code> </td> <td> <code><span title=str>str</span></code> </td> <td> <div class=doc-md-description> <p>Full file path where root should be replaced.</p> </div> </td> <td> <em>required</em> </td> </tr> <tr class=doc-section-item> <td> <code>template</code> </td> <td> <code><span title=str>str</span></code> </td> <td> <div class=doc-md-description> <p>Optional template for environment key. Must have one index format key. Default value if not entered: "${}"</p> </div> </td> <td> <code>None</code> </td> </tr> </tbody> </table> <p><span class=doc-section-title>Returns:</span></p> <table> <thead> <tr> <th>Name</th> <th>Type</th> <th>Description</th> </tr> </thead> <tbody> <tr class=doc-section-item> <td><code>str</code></td> <td> </td> <td> <div class=doc-md-description> <p>Path where root is replaced with environment root key.</p> </div> </td> </tr> </tbody> </table> <details class=raise open> <summary>Raise</summary> <p>ValueError: When project's roots were not found in entered path.</p> </details> <details class=quote> <summary>Source code in <code>client/ayon_core/pipeline/anatomy/anatomy.py</code></summary> <div class=highlight><table class=highlighttable><tr><td class=linenos><div class=linenodiv><pre><span></span><span class=normal>301</span>
+<span class=normal>302</span>
+<span class=normal>303</span>
+<span class=normal>304</span>
+<span class=normal>305</span>
+<span class=normal>306</span>
+<span class=normal>307</span>
+<span class=normal>308</span>
+<span class=normal>309</span>
+<span class=normal>310</span>
+<span class=normal>311</span>
+<span class=normal>312</span>
+<span class=normal>313</span>
+<span class=normal>314</span>
+<span class=normal>315</span>
+<span class=normal>316</span>
+<span class=normal>317</span>
+<span class=normal>318</span>
+<span class=normal>319</span>
+<span class=normal>320</span>
+<span class=normal>321</span>
+<span class=normal>322</span>
+<span class=normal>323</span>
+<span class=normal>324</span>
+<span class=normal>325</span>
+<span class=normal>326</span>
+<span class=normal>327</span>
+<span class=normal>328</span>
+<span class=normal>329</span>
+<span class=normal>330</span>
+<span class=normal>331</span>
+<span class=normal>332</span>
+<span class=normal>333</span>
+<span class=normal>334</span>
+<span class=normal>335</span>
+<span class=normal>336</span>
+<span class=normal>337</span>
+<span class=normal>338</span>
+<span class=normal>339</span>
+<span class=normal>340</span>
+<span class=normal>341</span>
+<span class=normal>342</span>
+<span class=normal>343</span>
+<span class=normal>344</span>
+<span class=normal>345</span>
+<span class=normal>346</span></pre></div></td><td class=code><div><pre><span></span><code><span class=k>def</span><span class=w> </span><span class=nf>replace_root_with_env_key</span><span class=p>(</span><span class=bp>self</span><span class=p>,</span> <span class=n>filepath</span><span class=p>,</span> <span class=n>template</span><span class=o>=</span><span class=kc>None</span><span class=p>):</span>
+<span class=w>    </span><span class=sd>&quot;&quot;&quot;Replace root of path with environment key.</span>
+
+<span class=sd>    # Example:</span>
+<span class=sd>    ## Project with roots:</span>
+<span class=sd>    ```</span>
+<span class=sd>    {</span>
+<span class=sd>        &quot;nas&quot;: {</span>
+<span class=sd>            &quot;windows&quot;: P:/projects&quot;,</span>
+<span class=sd>            ...</span>
+<span class=sd>        }</span>
+<span class=sd>        ...</span>
+<span class=sd>    }</span>
+<span class=sd>    ```</span>
+
+<span class=sd>    ## Entered filepath</span>
+<span class=sd>    &quot;P:/projects/project/folder/task/animation_v001.ma&quot;</span>
+
+<span class=sd>    ## Entered template</span>
+<span class=sd>    &quot;&lt;{}&gt;&quot;</span>
+
+<span class=sd>    ## Output</span>
+<span class=sd>    &quot;&lt;AYON_PROJECT_ROOT_NAS&gt;/project/folder/task/animation_v001.ma&quot;</span>
+
+<span class=sd>    Args:</span>
+<span class=sd>        filepath (str): Full file path where root should be replaced.</span>
+<span class=sd>        template (str): Optional template for environment key. Must</span>
+<span class=sd>            have one index format key.</span>
+<span class=sd>            Default value if not entered: &quot;${}&quot;</span>
+
+<span class=sd>    Returns:</span>
+<span class=sd>        str: Path where root is replaced with environment root key.</span>
+
+<span class=sd>    Raise:</span>
+<span class=sd>        ValueError: When project&#39;s roots were not found in entered path.</span>
+<span class=sd>    &quot;&quot;&quot;</span>
+    <span class=n>success</span><span class=p>,</span> <span class=n>rootless_path</span> <span class=o>=</span> <span class=bp>self</span><span class=o>.</span><span class=n>find_root_template_from_path</span><span class=p>(</span><span class=n>filepath</span><span class=p>)</span>
+    <span class=k>if</span> <span class=ow>not</span> <span class=n>success</span><span class=p>:</span>
+        <span class=k>raise</span> <span class=ne>ValueError</span><span class=p>(</span>
+            <span class=s2>&quot;</span><span class=si>{}</span><span class=s2>: Project&#39;s roots were not found in path: </span><span class=si>{}</span><span class=s2>&quot;</span><span class=o>.</span><span class=n>format</span><span class=p>(</span>
+                <span class=bp>self</span><span class=o>.</span><span class=n>project_name</span><span class=p>,</span> <span class=n>filepath</span>
+            <span class=p>)</span>
+        <span class=p>)</span>
+
+    <span class=n>data</span> <span class=o>=</span> <span class=bp>self</span><span class=o>.</span><span class=n>root_environmets_fill_data</span><span class=p>(</span><span class=n>template</span><span class=p>)</span>
+    <span class=k>return</span> <span class=n>rootless_path</span><span class=o>.</span><span class=n>format</span><span class=p>(</span><span class=o>**</span><span class=n>data</span><span class=p>)</span>
+</code></pre></div></td></tr></table></div> </details> </div> </div> <div class="doc doc-object doc-function"> <h3 id=client.ayon_core.pipeline.anatomy.anatomy.BaseAnatomy.root_environments class="doc doc-heading"> <code class="highlight language-python"><span class=n>root_environments</span><span class=p>()</span></code> </h3> <div class="doc doc-contents "> <p>Return AYON_PROJECT_ROOT_* environments for current project.</p> <details class=quote> <summary>Source code in <code>client/ayon_core/pipeline/anatomy/anatomy.py</code></summary> <div class=highlight><table class=highlighttable><tr><td class=linenos><div class=linenodiv><pre><span></span><span class=normal>150</span>
+<span class=normal>151</span>
+<span class=normal>152</span></pre></div></td><td class=code><div><pre><span></span><code><span class=k>def</span><span class=w> </span><span class=nf>root_environments</span><span class=p>(</span><span class=bp>self</span><span class=p>):</span>
+<span class=w>    </span><span class=sd>&quot;&quot;&quot;Return AYON_PROJECT_ROOT_* environments for current project.&quot;&quot;&quot;</span>
+    <span class=k>return</span> <span class=bp>self</span><span class=o>.</span><span class=n>_roots_obj</span><span class=o>.</span><span class=n>root_environments</span><span class=p>()</span>
+</code></pre></div></td></tr></table></div> </details> </div> </div> <div class="doc doc-object doc-function"> <h3 id=client.ayon_core.pipeline.anatomy.anatomy.BaseAnatomy.root_environmets_fill_data class="doc doc-heading"> <code class="highlight language-python"><span class=n>root_environmets_fill_data</span><span class=p>(</span><span class=n>template</span><span class=o>=</span><span class=kc>None</span><span class=p>)</span></code> </h3> <div class="doc doc-contents "> <p>Environment variable values in dictionary for rootless path.</p> <p><span class=doc-section-title>Parameters:</span></p> <table> <thead> <tr> <th>Name</th> <th>Type</th> <th>Description</th> <th>Default</th> </tr> </thead> <tbody> <tr class=doc-section-item> <td> <code>template</code> </td> <td> <code><span title=str>str</span></code> </td> <td> <div class=doc-md-description> <p>Template for environment variable key fill. By default is set to <code>"${}"</code>.</p> </div> </td> <td> <code>None</code> </td> </tr> </tbody> </table> <details class=quote> <summary>Source code in <code>client/ayon_core/pipeline/anatomy/anatomy.py</code></summary> <div class=highlight><table class=highlighttable><tr><td class=linenos><div class=linenodiv><pre><span></span><span class=normal>154</span>
+<span class=normal>155</span>
+<span class=normal>156</span>
+<span class=normal>157</span>
+<span class=normal>158</span>
+<span class=normal>159</span>
+<span class=normal>160</span>
+<span class=normal>161</span></pre></div></td><td class=code><div><pre><span></span><code><span class=k>def</span><span class=w> </span><span class=nf>root_environmets_fill_data</span><span class=p>(</span><span class=bp>self</span><span class=p>,</span> <span class=n>template</span><span class=o>=</span><span class=kc>None</span><span class=p>):</span>
+<span class=w>    </span><span class=sd>&quot;&quot;&quot;Environment variable values in dictionary for rootless path.</span>
+
+<span class=sd>    Args:</span>
+<span class=sd>        template (str): Template for environment variable key fill.</span>
+<span class=sd>            By default is set to `&quot;${}&quot;`.</span>
+<span class=sd>    &quot;&quot;&quot;</span>
+    <span class=k>return</span> <span class=bp>self</span><span class=o>.</span><span class=n>roots_obj</span><span class=o>.</span><span class=n>root_environmets_fill_data</span><span class=p>(</span><span class=n>template</span><span class=p>)</span>
+</code></pre></div></td></tr></table></div> </details> </div> </div> <div class="doc doc-object doc-function"> <h3 id=client.ayon_core.pipeline.anatomy.anatomy.BaseAnatomy.root_names class="doc doc-heading"> <code class="highlight language-python"><span class=n>root_names</span><span class=p>()</span></code> </h3> <div class="doc doc-contents "> <p>Return root names for current project.</p> <details class=quote> <summary>Source code in <code>client/ayon_core/pipeline/anatomy/anatomy.py</code></summary> <div class=highlight><table class=highlighttable><tr><td class=linenos><div class=linenodiv><pre><span></span><span class=normal>179</span>
+<span class=normal>180</span>
+<span class=normal>181</span></pre></div></td><td class=code><div><pre><span></span><code><span class=k>def</span><span class=w> </span><span class=nf>root_names</span><span class=p>(</span><span class=bp>self</span><span class=p>):</span>
+<span class=w>    </span><span class=sd>&quot;&quot;&quot;Return root names for current project.&quot;&quot;&quot;</span>
+    <span class=k>return</span> <span class=bp>self</span><span class=o>.</span><span class=n>root_names_from_templates</span><span class=p>(</span><span class=bp>self</span><span class=o>.</span><span class=n>templates</span><span class=p>)</span>
+</code></pre></div></td></tr></table></div> </details> </div> </div> <div class="doc doc-object doc-function"> <h3 id=client.ayon_core.pipeline.anatomy.anatomy.BaseAnatomy.root_names_from_templates class="doc doc-heading"> <code class="highlight language-python"><span class=n>root_names_from_templates</span><span class=p>(</span><span class=n>templates</span><span class=p>)</span></code> </h3> <div class="doc doc-contents "> <p>Extract root names form anatomy templates.</p> <p>Returns None if values in templates contain only "{root}". Empty list is returned if there is no "root" in templates. Else returns all root names from templates in list.</p> <p>RootCombinationError is raised when templates contain both root types, basic "{root}" and with root name specification "{root[work]}".</p> <p><span class=doc-section-title>Parameters:</span></p> <table> <thead> <tr> <th>Name</th> <th>Type</th> <th>Description</th> <th>Default</th> </tr> </thead> <tbody> <tr class=doc-section-item> <td> <code>templates</code> </td> <td> <code><span title=dict>dict</span></code> </td> <td> <div class=doc-md-description> <p>Anatomy templates where roots are not filled.</p> </div> </td> <td> <em>required</em> </td> </tr> </tbody> </table> <details class=return open> <summary>Return</summary> <p>list/None: List of all root names from templates as strings when multiroot setup is used, otherwise None is returned.</p> </details> <details class=quote> <summary>Source code in <code>client/ayon_core/pipeline/anatomy/anatomy.py</code></summary> <div class=highlight><table class=highlighttable><tr><td class=linenos><div class=linenodiv><pre><span></span><span class=normal>226</span>
+<span class=normal>227</span>
+<span class=normal>228</span>
+<span class=normal>229</span>
+<span class=normal>230</span>
+<span class=normal>231</span>
+<span class=normal>232</span>
+<span class=normal>233</span>
+<span class=normal>234</span>
+<span class=normal>235</span>
+<span class=normal>236</span>
+<span class=normal>237</span>
+<span class=normal>238</span>
+<span class=normal>239</span>
+<span class=normal>240</span>
+<span class=normal>241</span>
+<span class=normal>242</span>
+<span class=normal>243</span>
+<span class=normal>244</span>
+<span class=normal>245</span>
+<span class=normal>246</span>
+<span class=normal>247</span>
+<span class=normal>248</span>
+<span class=normal>249</span>
+<span class=normal>250</span>
+<span class=normal>251</span>
+<span class=normal>252</span>
+<span class=normal>253</span>
+<span class=normal>254</span>
+<span class=normal>255</span>
+<span class=normal>256</span>
+<span class=normal>257</span>
+<span class=normal>258</span>
+<span class=normal>259</span>
+<span class=normal>260</span>
+<span class=normal>261</span></pre></div></td><td class=code><div><pre><span></span><code><span class=k>def</span><span class=w> </span><span class=nf>root_names_from_templates</span><span class=p>(</span><span class=bp>self</span><span class=p>,</span> <span class=n>templates</span><span class=p>):</span>
+<span class=w>    </span><span class=sd>&quot;&quot;&quot;Extract root names form anatomy templates.</span>
+
+<span class=sd>    Returns None if values in templates contain only &quot;{root}&quot;.</span>
+<span class=sd>    Empty list is returned if there is no &quot;root&quot; in templates.</span>
+<span class=sd>    Else returns all root names from templates in list.</span>
+
+<span class=sd>    RootCombinationError is raised when templates contain both root types,</span>
+<span class=sd>    basic &quot;{root}&quot; and with root name specification &quot;{root[work]}&quot;.</span>
+
+<span class=sd>    Args:</span>
+<span class=sd>        templates (dict): Anatomy templates where roots are not filled.</span>
+
+<span class=sd>    Return:</span>
+<span class=sd>        list/None: List of all root names from templates as strings when</span>
+<span class=sd>        multiroot setup is used, otherwise None is returned.</span>
+<span class=sd>    &quot;&quot;&quot;</span>
+    <span class=n>roots</span> <span class=o>=</span> <span class=nb>list</span><span class=p>(</span><span class=bp>self</span><span class=o>.</span><span class=n>_root_keys_from_templates</span><span class=p>(</span><span class=n>templates</span><span class=p>))</span>
+    <span class=c1># Return empty list if no roots found in templates</span>
+    <span class=k>if</span> <span class=ow>not</span> <span class=n>roots</span><span class=p>:</span>
+        <span class=k>return</span> <span class=n>roots</span>
+
+    <span class=c1># Raise exception when root keys have roots with and without root name.</span>
+    <span class=c1># Invalid output example: [&quot;root&quot;, &quot;root[project]&quot;, &quot;root[render]&quot;]</span>
+    <span class=k>if</span> <span class=nb>len</span><span class=p>(</span><span class=n>roots</span><span class=p>)</span> <span class=o>&gt;</span> <span class=mi>1</span> <span class=ow>and</span> <span class=s2>&quot;root&quot;</span> <span class=ow>in</span> <span class=n>roots</span><span class=p>:</span>
+        <span class=k>raise</span> <span class=n>RootCombinationError</span><span class=p>(</span><span class=n>roots</span><span class=p>)</span>
+
+    <span class=c1># Return None if &quot;root&quot; without root name in templates</span>
+    <span class=k>if</span> <span class=nb>len</span><span class=p>(</span><span class=n>roots</span><span class=p>)</span> <span class=o>==</span> <span class=mi>1</span> <span class=ow>and</span> <span class=n>roots</span><span class=p>[</span><span class=mi>0</span><span class=p>]</span> <span class=o>==</span> <span class=s2>&quot;root&quot;</span><span class=p>:</span>
+        <span class=k>return</span> <span class=kc>None</span>
+
+    <span class=n>names</span> <span class=o>=</span> <span class=nb>set</span><span class=p>()</span>
+    <span class=k>for</span> <span class=n>root</span> <span class=ow>in</span> <span class=n>roots</span><span class=p>:</span>
+        <span class=k>for</span> <span class=n>group</span> <span class=ow>in</span> <span class=n>re</span><span class=o>.</span><span class=n>findall</span><span class=p>(</span><span class=bp>self</span><span class=o>.</span><span class=n>root_name_regex</span><span class=p>,</span> <span class=n>root</span><span class=p>):</span>
+            <span class=n>names</span><span class=o>.</span><span class=n>add</span><span class=p>(</span><span class=n>group</span><span class=p>)</span>
+    <span class=k>return</span> <span class=nb>list</span><span class=p>(</span><span class=n>names</span><span class=p>)</span>
+</code></pre></div></td></tr></table></div> </details> </div> </div> <div class="doc doc-object doc-function"> <h3 id=client.ayon_core.pipeline.anatomy.anatomy.BaseAnatomy.root_value_for_template class="doc doc-heading"> <code class="highlight language-python"><span class=n>root_value_for_template</span><span class=p>(</span><span class=n>template</span><span class=p>)</span></code> </h3> <div class="doc doc-contents "> <p>Returns value of root key from template.</p> <details class=quote> <summary>Source code in <code>client/ayon_core/pipeline/anatomy/anatomy.py</code></summary> <div class=highlight><table class=highlighttable><tr><td class=linenos><div class=linenodiv><pre><span></span><span class=normal>213</span>
+<span class=normal>214</span>
+<span class=normal>215</span>
+<span class=normal>216</span>
+<span class=normal>217</span>
+<span class=normal>218</span>
+<span class=normal>219</span>
+<span class=normal>220</span>
+<span class=normal>221</span>
+<span class=normal>222</span>
+<span class=normal>223</span>
+<span class=normal>224</span></pre></div></td><td class=code><div><pre><span></span><code><span class=k>def</span><span class=w> </span><span class=nf>root_value_for_template</span><span class=p>(</span><span class=bp>self</span><span class=p>,</span> <span class=n>template</span><span class=p>):</span>
+<span class=w>    </span><span class=sd>&quot;&quot;&quot;Returns value of root key from template.&quot;&quot;&quot;</span>
+    <span class=k>if</span> <span class=nb>isinstance</span><span class=p>(</span><span class=n>template</span><span class=p>,</span> <span class=n>StringTemplate</span><span class=p>):</span>
+        <span class=n>template</span> <span class=o>=</span> <span class=n>template</span><span class=o>.</span><span class=n>template</span>
+    <span class=n>root_templates</span> <span class=o>=</span> <span class=p>[]</span>
+    <span class=k>for</span> <span class=n>group</span> <span class=ow>in</span> <span class=n>re</span><span class=o>.</span><span class=n>findall</span><span class=p>(</span><span class=bp>self</span><span class=o>.</span><span class=n>root_key_regex</span><span class=p>,</span> <span class=n>template</span><span class=p>):</span>
+        <span class=n>root_templates</span><span class=o>.</span><span class=n>append</span><span class=p>(</span><span class=s2>&quot;{&quot;</span> <span class=o>+</span> <span class=n>group</span> <span class=o>+</span> <span class=s2>&quot;}&quot;</span><span class=p>)</span>
+
+    <span class=k>if</span> <span class=ow>not</span> <span class=n>root_templates</span><span class=p>:</span>
+        <span class=k>return</span> <span class=kc>None</span>
+
+    <span class=k>return</span> <span class=n>root_templates</span><span class=p>[</span><span class=mi>0</span><span class=p>]</span><span class=o>.</span><span class=n>format</span><span class=p>(</span><span class=o>**</span><span class=p>{</span><span class=s2>&quot;root&quot;</span><span class=p>:</span> <span class=bp>self</span><span class=o>.</span><span class=n>roots</span><span class=p>})</span>
+</code></pre></div></td></tr></table></div> </details> </div> </div> <div class="doc doc-object doc-function"> <h3 id=client.ayon_core.pipeline.anatomy.anatomy.BaseAnatomy.set_root_environments class="doc doc-heading"> <code class="highlight language-python"><span class=n>set_root_environments</span><span class=p>()</span></code> </h3> <div class="doc doc-contents "> <p>Set AYON_PROJECT_ROOT_* environments for current project.</p> <details class=quote> <summary>Source code in <code>client/ayon_core/pipeline/anatomy/anatomy.py</code></summary> <div class=highlight><table class=highlighttable><tr><td class=linenos><div class=linenodiv><pre><span></span><span class=normal>175</span>
+<span class=normal>176</span>
+<span class=normal>177</span></pre></div></td><td class=code><div><pre><span></span><code><span class=k>def</span><span class=w> </span><span class=nf>set_root_environments</span><span class=p>(</span><span class=bp>self</span><span class=p>):</span>
+<span class=w>    </span><span class=sd>&quot;&quot;&quot;Set AYON_PROJECT_ROOT_* environments for current project.&quot;&quot;&quot;</span>
+    <span class=bp>self</span><span class=o>.</span><span class=n>_roots_obj</span><span class=o>.</span><span class=n>set_root_environments</span><span class=p>()</span>
+</code></pre></div></td></tr></table></div> </details> </div> </div> </div> </div> </div> </div> </div> </div> </article> </div> <script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script> </div> </main> <footer class=md-footer> <div class="md-footer-meta md-typeset"> <div class="md-footer-meta__inner md-grid"> <div class=md-copyright> Made with <a href=https://squidfunk.github.io/mkdocs-material/ target=_blank rel=noopener> Material for MkDocs </a> </div> </div> </div> </footer> </div> <div class=md-dialog data-md-component=dialog> <div class="md-dialog__inner md-typeset"></div> </div> <script id=__config type=application/json>{"base": "../../../../..", "features": ["navigation.sections", "navigation.path", "navigation.prune"], "search": "../../../../../assets/javascripts/workers/search.f8cc74c7.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script> <script src=../../../../../assets/javascripts/bundle.c8b220af.min.js></script> </body> </html>
