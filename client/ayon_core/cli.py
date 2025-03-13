@@ -22,7 +22,7 @@ from ayon_core.lib.env_tools import (
     compute_env_variables_structure,
     merge_env_variables,
 )
-
+from ayon_core.pipeline import project_folders
 
 
 @click.group(invoke_without_command=True)
@@ -256,6 +256,28 @@ def _set_global_environments() -> None:
     # Change scale factor only if is not set
     if "QT_AUTO_SCREEN_SCALE_FACTOR" not in os.environ:
         os.environ["QT_AUTO_SCREEN_SCALE_FACTOR"] = "1"
+
+
+@main_cli.command()
+@click.option(
+    "--project",
+    type=str,
+    help="Define project (project must be set).",
+    required=True)
+def createprojectstructure(
+    project,
+):
+    """Create project folder structure as defined in setting
+    `ayon+settings://core/project_folder_structure`
+
+    Args:
+        project (str): The name of the project for which you
+            want to create its additional folder structure.
+
+    """
+
+    print(f">>> Creating project folder structure for project '{project}'.")
+    project_folders.create_project_folders(project)
 
 
 def _set_addons_environments(addons_manager):
