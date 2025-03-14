@@ -554,6 +554,7 @@ class BaseWorkfileController(
         workdir,
         filename,
         template_key,
+        artist_note,
     ):
         self._emit_event("save_as.started")
 
@@ -565,6 +566,7 @@ class BaseWorkfileController(
                 workdir,
                 filename,
                 template_key,
+                artist_note=artist_note,
             )
         except Exception:
             failed = True
@@ -584,6 +586,7 @@ class BaseWorkfileController(
         workdir,
         filename,
         template_key,
+        artist_note,
     ):
         self._emit_event("copy_representation.started")
 
@@ -595,6 +598,7 @@ class BaseWorkfileController(
                 workdir,
                 filename,
                 template_key,
+                artist_note,
                 src_filepath=representation_filepath
             )
         except Exception:
@@ -608,7 +612,7 @@ class BaseWorkfileController(
             {"failed": failed},
         )
 
-    def duplicate_workfile(self, src_filepath, workdir, filename):
+    def duplicate_workfile(self, src_filepath, workdir, filename, artist_note):
         self._emit_event("workfile_duplicate.started")
 
         failed = False
@@ -701,11 +705,12 @@ class BaseWorkfileController(
 
     def _save_as_workfile(
         self,
-        folder_id,
-        task_id,
-        workdir,
-        filename,
-        template_key,
+        folder_id: str,
+        task_id: str,
+        workdir: str,
+        filename: str,
+        template_key: str,
+        artist_note: str,
         src_filepath=None,
     ):
         # Trigger before save event
@@ -748,7 +753,11 @@ class BaseWorkfileController(
             self._host_save_workfile(dst_filepath)
 
         # Make sure workfile info exists
-        self.save_workfile_info(folder_id, task_name, dst_filepath, None)
+        if not artist_note:
+            artist_note = None
+        self.save_workfile_info(
+            folder_id, task_name, dst_filepath, note=artist_note
+        )
 
         # Create extra folders
         create_workdir_extra_folders(
