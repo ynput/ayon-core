@@ -839,7 +839,7 @@ class CreateContext:
                     publish_attributes.update(output)
 
         for plugin in self.plugins_with_defs:
-            attr_defs = plugin.get_attr_defs_for_context (self)
+            attr_defs = plugin.get_attr_defs_for_context(self)
             if not attr_defs:
                 continue
             self._publish_attributes.set_publish_plugin_attr_defs(
@@ -1258,50 +1258,6 @@ class CreateContext:
     def bulk_add_instances(self, sender=None):
         with self._bulk_context("add", sender) as bulk_info:
             yield bulk_info
-
-            # Set publish attributes before bulk context is exited
-            for instance in bulk_info.get_data():
-                publish_attributes = instance.publish_attributes
-                # Prepare publish plugin attributes and set it on instance
-                for plugin in self.plugins_with_defs:
-                    try:
-                        if is_func_signature_supported(
-                            plugin.convert_attribute_values, self, instance
-                        ):
-                            plugin.convert_attribute_values(self, instance)
-
-                        elif plugin.__instanceEnabled__:
-                            output = plugin.convert_attribute_values(
-                                publish_attributes
-                            )
-                            if output:
-                                publish_attributes.update(output)
-
-                    except Exception:
-                        self.log.error(
-                            "Failed to convert attribute values of"
-                            f" plugin '{plugin.__name__}'",
-                            exc_info=True
-                        )
-
-                for plugin in self.plugins_with_defs:
-                    attr_defs = None
-                    try:
-                        attr_defs = plugin.get_attr_defs_for_instance(
-                            self, instance
-                        )
-                    except Exception:
-                        self.log.error(
-                            "Failed to get attribute definitions"
-                            f" from plugin '{plugin.__name__}'.",
-                            exc_info=True
-                        )
-
-                    if not attr_defs:
-                        continue
-                    instance.set_publish_plugin_attr_defs(
-                        plugin.__name__, attr_defs
-                    )
 
     @contextmanager
     def bulk_instances_collection(self, sender=None):
@@ -2250,6 +2206,50 @@ class CreateContext:
     ):
         if not instances_to_validate:
             return
+
+        # Set publish attributes before bulk callbacks are triggered
+        for instance in instances_to_validate:
+            publish_attributes = instance.publish_attributes
+            # Prepare publish plugin attributes and set it on instance
+            for plugin in self.plugins_with_defs:
+                try:
+                    if is_func_signature_supported(
+                            plugin.convert_attribute_values, self, instance
+                    ):
+                        plugin.convert_attribute_values(self, instance)
+
+                    elif plugin.__instanceEnabled__:
+                        output = plugin.convert_attribute_values(
+                            publish_attributes
+                        )
+                        if output:
+                            publish_attributes.update(output)
+
+                except Exception:
+                    self.log.error(
+                        "Failed to convert attribute values of"
+                        f" plugin '{plugin.__name__}'",
+                        exc_info=True
+                    )
+
+            for plugin in self.plugins_with_defs:
+                attr_defs = None
+                try:
+                    attr_defs = plugin.get_attr_defs_for_instance(
+                        self, instance
+                    )
+                except Exception:
+                    self.log.error(
+                        "Failed to get attribute definitions"
+                        f" from plugin '{plugin.__name__}'.",
+                        exc_info=True
+                    )
+
+                if not attr_defs:
+                    continue
+                instance.set_publish_plugin_attr_defs(
+                    plugin.__name__, attr_defs
+                )
 
         # Cache folder and task entities for all instances at once
         self.get_instances_context_info(instances_to_validate)
