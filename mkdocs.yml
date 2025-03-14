@@ -1,0 +1,67 @@
+site_name: ayon-core
+
+nav:
+  - Home: index.md
+  - License: license.md
+
+theme:
+  name: material
+  palette:
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      toggle:
+        icon: material/toggle-switch-off-outline
+        name: Switch to light mode
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      toggle:
+        icon: material/toggle-switch
+        name: Switch to dark mode
+  logo: img/ay-symbol-blackw-full.png
+  favicon: img/favicon.ico
+  features:
+    - navigation.sections
+    - navigation.path
+    - navigation.prune
+
+extra:
+  version:
+    provider: mike
+
+extra_css: [css/custom.css]
+
+markdown_extensions:
+  - mdx_gh_links
+  - pymdownx.snippets
+
+plugins:
+  - search
+  - offline
+  - mkdocs-autoapi:
+      autoapi_dir: ./
+      autoapi_add_nav_entry: Reference
+      autoapi_ignore:
+        - .*
+        - docs/**/*
+        - tests/**/*
+        - tools/**/*
+        - .*/**/*
+        - ./*.py
+  - mkdocstrings:
+      handlers:
+        python:
+          paths:
+            - .
+            - client
+            - server
+  - minify:
+      minify_html: true
+      minify_js: true
+      minify_css: true
+      htmlmin_opts:
+        remove_comments: true
+      cache_safe: true
+  - mike
+
+hooks:
+  - mkdocs_hooks.py
