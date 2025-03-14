@@ -16,6 +16,7 @@ from .path_resolving import (
 from .utils import (
     should_use_last_workfile_on_launch,
     should_open_workfiles_tool_on_launch,
+    MissingWorkdirError,
 )
 
 from .build_workfile import BuildWorkfile
@@ -46,6 +47,7 @@ __all__ = (
 
     "should_use_last_workfile_on_launch",
     "should_open_workfiles_tool_on_launch",
+    "MissingWorkdirError",
 
     "BuildWorkfile",
 
