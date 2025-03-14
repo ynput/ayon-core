@@ -39,7 +39,8 @@ class ExtractThumbnail(pyblish.api.InstancePlugin):
         "nuke",
         "aftereffects",
         "unreal",
-        "houdini"
+        "houdini",
+        "circuit",
     ]
     enabled = False
 
