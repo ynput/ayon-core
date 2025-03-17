@@ -247,6 +247,30 @@ function Run-Tests {
     & $Poetry $RunArgs @arguments
 }
 
+function Clean-Cache {
+    Write-Info -Text ">>> ", "Cleaning cache files ... " -Color Green, Gray -NoNewline
+    Get-ChildItem $repo_root -Filter "*.pyc" -Force -Recurse | Remove-Item -Force
+    Get-ChildItem $repo_root -Filter "*.pyo" -Force -Recurse | Remove-Item -Force
+    Get-ChildItem $repo_root -Filter "__pycache__" -Force -Recurse | Remove-Item -Force -Recurse
+    Write-Info -Text "OK" -Color green
+}
+
+function Build-Docs {
+    Clean-Cache
+    $Poetry = "$RepoRoot\.poetry\bin\poetry.exe"
+    $RunArgs = @( "run", "mkdocs", "build")
+
+    & $Poetry $RunArgs @arguments
+}
+
+function Serve-Docs {
+    Clean-Cache
+    $Poetry = "$RepoRoot\.poetry\bin\poetry.exe"
+    $RunArgs = @( "run", "mkdocs", "serve")
+
+    & $Poetry $RunArgs @arguments
+}
+
 function Write-Help {
     <#
     .SYNOPSIS
@@ -264,6 +288,8 @@ function Write-Help {
     Write-Info -Text "  codespell                     ", "Run codespell check for the repository" -Color White, Cyan
     Write-Info -Text "  run                           ", "Run a poetry command in the repository environment" -Color White, Cyan
     Write-Info -Text "  run-tests                     ", "Run ayon-core tests" -Color White, Cyan
+    Write-Info -Text "  build-docs                     ", "Build documentation" -Color White, Cyan
+    Write-Info -Text "  serve-docs                     ", "Serve documentation" -Color White, Cyan
     Write-Host ""
 }
 
@@ -291,6 +317,13 @@ function Resolve-Function {
     } elseif ($FunctionName -eq "runtests") {
         Set-Cwd
         Run-Tests
+    } elseif ($FunctionName -eq "builddocs")
+    {
+        Set-Cwd
+        Build-Docs
+    } elseif ($FunctionName -eq "servedocs") {
+        Set-Cwd
+        Serve-Docs
     } else {
         Write-Host "Unknown function ""$FunctionName"""
         Write-Help
