@@ -2,14 +2,11 @@
 from __future__ import annotations
 import os
 import sys
-import importlib
 import inspect
 import copy
-from pathlib import Path
 import warnings
 import xml.etree.ElementTree
-from typing import TYPE_CHECKING, Optional, Union, List
-
+from typing import Optional, Union, List
 
 import ayon_api
 import pyblish.util
@@ -17,6 +14,7 @@ import pyblish.plugin
 import pyblish.api
 
 from ayon_core.lib import (
+    import_filepath,
     Logger,
     filter_profiles,
 )
@@ -28,9 +26,6 @@ from .constants import (
     DEFAULT_PUBLISH_TEMPLATE,
     DEFAULT_HERO_PUBLISH_TEMPLATE,
 )
-
-if TYPE_CHECKING:
-    from types import ModuleType
 
 
 def get_template_name_profiles(
@@ -215,35 +210,6 @@ def load_help_content_from_plugin(plugin):
     return load_help_content_from_filepath(filepath)
 
 
-def _import_module(module_name: str, path: Path) -> ModuleType:
-    """Import module from path.
-
-    Args:
-        module_name (str): Name of module.
-        path (Path): Path to module file.
-
-    Returns:
-        ModuleType: Imported module.
-
-    Raises:
-        ImportError: When module cannot be imported.
-
-    """
-    spec = importlib.util.spec_from_file_location(module_name, path)
-    if spec is None:
-        msg = f"Cannot import path '{path}' as a Python module"
-        raise ImportError(msg)
-
-    module = importlib.util.module_from_spec(spec)
-    sys.modules[module_name] = module
-    if spec.loader is None:
-        msg = f"Cannot import path '{path}' as a Python module"
-        raise ImportError(msg)
-    spec.loader.exec_module(module)
-
-    return module
-
-
 def publish_plugins_discover(
         paths: Optional[list[str]] = None) -> DiscoverResult:
     """Find and return available pyblish plug-ins.
@@ -289,7 +255,7 @@ def publish_plugins_discover(
                 continue
 
             try:
-                module = _import_module(mod_name, Path(abspath))
+                module = import_filepath(abspath, mod_name)
 
             except Exception as err:  # noqa: BLE001
                 # we need broad exception to catch all possible errors.
@@ -313,9 +279,8 @@ def publish_plugins_discover(
                     continue
 
                 plugin_names.append(plugin.__name__)
-
-                plugin.__module__ = module.__file__
-                key = f"{plugin.__module__}.{plugin.__name__}"
+                plugin.__file__ = module.__file__
+                key = f"{module.__file__}.{plugin.__name__}"
                 plugins[key] = plugin
 
     # Include plug-ins from registration.
@@ -394,7 +359,7 @@ def get_plugin_settings(plugin, project_settings, log, category=None):
     # Settings category determined from path
     # - usually path is './<category>/plugins/publish/<plugin file>'
     # - category can be host name of addon name ('maya', 'deadline', ...)
-    filepath = os.path.normpath(inspect.getsourcefile(plugin))
+    filepath = os.path.normpath(inspect.getfile(plugin.__class__))
 
     split_path = filepath.rsplit(os.path.sep, 5)
     if len(split_path) < 4:
