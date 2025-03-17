@@ -255,7 +255,8 @@ def publish_plugins_discover(
                 continue
 
             try:
-                module = import_filepath(abspath, mod_name)
+                module = import_filepath(
+                    abspath, mod_name, sys_module_name=mod_name)
 
             except Exception as err:  # noqa: BLE001
                 # we need broad exception to catch all possible errors.
