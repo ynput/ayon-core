@@ -412,6 +412,11 @@ class PublisherController(
             instance_ids, key, value
         )
 
+    def revert_instances_create_attr_values(self, instance_ids, key):
+        self._create_model.revert_instances_create_attr_values(
+            instance_ids, key
+        )
+
     def get_publish_attribute_definitions(self, instance_ids, include_context):
         """Collect publish attribute definitions for passed instances.
 
@@ -430,6 +435,13 @@ class PublisherController(
     ):
         return self._create_model.set_instances_publish_attr_values(
             instance_ids, plugin_name, key, value
+        )
+
+    def revert_instances_publish_attr_values(
+        self, instance_ids, plugin_name, key
+    ):
+        return self._create_model.revert_instances_publish_attr_values(
+            instance_ids, plugin_name, key
         )
 
     def get_product_name(

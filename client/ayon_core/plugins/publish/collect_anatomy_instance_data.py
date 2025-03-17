@@ -116,11 +116,11 @@ class CollectAnatomyInstanceData(pyblish.api.ContextPlugin):
 
         if not_found_folder_paths:
             joined_folder_paths = ", ".join(
-                ["\"{}\"".format(path) for path in not_found_folder_paths]
+                [f"\"{path}\"" for path in not_found_folder_paths]
             )
-            self.log.warning((
-                "Not found folder entities with paths \"{}\"."
-            ).format(joined_folder_paths))
+            self.log.warning(
+                f"Not found folder entities with paths {joined_folder_paths}."
+            )
 
     def fill_missing_task_entities(self, context, project_name):
         self.log.debug("Querying task entities for instances.")
@@ -413,14 +413,16 @@ class CollectAnatomyInstanceData(pyblish.api.ContextPlugin):
             # Backwards compatible (Deprecated since 24/06/06)
             or instance.data.get("newAssetPublishing")
         ):
-            hierarchy = instance.data["hierarchy"]
-            anatomy_data["hierarchy"] = hierarchy
+            folder_path = instance.data["folderPath"]
+            parents = folder_path.lstrip("/").split("/")
+            folder_name = parents.pop(-1)
 
             parent_name = project_entity["name"]
-            if hierarchy:
-                parent_name = hierarchy.split("/")[-1]
+            hierarchy = ""
+            if parents:
+                parent_name = parents[-1]
+                hierarchy = "/".join(parents)
 
-            folder_name = instance.data["folderPath"].split("/")[-1]
             anatomy_data.update({
                 "asset": folder_name,
                 "hierarchy": hierarchy,
@@ -432,6 +434,7 @@ class CollectAnatomyInstanceData(pyblish.api.ContextPlugin):
                     #   Using 'Shot' is current default behavior of editorial
                     #   (or 'newHierarchyIntegration') publishing.
                     "type": "Shot",
+                    "parents": parents,
                 },
             })
 

@@ -205,9 +205,9 @@ class AYONPyblishPluginMixin:
         if not cls.__instanceEnabled__:
             return False
 
-        for _ in pyblish.logic.plugins_by_families(
-            [cls], [instance.product_type]
-        ):
+        families = [instance.product_type]
+        families.extend(instance.get("families", []))
+        for _ in pyblish.logic.plugins_by_families([cls], families):
             return True
         return False
 
@@ -292,6 +292,9 @@ class OptionalPyblishPluginMixin(AYONPyblishPluginMixin):
     ```
     """
 
+    # Allow exposing tooltip from class with `optional_tooltip` attribute
+    optional_tooltip: Optional[str] = None
+
     @classmethod
     def get_attribute_defs(cls):
         """Attribute definitions based on plugin's optional attribute."""
@@ -304,8 +307,14 @@ class OptionalPyblishPluginMixin(AYONPyblishPluginMixin):
         active = getattr(cls, "active", True)
         # Return boolean stored under 'active' key with label of the class name
         label = cls.label or cls.__name__
+
         return [
-            BoolDef("active", default=active, label=label)
+            BoolDef(
+                "active",
+                default=active,
+                label=label,
+                tooltip=cls.optional_tooltip,
+            )
         ]
 
     def is_active(self, data):

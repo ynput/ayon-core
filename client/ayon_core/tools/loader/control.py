@@ -198,6 +198,31 @@ class LoaderController(BackendLoaderController, FrontendLoaderController):
     def get_folder_items(self, project_name, sender=None):
         return self._hierarchy_model.get_folder_items(project_name, sender)
 
+    def get_task_items(self, project_name, folder_ids, sender=None):
+        output = []
+        for folder_id in folder_ids:
+            output.extend(self._hierarchy_model.get_task_items(
+                project_name, folder_id, sender
+            ))
+        return output
+
+    def get_task_type_items(self, project_name, sender=None):
+        return self._projects_model.get_task_type_items(
+            project_name, sender
+        )
+
+    def get_folder_labels(self, project_name, folder_ids):
+        folder_items_by_id = self._hierarchy_model.get_folder_items_by_id(
+            project_name, folder_ids
+        )
+        output = {}
+        for folder_id, folder_item in folder_items_by_id.items():
+            label = None
+            if folder_item is not None:
+                label = folder_item.label
+            output[folder_id] = label
+        return output
+
     def get_product_items(self, project_name, folder_ids, sender=None):
         return self._products_model.get_product_items(
             project_name, folder_ids, sender)
@@ -299,6 +324,12 @@ class LoaderController(BackendLoaderController, FrontendLoaderController):
     def set_selected_folders(self, folder_ids):
         self._selection_model.set_selected_folders(folder_ids)
 
+    def get_selected_task_ids(self):
+        return self._selection_model.get_selected_task_ids()
+
+    def set_selected_tasks(self, task_ids):
+        self._selection_model.set_selected_tasks(task_ids)
+
     def get_selected_version_ids(self):
         return self._selection_model.get_selected_version_ids()
 
@@ -372,17 +403,17 @@ class LoaderController(BackendLoaderController, FrontendLoaderController):
 
             repre_ids = set()
             for container in containers:
-                repre_id = container.get("representation")
-                # Ignore invalid representation ids.
-                # - invalid representation ids may be available if e.g. is
-                #   opened scene from OpenPype whe 'ObjectId' was used instead
-                #   of 'uuid'.
-                # NOTE: Server call would crash if there is any invalid id.
-                #   That would cause crash we won't get any information.
                 try:
+                    repre_id = container.get("representation")
+                    # Ignore invalid representation ids.
+                    # - invalid representation ids may be available if e.g. is
+                    #   opened scene from OpenPype whe 'ObjectId' was used
+                    #   instead of 'uuid'.
+                    # NOTE: Server call would crash if there is any invalid id.
+                    #   That would cause crash we won't get any information.
                     uuid.UUID(repre_id)
                     repre_ids.add(repre_id)
-                except ValueError:
+                except (ValueError, TypeError, AttributeError):
                     pass
 
             product_ids = self._products_model.get_product_ids_by_repre_ids(

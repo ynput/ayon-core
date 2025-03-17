@@ -14,8 +14,9 @@ from ayon_core.tools.utils import ProjectsCombobox
 from ayon_core.tools.loader.control import LoaderController
 
 from .folders_widget import LoaderFoldersWidget
+from .tasks_widget import LoaderTasksWidget
 from .products_widget import ProductsWidget
-from .product_types_widget import ProductTypesView
+from .product_types_combo import ProductTypesCombobox
 from .product_group_dialog import ProductGroupDialog
 from .info_widget import InfoWidget
 from .repres_widget import RepresentationsWidget
@@ -164,16 +165,16 @@ class LoaderWindow(QtWidgets.QWidget):
 
         folders_widget = LoaderFoldersWidget(controller, context_widget)
 
-        product_types_widget = ProductTypesView(controller, context_splitter)
-
         context_layout = QtWidgets.QVBoxLayout(context_widget)
         context_layout.setContentsMargins(0, 0, 0, 0)
         context_layout.addWidget(context_top_widget, 0)
         context_layout.addWidget(folders_filter_input, 0)
         context_layout.addWidget(folders_widget, 1)
 
+        tasks_widget = LoaderTasksWidget(controller, context_widget)
+
         context_splitter.addWidget(context_widget)
-        context_splitter.addWidget(product_types_widget)
+        context_splitter.addWidget(tasks_widget)
         context_splitter.setStretchFactor(0, 65)
         context_splitter.setStretchFactor(1, 35)
 
@@ -184,6 +185,10 @@ class LoaderWindow(QtWidgets.QWidget):
 
         products_filter_input = PlaceholderLineEdit(products_inputs_widget)
         products_filter_input.setPlaceholderText("Product name filter...")
+
+        product_types_filter_combo = ProductTypesCombobox(
+            controller, products_inputs_widget
+        )
 
         product_status_filter_combo = StatusesCombobox(controller, self)
 
@@ -196,6 +201,7 @@ class LoaderWindow(QtWidgets.QWidget):
         products_inputs_layout = QtWidgets.QHBoxLayout(products_inputs_widget)
         products_inputs_layout.setContentsMargins(0, 0, 0, 0)
         products_inputs_layout.addWidget(products_filter_input, 1)
+        products_inputs_layout.addWidget(product_types_filter_combo, 1)
         products_inputs_layout.addWidget(product_status_filter_combo, 1)
         products_inputs_layout.addWidget(product_group_checkbox, 0)
 
@@ -244,11 +250,11 @@ class LoaderWindow(QtWidgets.QWidget):
         folders_filter_input.textChanged.connect(
             self._on_folder_filter_change
         )
-        product_types_widget.filter_changed.connect(
-            self._on_product_type_filter_change
-        )
         products_filter_input.textChanged.connect(
             self._on_product_filter_change
+        )
+        product_types_filter_combo.value_changed.connect(
+            self._on_product_type_filter_change
         )
         product_status_filter_combo.value_changed.connect(
             self._on_status_filter_change
@@ -281,6 +287,10 @@ class LoaderWindow(QtWidgets.QWidget):
             self._on_folders_selection_changed,
         )
         controller.register_event_callback(
+            "selection.tasks.changed",
+            self._on_tasks_selection_change,
+        )
+        controller.register_event_callback(
             "selection.versions.changed",
             self._on_versions_selection_changed,
         )
@@ -304,9 +314,10 @@ class LoaderWindow(QtWidgets.QWidget):
         self._folders_filter_input = folders_filter_input
         self._folders_widget = folders_widget
 
-        self._product_types_widget = product_types_widget
+        self._tasks_widget = tasks_widget
 
         self._products_filter_input = products_filter_input
+        self._product_types_filter_combo = product_types_filter_combo
         self._product_status_filter_combo = product_status_filter_combo
         self._product_group_checkbox = product_group_checkbox
         self._products_widget = products_widget
@@ -335,7 +346,7 @@ class LoaderWindow(QtWidgets.QWidget):
         self._controller.reset()
 
     def showEvent(self, event):
-        super(LoaderWindow, self).showEvent(event)
+        super().showEvent(event)
 
         if self._first_show:
             self._on_first_show()
@@ -343,9 +354,13 @@ class LoaderWindow(QtWidgets.QWidget):
         self._show_timer.start()
 
     def closeEvent(self, event):
-        super(LoaderWindow, self).closeEvent(event)
+        super().closeEvent(event)
 
-        self._product_types_widget.reset_product_types_filter_on_refresh()
+        (
+            self
+            ._product_types_filter_combo
+            .reset_product_types_filter_on_refresh()
+        )
 
         self._reset_on_show = True
 
@@ -363,7 +378,7 @@ class LoaderWindow(QtWidgets.QWidget):
             event.setAccepted(True)
             return
 
-        super(LoaderWindow, self).keyPressEvent(event)
+        super().keyPressEvent(event)
 
     def _on_first_show(self):
         self._first_show = False
@@ -423,14 +438,16 @@ class LoaderWindow(QtWidgets.QWidget):
     def _on_product_filter_change(self, text):
         self._products_widget.set_name_filter(text)
 
+    def _on_tasks_selection_change(self, event):
+        self._products_widget.set_tasks_filter(event["task_ids"])
+
     def _on_status_filter_change(self):
         status_names = self._product_status_filter_combo.get_value()
         self._products_widget.set_statuses_filter(status_names)
 
     def _on_product_type_filter_change(self):
-        self._products_widget.set_product_type_filter(
-            self._product_types_widget.get_filter_info()
-        )
+        product_types = self._product_types_filter_combo.get_value()
+        self._products_widget.set_product_type_filter(product_types)
 
     def _on_merged_products_selection_change(self):
         items = self._products_widget.get_selected_merged_products()

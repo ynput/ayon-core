@@ -13,8 +13,7 @@ class CollectHierarchy(pyblish.api.ContextPlugin):
 
     label = "Collect Hierarchy"
     order = pyblish.api.CollectorOrder - 0.076
-    families = ["shot"]
-    hosts = ["resolve", "hiero", "flame"]
+    hosts = ["resolve", "hiero", "flame", "traypublisher"]
 
     def process(self, context):
         project_name = context.data["projectName"]
@@ -32,36 +31,50 @@ class CollectHierarchy(pyblish.api.ContextPlugin):
             product_type = instance.data["productType"]
             families = instance.data["families"]
 
-            # exclude other families then self.families with intersection
-            if not set(self.families).intersection(
-                set(families + [product_type])
-            ):
+            # exclude other families then "shot" with intersection
+            if "shot" not in (families + [product_type]):
+                self.log.debug("Skipping not a shot: {}".format(families))
                 continue
 
-            # exclude if not masterLayer True
+            # Skip if is not a hero track
             if not instance.data.get("heroTrack"):
+                self.log.debug("Skipping not a shot from hero track")
                 continue
 
             shot_data = {
                 "entity_type": "folder",
-                # WARNING Default folder type is hardcoded
-                # suppose that all instances are Shots
-                "folder_type": "Shot",
+                # WARNING unless overwritten, default folder type is hardcoded
+                #   to shot
+                "folder_type": instance.data.get("folder_type") or "Shot",
                 "tasks": instance.data.get("tasks") or {},
                 "comments": instance.data.get("comments", []),
-                "attributes": {
-                    "handleStart": instance.data["handleStart"],
-                    "handleEnd": instance.data["handleEnd"],
-                    "frameStart": instance.data["frameStart"],
-                    "frameEnd": instance.data["frameEnd"],
-                    "clipIn": instance.data["clipIn"],
-                    "clipOut": instance.data["clipOut"],
-                    "fps": instance.data["fps"],
-                    "resolutionWidth": instance.data["resolutionWidth"],
-                    "resolutionHeight": instance.data["resolutionHeight"],
-                    "pixelAspect": instance.data["pixelAspect"],
-                },
             }
+
+            shot_data["attributes"] =  {}
+            SHOT_ATTRS = (
+                "handleStart",
+                "handleEnd",
+                "frameStart",
+                "frameEnd",
+                "clipIn",
+                "clipOut",
+                "fps",
+                "resolutionWidth",
+                "resolutionHeight",
+                "pixelAspect",
+            )
+            for shot_attr in SHOT_ATTRS:
+                attr_value = instance.data.get(shot_attr)
+                if attr_value is None:
+                    # Shot attribute might not be defined (e.g. CSV ingest)
+                    self.log.debug(
+                        "%s shot attribute is not defined for instance.",
+                        shot_attr
+                    )
+                    continue
+
+                shot_data["attributes"][shot_attr] = attr_value
+
             # Split by '/' for AYON where asset is a path
             name = instance.data["folderPath"].split("/")[-1]
             actual = {name: shot_data}
