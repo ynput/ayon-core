@@ -1,10 +1,15 @@
+"""Library for publish pipeline."""
+from __future__ import annotations
 import os
 import sys
 import inspect
+import importlib
 import copy
+from pathlib import Path
 import warnings
 import xml.etree.ElementTree
 from typing import Optional, Union, List
+from types import ModuleType
 
 import ayon_api
 import pyblish.util
@@ -208,17 +213,37 @@ def load_help_content_from_plugin(plugin):
     return load_help_content_from_filepath(filepath)
 
 
-def publish_plugins_discover(paths=None):
+def _import_module(module_name: str, path: Path) -> ModuleType:
+    """Import module from path."""
+    spec = importlib.util.spec_from_file_location(module_name, path)
+    if spec is None:
+        raise ValueError(
+            f"Cannot import path '{path}' as a Python module"
+        )
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[module_name] = module
+    if spec.loader is None:
+        raise ValueError(f"Cannot import path '{path}' as a Python module")
+    spec.loader.exec_module(module)
+
+    return module
+
+
+def publish_plugins_discover(
+        paths: Optional[list[str]] = None) -> DiscoverResult:
     """Find and return available pyblish plug-ins
 
     Overridden function from `pyblish` module to be able to collect
         crashed files and reason of their crash.
 
-    Arguments:
+    Args:
         paths (list, optional): Paths to discover plug-ins from.
             If no paths are provided, all paths are searched.
-    """
 
+    Returns:
+        DiscoverResult: Result of discovered plugins.
+
+    """
     # The only difference with `pyblish.api.discover`
     result = DiscoverResult(pyblish.api.Plugin)
 
@@ -252,12 +277,16 @@ def publish_plugins_discover(paths=None):
                 continue
 
             try:
-                module = import_filepath(abspath, mod_name)
+
+                module_a = _import_module(mod_name, Path(abspath))
+                # module_b = import_filepath(abspath, mod_name)
+
+                module = module_a
 
                 # Store reference to original module, to avoid
                 # garbage collection from collecting it's global
                 # imports, such as `import os`.
-                sys.modules[abspath] = module
+                # sys.modules[abspath] = module
 
             except Exception as err:
                 result.crashed_file_paths[abspath] = sys.exc_info()
@@ -361,7 +390,8 @@ def get_plugin_settings(plugin, project_settings, log, category=None):
     # Settings category determined from path
     # - usually path is './<category>/plugins/publish/<plugin file>'
     # - category can be host name of addon name ('maya', 'deadline', ...)
-    filepath = os.path.normpath(inspect.getsourcefile(plugin))
+    filepath = Path(inspect.getfile(plugin.__class__)).as_posix()
+    # filepath = os.path.normpath(inspect.getsourcefile(plugin))
 
     split_path = filepath.rsplit(os.path.sep, 5)
     if len(split_path) < 4:
