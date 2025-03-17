@@ -1,6 +1,8 @@
+"""Tools for working with python modules and classes."""
 import os
 import sys
 import types
+from typing import Optional
 import importlib
 import inspect
 import logging
@@ -8,13 +10,22 @@ import logging
 log = logging.getLogger(__name__)
 
 
-def import_filepath(filepath, module_name=None):
+def import_filepath(
+        filepath: str,
+        module_name: Optional[str]=None,
+        sys_module_name: Optional[str]=None) -> types.ModuleType:
     """Import python file as python module.
 
     Args:
         filepath (str): Path to python file.
         module_name (str): Name of loaded module. Only for Python 3. By default
             is filled with filename of filepath.
+        sys_module_name (str): Name of module in `sys.modules` where to store
+            loaded module. By default is None so module is not added to
+            `sys.modules`.
+
+    Todo (antirotor): We should add the module to the sys.modules always but
+        we need to be careful about it and test it properly.
 
     """
     if module_name is None:
@@ -28,7 +39,9 @@ def import_filepath(filepath, module_name=None):
     module_loader = importlib.machinery.SourceFileLoader(
         module_name, filepath
     )
-    sys.modules[module_name] = module
+    # only add to sys.modules if requested
+    if sys_module_name:
+        sys.modules[sys_module_name] = module
     module_loader.exec_module(module)
     return module
 
@@ -127,7 +140,8 @@ def classes_from_module(superclass, module):
     return classes
 
 
-def import_module_from_dirpath(dirpath, folder_name, dst_module_name=None):
+def import_module_from_dirpath(
+        dirpath, folder_name, dst_module_name=None):
     """Import passed directory as a python module.
 
     Imported module can be assigned as a child attribute of already loaded
