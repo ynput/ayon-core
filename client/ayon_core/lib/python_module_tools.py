@@ -28,6 +28,7 @@ def import_filepath(filepath, module_name=None):
     module_loader = importlib.machinery.SourceFileLoader(
         module_name, filepath
     )
+    sys.modules[module_name] = module
     module_loader.exec_module(module)
     return module
 
@@ -193,7 +194,7 @@ def is_func_signature_supported(func, *args, **kwargs):
     Notes:
         This does NOT check if the function would work with passed arguments
             only if they can be passed in. If function have *args, **kwargs
-            in paramaters, this will always return 'True'.
+            in parameters, this will always return 'True'.
 
     Example:
         >>> def my_function(my_number):
