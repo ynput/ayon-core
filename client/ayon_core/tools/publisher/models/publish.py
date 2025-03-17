@@ -279,7 +279,7 @@ class PublishReportMaker:
             "name": plugin.__name__,
             "label": label,
             "order": plugin.order,
-            "filepath": inspect.getfile(plugin),
+            "filepath": inspect.getfile(plugin.__class__),
             "docstring": docstring,
             "plugin_type": plugin_type,
             "families": list(plugin.families),

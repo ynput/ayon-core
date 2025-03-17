@@ -1,10 +1,15 @@
+"""Library functions for publishing."""
+from __future__ import annotations
 import os
 import sys
+import importlib
 import inspect
 import copy
+from pathlib import Path
 import warnings
 import xml.etree.ElementTree
-from typing import Optional, Union, List
+from typing import TYPE_CHECKING, Optional, Union, List
+
 
 import ayon_api
 import pyblish.util
@@ -13,7 +18,6 @@ import pyblish.api
 
 from ayon_core.lib import (
     Logger,
-    import_filepath,
     filter_profiles,
 )
 from ayon_core.settings import get_project_settings
@@ -24,6 +28,9 @@ from .constants import (
     DEFAULT_PUBLISH_TEMPLATE,
     DEFAULT_HERO_PUBLISH_TEMPLATE,
 )
+
+if TYPE_CHECKING:
+    from types import ModuleType
 
 
 def get_template_name_profiles(
@@ -163,7 +170,7 @@ class HelpContent:
 
 def load_help_content_from_filepath(filepath):
     """Load help content from xml file.
-    Xml file may containt errors and warnings.
+    Xml file may contain errors and warnings.
     """
     errors = {}
     warnings = {}
@@ -208,8 +215,38 @@ def load_help_content_from_plugin(plugin):
     return load_help_content_from_filepath(filepath)
 
 
-def publish_plugins_discover(paths=None):
-    """Find and return available pyblish plug-ins
+def _import_module(module_name: str, path: Path) -> ModuleType:
+    """Import module from path.
+
+    Args:
+        module_name (str): Name of module.
+        path (Path): Path to module file.
+
+    Returns:
+        ModuleType: Imported module.
+
+    Raises:
+        ImportError: When module cannot be imported.
+
+    """
+    spec = importlib.util.spec_from_file_location(module_name, path)
+    if spec is None:
+        msg = f"Cannot import path '{path}' as a Python module"
+        raise ImportError(msg)
+
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[module_name] = module
+    if spec.loader is None:
+        msg = f"Cannot import path '{path}' as a Python module"
+        raise ImportError(msg)
+    spec.loader.exec_module(module)
+
+    return module
+
+
+def publish_plugins_discover(
+        paths: Optional[list[str]] = None) -> DiscoverResult:
+    """Find and return available pyblish plug-ins.
 
     Overridden function from `pyblish` module to be able to collect
         crashed files and reason of their crash.
@@ -252,17 +289,13 @@ def publish_plugins_discover(paths=None):
                 continue
 
             try:
-                module = import_filepath(abspath, mod_name)
+                module = _import_module(mod_name, Path(abspath))
 
-                # Store reference to original module, to avoid
-                # garbage collection from collecting it's global
-                # imports, such as `import os`.
-                sys.modules[abspath] = module
-
-            except Exception as err:
+            except Exception as err:  # noqa: BLE001
+                # we need broad exception to catch all possible errors.
                 result.crashed_file_paths[abspath] = sys.exc_info()
 
-                log.debug("Skipped: \"%s\" (%s)", mod_name, err)
+                log.debug('Skipped: "%s" (%s)', mod_name, err)
                 continue
 
             for plugin in pyblish.plugin.plugins_from_module(module):
@@ -282,7 +315,7 @@ def publish_plugins_discover(paths=None):
                 plugin_names.append(plugin.__name__)
 
                 plugin.__module__ = module.__file__
-                key = "{0}.{1}".format(plugin.__module__, plugin.__name__)
+                key = f"{plugin.__module__}.{plugin.__name__}"
                 plugins[key] = plugin
 
     # Include plug-ins from registration.
@@ -427,7 +460,7 @@ def filter_pyblish_plugins(plugins):
     log = Logger.get_logger("filter_pyblish_plugins")
 
     # TODO: Don't use host from 'pyblish.api' but from defined host by us.
-    #   - kept becau on farm is probably used host 'shell' which propably
+    #   - kept because on farm is probably used host 'shell' which probably
     #       affect how settings are applied there
     host_name = pyblish.api.current_host()
     project_name = os.environ.get("AYON_PROJECT_NAME")
@@ -529,7 +562,7 @@ def filter_instances_for_context_plugin(plugin, context):
 
     Args:
         plugin (pyblish.api.Plugin): Plugin with filters.
-        context (pyblish.api.Context): Pyblish context with insances.
+        context (pyblish.api.Context): Pyblish context with instances.
 
     Returns:
         Iterator[pyblish.lib.Instance]: Iteration of valid instances.
