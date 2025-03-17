@@ -79,7 +79,8 @@ class ModifiedBurnins(ffmpeg_burnins.Burnins):
     - Datatypes explanation:
     <color> string format must be supported by FFmpeg.
         Examples: "#000000", "0x000000", "black"
-    <font> must be accesible by ffmpeg = name of registered Font in system or path to font file.
+    <font> must be accesible by ffmpeg = name of registered Font in system
+        or path to font file.
         Examples: "Arial", "C:/Windows/Fonts/arial.ttf"
 
     - Possible keys:
@@ -87,17 +88,21 @@ class ModifiedBurnins(ffmpeg_burnins.Burnins):
     "bg_opacity" - Opacity of background (box around text) - <float, Range:0-1>
     "bg_color" - Background color - <color>
     "bg_padding" - Background padding in pixels - <int>
-    "x_offset" - offsets burnin vertically by entered pixels from border - <int>
-    "y_offset" - offsets burnin horizontally by entered pixels from border - <int>
+    "x_offset" - offsets burnin vertically by entered pixels
+        from border - <int>
+    "y_offset" - offsets burnin horizontally by entered pixels
+        from border - <int>
     - x_offset & y_offset should be set at least to same value as bg_padding!!
     "font" - Font Family for text - <font>
     "font_size" - Font size in pixels - <int>
     "font_color" - Color of text - <color>
     "frame_offset" - Default start frame - <int>
-        - required IF start frame is not set when using frames or timecode burnins
+        - required IF start frame is not set when using frames
+          or timecode burnins
 
-    On initializing class can be set General options through "options_init" arg.
-    General can be overridden when adding burnin
+    On initializing class can be set General options through
+        "options_init" arg.
+    General options can be overridden when adding burnin.
 
     '''
     TOP_CENTERED = ffmpeg_burnins.TOP_CENTERED

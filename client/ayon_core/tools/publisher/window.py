@@ -998,7 +998,11 @@ class PublisherWindow(QtWidgets.QDialog):
             new_item["label"] = new_item.pop("creator_label")
             new_item["identifier"] = new_item.pop("creator_identifier")
             new_failed_info.append(new_item)
-        self.add_error_message_dialog(event["title"], new_failed_info, "Creator:")
+        self.add_error_message_dialog(
+            event["title"],
+             new_failed_info,
+             "Creator:"
+        )
 
     def _on_convertor_error(self, event):
         new_failed_info = []

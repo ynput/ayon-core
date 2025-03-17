@@ -19,6 +19,7 @@ from .products_model import (
 )
 
 STATUS_NAME_ROLE = QtCore.Qt.UserRole + 1
+TASK_ID_ROLE = QtCore.Qt.UserRole + 2
 
 
 class VersionsModel(QtGui.QStandardItemModel):
@@ -48,6 +49,7 @@ class VersionsModel(QtGui.QStandardItemModel):
                 item.setData(version_id, QtCore.Qt.UserRole)
                 self._items_by_id[version_id] = item
             item.setData(version_item.status, STATUS_NAME_ROLE)
+            item.setData(version_item.task_id, TASK_ID_ROLE)
 
             if item.row() != idx:
                 root_item.insertRow(idx, item)
@@ -57,17 +59,30 @@ class VersionsFilterModel(QtCore.QSortFilterProxyModel):
     def __init__(self):
         super().__init__()
         self._status_filter = None
+        self._task_ids_filter = None
 
     def filterAcceptsRow(self, row, parent):
-        if self._status_filter is None:
-            return True
+        if self._status_filter is not None:
+            if not self._status_filter:
+                return False
 
-        if not self._status_filter:
-            return False
+            index = self.sourceModel().index(row, 0, parent)
+            status = index.data(STATUS_NAME_ROLE)
+            if status not in self._status_filter:
+                return False
 
-        index = self.sourceModel().index(row, 0, parent)
-        status = index.data(STATUS_NAME_ROLE)
-        return status in self._status_filter
+        if self._task_ids_filter:
+            index = self.sourceModel().index(row, 0, parent)
+            task_id = index.data(TASK_ID_ROLE)
+            if task_id not in self._task_ids_filter:
+                return False
+        return True
+
+    def set_tasks_filter(self, task_ids):
+        if self._task_ids_filter == task_ids:
+            return
+        self._task_ids_filter = task_ids
+        self.invalidateFilter()
 
     def set_statuses_filter(self, status_names):
         if self._status_filter == status_names:
@@ -100,6 +115,13 @@ class VersionComboBox(QtWidgets.QComboBox):
 
     def get_product_id(self):
         return self._product_id
+
+    def set_tasks_filter(self, task_ids):
+        self._proxy_model.set_tasks_filter(task_ids)
+        if self.count() == 0:
+            return
+        if self.currentIndex() != 0:
+            self.setCurrentIndex(0)
 
     def set_statuses_filter(self, status_names):
         self._proxy_model.set_statuses_filter(status_names)
@@ -149,12 +171,18 @@ class VersionDelegate(QtWidgets.QStyledItemDelegate):
         super().__init__(*args, **kwargs)
 
         self._editor_by_id: Dict[str, VersionComboBox] = {}
+        self._task_ids_filter = None
         self._statuses_filter = None
 
     def displayText(self, value, locale):
         if not isinstance(value, numbers.Integral):
             return "N/A"
         return format_version(value)
+
+    def set_tasks_filter(self, task_ids):
+        self._task_ids_filter = set(task_ids)
+        for widget in self._editor_by_id.values():
+            widget.set_tasks_filter(task_ids)
 
     def set_statuses_filter(self, status_names):
         self._statuses_filter = set(status_names)
@@ -222,6 +250,7 @@ class VersionDelegate(QtWidgets.QStyledItemDelegate):
 
         editor = VersionComboBox(product_id, parent)
         editor.setProperty("itemId", item_id)
+        editor.setFocusPolicy(QtCore.Qt.NoFocus)
 
         editor.value_changed.connect(self._on_editor_change)
         editor.destroyed.connect(self._on_destroy)
@@ -238,6 +267,7 @@ class VersionDelegate(QtWidgets.QStyledItemDelegate):
         version_id = index.data(VERSION_ID_ROLE)
 
         editor.update_versions(versions, version_id)
+        editor.set_tasks_filter(self._task_ids_filter)
         editor.set_statuses_filter(self._statuses_filter)
 
     def setModelData(self, editor, model, index):

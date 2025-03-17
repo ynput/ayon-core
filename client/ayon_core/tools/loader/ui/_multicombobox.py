@@ -1,7 +1,10 @@
+from __future__ import annotations
+import typing
 from typing import List, Tuple, Optional, Iterable, Any
 
 from qtpy import QtWidgets, QtCore, QtGui
 
+from ayon_core.tools.utils import get_qt_icon
 from ayon_core.tools.utils.lib import (
     checkstate_int_to_enum,
     checkstate_enum_to_int,
@@ -11,14 +14,269 @@ from ayon_core.tools.utils.constants import (
     UNCHECKED_INT,
     ITEM_IS_USER_TRISTATE,
 )
+if typing.TYPE_CHECKING:
+    from ayon_core.tools.loader.abstract import FrontendLoaderController
 
 VALUE_ITEM_TYPE = 0
 STANDARD_ITEM_TYPE = 1
 SEPARATOR_ITEM_TYPE = 2
 
+VALUE_ITEM_SUBTYPE = 0
+SELECT_ALL_SUBTYPE = 1
+DESELECT_ALL_SUBTYPE = 2
+SWAP_STATE_SUBTYPE = 3
+
+
+class BaseQtModel(QtGui.QStandardItemModel):
+    _empty_icon = None
+
+    def __init__(
+        self,
+        item_type_role: int,
+        item_subtype_role: int,
+        empty_values_label: str,
+        controller: FrontendLoaderController,
+    ):
+        self._item_type_role = item_type_role
+        self._item_subtype_role = item_subtype_role
+        self._empty_values_label = empty_values_label
+        self._controller = controller
+
+        self._last_project = None
+
+        self._select_project_item = None
+        self._empty_values_item = None
+
+        self._select_all_item = None
+        self._deselect_all_item = None
+        self._swap_states_item = None
+
+        super().__init__()
+
+        self.refresh(None)
+
+    def _get_standard_items(self) -> list[QtGui.QStandardItem]:
+        raise NotImplementedError(
+            "'_get_standard_items' is not implemented"
+            f" for {self.__class__}"
+        )
+
+    def _clear_standard_items(self):
+        raise NotImplementedError(
+            "'_clear_standard_items' is not implemented"
+            f" for {self.__class__}"
+        )
+
+    def _prepare_new_value_items(
+        self, project_name: str, project_changed: bool
+    ) -> tuple[
+        list[QtGui.QStandardItem], list[QtGui.QStandardItem]
+    ]:
+        raise NotImplementedError(
+            "'_prepare_new_value_items' is not implemented"
+            f" for {self.__class__}"
+        )
+
+    def refresh(self, project_name: Optional[str]):
+        # New project was selected
+        project_changed = False
+        if project_name != self._last_project:
+            self._last_project = project_name
+            project_changed = True
+
+        if project_name is None:
+            self._add_select_project_item()
+            return
+
+        value_items, items_to_remove = self._prepare_new_value_items(
+            project_name, project_changed
+        )
+        if not value_items:
+            self._add_empty_values_item()
+            return
+
+        self._remove_empty_items()
+
+        root_item = self.invisibleRootItem()
+        for row_idx, value_item in enumerate(value_items):
+            if value_item.row() == row_idx:
+                continue
+            if value_item.row() >= 0:
+                root_item.takeRow(value_item.row())
+            root_item.insertRow(row_idx, value_item)
+
+        for item in items_to_remove:
+            root_item.removeRow(item.row())
+
+        self._add_selection_items()
+
+    def setData(self, index, value, role):
+        if role == QtCore.Qt.CheckStateRole and index.isValid():
+            item_subtype = index.data(self._item_subtype_role)
+            if item_subtype == SELECT_ALL_SUBTYPE:
+                for item in self._get_standard_items():
+                    item.setCheckState(QtCore.Qt.Checked)
+                return True
+            if item_subtype == DESELECT_ALL_SUBTYPE:
+                for item in self._get_standard_items():
+                    item.setCheckState(QtCore.Qt.Unchecked)
+                return True
+            if item_subtype == SWAP_STATE_SUBTYPE:
+                for item in self._get_standard_items():
+                    current_state = item.checkState()
+                    item.setCheckState(
+                        QtCore.Qt.Checked
+                        if current_state == QtCore.Qt.Unchecked
+                        else QtCore.Qt.Unchecked
+                    )
+                return True
+        return super().setData(index, value, role)
+
+    @classmethod
+    def _get_empty_icon(cls):
+        if cls._empty_icon is None:
+            pix = QtGui.QPixmap(1, 1)
+            pix.fill(QtCore.Qt.transparent)
+            cls._empty_icon = QtGui.QIcon(pix)
+        return cls._empty_icon
+
+    def _init_default_items(self):
+        if self._empty_values_item is not None:
+            return
+
+        empty_values_item = QtGui.QStandardItem(self._empty_values_label)
+        select_project_item = QtGui.QStandardItem("Select project...")
+
+        select_all_item = QtGui.QStandardItem("Select all")
+        deselect_all_item = QtGui.QStandardItem("Deselect all")
+        swap_states_item = QtGui.QStandardItem("Swap")
+
+        for item in (
+            empty_values_item,
+            select_project_item,
+            select_all_item,
+            deselect_all_item,
+            swap_states_item,
+        ):
+            item.setData(STANDARD_ITEM_TYPE, self._item_type_role)
+
+        select_all_item.setIcon(get_qt_icon({
+            "type": "material-symbols",
+            "name": "done_all",
+            "color": "white"
+        }))
+        deselect_all_item.setIcon(get_qt_icon({
+            "type": "material-symbols",
+            "name": "remove_done",
+            "color": "white"
+        }))
+        swap_states_item.setIcon(get_qt_icon({
+            "type": "material-symbols",
+            "name": "swap_horiz",
+            "color": "white"
+        }))
+
+        for item in (
+            empty_values_item,
+            select_project_item,
+        ):
+            item.setFlags(QtCore.Qt.NoItemFlags)
+
+        for item, item_type in (
+            (select_all_item, SELECT_ALL_SUBTYPE),
+            (deselect_all_item, DESELECT_ALL_SUBTYPE),
+            (swap_states_item, SWAP_STATE_SUBTYPE),
+        ):
+            item.setData(item_type, self._item_subtype_role)
+
+        for item in (
+            select_all_item,
+            deselect_all_item,
+            swap_states_item,
+        ):
+            item.setFlags(
+                QtCore.Qt.ItemIsEnabled
+                | QtCore.Qt.ItemIsSelectable
+                | QtCore.Qt.ItemIsUserCheckable
+            )
+
+        self._empty_values_item = empty_values_item
+        self._select_project_item = select_project_item
+
+        self._select_all_item = select_all_item
+        self._deselect_all_item = deselect_all_item
+        self._swap_states_item = swap_states_item
+
+    def _get_empty_values_item(self):
+        self._init_default_items()
+        return self._empty_values_item
+
+    def _get_select_project_item(self):
+        self._init_default_items()
+        return self._select_project_item
+
+    def _get_empty_items(self):
+        self._init_default_items()
+        return [
+            self._empty_values_item,
+            self._select_project_item,
+        ]
+
+    def _get_selection_items(self):
+        self._init_default_items()
+        return [
+            self._select_all_item,
+            self._deselect_all_item,
+            self._swap_states_item,
+        ]
+
+    def _get_default_items(self):
+        return self._get_empty_items() + self._get_selection_items()
+
+    def _add_select_project_item(self):
+        item = self._get_select_project_item()
+        if item.row() < 0:
+            self._remove_items()
+            root_item = self.invisibleRootItem()
+            root_item.appendRow(item)
+
+    def _add_empty_values_item(self):
+        item = self._get_empty_values_item()
+        if item.row() < 0:
+            self._remove_items()
+            root_item = self.invisibleRootItem()
+            root_item.appendRow(item)
+
+    def _add_selection_items(self):
+        root_item = self.invisibleRootItem()
+        items = self._get_selection_items()
+        for item in self._get_selection_items():
+            row = item.row()
+            if row >= 0:
+                root_item.takeRow(row)
+        root_item.appendRows(items)
+
+    def _remove_items(self):
+        root_item = self.invisibleRootItem()
+        for item in self._get_default_items():
+            if item.row() < 0:
+                continue
+            root_item.takeRow(item.row())
+
+        root_item.removeRows(0, root_item.rowCount())
+        self._clear_standard_items()
+
+    def _remove_empty_items(self):
+        root_item = self.invisibleRootItem()
+        for item in self._get_empty_items():
+            if item.row() < 0:
+                continue
+            root_item.takeRow(item.row())
+
 
 class CustomPaintDelegate(QtWidgets.QStyledItemDelegate):
     """Delegate showing status name and short name."""
+    _empty_icon = None
     _checked_value = checkstate_enum_to_int(QtCore.Qt.Checked)
     _checked_bg_color = QtGui.QColor("#2C3B4C")
 
@@ -37,6 +295,14 @@ class CustomPaintDelegate(QtWidgets.QStyledItemDelegate):
         self._short_text_role = short_text_role
         self._icon_role = icon_role
         self._item_type_role = item_type_role
+
+    @classmethod
+    def _get_empty_icon(cls):
+        if cls._empty_icon is None:
+            pix = QtGui.QPixmap(1, 1)
+            pix.fill(QtCore.Qt.transparent)
+            cls._empty_icon = QtGui.QIcon(pix)
+        return cls._empty_icon
 
     def paint(self, painter, option, index):
         item_type = None
@@ -70,6 +336,9 @@ class CustomPaintDelegate(QtWidgets.QStyledItemDelegate):
         if option.state & QtWidgets.QStyle.State_Open:
             state = QtGui.QIcon.On
         icon = self._get_index_icon(index)
+        if icon is None or icon.isNull():
+            icon = self._get_empty_icon()
+
         option.features |= QtWidgets.QStyleOptionViewItem.HasDecoration
 
         # Disable visible check indicator
@@ -241,6 +510,10 @@ class CustomPaintMultiselectComboBox(QtWidgets.QComboBox):
         QtCore.Qt.Key_Home,
         QtCore.Qt.Key_End,
     }
+    _top_bottom_margins = 1
+    _top_bottom_padding = 2
+    _left_right_padding = 3
+    _item_bg_color = QtGui.QColor("#31424e")
 
     def __init__(
         self,
@@ -433,14 +706,14 @@ class CustomPaintMultiselectComboBox(QtWidgets.QComboBox):
 
         idxs = self._get_checked_idx()
         # draw the icon and text
-        draw_text = True
+        draw_items = False
         combotext = None
         if self._custom_text is not None:
             combotext = self._custom_text
         elif not idxs:
             combotext = self._placeholder_text
         else:
-            draw_text = False
+            draw_items = True
 
         content_field_rect = self.style().subControlRect(
             QtWidgets.QStyle.CC_ComboBox,
@@ -448,7 +721,9 @@ class CustomPaintMultiselectComboBox(QtWidgets.QComboBox):
             QtWidgets.QStyle.SC_ComboBoxEditField
         ).adjusted(1, 0, -1, 0)
 
-        if draw_text:
+        if draw_items:
+            self._paint_items(painter, idxs, content_field_rect)
+        else:
             color = option.palette.color(QtGui.QPalette.Text)
             color.setAlpha(67)
             pen = painter.pen()
@@ -459,15 +734,12 @@ class CustomPaintMultiselectComboBox(QtWidgets.QComboBox):
                 QtCore.Qt.AlignLeft | QtCore.Qt.AlignVCenter,
                 combotext
             )
-        else:
-            self._paint_items(painter, idxs, content_field_rect)
 
         painter.end()
 
     def _paint_items(self, painter, indexes, content_rect):
         origin_rect = QtCore.QRect(content_rect)
 
-        metrics = self.fontMetrics()
         model = self.model()
         available_width = content_rect.width()
         total_used_width = 0
@@ -482,31 +754,80 @@ class CustomPaintMultiselectComboBox(QtWidgets.QComboBox):
                 continue
 
             icon = index.data(self._icon_role)
-            # TODO handle this case
-            if icon is None or icon.isNull():
-                continue
+            text = index.data(self._text_role)
+            valid_icon = icon is not None and not icon.isNull()
+            if valid_icon:
+                sizes = icon.availableSizes()
+                if sizes:
+                    valid_icon = any(size.width() > 1 for size in sizes)
 
-            icon_rect = QtCore.QRect(content_rect)
-            diff = icon_rect.height() - metrics.height()
-            if diff < 0:
-                diff = 0
-            top_offset = diff // 2
-            bottom_offset = diff - top_offset
-            icon_rect.adjust(0, top_offset, 0, -bottom_offset)
-            icon_rect.setWidth(metrics.height())
-            icon.paint(
-                painter,
-                icon_rect,
-                QtCore.Qt.AlignCenter,
-                QtGui.QIcon.Normal,
-                QtGui.QIcon.On
-            )
-            content_rect.setLeft(icon_rect.right() + spacing)
-            if total_used_width > 0:
-                total_used_width += spacing
-            total_used_width += icon_rect.width()
-            if total_used_width > available_width:
-                break
+            if valid_icon:
+                metrics = self.fontMetrics()
+                icon_rect = QtCore.QRect(content_rect)
+                diff = icon_rect.height() - metrics.height()
+                if diff < 0:
+                    diff = 0
+                top_offset = diff // 2
+                bottom_offset = diff - top_offset
+                icon_rect.adjust(0, top_offset, 0, -bottom_offset)
+                used_width = metrics.height()
+                if total_used_width > 0:
+                    total_used_width += spacing
+                total_used_width += used_width
+                if total_used_width > available_width:
+                    break
+
+                icon_rect.setWidth(used_width)
+                icon.paint(
+                    painter,
+                    icon_rect,
+                    QtCore.Qt.AlignCenter,
+                    QtGui.QIcon.Normal,
+                    QtGui.QIcon.On
+                )
+                content_rect.setLeft(icon_rect.right() + spacing)
+
+            elif text:
+                bg_height = (
+                    content_rect.height()
+                    - (2 * self._top_bottom_margins)
+                )
+                font_height = bg_height - (2 * self._top_bottom_padding)
+
+                bg_top_y = content_rect.y() + self._top_bottom_margins
+
+                font = self.font()
+                font.setPixelSize(font_height)
+                metrics = QtGui.QFontMetrics(font)
+                painter.setFont(font)
+
+                label_rect = metrics.boundingRect(text)
+
+                bg_width = label_rect.width() + (2 * self._left_right_padding)
+                if total_used_width > 0:
+                    total_used_width += spacing
+                total_used_width += bg_width
+                if total_used_width > available_width:
+                    break
+
+                bg_rect = QtCore.QRectF(label_rect)
+                bg_rect.moveTop(bg_top_y)
+                bg_rect.moveLeft(content_rect.left())
+                bg_rect.setWidth(bg_width)
+                bg_rect.setHeight(bg_height)
+
+                label_rect.moveTop(bg_top_y)
+                label_rect.moveLeft(
+                    content_rect.left() + self._left_right_padding
+                )
+
+                path = QtGui.QPainterPath()
+                path.addRoundedRect(bg_rect, 5, 5)
+
+                painter.fillPath(path, self._item_bg_color)
+                painter.drawText(label_rect, QtCore.Qt.AlignCenter, text)
+
+                content_rect.setLeft(bg_rect.right() + spacing)
 
         painter.restore()
 
@@ -517,7 +838,11 @@ class CustomPaintMultiselectComboBox(QtWidgets.QComboBox):
     def setItemCheckState(self, index, state):
         self.setItemData(index, state, QtCore.Qt.CheckStateRole)
 
-    def set_value(self, values: Optional[Iterable[Any]], role: Optional[int] = None):
+    def set_value(
+        self,
+        values: Optional[Iterable[Any]],
+        role: Optional[int] = None,
+    ):
         if role is None:
             role = self._value_role
 

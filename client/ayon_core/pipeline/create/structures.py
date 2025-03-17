@@ -1,6 +1,7 @@
 import copy
 import collections
 from uuid import uuid4
+import typing
 from typing import Optional, Dict, List, Any
 
 from ayon_core.lib.attribute_definitions import (
@@ -16,6 +17,9 @@ from ayon_core.pipeline import (
 
 from .exceptions import ImmutableKeyError
 from .changes import TrackChangesItem
+
+if typing.TYPE_CHECKING:
+    from .creator_plugins import BaseCreator
 
 
 class ConvertorItem:
@@ -429,18 +433,26 @@ class CreatedInstance:
     __immutable_keys = (
         "id",
         "instance_id",
-        "product_type",
+        "productType",
         "creator_identifier",
         "creator_attributes",
         "publish_attributes"
     )
+    # Keys that can be changed, but should not be removed from instance
+    __required_keys = {
+        "folderPath": None,
+        "task": None,
+        "productName": None,
+        "active": True,
+    }
 
     def __init__(
         self,
-        product_type,
-        product_name,
-        data,
-        creator,
+        product_type: str,
+        product_name: str,
+        data: Dict[str, Any],
+        creator: "BaseCreator",
+        transient_data: Optional[Dict[str, Any]] = None,
     ):
         self._creator = creator
         creator_identifier = creator.identifier
@@ -455,7 +467,9 @@ class CreatedInstance:
         self._members = []
 
         # Data that can be used for lifetime of object
-        self._transient_data = {}
+        if transient_data is None:
+            transient_data = {}
+        self._transient_data = transient_data
 
         # Create a copy of passed data to avoid changing them on the fly
         data = copy.deepcopy(data or {})
@@ -485,7 +499,7 @@ class CreatedInstance:
         item_id = data.get("id")
         # TODO use only 'AYON_INSTANCE_ID' when all hosts support it
         if item_id not in {AYON_INSTANCE_ID, AVALON_INSTANCE_ID}:
-            item_id = AVALON_INSTANCE_ID
+            item_id = AYON_INSTANCE_ID
         self._data["id"] = item_id
         self._data["productType"] = product_type
         self._data["productName"] = product_name
@@ -514,6 +528,9 @@ class CreatedInstance:
         )
         if data:
             self._data.update(data)
+
+        for key, default in self.__required_keys.items():
+            self._data.setdefault(key, default)
 
         if not self._data.get("instance_id"):
             self._data["instance_id"] = str(uuid4())
@@ -567,6 +584,8 @@ class CreatedInstance:
         has_key = key in self._data
         output = self._data.pop(key, *args, **kwargs)
         if has_key:
+            if key in self.__required_keys:
+                self._data[key] = self.__required_keys[key]
             self._create_context.instance_values_changed(
                 self.id, {key: None}
             )
@@ -775,16 +794,26 @@ class CreatedInstance:
         self._create_context.instance_create_attr_defs_changed(self.id)
 
     @classmethod
-    def from_existing(cls, instance_data, creator):
+    def from_existing(
+        cls,
+        instance_data: Dict[str, Any],
+        creator: "BaseCreator",
+        transient_data: Optional[Dict[str, Any]] = None,
+    ) -> "CreatedInstance":
         """Convert instance data from workfile to CreatedInstance.
 
         Args:
             instance_data (Dict[str, Any]): Data in a structure ready for
                 'CreatedInstance' object.
             creator (BaseCreator): Creator plugin which is creating the
-                instance of for which the instance belong.
-        """
+                instance of for which the instance belongs.
+            transient_data (Optional[dict[str, Any]]): Instance transient
+                data.
 
+        Returns:
+            CreatedInstance: Instance object.
+
+        """
         instance_data = copy.deepcopy(instance_data)
 
         product_type = instance_data.get("productType")
@@ -797,7 +826,11 @@ class CreatedInstance:
             product_name = instance_data.get("subset")
 
         return cls(
-            product_type, product_name, instance_data, creator
+            product_type,
+            product_name,
+            instance_data,
+            creator,
+            transient_data=transient_data,
         )
 
     def attribute_value_changed(self, key, changes):

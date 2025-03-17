@@ -370,67 +370,11 @@ def _load_ayon_addons(log):
     return all_addon_modules
 
 
-def _load_addons_in_core(log):
-    # Add current directory at first place
-    #   - has small differences in import logic
-    addon_modules = []
-    modules_dir = os.path.join(AYON_CORE_ROOT, "modules")
-    if not os.path.exists(modules_dir):
-        log.warning(
-            f"Could not find path when loading AYON addons \"{modules_dir}\""
-        )
-        return addon_modules
-
-    ignored_filenames = IGNORED_FILENAMES | IGNORED_DEFAULT_FILENAMES
-    for filename in os.listdir(modules_dir):
-        # Ignore filenames
-        if filename in ignored_filenames:
-            continue
-
-        fullpath = os.path.join(modules_dir, filename)
-        basename, ext = os.path.splitext(filename)
-
-        # Validations
-        if os.path.isdir(fullpath):
-            # Check existence of init file
-            init_path = os.path.join(fullpath, "__init__.py")
-            if not os.path.exists(init_path):
-                log.debug((
-                    "Addon directory does not contain __init__.py"
-                    f" file {fullpath}"
-                ))
-                continue
-
-        elif ext != ".py":
-            continue
-
-        # TODO add more logic how to define if folder is addon or not
-        # - check manifest and content of manifest
-        try:
-            # Don't import dynamically current directory modules
-            import_str = f"ayon_core.modules.{basename}"
-            default_module = __import__(import_str, fromlist=("", ))
-            addon_modules.append(default_module)
-
-        except Exception:
-            log.error(
-                f"Failed to import in-core addon '{basename}'.",
-                exc_info=True
-            )
-    return addon_modules
-
-
 def _load_addons():
     log = Logger.get_logger("AddonsLoader")
 
-    addon_modules = _load_ayon_addons(log)
-    # All addon in 'modules' folder are tray actions and should be moved
-    #   to tray tool.
-    # TODO remove
-    addon_modules.extend(_load_addons_in_core(log))
-
     # Store modules to local cache
-    _LoadCache.addon_modules = addon_modules
+    _LoadCache.addon_modules = _load_ayon_addons(log)
 
 
 class AYONAddon(ABC):
@@ -535,8 +479,8 @@ class AYONAddon(ABC):
         Implementation of this method is optional.
 
         Note:
-            The logic can be similar to logic in tray, but tray does not require
-                to be logged in.
+            The logic can be similar to logic in tray, but tray does not
+                require to be logged in.
 
         Args:
             process_context (ProcessContext): Context of child
@@ -948,6 +892,21 @@ class AddonsManager:
                 if not isinstance(paths, (list, tuple, set)):
                     paths = [paths]
                 output.extend(paths)
+        return output
+
+    def collect_launcher_action_paths(self):
+        """Helper to collect launcher action paths from addons.
+
+        Returns:
+            list: List of paths to launcher actions.
+
+        """
+        output = self._collect_plugin_paths(
+            "get_launcher_action_paths"
+        )
+        # Add default core actions
+        actions_dir = os.path.join(AYON_CORE_ROOT, "plugins", "actions")
+        output.insert(0, actions_dir)
         return output
 
     def collect_create_plugin_paths(self, host_name):

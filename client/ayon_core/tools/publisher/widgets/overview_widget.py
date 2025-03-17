@@ -339,7 +339,9 @@ class OverviewWidget(QtWidgets.QFrame):
         self._change_visibility_for_state()
         self._product_content_layout.addWidget(self._create_widget, 7)
         self._product_content_layout.addWidget(self._product_views_widget, 3)
-        self._product_content_layout.addWidget(self._product_attributes_wrap, 7)
+        self._product_content_layout.addWidget(
+            self._product_attributes_wrap, 7
+        )
 
     def _change_visibility_for_state(self):
         self._create_widget.setVisible(

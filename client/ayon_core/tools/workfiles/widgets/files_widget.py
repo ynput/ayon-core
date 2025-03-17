@@ -136,6 +136,8 @@ class FilesWidget(QtWidgets.QWidget):
 
         # Initial setup
         workarea_btn_open.setEnabled(False)
+        workarea_btn_browse.setEnabled(False)
+        workarea_btn_save.setEnabled(False)
         published_btn_copy_n_open.setEnabled(False)
         published_btn_change_context.setEnabled(False)
         published_btn_cancel.setVisible(False)
@@ -278,8 +280,9 @@ class FilesWidget(QtWidgets.QWidget):
         self._published_btn_change_context.setEnabled(enabled)
 
     def _update_workarea_btns_state(self):
-        enabled = self._is_save_enabled
+        enabled = self._is_save_enabled and self._valid_selected_context
         self._workarea_btn_save.setEnabled(enabled)
+        self._workarea_btn_browse.setEnabled(self._valid_selected_context)
 
     def _on_published_repre_changed(self, event):
         self._valid_representation_id = event["representation_id"] is not None
@@ -294,6 +297,7 @@ class FilesWidget(QtWidgets.QWidget):
             and self._selected_task_id is not None
         )
         self._update_published_btns_state()
+        self._update_workarea_btns_state()
 
     def _on_published_save_clicked(self):
         result = self._exec_save_as_dialog()

@@ -7,6 +7,7 @@ from ayon_core.pipeline.actions import (
     discover_launcher_actions,
     LauncherAction,
     LauncherActionSelection,
+    register_launcher_action_path,
 )
 from ayon_core.pipeline.workfile import should_use_last_workfile_on_launch
 
@@ -21,9 +22,9 @@ except ImportError:
 
         Application action based on 'ApplicationManager' system.
 
-        Handling of applications in launcher is not ideal and should be completely
-        redone from scratch. This is just a temporary solution to keep backwards
-        compatibility with AYON launcher.
+        Handling of applications in launcher is not ideal and should be
+        completely redone from scratch. This is just a temporary solution
+        to keep backwards compatibility with AYON launcher.
 
         Todos:
             Move handling of errors to frontend.
@@ -459,6 +460,14 @@ class ActionsModel:
 
     def _get_discovered_action_classes(self):
         if self._discovered_actions is None:
+            # NOTE We don't need to register the paths, but that would
+            #   require to change discovery logic and deprecate all functions
+            #   related to registering and discovering launcher actions.
+            addons_manager = self._get_addons_manager()
+            actions_paths = addons_manager.collect_launcher_action_paths()
+            for path in actions_paths:
+                if path and os.path.exists(path):
+                    register_launcher_action_path(path)
             self._discovered_actions = (
                 discover_launcher_actions()
                 + self._get_applications_action_classes()

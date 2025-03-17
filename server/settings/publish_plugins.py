@@ -68,6 +68,67 @@ class ContributionLayersModel(BaseSettingsModel):
                     "layer on top.")
 
 
+class CollectUSDLayerContributionsProfileModel(BaseSettingsModel):
+    """Profiles to define instance attribute defaults for USD contribution."""
+    _layout = "expanded"
+    product_types: list[str] = SettingsField(
+        default_factory=list,
+        title="Product types",
+        description=(
+            "The product types to match this profile to. When matched, the"
+            " settings below would apply to the instance as default"
+            " attributes."
+        ),
+        section="Filter"
+    )
+    task_types: list[str] = SettingsField(
+        default_factory=list,
+        title="Task Types",
+        enum_resolver=task_types_enum,
+        description=(
+            "The current create context task type to filter against. This"
+            " allows to filter the profile to only be valid if currently "
+            " creating from within that task type."
+        ),
+    )
+    contribution_enabled: bool = SettingsField(
+        True,
+        title="Contribution Enabled (default)",
+        description=(
+            "The default state for USD Contribution being marked enabled or"
+            " disabled for this profile."
+        ),
+        section="Instance attribute defaults",
+    )
+    contribution_layer: str = SettingsField(
+        "",
+        title="Contribution Department Layer",
+        description=(
+            "The default contribution layer to apply the contribution to when"
+            " matching this profile. The layer name should be in the"
+            " 'Department Layer Orders' list to get a sensible order."
+        ),
+    )
+    contribution_apply_as_variant: bool = SettingsField(
+        True,
+        title="Apply as variant",
+        description=(
+            "The default 'Apply as variant' state for instances matching this"
+            " profile. Usually enabled for asset contributions and disabled"
+            " for shot contributions."
+        ),
+    )
+    contribution_target_product: str = SettingsField(
+        "usdAsset",
+        title="Target Product",
+        description=(
+            "The default destination product name to apply the contribution to"
+            " when matching this profile."
+            " Usually e.g. 'usdAsset' or 'usdShot'."
+        ),
+    )
+
+
 class CollectUSDLayerContributionsModel(BaseSettingsModel):
     enabled: bool = SettingsField(True, title="Enabled")
     contribution_layers: list[ContributionLayersModel] = SettingsField(
@@ -75,6 +136,14 @@ class CollectUSDLayerContributionsModel(BaseSettingsModel):
         description=(
             "Define available department layers and their strength "
             "ordering inside the USD contribution workflow."
+        )
+    )
+    profiles: list[CollectUSDLayerContributionsProfileModel] = SettingsField(
+        default_factory=list,
+        title="Profiles",
+        description=(
+            "Define attribute defaults for USD Contributions on publish"
+            " instances."
         )
     )
 
@@ -358,7 +427,10 @@ class ExtractOIIOTranscodeOutputModel(BaseSettingsModel):
     custom_tags: list[str] = SettingsField(
         default_factory=list,
         title="Custom Tags",
-        description="Additional custom tags that will be added to the created representation."
+        description=(
+            "Additional custom tags that will be added"
+            " to the created representation."
+        )
     )
 
 
@@ -892,9 +964,11 @@ class PublishPuginsModel(BaseSettingsModel):
         default_factory=CollectFramesFixDefModel,
         title="Collect Frames to Fix",
     )
-    CollectUSDLayerContributions: CollectUSDLayerContributionsModel = SettingsField(
-        default_factory=CollectUSDLayerContributionsModel,
-        title="Collect USD Layer Contributions",
+    CollectUSDLayerContributions: CollectUSDLayerContributionsModel = (
+        SettingsField(
+            default_factory=CollectUSDLayerContributionsModel,
+            title="Collect USD Layer Contributions",
+        )
     )
     ValidateEditorialAssetName: ValidateBaseModel = SettingsField(
         default_factory=ValidateBaseModel,
@@ -1003,8 +1077,8 @@ DEFAULT_PUBLISH_VALUES = {
             {"name": "model", "order": 100},
             {"name": "assembly", "order": 150},
             {"name": "groom", "order": 175},
-            {"name": "look", "order": 300},
-            {"name": "rig", "order": 100},
+            {"name": "look", "order": 200},
+            {"name": "rig", "order": 300},
             # Shot layers
             {"name": "layout", "order": 200},
             {"name": "animation", "order": 300},
@@ -1012,6 +1086,48 @@ DEFAULT_PUBLISH_VALUES = {
             {"name": "fx", "order": 500},
             {"name": "lighting", "order": 600},
         ],
+        "profiles": [
+            {
+                "product_types": ["model"],
+                "task_types": [],
+                "contribution_enabled": True,
+                "contribution_layer": "model",
+                "contribution_apply_as_variant": True,
+                "contribution_target_product": "usdAsset"
+            },
+            {
+                "product_types": ["look"],
+                "task_types": [],
+                "contribution_enabled": True,
+                "contribution_layer": "look",
+                "contribution_apply_as_variant": True,
+                "contribution_target_product": "usdAsset"
+            },
+            {
+                "product_types": ["groom"],
+                "task_types": [],
+                "contribution_enabled": True,
+                "contribution_layer": "groom",
+                "contribution_apply_as_variant": True,
+                "contribution_target_product": "usdAsset"
+            },
+            {
+                "product_types": ["rig"],
+                "task_types": [],
+                "contribution_enabled": True,
+                "contribution_layer": "rig",
+                "contribution_apply_as_variant": True,
+                "contribution_target_product": "usdAsset"
+            },
+            {
+                "product_types": ["usd"],
+                "task_types": [],
+                "contribution_enabled": True,
+                "contribution_layer": "assembly",
+                "contribution_apply_as_variant": False,
+                "contribution_target_product": "usdShot"
+            },
+        ]
     },
     "ValidateEditorialAssetName": {
         "enabled": True,
@@ -1028,7 +1144,8 @@ DEFAULT_PUBLISH_VALUES = {
                     "maya",
                     "nuke",
                     "photoshop",
-                    "substancepainter"
+                    "substancepainter",
+                    "silhouette",
                 ],
                 "enabled": True,
                 "optional": False,
@@ -1048,7 +1165,8 @@ DEFAULT_PUBLISH_VALUES = {
                     "harmony",
                     "photoshop",
                     "aftereffects",
-                    "fusion"
+                    "fusion",
+                    "silhouette",
                 ],
                 "enabled": True,
                 "optional": True,
@@ -1214,7 +1332,9 @@ DEFAULT_PUBLISH_VALUES = {
                         "TOP_RIGHT": "{anatomy[version]}",
                         "BOTTOM_LEFT": "{username}",
                         "BOTTOM_CENTERED": "{folder[name]}",
-                        "BOTTOM_RIGHT": "{frame_start}-{current_frame}-{frame_end}",
+                        "BOTTOM_RIGHT": (
+                            "{frame_start}-{current_frame}-{frame_end}"
+                        ),
                         "filter": {
                             "families": [],
                             "tags": []
@@ -1240,7 +1360,9 @@ DEFAULT_PUBLISH_VALUES = {
                         "TOP_RIGHT": "{anatomy[version]}",
                         "BOTTOM_LEFT": "{username}",
                         "BOTTOM_CENTERED": "{folder[name]}",
-                        "BOTTOM_RIGHT": "{frame_start}-{current_frame}-{frame_end}",
+                        "BOTTOM_RIGHT": (
+                            "{frame_start}-{current_frame}-{frame_end}"
+                        ),
                         "filter": {
                             "families": [],
                             "tags": []

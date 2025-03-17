@@ -12,34 +12,35 @@ GROUP_TYPE_ROLE = QtCore.Qt.UserRole + 1
 MERGED_COLOR_ROLE = QtCore.Qt.UserRole + 2
 FOLDER_LABEL_ROLE = QtCore.Qt.UserRole + 3
 FOLDER_ID_ROLE = QtCore.Qt.UserRole + 4
-PRODUCT_ID_ROLE = QtCore.Qt.UserRole + 5
-PRODUCT_NAME_ROLE = QtCore.Qt.UserRole + 6
-PRODUCT_TYPE_ROLE = QtCore.Qt.UserRole + 7
-PRODUCT_TYPE_ICON_ROLE = QtCore.Qt.UserRole + 8
-PRODUCT_IN_SCENE_ROLE = QtCore.Qt.UserRole + 9
-VERSION_ID_ROLE = QtCore.Qt.UserRole + 10
-VERSION_HERO_ROLE = QtCore.Qt.UserRole + 11
-VERSION_NAME_ROLE = QtCore.Qt.UserRole + 12
-VERSION_NAME_EDIT_ROLE = QtCore.Qt.UserRole + 13
-VERSION_PUBLISH_TIME_ROLE = QtCore.Qt.UserRole + 14
-VERSION_STATUS_NAME_ROLE = QtCore.Qt.UserRole + 15
-VERSION_STATUS_SHORT_ROLE = QtCore.Qt.UserRole + 16
-VERSION_STATUS_COLOR_ROLE = QtCore.Qt.UserRole + 17
-VERSION_STATUS_ICON_ROLE = QtCore.Qt.UserRole + 18
-VERSION_AUTHOR_ROLE = QtCore.Qt.UserRole + 19
-VERSION_FRAME_RANGE_ROLE = QtCore.Qt.UserRole + 20
-VERSION_DURATION_ROLE = QtCore.Qt.UserRole + 21
-VERSION_HANDLES_ROLE = QtCore.Qt.UserRole + 22
-VERSION_STEP_ROLE = QtCore.Qt.UserRole + 23
-VERSION_AVAILABLE_ROLE = QtCore.Qt.UserRole + 24
-VERSION_THUMBNAIL_ID_ROLE = QtCore.Qt.UserRole + 25
-ACTIVE_SITE_ICON_ROLE = QtCore.Qt.UserRole + 26
-REMOTE_SITE_ICON_ROLE = QtCore.Qt.UserRole + 27
-REPRESENTATIONS_COUNT_ROLE = QtCore.Qt.UserRole + 28
-SYNC_ACTIVE_SITE_AVAILABILITY = QtCore.Qt.UserRole + 29
-SYNC_REMOTE_SITE_AVAILABILITY = QtCore.Qt.UserRole + 30
+TASK_ID_ROLE = QtCore.Qt.UserRole + 5
+PRODUCT_ID_ROLE = QtCore.Qt.UserRole + 6
+PRODUCT_NAME_ROLE = QtCore.Qt.UserRole + 7
+PRODUCT_TYPE_ROLE = QtCore.Qt.UserRole + 8
+PRODUCT_TYPE_ICON_ROLE = QtCore.Qt.UserRole + 9
+PRODUCT_IN_SCENE_ROLE = QtCore.Qt.UserRole + 10
+VERSION_ID_ROLE = QtCore.Qt.UserRole + 11
+VERSION_HERO_ROLE = QtCore.Qt.UserRole + 12
+VERSION_NAME_ROLE = QtCore.Qt.UserRole + 13
+VERSION_NAME_EDIT_ROLE = QtCore.Qt.UserRole + 14
+VERSION_PUBLISH_TIME_ROLE = QtCore.Qt.UserRole + 15
+VERSION_STATUS_NAME_ROLE = QtCore.Qt.UserRole + 16
+VERSION_STATUS_SHORT_ROLE = QtCore.Qt.UserRole + 17
+VERSION_STATUS_COLOR_ROLE = QtCore.Qt.UserRole + 18
+VERSION_STATUS_ICON_ROLE = QtCore.Qt.UserRole + 19
+VERSION_AUTHOR_ROLE = QtCore.Qt.UserRole + 20
+VERSION_FRAME_RANGE_ROLE = QtCore.Qt.UserRole + 21
+VERSION_DURATION_ROLE = QtCore.Qt.UserRole + 22
+VERSION_HANDLES_ROLE = QtCore.Qt.UserRole + 23
+VERSION_STEP_ROLE = QtCore.Qt.UserRole + 24
+VERSION_AVAILABLE_ROLE = QtCore.Qt.UserRole + 25
+VERSION_THUMBNAIL_ID_ROLE = QtCore.Qt.UserRole + 26
+ACTIVE_SITE_ICON_ROLE = QtCore.Qt.UserRole + 27
+REMOTE_SITE_ICON_ROLE = QtCore.Qt.UserRole + 28
+REPRESENTATIONS_COUNT_ROLE = QtCore.Qt.UserRole + 29
+SYNC_ACTIVE_SITE_AVAILABILITY = QtCore.Qt.UserRole + 30
+SYNC_REMOTE_SITE_AVAILABILITY = QtCore.Qt.UserRole + 31
 
-STATUS_NAME_FILTER_ROLE = QtCore.Qt.UserRole + 31
+STATUS_NAME_FILTER_ROLE = QtCore.Qt.UserRole + 32
 
 
 class ProductsModel(QtGui.QStandardItemModel):
@@ -368,6 +369,7 @@ class ProductsModel(QtGui.QStandardItemModel):
 
         """
         model_item.setData(version_item.version_id, VERSION_ID_ROLE)
+        model_item.setData(version_item.task_id, TASK_ID_ROLE)
         model_item.setData(version_item.version, VERSION_NAME_ROLE)
         model_item.setData(version_item.is_hero, VERSION_HERO_ROLE)
         model_item.setData(
@@ -499,8 +501,10 @@ class ProductsModel(QtGui.QStandardItemModel):
             version_item.version_id
             for version_item in last_version_by_product_id.values()
         }
-        repre_count_by_version_id = self._controller.get_versions_representation_count(
-            project_name, version_ids
+        repre_count_by_version_id = (
+            self._controller.get_versions_representation_count(
+                project_name, version_ids
+            )
         )
         sync_availability_by_version_id = (
             self._controller.get_version_sync_availability(
