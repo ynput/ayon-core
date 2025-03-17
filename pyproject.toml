@@ -5,31 +5,25 @@
 
 [tool.poetry]
 name = "ayon-core"
-version = "1.1.4+dev"
+version = "1.1.0+dev"
 description = ""
 authors = ["Ynput Team <team@ynput.io>"]
 readme = "README.md"
-package-mode = false
 
 [tool.poetry.dependencies]
 python = ">=3.9.1,<3.10"
 
-[tool.poetry.group.dev.dependencies]
+
+[tool.poetry.dev-dependencies]
 # test dependencies
 pytest = "^8.0"
 pytest-print = "^1.0"
 ayon-python-api = "^1.0"
 # linting dependencies
-ruff = "^0.9.3"
-pre-commit = "^4"
+ruff = "^0.3.3"
+pre-commit = "^3.6.2"
 codespell = "^2.2.6"
 semver = "^3.0.2"
-mypy = "^1.14.0"
-mock = "^5.0.0"
-attrs = "^25.0.0"
-pyblish-base = "^1.8.7"
-clique = "^2.0.0"
-opentimelineio = "^0.17.0"
 
 
 [tool.ruff]
@@ -69,37 +63,13 @@ exclude = [
 line-length = 79
 indent-width = 4
 
-
 # Assume Python 3.9
 target-version = "py39"
 
 [tool.ruff.lint]
-preview = true
-pydocstyle.convention = "google"
 # Enable Pyflakes (`F`) and a subset of the pycodestyle (`E`)  codes by default.
-select = ["ALL"]
-ignore = [
-    "PTH",
-    # "ANN101", # must be set in older version of ruff
-    "ANN204",
-    "COM812",
-    "S603",
-    "ERA001",
-    "TRY003",
-    "UP006",   # support for older python version (type vs. Type)
-    "UP007",   # ..^
-    "UP035",   # ..
-    "UP045",   # Use `X | None` for type annotations
-    "ARG002",
-    "INP001",  # add `__init__.py` to namespaced package
-    "FIX002",  # FIX all TODOs
-    "TD003",   # missing issue link
-    "S404",    # subprocess module is possibly insecure
-    "PLC0415", # import must be on top of the file
-    "CPY001",  # missing copyright header
-    "UP045"
-
-]
+select = ["E", "F", "W"]
+ignore = []
 
 # Allow fix for all enabled rules (when `--fix`) is provided.
 fixable = ["ALL"]
@@ -115,7 +85,6 @@ exclude = [
 
 [tool.ruff.lint.per-file-ignores]
 "client/ayon_core/lib/__init__.py" = ["E402"]
-"tests/*.py" = ["S101", "PLR2004"]  # allow asserts and magical values
 
 [tool.ruff.format]
 # Like Black, use double quotes for strings.
@@ -141,9 +110,6 @@ ignore-regex = ".*codespell:ignore.*"
 skip = "./.*,./package/*,*/vendor/*,*/unreal/integration/*,*/aftereffects/api/extension/js/libs/*"
 count = true
 quiet-level = 3
-
-[tool.mypy]
-mypy_path = "$MYPY_CONFIG_FILE_DIR/client"
 
 [build-system]
 requires = ["poetry-core"]
