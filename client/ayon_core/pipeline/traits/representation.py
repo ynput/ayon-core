@@ -391,7 +391,7 @@ class Representation(Generic[T]):  # noqa: PLR0904
 
         """
         return {
-            trait_id: trait.model_dump()
+            trait_id: trait.as_dict()
             for trait_id, trait in self._data.items()
             if trait and trait_id
         }
@@ -593,16 +593,16 @@ class Representation(Generic[T]):  # noqa: PLR0904
                 )
                 raise IncompatibleTraitVersionError(msg) from e
 
-            if requested_version is None:
-                trait_class = e.found_trait
-                requested_version = found_version
-
             if found_version is None:
                 msg = (
                     f"Trait {e.found_trait.id} found with no version, "
                     "but requested version is specified."
                 )
                 raise IncompatibleTraitVersionError(msg) from e
+
+            if requested_version is None:
+                trait_class = e.found_trait
+                requested_version = found_version
 
             if requested_version > found_version:
                 error_msg = (
