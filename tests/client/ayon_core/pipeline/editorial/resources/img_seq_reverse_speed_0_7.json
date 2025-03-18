@@ -1,0 +1,235 @@
+{
+    "OTIO_SCHEMA": "Clip.2",
+    "metadata": {},
+    "name": "img_seq_revsh0010",
+    "source_range": {
+        "OTIO_SCHEMA": "TimeRange.1",
+        "duration": {
+            "OTIO_SCHEMA": "RationalTime.1",
+            "rate": 25.0,
+            "value": 41.0
+        },
+        "start_time": {
+            "OTIO_SCHEMA": "RationalTime.1",
+            "rate": 25.0,
+            "value": 1040.0
+        }
+    },
+    "effects": [
+        {
+            "OTIO_SCHEMA": "LinearTimeWarp.1",
+            "metadata": {},
+            "name": "Speed",
+            "effect_name": "LinearTimeWarp",
+            "time_scalar": -0.7
+        }
+    ],
+    "markers": [
+        {
+            "OTIO_SCHEMA": "Marker.2",
+            "metadata": {
+                "clip_index": "e7fede03-d769-4827-a014-35b50170e914",
+                "flame_sub_products": {
+                    "io.ayon.creators.flame.plate": {
+                        "active": true,
+                        "clipName": "{sequence}{shot}",
+                        "clipRename": true,
+                        "clipVariant": "<track_name>",
+                        "clip_index": "e7fede03-d769-4827-a014-35b50170e914",
+                        "countFrom": 10,
+                        "countSteps": 10,
+                        "creator_attributes": {
+                            "parentInstance": "/test_robin/img_seq_rev/img_seq_revsh0010 shot",
+                            "review": false,
+                            "reviewableSource": "clip_media"
+                        },
+                        "creator_identifier": "io.ayon.creators.flame.plate",
+                        "episode": "ep01",
+                        "export_audio": false,
+                        "folder": "test_robin",
+                        "folderName": "img_seq_revsh0010",
+                        "folderPath": "/test_robin/img_seq_rev/img_seq_revsh0010",
+                        "handleEnd": 5,
+                        "handleStart": 5,
+                        "heroTrack": true,
+                        "hierarchy": "test_robin/img_seq_rev",
+                        "hierarchyData": {
+                            "episode": "ep01",
+                            "folder": "test_robin",
+                            "sequence": "img_seq_rev",
+                            "track": "noname1"
+                        },
+                        "id": "pyblish.avalon.instance",
+                        "includeHandles": false,
+                        "instance_id": "a06107cd-49ad-48cb-a84f-67f53dfd58ef",
+                        "label": "/test_robin/img_seq_rev/img_seq_revsh0010 plateNoname1",
+                        "newAssetPublishing": true,
+                        "newHierarchyIntegration": true,
+                        "parent_instance_id": "896c2dad-03a6-4a18-97f5-ecf8f00a6180",
+                        "parents": [
+                            {
+                                "entity_name": "test_robin",
+                                "folder_type": "folder"
+                            },
+                            {
+                                "entity_name": "img_seq_rev",
+                                "folder_type": "sequence"
+                            }
+                        ],
+                        "productName": "plateNoname1",
+                        "productType": "plate",
+                        "publish": true,
+                        "publish_attributes": {},
+                        "retimedFramerange": true,
+                        "retimedHandles": true,
+                        "reviewTrack": null,
+                        "reviewableSource": null,
+                        "segmentIndex": true,
+                        "sequence": "img_seq_rev",
+                        "shot": "sh####",
+                        "sourceResolution": false,
+                        "task": null,
+                        "track": "{_track_}",
+                        "useShotName": false,
+                        "use_selection": true,
+                        "vSyncOn": false,
+                        "vSyncTrack": "*",
+                        "variant": "noname1",
+                        "workfileFrameStart": 1001
+                    },
+                    "io.ayon.creators.flame.shot": {
+                        "active": true,
+                        "clipName": "{sequence}{shot}",
+                        "clipRename": true,
+                        "clipVariant": "<track_name>",
+                        "clip_index": "e7fede03-d769-4827-a014-35b50170e914",
+                        "countFrom": 10,
+                        "countSteps": 10,
+                        "creator_attributes": {
+                            "clipDuration": 41,
+                            "clipIn": 1,
+                            "clipOut": 41,
+                            "fps": "from_selection",
+                            "frameEnd": 1042,
+                            "frameStart": 1001,
+                            "handleEnd": 5,
+                            "handleStart": 5,
+                            "includeHandles": false,
+                            "retimedFramerange": true,
+                            "retimedHandles": true,
+                            "sourceIn": 1068,
+                            "sourceOut": 1040,
+                            "workfileFrameStart": 1001
+                        },
+                        "creator_identifier": "io.ayon.creators.flame.shot",
+                        "episode": "ep01",
+                        "export_audio": false,
+                        "folder": "test_robin",
+                        "folderName": "img_seq_revsh0010",
+                        "folderPath": "/test_robin/img_seq_rev/img_seq_revsh0010",
+                        "handleEnd": 5,
+                        "handleStart": 5,
+                        "heroTrack": true,
+                        "hierarchy": "test_robin/img_seq_rev",
+                        "hierarchyData": {
+                            "episode": "ep01",
+                            "folder": "test_robin",
+                            "sequence": "img_seq_rev",
+                            "track": "noname1"
+                        },
+                        "id": "pyblish.avalon.instance",
+                        "includeHandles": false,
+                        "instance_id": "896c2dad-03a6-4a18-97f5-ecf8f00a6180",
+                        "label": "/test_robin/img_seq_rev/img_seq_revsh0010 shot",
+                        "newAssetPublishing": true,
+                        "newHierarchyIntegration": true,
+                        "parents": [
+                            {
+                                "entity_name": "test_robin",
+                                "folder_type": "folder"
+                            },
+                            {
+                                "entity_name": "img_seq_rev",
+                                "folder_type": "sequence"
+                            }
+                        ],
+                        "productName": "shotMain",
+                        "productType": "shot",
+                        "publish": true,
+                        "publish_attributes": {},
+                        "retimedFramerange": true,
+                        "retimedHandles": true,
+                        "reviewTrack": null,
+                        "reviewableSource": null,
+                        "segmentIndex": true,
+                        "sequence": "img_seq_rev",
+                        "shot": "sh####",
+                        "sourceResolution": false,
+                        "task": null,
+                        "track": "{_track_}",
+                        "useShotName": false,
+                        "use_selection": true,
+                        "vSyncOn": false,
+                        "vSyncTrack": "*",
+                        "variant": "main",
+                        "workfileFrameStart": 1001
+                    }
+                },
+                "publish": true
+            },
+            "name": "AYONData",
+            "color": "CYAN",
+            "marked_range": {
+                "OTIO_SCHEMA": "TimeRange.1",
+                "duration": {
+                    "OTIO_SCHEMA": "RationalTime.1",
+                    "rate": 25.0,
+                    "value": 1.0
+                },
+                "start_time": {
+                    "OTIO_SCHEMA": "RationalTime.1",
+                    "rate": 25.0,
+                    "value": 22.0
+                }
+            },
+            "comment": ""
+        }
+    ],
+    "enabled": true,
+    "media_references": {
+        "DEFAULT_MEDIA": {
+            "OTIO_SCHEMA": "ImageSequenceReference.1",
+            "metadata": {
+                "ayon.source.height": 1080,
+                "ayon.source.pixelAspect": 1.0,
+                "ayon.source.width": 1920,
+                "isSequence": true,
+                "padding": 4
+            },
+            "name": "",
+            "available_range": {
+                "OTIO_SCHEMA": "TimeRange.1",
+                "duration": {
+                    "OTIO_SCHEMA": "RationalTime.1",
+                    "rate": 25.0,
+                    "value": 101.0
+                },
+                "start_time": {
+                    "OTIO_SCHEMA": "RationalTime.1",
+                    "rate": 25.0,
+                    "value": 1000.0
+                }
+            },
+            "available_image_bounds": null,
+            "target_url_base": "/home/ynput/CODE/testing_flame/test_data/sample_media_robin/Samples media/img_sequence/tif/",
+            "name_prefix": "output.",
+            "name_suffix": ".tif",
+            "start_frame": 1000,
+            "frame_step": 1,
+            "rate": 25.0,
+            "frame_zero_padding": 4,
+            "missing_frame_policy": "error"
+        }
+    },
+    "active_media_reference_key": "DEFAULT_MEDIA"
+}
