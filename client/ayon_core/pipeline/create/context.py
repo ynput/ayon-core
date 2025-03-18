@@ -29,6 +29,7 @@ from ayon_core.lib.events import QueuedEventSystem
 from ayon_core.lib.attribute_definitions import get_default_values
 from ayon_core.host import IPublishHost, IWorkfileHost
 from ayon_core.pipeline import Anatomy
+from ayon_core.pipeline.template_data import get_template_data
 from ayon_core.pipeline.plugin_discover import DiscoverResult
 
 from .exceptions import (
@@ -480,6 +481,36 @@ class CreateContext:
                 self.get_current_project_name())
         return self._current_project_settings
 
+    def get_template_data(
+        self, folder_path: Optional[str], task_name: Optional[str]
+    ) -> Dict[str, Any]:
+        """Prepare template data for given context.
+
+        Method is using cached entities and settings to prepare template data.
+
+        Args:
+            folder_path (Optional[str]): Folder path.
+            task_name (Optional[str]): Task name.
+
+        Returns:
+            dict[str, Any]: Template data.
+
+        """
+        project_entity = self.get_current_project_entity()
+        folder_entity = task_entity = None
+        if folder_path:
+            folder_entity = self.get_folder_entity(folder_path)
+            if task_name and folder_entity:
+                task_entity = self.get_task_entity(folder_path, task_name)
+
+        return get_template_data(
+            project_entity,
+            folder_entity,
+            task_entity,
+            host_name=self.host_name,
+            settings=self.get_current_project_settings(),
+        )
+
     @property
     def context_has_changed(self):
         """Host context has changed.
@@ -724,11 +755,19 @@ class CreateContext:
                 ).format(creator_class.host_name, self.host_name))
                 continue
 
-            creator = creator_class(
-                project_settings,
-                self,
-                self.headless
-            )
+            # TODO report initialization error
+            try:
+                creator = creator_class(
+                    project_settings,
+                    self,
+                    self.headless
+                )
+            except Exception:
+                self.log.error(
+                    f"Failed to initialize plugin: {creator_class}",
+                    exc_info=True
+                )
+                continue
 
             if not creator.enabled:
                 disabled_creators[creator_identifier] = creator
