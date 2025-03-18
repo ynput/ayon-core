@@ -454,7 +454,7 @@ def get_custom_workfile_template(
         full_context_data = os.environ.copy()
         full_context_data.update(anatomy_context_data)
 
-        template = matching_item["path"][platform.system().lower()]
+        template = matching_item["template_path"][platform.system().lower()]
         return StringTemplate.format_strict_template(
             template, full_context_data
         ).normalized()
