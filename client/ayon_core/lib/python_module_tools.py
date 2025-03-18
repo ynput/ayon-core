@@ -12,8 +12,8 @@ log = logging.getLogger(__name__)
 
 def import_filepath(
         filepath: str,
-        module_name: Optional[str]=None,
-        sys_module_name: Optional[str]=None) -> types.ModuleType:
+        module_name: Optional[str] = None,
+        sys_module_name: Optional[str] = None) -> types.ModuleType:
     """Import python file as python module.
 
     Args:
