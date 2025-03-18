@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import re
 from abc import ABC, abstractmethod
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 from typing import TYPE_CHECKING, Generic, Optional, TypeVar
 
 if TYPE_CHECKING:
@@ -78,6 +78,15 @@ class TraitBase(ABC):
 
         """
         return re.sub(r"\.v\d+$", "", str(cls.id))
+
+    def as_dict(self) -> dict:
+        """Return trait as dictionary.
+
+        Returns:
+            dict: Trait as dictionary.
+
+        """
+        return asdict(self)
 
 
 class IncompatibleTraitVersionError(Exception):
