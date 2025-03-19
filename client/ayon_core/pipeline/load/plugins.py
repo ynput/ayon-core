@@ -13,15 +13,7 @@ from .utils import get_representation_path_from_context
 
 
 class LoaderPlugin(list):
-    """Load representation into host application
-
-    Arguments:
-        context (dict): avalon-core:context-1.0
-
-    .. versionadded:: 4.0
-       This class was introduced
-
-    """
+    """Load representation into host application"""
 
     product_types = set()
     representations = set()
