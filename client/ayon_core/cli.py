@@ -243,7 +243,7 @@ def version(build):
     type=str,
     help="Project name",
     required=True)
-def createprojectstructure(
+def create_project_structure(
     project,
 ):
     """Create project folder structure as defined in setting
