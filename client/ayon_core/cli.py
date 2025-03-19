@@ -237,26 +237,6 @@ def version(build):
     print(os.environ["AYON_VERSION"])
 
 
-def _set_global_environments() -> None:
-    """Set global AYON environments."""
-    # First resolve general environment
-    general_env = parse_env_variables_structure(get_general_environments())
-
-    # Merge environments with current environments and update values
-    merged_env = merge_env_variables(
-        compute_env_variables_structure(general_env),
-        dict(os.environ)
-    )
-    env = compute_env_variables_structure(merged_env)
-    os.environ.clear()
-    os.environ.update(env)
-
-    # Hardcoded default values
-    # Change scale factor only if is not set
-    if "QT_AUTO_SCREEN_SCALE_FACTOR" not in os.environ:
-        os.environ["QT_AUTO_SCREEN_SCALE_FACTOR"] = "1"
-
-
 @main_cli.command()
 @click.option(
     "--project",
@@ -277,6 +257,26 @@ def createprojectstructure(
 
     print(f">>> Creating project folder structure for project '{project}'.")
     project_folders.create_project_folders(project)
+
+
+def _set_global_environments() -> None:
+    """Set global AYON environments."""
+    # First resolve general environment
+    general_env = parse_env_variables_structure(get_general_environments())
+
+    # Merge environments with current environments and update values
+    merged_env = merge_env_variables(
+        compute_env_variables_structure(general_env),
+        dict(os.environ)
+    )
+    env = compute_env_variables_structure(merged_env)
+    os.environ.clear()
+    os.environ.update(env)
+
+    # Hardcoded default values
+    # Change scale factor only if is not set
+    if "QT_AUTO_SCREEN_SCALE_FACTOR" not in os.environ:
+        os.environ["QT_AUTO_SCREEN_SCALE_FACTOR"] = "1"
 
 
 def _set_addons_environments(addons_manager):
