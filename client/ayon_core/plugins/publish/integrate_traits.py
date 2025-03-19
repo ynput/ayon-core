@@ -4,9 +4,10 @@ from __future__ import annotations
 import contextlib
 import copy
 import hashlib
+import json
 from dataclasses import dataclass
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, List
+from typing import TYPE_CHECKING, Any
 
 import pyblish.api
 from ayon_api import (
@@ -85,6 +86,7 @@ class TransferItem:
     template: str
     template_data: dict[str, Any]
     representation: Representation
+    related_trait: FileLocation
 
     @staticmethod
     def get_size(file_path: Path) -> int:
@@ -146,7 +148,7 @@ class RepresentationEntity:
     status: str
 
 
-def get_instance_families(instance: pyblish.api.Instance) -> List[str]:
+def get_instance_families(instance: pyblish.api.Instance) -> list[str]:
     """Get all families of the instance.
 
     Todo:
@@ -156,7 +158,7 @@ def get_instance_families(instance: pyblish.api.Instance) -> List[str]:
         instance (pyblish.api.Instance): Instance to get families from.
 
     Returns:
-        List[str]: List of families.
+        list[str]: List of families.
 
     """
     family = instance.data.get("family")
@@ -207,10 +209,39 @@ def get_changed_attributes(
     return changes
 
 
+def prepare_for_json(data: dict[str, Any]) -> dict[str, Any]:
+    """Prepare data for JSON serialization.
+
+    If there are values that json cannot serialize, this function will
+    convert them to strings.
+
+    Args:
+        data (dict[str, Any]): Data to prepare.
+
+    Returns:
+        dict[str, Any]: Prepared data.
+
+    Raises:
+        TypeError: If the data cannot be converted to JSON.
+
+    """
+    prepared = {}
+    for key, value in data.items():
+        if isinstance(value, dict):
+            value = prepare_for_json(value)
+        try:
+            json.dumps(value)
+        except TypeError:
+            value = value.as_posix() if issubclass(
+                value.__class__, Path) else str(value)
+        prepared[key] = value
+    return prepared
+
+
 class IntegrateTraits(pyblish.api.InstancePlugin):
     """Integrate representations with traits."""
 
-    label = "Integrate Asset"
+    label = "Integrate Traits of an Asset"
     order = pyblish.api.IntegratorOrder
     log: logging.Logger
 
@@ -226,7 +257,7 @@ class IntegrateTraits(pyblish.api.InstancePlugin):
         """
         # 1) skip farm and integrate ==  False
 
-        if not instance.data.get("integrate"):
+        if instance.data.get("integrate", True) is False:
             self.log.debug("Instance is marked to skip integrating. Skipping")
             return
 
@@ -246,7 +277,8 @@ class IntegrateTraits(pyblish.api.InstancePlugin):
             instance.data["representations_with_traits"]
         )
 
-        representations: list[Representation] = instance.data["representations_with_traits"]  # noqa: E501
+        representations: list[Representation] = (
+            instance.data["representations_with_traits"])  # noqa: E501
         if not representations:
             self.log.debug(
                 "Instance has no persistent representations. Skipping")
@@ -284,6 +316,10 @@ class IntegrateTraits(pyblish.api.InstancePlugin):
         self.log.debug(
             "Transferred files %s", [file_transactions.transferred])
 
+        # replace original paths with the destination in traits.
+        for transfer in transfers:
+            transfer.related_trait.file_path = transfer.destination
+
         # 9) Create representation entities
         for representation in representations:
             representation_entity = new_representation_entity(
@@ -300,8 +336,14 @@ class IntegrateTraits(pyblish.api.InstancePlugin):
             )
             # add traits to representation entity
             representation_entity["traits"] = representation.traits_as_dict()
+            op_session.create_entity(
+                project_name=instance.context.data["projectName"],
+                entity_type="representation",
+                data=prepare_for_json(representation_entity),
+            )
 
         # 10) Commit the session to AYON
+        self.log.debug("{}".format(op_session.to_data()))
         op_session.commit()
 
     def get_transfers_from_representations(
@@ -805,7 +847,7 @@ class IntegrateTraits(pyblish.api.InstancePlugin):
         template_data = copy.deepcopy(instance.data["anatomyData"])
         template_data["representation"] = representation.name
         template_data["version"] = instance.data["version"]
-        template_data["hierarchy"] = instance.data["hierarchy"]
+        # template_data["hierarchy"] = instance.data["hierarchy"]
 
         # add colorspace data to template data
         if representation.contains_trait(ColorManaged):
@@ -938,6 +980,7 @@ class IntegrateTraits(pyblish.api.InstancePlugin):
                     template=template_item.template,
                     template_data=template_item.template_data,
                     representation=representation,
+                    related_trait=file_loc
                 )
             )
 
@@ -995,6 +1038,7 @@ class IntegrateTraits(pyblish.api.InstancePlugin):
                     template=template_item.template,
                     template_data=template_item.template_data,
                     representation=representation,
+                    related_trait=file_loc
                 )
             )
         # add template path and the data to resolve it
@@ -1052,6 +1096,7 @@ class IntegrateTraits(pyblish.api.InstancePlugin):
                 template=template_item.template,
                 template_data=template_item.template_data,
                 representation=representation,
+                related_trait=file_loc
             )
         )
         # add template path and the data to resolve it
