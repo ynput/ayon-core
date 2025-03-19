@@ -808,14 +808,14 @@ def _create_instances_for_aov(
             frames_to_render is not None
             and isinstance(collected_files, (list, tuple))  # not single file
         ):
-            frames_to_render = convert_frames_str_to_list(frames_to_render)
+            aov_frames_to_render = convert_frames_str_to_list(frames_to_render)
             collections, _ = clique.assemble(collected_files)
             collected_files = _get_real_files_to_render(
-                collections[0], frames_to_render)
+                collections[0], aov_frames_to_render)
         else:
             frame_start = int(skeleton.get("frameStartHandle"))
             frame_end = int(skeleton.get("frameEndHandle"))
-            frames_to_render = list(range(frame_start, frame_end + 1))
+            aov_frames_to_render = list(range(frame_start, frame_end + 1))
 
         dynamic_data = {
             "aov": aov,
@@ -937,8 +937,8 @@ def _create_instances_for_aov(
             "name": ext,
             "ext": ext,
             "files": collected_files,
-            "frameStart": frames_to_render[0],
-            "frameEnd": frames_to_render[-1],
+            "frameStart": aov_frames_to_render[0],
+            "frameEnd": aov_frames_to_render[-1],
             # If expectedFile are absolute, we need only filenames
             "stagingDir": staging_dir,
             "fps": new_instance.get("fps"),
