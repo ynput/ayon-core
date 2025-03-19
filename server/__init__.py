@@ -46,7 +46,7 @@ class CoreAddon(BaseServerAddon):
         # Add 'Create Project Folder Structure' action to folders.
         output.append(
             SimpleActionManifest(
-                identifier=f"{IDENTIFIER_PREFIX}.createprojectstructure",
+                identifier=f"{IDENTIFIER_PREFIX}.create_project_structure",
                 label="Create Project Folder Structure",
                 icon={
                     "type": "material-symbols",
@@ -76,10 +76,10 @@ class CoreAddon(BaseServerAddon):
         project_name = executor.context.project_name
 
         if executor.identifier == \
-              f"{IDENTIFIER_PREFIX}.createprojectstructure":
+              f"{IDENTIFIER_PREFIX}.create_project_structure":
             return await executor.get_launcher_action_response(
                 args=[
-                    "createprojectstructure",
+                    "create_project_structure",
                     "--project", project_name,
                 ]
             )
