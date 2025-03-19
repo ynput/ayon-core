@@ -63,15 +63,9 @@ class CoreAddon(BaseServerAddon):
 
     async def execute_action(
         self,
-        executor: "ActionExecutor",
-    ) -> "ExecuteResponseModel":
-        """Execute actions.
-
-        Note:
-            Executes CLI actions defined in the
-            addon's client code or other addons.
-
-        """
+        executor: ActionExecutor,
+    ) -> ExecuteResponseModel:
+        """Execute webactions."""
 
         project_name = executor.context.project_name
 
