@@ -79,7 +79,7 @@ class CoreAddon(BaseServerAddon):
               f"{IDENTIFIER_PREFIX}.create_project_structure":
             return await executor.get_launcher_action_response(
                 args=[
-                    "create_project_structure",
+                    "create-project-structure",
                     "--project", project_name,
                 ]
             )
