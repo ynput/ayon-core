@@ -14,7 +14,7 @@ from .settings import (
 )
 
 
-IDENTIFIER_PREFIX = "core.launch"
+IDENTIFIER_PREFIX = "core"
 
 
 class CoreAddon(BaseServerAddon):
