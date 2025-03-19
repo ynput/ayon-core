@@ -241,7 +241,7 @@ def version(build):
 @click.option(
     "--project",
     type=str,
-    help="Define project (project must be set).",
+    help="Project name",
     required=True)
 def createprojectstructure(
     project,
