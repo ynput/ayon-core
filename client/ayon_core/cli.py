@@ -22,7 +22,6 @@ from ayon_core.lib.env_tools import (
     compute_env_variables_structure,
     merge_env_variables,
 )
-from ayon_core.pipeline.project_folders import create_project_folders
 
 
 @click.group(invoke_without_command=True)
@@ -254,6 +253,8 @@ def create_project_structure(
             want to create its additional folder structure.
 
     """
+
+    from ayon_core.pipeline.project_folders import create_project_folders
 
     print(f">>> Creating project folder structure for project '{project}'.")
     create_project_folders(project)
