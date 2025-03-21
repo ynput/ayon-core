@@ -164,6 +164,15 @@ default_help() {
   echo ""
 }
 
+clean_pyc () {
+  local path
+  path=$repo_root
+  echo -e "${BIGreen}>>>${RST} Cleaning pyc at [ ${BIWhite}$path${RST} ] ... \c"
+  find "$path" -path ./build -o -regex '^.*\(__pycache__\|\.py[co]\)$' -delete
+
+  echo -e "${BIGreen}DONE${RST}"
+}
+
 run_ruff () {
   echo -e "${BIGreen}>>>${RST} Running Ruff check ..."
   "$POETRY_HOME/bin/poetry" run ruff check
