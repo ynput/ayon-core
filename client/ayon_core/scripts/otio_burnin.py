@@ -168,7 +168,7 @@ class ModifiedBurnins(ffmpeg_burnins.Burnins):
                     (float(options_init.get('bg_padding')) /  unit_height)
                      * height) or 5
             self.options_init.update(options_init)
-    
+
     def _get_height(self, source_streams):
         video_stream = None
         for stream in source_streams:
