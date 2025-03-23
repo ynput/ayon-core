@@ -692,6 +692,21 @@ class ExtractBurninOptionsModel(BaseSettingsModel):
         default_factory=MultiplatformPathModel,
         title="Font file path"
     )
+    relative_size: bool = SettingsField(
+        False,
+        title="Size relative to height",
+        description=(
+            "Enable recalculating Font size,"
+            " offset and padding relative to image height"
+        )
+    )
+    unit_height: int = SettingsField(
+        1080,
+        title="Relative Height",
+        description=(
+            "Unit height for relative size."
+        )
+    )
 
 
 class ExtractBurninDefFilter(BaseSettingsModel):
@@ -1311,6 +1326,8 @@ DEFAULT_PUBLISH_VALUES = {
             "x_offset": 5,
             "y_offset": 5,
             "bg_padding": 5,
+            "relative_size":  False,
+            "unit_height":  1080,
             "font_filepath": {
                 "windows": "",
                 "darwin": "",

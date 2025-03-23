@@ -34,6 +34,8 @@ CURRENT_FRAME_KEY = "{current_frame}"
 CURRENT_FRAME_SPLITTER = "_-_CURRENT_FRAME_-_"
 TIMECODE_KEY = "{timecode}"
 SOURCE_TIMECODE_KEY = "{source_timecode}"
+TEXT_SIZE_RELATIVE = False
+RELATIVE_HEIGHT = 1080
 
 
 def _get_ffprobe_data(source):
@@ -99,6 +101,8 @@ class ModifiedBurnins(ffmpeg_burnins.Burnins):
     "frame_offset" - Default start frame - <int>
         - required IF start frame is not set when using frames
           or timecode burnins
+    "relative_size" - rescale sizes relative to unit height <bool>
+    "unit_height" - for relative size, this image height is 1 <int>
 
     On initializing class can be set General options through
         "options_init" arg.
@@ -118,7 +122,9 @@ class ModifiedBurnins(ffmpeg_burnins.Burnins):
         'y_offset': 5,
         'bg_padding': 5,
         'bg_opacity': 0.5,
-        'font_size': 42
+        'font_size': 42,
+        'relative_size': False,
+        'unit_height': 1080
     }
 
     def __init__(
@@ -143,8 +149,27 @@ class ModifiedBurnins(ffmpeg_burnins.Burnins):
 
         super().__init__(source, source_streams)
 
+        self.relative_size = options_init.get("relative_size", False)
+        self.unit_height = float(options_init.get("unit_height", 1080))
+
         if options_init:
+            if self.relative_size:
+                height = float(self._get_height(source_streams) or self.unit_height)
+                options_init['font_size'] = int((float(options_init.get('font_size')) /  self.unit_height) * height) or 42
+                options_init['x_offset'] = int((float(options_init.get('x_offset')) /  self.unit_height) * height) or 5
+                options_init['y_offset'] = int((float(options_init.get('y_offset')) /  self.unit_height) * height) or 5
+                options_init['bg_padding'] = int((float(options_init.get('bg_padding')) /  self.unit_height) * height) or 5
             self.options_init.update(options_init)
+    
+    def _get_height(self, source_streams):
+        video_stream = None
+        for stream in source_streams:
+            if stream.get("codec_type") == "video":
+                video_stream = stream
+                break
+        if video_stream is None:
+            return None
+        return video_stream.get("height")
 
     def add_text(
         self,
