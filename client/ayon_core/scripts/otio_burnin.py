@@ -149,16 +149,24 @@ class ModifiedBurnins(ffmpeg_burnins.Burnins):
 
         super().__init__(source, source_streams)
 
-        self.relative_size = options_init.get("relative_size", False)
-        self.unit_height = float(options_init.get("unit_height", 1080))
+        unit_height = float(options_init.get("unit_height", 1080))
 
         if options_init:
-            if self.relative_size:
-                height = float(self._get_height(source_streams) or self.unit_height)
-                options_init['font_size'] = int((float(options_init.get('font_size')) /  self.unit_height) * height) or 42
-                options_init['x_offset'] = int((float(options_init.get('x_offset')) /  self.unit_height) * height) or 5
-                options_init['y_offset'] = int((float(options_init.get('y_offset')) /  self.unit_height) * height) or 5
-                options_init['bg_padding'] = int((float(options_init.get('bg_padding')) /  self.unit_height) * height) or 5
+            if options_init.get("relative_size", False):
+                height = float(
+                    self._get_height(source_streams) or unit_height)
+                options_init['font_size'] = int(
+                    (float(options_init.get('font_size')) / unit_height)
+                     * height) or 42
+                options_init['x_offset'] = int(
+                    (float(options_init.get('x_offset')) /  unit_height)
+                     * height) or 5
+                options_init['y_offset'] = int(
+                    (float(options_init.get('y_offset')) /  unit_height)
+                     * height) or 5
+                options_init['bg_padding'] = int(
+                    (float(options_init.get('bg_padding')) /  unit_height)
+                     * height) or 5
             self.options_init.update(options_init)
     
     def _get_height(self, source_streams):
