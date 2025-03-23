@@ -34,9 +34,6 @@ CURRENT_FRAME_KEY = "{current_frame}"
 CURRENT_FRAME_SPLITTER = "_-_CURRENT_FRAME_-_"
 TIMECODE_KEY = "{timecode}"
 SOURCE_TIMECODE_KEY = "{source_timecode}"
-TEXT_SIZE_RELATIVE = False
-RELATIVE_HEIGHT = 1080
-
 
 def _get_ffprobe_data(source):
     """Reimplemented from otio burnins to be able use full path to ffprobe
