@@ -1275,9 +1275,7 @@ def set_colorspace_data_to_representation(
     project_settings = context_data["project_settings"]
 
     # get one filename
-    filename = representation["files"]
-    if isinstance(filename, list):
-        filename = filename[0]
+    filename = representation["files"][0] if representation["files"] else None
 
     # get matching colorspace from rules
     if colorspace is None:
