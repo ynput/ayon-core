@@ -83,3 +83,6 @@ dump.sql
 mypy.ini
 
 .github_changelog_generator
+
+# ignore mkdocs build
+site/
