@@ -1016,6 +1016,7 @@ class AbstractWorkfilesFrontend(AbstractWorkfilesCommon):
         workdir,
         filename,
         template_key,
+        artist_note,
     ):
         """Save current state of workfile to workarea.
 
@@ -1040,6 +1041,7 @@ class AbstractWorkfilesFrontend(AbstractWorkfilesCommon):
         workdir,
         filename,
         template_key,
+        artist_note,
     ):
         """Action to copy published workfile representation to workarea.
 
@@ -1054,12 +1056,13 @@ class AbstractWorkfilesFrontend(AbstractWorkfilesCommon):
             workdir (str): Workarea directory.
             filename (str): Workarea filename.
             template_key (str): Template key.
+            artist_note (str): Artist note.
         """
 
         pass
 
     @abstractmethod
-    def duplicate_workfile(self, src_filepath, workdir, filename):
+    def duplicate_workfile(self, src_filepath, workdir, filename, artist_note):
         """Duplicate workfile.
 
         Workfiles is not opened when done.
@@ -1068,6 +1071,7 @@ class AbstractWorkfilesFrontend(AbstractWorkfilesCommon):
             src_filepath (str): Source workfile path.
             workdir (str): Destination workdir.
             filename (str): Destination filename.
+            artist_note (str): Artist note.
         """
 
         pass
