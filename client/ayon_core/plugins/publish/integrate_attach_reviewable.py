@@ -26,6 +26,8 @@ class AttachReviewables(
     order = pyblish.api.IntegratorOrder - 0.499
     label = "Attach reviewables"
 
+    settings_category = "core"
+
     def process(self, instance):
         # TODO: Support farm.
         #  If instance is being submitted to the farm we should pass through
