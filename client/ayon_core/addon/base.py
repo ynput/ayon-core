@@ -155,18 +155,33 @@ def load_addons(force=False):
 
 
 def _get_ayon_bundle_data():
+    studio_bundle_name = os.environ.get("AYON_STUDIO_BUNDLE_NAME")
+    project_bundle_name = os.getenv("AYON_BUNDLE_NAME")
     bundles = ayon_api.get_bundles()["bundles"]
-
-    bundle_name = os.getenv("AYON_BUNDLE_NAME")
-
-    return next(
+    project_bundle = next(
         (
             bundle
             for bundle in bundles
-            if bundle["name"] == bundle_name
+            if bundle["name"] == project_bundle_name
         ),
         None
     )
+    studio_bundle = None
+    if studio_bundle_name and project_bundle_name != studio_bundle_name:
+        studio_bundle = next(
+            (
+                bundle
+                for bundle in bundles
+                if bundle["name"] == studio_bundle_name
+            ),
+            None
+        )
+
+    if project_bundle and studio_bundle:
+        addons = copy.deepcopy(studio_bundle["addons"])
+        addons.update(project_bundle["addons"])
+        project_bundle["addons"] = addons
+    return project_bundle
 
 
 def _get_ayon_addons_information(bundle_info):
