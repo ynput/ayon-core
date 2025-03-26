@@ -64,9 +64,9 @@ def get_ayon_splash_filepath(staging=None):
         staging = is_staging_enabled()
 
     if os.getenv("AYON_USE_DEV") == "1":
-        splash_file_name = "AYON_splash_dev.png"
+        splash_file_name = "black_splash.png"
     elif staging:
-        splash_file_name = "AYON_splash_staging.png"
+        splash_file_name = "black_splash.png"
     else:
-        splash_file_name = "AYON_splash.png"
+        splash_file_name = "black_splash.png"
     return get_resource("icons", splash_file_name)
