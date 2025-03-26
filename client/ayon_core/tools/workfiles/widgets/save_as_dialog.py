@@ -178,8 +178,8 @@ class SaveAsDialog(QtWidgets.QDialog):
         inputs_layout.addWidget(extension_combobox, 2, 1)
         inputs_layout.addWidget(preview_label, 3, 0)
         inputs_layout.addWidget(preview_widget, 3, 1)
-        inputs_layout.addWidget(artist_note_label, 4, 0)
-        inputs_layout.addWidget(artist_note_input, 4, 1)
+        inputs_layout.addWidget(artist_note_label, 4, 0, 1, 2)
+        inputs_layout.addWidget(artist_note_input, 5, 0, 1, 2)
 
         # Build layout
         main_layout = QtWidgets.QVBoxLayout(self)
