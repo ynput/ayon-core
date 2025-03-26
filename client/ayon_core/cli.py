@@ -59,6 +59,7 @@ def main_cli(ctx, *_args, **_kwargs):
             print(ctx.get_help())
             sys.exit(0)
         else:
+            ctx.params.pop("project")
             ctx.forward(tray)
 
 

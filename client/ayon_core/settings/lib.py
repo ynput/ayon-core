@@ -128,18 +128,35 @@ class _AyonSettingsCache:
 
     @classmethod
     def _get_addon_versions_from_bundle(cls):
-        expected_bundle = cls._get_project_bundle_name()
+        studio_bundle_name = cls._get_studio_bundle_name()
+        project_bundle_name = cls._get_project_bundle_name()
         bundles = ayon_api.get_bundles()["bundles"]
-        bundle = next(
+        project_bundle = next(
             (
                 bundle
                 for bundle in bundles
-                if bundle["name"] == expected_bundle
+                if bundle["name"] == project_bundle_name
             ),
             None
         )
-        if bundle is not None:
-            return bundle["addons"]
+        studio_bundle = None
+        if studio_bundle_name and project_bundle_name != studio_bundle_name:
+            studio_bundle = next(
+                (
+                    bundle
+                    for bundle in bundles
+                    if bundle["name"] == studio_bundle_name
+                ),
+                None
+            )
+
+        if studio_bundle and project_bundle:
+            addons = copy.deepcopy(studio_bundle["addons"])
+            addons.update(project_bundle["addons"])
+            project_bundle["addons"] = addons
+
+        if project_bundle is not None:
+            return project_bundle["addons"]
         return {}
 
     @classmethod
