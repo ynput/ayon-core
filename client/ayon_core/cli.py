@@ -24,22 +24,35 @@ from ayon_core.lib.env_tools import (
 )
 
 
-
 @click.group(invoke_without_command=True)
 @click.pass_context
-@click.option("--use-staging", is_flag=True,
-              expose_value=False, help="use staging variants")
-@click.option("--debug", is_flag=True, expose_value=False,
-              help="Enable debug")
-@click.option("--verbose", expose_value=False,
-              help=("Change AYON log level (debug - critical or 0-50)"))
-@click.option("--force", is_flag=True, hidden=True)
-def main_cli(ctx, force):
+@click.option(
+    "--use-staging",
+    is_flag=True,
+    expose_value=False,
+    help="use staging variants")
+@click.option(
+    "--debug",
+    is_flag=True,
+    expose_value=False,
+    help="Enable debug")
+@click.option(
+    "--project",
+    help="Project name")
+@click.option(
+    "--verbose",
+    expose_value=False,
+    help="Change AYON log level (debug - critical or 0-50)")
+@click.option(
+    "--use-dev",
+    is_flag=True,
+    expose_value=False,
+    help="use dev bundle")
+def main_cli(ctx, *_args, **_kwargs):
     """AYON is main command serving as entry point to pipeline system.
 
     It wraps different commands together.
     """
-
     if ctx.invoked_subcommand is None:
         # Print help if headless mode is used
         if os.getenv("AYON_HEADLESS_MODE") == "1":
@@ -60,7 +73,6 @@ def tray(force):
     Default action of AYON command is to launch tray widget to control basic
     aspects of AYON. See documentation for more information.
     """
-
     from ayon_core.tools.tray import main
 
     main(force)
@@ -283,6 +295,43 @@ def _add_addons(addons_manager):
             )
 
 
+def _cleanup_project_args():
+    rem_args = list(sys.argv[1:])
+    if "--project" not in rem_args:
+        return
+
+    cmd = None
+    current_ctx = None
+    parent_name = "ayon"
+    parent_cmd = main_cli
+    while hasattr(parent_cmd, "resolve_command"):
+        if current_ctx is None:
+            current_ctx = main_cli.make_context(parent_name, rem_args)
+        else:
+            current_ctx = parent_cmd.make_context(
+                parent_name,
+                rem_args,
+                parent=current_ctx
+            )
+        if not rem_args:
+            break
+        cmd_name, cmd, rem_args = parent_cmd.resolve_command(
+            current_ctx, rem_args
+        )
+        parent_name = cmd_name
+        parent_cmd = cmd
+
+    if cmd is None:
+        return
+
+    param_names = {param.name for param in cmd.params}
+    if "project" in param_names:
+        return
+    idx = sys.argv.index("--project")
+    sys.argv.pop(idx)
+    sys.argv.pop(idx)
+
+
 def main(*args, **kwargs):
     initialize_ayon_connection()
     python_path = os.getenv("PYTHONPATH", "")
@@ -307,10 +356,14 @@ def main(*args, **kwargs):
     addons_manager = AddonsManager()
     _set_addons_environments(addons_manager)
     _add_addons(addons_manager)
+
+    _cleanup_project_args()
+
     try:
         main_cli(
             prog_name="ayon",
             obj={"addons_manager": addons_manager},
+            args=(sys.argv[1:]),
         )
     except Exception:  # noqa
         exc_info = sys.exc_info()
