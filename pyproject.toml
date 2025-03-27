@@ -79,7 +79,7 @@ pydocstyle.convention = "google"
 # Enable Pyflakes (`F`) and a subset of the pycodestyle (`E`)  codes by default.
 select = ["ALL"]
 ignore = [
-       "PTH",
+    "PTH",
     "ANN101",  # must be set in older version of ruff
     "ANN204",
     "COM812",
@@ -97,8 +97,6 @@ ignore = [
     "S404",    # subprocess module is possibly insecure
     "PLC0415", # import must be on top of the file
     "CPY001",  # missing copyright header
-    "UP045"
-
 ]
 
 # Allow fix for all enabled rules (when `--fix`) is provided.
