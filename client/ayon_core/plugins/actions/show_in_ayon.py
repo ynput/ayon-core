@@ -52,8 +52,8 @@ def get_ayon_entity_uri(
 
 class ShowInAYON(LauncherAction):
     """Open AYON browser page to the current context."""
-    name = "showinayon"
-    label = "Show in AYON"
+    name = "showinblack"
+    label = "Show in BLACK"
     icon = get_ayon_icon_filepath()
     order = 999
 

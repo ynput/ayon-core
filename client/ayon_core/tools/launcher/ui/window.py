@@ -24,7 +24,7 @@ class LauncherWindow(QtWidgets.QWidget):
 
         icon = QtGui.QIcon(resources.get_ayon_icon_filepath())
         self.setWindowIcon(icon)
-        self.setWindowTitle("Launcher")
+        self.setWindowTitle("BLACK Launcher")
         self.setFocusPolicy(QtCore.Qt.StrongFocus)
         self.setAttribute(QtCore.Qt.WA_DeleteOnClose, False)
 

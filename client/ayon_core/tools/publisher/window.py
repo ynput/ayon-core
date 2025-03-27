@@ -60,7 +60,7 @@ class PublisherWindow(QtWidgets.QDialog):
 
         self.setObjectName("PublishWindow")
 
-        self.setWindowTitle("AYON publisher")
+        self.setWindowTitle("BLACK publisher")
 
         icon = QtGui.QIcon(resources.get_ayon_icon_filepath())
         self.setWindowIcon(icon)

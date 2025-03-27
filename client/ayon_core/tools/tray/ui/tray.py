@@ -574,7 +574,7 @@ class TrayManager:
     def _show_browser_window(self):
         if self._browser_window is None:
             self._browser_window = LoaderWindow()
-            self._browser_window.setWindowTitle("AYON Browser")
+            self._browser_window.setWindowTitle("BLACK Browser")
             install_ayon_plugins()
 
         self._browser_window.show()

@@ -600,7 +600,7 @@ class PublishReportViewerWindow(QtWidgets.QWidget):
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.setWindowTitle("Publish report viewer")
+        self.setWindowTitle("BLACK Publish report viewer")
         icon = QtGui.QIcon(get_ayon_icon_filepath())
         self.setWindowIcon(icon)
 
