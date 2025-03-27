@@ -286,6 +286,7 @@ class ProjectSortFilterProxy(QtCore.QSortFilterProxyModel):
         self._sort_by_type = True
         # Disable case sensitivity
         self.setSortCaseSensitivity(QtCore.Qt.CaseInsensitive)
+        self.setFilterCaseSensitivity(QtCore.Qt.CaseInsensitive)
 
     def _type_sort(self, l_index, r_index):
         if not self._sort_by_type:
