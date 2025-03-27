@@ -59,7 +59,8 @@ class LocatableContent(TraitBase):
         description (str): Trait description.
         id (str): id should be namespaced trait name with version
         location (str): Location.
-        is_templated (Optional[bool]): Is the location templated? Default is None.
+        is_templated (Optional[bool]): Is the location templated?
+            Default is None.
     """
 
     name: ClassVar[str] = "LocatableContent"
