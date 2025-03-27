@@ -22,6 +22,7 @@ class DigitallySigned(TraitBase):
     description: ClassVar[str] = "Digitally signed trait."
     persistent: ClassVar[bool] = True
 
+
 @dataclass
 class PGPSigned(DigitallySigned):
     """PGP signed trait.
