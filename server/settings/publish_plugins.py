@@ -12,6 +12,10 @@ from ayon_server.settings import (
 from ayon_server.types import ColorRGBA_uint8
 
 
+class EnabledModel(BaseSettingsModel):
+    enabled: bool = SettingsField(True)
+
+
 class ValidateBaseModel(BaseSettingsModel):
     _isGroup = True
     enabled: bool = SettingsField(True)
@@ -1026,6 +1030,17 @@ class PublishPuginsModel(BaseSettingsModel):
         default_factory=IntegrateHeroVersionModel,
         title="Integrate Hero Version"
     )
+    AttachReviewables: EnabledModel = SettingsField(
+        default_factory=EnabledModel,
+        title="Attach Reviewables",
+        description=(
+            "When enabled, expose an 'Attach Reviewables' attribute on review"
+            " and render instances in the publisher to allow including the"
+            " media to be attached to another instance.\n\n"
+            "If a reviewable is attached to another instance it will not be "
+            "published as a render/review product of its own."
+        )
+    )
     CleanUp: CleanUpModel = SettingsField(
         default_factory=CleanUpModel,
         title="Clean Up"
@@ -1409,6 +1424,9 @@ DEFAULT_PUBLISH_VALUES = {
             "simpleUnrealTexture"
         ],
         "use_hardlinks": False
+    },
+    "AttachReviewables": {
+        "enabled": True,
     },
     "CleanUp": {
         "paterns": [],  # codespell:ignore paterns
