@@ -47,12 +47,14 @@ def _get_addons_settings(
         key: value
         for key, value in (
             ("bundle_name", studio_bundle_name),
-            ("project_bundle_name ", project_bundle_name),
             ("variant", variant),
             ("project_name", project_name),
         )
         if value
     }
+    if project_bundle_name != studio_bundle_name:
+        query_values["project_bundle_name"] = project_bundle_name
+
     site_id = ayon_api.get_site_id()
     if site_id:
         query_values["site_id"] = site_id
