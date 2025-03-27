@@ -843,6 +843,22 @@ mkdocstrings = ">=0.28.3"
 typing-extensions = {version = ">=4.0", markers = "python_version < \"3.11\""}
 
 [[package]]
+name = "mkdocstrings-shell"
+version = "1.0.3"
+description = "A shell scripts/libraries handler for mkdocstrings."
+optional = false
+python-versions = ">=3.9"
+groups = ["dev"]
+files = [
+    {file = "mkdocstrings_shell-1.0.3-py3-none-any.whl", hash = "sha256:b23ebe43d06c9c19a541548f34d42ee4e4324ae06423eba8a9136e295c67f345"},
+    {file = "mkdocstrings_shell-1.0.3.tar.gz", hash = "sha256:3bdea6a1e794a5d0e15d461f33b92e0b9f3b9a1e2c33671d9a2b7d83c761096a"},
+]
+
+[package.dependencies]
+mkdocstrings = ">=0.28.3"
+shellman = ">=1.0.2"
+
+[[package]]
 name = "mock"
 version = "5.1.0"
 description = "Rolling backport of unittest.mock for all Pythons"
@@ -1270,6 +1286,23 @@ files = [
 ]
 
 [[package]]
+name = "shellman"
+version = "1.0.2"
+description = "Write documentation in comments and render it with templates."
+optional = false
+python-versions = ">=3.9"
+groups = ["dev"]
+files = [
+    {file = "shellman-1.0.2-py3-none-any.whl", hash = "sha256:f8c960fd2d3785e195f86fcd8f110a8d51a950e759d82c14a5af0bd71b918b3c"},
+    {file = "shellman-1.0.2.tar.gz", hash = "sha256:48cba79d6415c0d013ad4dfd2205ed81b0e468795d1886dcda943ac78eaffd38"},
+]
+
+[package.dependencies]
+importlib-metadata = {version = ">=4.6", markers = "python_version < \"3.10\""}
+jinja2 = ">=3"
+typing-extensions = {version = ">=4.0", markers = "python_version < \"3.11\""}
+
+[[package]]
 name = "six"
 version = "1.17.0"
 description = "Python 2 and 3 compatibility utilities"
@@ -1479,4 +1512,4 @@ type = ["pytest-mypy"]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.9.1,<3.10"
-content-hash = "58c2656b970622b91e31e92602f4a80d65ac07c8a11d61b6a06c3cac298616bd"
+content-hash = "24b6215b9c20a4f64f844d3deb121618aef510b1c5ee54242e50305db6c0c4f4"

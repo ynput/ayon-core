@@ -1,4 +1,5 @@
 site_name: ayon-core
+repo_url: https://github.com/ynput/ayon-core
 
 nav:
   - Home: index.md
@@ -45,15 +46,18 @@ plugins:
         - docs/**/*
         - tests/**/*
         - tools/**/*
+        - stubs/**/*        # mocha fix
+        - ./**/pythonrc.py  # houdini fix
         - .*/**/*
         - ./*.py
   - mkdocstrings:
       handlers:
         python:
           paths:
-            - .
-            - client
-            - server
+            - ./
+            - client/*
+            - server/*
+            - services/*
   - minify:
       minify_html: true
       minify_js: true
