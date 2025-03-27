@@ -159,7 +159,18 @@ default_help() {
   echo -e "  ${BWhite}codespell${RST}       ${BCyan}Run codespell check for the repository${RST}"
   echo -e "  ${BWhite}run${RST}             ${BCyan}Run a poetry command in the repository environment${RST}"
   echo -e "  ${BWhite}run-tests${RST}       ${BCyan}Run ayon-core tests${RST}"
+  echo -e "  ${BWhite}build-docs${RST}      ${BCyan}Build documentation${RST}"
+  echo -e "  ${BWhite}serve-docs${RST}      ${BCyan}Local serve documentation${RST}"
   echo ""
+}
+
+clean_pyc () {
+  local path
+  path=$repo_root
+  echo -e "${BIGreen}>>>${RST} Cleaning pyc at [ ${BIWhite}$path${RST} ] ... \c"
+  find "$path" -path ./build -o -regex '^.*\(__pycache__\|\.py[co]\)$' -delete
+
+  echo -e "${BIGreen}DONE${RST}"
 }
 
 run_ruff () {
@@ -187,6 +198,20 @@ run_tests () {
   echo -e "${BIGreen}>>>${RST} Running tests..."
   shift;  # will remove first arg ("run-tests") from the "$@"
   "$POETRY_HOME/bin/poetry" run pytest ./tests
+}
+
+build_docs () {
+  echo -e "${BIGreen}>>>${RST} Cleaning cache files ..."
+  clean_pyc
+  echo -e "${BIGreen}>>>${RST} Building docs..."
+  "$POETRY_HOME/bin/poetry" run mkdocs build
+}
+
+serve_docs () {
+  echo -e "${BIGreen}>>>${RST} Cleaning cache files ..."
+  clean_pyc
+  echo -e "${BIGreen}>>>${RST} Building docs..."
+  "$POETRY_HOME/bin/poetry" run mkdocs serve
 }
 
 main () {
@@ -227,6 +252,14 @@ main () {
       ;;
     "runtests")
       run_tests "$@" || return_code=$?
+      exit $return_code
+      ;;
+    "builddocs")
+      build_docs "$@" || return_code=$?
+      exit $return_code
+      ;;
+    "servedocs")
+      serve_docs "$@" || return_code=$?
       exit $return_code
       ;;
   esac
