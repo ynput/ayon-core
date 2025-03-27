@@ -31,6 +31,9 @@ class CollectRenderedFiles(pyblish.api.ContextPlugin):
     # Keep "filesequence" for backwards compatibility of older jobs
     targets = ["filesequence", "farm"]
     label = "Collect rendered frames"
+    settings_category = "core"
+
+    remove_files = True
 
     _context = None
 
@@ -120,7 +123,7 @@ class CollectRenderedFiles(pyblish.api.ContextPlugin):
                 self._fill_staging_dir(repre_data, anatomy)
                 representations.append(repre_data)
 
-                if not staging_dir_persistent:
+                if self.remove_files and not staging_dir_persistent:
                     add_repre_files_for_cleanup(instance, repre_data)
 
             instance.data["representations"] = representations
@@ -170,7 +173,7 @@ class CollectRenderedFiles(pyblish.api.ContextPlugin):
                     os.environ.update(session_data)
 
                 staging_dir_persistent = self._process_path(data, anatomy)
-                if not staging_dir_persistent:
+                if self.remove_files and not staging_dir_persistent:
                     context.data["cleanupFullPaths"].append(path)
                     context.data["cleanupEmptyDirs"].append(
                         os.path.dirname(path)
