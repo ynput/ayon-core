@@ -40,7 +40,7 @@ L::::::::::::::::::::::LB:::::::::::::::::B S::::::SSSSSS:::::S
 L::::::::::::::::::::::LB::::::::::::::::B  S:::::::::::::::SS 
 LLLLLLLLLLLLLLLLLLLLLLLLBBBBBBBBBBBBBBBBB    SSSSSSSSSSSSSSS   
 
-     ·  · - =[ by YNPUT ]:[ http://ayon.ynput.io ]= - ·  ·
+     ·  · - =[ Passion Led Us Here ]= - ·  ·
 
 """
 
