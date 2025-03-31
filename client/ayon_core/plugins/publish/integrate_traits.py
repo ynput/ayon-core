@@ -29,6 +29,9 @@ from ayon_core.lib.file_transaction import (
 from ayon_core.pipeline.publish import (
     PublishError,
     get_publish_template_name,
+    has_trait_representations,
+    get_trait_representations,
+    set_trait_representations,
 )
 from ayon_core.pipeline.traits import (
     UDIM,
@@ -236,17 +239,20 @@ class IntegrateTraits(pyblish.api.InstancePlugin):
             return
 
         # TODO (antirotor): Find better name for the key
-        if not instance.data.get("representations_with_traits"):
+        if not has_trait_representations(instance):
             self.log.debug(
                 "Instance has no representations with traits. Skipping")
             return
 
         # 2) filter representations based on LifeCycle traits
-        instance.data["representations_with_traits"] = self.filter_lifecycle(
-            instance.data["representations_with_traits"]
+        set_trait_representations(
+            instance,
+            self.filter_lifecycle(get_trait_representations(instance))
         )
 
-        representations: list[Representation] = instance.data["representations_with_traits"]  # noqa: E501
+        representations: list[Representation] = get_trait_representations(
+            instance
+        )
         if not representations:
             self.log.debug(
                 "Instance has no persistent representations. Skipping")
