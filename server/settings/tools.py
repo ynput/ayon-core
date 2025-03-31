@@ -5,6 +5,7 @@ from ayon_server.settings import (
     normalize_name,
     ensure_unique_names,
     task_types_enum,
+    anatomy_template_items_enum
 )
 
 
@@ -283,7 +284,11 @@ class PublishTemplateNameProfile(BaseSettingsModel):
     task_names: list[str] = SettingsField(
         default_factory=list, title="Task names"
     )
-    template_name: str = SettingsField("", title="Template name")
+    template_name: str = SettingsField(
+        "",
+        title="Template name",
+        enum_resolver=anatomy_template_items_enum(category="publish")
+    )
 
 
 class CustomStagingDirProfileModel(BaseSettingsModel):
@@ -306,7 +311,11 @@ class CustomStagingDirProfileModel(BaseSettingsModel):
     custom_staging_dir_persistent: bool = SettingsField(
         False, title="Custom Staging Folder Persistent"
     )
-    template_name: str = SettingsField("", title="Template Name")
+    template_name: str = SettingsField(
+        "",
+        title="Template name",
+        enum_resolver=anatomy_template_items_enum
+    )
 
 
 class PublishToolModel(BaseSettingsModel):
