@@ -252,7 +252,6 @@ def _set_global_environments() -> None:
     os.environ.update(env)
 
     # Hardcoded default values
-    os.environ["PYBLISH_GUI"] = "pyblish_pype"
     # Change scale factor only if is not set
     if "QT_AUTO_SCREEN_SCALE_FACTOR" not in os.environ:
         os.environ["QT_AUTO_SCREEN_SCALE_FACTOR"] = "1"
@@ -290,8 +289,6 @@ def main(*args, **kwargs):
     split_paths = python_path.split(os.pathsep)
 
     additional_paths = [
-        # add AYON tools for 'pyblish_pype'
-        os.path.join(AYON_CORE_ROOT, "tools"),
         # add common AYON vendor
         # (common for multiple Python interpreter versions)
         os.path.join(AYON_CORE_ROOT, "vendor", "python")
