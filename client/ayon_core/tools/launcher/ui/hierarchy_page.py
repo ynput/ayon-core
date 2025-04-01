@@ -26,12 +26,18 @@ class HierarchyPage(QtWidgets.QWidget):
 
         projects_combobox = ProjectsCombobox(controller, header_widget)
 
+        my_tasks_label = QtWidgets.QLabel("My tasks", header_widget)
+        my_tasks_checkbox = NiceCheckbox(header_widget)
+        my_tasks_checkbox.setChecked(False)
+
         refresh_btn = RefreshButton(header_widget)
 
         header_layout = QtWidgets.QHBoxLayout(header_widget)
         header_layout.setContentsMargins(0, 0, 0, 0)
         header_layout.addWidget(btn_back, 0)
         header_layout.addWidget(projects_combobox, 1)
+        header_layout.addWidget(my_tasks_label, 0)
+        header_layout.addWidget(my_tasks_checkbox, 0)
         header_layout.addWidget(refresh_btn, 0)
 
         # Body - Folders + Tasks selection
@@ -46,26 +52,14 @@ class HierarchyPage(QtWidgets.QWidget):
         # - Folders widget with filter
         folders_wrapper = QtWidgets.QWidget(content_body)
 
-        filters_widget = QtWidgets.QWidget(folders_wrapper)
-
-        folders_filter_text = PlaceholderLineEdit(filters_widget)
+        folders_filter_text = PlaceholderLineEdit(folders_wrapper)
         folders_filter_text.setPlaceholderText("Filter folders...")
-
-        my_tasks_label = QtWidgets.QLabel("My tasks", self)
-        my_tasks_checkbox = NiceCheckbox(filters_widget)
-        my_tasks_checkbox.setChecked(False)
-
-        filters_layout = QtWidgets.QHBoxLayout(filters_widget)
-        filters_layout.setContentsMargins(0, 0, 0, 0)
-        filters_layout.addWidget(folders_filter_text, 1)
-        filters_layout.addWidget(my_tasks_label, 0)
-        filters_layout.addWidget(my_tasks_checkbox, 0)
 
         folders_widget = FoldersWidget(controller, folders_wrapper)
 
         folders_wrapper_layout = QtWidgets.QVBoxLayout(folders_wrapper)
         folders_wrapper_layout.setContentsMargins(0, 0, 0, 0)
-        folders_wrapper_layout.addWidget(filters_widget, 0)
+        folders_wrapper_layout.addWidget(folders_filter_text, 0)
         folders_wrapper_layout.addWidget(folders_widget, 1)
 
         # - Tasks widget
