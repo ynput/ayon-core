@@ -918,7 +918,7 @@ class IntegrateHeroTemplateNameProfileModel(BaseSettingsModel):
     template_name: str = SettingsField(
         "",
         title="Template name",
-        enum_resolver=anatomy_template_items_enum(category="publish")
+        enum_resolver=anatomy_template_items_enum(category="hero")
     )
 
 
