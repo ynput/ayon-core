@@ -528,10 +528,11 @@ def should_convert_for_ffmpeg(src_filepath):
     return False
 
 
-def _get_attributes_to_erase(input_info: dict, logger: logging.Logger = None) -> list[str]:
+def _get_attributes_to_erase(
+    input_info: dict, logger: logging.Logger
+) -> list[str]:
     """FFMPEG does not support some attributes in metadata."""
-    erase_attr_names = []
-    reasons = []
+    erase_attrs: dict[str, str] = {}  # Attr name to reason mapping
     for attr_name, attr_value in input_info["attribs"].items():
         if not isinstance(attr_value, str):
             continue
@@ -540,24 +541,23 @@ def _get_attributes_to_erase(input_info: dict, logger: logging.Logger = None) ->
         #   for ffmpeg or when contain prohibited symbols
         if len(attr_value) > MAX_FFMPEG_STRING_LEN:
             reason = f"has too long value ({len(attr_value)} chars)."
-            erase_attr_names.append(attr_name)
-            reasons.append(reason)
+            erase_attrs[attr_name] = reason
+            continue
 
         for char in NOT_ALLOWED_FFMPEG_CHARS:
             if char not in attr_value:
                 continue
             reason = f"contains unsupported character \"{char}\"."
-            erase_attr_names.append(attr_name)
-            reasons.append(reason)
+            erase_attrs[attr_name] = reason
+            break
 
     if logger is not None:
-        for attr_name, reason in zip(erase_attr_names, reasons):
-            # Set attribute to empty string
+        for attr_name, reason in erase_attrs.items():
             logger.info(
                 f"Removed attribute \"{attr_name}\" from metadata"
                 f" because {reason}."
             )
-    return erase_attr_names
+    return list(erase_attrs.keys())
 
 
 def convert_input_paths_for_ffmpeg(
@@ -615,14 +615,14 @@ def convert_input_paths_for_ffmpeg(
         input_info, logger=logger
     )
 
-    input_collections, input_remainders = clique.assemble(
+    input_collections, input_remainder = clique.assemble(
         input_paths,
         patterns=[clique.PATTERNS["frames"]],
         assume_padded_when_ambiguous=True,
     )
-    process_inputs = list(input_collections)
-    process_inputs.extend(input_remainders)
-    for _input in process_inputs:
+    input_items = list(input_collections)
+    input_items.extend(input_remainder)
+    for _input in input_items:
         # Prepare subprocess arguments
         oiio_cmd = get_oiio_tool_args(
             "oiiotool",
