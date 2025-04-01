@@ -2,8 +2,10 @@ import os
 import platform
 import numbers
 
-from ayon_core.lib import Logger
+from ayon_core.lib import Logger, StringTemplate
 from ayon_core.lib.path_templates import FormatObject
+
+from .exceptions import RootMissingEnv
 
 
 class RootItem(FormatObject):
@@ -21,7 +23,7 @@ class RootItem(FormatObject):
             multi root setup otherwise None value is expected.
     """
     def __init__(self, parent, root_raw_data, name):
-        super(RootItem, self).__init__()
+        super().__init__()
         self._log = None
         lowered_platform_keys = {
             key.lower(): value
@@ -38,9 +40,19 @@ class RootItem(FormatObject):
         # WARNING: Using environment variables in roots is not considered
         #   as production safe. Some features may not work as expected, for
         #   example USD resolver or site sync.
-        self.value = lowered_platform_keys[current_platform].format_map(
-            os.environ
-        )
+        try:
+            self.value = lowered_platform_keys[current_platform].format_map(
+                os.environ
+            )
+        except KeyError:
+            result = StringTemplate(self.value).format(os.environ.copy())
+            is_are = "is" if len(result.missing_keys) == 1 else "are"
+            missing_keys = ", ".join(result.missing_keys)
+            raise RootMissingEnv(
+                f"Root \"{name}\" requires environment variable/s"
+                f" {missing_keys} which {is_are} not available."
+            )
+
         self.clean_value = self._clean_root(self.value)
 
     def __format__(self, *args, **kwargs):
