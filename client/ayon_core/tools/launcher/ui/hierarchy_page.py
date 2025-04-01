@@ -10,12 +10,13 @@ from ayon_core.tools.utils import (
     ProjectsCombobox,
     FoldersWidget,
     TasksWidget,
+    NiceCheckbox,
 )
 
 
 class HierarchyPage(QtWidgets.QWidget):
     def __init__(self, controller, parent):
-        super(HierarchyPage, self).__init__(parent)
+        super().__init__(parent)
 
         # Header
         header_widget = QtWidgets.QWidget(self)
@@ -46,14 +47,23 @@ class HierarchyPage(QtWidgets.QWidget):
         # - Folders widget with filter
         folders_wrapper = QtWidgets.QWidget(content_body)
 
-        folders_filter_text = PlaceholderLineEdit(folders_wrapper)
+        filters_widget = QtWidgets.QWidget(folders_wrapper)
+
+        folders_filter_text = PlaceholderLineEdit(filters_widget)
         folders_filter_text.setPlaceholderText("Filter folders...")
+
+        my_tasks_checkbox = NiceCheckbox(filters_widget)
+
+        filters_layout = QtWidgets.QHBoxLayout(filters_widget)
+        filters_layout.setContentsMargins(0, 0, 0, 0)
+        filters_layout.addWidget(folders_filter_text, 1)
+        filters_layout.addWidget(my_tasks_checkbox, 0)
 
         folders_widget = FoldersWidget(controller, folders_wrapper)
 
         folders_wrapper_layout = QtWidgets.QVBoxLayout(folders_wrapper)
         folders_wrapper_layout.setContentsMargins(0, 0, 0, 0)
-        folders_wrapper_layout.addWidget(folders_filter_text, 0)
+        folders_wrapper_layout.addWidget(filters_widget, 0)
         folders_wrapper_layout.addWidget(folders_widget, 1)
 
         # - Tasks widget
@@ -72,6 +82,9 @@ class HierarchyPage(QtWidgets.QWidget):
         btn_back.clicked.connect(self._on_back_clicked)
         refresh_btn.clicked.connect(self._on_refresh_clicked)
         folders_filter_text.textChanged.connect(self._on_filter_text_changed)
+        my_tasks_checkbox.stateChanged.connect(
+            self._on_my_tasks_checkbox_state_changed
+        )
 
         self._is_visible = False
         self._controller = controller
@@ -80,6 +93,8 @@ class HierarchyPage(QtWidgets.QWidget):
         self._projects_combobox = projects_combobox
         self._folders_widget = folders_widget
         self._tasks_widget = tasks_widget
+
+        self._project_name = None
 
         # Post init
         projects_combobox.set_listen_to_selection_change(self._is_visible)
@@ -91,6 +106,7 @@ class HierarchyPage(QtWidgets.QWidget):
         self._projects_combobox.set_listen_to_selection_change(visible)
         if visible and project_name:
             self._projects_combobox.set_selection(project_name)
+        self._project_name = project_name
 
     def refresh(self):
         self._folders_widget.refresh()
@@ -104,3 +120,15 @@ class HierarchyPage(QtWidgets.QWidget):
 
     def _on_filter_text_changed(self, text):
         self._folders_widget.set_name_filter(text)
+
+    def _on_my_tasks_checkbox_state_changed(self, state):
+        folder_ids = None
+        task_ids = None
+        if state == QtCore.Qt.Checked:
+            entity_ids = self._controller.get_my_tasks_entity_ids(
+                self._project_name
+            )
+            folder_ids = entity_ids["folder_ids"]
+            task_ids = entity_ids["task_ids"]
+        self._folders_widget.set_folder_ids_filter(folder_ids)
+        self._tasks_widget.set_task_ids_filter(task_ids)
