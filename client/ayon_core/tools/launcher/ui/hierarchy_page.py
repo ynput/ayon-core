@@ -5,13 +5,12 @@ from ayon_core.tools.utils import (
     PlaceholderLineEdit,
     SquareButton,
     RefreshButton,
-)
-from ayon_core.tools.utils import (
     ProjectsCombobox,
     FoldersWidget,
     TasksWidget,
     NiceCheckbox,
 )
+from ayon_core.tools.utils.lib import checkstate_int_to_enum
 
 
 class HierarchyPage(QtWidgets.QWidget):
@@ -52,11 +51,14 @@ class HierarchyPage(QtWidgets.QWidget):
         folders_filter_text = PlaceholderLineEdit(filters_widget)
         folders_filter_text.setPlaceholderText("Filter folders...")
 
+        my_tasks_label = QtWidgets.QLabel("My tasks", self)
         my_tasks_checkbox = NiceCheckbox(filters_widget)
+        my_tasks_checkbox.setChecked(False)
 
         filters_layout = QtWidgets.QHBoxLayout(filters_widget)
         filters_layout.setContentsMargins(0, 0, 0, 0)
         filters_layout.addWidget(folders_filter_text, 1)
+        filters_layout.addWidget(my_tasks_label, 0)
         filters_layout.addWidget(my_tasks_checkbox, 0)
 
         folders_widget = FoldersWidget(controller, folders_wrapper)
@@ -91,6 +93,7 @@ class HierarchyPage(QtWidgets.QWidget):
 
         self._btn_back = btn_back
         self._projects_combobox = projects_combobox
+        self._my_tasks_checkbox = my_tasks_checkbox
         self._folders_widget = folders_widget
         self._tasks_widget = tasks_widget
 
@@ -111,6 +114,9 @@ class HierarchyPage(QtWidgets.QWidget):
     def refresh(self):
         self._folders_widget.refresh()
         self._tasks_widget.refresh()
+        self._on_my_tasks_checkbox_state_changed(
+            self._on_my_tasks_checkbox.checkState()
+        )
 
     def _on_back_clicked(self):
         self._controller.set_selected_project(None)
@@ -124,6 +130,7 @@ class HierarchyPage(QtWidgets.QWidget):
     def _on_my_tasks_checkbox_state_changed(self, state):
         folder_ids = None
         task_ids = None
+        state = checkstate_int_to_enum(state)
         if state == QtCore.Qt.Checked:
             entity_ids = self._controller.get_my_tasks_entity_ids(
                 self._project_name
