@@ -363,7 +363,7 @@ class TasksProxyModel(QtCore.QSortFilterProxyModel):
                 return False
             source_index = self.sourceModel().index(row, 0, parent_index)
             task_id = source_index.data(ITEM_ID_ROLE)
-            if task_id not in self._task_ids_filter:
+            if task_id is not None and task_id not in self._task_ids_filter:
                 return False
         return super().filterAcceptsRow(row, parent_index)
 
