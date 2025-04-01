@@ -35,6 +35,9 @@ class RootItem(FormatObject):
         self.available_platforms = set(lowered_platform_keys.keys())
 
         current_platform = platform.system().lower()
+        # WARNING: Using environment variables in roots is not considered
+        #   as production safe. Some features may not work as expected, for
+        #   example USD resolver or site sync.
         self.value = lowered_platform_keys[current_platform].format_map(
             os.environ
         )
