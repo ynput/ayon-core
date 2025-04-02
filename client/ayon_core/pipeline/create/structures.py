@@ -290,6 +290,20 @@ class PublishAttributes:
     def __getitem__(self, key):
         return self._data[key]
 
+    def __setitem__(self, key, value):
+        """Set value for plugin.
+
+        Args:
+            key (str): Plugin name.
+            value (dict[str, Any]): Value to set.
+
+        """
+        current_value = self._data.get(key)
+        if isinstance(current_value, PublishAttributeValues):
+            current_value.set_value(value)
+        else:
+            self._data[key] = value
+
     def __contains__(self, key):
         return key in self._data
 
