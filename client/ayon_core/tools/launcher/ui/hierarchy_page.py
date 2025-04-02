@@ -109,7 +109,7 @@ class HierarchyPage(QtWidgets.QWidget):
         self._folders_widget.refresh()
         self._tasks_widget.refresh()
         self._on_my_tasks_checkbox_state_changed(
-            self._on_my_tasks_checkbox.checkState()
+            self._my_tasks_checkbox.checkState()
         )
 
     def _on_back_clicked(self):
