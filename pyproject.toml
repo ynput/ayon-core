@@ -5,16 +5,16 @@
 
 [tool.poetry]
 name = "ayon-core"
-version = "1.0.15-dev"
+version = "1.1.6+dev"
 description = ""
 authors = ["Ynput Team <team@ynput.io>"]
 readme = "README.md"
+package-mode = false
 
 [tool.poetry.dependencies]
 python = ">=3.9.1,<3.10"
 
-
-[tool.poetry.dev-dependencies]
+[tool.poetry.group.dev.dependencies]
 # test dependencies
 pytest = "^8.0"
 pytest-print = "^1.0"
@@ -24,6 +24,22 @@ ruff = "^0.3.3"
 pre-commit = "^3.6.2"
 codespell = "^2.2.6"
 semver = "^3.0.2"
+mock = "^5.0.0"
+attrs = "^25.0.0"
+pyblish-base = "^1.8.7"
+clique = "^2.0.0"
+opentimelineio = "^0.17.0"
+tomlkit = "^0.13.2"
+requests = "^2.32.3"
+mkdocs-material = "^9.6.7"
+mkdocs-autoapi = "^0.4.0"
+mkdocstrings-python = "^1.16.2"
+mkdocs-minify-plugin = "^0.8.0"
+markdown-checklist = "^0.4.4"
+mdx-gh-links = "^0.4"
+pymdown-extensions = "^10.14.3"
+mike = "^2.1.3"
+mkdocstrings-shell = "^1.0.2"
 
 
 [tool.ruff]
