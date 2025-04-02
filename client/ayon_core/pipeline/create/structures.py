@@ -160,27 +160,14 @@ class AttributeValues:
         return self._attr_defs_by_key.get(key, default)
 
     def update(self, value):
-        changes = {}
-        for _key, _value in dict(value).items():
-            if _key in self._data and self._data.get(_key) == _value:
-                continue
-            self._data[_key] = _value
-            changes[_key] = _value
-
+        changes = self._update(value)
         if changes:
             self._parent.attribute_value_changed(self._key, changes)
 
     def pop(self, key, default=None):
-        has_key = key in self._data
-        value = self._data.pop(key, default)
-        # Remove attribute definition if is 'UnknownDef'
-        # - gives option to get rid of unknown values
-        attr_def = self._attr_defs_by_key.get(key)
-        if isinstance(attr_def, UnknownDef):
-            self._attr_defs_by_key.pop(key)
-            self._attr_defs.remove(attr_def)
-        elif has_key:
-            self._parent.attribute_value_changed(self._key, {key: None})
+        value, changes = self._pop(key, default)
+        if changes:
+            self._parent.attribute_value_changed(self._key, changes)
         return value
 
     def reset_values(self):
@@ -227,6 +214,29 @@ class AttributeValues:
         """
 
         return serialize_attr_defs(self._attr_defs)
+
+    def _update(self, value):
+        changes = {}
+        for key, value in dict(value).items():
+            if key in self._data and self._data.get(key) == value:
+                continue
+            self._data[key] = value
+            changes[key] = value
+        return changes
+
+    def _pop(self, key, default):
+        has_key = key in self._data
+        value = self._data.pop(key, default)
+        # Remove attribute definition if is 'UnknownDef'
+        # - gives option to get rid of unknown values
+        attr_def = self._attr_defs_by_key.get(key)
+        changes = {}
+        if isinstance(attr_def, UnknownDef):
+            self._attr_defs_by_key.pop(key)
+            self._attr_defs.remove(attr_def)
+        elif has_key:
+            changes[key] = None
+        return value, changes
 
 
 class CreatorAttributeValues(AttributeValues):
