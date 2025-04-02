@@ -26,18 +26,12 @@ class HierarchyPage(QtWidgets.QWidget):
 
         projects_combobox = ProjectsCombobox(controller, header_widget)
 
-        my_tasks_label = QtWidgets.QLabel("My tasks", header_widget)
-        my_tasks_checkbox = NiceCheckbox(header_widget)
-        my_tasks_checkbox.setChecked(False)
-
         refresh_btn = RefreshButton(header_widget)
 
         header_layout = QtWidgets.QHBoxLayout(header_widget)
         header_layout.setContentsMargins(0, 0, 0, 0)
         header_layout.addWidget(btn_back, 0)
         header_layout.addWidget(projects_combobox, 1)
-        header_layout.addWidget(my_tasks_label, 0)
-        header_layout.addWidget(my_tasks_checkbox, 0)
         header_layout.addWidget(refresh_btn, 0)
 
         # Body - Folders + Tasks selection
@@ -49,23 +43,36 @@ class HierarchyPage(QtWidgets.QWidget):
         )
         content_body.setOrientation(QtCore.Qt.Horizontal)
 
-        # - Folders widget with filter
-        folders_wrapper = QtWidgets.QWidget(content_body)
+        # - filters
+        filters_widget = QtWidgets.QWidget(self)
 
-        folders_filter_text = PlaceholderLineEdit(folders_wrapper)
+        folders_filter_text = PlaceholderLineEdit(filters_widget)
         folders_filter_text.setPlaceholderText("Filter folders...")
 
-        folders_widget = FoldersWidget(controller, folders_wrapper)
+        my_tasks_tooltip = (
+            "Filter folders and task to only those you are assigned to."
+        )
+        my_tasks_label = QtWidgets.QLabel("My tasks", filters_widget)
+        my_tasks_label.setToolTip(my_tasks_tooltip)
 
-        folders_wrapper_layout = QtWidgets.QVBoxLayout(folders_wrapper)
-        folders_wrapper_layout.setContentsMargins(0, 0, 0, 0)
-        folders_wrapper_layout.addWidget(folders_filter_text, 0)
-        folders_wrapper_layout.addWidget(folders_widget, 1)
+        my_tasks_checkbox = NiceCheckbox(filters_widget)
+        my_tasks_checkbox.setChecked(False)
+        my_tasks_checkbox.setToolTip(my_tasks_tooltip)
+
+        filters_layout = QtWidgets.QHBoxLayout(filters_widget)
+        filters_layout.setContentsMargins(0, 0, 0, 0)
+        filters_layout.addWidget(folders_filter_text, 1)
+        filters_layout.addWidget(my_tasks_label, 0)
+        filters_layout.addWidget(my_tasks_checkbox, 0)
+
+        # - Folders widget
+        folders_widget = FoldersWidget(controller, content_body)
+        folders_widget.set_header_visible(True)
 
         # - Tasks widget
         tasks_widget = TasksWidget(controller, content_body)
 
-        content_body.addWidget(folders_wrapper)
+        content_body.addWidget(folders_widget)
         content_body.addWidget(tasks_widget)
         content_body.setStretchFactor(0, 100)
         content_body.setStretchFactor(1, 65)
@@ -73,6 +80,7 @@ class HierarchyPage(QtWidgets.QWidget):
         main_layout = QtWidgets.QVBoxLayout(self)
         main_layout.setContentsMargins(0, 0, 0, 0)
         main_layout.addWidget(header_widget, 0)
+        main_layout.addWidget(filters_widget, 0)
         main_layout.addWidget(content_body, 1)
 
         btn_back.clicked.connect(self._on_back_clicked)

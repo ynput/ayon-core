@@ -36,6 +36,9 @@ class FoldersQtModel(QtGui.QStandardItemModel):
     def __init__(self, controller):
         super().__init__()
 
+        self.setColumnCount(1)
+        self.setHeaderData(0, QtCore.Qt.Horizontal, "Folders")
+
         self._controller = controller
         self._items_by_id = {}
         self._parent_id_by_id = {}
@@ -478,6 +481,9 @@ class FoldersWidget(QtWidgets.QWidget):
 
         """
         self._folders_proxy_model.set_folder_ids_filter(folder_ids)
+
+    def set_header_visible(self, visible: bool):
+        self._folders_view.setHeaderHidden(not visible)
 
     def refresh(self):
         """Refresh folders model.
