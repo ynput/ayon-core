@@ -35,6 +35,7 @@ class ExtractThumbnail(pyblish.api.InstancePlugin):
         "resolve",
         "traypublisher",
         "substancepainter",
+        "substancedesigner",
         "nuke",
         "aftereffects",
         "unreal",
@@ -343,8 +344,7 @@ class ExtractThumbnail(pyblish.api.InstancePlugin):
                 # to be published locally
                 continue
 
-            valid = "review" in tags or "thumb-nuke" in tags
-            if not valid:
+            if "review" not in tags:
                 continue
 
             if not repre.get("files"):

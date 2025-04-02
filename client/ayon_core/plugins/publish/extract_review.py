@@ -197,7 +197,7 @@ class ExtractReview(pyblish.api.InstancePlugin):
                 ).format(repre_name))
                 continue
 
-            input_ext = repre["ext"]
+            input_ext = repre["ext"].lower()
             if input_ext.startswith("."):
                 input_ext = input_ext[1:]
 

@@ -24,9 +24,14 @@ class TasksQtModel(QtGui.QStandardItemModel):
     """
     _default_task_icon = None
     refreshed = QtCore.Signal()
+    column_labels = ["Tasks"]
 
     def __init__(self, controller):
-        super(TasksQtModel, self).__init__()
+        super().__init__()
+
+        self.setColumnCount(len(self.column_labels))
+        for idx, label in enumerate(self.column_labels):
+            self.setHeaderData(idx, QtCore.Qt.Horizontal, label)
 
         self._controller = controller
 
@@ -53,7 +58,8 @@ class TasksQtModel(QtGui.QStandardItemModel):
         self._has_content = False
         self._remove_invalid_items()
         root_item = self.invisibleRootItem()
-        root_item.removeRows(0, root_item.rowCount())
+        while root_item.rowCount() != 0:
+            root_item.takeRow(0)
 
     def refresh(self):
         """Refresh tasks for last project and folder."""
@@ -270,7 +276,7 @@ class TasksQtModel(QtGui.QStandardItemModel):
                 task_type_item_by_name,
                 task_type_icon_cache
             )
-            item.setData(task_item.label, QtCore.Qt.DisplayRole)
+            item.setData(task_item.full_label, QtCore.Qt.DisplayRole)
             item.setData(name, ITEM_NAME_ROLE)
             item.setData(task_item.id, ITEM_ID_ROLE)
             item.setData(task_item.task_type, TASK_TYPE_ROLE)
@@ -336,19 +342,6 @@ class TasksQtModel(QtGui.QStandardItemModel):
 
         return self._has_content
 
-    def headerData(self, section, orientation, role):
-        # Show nice labels in the header
-        if (
-            role == QtCore.Qt.DisplayRole
-            and orientation == QtCore.Qt.Horizontal
-        ):
-            if section == 0:
-                return "Tasks"
-
-        return super(TasksQtModel, self).headerData(
-            section, orientation, role
-        )
-
 
 class TasksWidget(QtWidgets.QWidget):
     """Tasks widget.
@@ -365,7 +358,7 @@ class TasksWidget(QtWidgets.QWidget):
     selection_changed = QtCore.Signal()
 
     def __init__(self, controller, parent, handle_expected_selection=False):
-        super(TasksWidget, self).__init__(parent)
+        super().__init__(parent)
 
         tasks_view = DeselectableTreeView(self)
         tasks_view.setIndentation(0)

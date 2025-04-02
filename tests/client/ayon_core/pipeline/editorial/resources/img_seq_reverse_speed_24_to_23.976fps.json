@@ -1,0 +1,59 @@
+{
+    "OTIO_SCHEMA": "Clip.2",
+    "metadata": {},
+    "name": "",
+    "source_range": {
+        "OTIO_SCHEMA": "TimeRange.1",
+        "duration": {
+            "OTIO_SCHEMA": "RationalTime.1",
+            "rate": 23.976,
+            "value": 32.0
+        },
+        "start_time": {
+            "OTIO_SCHEMA": "RationalTime.1",
+            "rate": 23.976,
+            "value": 947726.0
+        }
+    },
+    "effects": [
+        {
+            "OTIO_SCHEMA": "LinearTimeWarp.1",
+            "metadata": {},
+            "name": "",
+            "effect_name": "LinearTimeWarp",
+            "time_scalar": -1.0
+        }
+    ],
+    "markers": [],
+    "enabled": true,
+    "media_references": {
+        "DEFAULT_MEDIA": {
+            "OTIO_SCHEMA": "ImageSequenceReference.1",
+            "metadata": {},
+            "name": "",
+            "available_range": {
+                "OTIO_SCHEMA": "TimeRange.1",
+                "duration": {
+                    "OTIO_SCHEMA": "RationalTime.1",
+                    "rate": 24.0,
+                    "value": 7607.0
+                },
+                "start_time": {
+                    "OTIO_SCHEMA": "RationalTime.1",
+                    "rate": 24.0,
+                    "value": 941478.0
+                }
+            },
+            "available_image_bounds": null,
+            "target_url_base": "/mnt/jobs/yahoo_theDog_1132/IN/FOOTAGE/SCANS_LINEAR/Panasonic Rec 709 to ACESCG/Panasonic P2 /A001_S001_S001_T012/",
+            "name_prefix": "A001_S001_S001_T012.",
+            "name_suffix": ".exr",
+            "start_frame": 941478,
+            "frame_step": 1,
+            "rate": 24.0,
+            "frame_zero_padding": 0,
+            "missing_frame_policy": "error"
+        }
+    },
+    "active_media_reference_key": "DEFAULT_MEDIA"
+}

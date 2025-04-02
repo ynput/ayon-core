@@ -1,3 +1,5 @@
+"""Library functions for publishing."""
+from __future__ import annotations
 import os
 import sys
 import inspect
@@ -12,8 +14,8 @@ import pyblish.plugin
 import pyblish.api
 
 from ayon_core.lib import (
-    Logger,
     import_filepath,
+    Logger,
     filter_profiles,
 )
 from ayon_core.settings import get_project_settings
@@ -163,7 +165,7 @@ class HelpContent:
 
 def load_help_content_from_filepath(filepath):
     """Load help content from xml file.
-    Xml file may containt errors and warnings.
+    Xml file may contain errors and warnings.
     """
     errors = {}
     warnings = {}
@@ -208,8 +210,9 @@ def load_help_content_from_plugin(plugin):
     return load_help_content_from_filepath(filepath)
 
 
-def publish_plugins_discover(paths=None):
-    """Find and return available pyblish plug-ins
+def publish_plugins_discover(
+        paths: Optional[list[str]] = None) -> DiscoverResult:
+    """Find and return available pyblish plug-ins.
 
     Overridden function from `pyblish` module to be able to collect
         crashed files and reason of their crash.
@@ -252,17 +255,14 @@ def publish_plugins_discover(paths=None):
                 continue
 
             try:
-                module = import_filepath(abspath, mod_name)
+                module = import_filepath(
+                    abspath, mod_name, sys_module_name=mod_name)
 
-                # Store reference to original module, to avoid
-                # garbage collection from collecting it's global
-                # imports, such as `import os`.
-                sys.modules[abspath] = module
-
-            except Exception as err:
+            except Exception as err:  # noqa: BLE001
+                # we need broad exception to catch all possible errors.
                 result.crashed_file_paths[abspath] = sys.exc_info()
 
-                log.debug("Skipped: \"%s\" (%s)", mod_name, err)
+                log.debug('Skipped: "%s" (%s)', mod_name, err)
                 continue
 
             for plugin in pyblish.plugin.plugins_from_module(module):
@@ -280,9 +280,8 @@ def publish_plugins_discover(paths=None):
                     continue
 
                 plugin_names.append(plugin.__name__)
-
-                plugin.__module__ = module.__file__
-                key = "{0}.{1}".format(plugin.__module__, plugin.__name__)
+                plugin.__file__ = module.__file__
+                key = f"{module.__file__}.{plugin.__name__}"
                 plugins[key] = plugin
 
     # Include plug-ins from registration.
@@ -361,7 +360,7 @@ def get_plugin_settings(plugin, project_settings, log, category=None):
     # Settings category determined from path
     # - usually path is './<category>/plugins/publish/<plugin file>'
     # - category can be host name of addon name ('maya', 'deadline', ...)
-    filepath = os.path.normpath(inspect.getsourcefile(plugin))
+    filepath = os.path.normpath(inspect.getfile(plugin))
 
     split_path = filepath.rsplit(os.path.sep, 5)
     if len(split_path) < 4:
@@ -427,7 +426,7 @@ def filter_pyblish_plugins(plugins):
     log = Logger.get_logger("filter_pyblish_plugins")
 
     # TODO: Don't use host from 'pyblish.api' but from defined host by us.
-    #   - kept becau on farm is probably used host 'shell' which propably
+    #   - kept because on farm is probably used host 'shell' which probably
     #       affect how settings are applied there
     host_name = pyblish.api.current_host()
     project_name = os.environ.get("AYON_PROJECT_NAME")
@@ -462,6 +461,12 @@ def filter_pyblish_plugins(plugins):
 
         # Remove disabled plugins
         if getattr(plugin, "enabled", True) is False:
+            plugins.remove(plugin)
+
+        # Pyblish already operated a filter based on host.
+        # But applying settings might have changed "hosts"
+        # value in plugin so re-filter.
+        elif not pyblish.plugin.host_is_compatible(plugin):
             plugins.remove(plugin)
 
 
@@ -523,7 +528,7 @@ def filter_instances_for_context_plugin(plugin, context):
 
     Args:
         plugin (pyblish.api.Plugin): Plugin with filters.
-        context (pyblish.api.Context): Pyblish context with insances.
+        context (pyblish.api.Context): Pyblish context with instances.
 
     Returns:
         Iterator[pyblish.lib.Instance]: Iteration of valid instances.
