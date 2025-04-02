@@ -304,6 +304,9 @@ class PublishAttributes:
         else:
             self._data[key] = value
 
+    def __delitem__(self, key):
+        self.pop(key)
+
     def __contains__(self, key):
         return key in self._data
 
