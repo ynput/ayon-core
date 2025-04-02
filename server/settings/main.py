@@ -90,12 +90,12 @@ def _ocio_built_in_paths():
                 "Aces 2.0 Studio OCIO config file. Requires OCIO v2.4.")
         },
         {
-            "value": "{BUILTIN_OCIO_ROOT}/OpenColorIOConfigs/aces_1.2/config.ocio",
+            "value": "{BUILTIN_OCIO_ROOT}/OpenColorIOConfigs/aces_1.2/config.ocio",  # noqa: E501
             "label": "ACES 1.2",
             "description": "Aces 1.2 OCIO config file."
         },
         {
-            "value": "{BUILTIN_OCIO_ROOT}/OpenColorIOConfigs/nuke-default/config.ocio",
+            "value": "{BUILTIN_OCIO_ROOT}/OpenColorIOConfigs/nuke-default/config.ocio",  # noqa: E501
             "label": "Nuke default",
         },
     ]
