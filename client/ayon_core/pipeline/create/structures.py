@@ -170,6 +170,16 @@ class AttributeValues:
             self._parent.attribute_value_changed(self._key, changes)
         return value
 
+    def set_value(self, value):
+        pop_keys = set(value.keys()) - set(self._data.keys())
+        changes = self._update(value)
+        for key in pop_keys:
+            _, key_changes = self._pop(key, None)
+            changes.update(key_changes)
+
+        if changes:
+            self._parent.attribute_value_changed(self._key, changes)
+
     def reset_values(self):
         self._data = {}
 
