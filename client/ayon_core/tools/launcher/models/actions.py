@@ -1,6 +1,9 @@
 import os
 
+import ayon_api
+
 from ayon_core import resources
+from ayon_core.lib import Logger, NestedCacheItem, CacheItem
 from ayon_core.addon import AddonsManager
 from ayon_core.pipeline.actions import (
     discover_launcher_actions,
@@ -48,6 +51,7 @@ class ActionItem:
         Get rid of application specific logic.
 
     Args:
+        action_type (Literal["webaction", "local"]): Type of action.
         identifier (str): Unique identifier of action item.
         label (str): Action label.
         variant_label (Union[str, None]): Variant label, full label is
@@ -55,24 +59,32 @@ class ActionItem:
             action if it has same 'label' and have set 'variant_label'.
         icon (dict[str, str]): Icon definition.
         order (int): Action ordering.
+        addon_name (str): Addon name.
+        addon_version (str): Addon version.
         full_label (Optional[str]): Full label, if not set it is generated
             from 'label' and 'variant_label'.
     """
 
     def __init__(
         self,
+        action_type,
         identifier,
         label,
         variant_label,
         icon,
         order,
+        addon_name=None,
+        addon_version=None,
         full_label=None
     ):
+        self.action_type = action_type
         self.identifier = identifier
         self.label = label
         self.variant_label = variant_label
         self.icon = icon
         self.order = order
+        self.addon_name = addon_name
+        self.addon_version = addon_version
         self._full_label = full_label
 
     def copy(self):
@@ -158,6 +170,9 @@ class ActionsModel:
         self._discovered_actions = None
         self._actions = None
         self._action_items = {}
+        self._webaction_items = NestedCacheItem(
+            levels=2, default_factory=list
+        )
 
         self._addons_manager = None
 
@@ -194,12 +209,13 @@ class ActionsModel:
         for identifier, action in self._get_action_objects().items():
             if action.is_compatible(selection):
                 output.append(action_items[identifier])
+        output.extend(self._get_webactions(selection))
 
         return output
 
+    def trigger_action(
+        self, acton_type, project_name, folder_id, task_id, identifier
     ):
-
-    def trigger_action(self, project_name, folder_id, task_id, identifier):
         selection = self._prepare_selection(project_name, folder_id, task_id)
         failed = False
         error_message = None
@@ -251,6 +267,68 @@ class ActionsModel:
             project_settings=project_settings,
         )
 
+    def _get_webactions(self, selection: LauncherActionSelection):
+        if not selection.is_project_selected:
+            return []
+
+        entity_type = None
+        entity_id = None
+        entity_subtypes = []
+        if selection.is_task_selected:
+            entity_type = "task"
+            entity_id = selection.task_entity["id"]
+            entity_subtypes = [selection.task_entity["taskType"]]
+
+        elif selection.is_folder_selected:
+            entity_type = "folder"
+            entity_id = selection.folder_entity["id"]
+            entity_subtypes = [selection.folder_entity["folderType"]]
+
+        entity_ids = []
+        if entity_id:
+            entity_ids.append(entity_id)
+
+        project_name = selection.project_name
+        cache: CacheItem = self._webaction_items[project_name][entity_id]
+        if cache.is_valid:
+            return cache.get_data()
+
+        context = {
+            "projectName": project_name,
+            "entityType": entity_type,
+            "entitySubtypes": entity_subtypes,
+            "entityIds": entity_ids,
+        }
+        response = ayon_api.post("actions/list", **context)
+        try:
+            response.raise_for_status()
+        except Exception:
+            self.log.warning("Failed to collect webactions.", exc_info=True)
+            return []
+
+        action_items = []
+        for action in response.data["actions"]:
+            # NOTE Settings variant may be important for triggering?
+            # - action["variant"]
+            icon = action["icon"]
+            if icon["type"] == "url" and icon["url"].startswith("/"):
+                icon["type"] = "ayon_url"
+            action_items.append(ActionItem(
+                "webaction",
+                action["identifier"],
+                # action["category"],
+                action["label"],
+                None,
+                action["icon"],
+                action["order"],
+                action["addonName"],
+                action["addonVersion"],
+            ))
+
+        cache.update_data(action_items)
+
+        return cache.get_data()
+
     def _get_discovered_action_classes(self):
         if self._discovered_actions is None:
             # NOTE We don't need to register the paths, but that would
@@ -301,6 +379,7 @@ class ActionsModel:
             icon = get_action_icon(action)
 
             item = ActionItem(
+                "local",
                 identifier,
                 label,
                 variant_label,
