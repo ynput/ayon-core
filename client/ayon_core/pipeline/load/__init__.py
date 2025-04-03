@@ -49,6 +49,18 @@ from .plugins import (
     deregister_loader_plugin_path,
     register_loader_plugin_path,
     deregister_loader_plugin,
+
+    discover_loader_pre_hook_plugin,
+    register_loader_pre_hook_plugin,
+    deregister_loader_pre_hook_plugin,
+    register_loader_pre_hook_plugin_path,
+    deregister_loader_pre_hook_plugin_path,
+
+    discover_loader_post_hook_plugin,
+    register_loader_post_hook_plugin,
+    deregister_loader_post_hook_plugin,
+    register_loader_post_hook_plugin_path,
+    deregister_loader_post_hook_plugin_path,
 )
 
 
@@ -103,4 +115,16 @@ __all__ = (
     "deregister_loader_plugin_path",
     "register_loader_plugin_path",
     "deregister_loader_plugin",
+
+    "discover_loader_pre_hook_plugin",
+    "register_loader_pre_hook_plugin",
+    "deregister_loader_pre_hook_plugin",
+    "register_loader_pre_hook_plugin_path",
+    "deregister_loader_pre_hook_plugin_path",
+
+    "discover_loader_post_hook_plugin",
+    "register_loader_post_hook_plugin",
+    "deregister_loader_post_hook_plugin",
+    "register_loader_post_hook_plugin_path",
+    "deregister_loader_post_hook_plugin_path",
 )

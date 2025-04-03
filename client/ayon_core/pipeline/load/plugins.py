@@ -1,5 +1,6 @@
 import os
 import logging
+from typing import ClassVar
 
 from ayon_core.settings import get_project_settings
 from ayon_core.pipeline.plugin_discover import (
@@ -264,6 +265,30 @@ class ProductLoaderPlugin(LoaderPlugin):
     """
 
 
+class PreLoadHookPlugin:
+    """Plugin that should be run before any Loaders in 'loaders'
+
+    Should be used as non-invasive method to enrich core loading process.
+    Any external studio might want to modify loaded data before or afte
+    they are loaded without need to override existing core plugins.
+    """
+    loaders: ClassVar[set[str]]
+
+    def process(self, context, name=None, namespace=None, options=None):
+        pass
+
+class PostLoadHookPlugin:
+    """Plugin that should be run after any Loaders in 'loaders'
+
+    Should be used as non-invasive method to enrich core loading process.
+    Any external studio might want to modify loaded data before or afte
+    they are loaded without need to override existing core plugins.
+    loaders: ClassVar[set[str]]
+    """
+    def process(self, context, name=None, namespace=None, options=None):
+        pass
+
+
 def discover_loader_plugins(project_name=None):
     from ayon_core.lib import Logger
     from ayon_core.pipeline import get_current_project_name
@@ -300,3 +325,44 @@ def deregister_loader_plugin_path(path):
 
 def register_loader_plugin_path(path):
     return register_plugin_path(LoaderPlugin, path)
+
+
+def discover_loader_pre_hook_plugin(project_name=None):
+    plugins = discover(PreLoadHookPlugin)
+    return plugins
+
+def register_loader_pre_hook_plugin(plugin):
+    return register_plugin(PreLoadHookPlugin, plugin)
+
+
+def deregister_loader_pre_hook_plugin(plugin):
+    deregister_plugin(PreLoadHookPlugin, plugin)
+
+
+def register_loader_pre_hook_plugin_path(path):
+    return register_plugin_path(PreLoadHookPlugin, path)
+
+
+def deregister_loader_pre_hook_plugin_path(path):
+    deregister_plugin_path(PreLoadHookPlugin, path)
+
+
+def discover_loader_post_hook_plugin():
+    plugins = discover(PostLoadHookPlugin)
+    return plugins
+
+
+def register_loader_post_hook_plugin(plugin):
+    return register_plugin(PostLoadHookPlugin, plugin)
+
+
+def deregister_loader_post_hook_plugin(plugin):
+    deregister_plugin(PostLoadHookPlugin, plugin)
+
+
+def register_loader_post_hook_plugin_path(path):
+    return register_plugin_path(PostLoadHookPlugin, path)
+
+
+def deregister_loader_post_hook_plugin_path(path):
+    deregister_plugin_path(PostLoadHookPlugin, path)
