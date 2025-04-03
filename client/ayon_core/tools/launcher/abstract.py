@@ -308,22 +308,6 @@ class AbstractLauncherFrontEnd(AbstractLauncherCommon):
         pass
 
     @abstractmethod
-    def set_application_force_not_open_workfile(
-        self, project_name, folder_id, task_id, action_ids, enabled
-    ):
-        """This is application action related to force not open last workfile.
-
-        Args:
-            project_name (Union[str, None]): Project name.
-            folder_id (Union[str, None]): Folder id.
-            task_id (Union[str, None]): Task id.
-            action_ids (Iterable[str]): Action identifiers.
-            enabled (bool): New value of force not open workfile.
-
-        """
-        pass
-
-    @abstractmethod
     def refresh(self):
         """Refresh everything, models, ui etc.
 
