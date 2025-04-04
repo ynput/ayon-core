@@ -11,10 +11,13 @@ from .resources import get_options_image_path
 ANIMATION_LEN = 7
 
 ACTION_ID_ROLE = QtCore.Qt.UserRole + 1
-ACTION_IS_GROUP_ROLE = QtCore.Qt.UserRole + 2
-ACTION_SORT_ROLE = QtCore.Qt.UserRole + 3
-ANIMATION_START_ROLE = QtCore.Qt.UserRole + 4
-ANIMATION_STATE_ROLE = QtCore.Qt.UserRole + 5
+ACTION_TYPE_ROLE = QtCore.Qt.UserRole + 2
+ACTION_IS_GROUP_ROLE = QtCore.Qt.UserRole + 3
+ACTION_SORT_ROLE = QtCore.Qt.UserRole + 4
+ACTION_ADDON_NAME_ROLE = QtCore.Qt.UserRole + 5
+ACTION_ADDON_VERSION_ROLE = QtCore.Qt.UserRole + 6
+ANIMATION_START_ROLE = QtCore.Qt.UserRole + 7
+ANIMATION_STATE_ROLE = QtCore.Qt.UserRole + 8
 
 
 def _variant_label_sort_getter(action_item):
@@ -141,6 +144,9 @@ class ActionsQtModel(QtGui.QStandardItemModel):
             item.setData(label, QtCore.Qt.DisplayRole)
             item.setData(icon, QtCore.Qt.DecorationRole)
             item.setData(is_group, ACTION_IS_GROUP_ROLE)
+            item.setData(action_item.action_type, ACTION_TYPE_ROLE)
+            item.setData(action_item.addon_name, ACTION_ADDON_NAME_ROLE)
+            item.setData(action_item.addon_version, ACTION_ADDON_VERSION_ROLE)
             item.setData(action_item.order, ACTION_SORT_ROLE)
             items_by_id[action_item.identifier] = item
             action_items_by_id[action_item.identifier] = action_item
@@ -411,8 +417,17 @@ class ActionsWidget(QtWidgets.QWidget):
         task_id = self._model.get_selected_task_id()
 
         if not is_group:
+            action_type = index.data(ACTION_TYPE_ROLE)
+            addon_name = index.data(ACTION_ADDON_NAME_ROLE)
+            addon_version = index.data(ACTION_ADDON_VERSION_ROLE)
             self._controller.trigger_action(
-                project_name, folder_id, task_id, action_id
+                action_type,
+                action_id,
+                project_name,
+                folder_id,
+                task_id,
+                addon_name,
+                addon_version,
             )
             self._start_animation(index)
             return
@@ -434,6 +449,12 @@ class ActionsWidget(QtWidgets.QWidget):
         action_item = actions_mapping[result]
 
         self._controller.trigger_action(
-            project_name, folder_id, task_id, action_item.identifier
+            action_item.action_type,
+            action_item.identifier,
+            project_name,
+            folder_id,
+            task_id,
+            action_item.addon_name,
+            action_item.addon_version,
         )
         self._start_animation(index)

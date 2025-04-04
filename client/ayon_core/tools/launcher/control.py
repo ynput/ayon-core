@@ -32,7 +32,7 @@ class BaseLauncherController(
 
     @property
     def event_system(self):
-        """Inner event system for workfiles tool controller.
+        """Inner event system for launcher tool controller.
 
         Is used for communication with UI. Event system is created on demand.
 
@@ -135,11 +135,25 @@ class BaseLauncherController(
         return self._actions_model.get_action_items(
             project_name, folder_id, task_id)
 
+    def trigger_action(
+        self,
+        action_type,
+        identifier,
+        project_name,
+        folder_id,
+        task_id,
+        addon_name,
+        addon_version,
     ):
-
-    def trigger_action(self, project_name, folder_id, task_id, identifier):
         self._actions_model.trigger_action(
-            project_name, folder_id, task_id, identifier)
+            action_type,
+            identifier,
+            project_name,
+            folder_id,
+            task_id,
+            addon_name,
+            addon_version,
+        )
 
     # General methods
     def refresh(self):

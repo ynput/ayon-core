@@ -214,7 +214,14 @@ class ActionsModel:
         return output
 
     def trigger_action(
-        self, acton_type, project_name, folder_id, task_id, identifier
+        self,
+        acton_type,
+        identifier,
+        project_name,
+        folder_id,
+        task_id,
+        addon_name,
+        addon_version,
     ):
         selection = self._prepare_selection(project_name, folder_id, task_id)
         failed = False
