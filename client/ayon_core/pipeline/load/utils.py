@@ -520,7 +520,7 @@ def remove_container(container):
     return Loader().remove(container)
 
 
-def update_container(container, version=-1):
+def update_container(container, version=-1, hooks_by_identifier=None):
     """Update a container"""
     from ayon_core.pipeline import get_current_project_name
 
@@ -616,7 +616,20 @@ def update_container(container, version=-1):
     if not path or not os.path.exists(path):
         raise ValueError("Path {} doesn't exist".format(path))
 
-    return Loader().update(container, context)
+    loader_identifier = get_loader_identifier(Loader)
+    hooks = hooks_by_identifier.get(loader_identifier, {})
+    for hook_plugin in hooks.get("pre", []):
+        hook_plugin.update(
+            context,
+            container
+        )
+    update_return = Loader().update(container, context)
+    for hook_plugin in hooks.get("post", []):
+        hook_plugin.update(
+            context,
+            container
+        )
+    return update_return
 
 
 def switch_container(container, representation, loader_plugin=None):
