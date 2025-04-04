@@ -128,7 +128,10 @@ class ActionsQtModel(QtGui.QStandardItemModel):
         action_items_by_id = {}
         for action_item_info in all_action_items_info:
             action_item, is_group = action_item_info
-            icon = get_qt_icon(action_item.icon)
+            icon_def = action_item.icon
+            if not icon_def:
+                icon_def = {"type": "transparent", "size": 256}
+            icon = get_qt_icon(icon_def)
             if is_group:
                 label = action_item.label
             else:
