@@ -338,16 +338,17 @@ class ActionsModel:
         for action in response.data["actions"]:
             # NOTE Settings variant may be important for triggering?
             # - action["variant"]
-            icon = action["icon"]
-            if icon["type"] == "url" and icon["url"].startswith("/"):
+            icon = action.get("icon")
+            if icon and icon["type"] == "url" and icon["url"].startswith("/"):
                 icon["type"] = "ayon_url"
+
             action_items.append(ActionItem(
                 "webaction",
                 action["identifier"],
                 # action["category"],
                 action["label"],
                 None,
-                action["icon"],
+                icon,
                 action["order"],
                 action["addonName"],
                 action["addonVersion"],
