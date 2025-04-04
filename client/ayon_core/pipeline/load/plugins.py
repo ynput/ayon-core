@@ -280,6 +280,9 @@ class PreLoadHookPlugin:
     def update(self, container, context):
         pass
 
+    def switch(self, container, context):
+        pass
+
 
 class PostLoadHookPlugin:
     """Plugin that should be run after any Loaders in 'loaders'
@@ -293,6 +296,9 @@ class PostLoadHookPlugin:
         pass
 
     def update(self, container, context):
+        pass
+
+    def switch(self, container, context):
         pass
 
 
