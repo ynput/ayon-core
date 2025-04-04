@@ -16,7 +16,6 @@ from ayon_core.lib import (
 )
 from ayon_core.pipeline import (
     Anatomy,
-    discover
 )
 
 log = logging.getLogger(__name__)
@@ -413,7 +412,7 @@ def load_with_product_contexts(
     )
 
 
-def _load_context(Loader, contexts, hooks, name, namespace, options):
+def _load_context(Loader, contexts, name, namespace, options, hooks):
     """Helper function to wrap hooks around generic load function.
 
     Only dynamic part is different context(s) to be loaded.
@@ -1160,6 +1159,7 @@ def get_hook_loaders_by_identifier():
     """
     # beware of circular imports!
     from .plugins import  PreLoadHookPlugin, PostLoadHookPlugin
+
     hook_loaders_by_identifier = {}
     _get_hook_loaders(hook_loaders_by_identifier, PreLoadHookPlugin, "pre")
     _get_hook_loaders(hook_loaders_by_identifier, PostLoadHookPlugin, "post")
@@ -1167,6 +1167,8 @@ def get_hook_loaders_by_identifier():
 
 
 def _get_hook_loaders(hook_loaders_by_identifier, loader_plugin, loader_type):
+    from ..plugin_discover import discover
+
     load_hook_plugins = discover(loader_plugin)
     loaders_by_name = get_loaders_by_name()
     for hook_plugin in load_hook_plugins:
