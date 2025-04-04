@@ -509,7 +509,7 @@ class InstanceCardWidget(CardWidget):
         variant = self.instance.variant
         product_name = self.instance.product_name
         label = self.instance.label
-        folder_name = self.instance.get_folder_path().split("/")[-1]
+        folder_path = self.instance.get_folder_path()
         task_name = self.instance.get_task_name()
 
         if (
