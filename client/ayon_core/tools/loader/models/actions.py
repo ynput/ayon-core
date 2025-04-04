@@ -781,25 +781,13 @@ class LoaderActionsModel:
             if version < 0:
                 version = "Hero"
             try:
-                for hook_plugin in hooks.get("pre", []):
-                    hook_plugin.process(
-                        loader,
-                        repre_context,
-                        options=options
-                    )
 
                 load_with_repre_context(
                     loader,
                     repre_context,
-                    options=options
+                    options=options,
+                    hooks=hooks
                 )
-
-                for hook_plugin in hooks.get("post", []):
-                    hook_plugin.process(
-                        loader,
-                        repre_context,
-                        options=options
-                    )
 
             except IncompatibleLoaderError as exc:
                 print(exc)
@@ -855,26 +843,12 @@ class LoaderActionsModel:
                 product_name = context.get("product", {}).get("name") or "N/A"
                 product_names.append(product_name)
             try:
-                for hook_plugin in hooks.get("pre", []):
-                    hook_plugin.process(
-                        loader,
-                        version_contexts,
-                        options=options
-                    )
-
                 load_with_product_contexts(
                     loader,
                     version_contexts,
                     options=options,
+                    hooks=hooks
                 )
-
-                for hook_plugin in hooks.get("post", []):
-                    hook_plugin.process(
-                        loader,
-                        version_contexts,
-                        options=options
-                    )
-
             except Exception as exc:
                 formatted_traceback = None
                 if not isinstance(exc, LoadError):
@@ -895,25 +869,12 @@ class LoaderActionsModel:
                     version_context.get("product", {}).get("name") or "N/A"
                 )
                 try:
-                    for hook_plugin in hooks.get("pre", []):
-                        hook_plugin.process(
-                            loader,
-                            version_contexts,
-                            options=options
-                        )
-
                     load_with_product_context(
                         loader,
                         version_context,
-                        options=options
+                        options=options,
+                        hooks=hooks
                     )
-
-                    for hook_plugin in hooks.get("post", []):
-                        hook_plugin.process(
-                            loader,
-                            version_context,
-                            options=options
-                        )
 
                 except Exception as exc:
                     formatted_traceback = None

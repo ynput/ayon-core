@@ -288,7 +288,13 @@ def get_representation_context(project_name, representation):
 
 
 def load_with_repre_context(
-    Loader, repre_context, namespace=None, name=None, options=None, **kwargs
+    Loader,
+    repre_context,
+    namespace=None,
+    name=None,
+    options=None,
+    hooks=None,
+    **kwargs
 ):
 
     # Ensure the Loader is compatible for the representation
@@ -322,11 +328,24 @@ def load_with_repre_context(
     # Deprecated - to be removed in OpenPype 3.16.6 or 3.17.0.
     loader._fname = get_representation_path_from_context(repre_context)
 
-    return loader.load(repre_context, name, namespace, options)
+    return _load_context(
+        Loader,
+        repre_context,
+        name,
+        namespace,
+        options,
+        hooks
+    )
 
 
 def load_with_product_context(
-    Loader, product_context, namespace=None, name=None, options=None, **kwargs
+    Loader,
+    product_context,
+    namespace=None,
+    name=None,
+    options=None,
+    hooks=None,
+    **kwargs
 ):
 
     # Ensure options is a dictionary when no explicit options provided
@@ -344,12 +363,24 @@ def load_with_product_context(
             Loader.__name__, product_context["folder"]["path"]
         )
     )
-
-    return Loader().load(product_context, name, namespace, options)
+    return _load_context(
+        Loader,
+        product_context,
+        name,
+        namespace,
+        options,
+        hooks
+    )
 
 
 def load_with_product_contexts(
-    Loader, product_contexts, namespace=None, name=None, options=None, **kwargs
+    Loader,
+    product_contexts,
+    namespace=None,
+    name=None,
+    options=None,
+    hooks=None,
+    **kwargs
 ):
 
     # Ensure options is a dictionary when no explicit options provided
@@ -371,8 +402,37 @@ def load_with_product_contexts(
             Loader.__name__, joined_product_names
         )
     )
+    return _load_context(
+        Loader,
+        product_contexts,
+        name,
+        namespace,
+        options,
+        hooks
+    )
 
-    return Loader().load(product_contexts, name, namespace, options)
+
+def _load_context(Loader, contexts, hooks, name, namespace, options):
+    """Helper function to wrap hooks around generic load function.
+
+    Only dynamic part is different context(s) to be loaded.
+    """
+    for hook_plugin in hooks.get("pre", []):
+        hook_plugin.process(
+            contexts,
+            name,
+            namespace,
+            options,
+        )
+    load_return = Loader().load(contexts, name, namespace, options)
+    for hook_plugin in hooks.get("post", []):
+        hook_plugin.process(
+            contexts,
+            name,
+            namespace,
+            options,
+        )
+    return load_return
 
 
 def load_container(
