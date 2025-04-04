@@ -529,9 +529,9 @@ class InstanceCardWidget(CardWidget):
             for part in found_parts:
                 replacement = "<b>{}</b>".format(part)
                 label = label.replace(part, replacement)
-                sublabel = self._get_card_widget_sub_label(folder_path, task_name)
-                if sublabel:
-                    label += f"<br/>{sublabel}"
+        sublabel = self._get_card_widget_sub_label(folder_path, task_name)
+        if sublabel:
+            label += f"<br/>{sublabel}"
 
         self._label_widget.setText(label)
         # HTML text will cause that label start catch mouse clicks
