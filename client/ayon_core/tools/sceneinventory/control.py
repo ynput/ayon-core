@@ -36,7 +36,7 @@ class SceneInventoryController:
         self._projects_model = ProjectsModel(self)
         self._event_system = self._create_event_system()
 
-        self._hooks_by_identifier = get_hook_loaders_by_identifier()
+        self._hooks_by_identifier = None
 
     def get_host(self) -> HostBase:
         return self._host
@@ -120,6 +120,8 @@ class SceneInventoryController:
 
     def get_hook_loaders_by_identifier(self):
         """Returns lists of pre|post hooks per Loader identifier."""
+        if self._hooks_by_identifier is None:
+            self._hooks_by_identifier = get_hook_loaders_by_identifier()
         return self._hooks_by_identifier
 
     # Site Sync methods
