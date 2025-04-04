@@ -9,7 +9,6 @@ import ayon_api
 from ayon_core.lib import NestedCacheItem
 from ayon_core.pipeline.load import (
     discover_loader_plugins,
-    discover_loader_pre_hook_plugin,
     ProductLoaderPlugin,
     filter_repre_contexts_by_loader,
     get_loader_identifier,
