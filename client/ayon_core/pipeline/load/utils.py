@@ -632,15 +632,22 @@ def update_container(container, version=-1, hooks_by_identifier=None):
     return update_return
 
 
-def switch_container(container, representation, loader_plugin=None):
+def switch_container(
+    container,
+    representation,
+    loader_plugin=None,
+    hooks_by_identifier=None
+):
     """Switch a container to representation
 
     Args:
         container (dict): container information
         representation (dict): representation entity
+        loader_plugin (LoaderPlugin)
+        hooks_by_identifier (dict): {"pre": [PreHookPlugin1], "post":[]}
 
     Returns:
-        function call
+        return from function call
     """
     from ayon_core.pipeline import get_current_project_name
 
@@ -679,7 +686,21 @@ def switch_container(container, representation, loader_plugin=None):
 
     loader = loader_plugin(context)
 
-    return loader.switch(container, context)
+    loader_identifier = get_loader_identifier(loader)
+    hooks = hooks_by_identifier.get(loader_identifier, {})
+    for hook_plugin in hooks.get("pre", []):
+        hook_plugin.switch(
+            context,
+            container
+        )
+    switch_return = loader.switch(container, context)
+    for hook_plugin in hooks.get("post", []):
+        hook_plugin.switch(
+            context,
+            container
+        )
+
+    return switch_return
 
 
 def _fix_representation_context_compatibility(repre_context):
