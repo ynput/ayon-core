@@ -16,6 +16,7 @@ from ayon_core.lib import (
 )
 from ayon_core.pipeline import (
     Anatomy,
+    discover
 )
 
 log = logging.getLogger(__name__)
@@ -1149,3 +1150,34 @@ def filter_containers(containers, project_name):
             uptodate_containers.append(container)
 
     return output
+
+
+def get_hook_loaders_by_identifier():
+    """Discovers pre/post hooks for loader plugins.
+
+    Returns:
+        (dict) {"LoaderName": {"pre": ["PreLoader1"], "post":["PreLoader2]}
+    """
+    # beware of circular imports!
+    from .plugins import  PreLoadHookPlugin, PostLoadHookPlugin
+    hook_loaders_by_identifier = {}
+    _get_hook_loaders(hook_loaders_by_identifier, PreLoadHookPlugin, "pre")
+    _get_hook_loaders(hook_loaders_by_identifier, PostLoadHookPlugin, "post")
+    return hook_loaders_by_identifier
+
+
+def _get_hook_loaders(hook_loaders_by_identifier, loader_plugin, loader_type):
+    load_hook_plugins = discover(loader_plugin)
+    loaders_by_name = get_loaders_by_name()
+    for hook_plugin in load_hook_plugins:
+        for load_plugin_name in hook_plugin.loaders:
+            load_plugin = loaders_by_name.get(load_plugin_name)
+            if not load_plugin:
+                continue
+            if not load_plugin.enabled:
+                continue
+            identifier = get_loader_identifier(load_plugin)
+            (hook_loaders_by_identifier.setdefault(identifier, {})
+            .setdefault(loader_type, []).append(
+                hook_plugin)
+            )
