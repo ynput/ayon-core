@@ -277,6 +277,10 @@ class PreLoadHookPlugin:
     def process(self, context, name=None, namespace=None, options=None):
         pass
 
+    def update(self, container, context):
+        pass
+
+
 class PostLoadHookPlugin:
     """Plugin that should be run after any Loaders in 'loaders'
 
@@ -286,6 +290,9 @@ class PostLoadHookPlugin:
     loaders: ClassVar[set[str]]
     """
     def process(self, context, name=None, namespace=None, options=None):
+        pass
+
+    def update(self, container, context):
         pass
 
 
