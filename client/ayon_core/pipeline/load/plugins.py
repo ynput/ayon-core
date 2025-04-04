@@ -327,10 +327,6 @@ def register_loader_plugin_path(path):
     return register_plugin_path(LoaderPlugin, path)
 
 
-def discover_loader_pre_hook_plugin(project_name=None):
-    plugins = discover(PreLoadHookPlugin)
-    return plugins
-
 def register_loader_pre_hook_plugin(plugin):
     return register_plugin(PreLoadHookPlugin, plugin)
 
@@ -345,11 +341,6 @@ def register_loader_pre_hook_plugin_path(path):
 
 def deregister_loader_pre_hook_plugin_path(path):
     deregister_plugin_path(PreLoadHookPlugin, path)
-
-
-def discover_loader_post_hook_plugin():
-    plugins = discover(PostLoadHookPlugin)
-    return plugins
 
 
 def register_loader_post_hook_plugin(plugin):
