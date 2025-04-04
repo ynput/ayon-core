@@ -1,9 +1,17 @@
 import os
+import platform
+import subprocess
+from urllib.parse import urlencode
 
 import ayon_api
 
 from ayon_core import resources
-from ayon_core.lib import Logger, NestedCacheItem, CacheItem
+from ayon_core.lib import (
+    Logger,
+    NestedCacheItem,
+    CacheItem,
+    get_settings_variant,
+)
 from ayon_core.addon import AddonsManager
 from ayon_core.pipeline.actions import (
     discover_launcher_actions,
@@ -176,6 +184,8 @@ class ActionsModel:
 
         self._addons_manager = None
 
+        self._variant = get_settings_variant()
+
     @property
     def log(self):
         if self._log is None:
@@ -223,6 +233,17 @@ class ActionsModel:
         addon_name,
         addon_version,
     ):
+        if acton_type == "webaction":
+            self._trigger_webaction(
+                identifier,
+                project_name,
+                folder_id,
+                task_id,
+                addon_name,
+                addon_version,
+            )
+            return
+
         selection = self._prepare_selection(project_name, folder_id, task_id)
         failed = False
         error_message = None
@@ -306,8 +327,8 @@ class ActionsModel:
             "entitySubtypes": entity_subtypes,
             "entityIds": entity_ids,
         }
-        response = ayon_api.post("actions/list", **context)
         try:
+            response = ayon_api.post("actions/list", **context)
             response.raise_for_status()
         except Exception:
             self.log.warning("Failed to collect webactions.", exc_info=True)
@@ -335,6 +356,97 @@ class ActionsModel:
         cache.update_data(action_items)
 
         return cache.get_data()
+
+    def _trigger_webaction(
+        self,
+        identifier,
+        project_name,
+        folder_id,
+        task_id,
+        addon_name,
+        addon_version,
+    ):
+        entity_type = None
+        entity_ids = []
+        if task_id:
+            entity_type = "task"
+            entity_ids.append(task_id)
+        elif folder_id:
+            entity_type = "folder"
+            entity_ids.append(folder_id)
+
+        query = {
+            "addonName": addon_name,
+            "addonVersion": addon_version,
+            "identifier": identifier,
+            "variant": self._variant,
+        }
+        url = f"actions/execute?{urlencode(query)}"
+        context = {
+            "projectName": project_name,
+            "entityType": entity_type,
+            "entityIds": entity_ids,
+        }
+
+        # TODO pass label in as argument?
+        action_label= "Webaction"
+
+        failed = False
+        error_message = None
+        try:
+            self._controller.emit_event(
+                "action.trigger.started",
+                {
+                    "identifier": identifier,
+                    "full_label": action_label,
+                }
+            )
+            response = ayon_api.post(url, **context)
+            response.raise_for_status()
+            data = response.data
+            if data["success"] == True:
+                self._handle_webaction_response(data)
+            else:
+                error_message = data["message"]
+                failed = True
+
+        except Exception as exc:
+            self.log.warning("Action trigger failed.", exc_info=True)
+            failed = True
+            error_message = str(exc)
+
+        self._controller.emit_event(
+            "action.trigger.finished",
+            {
+                "identifier": identifier,
+                "failed": failed,
+                "error_message": error_message,
+                "full_label": action_label,
+            }
+        )
+
+    def _handle_webaction_response(self, data):
+        response_type = data["type"]
+        # Nothing to do
+        if response_type == "server":
+            return
+
+        if response_type == "launcher":
+            uri = data["uri"]
+            # There might be a better way to do this?
+            # Not sure if all linux distributions have 'xdg-open' available
+            platform_name = platform.system().lower()
+            if platform_name == "windows":
+                os.startfile(uri)
+            elif platform_name == "darwin":
+                subprocess.run(["open", uri])
+            else:
+                subprocess.run(["xdg-open", uri])
+            return
+
+        raise Exception(
+            "Unknown webaction response type '{response_type}'"
+        )
 
     def _get_discovered_action_classes(self):
         if self._discovered_actions is None:
