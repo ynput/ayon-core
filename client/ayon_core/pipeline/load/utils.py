@@ -288,7 +288,13 @@ def get_representation_context(project_name, representation):
 
 
 def load_with_repre_context(
-    Loader, repre_context, namespace=None, name=None, options=None, **kwargs
+    Loader,
+    repre_context,
+    namespace=None,
+    name=None,
+    options=None,
+    hooks=None,
+    **kwargs
 ):
 
     # Ensure the Loader is compatible for the representation
@@ -322,11 +328,24 @@ def load_with_repre_context(
     # Deprecated - to be removed in OpenPype 3.16.6 or 3.17.0.
     loader._fname = get_representation_path_from_context(repre_context)
 
-    return loader.load(repre_context, name, namespace, options)
+    return _load_context(
+        Loader,
+        repre_context,
+        name,
+        namespace,
+        options,
+        hooks
+    )
 
 
 def load_with_product_context(
-    Loader, product_context, namespace=None, name=None, options=None, **kwargs
+    Loader,
+    product_context,
+    namespace=None,
+    name=None,
+    options=None,
+    hooks=None,
+    **kwargs
 ):
 
     # Ensure options is a dictionary when no explicit options provided
@@ -344,12 +363,24 @@ def load_with_product_context(
             Loader.__name__, product_context["folder"]["path"]
         )
     )
-
-    return Loader().load(product_context, name, namespace, options)
+    return _load_context(
+        Loader,
+        product_context,
+        name,
+        namespace,
+        options,
+        hooks
+    )
 
 
 def load_with_product_contexts(
-    Loader, product_contexts, namespace=None, name=None, options=None, **kwargs
+    Loader,
+    product_contexts,
+    namespace=None,
+    name=None,
+    options=None,
+    hooks=None,
+    **kwargs
 ):
 
     # Ensure options is a dictionary when no explicit options provided
@@ -371,8 +402,37 @@ def load_with_product_contexts(
             Loader.__name__, joined_product_names
         )
     )
+    return _load_context(
+        Loader,
+        product_contexts,
+        name,
+        namespace,
+        options,
+        hooks
+    )
 
-    return Loader().load(product_contexts, name, namespace, options)
+
+def _load_context(Loader, contexts, name, namespace, options, hooks):
+    """Helper function to wrap hooks around generic load function.
+
+    Only dynamic part is different context(s) to be loaded.
+    """
+    for hook_plugin in hooks.get("pre", []):
+        hook_plugin.process(
+            contexts,
+            name,
+            namespace,
+            options,
+        )
+    load_return = Loader().load(contexts, name, namespace, options)
+    for hook_plugin in hooks.get("post", []):
+        hook_plugin.process(
+            contexts,
+            name,
+            namespace,
+            options,
+        )
+    return load_return
 
 
 def load_container(
@@ -460,7 +520,7 @@ def remove_container(container):
     return Loader().remove(container)
 
 
-def update_container(container, version=-1):
+def update_container(container, version=-1, hooks_by_identifier=None):
     """Update a container"""
     from ayon_core.pipeline import get_current_project_name
 
@@ -556,18 +616,38 @@ def update_container(container, version=-1):
     if not path or not os.path.exists(path):
         raise ValueError("Path {} doesn't exist".format(path))
 
-    return Loader().update(container, context)
+    loader_identifier = get_loader_identifier(Loader)
+    hooks = hooks_by_identifier.get(loader_identifier, {})
+    for hook_plugin in hooks.get("pre", []):
+        hook_plugin.update(
+            context,
+            container
+        )
+    update_return = Loader().update(container, context)
+    for hook_plugin in hooks.get("post", []):
+        hook_plugin.update(
+            context,
+            container
+        )
+    return update_return
 
 
-def switch_container(container, representation, loader_plugin=None):
+def switch_container(
+    container,
+    representation,
+    loader_plugin=None,
+    hooks_by_identifier=None
+):
     """Switch a container to representation
 
     Args:
         container (dict): container information
         representation (dict): representation entity
+        loader_plugin (LoaderPlugin)
+        hooks_by_identifier (dict): {"pre": [PreHookPlugin1], "post":[]}
 
     Returns:
-        function call
+        return from function call
     """
     from ayon_core.pipeline import get_current_project_name
 
@@ -606,7 +686,21 @@ def switch_container(container, representation, loader_plugin=None):
 
     loader = loader_plugin(context)
 
-    return loader.switch(container, context)
+    loader_identifier = get_loader_identifier(loader)
+    hooks = hooks_by_identifier.get(loader_identifier, {})
+    for hook_plugin in hooks.get("pre", []):
+        hook_plugin.switch(
+            context,
+            container
+        )
+    switch_return = loader.switch(container, context)
+    for hook_plugin in hooks.get("post", []):
+        hook_plugin.switch(
+            context,
+            container
+        )
+
+    return switch_return
 
 
 def _fix_representation_context_compatibility(repre_context):
@@ -1089,3 +1183,37 @@ def filter_containers(containers, project_name):
             uptodate_containers.append(container)
 
     return output
+
+
+def get_hook_loaders_by_identifier():
+    """Discovers pre/post hooks for loader plugins.
+
+    Returns:
+        (dict) {"LoaderName": {"pre": ["PreLoader1"], "post":["PreLoader2]}
+    """
+    # beware of circular imports!
+    from .plugins import  PreLoadHookPlugin, PostLoadHookPlugin
+
+    hook_loaders_by_identifier = {}
+    _get_hook_loaders(hook_loaders_by_identifier, PreLoadHookPlugin, "pre")
+    _get_hook_loaders(hook_loaders_by_identifier, PostLoadHookPlugin, "post")
+    return hook_loaders_by_identifier
+
+
+def _get_hook_loaders(hook_loaders_by_identifier, loader_plugin, loader_type):
+    from ..plugin_discover import discover
+
+    load_hook_plugins = discover(loader_plugin)
+    loaders_by_name = get_loaders_by_name()
+    for hook_plugin in load_hook_plugins:
+        for load_plugin_name in hook_plugin.loaders:
+            load_plugin = loaders_by_name.get(load_plugin_name)
+            if not load_plugin:
+                continue
+            if not load_plugin.enabled:
+                continue
+            identifier = get_loader_identifier(load_plugin)
+            (hook_loaders_by_identifier.setdefault(identifier, {})
+            .setdefault(loader_type, []).append(
+                hook_plugin)
+            )
