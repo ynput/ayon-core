@@ -18,7 +18,8 @@ from ayon_core.pipeline.load import (
     load_with_product_contexts,
     LoadError,
     IncompatibleLoaderError,
-    get_loaders_by_name
+    get_loaders_by_name,
+    get_hook_loaders_by_identifier
 
 )
 from ayon_core.tools.loader.abstract import ActionItem
@@ -338,18 +339,7 @@ class LoaderActionsModel:
         available_loaders = self._filter_loaders_by_tool_name(
             project_name, discover_loader_plugins(project_name)
         )
-        hook_loaders_by_identifier = {}
-        pre_load_hook_plugins = discover_loader_pre_hook_plugin(project_name)
-        loaders_by_name = get_loaders_by_name()
-        for hook_plugin in pre_load_hook_plugins:
-            for load_plugin_name in hook_plugin.loaders:
-                load_plugin = loaders_by_name.get(load_plugin_name)
-                if not load_plugin:
-                    continue
-                if not load_plugin.enabled:
-                    continue
-                identifier = get_loader_identifier(load_plugin)
-                hook_loaders_by_identifier.setdefault(identifier, {}).setdefault("pre", []).append(hook_plugin)
+        hook_loaders_by_identifier = get_hook_loaders_by_identifier()
         repre_loaders = []
         product_loaders = []
         loaders_by_identifier = {}
