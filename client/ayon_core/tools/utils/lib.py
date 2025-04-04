@@ -490,6 +490,13 @@ class _IconsCache:
 
         elif icon_type in {"url", "ayon_url"}:
             parts = [icon_type, icon_def["url"]]
+
+        elif icon_type == "transparent":
+            size = icon_def.get("size")
+            if size is None:
+                size = 256
+            parts = [icon_type, str(size)]
+
         return "|".join(parts)
 
     @classmethod
@@ -532,6 +539,14 @@ class _IconsCache:
             ayon_api.download_file_to_stream(url, stream)
             pix = QtGui.QPixmap()
             pix.loadFromData(stream.getvalue())
+            icon = QtGui.QIcon(pix)
+
+        elif icon_type == "transparent":
+            size = icon_def.get("size")
+            if size is None:
+                size = 256
+            pix = QtGui.QPixmap(size, size)
+            pix.fill(QtCore.Qt.transparent)
             icon = QtGui.QIcon(pix)
 
         if icon is None:
