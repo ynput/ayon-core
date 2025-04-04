@@ -61,6 +61,7 @@ from .load import (
     get_representation_path,
     get_representation_context,
     get_repres_contexts,
+    get_hook_loaders_by_identifier
 )
 
 from .publish import (
@@ -239,6 +240,8 @@ __all__ = (
     "deregister_workfile_build_plugin",
     "register_workfile_build_plugin_path",
     "deregister_workfile_build_plugin_path",
+
+    "get_hook_loaders_by_identifier",
 
     # Backwards compatible function names
     "install",
