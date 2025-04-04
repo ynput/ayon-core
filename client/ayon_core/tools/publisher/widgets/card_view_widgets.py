@@ -493,13 +493,17 @@ class InstanceCardWidget(CardWidget):
         self._context_warning.setVisible(not valid)
 
     @staticmethod
-    def get_card_widget_sub_label(folder_name, task_name=None):
-        sublabel = "<br><span style=\"font-size: 8pt;\">"
-        sublabel += "<b>{}</b>".format(folder_name)
-        if task_name:
-            sublabel +=  " - <i>{}</i>".format(task_name)
-        sublabel += "</span>"
-        return sublabel
+    def _get_card_widget_sub_label(folder_path, task_name):
+        parts = []
+        if folder_path:
+            folder_name = folder_path.split("/")[-1]
+            parts.append(f"<b>{folder_name}</b>")
+            if task_name:
+                parts.append(folder_name)
+        if not parts:
+            return None
+        sublabel = " - ".join(parts)
+        return f"<span style=\"font-size: 8pt;\">{sublabel}</span>"
 
     def _update_product_name(self):
         variant = self.instance.variant
