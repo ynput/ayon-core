@@ -1,7 +1,10 @@
+import concurrent.futures
 import os
 import logging
 import sys
 import errno
+from concurrent.futures import ThreadPoolExecutor, Future
+from typing import List, Optional
 
 from ayon_core.lib import create_hard_link
 
@@ -109,41 +112,52 @@ class FileTransaction:
         self._transfers[dst] = (src, opts)
 
     def process(self):
-        # Backup any existing files
-        for dst, (src, _) in self._transfers.items():
-            self.log.debug("Checking file ... {} -> {}".format(src, dst))
-            path_same = self._same_paths(src, dst)
-            if path_same or not os.path.exists(dst):
-                continue
+        with ThreadPoolExecutor(max_workers=8) as executor:
+            # Submit backup tasks
+            backup_futures = [
+                executor.submit(self._backup_file, dst, src)
+                for dst, (src, _) in self._transfers.items()
+            ]
+            as_completed_stop_and_raise_on_error(
+                executor, backup_futures, logger=self.log)
 
-            # Backup original file
-            # todo: add timestamp or uuid to ensure unique
-            backup = dst + ".bak"
-            self._backup_to_original[backup] = dst
+            # Submit transfer tasks
+            transfer_futures = [
+                executor.submit(self._transfer_file, dst, src, opts)
+                for dst, (src, opts) in self._transfers.items()
+            ]
+            as_completed_stop_and_raise_on_error(
+                executor, transfer_futures, logger=self.log)
+
+    def _backup_file(self, dst, src):
+        self.log.debug(f"Checking file ... {src} -> {dst}")
+        path_same = self._same_paths(src, dst)
+        if path_same or not os.path.exists(dst):
+            return
+
+        # Backup original file
+        backup = dst + ".bak"
+        self._backup_to_original[backup] = dst
+        self.log.debug(f"Backup existing file: {dst} -> {backup}")
+        os.rename(dst, backup)
+
+    def _transfer_file(self, dst, src, opts):
+        path_same = self._same_paths(src, dst)
+        if path_same:
             self.log.debug(
-                "Backup existing file: {} -> {}".format(dst, backup))
-            os.rename(dst, backup)
+                f"Source and destination are same files {src} -> {dst}")
+            return
 
-        # Copy the files to transfer
-        for dst, (src, opts) in self._transfers.items():
-            path_same = self._same_paths(src, dst)
-            if path_same:
-                self.log.debug(
-                    "Source and destination are same files {} -> {}".format(
-                        src, dst))
-                continue
+        self._create_folder_for_file(dst)
 
-            self._create_folder_for_file(dst)
+        if opts["mode"] == self.MODE_COPY:
+            self.log.debug(f"Copying file ... {src} -> {dst}")
+            copyfile(src, dst)
+        elif opts["mode"] == self.MODE_HARDLINK:
+            self.log.debug(f"Hardlinking file ... {src} -> {dst}")
+            create_hard_link(src, dst)
 
-            if opts["mode"] == self.MODE_COPY:
-                self.log.debug("Copying file ... {} -> {}".format(src, dst))
-                copyfile(src, dst)
-            elif opts["mode"] == self.MODE_HARDLINK:
-                self.log.debug("Hardlinking file ... {} -> {}".format(
-                    src, dst))
-                create_hard_link(src, dst)
-
-            self._transferred.append(dst)
+        self._transferred.append(dst)
 
     def finalize(self):
         # Delete any backed up files
@@ -212,3 +226,46 @@ class FileTransaction:
             return os.stat(src) == os.stat(dst)
 
         return src == dst
+
+
+def as_completed_stop_and_raise_on_error(
+        executor: ThreadPoolExecutor,
+        futures: List[Future],
+        logger: Optional[logging.Logger] = None):
+    """For the ThreadPoolExecutor shutdown and cancel futures as soon one of
+    the workers raises an error as they complete.
+
+    The ThreadPoolExecutor only cancels pending futures on exception but will
+    still complete those that are running - each which also themselves could
+    fail. We log all exceptions, but re-raise the last exception only.
+    """
+    if logger is None:
+        logger = logging.getLogger(__name__)
+
+    for future in concurrent.futures.as_completed(futures):
+        exception = future.exception()
+        if exception:
+            # As soon as an error occurs, stop executing more futures.
+            # Running workers however, will still complete so we also want
+            # to log those errors if any occurred on them.
+            executor.shutdown(wait=True, cancel_futures=True)
+            break
+    else:
+        # Futures are completed, no exceptions occurred
+        return
+
+    # An exception occurred in at least one future. Get exceptions from
+    # all futures that are done and ended up failing until that point.
+    exceptions = []
+    for future in futures:
+        if not future.cancelled() and future.done():
+            exception = future.exception()
+            if exception:
+                exceptions.append(exception)
+
+    # Log any exceptions that occurred in all workers
+    for exception in exceptions:
+        logger.error("Error occurred in worker", exc_info=exception)
+
+    # Raise the last exception
+    raise exceptions[-1]
