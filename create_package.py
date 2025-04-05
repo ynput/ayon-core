@@ -392,7 +392,7 @@ def create_addon_package(
     output_dir: str,
     files_mapping: List[FileMapping],
     log: logging.Logger
-):
+):  
     log.info(f"Creating package for {ADDON_NAME}-{ADDON_VERSION}")
 
     os.makedirs(output_dir, exist_ok=True)
