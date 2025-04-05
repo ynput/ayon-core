@@ -1,12 +1,15 @@
 from ayon_api import get_project, get_folder_by_path, get_task_by_name
 
+from ayon_core.pipeline import Anatomy
+from ayon_core.pipeline.anatomy import RootMissingEnv
+
 from ayon_applications import PreLaunchHook
+from ayon_applications.exceptions import ApplicationLaunchFailed
 from ayon_applications.utils import (
     EnvironmentPrepData,
     prepare_app_environments,
     prepare_context_environments
 )
-from ayon_core.pipeline import Anatomy
 
 
 class GlobalHostDataHook(PreLaunchHook):
@@ -67,9 +70,12 @@ class GlobalHostDataHook(PreLaunchHook):
         self.data["project_entity"] = project_entity
 
         # Anatomy
-        self.data["anatomy"] = Anatomy(
-            project_name, project_entity=project_entity
-        )
+        try:
+            self.data["anatomy"] = Anatomy(
+                project_name, project_entity=project_entity
+            )
+        except RootMissingEnv as exc:
+            raise ApplicationLaunchFailed(str(exc))
 
         folder_path = self.data.get("folder_path")
         if not folder_path:
