@@ -217,7 +217,7 @@ class InfoWidget(QtWidgets.QWidget):
 
         icon = QtGui.QIcon(resources.get_ayon_icon_filepath())
         self.setWindowIcon(icon)
-        self.setWindowTitle("AYON info")
+        self.setWindowTitle("BLACK info")
 
         scroll_area = QtWidgets.QScrollArea(self)
         info_widget = InfoSubWidget(scroll_area)

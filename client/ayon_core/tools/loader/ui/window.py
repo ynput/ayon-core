@@ -123,7 +123,7 @@ class LoaderWindow(QtWidgets.QWidget):
 
         icon = QtGui.QIcon(get_ayon_icon_filepath())
         self.setWindowIcon(icon)
-        self.setWindowTitle("AYON Loader")
+        self.setWindowTitle("BLACK Loader")
         self.setFocusPolicy(QtCore.Qt.StrongFocus)
         self.setAttribute(QtCore.Qt.WA_DeleteOnClose, False)
         self.setWindowFlags(self.windowFlags() | QtCore.Qt.Window)
