@@ -405,7 +405,7 @@ class ActionsModel:
             response = ayon_api.post(url, **context)
             response.raise_for_status()
             data = response.data
-            if data["success"] == True:
+            if data["success"] is True:
                 self._handle_webaction_response(data)
             else:
                 error_message = data["message"]
