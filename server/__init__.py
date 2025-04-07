@@ -6,6 +6,10 @@ from ayon_server.actions import (
     ExecuteResponseModel,
     SimpleActionManifest,
 )
+try:
+    from ayon_server.logging import logger
+except ImportError:
+    from nxtools import logging as logger
 
 from .settings import (
     CoreSettings,
@@ -74,7 +78,7 @@ class CoreAddon(BaseServerAddon):
               f"{IDENTIFIER_PREFIX}.create_project_structure":
 
             if not project_name:
-                raise ValueError(
+                logger.error(
                     f"Can't execute {executor.identifier} because"
                     " of missing project name."
                 )
@@ -87,4 +91,4 @@ class CoreAddon(BaseServerAddon):
                 ]
             )
 
-        raise ValueError(f"Unknown action: {executor.identifier}")
+        logger.debug(f"Unknown action: {executor.identifier}")
