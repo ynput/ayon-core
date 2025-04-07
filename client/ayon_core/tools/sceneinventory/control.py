@@ -119,7 +119,11 @@ class SceneInventoryController:
             project_name, product_ids)
 
     def get_hook_loaders_by_identifier(self):
-        """Returns lists of pre|post hooks per Loader identifier."""
+        """Returns lists of pre|post hooks per Loader identifier.
+
+        Returns:
+        (dict) {"LoaderName": {"pre": ["PreLoader1"], "post":["PreLoader2]}
+        """
         if self._hooks_by_identifier is None:
             self._hooks_by_identifier = get_hook_loaders_by_identifier()
         return self._hooks_by_identifier
