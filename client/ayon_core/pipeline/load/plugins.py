@@ -265,7 +265,7 @@ class ProductLoaderPlugin(LoaderPlugin):
     """
 
 
-class PreLoadHookPlugin:
+class PreLoaderHookPlugin:
     """Plugin that should be run before any Loaders in 'loaders'
 
     Should be used as non-invasive method to enrich core loading process.
