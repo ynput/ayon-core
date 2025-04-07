@@ -84,3 +84,6 @@ mypy.ini
 poetry.lock
 
 .github_changelog_generator
+
+# ignore mkdocs build
+site/

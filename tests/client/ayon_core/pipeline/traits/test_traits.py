@@ -21,18 +21,18 @@ REPRESENTATION_DATA: dict = {
             "file_path": Path("/path/to/file"),
             "file_size": 1024,
             "file_hash": None,
-            "persistent": True,
+            # "persistent": True,
         },
-        Image.id: {"persistent": True},
+        Image.id: {},
         PixelBased.id: {
             "display_window_width": 1920,
             "display_window_height": 1080,
             "pixel_aspect_ratio": 1.0,
-            "persistent": True,
+            # "persistent": True,
         },
         Planar.id: {
             "planar_configuration": "RGB",
-            "persistent": True,
+            # "persistent": True,
         },
     }
 

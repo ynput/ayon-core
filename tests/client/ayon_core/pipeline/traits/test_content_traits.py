@@ -122,7 +122,7 @@ def test_file_locations_validation() -> None:
     with pytest.raises(TraitValidationError):
         file_locations_trait.validate_trait(representation)
 
-    # invalid representation with mutliple file locations but
+    # invalid representation with multiple file locations but
     # unrelated to either Sequence or Bundle traits
     representation = Representation(name="test", traits=[
         FileLocations(file_paths=[
