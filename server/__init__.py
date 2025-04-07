@@ -43,21 +43,22 @@ class CoreAddon(BaseServerAddon):
         """Return a list of simple actions provided by the addon"""
         output = []
 
-        # Add 'Create Project Folder Structure' action to folders.
-        output.append(
-            SimpleActionManifest(
-                identifier=f"{IDENTIFIER_PREFIX}.create_project_structure",
-                label="Create Project Folder Structure",
-                icon={
-                    "type": "material-symbols",
-                    "name": "create_new_folder",
-                },
-                order=100,
-                entity_type="folder",
-                entity_subtypes=None,
-                allow_multiselection=False,
+        if project_name:
+            # Add 'Create Project Folder Structure' action to folders.
+            output.append(
+                SimpleActionManifest(
+                    identifier=f"{IDENTIFIER_PREFIX}.createprojectstructure",
+                    label="Create Project Folder Structure",
+                    icon={
+                        "type": "material-symbols",
+                        "name": "create_new_folder",
+                    },
+                    order=100,
+                    entity_type="folder",
+                    entity_subtypes=None,
+                    allow_multiselection=False,
+                )
             )
-        )
 
         return output
 
@@ -71,6 +72,14 @@ class CoreAddon(BaseServerAddon):
 
         if executor.identifier == \
               f"{IDENTIFIER_PREFIX}.create_project_structure":
+
+            if not project_name:
+                raise ValueError(
+                    f"Can't execute {executor.identifier} because"
+                    " of missing project name."
+                )
+                return
+
             return await executor.get_launcher_action_response(
                 args=[
                     "create-project-structure",
