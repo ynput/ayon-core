@@ -29,6 +29,7 @@ attrs = "^25.0.0"
 pyblish-base = "^1.8.7"
 clique = "^2.0.0"
 opentimelineio = "^0.17.0"
+nxtools = "^1.6"
 
 
 [tool.ruff]
