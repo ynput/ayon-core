@@ -417,16 +417,16 @@ def _load_context(Loader, contexts, name, namespace, options, hooks):
 
     Only dynamic part is different context(s) to be loaded.
     """
-    for hook_plugin in hooks.get("pre", []):
-        hook_plugin.process(
+    for hook_plugin_cls in hooks.get("pre", []):
+        hook_plugin_cls().process(
             contexts,
             name,
             namespace,
             options,
         )
     load_return = Loader().load(contexts, name, namespace, options)
-    for hook_plugin in hooks.get("post", []):
-        hook_plugin.process(
+    for hook_plugin_cls in hooks.get("post", []):
+        hook_plugin_cls().process(
             contexts,
             name,
             namespace,
@@ -618,14 +618,14 @@ def update_container(container, version=-1, hooks_by_identifier=None):
 
     loader_identifier = get_loader_identifier(Loader)
     hooks = hooks_by_identifier.get(loader_identifier, {})
-    for hook_plugin in hooks.get("pre", []):
-        hook_plugin.update(
+    for hook_plugin_cls in hooks.get("pre", []):
+        hook_plugin_cls().update(
             context,
             container
         )
     update_return = Loader().update(container, context)
-    for hook_plugin in hooks.get("post", []):
-        hook_plugin.update(
+    for hook_plugin_cls in hooks.get("post", []):
+        hook_plugin_cls().update(
             context,
             container
         )
@@ -688,14 +688,14 @@ def switch_container(
 
     loader_identifier = get_loader_identifier(loader)
     hooks = hooks_by_identifier.get(loader_identifier, {})
-    for hook_plugin in hooks.get("pre", []):
-        hook_plugin.switch(
+    for hook_plugin_cls in hooks.get("pre", []):
+        hook_plugin_cls().switch(
             context,
             container
         )
     switch_return = loader.switch(container, context)
-    for hook_plugin in hooks.get("post", []):
-        hook_plugin.switch(
+    for hook_plugin_cls in hooks.get("post", []):
+        hook_plugin_cls().switch(
             context,
             container
         )
@@ -1205,8 +1205,8 @@ def _get_hook_loaders(hook_loaders_by_identifier, loader_plugin, loader_type):
 
     load_hook_plugins = discover(loader_plugin)
     loaders_by_name = get_loaders_by_name()
-    for hook_plugin in load_hook_plugins:
-        for load_plugin_name in hook_plugin.loaders:
+    for hook_plugin_cls in load_hook_plugins:
+        for load_plugin_name in hook_plugin_cls.loaders:
             load_plugin = loaders_by_name.get(load_plugin_name)
             if not load_plugin:
                 continue
@@ -1215,5 +1215,5 @@ def _get_hook_loaders(hook_loaders_by_identifier, loader_plugin, loader_type):
             identifier = get_loader_identifier(load_plugin)
             (hook_loaders_by_identifier.setdefault(identifier, {})
             .setdefault(loader_type, []).append(
-                hook_plugin)
+                hook_plugin_cls)
             )
