@@ -160,8 +160,8 @@ class AbstractLauncherFrontEnd(AbstractLauncherCommon):
         Returns:
             list[FolderItem]: Minimum possible information needed
                 for visualisation of folder hierarchy.
-        """
 
+        """
         pass
 
     @abstractmethod
@@ -180,8 +180,8 @@ class AbstractLauncherFrontEnd(AbstractLauncherCommon):
         Returns:
             list[TaskItem]: Minimum possible information needed
                 for visualisation of tasks.
-        """
 
+        """
         pass
 
     @abstractmethod
@@ -190,8 +190,8 @@ class AbstractLauncherFrontEnd(AbstractLauncherCommon):
 
         Returns:
             Union[str, None]: Selected project name.
-        """
 
+        """
         pass
 
     @abstractmethod
@@ -200,8 +200,8 @@ class AbstractLauncherFrontEnd(AbstractLauncherCommon):
 
         Returns:
             Union[str, None]: Selected folder id.
-        """
 
+        """
         pass
 
     @abstractmethod
@@ -210,8 +210,8 @@ class AbstractLauncherFrontEnd(AbstractLauncherCommon):
 
         Returns:
             Union[str, None]: Selected task id.
-        """
 
+        """
         pass
 
     @abstractmethod
@@ -220,8 +220,8 @@ class AbstractLauncherFrontEnd(AbstractLauncherCommon):
 
         Returns:
             Union[str, None]: Selected task name.
-        """
 
+        """
         pass
 
     @abstractmethod
@@ -238,8 +238,8 @@ class AbstractLauncherFrontEnd(AbstractLauncherCommon):
 
         Returns:
             dict[str, Union[str, None]]: Selected context.
-        """
 
+        """
         pass
 
     @abstractmethod
@@ -249,8 +249,8 @@ class AbstractLauncherFrontEnd(AbstractLauncherCommon):
         Args:
             project_name (Union[str, None]): Project nameor None if no project
                 is selected.
-        """
 
+        """
         pass
 
     @abstractmethod
@@ -260,8 +260,8 @@ class AbstractLauncherFrontEnd(AbstractLauncherCommon):
         Args:
             folder_id (Union[str, None]): Folder id or None if no folder
                 is selected.
-        """
 
+        """
         pass
 
     @abstractmethod
@@ -273,8 +273,8 @@ class AbstractLauncherFrontEnd(AbstractLauncherCommon):
                 is selected.
             task_name (Union[str, None]): Task name or None if no task
                 is selected.
-        """
 
+        """
         pass
 
     # Actions
@@ -290,8 +290,8 @@ class AbstractLauncherFrontEnd(AbstractLauncherCommon):
         Returns:
             list[ActionItem]: List of action items that should be shown
                 for given context.
-        """
 
+        """
         pass
 
     @abstractmethod
@@ -303,8 +303,8 @@ class AbstractLauncherFrontEnd(AbstractLauncherCommon):
             folder_id (Union[str, None]): Folder id.
             task_id (Union[str, None]): Task id.
             action_id (str): Action identifier.
-        """
 
+        """
         pass
 
     @abstractmethod
@@ -317,10 +317,10 @@ class AbstractLauncherFrontEnd(AbstractLauncherCommon):
             project_name (Union[str, None]): Project name.
             folder_id (Union[str, None]): Folder id.
             task_id (Union[str, None]): Task id.
-            action_id (Iterable[str]): Action identifiers.
+            action_ids (Iterable[str]): Action identifiers.
             enabled (bool): New value of force not open workfile.
-        """
 
+        """
         pass
 
     @abstractmethod
@@ -340,5 +340,17 @@ class AbstractLauncherFrontEnd(AbstractLauncherCommon):
         Triggers 'controller.refresh.actions.started' event at the beginning
         and 'controller.refresh.actions.finished' at the end.
         """
+        pass
 
+    @abstractmethod
+    def get_my_tasks_entity_ids(self, project_name: str):
+        """Get entity ids for my tasks.
+
+        Args:
+            project_name (str): Project name.
+
+        Returns:
+            dict[str, Union[list[str]]]: Folder and task ids.
+
+        """
         pass
