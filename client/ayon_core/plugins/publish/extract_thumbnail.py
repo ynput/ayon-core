@@ -14,13 +14,17 @@ from ayon_core.lib import (
 
     path_to_subprocess_arg,
     run_subprocess,
+
+    TextDef,
 )
+from ayon_core.pipeline import AYONPyblishPluginMixin
+
 from ayon_core.lib.transcoding import convert_colorspace
 
 from ayon_core.lib.transcoding import VIDEO_EXTENSIONS
 
 
-class ExtractThumbnail(pyblish.api.InstancePlugin):
+class ExtractThumbnail(pyblish.api.InstancePlugin, AYONPyblishPluginMixin):
     """Create jpg thumbnail from sequence using ffmpeg"""
 
     label = "Extract Thumbnail"
@@ -53,7 +57,7 @@ class ExtractThumbnail(pyblish.api.InstancePlugin):
         }
     }
     background_color = (0, 0, 0, 0.0)
-    duration_split = 0.5
+
     # attribute presets from settings
     oiiotool_defaults = {
         "type": "colorspace",
@@ -179,9 +183,11 @@ class ExtractThumbnail(pyblish.api.InstancePlugin):
                     video_file_path = os.path.join(
                         src_staging, repre_files
                     )
+                    thumbnail_frame = self._get_thumbnail_frame(instance, video_file_path)                    
                     file_path = self._create_frame_from_video(
                         video_file_path,
-                        dst_staging
+                        dst_staging,
+                        thumbnail_frame
                     )
                     if file_path:
                         src_staging, input_file = os.path.split(file_path)
@@ -471,55 +477,41 @@ class ExtractThumbnail(pyblish.api.InstancePlugin):
             )
             return False
 
-    def _create_frame_from_video(self, video_file_path, output_dir):
-        """Convert video file to one frame image via ffmpeg"""
-        # create output file path
+    def _create_frame_from_video(self, video_file_path, output_dir, thumbnail_frame):
+        """Convert video file to one exact frame image via ffmpeg using the select filter"""
+        # Create output file path
         base_name = os.path.basename(video_file_path)
         filename = os.path.splitext(base_name)[0]
-        output_thumb_file_path = os.path.join(
-            output_dir, "{}.png".format(filename))
+        output_thumb_file_path = os.path.join(output_dir, "{}_frame_{}.png".format(filename, thumbnail_frame))
 
         # Set video input attributes
         max_int = str(2147483647)
-        video_data = get_ffprobe_data(video_file_path, logger=self.log)
-        # Use duration of the individual streams since it is returned with
-        # higher decimal precision than 'format.duration'. We need this
-        # more precise value for calculating the correct amount of frames
-        # for higher FPS ranges or decimal ranges, e.g. 29.97 FPS
-        duration = max(
-            float(stream.get("duration", 0))
-            for stream in video_data["streams"]
-            if stream.get("codec_type") == "video"
-        )
 
+        # Construct ffmpeg command to capture the specific frame using select filter
         cmd_args = [
             "-y",
-            "-ss", str(duration * self.duration_split),
             "-i", video_file_path,
+            "-vf", f"select=eq(n\,{thumbnail_frame})",  # Select the specific frame number
+            "-vframes", "1",  # Capture one frame
             "-analyzeduration", max_int,
             "-probesize", max_int,
-            "-vframes", "1"
+            "-q:v", "2"  # Set high quality for the output image (lower number = higher quality)
         ]
 
-        # add output file path
+        # Add the output file path
         cmd_args.append(output_thumb_file_path)
 
-        # create ffmpeg command
-        cmd = get_ffmpeg_tool_args(
-            "ffmpeg",
-            *cmd_args
-        )
+        # Create ffmpeg command
+        cmd = get_ffmpeg_tool_args("ffmpeg", *cmd_args)
         try:
-            # run subprocess
+            # Run subprocess
             self.log.debug("Executing: {}".format(" ".join(cmd)))
             run_subprocess(cmd, logger=self.log)
-            self.log.debug(
-                "Thumbnail created: {}".format(output_thumb_file_path))
+            self.log.debug("Thumbnail created: {}".format(output_thumb_file_path))
             return output_thumb_file_path
         except RuntimeError as error:
             self.log.warning(
-                "Failed intermediate thumb source using ffmpeg: {}".format(
-                    error)
+                "Failed intermediate thumb source using ffmpeg: {}".format(error)
             )
             return None
 
@@ -545,3 +537,50 @@ class ExtractThumbnail(pyblish.api.InstancePlugin):
             bg_color=self.background_color,
             log=self.log
         )
+
+
+    def _get_thumbnail_frame(self, instance, video_file_path):
+        attribute_values = self.get_attr_values_from_data(instance.data)
+        thumbnail_frame_str = attribute_values.get("thumbnail_frame")
+        frame_start = instance.data.get("frameStart")
+        video_data = get_ffprobe_data(video_file_path, logger=self.log)
+        total_frames = int(video_data['streams'][0].get('nb_frames', 0))
+
+        try:
+            thumbnail_frame = int(thumbnail_frame_str) if thumbnail_frame_str else None
+        except ValueError:
+            thumbnail_frame = None
+
+
+        # Compute relative thumbnail frame if valid
+        if thumbnail_frame is not None:
+            relative_thumbnail_frame = (thumbnail_frame - frame_start) + 1
+            if relative_thumbnail_frame >= 0 and relative_thumbnail_frame <= total_frames:
+                return relative_thumbnail_frame
+
+        # Fallback: Compute the middle frame of the video
+        self.log.warning(
+            "Thumbnail frame is not defined, empty, or out of range. Using fallback frame."
+        )
+
+        if total_frames == 0:
+            self.log.warning("Total frames are zero or unavailable. Using frame 0.")
+            return 0
+
+        thumbnail_frame = total_frames // 2  # Middle frame fallback
+        self.log.debug(f"Using fallback thumbnail frame: {thumbnail_frame}")
+        return thumbnail_frame
+
+
+    @classmethod
+    def get_attribute_defs(cls):
+        return [
+            TextDef(
+                "thumbnail_frame", 
+                label="Frame For Thumbnail",
+                placeholder="1105",
+                regex="[0-9]+",
+                tooltip=(
+                    "When specified, this frame will be rendered."
+                )),
+        ]
