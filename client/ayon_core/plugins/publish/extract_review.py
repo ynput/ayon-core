@@ -591,6 +591,8 @@ class ExtractReview(pyblish.api.InstancePlugin):
             ext = os.path.splitext(repre["files"][0])[1].replace(".", "")
             if ext.lower() in self.alpha_exts:
                 input_allow_bg = True
+        else:
+            ext = os.path.splitext(repre["files"])[1].replace(".", "")
 
         return {
             "fps": float(instance.data["fps"]),
@@ -611,7 +613,8 @@ class ExtractReview(pyblish.api.InstancePlugin):
             "input_allow_bg": input_allow_bg,
             "with_audio": with_audio,
             "without_handles": without_handles,
-            "handles_are_set": handles_are_set
+            "handles_are_set": handles_are_set,
+            "ext": ext
         }
 
     def _ffmpeg_arguments(
