@@ -292,7 +292,14 @@ class PostLoadHookPlugin:
     they are loaded without need to override existing core plugins.
     loaders: ClassVar[set[str]]
     """
-    def process(self, context, name=None, namespace=None, options=None):
+    def process(
+        self,
+        container,
+        context,
+        name=None,
+        namespace=None,
+        options=None
+    ):
         pass
 
     def update(self, container, context):

@@ -427,6 +427,7 @@ def _load_context(Loader, contexts, name, namespace, options, hooks):
     load_return = Loader().load(contexts, name, namespace, options)
     for hook_plugin_cls in hooks.get("post", []):
         hook_plugin_cls().process(
+            load_return,
             contexts,
             name,
             namespace,
