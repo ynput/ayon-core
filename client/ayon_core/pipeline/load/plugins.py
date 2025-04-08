@@ -1,3 +1,4 @@
+from __future__ import annotations
 import os
 import logging
 from typing import ClassVar
@@ -265,7 +266,7 @@ class ProductLoaderPlugin(LoaderPlugin):
     """
 
 
-class PreLoadHookPlugin:
+class PreLoaderHookPlugin:
     """Plugin that should be run before any Loaders in 'loaders'
 
     Should be used as non-invasive method to enrich core loading process.
@@ -284,7 +285,7 @@ class PreLoadHookPlugin:
         pass
 
 
-class PostLoadHookPlugin:
+class PostLoaderHookPlugin:
     """Plugin that should be run after any Loaders in 'loaders'
 
     Should be used as non-invasive method to enrich core loading process.

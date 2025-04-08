@@ -1,3 +1,4 @@
+from __future__ import annotations
 from qtpy import QtGui, QtCore
 
 from ._multicombobox import (
