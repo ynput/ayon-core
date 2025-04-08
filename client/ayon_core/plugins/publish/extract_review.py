@@ -403,12 +403,25 @@ class ExtractReview(pyblish.api.InstancePlugin):
             files_to_clean = []
             if temp_data["input_is_sequence"]:
                 self.log.debug("Checking sequence to fill gaps in sequence..")
-                files_to_clean = self.fill_sequence_gaps(
-                    files=temp_data["origin_repre"]["files"],
-                    staging_dir=new_repre["stagingDir"],
-                    start_frame=temp_data["frame_start"],
-                    end_frame=temp_data["frame_end"]
-                )
+
+                files = temp_data["origin_repre"]["files"]
+                collections = clique.assemble(
+                    files,
+                    patterns=[clique.PATTERNS["frames"]],
+                    minimum_items=1
+                )[0]
+                if len(collections) != 1:
+                    raise KnownPublishError(
+                        "Multiple collections {} found.".format(collections))
+
+                collection = collections[0]
+                if fill_type == "existing":
+                    files_to_clean = self.fill_sequence_gaps_from_existing(
+                        collection=collection,
+                        staging_dir=new_repre["stagingDir"],
+                        start_frame=temp_data["frame_start"],
+                        end_frame=temp_data["frame_end"],
+                    )
 
             # create or update outputName
             output_name = new_repre.get("outputName", "")
@@ -883,6 +896,13 @@ class ExtractReview(pyblish.api.InstancePlugin):
 
     def fill_sequence_gaps(self, files, staging_dir, start_frame, end_frame):
         # type: (list, str, int, int) -> list
+    def fill_sequence_gaps_from_existing(
+        self,
+        collection,
+        staging_dir: str,
+        start_frame: int,
+        end_frame: int
+    ) -> list:
         """Fill missing files in sequence by duplicating existing ones.
 
         This will take nearest frame file and copy it with so as to fill
@@ -890,7 +910,7 @@ class ExtractReview(pyblish.api.InstancePlugin):
         hole ahead.
 
         Args:
-            files (list): List of representation files.
+            collection (clique.collection)
             staging_dir (str): Path to staging directory.
             start_frame (int): Sequence start (no matter what files are there)
             end_frame (int): Sequence end (no matter what files are there)
@@ -903,19 +923,12 @@ class ExtractReview(pyblish.api.InstancePlugin):
             KnownPublishError: if more than one collection is obtained.
         """
 
-        collections = clique.assemble(files)[0]
-        if len(collections) != 1:
-            raise KnownPublishError(
-                "Multiple collections {} found.".format(collections))
-
-        col = collections[0]
-
         # Prepare which hole is filled with what frame
         #   - the frame is filled only with already existing frames
-        prev_frame = next(iter(col.indexes))
+        prev_frame = next(iter(collection.indexes))
         hole_frame_to_nearest = {}
         for frame in range(int(start_frame), int(end_frame) + 1):
-            if frame in col.indexes:
+            if frame in collection.indexes:
                 prev_frame = frame
             else:
                 # Use previous frame as source for hole
@@ -923,7 +936,7 @@ class ExtractReview(pyblish.api.InstancePlugin):
 
         # Calculate paths
         added_files = []
-        col_format = col.format("{head}{padding}{tail}")
+        col_format = collection.format("{head}{padding}{tail}")
         for hole_frame, src_frame in hole_frame_to_nearest.items():
             hole_fpath = os.path.join(staging_dir, col_format % hole_frame)
             src_fpath = os.path.join(staging_dir, col_format % src_frame)
