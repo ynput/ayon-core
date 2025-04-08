@@ -272,7 +272,7 @@ class PreLoadHookPlugin:
     Any external studio might want to modify loaded data before or after
     they are loaded without need to override existing core plugins.
     """
-    loaders: ClassVar[set[str]]
+    loader_identifiers: ClassVar[set[str]]
 
     def process(self, context, name=None, namespace=None, options=None):
         pass
@@ -290,8 +290,9 @@ class PostLoadHookPlugin:
     Should be used as non-invasive method to enrich core loading process.
     Any external studio might want to modify loaded data before or after
     they are loaded without need to override existing core plugins.
-    loaders: ClassVar[set[str]]
     """
+    loader_identifiers: ClassVar[set[str]]
+
     def process(
         self,
         container,
