@@ -4,6 +4,8 @@ from ayon_core.lib import (
     filter_profiles,
     prepare_template_data,
 )
+
+from ayon_core.pipeline import get_alias_for_product_type
 from ayon_core.settings import get_project_settings
 
 from .constants import DEFAULT_PRODUCT_TEMPLATE
@@ -167,6 +169,12 @@ def get_product_name(
             "type": product_type
         }
     }
+    product_type_alias = get_alias_for_product_type(
+        product_type, project_settings)
+
+    if product_type_alias:
+        fill_pairs["product"]["alias"] = product_type_alias
+
     if dynamic_data:
         # Dynamic data may override default values
         for key, value in dynamic_data.items():
