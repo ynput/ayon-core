@@ -350,32 +350,32 @@ def register_loader_plugin_path(path):
 
 
 def register_loader_pre_hook_plugin(plugin):
-    return register_plugin(PreLoadHookPlugin, plugin)
+    return register_plugin(PreLoaderHookPlugin, plugin)
 
 
 def deregister_loader_pre_hook_plugin(plugin):
-    deregister_plugin(PreLoadHookPlugin, plugin)
+    deregister_plugin(PreLoaderHookPlugin, plugin)
 
 
 def register_loader_pre_hook_plugin_path(path):
-    return register_plugin_path(PreLoadHookPlugin, path)
+    return register_plugin_path(PreLoaderHookPlugin, path)
 
 
 def deregister_loader_pre_hook_plugin_path(path):
-    deregister_plugin_path(PreLoadHookPlugin, path)
+    deregister_plugin_path(PreLoaderHookPlugin, path)
 
 
 def register_loader_post_hook_plugin(plugin):
-    return register_plugin(PostLoadHookPlugin, plugin)
+    return register_plugin(PostLoaderHookPlugin, plugin)
 
 
 def deregister_loader_post_hook_plugin(plugin):
-    deregister_plugin(PostLoadHookPlugin, plugin)
+    deregister_plugin(PostLoaderHookPlugin, plugin)
 
 
 def register_loader_post_hook_plugin_path(path):
-    return register_plugin_path(PostLoadHookPlugin, path)
+    return register_plugin_path(PostLoaderHookPlugin, path)
 
 
 def deregister_loader_post_hook_plugin_path(path):
-    deregister_plugin_path(PostLoadHookPlugin, path)
+    deregister_plugin_path(PostLoaderHookPlugin, path)
