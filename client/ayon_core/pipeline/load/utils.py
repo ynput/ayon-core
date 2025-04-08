@@ -424,16 +424,16 @@ def _load_context(Loader, contexts, name, namespace, options, hooks):
             namespace,
             options,
         )
-    load_return = Loader().load(contexts, name, namespace, options)
+    loaded_container = Loader().load(contexts, name, namespace, options)
     for hook_plugin_cls in hooks.get("post", []):
         hook_plugin_cls().process(
-            load_return,
+            loaded_container,
             contexts,
             name,
             namespace,
             options,
         )
-    return load_return
+    return loaded_container
 
 
 def load_container(
@@ -624,13 +624,13 @@ def update_container(container, version=-1, hooks_by_identifier=None):
             context,
             container
         )
-    update_return = Loader().update(container, context)
+    updated_container = Loader().update(container, context)
     for hook_plugin_cls in hooks.get("post", []):
         hook_plugin_cls().update(
             context,
             container
         )
-    return update_return
+    return updated_container
 
 
 def switch_container(
@@ -694,14 +694,14 @@ def switch_container(
             context,
             container
         )
-    switch_return = loader.switch(container, context)
+    switched_container = loader.switch(container, context)
     for hook_plugin_cls in hooks.get("post", []):
         hook_plugin_cls().switch(
             context,
             container
         )
 
-    return switch_return
+    return switched_container
 
 
 def _fix_representation_context_compatibility(repre_context):
