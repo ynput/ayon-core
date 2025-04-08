@@ -220,7 +220,7 @@ class VersionStartCategoryModel(BaseSettingsModel):
 
 
 class EnvironmentReplacementModel(BaseSettingsModel):
-    environment_key: str = SettingsField("", title="Enviroment variable")
+    environment_key: str = SettingsField("", title="Environment variable")
     pattern: str = SettingsField("", title="Pattern")
     replacement: str = SettingsField("", title="Replacement")
 
@@ -256,6 +256,19 @@ class FilterEnvsProfileModel(BaseSettingsModel):
     replace_in_environment: list[EnvironmentReplacementModel] = SettingsField(
         default_factory=list,
         title="Replace values in environment"
+    )
+
+
+class ProductAliasMappingItemModel(BaseSettingsModel):
+    _layout = "expanded"
+    base: str = SettingsField("", title="Base product type")
+    alias: str = SettingsField("", title="Alias name")
+
+
+class ProductTypeAliasesModel(BaseSettingsModel):
+    aliases: list[ProductAliasMappingItemModel] = SettingsField(
+        default_factory=list,
+        title="Aliases"
     )
 
 
@@ -311,6 +324,10 @@ class CoreSettings(BaseSettingsModel):
     )
     filter_env_profiles: list[FilterEnvsProfileModel] = SettingsField(
         default_factory=list,
+    )
+    product_type_aliases: ProductTypeAliasesModel = SettingsField(
+        default_factory=ProductTypeAliasesModel,
+        title="Product type aliases",
     )
 
     @validator(
