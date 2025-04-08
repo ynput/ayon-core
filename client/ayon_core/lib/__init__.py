@@ -9,6 +9,7 @@ from .local_settings import (
     AYONSettingsRegistry,
     get_launcher_local_dir,
     get_launcher_storage_dir,
+    get_addons_resources_dir,
     get_local_site_id,
     get_ayon_username,
 )
@@ -142,6 +143,7 @@ __all__ = [
     "AYONSettingsRegistry",
     "get_launcher_local_dir",
     "get_launcher_storage_dir",
+    "get_addons_resources_dir",
     "get_local_site_id",
     "get_ayon_username",
 
