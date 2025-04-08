@@ -422,6 +422,15 @@ class ExtractReview(pyblish.api.InstancePlugin):
                         start_frame=temp_data["frame_start"],
                         end_frame=temp_data["frame_end"],
                     )
+                elif fill_type == "blank":
+                    files_to_clean = self.fill_sequence_gaps_with_blanks(
+                        collection=collection,
+                        staging_dir=new_repre["stagingDir"],
+                        resolution_width=temp_data["resolution_width"],
+                        resolution_height=temp_data["resolution_height"],
+                        extension=temp_data["ext"],
+                    )
+
 
             # create or update outputName
             output_name = new_repre.get("outputName", "")
@@ -897,8 +906,57 @@ class ExtractReview(pyblish.api.InstancePlugin):
 
         return all_args
 
-    def fill_sequence_gaps(self, files, staging_dir, start_frame, end_frame):
-        # type: (list, str, int, int) -> list
+    def fill_sequence_gaps_with_blanks(
+        self,
+        collection: str,
+        staging_dir: str,
+        resolution_width: int,
+        resolution_height: int,
+        extension: str,
+    ):
+        """Fills missing files by blank frame.
+
+        Args:
+            collection (clique.collection)
+            staging_dir (str): Path to staging directory.
+            resolution_width (int): width of source frame
+            resolution_height (int): height of source frame
+            extension (str)
+
+        Returns:
+            list of added files. Those should be cleaned after work
+                is done.
+
+        """
+        blank_frame_path = os.path.join(staging_dir, f"blank.{extension}")
+        command = get_ffmpeg_tool_args("ffmpeg")
+
+        command.extend([
+            "-f", "lavfi",
+            "-i", "color=c=black:s={}x{}:d=1".format(
+                resolution_width, resolution_height
+            ),
+            "-tune", "stillimage",
+            "-frames: v" , 1,
+            blank_frame_path
+        ])
+
+        self.log.debug("Executing: {}".format(" ".join(command)))
+        output = run_subprocess(
+            command, logger=self.log
+        )
+        self.log.debug("Output: {}".format(output))
+
+        added_files = [blank_frame_path]
+
+        for missing_frame_name in collection.holes():
+            hole_fpath = os.path.join(staging_dir, missing_frame_name)
+            speedcopy.copyfile(blank_frame_path, hole_fpath)
+            added_files.append(hole_fpath)
+
+        return added_files
+
+
     def fill_sequence_gaps_from_existing(
         self,
         collection,
