@@ -1207,7 +1207,7 @@ def _get_hook_loaders(hook_loaders_by_identifier, loader_plugin, loader_type):
     load_hook_plugins = discover(loader_plugin)
     loaders_by_name = get_loaders_by_name()
     for hook_plugin_cls in load_hook_plugins:
-        for load_plugin_name in hook_plugin_cls.loaders:
+        for load_plugin_name in hook_plugin_cls.loader_identifiers:
             load_plugin = loaders_by_name.get(load_plugin_name)
             if not load_plugin:
                 continue
