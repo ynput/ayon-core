@@ -21,8 +21,50 @@ class ThumbnailsModel:
         self._folders_cache.reset()
         self._versions_cache.reset()
 
-    def get_thumbnail_path(self, project_name, thumbnail_id):
-        return self._get_thumbnail_path(project_name, thumbnail_id)
+    def get_thumbnail_paths(
+        self,
+        project_name,
+        entity_type,
+        entity_ids,
+    ):
+        thumbnail_paths = set()
+        if not project_name or not entity_type or not entity_ids:
+            return thumbnail_paths
+
+        thumbnail_id_by_entity_id = {}
+        if entity_type == "folder":
+            thumbnail_id_by_entity_id = self.get_folder_thumbnail_ids(
+                project_name, entity_ids
+            )
+
+        elif entity_type == "version":
+            thumbnail_id_by_entity_id = self.get_version_thumbnail_ids(
+                project_name, entity_ids
+            )
+
+        if not thumbnail_id_by_entity_id:
+            return thumbnail_paths
+
+        entity_ids_by_thumbnail_id = collections.defaultdict(set)
+        for entity_id, thumbnail_id in thumbnail_id_by_entity_id.items():
+            if not thumbnail_id:
+                continue
+            entity_ids_by_thumbnail_id[thumbnail_id].add(entity_id)
+
+        output = {
+            entity_id: None
+            for entity_id in entity_ids
+        }
+        for thumbnail_id, entity_ids in entity_ids_by_thumbnail_id.items():
+            thumbnail_path = self._get_thumbnail_path(
+                project_name, entity_type, next(iter(entity_ids)), thumbnail_id
+            )
+            if not thumbnail_path:
+                continue
+            for entity_id in entity_ids:
+                output[entity_id] = thumbnail_path
+
+        return output
 
     def get_folder_thumbnail_ids(self, project_name, folder_ids):
         project_cache = self._folders_cache[project_name]
@@ -56,7 +98,13 @@ class ThumbnailsModel:
             output[version_id] = cache.get_data()
         return output
 
-    def _get_thumbnail_path(self, project_name, thumbnail_id):
+    def _get_thumbnail_path(
+        self,
+        project_name,
+        entity_type,
+        entity_id,
+        thumbnail_id
+    ):
         if not thumbnail_id:
             return None
 
@@ -64,7 +112,12 @@ class ThumbnailsModel:
         if thumbnail_id in project_cache:
             return project_cache[thumbnail_id]
 
-        filepath = get_thumbnail_path(project_name, thumbnail_id)
+        filepath = get_thumbnail_path(
+            project_name,
+            entity_type,
+            entity_id,
+            thumbnail_id
+        )
         project_cache[thumbnail_id] = filepath
         return filepath
 
