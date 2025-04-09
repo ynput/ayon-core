@@ -1084,7 +1084,7 @@ class ExtractReview(pyblish.api.InstancePlugin):
             end_frame (int): Sequence end (no matter what files are there)
 
         Returns:
-            list of added files. Those should be cleaned after work
+            dict[int, str] of added files. Those should be cleaned after work
                 is done.
 
         Raises:
@@ -1113,7 +1113,7 @@ class ExtractReview(pyblish.api.InstancePlugin):
                     "Missing previously detected file: {}".format(src_fpath))
 
             speedcopy.copyfile(src_fpath, hole_fpath)
-            added_files.append(hole_fpath)
+            added_files[hole_frame] = hole_fpath
 
         return added_files
 
