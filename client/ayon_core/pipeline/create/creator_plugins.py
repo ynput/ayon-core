@@ -15,6 +15,9 @@ from ayon_core.pipeline.plugin_discover import (
     deregister_plugin,
     deregister_plugin_path
 )
+
+from ayon_core.pipeline.product_type_aliases import get_alias_for_product_type
+
 from ayon_core.pipeline.staging_dir import get_staging_dir_info, StagingDir
 
 from .constants import DEFAULT_VARIANT_VALUE
@@ -646,6 +649,16 @@ class BaseCreator(ABC):
         return get_next_versions_for_instances(
             self.create_context.project_name, instances
         )
+
+    def get_product_alias(self):
+        """Return product alias for the creator.
+
+        Returns:
+            str: Product alias.
+
+        """
+        return get_alias_for_product_type(
+            self.product_type, self.project_settings)
 
 
 class Creator(BaseCreator):

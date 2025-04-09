@@ -88,6 +88,7 @@ class CreatorItem:
         identifier: str,
         creator_type: CreatorType,
         product_type: str,
+        product_alias: str,
         label: str,
         group_label: str,
         icon: Union[str, Dict[str, Any], None],
@@ -103,6 +104,7 @@ class CreatorItem:
         self.identifier: str = identifier
         self.creator_type: CreatorType = creator_type
         self.product_type: str = product_type
+        self.product_alias: str = product_alias
         self.label: str = label
         self.group_label: str = group_label
         self.icon: Union[str, Dict[str, Any], None] = icon
@@ -155,6 +157,7 @@ class CreatorItem:
             identifier,
             creator_type,
             creator.product_type,
+            creator.get_product_alias(),
             creator.label or identifier,
             creator.get_group_label(),
             creator.get_icon(),
@@ -179,6 +182,7 @@ class CreatorItem:
             "identifier": self.identifier,
             "creator_type": str(self.creator_type),
             "product_type": self.product_type,
+            "product_alias": self.product_alias,
             "label": self.label,
             "group_label": self.group_label,
             "icon": self.icon,

@@ -89,7 +89,13 @@ class CreatorShortDescWidget(QtWidgets.QWidget):
         description = creator_item.description or ""
 
         self._icon_widget.set_icon_def(plugin_icon)
-        self._product_type_label.setText("<b>{}</b>".format(creator_item.product_type))
+        if creator_item.product_alias:
+            self._product_type_label.setText(
+                "<b>{}</b> ({})".format(
+                    creator_item.product_alias, creator_item.product_type))
+        else:
+            self._product_type_label.setText(
+                "<b>{}</b>".format(creator_item.product_type))
         self._product_type_label.setTextInteractionFlags(QtCore.Qt.NoTextInteraction)
         self._description_label.setText(description)
 

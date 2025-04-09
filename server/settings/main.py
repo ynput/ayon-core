@@ -260,7 +260,7 @@ class FilterEnvsProfileModel(BaseSettingsModel):
 
 
 class ProductAliasMappingItemModel(BaseSettingsModel):
-    _layout = "expanded"
+    _layout = "compact"
     base: str = SettingsField("", title="Base product type")
     alias: str = SettingsField("", title="Alias name")
 

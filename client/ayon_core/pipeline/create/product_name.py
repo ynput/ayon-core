@@ -5,7 +5,7 @@ from ayon_core.lib import (
     prepare_template_data,
 )
 
-from ayon_core.pipeline import get_alias_for_product_type
+from ayon_core.pipeline.product_type_aliases import get_alias_for_product_type
 from ayon_core.settings import get_project_settings
 
 from .constants import DEFAULT_PRODUCT_TEMPLATE
