@@ -27,7 +27,8 @@ from .workfile import (
     get_workdir,
     get_custom_workfile_template_by_string_context,
     get_workfile_template_key_from_context,
-    get_last_workfile
+    get_last_workfile,
+    MissingWorkdirError,
 )
 from . import (
     register_loader_plugin_path,
@@ -251,7 +252,7 @@ def uninstall_host():
     pyblish.api.deregister_discovery_filter(filter_pyblish_plugins)
     deregister_loader_plugin_path(LOAD_PATH)
     deregister_inventory_action_path(INVENTORY_PATH)
-    log.info("Global plug-ins unregistred")
+    log.info("Global plug-ins unregistered")
 
     deregister_host()
 
@@ -617,7 +618,18 @@ def version_up_current_workfile():
     last_workfile_path = get_last_workfile(
         work_root, file_template, data, extensions, True
     )
-    new_workfile_path = version_up(last_workfile_path)
+    # `get_last_workfile` will return the first expected file version
+    # if no files exist yet. In that case, if they do not exist we will
+    # want to save v001
+    new_workfile_path = last_workfile_path
     if os.path.exists(new_workfile_path):
         new_workfile_path = version_up(new_workfile_path)
+
+    # Raise an error if the parent folder doesn't exist as `host.save_workfile`
+    # is not supposed/able to create missing folders.
+    parent_folder = os.path.dirname(new_workfile_path)
+    if not os.path.exists(parent_folder):
+        raise MissingWorkdirError(
+            f"Work area directory '{parent_folder}' does not exist.")
+
     host.save_workfile(new_workfile_path)
