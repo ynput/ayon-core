@@ -1075,11 +1075,11 @@ def has_trait_representations(
 
     Args:
         instance (pyblish.api.Instance): Instance to check.
-    
+
     Returns:
         True: Instance has trait representation.
         False: Instance does not have trait representation.
-    
+
     """
     return bool(instance.data.get(TRAIT_INSTANCE_KEY))
 
@@ -1087,7 +1087,7 @@ def has_trait_representations(
 def add_trait_representations(
         instance: pyblish.api.Instance,
         representations: list[Representation]
-):
+) -> None:
     """Add trait representations to instance.
 
     Args:
@@ -1105,7 +1105,7 @@ def add_trait_representations(
 def set_trait_representations(
         instance: pyblish.api.Instance,
         representations: list[Representation]
-):
+) -> None:
     """Set trait representations to instance.
 
     Args:
