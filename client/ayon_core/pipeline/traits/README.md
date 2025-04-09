@@ -317,6 +317,122 @@ class MyAddon(AYONAddon, ITraits):
             MyTraitBar,
         ]
 ```
+## Usage in Loaders
+
+In loaders, you can implement `is_compatible_loader()` method to check if the
+representation is compatible with the loader. You can use `Representation.from_dict()` to
+create the representation from the context. You can also use `Representation.contains_traits()`
+to check if the representation contains the required traits. You can even check for specific
+values in the traits.
+
+You can use similar concepts directly in the `load()` method to get the traits. Here is
+an example of how to use the traits in the hypothetical Maya loader:
+
+```python
+"""Alembic loader using traits."""
+from __future__ import annotations
+import json
+from typing import Any, TypeVar, Type
+from ayon_maya.api.plugin import MayaLoader
+from ayon_core.pipeline.traits import (
+    FileLocation,
+    Spatial,
+
+    Representation,
+    TraitBase,
+)
+
+T = TypeVar("T", bound=TraitBase)
+
+
+class AlembicTraitLoader(MayaLoader):
+    """Alembic loader using traits."""
+    label = "Alembic Trait Loader"
+    ...
+
+    required_traits: list[T] = [
+        FileLocation,
+        Spatial,
+    ]
+
+    @staticmethod
+    def is_compatible_loader(context: dict[str, Any]) -> bool:
+        traits_raw = context["representation"].get("traits")
+        if not traits_raw:
+            return False
+
+        # construct Representation object from the context
+        representation = Representation.from_dict(
+            name=context["representation"]["name"],
+            representation_id=context["representation"]["id"],
+            trait_data=json.loads(traits_raw),
+        )
+
+        # check if the representation is compatible with this loader
+        if representation.contains_traits(AlembicTraitLoader.required_traits):
+            # you can also check for specific values in traits here
+            return True
+        return False
+
+    ...
+```
+
+## Usage Publishing plugins
+
+You can create the representations in the same way as mentioned in the examples above.
+Straightforward way is to use `Representation` class and add the traits to it. Collect
+traits in list and then pass them to the `Representation` constructor. You should add
+the new Representation to the instance data using `add_trait_representations()` function.
+
+```python
+class SomeExtractor(Extractor):
+    """Some extractor."""
+    ...
+
+    def extract(self, instance: Instance) -> None:
+        """Extract the data."""
+        # get the path to the file
+        path = self.get_path(instance)
+
+        # create the representation
+        traits: list[TraitBase] = [
+            Geometry(),
+            MimeType(mime_type="application/abc"),
+            Persistent(),
+            Spatial(
+                up_axis=cmds.upAxis(q=True, axis=True),
+                meters_per_unit=maya_units_to_meters_per_unit(
+                    instance.context.data["linearUnits"]),
+                handedness="right",
+            ),
+        ]
+
+        if instance.data.get("frameStart"):
+            traits.append(
+                FrameRanged(
+                    frame_start=instance.data["frameStart"],
+                    frame_end=instance.data["frameEnd"],
+                    frames_per_second=instance.context.data["fps"],
+                )
+            )
+
+        representation = Representation(
+            name="alembic",
+            traits=[
+                FileLocation(
+                    file_path=Path(path),
+                    file_size=os.path.getsize(path),
+                    file_hash=get_file_hash(Path(path))
+                ),
+                *traits],
+        )
+
+        add_trait_representations(
+            instance,
+            [representation],
+        )
+        ...
+```
 
 ## Developer notes
 
