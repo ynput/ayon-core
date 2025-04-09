@@ -404,7 +404,7 @@ class ExtractReview(pyblish.api.InstancePlugin):
             )
 
             temp_data = self.prepare_temp_data(instance, repre, output_def)
-            files_to_clean = []
+            added_frames_and_files = {}
             if temp_data["input_is_sequence"]:
                 self.log.debug("Checking sequence to fill gaps in sequence..")
 
