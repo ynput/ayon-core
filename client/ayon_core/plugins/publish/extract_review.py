@@ -430,6 +430,8 @@ class ExtractReview(pyblish.api.InstancePlugin):
                     added_frames_and_files = self.fill_sequence_gaps_with_blanks(
                         collection=collection,
                         staging_dir=new_repre["stagingDir"],
+                        start_frame=temp_data["frame_start"],
+                        end_frame=temp_data["frame_end"],
                         resolution_width=temp_data["resolution_width"],
                         resolution_height=temp_data["resolution_height"],
                         extension=temp_data["ext"],
@@ -1024,24 +1026,13 @@ class ExtractReview(pyblish.api.InstancePlugin):
         self,
         collection: str,
         staging_dir: str,
+        start_frame: int,
+        end_frame: int,
         resolution_width: int,
         resolution_height: int,
         extension: str,
-    ):
-        """Fills missing files by blank frame.
-
-        Args:
-            collection (clique.collection)
-            staging_dir (str): Path to staging directory.
-            resolution_width (int): width of source frame
-            resolution_height (int): height of source frame
-            extension (str)
-
-        Returns:
-            list of added files. Those should be cleaned after work
-                is done.
-
-        """
+    ) -> Dict[int, str] | None:
+        """Fills missing files by blank frame."""
         blank_frame_path = os.path.join(staging_dir, f"blank.{extension}")
         command = get_ffmpeg_tool_args("ffmpeg")
 
@@ -1063,13 +1054,15 @@ class ExtractReview(pyblish.api.InstancePlugin):
 
         added_files = [blank_frame_path]
 
-        for missing_frame_name in collection.holes():
-            hole_fpath = os.path.join(staging_dir, missing_frame_name)
+        col_format = collection.format("{head}{padding}{tail}")
+        for frame in range(start_frame, end_frame + 1):
+            if frame in collection.indexes:
+                continue
+            hole_fpath = os.path.join(staging_dir, col_format % frame)
             speedcopy.copyfile(blank_frame_path, hole_fpath)
-            added_files.append(hole_fpath)
+            added_files[frame] = hole_fpath
 
         return added_files
-
 
     def fill_sequence_gaps_from_existing(
         self,
