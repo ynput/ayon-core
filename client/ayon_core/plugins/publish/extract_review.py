@@ -416,14 +416,14 @@ class ExtractReview(pyblish.api.InstancePlugin):
 
                 collection = collections[0]
                 if fill_type == "existing":
-                    files_to_clean = self.fill_sequence_gaps_from_existing(
+                    added_frames_and_files = self.fill_sequence_gaps_from_existing(
                         collection=collection,
                         staging_dir=new_repre["stagingDir"],
                         start_frame=temp_data["frame_start"],
                         end_frame=temp_data["frame_end"],
                     )
                 elif fill_type == "blank":
-                    files_to_clean = self.fill_sequence_gaps_with_blanks(
+                    added_frames_and_files = self.fill_sequence_gaps_with_blanks(
                         collection=collection,
                         staging_dir=new_repre["stagingDir"],
                         resolution_width=temp_data["resolution_width"],
@@ -487,8 +487,8 @@ class ExtractReview(pyblish.api.InstancePlugin):
             run_subprocess(subprcs_cmd, shell=True, logger=self.log)
 
             # delete files added to fill gaps
-            if files_to_clean:
-                for f in files_to_clean:
+            if added_frames_and_files:
+                for f in added_frames_and_files.values():
                     os.unlink(f)
 
             new_repre.update({
