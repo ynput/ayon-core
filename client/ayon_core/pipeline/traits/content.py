@@ -5,8 +5,8 @@ import contextlib
 import re
 from dataclasses import dataclass
 
-# TC003 is there because Path in TYPECHECKING will fail in tests
-from pathlib import Path  # noqa: TC003
+# TCH003 is there because Path in TYPECHECKING will fail in tests
+from pathlib import Path  # noqa: TCH003
 from typing import ClassVar, Generator, Optional
 
 from .representation import Representation

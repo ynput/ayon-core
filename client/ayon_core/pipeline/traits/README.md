@@ -57,15 +57,15 @@ There are also some assumptions and limitations - like that if `files` in the
 representation are list they need to be sequence of files (it can't be a bunch of
 unrelated files).
 
-This system is very flexible in one way, but it lack few very important things:
+This system is very flexible in one way, but it lacks few very important things:
 
 - it is not clearly defined - you can add easily keys, values, tags but without 
 unforeseeable
 consequences
 - it cannot handle "bundles" - multiple files that needs to be versioned together and 
 belong together
-- it cannot describe important information that you can't get from the file itself or
-it is very pricy (like axis orientation and units from alembic files)
+- it cannot describe important information that you can't get from the file itself, or
+it is very expensive (like axis orientation and units from alembic files)
 
 
 ### New Representation model
@@ -81,7 +81,7 @@ it is based on `TraitBase`. It shouldn't really duplicate information that is
 available in a moment of loading (or any usage) by other means. It should contain 
 information that couldn't be determined by the file, or the AYON context. Some of 
 those traits are aligned with [OpenAssetIO Media Creation](https://github.com/OpenAssetIO/OpenAssetIO-MediaCreation) with hopes of maintained compatibility (it 
-should be easy enough to convert between OpenAssetIO Traits and AOYN Traits).
+should be easy enough to convert between OpenAssetIO Traits and AYON Traits).
 
 #### Details: Representation
 
@@ -114,10 +114,10 @@ image = rep[Image.id]
 ```
 
 > [!NOTE]
-> Trait and their ids - every Trait has its id as s string with
-> version appended - so **Image** has `ayon.2d.Image.v1`. This is is used on
+> Trait and their ids - every Trait has its id as a string with
+> version appended - so **Image** has `ayon.2d.Image.v1`. This is used on
 > several places (you see its use above for indexing traits). When querying,
-> you can also omit the version at the end and it will try its best to find
+> you can also omit the version at the end, and it will try its best to find
 > the latest possible version. More on that in [Traits]()
 
 You can construct the `Representation` from dictionary (for example
@@ -145,44 +145,44 @@ all it's traits.
 As mentioned there are several traits defined directly in **ayon-core**. They are namespaced
 to different packages based on their use:
 
-| namespace | trait | description
-|---|---|---
-| color | ColorManaged | hold color management information
-| content | MimeType | use MIME type (RFC 2046) to describe content (like image/jpeg)
-| | LocatableContent | describe some location (file or URI)
-| | FileLocation | path to file, with size and checksum
-| | FileLocations | list of `FileLocation`
-| | RootlessLocation | Path where root is replaced with AYON root token
-| | Compressed | describes compression (of file or other)
-| | Bundle | list of list of Traits - compound of inseparable "sub-representations"
-| | Fragment | compound type marking the representation as a part of larger group of representations
-| cryptography | DigitallySigned | Type traits marking data to be digitally signed
-| | PGPSigned | Representation is signed by [PGP](https://www.openpgp.org/)
-| lifecycle | Transient | Marks the representation to be temporary - not to be stored.
-| | Persistent | Representation should be integrated (stored). Opposite of Transient.
-| meta | Tagged | holds list of tag strings.
-| | TemplatePath | Template consisted of tokens/keys and data to be used to resolve the template into string
-| | Variant | Used to differentiate between data variants of the same output (mp4 as h.264 and h.265 for example)
-| | KeepOriginalLocation | Marks the representation to keep the original location of the file
-| | KeepOriginalName | Marks the representation to keep the original name of the file
-| | SourceApplication | Holds information about producing application, about it's version, variant and platform.
-| | IntendedUse | For specifying the intended use of the representation if it cannot be easily determined by other traits.
-| three dimensional | Spatial | Spatial information like up-axis, units and handedness.
-| | Geometry | Type trait to mark the representation as a geometry.
-| | Shader | Type trait to mark the representation as a Shader.
-| | Lighting | Type trait to mark the representation as Lighting.
-| | IESProfile | States that the representation is IES Profile
-| time | FrameRanged | Contains start and end frame information with in and out.
-| | Handless | define additional frames at the end or beginning and if those frames are inclusive of the range or not.
-| | Sequence | Describes sequence of frames and how the frames are defined in that sequence.
-| | SMPTETimecode | Adds timecode information in SMPTE format.
-| | Static | Marks the content as not time-variant.
-| two dimensional | Image | Type traits of image.
-| | PixelBased | Defines resolution and pixel aspect for the image data.
-| | Planar | Whether pixel data is in planar configuration or packed.
-| | Deep | Image encodes deep pixel data.
-| | Overscan | holds overscan/underscan information (added pixels to bottom/sides)
-| | UDIM | Representation is UDIM tile set
+| namespace         | trait                | description                                                                                              |
+|-------------------|----------------------|----------------------------------------------------------------------------------------------------------|
+| color             | ColorManaged         | hold color management information                                                                        |
+| content           | MimeType             | use MIME type (RFC 2046) to describe content (like image/jpeg)                                           |
+|                   | LocatableContent     | describe some location (file or URI)                                                                     |
+|                   | FileLocation         | path to file, with size and checksum                                                                     |
+|                   | FileLocations        | list of `FileLocation`                                                                                   |
+|                   | RootlessLocation     | Path where root is replaced with AYON root token                                                         |
+|                   | Compressed           | describes compression (of file or other)                                                                 |
+|                   | Bundle               | list of list of Traits - compound of inseparable "sub-representations"                                   |
+|                   | Fragment             | compound type marking the representation as a part of larger group of representations                    |
+| cryptography      | DigitallySigned      | Type traits marking data to be digitally signed                                                          |
+|                   | PGPSigned            | Representation is signed by [PGP](https://www.openpgp.org/)                                              |
+| lifecycle         | Transient            | Marks the representation to be temporary - not to be stored.                                             |
+|                   | Persistent           | Representation should be integrated (stored). Opposite of Transient.                                     |
+| meta              | Tagged               | holds list of tag strings.                                                                               |
+|                   | TemplatePath         | Template consisted of tokens/keys and data to be used to resolve the template into string                |
+|                   | Variant              | Used to differentiate between data variants of the same output (mp4 as h.264 and h.265 for example)      |
+|                   | KeepOriginalLocation | Marks the representation to keep the original location of the file                                       |
+|                   | KeepOriginalName     | Marks the representation to keep the original name of the file                                           |
+|                   | SourceApplication    | Holds information about producing application, about it's version, variant and platform.                 |
+|                   | IntendedUse          | For specifying the intended use of the representation if it cannot be easily determined by other traits. |
+| three dimensional | Spatial              | Spatial information like up-axis, units and handedness.                                                  |
+|                   | Geometry             | Type trait to mark the representation as a geometry.                                                     |
+|                   | Shader               | Type trait to mark the representation as a Shader.                                                       |
+|                   | Lighting             | Type trait to mark the representation as Lighting.                                                       |
+|                   | IESProfile           | States that the representation is IES Profile.                                                           |
+| time              | FrameRanged          | Contains start and end frame information with in and out.                                                |                                                
+|                   | Handless             | define additional frames at the end or beginning and if those frames are inclusive of the range or not.  |  
+|                   | Sequence             | Describes sequence of frames and how the frames are defined in that sequence.                            |                            
+|                   | SMPTETimecode        | Adds timecode information in SMPTE format.                                                               |                                                               
+|                   | Static               | Marks the content as not time-variant.                                                                   |                                                                   
+| two dimensional   | Image                | Type traits of image.                                                                                    |                                                                                    
+|                   | PixelBased           | Defines resolution and pixel aspect for the image data.                                                  |                                                  
+|                   | Planar               | Whether pixel data is in planar configuration or packed.                                                 |                                            
+|                   | Deep                 | Image encodes deep pixel data.                                                                           |                                                                           
+|                   | Overscan             | holds overscan/underscan information (added pixels to bottom/sides).                                     |                                      
+|                   | UDIM                 | Representation is UDIM tile set.                                                                         |                                                                          
 
 Traits are Python data classes with optional
 validation and helper methods. If they implement `TraitBase.validate(Representation)` method, they can validate against all other traits
@@ -193,7 +193,7 @@ in the representation if needed.
 > easily resolve pydantic-core dependency (as it is binary written in Rust).
 
 > [!NOTE]
-> Every trait has id, name and some human readable description. Every trait
+> Every trait has id, name and some human-readable description. Every trait
 > also has `persistent` property that is by default set to True. This
 > Controls whether this trait should be stored with the persistent representation
 > or not. Useful for traits to be used just to control the publishing process.
@@ -211,6 +211,8 @@ from ayon_core.pipeline.traits import (
     Persistent,
     Representation,
     Static,
+
+    TraitValidationError,
 )
     
 rep = Representation(name="reference image", traits=[
@@ -318,8 +320,18 @@ class MyAddon(AYONAddon, ITraits):
 
 ## Developer notes
 
-### Pydantic models
-If you want to use MyPy linter, you need to make sure that
-optional fields typed as `Optional[Type]` needs to set default value
-using `default` or `default_factory` parameter. Otherwise MyPy will
-complain about missing named arguments.
+Adding new trait based representations in to publish Instance and working with them is using
+set of helper function defined in `ayon_core.pipeline.publish` module. These are:
+
+* add_trait_representations
+* get_trait_representations
+* has_trait_representations
+* set_trait_representations
+
+And their main purpose is to handle the key under which the representation
+is stored in the instance data. This is done to avoid name clashes with
+other representations. The key is defined in the `AYON_PUBLISH_REPRESENTATION_KEY`.
+It is strongly recommended to use those functions instead of
+directly accessing the instance data. This is to ensure that the
+code will work even if the key is changed in the future.
+

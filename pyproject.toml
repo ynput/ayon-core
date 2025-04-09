@@ -20,7 +20,7 @@ pytest = "^8.0"
 pytest-print = "^1.0"
 ayon-python-api = "^1.0"
 # linting dependencies
-ruff = "^0.9.3"
+ruff = "^0.11.4"
 pre-commit = "^4"
 codespell = "^2.2.6"
 semver = "^3.0.2"
@@ -80,7 +80,6 @@ exclude = [
 line-length = 79
 indent-width = 4
 
-
 # Assume Python 3.9
 target-version = "py39"
 
@@ -91,7 +90,7 @@ pydocstyle.convention = "google"
 select = ["ALL"]
 ignore = [
     "PTH",
-    # "ANN101", # must be set in older version of ruff
+    # "ANN001", # must be set in older version of ruff
     "ANN204",
     "COM812",
     "S603",
@@ -100,7 +99,6 @@ ignore = [
     "UP006",   # support for older python version (type vs. Type)
     "UP007",   # ..^
     "UP035",   # ..
-    "UP045",   # Use `X | None` for type annotations
     "ARG002",
     "INP001",  # add `__init__.py` to namespaced package
     "FIX002",  # FIX all TODOs
