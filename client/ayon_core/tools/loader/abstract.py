@@ -733,7 +733,12 @@ class FrontendLoaderController(_BaseLoaderController):
         pass
 
     @abstractmethod
-    def get_thumbnail_path(self, project_name, thumbnail_id):
+    def get_thumbnail_paths(
+        self,
+        project_name,
+        entity_type,
+        entity_ids
+    ):
         """Get thumbnail path for thumbnail id.
 
         This method should get a path to a thumbnail based on thumbnail id.
@@ -742,10 +747,11 @@ class FrontendLoaderController(_BaseLoaderController):
 
         Args:
             project_name (str): Project name.
-            thumbnail_id (str): Thumbnail id.
+            entity_type (str): Entity type.
+            entity_ids (set[str]): Entity ids.
 
         Returns:
-            Union[str, None]: Thumbnail path or None if not found.
+            dict[str, Union[str, None]]: Thumbnail path by entity id.
         """
 
         pass
