@@ -53,7 +53,7 @@ class UpdateDialog(QtWidgets.QDialog):
 
         icon = QtGui.QIcon(resources.get_ayon_icon_filepath())
         self.setWindowIcon(icon)
-        self.setWindowTitle("BLACK update")
+        self.setWindowTitle("AYON update")
         self.setWindowFlags(
             self.windowFlags()
             | QtCore.Qt.WindowStaysOnTopHint

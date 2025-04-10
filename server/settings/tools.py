@@ -331,7 +331,7 @@ class PublishToolModel(BaseSettingsModel):
 class GlobalToolsModel(BaseSettingsModel):
     ayon_menu: AYONMenuModel = SettingsField(
         default_factory=AYONMenuModel,
-        title="BLACK Menu"
+        title="AYON Menu"
     )
     creator: CreatorToolModel = SettingsField(
         default_factory=CreatorToolModel,

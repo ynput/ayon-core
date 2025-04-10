@@ -5,14 +5,11 @@ import shutil
 import glob
 import collections
 from typing import Dict, Any, Iterable
-import importlib
+
 import clique
 import ayon_api
 
 from ayon_core.lib import create_hard_link
-from .import template_data
-
-importlib.reload(template_data)
 
 from .template_data import (
     get_general_template_data,
@@ -167,11 +164,8 @@ def deliver_single_file(
     template_obj = anatomy.get_template_item(
         "delivery", template_name, "path"
     )
-
     delivery_path = template_obj.format_strict(anatomy_data)
-    direc = os.path.dirname(delivery_path)
-    file = os.path.basename(direc)
-    file_name, ext = os.path.splitext(file)
+
     # Backwards compatibility when extension contained `.`
     delivery_path = delivery_path.replace("..", ".")
     # Make sure path is valid for all platforms
@@ -182,15 +176,14 @@ def deliver_single_file(
     delivery_folder = os.path.dirname(delivery_path)
     if not os.path.exists(delivery_folder):
         os.makedirs(delivery_folder)
-        #print(f"directory created")
 
-    #print("Copying single: {} -> {}".format(src_path, delivery_path))
+    log.debug("Copying single: {} -> {}".format(src_path, delivery_path))
     _copy_file(src_path, delivery_path)
 
     return report_items, 1
 
 
-'''def deliver_sequence(
+def deliver_sequence(
     src_path,
     repre,
     anatomy,
@@ -342,7 +335,7 @@ def deliver_single_file(
 
         uploaded += 1
 
-    return report_items, uploaded'''
+    return report_items, uploaded
 
 
 def _merge_data(data, new_data):
