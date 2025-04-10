@@ -450,7 +450,7 @@ class ExtractThumbnail(pyblish.api.InstancePlugin):
         # output arguments from presets
         jpeg_items.extend(ffmpeg_args.get("output") or [])
         # we just want one frame from movie files
-        jpeg_items.extend(["-vframes", "1"])
+        jpeg_items.extend(["-frames:v", "1"])
 
         if resolution_arg:
             jpeg_items.extend(resolution_arg)
@@ -498,7 +498,7 @@ class ExtractThumbnail(pyblish.api.InstancePlugin):
             "-i", video_file_path,
             "-analyzeduration", max_int,
             "-probesize", max_int,
-            "-vframes", "1"
+            "-frames:v", "1"
         ]
 
         # add output file path
