@@ -496,7 +496,7 @@ def get_custom_workfile_template_by_string_context(
     task_entity = ayon_api.get_task_by_name(
         project_name, folder_entity["id"], task_name
     )
-
+    
     return get_custom_workfile_template(
         project_entity,
         folder_entity,

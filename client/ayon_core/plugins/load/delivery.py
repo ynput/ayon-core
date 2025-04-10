@@ -1,15 +1,17 @@
 import platform
 from collections import defaultdict
-
+import importlib
 import ayon_api
 from qtpy import QtWidgets, QtCore, QtGui
-
 from ayon_core import resources, style
 from ayon_core.lib import (
     format_file_size,
     collect_frames,
     get_datetime_data,
 )
+import ayon_core.pipeline.delivery
+
+importlib.reload(ayon_core.pipeline.delivery)
 from ayon_core.pipeline import load, Anatomy
 from ayon_core.pipeline.load import get_representation_path_with_anatomy
 from ayon_core.pipeline.delivery import (
@@ -58,7 +60,7 @@ class DeliveryOptionsDialog(QtWidgets.QDialog):
     def __init__(self, contexts, log=None, parent=None):
         super(DeliveryOptionsDialog, self).__init__(parent=parent)
 
-        self.setWindowTitle("AYON - Deliver versions")
+        self.setWindowTitle("BLACK - Deliver versions")
         icon = QtGui.QIcon(resources.get_ayon_icon_filepath())
         self.setWindowIcon(icon)
 
@@ -100,6 +102,7 @@ class DeliveryOptionsDialog(QtWidgets.QDialog):
             QtCore.Qt.TextSelectableByMouse)
 
         renumber_frame = QtWidgets.QCheckBox()
+        rename_frame = QtWidgets.QCheckBox()
 
         first_frame_start = QtWidgets.QSpinBox()
         max_int = (1 << 32) // 2
@@ -130,6 +133,7 @@ class DeliveryOptionsDialog(QtWidgets.QDialog):
         input_layout.addRow("Directory template", template_dir_label)
         input_layout.addRow("File template", template_file_label)
         input_layout.addRow("Renumber Frame", renumber_frame)
+        input_layout.addRow("Rename Frame", rename_frame)
         input_layout.addRow("Renumber start frame", first_frame_start)
         input_layout.addRow("Root", root_line_edit)
         input_layout.addRow("Representations", repre_checkboxes_layout)
@@ -161,6 +165,7 @@ class DeliveryOptionsDialog(QtWidgets.QDialog):
         self.dropdown = dropdown
         self.first_frame_start = first_frame_start
         self.renumber_frame = renumber_frame
+        self.rename_frame = rename_frame
         self.root_line_edit = root_line_edit
         self.progress_bar = progress_bar
         self.text_area = text_area
@@ -198,6 +203,7 @@ class DeliveryOptionsDialog(QtWidgets.QDialog):
         template_name = self.dropdown.currentText()
         format_dict = get_format_dict(self.anatomy, self.root_line_edit.text())
         renumber_frame = self.renumber_frame.isChecked()
+        rename_frame = self.rename_frame.isChecked()
         frame_offset = self.first_frame_start.value()
         filtered_repres = []
         repre_ids = set()
@@ -239,7 +245,7 @@ class DeliveryOptionsDialog(QtWidgets.QDialog):
                 report_items,
                 self.log
             ]
-
+            
             # TODO: This will currently incorrectly detect 'resources'
             #  that are published along with the publish, because those should
             #  not adhere to the template directly but are ingested in a
@@ -249,49 +255,56 @@ class DeliveryOptionsDialog(QtWidgets.QDialog):
             for repre_file in repre["files"]:
                 src_path = self.anatomy.fill_root(repre_file["path"])
                 src_paths.append(src_path)
-            sources_and_frames = collect_frames(src_paths)
+            if not rename_frame:
+                sources_and_frames = collect_frames(src_paths)
+                frames = set(sources_and_frames.values())
+                frames.discard(None)
+                first_frame = None
+                if frames:
+                    first_frame = min(frames)
 
-            frames = set(sources_and_frames.values())
-            frames.discard(None)
-            first_frame = None
-            if frames:
-                first_frame = min(frames)
+                for src_path, frame in sources_and_frames.items():
+                    args[0] = src_path
+                    # Renumber frames
+                    if renumber_frame and frame is not None:
+                        # Calculate offset between
+                        # first frame and current frame
+                        # - '0' for first frame
+                        offset = frame_offset - int(first_frame)
+                        # Add offset to new frame start
+                        dst_frame = int(frame) + offset
+                        if dst_frame < 0:
+                            msg = "Renumber frame has a smaller number than original frame"     # noqa
+                            report_items[msg].append(src_path)
+                            self.log.warning("{} <{}>".format(
+                                msg, dst_frame))
+                            continue
+                        frame = dst_frame
 
-            for src_path, frame in sources_and_frames.items():
-                args[0] = src_path
-                # Renumber frames
-                if renumber_frame and frame is not None:
-                    # Calculate offset between
-                    # first frame and current frame
-                    # - '0' for first frame
-                    offset = frame_offset - int(first_frame)
-                    # Add offset to new frame start
-                    dst_frame = int(frame) + offset
-                    if dst_frame < 0:
-                        msg = "Renumber frame has a smaller number than original frame"     # noqa
-                        report_items[msg].append(src_path)
-                        self.log.warning("{} <{}>".format(
-                            msg, dst_frame))
-                        continue
-                    frame = dst_frame
-
-                if frame is not None:
-                    if repre["context"].get("frame"):
-                        template_data["frame"] = frame
-                    elif repre["context"].get("udim"):
-                        template_data["udim"] = frame
-                    else:
-                        # Fallback
-                        self.log.warning(
-                            "Representation context has no frame or udim"
-                            " data. Supplying sequence frame to '{frame}'"
-                            " formatting data."
-                        )
-                        template_data["frame"] = frame
-                new_report_items, uploaded = deliver_single_file(*args)
-                report_items.update(new_report_items)
-                self._update_progress(uploaded)
-
+                    if frame is not None:
+                        if repre["context"].get("frame"):
+                            template_data["frame"] = frame
+                        elif repre["context"].get("udim"):
+                            template_data["udim"] = frame
+                        else:
+                            # Fallback
+                            self.log.warning(
+                                "Representation context has no frame or udim"
+                                " data. Supplying sequence frame to '{frame}'"
+                                " formatting data."
+                            )
+                            template_data["frame"] = frame
+                    new_report_items, uploaded = deliver_single_file(*args)
+                    report_items.update(new_report_items)
+                    self._update_progress(uploaded)
+            else:
+                import os
+                for src_path in src_paths:
+                    args[0] = src_path
+                    template_data["frame"] = os.path.basename(src_path)
+                    new_report_items, uploaded = deliver_single_file(*args)
+                    report_items.update(new_report_items)
+                    self._update_progress(uploaded)
         self.text_area.setText(self._format_report(report_items))
         self.text_area.setVisible(True)
 

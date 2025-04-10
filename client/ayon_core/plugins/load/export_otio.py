@@ -62,7 +62,7 @@ class ExportOTIOOptionsDialog(QtWidgets.QDialog):
 
         super().__init__(parent=parent)
 
-        self.setWindowTitle("AYON - Export OTIO")
+        self.setWindowTitle("BLACK - Export OTIO")
         icon = QtGui.QIcon(resources.get_ayon_icon_filepath())
         self.setWindowIcon(icon)
 
