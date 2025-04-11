@@ -453,6 +453,14 @@ class ExtractReview(pyblish.api.InstancePlugin):
                             start_frame=temp_data["frame_start"],
                             end_frame=temp_data["frame_end"],
                         )
+                elif fill_type == "only_rendered":
+                    temp_data["explicit_frames"] = [
+                        os.path.join(
+                            new_repre["stagingDir"], file
+                        ).replace("\\", "/")
+                        for file in files
+                    ]
+
             temp_data["filled_files"] = added_frames_and_files
 
             # create or update outputName
@@ -513,6 +521,10 @@ class ExtractReview(pyblish.api.InstancePlugin):
             if added_frames_and_files:
                 for f in added_frames_and_files.values():
                     os.unlink(f)
+
+            if (temp_data["explicit_frames_metadata_path"]
+                and os.path.exists(temp_data["explicit_frames_metadata_path"])):
+                os.unlink(temp_data["explicit_frames_metadata_path"])
 
             new_repre.update({
                 "fps": temp_data["fps"],
@@ -646,7 +658,9 @@ class ExtractReview(pyblish.api.InstancePlugin):
             "with_audio": with_audio,
             "without_handles": without_handles,
             "handles_are_set": handles_are_set,
-            "ext": ext
+            "ext": ext,
+            "explicit_frames": [],  # absolute paths to rendered files
+            "explicit_frames_metadata_path": None  # abs path to metadata file
         }
 
     def _ffmpeg_arguments(
@@ -728,7 +742,8 @@ class ExtractReview(pyblish.api.InstancePlugin):
         if layer_name:
             ffmpeg_input_args.extend(["-layer", layer_name])
 
-        if temp_data["input_is_sequence"]:
+        explicit_frames = temp_data["explicit_frames"]
+        if temp_data["input_is_sequence"] and not explicit_frames:
             # Set start frame of input sequence (just frame in filename)
             # - definition of input filepath
             # - add handle start if output should be without handles
@@ -755,7 +770,7 @@ class ExtractReview(pyblish.api.InstancePlugin):
                     "-to", "{:0.10f}".format(duration_seconds)
                 ])
 
-        if temp_data["output_is_sequence"]:
+        if temp_data["output_is_sequence"] and not explicit_frames:
             # Set start frame of output sequence (just frame in filename)
             # - this is definition of an output
             ffmpeg_output_args.extend([
@@ -786,10 +801,29 @@ class ExtractReview(pyblish.api.InstancePlugin):
                 "-frames:v", str(output_frames_len)
             ])
 
-        # Add video/image input path
-        ffmpeg_input_args.extend([
-            "-i", path_to_subprocess_arg(temp_data["full_input_path"])
-        ])
+        if not explicit_frames:
+            # Add video/image input path
+            ffmpeg_input_args.extend([
+                "-i", path_to_subprocess_arg(temp_data["full_input_path"])
+            ])
+        else:
+            staging_dir = os.path.dirname(temp_data["full_input_path"])
+            explicit_frames_path = os.path.join(
+                staging_dir, "explicit_frames.txt")
+            with open(explicit_frames_path, "w") as fp:
+                lines = [
+                    f"file {file}"
+                    for file in temp_data["explicit_frames"]
+                ]
+                fp.write("\n".join(lines))
+            temp_data["explicit_frames_metadata_path"] = explicit_frames_path
+
+            # let ffmpeg use only rendered files, might have gaps
+            ffmpeg_input_args.extend([
+                "-f", "concat",
+                "-safe", "0",
+                "-i", path_to_subprocess_arg(explicit_frames_path)
+            ])
 
         # Add audio arguments if there are any. Skipped when output are images.
         if not temp_data["output_ext_is_image"] and temp_data["with_audio"]:
