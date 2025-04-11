@@ -1091,7 +1091,7 @@ class ExtractReview(pyblish.api.InstancePlugin):
         )
         self.log.debug("Output: {}".format(output))
 
-        added_files = [blank_frame_path]
+        added_files = {}
 
         col_format = collection.format("{head}{padding}{tail}")
         for frame in range(start_frame, end_frame + 1):
