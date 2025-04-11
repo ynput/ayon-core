@@ -1081,7 +1081,7 @@ class ExtractReview(pyblish.api.InstancePlugin):
                 resolution_width, resolution_height
             ),
             "-tune", "stillimage",
-            "-frames: v" , 1,
+            "-frames:v", "1",
             blank_frame_path
         ])
 
