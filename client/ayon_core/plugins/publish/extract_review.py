@@ -1137,7 +1137,7 @@ class ExtractReview(pyblish.api.InstancePlugin):
                 hole_frame_to_nearest[frame] = prev_frame
 
         # Calculate paths
-        added_files = []
+        added_files = {}
         col_format = collection.format("{head}{padding}{tail}")
         for hole_frame, src_frame in hole_frame_to_nearest.items():
             hole_fpath = os.path.join(staging_dir, col_format % hole_frame)
