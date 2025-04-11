@@ -5,6 +5,7 @@ from ayon_server.settings import (
     normalize_name,
     ensure_unique_names,
     task_types_enum,
+    anatomy_template_items_enum
 )
 
 
@@ -283,7 +284,34 @@ class PublishTemplateNameProfile(BaseSettingsModel):
     task_names: list[str] = SettingsField(
         default_factory=list, title="Task names"
     )
-    template_name: str = SettingsField("", title="Template name")
+    template_name: str = SettingsField(
+        "",
+        title="Template name",
+        enum_resolver=anatomy_template_items_enum(category="publish")
+    )
+
+
+class HeroTemplateNameProfile(BaseSettingsModel):
+    _layout = "expanded"
+    product_types: list[str] = SettingsField(
+        default_factory=list,
+        title="Product types"
+    )
+    # TODO this should use hosts enum
+    hosts: list[str] = SettingsField(default_factory=list, title="Hosts")
+    task_types: list[str] = SettingsField(
+        default_factory=list,
+        title="Task types",
+        enum_resolver=task_types_enum
+    )
+    task_names: list[str] = SettingsField(
+        default_factory=list, title="Task names"
+    )
+    template_name: str = SettingsField(
+        "",
+        title="Template name",
+        enum_resolver=anatomy_template_items_enum(category="hero")
+    )
 
 
 class CustomStagingDirProfileModel(BaseSettingsModel):
@@ -306,7 +334,11 @@ class CustomStagingDirProfileModel(BaseSettingsModel):
     custom_staging_dir_persistent: bool = SettingsField(
         False, title="Custom Staging Folder Persistent"
     )
-    template_name: str = SettingsField("", title="Template Name")
+    template_name: str = SettingsField(
+        "",
+        title="Template name",
+        enum_resolver=anatomy_template_items_enum(category="staging")
+    )
 
 
 class PublishToolModel(BaseSettingsModel):
@@ -314,7 +346,7 @@ class PublishToolModel(BaseSettingsModel):
         default_factory=list,
         title="Template name profiles"
     )
-    hero_template_name_profiles: list[PublishTemplateNameProfile] = (
+    hero_template_name_profiles: list[HeroTemplateNameProfile] = (
         SettingsField(
             default_factory=list,
             title="Hero template name profiles"
