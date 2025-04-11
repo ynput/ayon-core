@@ -404,7 +404,7 @@ class ExtractReview(pyblish.api.InstancePlugin):
             )
 
             temp_data = self.prepare_temp_data(instance, repre, output_def)
-            added_frames_and_files = {}
+            new_frame_files = {}
             if temp_data["input_is_sequence"]:
                 self.log.debug("Checking sequence to fill gaps in sequence..")
 
@@ -420,14 +420,14 @@ class ExtractReview(pyblish.api.InstancePlugin):
 
                 fill_missing_frames = _output_def["fill_missing_frames"]
                 if fill_missing_frames == "closest_existing":
-                    added_frames_and_files = self.fill_sequence_gaps_from_existing(
+                    new_frame_files = self.fill_sequence_gaps_from_existing(
                         collection=collection,
                         staging_dir=new_repre["stagingDir"],
                         start_frame=temp_data["frame_start"],
                         end_frame=temp_data["frame_end"],
                     )
                 elif fill_missing_frames == "blank":
-                    added_frames_and_files = self.fill_sequence_gaps_with_blanks(
+                    new_frame_files = self.fill_sequence_gaps_with_blanks(
                         collection=collection,
                         staging_dir=new_repre["stagingDir"],
                         start_frame=temp_data["frame_start"],
@@ -438,7 +438,7 @@ class ExtractReview(pyblish.api.InstancePlugin):
                         temp_data=temp_data
                     )
                 elif fill_missing_frames == "previous_version":
-                    added_frames_and_files = self.fill_sequence_gaps_with_previous(
+                    new_frame_files = self.fill_sequence_gaps_with_previous(
                         collection=collection,
                         staging_dir=new_repre["stagingDir"],
                         instance=instance,
@@ -447,13 +447,14 @@ class ExtractReview(pyblish.api.InstancePlugin):
                         end_frame=temp_data["frame_end"],
                     )
                     # fallback to original workflow
-                    if added_frames_and_files is None:
-                        added_frames_and_files = self.fill_sequence_gaps_from_existing(
+                    if new_frame_files is None:
+                        new_frame_files = (
+                            self.fill_sequence_gaps_from_existing(
                             collection=collection,
                             staging_dir=new_repre["stagingDir"],
                             start_frame=temp_data["frame_start"],
                             end_frame=temp_data["frame_end"],
-                        )
+                        ))
                 elif fill_missing_frames == "only_rendered":
                     temp_data["explicit_frames"] = [
                         os.path.join(
@@ -462,7 +463,7 @@ class ExtractReview(pyblish.api.InstancePlugin):
                         for file in files
                     ]
 
-            temp_data["filled_files"] = added_frames_and_files
+            temp_data["filled_files"] = new_frame_files
 
             # create or update outputName
             output_name = new_repre.get("outputName", "")
@@ -519,8 +520,8 @@ class ExtractReview(pyblish.api.InstancePlugin):
             run_subprocess(subprcs_cmd, shell=True, logger=self.log)
 
             # delete files added to fill gaps
-            if added_frames_and_files:
-                for f in added_frames_and_files.values():
+            if new_frame_files:
+                for f in new_frame_files.values():
                     os.unlink(f)
 
             for f in temp_data["paths_to_remove"]:
