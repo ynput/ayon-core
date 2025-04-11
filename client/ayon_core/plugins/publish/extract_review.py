@@ -420,13 +420,16 @@ class ExtractReview(pyblish.api.InstancePlugin):
 
                 collection = collections[0]
                 if fill_type == "existing":
+
+                fill_missing_frames = _output_def["fill_missing_frames"]
+                if fill_missing_frames == "closest_existing":
                     added_frames_and_files = self.fill_sequence_gaps_from_existing(
                         collection=collection,
                         staging_dir=new_repre["stagingDir"],
                         start_frame=temp_data["frame_start"],
                         end_frame=temp_data["frame_end"],
                     )
-                elif fill_type == "blank":
+                elif fill_missing_frames == "blank":
                     added_frames_and_files = self.fill_sequence_gaps_with_blanks(
                         collection=collection,
                         staging_dir=new_repre["stagingDir"],
@@ -436,7 +439,7 @@ class ExtractReview(pyblish.api.InstancePlugin):
                         resolution_height=temp_data["resolution_height"],
                         extension=temp_data["ext"],
                     )
-                elif fill_type == "previous":
+                elif fill_missing_frames == "previous_version":
                     added_frames_and_files = self.fill_sequence_gaps_with_previous(
                         collection=collection,
                         staging_dir=new_repre["stagingDir"],
@@ -453,7 +456,7 @@ class ExtractReview(pyblish.api.InstancePlugin):
                             start_frame=temp_data["frame_start"],
                             end_frame=temp_data["frame_end"],
                         )
-                elif fill_type == "only_rendered":
+                elif fill_missing_frames == "only_rendered":
                     temp_data["explicit_frames"] = [
                         os.path.join(
                             new_repre["stagingDir"], file
