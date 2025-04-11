@@ -438,6 +438,7 @@ class ExtractReview(pyblish.api.InstancePlugin):
                         resolution_width=temp_data["resolution_width"],
                         resolution_height=temp_data["resolution_height"],
                         extension=temp_data["ext"],
+                        temp_data=temp_data
                     )
                 elif fill_missing_frames == "previous_version":
                     added_frames_and_files = self.fill_sequence_gaps_with_previous(
@@ -525,9 +526,8 @@ class ExtractReview(pyblish.api.InstancePlugin):
                 for f in added_frames_and_files.values():
                     os.unlink(f)
 
-            if (temp_data["explicit_frames_metadata_path"]
-                and os.path.exists(temp_data["explicit_frames_metadata_path"])):
-                os.unlink(temp_data["explicit_frames_metadata_path"])
+            for f in temp_data["paths_to_remove"]:
+                os.unlink(f)
 
             new_repre.update({
                 "fps": temp_data["fps"],
@@ -663,7 +663,7 @@ class ExtractReview(pyblish.api.InstancePlugin):
             "handles_are_set": handles_are_set,
             "ext": ext,
             "explicit_frames": [],  # absolute paths to rendered files
-            "explicit_frames_metadata_path": None  # abs path to metadata file
+            "paths_to_remove": []
         }
 
     def _ffmpeg_arguments(
@@ -819,7 +819,7 @@ class ExtractReview(pyblish.api.InstancePlugin):
                     for file in temp_data["explicit_frames"]
                 ]
                 fp.write("\n".join(lines))
-            temp_data["explicit_frames_metadata_path"] = explicit_frames_path
+            temp_data["paths_to_remove"].append(explicit_frames_path)
 
             # let ffmpeg use only rendered files, might have gaps
             ffmpeg_input_args.extend([
@@ -1068,9 +1068,11 @@ class ExtractReview(pyblish.api.InstancePlugin):
         resolution_width: int,
         resolution_height: int,
         extension: str,
+        temp_data: Dict[str, Any]
     ) -> Dict[int, str] | None:
         """Fills missing files by blank frame."""
         blank_frame_path = os.path.join(staging_dir, f"blank.{extension}")
+        temp_data["paths_to_remove"].append(blank_frame_path)
         command = get_ffmpeg_tool_args("ffmpeg")
 
         command.extend([
