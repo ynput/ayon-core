@@ -132,6 +132,7 @@ from .ayon_info import (
     is_staging_enabled,
     is_dev_mode_enabled,
     is_in_tests,
+    get_settings_variant,
 )
 
 terminal = Terminal
@@ -242,4 +243,5 @@ __all__ = [
     "is_staging_enabled",
     "is_dev_mode_enabled",
     "is_in_tests",
+    "get_settings_variant",
 ]

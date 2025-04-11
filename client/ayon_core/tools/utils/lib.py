@@ -1,11 +1,13 @@
 import os
 import sys
+import io
 import contextlib
 import collections
 import traceback
 from functools import partial
 from typing import Union, Any
 
+import ayon_api
 from qtpy import QtWidgets, QtCore, QtGui
 import qtawesome
 import qtmaterialsymbols
@@ -485,6 +487,16 @@ class _IconsCache:
             if isinstance(color, QtGui.QColor):
                 color = color.name()
             parts = [icon_type, icon_def["name"] or "", color]
+
+        elif icon_type in {"url", "ayon_url"}:
+            parts = [icon_type, icon_def["url"]]
+
+        elif icon_type == "transparent":
+            size = icon_def.get("size")
+            if size is None:
+                size = 256
+            parts = [icon_type, str(size)]
+
         return "|".join(parts)
 
     @classmethod
@@ -516,6 +528,26 @@ class _IconsCache:
             icon_color = icon_def["color"]
             if qtmaterialsymbols.get_icon_name_char(icon_name) is not None:
                 icon = qtmaterialsymbols.get_icon(icon_name, icon_color)
+
+        elif icon_type == "url":
+            url = icon_def["url"]
+            icon = QtGui.QPixmap(url)
+
+        elif icon_type == "ayon_url":
+            url = ayon_api.get_base_url() + icon_def["url"]
+            stream = io.BytesIO()
+            ayon_api.download_file_to_stream(url, stream)
+            pix = QtGui.QPixmap()
+            pix.loadFromData(stream.getvalue())
+            icon = QtGui.QIcon(pix)
+
+        elif icon_type == "transparent":
+            size = icon_def.get("size")
+            if size is None:
+                size = 256
+            pix = QtGui.QPixmap(size, size)
+            pix.fill(QtCore.Qt.transparent)
+            icon = QtGui.QIcon(pix)
 
         if icon is None:
             icon = cls.get_default()

@@ -11,12 +11,13 @@ from .resources import get_options_image_path
 ANIMATION_LEN = 7
 
 ACTION_ID_ROLE = QtCore.Qt.UserRole + 1
-ACTION_IS_APPLICATION_ROLE = QtCore.Qt.UserRole + 2
+ACTION_TYPE_ROLE = QtCore.Qt.UserRole + 2
 ACTION_IS_GROUP_ROLE = QtCore.Qt.UserRole + 3
 ACTION_SORT_ROLE = QtCore.Qt.UserRole + 4
-ANIMATION_START_ROLE = QtCore.Qt.UserRole + 5
-ANIMATION_STATE_ROLE = QtCore.Qt.UserRole + 6
-FORCE_NOT_OPEN_WORKFILE_ROLE = QtCore.Qt.UserRole + 7
+ACTION_ADDON_NAME_ROLE = QtCore.Qt.UserRole + 5
+ACTION_ADDON_VERSION_ROLE = QtCore.Qt.UserRole + 6
+ANIMATION_START_ROLE = QtCore.Qt.UserRole + 7
+ANIMATION_STATE_ROLE = QtCore.Qt.UserRole + 8
 
 
 def _variant_label_sort_getter(action_item):
@@ -127,7 +128,10 @@ class ActionsQtModel(QtGui.QStandardItemModel):
         action_items_by_id = {}
         for action_item_info in all_action_items_info:
             action_item, is_group = action_item_info
-            icon = get_qt_icon(action_item.icon)
+            icon_def = action_item.icon
+            if not icon_def:
+                icon_def = {"type": "transparent", "size": 256}
+            icon = get_qt_icon(icon_def)
             if is_group:
                 label = action_item.label
             else:
@@ -143,12 +147,10 @@ class ActionsQtModel(QtGui.QStandardItemModel):
             item.setData(label, QtCore.Qt.DisplayRole)
             item.setData(icon, QtCore.Qt.DecorationRole)
             item.setData(is_group, ACTION_IS_GROUP_ROLE)
+            item.setData(action_item.action_type, ACTION_TYPE_ROLE)
+            item.setData(action_item.addon_name, ACTION_ADDON_NAME_ROLE)
+            item.setData(action_item.addon_version, ACTION_ADDON_VERSION_ROLE)
             item.setData(action_item.order, ACTION_SORT_ROLE)
-            item.setData(
-                action_item.is_application, ACTION_IS_APPLICATION_ROLE)
-            item.setData(
-                action_item.force_not_open_workfile,
-                FORCE_NOT_OPEN_WORKFILE_ROLE)
             items_by_id[action_item.identifier] = item
             action_items_by_id[action_item.identifier] = action_item
 
@@ -263,13 +265,6 @@ class ActionDelegate(QtWidgets.QStyledItemDelegate):
 
         super(ActionDelegate, self).paint(painter, option, index)
 
-        if index.data(FORCE_NOT_OPEN_WORKFILE_ROLE):
-            rect = QtCore.QRectF(
-                option.rect.x(), option.rect.y() + option.rect.height(), 5, 5)
-            painter.setPen(QtCore.Qt.NoPen)
-            painter.setBrush(QtGui.QColor(200, 0, 0))
-            painter.drawEllipse(rect)
-
         if not index.data(ACTION_IS_GROUP_ROLE):
             return
 
@@ -360,13 +355,10 @@ class ActionsWidget(QtWidgets.QWidget):
         animation_timer.timeout.connect(self._on_animation)
 
         view.clicked.connect(self._on_clicked)
-        view.customContextMenuRequested.connect(self._on_context_menu)
         model.refreshed.connect(self._on_model_refresh)
 
         self._animated_items = set()
         self._animation_timer = animation_timer
-
-        self._context_menu = None
 
         self._flick = flick
         self._view = view
@@ -416,54 +408,6 @@ class ActionsWidget(QtWidgets.QWidget):
         self._animated_items.add(action_id)
         self._animation_timer.start()
 
-    def _on_context_menu(self, point):
-        """Creates menu to force skip opening last workfile."""
-        index = self._view.indexAt(point)
-        if not index.isValid():
-            return
-
-        if not index.data(ACTION_IS_APPLICATION_ROLE):
-            return
-
-        menu = QtWidgets.QMenu(self._view)
-        checkbox = QtWidgets.QCheckBox(
-            "Skip opening last workfile.", menu)
-        if index.data(FORCE_NOT_OPEN_WORKFILE_ROLE):
-            checkbox.setChecked(True)
-
-        action_id = index.data(ACTION_ID_ROLE)
-        is_group = index.data(ACTION_IS_GROUP_ROLE)
-        if is_group:
-            action_items = self._model.get_group_items(action_id)
-        else:
-            action_items = [self._model.get_action_item_by_id(action_id)]
-        action_ids = {action_item.identifier for action_item in action_items}
-        checkbox.stateChanged.connect(
-            lambda: self._on_checkbox_changed(
-                action_ids, checkbox.isChecked()
-            )
-        )
-        action = QtWidgets.QWidgetAction(menu)
-        action.setDefaultWidget(checkbox)
-
-        menu.addAction(action)
-
-        self._context_menu = menu
-        global_point = self.mapToGlobal(point)
-        menu.exec_(global_point)
-        self._context_menu = None
-
-    def _on_checkbox_changed(self, action_ids, is_checked):
-        if self._context_menu is not None:
-            self._context_menu.close()
-
-        project_name = self._model.get_selected_project_name()
-        folder_id = self._model.get_selected_folder_id()
-        task_id = self._model.get_selected_task_id()
-        self._controller.set_application_force_not_open_workfile(
-            project_name, folder_id, task_id, action_ids, is_checked)
-        self._model.refresh()
-
     def _on_clicked(self, index):
         if not index or not index.isValid():
             return
@@ -476,8 +420,17 @@ class ActionsWidget(QtWidgets.QWidget):
         task_id = self._model.get_selected_task_id()
 
         if not is_group:
+            action_type = index.data(ACTION_TYPE_ROLE)
+            addon_name = index.data(ACTION_ADDON_NAME_ROLE)
+            addon_version = index.data(ACTION_ADDON_VERSION_ROLE)
             self._controller.trigger_action(
-                project_name, folder_id, task_id, action_id
+                action_type,
+                action_id,
+                project_name,
+                folder_id,
+                task_id,
+                addon_name,
+                addon_version,
             )
             self._start_animation(index)
             return
@@ -499,6 +452,12 @@ class ActionsWidget(QtWidgets.QWidget):
         action_item = actions_mapping[result]
 
         self._controller.trigger_action(
-            project_name, folder_id, task_id, action_item.identifier
+            action_item.action_type,
+            action_item.identifier,
+            project_name,
+            folder_id,
+            task_id,
+            action_item.addon_name,
+            action_item.addon_version,
         )
         self._start_animation(index)
