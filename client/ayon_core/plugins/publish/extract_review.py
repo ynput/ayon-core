@@ -411,15 +411,12 @@ class ExtractReview(pyblish.api.InstancePlugin):
                 files = temp_data["origin_repre"]["files"]
                 collections = clique.assemble(
                     files,
-                    patterns=[clique.PATTERNS["frames"]],
-                    minimum_items=1
                 )[0]
                 if len(collections) != 1:
                     raise KnownPublishError(
                         "Multiple collections {} found.".format(collections))
 
                 collection = collections[0]
-                if fill_type == "existing":
 
                 fill_missing_frames = _output_def["fill_missing_frames"]
                 if fill_missing_frames == "closest_existing":
