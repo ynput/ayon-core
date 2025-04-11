@@ -501,38 +501,29 @@ class LoaderWindow(QtWidgets.QWidget):
         self._update_thumbnails()
 
     def _update_thumbnails(self):
+        # TODO make this threaded and show loading animation while running
         project_name = self._selected_project_name
-        thumbnail_ids = set()
+        entity_type = None
+        entity_ids = set()
         if self._selected_version_ids:
-            thumbnail_id_by_entity_id = (
-                self._controller.get_version_thumbnail_ids(
-                    project_name,
-                    self._selected_version_ids
-                )
-            )
-            thumbnail_ids = set(thumbnail_id_by_entity_id.values())
+            entity_ids = set(self._selected_version_ids)
+            entity_type = "version"
         elif self._selected_folder_ids:
-            thumbnail_id_by_entity_id = (
-                self._controller.get_folder_thumbnail_ids(
-                    project_name,
-                    self._selected_folder_ids
-                )
-            )
-            thumbnail_ids = set(thumbnail_id_by_entity_id.values())
+            entity_ids = set(self._selected_folder_ids)
+            entity_type = "folder"
 
-        thumbnail_ids.discard(None)
-
-        if not thumbnail_ids:
-            self._thumbnails_widget.set_current_thumbnails(None)
-            return
-
-        thumbnail_paths = set()
-        for thumbnail_id in thumbnail_ids:
-            thumbnail_path = self._controller.get_thumbnail_path(
-                project_name, thumbnail_id)
-            thumbnail_paths.add(thumbnail_path)
+        thumbnail_path_by_entity_id = self._controller.get_thumbnail_paths(
+            project_name, entity_type, entity_ids
+        )
+        thumbnail_paths = set(thumbnail_path_by_entity_id.values())
         thumbnail_paths.discard(None)
-        self._thumbnails_widget.set_current_thumbnail_paths(thumbnail_paths)
+
+        if thumbnail_paths:
+           self._thumbnails_widget.set_current_thumbnail_paths(
+               thumbnail_paths
+           )
+        else:
+            self._thumbnails_widget.set_current_thumbnails(None)
 
     def _on_projects_refresh(self):
         self._refresh_handler.set_project_refreshed()
