@@ -87,26 +87,8 @@ target-version = "py39"
 preview = true
 pydocstyle.convention = "google"
 # Enable Pyflakes (`F`) and a subset of the pycodestyle (`E`)  codes by default.
-select = ["ALL"]
-ignore = [
-    "PTH",
-    # "ANN001", # must be set in older version of ruff
-    "ANN204",
-    "COM812",
-    "S603",
-    "ERA001",
-    "TRY003",
-    "UP006",   # support for older python version (type vs. Type)
-    "UP007",   # ..^
-    "UP035",   # ..
-    "ARG002",
-    "INP001",  # add `__init__.py` to namespaced package
-    "FIX002",  # FIX all TODOs
-    "TD003",   # missing issue link
-    "S404",    # subprocess module is possibly insecure
-    "PLC0415", # import must be on top of the file
-    "CPY001",  # missing copyright header
-]
+select = ["E", "F", "W"]
+ignore = []
 
 # Allow fix for all enabled rules (when `--fix`) is provided.
 fixable = ["ALL"]
