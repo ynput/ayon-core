@@ -27,9 +27,12 @@ class ThumbnailsModel:
         entity_type,
         entity_ids,
     ):
-        thumbnail_paths = set()
+        output = {
+            entity_id: None
+            for entity_id in entity_ids
+        }
         if not project_name or not entity_type or not entity_ids:
-            return thumbnail_paths
+            return output
 
         thumbnail_id_by_entity_id = {}
         if entity_type == "folder":
@@ -43,7 +46,7 @@ class ThumbnailsModel:
             )
 
         if not thumbnail_id_by_entity_id:
-            return thumbnail_paths
+            return output
 
         entity_ids_by_thumbnail_id = collections.defaultdict(set)
         for entity_id, thumbnail_id in thumbnail_id_by_entity_id.items():
@@ -51,10 +54,6 @@ class ThumbnailsModel:
                 continue
             entity_ids_by_thumbnail_id[thumbnail_id].add(entity_id)
 
-        output = {
-            entity_id: None
-            for entity_id in entity_ids
-        }
         for thumbnail_id, entity_ids in entity_ids_by_thumbnail_id.items():
             thumbnail_path = self._get_thumbnail_path(
                 project_name, entity_type, next(iter(entity_ids)), thumbnail_id
