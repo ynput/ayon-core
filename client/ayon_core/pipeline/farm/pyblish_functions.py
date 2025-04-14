@@ -1168,7 +1168,7 @@ def prepare_cache_representations(skeleton_data, exp_files, anatomy):
 
     """
     representations = []
-    collections, remainders = clique.assemble(exp_files)
+    collections, _remainders = clique.assemble(exp_files)
 
     log = Logger.get_logger("farm_publishing")
 
