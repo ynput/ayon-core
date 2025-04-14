@@ -462,6 +462,13 @@ class ExtractReview(pyblish.api.InstancePlugin):
                         ).replace("\\", "/")
                         for file in files
                     ]
+                    frame_start = min(collection.indexes)
+                    frame_end = max(collection.indexes)
+                    # modify range for burnins
+                    instance.data["frameStart"] = frame_start
+                    instance.data["frameEnd"] = frame_end
+                    temp_data["frame_start"] = frame_start
+                    temp_data["frame_end"] = frame_end
 
             temp_data["filled_files"] = new_frame_files
 
