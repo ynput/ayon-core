@@ -519,9 +519,9 @@ class LoaderWindow(QtWidgets.QWidget):
         thumbnail_paths.discard(None)
 
         if thumbnail_paths:
-           self._thumbnails_widget.set_current_thumbnail_paths(
-               thumbnail_paths
-           )
+            self._thumbnails_widget.set_current_thumbnail_paths(
+                thumbnail_paths
+            )
         else:
             self._thumbnails_widget.set_current_thumbnails(None)
 
