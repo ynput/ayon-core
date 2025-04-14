@@ -2,7 +2,6 @@ import os
 import logging
 import sys
 import copy
-from pprint import pformat
 
 import clique
 import pyblish.api
