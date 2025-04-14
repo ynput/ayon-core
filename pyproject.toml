@@ -83,6 +83,7 @@ indent-width = 4
 target-version = "py39"
 
 [tool.ruff.lint]
+preview = true
 # Enable Pyflakes (`F`) and a subset of the pycodestyle (`E`)  codes by default.
 select = ["E", "F", "W"]
 ignore = []
