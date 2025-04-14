@@ -652,6 +652,7 @@ class ExtractReviewOutputDefModel(BaseSettingsModel):
     )
     fill_missing_frames:str = SettingsField(
         title="Handle missing frames",
+        default="closest_existing",
         description="How to handle frames that are missing from entity frame "
                     "range.",
         enum_resolver=_handle_missing_frames_enum
