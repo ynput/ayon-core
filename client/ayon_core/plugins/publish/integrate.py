@@ -613,7 +613,6 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
 
         is_udim = bool(repre.get("udim"))
 
-        self.log.debug(pformat(instance.data))
         # handle publish in place
         if "{originalDirname}" in template:
             # store as originalDirname only original value without project root
