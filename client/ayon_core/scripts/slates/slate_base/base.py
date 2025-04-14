@@ -353,7 +353,6 @@ class BaseObj:
         self.items[item.id] = item
         item.fill_data_format()
 
-
     def reset(self):
         for item in self.items.values():
             item.reset()
