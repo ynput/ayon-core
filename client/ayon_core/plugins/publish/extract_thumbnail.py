@@ -163,9 +163,9 @@ class ExtractThumbnail(pyblish.api.InstancePlugin):
         # Store new staging to cleanup paths
         instance.context.data["cleanupFullPaths"].append(dst_staging)
 
-        thumbnail_created = False
         oiio_supported = is_oiio_supported()
         for repre in filtered_repres:
+            thumbnail_created = False
             repre_files = repre["files"]
             src_staging = os.path.normpath(repre["stagingDir"])
             if not isinstance(repre_files, (list, tuple)):
