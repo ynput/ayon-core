@@ -170,7 +170,7 @@ class ExtractThumbnailFromSource(pyblish.api.InstancePlugin):
             "-analyzeduration", max_int,
             "-probesize", max_int,
             "-i", src_path,
-            "-vframes", "1",
+            "-frames:v", "1",
             dst_path
         )
 
