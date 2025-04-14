@@ -527,7 +527,8 @@ class ExtractOTIOReview(
             and self.output_ext == input_extension
         ):
             if input_extension.lower() in [
-                    '.png', '.tif', '.tiff', '.dpx', '.exr']:
+                ".png", ".tif", ".tiff", ".dpx", ".exr"
+            ]:
                 command.extend(["-c", "copy"])
             else:
                 # For lossy formats, force re-encode
