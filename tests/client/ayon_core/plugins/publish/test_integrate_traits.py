@@ -9,9 +9,6 @@ from typing import TYPE_CHECKING
 
 import pyblish.api
 import pytest
-from ayon_api.operations import (
-    OperationsSession,
-)
 
 from ayon_core.lib.file_transaction import (
     FileTransaction,
@@ -44,9 +41,6 @@ from ayon_core.settings import get_project_settings
 
 from ayon_api.operations import (
     OperationsSession,
-    new_product_entity,
-    new_representation_entity,
-    new_version_entity,
 )
 
 if TYPE_CHECKING:
@@ -237,8 +231,6 @@ def mock_context(
     return context
 
 
-
-
 def test_get_template_name(mock_context: pyblish.api.Context) -> None:
     """Test get_template_name.
 
@@ -275,9 +267,12 @@ class TestGetSize:
             (Path("./test_file_2.txt"), 1024),  # id: happy_path_medium_file
             (Path("./test_file_3.txt"), 10485760)  # id: happy_path_large_file
         ],
-        ids=["happy_path_small_file", "happy_path_medium_file", "happy_path_large_file"]
+        ids=["happy_path_small_file",
+             "happy_path_medium_file",
+             "happy_path_large_file"]
     )
-    def test_get_size_happy_path(self, file_path: Path, expected_size: int, tmp_path: Path):
+    def test_get_size_happy_path(
+            self, file_path: Path, expected_size: int, tmp_path: Path):
         # Arrange
         file_path = tmp_path / file_path
         file_path.write_bytes(b"\0" * expected_size)
@@ -288,7 +283,6 @@ class TestGetSize:
         # Assert
         assert size == expected_size
 
-
     @pytest.mark.parametrize(
         "file_path, expected_size",
         [
@@ -296,10 +290,11 @@ class TestGetSize:
         ],
         ids=["edge_case_empty_file"]
     )
-    def test_get_size_edge_cases(self, file_path: Path, expected_size: int, tmp_path: Path):
+    def test_get_size_edge_cases(
+            self, file_path: Path, expected_size: int, tmp_path: Path):
         # Arrange
         file_path = tmp_path / file_path
-        file_path.touch() # Create an empty file
+        file_path.touch()  # Create an empty file
 
         # Act
         size = self.get_size(file_path)
@@ -310,12 +305,16 @@ class TestGetSize:
     @pytest.mark.parametrize(
         "file_path, expected_exception",
         [
-            (Path("./non_existent_file.txt"), FileNotFoundError),  # id: error_file_not_found
-            (123, TypeError) # id: error_invalid_input_type
+            (
+                    Path("./non_existent_file.txt"),
+                    FileNotFoundError
+            ),  # id: error_file_not_found
+            (123, TypeError)  # id: error_invalid_input_type
         ],
         ids=["error_file_not_found", "error_invalid_input_type"]
     )
-    def test_get_size_error_cases(self, file_path, expected_exception, tmp_path):
+    def test_get_size_error_cases(
+            self, file_path, expected_exception, tmp_path):
 
         # Act & Assert
         with pytest.raises(expected_exception):
@@ -439,5 +438,5 @@ def test_get_transfers_from_representation(
     file_transactions.process()
 
     for representation in representations:
-        files = integrator._get_legacy_files_for_representation(  # noqa: SLF001
+        _ = integrator._get_legacy_files_for_representation(  # noqa: SLF001
             transfers, representation, anatomy=instance.data["anatomy"])
