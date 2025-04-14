@@ -27,7 +27,9 @@ import collections
 
 import pyblish.api
 import ayon_api
+from ayon_api import RequestTypes
 from ayon_api.operations import OperationsSession
+
 
 InstanceFilterResult = collections.namedtuple(
     "InstanceFilterResult",
@@ -161,6 +163,30 @@ class IntegrateThumbnailsAYON(pyblish.api.ContextPlugin):
             return None
         return os.path.normpath(filled_path)
 
+    def _create_thumbnail(self, project_name: str, src_filepath: str) -> str:
+        """Upload thumbnail to AYON and return its id.
+
+        This is temporary fix of 'create_thumbnail' function in ayon_api to
+            fix jpeg mime type.
+
+        """
+        mime_type = None
+        with open(src_filepath, "rb") as stream:
+            if b"\xff\xd8\xff" == stream.read(3):
+                mime_type = "image/jpeg"
+
+        if mime_type is None:
+            return ayon_api.create_thumbnail(project_name, src_filepath)
+
+        response = ayon_api.upload_file(
+            f"projects/{project_name}/thumbnails",
+            src_filepath,
+            request_type=RequestTypes.post,
+            headers={"Content-Type": mime_type},
+        )
+        response.raise_for_status()
+        return response.json()["id"]
+
     def _integrate_thumbnails(
         self,
         filtered_instance_items,
@@ -179,7 +205,7 @@ class IntegrateThumbnailsAYON(pyblish.api.ContextPlugin):
                 ).format(instance_label))
                 continue
 
-            thumbnail_id = ayon_api.create_thumbnail(
+            thumbnail_id = self._create_thumbnail(
                 project_name, thumbnail_path
             )
 
