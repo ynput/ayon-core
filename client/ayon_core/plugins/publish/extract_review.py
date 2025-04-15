@@ -5,7 +5,7 @@ import json
 import shutil
 import subprocess
 from abc import ABC, abstractmethod
-from typing import Dict, Any
+from typing import Dict, Any, Union
 
 import clique
 import speedcopy
@@ -978,7 +978,7 @@ class ExtractReview(pyblish.api.InstancePlugin):
         current_repre: Dict[Any, Any],
         start_frame: int,
         end_frame: int
-    ) -> Dict[int, str] | None:
+    ) -> Union[Dict[int, str], None]:
         """Tries to replace missing frames from ones from last version"""
         repre_file_paths = self._get_last_version_files(
             instance, current_repre)
@@ -1073,7 +1073,7 @@ class ExtractReview(pyblish.api.InstancePlugin):
         resolution_height: int,
         extension: str,
         temp_data: Dict[str, Any]
-    ) -> Dict[int, str] | None:
+    ) -> Union[Dict[int, str], None]:
         """Fills missing files by blank frame."""
         blank_frame_path = os.path.join(staging_dir, f"blank.{extension}")
         temp_data["paths_to_remove"].append(blank_frame_path)
