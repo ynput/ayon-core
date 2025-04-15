@@ -414,7 +414,7 @@ DEFAULT_TOOLS_VALUES = {
                 "hosts": [],
                 "task_types": [],
                 "tasks": [],
-                "template": "{product[type]}{Task[name]}{Variant}"
+                "template": "{product[type]}{Task[name]}{Variant}<_{Aov}>"
             },
             {
                 "product_types": [
