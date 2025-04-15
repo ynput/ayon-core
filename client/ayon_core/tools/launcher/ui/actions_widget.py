@@ -522,16 +522,19 @@ class ActionsWidget(QtWidgets.QWidget):
         )
 
     def _create_config_dialog(self, config_fields):
-        """Creates config widget."""
-        """
-        type="label" text
-        type="text" label value placeholder regex multiline syntax
-        type="boolean" label value
-        type="select" label value options
-        type="multiselect" label value options
-        type="hidden" value
-        type="integer" label value placeholder min max
-        type="float" label value placeholder min max            
+        """Creates config widget.
+
+        Types:
+            label - 'text'
+            text - 'label', 'value', 'placeholder', 'regex',
+                'multiline', 'syntax'
+            boolean - 'label', 'value'
+            select - 'label', 'value', 'options'
+            multiselect - 'label', 'value', 'options'
+            hidden - 'value'
+            integer - 'label', 'value', 'placeholder', 'min', 'max'
+            float - 'label', 'value', 'placeholder', 'min', 'max'
+
         """
         attr_defs = []
         for config_field in config_fields:
