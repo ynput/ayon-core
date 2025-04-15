@@ -1203,7 +1203,7 @@ class ExtractReview(pyblish.api.InstancePlugin):
             # Make sure to have full path to one input file
             full_input_path_single_file = full_input_path
 
-        filled_files = temp_data.get("filled_files", {})
+        filled_files = temp_data["filled_files"]
         if filled_files:
             first_frame, first_file = list(filled_files.items())[0]
             if first_file < full_input_path_single_file:
