@@ -506,6 +506,7 @@ class ActionsWidget(QtWidgets.QWidget):
         )
 
         dialog = self._create_config_dialog(config_fields)
+        dialog.set_values(values)
         result = dialog.exec_()
         if result == QtWidgets.QDialog.Rejected:
             return
