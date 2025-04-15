@@ -91,7 +91,8 @@ class ExtractReview(pyblish.api.InstancePlugin):
         "webpublisher",
         "aftereffects",
         "flame",
-        "unreal"
+        "unreal",
+        "circuit",
     ]
 
     # Supported extensions
@@ -196,7 +197,7 @@ class ExtractReview(pyblish.api.InstancePlugin):
                 ).format(repre_name))
                 continue
 
-            input_ext = repre["ext"]
+            input_ext = repre["ext"].lower()
             if input_ext.startswith("."):
                 input_ext = input_ext[1:]
 

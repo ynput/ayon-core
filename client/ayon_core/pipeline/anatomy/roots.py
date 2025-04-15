@@ -2,8 +2,10 @@ import os
 import platform
 import numbers
 
-from ayon_core.lib import Logger
+from ayon_core.lib import Logger, StringTemplate
 from ayon_core.lib.path_templates import FormatObject
+
+from .exceptions import RootMissingEnv
 
 
 class RootItem(FormatObject):
@@ -21,18 +23,36 @@ class RootItem(FormatObject):
             multi root setup otherwise None value is expected.
     """
     def __init__(self, parent, root_raw_data, name):
-        super(RootItem, self).__init__()
+        super().__init__()
         self._log = None
-        lowered_platform_keys = {}
-        for key, value in root_raw_data.items():
-            lowered_platform_keys[key.lower()] = value
+        lowered_platform_keys = {
+            key.lower(): value
+            for key, value in root_raw_data.items()
+        }
         self.raw_data = lowered_platform_keys
         self.cleaned_data = self._clean_roots(lowered_platform_keys)
         self.name = name
         self.parent = parent
 
         self.available_platforms = set(lowered_platform_keys.keys())
-        self.value = lowered_platform_keys.get(platform.system().lower())
+
+        current_platform = platform.system().lower()
+        # WARNING: Using environment variables in roots is not considered
+        #   as production safe. Some features may not work as expected, for
+        #   example USD resolver or site sync.
+        try:
+            self.value = lowered_platform_keys[current_platform].format_map(
+                os.environ
+            )
+        except KeyError:
+            result = StringTemplate(self.value).format(os.environ.copy())
+            is_are = "is" if len(result.missing_keys) == 1 else "are"
+            missing_keys = ", ".join(result.missing_keys)
+            raise RootMissingEnv(
+                f"Root \"{name}\" requires environment variable/s"
+                f" {missing_keys} which {is_are} not available."
+            )
+
         self.clean_value = self._clean_root(self.value)
 
     def __format__(self, *args, **kwargs):
@@ -105,10 +125,10 @@ class RootItem(FormatObject):
 
     def _clean_roots(self, raw_data):
         """Clean all values of raw root item values."""
-        cleaned = {}
-        for key, value in raw_data.items():
-            cleaned[key] = self._clean_root(value)
-        return cleaned
+        return {
+            key: self._clean_root(value)
+            for key, value in raw_data.items()
+        }
 
     def path_remapper(self, path, dst_platform=None, src_platform=None):
         """Remap path for specific platform.
