@@ -1,10 +1,21 @@
 import time
+import uuid
 import collections
 
 from qtpy import QtWidgets, QtCore, QtGui
 
+from ayon_core import style
+from ayon_core.lib.attribute_definitions import (
+    UILabelDef,
+    EnumDef,
+    TextDef,
+    BoolDef,
+    NumberDef,
+    HiddenDef,
+)
 from ayon_core.tools.flickcharm import FlickCharm
 from ayon_core.tools.utils import get_qt_icon
+from ayon_core.tools.attribute_defs import AttributeDefinitionsDialog
 
 from .resources import get_options_image_path
 
@@ -167,6 +178,12 @@ class ActionsQtModel(QtGui.QStandardItemModel):
         self._items_by_id = items_by_id
         self._action_items_by_id = action_items_by_id
         self.refreshed.emit()
+
+    def get_action_config_fields(self, action_id: str):
+        action_item = self._action_items_by_id.get(action_id)
+        if action_item is not None:
+            return action_item.config_fields
+        return None
 
     def _on_selection_project_changed(self, event):
         self._selected_project_name = event["project_name"]
@@ -355,6 +372,7 @@ class ActionsWidget(QtWidgets.QWidget):
         animation_timer.timeout.connect(self._on_animation)
 
         view.clicked.connect(self._on_clicked)
+        view.customContextMenuRequested.connect(self._on_context_menu)
         model.refreshed.connect(self._on_model_refresh)
 
         self._animated_items = set()
@@ -364,6 +382,8 @@ class ActionsWidget(QtWidgets.QWidget):
         self._view = view
         self._model = model
         self._proxy_model = proxy_model
+
+        self._config_widget = None
 
         self._set_row_height(1)
 
@@ -461,3 +481,114 @@ class ActionsWidget(QtWidgets.QWidget):
             action_item.addon_version,
         )
         self._start_animation(index)
+
+    def _on_context_menu(self, point):
+        """Creates menu to force skip opening last workfile."""
+        index = self._view.indexAt(point)
+        if not index.isValid():
+            return
+
+        action_id = index.data(ACTION_ID_ROLE)
+        if not action_id:
+            return
+
+        config_fields = self._model.get_action_config_fields(action_id)
+        if not config_fields:
+            return
+
+        values = self._controller.get_action_config_values(
+            action_id,
+            project_name=self._model.get_selected_project_name(),
+            folder_id=self._model.get_selected_folder_id(),
+            task_id=self._model.get_selected_task_id(),
+            addon_name=index.data(ACTION_ADDON_NAME_ROLE),
+            addon_version=index.data(ACTION_ADDON_VERSION_ROLE),
+        )
+
+        dialog = self._create_config_dialog(config_fields)
+        result = dialog.exec_()
+        if result == QtWidgets.QDialog.Rejected:
+            return
+        new_values = dialog.get_values()
+        self._controller.set_action_config_values(
+            action_id,
+            project_name=self._model.get_selected_project_name(),
+            folder_id=self._model.get_selected_folder_id(),
+            task_id=self._model.get_selected_task_id(),
+            addon_name=index.data(ACTION_ADDON_NAME_ROLE),
+            addon_version=index.data(ACTION_ADDON_VERSION_ROLE),
+            values=new_values,
+        )
+
+    def _create_config_dialog(self, config_fields):
+        """Creates config widget."""
+        """
+        type="label" text
+        type="text" label value placeholder regex multiline syntax
+        type="boolean" label value
+        type="select" label value options
+        type="multiselect" label value options
+        type="hidden" value
+        type="integer" label value placeholder min max
+        type="float" label value placeholder min max            
+        """
+        attr_defs = []
+        for config_field in config_fields:
+            field_type = config_field["type"]
+            attr_def = None
+            if field_type == "label":
+                attr_def = UILabelDef(
+                    config_field["text"], key=uuid.uuid4().hex
+                )
+            elif field_type == "boolean":
+                attr_def = BoolDef(
+                    config_field["name"],
+                    default=config_field["value"],
+                    label=config_field["label"],
+                )
+            elif field_type == "text":
+                attr_def = TextDef(
+                    config_field["name"],
+                    default=config_field["value"],
+                    label=config_field["label"],
+                    placeholder=config_field["placeholder"],
+                    multiline=config_field["multiline"],
+                    regex=config_field["regex"],
+                    # syntax=config_field["syntax"],
+                )
+            elif field_type in ("integer", "float"):
+                attr_def = NumberDef(
+                    config_field["name"],
+                    default=config_field["value"],
+                    label=config_field["label"],
+                    decimals=0 if field_type == "integer" else 5,
+                    placeholder=config_field["placeholder"],
+                    min_value=config_field.get("min"),
+                    max_value=config_field.get("max"),
+                )
+            elif field_type in ("select", "multiselect"):
+                attr_def = EnumDef(
+                    config_field["name"],
+                    default=config_field["value"],
+                    label=config_field["label"],
+                    options=config_field["options"],
+                    multi_select=field_type == "multiselect",
+                )
+            elif field_type == "hidden":
+                attr_def = HiddenDef(
+                    config_field["name"],
+                    default=config_field["value"],
+                )
+
+            if attr_def is None:
+                print(f"Unknown config field type: {field_type}")
+                attr_def = UILabelDef(
+                    f"Unknown field type '{field_type}",
+                    key=uuid.uuid4().hex
+                )
+            attr_defs.append(attr_def)
+
+        dialog = AttributeDefinitionsDialog(attr_defs, parent=self)
+        dialog.setWindowTitle("Action Config")
+        dialog.setStyleSheet(style.load_stylesheet())
+        return dialog
