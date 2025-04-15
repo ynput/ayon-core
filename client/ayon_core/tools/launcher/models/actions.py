@@ -1,4 +1,5 @@
 import os
+import copy
 import platform
 import subprocess
 from urllib.parse import urlencode
@@ -69,6 +70,7 @@ class ActionItem:
         order (int): Action ordering.
         addon_name (str): Addon name.
         addon_version (str): Addon version.
+        config_fields (list[dict]): Config fields for webaction.
         full_label (Optional[str]): Full label, if not set it is generated
             from 'label' and 'variant_label'.
     """
@@ -83,8 +85,11 @@ class ActionItem:
         order,
         addon_name=None,
         addon_version=None,
+        config_fields=None,
         full_label=None
     ):
+        if config_fields is None:
+            config_fields = []
         self.action_type = action_type
         self.identifier = identifier
         self.label = label
@@ -93,6 +98,7 @@ class ActionItem:
         self.order = order
         self.addon_name = addon_name
         self.addon_version = addon_version
+        self.config_fields = config_fields
         self._full_label = full_label
 
     def copy(self):
@@ -115,6 +121,7 @@ class ActionItem:
             "icon": self.icon,
             "order": self.order,
             "full_label": self._full_label,
+            "config_fields": copy.deepcopy(self.config_fields),
         }
 
     @classmethod
@@ -277,6 +284,72 @@ class ActionsModel:
             }
         )
 
+    def get_action_config_values(
+        self,
+        identifier,
+        project_name,
+        folder_id,
+        task_id,
+        addon_name,
+        addon_version,
+    ):
+        selection = self._prepare_selection(project_name, folder_id, task_id)
+        if not selection.is_project_selected:
+            return {}
+
+        context = self._get_webaction_context(selection)
+
+        query = {
+            "addonName": addon_name,
+            "addonVersion": addon_version,
+            "identifier": identifier,
+            "variant": self._variant,
+        }
+        url = f"actions/config?{urlencode(query)}"
+        try:
+            response = ayon_api.post(url, **context)
+            response.raise_for_status()
+        except Exception:
+            self.log.warning(
+                "Failed to collect webaction config values.",
+                exc_info=True
+            )
+            return {}
+        return response.data
+
+    def set_action_config_values(
+        self,
+        identifier,
+        project_name,
+        folder_id,
+        task_id,
+        addon_name,
+        addon_version,
+        values,
+    ):
+        selection = self._prepare_selection(project_name, folder_id, task_id)
+        if not selection.is_project_selected:
+            return {}
+
+        context = self._get_webaction_context(selection)
+        context["value"] = values
+
+        query = {
+            "addonName": addon_name,
+            "addonVersion": addon_version,
+            "identifier": identifier,
+            "variant": self._variant,
+        }
+        url = f"actions/config?{urlencode(query)}"
+        try:
+            response = ayon_api.post(url, **context)
+            response.raise_for_status()
+        except Exception:
+            self.log.warning(
+                "Failed to store webaction config values.",
+                exc_info=True
+            )
+
     def _get_addons_manager(self):
         if self._addons_manager is None:
             self._addons_manager = AddonsManager()
@@ -295,9 +368,9 @@ class ActionsModel:
             project_settings=project_settings,
         )
 
-    def _get_webactions(self, selection: LauncherActionSelection):
+    def _get_webaction_context(self, selection: LauncherActionSelection):
         if not selection.is_project_selected:
-            return []
+            return None
 
         entity_type = None
         entity_id = None
@@ -317,16 +390,27 @@ class ActionsModel:
             entity_ids.append(entity_id)
 
         project_name = selection.project_name
-        cache: CacheItem = self._webaction_items[project_name][entity_id]
-        if cache.is_valid:
-            return cache.get_data()
-
-        context = {
+        return {
             "projectName": project_name,
             "entityType": entity_type,
             "entitySubtypes": entity_subtypes,
             "entityIds": entity_ids,
         }
+
+    def _get_webactions(self, selection: LauncherActionSelection):
+        if not selection.is_project_selected:
+            return []
+
+        context = self._get_webaction_context(selection)
+        project_name = selection.project_name
+        entity_id = None
+        if context["entityIds"]:
+            entity_id = context["entityIds"][0]
+
+        cache: CacheItem = self._webaction_items[project_name][entity_id]
+        if cache.is_valid:
+            return cache.get_data()
+
         try:
             response = ayon_api.post("actions/list", **context)
             response.raise_for_status()
@@ -342,6 +426,8 @@ class ActionsModel:
             if icon and icon["type"] == "url" and icon["url"].startswith("/"):
                 icon["type"] = "ayon_url"
 
+            config_fields = action.get("configFields") or []
+
             action_items.append(ActionItem(
                 "webaction",
                 action["identifier"],
@@ -352,6 +438,7 @@ class ActionsModel:
                 action["order"],
                 action["addonName"],
                 action["addonVersion"],
+                config_fields,
             ))
 
         cache.update_data(action_items)
