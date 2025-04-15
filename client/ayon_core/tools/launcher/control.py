@@ -155,6 +155,44 @@ class BaseLauncherController(
             addon_version,
         )
 
+    def get_action_config_values(
+        self,
+        action_id,
+        project_name,
+        folder_id,
+        task_id,
+        addon_name,
+        addon_version,
+    ):
+        return self._actions_model.get_action_config_values(
+            action_id,
+            project_name,
+            folder_id,
+            task_id,
+            addon_name,
+            addon_version,
+        )
+
+    def set_action_config_values(
+        self,
+        action_id,
+        project_name,
+        folder_id,
+        task_id,
+        addon_name,
+        addon_version,
+        values,
+    ):
+        return self._actions_model.set_action_config_values(
+            action_id,
+            project_name,
+            folder_id,
+            task_id,
+            addon_name,
+            addon_version,
+            values,
+        )
+
     # General methods
     def refresh(self):
         self._emit_event("controller.refresh.started")

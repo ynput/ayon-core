@@ -302,6 +302,8 @@ class AbstractLauncherFrontEnd(AbstractLauncherCommon):
         project_name,
         folder_id,
         task_id,
+        addon_name,
+        addon_version,
     ):
         """Trigger action on given context.
 
@@ -315,6 +317,31 @@ class AbstractLauncherFrontEnd(AbstractLauncherCommon):
             addon_version (Union[str, None]): Addon version.
 
         """
+        pass
+
+    @abstractmethod
+    def get_action_config_values(
+        self,
+        action_id,
+        project_name,
+        folder_id,
+        task_id,
+        addon_name,
+        addon_version,
+    ):
+        pass
+
+    @abstractmethod
+    def set_action_config_values(
+        self,
+        action_id,
+        project_name,
+        folder_id,
+        task_id,
+        addon_name,
+        addon_version,
+        values,
+    ):
         pass
 
     @abstractmethod
