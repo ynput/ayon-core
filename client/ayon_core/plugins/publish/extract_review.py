@@ -456,7 +456,7 @@ class ExtractReview(pyblish.api.InstancePlugin):
                             end_frame=temp_data["frame_end"],
                         ))
                 elif fill_missing_frames == "only_rendered":
-                    temp_data["explicit_frames"] = [
+                    temp_data["explicit_input_paths"] = [
                         os.path.join(
                             new_repre["stagingDir"], file
                         ).replace("\\", "/")
@@ -667,7 +667,7 @@ class ExtractReview(pyblish.api.InstancePlugin):
             "without_handles": without_handles,
             "handles_are_set": handles_are_set,
             "ext": ext,
-            "explicit_frames": [],  # absolute paths to rendered files
+            "explicit_input_paths": [],  # absolute paths to rendered files
             "paths_to_remove": []
         }
 
@@ -750,8 +750,8 @@ class ExtractReview(pyblish.api.InstancePlugin):
         if layer_name:
             ffmpeg_input_args.extend(["-layer", layer_name])
 
-        explicit_frames = temp_data["explicit_frames"]
-        if temp_data["input_is_sequence"] and not explicit_frames:
+        explicit_input_paths = temp_data["explicit_input_paths"]
+        if temp_data["input_is_sequence"] and not explicit_input_paths:
             # Set start frame of input sequence (just frame in filename)
             # - definition of input filepath
             # - add handle start if output should be without handles
@@ -778,7 +778,7 @@ class ExtractReview(pyblish.api.InstancePlugin):
                     "-to", "{:0.10f}".format(duration_seconds)
                 ])
 
-        if temp_data["output_is_sequence"] and not explicit_frames:
+        if temp_data["output_is_sequence"] and not explicit_input_paths:
             # Set start frame of output sequence (just frame in filename)
             # - this is definition of an output
             ffmpeg_output_args.extend([
@@ -809,7 +809,7 @@ class ExtractReview(pyblish.api.InstancePlugin):
                 "-frames:v", str(output_frames_len)
             ])
 
-        if not explicit_frames:
+        if not explicit_input_paths:
             # Add video/image input path
             ffmpeg_input_args.extend([
                 "-i", path_to_subprocess_arg(temp_data["full_input_path"])
@@ -821,7 +821,7 @@ class ExtractReview(pyblish.api.InstancePlugin):
             with open(explicit_frames_path, "w") as fp:
                 lines = [
                     f"file {file}"
-                    for file in temp_data["explicit_frames"]
+                    for file in temp_data["explicit_input_paths"]
                 ]
                 fp.write("\n".join(lines))
             temp_data["paths_to_remove"].append(explicit_frames_path)
