@@ -164,8 +164,11 @@ class ExtractThumbnail(pyblish.api.InstancePlugin):
         instance.context.data["cleanupFullPaths"].append(dst_staging)
 
         oiio_supported = is_oiio_supported()
+        repre_thumb_created = False
         for repre in filtered_repres:
-            thumbnail_created = False
+            # Reset for each iteration to handle cases where multiple
+            # reviewable thumbnails are needed
+            repre_thumb_created = False
             repre_files = repre["files"]
             src_staging = os.path.normpath(repre["stagingDir"])
             if not isinstance(repre_files, (list, tuple)):
@@ -214,7 +217,7 @@ class ExtractThumbnail(pyblish.api.InstancePlugin):
                 )
                 # If the input can read by OIIO then use OIIO method for
                 # conversion otherwise use ffmpeg
-                thumbnail_created = self._create_thumbnail_oiio(
+                repre_thumb_created = self._create_thumbnail_oiio(
                     full_input_path,
                     full_output_path,
                     colorspace_data
@@ -223,19 +226,19 @@ class ExtractThumbnail(pyblish.api.InstancePlugin):
             # Try to use FFMPEG if OIIO is not supported or for cases when
             #   oiiotool isn't available or representation is not having
             #   colorspace data
-            if not thumbnail_created:
+            if not repre_thumb_created:
                 if oiio_supported:
                     self.log.debug(
                         "Converting with FFMPEG because input"
                         " can't be read by OIIO."
                     )
 
-                thumbnail_created = self._create_thumbnail_ffmpeg(
+                repre_thumb_created = self._create_thumbnail_ffmpeg(
                     full_input_path, full_output_path
                 )
 
             # Skip representation and try next one if  wasn't created
-            if not thumbnail_created:
+            if not repre_thumb_created:
                 continue
 
             if len(explicit_repres) > 1:
@@ -291,7 +294,7 @@ class ExtractThumbnail(pyblish.api.InstancePlugin):
                 # There is no need to create more then one thumbnail
                 break
 
-        if not thumbnail_created:
+        if not repre_thumb_created:
             self.log.warning("Thumbnail has not been created.")
 
     def _is_review_instance(self, instance):
