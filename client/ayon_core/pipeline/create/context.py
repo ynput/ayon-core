@@ -2303,10 +2303,16 @@ class CreateContext:
                 for plugin_name, plugin_value in item_changes.pop(
                     "publish_attributes"
                 ).items():
+                    if plugin_value is None:
+                        current_publish[plugin_name] = None
+                        continue
                     plugin_changes = current_publish.setdefault(
                         plugin_name, {}
                     )
-                    plugin_changes.update(plugin_value)
+                    if plugin_changes is None:
+                        current_publish[plugin_name] = plugin_value
+                    else:
+                        plugin_changes.update(plugin_value)
 
             item_values.update(item_changes)
 
