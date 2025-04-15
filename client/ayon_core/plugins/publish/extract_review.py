@@ -13,6 +13,8 @@ import clique
 import speedcopy
 import pyblish.api
 
+from ayon_api import get_last_version_by_product_name, get_representations
+
 from ayon_core.lib import (
     get_ffmpeg_tool_args,
     filter_profiles,
@@ -32,7 +34,6 @@ from ayon_core.pipeline.publish import (
     get_publish_instance_label,
 )
 from ayon_core.pipeline.publish.lib import add_repre_files_for_cleanup
-from ayon_api import get_last_version_by_product_name, get_representations
 
 
 def frame_to_timecode(frame: int, fps: float) -> str:
