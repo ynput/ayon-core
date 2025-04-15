@@ -526,13 +526,10 @@ class ExtractOTIOReview(
             input_extension
             and self.output_ext == input_extension
         ):
-            if input_extension.lower() in [
-                ".png", ".tif", ".tiff", ".dpx", ".exr"
-            ]:
-                command.extend(["-c", "copy"])
-            else:
-                # For lossy formats, force re-encode
-                command.extend(["-pix_fmt", "rgba"])
+            command.extend(["-c", "copy"])
+        else:
+            # For lossy formats, force re-encode
+            command.extend(["-pix_fmt", "rgba"])
 
         # add output path at the end
         command.append(output_path)
