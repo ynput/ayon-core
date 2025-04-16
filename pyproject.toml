@@ -152,3 +152,11 @@ addopts = "-ra -q"
 testpaths = [
     "client/ayon_core/tests"
 ]
+markers = [
+    "unit: Unit tests",
+    "integration: Integration tests",
+    "api: API tests",
+    "cli: CLI tests",
+    "slow: Slow tests",
+    "server: Tests that require a running AYON server",
+]
