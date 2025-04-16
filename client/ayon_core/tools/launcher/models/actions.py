@@ -477,7 +477,7 @@ class ActionsModel:
         }
 
         # TODO pass label in as argument?
-        action_label= "Webaction"
+        action_label = "Webaction"
 
         failed = False
         error_message = None
