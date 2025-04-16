@@ -194,7 +194,6 @@ class CollectOtioSubsetResources(
                 repre = self._create_representation(
                     frame_start, frame_end, file=filename)
 
-
         else:
             _trim = False
             dirname, filename = os.path.split(media_ref.target_url)
@@ -209,7 +208,6 @@ class CollectOtioSubsetResources(
             repre = self._create_representation(
                 frame_start, frame_end, file=filename, trim=_trim)
 
-
         instance.data["originalDirname"] = self.staging_dir
 
         # add representation to instance data
@@ -220,7 +218,6 @@ class CollectOtioSubsetResources(
                 repre, instance.context, colorspace)
 
             instance.data["representations"].append(repre)
-
 
         self.log.debug(instance.data)
 
