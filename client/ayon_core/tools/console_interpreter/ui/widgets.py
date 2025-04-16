@@ -248,4 +248,3 @@ class EnhancedTabBar(QtWidgets.QTabBar):
 
         else:
             super().mouseReleaseEvent(event)
-
