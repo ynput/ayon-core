@@ -76,7 +76,6 @@ def sequence_files(tmp_path_factory: pytest.TempPathFactory) -> list[Path]:
 def mock_context(
         project: pytest_ayon.ProjectInfo,
         single_file: Path,
-        folder_path: Path,
         sequence_files: list[Path]) -> pyblish.api.Context:
     """Return a mock instance.
 
@@ -237,6 +236,7 @@ def mock_context(
     return context
 
 
+@pytest.mark.server
 def test_get_template_name(mock_context: pyblish.api.Context) -> None:
     """Test get_template_name.
 
@@ -355,6 +355,7 @@ def test_filter_lifecycle() -> None:
     assert filtered[0] == persistent_representation
 
 
+@pytest.mark.server
 def test_prepare_product(
         project: pytest_ayon.ProjectInfo,
         mock_context: pyblish.api.Context) -> None:
@@ -375,6 +376,7 @@ def test_prepare_product(
         }
 
 
+@pytest.mark.server
 def test_prepare_version(
         project: pytest_ayon.ProjectInfo,
         mock_context: pyblish.api.Context) -> None:
@@ -403,6 +405,7 @@ def test_prepare_version(
     }
 
 
+@pytest.mark.server
 def test_get_transfers_from_representation(
         mock_context: pyblish.api.Context) -> None:
     """Test get_transfers_from_representation.
