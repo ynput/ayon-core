@@ -316,12 +316,6 @@ def load_with_repre_context(
     )
 
     loader = Loader()
-
-    # Backwards compatibility: Originally the loader's __init__ required the
-    # representation context to set `fname` attribute to the filename to load
-    # Deprecated - to be removed in OpenPype 3.16.6 or 3.17.0.
-    loader._fname = get_representation_path_from_context(repre_context)
-
     return loader.load(repre_context, name, namespace, options)
 
 
