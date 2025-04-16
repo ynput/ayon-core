@@ -22,6 +22,7 @@ from ayon_core.tools.utils import show_message_dialog
 OTIO = None
 FRAME_SPLITTER = "__frame_splitter__"
 
+
 def _import_otio():
     global OTIO
     if OTIO is None:
