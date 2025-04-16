@@ -76,6 +76,7 @@ def sequence_files(tmp_path_factory: pytest.TempPathFactory) -> list[Path]:
 def mock_context(
         project: pytest_ayon.ProjectInfo,
         single_file: Path,
+        folder_path: Path,
         sequence_files: list[Path]) -> pyblish.api.Context:
     """Return a mock instance.
 
@@ -104,6 +105,10 @@ def mock_context(
     instance = context.create_instance("mock_instance")
     instance.data["source"] = "test_source"
     instance.data["families"] = ["render"]
+
+    parents = project.folder_entity["path"].lstrip("/").split("/")
+    hierarchy = "/".join(parents) if parents else ""
+
     instance.data["anatomyData"] = {
         "project": {
             "name": project.project_name,
@@ -121,6 +126,7 @@ def mock_context(
             "name": project.product.name,
             "type": "test"  # pytest-ayon doesn't return the product type yet
         },
+        "hierarchy": hierarchy,
 
     }
     instance.data["folderEntity"] = project.folder_entity
