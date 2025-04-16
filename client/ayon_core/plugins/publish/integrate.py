@@ -619,8 +619,7 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
             # used for all represe
             # from temp to final
             original_directory = (
-                instance.data.get("originalDirname") or instance_stagingdir)
-
+                instance.data.get("originalDirname") or stagingdir)
             _rootless = self.get_rootless_path(anatomy, original_directory)
             if _rootless == original_directory:
                 raise KnownPublishError((
