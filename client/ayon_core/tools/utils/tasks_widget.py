@@ -575,7 +575,7 @@ class TasksWidget(QtWidgets.QWidget):
         if self._tasks_model.is_refreshing:
             return
 
-        parent_id, task_id, task_name, _ = self._get_selected_item_ids()
+        _parent_id, task_id, task_name, _ = self._get_selected_item_ids()
         self._controller.set_selected_task(task_id, task_name)
         self.selection_changed.emit()
 
