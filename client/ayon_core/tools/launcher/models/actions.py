@@ -489,7 +489,11 @@ class ActionsModel:
                     "full_label": action_label,
                 }
             )
-            response = ayon_api.post(url, **context)
+
+            conn = ayon_api.get_server_api_connection()
+            headers = conn.get_headers()
+            headers["referer"] = conn.get_base_url()
+            response = ayon_api.raw_post(url, headers=headers, json=context)
             response.raise_for_status()
             data = response.data
             if data["success"] is True:
