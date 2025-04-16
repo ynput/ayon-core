@@ -462,7 +462,7 @@ class WorkfileEntitiesModel:
         anatomy = self._controller.project_anatomy
 
         workdir, filename = os.path.split(filepath)
-        success, rootless_dir = anatomy.find_root_template_from_path(workdir)
+        _, rootless_dir = anatomy.find_root_template_from_path(workdir)
         return "/".join([
             os.path.normpath(rootless_dir).replace("\\", "/"),
             filename

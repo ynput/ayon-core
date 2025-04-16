@@ -22,11 +22,9 @@ import clique
 if typing.TYPE_CHECKING:
     from typing import Self, Tuple, Union, TypedDict, Pattern
 
-
     class EnumItemDict(TypedDict):
         label: str
         value: Any
-
 
     EnumItemsInputType = Union[
         Dict[Any, str],
@@ -34,7 +32,6 @@ if typing.TYPE_CHECKING:
         List[Any],
         List[EnumItemDict]
     ]
-
 
     class FileDefItemDict(TypedDict):
         directory: str
@@ -288,6 +285,7 @@ AttrDefType = TypeVar("AttrDefType", bound=AbstractAttrDef)
 # -----------------------------------------
 # UI attribute definitions won't hold value
 # -----------------------------------------
+
 
 class UIDef(AbstractAttrDef):
     is_value_def = False

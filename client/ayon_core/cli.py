@@ -24,7 +24,6 @@ from ayon_core.lib.env_tools import (
 )
 
 
-
 @click.group(invoke_without_command=True)
 @click.pass_context
 @click.option("--use-staging", is_flag=True,
@@ -171,7 +170,6 @@ def contextselection(
     from ayon_core.tools.context_dialog import main
 
     main(output_path, project, folder, strict)
-
 
 
 @main_cli.command(
