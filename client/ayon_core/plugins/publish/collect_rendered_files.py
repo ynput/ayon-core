@@ -33,7 +33,7 @@ class CollectRenderedFiles(pyblish.api.ContextPlugin):
     label = "Collect rendered frames"
     settings_category = "core"
 
-    remove_files = True
+    remove_files = False
 
     _context = None
 

@@ -931,7 +931,7 @@ class IntegrateHeroVersionModel(BaseSettingsModel):
 
 class CollectRenderedFilesModel(BaseSettingsModel):
     remove_files: bool = SettingsField(
-        True,
+        False,
         title="Remove rendered files",
         description=(
             "Remove rendered files and metadata json on publish.\n\n"
@@ -1447,7 +1447,7 @@ DEFAULT_PUBLISH_VALUES = {
         "enabled": True,
     },
     "CollectRenderedFiles": {
-        "remove_files": True
+        "remove_files": False
     },
     "CleanUp": {
         "paterns": [],  # codespell:ignore paterns
