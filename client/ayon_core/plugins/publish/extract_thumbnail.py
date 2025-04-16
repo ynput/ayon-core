@@ -164,7 +164,7 @@ class ExtractThumbnail(pyblish.api.InstancePlugin):
         instance.context.data["cleanupFullPaths"].append(dst_staging)
 
         oiio_supported = is_oiio_supported()
-        repre_thumb_created = False
+        thumbnail_created = False
         for repre in filtered_repres:
             # Reset for each iteration to handle cases where multiple
             # reviewable thumbnails are needed
@@ -241,6 +241,7 @@ class ExtractThumbnail(pyblish.api.InstancePlugin):
             if not repre_thumb_created:
                 continue
 
+            thumbnail_created = True
             if len(explicit_repres) > 1:
                 repre_name = "thumbnail_{}".format(repre["outputName"])
             else:
@@ -294,7 +295,7 @@ class ExtractThumbnail(pyblish.api.InstancePlugin):
                 # There is no need to create more then one thumbnail
                 break
 
-        if not repre_thumb_created:
+        if not thumbnail_created:
             self.log.warning("Thumbnail has not been created.")
 
     def _is_review_instance(self, instance):
