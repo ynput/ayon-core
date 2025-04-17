@@ -303,6 +303,8 @@ class ExtractThumbnail(pyblish.api.InstancePlugin):
         #   other way then checking for "review" key on instance data?
         if instance.data.get("review", True):
             return True
+        if instance.data.get("need_thumbnail", False):
+            return True
         return False
 
     def _already_has_thumbnail(self, repres):
@@ -348,7 +350,7 @@ class ExtractThumbnail(pyblish.api.InstancePlugin):
                 # to be published locally
                 continue
 
-            if "review" not in tags:
+            if "review" not in tags or "need_thumbnail" not in tags:
                 continue
 
             if not repre.get("files"):
