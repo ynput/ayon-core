@@ -5,7 +5,7 @@ from .widgets import AttributeDefinitionsWidget
 
 class AttributeDefinitionsDialog(QtWidgets.QDialog):
     def __init__(self, attr_defs, parent=None):
-        super(AttributeDefinitionsDialog, self).__init__(parent)
+        super().__init__(parent)
 
         attrs_widget = AttributeDefinitionsWidget(attr_defs, self)
 
@@ -31,3 +31,6 @@ class AttributeDefinitionsDialog(QtWidgets.QDialog):
 
     def get_values(self):
         return self._attrs_widget.current_value()
+
+    def set_values(self, values):
+        self._attrs_widget.set_value(values)

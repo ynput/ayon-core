@@ -32,7 +32,7 @@ class BaseLauncherController(
 
     @property
     def event_system(self):
-        """Inner event system for workfiles tool controller.
+        """Inner event system for launcher tool controller.
 
         Is used for communication with UI. Event system is created on demand.
 
@@ -135,16 +135,63 @@ class BaseLauncherController(
         return self._actions_model.get_action_items(
             project_name, folder_id, task_id)
 
-    def set_application_force_not_open_workfile(
-        self, project_name, folder_id, task_id, action_ids, enabled
+    def trigger_action(
+        self,
+        action_type,
+        identifier,
+        project_name,
+        folder_id,
+        task_id,
+        addon_name,
+        addon_version,
     ):
-        self._actions_model.set_application_force_not_open_workfile(
-            project_name, folder_id, task_id, action_ids, enabled
+        self._actions_model.trigger_action(
+            action_type,
+            identifier,
+            project_name,
+            folder_id,
+            task_id,
+            addon_name,
+            addon_version,
         )
 
-    def trigger_action(self, project_name, folder_id, task_id, identifier):
-        self._actions_model.trigger_action(
-            project_name, folder_id, task_id, identifier)
+    def get_action_config_values(
+        self,
+        action_id,
+        project_name,
+        folder_id,
+        task_id,
+        addon_name,
+        addon_version,
+    ):
+        return self._actions_model.get_action_config_values(
+            action_id,
+            project_name,
+            folder_id,
+            task_id,
+            addon_name,
+            addon_version,
+        )
+
+    def set_action_config_values(
+        self,
+        action_id,
+        project_name,
+        folder_id,
+        task_id,
+        addon_name,
+        addon_version,
+        values,
+    ):
+        return self._actions_model.set_action_config_values(
+            action_id,
+            project_name,
+            folder_id,
+            task_id,
+            addon_name,
+            addon_version,
+            values,
+        )
 
     # General methods
     def refresh(self):

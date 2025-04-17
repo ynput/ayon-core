@@ -78,15 +78,15 @@ def is_using_ayon_console():
     return "ayon_console" in executable_filename
 
 
-def is_headless_mode_enabled():
+def is_headless_mode_enabled() -> bool:
     return os.getenv("AYON_HEADLESS_MODE") == "1"
 
 
-def is_staging_enabled():
+def is_staging_enabled() -> bool:
     return os.getenv("AYON_USE_STAGING") == "1"
 
 
-def is_in_tests():
+def is_in_tests() -> bool:
     """Process is running in automatic tests mode.
 
     Returns:
@@ -96,7 +96,7 @@ def is_in_tests():
     return os.environ.get("AYON_IN_TESTS") == "1"
 
 
-def is_dev_mode_enabled():
+def is_dev_mode_enabled() -> bool:
     """Dev mode is enabled in AYON.
 
     Returns:
@@ -104,6 +104,22 @@ def is_dev_mode_enabled():
     """
 
     return os.getenv("AYON_USE_DEV") == "1"
+
+
+def get_settings_variant() -> str:
+    """Get AYON settings variant.
+
+    Returns:
+        str: Settings variant.
+
+    """
+    if is_dev_mode_enabled():
+        return os.environ["AYON_BUNDLE_NAME"]
+
+    if is_staging_enabled():
+        return "staging"
+
+    return "production"
 
 
 def get_ayon_info():

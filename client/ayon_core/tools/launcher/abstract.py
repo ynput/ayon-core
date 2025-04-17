@@ -295,32 +295,53 @@ class AbstractLauncherFrontEnd(AbstractLauncherCommon):
         pass
 
     @abstractmethod
-    def trigger_action(self, project_name, folder_id, task_id, action_id):
+    def trigger_action(
+        self,
+        action_type,
+        action_id,
+        project_name,
+        folder_id,
+        task_id,
+        addon_name,
+        addon_version,
+    ):
         """Trigger action on given context.
 
         Args:
+            action_type (Literal["webaction", "local"]): Action type.
+            action_id (str): Action identifier.
             project_name (Union[str, None]): Project name.
             folder_id (Union[str, None]): Folder id.
             task_id (Union[str, None]): Task id.
-            action_id (str): Action identifier.
+            addon_name (Union[str, None]): Addon name.
+            addon_version (Union[str, None]): Addon version.
 
         """
         pass
 
     @abstractmethod
-    def set_application_force_not_open_workfile(
-        self, project_name, folder_id, task_id, action_ids, enabled
+    def get_action_config_values(
+        self,
+        action_id,
+        project_name,
+        folder_id,
+        task_id,
+        addon_name,
+        addon_version,
     ):
-        """This is application action related to force not open last workfile.
+        pass
 
-        Args:
-            project_name (Union[str, None]): Project name.
-            folder_id (Union[str, None]): Folder id.
-            task_id (Union[str, None]): Task id.
-            action_ids (Iterable[str]): Action identifiers.
-            enabled (bool): New value of force not open workfile.
-
-        """
+    @abstractmethod
+    def set_action_config_values(
+        self,
+        action_id,
+        project_name,
+        folder_id,
+        task_id,
+        addon_name,
+        addon_version,
+        values,
+    ):
         pass
 
     @abstractmethod
