@@ -369,7 +369,7 @@ class PublishAttributes:
         return copy.deepcopy(self._origin_data)
 
     def attribute_value_changed(self, key, changes):
-        self._parent.publish_attribute_value_changed(key,  changes)
+        self._parent.publish_attribute_value_changed(key, changes)
 
     def set_publish_plugin_attr_defs(
         self,
