@@ -12,6 +12,14 @@ from ayon_server.settings import (
 from ayon_server.types import ColorRGBA_uint8
 
 
+def _handle_missing_frames_enum():
+    return [
+        {"value": "closest_existing", "label": "Use closest existing"},
+        {"value": "blank", "label": "Generate blank frame"},
+        {"value": "previous_version", "label": "Use previous version"},
+        {"value": "only_rendered", "label": "Use only rendered"},
+    ]
+
 class EnabledModel(BaseSettingsModel):
     enabled: bool = SettingsField(True)
 
@@ -641,6 +649,13 @@ class ExtractReviewOutputDefModel(BaseSettingsModel):
     letter_box: ExtractReviewLetterBox = SettingsField(
         default_factory=ExtractReviewLetterBox,
         title="Letter Box"
+    )
+    fill_missing_frames:str = SettingsField(
+        title="Handle missing frames",
+        default="closest_existing",
+        description="How to handle frames that are missing from entity frame "
+                    "range.",
+        enum_resolver=_handle_missing_frames_enum
     )
 
     @validator("name")
@@ -1279,7 +1294,8 @@ DEFAULT_PUBLISH_VALUES = {
                             "fill_color": [0, 0, 0, 1.0],
                             "line_thickness": 0,
                             "line_color": [255, 0, 0, 1.0]
-                        }
+                        },
+                        "fill_missing_frames": "closest_existing"
                     },
                     {
                         "name": "h264",
@@ -1329,7 +1345,8 @@ DEFAULT_PUBLISH_VALUES = {
                             "fill_color": [0, 0, 0, 1.0],
                             "line_thickness": 0,
                             "line_color": [255, 0, 0, 1.0]
-                        }
+                        },
+                        "fill_missing_frames": "closest_existing"
                     }
                 ]
             }
