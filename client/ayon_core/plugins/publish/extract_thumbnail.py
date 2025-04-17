@@ -498,7 +498,8 @@ class ExtractThumbnail(pyblish.api.InstancePlugin):
         # For very short videos, just use the first frame
         # Calculate seek position safely
         seek_position = 0
-        if duration > 0.1:  # Only use timestamp calculation for videos longer than 0.1 seconds
+        # Only use timestamp calculation for videos longer than 0.1 seconds
+        if duration > 0.1:
             seek_position = duration * self.duration_split
 
         # Build command args
@@ -531,13 +532,17 @@ class ExtractThumbnail(pyblish.api.InstancePlugin):
             run_subprocess(cmd, logger=self.log)
 
             # Verify the output file was created
-            if os.path.exists(output_thumb_file_path) and os.path.getsize(output_thumb_file_path) > 0:
+            if (
+                os.path.exists(output_thumb_file_path)
+                and os.path.getsize(output_thumb_file_path) > 0
+            ):
                 self.log.debug(
                     "Thumbnail created: {}".format(output_thumb_file_path))
                 return output_thumb_file_path
             else:
                 self.log.warning(
-                    "Output file was not created or is empty: {}".format(output_thumb_file_path))
+                    "Output file was not created or is empty: {}".format(
+                        output_thumb_file_path))
 
                 # Fallback to extracting the first frame without seeking
                 if "-ss" in cmd_args:
@@ -549,11 +554,18 @@ class ExtractThumbnail(pyblish.api.InstancePlugin):
 
                     # Create new command and try again
                     cmd = get_ffmpeg_tool_args("ffmpeg", *cmd_args)
-                    self.log.debug("Fallback command: {}".format(" ".join(cmd)))
+                    self.log.debug("Fallback command: {}".format(
+                        " ".join(cmd)))
                     run_subprocess(cmd, logger=self.log)
 
-                    if os.path.exists(output_thumb_file_path) and os.path.getsize(output_thumb_file_path) > 0:
-                        self.log.debug("Fallback thumbnail created: {}".format(output_thumb_file_path))
+                    if (
+                        os.path.exists(output_thumb_file_path)
+                        and os.path.getsize(output_thumb_file_path) > 0
+                    ):
+                        self.log.debug(
+                            "Fallback thumbnail created: {}".format(
+                                output_thumb_file_path)
+                        )
                         return output_thumb_file_path
 
                 return None
