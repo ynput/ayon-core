@@ -829,7 +829,9 @@ class ExtractReview(pyblish.api.InstancePlugin):
             ffmpeg_input_args.extend([
                 "-f", "concat",
                 "-safe", "0",
-                "-i", path_to_subprocess_arg(explicit_frames_path)
+                "-fflags",  "+genpts+igndts",
+                "-i", path_to_subprocess_arg(explicit_frames_path),
+                "-r", "25"
             ])
 
         # Add audio arguments if there are any. Skipped when output are images.
