@@ -11,6 +11,7 @@ from ayon_core.lib import (
     is_oiio_supported,
 )
 from ayon_core.lib.transcoding import (
+    UnknownRGBAChannelsError,
     convert_colorspace,
 )
 
@@ -99,7 +100,19 @@ class ExtractOIIOTranscode(publish.Extractor):
                 self.log.warning("Config file doesn't exist, skipping")
                 continue
 
+            # Get representation files to convert
+            if isinstance(repre["files"], list):
+                repre_files_to_convert = copy.deepcopy(repre["files"])
+            else:
+                repre_files_to_convert = [repre["files"]]
+            repre_files_to_convert = self._translate_to_sequence(
+                repre_files_to_convert)
+
+            # Process each output definition
             for output_def in profile_output_defs:
+                # Local copy to avoid accidental mutable changes
+                files_to_convert = list(repre_files_to_convert)
+
                 output_name = output_def["name"]
                 new_repre = copy.deepcopy(repre)
 
@@ -109,11 +122,6 @@ class ExtractOIIOTranscode(publish.Extractor):
                     use_local_temp=True,
                 )
                 new_repre["stagingDir"] = new_staging_dir
-
-                if isinstance(new_repre["files"], list):
-                    files_to_convert = copy.deepcopy(new_repre["files"])
-                else:
-                    files_to_convert = [new_repre["files"]]
 
                 output_extension = output_def["extension"]
                 output_extension = output_extension.replace('.', '')
@@ -158,6 +166,7 @@ class ExtractOIIOTranscode(publish.Extractor):
                 files_to_convert = self._translate_to_sequence(
                     files_to_convert)
                 self.log.debug("Files to convert: {}".format(files_to_convert))
+                unknown_rgba_channels = False
                 for file_name in files_to_convert:
                     self.log.debug("Transcoding file: `{}`".format(file_name))
                     input_path = os.path.join(original_staging_dir,
@@ -165,18 +174,29 @@ class ExtractOIIOTranscode(publish.Extractor):
                     output_path = self._get_output_file_path(input_path,
                                                              new_staging_dir,
                                                              output_extension)
+                    try:
+                        convert_colorspace(
+                            input_path,
+                            output_path,
+                            config_path,
+                            source_colorspace,
+                            target_colorspace,
+                            view,
+                            display,
+                            additional_command_args,
+                            self.log
+                        )
+                    except UnknownRGBAChannelsError:
+                        unknown_rgba_channels = True
+                        self.log.error(
+                            "Skipping OIIO Transcode. Unknown RGBA channels"
+                            f" for colorspace conversion in file: {input_path}"
+                        )
+                        break
 
-                    convert_colorspace(
-                        input_path,
-                        output_path,
-                        config_path,
-                        source_colorspace,
-                        target_colorspace,
-                        view,
-                        display,
-                        additional_command_args,
-                        self.log
-                    )
+                if unknown_rgba_channels:
+                    # Stop processing this representation
+                    break
 
                 # cleanup temporary transcoded files
                 for file_name in new_repre["files"]:
