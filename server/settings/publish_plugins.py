@@ -944,6 +944,20 @@ class IntegrateHeroVersionModel(BaseSettingsModel):
                     "hero versions.")
 
 
+class CollectRenderedFilesModel(BaseSettingsModel):
+    remove_files: bool = SettingsField(
+        False,
+        title="Remove rendered files",
+        description=(
+            "Remove rendered files and metadata json on publish.\n\n"
+            "Note that when enabled but the render is to a configured "
+            "persistent staging directory the files will not be removed. "
+            "However with this disabled the files will **not** be removed in "
+            "either case."
+        )
+    )
+
+
 class CleanUpModel(BaseSettingsModel):
     _isGroup = True
     paterns: list[str] = SettingsField(  # codespell:ignore paterns
@@ -1055,6 +1069,10 @@ class PublishPuginsModel(BaseSettingsModel):
             "If a reviewable is attached to another instance it will not be "
             "published as a render/review product of its own."
         )
+    )
+    CollectRenderedFiles: CollectRenderedFilesModel = SettingsField(
+        default_factory=CollectRenderedFilesModel,
+        title="Clean up farm rendered files"
     )
     CleanUp: CleanUpModel = SettingsField(
         default_factory=CleanUpModel,
@@ -1444,6 +1462,9 @@ DEFAULT_PUBLISH_VALUES = {
     },
     "AttachReviewables": {
         "enabled": True,
+    },
+    "CollectRenderedFiles": {
+        "remove_files": False
     },
     "CleanUp": {
         "paterns": [],  # codespell:ignore paterns

@@ -43,4 +43,3 @@ class CollectCoreJobEnvVars(pyblish.api.ContextPlugin):
             if value:
                 self.log.debug(f"Setting job env: {key}: {value}")
                 env[key] = value
-
