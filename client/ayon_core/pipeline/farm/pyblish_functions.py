@@ -660,14 +660,6 @@ def _get_legacy_product_name_and_group(
     warnings.warn("Using legacy product name for renders",
                   DeprecationWarning)
 
-    if not source_product_name.startswith(product_type):
-        resulting_group_name = '{}{}{}{}{}'.format(
-            product_type,
-            task_name[0].upper(), task_name[1:],
-            source_product_name[0].upper(), source_product_name[1:])
-    else:
-        resulting_group_name = source_product_name
-
     # create product name `<product type><Task><Product name>`
     if not source_product_name.startswith(product_type):
         resulting_group_name = '{}{}{}{}{}'.format(
