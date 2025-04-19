@@ -1063,10 +1063,6 @@ class PublishPuginsModel(BaseSettingsModel):
         default_factory=CleanUpModel,
         title="Clean Up"
     )
-    CollectRenderedFiles: CollectRenderedFilesModel = SettingsField(
-        default_factory=CollectRenderedFilesModel,
-        title="Clean up farm rendered files"
-    )
     CleanUpFarm: CleanUpFarmModel = SettingsField(
         default_factory=CleanUpFarmModel,
         title="Clean Up Farm"
