@@ -928,9 +928,10 @@ class IntegrateHeroVersionModel(BaseSettingsModel):
                     "any of the links is in use creating issues with updating "
                     "hero versions.")
 
+
 class CollectRenderedFilesModel(BaseSettingsModel):
     remove_files: bool = SettingsField(
-        True,
+        False,
         title="Remove rendered files",
         description=(
             "Remove rendered files and metadata json on publish.\n\n"
@@ -940,6 +941,8 @@ class CollectRenderedFilesModel(BaseSettingsModel):
             "either case."
         )
     )
+
+
 class CleanUpModel(BaseSettingsModel):
     _isGroup = True
     paterns: list[str] = SettingsField(  # codespell:ignore paterns
@@ -1051,6 +1054,10 @@ class PublishPuginsModel(BaseSettingsModel):
             "If a reviewable is attached to another instance it will not be "
             "published as a render/review product of its own."
         )
+    )
+    CollectRenderedFiles: CollectRenderedFilesModel = SettingsField(
+        default_factory=CollectRenderedFilesModel,
+        title="Clean up farm rendered files"
     )
     CleanUp: CleanUpModel = SettingsField(
         default_factory=CleanUpModel,
@@ -1444,7 +1451,7 @@ DEFAULT_PUBLISH_VALUES = {
         "enabled": True,
     },
     "CollectRenderedFiles": {
-        "remove_files": True
+        "remove_files": False
     },
     "CleanUp": {
         "paterns": [],  # codespell:ignore paterns
