@@ -62,6 +62,7 @@ from .execute import (
     run_subprocess,
     run_detached_process,
     run_ayon_launcher_process,
+    run_detached_ayon_launcher_process,
     path_to_subprocess_arg,
     CREATE_NO_WINDOW
 )
@@ -162,6 +163,7 @@ __all__ = [
     "run_subprocess",
     "run_detached_process",
     "run_ayon_launcher_process",
+    "run_detached_ayon_launcher_process",
     "path_to_subprocess_arg",
     "CREATE_NO_WINDOW",
 
