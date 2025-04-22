@@ -297,6 +297,7 @@ class AbstractLauncherFrontEnd(AbstractLauncherCommon):
     @abstractmethod
     def trigger_action(
         self,
+        action_label,
         action_type,
         action_id,
         project_name,
@@ -308,6 +309,7 @@ class AbstractLauncherFrontEnd(AbstractLauncherCommon):
         """Trigger action on given context.
 
         Args:
+            action_label (str): Action label.
             action_type (Literal["webaction", "local"]): Action type.
             action_id (str): Action identifier.
             project_name (Union[str, None]): Project name.

@@ -232,6 +232,7 @@ class ActionsModel:
 
     def trigger_action(
         self,
+        action_label,
         acton_type,
         identifier,
         project_name,
@@ -242,6 +243,7 @@ class ActionsModel:
     ):
         if acton_type == "webaction":
             self._trigger_webaction(
+                action_label,
                 identifier,
                 project_name,
                 folder_id,
@@ -447,6 +449,7 @@ class ActionsModel:
 
     def _trigger_webaction(
         self,
+        action_label,
         identifier,
         project_name,
         folder_id,
@@ -475,9 +478,6 @@ class ActionsModel:
             "entityType": entity_type,
             "entityIds": entity_ids,
         }
-
-        # TODO pass label in as argument?
-        action_label = "Webaction"
 
         failed = False
         error_message = None
