@@ -304,7 +304,7 @@ def run_ayon_launcher_process(
 
     Example:
     ```
-    run_ayon_process("run", "<path to .py script>")
+    run_ayon_launcher_process("run", "<path to .py script>")
     ```
 
     Args:
@@ -334,7 +334,7 @@ def run_detached_ayon_launcher_process(
 
     Example:
     ```
-    run_ayon_process("run", "<path to .py script>")
+    run_detached_ayon_launcher_process("run", "<path to .py script>")
     ```
 
     Args:
