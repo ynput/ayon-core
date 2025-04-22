@@ -438,23 +438,36 @@ class ActionsWidget(QtWidgets.QWidget):
         project_name = self._model.get_selected_project_name()
         folder_id = self._model.get_selected_folder_id()
         task_id = self._model.get_selected_task_id()
+        if is_group:
+            action_item = self._show_menu_on_group(action_id)
+            if action_item is None:
+                return
 
-        if not is_group:
+            action_id = action_item.identifier
+            action_label = action_item.full_label
+            action_type = action_item.action_type
+            addon_name = action_item.addon_name
+            addon_version = action_item.addon_version
+        else:
+            action_label = index.data(QtCore.Qt.DisplayRole)
             action_type = index.data(ACTION_TYPE_ROLE)
             addon_name = index.data(ACTION_ADDON_NAME_ROLE)
             addon_version = index.data(ACTION_ADDON_VERSION_ROLE)
-            self._controller.trigger_action(
-                action_type,
-                action_id,
-                project_name,
-                folder_id,
-                task_id,
-                addon_name,
-                addon_version,
-            )
-            self._start_animation(index)
-            return
 
+        self._controller.trigger_action(
+            action_label,
+            action_type,
+            action_id,
+            project_name,
+            folder_id,
+            task_id,
+            addon_name,
+            addon_version,
+        )
+        self._start_animation(index)
+        self._start_animation(index)
+
+    def _show_menu_on_group(self, action_id):
         action_items = self._model.get_group_items(action_id)
 
         menu = QtWidgets.QMenu(self)
@@ -467,20 +480,9 @@ class ActionsWidget(QtWidgets.QWidget):
 
         result = menu.exec_(QtGui.QCursor.pos())
         if not result:
-            return
+            return None
 
-        action_item = actions_mapping[result]
-
-        self._controller.trigger_action(
-            action_item.action_type,
-            action_item.identifier,
-            project_name,
-            folder_id,
-            task_id,
-            action_item.addon_name,
-            action_item.addon_version,
-        )
-        self._start_animation(index)
+        return actions_mapping[result]
 
     def _on_context_menu(self, point):
         """Creates menu to force skip opening last workfile."""

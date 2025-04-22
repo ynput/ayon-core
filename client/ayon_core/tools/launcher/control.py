@@ -137,6 +137,7 @@ class BaseLauncherController(
 
     def trigger_action(
         self,
+        action_label,
         action_type,
         identifier,
         project_name,
@@ -146,6 +147,7 @@ class BaseLauncherController(
         addon_version,
     ):
         self._actions_model.trigger_action(
+            action_label,
             action_type,
             identifier,
             project_name,
