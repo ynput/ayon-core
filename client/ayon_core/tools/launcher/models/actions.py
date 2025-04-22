@@ -518,9 +518,10 @@ class ActionsModel:
 
     def _handle_webaction_response(self, data):
         response_type = data["type"]
-        # Nothing to do
         if response_type == "server":
-            return
+            raise Exception(
+                "Please use AYON web UI to run the action."
+            )
 
         if response_type == "launcher":
             # Run AYON launcher process with uri in arguments
