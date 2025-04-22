@@ -19,7 +19,12 @@ from ayon_core.style import (
 from ayon_core.resources import get_image_path
 from ayon_core.lib import Logger
 
-from .constants import CHECKED_INT, UNCHECKED_INT, PARTIALLY_CHECKED_INT
+from .constants import (
+    CHECKED_INT,
+    UNCHECKED_INT,
+    PARTIALLY_CHECKED_INT,
+    DEFAULT_WEB_ICON_COLOR,
+)
 
 log = Logger.get_logger(__name__)
 
@@ -482,8 +487,14 @@ class _IconsCache:
         if icon_type == "path":
             parts = [icon_type, icon_def["path"]]
 
-        elif icon_type in {"awesome-font", "material-symbols"}:
-            color = icon_def["color"] or ""
+        elif icon_type == "awesome-font":
+            color = icon_def.get("color") or ""
+            if isinstance(color, QtGui.QColor):
+                color = color.name()
+            parts = [icon_type, icon_def["name"] or "", color]
+
+        elif icon_type == "material-symbols":
+            color = icon_def.get("color") or DEFAULT_WEB_ICON_COLOR
             if isinstance(color, QtGui.QColor):
                 color = color.name()
             parts = [icon_type, icon_def["name"] or "", color]
@@ -517,7 +528,7 @@ class _IconsCache:
 
         elif icon_type == "awesome-font":
             icon_name = icon_def["name"]
-            icon_color = icon_def["color"]
+            icon_color = icon_def.get("color")
             icon = cls.get_qta_icon_by_name_and_color(icon_name, icon_color)
             if icon is None:
                 icon = cls.get_qta_icon_by_name_and_color(
@@ -525,7 +536,7 @@ class _IconsCache:
 
         elif icon_type == "material-symbols":
             icon_name = icon_def["name"]
-            icon_color = icon_def["color"]
+            icon_color = icon_def.get("color") or DEFAULT_WEB_ICON_COLOR
             if qtmaterialsymbols.get_icon_name_char(icon_name) is not None:
                 icon = qtmaterialsymbols.get_icon(icon_name, icon_color)
 
