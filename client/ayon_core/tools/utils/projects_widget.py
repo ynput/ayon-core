@@ -351,13 +351,14 @@ class ProjectSortFilterProxy(QtCore.QSortFilterProxyModel):
             return True
 
         string_pattern = self.filterRegularExpression().pattern()
-        if string_pattern:
-            return string_pattern.lower() in project_name.lower()
+        if (
+            string_pattern
+            and string_pattern.lower() not in project_name.lower()
+        ):
+            return False
 
         # Current project keep always visible
-        default = super(ProjectSortFilterProxy, self).filterAcceptsRow(
-            source_row, source_parent
-        )
+        default = super().filterAcceptsRow(source_row, source_parent)
         if not default:
             return default
 
