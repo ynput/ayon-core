@@ -5,6 +5,7 @@ import collections
 from qtpy import QtWidgets, QtCore, QtGui
 
 from ayon_core import style
+from ayon_core.lib import Logger
 from ayon_core.lib.attribute_definitions import (
     UILabelDef,
     EnumDef,
@@ -56,7 +57,8 @@ class ActionsQtModel(QtGui.QStandardItemModel):
     refreshed = QtCore.Signal()
 
     def __init__(self, controller):
-        super(ActionsQtModel, self).__init__()
+        self._log = Logger.get_logger(self.__class__.__name__)
+        super().__init__()
 
         controller.register_event_callback(
             "selection.project.changed",
@@ -134,6 +136,7 @@ class ActionsQtModel(QtGui.QStandardItemModel):
             all_action_items_info.append((first_item, len(action_items) > 1))
             groups_by_id[first_item.identifier] = action_items
 
+        transparent_icon = {"type": "transparent", "size": 256}
         new_items = []
         items_by_id = {}
         action_items_by_id = {}
@@ -141,13 +144,21 @@ class ActionsQtModel(QtGui.QStandardItemModel):
             action_item, is_group = action_item_info
             icon_def = action_item.icon
             if not icon_def:
-                icon_def = {"type": "transparent", "size": 256}
                 icon_def = transparent_icon.copy()
             elif icon_def.get("type") == "material-symbols":
                 if "name" not in icon_def:
                     icon_def = transparent_icon.copy()
                 elif not icon_def.get("color"):
                     icon_def["color"] = "#f5f5f5"
+
+            try:
+                icon = get_qt_icon(icon_def)
+            except Exception:
+                self._log.warning(
+                    "Failed to parse icon definition", exc_info=True
+                )
+                # Use empty icon if failed to parse definition
+                icon = get_qt_icon(transparent_icon.copy())
 
             if is_group:
                 label = action_item.label
