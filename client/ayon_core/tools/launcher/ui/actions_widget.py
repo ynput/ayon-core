@@ -149,7 +149,7 @@ class ActionsQtModel(QtGui.QStandardItemModel):
                 if "name" not in icon_def:
                     icon_def = transparent_icon.copy()
                 elif not icon_def.get("color"):
-                    icon_def["color"] = "#f5f5f5"
+                    icon_def["color"] = "#f4f5f5"
 
             try:
                 icon = get_qt_icon(icon_def)
