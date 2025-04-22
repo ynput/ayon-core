@@ -201,29 +201,7 @@ def clean_envs_for_ayon_process(env=None):
     return env
 
 
-def run_ayon_launcher_process(*args, add_sys_paths=False, **kwargs):
-    """Execute AYON process with passed arguments and wait.
-
-    Wrapper for 'run_process' which prepends AYON executable arguments
-    before passed arguments and define environments if are not passed.
-
-    Values from 'os.environ' are used for environments if are not passed.
-    They are cleaned using 'clean_envs_for_ayon_process' function.
-
-    Example:
-    ```
-    run_ayon_process("run", "<path to .py script>")
-    ```
-
-    Args:
-        *args (str): ayon-launcher cli arguments.
-        **kwargs (Any): Keyword arguments for subprocess.Popen.
-
-    Returns:
-        str: Full output of subprocess concatenated stdout and stderr.
-
-    """
-    args = get_ayon_launcher_args(*args)
+def _prepare_ayon_launcher_env(add_sys_paths: bool, kwargs):
     env = kwargs.pop("env", None)
     # Keep env untouched if are passed and not empty
     if not env:
@@ -239,8 +217,7 @@ def run_ayon_launcher_process(*args, add_sys_paths=False, **kwargs):
                 new_pythonpath.append(path)
                 lookup_set.add(path)
         env["PYTHONPATH"] = os.pathsep.join(new_pythonpath)
-
-    return run_subprocess(args, env=env, **kwargs)
+    return env
 
 
 def run_detached_process(args, **kwargs):
@@ -312,6 +289,66 @@ def run_detached_process(args, **kwargs):
 
     process = subprocess.Popen(args, **kwargs)
     return process
+
+
+def run_ayon_launcher_process(
+    *args, add_sys_paths=False, **kwargs
+):
+    """Execute AYON process with passed arguments and wait.
+
+    Wrapper for 'run_process' which prepends AYON executable arguments
+    before passed arguments and define environments if are not passed.
+
+    Values from 'os.environ' are used for environments if are not passed.
+    They are cleaned using 'clean_envs_for_ayon_process' function.
+
+    Example:
+    ```
+    run_ayon_process("run", "<path to .py script>")
+    ```
+
+    Args:
+        *args (str): ayon-launcher cli arguments.
+        add_sys_paths (bool): Add system paths to PYTHONPATH.
+        **kwargs (Any): Keyword arguments for subprocess.Popen.
+
+    Returns:
+        str: Full output of subprocess concatenated stdout and stderr.
+
+    """
+    args = get_ayon_launcher_args(*args)
+    env = _prepare_ayon_launcher_env(add_sys_paths, kwargs)
+    return run_subprocess(args, env=env, **kwargs)
+
+
+def run_detached_ayon_launcher_process(
+    *args, add_sys_paths=False, **kwargs
+):
+    """Execute AYON process with passed arguments and wait.
+
+    Wrapper for 'run_process' which prepends AYON executable arguments
+    before passed arguments and define environments if are not passed.
+
+    Values from 'os.environ' are used for environments if are not passed.
+    They are cleaned using 'clean_envs_for_ayon_process' function.
+
+    Example:
+    ```
+    run_ayon_process("run", "<path to .py script>")
+    ```
+
+    Args:
+        *args (str): ayon-launcher cli arguments.
+        add_sys_paths (bool): Add system paths to PYTHONPATH.
+        **kwargs (Any): Keyword arguments for subprocess.Popen.
+
+    Returns:
+        str: Full output of subprocess concatenated stdout and stderr.
+
+    """
+    args = get_ayon_launcher_args(*args)
+    env = _prepare_ayon_launcher_env(add_sys_paths, kwargs)
+    return run_detached_process(args, env=env, **kwargs)
 
 
 def path_to_subprocess_arg(path):
