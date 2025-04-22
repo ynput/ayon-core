@@ -1,7 +1,5 @@
 import os
 import copy
-import platform
-import subprocess
 from urllib.parse import urlencode
 
 import ayon_api
@@ -12,6 +10,7 @@ from ayon_core.lib import (
     NestedCacheItem,
     CacheItem,
     get_settings_variant,
+    run_detached_ayon_launcher_process,
 )
 from ayon_core.addon import AddonsManager
 from ayon_core.pipeline.actions import (
@@ -524,16 +523,11 @@ class ActionsModel:
             return
 
         if response_type == "launcher":
-            uri = data["uri"]
-            # There might be a better way to do this?
-            # Not sure if all linux distributions have 'xdg-open' available
-            platform_name = platform.system().lower()
-            if platform_name == "windows":
-                os.startfile(uri)
-            elif platform_name == "darwin":
-                subprocess.run(["open", uri])
-            else:
-                subprocess.run(["xdg-open", uri])
+            # Run AYON launcher process with uri in arguments
+            # NOTE This does pass environment variables of current process
+            #   to the subprocess.
+            # NOTE We could 'take action' directly and use the arguments here
+            run_detached_ayon_launcher_process(data["uri"])
             return
 
         raise Exception(
