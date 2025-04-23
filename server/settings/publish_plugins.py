@@ -20,6 +20,7 @@ def _handle_missing_frames_enum():
         {"value": "only_rendered", "label": "Use only rendered"},
     ]
 
+
 class EnabledModel(BaseSettingsModel):
     enabled: bool = SettingsField(True)
 
