@@ -10,6 +10,8 @@ from typing import Optional
 
 import xml.etree.ElementTree
 
+import clique
+
 from .execute import run_subprocess
 from .vendor_bin_utils import (
     get_ffmpeg_tool_args,
@@ -707,7 +709,29 @@ def convert_input_paths_for_ffmpeg(
     # Collect channels to export
     input_arg, channels_arg = get_oiio_input_and_channel_args(input_info)
 
-    for input_path in input_paths:
+    # Process input files
+    # If a sequence of files is detected we process it in one go
+    # with the dedicated --frames argument for faster processing
+    collections, remainder = clique.assemble(
+        input_paths, patterns=clique.PATTERNS["frame"])
+    process_queue = collections + remainder
+
+    for input_item in process_queue:
+        if isinstance(input_item, clique.Collection):
+            # Support sequences with holes by supplying dedicated `--frames`
+            # Create `frames` string like "1001-1002,1004,1010-1012
+            frames: str = input_item.format("{ranges}").replace(" ", "")
+            # Create `filename` string like "file.%04d.exr"
+            input_path = input_item.format("{head}{padding}{tail}")
+        elif isinstance(input_item, str):
+            # Single filepath
+            frames = None
+            input_path = input_item
+        else:
+            raise TypeError(
+                f"Input is not a string or Collection: {input_item}"
+            )
+
         # Prepare subprocess arguments
         oiio_cmd = get_oiio_tool_args(
             "oiiotool",
@@ -717,6 +741,14 @@ def convert_input_paths_for_ffmpeg(
         # Add input compression if available
         if compression:
             oiio_cmd.extend(["--compression", compression])
+
+        if frames:
+            oiio_cmd.extend([
+                "--frames", frames,
+                # TODO: Handle potential toggle for parallel frames
+                #  to support older OIIO releases.
+                "--parallel-frames"
+            ])
 
         oiio_cmd.extend([
             input_arg, input_path,
@@ -1106,6 +1138,8 @@ def convert_colorspace(
     view=None,
     display=None,
     additional_command_args=None,
+    frames=None,
+    parallel_frames=False,
     logger=None,
 ):
     """Convert source file from one color space to another.
@@ -1114,7 +1148,7 @@ def convert_colorspace(
         input_path (str): Path that should be converted. It is expected that
             contains single file or image sequence of same type
             (sequence in format 'file.FRAMESTART-FRAMEEND#.ext', see oiio docs,
-            eg `big.1-3#.tif`)
+            eg `big.1-3#.tif` or `big.%04d.ext` with `frames` argument)
         output_path (str): Path to output filename.
             (must follow format of 'input_path', eg. single file or
              sequence in 'file.FRAMESTART-FRAMEEND#.ext', `output.1-3#.tif`)
@@ -1128,6 +1162,11 @@ def convert_colorspace(
             both 'view' and 'display' must be filled (if 'target_colorspace')
         additional_command_args (list): arguments for oiiotool (like binary
             depth for .dpx)
+        frames (Optional[str]): Complex frame range to process. This requires
+            input path and output path to use frame token placeholder like
+            e.g. file.%04d.exr
+        parallel_frames (bool): If True, process frames in parallel inside
+            the `oiiotool` process. Only supported in OIIO 2.5.20.0+.
         logger (logging.Logger): Logger used for logging.
     Raises:
         ValueError: if misconfigured
@@ -1145,8 +1184,20 @@ def convert_colorspace(
         "oiiotool",
         # Don't add any additional attributes
         "--nosoftwareattrib",
-        "--colorconfig", config_path
+        "--colorconfig", config_path,
     )
+
+    if frames:
+        # If `frames` is specified, then process the input and output
+        # as if it's a sequence of frames (must contain `%04d` as frame
+        # token placeholder in filepaths)
+        oiio_cmd.extend([
+            "--frames", frames,
+        ])
+    if parallel_frames:
+        oiio_cmd.extend([
+            "--parallel-frames"
+        ])
 
     oiio_cmd.extend([
         input_arg, input_path,
