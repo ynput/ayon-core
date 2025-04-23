@@ -255,7 +255,7 @@ def deliver_sequence(
         report_items[""].append(msg)
         return report_items, 0
 
-    dir_path, file_name = os.path.split(str(src_path))
+    dir_path, _file_name = os.path.split(str(src_path))
 
     context = repre["context"]
     ext = context.get("ext", context.get("representation"))
@@ -270,7 +270,7 @@ def deliver_sequence(
     # context.representation could be .psd
     ext = ext.replace("..", ".")
 
-    src_collections, remainder = clique.assemble(os.listdir(dir_path))
+    src_collections, _remainder = clique.assemble(os.listdir(dir_path))
     src_collection = None
     for col in src_collections:
         if col.tail != ext:

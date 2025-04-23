@@ -1,3 +1,6 @@
+from __future__ import annotations
+from typing import Optional
+
 from qtpy import QtWidgets, QtGui, QtCore
 
 from ayon_core.style import (
@@ -343,6 +346,29 @@ class TasksQtModel(QtGui.QStandardItemModel):
         return self._has_content
 
 
+class TasksProxyModel(QtCore.QSortFilterProxyModel):
+    def __init__(self):
+        super().__init__()
+
+        self._task_ids_filter: Optional[set[str]] = None
+
+    def set_task_ids_filter(self, task_ids: Optional[set[str]]):
+        if self._task_ids_filter == task_ids:
+            return
+        self._task_ids_filter = task_ids
+        self.invalidateFilter()
+
+    def filterAcceptsRow(self, row, parent_index):
+        if self._task_ids_filter is not None:
+            if not self._task_ids_filter:
+                return False
+            source_index = self.sourceModel().index(row, 0, parent_index)
+            task_id = source_index.data(ITEM_ID_ROLE)
+            if task_id is not None and task_id not in self._task_ids_filter:
+                return False
+        return super().filterAcceptsRow(row, parent_index)
+
+
 class TasksWidget(QtWidgets.QWidget):
     """Tasks widget.
 
@@ -364,7 +390,7 @@ class TasksWidget(QtWidgets.QWidget):
         tasks_view.setIndentation(0)
 
         tasks_model = TasksQtModel(controller)
-        tasks_proxy_model = QtCore.QSortFilterProxyModel()
+        tasks_proxy_model = TasksProxyModel()
         tasks_proxy_model.setSourceModel(tasks_model)
         tasks_proxy_model.setSortCaseSensitivity(QtCore.Qt.CaseInsensitive)
 
@@ -490,6 +516,15 @@ class TasksWidget(QtWidgets.QWidget):
         )
         return True
 
+    def set_task_ids_filter(self, task_ids: Optional[list[str]]):
+        """Set filter of folder ids.
+
+        Args:
+            task_ids (list[str]): The list of folder ids.
+
+        """
+        self._tasks_proxy_model.set_task_ids_filter(task_ids)
+
     def _on_tasks_refresh_finished(self, event):
         """Tasks were refreshed in controller.
 
@@ -540,7 +575,7 @@ class TasksWidget(QtWidgets.QWidget):
         if self._tasks_model.is_refreshing:
             return
 
-        parent_id, task_id, task_name, _ = self._get_selected_item_ids()
+        _parent_id, task_id, task_name, _ = self._get_selected_item_ids()
         self._controller.set_selected_task(task_id, task_name)
         self.selection_changed.emit()
 

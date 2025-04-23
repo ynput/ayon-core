@@ -209,7 +209,7 @@ def get_staging_dir_info(
     staging_dir_config = get_staging_dir_config(
         project_entity["name"],
         task_type,
-        task_name ,
+        task_name,
         product_type,
         product_name,
         host_name,
