@@ -829,7 +829,7 @@ class ExtractReview(pyblish.api.InstancePlugin):
             ffmpeg_input_args.extend([
                 "-f", "concat",
                 "-safe", "0",
-                "-fflags",  "+genpts+igndts",
+                "-fflags", "+genpts+igndts",
                 "-i", path_to_subprocess_arg(explicit_frames_path),
                 "-r", "25"
             ])
