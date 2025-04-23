@@ -640,7 +640,7 @@ def convert_input_paths_for_ffmpeg(
             frames = _input.format("{head}#{tail}").replace(" ", "")
             oiio_cmd.extend([
                 "--framepadding", _input.padding,
-                "--frames", _input.format("{ranges}"),
+                "--frames", frames,
                 "--parallel-frames"
             ])
             _input: str = _input.format("{head}#{tail}")
