@@ -1,3 +1,4 @@
+from __future__ import annotations
 import os
 import re
 import logging
@@ -528,135 +529,36 @@ def should_convert_for_ffmpeg(src_filepath):
     return False
 
 
-# Deprecated since 2022 4 20
-# - Reason - Doesn't convert sequences right way: Can't handle gaps, reuse
-#       first frame for all frames and changes filenames when input
-#       is sequence.
-# - use 'convert_input_paths_for_ffmpeg' instead
-def convert_for_ffmpeg(
-    first_input_path,
-    output_dir,
-    input_frame_start=None,
-    input_frame_end=None,
-    logger=None
-):
-    """Convert source file to format supported in ffmpeg.
-
-    Currently can convert only exrs.
-
-    Args:
-        first_input_path (str): Path to first file of a sequence or a single
-            file path for non-sequential input.
-        output_dir (str): Path to directory where output will be rendered.
-            Must not be same as input's directory.
-        input_frame_start (int): Frame start of input.
-        input_frame_end (int): Frame end of input.
-        logger (logging.Logger): Logger used for logging.
-
-    Raises:
-        ValueError: If input filepath has extension not supported by function.
-            Currently is supported only ".exr" extension.
-    """
-    if logger is None:
-        logger = logging.getLogger(__name__)
-
-    logger.warning((
-        "DEPRECATED: 'ayon_core.lib.transcoding.convert_for_ffmpeg' is"
-        " deprecated function of conversion for FFMpeg. Please replace usage"
-        " with 'ayon_core.lib.transcoding.convert_input_paths_for_ffmpeg'"
-    ))
-
-    ext = os.path.splitext(first_input_path)[1].lower()
-    if ext != ".exr":
-        raise ValueError((
-            "Function 'convert_for_ffmpeg' currently support only"
-            " \".exr\" extension. Got \"{}\"."
-        ).format(ext))
-
-    is_sequence = False
-    if input_frame_start is not None and input_frame_end is not None:
-        is_sequence = int(input_frame_end) != int(input_frame_start)
-
-    input_info = get_oiio_info_for_input(first_input_path, logger=logger)
-
-    # Change compression only if source compression is "dwaa" or "dwab"
-    #   - they're not supported in ffmpeg
-    compression = input_info["attribs"].get("compression")
-    if compression in ("dwaa", "dwab"):
-        compression = "none"
-
-    # Prepare subprocess arguments
-    oiio_cmd = get_oiio_tool_args(
-        "oiiotool",
-        # Don't add any additional attributes
-        "--nosoftwareattrib",
-    )
-    # Add input compression if available
-    if compression:
-        oiio_cmd.extend(["--compression", compression])
-
-    # Collect channels to export
-    input_arg, channels_arg = get_oiio_input_and_channel_args(input_info)
-
-    oiio_cmd.extend([
-        input_arg, first_input_path,
-        # Tell oiiotool which channels should be put to top stack (and output)
-        "--ch", channels_arg,
-        # Use first subimage
-        "--subimage", "0"
-    ])
-
-    # Add frame definitions to arguments
-    if is_sequence:
-        oiio_cmd.extend([
-            "--frames", "{}-{}".format(input_frame_start, input_frame_end)
-        ])
-
+def _get_attributes_to_erase(
+    input_info: dict, logger: logging.Logger
+) -> list[str]:
+    """FFMPEG does not support some attributes in metadata."""
+    erase_attrs: dict[str, str] = {}  # Attr name to reason mapping
     for attr_name, attr_value in input_info["attribs"].items():
         if not isinstance(attr_value, str):
             continue
 
         # Remove attributes that have string value longer than allowed length
         #   for ffmpeg or when contain prohibited symbols
-        erase_reason = "Missing reason"
-        erase_attribute = False
         if len(attr_value) > MAX_FFMPEG_STRING_LEN:
-            erase_reason = "has too long value ({} chars).".format(
-                len(attr_value)
+            reason = f"has too long value ({len(attr_value)} chars)."
+            erase_attrs[attr_name] = reason
+            continue
+
+        for char in NOT_ALLOWED_FFMPEG_CHARS:
+            if char not in attr_value:
+                continue
+            reason = f"contains unsupported character \"{char}\"."
+            erase_attrs[attr_name] = reason
+            break
+
+    if logger is not None:
+        for attr_name, reason in erase_attrs.items():
+            logger.info(
+                f"Removed attribute \"{attr_name}\" from metadata"
+                f" because {reason}."
             )
-            erase_attribute = True
-
-        if not erase_attribute:
-            for char in NOT_ALLOWED_FFMPEG_CHARS:
-                if char in attr_value:
-                    erase_attribute = True
-                    erase_reason = (
-                        "contains unsupported character \"{}\"."
-                    ).format(char)
-                    break
-
-        if erase_attribute:
-            # Set attribute to empty string
-            logger.info((
-                "Removed attribute \"{}\" from metadata because {}."
-            ).format(attr_name, erase_reason))
-            oiio_cmd.extend(["--eraseattrib", attr_name])
-
-    # Add last argument - path to output
-    if is_sequence:
-        ext = os.path.splitext(first_input_path)[1]
-        base_filename = "tmp.%{:0>2}d{}".format(
-            len(str(input_frame_end)), ext
-        )
-    else:
-        base_filename = os.path.basename(first_input_path)
-    output_path = os.path.join(output_dir, base_filename)
-    oiio_cmd.extend([
-        "-o", output_path
-    ])
-
-    logger.debug("Conversion command: {}".format(" ".join(oiio_cmd)))
-    run_subprocess(oiio_cmd, logger=logger)
+    return list(erase_attrs.keys())
 
 
 def convert_input_paths_for_ffmpeg(
@@ -666,7 +568,7 @@ def convert_input_paths_for_ffmpeg(
 ):
     """Convert source file to format supported in ffmpeg.
 
-    Currently can convert only exrs. The input filepaths should be files
+    Currently, can convert only exrs. The input filepaths should be files
     with same type. Information about input is loaded only from first found
     file.
 
@@ -684,7 +586,7 @@ def convert_input_paths_for_ffmpeg(
 
     Raises:
         ValueError: If input filepath has extension not supported by function.
-            Currently is supported only ".exr" extension.
+            Currently, only ".exr" extension is supported.
     """
     if logger is None:
         logger = logging.getLogger(__name__)
@@ -709,29 +611,19 @@ def convert_input_paths_for_ffmpeg(
     # Collect channels to export
     input_arg, channels_arg = get_oiio_input_and_channel_args(input_info)
 
-    # Process input files
-    # If a sequence of files is detected we process it in one go
-    # with the dedicated --frames argument for faster processing
-    collections, remainder = clique.assemble(
-        input_paths, patterns=clique.PATTERNS["frame"])
-    process_queue = collections + remainder
+    # Find which attributes to strip
+    erase_attributes: list[str] = _get_attributes_to_erase(
+        input_info, logger=logger
+    )
 
-    for input_item in process_queue:
-        if isinstance(input_item, clique.Collection):
-            # Support sequences with holes by supplying dedicated `--frames`
-            # Create `frames` string like "1001-1002,1004,1010-1012
-            frames: str = input_item.format("{ranges}").replace(" ", "")
-            # Create `filename` string like "file.%04d.exr"
-            input_path = input_item.format("{head}{padding}{tail}")
-        elif isinstance(input_item, str):
-            # Single filepath
-            frames = None
-            input_path = input_item
-        else:
-            raise TypeError(
-                f"Input is not a string or Collection: {input_item}"
-            )
-
+    input_collections, input_remainder = clique.assemble(
+        input_paths,
+        patterns=[clique.PATTERNS["frames"]],
+        assume_padded_when_ambiguous=True,
+    )
+    input_items = list(input_collections)
+    input_items.extend(input_remainder)
+    for _input in input_items:
         # Prepare subprocess arguments
         oiio_cmd = get_oiio_tool_args(
             "oiiotool",
@@ -742,16 +634,23 @@ def convert_input_paths_for_ffmpeg(
         if compression:
             oiio_cmd.extend(["--compression", compression])
 
-        if frames:
+        # Convert a sequence of files using a single oiiotool command
+        # using its sequence syntax
+        if isinstance(_input, clique.Collection):
+            frames = _input.format("{head}#{tail}").replace(" ", "")
             oiio_cmd.extend([
-                "--frames", frames,
-                # TODO: Handle potential toggle for parallel frames
-                #  to support older OIIO releases.
+                "--framepadding", _input.padding,
+                "--frames", _input.format("{ranges}"),
                 "--parallel-frames"
             ])
+            _input: str = _input.format("{head}#{tail}")
+        elif not isinstance(_input, str):
+            raise TypeError(
+                f"Input is not a string or Collection: {_input}"
+            )
 
         oiio_cmd.extend([
-            input_arg, input_path,
+            input_arg, _input,
             # Tell oiiotool which channels should be put to top stack
             #   (and output)
             "--ch", channels_arg,
@@ -759,38 +658,11 @@ def convert_input_paths_for_ffmpeg(
             "--subimage", "0"
         ])
 
-        for attr_name, attr_value in input_info["attribs"].items():
-            if not isinstance(attr_value, str):
-                continue
-
-            # Remove attributes that have string value longer than allowed
-            #   length for ffmpeg or when containing prohibited symbols
-            erase_reason = "Missing reason"
-            erase_attribute = False
-            if len(attr_value) > MAX_FFMPEG_STRING_LEN:
-                erase_reason = "has too long value ({} chars).".format(
-                    len(attr_value)
-                )
-                erase_attribute = True
-
-            if not erase_attribute:
-                for char in NOT_ALLOWED_FFMPEG_CHARS:
-                    if char in attr_value:
-                        erase_attribute = True
-                        erase_reason = (
-                            "contains unsupported character \"{}\"."
-                        ).format(char)
-                        break
-
-            if erase_attribute:
-                # Set attribute to empty string
-                logger.info((
-                    "Removed attribute \"{}\" from metadata because {}."
-                ).format(attr_name, erase_reason))
-                oiio_cmd.extend(["--eraseattrib", attr_name])
+        for attr_name in erase_attributes:
+            oiio_cmd.extend(["--eraseattrib", attr_name])
 
         # Add last argument - path to output
-        base_filename = os.path.basename(input_path)
+        base_filename = os.path.basename(_input)
         output_path = os.path.join(output_dir, base_filename)
         oiio_cmd.extend([
             "-o", output_path
@@ -1184,7 +1056,7 @@ def convert_colorspace(
         "oiiotool",
         # Don't add any additional attributes
         "--nosoftwareattrib",
-        "--colorconfig", config_path,
+        "--colorconfig", config_path
     )
 
     if frames:
