@@ -1205,7 +1205,7 @@ class ExtractReview(pyblish.api.InstancePlugin):
 
         filled_files = temp_data["filled_files"]
         if filled_files:
-            first_frame, first_file = list(filled_files.items())[0]
+            first_frame, first_file = next(iter(filled_files.items()))
             if first_file < full_input_path_single_file:
                 self.log.warning(f"Using filled frame: '{first_file}'")
                 full_input_path_single_file = first_file
