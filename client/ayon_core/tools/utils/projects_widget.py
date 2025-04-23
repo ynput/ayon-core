@@ -350,20 +350,20 @@ class ProjectSortFilterProxy(QtCore.QSortFilterProxyModel):
         if project_name is None:
             return True
 
-        string_pattern = self.filterRegularExpression().pattern()
-        if string_pattern:
-            return string_pattern.lower() in project_name.lower()
-
-        # Current project keep always visible
-        default = super(ProjectSortFilterProxy, self).filterAcceptsRow(
-            source_row, source_parent
-        )
-        if not default:
-            return default
-
         # Make sure current project is visible
         if index.data(PROJECT_IS_CURRENT_ROLE):
             return True
+
+        default = super().filterAcceptsRow(source_row, source_parent)
+        if not default:
+            return default
+
+        string_pattern = self.filterRegularExpression().pattern()
+        if (
+            string_pattern
+            and string_pattern.lower() not in project_name.lower()
+        ):
+            return False
 
         if (
             self._filter_inactive
