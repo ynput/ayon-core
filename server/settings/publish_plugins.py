@@ -651,7 +651,7 @@ class ExtractReviewOutputDefModel(BaseSettingsModel):
         default_factory=ExtractReviewLetterBox,
         title="Letter Box"
     )
-    fill_missing_frames:str = SettingsField(
+    fill_missing_frames: str = SettingsField(
         title="Handle missing frames",
         default="closest_existing",
         description="How to handle frames that are missing from entity frame "
