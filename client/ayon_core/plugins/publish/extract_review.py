@@ -819,8 +819,8 @@ class ExtractReview(pyblish.api.InstancePlugin):
                 staging_dir, "explicit_frames.txt")
             with open(explicit_frames_path, "w") as fp:
                 lines = [
-                    f"file {file}"
-                    for file in temp_data["explicit_input_paths"]
+                    f"file {path}"
+                    for path in temp_data["explicit_input_paths"]
                 ]
                 fp.write("\n".join(lines))
             temp_data["paths_to_remove"].append(explicit_frames_path)
@@ -829,7 +829,7 @@ class ExtractReview(pyblish.api.InstancePlugin):
             ffmpeg_input_args.extend([
                 "-f", "concat",
                 "-safe", "0",
-                "-fflags",  "+genpts+igndts",
+                "-fflags", "+genpts+igndts",
                 "-i", path_to_subprocess_arg(explicit_frames_path),
                 "-r", "25"
             ])
@@ -1079,9 +1079,8 @@ class ExtractReview(pyblish.api.InstancePlugin):
         """Fills missing files by blank frame."""
         blank_frame_path = os.path.join(staging_dir, f"blank.{extension}")
         temp_data["paths_to_remove"].append(blank_frame_path)
-        command = get_ffmpeg_tool_args("ffmpeg")
-
-        command.extend([
+        command = get_ffmpeg_tool_args(
+            "ffmpeg",
             "-f", "lavfi",
             "-i", "color=c=black:s={}x{}:d=1".format(
                 resolution_width, resolution_height
@@ -1089,7 +1088,7 @@ class ExtractReview(pyblish.api.InstancePlugin):
             "-tune", "stillimage",
             "-frames:v", "1",
             blank_frame_path
-        ])
+        )
 
         self.log.debug("Executing: {}".format(" ".join(command)))
         output = run_subprocess(
@@ -1206,7 +1205,7 @@ class ExtractReview(pyblish.api.InstancePlugin):
 
         filled_files = temp_data["filled_files"]
         if filled_files:
-            first_frame, first_file = list(filled_files.items())[0]
+            first_frame, first_file = next(iter(filled_files.items()))
             if first_file < full_input_path_single_file:
                 self.log.warning(f"Using filled frame: '{first_file}'")
                 full_input_path_single_file = first_file

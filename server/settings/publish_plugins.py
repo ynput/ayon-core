@@ -20,6 +20,7 @@ def _handle_missing_frames_enum():
         {"value": "only_rendered", "label": "Use only rendered"},
     ]
 
+
 class EnabledModel(BaseSettingsModel):
     enabled: bool = SettingsField(True)
 
@@ -650,7 +651,7 @@ class ExtractReviewOutputDefModel(BaseSettingsModel):
         default_factory=ExtractReviewLetterBox,
         title="Letter Box"
     )
-    fill_missing_frames:str = SettingsField(
+    fill_missing_frames: str = SettingsField(
         title="Handle missing frames",
         default="closest_existing",
         description="How to handle frames that are missing from entity frame "
