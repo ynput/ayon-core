@@ -441,7 +441,7 @@ class ExtractReview(pyblish.api.InstancePlugin):
                         collection=collection,
                         staging_dir=new_repre["stagingDir"],
                         instance=instance,
-                        current_repre=repre,
+                        current_repre_name=repre["name"],
                         start_frame=temp_data["frame_start"],
                         end_frame=temp_data["frame_end"],
                     )
@@ -977,13 +977,13 @@ class ExtractReview(pyblish.api.InstancePlugin):
         collection: str,
         staging_dir: str,
         instance: pyblish.plugin.Instance,
-        current_repre: Dict[Any, Any],
+        current_repre_name: str,
         start_frame: int,
         end_frame: int
     ) -> Optional[Dict[int, str]]:
         """Tries to replace missing frames from ones from last version"""
         repre_file_paths = self._get_last_version_files(
-            instance, current_repre)
+            instance, current_repre_name)
         if repre_file_paths is None:
             # issues in getting last version files, falling back
             return None
@@ -1031,7 +1031,7 @@ class ExtractReview(pyblish.api.InstancePlugin):
     def _get_last_version_files(
         self,
         instance: pyblish.plugin.Instance,
-        current_repre: Dict[Any, Any],
+        current_repre_name: str,
     ):
         product_name = instance.data["productName"]
         project_name = instance.data["projectEntity"]["name"]
@@ -1052,7 +1052,7 @@ class ExtractReview(pyblish.api.InstancePlugin):
         )
         matching_repre = None
         for repre in repres:
-            if repre["name"] == current_repre["name"]:
+            if repre["name"] == current_repre_name:
                 matching_repre = repre
                 break
         if not matching_repre:
