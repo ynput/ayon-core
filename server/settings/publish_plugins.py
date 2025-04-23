@@ -1,4 +1,6 @@
+from collections.abc import Iterable
 from pydantic import validator
+from typing import Any
 
 from ayon_server.settings import (
     BaseSettingsModel,
@@ -8,7 +10,7 @@ from ayon_server.settings import (
     ensure_unique_names,
     task_types_enum,
 )
-
+from ayon_server.exceptions import BadRequestException
 from ayon_server.types import ColorRGBA_uint8
 
 
@@ -154,6 +156,77 @@ class CollectUSDLayerContributionsModel(BaseSettingsModel):
     @validator("contribution_layers")
     def validate_unique_outputs(cls, value):
         ensure_unique_names(value)
+        return value
+
+
+class ResolutionOptionsModel(BaseSettingsModel):
+    _layout = "compact"
+    width: int = SettingsField(
+        1920,
+        ge=0,
+        le=100000,
+        title="Width",
+        description=(
+            "Width resolution number value"),
+        placeholder="Width"
+    )
+    height: int = SettingsField(
+        1080,
+        title="Height",
+        ge=0,
+        le=100000,
+        description=(
+            "Height resolution number value"),
+        placeholder="Height"
+    )
+    pixel_aspect: float = SettingsField(
+        1.0,
+        title="Pixel aspect",
+        ge=0.0,
+        le=100000.0,
+        description=(
+            "Pixel Aspect resolution decimal number value"),
+        placeholder="Pixel aspect"
+    )
+
+
+def ensure_unique_resolution_option(
+        objects: Iterable[Any], field_name: str | None = None) -> None:  # noqa: C901
+    """Ensure a list of objects have unique option attributes.
+
+    This function checks if the list of objects has unique 'width',
+    'height' and 'pixel_aspect' properties.
+    """
+    options = []
+    for obj in objects:
+        item_test_text = f"{obj.width}x{obj.height}x{obj.pixel_aspect}"
+        if item_test_text not in options:
+            options.append(item_test_text)
+        else:
+            raise BadRequestException(
+                f"Duplicate option '{item_test_text}'")
+
+
+class CollectExplicitResolutionModel(BaseSettingsModel):
+    enabled: bool = SettingsField(True, title="Enabled")
+    product_types: list[str] = SettingsField(
+        default_factory=list,
+        title="Product types",
+        description=(
+            "Only activate the attribute for following product types."
+        )
+    )
+    options: list[ResolutionOptionsModel] = SettingsField(
+        default_factory=list,
+        title="Resolution options",
+        description=(
+            "Options to be provided in publisher attribute"
+        )
+    )
+
+    @validator("options")
+    def validate_unique_options(cls, value):
+        ensure_unique_resolution_option(value)
         return value
 
 
@@ -988,6 +1061,10 @@ class PublishPuginsModel(BaseSettingsModel):
             title="Collect USD Layer Contributions",
         )
     )
+    CollectExplicitResolution: CollectExplicitResolutionModel = SettingsField(
+        default_factory=CollectExplicitResolutionModel,
+        title="Collect Explicit Resolution"
+    )
     ValidateEditorialAssetName: ValidateBaseModel = SettingsField(
         default_factory=ValidateBaseModel,
         title="Validate Editorial Asset Name"
@@ -1160,6 +1237,19 @@ DEFAULT_PUBLISH_VALUES = {
                 "contribution_apply_as_variant": False,
                 "contribution_target_product": "usdShot"
             },
+        ]
+    },
+    "CollectExplicitResolution": {
+        "enabled": True,
+        "product_types": [
+            "shot"
+        ],
+        "options": [
+            {
+                "width": 2048,
+                "height": 1080,
+                "aspect_ratio": 1.5,
+            }
         ]
     },
     "ValidateEditorialAssetName": {
