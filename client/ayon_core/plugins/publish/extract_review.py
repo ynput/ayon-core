@@ -1079,9 +1079,8 @@ class ExtractReview(pyblish.api.InstancePlugin):
         """Fills missing files by blank frame."""
         blank_frame_path = os.path.join(staging_dir, f"blank.{extension}")
         temp_data["paths_to_remove"].append(blank_frame_path)
-        command = get_ffmpeg_tool_args("ffmpeg")
-
-        command.extend([
+        command = get_ffmpeg_tool_args(
+            "ffmpeg",
             "-f", "lavfi",
             "-i", "color=c=black:s={}x{}:d=1".format(
                 resolution_width, resolution_height
@@ -1089,7 +1088,7 @@ class ExtractReview(pyblish.api.InstancePlugin):
             "-tune", "stillimage",
             "-frames:v", "1",
             blank_frame_path
-        ])
+        )
 
         self.log.debug("Executing: {}".format(" ".join(command)))
         output = run_subprocess(
