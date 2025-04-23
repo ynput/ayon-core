@@ -433,7 +433,7 @@ class ExtractReview(pyblish.api.InstancePlugin):
                         end_frame=temp_data["frame_end"],
                         resolution_width=temp_data["resolution_width"],
                         resolution_height=temp_data["resolution_height"],
-                        extension=temp_data["ext"],
+                        extension=temp_data["input_ext"],
                         temp_data=temp_data
                     )
                 elif fill_missing_frames == "previous_version":
@@ -665,7 +665,7 @@ class ExtractReview(pyblish.api.InstancePlugin):
             "with_audio": with_audio,
             "without_handles": without_handles,
             "handles_are_set": handles_are_set,
-            "ext": ext,
+            "input_ext": ext,
             "explicit_input_paths": [],  # absolute paths to rendered files
             "paths_to_remove": []
         }
