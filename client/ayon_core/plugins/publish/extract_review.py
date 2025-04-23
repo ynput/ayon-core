@@ -819,8 +819,8 @@ class ExtractReview(pyblish.api.InstancePlugin):
                 staging_dir, "explicit_frames.txt")
             with open(explicit_frames_path, "w") as fp:
                 lines = [
-                    f"file {file}"
-                    for file in temp_data["explicit_input_paths"]
+                    f"file {path}"
+                    for path in temp_data["explicit_input_paths"]
                 ]
                 fp.write("\n".join(lines))
             temp_data["paths_to_remove"].append(explicit_frames_path)
