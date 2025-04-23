@@ -624,6 +624,8 @@ class ExtractReview(pyblish.api.InstancePlugin):
         input_is_sequence = self.input_is_sequence(repre)
         input_allow_bg = False
         first_sequence_frame = None
+
+        ext = os.path.splitext(repre["files"])[1].replace(".", "")
         if input_is_sequence and repre["files"]:
             # Calculate first frame that should be used
             cols, _ = clique.assemble(repre["files"])
@@ -642,8 +644,6 @@ class ExtractReview(pyblish.api.InstancePlugin):
             ext = os.path.splitext(repre["files"][0])[1].replace(".", "")
             if ext.lower() in self.alpha_exts:
                 input_allow_bg = True
-        else:
-            ext = os.path.splitext(repre["files"])[1].replace(".", "")
 
         return {
             "fps": float(instance.data["fps"]),
