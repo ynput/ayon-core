@@ -101,6 +101,7 @@ def test_image_sequence():
         expected_data,
     )
 
+
 def test_media_retimed():
     """
     EXR image sequence.
