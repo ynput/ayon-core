@@ -1114,7 +1114,7 @@ class ExtractReview(pyblish.api.InstancePlugin):
         staging_dir: str,
         start_frame: int,
         end_frame: int
-    ) -> list:
+    ) -> Dict[int, str]:
         """Fill missing files in sequence by duplicating existing ones.
 
         This will take nearest frame file and copy it with so as to fill
