@@ -1047,17 +1047,16 @@ class ExtractReview(pyblish.api.InstancePlugin):
         if not version_entity:
             return None
 
-        repres = get_representations(
+        matching_repres = get_representations(
             project_name,
-            version_ids=[version_entity["id"]]
+            version_ids=[version_entity["id"]],
+            representation_names=[current_repre_name],
+            fields={"files"}
         )
-        matching_repre = None
-        for repre in repres:
-            if repre["name"] == current_repre_name:
-                matching_repre = repre
-                break
-        if not matching_repre:
+
+        if not matching_repres:
             return None
+        matching_repre = list(matching_repres)[0]
 
         repre_file_paths = [
             file_info["path"]
