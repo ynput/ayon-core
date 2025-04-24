@@ -525,13 +525,13 @@ class ExtractReview(pyblish.api.InstancePlugin):
 
             run_subprocess(subprcs_cmd, shell=True, logger=self.log)
 
-            # delete files added to fill gaps
-            # if new_frame_files:
-            #     for filepath in new_frame_files.values():
-            #         # os.unlink(filepath)
-            #
-            # for filepath in temp_data["paths_to_remove"]:
-            #     os.unlink(filepath)
+            #delete files added to fill gaps
+            if new_frame_files:
+                for filepath in new_frame_files.values():
+                    os.unlink(filepath)
+
+            for filepath in temp_data["paths_to_remove"]:
+                os.unlink(filepath)
 
             new_repre.update({
                 "fps": temp_data["fps"],
