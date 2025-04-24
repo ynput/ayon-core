@@ -1005,13 +1005,7 @@ class ExtractReview(pyblish.api.InstancePlugin):
             hole_fpath = os.path.join(staging_dir, col_format % frame)
 
             previous_version_path = prev_col_format % frame
-            # limits too large padding coming from Anatomy
-            previous_version_path = (
-                os.path.join(
-                    anatomy.fill_root(os.path.dirname(previous_version_path)),
-                    os.path.basename(previous_version_path)
-                )
-            )
+            previous_version_path = anatomy.fill_root(previous_version_path)
             if not os.path.exists(previous_version_path):
                 self.log.warning(
                     "Missing frame should be replaced from "
