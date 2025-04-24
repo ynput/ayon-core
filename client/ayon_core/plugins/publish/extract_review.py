@@ -526,12 +526,12 @@ class ExtractReview(pyblish.api.InstancePlugin):
             run_subprocess(subprcs_cmd, shell=True, logger=self.log)
 
             # delete files added to fill gaps
-            if new_frame_files:
-                for filepath in new_frame_files.values():
-                    os.unlink(filepath)
-
-            for filepath in temp_data["paths_to_remove"]:
-                os.unlink(filepath)
+            # if new_frame_files:
+            #     for filepath in new_frame_files.values():
+            #         # os.unlink(filepath)
+            #
+            # for filepath in temp_data["paths_to_remove"]:
+            #     os.unlink(filepath)
 
             new_repre.update({
                 "fps": temp_data["fps"],
@@ -818,9 +818,10 @@ class ExtractReview(pyblish.api.InstancePlugin):
             staging_dir = os.path.dirname(temp_data["full_input_path"])
             explicit_frames_path = os.path.join(
                 staging_dir, "explicit_frames.txt")
+            frame_duration = 1 / temp_data["fps"]
             with open(explicit_frames_path, "w") as fp:
                 lines = [
-                    f"file {path}"
+                    f"file '{path}'{os.linesep}duration {frame_duration}"
                     for path in temp_data["explicit_input_paths"]
                 ]
                 fp.write("\n".join(lines))
@@ -830,9 +831,8 @@ class ExtractReview(pyblish.api.InstancePlugin):
             ffmpeg_input_args.extend([
                 "-f", "concat",
                 "-safe", "0",
-                "-fflags", "+genpts+igndts",
                 "-i", path_to_subprocess_arg(explicit_frames_path),
-                "-r", "25"
+                "-r", str(temp_data["fps"])
             ])
 
         # Add audio arguments if there are any. Skipped when output are images.
