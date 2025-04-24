@@ -1,13 +1,12 @@
 import pyblish.api
 from ayon_core.lib import EnumDef
-from ayon_core.pipeline import colorspace
 from ayon_core.pipeline import publish
 from ayon_core.pipeline.publish import PublishError
 
 
 class CollectExplicitResolution(
     pyblish.api.InstancePlugin,
-    publish.AYONPyblishPluginMixin
+    publish.AYONPyblishPluginMixin,
 ):
     """Collect explicit user defined resolution attributes for instances"""
 
@@ -61,7 +60,7 @@ class CollectExplicitResolution(
             return {
                 "resolutionWidth": item_values["width"],
                 "resolutionHeight": item_values["height"],
-                "pixelAspect": item_values["pixel_aspect"]
+                "pixelAspect": item_values["pixel_aspect"],
             }
         else:
             raise PublishError(
@@ -72,7 +71,8 @@ class CollectExplicitResolution(
         if cls.resolution_items is None:
             resolution_items = {}
             for item in cls.options:
-                item_text = f"{item['width']}x{item['height']}x{item['pixel_aspect']}"
+                item_text = (
+                    f"{item['width']}x{item['height']}x{item['pixel_aspect']}")
                 resolution_items[item_text] = item
 
             cls.resolution_items = resolution_items
@@ -81,7 +81,7 @@ class CollectExplicitResolution(
 
     @classmethod
     def get_attr_defs_for_instance(
-        cls, create_context, instance
+        cls, create_context, instance,
     ):
         if instance.product_type not in cls.product_types:
             return []
@@ -99,6 +99,6 @@ class CollectExplicitResolution(
                 "explicit_resolution",
                 items,
                 default="Don't override",
-                label="Override Resolution"
-            )
+                label="Override Resolution",
+            ),
         ]
