@@ -159,15 +159,21 @@ class ExtractOIIOTranscode(publish.Extractor):
                     files_to_convert)
                 self.log.debug("Files to convert: {}".format(files_to_convert))
                 for file_name in files_to_convert:
-                    # Handle special case for sequences where we specify
-                    # the --frames argument to oiiotool
-                    frames = None
-                    parallel_frames = False
-                    if isinstance(file_name, tuple):
-                        file_name, frames = file_name
-                        # TODO: Handle potential toggle for parallel frames
-                        #  to support older OIIO releases.
+                    if isinstance(file_name, clique.Collection):
+                        # Support sequences with holes by supplying
+                        # dedicated `--frames` argument to `oiiotool`
+                        # Create `filename` string like "file.%04d.exr"
+                        file_name = file_name.format("{head}{padding}{tail}")
+                        # Create `frames` string like "1001-1002,1004,1010-1012
+                        frames: str = file_name.format("{ranges}").replace(
+                            " ", "")
                         parallel_frames = True
+                    elif isinstance(file_name, str):
+                        # Single file
+                        frames = None
+                        parallel_frames = False
+                    else:
+                        raise TypeError("Unsupported files to ")
 
                     self.log.debug("Transcoding file: `{}`".format(file_name))
                     input_path = os.path.join(original_staging_dir, file_name)
@@ -279,9 +285,9 @@ class ExtractOIIOTranscode(publish.Extractor):
         Args:
             files_to_convert (list[str]): list of file names
         Returns:
-            list[Union[str, tuple[str, str]]: List of
-                or filepaths ['fileA.exr', 'fileB.exr']
-                or sequence with frames [('file.%04d.exr', '1001-1002,1004')]
+            list[str | clique.Collection]: List of
+                filepaths ['fileA.exr', 'fileB.exr']
+                or clique.Collection for a sequence.
 
         """
         pattern = [clique.PATTERNS["frames"]]
@@ -294,14 +300,7 @@ class ExtractOIIOTranscode(publish.Extractor):
                 raise ValueError(
                     "Too many collections {}".format(collections))
 
-            collection = collections[0]
-
-            # Support sequences with holes by supplying dedicated `--frames`
-            # Create `frames` string like "1001-1002,1004,1010-1012
-            frames: str = collection.format("{ranges}").replace(" ", "")
-            # Create `filename` string like "file.%04d.exr"
-            filename = collection.format("{head}{padding}{tail}")
-            return [(filename, frames)]
+            return collections
 
         return files_to_convert
 
