@@ -1081,7 +1081,7 @@ def convert_colorspace(
 
     if frame_padding:
         oiio_cmd.extend([
-            "--framepadding", frame_padding,
+            "--framepadding", str(frame_padding),
         ])
 
     if parallel_frames:
