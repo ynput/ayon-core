@@ -1049,7 +1049,16 @@ def convert_colorspace(
     if logger is None:
         logger = logging.getLogger(__name__)
 
-    input_info = get_oiio_info_for_input(input_path, logger=logger)
+    # Get oiioinfo only from first image, otherwise file can't be found
+    first_input_path = input_path
+    if frames:
+        assert isinstance(frames, str)  # for type hints
+        first_frame = int(frames.split(" x-,")[0])
+        first_frame = str(first_frame).zfill(frame_padding or 0)
+        for token in ["#", "%d"]:
+            first_input_path = first_input_path.replace(token, first_frame)
+
+    input_info = get_oiio_info_for_input(first_input_path, logger=logger)
 
     # Collect channels to export
     input_arg, channels_arg = get_oiio_input_and_channel_args(input_info)
