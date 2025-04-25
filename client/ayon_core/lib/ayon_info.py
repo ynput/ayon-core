@@ -75,7 +75,10 @@ def is_using_ayon_console():
         return True
     executable_path = os.environ["AYON_EXECUTABLE"]
     executable_filename = os.path.basename(executable_path)
-    return "ayon_console" in executable_filename
+    return (
+        "ayon_console" in executable_filename
+        or "python.exe" in executable_filename
+    )
 
 
 def is_headless_mode_enabled():
