@@ -77,7 +77,7 @@ def is_using_ayon_console():
     executable_filename = os.path.basename(executable_path)
     return (
         "ayon_console" in executable_filename
-        or "python.exe" in executable_filename
+        or "python" in executable_filename
     )
 
 
