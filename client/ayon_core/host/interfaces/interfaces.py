@@ -1,28 +1,6 @@
 from abc import ABC, abstractmethod
 
-
-class MissingMethodsError(ValueError):
-    """Exception when host miss some required methods for specific workflow.
-
-    Args:
-        host (HostBase): Host implementation where are missing methods.
-        missing_methods (list[str]): List of missing methods.
-    """
-
-    def __init__(self, host, missing_methods):
-        joined_missing = ", ".join(
-            ['"{}"'.format(item) for item in missing_methods]
-        )
-        host_name = getattr(host, "name", None)
-        if not host_name:
-            try:
-                host_name = host.__file__.replace("\\", "/").split("/")[-3]
-            except Exception:
-                host_name = str(host)
-        message = (
-            "Host \"{}\" miss methods {}".format(host_name, joined_missing)
-        )
-        super(MissingMethodsError, self).__init__(message)
+from .exceptions import MissingMethodsError
 
 
 class ILoadHost:
