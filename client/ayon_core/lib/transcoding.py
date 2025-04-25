@@ -1053,7 +1053,7 @@ def convert_colorspace(
     first_input_path = input_path
     if frames:
         assert isinstance(frames, str)  # for type hints
-        first_frame = int(frames.split(" x-,")[0])
+        first_frame = int(re.split("[ x-]", frames, 1)[0])
         first_frame = str(first_frame).zfill(frame_padding or 0)
         for token in ["#", "%d"]:
             first_input_path = first_input_path.replace(token, first_frame)
