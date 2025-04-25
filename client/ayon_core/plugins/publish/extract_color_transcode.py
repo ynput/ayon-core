@@ -162,11 +162,11 @@ class ExtractOIIOTranscode(publish.Extractor):
                     if isinstance(file_name, clique.Collection):
                         # Support sequences with holes by supplying
                         # dedicated `--frames` argument to `oiiotool`
-                        # Create `filename` string like "file.#.exr"
                         # Create `frames` string like "1001-1002,1004,1010-1012
-                        file_name = file_name.format("{head}#{tail}")
+                        # Create `filename` string like "file.#.exr"
                         frames = file_name.format("{ranges}").replace(" ", "")
                         frame_padding = file_name.padding
+                        file_name = file_name.format("{head}#{tail}")
                         parallel_frames = True
                     elif isinstance(file_name, str):
                         # Single file
