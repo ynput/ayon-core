@@ -278,8 +278,7 @@ class ExtractOIIOTranscode(publish.Extractor):
         new_repre["files"] = renamed_files
 
     def _translate_to_sequence(self, files_to_convert):
-        """Returns original individual filepaths or list of a single two-tuple
-        representating sequence filename with its frames.
+        """Returns original individual filepaths or list of clique.Collection.
 
         Uses clique to find frame sequence, and return the collections instead.
         If sequence not detected in input filenames, it returns original list.
