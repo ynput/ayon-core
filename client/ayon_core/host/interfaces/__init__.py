@@ -1,5 +1,5 @@
+from .exceptions import MissingMethodsError
 from .interfaces import (
-    MissingMethodsError,
     IPublishHost,
     INewPublisher,
     ILoadHost,
