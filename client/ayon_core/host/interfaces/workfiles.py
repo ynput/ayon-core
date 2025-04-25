@@ -129,28 +129,6 @@ class IWorkfileHost:
 
         return None
 
-    def work_root(self, session):
-        """Modify workdir per host.
-
-        Default implementation keeps workdir untouched.
-
-        Warnings:
-            We must handle this modification with more sophisticated way
-            because this can't be called out of DCC so opening of last workfile
-            (calculated before DCC is launched) is complicated. Also breaking
-            defined work template is not a good idea.
-            Only place where it's really used and can make sense is Maya. There
-            workspace.mel can modify subfolders where to look for maya files.
-
-        Args:
-            session (dict): Session context data.
-
-        Returns:
-            str: Path to new workdir.
-        """
-
-        return session["AYON_WORKDIR"]
-
     # --- Deprecated method names ---
     def file_extensions(self):
         """Deprecated variant of 'get_workfile_extensions'.
