@@ -3,7 +3,7 @@ from abc import ABC, abstractmethod
 from .exceptions import MissingMethodsError
 
 
-class IWorkfileHost(ABC):
+class IWorkfileHost:
     """Implementation requirements to be able use workfile utils and tool."""
 
     @staticmethod
