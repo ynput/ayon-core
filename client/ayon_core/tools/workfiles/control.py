@@ -140,12 +140,7 @@ class BaseWorkfileController(
         if host is None:
             host = registered_host()
 
-        host_is_valid = False
-        if host is not None:
-            missing_methods = (
-                IWorkfileHost.get_missing_workfile_methods(host)
-            )
-            host_is_valid = len(missing_methods) == 0
+        host_is_valid = isinstance(host, IWorkfileHost)
 
         self._host = host
         self._host_is_valid = host_is_valid

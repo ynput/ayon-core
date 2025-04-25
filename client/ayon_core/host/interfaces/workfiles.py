@@ -1,58 +1,10 @@
-from abc import ABC, abstractmethod
+from abc import abstractmethod
 
-from .exceptions import MissingMethodsError
 
 
 class IWorkfileHost:
     """Implementation requirements to be able use workfile utils and tool."""
 
-    @staticmethod
-    def get_missing_workfile_methods(host):
-        """Look for missing methods on "old type" host implementation.
-
-        Method is used for validation of implemented functions related to
-        workfiles. Checks only existence of methods.
-
-        Args:
-            Union[ModuleType, HostBase]: Object of host where to look for
-                required methods.
-
-        Returns:
-            list[str]: Missing method implementations for workfiles workflow.
-        """
-
-        if isinstance(host, IWorkfileHost):
-            return []
-
-        required = [
-            "open_file",
-            "save_file",
-            "current_file",
-            "has_unsaved_changes",
-            "file_extensions",
-            "work_root",
-        ]
-        missing = []
-        for name in required:
-            if not hasattr(host, name):
-                missing.append(name)
-        return missing
-
-    @staticmethod
-    def validate_workfile_methods(host):
-        """Validate methods of "old type" host for workfiles workflow.
-
-        Args:
-            Union[ModuleType, HostBase]: Object of host to validate.
-
-        Raises:
-            MissingMethodsError: If there are missing methods on host
-                implementation.
-        """
-
-        missing = IWorkfileHost.get_missing_workfile_methods(host)
-        if missing:
-            raise MissingMethodsError(host, missing)
 
     @abstractmethod
     def get_workfile_extensions(self):
