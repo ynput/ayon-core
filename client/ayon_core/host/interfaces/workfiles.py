@@ -1,7 +1,11 @@
+from __future__ import annotations
 import os
+import platform
 from abc import abstractmethod
 from dataclasses import dataclass, asdict
-from typing import Optional
+from typing import Optional, Any
+
+import ayon_api
 
 
 @dataclass
@@ -128,6 +132,132 @@ class IWorkfileHost:
         """
 
         return None
+
+    def list_workfiles(
+        self,
+        project_name: str,
+        folder_id: str,
+        task_id: str,
+        project_entity: Optional[dict[str, Any]] = None,
+        folder_entity: Optional[dict[str, Any]] = None,
+        task_entity: Optional[dict[str, Any]] = None,
+        workfile_entities: Optional[list[dict[str, Any]]] = None,
+        template_key: Optional[str] = None,
+        project_settings: Optional[dict[str, Any]] = None,
+        anatomy: Optional["Anatomy"] = None,
+    ) -> list[WorkfileInfo]:
+        """List workfiles in the given folder.
+
+        NOTES:
+        - Better method name?
+        - This method is pre-implemented as the logic can be shared across
+            95% of host integrations. Ad-hoc implementation to give host
+            integration workfile api functionality.
+        - Should this method also handle workfiles based on workfile entities?
+
+        Args:
+            project_name (str): Name of project.
+            folder_id (str): ID of folder.
+            task_id (str): ID of task.
+            project_entity (Optional[dict[str, Any]]): Project entity.
+            folder_entity (Optional[dict[str, Any]]): Folder entity.
+            task_entity (Optional[dict[str, Any]]): Task entity.
+            workfile_entities (Optional[list[dict[str, Any]]]): Workfile
+                entities.
+            template_key (Optional[str]): Template key.
+            project_settings (Optional[dict[str, Any]]): Project settings.
+            anatomy (Anatomy): Project anatomy.
+
+        Returns:
+            list[WorkfileInfo]: List of workfiles.
+
+        """
+        from ayon_core.pipeline import Anatomy
+        from ayon_core.pipeline.template_data import get_template_data
+        from ayon_core.pipeline.workfile import get_workdir_with_workdir_data
+
+        extensions = self.get_workfile_extensions()
+        if not extensions:
+            return []
+
+        if project_entity is None:
+            project_entity = ayon_api.get_project(project_name)
+
+        if folder_entity is None:
+            folder_entity = ayon_api.get_folder_by_id(project_name, folder_id)
+
+        if task_entity is None:
+            task_entity = ayon_api.get_task_by_id(project_name, task_id)
+
+        if workfile_entities is None:
+            workfile_entities = list(ayon_api.get_workfiles_info(
+                project_name, task_ids=[task_id]
+            ))
+
+        if anatomy is None:
+            anatomy = Anatomy(project_name, project_entity=project_entity)
+
+        workfile_entities_by_path = {
+            workfile_entity["path"]: workfile_entity
+            for workfile_entity in workfile_entities
+        }
+
+        workdir_data = get_template_data(
+            project_entity,
+            folder_entity,
+            task_entity,
+            host_name=self.name,
+        )
+        workdir = get_workdir_with_workdir_data(
+            workdir_data,
+            project_name,
+            anatomy=anatomy,
+            template_key=template_key,
+            project_settings=project_settings,
+        )
+
+        if platform.system().lower() == "windows":
+            rootless_workdir = workdir.replace("\\", "/")
+        else:
+            rootless_workdir = workdir
+
+        used_roots = workdir.used_values.get("root")
+        if used_roots:
+            used_root_name = next(iter(used_roots))
+            root_value = used_roots[used_root_name]
+            workdir_end = rootless_workdir[len(root_value):].lstrip("/")
+            rootless_workdir = f"{{root[{used_root_name}]}}/{workdir_end}"
+
+        filenames = []
+        if os.path.exists(workdir):
+            filenames = list(os.listdir(workdir))
+
+        items = []
+        for filename in filenames:
+            filepath = os.path.join(workdir, filename)
+            # TODO add 'default' support for folders
+            ext = os.path.splitext(filepath)[1].lower()
+            if ext not in extensions:
+                continue
+
+            rootless_path = f"{rootless_workdir}/{filename}"
+            workfile_entity = workfile_entities_by_path.pop(
+                rootless_path, None
+            )
+            items.append(WorkfileInfo.new(
+                filepath, rootless_path, True, workfile_entity
+            ))
+
+        for workfile_entity in workfile_entities_by_path.values():
+            # Workfile entity is not in the filesystem
+            #   but it is in the database
+            rootless_path = workfile_entity["path"]
+            filepath = anatomy.fill_root(rootless_path)
+            items.append(WorkfileInfo.new(
+                filepath, rootless_path, False, workfile_entity
+            ))
+
+        return items
 
     # --- Deprecated method names ---
     def file_extensions(self):
