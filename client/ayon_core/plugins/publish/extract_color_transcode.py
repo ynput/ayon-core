@@ -173,7 +173,10 @@ class ExtractOIIOTranscode(publish.Extractor):
                         frames = None
                         parallel_frames = False
                     else:
-                        raise TypeError("Unsupported files to ")
+                        raise TypeError(
+                            f"Unsupported file name type: {type(file_name)}."
+                            " Expected str or clique.Collection."
+                        )
 
                     self.log.debug("Transcoding file: `{}`".format(file_name))
                     input_path = os.path.join(original_staging_dir, file_name)
