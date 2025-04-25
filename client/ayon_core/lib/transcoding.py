@@ -1011,6 +1011,7 @@ def convert_colorspace(
     display=None,
     additional_command_args=None,
     frames=None,
+    frame_padding=None,
     parallel_frames=False,
     logger=None,
 ):
@@ -1020,7 +1021,7 @@ def convert_colorspace(
         input_path (str): Path that should be converted. It is expected that
             contains single file or image sequence of same type
             (sequence in format 'file.FRAMESTART-FRAMEEND#.ext', see oiio docs,
-            eg `big.1-3#.tif` or `big.%04d.ext` with `frames` argument)
+            eg `big.1-3#.tif` or `big.1-3%d.ext` with `frames` argument)
         output_path (str): Path to output filename.
             (must follow format of 'input_path', eg. single file or
              sequence in 'file.FRAMESTART-FRAMEEND#.ext', `output.1-3#.tif`)
@@ -1036,9 +1037,11 @@ def convert_colorspace(
             depth for .dpx)
         frames (Optional[str]): Complex frame range to process. This requires
             input path and output path to use frame token placeholder like
-            e.g. file.%04d.exr
+            `#` or `%d`, e.g. file.#.exr
         parallel_frames (bool): If True, process frames in parallel inside
             the `oiiotool` process. Only supported in OIIO 2.5.20.0+.
+        frame_padding (Optional[int]): Frame padding to use for the input and
+            output when using a sequence filepath.
         logger (logging.Logger): Logger used for logging.
     Raises:
         ValueError: if misconfigured
@@ -1066,6 +1069,12 @@ def convert_colorspace(
         oiio_cmd.extend([
             "--frames", frames,
         ])
+
+    if frame_padding:
+        oiio_cmd.extend([
+            "--framepadding", frame_padding,
+        ])
+
     if parallel_frames:
         oiio_cmd.extend([
             "--parallel-frames"
