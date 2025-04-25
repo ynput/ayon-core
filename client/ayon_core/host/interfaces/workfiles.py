@@ -1,5 +1,72 @@
+import os
 from abc import abstractmethod
+from dataclasses import dataclass, asdict
+from typing import Optional
 
+
+@dataclass
+class WorkfileInfo:
+    filepath: str
+    rootless_path: str
+    file_size: Optional[float]
+    file_created: Optional[float]
+    file_modified: Optional[float]
+    workfile_entity_id: Optional[str]
+    description: str
+    created_by: Optional[str]
+    updated_by: Optional[str]
+    available: bool
+
+    @classmethod
+    def new(cls, filepath, rootless_path, available, workfile_entity):
+        file_size = file_modified = file_created = None
+        if filepath and os.path.exists(filepath):
+            filestat = os.stat(filepath)
+            file_size = filestat.st_size
+            file_created = filestat.st_ctime
+            file_modified = filestat.st_mtime
+
+        if workfile_entity is None:
+            workfile_entity = {}
+
+        attrib = {}
+        if workfile_entity:
+            attrib = workfile_entity["attrib"]
+
+        return cls(
+            filepath=filepath,
+            rootless_path=rootless_path,
+            file_size=file_size,
+            file_created=file_created,
+            file_modified=file_modified,
+            workfile_entity_id=workfile_entity.get("id"),
+            description=attrib.get("description") or "",
+            created_by=workfile_entity.get("createdBy"),
+            updated_by=workfile_entity.get("updatedBy"),
+            available=available,
+        )
+
+    def to_data(self):
+        """Converts file item to data.
+
+        Returns:
+            dict[str, Any]: Workfile item data.
+
+        """
+        return asdict(self)
+
+    @classmethod
+    def from_data(self, data):
+        """Converts data to workfile item.
+
+        Args:
+            data (dict[str, Any]): Workfile item data.
+
+        Returns:
+            WorkfileInfo: File item.
+
+        """
+        return WorkfileInfo(**data)
 
 
 class IWorkfileHost:
