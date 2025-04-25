@@ -1,9 +1,9 @@
 from .exceptions import MissingMethodsError
+from .workfiles import IWorkfileHost
 from .interfaces import (
     IPublishHost,
     INewPublisher,
     ILoadHost,
-    IWorkfileHost,
 )
 
 
