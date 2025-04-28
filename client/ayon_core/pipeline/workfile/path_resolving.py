@@ -1,3 +1,4 @@
+from __future__ import annotations
 import os
 import re
 import copy
@@ -12,6 +13,7 @@ from ayon_core.lib import (
     Logger,
     StringTemplate,
 )
+from ayon_core.lib.path_templates import TemplateResult
 from ayon_core.pipeline import version_start, Anatomy
 from ayon_core.pipeline.template_data import get_template_data
 
@@ -562,3 +564,99 @@ def create_workdir_extra_folders(
         fullpath = os.path.join(workdir, subfolder)
         if not os.path.exists(fullpath):
             os.makedirs(fullpath)
+
+
+class CommentMatcher:
+    """Use anatomy and work file data to parse comments from filenames.
+
+    Args:
+        extensions (set[str]): Set of extensions.
+        file_template (StringTemplate): Workfile file template.
+        data (dict[str, Any]): Data to fill the template with.
+
+    """
+    def __init__(
+        self,
+        extensions: set[str],
+        file_template: StringTemplate,
+        data: dict[str, Any]
+    ):
+        self._fname_regex = None
+
+        if "{comment}" not in file_template:
+            # Don't look for comment if template doesn't allow it
+            return
+
+        # Create a regex group for extensions
+        any_extension = "(?:{})".format(
+            "|".join(re.escape(ext.lstrip(".")) for ext in extensions)
+        )
+
+        # Use placeholders that will never be in the filename
+        temp_data = copy.deepcopy(data)
+        temp_data["comment"] = "<<comment>>"
+        temp_data["version"] = "<<version>>"
+        temp_data["ext"] = "<<ext>>"
+
+        fname_pattern = re.escape(
+            file_template.format_strict(temp_data)
+        )
+
+        # Replace comment and version with something we can match with regex
+        replacements = (
+            ("<<comment>>", r"(?P<comment>.+)"),
+            ("<<version>>", r"[0-9]+"),
+            ("<<ext>>", any_extension),
+        )
+        for src, dest in replacements:
+            fname_pattern = fname_pattern.replace(re.escape(src), dest)
+
+        # Match from beginning to end of string to be safe
+        self._fname_regex = re.compile(f"^{fname_pattern}$")
+
+    def parse_comment(self, filename: str) -> Optional[str]:
+        """Parse the {comment} part from a filename"""
+        if self._fname_regex:
+            match = self._fname_regex.match(filename)
+            if match:
+                return match.group("comment")
+        return None
+
+
+def get_comments_from_work_filenames(
+    filenames: list[str],
+    extensions: set[str],
+    file_template: StringTemplate,
+    template_data: dict[str, Any],
+    current_filename: Optional[str] = None,
+) -> tuple[list[str], str]:
+    """Collect comments from workfile filenames.
+
+    Based on 'current_filename' is also returned "current comment".
+
+    Args:
+        filenames (list[str]): List of filenames to parse.
+        extensions (set[str]): Set of file extensions.
+        file_template (StringTemplate): Workfile file template.
+        template_data (dict[str, Any]): Data to fill the template with.
+        current_filename (str): Filename to check for current comment.
+
+    Returns:
+        tuple[list[str], str]: List of comments and the current comment.
+
+    """
+    current_comment = ""
+    if not filenames:
+        return [], current_comment
+
+    matcher = CommentMatcher(extensions, file_template, template_data)
+
+    comment_hints = set()
+    for filename in filenames:
+        comment = matcher.parse_comment(filename)
+        if comment:
+            comment_hints.add(comment)
+            if filename == current_filename:
+                current_comment = comment
+
+    return list(comment_hints), current_comment
