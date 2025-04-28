@@ -1,7 +1,7 @@
 import os
 import logging
 import contextlib
-from abc import ABC, abstractproperty
+from abc import ABC, abstractmethod
 
 # NOTE can't import 'typing' because of issues in Maya 2020
 #   - shiboken crashes on 'typing' module import
@@ -92,7 +92,8 @@ class HostBase(ABC):
             self._log = logging.getLogger(self.__class__.__name__)
         return self._log
 
-    @abstractproperty
+    @property
+    @abstractmethod
     def name(self):
         """Host name."""
 
