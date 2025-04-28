@@ -531,7 +531,7 @@ class BaseWorkfileController(
 
     def save_current_workfile(self):
         current_file = self.get_current_workfile()
-        self._host_save_workfile(current_file)
+        self._host.save_workfile(current_file)
 
     def save_as_workfile(
         self,
@@ -614,21 +614,6 @@ class BaseWorkfileController(
             {"failed": failed},
         )
 
-    # Helper host methods that resolve 'IWorkfileHost' interface
-    def _host_open_workfile(self, filepath):
-        host = self._host
-        if isinstance(host, IWorkfileHost):
-            host.open_workfile(filepath)
-        else:
-            host.open_file(filepath)
-
-    def _host_save_workfile(self, filepath):
-        host = self._host
-        if isinstance(host, IWorkfileHost):
-            host.save_workfile(filepath)
-        else:
-            host.save_file(filepath)
-
     def _emit_event(self, topic, data=None):
         self.emit_event(topic, data, "controller")
 
@@ -685,7 +670,7 @@ class BaseWorkfileController(
         ):
             self._change_current_context(project_name, folder_id, task_id)
 
-        self._host_open_workfile(filepath)
+        self._host.open_workfile(filepath)
 
         emit_event("workfile.open.after", event_data, source="workfiles.tool")
 
@@ -734,16 +719,23 @@ class BaseWorkfileController(
         dst_filepath = os.path.join(workdir, filename)
         if src_filepath:
             shutil.copyfile(src_filepath, dst_filepath)
-            self._host_open_workfile(dst_filepath)
+            self._host.open_workfile(dst_filepath)
         else:
-            self._host_save_workfile(dst_filepath)
+            self._host.save_workfile(dst_filepath)
 
         # Make sure workfile info exists
-        if not artist_note:
-            artist_note = None
+        if not description:
+            description = None
+        if not comment:
+            comment = None
         self.save_workfile_info(
-            folder_id, task_name, dst_filepath, note=artist_note
+            task_id,
+            f"{rootless_workdir}/{filename}",
+            version,
+            comment,
+            description,
         )
+        self._workfiles_model.reset_workarea_file_items(task_id)
 
         # Create extra folders
         create_workdir_extra_folders(
