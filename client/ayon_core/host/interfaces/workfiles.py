@@ -78,16 +78,6 @@ class IWorkfileHost:
 
 
     @abstractmethod
-    def get_workfile_extensions(self):
-        """Extensions that can be used as save.
-
-        Questions:
-            This could potentially use 'HostDefinition'.
-        """
-
-        return []
-
-    @abstractmethod
     def save_workfile(self, dst_path=None):
         """Save currently opened scene.
 
@@ -132,6 +122,18 @@ class IWorkfileHost:
         """
 
         return None
+
+    def get_workfile_extensions(self) -> list[str]:
+        """Extensions that can be used as save.
+
+        Questions:
+            This could potentially use 'HostDefinition'.
+
+        Returns:
+            list[str]: List of extensions that can be used for saving.
+
+        """
+        return []
 
     def list_workfiles(
         self,
