@@ -495,61 +495,6 @@ class WorkfileEntitiesModel:
         )
         session.commit()
 
-    def _get_workfile_info_identifier(
-        self, folder_id, task_id, rootless_path
-    ):
-        return "_".join([folder_id, task_id, rootless_path])
-
-    def _get_rootless_path(self, filepath):
-        anatomy = self._controller.project_anatomy
-
-        workdir, filename = os.path.split(filepath)
-        _, rootless_dir = anatomy.find_root_template_from_path(workdir)
-        return "/".join([
-            os.path.normpath(rootless_dir).replace("\\", "/"),
-            filename
-        ])
-
-    def _prepare_workfile_info_item(
-        self, folder_id, task_id, workfile_info, filepath
-    ):
-        note = ""
-        created_by = None
-        updated_by = None
-        if workfile_info:
-            note = workfile_info["attrib"].get("description") or ""
-            created_by = workfile_info.get("createdBy")
-            updated_by = workfile_info.get("updatedBy")
-
-        filestat = os.stat(filepath)
-        return WorkfileInfo(
-            folder_id,
-            task_id,
-            filepath,
-            filesize=filestat.st_size,
-            creation_time=filestat.st_ctime,
-            modification_time=filestat.st_mtime,
-            created_by=created_by,
-            updated_by=updated_by,
-            note=note
-        )
-
-    def _get_workfile_info(self, folder_id, task_id, identifier):
-        workfile_info = self._cache.get(identifier)
-        if workfile_info is not None:
-            return workfile_info
-
-        for workfile_info in ayon_api.get_workfiles_info(
-            self._controller.get_current_project_name(),
-            task_ids=[task_id],
-            fields=["id", "path", "attrib", "createdBy", "updatedBy"],
-        ):
-            workfile_identifier = self._get_workfile_info_identifier(
-                folder_id, task_id, workfile_info["path"]
-            )
-            self._cache[workfile_identifier] = workfile_info
-        return self._cache.get(identifier)
-
     def _create_workfile_info_entity(self, task_id, rootless_path, note):
         extension = os.path.splitext(rootless_path)[1]
 
