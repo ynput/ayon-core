@@ -91,7 +91,8 @@ class WorkareaModel:
     by host integration.
     """
 
-    def __init__(self, controller):
+    def __init__(self, host, controller):
+        self._host = host
         self._controller = controller
         extensions = None
         if controller.is_host_valid():
@@ -741,11 +742,11 @@ class PublishWorkfilesModel:
 class WorkfilesModel:
     """Workfiles model."""
 
-    def __init__(self, controller):
+    def __init__(self, host, controller):
         self._controller = controller
 
         self._entities_model = WorkfileEntitiesModel(controller)
-        self._workarea_model = WorkareaModel(controller)
+        self._workarea_model = WorkareaModel(host, controller)
         self._published_model = PublishWorkfilesModel(controller)
 
     def get_workfile_info(self, folder_id, task_id, filepath):
