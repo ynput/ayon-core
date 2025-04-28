@@ -123,51 +123,6 @@ class WorkareaModel:
         self._file_items_mapping = {}
         self._file_items_cache.reset()
 
-    def _get_base_data(self):
-        if self._base_data is None:
-            base_data = get_template_data(
-                ayon_api.get_project(self._project_name),
-                host_name=self._controller.get_host_name(),
-            )
-            self._base_data = base_data
-        return copy.deepcopy(self._base_data)
-
-    def _get_folder_data(self, folder_id):
-        fill_data = self._fill_data_by_folder_id.get(folder_id)
-        if fill_data is None:
-            folder = self._controller.get_folder_entity(
-                self.project_name, folder_id
-            )
-            fill_data = get_folder_template_data(folder, self.project_name)
-            self._fill_data_by_folder_id[folder_id] = fill_data
-        return copy.deepcopy(fill_data)
-
-    def _get_task_data(self, project_entity, folder_id, task_id):
-        task_data = self._task_data_by_folder_id.setdefault(folder_id, {})
-        if task_id not in task_data:
-            task = self._controller.get_task_entity(
-                self.project_name, task_id
-            )
-            if task:
-                task_data[task_id] = get_task_template_data(
-                    project_entity, task)
-        return copy.deepcopy(task_data[task_id])
-
-    def _prepare_fill_data(self, folder_id, task_id):
-        if not folder_id or not task_id:
-            return {}
-
-        base_data = self._get_base_data()
-        project_name = base_data["project"]["name"]
-        folder_data = self._get_folder_data(folder_id)
-        project_entity = self._controller.get_project_entity(project_name)
-        task_data = self._get_task_data(project_entity, folder_id, task_id)
-
-        base_data.update(folder_data)
-        base_data.update(task_data)
-
-        return base_data
-
     def get_workarea_dir_by_context(self, folder_id, task_id):
         if not folder_id or not task_id:
             return None
@@ -217,108 +172,6 @@ class WorkareaModel:
                 workfile_info.updated_by,
             ))
         return items
-
-    def _get_template_key(self, fill_data):
-        task_type = fill_data.get("task", {}).get("type")
-        # TODO cache
-        return get_workfile_template_key(
-            self.project_name,
-            task_type,
-            self._controller.get_host_name(),
-            project_settings=self._controller.project_settings,
-        )
-
-    def _get_last_workfile_version(
-        self, workdir, file_template, fill_data, extensions
-    ):
-        """
-
-        Todos:
-            Validate if logic of this function is correct. It does return
-                last version + 1 which might be wrong.
-
-        Args:
-            workdir (str): Workdir path.
-            file_template (str): File template.
-            fill_data (dict[str, Any]): Fill data.
-            extensions (set[str]): Extensions.
-
-        Returns:
-            int: Next workfile version.
-
-        """
-        version = get_last_workfile_with_version(
-            workdir, file_template, fill_data, extensions
-        )[1]
-
-        if version is None:
-            task_info = fill_data.get("task", {})
-            version = get_versioning_start(
-                self.project_name,
-                self._controller.get_host_name(),
-                task_name=task_info.get("name"),
-                task_type=task_info.get("type"),
-                product_type="workfile",
-                project_settings=self._controller.project_settings,
-            )
-        else:
-            version += 1
-        return version
-
-    def _get_comments_from_root(
-        self,
-        file_template,
-        extensions,
-        fill_data,
-        root,
-        current_filename,
-    ):
-        """Get comments from root directory.
-
-        Args:
-            file_template (AnatomyStringTemplate): File template.
-            extensions (set[str]): Extensions.
-            fill_data (dict[str, Any]): Fill data.
-            root (str): Root directory.
-            current_filename (str): Current filename.
-
-        Returns:
-            Tuple[list[str], Union[str, None]]: Comment hints and current
-                comment.
-
-        """
-        current_comment = None
-        filenames = []
-        if root and os.path.exists(root):
-            for filename in os.listdir(root):
-                path = os.path.join(root, filename)
-                if not os.path.isfile(path):
-                    continue
-
-                ext = os.path.splitext(filename)[-1].lower()
-                if ext in extensions:
-                    filenames.append(filename)
-
-        if not filenames:
-            return [], current_comment
-
-        matcher = CommentMatcher(extensions, file_template, fill_data)
-
-        comment_hints = set()
-        for filename in filenames:
-            comment = matcher.parse_comment(filename)
-            if comment:
-                comment_hints.add(comment)
-                if filename == current_filename:
-                    current_comment = comment
-
-        return list(comment_hints), current_comment
-
-    def _get_workdir(self, anatomy, template_key, fill_data):
-        directory_template = anatomy.get_template_item(
-            "work", template_key, "directory"
-        )
-        return directory_template.format_strict(fill_data).normalized()
 
     def get_workarea_save_as_data(self, folder_id, task_id):
         folder_entity = None
@@ -451,6 +304,153 @@ class WorkareaModel:
             filename,
             exists
         )
+
+    def _get_base_data(self):
+        if self._base_data is None:
+            base_data = get_template_data(
+                ayon_api.get_project(self._project_name),
+                host_name=self._controller.get_host_name(),
+            )
+            self._base_data = base_data
+        return copy.deepcopy(self._base_data)
+
+    def _get_folder_data(self, folder_id):
+        fill_data = self._fill_data_by_folder_id.get(folder_id)
+        if fill_data is None:
+            folder = self._controller.get_folder_entity(
+                self.project_name, folder_id
+            )
+            fill_data = get_folder_template_data(folder, self.project_name)
+            self._fill_data_by_folder_id[folder_id] = fill_data
+        return copy.deepcopy(fill_data)
+
+    def _get_task_data(self, project_entity, folder_id, task_id):
+        task_data = self._task_data_by_folder_id.setdefault(folder_id, {})
+        if task_id not in task_data:
+            task = self._controller.get_task_entity(
+                self.project_name, task_id
+            )
+            if task:
+                task_data[task_id] = get_task_template_data(
+                    project_entity, task)
+        return copy.deepcopy(task_data[task_id])
+
+    def _prepare_fill_data(self, folder_id, task_id):
+        if not folder_id or not task_id:
+            return {}
+
+        base_data = self._get_base_data()
+        project_name = base_data["project"]["name"]
+        folder_data = self._get_folder_data(folder_id)
+        project_entity = self._controller.get_project_entity(project_name)
+        task_data = self._get_task_data(project_entity, folder_id, task_id)
+
+        base_data.update(folder_data)
+        base_data.update(task_data)
+
+        return base_data
+
+    def _get_template_key(self, fill_data):
+        task_type = fill_data.get("task", {}).get("type")
+        # TODO cache
+        return get_workfile_template_key(
+            self.project_name,
+            task_type,
+            self._controller.get_host_name(),
+            project_settings=self._controller.project_settings,
+        )
+
+    def _get_last_workfile_version(
+        self, workdir, file_template, fill_data, extensions
+    ):
+        """
+
+        Todos:
+            Validate if logic of this function is correct. It does return
+                last version + 1 which might be wrong.
+
+        Args:
+            workdir (str): Workdir path.
+            file_template (str): File template.
+            fill_data (dict[str, Any]): Fill data.
+            extensions (set[str]): Extensions.
+
+        Returns:
+            int: Next workfile version.
+
+        """
+        version = get_last_workfile_with_version(
+            workdir, file_template, fill_data, extensions
+        )[1]
+
+        if version is None:
+            task_info = fill_data.get("task", {})
+            version = get_versioning_start(
+                self.project_name,
+                self._controller.get_host_name(),
+                task_name=task_info.get("name"),
+                task_type=task_info.get("type"),
+                product_type="workfile",
+                project_settings=self._controller.project_settings,
+            )
+        else:
+            version += 1
+        return version
+
+    def _get_comments_from_root(
+        self,
+        file_template,
+        extensions,
+        fill_data,
+        root,
+        current_filename,
+    ):
+        """Get comments from root directory.
+
+        Args:
+            file_template (AnatomyStringTemplate): File template.
+            extensions (set[str]): Extensions.
+            fill_data (dict[str, Any]): Fill data.
+            root (str): Root directory.
+            current_filename (str): Current filename.
+
+        Returns:
+            Tuple[list[str], Union[str, None]]: Comment hints and current
+                comment.
+
+        """
+        current_comment = None
+        filenames = []
+        if root and os.path.exists(root):
+            for filename in os.listdir(root):
+                path = os.path.join(root, filename)
+                if not os.path.isfile(path):
+                    continue
+
+                ext = os.path.splitext(filename)[-1].lower()
+                if ext in extensions:
+                    filenames.append(filename)
+
+        if not filenames:
+            return [], current_comment
+
+        matcher = CommentMatcher(extensions, file_template, fill_data)
+
+        comment_hints = set()
+        for filename in filenames:
+            comment = matcher.parse_comment(filename)
+            if comment:
+                comment_hints.add(comment)
+                if filename == current_filename:
+                    current_comment = comment
+
+        return list(comment_hints), current_comment
+
+    def _get_workdir(self, anatomy, template_key, fill_data):
+        directory_template = anatomy.get_template_item(
+            "work", template_key, "directory"
+        )
+        return directory_template.format_strict(fill_data).normalized()
 
 
 class WorkfileEntitiesModel:
