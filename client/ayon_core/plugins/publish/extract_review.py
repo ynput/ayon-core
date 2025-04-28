@@ -525,7 +525,7 @@ class ExtractReview(pyblish.api.InstancePlugin):
 
             run_subprocess(subprcs_cmd, shell=True, logger=self.log)
 
-            #delete files added to fill gaps
+            # delete files added to fill gaps
             if new_frame_files:
                 for filepath in new_frame_files.values():
                     os.unlink(filepath)
