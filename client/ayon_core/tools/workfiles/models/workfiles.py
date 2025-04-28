@@ -7,7 +7,11 @@ import arrow
 import ayon_api
 from ayon_api.operations import OperationsSession
 
-from ayon_core.lib import get_ayon_username
+from ayon_core.lib import (
+    get_ayon_username,
+    NestedCacheItem,
+    CacheItem,
+)
 from ayon_core.pipeline.template_data import (
     get_template_data,
     get_task_template_data,
@@ -102,6 +106,10 @@ class WorkareaModel:
         self._fill_data_by_folder_id = {}
         self._task_data_by_folder_id = {}
         self._workdir_by_context = {}
+        self._file_items_mapping = {}
+        self._file_items_cache = NestedCacheItem(
+            levels=1, default_factory=list
+        )
 
     @property
     def project_name(self):
@@ -111,6 +119,9 @@ class WorkareaModel:
         self._base_data = None
         self._fill_data_by_folder_id = {}
         self._task_data_by_folder_id = {}
+        self._workdir_by_context = {}
+        self._file_items_mapping = {}
+        self._file_items_cache.reset()
 
     def _get_base_data(self):
         if self._base_data is None:
