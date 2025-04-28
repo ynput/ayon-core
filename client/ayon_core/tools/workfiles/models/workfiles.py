@@ -397,55 +397,6 @@ class WorkareaModel:
             version += 1
         return version
 
-    def _get_comments_from_root(
-        self,
-        file_template,
-        extensions,
-        fill_data,
-        root,
-        current_filename,
-    ):
-        """Get comments from root directory.
-
-        Args:
-            file_template (AnatomyStringTemplate): File template.
-            extensions (set[str]): Extensions.
-            fill_data (dict[str, Any]): Fill data.
-            root (str): Root directory.
-            current_filename (str): Current filename.
-
-        Returns:
-            Tuple[list[str], Union[str, None]]: Comment hints and current
-                comment.
-
-        """
-        current_comment = None
-        filenames = []
-        if root and os.path.exists(root):
-            for filename in os.listdir(root):
-                path = os.path.join(root, filename)
-                if not os.path.isfile(path):
-                    continue
-
-                ext = os.path.splitext(filename)[-1].lower()
-                if ext in extensions:
-                    filenames.append(filename)
-
-        if not filenames:
-            return [], current_comment
-
-        matcher = CommentMatcher(extensions, file_template, fill_data)
-
-        comment_hints = set()
-        for filename in filenames:
-            comment = matcher.parse_comment(filename)
-            if comment:
-                comment_hints.add(comment)
-                if filename == current_filename:
-                    current_comment = comment
-
-        return list(comment_hints), current_comment
-
     def _get_workdir(self, anatomy, template_key, fill_data):
         directory_template = anatomy.get_template_item(
             "work", template_key, "directory"
