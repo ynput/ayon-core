@@ -113,7 +113,7 @@ def get_workdir_with_workdir_data(
     anatomy=None,
     template_key=None,
     project_settings=None
-):
+) -> TemplateResult:
     """Fill workdir path from entered data and project's anatomy.
 
     It is possible to pass only project's name instead of project's anatomy but
@@ -133,8 +133,8 @@ def get_workdir_with_workdir_data(
 
     Returns:
         TemplateResult: Workdir path.
-    """
 
+    """
     if not anatomy:
         anatomy = Anatomy(project_name)
 
@@ -176,8 +176,8 @@ def get_workdir(
             is stored under `AYON_HOST_NAME` key.
         anatomy (Anatomy): Optional argument. Anatomy object is created using
             project name from `project_entity`. It is preferred to pass this
-            argument as initialization of a new Anatomy object may be time
-            consuming.
+            argument as initialization of a new Anatomy object may be
+            time-consuming.
         template_key (str): Key of work templates in anatomy templates. Default
             value is defined in `get_workdir_with_workdir_data`.
         project_settings(Dict[str, Any]): Prepared project settings for
@@ -209,6 +209,159 @@ def get_workdir(
     )
 
 
+def get_last_workfile_with_version_from_paths(
+    filepaths, file_template, template_data, extensions
+):
+    """Return last workfile version.
+
+    Using workfile template and it's filling data find most possible last
+    version of workfile which was created for the context.
+
+    Functionality is fully based on knowing which keys are optional or what
+    values are expected as value.
+
+    The last modified file is used if more files can be considered as
+    last workfile.
+
+    Args:
+        filepaths (list[str]): Workfile paths.
+        file_template (str): Template of file name.
+        template_data (Dict[str, Any]): Data for filling template.
+        extensions (Iterable[str]): All allowed file extensions of workfile.
+
+    Returns:
+        tuple[Union[str, None], Union[int, None]]: Last workfile with version
+            if there is any workfile otherwise None for both.
+
+    """
+    if not filepaths:
+        return None, None
+
+    dotted_extensions = set()
+    for ext in extensions:
+        if not ext.startswith("."):
+            ext = f".{ext}"
+        dotted_extensions.add(re.escape(ext))
+
+    # Build template without optionals, version to digits only regex
+    # and comment to any definable value.
+    # Escape extensions dot for regex
+    ext_expression = "(?:" + "|".join(dotted_extensions) + ")"
+
+    for pattern, replacement in (
+        # Replace `.{ext}` with `{ext}` so we are sure dot is not at the end
+        (r"\.?{ext}", ext_expression),
+        # Replace optional keys with optional content regex
+        (r"<.*?>", r".*?"),
+        # Replace `{version}` with group regex
+        (r"{version.*?}", r"([0-9]+)"),
+        (r"{comment.*?}", r".+?"),
+    ):
+        file_template = re.sub(pattern, replacement, file_template)
+
+    file_template = StringTemplate.format_strict_template(
+        file_template, template_data
+    )
+
+    # Match with ignore case on Windows due to the Windows
+    # OS not being case-sensitive. This avoids later running
+    # into the error that the file did exist if it existed
+    # with a different upper/lower-case.
+    kwargs = {}
+    if platform.system().lower() == "windows":
+        kwargs["flags"] = re.IGNORECASE
+
+    # Get highest version among existing matching files
+    version = None
+    output_filepaths = []
+    for filepath in sorted(filepaths):
+        filename = os.path.basename(filepath)
+        match = re.match(file_template, filename, **kwargs)
+        if not match:
+            continue
+
+        if not match.groups():
+            output_filepaths.append(filename)
+            continue
+
+        file_version = int(match.group(1))
+        if version is None or file_version > version:
+            output_filepaths.clear()
+            version = file_version
+
+        if file_version == version:
+            output_filepaths.append(filepath)
+
+    output_filepath = None
+    last_time = None
+    for _output_filepath in output_filepaths:
+        mod_time = None
+        if os.path.exists(_output_filepath):
+            mod_time = os.path.getmtime(_output_filepath)
+        if (
+            last_time is None
+            or (mod_time is not None and last_time < mod_time)
+        ):
+            output_filepath = _output_filepath
+            last_time = mod_time
+
+    return output_filepath, version
+
+
+def get_last_workfile_from_paths(
+    filepaths: list[str],
+    file_template: str,
+    template_data: dict[str, Any],
+    extensions: set[str],
+):
+    """Return last workfile filename.
+
+    Returns file with version 1 if there is not workfile yet.
+
+    Args:
+        filepaths (list[str]): Paths to workfiles.
+        file_template (str): Template of file name.
+        template_data (dict[str, Any]): Data for filling template.
+        extensions (set[str]): All allowed file extensions of workfile.
+
+    Returns:
+        Optional[str]: Last or first workfile as filename of full path
+            to filename.
+
+    """
+    filepath, _version = get_last_workfile_with_version_from_paths(
+        filepaths, file_template, template_data, extensions
+    )
+    return filepath
+
+
+def _filter_dir_files_by_ext(
+    dirpath: str,
+    extensions: set[str],
+):
+    """Filter files by extensions.
+
+    Args:
+        dirpath (str): List of file paths.
+        extensions (set[str]): Set of file extensions.
+
+    Returns:
+        tuple[list[str], set[str]]: Filtered list of file paths.
+
+    """
+    dotted_extensions = set()
+    for ext in extensions:
+        if not ext.startswith("."):
+            ext = f".{ext}"
+        dotted_extensions.add(ext)
+    filtered_paths = [
+        os.path.join(dirpath, filename)
+        for filename in os.listdir(dirpath)
+        if os.path.splitext(filename)[-1] in dotted_extensions
+    ]
+    return filtered_paths, dotted_extensions
+
+
 def get_last_workfile_with_version(
     workdir, file_template, fill_data, extensions
 ):
@@ -237,85 +390,24 @@ def get_last_workfile_with_version(
     if not os.path.exists(workdir):
         return None, None
 
-    dotted_extensions = set()
-    for ext in extensions:
-        if not ext.startswith("."):
-            ext = ".{}".format(ext)
-        dotted_extensions.add(ext)
-
-    # Fast match on extension
-    filenames = [
-        filename
-        for filename in os.listdir(workdir)
-        if os.path.splitext(filename)[-1] in dotted_extensions
-    ]
-
-    # Build template without optionals, version to digits only regex
-    # and comment to any definable value.
-    # Escape extensions dot for regex
-    regex_exts = [
-        "\\" + ext
-        for ext in dotted_extensions
-    ]
-    ext_expression = "(?:" + "|".join(regex_exts) + ")"
-
-    # Replace `.{ext}` with `{ext}` so we are sure there is not dot at the end
-    file_template = re.sub(r"\.?{ext}", ext_expression, file_template)
-    # Replace optional keys with optional content regex
-    file_template = re.sub(r"<.*?>", r".*?", file_template)
-    # Replace `{version}` with group regex
-    file_template = re.sub(r"{version.*?}", r"([0-9]+)", file_template)
-    file_template = re.sub(r"{comment.*?}", r".+?", file_template)
-    file_template = StringTemplate.format_strict_template(
-        file_template, fill_data
+    filepaths, dotted_extensions = _filter_dir_files_by_ext(
+        workdir, extensions
     )
 
-    # Match with ignore case on Windows due to the Windows
-    # OS not being case-sensitive. This avoids later running
-    # into the error that the file did exist if it existed
-    # with a different upper/lower-case.
-    kwargs = {}
-    if platform.system().lower() == "windows":
-        kwargs["flags"] = re.IGNORECASE
-
-    # Get highest version among existing matching files
-    version = None
-    output_filenames = []
-    for filename in sorted(filenames):
-        match = re.match(file_template, filename, **kwargs)
-        if not match:
-            continue
-
-        if not match.groups():
-            output_filenames.append(filename)
-            continue
-
-        file_version = int(match.group(1))
-        if version is None or file_version > version:
-            output_filenames[:] = []
-            version = file_version
-
-        if file_version == version:
-            output_filenames.append(filename)
-
-    output_filename = None
-    if output_filenames:
-        if len(output_filenames) == 1:
-            output_filename = output_filenames[0]
-        else:
-            last_time = None
-            for _output_filename in output_filenames:
-                full_path = os.path.join(workdir, _output_filename)
-                mod_time = os.path.getmtime(full_path)
-                if last_time is None or last_time < mod_time:
-                    output_filename = _output_filename
-                    last_time = mod_time
-
-    return output_filename, version
+    return get_last_workfile_with_version_from_paths(
+        filepaths,
+        file_template,
+        fill_data,
+        dotted_extensions,
+    )
 
 
 def get_last_workfile(
-    workdir, file_template, fill_data, extensions, full_path=False
+    workdir: str,
+    file_template: str,
+    fill_data: dict[str, Any],
+    extensions: set[str],
+    full_path: bool = False
 ):
     """Return last workfile filename.
 
@@ -326,17 +418,23 @@ def get_last_workfile(
         file_template (str): Template of file name.
         fill_data (Dict[str, Any]): Data for filling template.
         extensions (Iterable[str]): All allowed file extensions of workfile.
-        full_path (Optional[bool]): Full path to file is returned if
+        full_path (bool): Full path to file is returned if
             set to True.
 
     Returns:
         str: Last or first workfile as filename of full path to filename.
 
     """
-    filename, _version = get_last_workfile_with_version(
-        workdir, file_template, fill_data, extensions
+    filepaths, dotted_extensions = _filter_dir_files_by_ext(
+        workdir, extensions
     )
-    if filename is None:
+    filepath = get_last_workfile_from_paths(
+        filepaths,
+        file_template,
+        fill_data,
+        dotted_extensions
+    )
+    if filepath is None:
         data = copy.deepcopy(fill_data)
         data["version"] = version_start.get_versioning_start(
             data["project"]["name"],
@@ -350,11 +448,11 @@ def get_last_workfile(
             data["ext"] = extensions[0]
         data["ext"] = data["ext"].lstrip(".")
         filename = StringTemplate.format_strict_template(file_template, data)
+        filepath = os.path.join(workdir, filename)
 
     if full_path:
-        return os.path.normpath(os.path.join(workdir, filename))
-
-    return filename
+        return os.path.normpath(filepath)
+    return os.path.basename(filepath)
 
 
 def get_custom_workfile_template(
@@ -623,8 +721,8 @@ class CommentMatcher:
         return None
 
 
-def get_comments_from_work_filenames(
-    filenames: list[str],
+def get_comments_from_workfile_paths(
+    filepaths: list[str],
     extensions: set[str],
     file_template: StringTemplate,
     template_data: dict[str, Any],
@@ -635,7 +733,7 @@ def get_comments_from_work_filenames(
     Based on 'current_filename' is also returned "current comment".
 
     Args:
-        filenames (list[str]): List of filenames to parse.
+        filepaths (list[str]): List of filepaths to parse.
         extensions (set[str]): Set of file extensions.
         file_template (StringTemplate): Workfile file template.
         template_data (dict[str, Any]): Data to fill the template with.
@@ -646,13 +744,14 @@ def get_comments_from_work_filenames(
 
     """
     current_comment = ""
-    if not filenames:
+    if not filepaths:
         return [], current_comment
 
     matcher = CommentMatcher(extensions, file_template, template_data)
 
     comment_hints = set()
-    for filename in filenames:
+    for filepath in filepaths:
+        filename = os.path.basename(filepath)
         comment = matcher.parse_comment(filename)
         if comment:
             comment_hints.add(comment)
