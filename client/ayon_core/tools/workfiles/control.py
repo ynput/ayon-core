@@ -176,7 +176,7 @@ class BaseWorkfileController(
         return UsersModel(self)
 
     def _create_workfiles_model(self):
-        return WorkfilesModel(self)
+        return WorkfilesModel(self._host, self)
 
     def _create_expected_selection_obj(self):
         return WorkfilesToolExpectedSelection(self)
