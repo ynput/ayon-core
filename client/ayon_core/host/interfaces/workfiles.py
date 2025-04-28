@@ -3,9 +3,13 @@ import os
 import platform
 from abc import abstractmethod
 from dataclasses import dataclass, asdict
+import typing
 from typing import Optional, Any
 
 import ayon_api
+
+if typing.TYPE_CHECKING:
+    from ayon_core.pipeline import Anatomy
 
 
 @dataclass
@@ -76,51 +80,50 @@ class WorkfileInfo:
 class IWorkfileHost:
     """Implementation requirements to be able use workfile utils and tool."""
 
-
     @abstractmethod
-    def save_workfile(self, dst_path=None):
+    def save_workfile(self, dst_path: Optional[str] = None):
         """Save currently opened scene.
 
         Args:
             dst_path (str): Where the current scene should be saved. Or use
                 current path if 'None' is passed.
-        """
 
+        """
         pass
 
     @abstractmethod
-    def open_workfile(self, filepath):
+    def open_workfile(self, filepath: str):
         """Open passed filepath in the host.
 
         Args:
             filepath (str): Path to workfile.
-        """
 
+        """
         pass
 
     @abstractmethod
-    def get_current_workfile(self):
+    def get_current_workfile(self) -> Optional[str]:
         """Retrieve path to current opened file.
 
         Returns:
-            str: Path to file which is currently opened.
-            None: If nothing is opened.
-        """
+            Optional[str]: Path to file which is currently opened. None if
+                nothing is opened.
 
+        """
         return None
 
-    def workfile_has_unsaved_changes(self):
+    def workfile_has_unsaved_changes(self) -> Optional[bool]:
         """Currently opened scene is saved.
 
         Not all hosts can know if current scene is saved because the API of
         DCC does not support it.
 
         Returns:
-            bool: True if scene is saved and False if has unsaved
+            Optional[bool]: True if scene is saved and False if has unsaved
+                modifications. None if can't tell if workfiles has
                 modifications.
-            None: Can't tell if workfiles has modifications.
-        """
 
+        """
         return None
 
     def get_workfile_extensions(self) -> list[str]:
