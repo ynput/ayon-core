@@ -1,5 +1,6 @@
 import os
 import shutil
+from typing import Optional
 
 import ayon_api
 
@@ -410,7 +411,7 @@ class BaseWorkfileController(
     def get_workarea_file_items(self, folder_id, task_name, sender=None):
         task_id = self._get_task_id(folder_id, task_name)
         return self._workfiles_model.get_workarea_file_items(
-            folder_id, task_id, task_name
+            folder_id, task_id
         )
 
     def get_workarea_save_as_data(self, folder_id, task_id):
@@ -446,16 +447,25 @@ class BaseWorkfileController(
         return self._workfiles_model.get_published_file_items(
             folder_id, task_name)
 
-    def get_workfile_info(self, folder_id, task_name, filepath):
-        task_id = self._get_task_id(folder_id, task_name)
+    def get_workfile_info(self, folder_id, task_id, rootless_path):
         return self._workfiles_model.get_workfile_info(
-            folder_id, task_id, filepath
+            folder_id, task_id, rootless_path
         )
 
-    def save_workfile_info(self, folder_id, task_name, filepath, note):
-        task_id = self._get_task_id(folder_id, task_name)
+    def save_workfile_info(
+        self,
+        task_id,
+        rootless_path,
+        version=None,
+        comment=None,
+        description=None,
+    ):
         self._workfiles_model.save_workfile_info(
-            folder_id, task_id, filepath, note
+            task_id,
+            rootless_path,
+            version,
+            comment,
+            description,
         )
 
     def reset(self):
@@ -537,10 +547,12 @@ class BaseWorkfileController(
         self,
         folder_id,
         task_id,
-        workdir,
+        rootless_workdir,
         filename,
         template_key,
-        artist_note,
+        version,
+        comment,
+        description,
     ):
         self._emit_event("save_as.started")
 
@@ -549,10 +561,12 @@ class BaseWorkfileController(
             self._save_as_workfile(
                 folder_id,
                 task_id,
-                workdir,
+                rootless_workdir,
                 filename,
                 template_key,
-                artist_note=artist_note,
+                version,
+                comment,
+                description,
             )
         except Exception:
             failed = True
@@ -572,7 +586,9 @@ class BaseWorkfileController(
         workdir,
         filename,
         template_key,
-        artist_note,
+        version,
+        comment,
+        description,
     ):
         self._emit_event("copy_representation.started")
 
@@ -584,7 +600,9 @@ class BaseWorkfileController(
                 workdir,
                 filename,
                 template_key,
-                artist_note,
+                version,
+                comment,
+                description,
                 src_filepath=representation_filepath
             )
         except Exception:
@@ -598,7 +616,9 @@ class BaseWorkfileController(
             {"failed": failed},
         )
 
-    def duplicate_workfile(self, src_filepath, workdir, filename, artist_note):
+    def duplicate_workfile(
+        self, src_filepath, workdir, filename, version, comment, description
+    ):
         self._emit_event("workfile_duplicate.started")
 
         failed = False
@@ -678,10 +698,12 @@ class BaseWorkfileController(
         self,
         folder_id: str,
         task_id: str,
-        workdir: str,
+        rootless_workdir: str,
         filename: str,
         template_key: str,
-        artist_note: str,
+        version: Optional[int],
+        comment: Optional[str],
+        description: Optional[str],
         src_filepath=None,
     ):
         # Trigger before save event
@@ -689,6 +711,8 @@ class BaseWorkfileController(
         folder = self.get_folder_entity(project_name, folder_id)
         task = self.get_task_entity(project_name, task_id)
         task_name = task["name"]
+
+        workdir = self.project_anatomy.fill_root(rootless_workdir)
 
         # QUESTION should the data be different for 'before' and 'after'?
         event_data = self._get_event_context_data(
