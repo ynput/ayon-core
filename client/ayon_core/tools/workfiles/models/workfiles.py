@@ -1,7 +1,10 @@
+from __future__ import annotations
 import os
-import re
 import copy
 import uuid
+import platform
+import typing
+from typing import Optional, Any
 
 import arrow
 import ayon_api
@@ -12,6 +15,7 @@ from ayon_core.lib import (
     NestedCacheItem,
     CacheItem,
 )
+from ayon_core.host import WorkfileInfo
 from ayon_core.pipeline.template_data import (
     get_template_data,
     get_task_template_data,
@@ -20,71 +24,20 @@ from ayon_core.pipeline.template_data import (
 from ayon_core.pipeline.workfile import (
     get_workdir_with_workdir_data,
     get_workfile_template_key,
-    get_last_workfile_with_version,
+    get_last_workfile_with_version_from_paths,
+    get_comments_from_workfile_paths,
 )
 from ayon_core.pipeline.version_start import get_versioning_start
 from ayon_core.tools.workfiles.abstract import (
     WorkareaFilepathResult,
     FileItem,
-    WorkfileInfo,
 )
 
+if typing.TYPE_CHECKING:
+    from typing import Union
+    from ayon_core.pipeline import Anatomy
+
 _NOT_SET = object()
-
-
-class CommentMatcher(object):
-    """Use anatomy and work file data to parse comments from filenames.
-
-    Args:
-        extensions (set[str]): Set of extensions.
-        file_template (AnatomyStringTemplate): File template.
-        data (dict[str, Any]): Data to fill the template with.
-
-    """
-    def __init__(self, extensions, file_template, data):
-        self.fname_regex = None
-
-        if "{comment}" not in file_template:
-            # Don't look for comment if template doesn't allow it
-            return
-
-        # Create a regex group for extensions
-        any_extension = "(?:{})".format(
-            "|".join(re.escape(ext.lstrip(".")) for ext in extensions)
-        )
-
-        # Use placeholders that will never be in the filename
-        temp_data = copy.deepcopy(data)
-        temp_data["comment"] = "<<comment>>"
-        temp_data["version"] = "<<version>>"
-        temp_data["ext"] = "<<ext>>"
-
-        fname_pattern = file_template.format_strict(temp_data)
-        fname_pattern = re.escape(fname_pattern)
-
-        # Replace comment and version with something we can match with regex
-        replacements = {
-            "<<comment>>": "(.+)",
-            "<<version>>": "[0-9]+",
-            "<<ext>>": any_extension,
-        }
-        for src, dest in replacements.items():
-            fname_pattern = fname_pattern.replace(re.escape(src), dest)
-
-        # Match from beginning to end of string to be safe
-        fname_pattern = "^{}$".format(fname_pattern)
-
-        self.fname_regex = re.compile(fname_pattern)
-
-    def parse_comment(self, filepath):
-        """Parse the {comment} part from a filename"""
-        if not self.fname_regex:
-            return
-
-        fname = os.path.basename(filepath)
-        match = self.fname_regex.match(fname)
-        if match:
-            return match.group(1)
 
 
 class WorkareaModel:
@@ -111,10 +64,6 @@ class WorkareaModel:
             levels=1, default_factory=list
         )
 
-    @property
-    def project_name(self):
-        return self._controller.get_current_project_name()
-
     def reset(self):
         self._base_data = None
         self._fill_data_by_folder_id = {}
@@ -123,7 +72,14 @@ class WorkareaModel:
         self._file_items_mapping = {}
         self._file_items_cache.reset()
 
-    def get_workarea_dir_by_context(self, folder_id, task_id):
+    def reset_file_items(self, task_id: str):
+        cache: CacheItem = self._file_items_cache[task_id]
+        cache.set_invalid()
+        self._file_items_mapping.pop(task_id, None)
+
+    def get_workarea_dir_by_context(
+        self, folder_id: str, task_id: str
+    ) -> Optional[str]:
         if not folder_id or not task_id:
             return None
         folder_mapping = self._workdir_by_context.setdefault(folder_id, {})
@@ -135,54 +91,56 @@ class WorkareaModel:
 
         workdir = get_workdir_with_workdir_data(
             workdir_data,
-            self.project_name,
+            self._project_name,
             anatomy=self._controller.project_anatomy,
         )
         folder_mapping[task_id] = workdir
         return workdir
 
-    def get_file_items(self, folder_id, task_id, task_name):
-        items = []
-        if not folder_id or not task_id:
-            return items
+    def get_file_items(
+        self,
+        folder_id: Optional[str],
+        task_id: Optional[str],
+    ) -> list[WorkfileInfo]:
+        return self._cache_file_items(folder_id, task_id)
 
-        workdir = self.get_workarea_dir_by_context(folder_id, task_id)
-        if not os.path.exists(workdir):
-            return items
+    def get_workfile_info(
+        self,
+        folder_id: Optional[str],
+        task_id: Optional[str],
+        rootless_path: Optional[str]
+    ):
+        if not folder_id or not task_id or not rootless_path:
+            return None
 
-        for filename in os.listdir(workdir):
-            # We want to support both files and folders. e.g. Silhoutte uses
-            # folders as its project files. So we do not check whether it is
-            # a file or not.
-            filepath = os.path.join(workdir, filename)
+        mapping = self._file_items_mapping.get(task_id)
+        if mapping is None:
+            self._cache_file_items(folder_id, task_id)
+            mapping = self._file_items_mapping[task_id]
+        return mapping.get(rootless_path)
 
-            ext = os.path.splitext(filename)[1].lower()
-            if ext not in self._extensions:
-                continue
+    def update_file_description(
+        self, task_id: str, rootless_path: str, description: str
+    ):
+        mapping = self._file_items_mapping.get(task_id)
+        if not mapping:
+            return
+        item = mapping.get(rootless_path)
+        if item is not None:
+            item.description = description
 
-            workfile_info = self._controller.get_workfile_info(
-                folder_id, task_name, filepath
-            )
-            modified = os.path.getmtime(filepath)
-            items.append(FileItem(
-                workdir,
-                filename,
-                modified,
-                workfile_info.created_by,
-                workfile_info.updated_by,
-            ))
-        return items
-
-    def get_workarea_save_as_data(self, folder_id, task_id):
+    def get_workarea_save_as_data(
+        self, folder_id: Optional[str], task_id: Optional[str]
+    ) -> dict[str, Any]:
         folder_entity = None
         task_entity = None
         if folder_id:
             folder_entity = self._controller.get_folder_entity(
-                self.project_name, folder_id
+                self._project_name, folder_id
             )
             if folder_entity and task_id:
                 task_entity = self._controller.get_task_entity(
-                    self.project_name, task_id
+                    self._project_name, task_id
                 )
 
         if not folder_entity or not task_entity:
@@ -192,6 +150,7 @@ class WorkareaModel:
                 "template_has_comment": None,
                 "ext": None,
                 "workdir": None,
+                "rootless_workdir": None,
                 "comment": None,
                 "comment_hints": None,
                 "last_version": None,
@@ -215,6 +174,17 @@ class WorkareaModel:
 
         workdir = self._get_workdir(anatomy, template_key, fill_data)
 
+        rootless_workdir = workdir
+        if platform.system().lower() == "windows":
+            rootless_workdir = rootless_workdir.replace("\\", "/")
+
+        used_roots = workdir.used_values.get("root")
+        if used_roots:
+            used_root_name = next(iter(used_roots))
+            root_value = used_roots[used_root_name]
+            workdir_end = rootless_workdir[len(root_value):].lstrip("/")
+            rootless_workdir = f"{{root[{used_root_name}]}}/{workdir_end}"
+
         file_template = anatomy.get_template_item(
             "work", template_key, "file"
         )
@@ -223,15 +193,20 @@ class WorkareaModel:
         template_has_version = "{version" in file_template_str
         template_has_comment = "{comment" in file_template_str
 
-        comment_hints, comment = self._get_comments_from_root(
+        file_items = self.get_file_items(folder_id, task_id)
+        filepaths = [
+            item.filepath
+            for item in file_items
+        ]
+        comment_hints, comment = get_comments_from_workfile_paths(
+            filepaths,
             file_template,
             extensions,
             fill_data,
-            workdir,
             current_filename,
         )
         last_version = self._get_last_workfile_version(
-            workdir, file_template_str, fill_data, extensions
+            filepaths, file_template_str, fill_data, extensions
         )
 
         return {
@@ -240,6 +215,7 @@ class WorkareaModel:
             "template_has_comment": template_has_comment,
             "ext": current_ext,
             "workdir": workdir,
+            "rootless_workdir": rootless_workdir,
             "comment": comment,
             "comment_hints": comment_hints,
             "last_version": last_version,
@@ -248,13 +224,13 @@ class WorkareaModel:
 
     def fill_workarea_filepath(
         self,
-        folder_id,
-        task_id,
-        extension,
-        use_last_version,
-        version,
-        comment,
-    ):
+        folder_id: str,
+        task_id: str,
+        extension: str,
+        use_last_version: bool,
+        version: int,
+        comment: str,
+    ) -> WorkareaFilepathResult:
         """Fill workarea filepath based on context.
 
         Args:
@@ -281,8 +257,16 @@ class WorkareaModel:
         )
 
         if use_last_version:
+            file_items = self.get_file_items(folder_id, task_id)
+            filepaths = [
+                item.filepath
+                for item in file_items
+            ]
             version = self._get_last_workfile_version(
-                workdir, file_template.template, fill_data, self._extensions
+                filepaths,
+                file_template.template,
+                fill_data,
+                self._extensions
             )
         fill_data["version"] = version
         fill_data["ext"] = extension.lstrip(".")
@@ -305,7 +289,11 @@ class WorkareaModel:
             exists
         )
 
-    def _get_base_data(self):
+    @property
+    def _project_name(self) -> str:
+        return self._controller.get_current_project_name()
+
+    def _get_base_data(self) -> dict[str, Any]:
         if self._base_data is None:
             base_data = get_template_data(
                 ayon_api.get_project(self._project_name),
@@ -314,28 +302,35 @@ class WorkareaModel:
             self._base_data = base_data
         return copy.deepcopy(self._base_data)
 
-    def _get_folder_data(self, folder_id):
+    def _get_folder_data(self, folder_id: str) -> dict[str, Any]:
         fill_data = self._fill_data_by_folder_id.get(folder_id)
         if fill_data is None:
             folder = self._controller.get_folder_entity(
-                self.project_name, folder_id
+                self._project_name, folder_id
             )
-            fill_data = get_folder_template_data(folder, self.project_name)
+            fill_data = get_folder_template_data(folder, self._project_name)
             self._fill_data_by_folder_id[folder_id] = fill_data
         return copy.deepcopy(fill_data)
 
-    def _get_task_data(self, project_entity, folder_id, task_id):
+    def _get_task_data(
+        self,
+        project_entity: dict[str, Any],
+        folder_id: str,
+        task_id: str
+    ) -> dict[str, Any]:
         task_data = self._task_data_by_folder_id.setdefault(folder_id, {})
         if task_id not in task_data:
             task = self._controller.get_task_entity(
-                self.project_name, task_id
+                self._project_name, task_id
             )
             if task:
                 task_data[task_id] = get_task_template_data(
                     project_entity, task)
         return copy.deepcopy(task_data[task_id])
 
-    def _prepare_fill_data(self, folder_id, task_id):
+    def _prepare_fill_data(
+        self, folder_id: str, task_id: str
+    ) -> dict[str, Any]:
         if not folder_id or not task_id:
             return {}
 
@@ -350,19 +345,71 @@ class WorkareaModel:
 
         return base_data
 
-    def _get_template_key(self, fill_data):
+    def _cache_file_items(
+        self, folder_id: Optional[str], task_id: Optional[str]
+    ) -> list[WorkfileInfo]:
+        if not folder_id or not task_id:
+            return []
+
+        cache: CacheItem = self._file_items_cache[task_id]
+        if cache.is_valid:
+            return cache.get_data()
+
+        project_entity = self._controller.get_project_entity(
+            self._project_name
+        )
+        folder_entity = self._controller.get_folder_entity(
+            self._project_name, folder_id
+        )
+        task_entity = self._controller.get_task_entity(
+            self._project_name, task_id
+        )
+        anatomy = self._controller.project_anatomy
+        project_settings = self._controller.project_settings
+        workfile_entities = self._controller.get_workfile_entities(task_id)
+
+        fill_data = self._prepare_fill_data(folder_id, task_id)
+        template_key = self._get_template_key(fill_data)
+
+        items = self._host.list_workfiles(
+            self._project_name,
+            folder_id,
+            task_id,
+            project_entity=project_entity,
+            folder_entity=folder_entity,
+            task_entity=task_entity,
+            anatomy=anatomy,
+            template_key=template_key,
+            project_settings=project_settings,
+            workfile_entities=workfile_entities,
+        )
+        cache.update_data(items)
+
+        # Cache items by entity ids and rootless path
+        self._file_items_mapping[task_id] = {
+            item.rootless_path: item
+            for item in items
+        }
+
+        return items
+
+    def _get_template_key(self, fill_data: dict[str, Any]) -> str:
         task_type = fill_data.get("task", {}).get("type")
         # TODO cache
         return get_workfile_template_key(
-            self.project_name,
+            self._project_name,
             task_type,
             self._controller.get_host_name(),
             project_settings=self._controller.project_settings,
         )
 
     def _get_last_workfile_version(
-        self, workdir, file_template, fill_data, extensions
-    ):
+        self,
+        filepaths: list[str],
+        file_template: str,
+        fill_data: dict[str, Any],
+        extensions: set[str]
+    ) -> int:
         """
 
         Todos:
@@ -370,7 +417,7 @@ class WorkareaModel:
                 last version + 1 which might be wrong.
 
         Args:
-            workdir (str): Workdir path.
+            filepaths (list[str]): Workfile paths.
             file_template (str): File template.
             fill_data (dict[str, Any]): Fill data.
             extensions (set[str]): Extensions.
@@ -379,25 +426,26 @@ class WorkareaModel:
             int: Next workfile version.
 
         """
-        version = get_last_workfile_with_version(
-            workdir, file_template, fill_data, extensions
+        version = get_last_workfile_with_version_from_paths(
+            filepaths, file_template, fill_data, extensions
         )[1]
+        if version is not None:
+            return version + 1
 
-        if version is None:
-            task_info = fill_data.get("task", {})
-            version = get_versioning_start(
-                self.project_name,
-                self._controller.get_host_name(),
-                task_name=task_info.get("name"),
-                task_type=task_info.get("type"),
-                product_type="workfile",
-                project_settings=self._controller.project_settings,
-            )
-        else:
-            version += 1
-        return version
 
-    def _get_workdir(self, anatomy, template_key, fill_data):
+        task_info = fill_data.get("task", {})
+        return get_versioning_start(
+            self._project_name,
+            self._controller.get_host_name(),
+            task_name=task_info.get("name"),
+            task_type=task_info.get("type"),
+            product_type="workfile",
+            project_settings=self._controller.project_settings,
+        )
+
+    def _get_workdir(
+        self, anatomy: "Anatomy", template_key: str, fill_data: dict[str, Any]
+    ):
         directory_template = anatomy.get_template_item(
             "work", template_key, "directory"
         )
