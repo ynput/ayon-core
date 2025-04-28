@@ -213,6 +213,7 @@ class WorkareaModel:
             self.project_name,
             task_type,
             self._controller.get_host_name(),
+            project_settings=self._controller.project_settings,
         )
 
     def _get_last_workfile_version(
