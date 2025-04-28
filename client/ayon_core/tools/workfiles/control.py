@@ -468,6 +468,9 @@ class BaseWorkfileController(
             description,
         )
 
+    def get_workfile_entities(self, task_id):
+        return self._workfiles_model.get_workfile_entities(task_id)
+
     def reset(self):
         if not self._host_is_valid:
             self._emit_event("controller.reset.started")
