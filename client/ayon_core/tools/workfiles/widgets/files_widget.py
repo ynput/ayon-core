@@ -212,9 +212,11 @@ class FilesWidget(QtWidgets.QWidget):
             return
         self._controller.duplicate_workfile(
             filepath,
-            result["workdir"],
+            result["rootless_workdir"],
             result["filename"],
-            artist_note=result["artist_note"]
+            version=result["version"],
+            comment=result["comment"],
+            description=result["description"]
         )
 
     def _on_workarea_browse_clicked(self):
@@ -259,10 +261,12 @@ class FilesWidget(QtWidgets.QWidget):
         self._controller.save_as_workfile(
             result["folder_id"],
             result["task_id"],
-            result["workdir"],
+            result["rootless_workdir"],
             result["filename"],
             result["template_key"],
-            artist_note=result["artist_note"]
+            version=result["version"],
+            comment=result["comment"],
+            description=result["description"]
         )
 
     def _on_workarea_path_changed(self, event):
@@ -315,7 +319,9 @@ class FilesWidget(QtWidgets.QWidget):
             result["workdir"],
             result["filename"],
             result["template_key"],
-            artist_note=result["artist_note"]
+            version=result["version"],
+            comment=result["comment"],
+            description=result["description"],
         )
 
     def _on_save_as_request(self):
