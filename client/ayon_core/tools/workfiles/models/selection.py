@@ -62,7 +62,9 @@ class SelectionModel(object):
     def get_selected_workfile_path(self):
         return self._workfile_path
 
-    def set_selected_workfile_path(self, path):
+    def set_selected_workfile_path(
+        self, rootless_path, path, workfile_entity_id
+    ):
         if path == self._workfile_path:
             return
 
@@ -72,9 +74,11 @@ class SelectionModel(object):
             {
                 "project_name": self._controller.get_current_project_name(),
                 "path": path,
+                "rootless_path": rootless_path,
                 "folder_id": self._folder_id,
                 "task_name": self._task_name,
                 "task_id": self._task_id,
+                "workfile_entity_id": workfile_entity_id,
             },
             self.event_source
         )
