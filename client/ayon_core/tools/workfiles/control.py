@@ -332,8 +332,12 @@ class BaseWorkfileController(
     def get_selected_workfile_path(self):
         return self._selection_model.get_selected_workfile_path()
 
-    def set_selected_workfile_path(self, path):
-        self._selection_model.set_selected_workfile_path(path)
+    def set_selected_workfile_path(
+        self, rootless_path, path, workfile_entity_id
+    ):
+        self._selection_model.set_selected_workfile_path(
+            rootless_path, path, workfile_entity_id
+        )
 
     def get_selected_representation_id(self):
         return self._selection_model.get_selected_representation_id()
