@@ -505,6 +505,7 @@ class BaseWorkfileController(
 
         self._projects_model.reset()
         self._hierarchy_model.reset()
+        self._workfiles_model.reset()
 
         if not expected_folder_id:
             expected_folder_id = folder_id

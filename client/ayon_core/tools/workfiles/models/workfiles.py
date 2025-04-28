@@ -455,6 +455,10 @@ class WorkfileEntitiesModel:
         self._items = {}
         self._current_username = _NOT_SET
 
+    def reset(self):
+        self._cache = {}
+        self._items = {}
+
     def _get_workfile_info_identifier(
         self, folder_id, task_id, rootless_path
     ):
@@ -748,6 +752,10 @@ class WorkfilesModel:
         self._entities_model = WorkfileEntitiesModel(controller)
         self._workarea_model = WorkareaModel(host, controller)
         self._published_model = PublishWorkfilesModel(controller)
+
+    def reset(self):
+        self._entities_model.reset()
+        self._workarea_model.reset()
 
     def get_workfile_info(self, folder_id, task_id, filepath):
         return self._entities_model.get_workfile_info(
