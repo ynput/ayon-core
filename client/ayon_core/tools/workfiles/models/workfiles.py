@@ -114,9 +114,9 @@ class WorkareaModel:
     def _get_base_data(self):
         if self._base_data is None:
             base_data = get_template_data(
-                ayon_api.get_project(self.project_name)
+                ayon_api.get_project(self._project_name),
+                host_name=self._controller.get_host_name(),
             )
-            base_data["app"] = self._controller.get_host_name()
             self._base_data = base_data
         return copy.deepcopy(self._base_data)
 
