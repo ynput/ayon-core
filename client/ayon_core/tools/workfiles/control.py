@@ -10,7 +10,6 @@ from ayon_core.settings import get_project_settings
 from ayon_core.pipeline import Anatomy, registered_host
 from ayon_core.pipeline.context_tools import (
     change_current_context,
-    get_current_host_name,
     get_global_context,
 )
 from ayon_core.pipeline.workfile import create_workdir_extra_folders
@@ -288,23 +287,14 @@ class BaseWorkfileController(
 
     # Host information
     def get_workfile_extensions(self):
-        host = self._host
-        if isinstance(host, IWorkfileHost):
-            return host.get_workfile_extensions()
-        return host.file_extensions()
+        return self._host.get_workfile_extensions()
 
     def has_unsaved_changes(self):
-        host = self._host
-        if isinstance(host, IWorkfileHost):
-            return host.workfile_has_unsaved_changes()
-        return host.has_unsaved_changes()
+        return self._host.workfile_has_unsaved_changes()
 
     # Current context
     def get_host_name(self):
-        host = self._host
-        if isinstance(host, IWorkfileHost):
-            return host.name
-        return get_current_host_name()
+        return self._host.name
 
     def _get_host_current_context(self):
         if hasattr(self._host, "get_current_context"):
@@ -321,10 +311,7 @@ class BaseWorkfileController(
         return self._current_task_name
 
     def get_current_workfile(self):
-        host = self._host
-        if isinstance(host, IWorkfileHost):
-            return host.get_current_workfile()
-        return host.current_file()
+        return self._host.get_current_workfile()
 
     # Selection information
     def get_selected_folder_id(self):
