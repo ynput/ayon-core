@@ -528,6 +528,7 @@ class BaseWorkfileController(
 
     # Controller actions
     def open_workfile(self, folder_id, task_id, filepath):
+        # TODO move to workfiles model
         self._emit_event("open_workfile.started")
 
         failed = False
@@ -544,6 +545,7 @@ class BaseWorkfileController(
         )
 
     def save_current_workfile(self):
+        # TODO move to workfiles model
         current_file = self.get_current_workfile()
         self._host.save_workfile(current_file)
 
@@ -594,6 +596,7 @@ class BaseWorkfileController(
         comment,
         description,
     ):
+        # TODO move to workfiles model
         self._emit_event("copy_representation.started")
 
         failed = False
@@ -623,6 +626,8 @@ class BaseWorkfileController(
     def duplicate_workfile(
         self, src_filepath, workdir, filename, version, comment, description
     ):
+        # TODO move to workfiles model
+        # TODO save workfile information
         self._emit_event("workfile_duplicate.started")
 
         failed = False
@@ -678,6 +683,7 @@ class BaseWorkfileController(
         }
 
     def _open_workfile(self, folder_id, task_id, filepath):
+        # TODO move to workfiles model
         project_name = self.get_current_project_name()
         event_data = self._get_event_context_data(
             project_name, folder_id, task_id
@@ -710,6 +716,7 @@ class BaseWorkfileController(
         description: Optional[str],
         src_filepath=None,
     ):
+        # TODO move to workfiles model
         # Trigger before save event
         project_name = self.get_current_project_name()
         folder = self.get_folder_entity(project_name, folder_id)
