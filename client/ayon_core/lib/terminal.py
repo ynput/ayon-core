@@ -39,6 +39,7 @@ class Terminal:
         """
 
         from ayon_core.lib import env_value_to_bool
+
         log_no_colors = env_value_to_bool(
             "AYON_LOG_NO_COLORS", default=None
         )

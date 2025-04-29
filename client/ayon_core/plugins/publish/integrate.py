@@ -619,8 +619,7 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
             # used for all represe
             # from temp to final
             original_directory = (
-                instance.data.get("originalDirname") or instance_stagingdir)
-
+                instance.data.get("originalDirname") or stagingdir)
             _rootless = self.get_rootless_path(anatomy, original_directory)
             if _rootless == original_directory:
                 raise KnownPublishError((
@@ -684,7 +683,7 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
 
         elif is_sequence_representation:
             # Collection of files (sequence)
-            src_collections, remainders = clique.assemble(files)
+            src_collections, _remainders = clique.assemble(files)
 
             src_collection = src_collections[0]
             destination_indexes = list(src_collection.indexes)

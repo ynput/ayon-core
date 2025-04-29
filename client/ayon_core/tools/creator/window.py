@@ -492,7 +492,7 @@ def show(parent=None):
 
     try:
         module.window.close()
-        del(module.window)
+        del module.window
     except (AttributeError, RuntimeError):
         pass
 
