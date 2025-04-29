@@ -365,6 +365,9 @@ class ExtractThumbnail(pyblish.api.InstancePlugin):
         """Check if representation contains valid media files"""
         files = repre.get("files")
         if not files:
+            self.log.debug((
+                "Representation \"{}\" doesn't have files. Skipping"
+            ).format(repre["name"]))
             return False
 
         # Get first file's extension
