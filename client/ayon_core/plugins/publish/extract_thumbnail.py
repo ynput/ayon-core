@@ -349,7 +349,7 @@ class ExtractThumbnail(pyblish.api.InstancePlugin):
                 continue
 
             if "review" not in tags:
-                if not self._is_valid_media_repre(repre):
+                if not self._is_valid_images_repre(repre):
                     continue
 
             if not repre.get("files"):
@@ -361,8 +361,8 @@ class ExtractThumbnail(pyblish.api.InstancePlugin):
             filtered_repres.append(repre)
         return filtered_repres
 
-    def _is_valid_media_repre(self, repre):
-        """Check if representation contains valid media files"""
+    def _is_valid_images_repre(self, repre):
+        """Check if representation contains valid image files"""
         files = repre.get("files")
         if not files:
             self.log.debug((
