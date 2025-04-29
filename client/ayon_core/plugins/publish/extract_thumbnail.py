@@ -336,7 +336,8 @@ class ExtractThumbnail(pyblish.api.InstancePlugin):
         return need_thumb_repres
 
     def _get_filtered_repres(self, instance):
-        filtered_repres = []
+        review_repres = []
+        other_repres = []
         src_repres = instance.data.get("representations") or []
 
         for repre in src_repres:
@@ -348,18 +349,22 @@ class ExtractThumbnail(pyblish.api.InstancePlugin):
                 # to be published locally
                 continue
 
-            if "review" not in tags:
-                if not self._is_valid_images_repre(repre):
-                    continue
-
             if not repre.get("files"):
                 self.log.debug((
                     "Representation \"{}\" doesn't have files. Skipping"
                 ).format(repre["name"]))
                 continue
 
-            filtered_repres.append(repre)
-        return filtered_repres
+            has_review_tag = "review" in tags
+            if not has_review_tag and not self._is_valid_images_repre(repre):
+                continue
+
+            if has_review_tag:
+                review_repres.append(repre)
+            else:
+                other_repres.append(repre)
+
+        return review_repres + other_repres
 
     def _is_valid_images_repre(self, repre):
         """Check if representation contains valid image files
@@ -372,9 +377,6 @@ class ExtractThumbnail(pyblish.api.InstancePlugin):
         """
         files = repre.get("files")
         if not files:
-            self.log.debug((
-                "Representation \"{}\" doesn't have files. Skipping"
-            ).format(repre["name"]))
             return False
 
         # Get first file's extension
@@ -384,7 +386,8 @@ class ExtractThumbnail(pyblish.api.InstancePlugin):
             first_file = files
 
         ext = os.path.splitext(first_file)[1].lower()
-        return ext in IMAGE_EXTENSIONS
+
+        return ext in IMAGE_EXTENSIONS or ext in VIDEO_EXTENSIONS
 
     def _create_thumbnail_oiio(
         self,
