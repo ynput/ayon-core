@@ -26,6 +26,8 @@ exclude = [
     "node_modules",
     "site-packages",
     "venv",
+    "vendor",
+    "generated",
 ]
 
 # Same as Black.
@@ -45,6 +47,14 @@ unfixable = []
 
 # Allow unused variables when underscore-prefixed.
 dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
+
+exclude = [
+    "client/ayon_core/modules/click_wrap.py",
+    "client/ayon_core/scripts/slates/__init__.py"
+]
+
+[lint.per-file-ignores]
+"client/ayon_core/lib/__init__.py" = ["E402"]
 
 [format]
 # Like Black, use double quotes for strings.
