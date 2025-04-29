@@ -17,7 +17,7 @@ from ayon_core.lib import (
 )
 from ayon_core.lib.transcoding import convert_colorspace
 
-from ayon_core.lib.transcoding import VIDEO_EXTENSIONS
+from ayon_core.lib.transcoding import VIDEO_EXTENSIONS, IMAGE_EXTENSIONS
 
 
 class ExtractThumbnail(pyblish.api.InstancePlugin):
@@ -349,7 +349,8 @@ class ExtractThumbnail(pyblish.api.InstancePlugin):
                 continue
 
             if "review" not in tags:
-                continue
+                if not self._is_valid_media_repre(repre):
+                    continue
 
             if not repre.get("files"):
                 self.log.debug((
@@ -359,6 +360,21 @@ class ExtractThumbnail(pyblish.api.InstancePlugin):
 
             filtered_repres.append(repre)
         return filtered_repres
+
+    def _is_valid_media_repre(self, repre):
+        """Check if representation contains valid media files"""
+        files = repre.get("files")
+        if not files:
+            return False
+
+        # Get first file's extension
+        if isinstance(files, (list, tuple)):
+            first_file = files[0]
+        else:
+            first_file = files
+
+        ext = os.path.splitext(first_file)[1].lower()
+        return ext in IMAGE_EXTENSIONS
 
     def _create_thumbnail_oiio(
         self,
