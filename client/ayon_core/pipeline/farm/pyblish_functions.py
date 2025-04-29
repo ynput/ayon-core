@@ -1,4 +1,4 @@
-from __future__  import annotations
+from __future__ import annotations
 import copy
 import os
 import re
@@ -660,14 +660,6 @@ def _get_legacy_product_name_and_group(
     warnings.warn("Using legacy product name for renders",
                   DeprecationWarning)
 
-    if not source_product_name.startswith(product_type):
-        resulting_group_name = '{}{}{}{}{}'.format(
-            product_type,
-            task_name[0].upper(), task_name[1:],
-            source_product_name[0].upper(), source_product_name[1:])
-    else:
-        resulting_group_name = source_product_name
-
     # create product name `<product type><Task><Product name>`
     if not source_product_name.startswith(product_type):
         resulting_group_name = '{}{}{}{}{}'.format(
@@ -808,14 +800,14 @@ def _create_instances_for_aov(
             frames_to_render is not None
             and isinstance(collected_files, (list, tuple))  # not single file
         ):
-            frames_to_render = convert_frames_str_to_list(frames_to_render)
+            aov_frames_to_render = convert_frames_str_to_list(frames_to_render)
             collections, _ = clique.assemble(collected_files)
             collected_files = _get_real_files_to_render(
-                collections[0], frames_to_render)
+                collections[0], aov_frames_to_render)
         else:
             frame_start = int(skeleton.get("frameStartHandle"))
             frame_end = int(skeleton.get("frameEndHandle"))
-            frames_to_render = list(range(frame_start, frame_end + 1))
+            aov_frames_to_render = list(range(frame_start, frame_end + 1))
 
         dynamic_data = {
             "aov": aov,
@@ -937,8 +929,8 @@ def _create_instances_for_aov(
             "name": ext,
             "ext": ext,
             "files": collected_files,
-            "frameStart": frames_to_render[0],
-            "frameEnd": frames_to_render[-1],
+            "frameStart": aov_frames_to_render[0],
+            "frameEnd": aov_frames_to_render[-1],
             # If expectedFile are absolute, we need only filenames
             "stagingDir": staging_dir,
             "fps": new_instance.get("fps"),
@@ -1168,7 +1160,7 @@ def prepare_cache_representations(skeleton_data, exp_files, anatomy):
 
     """
     representations = []
-    collections, remainders = clique.assemble(exp_files)
+    collections, _remainders = clique.assemble(exp_files)
 
     log = Logger.get_logger("farm_publishing")
 

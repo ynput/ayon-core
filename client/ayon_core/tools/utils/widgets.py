@@ -1,4 +1,5 @@
 import logging
+import math
 from typing import Optional, List, Set, Any
 
 from qtpy import QtWidgets, QtCore, QtGui
@@ -410,10 +411,12 @@ class ExpandingTextEdit(QtWidgets.QTextEdit):
         document = self.document().clone()
         document.setTextWidth(document_width)
 
-        return margins.top() + document.size().height() + margins.bottom()
+        return math.ceil(
+            margins.top() + document.size().height() + margins.bottom()
+        )
 
     def sizeHint(self):
-        width = super(ExpandingTextEdit, self).sizeHint().width()
+        width = super().sizeHint().width()
         return QtCore.QSize(width, self.heightForWidth(width))
 
 
