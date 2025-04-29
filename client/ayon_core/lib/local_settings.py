@@ -96,6 +96,30 @@ def get_launcher_local_dir(*subdirs: str) -> str:
     return os.path.join(storage_dir, *subdirs)
 
 
+def get_addons_resources_dir(addon_name: str, *args) -> str:
+    """Get directory for storing resources for addons.
+
+    Some addons might need to store ad-hoc resources that are not part of
+        addon client package (e.g. because of size). Studio might define
+        dedicated directory to store them with 'AYON_ADDONS_RESOURCES_DIR'
+        environment variable. By default, is used 'addons_resources' in
+        launcher storage (might be shared across platforms).
+
+    Args:
+        addon_name (str): Addon name.
+        *args (str): Subfolders in resources directory.
+
+    Returns:
+        str: Path to resources directory.
+
+    """
+    addons_resources_dir = os.getenv("AYON_ADDONS_RESOURCES_DIR")
+    if not addons_resources_dir:
+        addons_resources_dir = get_launcher_storage_dir("addons_resources")
+
+    return os.path.join(addons_resources_dir, addon_name, *args)
+
+
 class AYONSecureRegistry:
     """Store information using keyring.
 
