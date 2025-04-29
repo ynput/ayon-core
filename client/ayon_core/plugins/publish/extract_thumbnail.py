@@ -17,7 +17,7 @@ from ayon_core.lib import (
 )
 from ayon_core.lib.transcoding import convert_colorspace
 
-from ayon_core.lib.transcoding import VIDEO_EXTENSIONS
+from ayon_core.lib.transcoding import VIDEO_EXTENSIONS, IMAGE_EXTENSIONS
 
 
 class ExtractThumbnail(pyblish.api.InstancePlugin):
@@ -163,9 +163,12 @@ class ExtractThumbnail(pyblish.api.InstancePlugin):
         # Store new staging to cleanup paths
         instance.context.data["cleanupFullPaths"].append(dst_staging)
 
-        thumbnail_created = False
         oiio_supported = is_oiio_supported()
+        thumbnail_created = False
         for repre in filtered_repres:
+            # Reset for each iteration to handle cases where multiple
+            # reviewable thumbnails are needed
+            repre_thumb_created = False
             repre_files = repre["files"]
             src_staging = os.path.normpath(repre["stagingDir"])
             if not isinstance(repre_files, (list, tuple)):
@@ -214,7 +217,7 @@ class ExtractThumbnail(pyblish.api.InstancePlugin):
                 )
                 # If the input can read by OIIO then use OIIO method for
                 # conversion otherwise use ffmpeg
-                thumbnail_created = self._create_thumbnail_oiio(
+                repre_thumb_created = self._create_thumbnail_oiio(
                     full_input_path,
                     full_output_path,
                     colorspace_data
@@ -223,21 +226,22 @@ class ExtractThumbnail(pyblish.api.InstancePlugin):
             # Try to use FFMPEG if OIIO is not supported or for cases when
             #   oiiotool isn't available or representation is not having
             #   colorspace data
-            if not thumbnail_created:
+            if not repre_thumb_created:
                 if oiio_supported:
                     self.log.debug(
                         "Converting with FFMPEG because input"
                         " can't be read by OIIO."
                     )
 
-                thumbnail_created = self._create_thumbnail_ffmpeg(
+                repre_thumb_created = self._create_thumbnail_ffmpeg(
                     full_input_path, full_output_path
                 )
 
             # Skip representation and try next one if  wasn't created
-            if not thumbnail_created:
+            if not repre_thumb_created:
                 continue
 
+            thumbnail_created = True
             if len(explicit_repres) > 1:
                 repre_name = "thumbnail_{}".format(repre["outputName"])
             else:
@@ -332,7 +336,8 @@ class ExtractThumbnail(pyblish.api.InstancePlugin):
         return need_thumb_repres
 
     def _get_filtered_repres(self, instance):
-        filtered_repres = []
+        review_repres = []
+        other_repres = []
         src_repres = instance.data.get("representations") or []
 
         for repre in src_repres:
@@ -344,17 +349,36 @@ class ExtractThumbnail(pyblish.api.InstancePlugin):
                 # to be published locally
                 continue
 
-            if "review" not in tags:
-                continue
-
             if not repre.get("files"):
                 self.log.debug((
                     "Representation \"{}\" doesn't have files. Skipping"
                 ).format(repre["name"]))
                 continue
 
-            filtered_repres.append(repre)
-        return filtered_repres
+            if "review" in tags:
+                review_repres.append(repre)
+            elif self._is_valid_images_repre(repre):
+                other_repres.append(repre)
+
+        return review_repres + other_repres
+
+    def _is_valid_images_repre(self, repre):
+        """Check if representation contains valid image files
+
+        Args:
+            repre (dict): representation
+
+        Returns:
+            bool: whether the representation has the valid image content
+        """
+        # Get first file's extension
+        first_file = repre["files"]
+        if isinstance(first_file, (list, tuple)):
+            first_file = first_file[0]
+
+        ext = os.path.splitext(first_file)[1].lower()
+
+        return ext in IMAGE_EXTENSIONS or ext in VIDEO_EXTENSIONS
 
     def _create_thumbnail_oiio(
         self,
@@ -450,7 +474,7 @@ class ExtractThumbnail(pyblish.api.InstancePlugin):
         # output arguments from presets
         jpeg_items.extend(ffmpeg_args.get("output") or [])
         # we just want one frame from movie files
-        jpeg_items.extend(["-vframes", "1"])
+        jpeg_items.extend(["-frames:v", "1"])
 
         if resolution_arg:
             jpeg_items.extend(resolution_arg)
@@ -498,7 +522,7 @@ class ExtractThumbnail(pyblish.api.InstancePlugin):
             "-i", video_file_path,
             "-analyzeduration", max_int,
             "-probesize", max_int,
-            "-vframes", "1"
+            "-frames:v", "1"
         ]
 
         # add output file path

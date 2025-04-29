@@ -175,7 +175,7 @@ class BaseObj:
                         self.log.warning("Invalid range '{}'".format(part))
                         continue
 
-                    for idx in range(sub_parts[0], sub_parts[1]+1):
+                    for idx in range(sub_parts[0], sub_parts[1] + 1):
                         indexes.append(idx)
                 return indexes
 
@@ -352,7 +352,6 @@ class BaseObj:
     def add_item(self, item):
         self.items[item.id] = item
         item.fill_data_format()
-
 
     def reset(self):
         for item in self.items.values():
