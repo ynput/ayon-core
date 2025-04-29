@@ -1,4 +1,9 @@
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Optional
+
 import ayon_api
+
 from ayon_core.lib import (
     StringTemplate,
     filter_profiles,
@@ -9,16 +14,19 @@ from ayon_core.settings import get_project_settings
 from .constants import DEFAULT_PRODUCT_TEMPLATE
 from .exceptions import TaskNotSetError, TemplateFillError
 
+if TYPE_CHECKING:
+    from ayon_core.pipeline.product_base_types import ProductBaseType
+
 
 def get_product_name_template(
-    project_name,
-    product_type,
-    task_name,
-    task_type,
-    host_name,
-    default_template=None,
-    project_settings=None
-):
+    project_name: str,
+    product_type: str,
+    task_name: str,
+    task_type: str,
+    host_name: str,
+    default_template: Optional[str] = None,
+    project_settings: Optional[dict] = None
+) -> str:
     """Get product name template based on passed context.
 
     Args:
@@ -33,8 +41,11 @@ def get_product_name_template(
             'DEFAULT_PRODUCT_TEMPLATE' is used if not defined.
         project_settings (Union[Dict[str, Any], None]): Prepared settings for
             project. Settings are queried if not passed.
-    """
 
+    Returns:
+        str: Product name template.
+
+    """
     if project_settings is None:
         project_settings = get_project_settings(project_name)
     tools_settings = project_settings["core"]["tools"]
@@ -70,18 +81,19 @@ def get_product_name_template(
 
 
 def get_product_name(
-    project_name,
-    task_name,
-    task_type,
-    host_name,
-    product_type,
-    variant,
-    default_template=None,
-    dynamic_data=None,
-    project_settings=None,
-    product_type_filter=None,
-    project_entity=None,
-):
+    project_name: str,
+    task_name: str,
+    task_type: str,
+    host_name: str,
+    product_type: str,
+    variant: str,
+    default_template: Optional[str] = None,
+    dynamic_data: Optional[dict] = None,
+    project_settings: Optional[dict] = None,
+    product_type_filter: Optional[str] = None,
+    project_entity: Optional[dict] = None,
+    product_base_type: Optional[ProductBaseType] = None,
+) -> str:
     """Calculate product name based on passed context and AYON settings.
 
     Subst name templates are defined in `project_settings/global/tools/creator
@@ -102,6 +114,7 @@ def get_product_name(
         task_type (Union[str, None]): Task type.
         host_name (str): Host name.
         product_type (str): Product type.
+        product_base_type (ProductBaseType): Product base type.
         variant (str): In most of the cases it is user input during creation.
         default_template (Optional[str]): Default template if any profile does
             not match passed context. Constant 'DEFAULT_PRODUCT_TEMPLATE'
@@ -140,14 +153,17 @@ def get_product_name(
     # Simple check of task name existence for template with {task} in
     #   - missing task should be possible only in Standalone publisher
     if not task_name and "{task" in template.lower():
-        raise TaskNotSetError()
+        raise TaskNotSetError
 
     task_value = {
         "name": task_name,
         "type": task_type,
     }
+
+    # task_value can be for backwards compatibility
+    # single string or dict
     if "{task}" in template.lower():
-        task_value = task_name
+        task_value = task_name  # type: ignore[assignment]
 
     elif "{task[short]}" in template.lower():
         if project_entity is None:
@@ -164,7 +180,8 @@ def get_product_name(
         "family": product_type,
         "task": task_value,
         "product": {
-            "type": product_type
+            "type": product_type,
+            "base": product_base_type
         }
     }
     if dynamic_data:
@@ -174,11 +191,11 @@ def get_product_name(
 
     try:
         return StringTemplate.format_strict_template(
-            template=template,
-            data=prepare_template_data(fill_pairs)
+            template=template, data=prepare_template_data(fill_pairs)
         )
     except KeyError as exp:
-        raise TemplateFillError(
-            "Value for {} key is missing in template '{}'."
-            " Available values are {}".format(str(exp), template, fill_pairs)
+        msg = (
+            f"Value for {exp} key is missing in template '{template}'."
+            f" Available values are {fill_pairs}"
         )
+        raise TemplateFillError(msg) from exp
