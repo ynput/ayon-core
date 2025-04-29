@@ -12,5 +12,5 @@ ayon_required_addons = {}
 ayon_compatible_addons = {
     "harmony": ">0.4.0",
     "fusion": ">=0.3.3",
-    "openrv": ">=1.0.2"
+    "openrv": ">=1.0.2",
 }
