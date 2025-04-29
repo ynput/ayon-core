@@ -372,15 +372,10 @@ class ExtractThumbnail(pyblish.api.InstancePlugin):
         Returns:
             bool: whether the representation has the valid image content
         """
-        files = repre.get("files")
-        if not files:
-            return False
-
         # Get first file's extension
-        if isinstance(files, (list, tuple)):
-            first_file = files[0]
-        else:
-            first_file = files
+        first_file = repre["files"]
+        if isinstance(first_file, (list, tuple)):
+            first_file = first_file[0]
 
         ext = os.path.splitext(first_file)[1].lower()
 
