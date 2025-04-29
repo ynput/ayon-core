@@ -8,7 +8,6 @@ from pathlib import Path
 import warnings
 
 import click
-import acre
 
 from ayon_core import AYON_CORE_ROOT
 from ayon_core.addon import AddonsManager
@@ -18,7 +17,11 @@ from ayon_core.lib import (
     is_running_from_build,
     Logger,
 )
-
+from ayon_core.lib.env_tools import (
+    parse_env_variables_structure,
+    compute_env_variables_structure,
+    merge_env_variables,
+)
 
 
 @click.group(invoke_without_command=True)
@@ -169,7 +172,6 @@ def contextselection(
     main(output_path, project, folder, strict)
 
 
-
 @main_cli.command(
     context_settings=dict(
         ignore_unknown_options=True,
@@ -235,24 +237,19 @@ def version(build):
 
 def _set_global_environments() -> None:
     """Set global AYON environments."""
-    general_env = get_general_environments()
+    # First resolve general environment
+    general_env = parse_env_variables_structure(get_general_environments())
 
-    # first resolve general environment because merge doesn't expect
-    # values to be list.
-    # TODO: switch to AYON environment functions
-    merged_env = acre.merge(
-        acre.compute(acre.parse(general_env), cleanup=False),
+    # Merge environments with current environments and update values
+    merged_env = merge_env_variables(
+        compute_env_variables_structure(general_env),
         dict(os.environ)
     )
-    env = acre.compute(
-        merged_env,
-        cleanup=False
-    )
+    env = compute_env_variables_structure(merged_env)
     os.environ.clear()
     os.environ.update(env)
 
     # Hardcoded default values
-    os.environ["PYBLISH_GUI"] = "pyblish_pype"
     # Change scale factor only if is not set
     if "QT_AUTO_SCREEN_SCALE_FACTOR" not in os.environ:
         os.environ["QT_AUTO_SCREEN_SCALE_FACTOR"] = "1"
@@ -263,8 +260,8 @@ def _set_addons_environments(addons_manager):
 
     # Merge environments with current environments and update values
     if module_envs := addons_manager.collect_global_environments():
-        parsed_envs = acre.parse(module_envs)
-        env = acre.merge(parsed_envs, dict(os.environ))
+        parsed_envs = parse_env_variables_structure(module_envs)
+        env = merge_env_variables(parsed_envs, dict(os.environ))
         os.environ.clear()
         os.environ.update(env)
 
@@ -290,8 +287,6 @@ def main(*args, **kwargs):
     split_paths = python_path.split(os.pathsep)
 
     additional_paths = [
-        # add AYON tools for 'pyblish_pype'
-        os.path.join(AYON_CORE_ROOT, "tools"),
         # add common AYON vendor
         # (common for multiple Python interpreter versions)
         os.path.join(AYON_CORE_ROOT, "vendor", "python")

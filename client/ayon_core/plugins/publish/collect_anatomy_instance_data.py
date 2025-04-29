@@ -116,11 +116,11 @@ class CollectAnatomyInstanceData(pyblish.api.ContextPlugin):
 
         if not_found_folder_paths:
             joined_folder_paths = ", ".join(
-                ["\"{}\"".format(path) for path in not_found_folder_paths]
+                [f"\"{path}\"" for path in not_found_folder_paths]
             )
-            self.log.warning((
-                "Not found folder entities with paths \"{}\"."
-            ).format(joined_folder_paths))
+            self.log.warning(
+                f"Not found folder entities with paths {joined_folder_paths}."
+            )
 
     def fill_missing_task_entities(self, context, project_name):
         self.log.debug("Querying task entities for instances.")
@@ -393,7 +393,6 @@ class CollectAnatomyInstanceData(pyblish.api.ContextPlugin):
             aov = instance.data.get("aov")
             if aov:
                 anatomy_data["aov"] = aov
-
 
     def _fill_folder_data(self, instance, project_entity, anatomy_data):
         # QUESTION: should we make sure that all folder data are popped if

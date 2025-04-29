@@ -280,6 +280,9 @@ class ExtractOIIOTranscode(publish.Extractor):
 
             collection = collections[0]
             frames = list(collection.indexes)
+            if collection.holes().indexes:
+                return files_to_convert
+
             frame_str = "{}-{}#".format(frames[0], frames[-1])
             file_name = "{}{}{}".format(collection.head, frame_str,
                                         collection.tail)
