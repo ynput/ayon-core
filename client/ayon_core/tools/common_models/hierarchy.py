@@ -1,11 +1,17 @@
+from __future__ import annotations
+
 import time
 import collections
 import contextlib
+import typing
 from abc import ABC, abstractmethod
 
 import ayon_api
 
 from ayon_core.lib import NestedCacheItem
+
+if typing.TYPE_CHECKING:
+    from typing import Union
 
 HIERARCHY_MODEL_SENDER = "hierarchy.model"
 
@@ -82,19 +88,26 @@ class TaskItem:
     Args:
         task_id (str): Task id.
         name (str): Name of task.
+        name (Union[str, None]): Task label.
         task_type (str): Type of task.
         parent_id (str): Parent folder id.
     """
 
     def __init__(
-        self, task_id, name, task_type, parent_id
+        self,
+        task_id: str,
+        name: str,
+        label: Union[str, None],
+        task_type: str,
+        parent_id: str,
     ):
         self.task_id = task_id
         self.name = name
+        self.label = label
         self.task_type = task_type
         self.parent_id = parent_id
 
-        self._label = None
+        self._full_label = None
 
     @property
     def id(self):
@@ -107,16 +120,17 @@ class TaskItem:
         return self.task_id
 
     @property
-    def label(self):
+    def full_label(self):
         """Label of task item for UI.
 
         Returns:
             str: Label of task item.
         """
 
-        if self._label is None:
-            self._label = "{} ({})".format(self.name, self.task_type)
-        return self._label
+        if self._full_label is None:
+            label = self.label or self.name
+            self._full_label = f"{label} ({self.task_type})"
+        return self._full_label
 
     def to_data(self):
         """Converts task item to data.
@@ -128,6 +142,7 @@ class TaskItem:
         return {
             "task_id": self.task_id,
             "name": self.name,
+            "label": self.label,
             "parent_id": self.parent_id,
             "task_type": self.task_type,
         }
@@ -159,6 +174,7 @@ def _get_task_items_from_tasks(tasks):
         output.append(TaskItem(
             task["id"],
             task["name"],
+            task["label"],
             task["type"],
             folder_id
         ))
@@ -211,6 +227,9 @@ class HierarchyModel(object):
         self._tasks_by_id = NestedCacheItem(
             levels=2, default_factory=dict, lifetime=self.lifetime)
 
+        self._entity_ids_by_assignee = NestedCacheItem(
+            levels=2, default_factory=dict, lifetime=self.lifetime)
+
         self._folders_refreshing = set()
         self._tasks_refreshing = set()
         self._controller = controller
@@ -221,6 +240,8 @@ class HierarchyModel(object):
 
         self._task_items.reset()
         self._tasks_by_id.reset()
+
+        self._entity_ids_by_assignee.reset()
 
     def refresh_project(self, project_name):
         """Force to refresh folder items for a project.
@@ -368,7 +389,7 @@ class HierarchyModel(object):
             sender (Union[str, None]): Who requested the task item.
 
         Returns:
-            Union[TaskItem, None]: Task item found by name and folder id.
+            Optional[TaskItem]: Task item found by name and folder id.
 
         """
         for task_item in self.get_task_items(project_name, folder_id, sender):
@@ -444,6 +465,54 @@ class HierarchyModel(object):
     def get_task_entity(self, project_name, task_id):
         output = self.get_task_entities(project_name, {task_id})
         return output[task_id]
+
+    def get_entity_ids_for_assignees(
+        self, project_name: str, assignees: list[str]
+    ):
+        folder_ids = set()
+        task_ids = set()
+        output = {
+            "folder_ids": folder_ids,
+            "task_ids": task_ids,
+        }
+        assignees = set(assignees)
+        for assignee in tuple(assignees):
+            cache = self._entity_ids_by_assignee[project_name][assignee]
+            if cache.is_valid:
+                assignees.discard(assignee)
+                assignee_data = cache.get_data()
+                folder_ids.update(assignee_data["folder_ids"])
+                task_ids.update(assignee_data["task_ids"])
+
+        if not assignees:
+            return output
+
+        tasks = ayon_api.get_tasks(
+            project_name,
+            assignees_all=assignees,
+            fields={"id", "folderId", "assignees"},
+        )
+        tasks_assignee = {}
+        for task in tasks:
+            folder_ids.add(task["folderId"])
+            task_ids.add(task["id"])
+            for assignee in task["assignees"]:
+                tasks_assignee.setdefault(assignee, []).append(task)
+
+        for assignee, tasks in tasks_assignee.items():
+            cache = self._entity_ids_by_assignee[project_name][assignee]
+            assignee_folder_ids = set()
+            assignee_task_ids = set()
+            assignee_data = {
+                "folder_ids": assignee_folder_ids,
+                "task_ids": assignee_task_ids,
+            }
+            for task in tasks:
+                assignee_folder_ids.add(task["folderId"])
+                assignee_task_ids.add(task["id"])
+            cache.update_data(assignee_data)
+
+        return output
 
     @contextlib.contextmanager
     def _folder_refresh_event_manager(self, project_name, sender):

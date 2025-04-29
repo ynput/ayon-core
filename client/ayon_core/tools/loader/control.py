@@ -198,6 +198,31 @@ class LoaderController(BackendLoaderController, FrontendLoaderController):
     def get_folder_items(self, project_name, sender=None):
         return self._hierarchy_model.get_folder_items(project_name, sender)
 
+    def get_task_items(self, project_name, folder_ids, sender=None):
+        output = []
+        for folder_id in folder_ids:
+            output.extend(self._hierarchy_model.get_task_items(
+                project_name, folder_id, sender
+            ))
+        return output
+
+    def get_task_type_items(self, project_name, sender=None):
+        return self._projects_model.get_task_type_items(
+            project_name, sender
+        )
+
+    def get_folder_labels(self, project_name, folder_ids):
+        folder_items_by_id = self._hierarchy_model.get_folder_items_by_id(
+            project_name, folder_ids
+        )
+        output = {}
+        for folder_id, folder_item in folder_items_by_id.items():
+            label = None
+            if folder_item is not None:
+                label = folder_item.label
+            output[folder_id] = label
+        return output
+
     def get_product_items(self, project_name, folder_ids, sender=None):
         return self._products_model.get_product_items(
             project_name, folder_ids, sender)
@@ -234,9 +259,14 @@ class LoaderController(BackendLoaderController, FrontendLoaderController):
             project_name, version_ids
         )
 
-    def get_thumbnail_path(self, project_name, thumbnail_id):
-        return self._thumbnails_model.get_thumbnail_path(
-            project_name, thumbnail_id
+    def get_thumbnail_paths(
+        self,
+        project_name,
+        entity_type,
+        entity_ids,
+    ):
+        return self._thumbnails_model.get_thumbnail_paths(
+            project_name, entity_type, entity_ids
         )
 
     def change_products_group(self, project_name, product_ids, group_name):
@@ -298,6 +328,12 @@ class LoaderController(BackendLoaderController, FrontendLoaderController):
 
     def set_selected_folders(self, folder_ids):
         self._selection_model.set_selected_folders(folder_ids)
+
+    def get_selected_task_ids(self):
+        return self._selection_model.get_selected_task_ids()
+
+    def set_selected_tasks(self, task_ids):
+        self._selection_model.set_selected_tasks(task_ids)
 
     def get_selected_version_ids(self):
         return self._selection_model.get_selected_version_ids()

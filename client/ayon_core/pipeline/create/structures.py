@@ -1,6 +1,7 @@
 import copy
 import collections
 from uuid import uuid4
+import typing
 from typing import Optional, Dict, List, Any
 
 from ayon_core.lib.attribute_definitions import (
@@ -16,6 +17,9 @@ from ayon_core.pipeline import (
 
 from .exceptions import ImmutableKeyError
 from .changes import TrackChangesItem
+
+if typing.TYPE_CHECKING:
+    from .creator_plugins import BaseCreator
 
 
 class ConvertorItem:
@@ -156,28 +160,25 @@ class AttributeValues:
         return self._attr_defs_by_key.get(key, default)
 
     def update(self, value):
-        changes = {}
-        for _key, _value in dict(value).items():
-            if _key in self._data and self._data.get(_key) == _value:
-                continue
-            self._data[_key] = _value
-            changes[_key] = _value
-
+        changes = self._update(value)
         if changes:
             self._parent.attribute_value_changed(self._key, changes)
 
     def pop(self, key, default=None):
-        has_key = key in self._data
-        value = self._data.pop(key, default)
-        # Remove attribute definition if is 'UnknownDef'
-        # - gives option to get rid of unknown values
-        attr_def = self._attr_defs_by_key.get(key)
-        if isinstance(attr_def, UnknownDef):
-            self._attr_defs_by_key.pop(key)
-            self._attr_defs.remove(attr_def)
-        elif has_key:
-            self._parent.attribute_value_changed(self._key, {key: None})
+        value, changes = self._pop(key, default)
+        if changes:
+            self._parent.attribute_value_changed(self._key, changes)
         return value
+
+    def set_value(self, value):
+        pop_keys = set(value.keys()) - set(self._data.keys())
+        changes = self._update(value)
+        for key in pop_keys:
+            _, key_changes = self._pop(key, None)
+            changes.update(key_changes)
+
+        if changes:
+            self._parent.attribute_value_changed(self._key, changes)
 
     def reset_values(self):
         self._data = {}
@@ -224,6 +225,29 @@ class AttributeValues:
 
         return serialize_attr_defs(self._attr_defs)
 
+    def _update(self, value):
+        changes = {}
+        for key, value in dict(value).items():
+            if key in self._data and self._data.get(key) == value:
+                continue
+            self._data[key] = value
+            changes[key] = value
+        return changes
+
+    def _pop(self, key, default):
+        has_key = key in self._data
+        value = self._data.pop(key, default)
+        # Remove attribute definition if is 'UnknownDef'
+        # - gives option to get rid of unknown values
+        attr_def = self._attr_defs_by_key.get(key)
+        changes = {}
+        if isinstance(attr_def, UnknownDef):
+            self._attr_defs_by_key.pop(key)
+            self._attr_defs.remove(attr_def)
+        elif has_key:
+            changes[key] = None
+        return value, changes
+
 
 class CreatorAttributeValues(AttributeValues):
     """Creator specific attribute values of an instance."""
@@ -265,6 +289,23 @@ class PublishAttributes:
 
     def __getitem__(self, key):
         return self._data[key]
+
+    def __setitem__(self, key, value):
+        """Set value for plugin.
+
+        Args:
+            key (str): Plugin name.
+            value (dict[str, Any]): Value to set.
+
+        """
+        current_value = self._data.get(key)
+        if isinstance(current_value, PublishAttributeValues):
+            current_value.set_value(value)
+        else:
+            self._data[key] = value
+
+    def __delitem__(self, key):
+        self.pop(key)
 
     def __contains__(self, key):
         return key in self._data
@@ -328,7 +369,7 @@ class PublishAttributes:
         return copy.deepcopy(self._origin_data)
 
     def attribute_value_changed(self, key, changes):
-        self._parent.publish_attribute_value_changed(key,  changes)
+        self._parent.publish_attribute_value_changed(key, changes)
 
     def set_publish_plugin_attr_defs(
         self,
@@ -444,10 +485,11 @@ class CreatedInstance:
 
     def __init__(
         self,
-        product_type,
-        product_name,
-        data,
-        creator,
+        product_type: str,
+        product_name: str,
+        data: Dict[str, Any],
+        creator: "BaseCreator",
+        transient_data: Optional[Dict[str, Any]] = None,
     ):
         self._creator = creator
         creator_identifier = creator.identifier
@@ -462,7 +504,9 @@ class CreatedInstance:
         self._members = []
 
         # Data that can be used for lifetime of object
-        self._transient_data = {}
+        if transient_data is None:
+            transient_data = {}
+        self._transient_data = transient_data
 
         # Create a copy of passed data to avoid changing them on the fly
         data = copy.deepcopy(data or {})
@@ -492,7 +536,7 @@ class CreatedInstance:
         item_id = data.get("id")
         # TODO use only 'AYON_INSTANCE_ID' when all hosts support it
         if item_id not in {AYON_INSTANCE_ID, AVALON_INSTANCE_ID}:
-            item_id = AVALON_INSTANCE_ID
+            item_id = AYON_INSTANCE_ID
         self._data["id"] = item_id
         self._data["productType"] = product_type
         self._data["productName"] = product_name
@@ -787,16 +831,26 @@ class CreatedInstance:
         self._create_context.instance_create_attr_defs_changed(self.id)
 
     @classmethod
-    def from_existing(cls, instance_data, creator):
+    def from_existing(
+        cls,
+        instance_data: Dict[str, Any],
+        creator: "BaseCreator",
+        transient_data: Optional[Dict[str, Any]] = None,
+    ) -> "CreatedInstance":
         """Convert instance data from workfile to CreatedInstance.
 
         Args:
             instance_data (Dict[str, Any]): Data in a structure ready for
                 'CreatedInstance' object.
             creator (BaseCreator): Creator plugin which is creating the
-                instance of for which the instance belong.
-        """
+                instance of for which the instance belongs.
+            transient_data (Optional[dict[str, Any]]): Instance transient
+                data.
 
+        Returns:
+            CreatedInstance: Instance object.
+
+        """
         instance_data = copy.deepcopy(instance_data)
 
         product_type = instance_data.get("productType")
@@ -809,7 +863,11 @@ class CreatedInstance:
             product_name = instance_data.get("subset")
 
         return cls(
-            product_type, product_name, instance_data, creator
+            product_type,
+            product_name,
+            instance_data,
+            creator,
+            transient_data=transient_data,
         )
 
     def attribute_value_changed(self, key, changes):

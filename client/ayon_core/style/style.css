@@ -1171,6 +1171,8 @@ ValidationArtistMessage QLabel {
 
 #PublishLogMessage {
     font-family: "Noto Sans Mono";
+    border: none;
+    padding: 0;
 }
 
 #PublishInstanceLogsLabel {
