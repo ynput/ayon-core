@@ -362,7 +362,14 @@ class ExtractThumbnail(pyblish.api.InstancePlugin):
         return filtered_repres
 
     def _is_valid_images_repre(self, repre):
-        """Check if representation contains valid image files"""
+        """Check if representation contains valid image files
+
+        Args:
+            repre (dict): representation
+
+        Returns:
+            bool: whether the representation has the valid image content
+        """
         files = repre.get("files")
         if not files:
             self.log.debug((
