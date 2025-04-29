@@ -52,7 +52,6 @@ unfixable = []
 dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
 
 exclude = [
-    "client/ayon_core/modules/click_wrap.py",
     "client/ayon_core/scripts/slates/__init__.py"
 ]
 
