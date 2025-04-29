@@ -7,6 +7,7 @@ import typing
 from typing import Optional, Any
 
 import ayon_api
+import arrow
 
 if typing.TYPE_CHECKING:
     from ayon_core.pipeline import Anatomy
@@ -52,6 +53,70 @@ class WorkfileInfo:
             created_by=workfile_entity.get("createdBy"),
             updated_by=workfile_entity.get("updatedBy"),
             available=available,
+        )
+
+    def to_data(self):
+        """Converts file item to data.
+
+        Returns:
+            dict[str, Any]: Workfile item data.
+
+        """
+        return asdict(self)
+
+    @classmethod
+    def from_data(self, data):
+        """Converts data to workfile item.
+
+        Args:
+            data (dict[str, Any]): Workfile item data.
+
+        Returns:
+            WorkfileInfo: File item.
+
+        """
+        return WorkfileInfo(**data)
+
+
+@dataclass
+class PublishedWorkfileInfo:
+    folder_id: str
+    task_id: Optional[str]
+    representation_id: str
+    filepath: str
+    created_at: float
+    author: str
+    available: bool
+    file_size: Optional[float]
+    file_created: Optional[float]
+    file_modified: Optional[float]
+
+    @classmethod
+    def new(
+        cls,
+        folder_id: str,
+        task_id: Optional[str],
+        repre_entity: dict[str, Any],
+        filepath: str,
+        author: str,
+        available: bool,
+        file_size: Optional[float],
+        file_modified: Optional[float],
+        file_created: Optional[float],
+    ):
+        created_at = arrow.get(repre_entity["createdAt"]).to("local")
+
+        return cls(
+            folder_id=folder_id,
+            task_id=task_id,
+            representation_id=repre_entity["id"],
+            filepath=filepath,
+            created_at=created_at.float_timestamp,
+            author=author,
+            available=available,
+            file_size=file_size,
+            file_created=file_created,
+            file_modified=file_modified,
         )
 
     def to_data(self):
@@ -264,6 +329,110 @@ class IWorkfileHost:
 
         return items
 
+    def list_published_workfiles(
+        self,
+        project_name: str,
+        folder_id: str,
+        anatomy: Optional["Anatomy"] = None,
+        version_entities: Optional[list[dict[str, Any]]] = None,
+        repre_entities: Optional[list[dict[str, Any]]] = None,
+    ) -> list[PublishedWorkfileInfo]:
+        """List published workfiles for given folder.
+
+        Default implementation looks for products with 'workfile'
+            product type.
+
+        Pre-fetched entities have mandatory fields to be fetched.
+         -  Version: 'id', 'author', 'taskId'
+         -  Representation: 'id', 'versionId', 'files'
+
+        Args:
+            project_name (str): Project name.
+            folder_id (str): Folder id.
+            anatomy (Anatomy): Project anatomy.
+            version_entities (Optional[list[dict[str, Any]]]): Pre-fetched
+                version entities.
+            repre_entities (Optional[list[dict[str, Any]]]): Pre-fetched
+                representation entities.
+
+        Returns:
+            list[PublishedWorkfileInfo]: Published workfile information for
+                given context.
+
+        """
+        from ayon_core.pipeline import Anatomy
+
+        # Get all representations of the folder
+        (
+            version_entities,
+            repre_entities
+        ) = self._fetch_workfile_entities(
+            project_name,
+            folder_id,
+            version_entities,
+            repre_entities,
+        )
+        if not repre_entities:
+            return []
+
+        if anatomy is None:
+            anatomy = Anatomy(project_name)
+
+        versions_by_id = {
+            version_entity["id"]: version_entity
+            for version_entity in version_entities
+        }
+        extensions = self.get_workfile_extensions()
+        items = []
+        for repre_entity in repre_entities:
+            version_id = repre_entity["versionId"]
+            version_entity = versions_by_id[version_id]
+            task_id = version_entity["taskId"]
+
+            # Filter by extension
+            workfile_path = None
+            for repre_file in repre_entity["files"]:
+                ext = (
+                    os.path.splitext(repre_file["name"])[1]
+                    .lower()
+                    .lstrip(".")
+                )
+                if ext in extensions:
+                    workfile_path = repre_file["path"]
+                    break
+
+            if not workfile_path:
+                continue
+
+            try:
+                workfile_path = workfile_path.format(root=anatomy.roots)
+            except Exception as exc:
+                print(f"Failed to format workfile path: {exc}")
+
+            is_available = False
+            file_size = file_modified = file_created = None
+            if workfile_path and os.path.exists(workfile_path):
+                filestat = os.stat(workfile_path)
+                is_available = True
+                file_size = filestat.st_size
+                file_created = filestat.st_ctime
+                file_modified = filestat.st_mtime
+
+            workfile_item = PublishedWorkfileInfo.new(
+                folder_id,
+                task_id,
+                repre_entity,
+                workfile_path,
+                version_entity["author"],
+                is_available,
+                file_size,
+                file_created,
+                file_modified,
+            )
+            items.append(workfile_item)
+
+        return items
+
     # --- Deprecated method names ---
     def file_extensions(self):
         """Deprecated variant of 'get_workfile_extensions'.
@@ -308,3 +477,53 @@ class IWorkfileHost:
         """
 
         return self.workfile_has_unsaved_changes()
+
+    def _fetch_workfile_entities(
+        self,
+        project_name: str,
+        folder_id: str,
+        version_entities: Optional[list[dict[str, Any]]],
+        repre_entities: Optional[list[dict[str, Any]]],
+    ) -> tuple[
+        list[dict[str, Any]],
+        list[dict[str, Any]]
+    ]:
+        if repre_entities is not None and version_entities is None:
+            # Get versions of representations
+            version_ids = {r["versionId"] for r in repre_entities}
+            version_entities = list(ayon_api.get_versions(
+                project_name,
+                version_ids=version_ids,
+                fields={"id", "author", "taskId"},
+            ))
+
+        if version_entities is None:
+            # Get product entities of folder
+            product_entities = ayon_api.get_products(
+                project_name,
+                folder_ids={folder_id},
+                product_types={"workfile"},
+                fields={"id", "name"}
+            )
+
+            version_entities = []
+            product_ids = {product["id"] for product in product_entities}
+            if product_ids:
+                # Get version docs of products with their families
+                version_entities = list(ayon_api.get_versions(
+                    project_name,
+                    product_ids=product_ids,
+                    fields={"id", "author", "taskId"},
+                ))
+
+        # Fetch representations of filtered versions and add filter for
+        #   extension
+        if repre_entities is None:
+            repre_entities = []
+            if version_entities:
+                repre_entities = list(ayon_api.get_representations(
+                    project_name,
+                    version_ids={v["id"] for v in version_entities}
+                ))
+
+        return version_entities, repre_entities
