@@ -12,6 +12,10 @@ from ayon_server.settings import (
 from ayon_server.types import ColorRGBA_uint8
 
 
+class EnabledModel(BaseSettingsModel):
+    enabled: bool = SettingsField(True)
+
+
 class ValidateBaseModel(BaseSettingsModel):
     _isGroup = True
     enabled: bool = SettingsField(True)
@@ -900,6 +904,20 @@ class IntegrateHeroVersionModel(BaseSettingsModel):
                     "hero versions.")
 
 
+class CollectRenderedFilesModel(BaseSettingsModel):
+    remove_files: bool = SettingsField(
+        False,
+        title="Remove rendered files",
+        description=(
+            "Remove rendered files and metadata json on publish.\n\n"
+            "Note that when enabled but the render is to a configured "
+            "persistent staging directory the files will not be removed. "
+            "However with this disabled the files will **not** be removed in "
+            "either case."
+        )
+    )
+
+
 class CleanUpModel(BaseSettingsModel):
     _isGroup = True
     paterns: list[str] = SettingsField(  # codespell:ignore paterns
@@ -996,6 +1014,21 @@ class PublishPuginsModel(BaseSettingsModel):
     IntegrateHeroVersion: IntegrateHeroVersionModel = SettingsField(
         default_factory=IntegrateHeroVersionModel,
         title="Integrate Hero Version"
+    )
+    AttachReviewables: EnabledModel = SettingsField(
+        default_factory=EnabledModel,
+        title="Attach Reviewables",
+        description=(
+            "When enabled, expose an 'Attach Reviewables' attribute on review"
+            " and render instances in the publisher to allow including the"
+            " media to be attached to another instance.\n\n"
+            "If a reviewable is attached to another instance it will not be "
+            "published as a render/review product of its own."
+        )
+    )
+    CollectRenderedFiles: CollectRenderedFilesModel = SettingsField(
+        default_factory=CollectRenderedFilesModel,
+        title="Clean up farm rendered files"
     )
     CleanUp: CleanUpModel = SettingsField(
         default_factory=CleanUpModel,
@@ -1376,6 +1409,12 @@ DEFAULT_PUBLISH_VALUES = {
             "simpleUnrealTexture"
         ],
         "use_hardlinks": False
+    },
+    "AttachReviewables": {
+        "enabled": True,
+    },
+    "CollectRenderedFiles": {
+        "remove_files": False
     },
     "CleanUp": {
         "paterns": [],  # codespell:ignore paterns

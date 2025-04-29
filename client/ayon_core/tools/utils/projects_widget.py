@@ -286,6 +286,7 @@ class ProjectSortFilterProxy(QtCore.QSortFilterProxyModel):
         self._sort_by_type = True
         # Disable case sensitivity
         self.setSortCaseSensitivity(QtCore.Qt.CaseInsensitive)
+        self.setFilterCaseSensitivity(QtCore.Qt.CaseInsensitive)
 
     def _type_sort(self, l_index, r_index):
         if not self._sort_by_type:
@@ -349,20 +350,20 @@ class ProjectSortFilterProxy(QtCore.QSortFilterProxyModel):
         if project_name is None:
             return True
 
-        string_pattern = self.filterRegularExpression().pattern()
-        if string_pattern:
-            return string_pattern.lower() in project_name.lower()
-
-        # Current project keep always visible
-        default = super(ProjectSortFilterProxy, self).filterAcceptsRow(
-            source_row, source_parent
-        )
-        if not default:
-            return default
-
         # Make sure current project is visible
         if index.data(PROJECT_IS_CURRENT_ROLE):
             return True
+
+        default = super().filterAcceptsRow(source_row, source_parent)
+        if not default:
+            return default
+
+        string_pattern = self.filterRegularExpression().pattern()
+        if (
+            string_pattern
+            and string_pattern.lower() not in project_name.lower()
+        ):
+            return False
 
         if (
             self._filter_inactive
