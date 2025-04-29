@@ -50,7 +50,7 @@ class CollectHierarchy(pyblish.api.ContextPlugin):
                 "comments": instance.data.get("comments", []),
             }
 
-            shot_data["attributes"] =  {}
+            shot_data["attributes"] = {}
             SHOT_ATTRS = (
                 "handleStart",
                 "handleEnd",
