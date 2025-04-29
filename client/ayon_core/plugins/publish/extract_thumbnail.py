@@ -355,8 +355,7 @@ class ExtractThumbnail(pyblish.api.InstancePlugin):
                 ).format(repre["name"]))
                 continue
 
-            has_review_tag = "review" in tags
-            if has_review_tag:
+            if "review" in tags:
                 review_repres.append(repre)
             elif self._is_valid_images_repre(repre):
                 other_repres.append(repre)
