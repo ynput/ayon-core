@@ -382,7 +382,10 @@ class IWorkfileHost:
             version_entity["id"]: version_entity
             for version_entity in version_entities
         }
-        extensions = self.get_workfile_extensions()
+        extensions = {
+            ext.lstrip(".")
+            for ext in self.get_workfile_extensions()
+        }
         items = []
         for repre_entity in repre_entities:
             version_id = repre_entity["versionId"]
