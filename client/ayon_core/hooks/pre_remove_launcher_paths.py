@@ -23,14 +23,14 @@ class PreRemoveLauncherPaths(PreLaunchHook):
         # Remove launcher paths from the system
         paths = []
         try:
-            ayon_root = self.launch_context.env["AYON_ROOT"]
+            ayon_root = os.path.normpath(self.launch_context.env["AYON_ROOT"])
         except KeyError:
             self.log.warning("AYON_ROOT not found in environment variables.")
             return
 
         paths.extend(
             path
-            for path in self.launch_context.env.get("PATH", "").split(os.pathsep)
-            if not path.startswith(ayon_root)
+            for path in self.launch_context.env.get("PATH").split(os.pathsep)
+            if not os.path.normpath(path).startswith(ayon_root)
         )
         self.launch_context.env["PATH"] = os.pathsep.join(paths)
