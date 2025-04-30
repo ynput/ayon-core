@@ -447,134 +447,6 @@ class WorkareaModel:
         return directory_template.format_strict(fill_data).normalized()
 
 
-class PublishWorkfilesModel:
-    """Model for handling of published workfiles.
-
-    Todos:
-        Cache workfiles products and representations for some time.
-            Note Representations won't change. Only what can change are
-                versions.
-    """
-
-    def __init__(self, controller):
-        self._controller = controller
-        self._cached_extensions = None
-        self._cached_repre_extensions = None
-
-    def get_file_items(self, folder_id: str, task_name: str) -> list[FileItem]:
-        # TODO refactor to use less server API calls
-        project_name = self._controller.get_current_project_name()
-        # Get subset docs of folder
-        product_entities = ayon_api.get_products(
-            project_name,
-            folder_ids={folder_id},
-            product_types={"workfile"},
-            fields={"id", "name"}
-        )
-
-        output = []
-        product_ids = {product["id"] for product in product_entities}
-        if not product_ids:
-            return output
-
-        # Get version docs of products with their families
-        version_entities = ayon_api.get_versions(
-            project_name,
-            product_ids=product_ids,
-            fields={"id", "author"}
-        )
-        versions_by_id = {
-            version["id"]: version
-            for version in version_entities
-        }
-        if not versions_by_id:
-            return output
-
-        # Query representations of filtered versions and add filter for
-        #   extension
-        repre_entities = ayon_api.get_representations(
-            project_name,
-            version_ids=set(versions_by_id)
-        )
-        project_anatomy = self._controller.project_anatomy
-
-        # Filter queried representations by task name if task is set
-        file_items = []
-        for repre_entity in repre_entities:
-            version_id = repre_entity["versionId"]
-            version_entity = versions_by_id[version_id]
-            file_item = self._file_item_from_representation(
-                repre_entity,
-                project_anatomy,
-                version_entity["author"],
-                task_name,
-            )
-            if file_item is not None:
-                file_items.append(file_item)
-
-        return file_items
-
-    @property
-    def _extensions(self):
-        if self._cached_extensions is None:
-            exts = self._controller.get_workfile_extensions() or []
-            self._cached_extensions = exts
-        return self._cached_extensions
-
-    @property
-    def _repre_extensions(self):
-        if self._cached_repre_extensions is None:
-            self._cached_repre_extensions = {
-                ext.lstrip(".") for ext in self._extensions
-            }
-        return self._cached_repre_extensions
-
-    def _file_item_from_representation(
-        self,
-        repre_entity: dict[str, Any],
-        project_anatomy: "Anatomy",
-        author: str,
-        task_name: Optional[str] = None
-    ):
-        if task_name is not None:
-            task_info = repre_entity["context"].get("task")
-            if not task_info or task_info["name"] != task_name:
-                return None
-
-        # Filter by extension
-        extensions = self._repre_extensions
-        workfile_path = None
-        for repre_file in repre_entity["files"]:
-            ext = (
-                os.path.splitext(repre_file["name"])[1]
-                .lower()
-                .lstrip(".")
-            )
-            if ext in extensions:
-                workfile_path = repre_file["path"]
-                break
-
-        if not workfile_path:
-            return None
-
-        try:
-            workfile_path = workfile_path.format(
-                root=project_anatomy.roots)
-        except Exception as exc:
-            print("Failed to format workfile path: {}".format(exc))
-
-        dirpath, filename = os.path.split(workfile_path)
-        created_at = arrow.get(repre_entity["createdAt"]).to("local")
-        return FileItem(
-            dirpath,
-            filename,
-            created_at.float_timestamp,
-            author,
-            None,
-            repre_entity["id"]
-        )
-
-
 class WorkfilesModel:
     """Workfiles model."""
 
@@ -583,7 +455,6 @@ class WorkfilesModel:
         self._controller = controller
 
         self._workarea_model = WorkareaModel(host, controller)
-        # self._published_model = PublishWorkfilesModel(controller)
 
         self._workfile_entities_by_task_id = {}
         self._current_username = _NOT_SET
@@ -701,7 +572,6 @@ class WorkfilesModel:
                 if item.task_id == task_id
             ]
         return items
-        # return self._published_model.get_file_items(folder_id, task_name)
 
     @property
     def _project_name(self) -> str:
