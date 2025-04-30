@@ -30,7 +30,7 @@ class PreRemoveLauncherPaths(PreLaunchHook):
 
         paths.extend(
             path
-            for path in self.launch_context.env.get("PATH").split(os.pathsep)
+            for path in self.launch_context.env.get("PATH", "").split(os.pathsep)
             if not os.path.normpath(path).startswith(ayon_root)
         )
         self.launch_context.env["PATH"] = os.pathsep.join(paths)
