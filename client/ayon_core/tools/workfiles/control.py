@@ -437,15 +437,9 @@ class BaseWorkfileController(
         )
 
     def get_published_file_items(self, folder_id, task_id):
-        task_name = None
-        if task_id:
-            task = self.get_task_entity(
-                self.get_current_project_name(), task_id
-            )
-            task_name = task.get("name")
-
         return self._workfiles_model.get_published_file_items(
-            folder_id, task_name)
+            folder_id, task_id
+        )
 
     def get_workfile_info(self, folder_id, task_id, rootless_path):
         return self._workfiles_model.get_workfile_info(
