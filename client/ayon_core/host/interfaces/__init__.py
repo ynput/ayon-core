@@ -1,5 +1,5 @@
 from .exceptions import MissingMethodsError
-from .workfiles import IWorkfileHost, WorkfileInfo
+from .workfiles import IWorkfileHost, WorkfileInfo, PublishedWorkfileInfo
 from .interfaces import (
     IPublishHost,
     INewPublisher,
@@ -9,8 +9,11 @@ from .interfaces import (
 
 __all__ = (
     "MissingMethodsError",
+
     "IWorkfileHost",
     "WorkfileInfo",
+    "PublishedWorkfileInfo",
+
     "IPublishHost",
     "INewPublisher",
     "ILoadHost",

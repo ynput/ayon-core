@@ -15,7 +15,7 @@ from ayon_core.lib import (
     NestedCacheItem,
     CacheItem,
 )
-from ayon_core.host import WorkfileInfo
+from ayon_core.host import WorkfileInfo, PublishedWorkfileInfo
 from ayon_core.pipeline.template_data import (
     get_template_data,
     get_task_template_data,
@@ -28,10 +28,7 @@ from ayon_core.pipeline.workfile import (
     get_comments_from_workfile_paths,
 )
 from ayon_core.pipeline.version_start import get_versioning_start
-from ayon_core.tools.workfiles.abstract import (
-    WorkareaFilepathResult,
-    FileItem,
-)
+from ayon_core.tools.workfiles.abstract import WorkareaFilepathResult
 
 if typing.TYPE_CHECKING:
     from typing import Union
@@ -432,7 +429,6 @@ class WorkareaModel:
         if version is not None:
             return version + 1
 
-
         task_info = fill_data.get("task", {})
         return get_versioning_start(
             self._project_name,
@@ -744,11 +740,11 @@ class WorkfilesModel:
     """Workfiles model."""
 
     def __init__(self, host, controller):
+        self._host = host
         self._controller = controller
 
         self._entities_model = WorkfileEntitiesModel(controller)
         self._workarea_model = WorkareaModel(host, controller)
-        self._published_model = PublishWorkfilesModel(controller)
 
     def reset(self):
         self._workarea_model.reset()
@@ -825,7 +821,9 @@ class WorkfilesModel:
             *args, **kwargs
         )
 
-    def get_published_file_items(self, folder_id, task_name):
+    def get_published_file_items(
+        self, folder_id, task_id
+    ) -> PublishedWorkfileInfo:
         """Published workfiles for passed context.
 
         Args:
@@ -833,7 +831,21 @@ class WorkfilesModel:
             task_name (str): Task name.
 
         Returns:
-            list[FileItem]: List of files for published workfiles.
-        """
+            list[PublishedWorkfileInfo]: List of files for published workfiles.
 
-        return self._published_model.get_file_items(folder_id, task_name)
+        """
+        project_name = self._project_name
+        anatomy = self._controller.project_anatomy
+        items = self._host.list_published_workfiles(
+            project_name,
+            folder_id,
+            anatomy,
+        )
+        if task_id:
+            items = [
+                item
+                for item in items
+                if item.task_id == task_id
+            ]
+        return items
+
