@@ -6,7 +6,6 @@ import platform
 import typing
 from typing import Optional, Any
 
-import arrow
 import ayon_api
 from ayon_api.operations import OperationsSession
 
@@ -448,166 +447,6 @@ class WorkareaModel:
         return directory_template.format_strict(fill_data).normalized()
 
 
-class WorkfileEntitiesModel:
-    """Workfile entities model.
-
-    Args:
-        controller (AbstractWorkfileController): Controller object.
-
-    """
-    def __init__(self, controller):
-        self._controller = controller
-        self._workfile_entities_by_task_id = {}
-        self._current_username = _NOT_SET
-
-    def reset(self):
-        self._workfile_entities_by_task_id = {}
-
-    def get_workfile_entities(self, task_id: str):
-        if not task_id:
-            return []
-        workfile_entities = self._workfile_entities_by_task_id.get(task_id)
-        if workfile_entities is None:
-            workfile_entities = list(ayon_api.get_workfiles_info(
-                self._controller.get_current_project_name(),
-                task_ids=[task_id],
-            ))
-            self._workfile_entities_by_task_id[task_id] = workfile_entities
-        return workfile_entities
-
-    def save_workfile_info(
-        self,
-        task_id: str,
-        rootless_path: str,
-        version: Optional[int],
-        comment: Optional[str],
-        description: Optional[str],
-    ):
-        # TODO create pipeline function for this
-        workfile_entities = self.get_workfile_entities(task_id)
-        workfile_entity = next(
-            (
-                _ent
-                for _ent in workfile_entities
-                if _ent["path"] == rootless_path
-            ),
-            None
-        )
-        if not workfile_entity:
-            workfile_entity = self._create_workfile_info_entity(
-                task_id,
-                rootless_path,
-                version,
-                comment,
-                description,
-            )
-            workfile_entities.append(workfile_entity)
-            return
-
-        data = {}
-        for key, value in (
-            ("host_name", self._controller.get_host_name()),
-            ("version", version),
-            ("comment", comment),
-        ):
-            if value is not None:
-                data[key] = value
-
-        old_data = workfile_entity["data"]
-
-        changed_data = {}
-        for key, value in data.items():
-            if key not in old_data or old_data[key] != value:
-                changed_data[key] = value
-
-        update_data = {}
-        if changed_data:
-            update_data["data"] = changed_data
-
-        old_description = workfile_entity["attrib"].get("description")
-        if description is not None and old_description != description:
-            update_data["attrib"] = {"description": description}
-            workfile_entity["attrib"]["description"] = description
-
-        username = self._get_current_username()
-        # Automatically fix 'createdBy' and 'updatedBy' fields
-        # NOTE both fields were not automatically filled by server
-        #   until 1.1.3 release.
-        if workfile_entity.get("createdBy") is None:
-            update_data["createdBy"] = username
-            workfile_entity["createdBy"] = username
-
-        if workfile_entity.get("updatedBy") != username:
-            update_data["updatedBy"] = username
-            workfile_entity["updatedBy"] = username
-
-        if not update_data:
-            return
-
-        project_name = self._controller.get_current_project_name()
-
-        session = OperationsSession()
-        session.update_entity(
-            project_name,
-            "workfile",
-            workfile_entity["id"],
-            update_data,
-        )
-        session.commit()
-
-    def _create_workfile_info_entity(
-        self,
-        task_id: str,
-        rootless_path: str,
-        version: Optional[int],
-        comment: Optional[str],
-        description: str,
-    ) -> dict[str, Any]:
-        extension = os.path.splitext(rootless_path)[1]
-
-        project_name = self._controller.get_current_project_name()
-
-        attrib = {}
-        for key, value in (
-            ("extension", extension),
-            ("description", description),
-        ):
-            if value is not None:
-                attrib[key] = value
-
-        data = {}
-        for key, value in (
-            ("host_name", self._controller.get_host_name()),
-            ("version", version),
-            ("comment", comment),
-        ):
-            if value is not None:
-                data[key] = value
-
-        username = self._get_current_username()
-        workfile_info = {
-            "id": uuid.uuid4().hex,
-            "path": rootless_path,
-            "taskId": task_id,
-            "attrib": attrib,
-            "data": data,
-            # TODO remove 'createdBy' and 'updatedBy' fields when server is
-            #   or above 1.1.3 .
-            "createdBy": username,
-            "updatedBy": username,
-        }
-
-        session = OperationsSession()
-        session.create_entity(project_name, "workfile", workfile_info)
-        session.commit()
-        return workfile_info
-
-    def _get_current_username(self) -> str:
-        if self._current_username is _NOT_SET:
-            self._current_username = get_ayon_username()
-        return self._current_username
-
-
 class PublishWorkfilesModel:
     """Model for handling of published workfiles.
 
@@ -743,12 +582,48 @@ class WorkfilesModel:
         self._host = host
         self._controller = controller
 
-        self._entities_model = WorkfileEntitiesModel(controller)
         self._workarea_model = WorkareaModel(host, controller)
+        # self._published_model = PublishWorkfilesModel(controller)
+
+        self._workfile_entities_by_task_id = {}
+        self._current_username = _NOT_SET
 
     def reset(self):
         self._workarea_model.reset()
-        self._entities_model.reset()
+
+        self._workfile_entities_by_task_id = {}
+
+    def get_workfile_entities(self, task_id: str):
+        if not task_id:
+            return []
+        workfile_entities = self._workfile_entities_by_task_id.get(task_id)
+        if workfile_entities is None:
+            workfile_entities = list(ayon_api.get_workfiles_info(
+                self._controller.get_current_project_name(),
+                task_ids=[task_id],
+            ))
+            self._workfile_entities_by_task_id[task_id] = workfile_entities
+        return workfile_entities
+
+    def save_workfile_info(
+        self,
+        task_id: str,
+        rootless_path: str,
+        version: Optional[int],
+        comment: Optional[str],
+        description: Optional[str],
+    ):
+        self._save_workfile_info(
+            task_id,
+            rootless_path,
+            version,
+            comment,
+            description,
+        )
+
+        self._workarea_model.update_file_description(
+            task_id, rootless_path, description
+        )
 
     def reset_workarea_file_items(self, task_id):
         self._workarea_model.reset_file_items(task_id)
@@ -757,28 +632,6 @@ class WorkfilesModel:
         return self._workarea_model.get_workfile_info(
             folder_id, task_id, rootless_path
         )
-
-    def save_workfile_info(
-        self,
-        task_id,
-        rootless_path,
-        version,
-        comment,
-        description,
-    ):
-        self._entities_model.save_workfile_info(
-            task_id,
-            rootless_path,
-            version,
-            comment,
-            description,
-        )
-        self._workarea_model.update_file_description(
-            task_id, rootless_path, description
-        )
-
-    def get_workfile_entities(self, task_id):
-        return self._entities_model.get_workfile_entities(task_id)
 
     def get_workarea_dir_by_context(self, folder_id, task_id):
         """Workarea dir for passed context.
@@ -848,4 +701,139 @@ class WorkfilesModel:
                 if item.task_id == task_id
             ]
         return items
+        # return self._published_model.get_file_items(folder_id, task_name)
 
+    @property
+    def _project_name(self) -> str:
+        return self._controller.get_current_project_name()
+
+    def _get_current_username(self) -> str:
+        if self._current_username is _NOT_SET:
+            self._current_username = get_ayon_username()
+        return self._current_username
+
+    # --- Workfile entities ---
+    def _save_workfile_info(
+        self,
+        task_id: str,
+        rootless_path: str,
+        version: Optional[int],
+        comment: Optional[str],
+        description: Optional[str],
+    ):
+        # TODO create pipeline function for this
+        workfile_entities = self.get_workfile_entities(task_id)
+        workfile_entity = next(
+            (
+                _ent
+                for _ent in workfile_entities
+                if _ent["path"] == rootless_path
+            ),
+            None
+        )
+        if not workfile_entity:
+            workfile_entity = self._create_workfile_info_entity(
+                task_id,
+                rootless_path,
+                version,
+                comment,
+                description,
+            )
+            workfile_entities.append(workfile_entity)
+            return
+
+        data = {}
+        for key, value in (
+            ("host_name", self._controller.get_host_name()),
+            ("version", version),
+            ("comment", comment),
+        ):
+            if value is not None:
+                data[key] = value
+
+        old_data = workfile_entity["data"]
+
+        changed_data = {}
+        for key, value in data.items():
+            if key not in old_data or old_data[key] != value:
+                changed_data[key] = value
+
+        update_data = {}
+        if changed_data:
+            update_data["data"] = changed_data
+
+        old_description = workfile_entity["attrib"].get("description")
+        if description is not None and old_description != description:
+            update_data["attrib"] = {"description": description}
+            workfile_entity["attrib"]["description"] = description
+
+        username = self._get_current_username()
+        # Automatically fix 'createdBy' and 'updatedBy' fields
+        # NOTE both fields were not automatically filled by server
+        #   until 1.1.3 release.
+        if workfile_entity.get("createdBy") is None:
+            update_data["createdBy"] = username
+            workfile_entity["createdBy"] = username
+
+        if workfile_entity.get("updatedBy") != username:
+            update_data["updatedBy"] = username
+            workfile_entity["updatedBy"] = username
+
+        if not update_data:
+            return
+
+        session = OperationsSession()
+        session.update_entity(
+            self._project_name,
+            "workfile",
+            workfile_entity["id"],
+            update_data,
+        )
+        session.commit()
+
+    def _create_workfile_info_entity(
+        self,
+        task_id: str,
+        rootless_path: str,
+        version: Optional[int],
+        comment: Optional[str],
+        description: str,
+    ) -> dict[str, Any]:
+        extension = os.path.splitext(rootless_path)[1]
+
+        attrib = {}
+        for key, value in (
+            ("extension", extension),
+            ("description", description),
+        ):
+            if value is not None:
+                attrib[key] = value
+
+        data = {}
+        for key, value in (
+            ("host_name", self._controller.get_host_name()),
+            ("version", version),
+            ("comment", comment),
+        ):
+            if value is not None:
+                data[key] = value
+
+        username = self._get_current_username()
+        workfile_info = {
+            "id": uuid.uuid4().hex,
+            "path": rootless_path,
+            "taskId": task_id,
+            "attrib": attrib,
+            "data": data,
+            # TODO remove 'createdBy' and 'updatedBy' fields when server is
+            #   or above 1.1.3 .
+            "createdBy": username,
+            "updatedBy": username,
+        }
+
+        session = OperationsSession()
+        session.create_entity(
+            self._project_name, "workfile", workfile_info
+        )
+        session.commit()
+        return workfile_info
