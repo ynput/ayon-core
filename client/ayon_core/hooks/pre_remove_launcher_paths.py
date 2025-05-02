@@ -1,8 +1,5 @@
 """"Pre launch hook to remove launcher paths from the system."""
-from __future__ import annotations
-
 import os
-from typing import ClassVar
 
 from ayon_applications import PreLaunchHook
 
@@ -17,9 +14,7 @@ class PreRemoveLauncherPaths(PreLaunchHook):
     conflicts with other applications that may have the same DLLs in their
     paths.
     """
-
     order = 1
-    launch_types: ClassVar[set] = set()
 
     def execute(self) -> None:
         """Execute the hook."""
