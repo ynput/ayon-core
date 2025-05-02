@@ -1,6 +1,10 @@
 """"Pre launch hook to remove launcher paths from the system."""
+from __future__ import annotations
+
 import os
-from ayon_applications import PreLaunchHook, LaunchTypes
+from typing import ClassVar
+
+from ayon_applications import PreLaunchHook
 
 
 class PreRemoveLauncherPaths(PreLaunchHook):
@@ -15,18 +19,17 @@ class PreRemoveLauncherPaths(PreLaunchHook):
     """
 
     order = 1
+    launch_types: ClassVar[set] = set()
 
-    platforms = {"linux", "windows", "darwin"}
-    launch_types = {LaunchTypes.local}
-
-    def execute(self):
+    def execute(self) -> None:
+        """Execute the hook."""
         # Remove launcher paths from the system
-        paths = []
         ayon_root = os.path.normpath(os.environ["AYON_ROOT"])
 
-        paths.extend(
+        paths = [
             path
-            for path in self.launch_context.env.get("PATH", "").split(os.pathsep)
+            for path in self.launch_context.env.get(
+                "PATH", "").split(os.pathsep)
             if not os.path.normpath(path).startswith(ayon_root)
-        )
+        ]
         self.launch_context.env["PATH"] = os.pathsep.join(paths)
