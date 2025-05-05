@@ -215,6 +215,7 @@ def test_short_movie_tail_gap_handles():
 
     assert calls == expected
 
+
 def test_multiple_review_clips_no_gap():
     """
     Use multiple review clips (image sequence).
@@ -297,6 +298,7 @@ def test_multiple_review_clips_no_gap():
     ]
 
     assert calls == expected
+
 
 def test_multiple_review_clips_with_gap():
     """

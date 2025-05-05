@@ -41,7 +41,7 @@ def validate(data, schema=None):
     if not _CACHED:
         _precache()
 
-    root, schema = data["schema"].rsplit(":", 1)
+    _root, schema = data["schema"].rsplit(":", 1)
 
     if isinstance(schema, str):
         schema = _cache[schema + ".json"]

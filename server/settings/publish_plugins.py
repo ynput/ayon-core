@@ -7,6 +7,7 @@ from ayon_server.settings import (
     normalize_name,
     ensure_unique_names,
     task_types_enum,
+    anatomy_template_items_enum
 )
 
 from ayon_server.types import ColorRGBA_uint8
@@ -889,7 +890,11 @@ class IntegrateANTemplateNameProfileModel(BaseSettingsModel):
         default_factory=list,
         title="Task names"
     )
-    template_name: str = SettingsField("", title="Template name")
+    template_name: str = SettingsField(
+        "",
+        title="Template name",
+        enum_resolver=anatomy_template_items_enum(category="publish")
+    )
 
 
 class IntegrateHeroTemplateNameProfileModel(BaseSettingsModel):
@@ -910,7 +915,11 @@ class IntegrateHeroTemplateNameProfileModel(BaseSettingsModel):
         default_factory=list,
         title="Task names"
     )
-    template_name: str = SettingsField("", title="Template name")
+    template_name: str = SettingsField(
+        "",
+        title="Template name",
+        enum_resolver=anatomy_template_items_enum(category="hero")
+    )
 
 
 class IntegrateHeroVersionModel(BaseSettingsModel):
@@ -927,6 +936,20 @@ class IntegrateHeroVersionModel(BaseSettingsModel):
                     "Windows being unable to delete any of the hardlinks if "
                     "any of the links is in use creating issues with updating "
                     "hero versions.")
+
+
+class CollectRenderedFilesModel(BaseSettingsModel):
+    remove_files: bool = SettingsField(
+        False,
+        title="Remove rendered files",
+        description=(
+            "Remove rendered files and metadata json on publish.\n\n"
+            "Note that when enabled but the render is to a configured "
+            "persistent staging directory the files will not be removed. "
+            "However with this disabled the files will **not** be removed in "
+            "either case."
+        )
+    )
 
 
 class CleanUpModel(BaseSettingsModel):
@@ -1040,6 +1063,10 @@ class PublishPuginsModel(BaseSettingsModel):
             "If a reviewable is attached to another instance it will not be "
             "published as a render/review product of its own."
         )
+    )
+    CollectRenderedFiles: CollectRenderedFilesModel = SettingsField(
+        default_factory=CollectRenderedFilesModel,
+        title="Clean up farm rendered files"
     )
     CleanUp: CleanUpModel = SettingsField(
         default_factory=CleanUpModel,
@@ -1427,6 +1454,9 @@ DEFAULT_PUBLISH_VALUES = {
     },
     "AttachReviewables": {
         "enabled": True,
+    },
+    "CollectRenderedFiles": {
+        "remove_files": False
     },
     "CleanUp": {
         "paterns": [],  # codespell:ignore paterns
