@@ -1071,8 +1071,35 @@ class ExtractReview(pyblish.api.InstancePlugin):
         temp_data: Dict[str, Any]
     ) -> Optional[Dict[int, str]]:
         """Fills missing files by blank frame."""
+
+        blank_frame_path = None
+
+        added_files = {}
+
+        col_format = collection.format("{head}{padding}{tail}")
+        for frame in range(start_frame, end_frame + 1):
+            if frame in collection.indexes:
+                continue
+            hole_fpath = os.path.join(staging_dir, col_format % frame)
+            if blank_frame_path is None:
+                blank_frame_path = self._create_blank_frame(
+                    staging_dir, extension, resolution_width, resolution_height
+                )
+                temp_data["paths_to_remove"].append(blank_frame_path)
+            speedcopy.copyfile(blank_frame_path, hole_fpath)
+            added_files[frame] = hole_fpath
+
+        return added_files
+
+    def _create_blank_frame(
+        self,
+        staging_dir,
+        extension,
+        resolution_width,
+        resolution_height
+    ):
         blank_frame_path = os.path.join(staging_dir, f"blank.{extension}")
-        temp_data["paths_to_remove"].append(blank_frame_path)
+
         command = get_ffmpeg_tool_args(
             "ffmpeg",
             "-f", "lavfi",
@@ -1090,17 +1117,7 @@ class ExtractReview(pyblish.api.InstancePlugin):
         )
         self.log.debug("Output: {}".format(output))
 
-        added_files = {}
-
-        col_format = collection.format("{head}{padding}{tail}")
-        for frame in range(start_frame, end_frame + 1):
-            if frame in collection.indexes:
-                continue
-            hole_fpath = os.path.join(staging_dir, col_format % frame)
-            speedcopy.copyfile(blank_frame_path, hole_fpath)
-            added_files[frame] = hole_fpath
-
-        return added_files
+        return blank_frame_path
 
     def fill_sequence_gaps_from_existing(
         self,
