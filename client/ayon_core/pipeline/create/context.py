@@ -872,7 +872,7 @@ class CreateContext:
         """
         return self._event_hub.add_callback(INSTANCE_ADDED_TOPIC, callback)
 
-    def add_instances_removed_callback (self, callback):
+    def add_instances_removed_callback(self, callback):
         """Register callback for removed instances.
 
         Event is triggered when instances are already removed from context.
@@ -933,7 +933,7 @@ class CreateContext:
         """
         self._event_hub.add_callback(VALUE_CHANGED_TOPIC, callback)
 
-    def add_pre_create_attr_defs_change_callback (self, callback):
+    def add_pre_create_attr_defs_change_callback(self, callback):
         """Register callback to listen pre-create attribute changes.
 
         Create plugin can trigger refresh of pre-create attributes. Usage of
@@ -961,7 +961,7 @@ class CreateContext:
             PRE_CREATE_ATTR_DEFS_CHANGED_TOPIC, callback
         )
 
-    def add_create_attr_defs_change_callback (self, callback):
+    def add_create_attr_defs_change_callback(self, callback):
         """Register callback to listen create attribute changes.
 
         Create plugin changed attribute definitions of instance.
@@ -986,7 +986,7 @@ class CreateContext:
         """
         self._event_hub.add_callback(CREATE_ATTR_DEFS_CHANGED_TOPIC, callback)
 
-    def add_publish_attr_defs_change_callback (self, callback):
+    def add_publish_attr_defs_change_callback(self, callback):
         """Register callback to listen publish attribute changes.
 
         Publish plugin changed attribute definitions of instance of context.
