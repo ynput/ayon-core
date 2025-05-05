@@ -793,11 +793,14 @@ def burnins_from_data(
 
         burnin.add_text(text, align, frame_start, frame_end)
 
-    ffmpeg_args = []
+    ffmpeg_args = [
+        "-map_metadata", "0",
+        "-copyts",
+    ]
     if codec_data:
         # Use codec definition from method arguments
-        ffmpeg_args = codec_data
-        ffmpeg_args.append("-g 1")
+        ffmpeg_args.extend(codec_data)
+        ffmpeg_args.extend(["-g", "1"])
 
     else:
         ffmpeg_args.extend(
