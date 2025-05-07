@@ -557,7 +557,28 @@ class ActionsModel:
                 payload.error_message = "Failed to open web browser."
 
         elif response_type == "form":
-            response.form = payload["form"]
+            submit_icon = payload["submit_icon"] or None
+            cancel_icon = payload["cancel_icon"] or None
+            if submit_icon:
+                submit_icon = {
+                    "type": "material-symbols",
+                    "name": submit_icon,
+                }
+
+            if cancel_icon:
+                cancel_icon = {
+                    "type": "material-symbols",
+                    "name": cancel_icon,
+                }
+
+            response.form = WebactionForm(
+                fields=payload["fields"],
+                title=payload["title"],
+                submit_label=payload["submit_label"],
+                cancel_label=payload["cancel_label"],
+                submit_icon=submit_icon,
+                cancel_icon=cancel_icon,
+            )
 
         elif response_type == "launcher":
             # Run AYON launcher process with uri in arguments
