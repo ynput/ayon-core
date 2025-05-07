@@ -238,7 +238,7 @@ class LauncherWindow(QtWidgets.QWidget):
         clipboard_text = event["clipboard_text"]
         if clipboard_text:
             clipboard = QtWidgets.QApplication.clipboard()
-            clipboard.setText(filled_source)
+            clipboard.setText(clipboard_text)
 
         # TODO use toast messages
         if event["message"]:
