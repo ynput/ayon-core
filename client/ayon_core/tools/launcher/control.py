@@ -137,24 +137,38 @@ class BaseLauncherController(
 
     def trigger_action(
         self,
-        action_label,
-        action_type,
         identifier,
         project_name,
         folder_id,
         task_id,
-        addon_name,
-        addon_version,
     ):
         self._actions_model.trigger_action(
-            action_label,
-            action_type,
             identifier,
             project_name,
             folder_id,
             task_id,
+        )
+
+    def trigger_webaction(
+        self,
+        identifier,
+        project_name,
+        folder_id,
+        task_id,
+        action_label,
+        addon_name,
+        addon_version,
+        form_data=None,
+    ):
+        self._actions_model.trigger_webaction(
+            identifier,
+            project_name,
+            folder_id,
+            task_id,
+            action_label,
             addon_name,
             addon_version,
+            form_data,
         )
 
     def get_action_config_values(

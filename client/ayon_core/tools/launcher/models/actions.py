@@ -231,27 +231,11 @@ class ActionsModel:
 
     def trigger_action(
         self,
-        action_label,
-        acton_type,
         identifier,
         project_name,
         folder_id,
         task_id,
-        addon_name,
-        addon_version,
     ):
-        if acton_type == "webaction":
-            self._trigger_webaction(
-                action_label,
-                identifier,
-                project_name,
-                folder_id,
-                task_id,
-                addon_name,
-                addon_version,
-            )
-            return
-
         selection = self._prepare_selection(project_name, folder_id, task_id)
         failed = False
         error_message = None
@@ -285,6 +269,38 @@ class ActionsModel:
             }
         )
 
+    def trigger_webaction(
+        self,
+        identifier,
+        project_name,
+        folder_id,
+        task_id,
+        action_label,
+        addon_name,
+        addon_version,
+        form_data,
+    ):
+        entity_type = None
+        entity_ids = []
+        if task_id:
+            entity_type = "task"
+            entity_ids.append(task_id)
+        elif folder_id:
+            entity_type = "folder"
+            entity_ids.append(folder_id)
+
+        query = {
+            "addonName": addon_name,
+            "addonVersion": addon_version,
+            "identifier": identifier,
+            "variant": self._variant,
+        }
+        url = f"actions/execute?{urlencode(query)}"
+        context = {
+            "projectName": project_name,
+            "entityType": entity_type,
+            "entityIds": entity_ids,
+        }
     def get_action_config_values(
         self,
         identifier,

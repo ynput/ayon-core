@@ -128,6 +128,10 @@ class LauncherWindow(QtWidgets.QWidget):
             "action.trigger.finished",
             self._on_action_trigger_finished,
         )
+        controller.register_event_callback(
+            "webaction.trigger.started",
+            self._on_webaction_trigger_started,
+        )
 
         self._controller = controller
 
@@ -222,6 +226,9 @@ class LauncherWindow(QtWidgets.QWidget):
         if not event["failed"]:
             return
         self._echo("Failed: {}".format(event["error_message"]))
+
+    def _on_webaction_trigger_started(self, event):
+        self._echo("Running webaction: {}".format(event["full_label"]))
 
     def _is_page_slide_anim_running(self):
         return (
