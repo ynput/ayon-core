@@ -613,9 +613,13 @@ class ActionsWidget(QtWidgets.QWidget):
                     label, key=uuid.uuid4().hex
                 )
             elif field_type == "boolean":
+                value = config_field["value"]
+                if isinstance(value, str):
+                    value = value.lower() == "true"
+
                 attr_def = BoolDef(
                     config_field["name"],
-                    default=config_field["value"],
+                    default=value,
                     label=config_field["label"],
                 )
             elif field_type == "text":
@@ -629,9 +633,14 @@ class ActionsWidget(QtWidgets.QWidget):
                     # syntax=config_field["syntax"],
                 )
             elif field_type in ("integer", "float"):
+                value = config_field["value"]
+                if field_type == "integer":
+                    value = int(value)
+                else:
+                    value = float(value)
                 attr_def = NumberDef(
                     config_field["name"],
-                    default=config_field["value"],
+                    default=value,
                     label=config_field["label"],
                     decimals=0 if field_type == "integer" else 5,
                     placeholder=config_field["placeholder"],
