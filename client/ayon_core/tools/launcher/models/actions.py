@@ -490,8 +490,9 @@ class ActionsModel:
             # NOTE Settings variant may be important for triggering?
             # - action["variant"]
             icon = action.get("icon")
-            if icon and icon["type"] == "url" and icon["url"].startswith("/"):
-                icon["type"] = "ayon_url"
+            if icon and icon["type"] == "url":
+                if not urlparse(icon["url"]).scheme:
+                    icon["type"] = "ayon_url"
 
             config_fields = action.get("configFields") or []
             variant_label = action["label"]
