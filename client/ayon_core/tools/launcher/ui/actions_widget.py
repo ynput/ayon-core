@@ -4,7 +4,6 @@ import collections
 
 from qtpy import QtWidgets, QtCore, QtGui
 
-from ayon_core import style
 from ayon_core.lib import Logger
 from ayon_core.lib.attribute_definitions import (
     UILabelDef,
@@ -406,9 +405,26 @@ class ActionsWidget(QtWidgets.QWidget):
         # NOTE The 'ActionsWidget' should be responsible for handling this
         #   but because we're showing messages to user it is handled by window
         identifier = event["identifier"]
-        dialog = self._create_config_dialog(event["form"])
+        form = event["form"]
+        submit_icon = form["submit_icon"]
+        if submit_icon:
+            submit_icon = get_qt_icon(submit_icon)
+
+        cancel_icon = form["cancel_icon"]
+        if cancel_icon:
+            cancel_icon = get_qt_icon(cancel_icon)
+
+        dialog = self._create_attrs_dialog(
+            form["fields"],
+            form["title"],
+            form["submit_label"],
+            form["cancel_label"],
+            submit_icon,
+            cancel_icon,
+        )
+        dialog.setMinimumSize(380, 180)
         result = dialog.exec_()
-        if result != QtWidgets.QDialog.Accepted :
+        if result != QtWidgets.QDialog.Accepted:
             return
         form_data = dialog.get_values()
         self._controller.trigger_webaction(
@@ -536,7 +552,12 @@ class ActionsWidget(QtWidgets.QWidget):
             addon_version=index.data(ACTION_ADDON_VERSION_ROLE),
         )
 
-        dialog = self._create_config_dialog(config_fields)
+        dialog = self._create_attrs_dialog(
+            config_fields,
+            "Action Config",
+            "Save",
+            "Cancel",
+        )
         dialog.set_values(values)
         result = dialog.exec_()
         if result != QtWidgets.QDialog.Accepted:
@@ -552,8 +573,16 @@ class ActionsWidget(QtWidgets.QWidget):
             values=new_values,
         )
 
-    def _create_config_dialog(self, config_fields):
-        """Creates config widget.
+    def _create_attrs_dialog(
+        self,
+        config_fields,
+        title,
+        submit_label,
+        cancel_label,
+        submit_icon=None,
+        cancel_icon=None,
+    ):
+        """Creates attribute definitions dialog.
 
         Types:
             label - 'text'
@@ -572,8 +601,11 @@ class ActionsWidget(QtWidgets.QWidget):
             field_type = config_field["type"]
             attr_def = None
             if field_type == "label":
+                label = config_field.get("text")
+                if label is None:
+                    label = config_field["value"]
                 attr_def = UILabelDef(
-                    config_field["text"], key=uuid.uuid4().hex
+                    label, key=uuid.uuid4().hex
                 )
             elif field_type == "boolean":
                 attr_def = BoolDef(
@@ -604,10 +636,10 @@ class ActionsWidget(QtWidgets.QWidget):
             elif field_type in ("select", "multiselect"):
                 attr_def = EnumDef(
                     config_field["name"],
+                    items=config_field["options"],
                     default=config_field["value"],
                     label=config_field["label"],
-                    options=config_field["options"],
-                    multi_select=field_type == "multiselect",
+                    multiselection=field_type == "multiselect",
                 )
             elif field_type == "hidden":
                 attr_def = HiddenDef(
@@ -623,7 +655,25 @@ class ActionsWidget(QtWidgets.QWidget):
                 )
             attr_defs.append(attr_def)
 
-        dialog = AttributeDefinitionsDialog(attr_defs, parent=self)
-        dialog.setWindowTitle("Action Config")
-        dialog.setStyleSheet(style.load_stylesheet())
+        dialog = AttributeDefinitionsDialog(
+            attr_defs,
+            title=title,
+            parent=self,
+        )
+        if submit_label:
+            dialog.set_submit_label(submit_label)
+        else:
+            dialog.set_submit_visible(False)
+
+        if submit_icon:
+            dialog.set_submit_icon(submit_icon)
+
+        if cancel_label:
+            dialog.set_cancel_label(cancel_label)
+        else:
+            dialog.set_cancel_visible(False)
+
+        if cancel_icon:
+            dialog.set_cancel_icon(cancel_icon)
+
         return dialog
