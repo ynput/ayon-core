@@ -543,13 +543,18 @@ class ActionsWidget(QtWidgets.QWidget):
         if not config_fields:
             return
 
+        project_name = self._model.get_selected_project_name()
+        folder_id = self._model.get_selected_folder_id()
+        task_id = self._model.get_selected_task_id()
+        addon_name = index.data(ACTION_ADDON_NAME_ROLE)
+        addon_version = index.data(ACTION_ADDON_VERSION_ROLE)
         values = self._controller.get_action_config_values(
             action_id,
-            project_name=self._model.get_selected_project_name(),
-            folder_id=self._model.get_selected_folder_id(),
-            task_id=self._model.get_selected_task_id(),
-            addon_name=index.data(ACTION_ADDON_NAME_ROLE),
-            addon_version=index.data(ACTION_ADDON_VERSION_ROLE),
+            project_name=project_name,
+            folder_id=folder_id,
+            task_id=task_id,
+            addon_name=addon_name,
+            addon_version=addon_version,
         )
 
         dialog = self._create_attrs_dialog(
@@ -565,11 +570,11 @@ class ActionsWidget(QtWidgets.QWidget):
         new_values = dialog.get_values()
         self._controller.set_action_config_values(
             action_id,
-            project_name=self._model.get_selected_project_name(),
-            folder_id=self._model.get_selected_folder_id(),
-            task_id=self._model.get_selected_task_id(),
-            addon_name=index.data(ACTION_ADDON_NAME_ROLE),
-            addon_version=index.data(ACTION_ADDON_VERSION_ROLE),
+            project_name=project_name,
+            folder_id=folder_id,
+            task_id=task_id,
+            addon_name=addon_name,
+            addon_version=addon_version,
             values=new_values,
         )
 
