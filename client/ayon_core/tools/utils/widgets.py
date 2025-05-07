@@ -8,7 +8,7 @@ import qtawesome
 
 try:
     import markdown
-except (ImportError, SyntaxError):
+except (ImportError, SyntaxError, TypeError):
     markdown = None
 
 from ayon_core.style import (
