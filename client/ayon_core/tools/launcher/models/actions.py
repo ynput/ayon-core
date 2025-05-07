@@ -1,6 +1,9 @@
 import os
 import copy
+import webbrowser
+from dataclasses import dataclass, asdict
 from urllib.parse import urlencode
+from typing import Any, Optional
 
 import ayon_api
 
@@ -18,38 +21,6 @@ from ayon_core.pipeline.actions import (
     LauncherActionSelection,
     register_launcher_action_path,
 )
-
-
-# class Action:
-#     def __init__(self, label, icon=None, identifier=None):
-#         self._label = label
-#         self._icon = icon
-#         self._callbacks = []
-#         self._identifier = identifier or uuid.uuid4().hex
-#         self._checked = True
-#         self._checkable = False
-#
-#     def set_checked(self, checked):
-#         self._checked = checked
-#
-#     def set_checkable(self, checkable):
-#         self._checkable = checkable
-#
-#     def set_label(self, label):
-#         self._label = label
-#
-#     def add_callback(self, callback):
-#         self._callbacks = callback
-#
-#
-# class Menu:
-#     def __init__(self, label, icon=None):
-#         self.label = label
-#         self.icon = icon
-#         self._actions = []
-#
-#     def add_action(self, action):
-#         self._actions.append(action)
 
 
 class ActionItem:
@@ -125,6 +96,38 @@ class ActionItem:
 
     @classmethod
     def from_data(cls, data):
+        return cls(**data)
+
+
+@dataclass
+class WebactionForm:
+    fields: list[dict[str, Any]]
+    title: str
+    submit_label: str
+    submit_icon: str
+    cancel_label: str
+    cancel_icon: str
+
+
+@dataclass
+class WebactionResponse:
+    response_type: str
+    success: bool
+    message: Optional[str] = None
+    clipboard_text: Optional[str] = None
+    form: Optional[WebactionForm] = None
+    error_message: Optional[str] = None
+
+    def to_data(self):
+        return asdict(self)
+
+    @classmethod
+    def from_data(cls, data):
+        data = data.copy()
+        form = data["form"]
+        if form:
+            data["form"] = WebactionForm(**form)
+
         return cls(**data)
 
 
@@ -301,6 +304,53 @@ class ActionsModel:
             "entityType": entity_type,
             "entityIds": entity_ids,
         }
+        if form_data is not None:
+            context["formData"] = form_data
+
+        try:
+            self._controller.emit_event(
+                "webaction.trigger.started",
+                {
+                    "identifier": identifier,
+                    "full_label": action_label,
+                }
+            )
+
+            conn = ayon_api.get_server_api_connection()
+            # Add 'referer' header to the request
+            # - ayon-api 1.1.1 adds the value to the header automatically
+            headers = conn.get_headers()
+            if "referer" in headers:
+                headers = None
+            else:
+                headers["referer"] = conn.get_base_url()
+            response = ayon_api.raw_post(url, headers=headers, json=context)
+            response.raise_for_status()
+            handle_response = self._handle_webaction_response(response.data)
+
+        except Exception:
+            self.log.warning("Action trigger failed.", exc_info=True)
+            handle_response = WebactionResponse(
+                "unknown",
+                False,
+                error_message="Failed to trigger webaction.",
+            )
+
+        data = handle_response.to_data()
+        data.update({
+            "identifier": identifier,
+            "action_label": action_label,
+            "project_name": project_name,
+            "folder_id": folder_id,
+            "task_id": task_id,
+            "addon_name": addon_name,
+            "addon_version": addon_version,
+        })
+        self._controller.emit_event(
+            "webaction.trigger.finished",
+            data,
+        )
+
     def get_action_config_values(
         self,
         identifier,
@@ -444,13 +494,18 @@ class ActionsModel:
                 icon["type"] = "ayon_url"
 
             config_fields = action.get("configFields") or []
+            variant_label = action["label"]
+            group_label = action.get("groupLabel")
+            if not group_label:
+                group_label = variant_label
+                variant_label = None
 
             action_items.append(ActionItem(
                 "webaction",
                 action["identifier"],
+                group_label,
+                variant_label,
                 # action["category"],
-                action["label"],
-                None,
                 icon,
                 action["order"],
                 action["addonName"],
@@ -459,97 +514,66 @@ class ActionsModel:
             ))
 
         cache.update_data(action_items)
-
         return cache.get_data()
 
-    def _trigger_webaction(
-        self,
-        action_label,
-        identifier,
-        project_name,
-        folder_id,
-        task_id,
-        addon_name,
-        addon_version,
-    ):
-        entity_type = None
-        entity_ids = []
-        if task_id:
-            entity_type = "task"
-            entity_ids.append(task_id)
-        elif folder_id:
-            entity_type = "folder"
-            entity_ids.append(folder_id)
-
-        query = {
-            "addonName": addon_name,
-            "addonVersion": addon_version,
-            "identifier": identifier,
-            "variant": self._variant,
-        }
-        url = f"actions/execute?{urlencode(query)}"
-        context = {
-            "projectName": project_name,
-            "entityType": entity_type,
-            "entityIds": entity_ids,
-        }
-
-        failed = False
-        error_message = None
-        try:
-            self._controller.emit_event(
-                "action.trigger.started",
-                {
-                    "identifier": identifier,
-                    "full_label": action_label,
-                }
-            )
-
-            conn = ayon_api.get_server_api_connection()
-            headers = conn.get_headers()
-            headers["referer"] = conn.get_base_url()
-            response = ayon_api.raw_post(url, headers=headers, json=context)
-            response.raise_for_status()
-            data = response.data
-            if data["success"] is True:
-                self._handle_webaction_response(data)
-            else:
-                error_message = data["message"]
-                failed = True
-
-        except Exception as exc:
-            self.log.warning("Action trigger failed.", exc_info=True)
-            failed = True
-            error_message = str(exc)
-
-        self._controller.emit_event(
-            "action.trigger.finished",
-            {
-                "identifier": identifier,
-                "failed": failed,
-                "error_message": error_message,
-                "full_label": action_label,
-            }
-        )
-
-    def _handle_webaction_response(self, data):
+    def _handle_webaction_response(self, data) -> WebactionResponse:
         response_type = data["type"]
+        # Backwards compatibility -> 'server' type is not available since
+        #   AYON backend 1.8.3
         if response_type == "server":
-            raise Exception(
-                "Please use AYON web UI to run the action."
+            return WebactionResponse(
+                response_type,
+                False,
+                error_message="Please use AYON web UI to run the action.",
             )
 
-        if response_type == "launcher":
+        payload = data.get("payload") or {}
+
+        # TODO handle 'extra_download'
+        download_uri = payload.get("extra_download")
+        if download_uri is not None:
+            # TODO check if uri is relative or absolute
+            webbrowser.open_new_tab(download_uri)
+
+        response = WebactionResponse(
+            response_type,
+            data["success"],
+            data.get("message"),
+            payload.get("extra_clipboard"),
+        )
+        if response_type == "simple":
+            pass
+
+        elif response_type == "redirect":
+            # NOTE unused 'newTab' key because we always have to
+            #   open new tab from desktop app.
+            if not webbrowser.open_new_tab(payload["uri"]):
+                payload.error_message = "Failed to open web browser."
+
+        elif response_type == "form":
+            response.form = payload["form"]
+
+        elif response_type == "launcher":
             # Run AYON launcher process with uri in arguments
             # NOTE This does pass environment variables of current process
             #   to the subprocess.
             # NOTE We could 'take action' directly and use the arguments here
-            run_detached_ayon_launcher_process(data["uri"])
-            return
+            if payload is not None:
+                uri = payload["uri"]
+            else:
+                uri = data["uri"]
+            run_detached_ayon_launcher_process(uri)
 
-        raise Exception(
-            "Unknown webaction response type '{response_type}'"
-        )
+        elif response_type in ("query", "navigate"):
+            response.error_message = (
+                "Please use AYON web UI to run the action."
+            )
+
+        else:
+            self.log.warning(f"Unknown webaction response type '{response_type}'")
+            response.error_message = "Unknown webaction response type."
+
+        return response
 
     def _get_discovered_action_classes(self):
         if self._discovered_actions is None:

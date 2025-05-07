@@ -132,6 +132,10 @@ class LauncherWindow(QtWidgets.QWidget):
             "webaction.trigger.started",
             self._on_webaction_trigger_started,
         )
+        controller.register_event_callback(
+            "webaction.trigger.finished",
+            self._on_webaction_trigger_finished,
+        )
 
         self._controller = controller
 
@@ -229,6 +233,22 @@ class LauncherWindow(QtWidgets.QWidget):
 
     def _on_webaction_trigger_started(self, event):
         self._echo("Running webaction: {}".format(event["full_label"]))
+
+    def _on_webaction_trigger_finished(self, event):
+        clipboard_text = event["clipboard_text"]
+        if clipboard_text:
+            clipboard = QtWidgets.QApplication.clipboard()
+            clipboard.setText(filled_source)
+
+        # TODO use toast messages
+        if event["message"]:
+            self._echo(event["message"])
+
+        if event["error_message"]:
+            self._echo(event["message"])
+
+        if event["form"]:
+            self._actions_widget.handle_webaction_form_event(event)
 
     def _is_page_slide_anim_running(self):
         return (
