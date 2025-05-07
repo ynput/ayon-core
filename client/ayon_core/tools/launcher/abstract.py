@@ -297,26 +297,45 @@ class AbstractLauncherFrontEnd(AbstractLauncherCommon):
     @abstractmethod
     def trigger_action(
         self,
-        action_label,
-        action_type,
         action_id,
         project_name,
         folder_id,
         task_id,
-        addon_name,
-        addon_version,
     ):
         """Trigger action on given context.
 
         Args:
-            action_label (str): Action label.
-            action_type (Literal["webaction", "local"]): Action type.
             action_id (str): Action identifier.
             project_name (Union[str, None]): Project name.
             folder_id (Union[str, None]): Folder id.
             task_id (Union[str, None]): Task id.
-            addon_name (Union[str, None]): Addon name.
-            addon_version (Union[str, None]): Addon version.
+
+        """
+        pass
+
+    @abstractmethod
+    def trigger_webaction(
+        self,
+        identifier,
+        project_name,
+        folder_id,
+        task_id,
+        action_label,
+        addon_name,
+        addon_version,
+        form_data=None,
+    ):
+        """Trigger action on given context.
+
+        Args:
+            identifier (str): Action identifier.
+            project_name (Union[str, None]): Project name.
+            folder_id (Union[str, None]): Folder id.
+            task_id (Union[str, None]): Task id.
+            action_label (str): Action label.
+            addon_name (str): Addon name.
+            addon_version (str): Addon version.
+            form_data (Optional[dict[str, Any]]): Form values of action.
 
         """
         pass

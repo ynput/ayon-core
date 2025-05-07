@@ -466,16 +466,13 @@ class ActionsWidget(QtWidgets.QWidget):
             addon_name = index.data(ACTION_ADDON_NAME_ROLE)
             addon_version = index.data(ACTION_ADDON_VERSION_ROLE)
 
-        self._controller.trigger_action(
-            action_label,
-            action_type,
-            action_id,
-            project_name,
-            folder_id,
-            task_id,
-            addon_name,
-            addon_version,
-        )
+        args = [action_id, project_name, folder_id, task_id]
+        if action_type == "webaction":
+            args.extend([action_label, addon_name, addon_version])
+            self._controller.trigger_webaction(*args)
+        else:
+            self._controller.trigger_action(*args)
+
         self._start_animation(index)
         self._start_animation(index)
 
