@@ -4,6 +4,7 @@ import io
 import contextlib
 import collections
 import traceback
+import urllib.request
 from functools import partial
 from typing import Union, Any
 
@@ -542,10 +543,18 @@ class _IconsCache:
 
         elif icon_type == "url":
             url = icon_def["url"]
-            icon = QtGui.QPixmap(url)
+            try:
+                content = urllib.request.urlopen(url).read()
+                pix = QtGui.QPixmap()
+                pix.loadFromData(content)
+                icon = QtGui.QIcon(pix)
+            except Exception as exc:
+                log.warning(f"Failed to download image '{url}'")
+                icon = None
 
         elif icon_type == "ayon_url":
-            url = ayon_api.get_base_url() + icon_def["url"]
+            url = icon_def["url"].lstrip("/")
+            url = f"{ayon_api.get_base_url()}/{url}"
             stream = io.BytesIO()
             ayon_api.download_file_to_stream(url, stream)
             pix = QtGui.QPixmap()
