@@ -402,6 +402,26 @@ class ActionsWidget(QtWidgets.QWidget):
     def refresh(self):
         self._model.refresh()
 
+    def handle_webaction_form_event(self, event):
+        # NOTE The 'ActionsWidget' should be responsible for handling this
+        #   but because we're showing messages to user it is handled by window
+        identifier = event["identifier"]
+        dialog = self._create_config_dialog(event["form"])
+        result = dialog.exec_()
+        if result == QtWidgets.QDialog.Rejected:
+            return
+        form_data = dialog.get_values()
+        self._controller.trigger_webaction(
+            identifier,
+            event["project_name"],
+            event["folder_id"],
+            event["task_id"],
+            event["action_label"],
+            event["addon_name"],
+            event["addon_version"],
+            form_data,
+        )
+
     def _set_row_height(self, rows):
         self.setMinimumHeight(rows * 75)
 
