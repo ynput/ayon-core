@@ -6,6 +6,11 @@ from qtpy import QtWidgets, QtCore, QtGui
 import qargparse
 import qtawesome
 
+try:
+    import markdown
+except (ImportError, SyntaxError):
+    markdown = None
+
 from ayon_core.style import (
     get_objected_colors,
     get_style_image_path,
@@ -129,6 +134,29 @@ class PlaceholderPlainTextEdit(QtWidgets.QPlainTextEdit):
                 _Cache.get_placeholder_color()
             )
             viewport.setPalette(filter_palette)
+
+
+class MarkdownLabel(QtWidgets.QLabel):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        # Enable word wrap by default
+        self.setWordWrap(True)
+
+        self.setText(self.text())
+
+    def setText(self, text):
+        super().setText(self._md_to_html(text))
+
+    @staticmethod
+    def _md_to_html(text):
+        if markdown is None:
+            # This does add style definition to the markdown which does not
+            #   feel natural in the UI (but still better than raw MD).
+            doc = QtGui.QTextDocument()
+            doc.setMarkdown(text)
+            return doc.toHtml()
+        return markdown.markdown(text)
 
 
 class ElideLabel(QtWidgets.QLabel):
