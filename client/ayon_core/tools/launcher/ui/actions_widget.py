@@ -408,7 +408,7 @@ class ActionsWidget(QtWidgets.QWidget):
         identifier = event["identifier"]
         dialog = self._create_config_dialog(event["form"])
         result = dialog.exec_()
-        if result == QtWidgets.QDialog.Rejected:
+        if result != QtWidgets.QDialog.Accepted :
             return
         form_data = dialog.get_values()
         self._controller.trigger_webaction(
@@ -539,7 +539,7 @@ class ActionsWidget(QtWidgets.QWidget):
         dialog = self._create_config_dialog(config_fields)
         dialog.set_values(values)
         result = dialog.exec_()
-        if result == QtWidgets.QDialog.Rejected:
+        if result != QtWidgets.QDialog.Accepted:
             return
         new_values = dialog.get_values()
         self._controller.set_action_config_values(
