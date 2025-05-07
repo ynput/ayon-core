@@ -1,9 +1,9 @@
 import os
 import copy
-import webbrowser
 from dataclasses import dataclass, asdict
-from urllib.parse import urlencode
+from urllib.parse import urlencode, urlparse
 from typing import Any, Optional
+import webbrowser
 
 import ayon_api
 
@@ -529,10 +529,15 @@ class ActionsModel:
 
         payload = data.get("payload") or {}
 
-        # TODO handle 'extra_download'
         download_uri = payload.get("extra_download")
         if download_uri is not None:
-            # TODO check if uri is relative or absolute
+            # Find out if is relative or absolute URL
+            if not urlparse(download_uri).scheme:
+                ayon_url = ayon_api.get_base_url().rstrip("/")
+                path = download_uri.lstrip("/")
+                download_uri = f"{ayon_url}/{path}"
+
+            # Use webbrowser to open file
             webbrowser.open_new_tab(download_uri)
 
         response = WebactionResponse(
