@@ -9,6 +9,7 @@ from ayon_server.settings import (
     normalize_name,
     ensure_unique_names,
     task_types_enum,
+    anatomy_template_items_enum
 )
 from ayon_server.exceptions import BadRequestException
 from ayon_server.types import ColorRGBA_uint8
@@ -962,7 +963,11 @@ class IntegrateANTemplateNameProfileModel(BaseSettingsModel):
         default_factory=list,
         title="Task names"
     )
-    template_name: str = SettingsField("", title="Template name")
+    template_name: str = SettingsField(
+        "",
+        title="Template name",
+        enum_resolver=anatomy_template_items_enum(category="publish")
+    )
 
 
 class IntegrateHeroTemplateNameProfileModel(BaseSettingsModel):
@@ -983,7 +988,11 @@ class IntegrateHeroTemplateNameProfileModel(BaseSettingsModel):
         default_factory=list,
         title="Task names"
     )
-    template_name: str = SettingsField("", title="Template name")
+    template_name: str = SettingsField(
+        "",
+        title="Template name",
+        enum_resolver=anatomy_template_items_enum(category="hero")
+    )
 
 
 class IntegrateHeroVersionModel(BaseSettingsModel):
