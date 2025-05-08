@@ -191,20 +191,20 @@ class ResolutionOptionsModel(BaseSettingsModel):
 
 
 def ensure_unique_resolution_option(
-        objects: Iterable[Any], field_name: str | None = None) -> None:  # noqa: C901
+        objects: list[Any], field_name: str | None = None) -> None:  # noqa: C901
     """Ensure a list of objects have unique option attributes.
 
     This function checks if the list of objects has unique 'width',
     'height' and 'pixel_aspect' properties.
     """
-    options = []
+    options = set()
     for obj in objects:
         item_test_text = f"{obj.width}x{obj.height}x{obj.pixel_aspect}"
-        if item_test_text not in options:
-            options.append(item_test_text)
-        else:
+        if item_test_text in options:
             raise BadRequestException(
                 f"Duplicate option '{item_test_text}'")
+
+        options.add(item_test_text)
 
 
 class CollectExplicitResolutionModel(BaseSettingsModel):
@@ -218,14 +218,14 @@ class CollectExplicitResolutionModel(BaseSettingsModel):
     )
     options: list[ResolutionOptionsModel] = SettingsField(
         default_factory=list,
-        title="Resolution options",
+        title="Resolution choices",
         description=(
-            "Options to be provided in publisher attribute"
+            "Available resolution choices to be displayed in the publishers attribute."
         )
     )
 
     @validator("options")
-    def validate_unique_options(cls, value):
+    def validate_unique_resolution_options(cls, value):
         ensure_unique_resolution_option(value)
         return value
 

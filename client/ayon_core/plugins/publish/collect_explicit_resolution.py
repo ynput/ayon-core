@@ -50,21 +50,21 @@ class CollectExplicitResolution(
             dict: dictionary with width, height and pixel_aspect
         """
         resolution_items = self._get_resolution_items()
-        item_values = None
-        # check if resolution_value is in cached items
-        if resolution_value in resolution_items:
-            item_values = resolution_items[resolution_value]
+        # ensure resolution_value is part of expected items
+        item_values = resolution_items.get(resolution_value)
 
+        # if the item is in the cache, get the values from it
         if item_values:
-            # if the item is in the cache, get the values from it
             return {
                 "resolutionWidth": item_values["width"],
                 "resolutionHeight": item_values["height"],
                 "pixelAspect": item_values["pixel_aspect"],
             }
-        else:
-            raise PublishError(
-                f"Invalid resolution value: {resolution_value}")
+
+        raise PublishError(
+            f"Invalid resolution value: {resolution_value} "
+            f"expected choices: {resolution_items}"
+        )
 
     @classmethod
     def _get_resolution_items(cls):
@@ -72,7 +72,7 @@ class CollectExplicitResolution(
             resolution_items = {}
             for item in cls.options:
                 item_text = (
-                    f"{item['width']}x{item['height']}x{item['pixel_aspect']}")
+                    f"{item['width']}x{item['height']} ({item['pixel_aspect']})")
                 resolution_items[item_text] = item
 
             cls.resolution_items = resolution_items
