@@ -1244,13 +1244,7 @@ DEFAULT_PUBLISH_VALUES = {
         "product_types": [
             "shot"
         ],
-        "options": [
-            {
-                "width": 2048,
-                "height": 1080,
-                "aspect_ratio": 1.5,
-            }
-        ]
+        "options": []
     },
     "ValidateEditorialAssetName": {
         "enabled": True,
