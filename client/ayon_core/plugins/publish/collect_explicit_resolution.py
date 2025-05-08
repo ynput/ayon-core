@@ -11,7 +11,7 @@ class CollectExplicitResolution(
     """Collect explicit user defined resolution attributes for instances"""
 
     label = "Choose Explicit Resolution"
-    order = pyblish.api.CollectorOrder + 0.49
+    order = pyblish.api.CollectorOrder - 0.091
     settings_category = "core"
 
     enabled = False
@@ -99,6 +99,6 @@ class CollectExplicitResolution(
                 "explicit_resolution",
                 items,
                 default="Don't override",
-                label="Override Resolution",
+                label="Force product resolution",
             ),
         ]
