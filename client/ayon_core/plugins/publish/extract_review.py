@@ -6,6 +6,7 @@ import shutil
 import subprocess
 from abc import ABC, abstractmethod
 from typing import Dict, Any, Optional
+import tempfile
 
 import clique
 import speedcopy
@@ -815,10 +816,13 @@ class ExtractReview(pyblish.api.InstancePlugin):
                 "-i", path_to_subprocess_arg(temp_data["full_input_path"])
             ])
         else:
-            staging_dir = os.path.dirname(temp_data["full_input_path"])
-            explicit_frames_path = os.path.join(
-                staging_dir, "explicit_frames.txt")
             frame_duration = 1 / temp_data["fps"]
+
+            explicit_frames_meta = tempfile.NamedTemporaryFile(
+                mode="w", prefix="explicit_frames", suffix=".txt", delete=False
+            )
+            explicit_frames_meta.close()
+            explicit_frames_path = explicit_frames_meta.name
             with open(explicit_frames_path, "w") as fp:
                 lines = [
                     f"file '{path}'{os.linesep}duration {frame_duration}"
