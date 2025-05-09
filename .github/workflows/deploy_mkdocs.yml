@@ -68,8 +68,8 @@ jobs:
 
       - name: 🔑 Set Authentication
         run: |
-          git config --global user.name "${{ secrets.user }}"
-          git config --global user.email "${{ secrets.email }}"
+          git config --global user.name "${{ secrets.user || secrets.CI_USER }}"
+          git config --global user.email "${{ secrets.email || secrets.CI_EMAIL }}"
 
       - name: Set up Python
         uses: actions/setup-python@v4
