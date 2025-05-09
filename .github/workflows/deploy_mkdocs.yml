@@ -21,28 +21,28 @@ on:
         required: true
 
 env:
-    GH_TOKEN: ${{ secrets.token || secrets.YNPUT_BOT_TOKEN }}
-    GH_USER: ${{ secrets.user || secrets.CI_USER }}
-    GH_EMAIL: ${{ secrets.email || secrets.CI_EMAIL }}
+  GH_TOKEN: ${{ secrets.token || secrets.YNPUT_BOT_TOKEN }}
+  GH_USER: ${{ secrets.user || secrets.CI_USER }}
+  GH_EMAIL: ${{ secrets.email || secrets.CI_EMAIL }}
 
 jobs:
   verify-repo-secrets:
-        uses: ynput/ops-repo-automation/.github/workflows/verify_secrets.yml@main
-        with:
-          repo: ${{ github.repository }}
-        secrets:
-          gh_token: ${{ secrets.token }}
-          gh_user: ${{ secrets.user }}
-          gh_email: ${{ secrets.email }}
+    uses: ynput/ops-repo-automation/.github/workflows/verify_secrets.yml@main
+    with:
+      repo: ${{ github.repository }}
+    secrets:
+      gh_token: ${{ secrets.token }}
+      gh_user: ${{ secrets.user }}
+      gh_email: ${{ secrets.email }}
 
   deploy:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout ${{ inputs.branch_name || 'main' }}
+      - name: Checkout ${{ inputs.branch_name}}
         uses: actions/checkout@v4
         with:
-          ref: ${{ inputs.branch_name || 'main' }}
+          ref: ${{ inputs.branch_name}}
           fetch-depth: 0
           submodules: true
 
