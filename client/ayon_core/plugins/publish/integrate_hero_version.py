@@ -427,9 +427,9 @@ class IntegrateHeroVersion(
             with ThreadPoolExecutor(max_workers=8) as executor:
                 futures = [
                     executor.submit(self.copy_file, src_path, dst_path)
-                    for src_path, dst_path
-                    in itertools.chain(src_to_dst_file_paths,
-                                       other_file_paths_mapping)
+                    for src_path, dst_path in itertools.chain(
+                        src_to_dst_file_paths, other_file_paths_mapping
+                    )
                 ]
                 as_completed_stop_and_raise_on_error(executor, futures)
 
