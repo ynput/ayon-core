@@ -80,5 +80,5 @@ jobs:
         run: |
           python3 -m pip install -r ./docs/mkdocs_requirements.txt
 
-      - name: Mike deploy
+      - name: Mike deploy ${{ inputs.tag }}
         run: mike deploy --update-aliases ${{ inputs.tag }} latest
