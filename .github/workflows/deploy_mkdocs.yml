@@ -12,9 +12,6 @@ on:
         type: string
         required: true
         default: "main"
-      tag:
-        type: string
-        required: true
     secrets:
       token:
         required: true
@@ -29,15 +26,6 @@ env:
     GH_EMAIL: ${{ secrets.email || secrets.CI_EMAIL }}
 
 jobs:
-
-#   verify-latest-release:
-#     uses: ynput/ops-repo-automation/.github/workflows/verify_latest_release.yml@main
-#     with:
-#       repo: ${{ github.repository }}
-#       expect_release: true
-#     secrets:
-#       gh_token: ${{ secrets.token }}
-
   verify-repo-secrets:
         uses: ynput/ops-repo-automation/.github/workflows/verify_secrets.yml@main
         with:
@@ -46,14 +34,6 @@ jobs:
           gh_token: ${{ secrets.token }}
           gh_user: ${{ secrets.user }}
           gh_email: ${{ secrets.email }}
-
-#   verify-repo-vars:
-#     uses: ynput/ops-repo-automation/.github/workflows/verify_variables.yml@main
-#     with:
-#       variables: "MAIN_BRANCH,MINOR_BUMP_LABEL,PATCH_BUMP_LABEL,PROJECT_NAME"
-#       repo: ${{ github.repository }}
-#     secrets:
-#       gh_token: ${{ secrets.token }}
 
   deploy:
     runs-on: ubuntu-latest
@@ -71,6 +51,12 @@ jobs:
           git config --global user.name "${{ secrets.user || secrets.CI_USER }}"
           git config --global user.email "${{ secrets.email || secrets.CI_EMAIL }}"
 
+      - name: Get current tag
+        id: git_tag
+        uses: "devops-actions/action-get-tag@v1.0.3"
+        with:
+          default: 1.0.0
+
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
@@ -80,5 +66,5 @@ jobs:
         run: |
           python3 -m pip install -r ./docs/mkdocs_requirements.txt
 
-      - name: Mike deploy ${{ inputs.tag }}
-        run: mike deploy --update-aliases ${{ inputs.tag }} latest
+      - name: Mike deploy ${{ steps.git_tag.outputs.tag }}
+        run: mike deploy --update-aliases ${{ steps.git_tag.outputs.tag }} latest
