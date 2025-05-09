@@ -39,10 +39,10 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout ${{ inputs.branch_name }}
+      - name: Checkout ${{ inputs.branch_name || 'main' }}
         uses: actions/checkout@v4
         with:
-          ref: ${{ inputs.branch_name }}
+          ref: ${{ inputs.branch_name || 'main' }}
           fetch-depth: 0
           submodules: true
 
