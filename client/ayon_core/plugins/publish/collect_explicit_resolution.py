@@ -72,7 +72,9 @@ class CollectExplicitResolution(
             resolution_items = {}
             for item in cls.options:
                 item_text = (
-                    f"{item['width']}x{item['height']} ({item['pixel_aspect']})")
+                    f"{item['width']}x{item['height']} "
+                    f"({item['pixel_aspect']})"
+                )
                 resolution_items[item_text] = item
 
             cls.resolution_items = resolution_items

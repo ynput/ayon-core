@@ -1,4 +1,3 @@
-from collections.abc import Iterable
 from pydantic import validator
 from typing import Any
 
@@ -221,7 +220,8 @@ class CollectExplicitResolutionModel(BaseSettingsModel):
         default_factory=list,
         title="Resolution choices",
         description=(
-            "Available resolution choices to be displayed in the publishers attribute."
+            "Available resolution choices to be displayed in "
+            "the publishers attribute."
         )
     )
 
