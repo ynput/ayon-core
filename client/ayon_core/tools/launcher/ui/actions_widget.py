@@ -606,9 +606,9 @@ class ActionsWidget(QtWidgets.QWidget):
             field_type = config_field["type"]
             attr_def = None
             if field_type == "label":
-                label = config_field.get("text")
+                label = config_field.get("value")
                 if label is None:
-                    label = config_field["value"]
+                    label = config_field.get("text")
                 attr_def = UILabelDef(
                     label, key=uuid.uuid4().hex
                 )
@@ -625,7 +625,7 @@ class ActionsWidget(QtWidgets.QWidget):
             elif field_type == "text":
                 attr_def = TextDef(
                     config_field["name"],
-                    default=config_field["value"],
+                    default=config_field.get("value"),
                     label=config_field.get("label"),
                     placeholder=config_field.get("placeholder"),
                     multiline=config_field.get("multiline", False),
@@ -633,11 +633,12 @@ class ActionsWidget(QtWidgets.QWidget):
                     # syntax=config_field["syntax"],
                 )
             elif field_type in ("integer", "float"):
-                value = config_field["value"]
-                if field_type == "integer":
-                    value = int(value)
-                else:
-                    value = float(value)
+                value = config_field.get("value")
+                if isinstance(value, str):
+                    if field_type == "integer":
+                        value = int(value)
+                    else:
+                        value = float(value)
                 attr_def = NumberDef(
                     config_field["name"],
                     default=value,
@@ -658,7 +659,7 @@ class ActionsWidget(QtWidgets.QWidget):
             elif field_type == "hidden":
                 attr_def = HiddenDef(
                     config_field["name"],
-                    default=config_field["value"],
+                    default=config_field.get("value"),
                 )
 
             if attr_def is None:
