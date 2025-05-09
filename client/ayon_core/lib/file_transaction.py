@@ -1,18 +1,13 @@
 import concurrent.futures
 import os
 import logging
-import sys
 import errno
 from concurrent.futures import ThreadPoolExecutor, Future
 from typing import List, Optional
 
 from ayon_core.lib import create_hard_link
 
-# this is needed until speedcopy for linux is fixed
-if sys.platform == "win32":
-    from speedcopy import copyfile
-else:
-    from shutil import copyfile
+from speedcopy import copyfile
 
 
 class DuplicateDestinationError(ValueError):
@@ -118,7 +113,7 @@ class FileTransaction:
                 executor.submit(self._backup_file, dst, src)
                 for dst, (src, _) in self._transfers.items()
             ]
-            as_completed_stop_and_raise_on_error(
+            wait_for_future_errors(
                 executor, backup_futures, logger=self.log)
 
             # Submit transfer tasks
@@ -126,7 +121,7 @@ class FileTransaction:
                 executor.submit(self._transfer_file, dst, src, opts)
                 for dst, (src, opts) in self._transfers.items()
             ]
-            as_completed_stop_and_raise_on_error(
+            wait_for_future_errors(
                 executor, transfer_futures, logger=self.log)
 
     def _backup_file(self, dst, src):
@@ -228,7 +223,7 @@ class FileTransaction:
         return src == dst
 
 
-def as_completed_stop_and_raise_on_error(
+def wait_for_future_errors(
         executor: ThreadPoolExecutor,
         futures: List[Future],
         logger: Optional[logging.Logger] = None):
@@ -237,7 +232,7 @@ def as_completed_stop_and_raise_on_error(
 
     The ThreadPoolExecutor only cancels pending futures on exception but will
     still complete those that are running - each which also themselves could
-    fail. We log all exceptions, but re-raise the last exception only.
+    fail. We log all exceptions but re-raise the last exception only.
     """
     if logger is None:
         logger = logging.getLogger(__name__)
@@ -246,7 +241,7 @@ def as_completed_stop_and_raise_on_error(
         exception = future.exception()
         if exception:
             # As soon as an error occurs, stop executing more futures.
-            # Running workers however, will still complete so we also want
+            # Running workers, however, will still be complete, so we also want
             # to log those errors if any occurred on them.
             executor.shutdown(wait=True, cancel_futures=True)
             break
