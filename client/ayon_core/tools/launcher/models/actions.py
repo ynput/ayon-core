@@ -597,7 +597,9 @@ class ActionsModel:
             )
 
         else:
-            self.log.warning(f"Unknown webaction response type '{response_type}'")
+            self.log.warning(
+                f"Unknown webaction response type '{response_type}'"
+            )
             response.error_message = "Unknown webaction response type."
 
         return response
