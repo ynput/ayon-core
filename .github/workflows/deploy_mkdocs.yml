@@ -66,6 +66,11 @@ jobs:
           fetch-depth: 0
           submodules: true
 
+      - name: 🔑 Set Authentication
+        run: |
+          git config --global user.name "${{ secrets.user }}"
+          git config --global user.email "${{ secrets.email }}"
+
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
