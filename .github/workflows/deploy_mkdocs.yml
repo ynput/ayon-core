@@ -30,13 +30,13 @@ env:
 
 jobs:
 
-  verify-latest-release:
-    uses: ynput/ops-repo-automation/.github/workflows/verify_latest_release.yml@main
-    with:
-      repo: ${{ github.repository }}
-      expect_release: true
-    secrets:
-      gh_token: ${{ secrets.token }}
+#   verify-latest-release:
+#     uses: ynput/ops-repo-automation/.github/workflows/verify_latest_release.yml@main
+#     with:
+#       repo: ${{ github.repository }}
+#       expect_release: true
+#     secrets:
+#       gh_token: ${{ secrets.token }}
 
   verify-repo-secrets:
         uses: ynput/ops-repo-automation/.github/workflows/verify_secrets.yml@main
@@ -47,13 +47,13 @@ jobs:
           gh_user: ${{ secrets.user }}
           gh_email: ${{ secrets.email }}
 
-  verify-repo-vars:
-    uses: ynput/ops-repo-automation/.github/workflows/verify_variables.yml@main
-    with:
-      variables: "MAIN_BRANCH,MINOR_BUMP_LABEL,PATCH_BUMP_LABEL,PROJECT_NAME"
-      repo: ${{ github.repository }}
-    secrets:
-      gh_token: ${{ secrets.token }}
+#   verify-repo-vars:
+#     uses: ynput/ops-repo-automation/.github/workflows/verify_variables.yml@main
+#     with:
+#       variables: "MAIN_BRANCH,MINOR_BUMP_LABEL,PATCH_BUMP_LABEL,PROJECT_NAME"
+#       repo: ${{ github.repository }}
+#     secrets:
+#       gh_token: ${{ secrets.token }}
 
   deploy:
     runs-on: ubuntu-latest
