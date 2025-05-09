@@ -620,16 +620,16 @@ class ActionsWidget(QtWidgets.QWidget):
                 attr_def = BoolDef(
                     config_field["name"],
                     default=value,
-                    label=config_field["label"],
+                    label=config_field.get("label"),
                 )
             elif field_type == "text":
                 attr_def = TextDef(
                     config_field["name"],
                     default=config_field["value"],
-                    label=config_field["label"],
-                    placeholder=config_field["placeholder"],
-                    multiline=config_field["multiline"],
-                    regex=config_field["regex"],
+                    label=config_field.get("label"),
+                    placeholder=config_field.get("placeholder"),
+                    multiline=config_field.get("multiline", False),
+                    regex=config_field.get("regex"),
                     # syntax=config_field["syntax"],
                 )
             elif field_type in ("integer", "float"):
@@ -641,9 +641,9 @@ class ActionsWidget(QtWidgets.QWidget):
                 attr_def = NumberDef(
                     config_field["name"],
                     default=value,
-                    label=config_field["label"],
+                    label=config_field.get("label"),
                     decimals=0 if field_type == "integer" else 5,
-                    placeholder=config_field["placeholder"],
+                    placeholder=config_field.get("placeholder"),
                     min_value=config_field.get("min"),
                     max_value=config_field.get("max"),
                 )
@@ -651,8 +651,8 @@ class ActionsWidget(QtWidgets.QWidget):
                 attr_def = EnumDef(
                     config_field["name"],
                     items=config_field["options"],
-                    default=config_field["value"],
-                    label=config_field["label"],
+                    default=config_field.get("value"),
+                    label=config_field.get("label"),
                     multiselection=field_type == "multiselect",
                 )
             elif field_type == "hidden":
