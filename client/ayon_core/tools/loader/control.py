@@ -259,9 +259,14 @@ class LoaderController(BackendLoaderController, FrontendLoaderController):
             project_name, version_ids
         )
 
-    def get_thumbnail_path(self, project_name, thumbnail_id):
-        return self._thumbnails_model.get_thumbnail_path(
-            project_name, thumbnail_id
+    def get_thumbnail_paths(
+        self,
+        project_name,
+        entity_type,
+        entity_ids,
+    ):
+        return self._thumbnails_model.get_thumbnail_paths(
+            project_name, entity_type, entity_ids
         )
 
     def change_products_group(self, project_name, product_ids, group_name):

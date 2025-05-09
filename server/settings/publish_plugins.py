@@ -1,4 +1,5 @@
 from pydantic import validator
+from typing import Any
 
 from ayon_server.settings import (
     BaseSettingsModel,
@@ -7,9 +8,14 @@ from ayon_server.settings import (
     normalize_name,
     ensure_unique_names,
     task_types_enum,
+    anatomy_template_items_enum
 )
-
+from ayon_server.exceptions import BadRequestException
 from ayon_server.types import ColorRGBA_uint8
+
+
+class EnabledModel(BaseSettingsModel):
+    enabled: bool = SettingsField(True)
 
 
 class ValidateBaseModel(BaseSettingsModel):
@@ -150,6 +156,78 @@ class CollectUSDLayerContributionsModel(BaseSettingsModel):
     @validator("contribution_layers")
     def validate_unique_outputs(cls, value):
         ensure_unique_names(value)
+        return value
+
+
+class ResolutionOptionsModel(BaseSettingsModel):
+    _layout = "compact"
+    width: int = SettingsField(
+        1920,
+        ge=0,
+        le=100000,
+        title="Width",
+        description=(
+            "Width resolution number value"),
+        placeholder="Width"
+    )
+    height: int = SettingsField(
+        1080,
+        title="Height",
+        ge=0,
+        le=100000,
+        description=(
+            "Height resolution number value"),
+        placeholder="Height"
+    )
+    pixel_aspect: float = SettingsField(
+        1.0,
+        title="Pixel aspect",
+        ge=0.0,
+        le=100000.0,
+        description=(
+            "Pixel Aspect resolution decimal number value"),
+        placeholder="Pixel aspect"
+    )
+
+
+def ensure_unique_resolution_option(
+        objects: list[Any], field_name: str | None = None) -> None:  # noqa: C901
+    """Ensure a list of objects have unique option attributes.
+
+    This function checks if the list of objects has unique 'width',
+    'height' and 'pixel_aspect' properties.
+    """
+    options = set()
+    for obj in objects:
+        item_test_text = f"{obj.width}x{obj.height}x{obj.pixel_aspect}"
+        if item_test_text in options:
+            raise BadRequestException(
+                f"Duplicate option '{item_test_text}'")
+
+        options.add(item_test_text)
+
+
+class CollectExplicitResolutionModel(BaseSettingsModel):
+    enabled: bool = SettingsField(True, title="Enabled")
+    product_types: list[str] = SettingsField(
+        default_factory=list,
+        title="Product types",
+        description=(
+            "Only activate the attribute for following product types."
+        )
+    )
+    options: list[ResolutionOptionsModel] = SettingsField(
+        default_factory=list,
+        title="Resolution choices",
+        description=(
+            "Available resolution choices to be displayed in "
+            "the publishers attribute."
+        )
+    )
+
+    @validator("options")
+    def validate_unique_resolution_options(cls, value):
+        ensure_unique_resolution_option(value)
         return value
 
 
@@ -885,7 +963,11 @@ class IntegrateANTemplateNameProfileModel(BaseSettingsModel):
         default_factory=list,
         title="Task names"
     )
-    template_name: str = SettingsField("", title="Template name")
+    template_name: str = SettingsField(
+        "",
+        title="Template name",
+        enum_resolver=anatomy_template_items_enum(category="publish")
+    )
 
 
 class IntegrateHeroTemplateNameProfileModel(BaseSettingsModel):
@@ -906,7 +988,11 @@ class IntegrateHeroTemplateNameProfileModel(BaseSettingsModel):
         default_factory=list,
         title="Task names"
     )
-    template_name: str = SettingsField("", title="Template name")
+    template_name: str = SettingsField(
+        "",
+        title="Template name",
+        enum_resolver=anatomy_template_items_enum(category="hero")
+    )
 
 
 class IntegrateHeroVersionModel(BaseSettingsModel):
@@ -923,6 +1009,20 @@ class IntegrateHeroVersionModel(BaseSettingsModel):
                     "Windows being unable to delete any of the hardlinks if "
                     "any of the links is in use creating issues with updating "
                     "hero versions.")
+
+
+class CollectRenderedFilesModel(BaseSettingsModel):
+    remove_files: bool = SettingsField(
+        False,
+        title="Remove rendered files",
+        description=(
+            "Remove rendered files and metadata json on publish.\n\n"
+            "Note that when enabled but the render is to a configured "
+            "persistent staging directory the files will not be removed. "
+            "However with this disabled the files will **not** be removed in "
+            "either case."
+        )
+    )
 
 
 class CleanUpModel(BaseSettingsModel):
@@ -969,6 +1069,10 @@ class PublishPuginsModel(BaseSettingsModel):
             default_factory=CollectUSDLayerContributionsModel,
             title="Collect USD Layer Contributions",
         )
+    )
+    CollectExplicitResolution: CollectExplicitResolutionModel = SettingsField(
+        default_factory=CollectExplicitResolutionModel,
+        title="Collect Explicit Resolution"
     )
     ValidateEditorialAssetName: ValidateBaseModel = SettingsField(
         default_factory=ValidateBaseModel,
@@ -1025,6 +1129,21 @@ class PublishPuginsModel(BaseSettingsModel):
     IntegrateHeroVersion: IntegrateHeroVersionModel = SettingsField(
         default_factory=IntegrateHeroVersionModel,
         title="Integrate Hero Version"
+    )
+    AttachReviewables: EnabledModel = SettingsField(
+        default_factory=EnabledModel,
+        title="Attach Reviewables",
+        description=(
+            "When enabled, expose an 'Attach Reviewables' attribute on review"
+            " and render instances in the publisher to allow including the"
+            " media to be attached to another instance.\n\n"
+            "If a reviewable is attached to another instance it will not be "
+            "published as a render/review product of its own."
+        )
+    )
+    CollectRenderedFiles: CollectRenderedFilesModel = SettingsField(
+        default_factory=CollectRenderedFilesModel,
+        title="Clean up farm rendered files"
     )
     CleanUp: CleanUpModel = SettingsField(
         default_factory=CleanUpModel,
@@ -1128,6 +1247,13 @@ DEFAULT_PUBLISH_VALUES = {
                 "contribution_target_product": "usdShot"
             },
         ]
+    },
+    "CollectExplicitResolution": {
+        "enabled": True,
+        "product_types": [
+            "shot"
+        ],
+        "options": []
     },
     "ValidateEditorialAssetName": {
         "enabled": True,
@@ -1409,6 +1535,12 @@ DEFAULT_PUBLISH_VALUES = {
             "simpleUnrealTexture"
         ],
         "use_hardlinks": False
+    },
+    "AttachReviewables": {
+        "enabled": True,
+    },
+    "CollectRenderedFiles": {
+        "remove_files": False
     },
     "CleanUp": {
         "paterns": [],  # codespell:ignore paterns

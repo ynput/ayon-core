@@ -1,10 +1,12 @@
-from ayon_core.lib import Logger
+from ayon_core.lib import Logger, get_ayon_username
 from ayon_core.lib.events import QueuedEventSystem
 from ayon_core.settings import get_project_settings
 from ayon_core.tools.common_models import ProjectsModel, HierarchyModel
 
 from .abstract import AbstractLauncherFrontEnd, AbstractLauncherBackend
 from .models import LauncherSelectionModel, ActionsModel
+
+NOT_SET = object()
 
 
 class BaseLauncherController(
@@ -14,6 +16,8 @@ class BaseLauncherController(
         self._project_settings = {}
         self._event_system = None
         self._log = None
+
+        self._username = NOT_SET
 
         self._selection_model = LauncherSelectionModel(self)
         self._projects_model = ProjectsModel(self)
@@ -167,6 +171,20 @@ class BaseLauncherController(
         self._actions_model.refresh()
 
         self._emit_event("controller.refresh.actions.finished")
+
+    def get_my_tasks_entity_ids(self, project_name: str):
+        username = self._get_my_username()
+        assignees = []
+        if username:
+            assignees.append(username)
+        return self._hierarchy_model.get_entity_ids_for_assignees(
+            project_name, assignees
+        )
+
+    def _get_my_username(self):
+        if self._username is NOT_SET:
+            self._username = get_ayon_username()
+        return self._username
 
     def _emit_event(self, topic, data=None):
         self.emit_event(topic, data, "controller")
