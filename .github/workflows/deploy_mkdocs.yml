@@ -1,6 +1,7 @@
 name: Deploy MkDocs
 
 on:
+  pull_request:
   workflow_dispatch:
   workflow_call:
     inputs:
