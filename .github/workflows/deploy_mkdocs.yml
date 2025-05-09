@@ -1,0 +1,78 @@
+name: Deploy MkDocs
+
+on:
+  workflow_dispatch:
+  workflow_call:
+    inputs:
+      repo:
+        type: string
+        required: true
+      branch_name:
+        type: string
+        required: true
+        default: "main"
+      tag:
+        type: string
+        required: true
+    secrets:
+      token:
+        required: true
+      user:
+        required: true
+      email:
+        required: true
+
+env:
+    GH_TOKEN: ${{ secrets.token || secrets.YNPUT_BOT_TOKEN }}
+    GH_USER: ${{ secrets.user || secrets.CI_USER }}
+    GH_EMAIL: ${{ secrets.email || secrets.CI_EMAIL }}
+
+jobs:
+
+  verify-latest-release:
+    uses: ynput/ops-repo-automation/.github/workflows/verify_latest_release.yml@main
+    with:
+      repo: ${{ github.repository }}
+      expect_release: true
+    secrets:
+      gh_token: ${{ secrets.token }}
+
+  verify-repo-secrets:
+        uses: ynput/ops-repo-automation/.github/workflows/verify_secrets.yml@main
+        with:
+          repo: ${{ github.repository }}
+        secrets:
+          gh_token: ${{ secrets.token }}
+          gh_user: ${{ secrets.user }}
+          gh_email: ${{ secrets.email }}
+
+  verify-repo-vars:
+    uses: ynput/ops-repo-automation/.github/workflows/verify_variables.yml@main
+    with:
+      variables: "MAIN_BRANCH,MINOR_BUMP_LABEL,PATCH_BUMP_LABEL,PROJECT_NAME"
+      repo: ${{ github.repository }}
+    secrets:
+      gh_token: ${{ secrets.token }}
+
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout ${{ inputs.branch_name }}
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.branch_name }}
+          fetch-depth: 0
+          submodules: true
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.x"
+
+      - name: Install dependencies
+        run: |
+          python3 -m pip install -r ./docs/mkdocs_requirements.txt
+
+      - name: Mike deploy
+        run: mike deploy --update-aliases ${{ inputs.tag }} latest
