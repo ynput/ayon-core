@@ -53,7 +53,7 @@ jobs:
 
       - name: Get current tag
         id: git_tag
-        uses: "devops-actions/action-get-tag@v1.0.3"
+        uses: devops-actions/action-get-tag@v1.0.3
         with:
           default: 1.0.0
 
