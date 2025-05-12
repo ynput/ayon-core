@@ -137,7 +137,8 @@ def test_image_sequence_and_handles_out_of_range():
 
         # 9 tail back frames generated from gap (1097-1105)
         "/path/to/ffmpeg -t 0.36 -r 25.0 -f lavfi -i color=c=black:s=1280x720 "
-        "-tune stillimage -start_number 1097 -pix_fmt rgba C:/result/output.%04d.png",
+        "-tune stillimage -start_number 1097 -pix_fmt rgba "
+        "C:/result/output.%04d.png",
 
         # Report from source tiff (996-1096)
         # 996-1000 = additional 5 head frames
@@ -145,8 +146,8 @@ def test_image_sequence_and_handles_out_of_range():
         # 1096-1096 = additional 1 tail frames
         "/path/to/ffmpeg -start_number 1000 -framerate 25.0 -i "
         f"C:\\tif_seq{os.sep}output.%04d.tif "
-        "-vf scale=1280:720:flags=lanczos -compression_level 5 -start_number 996 "
-        "-pix_fmt rgba C:/result/output.%04d.png"
+        "-vf scale=1280:720:flags=lanczos -compression_level 5 "
+        "-start_number 996 -pix_fmt rgba C:/result/output.%04d.png"
     ]
 
     assert calls == expected
@@ -166,8 +167,9 @@ def test_movie_with_embedded_tc_no_gap_handles():
         # - first_frame = 14 src - 10 (head tail) = frame 4 = 0.1666s
         # - duration = 68fr (source) + 20fr (handles) = 88frames = 3.666s
         "/path/to/ffmpeg -ss 0.16666666666666666 -t 3.6666666666666665 "
-        "-i C:\\data\\qt_embedded_tc.mov -start_number 991 "
-        "-pix_fmt rgba C:/result/output.%04d.png"
+        "-i C:\\data\\qt_embedded_tc.mov -vf scale=1280:720:flags=lanczos "
+        "-compression_level 5 -start_number 991 -pix_fmt rgba "
+        "C:/result/output.%04d.png"
     ]
 
     assert calls == expected
@@ -184,12 +186,14 @@ def test_short_movie_head_gap_handles():
     expected = [
         # 10 head black frames generated from gap (991-1000)
         "/path/to/ffmpeg -t 0.4 -r 25.0 -f lavfi -i color=c=black:s=1280x720"
-        " -tune stillimage -start_number 991 -pix_fmt rgba C:/result/output.%04d.png",
+        " -tune stillimage -start_number 991 -pix_fmt rgba "
+        "C:/result/output.%04d.png",
 
         # source range + 10 tail frames
         # duration = 50fr (source) + 10fr (tail handle) = 60 fr = 2.4s
-        "/path/to/ffmpeg -ss 0.0 -t 2.4 -i C:\\data\\movie.mp4"
-        " -start_number 1001 -pix_fmt rgba C:/result/output.%04d.png"
+        "/path/to/ffmpeg -ss 0.0 -t 2.4 -i C:\\data\\movie.mp4 -vf "
+        "scale=1280:720:flags=lanczos -compression_level 5 "
+        "-start_number 1001 -pix_fmt rgba C:/result/output.%04d.png"
     ]
 
     assert calls == expected
@@ -212,8 +216,9 @@ def test_short_movie_tail_gap_handles():
         # 10 head frames + source range
         # duration = 10fr (head handle) + 66fr (source) = 76fr = 3.16s
         "/path/to/ffmpeg -ss 1.0416666666666667 -t 3.1666666666666665 -i "
-        "C:\\data\\qt_no_tc_24fps.mov -start_number 991"
-        " -pix_fmt rgba C:/result/output.%04d.png"
+        "C:\\data\\qt_no_tc_24fps.mov -vf scale=1280:720:flags=lanczos "
+        "-compression_level 5 -start_number 991 -pix_fmt rgba "
+        "C:/result/output.%04d.png"
     ]
 
     assert calls == expected
