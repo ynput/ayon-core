@@ -503,20 +503,19 @@ class ExtractThumbnail(pyblish.api.InstancePlugin):
             seek_position = duration * self.duration_split
 
         # Build command args
-        cmd_args = [
-            "-y",
+        cmd_args = []
+        if seek_position > 0.0:
+            cmd_args.extend(["--ss", str(seek_position)])
+
+        # Add generic ffmpeg commands
+        cmd_args.extend([
             "-i", video_file_path,
             "-analyzeduration", max_int,
             "-probesize", max_int,
-        ]
-
-        # Only add -ss if we're seeking to a specific position
-        if seek_position > 0:
-            cmd_args.insert(1, "-ss")
-            cmd_args.insert(2, str(seek_position))
-
-        # Ensure we extract exactly one frame
-        cmd_args.extend(["-frames:v", "1"])
+            "-y",
+            "-frames:v", "1",
+            output_thumb_file_path
+        ])
 
         # add output file path
         cmd_args.append(output_thumb_file_path)
