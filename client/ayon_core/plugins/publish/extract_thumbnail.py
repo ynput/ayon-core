@@ -497,7 +497,7 @@ class ExtractThumbnail(pyblish.api.InstancePlugin):
 
         # For very short videos, just use the first frame
         # Calculate seek position safely
-        seek_position = 0
+        seek_position = 0.0
         # Only use timestamp calculation for videos longer than 0.1 seconds
         if duration > 0.1:
             seek_position = duration * self.duration_split
@@ -539,36 +539,31 @@ class ExtractThumbnail(pyblish.api.InstancePlugin):
                 self.log.debug(
                     "Thumbnail created: {}".format(output_thumb_file_path))
                 return output_thumb_file_path
-            else:
-                self.log.warning(
-                    "Output file was not created or is empty: {}".format(
-                        output_thumb_file_path))
+            self.log.warning("Output file was not created or is empty")
 
-                # Fallback to extracting the first frame without seeking
-                if "-ss" in cmd_args:
-                    self.log.debug("Trying fallback without seeking")
-                    # Remove -ss and its value
-                    ss_index = cmd_args.index("-ss")
-                    cmd_args.pop(ss_index)  # Remove -ss
-                    cmd_args.pop(ss_index)  # Remove the timestamp value
-
-                    # Create new command and try again
-                    cmd = get_ffmpeg_tool_args("ffmpeg", *cmd_args)
-                    self.log.debug("Fallback command: {}".format(
-                        " ".join(cmd)))
-                    run_subprocess(cmd, logger=self.log)
-
-                    if (
-                        os.path.exists(output_thumb_file_path)
-                        and os.path.getsize(output_thumb_file_path) > 0
-                    ):
-                        self.log.debug(
-                            "Fallback thumbnail created: {}".format(
-                                output_thumb_file_path)
-                        )
-                        return output_thumb_file_path
-
+            # Try to create thumbnail without offset
+            # - skip if offset did not happen
+            if "-ss" not in cmd_args:
                 return None
+
+            self.log.debug("Trying fallback without offset")
+            # Remove -ss and its value
+            ss_index = cmd_args.index("-ss")
+            cmd_args.pop(ss_index)  # Remove -ss
+            cmd_args.pop(ss_index)  # Remove the timestamp value
+
+            # Create new command and try again
+            cmd = get_ffmpeg_tool_args("ffmpeg", *cmd_args)
+            self.log.debug("Fallback command: {}".format(" ".join(cmd)))
+            run_subprocess(cmd, logger=self.log)
+
+            if (
+                os.path.exists(output_thumb_file_path)
+                and os.path.getsize(output_thumb_file_path) > 0
+            ):
+                self.log.debug(f"Fallback thumbnail created")
+                return output_thumb_file_path
+            return None
         except RuntimeError as error:
             self.log.warning(
                 "Failed intermediate thumb source using ffmpeg: {}".format(
