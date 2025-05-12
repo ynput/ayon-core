@@ -474,7 +474,6 @@ class ExtractOTIOReview(
 
             command.extend([
                 "-start_number", str(in_frame_start),
-                "-compression_level", "5",
                 "-framerate", str(sequence_fps),
                 "-i", input_path
             ])
@@ -513,7 +512,8 @@ class ExtractOTIOReview(
 
         if video or sequence:
             command.extend([
-                "-vf", f"scale={self.to_width}:{self.to_height}:flags=lanczos"
+                "-vf", f"scale={self.to_width}:{self.to_height}:flags=lanczos",
+                "-compression_level", "5",
             ])
 
         # add output attributes
