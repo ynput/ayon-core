@@ -569,6 +569,13 @@ class ExtractThumbnail(pyblish.api.InstancePlugin):
                     error)
             )
             return None
+        finally:
+            # Remove output file if is empty
+            if (
+                os.path.exists(output_thumb_file_path)
+                and os.path.getsize(output_thumb_file_path) == 0
+            ):
+                os.remove(output_thumb_file_path)
 
     def _get_resolution_arg(
         self,
