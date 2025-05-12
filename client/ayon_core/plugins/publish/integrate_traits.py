@@ -66,7 +66,7 @@ if TYPE_CHECKING:
 
 @dataclass(frozen=True)
 class TransferItem:
-    """Represents single transfer item.
+    """Represents a single transfer item.
 
     Source file path, destination file path, template that was used to
     construct the destination path, template data that was used in the
@@ -93,7 +93,7 @@ class TransferItem:
 
     @staticmethod
     def get_size(file_path: Path) -> int:
-        """Get size of the file.
+        """Get the size of the file.
 
         Args:
             file_path (Path): File path.
@@ -759,12 +759,12 @@ class IntegrateTraits(pyblish.api.InstancePlugin):
     def get_rootless_path(self, anatomy: Anatomy, path: str) -> str:
         r"""Get rootless variant of the path.
 
-        Returns, if possible, path without absolute portion from the root
-        (e.g. 'c:\' or '/opt/..'). This is basically wrapper for the
+        Returns, if possible, a path without an absolute portion from the root
+        (e.g. 'c:\' or '/opt/..'). This is basically a wrapper for the
         meth:`Anatomy.find_root_template_from_path` method that displays
-        warning if root path is not found.
+        a warning if the root path is not found.
 
-         This information is platform dependent and shouldn't be captured.
+         This information is platform-dependent and shouldn't be captured.
          For example::
 
              'c:/projects/MyProject1/Assets/publish...'
@@ -955,9 +955,9 @@ class IntegrateTraits(pyblish.api.InstancePlugin):
         template_padding = template_item.anatomy.templates_obj.frame_padding
         dst_padding = max(template_padding, dst_padding)
 
-        # go through all frames in the sequence
-        # find their corresponding file locations
-        # format their template and add them to transfers
+        # Go through all frames in the sequence and
+        # find their corresponding file locations, then
+        # format their template and add them to transfers.
         for frame in frames:
             file_loc: FileLocation = representation.get_trait(
                 FileLocations).get_file_location_for_frame(
