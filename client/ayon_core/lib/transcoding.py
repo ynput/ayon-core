@@ -345,6 +345,9 @@ def get_review_info_by_layer_name(channel_names):
             ...
         ]
 
+    This tries to find suitable outputs good for review purposes, by
+    searching for channel names like 'red', 'green', 'blue' or 'R', 'G', 'B',
+
     Args:
         channel_names (list[str]): List of channel names.
 
@@ -353,7 +356,6 @@ def get_review_info_by_layer_name(channel_names):
     """
 
     layer_names_order = []
-    rgba_by_layer_name = collections.defaultdict(dict)
     channels_by_layer_name = collections.defaultdict(dict)
 
     for channel_name in channel_names:
@@ -362,42 +364,76 @@ def get_review_info_by_layer_name(channel_names):
         if "." in channel_name:
             layer_name, last_part = channel_name.rsplit(".", 1)
 
-        channels_by_layer_name[layer_name][channel_name] = last_part
         if last_part.lower() not in {
-            "r", "red",
-            "g", "green",
-            "b", "blue",
-            "a", "alpha"
+            # Detect RGBA channels
+            "r", "g", "b", "a",
+            # Allow detecting of x, y and z channels, and normal channels
+            "x", "y", "z", "n",
+            # red, green and blue alpha/opacity, for colored mattes
+            "ar", "ag", "ab"
         }:
             continue
 
         if layer_name not in layer_names_order:
             layer_names_order.append(layer_name)
-        # R, G, B or A
+
+        # R, G, B, A or X, Y, Z, N, AR, AG, AB
         channel = last_part[0].upper()
-        rgba_by_layer_name[layer_name][channel] = channel_name
+        channels_by_layer_name[layer_name][channel] = channel_name
 
     # Put empty layer to the beginning of the list
     # - if input has R, G, B, A channels they should be used for review
-    if "" in layer_names_order:
-        layer_names_order.remove("")
-        layer_names_order.insert(0, "")
+    def _sort(_layer_name: str) -> int:
+        # Prioritize "" layer name
+        # Prioritize layers with RGB channels
+        order = 0
+        if _layer_name == "":
+            order -= 10
+
+        channels = channels_by_layer_name[_layer_name]
+        if all(channel in channels for channel in "RGB"):
+            order -= 1
+        return order
+    layer_names_order.sort(key=_sort)
 
     output = []
     for layer_name in layer_names_order:
-        rgba_layer_info = rgba_by_layer_name[layer_name]
-        red = rgba_layer_info.get("R")
-        green = rgba_layer_info.get("G")
-        blue = rgba_layer_info.get("B")
-        if not red or not green or not blue:
+        channel_info = channels_by_layer_name[layer_name]
+
+        # RGB channels
+        if all(channel in channel_info for channel in "RGB"):
+            rgb = "R", "G", "B"
+
+        # XYZ channels (position pass)
+        elif all(channel in channel_info for channel in "XYZ"):
+            rgb = "X", "Y", "Z"
+
+        # Colored mattes (as defined in OpenEXR Channel Name standards)
+        elif all(channel in channel_info for channel in ("AR", "AG", "AB")):
+            rgb = "AR", "AG", "AB"
+
+        # Luminance channel (as defined in OpenEXR Channel Name standards)
+        elif "Y" in channel_info:
+            rgb = "Y", "Y", "Y"
+
+        # Has only Z channel (Z-depth layer)
+        elif "Z" in channel_info:
+            rgb = "Z", "Z", "Z"
+
+        else:
+            # No reviewable channels found
             continue
+
+        red = channel_info[rgb[0]]
+        green = channel_info[rgb[1]]
+        blue = channel_info[rgb[2]]
         output.append({
             "name": layer_name,
             "review_channels": {
                 "R": red,
                 "G": green,
                 "B": blue,
-                "A": rgba_layer_info.get("A"),
+                "A": channel_info.get("A"),
             }
         })
     return output
@@ -1428,7 +1464,8 @@ def get_oiio_input_and_channel_args(oiio_input_info, alpha_default=None):
 
     if review_channels is None:
         raise ValueError(
-            "Couldn't find channels that can be used for conversion."
+            "Couldn't find channels that can be used for conversion "
+            f"among channels: {channel_names}."
         )
 
     red, green, blue, alpha = review_channels
