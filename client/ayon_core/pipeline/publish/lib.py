@@ -1097,9 +1097,8 @@ def add_trait_representations(
             trait based representations to add.
 
     """
-    if not has_trait_representations(instance):
-        instance.data[TRAIT_INSTANCE_KEY] = []
-    instance.data[TRAIT_INSTANCE_KEY].extend(representations)
+    repres = instance.data.setdefault(TRAIT_INSTANCE_KEY, [])
+    repres.extend(representations)
 
 
 def set_trait_representations(
