@@ -580,7 +580,7 @@ class ExtractThumbnail(pyblish.api.InstancePlugin):
                 os.path.exists(output_thumb_file_path)
                 and os.path.getsize(output_thumb_file_path) > 0
             ):
-                self.log.debug(f"Fallback thumbnail created")
+                self.log.debug("Fallback thumbnail created")
                 return output_thumb_file_path
             return None
         except RuntimeError as error:
