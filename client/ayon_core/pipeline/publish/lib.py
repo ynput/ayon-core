@@ -1081,7 +1081,7 @@ def has_trait_representations(
         False: Instance does not have trait representation.
 
     """
-    return bool(instance.data.get(TRAIT_INSTANCE_KEY))
+    return TRAIT_INSTANCE_KEY in instance.data
 
 
 def add_trait_representations(
