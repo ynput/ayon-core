@@ -33,6 +33,7 @@ if TYPE_CHECKING:
 
 TRAIT_INSTANCE_KEY: str = "representations_with_traits"
 
+
 def get_template_name_profiles(
     project_name, project_settings=None, logger=None
 ):

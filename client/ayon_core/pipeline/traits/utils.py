@@ -3,7 +3,6 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Optional
 
-import pyblish.api
 from clique import assemble
 
 from ayon_core.addon import AddonsManager, ITraits
