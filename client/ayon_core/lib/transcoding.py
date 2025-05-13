@@ -562,137 +562,6 @@ def should_convert_for_ffmpeg(src_filepath):
     return False
 
 
-# Deprecated since 2022 4 20
-# - Reason - Doesn't convert sequences right way: Can't handle gaps, reuse
-#       first frame for all frames and changes filenames when input
-#       is sequence.
-# - use 'convert_input_paths_for_ffmpeg' instead
-def convert_for_ffmpeg(
-    first_input_path,
-    output_dir,
-    input_frame_start=None,
-    input_frame_end=None,
-    logger=None
-):
-    """Convert source file to format supported in ffmpeg.
-
-    Currently can convert only exrs.
-
-    Args:
-        first_input_path (str): Path to first file of a sequence or a single
-            file path for non-sequential input.
-        output_dir (str): Path to directory where output will be rendered.
-            Must not be same as input's directory.
-        input_frame_start (int): Frame start of input.
-        input_frame_end (int): Frame end of input.
-        logger (logging.Logger): Logger used for logging.
-
-    Raises:
-        ValueError: If input filepath has extension not supported by function.
-            Currently is supported only ".exr" extension.
-    """
-    if logger is None:
-        logger = logging.getLogger(__name__)
-
-    logger.warning((
-        "DEPRECATED: 'ayon_core.lib.transcoding.convert_for_ffmpeg' is"
-        " deprecated function of conversion for FFMpeg. Please replace usage"
-        " with 'ayon_core.lib.transcoding.convert_input_paths_for_ffmpeg'"
-    ))
-
-    ext = os.path.splitext(first_input_path)[1].lower()
-    if ext != ".exr":
-        raise ValueError((
-            "Function 'convert_for_ffmpeg' currently support only"
-            " \".exr\" extension. Got \"{}\"."
-        ).format(ext))
-
-    is_sequence = False
-    if input_frame_start is not None and input_frame_end is not None:
-        is_sequence = int(input_frame_end) != int(input_frame_start)
-
-    input_info = get_oiio_info_for_input(first_input_path, logger=logger)
-
-    # Change compression only if source compression is "dwaa" or "dwab"
-    #   - they're not supported in ffmpeg
-    compression = input_info["attribs"].get("compression")
-    if compression in ("dwaa", "dwab"):
-        compression = "none"
-
-    # Prepare subprocess arguments
-    oiio_cmd = get_oiio_tool_args(
-        "oiiotool",
-        # Don't add any additional attributes
-        "--nosoftwareattrib",
-    )
-    # Add input compression if available
-    if compression:
-        oiio_cmd.extend(["--compression", compression])
-
-    # Collect channels to export
-    input_arg, channels_arg = get_oiio_input_and_channel_args(input_info)
-
-    oiio_cmd.extend([
-        input_arg, first_input_path,
-        # Tell oiiotool which channels should be put to top stack (and output)
-        "--ch", channels_arg,
-        # Use first subimage
-        "--subimage", "0"
-    ])
-
-    # Add frame definitions to arguments
-    if is_sequence:
-        oiio_cmd.extend([
-            "--frames", "{}-{}".format(input_frame_start, input_frame_end)
-        ])
-
-    for attr_name, attr_value in input_info["attribs"].items():
-        if not isinstance(attr_value, str):
-            continue
-
-        # Remove attributes that have string value longer than allowed length
-        #   for ffmpeg or when contain prohibited symbols
-        erase_reason = "Missing reason"
-        erase_attribute = False
-        if len(attr_value) > MAX_FFMPEG_STRING_LEN:
-            erase_reason = "has too long value ({} chars).".format(
-                len(attr_value)
-            )
-            erase_attribute = True
-
-        if not erase_attribute:
-            for char in NOT_ALLOWED_FFMPEG_CHARS:
-                if char in attr_value:
-                    erase_attribute = True
-                    erase_reason = (
-                        "contains unsupported character \"{}\"."
-                    ).format(char)
-                    break
-
-        if erase_attribute:
-            # Set attribute to empty string
-            logger.info((
-                "Removed attribute \"{}\" from metadata because {}."
-            ).format(attr_name, erase_reason))
-            oiio_cmd.extend(["--eraseattrib", attr_name])
-
-    # Add last argument - path to output
-    if is_sequence:
-        ext = os.path.splitext(first_input_path)[1]
-        base_filename = "tmp.%{:0>2}d{}".format(
-            len(str(input_frame_end)), ext
-        )
-    else:
-        base_filename = os.path.basename(first_input_path)
-    output_path = os.path.join(output_dir, base_filename)
-    oiio_cmd.extend([
-        "-o", output_path
-    ])
-
-    logger.debug("Conversion command: {}".format(" ".join(oiio_cmd)))
-    run_subprocess(oiio_cmd, logger=logger)
-
-
 def convert_input_paths_for_ffmpeg(
     input_paths,
     output_dir,
@@ -700,7 +569,7 @@ def convert_input_paths_for_ffmpeg(
 ):
     """Convert source file to format supported in ffmpeg.
 
-    Currently can convert only exrs. The input filepaths should be files
+    Can currently convert only EXRs. The input filepaths should be files
     with same type. Information about input is loaded only from first found
     file.
 
@@ -727,10 +596,10 @@ def convert_input_paths_for_ffmpeg(
     ext = os.path.splitext(first_input_path)[1].lower()
 
     if ext != ".exr":
-        raise ValueError((
-            "Function 'convert_for_ffmpeg' currently support only"
-            " \".exr\" extension. Got \"{}\"."
-        ).format(ext))
+        raise ValueError(
+            "Function 'convert_input_paths_for_ffmpeg' currently supports"
+            f" only \".exr\" extension. Got \"{ext}\"."
+        )
 
     input_info = get_oiio_info_for_input(first_input_path, logger=logger)
 
