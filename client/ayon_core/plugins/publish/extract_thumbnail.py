@@ -17,7 +17,7 @@ from ayon_core.lib import (
 )
 from ayon_core.lib.transcoding import convert_colorspace
 
-from ayon_core.lib.transcoding import VIDEO_EXTENSIONS
+from ayon_core.lib.transcoding import VIDEO_EXTENSIONS, IMAGE_EXTENSIONS
 
 
 class ExtractThumbnail(pyblish.api.InstancePlugin):
@@ -336,7 +336,8 @@ class ExtractThumbnail(pyblish.api.InstancePlugin):
         return need_thumb_repres
 
     def _get_filtered_repres(self, instance):
-        filtered_repres = []
+        review_repres = []
+        other_repres = []
         src_repres = instance.data.get("representations") or []
 
         for repre in src_repres:
@@ -348,17 +349,36 @@ class ExtractThumbnail(pyblish.api.InstancePlugin):
                 # to be published locally
                 continue
 
-            if "review" not in tags:
-                continue
-
             if not repre.get("files"):
                 self.log.debug((
                     "Representation \"{}\" doesn't have files. Skipping"
                 ).format(repre["name"]))
                 continue
 
-            filtered_repres.append(repre)
-        return filtered_repres
+            if "review" in tags:
+                review_repres.append(repre)
+            elif self._is_valid_images_repre(repre):
+                other_repres.append(repre)
+
+        return review_repres + other_repres
+
+    def _is_valid_images_repre(self, repre):
+        """Check if representation contains valid image files
+
+        Args:
+            repre (dict): representation
+
+        Returns:
+            bool: whether the representation has the valid image content
+        """
+        # Get first file's extension
+        first_file = repre["files"]
+        if isinstance(first_file, (list, tuple)):
+            first_file = first_file[0]
+
+        ext = os.path.splitext(first_file)[1].lower()
+
+        return ext in IMAGE_EXTENSIONS or ext in VIDEO_EXTENSIONS
 
     def _create_thumbnail_oiio(
         self,
