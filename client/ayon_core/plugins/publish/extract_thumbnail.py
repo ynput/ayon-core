@@ -525,7 +525,7 @@ class ExtractThumbnail(pyblish.api.InstancePlugin):
         # Build command args
         cmd_args = []
         if seek_position > 0.0:
-            cmd_args.extend(["--ss", str(seek_position)])
+            cmd_args.extend(["-ss", str(seek_position)])
 
         # Add generic ffmpeg commands
         cmd_args.extend([
@@ -536,9 +536,6 @@ class ExtractThumbnail(pyblish.api.InstancePlugin):
             "-frames:v", "1",
             output_thumb_file_path
         ])
-
-        # add output file path
-        cmd_args.append(output_thumb_file_path)
 
         # create ffmpeg command
         cmd = get_ffmpeg_tool_args(
