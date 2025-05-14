@@ -295,32 +295,74 @@ class AbstractLauncherFrontEnd(AbstractLauncherCommon):
         pass
 
     @abstractmethod
-    def trigger_action(self, project_name, folder_id, task_id, action_id):
+    def trigger_action(
+        self,
+        action_id,
+        project_name,
+        folder_id,
+        task_id,
+    ):
         """Trigger action on given context.
 
         Args:
+            action_id (str): Action identifier.
             project_name (Union[str, None]): Project name.
             folder_id (Union[str, None]): Folder id.
             task_id (Union[str, None]): Task id.
-            action_id (str): Action identifier.
 
         """
         pass
 
     @abstractmethod
-    def set_application_force_not_open_workfile(
-        self, project_name, folder_id, task_id, action_ids, enabled
+    def trigger_webaction(
+        self,
+        identifier,
+        project_name,
+        folder_id,
+        task_id,
+        action_label,
+        addon_name,
+        addon_version,
+        form_data=None,
     ):
-        """This is application action related to force not open last workfile.
+        """Trigger action on given context.
 
         Args:
+            identifier (str): Action identifier.
             project_name (Union[str, None]): Project name.
             folder_id (Union[str, None]): Folder id.
             task_id (Union[str, None]): Task id.
-            action_ids (Iterable[str]): Action identifiers.
-            enabled (bool): New value of force not open workfile.
+            action_label (str): Action label.
+            addon_name (str): Addon name.
+            addon_version (str): Addon version.
+            form_data (Optional[dict[str, Any]]): Form values of action.
 
         """
+        pass
+
+    @abstractmethod
+    def get_action_config_values(
+        self,
+        action_id,
+        project_name,
+        folder_id,
+        task_id,
+        addon_name,
+        addon_version,
+    ):
+        pass
+
+    @abstractmethod
+    def set_action_config_values(
+        self,
+        action_id,
+        project_name,
+        folder_id,
+        task_id,
+        addon_name,
+        addon_version,
+        values,
+    ):
         pass
 
     @abstractmethod
