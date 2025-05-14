@@ -378,3 +378,27 @@ def test_representation_equality() -> None:
     assert rep_d != rep_e
     # because of the trait difference
     assert rep_d != rep_f
+
+def test_get_repre_by_name():
+    """Test getting representation by name."""
+    rep_a = Representation(name="test_a", traits=[
+        FileLocation(file_path=Path("/path/to/file"), file_size=1024),
+        Image(),
+        PixelBased(
+            display_window_width=1920,
+            display_window_height=1080,
+            pixel_aspect_ratio=1.0),
+        Planar(planar_configuration="RGB"),
+    ])
+    rep_b = Representation(name="test_b", traits=[
+        FileLocation(file_path=Path("/path/to/file"), file_size=1024),
+        Image(),
+        PixelBased(
+            display_window_width=1920,
+            display_window_height=1080,
+            pixel_aspect_ratio=1.0),
+        Planar(planar_configuration="RGB"),
+    ])
+
+    representations = [rep_a, rep_b]
+    repre = next(rep for rep in representations if rep.name == "test_a")

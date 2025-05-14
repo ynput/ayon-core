@@ -20,7 +20,7 @@ class Image(TraitBase):
     Attributes:
         name (str): Trait name.
         description (str): Trait description.
-        id (str): id should be namespaced trait name with version
+        id (str): id should be a namespaced trait name with version
     """
 
     name: ClassVar[str] = "Image"
@@ -33,12 +33,12 @@ class Image(TraitBase):
 class PixelBased(TraitBase):
     """PixelBased trait model.
 
-    Pixel related trait for image data.
+    The pixel-related trait for image data.
 
     Attributes:
         name (str): Trait name.
         description (str): Trait description.
-        id (str): id should be namespaced trait name with version
+        id (str): id should be a namespaced trait name with a version
         display_window_width (int): Width of the image display window.
         display_window_height (int): Height of the image display window.
         pixel_aspect_ratio (float): Pixel aspect ratio.
@@ -87,7 +87,7 @@ class Deep(TraitBase):
     Attributes:
         name (str): Trait name.
         description (str): Trait description.
-        id (str): id should be namespaced trait name with version
+        id (str): id should be a namespaced trait name with a version
     """
 
     name: ClassVar[str] = "Deep"
@@ -106,7 +106,7 @@ class Overscan(TraitBase):
     Attributes:
         name (str): Trait name.
         description (str): Trait description.
-        id (str): id should be namespaced trait name with version
+        id (str): id should be a namespaced trait name with a version
         left (int): Left overscan/underscan.
         right (int): Right overscan/underscan.
         top (int): Top overscan/underscan.
@@ -144,8 +144,8 @@ class UDIM(TraitBase):
     udim: list[int]
     udim_regex: Optional[str] = r"(?:\.|_)(?P<udim>\d+)\.\D+\d?$"
 
-    # field validator for udim_regex - this works in pydantic model v2 but not
-    # with the pure data classes
+    # Field validator for udim_regex - this works in the pydantic model v2
+    # but not with the pure data classes.
     @classmethod
     def validate_frame_regex(cls, v: Optional[str]) -> Optional[str]:
         """Validate udim regex.
@@ -177,6 +177,8 @@ class UDIM(TraitBase):
             Optional[FileLocation]: File location.
 
         """
+        if not self.udim_regex:
+            return None
         pattern = re.compile(self.udim_regex)
         for location in file_locations.file_paths:
             result = re.search(pattern, location.file_path.name)
@@ -188,7 +190,7 @@ class UDIM(TraitBase):
 
     def get_udim_from_file_location(
             self, file_location: FileLocation) -> Optional[int]:
-        """Get UDIM from file location.
+        """Get UDIM from the file location.
 
         Args:
             file_location (FileLocation): File location.
@@ -197,6 +199,8 @@ class UDIM(TraitBase):
             Optional[int]: UDIM value.
 
         """
+        if not self.udim_regex:
+            return None
         pattern = re.compile(self.udim_regex)
         result = re.search(pattern, file_location.file_path.name)
         if result:

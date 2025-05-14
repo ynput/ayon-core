@@ -33,7 +33,7 @@ class MimeType(TraitBase):
     Attributes:
         name (str): Trait name.
         description (str): Trait description.
-        id (str): id should be namespaced trait name with version
+        id (str): id should be a namespaced trait name with version
         mime_type (str): Mime type like image/jpeg.
     """
 
@@ -57,7 +57,7 @@ class LocatableContent(TraitBase):
     Attributes:
         name (str): Trait name.
         description (str): Trait description.
-        id (str): id should be namespaced trait name with version
+        id (str): id should be a namespaced trait name with version
         location (str): Location.
         is_templated (Optional[bool]): Is the location templated?
             Default is None.
@@ -82,7 +82,7 @@ class FileLocation(TraitBase):
     Attributes:
         name (str): Trait name.
         description (str): Trait description.
-        id (str): id should be namespaced trait name with version
+        id (str): id should be a namespaced trait name with version
         file_path (str): File path.
         file_size (Optional[int]): File size in bytes.
         file_hash (Optional[str]): File hash.
@@ -108,7 +108,7 @@ class FileLocations(TraitBase):
     Attributes:
         name (str): Trait name.
         description (str): Trait description.
-        id (str): id should be namespaced trait name with version
+        id (str): id should be a namespaced trait name with version
         file_paths (list of FileLocation): File locations.
 
     """
@@ -136,7 +136,7 @@ class FileLocations(TraitBase):
             frame: int,
             sequence_trait: Optional[Sequence] = None,
         ) -> Optional[FileLocation]:
-        """Get file location for a frame.
+        """Get a file location for a frame.
 
         This method will return the file location for a given frame. If the
         frame is not found in the file paths, it will return None.
@@ -166,7 +166,7 @@ class FileLocations(TraitBase):
         """Validate the trait.
 
         This method validates the trait against others in the representation.
-        In particular, it checks that the sequence trait is present and if
+        In particular, it checks that the sequence trait is present, and if
         so, it will compare the frame range to the file paths.
 
         Args:
@@ -187,8 +187,8 @@ class FileLocations(TraitBase):
         if not representation.contains_trait(Sequence) \
                 and not representation.contains_trait(UDIM):
             # we have multiple files, but it is not a sequence
-            # or UDIM tile set what it it then? If the files are not related
-            # to each other then this representation is invalid.
+            # or UDIM tile set what is it then? If the files are not related
+            # to each other, then this representation is invalid.
             msg = (
                  "Multiple file locations defined, but no Sequence "
                  "or UDIM trait defined. If the files are not related to "
@@ -254,7 +254,7 @@ class FileLocations(TraitBase):
                     f"({len(frames_from_spec)})"
                 )
                 raise TraitValidationError(self.name, msg)
-            # if there is frame spec on the Sequence trait
+            # if there is a frame spec on the Sequence trait,
             # we should not validate the frame range from the files.
             # the rest is validated by Sequence validators.
             return
@@ -354,7 +354,7 @@ class RootlessLocation(TraitBase):
     """RootlessLocation trait model.
 
     RootlessLocation trait is a trait that represents a file path that is
-    without specific root. To obtain absolute path, the root needs to be
+    without a specific root. To get the absolute path, the root needs to be
     resolved by AYON. Rootless path can be used on multiple platforms.
 
     Example::
@@ -366,7 +366,7 @@ class RootlessLocation(TraitBase):
     Attributes:
         name (str): Trait name.
         description (str): Trait description.
-        id (str): id should be namespaced trait name with version
+        id (str): id should be a namespaced trait name with version
         rootless_path (str): Rootless path.
     """
 
@@ -391,7 +391,7 @@ class Compressed(TraitBase):
     Attributes:
         name (str): Trait name.
         description (str): Trait description.
-        id (str): id should be namespaced trait name with version
+        id (str): id should be a namespaced trait name with version
         compression_type (str): Compression type.
     """
 
@@ -431,7 +431,7 @@ class Bundle(TraitBase):
     Attributes:
         name (str): Trait name.
         description (str): Trait description.
-        id (str): id should be namespaced trait name with version
+        id (str): id should be a namespaced trait name with version
         items (list[list[TraitBase]]): List of representations.
     """
 
@@ -442,7 +442,7 @@ class Bundle(TraitBase):
     items: list[list[TraitBase]]
 
     def to_representations(self) -> Generator[Representation]:
-        """Convert bundle to representations.
+        """Convert a bundle to representations.
 
         Yields:
             Representation: Representation of the bundle.
