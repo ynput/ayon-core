@@ -21,7 +21,7 @@ if TYPE_CHECKING:
 class GapPolicy(Enum):
     """Gap policy enumeration.
 
-    This type defines how to handle gaps in sequence.
+    This type defines how to handle gaps in a sequence.
 
     Attributes:
         forbidden (int): Gaps are forbidden.
@@ -40,7 +40,7 @@ class GapPolicy(Enum):
 class FrameRanged(TraitBase):
     """Frame ranged trait model.
 
-    Model representing a frame ranged trait.
+    Model representing a frame-ranged trait.
 
     Sync with OpenAssetIO MediaCreation Traits. For compatibility with
     OpenAssetIO, we'll need to handle different names of attributes:
@@ -52,14 +52,14 @@ class FrameRanged(TraitBase):
     Note: frames_per_second is a string to allow various precision
         formats. FPS is a floating point number, but it can be also
         represented as a fraction (e.g. "30000/1001") or as a decimal
-        or even as irrational number. We need to support all these
+        or even as an irrational number. We need to support all these
         formats. To work with FPS, we'll need some helper function
         to convert FPS to Decimal from string.
 
     Attributes:
         name (str): Trait name.
         description (str): Trait description.
-        id (str): id should be namespaced trait name with version
+        id (str): id should be a namespaced trait name with a version
         frame_start (int): Frame start.
         frame_end (int): Frame end.
         frame_in (int): Frame in.
@@ -90,7 +90,7 @@ class Handles(TraitBase):
     Attributes:
         name (str): Trait name.
         description (str): Trait description.
-        id (str): id should be namespaced trait name with version
+        id (str): id should be a namespaced trait name with a version
         inclusive (bool): Handles are inclusive.
         frame_start_handle (int): Frame start handle.
         frame_end_handle (int): Frame end handle.
@@ -116,7 +116,7 @@ class Sequence(TraitBase):
     Attributes:
         name (str): Trait name.
         description (str): Trait description.
-        id (str): id should be namespaced trait name with version
+        id (str): id should be a namespaced trait name with a version
         gaps_policy (GapPolicy): Gaps policy - how to handle gaps in
             sequence.
         frame_padding (int): Frame padding.
@@ -162,7 +162,7 @@ class Sequence(TraitBase):
         """Validate the trait."""
         super().validate_trait(representation)
 
-        # if there is FileLocations trait, run validation
+        # if there is a FileLocations trait, run validation
         # on it as well
 
         with contextlib.suppress(MissingTraitError):
@@ -182,9 +182,9 @@ class Sequence(TraitBase):
         from .content import FileLocations
         file_locs: FileLocations = representation.get_trait(
             FileLocations)
-        # validate if file locations on representation
-        # matches the frame list (if any)
-        # we need to extend the expected frames with Handles
+        # Validate if the file locations on representation
+        # match the frame list (if any).
+        # We need to extend the expected frames with Handles.
         frame_start = None
         frame_end = None
         handles_frame_start = None
@@ -192,7 +192,7 @@ class Sequence(TraitBase):
         with contextlib.suppress(MissingTraitError):
             handles: Handles = representation.get_trait(Handles)
             # if handles are inclusive, they should be already
-            # accounted in the FrameRaged frame spec
+            #  accounted for in the FrameRaged frame spec
             if not handles.inclusive:
                 handles_frame_start = handles.frame_start_handle
                 handles_frame_end = handles.frame_end_handle
@@ -218,16 +218,16 @@ class Sequence(TraitBase):
             frame_end: Optional[int] = None,
             handles_frame_start: Optional[int] = None,
             handles_frame_end: Optional[int] = None) -> None:
-        """Validate frame list.
+        """Validate a frame list.
 
         This will take FileLocations trait and validate if the
         file locations match the frame list specification.
 
-        For example, if frame list is "1-10,20-30,40-50", then
+        For example, if the frame list is "1-10,20-30,40-50", then
         the frame numbers in the file locations should match
         these frames.
 
-        It will skip the validation if frame list is not provided.
+        It will skip the validation if the frame list is not provided.
 
         Args:
             file_locations (FileLocations): File locations trait.
@@ -237,7 +237,7 @@ class Sequence(TraitBase):
             handles_frame_end (Optional[int]): Frame end handle.
 
         Raises:
-            TraitValidationError: If frame list does not match
+            TraitValidationError: If the frame list does not match
                 the expected frames.
 
         """
@@ -341,7 +341,7 @@ class Sequence(TraitBase):
     def _get_collection(
         file_locations: FileLocations,
         regex: Optional[Pattern] = None) -> clique.Collection:
-        r"""Get collection from file locations.
+        r"""Get the collection from file locations.
 
         Args:
             file_locations (FileLocations): File locations trait.
@@ -355,7 +355,7 @@ class Sequence(TraitBase):
             clique.Collection: Collection instance.
 
         Raises:
-            ValueError: If zero or multiple collections found.
+            ValueError: If zero or multiple of collections are found.
 
         """
         patterns = [regex] if regex else None
@@ -382,7 +382,7 @@ class Sequence(TraitBase):
         """
         src_collection = Sequence._get_collection(file_locations)
         padding = src_collection.padding
-        # sometimes Clique doens't get the padding right so
+        # sometimes Clique doesn't get the padding right, so
         # we need to calculate it manually
         if padding == 0:
             padding = len(str(max(src_collection.indexes)))
@@ -394,7 +394,7 @@ class Sequence(TraitBase):
             file_locations: FileLocations,
             regex: Optional[Pattern] = None,
         ) -> list[int]:
-        r"""Get frame list.
+        r"""Get the frame list.
 
         Args:
             file_locations (FileLocations): File locations trait.
@@ -412,9 +412,9 @@ class Sequence(TraitBase):
         return list(src_collection.indexes)
 
     def get_frame_pattern(self) -> Pattern:
-        """Get frame regex as pattern.
+        """Get frame regex as a pattern.
 
-        If the regex is string, it will compile it to the pattern.
+        If the regex is a string, it will compile it to the pattern.
 
         Returns:
             Pattern: Compiled regex pattern.

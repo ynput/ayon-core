@@ -31,7 +31,7 @@ T = TypeVar("T", bound="TraitBase")
 
 
 def _get_version_from_id(_id: str) -> Optional[int]:
-    """Get version from ID.
+    """Get the version from ID.
 
     Args:
         _id (str): ID.
@@ -47,15 +47,16 @@ def _get_version_from_id(_id: str) -> Optional[int]:
 class Representation(Generic[T]):  # noqa: PLR0904
     """Representation of products.
 
-    Representation defines collection of individual properties that describe
-    the specific "form" of the product. Each property is represented by a
-    trait therefore the Representation is a collection of traits.
+    Representation defines a collection of individual properties that describe
+    the specific "form" of the product. A trait represents a set of
+    properties therefore, the Representation is a collection of traits.
 
     It holds methods to add, remove, get, and check for the existence of a
-    trait in the representation. It also provides a method to get all the
+    trait in the representation.
 
     Note:
-        `PLR0904` is rule for checking number of public methods in a class.
+        `PLR0904` is the rule for checking the number of public methods
+        in a class.
 
     Arguments:
         name (str): Representation name. Must be unique within instance.
@@ -141,7 +142,7 @@ class Representation(Generic[T]):  # noqa: PLR0904
                 trait already exists. Defaults to False.
 
         Raises:
-            ValueError: If the trait ID is not provided or the trait already
+            ValueError: If the trait ID is not provided, or the trait already
                 exists.
 
         """
@@ -423,7 +424,7 @@ class Representation(Generic[T]):  # noqa: PLR0904
     @staticmethod
     def _get_version_from_id(trait_id: str) -> Union[int, None]:
         # sourcery skip: use-named-expression
-        """Check if the trait has version specified.
+        """Check if the trait has a version specified.
 
         Args:
             trait_id (str): Trait ID.
@@ -498,11 +499,11 @@ class Representation(Generic[T]):  # noqa: PLR0904
                 klass = getattr(module, attr_name)
                 if not inspect.isclass(klass):
                     continue
-                # this needs to be done because of the bug? in
+                # This needs to be done because of the bug? In
                 # python ABCMeta, where ``issubclass`` is not working
                 # if it hits the GenericAlias (that is in fact
                 # tuple[int, int]). This is added to the scope by
-                # ``types`` module.
+                # the ``types`` module.
                 if type(klass) is GenericAlias:
                     continue
                 if issubclass(klass, TraitBase) \
@@ -518,8 +519,8 @@ class Representation(Generic[T]):  # noqa: PLR0904
         """Get the trait class with corresponding to given ID.
 
         This method will search for the trait class in all the modules except
-        the blacklisted modules. There is some issue in Pydantic where
-        ``issubclass`` is not working properly so we are excluding explicitly
+        the blocklisted modules. There is some issue in Pydantic where
+        ``issubclass`` is not working properly, so we are excluding explicit
         modules with offending classes. This list can be updated as needed to
         speed up the search.
 
@@ -540,7 +541,7 @@ class Representation(Generic[T]):  # noqa: PLR0904
 
         for trait_class in trait_candidates:
             if trait_class.id == trait_id:
-                # we found direct match
+                # we found a direct match
                 return trait_class
 
         # if we didn't find direct match, we will search for the highest
@@ -670,7 +671,7 @@ class Representation(Generic[T]):  # noqa: PLR0904
             try:
                 trait_class = cls.get_trait_class_by_trait_id(trait_id)
             except UpgradableTraitError as e:
-                # we found newer version of trait, we will upgrade the data
+                # we found a newer version of trait, we will upgrade the data
                 if hasattr(e.trait, "upgrade"):
                     traits.append(e.trait.upgrade(value))
                 else:

@@ -11,7 +11,7 @@ from .trait import TraitBase
 class Tagged(TraitBase):
     """Tagged trait model.
 
-    This trait can hold list of tags.
+    This trait can hold a list of tags.
 
     Example::
 
@@ -20,7 +20,7 @@ class Tagged(TraitBase):
     Attributes:
         name (str): Trait name.
         description (str): Trait description.
-        id (str): id should be namespaced trait name with version
+        id (str): id should be a namespaced trait name with version
         tags (List[str]): Tags.
     """
 
@@ -36,7 +36,7 @@ class TemplatePath(TraitBase):
     """TemplatePath trait model.
 
     This model represents a template path with formatting data.
-    Template path can be Anatomy template and data is used to format it.
+    Template path can be an Anatomy template and data is used to format it.
 
     Example::
 
@@ -45,7 +45,7 @@ class TemplatePath(TraitBase):
     Attributes:
         name (str): Trait name.
         description (str): Trait description.
-        id (str): id should be namespaced trait name with version
+        id (str): id should be a namespaced trait name with version
         template (str): Template path.
         data (dict[str]): Formatting data.
     """
@@ -72,7 +72,7 @@ class Variant(TraitBase):
     Attributes:
         name (str): Trait name.
         description (str): Trait description.
-        id (str): id should be namespaced trait name with version
+        id (str): id should be a namespaced trait name with version
         variant (str): Variant name.
     """
 
@@ -115,8 +115,8 @@ class KeepOriginalName(TraitBase):
 class SourceApplication(TraitBase):
     """Metadata about the source (producing) application.
 
-    This can be useful in cases, where this information is
-    needed but it cannot be determined from other means - like
+    This can be useful in cases where this information is
+    needed, but it cannot be determined from other means - like
     .txt files used for various motion tracking applications that
     must be interpreted by the loader.
 
@@ -147,9 +147,9 @@ class IntendedUse(TraitBase):
     """Intended use of the representation.
 
     This trait describes the intended use of the representation. It
-    can be used in cases, where the other traits are not enough to
-    describe the intended use. For example txt file with tracking
-    points can be used as corner pin in After Effect but not in Nuke.
+    can be used in cases where the other traits are not enough to
+    describe the intended use. For example, a txt file with tracking
+    points can be used as a corner pin in After Effect but not in Nuke.
 
     Attributes:
         use (str): Intended use description.

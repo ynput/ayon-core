@@ -56,7 +56,7 @@ class TraitBase(ABC):
     @classmethod
     def get_version(cls) -> Optional[int]:
         # sourcery skip: use-named-expression
-        """Get trait version from ID.
+        """Get a trait version from ID.
 
         This assumes Trait ID ends with `.v{version}`. If not, it will
         return None.
@@ -71,16 +71,16 @@ class TraitBase(ABC):
 
     @classmethod
     def get_versionless_id(cls) -> str:
-        """Get trait ID without version.
+        """Get a trait ID without a version.
 
         Returns:
-            str: Trait ID without version.
+            str: Trait ID without a version.
 
         """
         return re.sub(r"\.v\d+$", "", str(cls.id))
 
     def as_dict(self) -> dict:
-        """Return trait as dictionary.
+        """Return a trait as a dictionary.
 
         Returns:
             dict: Trait as dictionary.
@@ -101,8 +101,8 @@ class UpgradableTraitError(Exception, Generic[T]):
     """Upgradable trait version exception.
 
     This exception is raised when the trait can upgrade existing data
-    meant for older versions of the trait. It must implement `upgrade`
-    method that will take old trait data as argument to handle the upgrade.
+    meant for older versions of the trait. It must implement an `upgrade`
+    method that will take old trait data as an argument to handle the upgrade.
     """
 
     trait: T

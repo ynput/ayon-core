@@ -15,7 +15,7 @@ class Transient(TraitBase):
     Attributes:
         name (str): Trait name.
         description (str): Trait description.
-        id (str): id should be namespaced trait name with version
+        id (str): id should be a namespaced trait name with the version
     """
 
     name: ClassVar[str] = "Transient"
@@ -50,13 +50,13 @@ class Persistent(TraitBase):
     Attributes:
         name (str): Trait name.
         description (str): Trait description.
-        id (str): id should be namespaced trait name with version
+        id (str): id should be a namespaced trait name with the version
     """
 
     name: ClassVar[str] = "Persistent"
     description: ClassVar[str] = "Persistent Trait Model"
     id: ClassVar[str] = "ayon.lifecycle.Persistent.v1"
-    # note that this affects persistence of the trait itself, not
+    # Note that this affects the persistence of the trait itself, not
     # the representation. This is a class variable, so it is shared
     # among all instances of the class.
     persistent: bool = True

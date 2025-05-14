@@ -3,12 +3,12 @@
 ## Introduction
 
 The Representation is the lowest level entity, describing the concrete data chunk that
-pipeline can act on. It can be specific file or just a set of metadata. Idea is that one
+pipeline can act on. It can be a specific file or just a set of metadata. Idea is that one
 product version can have multiple representations - **Image** product can be jpeg or tiff, both formats are representation of the same source.
 
 ### Brief look into the past (and current state)
 
-So far, representation was defined as dict-like structure:
+So far, representation was defined as a dict-like structure:
 ```python
 {
     "name": "foo",
@@ -18,9 +18,9 @@ So far, representation was defined as dict-like structure:
 }
 ```
 
-This is minimal form, but it can have additional keys like `frameStart`, `fps`, `resolutionWidth`, and more. Thare is also `tags` key that can hold `review`, `thumbnail`, `delete`, `toScanline` and other tag that are controlling the processing.
+This is minimal form, but it can have additional keys like `frameStart`, `fps`, `resolutionWidth`, and more. Thare is also `tags` key that can hold `review`, `thumbnail`, `delete`, `toScanline` and other tags that are controlling the processing.
 
-This will be *"translated"* to similar structure in database:
+This will be *"translated"* to the similar structure in the database:
 
 ```python
 {
@@ -57,12 +57,12 @@ There are also some assumptions and limitations - like that if `files` in the
 representation are list they need to be sequence of files (it can't be a bunch of
 unrelated files).
 
-This system is very flexible in one way, but it lacks few very important things:
+This system is very flexible in one way, but it lacks a few very important things:
 
-- it is not clearly defined - you can add easily keys, values, tags but without 
+- it is not clearly defined — you can add easily keys, values, tags but without 
 unforeseeable
 consequences
-- it cannot handle "bundles" - multiple files that needs to be versioned together and 
+- it cannot handle "bundles" — multiple files that need to be versioned together and 
 belong together
 - it cannot describe important information that you can't get from the file itself, or
 it is very expensive (like axis orientation and units from alembic files)
@@ -70,7 +70,7 @@ it is very expensive (like axis orientation and units from alembic files)
 
 ### New Representation model
 
-The idea about new representation model is obviously around solving points mentioned
+The idea about a new representation model is about solving points mentioned
 above and also adding some benefits, like consistent IDE hints, typing, built-in
  validators and much more.
 
@@ -78,7 +78,7 @@ above and also adding some benefits, like consistent IDE hints, typing, built-in
 
 The new representation is "just" a dictionary of traits. Trait can be anything provided
 it is based on `TraitBase`. It shouldn't really duplicate information that is
-available in a moment of loading (or any usage) by other means. It should contain 
+available at the moment of loading (or any usage) by other means. It should contain 
 information that couldn't be determined by the file, or the AYON context. Some of 
 those traits are aligned with [OpenAssetIO Media Creation](https://github.com/OpenAssetIO/OpenAssetIO-MediaCreation) with hopes of maintained compatibility (it 
 should be easy enough to convert between OpenAssetIO Traits and AYON Traits).
@@ -114,18 +114,18 @@ image = rep[Image.id]
 ```
 
 > [!NOTE]
-> Trait and their ids - every Trait has its id as a string with
+> Trait and their ids — every Trait has its id as a string with a
 > version appended - so **Image** has `ayon.2d.Image.v1`. This is used on
 > several places (you see its use above for indexing traits). When querying,
 > you can also omit the version at the end, and it will try its best to find
 > the latest possible version. More on that in [Traits]()
 
-You can construct the `Representation` from dictionary (for example
+You can construct the `Representation` from dictionary (for example,
 serialized as JSON) using `Representation.from_dict()`, or you can
 serialize `Representation` to dict to store with `Representation.traits_as_dict()`.
 
-Every time representation is created, new id is generated. You can pass existing
-id when creating new representation instance.
+Every time representation is created, a new id is generated. You can pass existing
+id when creating the new representation instance.
 
 ##### Equality
 
@@ -200,7 +200,7 @@ in the representation if needed.
 
 ## Examples
 
-Create simple image representation to be integrated by AYON:
+Create a simple image representation to be integrated by AYON:
 
 ```python
 from pathlib import Path
@@ -252,8 +252,8 @@ except MissingTraitError:
     print(f"resolution isn't set on {rep.name}")
 ```
 
-Accessing non-existent traits will result in exception. To test if
-representation has some specific trait, you can use `.contains_trait()` method.
+Accessing non-existent traits will result in an exception. To test if
+the representation has some specific trait, you can use `.contains_trait()` method.
 
 
 You can also prepare the whole representation data as a dict and
@@ -381,7 +381,7 @@ class AlembicTraitLoader(MayaLoader):
 
 You can create the representations in the same way as mentioned in the examples above.
 Straightforward way is to use `Representation` class and add the traits to it. Collect
-traits in list and then pass them to the `Representation` constructor. You should add
+traits in the list and then pass them to the `Representation` constructor. You should add
 the new Representation to the instance data using `add_trait_representations()` function.
 
 ```python
@@ -436,8 +436,8 @@ class SomeExtractor(Extractor):
 
 ## Developer notes
 
-Adding new trait based representations in to publish Instance and working with them is using
-set of helper function defined in `ayon_core.pipeline.publish` module. These are:
+Adding new trait-based representations in to the publishing Instance and working with them is using
+a set of helper function defined in `ayon_core.pipeline.publish` module. These are:
 
 * add_trait_representations
 * get_trait_representations

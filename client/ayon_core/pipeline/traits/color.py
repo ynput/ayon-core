@@ -1,4 +1,4 @@
-"""Color management related traits."""
+"""Color-management-related traits."""
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -11,7 +11,7 @@ from .trait import TraitBase
 class ColorManaged(TraitBase):
     """Color managed trait.
 
-    Holds color management information. Can be used with Image related
+    Holds color management information. Can be used with Image-related
     traits to define color space and config.
 
     Sync with OpenAssetIO MediaCreation Traits.
