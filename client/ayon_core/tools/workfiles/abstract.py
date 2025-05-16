@@ -866,8 +866,8 @@ class AbstractWorkfilesFrontend(AbstractWorkfilesCommon):
         folder_id,
         task_id,
         rootless_workdir,
+        workdir,
         filename,
-        template_key,
         version,
         comment,
         description,
@@ -897,7 +897,7 @@ class AbstractWorkfilesFrontend(AbstractWorkfilesCommon):
         task_id,
         workdir,
         filename,
-        template_key,
+        rootless_workdir,
         version,
         comment,
         description,
@@ -914,7 +914,7 @@ class AbstractWorkfilesFrontend(AbstractWorkfilesCommon):
             task_id (str): Task id.
             workdir (str): Workarea directory.
             filename (str): Workarea filename.
-            template_key (str): Template key.
+            rootless_workdir (str): Rootless workdir.
             version (int): Workfile version.
             comment (str): User's comment (subversion).
             description (str): Description note.
@@ -924,14 +924,26 @@ class AbstractWorkfilesFrontend(AbstractWorkfilesCommon):
 
     @abstractmethod
     def duplicate_workfile(
-        self, src_filepath, workdir, filename, description, version, comment
+        self,
+        folder_id,
+        task_id,
+        src_filepath,
+        rootless_workdir,
+        workdir,
+        filename,
+        description,
+        version,
+        comment
     ):
         """Duplicate workfile.
 
         Workfiles is not opened when done.
 
         Args:
+            folder_id (str): Folder id.
+            task_id (str): Task id.
             src_filepath (str): Source workfile path.
+            rootless_workdir (str): Rootless workdir.
             workdir (str): Destination workdir.
             filename (str): Destination filename.
             version (int): Workfile version.

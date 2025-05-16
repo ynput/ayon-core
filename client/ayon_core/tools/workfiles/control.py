@@ -523,8 +523,8 @@ class BaseWorkfileController(
         folder_id,
         task_id,
         rootless_workdir,
+        workdir,
         filename,
-        template_key,
         version,
         comment,
         description,
@@ -534,7 +534,6 @@ class BaseWorkfileController(
             task_id,
             rootless_workdir,
             filename,
-            template_key,
             version,
             comment,
             description,
@@ -548,7 +547,7 @@ class BaseWorkfileController(
         task_id,
         workdir,
         filename,
-        template_key,
+        rootless_workdir,
         version,
         comment,
         description,
@@ -560,17 +559,29 @@ class BaseWorkfileController(
             task_id,
             workdir,
             filename,
-            template_key,
+            rootless_workdir,
             version,
             comment,
             description,
         )
 
     def duplicate_workfile(
-        self, src_filepath, workdir, filename, version, comment, description
+        self,
+        folder_id,
+        task_id,
+        src_filepath,
+        rootless_workdir,
+        workdir,
+        filename,
+        version,
+        comment,
+        description
     ):
         self._workfiles_model.duplicate_workfile(
+            folder_id,
+            task_id,
             src_filepath,
+            rootless_workdir,
             workdir,
             filename,
             version,
