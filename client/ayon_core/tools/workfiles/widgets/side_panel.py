@@ -4,6 +4,8 @@ from qtpy import QtWidgets, QtCore
 
 
 def file_size_to_string(file_size):
+    if not file_size:
+        return "N/A"
     size = 0
     size_ending_mapping = {
         "KB": 1024 ** 1,
@@ -43,44 +45,45 @@ class SidePanelWidget(QtWidgets.QWidget):
         details_input = QtWidgets.QPlainTextEdit(self)
         details_input.setReadOnly(True)
 
-        artist_note_widget = QtWidgets.QWidget(self)
-        note_label = QtWidgets.QLabel("Artist note", artist_note_widget)
-        note_input = QtWidgets.QPlainTextEdit(artist_note_widget)
-        btn_note_save = QtWidgets.QPushButton("Save note", artist_note_widget)
+        description_widget = QtWidgets.QWidget(self)
+        description_label = QtWidgets.QLabel("Artist note", description_widget)
+        description_input = QtWidgets.QPlainTextEdit(description_widget)
+        btn_description_save = QtWidgets.QPushButton("Save note", description_widget)
 
-        artist_note_layout = QtWidgets.QVBoxLayout(artist_note_widget)
-        artist_note_layout.setContentsMargins(0, 0, 0, 0)
-        artist_note_layout.addWidget(note_label, 0)
-        artist_note_layout.addWidget(note_input, 1)
-        artist_note_layout.addWidget(
-            btn_note_save, 0, alignment=QtCore.Qt.AlignRight
+        description_layout = QtWidgets.QVBoxLayout(description_widget)
+        description_layout.setContentsMargins(0, 0, 0, 0)
+        description_layout.addWidget(description_label, 0)
+        description_layout.addWidget(description_input, 1)
+        description_layout.addWidget(
+            btn_description_save, 0, alignment=QtCore.Qt.AlignRight
         )
 
         main_layout = QtWidgets.QVBoxLayout(self)
         main_layout.setContentsMargins(0, 0, 0, 0)
         main_layout.addWidget(details_label, 0)
         main_layout.addWidget(details_input, 1)
-        main_layout.addWidget(artist_note_widget, 1)
+        main_layout.addWidget(description_widget, 1)
 
-        note_input.textChanged.connect(self._on_note_change)
-        btn_note_save.clicked.connect(self._on_save_click)
+        description_input.textChanged.connect(self._on_description_change)
+        btn_description_save.clicked.connect(self._on_save_click)
 
         controller.register_event_callback(
             "selection.workarea.changed", self._on_selection_change
         )
 
         self._details_input = details_input
-        self._artist_note_widget = artist_note_widget
-        self._note_input = note_input
-        self._btn_note_save = btn_note_save
+        self._description_widget = description_widget
+        self._description_input = description_input
+        self._btn_description_save = btn_description_save
 
         self._folder_id = None
-        self._task_name = None
+        self._task_id = None
         self._filepath = None
-        self._orig_note = ""
+        self._rootless_path = None
+        self._orig_description = ""
         self._controller = controller
 
-        self._set_context(None, None, None)
+        self._set_context(None, None, None, None)
 
     def set_published_mode(self, published_mode):
         """Change published mode.
@@ -89,64 +92,69 @@ class SidePanelWidget(QtWidgets.QWidget):
             published_mode (bool): Published mode enabled.
         """
 
-        self._artist_note_widget.setVisible(not published_mode)
+        self._description_widget.setVisible(not published_mode)
 
     def _on_selection_change(self, event):
         folder_id = event["folder_id"]
-        task_name = event["task_name"]
+        task_id = event["task_id"]
         filepath = event["path"]
+        rootless_path = event["rootless_path"]
 
-        self._set_context(folder_id, task_name, filepath)
+        self._set_context(folder_id, task_id, rootless_path, filepath)
 
-    def _on_note_change(self):
-        text = self._note_input.toPlainText()
-        self._btn_note_save.setEnabled(self._orig_note != text)
+    def _on_description_change(self):
+        text = self._description_input.toPlainText()
+        self._btn_description_save.setEnabled(self._orig_description != text)
 
     def _on_save_click(self):
-        note = self._note_input.toPlainText()
+        description = self._description_input.toPlainText()
         self._controller.save_workfile_info(
-            self._folder_id,
-            self._task_name,
-            self._filepath,
-            note
+            self._task_id,
+            self._rootless_path,
+            description=description,
         )
-        self._orig_note = note
-        self._btn_note_save.setEnabled(False)
+        self._orig_description = description
+        self._btn_description_save.setEnabled(False)
 
-    def _set_context(self, folder_id, task_name, filepath):
+    def _set_context(self, folder_id, task_id, rootless_path, filepath):
         workfile_info = None
         # Check if folder, task and file are selected
-        if bool(folder_id) and bool(task_name) and bool(filepath):
+        if folder_id and task_id and rootless_path:
             workfile_info = self._controller.get_workfile_info(
-                folder_id, task_name, filepath
+                folder_id, task_id, rootless_path
             )
         enabled = workfile_info is not None
 
         self._details_input.setEnabled(enabled)
-        self._note_input.setEnabled(enabled)
-        self._btn_note_save.setEnabled(enabled)
+        self._description_input.setEnabled(enabled)
+        self._btn_description_save.setEnabled(enabled)
 
         self._folder_id = folder_id
-        self._task_name = task_name
+        self._task_id = task_id
         self._filepath = filepath
+        self._rootless_path = rootless_path
 
         # Disable inputs and remove texts if any required arguments are
         #   missing
         if not enabled:
-            self._orig_note = ""
+            self._orig_description = ""
             self._details_input.setPlainText("")
-            self._note_input.setPlainText("")
+            self._description_input.setPlainText("")
             return
 
-        note = workfile_info.note
-        size_value = file_size_to_string(workfile_info.filesize)
+        description = workfile_info.description
+        size_value = file_size_to_string(workfile_info.file_size)
 
         # Append html string
         datetime_format = "%b %d %Y %H:%M:%S"
-        creation_time = datetime.datetime.fromtimestamp(
-            workfile_info.creation_time)
-        modification_time = datetime.datetime.fromtimestamp(
-            workfile_info.modification_time)
+        file_created = workfile_info.file_created
+        modification_time = workfile_info.file_modified
+        if file_created:
+            file_created = datetime.datetime.fromtimestamp(file_created)
+
+        if modification_time:
+            modification_time = datetime.datetime.fromtimestamp(
+                modification_time)
 
         user_items_by_name = self._controller.get_user_items_by_name()
 
@@ -156,33 +164,38 @@ class SidePanelWidget(QtWidgets.QWidget):
                 return user_item.full_name
             return username
 
-        created_lines = [
-            creation_time.strftime(datetime_format)
-        ]
+        created_lines = []
         if workfile_info.created_by:
-            created_lines.insert(
-                0, convert_username(workfile_info.created_by)
+            created_lines.append(
+                convert_username(workfile_info.created_by)
             )
+        if file_created:
+            created_lines.append(file_created.strftime(datetime_format))
 
-        modified_lines = [
-            modification_time.strftime(datetime_format)
-        ]
+        if created_lines:
+            created_lines.insert(0, "<b>Created:</b>")
+
+        modified_lines = []
         if workfile_info.updated_by:
-            modified_lines.insert(
-                0, convert_username(workfile_info.updated_by)
+            modified_lines.append(
+                convert_username(workfile_info.updated_by)
             )
+        if modification_time:
+            modified_lines.append(
+                modification_time.strftime(datetime_format)
+            )
+        if modified_lines:
+            modified_lines.insert(0, "<b>Modified:</b>")
 
         lines = (
             "<b>Size:</b>",
             size_value,
-            "<b>Created:</b>",
             "<br/>".join(created_lines),
-            "<b>Modified:</b>",
             "<br/>".join(modified_lines),
         )
-        self._orig_note = note
-        self._note_input.setPlainText(note)
+        self._orig_description = description
+        self._description_input.setPlainText(description)
 
         # Set as empty string
         self._details_input.setPlainText("")
-        self._details_input.appendHtml("<br>".join(lines))
+        self._details_input.appendHtml("<br/>".join(lines))
