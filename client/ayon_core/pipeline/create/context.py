@@ -1,74 +1,114 @@
+"""Context of instance creation."""
+from __future__ import annotations
+
+import collections
+import copy
+import dataclasses
+import inspect
+import logging
 import os
 import sys
-import copy
-import logging
 import traceback
-import collections
-import inspect
-from contextlib import contextmanager
 import typing
+from contextlib import contextmanager
 from typing import (
-    Optional,
-    Iterable,
-    Tuple,
-    List,
-    Set,
-    Dict,
     Any,
     Callable,
+    Dict,
+    Iterable,
+    List,
+    NamedTuple,
+    Optional,
+    Set,
+    Tuple,
     Union,
 )
 
-import pyblish.logic
-import pyblish.api
 import ayon_api
+import pyblish.api
+import pyblish.logic
 
-from ayon_core.settings import get_project_settings
-from ayon_core.lib import is_func_signature_supported
-from ayon_core.lib.events import QueuedEventSystem
-from ayon_core.lib.attribute_definitions import get_default_values
 from ayon_core.host import IPublishHost, IWorkfileHost
+from ayon_core.lib import is_func_signature_supported
+from ayon_core.lib.attribute_definitions import get_default_values
+from ayon_core.lib.events import QueuedEventSystem
 from ayon_core.pipeline import Anatomy
-from ayon_core.pipeline.template_data import get_template_data
 from ayon_core.pipeline.plugin_discover import DiscoverResult
+from ayon_core.pipeline.template_data import get_template_data
+from ayon_core.settings import get_project_settings
 
-from .exceptions import (
-    CreatorError,
-    CreatorsCreateFailed,
-    CreatorsCollectionFailed,
-    CreatorsSaveFailed,
-    CreatorsRemoveFailed,
-    ConvertorsFindFailed,
-    ConvertorsConversionFailed,
-    UnavailableSharedData,
-    HostMissRequiredMethod,
-)
 from .changes import TrackChangesItem
-from .structures import PublishAttributes, ConvertorItem, InstanceContextInfo
 from .creator_plugins import (
-    Creator,
     AutoCreator,
-    discover_creator_plugins,
+    Creator,
     discover_convertor_plugins,
+    discover_creator_plugins,
 )
-if typing.TYPE_CHECKING:
-    from .structures import CreatedInstance
-
-# Import of functions and classes that were moved to different file
-# TODO Should be removed in future release - Added 24/08/28, 0.4.3-dev.1
 from .exceptions import (
-    ImmutableKeyError,  # noqa: F401
-    CreatorsOperationFailed,  # noqa: F401
-    ConvertorsOperationFailed,  # noqa: F401
+    ConvertorsConversionFailed,
+    ConvertorsFindFailed,
+    CreatorError,
+    CreatorsCollectionFailed,
+    CreatorsCreateFailed,
+    CreatorsRemoveFailed,
+    CreatorsSaveFailed,
+    HostMissRequiredMethod,
+    UnavailableSharedData,
 )
-from .structures import (
-    AttributeValues,  # noqa: F401
-    CreatorAttributeValues,  # noqa: F401
-    PublishAttributeValues,  # noqa: F401
-)
+from .structures import ConvertorItem, InstanceContextInfo, PublishAttributes
+
+if typing.TYPE_CHECKING:
+    from ayon_core.host import HostBase
+    from ayon_core.pipeline.create.structures import CreatedInstance
+
 
 # Changes of instances and context are send as tuple of 2 information
-UpdateData = collections.namedtuple("UpdateData", ["instance", "changes"])
+class UpdateData(NamedTuple):
+    """"Update data for instance.
+
+    Args:
+        instance (CreatedInstance): Instance which was changed.
+        changes (dict[str, Any]): Changes of instance.
+    """
+
+    # Instance which was changed
+    instance: Optional[CreatedInstance]
+    # Changes of instance.
+    changes: dict[str, Any]
+
+
+@dataclasses.dataclass
+class ConvertorOperationInfo:
+    """Convertor operation information.
+
+    Args:
+        identifier (str): Identifier of convertor.
+        message (str): Message of convertor.
+        traceback (str): Traceback of convertor.
+    """
+
+    identifier: str
+    message: str
+    traceback: str
+
+
+@dataclasses.dataclass
+class CreatorOperationInfo:
+    """Creator operation information.
+
+    Args:
+        creator_identifier (str): Identifier of creator.
+        creator_label (str): Label of creator.
+        message (str): Message of convertor.
+        traceback (str): Traceback of convertor.
+    """
+
+    creator_identifier: str
+    creator_label: str
+    message: str
+    traceback: str
+
+
 _NOT_SET = object()
 
 INSTANCE_ADDED_TOPIC = "instances.added"
@@ -79,22 +119,45 @@ CREATE_ATTR_DEFS_CHANGED_TOPIC = "create.attr.defs.changed"
 PUBLISH_ATTR_DEFS_CHANGED_TOPIC = "publish.attr.defs.changed"
 
 
-def prepare_failed_convertor_operation_info(identifier, exc_info):
+def prepare_failed_convertor_operation_info(
+        identifier: str, exc_info: tuple) -> ConvertorOperationInfo:
+    """Prepare convertor operation information.
+
+    Returns:
+        ConvertorOperationInfo: Information about convertor operation.
+
+    """
     exc_type, exc_value, exc_traceback = exc_info
     formatted_traceback = "".join(traceback.format_exception(
         exc_type, exc_value, exc_traceback
     ))
 
-    return {
-        "convertor_identifier": identifier,
-        "message": str(exc_value),
-        "traceback": formatted_traceback
-    }
+    return ConvertorOperationInfo(
+        identifier=identifier,
+        message=str(exc_value),
+        traceback=formatted_traceback
+    )
 
 
 def prepare_failed_creator_operation_info(
-    identifier, label, exc_info, add_traceback=True
-):
+        identifier: str,
+        label: str,
+        exc_info: tuple,
+        *,
+        add_traceback: bool = True
+) -> CreatorOperationInfo:
+    """Prepare creator operation information.
+
+    Args:
+        identifier (str): Identifier of creator.
+        label (str): Label of creator.
+        exc_info (tuple): Exception information.
+        add_traceback (bool): Add traceback to the message.
+
+    Returns:
+        CreatorOperationInfo: Information about creator operation.
+
+    """
     formatted_traceback = None
     exc_type, exc_value, exc_traceback = exc_info
     if add_traceback:
@@ -102,15 +165,16 @@ def prepare_failed_creator_operation_info(
             exc_type, exc_value, exc_traceback
         ))
 
-    return {
-        "creator_identifier": identifier,
-        "creator_label": label,
-        "message": str(exc_value),
-        "traceback": formatted_traceback
-    }
+    return CreatorOperationInfo(
+        creator_identifier=identifier,
+        creator_label=label,
+        message=str(exc_value),
+        traceback=formatted_traceback
+    )
 
 
 class BulkInfo:
+    """Bulk information."""
     def __init__(self):
         self._count = 0
         self._data = []
@@ -146,18 +210,19 @@ class BulkInfo:
         return data
 
 
-class CreateContext:
+class CreateContext:  # noqa: PLR0904
     """Context of instance creation.
 
     Context itself also can store data related to whole creation (workfile).
     - those are mainly for Context publish plugins
 
-    Todos:
-        Don't use 'AvalonMongoDB'. It's used only to keep track about current
-            context which should be handled by host.
+    Todo:
+        This is now using PLR0904 to handle "too many public method" issue.
+        It has around 70 of them and that is too much for one class. We
+        should split this class into multiple classes.
 
     Args:
-        host(ModuleType): Host implementation which handles implementation and
+        host(HostBase): Host implementation which handles implementation and
             global metadata.
         headless(bool): Context is created out of UI (Current not used).
         reset(bool): Reset context on initialization.
@@ -166,8 +231,14 @@ class CreateContext:
     """
 
     def __init__(
-        self, host, headless=False, reset=True, discover_publish_plugins=True
+            self,
+            host: HostBase,
+            *,
+            headless: bool = False,
+            reset: bool = True,
+            discover_publish_plugins: bool = True,
     ):
+        """Initialization of CreateContext."""
         self.host = host
 
         # Prepare attribute for logger (Created on demand in `log` property)
@@ -185,12 +256,11 @@ class CreateContext:
         if missing_methods:
             host_is_valid = False
             joined_methods = ", ".join(
-                ['"{}"'.format(name) for name in missing_methods]
+                [f'"{name}"' for name in missing_methods]
             )
-            self.log.warning((
+            self.log.warning(
                 "Host miss required methods to be able use creation."
-                " Missing methods: {}"
-            ).format(joined_methods))
+                " Missing methods: %s", joined_methods)
 
         self._current_project_name = None
         self._current_folder_path = None
@@ -281,7 +351,7 @@ class CreateContext:
 
     def get_instance_by_id(
         self, instance_id: str
-    ) -> Optional["CreatedInstance"]:
+    ) -> Optional[CreatedInstance]:
         """Receive instance by id.
 
         Args:
@@ -326,7 +396,6 @@ class CreateContext:
         Returns:
             List[BaseCreator]: Sorted creator plugins by 'order' value.
         """
-
         return self.get_sorted_creators()
 
     @property
@@ -336,23 +405,18 @@ class CreateContext:
         Returns:
             List[AutoCreator]: Sorted plugins by 'order' value.
         """
-
         return sorted(
             self.autocreators.values(), key=lambda creator: creator.order
         )
 
     @classmethod
-    def get_host_misssing_methods(cls, host):
+    def get_host_misssing_methods(cls, host: HostBase) -> Set[str]:
         """Collect missing methods from host.
 
         Args:
             host(ModuleType): Host implementaion.
         """
-
-        missing = set(
-            IPublishHost.get_missing_publish_methods(host)
-        )
-        return missing
+        return set(IPublishHost.get_missing_publish_methods(host))
 
     @property
     def host_is_valid(self):
@@ -371,7 +435,6 @@ class CreateContext:
         Returns:
             Union[str, None]: Project name.
         """
-
         return self._current_project_name
 
     def get_current_folder_path(self) -> Optional[str]:
@@ -380,7 +443,6 @@ class CreateContext:
         Returns:
             Union[str, None]: Folder path.
         """
-
         return self._current_folder_path
 
     def get_current_task_name(self) -> Optional[str]:
@@ -389,7 +451,6 @@ class CreateContext:
         Returns:
             Union[str, None]: Task name.
         """
-
         return self._current_task_name
 
     def get_current_task_type(self) -> Optional[str]:
@@ -460,7 +521,6 @@ class CreateContext:
         Returns:
             Union[str, None]: Workfile path.
         """
-
         return self._current_workfile_path
 
     def get_current_project_anatomy(self):
@@ -469,7 +529,6 @@ class CreateContext:
         Returns:
             Anatomy: Anatomy object ready to be used.
         """
-
         if self._current_project_anatomy is None:
             self._current_project_anatomy = Anatomy(
                 self._current_project_name)
@@ -521,7 +580,6 @@ class CreateContext:
         Returns:
             bool: Context changed.
         """
-
         project_name, folder_path, task_name, workfile_path = (
             self._get_current_host_context()
         )
@@ -547,7 +605,6 @@ class CreateContext:
 
         All changes will be lost if were not saved explicitely.
         """
-
         self.reset_preparation()
 
         self.reset_current_context()
@@ -567,7 +624,6 @@ class CreateContext:
         Remove all thumbnail filepaths that are empty or lead to files which
         does not exist or of instances that are not available anymore.
         """
-
         invalid = set()
         for instance_id, path in self.thumbnail_paths_by_instance_id.items():
             instance_available = True
@@ -586,7 +642,6 @@ class CreateContext:
 
     def reset_preparation(self):
         """Prepare attributes that must be prepared/cleaned before reset."""
-
         # Give ability to store shared data for collection phase
         self._collection_shared_data = {}
 
@@ -600,7 +655,6 @@ class CreateContext:
 
     def reset_finalization(self):
         """Cleanup of attributes after reset."""
-
         # Stop access to collection shared data
         self._collection_shared_data = None
         self.refresh_thumbnails()
@@ -635,7 +689,6 @@ class CreateContext:
                 as current context information as that's where the metadata
                 are stored. We should store the workfile (if is available) too.
         """
-
         project_name, folder_path, task_name, workfile_path = (
             self._get_current_host_context()
         )
@@ -659,16 +712,13 @@ class CreateContext:
         Reloads creators from preregistered paths and can load publish plugins
         if it's enabled on context.
         """
-
         self._reset_publish_plugins(discover_publish_plugins)
         self._reset_creator_plugins()
         self._reset_convertor_plugins()
 
     def _reset_publish_plugins(self, discover_publish_plugins):
         from ayon_core.pipeline import AYONPyblishPluginMixin
-        from ayon_core.pipeline.publish import (
-            publish_plugins_discover
-        )
+        from ayon_core.pipeline.publish import publish_plugins_discover
 
         discover_result = DiscoverResult(pyblish.api.Plugin)
         plugins_with_defs = []
@@ -732,7 +782,7 @@ class CreateContext:
         for creator_class in report.plugins:
             if inspect.isabstract(creator_class):
                 self.log.debug(
-                    "Skipping abstract Creator {}".format(str(creator_class))
+                    f"Skipping abstract Creator {creator_class!s}"
                 )
                 continue
 
@@ -749,10 +799,10 @@ class CreateContext:
                 creator_class.host_name
                 and creator_class.host_name != self.host_name
             ):
-                self.log.info((
-                    "Creator's host name \"{}\""
-                    " is not supported for current host \"{}\""
-                ).format(creator_class.host_name, self.host_name))
+                self.log.info(
+                    f"Creator's host name \"{creator_class.host_name}\""
+                    f' is not supported for current host "{self.host_name}"'
+                )
                 continue
 
             # TODO report initialization error
@@ -791,16 +841,16 @@ class CreateContext:
         for convertor_class in report.plugins:
             if inspect.isabstract(convertor_class):
                 self.log.info(
-                    "Skipping abstract Creator {}".format(str(convertor_class))
+                    f"Skipping abstract Creator {convertor_class!s}"
                 )
                 continue
 
             convertor_identifier = convertor_class.identifier
             if convertor_identifier in convertors_plugins:
-                self.log.warning((
+                self.log.warning(
                     "Duplicated Converter identifier. "
                     "Using first and skipping following"
-                ))
+                )
                 continue
 
             convertors_plugins[convertor_identifier] = convertor_class(self)
@@ -1033,7 +1083,6 @@ class CreateContext:
 
     def context_data_changes(self):
         """Changes of attributes."""
-
         return TrackChangesItem(
             self._original_context_data, self.context_data_to_store()
         )
@@ -1053,7 +1102,7 @@ class CreateContext:
             None, plugin_name
         )
 
-    def creator_adds_instance(self, instance: "CreatedInstance"):
+    def creator_adds_instance(self, instance: CreatedInstance):
         """Creator adds new instance to context.
 
         Instances should be added only from creators.
@@ -1066,9 +1115,9 @@ class CreateContext:
         """
         # Add instance to instances list
         if instance.id in self._instances_by_id:
-            self.log.warning((
-                "Instance with id {} is already added to context."
-            ).format(instance.id))
+            self.log.warning(
+                f"Instance with id {instance.id} is already added to context."
+            )
             return
 
         self._instances_by_id[instance.id] = instance
@@ -1093,12 +1142,11 @@ class CreateContext:
         Raises:
             CreatorError: When identifier is not known.
         """
-
         creator = self.creators.get(identifier)
         # Fake CreatorError (Could be maybe specific exception?)
         if creator is None:
             raise CreatorError(
-                "Creator {} was not found".format(identifier)
+                f"Creator {identifier} was not found"
             )
         return creator
 
@@ -1147,7 +1195,7 @@ class CreateContext:
             )
             if folder_entity is None:
                 raise CreatorError(
-                    "Folder '{}' was not found".format(folder_path)
+                    f"Folder '{folder_path}' was not found"
                 )
 
         if task_entity is None:
@@ -1233,7 +1281,7 @@ class CreateContext:
             raise CreatorsCreateFailed([fail_info])
         return result
 
-    def creator_removed_instance(self, instance: "CreatedInstance"):
+    def creator_removed_instance(self, instance: CreatedInstance):
         """When creator removes instance context should be acknowledged.
 
         If creator removes instance context should know about it to avoid
@@ -1243,7 +1291,6 @@ class CreateContext:
             instance (CreatedInstance): Object of instance which was removed
                 from scene metadata.
         """
-
         self._remove_instances([instance])
 
     def add_convertor_item(self, convertor_identifier, label):
@@ -1424,7 +1471,6 @@ class CreateContext:
             ConvertorsFindFailed: When one or more convertors fails during
                 finding.
         """
-
         self.convertor_items_by_id = {}
 
         failed_info = []
@@ -1439,9 +1485,7 @@ class CreateContext:
                     )
                 )
                 self.log.warning(
-                    "Failed to find instances of convertor \"{}\"".format(
-                        convertor.identifier
-                    ),
+                    f'Failed to find instances of convertor "{convertor.identifier}"',
                     exc_info=True
                 )
 
@@ -1453,7 +1497,6 @@ class CreateContext:
 
         Reset instances if any autocreator executed properly.
         """
-
         failed_info = []
         for creator in self.sorted_autocreators:
             identifier = creator.identifier
@@ -1474,10 +1517,7 @@ class CreateContext:
             Dict[str, Optional[Dict[str, Any]]]: Folder entities by path.
 
         """
-        output = {
-            folder_path: None
-            for folder_path in folder_paths
-        }
+        output = dict.fromkeys(folder_paths)
         remainder_paths = set()
         for folder_path in output:
             # Skip invalid folder paths (folder name or empty path)
@@ -1649,7 +1689,7 @@ class CreateContext:
         return output.get(folder_path, {}).get(task_name)
 
     def get_instances_folder_entities(
-        self, instances: Optional[Iterable["CreatedInstance"]] = None
+        self, instances: Optional[Iterable[CreatedInstance]] = None
     ) -> Dict[str, Optional[Dict[str, Any]]]:
         if instances is None:
             instances = self._instances_by_id.values()
@@ -1673,7 +1713,7 @@ class CreateContext:
         return output
 
     def get_instances_task_entities(
-        self, instances: Optional[Iterable["CreatedInstance"]] = None
+        self, instances: Optional[Iterable[CreatedInstance]] = None
     ):
         """Get task entities for instances.
 
@@ -1719,7 +1759,7 @@ class CreateContext:
         return output
 
     def get_instances_context_info(
-        self, instances: Optional[Iterable["CreatedInstance"]] = None
+        self, instances: Optional[Iterable[CreatedInstance]] = None
     ) -> Dict[str, InstanceContextInfo]:
         """Validate 'folder' and 'task' instance context.
 
@@ -1894,7 +1934,7 @@ class CreateContext:
         if not instances_by_identifier:
             return
 
-        error_message = "Instances update of creator \"{}\" failed. {}"
+        error_message = 'Instances update of creator "{}" failed. {}'
         failed_info = []
 
         for creator in self.get_sorted_creators(
@@ -1967,7 +2007,7 @@ class CreateContext:
 
         self._remove_instances(instances, sender)
 
-        error_message = "Instances removement of creator \"{}\" failed. {}"
+        error_message = 'Instances removement of creator "{}" failed. {}'
         failed_info = []
         # Remove instances by creator plugin order
         for creator in self.get_sorted_creators(
@@ -2022,7 +2062,6 @@ class CreateContext:
         Raises:
             UnavailableSharedData: When called out of collection phase.
         """
-
         if self._collection_shared_data is None:
             raise UnavailableSharedData(
                 "Accessed Collection shared data out of collection phase"
@@ -2037,7 +2076,6 @@ class CreateContext:
         Args:
             convertor_identifier (str): Identifier of convertor.
         """
-
         convertor = self.convertors_plugins.get(convertor_identifier)
         if convertor is not None:
             convertor.convert()
@@ -2055,7 +2093,6 @@ class CreateContext:
         Raises:
             ConvertorsConversionFailed: When one or more convertors fails.
         """
-
         failed_info = []
         for convertor_identifier in convertor_identifiers:
             try:
@@ -2068,9 +2105,7 @@ class CreateContext:
                     )
                 )
                 self.log.warning(
-                    "Failed to convert instances of convertor \"{}\"".format(
-                        convertor_identifier
-                    ),
+                    f'Failed to convert instances of convertor "{convertor_identifier}"',
                     exc_info=True
                 )
 
@@ -2101,7 +2136,7 @@ class CreateContext:
     def _create_with_unified_error(
         self, identifier, creator, *args, **kwargs
     ):
-        error_message = "Failed to run Creator with identifier \"{}\". {}"
+        error_message = 'Failed to run Creator with identifier "{}". {}'
 
         label = None
         add_traceback = False
@@ -2201,7 +2236,7 @@ class CreateContext:
 
     def _bulk_add_instances_finished(
         self,
-        instances_to_validate: List["CreatedInstance"],
+        instances_to_validate: List[CreatedInstance],
         sender: Optional[str]
     ):
         if not instances_to_validate:
@@ -2264,7 +2299,7 @@ class CreateContext:
 
     def _bulk_remove_instances_finished(
         self,
-        instances_to_remove: List["CreatedInstance"],
+        instances_to_remove: List[CreatedInstance],
         sender: Optional[str]
     ):
         if not instances_to_remove:

@@ -1,6 +1,15 @@
+"""Implementation of TrackChangesItem class."""
+from __future__ import annotations
+
 import copy
+from typing import TYPE_CHECKING, Any, Optional, TypeVar
+
+if TYPE_CHECKING:
+    from typing_extensions import Self
 
 _EMPTY_VALUE = object()
+
+T = TypeVar("T", bound="TrackChangesItem")
 
 
 class TrackChangesItem:
@@ -39,26 +48,26 @@ class TrackChangesItem:
     ...     "key_3": "value_3"
     ... }
 
-    >>> changes = TrackChangesItem(old_value, new_value)
-    >>> changes.changed
+    >>> tracked_changes = TrackChangesItem(old_value, new_value)
+    >>> tracked_changes.changed
     True
 
-    >>> changes["key_2"]["key_sub_1"].new_value is None
+    >>> tracked_changes["key_2"]["key_sub_1"].new_value is None
     True
 
-    >>> list(sorted(changes.changed_keys))
+    >>> list(sorted(tracked_changes.changed_keys))
     ['key_2', 'key_3']
 
-    >>> changes["key_2"]["key_sub_2"]["enabled"].changed
+    >>> tracked_changes["key_2"]["key_sub_2"]["enabled"].changed
     True
 
-    >>> changes["key_2"].removed_keys
+    >>> tracked_changes["key_2"].removed_keys
     {'key_sub_1'}
 
-    >>> list(sorted(changes["key_2"].available_keys))
+    >>> list(sorted(tracked_changes["key_2"].available_keys))
     ['key_sub_1', 'key_sub_2', 'key_sub_3']
 
-    >>> changes.new_value == new_value
+    >>> tracked_changes.new_value == new_value
     True
 
     # Get only changed values
@@ -73,7 +82,8 @@ class TrackChangesItem:
         new_value (Any): New value.
     """
 
-    def __init__(self, old_value, new_value):
+    def __init__(self, old_value: Any, new_value: Any):  # noqa: ANN401
+        """Constructor of TrackChangesItem."""
         self._changed = old_value != new_value
         # Resolve if value is '_EMPTY_VALUE' after comparison of the values
         if old_value is _EMPTY_VALUE:
@@ -86,76 +96,94 @@ class TrackChangesItem:
         self._old_is_dict = isinstance(old_value, dict)
         self._new_is_dict = isinstance(new_value, dict)
 
-        self._old_keys = None
-        self._new_keys = None
-        self._available_keys = None
-        self._removed_keys = None
+        self._old_keys: set[str] = set()
+        self._new_keys: set[str] = set()
+        self._available_keys: set[str] = set()
+        self._removed_keys: set[str] = set()
 
-        self._changed_keys = None
+        self._changed_keys: set[str] = set()
 
-        self._sub_items = None
+        self._sub_items: dict[str, Self] = {}
 
-    def __getitem__(self, key):
-        """Getter looks into subitems if object is dictionary."""
+    def __getitem__(self, key: str) -> Self:
+        """Getter looks into subitems if object is dictionary.
 
-        if self._sub_items is None:
+        Args:
+            key (str): Key to get sub item.
+
+        Returns:
+            TrackChangesItem: Sub item of the object.
+
+        """
+        if not self._sub_items:
             self._prepare_sub_items()
-        return self._sub_items[key]
+        # ignore mypy error as Self won't work in Python 3.9 yet
+        return self._sub_items[key]  # type: ignore[return-value]
 
     def __bool__(self):
-        """Boolean of object is if old and new value are the same."""
+        """Boolean of object is if old and new value are the same.
 
+        Returns:
+            bool: If object is changed.
+
+        """
         return self._changed
 
-    def get(self, key, default=None):
-        """Try to get sub item."""
+    def get(self,
+            key: str, default: Optional[Self] = None) -> Self:
+        """Try to get sub item.
 
-        if self._sub_items is None:
+        Args:
+            key (str): Key to get sub item.
+            default (Optional[str]): Default value if key is not found.
+
+        Returns:
+            TrackChangesItem: Sub item of the object.
+
+        """
+        if not self._sub_items:
             self._prepare_sub_items()
-        return self._sub_items.get(key, default)
+        return self._sub_items.get(
+            key, default)  # type: ignore[return-value, arg-type]
 
     @property
-    def old_value(self):
+    def old_value(self) -> Any:  # noqa: ANN401
         """Get copy of old value.
 
         Returns:
             Any: Whatever old value was.
         """
-
         return copy.deepcopy(self._old_value)
 
     @property
-    def new_value(self):
+    def new_value(self) -> Any:  # noqa: ANN401
         """Get copy of new value.
 
         Returns:
             Any: Whatever new value was.
         """
-
         return copy.deepcopy(self._new_value)
 
     @property
-    def changed(self):
+    def changed(self) -> bool:
         """Value changed.
 
         Returns:
             bool: If data changed.
         """
-
         return self._changed
 
     @property
-    def is_dict(self):
+    def is_dict(self) -> bool:
         """Object can be used as dictionary.
 
         Returns:
             bool: When can be used that way.
         """
-
         return self._old_is_dict or self._new_is_dict
 
     @property
-    def changes(self):
+    def changes(self) -> dict[str, tuple]:
         """Get changes in raw data.
 
         This method should be used only if 'is_dict' value is 'True'.
@@ -165,68 +193,67 @@ class TrackChangesItem:
                 (<old value>, <new value>). If 'is_dict' is 'False' then
                 output is always empty dictionary.
         """
-
-        output = {}
+        output: dict[str, tuple] = {}
         if not self.is_dict:
             return output
 
         old_value = self.old_value
         new_value = self.new_value
         for key in self.changed_keys:
-            _old = None
-            _new = None
+            old = None
+            new = None
             if self._old_is_dict:
-                _old = old_value.get(key)
+                old = old_value.get(key)
             if self._new_is_dict:
-                _new = new_value.get(key)
-            output[key] = (_old, _new)
+                new = new_value.get(key)
+            output[key] = (old, new)
         return output
 
     # Methods/properties that can be used when 'is_dict' is 'True'
     @property
-    def old_keys(self):
+    def old_keys(self) -> set[str]:
         """Keys from old value.
 
         Empty set is returned if old value is not a dict.
 
         Returns:
             Set[str]: Keys from old value.
-        """
 
+        """
         if self._old_keys is None:
             self._prepare_keys()
         return set(self._old_keys)
 
     @property
-    def new_keys(self):
+    def new_keys(self) -> set[str]:
         """Keys from new value.
 
         Empty set is returned if old value is not a dict.
 
         Returns:
             Set[str]: Keys from new value.
-        """
 
+        """
         if self._new_keys is None:
             self._prepare_keys()
         return set(self._new_keys)
 
     @property
-    def changed_keys(self):
+    def changed_keys(self) -> set[str]:
         """Keys that has changed from old to new value.
 
         Empty set is returned if both old and new value are not a dict.
 
         Returns:
             Set[str]: Keys of changed keys.
-        """
 
+        """
         if self._changed_keys is None:
             self._prepare_sub_items()
         return set(self._changed_keys)
 
     @property
-    def available_keys(self):
+    def available_keys(self) -> set[str]:
         """All keys that are available in old and new value.
 
         Empty set is returned if both old and new value are not a dict.
@@ -234,25 +261,25 @@ class TrackChangesItem:
 
         Returns:
             Set[str]: All keys from old and new value.
-        """
 
+        """
         if self._available_keys is None:
             self._prepare_keys()
         return set(self._available_keys)
 
     @property
-    def removed_keys(self):
+    def removed_keys(self) -> set[str]:
         """Key that are not available in new value but were in old value.
 
         Returns:
             Set[str]: All removed keys.
-        """
 
+        """
         if self._removed_keys is None:
             self._prepare_sub_items()
         return set(self._removed_keys)
 
-    def _prepare_keys(self):
+    def _prepare_keys(self) -> None:
         old_keys = set()
         new_keys = set()
         if self._old_is_dict and self._new_is_dict:
@@ -270,7 +297,8 @@ class TrackChangesItem:
         self._available_keys = old_keys | new_keys
         self._removed_keys = old_keys - new_keys
 
-    def _prepare_sub_items(self):
+    def _prepare_sub_items(self) -> None:
+        """Prepare sub items and changed keys."""
         sub_items = {}
         changed_keys = set()
 
@@ -309,5 +337,6 @@ class TrackChangesItem:
                     _EMPTY_VALUE, new_value.get(key)
                 )
 
-        self._sub_items = sub_items
+        # this is also not resolved correctly in Python 3.9 with Self type
+        self._sub_items = sub_items  # type: ignore[assignment]
         self._changed_keys = changed_keys

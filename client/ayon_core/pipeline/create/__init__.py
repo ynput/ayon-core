@@ -1,123 +1,107 @@
+"""Create module for Ayon Core."""
 from .constants import (
-    PRODUCT_NAME_ALLOWED_SYMBOLS,
     DEFAULT_PRODUCT_TEMPLATE,
-    PRE_CREATE_THUMBNAIL_KEY,
     DEFAULT_VARIANT_VALUE,
+    PRE_CREATE_THUMBNAIL_KEY,
+    PRODUCT_NAME_ALLOWED_SYMBOLS,
+)
+from .context import CreateContext
+from .creator_plugins import (
+    AutoCreator,
+    BaseCreator,
+    Creator,
+    HiddenCreator,
+    cache_and_get_instances,
+    deregister_creator_plugin,
+    deregister_creator_plugin_path,
+    discover_creator_plugins,
+    discover_legacy_creator_plugins,
+    get_legacy_creator_by_name,
+    register_creator_plugin,
+    register_creator_plugin_path,
 )
 from .exceptions import (
-    UnavailableSharedData,
-    ImmutableKeyError,
-    HostMissRequiredMethod,
-    ConvertorsOperationFailed,
-    ConvertorsFindFailed,
     ConvertorsConversionFailed,
+    ConvertorsFindFailed,
+    ConvertorsOperationFailed,
     CreatorError,
-    CreatorsCreateFailed,
     CreatorsCollectionFailed,
-    CreatorsSaveFailed,
-    CreatorsRemoveFailed,
+    CreatorsCreateFailed,
     CreatorsOperationFailed,
+    CreatorsRemoveFailed,
+    CreatorsSaveFailed,
+    HostMissRequiredMethod,
+    ImmutableKeyError,
     TaskNotSetError,
     TemplateFillError,
+    UnavailableSharedData,
+)
+from .legacy_create import (
+    LegacyCreator,
+    legacy_create,
+)
+from .product_name import (
+    get_product_name,
+    get_product_name_template,
 )
 from .structures import (
-    CreatedInstance,
-    ConvertorItem,
     AttributeValues,
+    ConvertorItem,
+    CreatedInstance,
     CreatorAttributeValues,
-    PublishAttributeValues,
     PublishAttributes,
+    PublishAttributeValues,
 )
 from .utils import (
     get_last_versions_for_instances,
     get_next_versions_for_instances,
 )
 
-from .product_name import (
-    get_product_name,
-    get_product_name_template,
-)
-
-from .creator_plugins import (
-    BaseCreator,
-    Creator,
-    AutoCreator,
-    HiddenCreator,
-
-    discover_legacy_creator_plugins,
-    get_legacy_creator_by_name,
-
-    discover_creator_plugins,
-    register_creator_plugin,
-    deregister_creator_plugin,
-    register_creator_plugin_path,
-    deregister_creator_plugin_path,
-
-    cache_and_get_instances,
-)
-
-from .context import CreateContext
-
-from .legacy_create import (
-    LegacyCreator,
-    legacy_create,
-)
-
-
 __all__ = (
-    "PRODUCT_NAME_ALLOWED_SYMBOLS",
     "DEFAULT_PRODUCT_TEMPLATE",
-    "PRE_CREATE_THUMBNAIL_KEY",
     "DEFAULT_VARIANT_VALUE",
+    "PRE_CREATE_THUMBNAIL_KEY",
+    "PRODUCT_NAME_ALLOWED_SYMBOLS",
 
-    "UnavailableSharedData",
-    "ImmutableKeyError",
-    "HostMissRequiredMethod",
-    "ConvertorsOperationFailed",
-    "ConvertorsFindFailed",
-    "ConvertorsConversionFailed",
-    "CreatorError",
-    "CreatorsCreateFailed",
-    "CreatorsCollectionFailed",
-    "CreatorsSaveFailed",
-    "CreatorsRemoveFailed",
-    "CreatorsOperationFailed",
-    "TaskNotSetError",
-    "TemplateFillError",
-
-    "CreatedInstance",
-    "ConvertorItem",
     "AttributeValues",
+    "AutoCreator",
+    "BaseCreator",
+    "ConvertorItem",
+    "ConvertorsConversionFailed",
+    "ConvertorsFindFailed",
+    "ConvertorsOperationFailed",
+    "CreateContext",
+    "CreatedInstance",
+    "Creator",
     "CreatorAttributeValues",
+    "CreatorError",
+    "CreatorError",
+    "CreatorsCollectionFailed",
+    "CreatorsCreateFailed",
+    "CreatorsOperationFailed",
+    "CreatorsRemoveFailed",
+    "CreatorsSaveFailed",
+    "HiddenCreator",
+    "HostMissRequiredMethod",
+    "ImmutableKeyError",
+    "LegacyCreator",
     "PublishAttributeValues",
     "PublishAttributes",
-
-    "get_last_versions_for_instances",
-    "get_next_versions_for_instances",
-
-    "get_product_name",
-    "get_product_name_template",
-
-    "CreatorError",
-
-    "BaseCreator",
-    "Creator",
-    "AutoCreator",
-    "HiddenCreator",
-
-    "discover_legacy_creator_plugins",
-    "get_legacy_creator_by_name",
-
-    "discover_creator_plugins",
-    "register_creator_plugin",
-    "deregister_creator_plugin",
-    "register_creator_plugin_path",
-    "deregister_creator_plugin_path",
+    "TaskNotSetError",
+    "TemplateFillError",
+    "UnavailableSharedData",
 
     "cache_and_get_instances",
-
-    "CreateContext",
-
-    "LegacyCreator",
+    "deregister_creator_plugin",
+    "deregister_creator_plugin_path",
+    "discover_creator_plugins",
+    "discover_legacy_creator_plugins",
+    "get_last_versions_for_instances",
+    "get_legacy_creator_by_name",
+    "get_next_versions_for_instances",
+    "get_product_name",
+    "get_product_name_template",
     "legacy_create",
+    "register_creator_plugin",
+    "register_creator_plugin_path",
 )
