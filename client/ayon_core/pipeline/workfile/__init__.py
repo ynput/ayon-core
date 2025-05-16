@@ -21,6 +21,11 @@ from .utils import (
     should_use_last_workfile_on_launch,
     should_open_workfiles_tool_on_launch,
     MissingWorkdirError,
+
+    open_workfile,
+    save_current_workfile_to,
+    copy_and_open_workfile,
+    copy_and_open_workfile_representation,
 )
 
 from .build_workfile import BuildWorkfile
@@ -56,6 +61,11 @@ __all__ = (
     "should_use_last_workfile_on_launch",
     "should_open_workfiles_tool_on_launch",
     "MissingWorkdirError",
+
+    "open_workfile",
+    "save_current_workfile_to",
+    "copy_and_open_workfile",
+    "copy_and_open_workfile_representation",
 
     "BuildWorkfile",
 
