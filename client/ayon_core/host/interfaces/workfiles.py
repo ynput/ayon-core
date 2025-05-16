@@ -1,6 +1,7 @@
 from __future__ import annotations
 import os
 import platform
+import shutil
 from abc import abstractmethod
 from dataclasses import dataclass, asdict
 import typing
@@ -65,7 +66,7 @@ class WorkfileInfo:
         return asdict(self)
 
     @classmethod
-    def from_data(self, data):
+    def from_data(cls, data):
         """Converts data to workfile item.
 
         Args:
@@ -80,6 +81,7 @@ class WorkfileInfo:
 
 @dataclass
 class PublishedWorkfileInfo:
+    project_name: str
     folder_id: str
     task_id: Optional[str]
     representation_id: str
@@ -94,6 +96,7 @@ class PublishedWorkfileInfo:
     @classmethod
     def new(
         cls,
+        project_name: str,
         folder_id: str,
         task_id: Optional[str],
         repre_entity: dict[str, Any],
@@ -107,6 +110,7 @@ class PublishedWorkfileInfo:
         created_at = arrow.get(repre_entity["createdAt"]).to("local")
 
         return cls(
+            project_name=project_name,
             folder_id=folder_id,
             task_id=task_id,
             representation_id=repre_entity["id"],
@@ -129,7 +133,7 @@ class PublishedWorkfileInfo:
         return asdict(self)
 
     @classmethod
-    def from_data(self, data):
+    def from_data(cls, data):
         """Converts data to workfile item.
 
         Args:
@@ -192,16 +196,63 @@ class IWorkfileHost:
         return None
 
     def get_workfile_extensions(self) -> list[str]:
-        """Extensions that can be used as save.
+        """Extensions that can be used as save workfile.
 
-        Questions:
-            This could potentially use 'HostDefinition'.
+        Notes:
+            Method may not be used if 'list_workfiles' and
+                'list_published_workfiles' are re-implemented with different
+                logic.
 
         Returns:
             list[str]: List of extensions that can be used for saving.
 
         """
         return []
+
+    def save_workfile_with_context(
+        self,
+        filepath: str,
+        folder_id: str,
+        task_id: str,
+        folder_entity: Optional[dict[str, Any]] = None,
+        task_entity: Optional[dict[str, Any]] = None,
+    ):
+        """Save current workfile with context.
+
+        Notes:
+            Should this method care about context change?
+
+        Args:
+            filepath (str): Where the current scene should be saved.
+            folder_id (str): Folder id.
+            task_id (str): Task id.
+
+        """
+        self.save_workfile(filepath)
+
+    def open_workfile_with_context(
+        self,
+        filepath: str,
+        folder_id: str,
+        task_id: str,
+        folder_entity: Optional[dict[str, Any]] = None,
+        task_entity: Optional[dict[str, Any]] = None,
+    ):
+        """Open passed filepath in the host with context.
+
+        This function should be used to open workfile in different context.
+
+        Notes:
+            Should this method care about context change?
+
+        Args:
+            filepath (str): Path to workfile.
+            folder_id (str): Folder id.
+            task_id (str): Task id.
+
+        """
+        self.open_workfile(filepath)
+
 
     def list_workfiles(
         self,
@@ -422,6 +473,7 @@ class IWorkfileHost:
                 file_modified = filestat.st_mtime
 
             workfile_item = PublishedWorkfileInfo.new(
+                project_name,
                 folder_id,
                 task_id,
                 repre_entity,
@@ -435,6 +487,105 @@ class IWorkfileHost:
             items.append(workfile_item)
 
         return items
+
+    def copy_workfile(
+        self,
+        src_path: str,
+        dst_path: str,
+        folder_id: str,
+        task_id: str,
+        open_workfile: bool = False,
+        folder_entity: Optional[dict[str, Any]] = None,
+        task_entity: Optional[dict[str, Any]] = None,
+    ):
+        """Save workfile path with target folder and task context.
+
+        It is expected that workfile is saved to current project, but can be
+            copied from other project.
+
+        Args:
+            src_path (str): Path to the source scene.
+            dst_path (str): Where the scene should be saved.
+            folder_id (str): Folder id.
+            task_id (str): Task id.
+            open_workfile (bool): Open workfile when copied.
+
+        """
+        # TODO We might need option to open file once copied as some DCC might
+        #   actually need to open the workfile to copy it.
+        dst_dir = os.path.dirname(dst_path)
+        if not os.path.exists(dst_dir):
+            os.makedirs(dst_dir, exist_ok=True)
+        shutil.copy(src_path, dst_path)
+        if open_workfile:
+            self.open_workfile_with_context(
+                dst_path,
+                folder_id,
+                task_id,
+                folder_entity=folder_entity,
+                task_entity=task_entity,
+            )
+
+    def copy_workfile_representation(
+        self,
+        src_project_name: str,
+        src_representation_id: str,
+        dst_path: str,
+        folder_id: str,
+        task_id: str,
+        open_workfile: bool = False,
+        anatomy: Optional[Anatomy] = None,
+        src_representation_entity: Optional[dict[str, Any]] = None,
+        src_representation_path: Optional[str] = None,
+        folder_entity: Optional[dict[str, Any]] = None,
+        task_entity: Optional[dict[str, Any]] = None,
+    ):
+        """Copy workfile representation.
+
+        Use representation as source for the workfile.
+
+        Args:
+            src_project_name (str): Project name.
+            src_representation_id (str): Representation id.
+            dst_path (str): Where the scene should be saved.
+            folder_id (str): Folder id.
+            task_id (str): Task id.
+            open_workfile (bool): Open workfile when copied.
+            anatomy (Optional[Anatomy]): Project anatomy.
+            src_representation_entity (Optional[dict[str, Any]]): Representation
+                entity.
+            src_representation_path (Optional[str]): Representation path.
+
+        """
+        # TODO We might need option to open file once copied as some DCC might
+        #   actually need to open the workfile to copy it.
+        from ayon_core.pipeline import Anatomy
+        from ayon_core.pipeline.load import (
+            get_representation_path_with_anatomy
+        )
+
+        if src_representation_path is None:
+            if src_representation_entity is None:
+                src_representation_entity = ayon_api.get_representation_by_id(
+                    src_project_name, src_representation_id
+                )
+
+            if anatomy is None:
+                anatomy = Anatomy(src_project_name)
+            src_representation_path = get_representation_path_with_anatomy(
+                src_representation_entity,
+                anatomy,
+            )
+
+        self.copy_workfile(
+            src_representation_path,
+            dst_path,
+            folder_id,
+            task_id,
+            open_workfile=open_workfile,
+            folder_entity=folder_entity,
+            task_entity=task_entity,
+        )
 
     # --- Deprecated method names ---
     def file_extensions(self):
