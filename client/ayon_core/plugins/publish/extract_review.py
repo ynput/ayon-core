@@ -96,7 +96,7 @@ class ExtractReview(pyblish.api.InstancePlugin):
         "aftereffects",
         "flame",
         "unreal",
-        "circuit",
+        "batchdelivery",
     ]
 
     # Supported extensions
