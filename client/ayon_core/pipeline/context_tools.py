@@ -10,7 +10,7 @@ import pyblish.api
 from pyblish.lib import MessageHandler
 
 from ayon_core import AYON_CORE_ROOT
-from ayon_core.host import HostBase
+from ayon_core.host import HostBase, IWorkfileHost
 from ayon_core.lib import (
     is_in_tests,
     initialize_ayon_connection,
@@ -505,37 +505,64 @@ def get_current_context_custom_workfile_template(project_settings=None):
     )
 
 
-def change_current_context(folder_entity, task_entity, template_key=None):
+def change_current_context(
+    folder_entity,
+    task_entity,
+    template_key=None,
+    workdir=None,
+    anatomy=None,
+    project_entity=None,
+    project_settings=None,
+):
     """Update active Session to a new task work area.
 
     This updates the live Session to a different task under folder.
 
+    Notes:
+        This function does a lot of things related to workfiles which
+            extends arguments options a lot.
+        We might want to implement 'set_current_context' on host integration
+            instead. But `AYON_WORKDIR`, which is related to 'IWorkfileHost',
+            would not be available in that case which might be break some
+            logic.
+
     Args:
         folder_entity (Dict[str, Any]): Folder entity to set.
         task_entity (Dict[str, Any]): Task entity to set.
-        template_key (Union[str, None]): Prepared template key to be used for
+        template_key (Optional[str]): Prepared template key to be used for
             workfile template in Anatomy.
+        workdir (Optional[str]): Workdir to set.
+        anatomy (Optional[Anatomy]): Anatomy object used for workdir
+            calculation.
+        project_entity (Optional[dict[str, Any]]): Project entity used for
+            workdir calculation.
+        project_settings (Optional[dict[str, Any]]): Project settings used for
+            workdir calculation.
 
     Returns:
         Dict[str, str]: The changed key, values in the current Session.
-    """
 
-    project_name = get_current_project_name()
-    workdir = None
+    """
+    host = registered_host()
+    project_name = host.get_current_project_name()
     folder_path = None
     task_name = None
     if folder_entity:
         folder_path = folder_entity["path"]
         if task_entity:
             task_name = task_entity["name"]
-        project_entity = ayon_api.get_project(project_name)
-        host_name = get_current_host_name()
+
+    if isinstance(host, IWorkfileHost) and workdir is None and folder_entity:
+        if project_entity is None:
+            project_entity = ayon_api.get_project(project_name)
         workdir = get_workdir(
             project_entity,
             folder_entity,
             task_entity,
-            host_name,
-            template_key=template_key
+            host.name,
+            anatomy=anatomy,
+            template_key=template_key,
+            project_settings=project_settings,
         )
 
     envs = {
