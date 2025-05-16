@@ -289,7 +289,13 @@ def open_workfile(
             workdir=os.path.dirname(filepath)
         )
 
-    host.open_workfile(filepath)
+    host.open_workfile_with_context(
+        filepath,
+        folder_entity["id"],
+        task_entity["id"],
+        folder_entity,
+        task_entity,
+    )
 
     emit_event("workfile.open.after", event_data, source="workfiles.tool")
 
