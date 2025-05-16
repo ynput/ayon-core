@@ -213,9 +213,14 @@ class FilesWidget(QtWidgets.QWidget):
         result = self._exec_save_as_dialog()
         if result is None:
             return
+        folder_id = self._selected_folder_id
+        task_id = self._selected_task_id
         self._controller.duplicate_workfile(
+            folder_id,
+            task_id,
             filepath,
             result["rootless_workdir"],
+            result["workdir"],
             result["filename"],
             version=result["version"],
             comment=result["comment"],
@@ -265,8 +270,8 @@ class FilesWidget(QtWidgets.QWidget):
             result["folder_id"],
             result["task_id"],
             result["rootless_workdir"],
+            result["workdir"],
             result["filename"],
-            result["template_key"],
             version=result["version"],
             comment=result["comment"],
             description=result["description"]
@@ -321,7 +326,7 @@ class FilesWidget(QtWidgets.QWidget):
             result["task_id"],
             result["workdir"],
             result["filename"],
-            result["template_key"],
+            result["rootless_workdir"],
             version=result["version"],
             comment=result["comment"],
             description=result["description"],

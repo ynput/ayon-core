@@ -14,7 +14,6 @@ from ayon_core.lib import (
     get_ayon_username,
     NestedCacheItem,
     CacheItem,
-    emit_event,
     Logger,
 )
 from ayon_core.host import (
@@ -33,10 +32,12 @@ from ayon_core.pipeline.workfile import (
     get_workfile_template_key,
     get_last_workfile_with_version_from_paths,
     get_comments_from_workfile_paths,
-    create_workdir_extra_folders,
+    open_workfile,
+    save_current_workfile_to,
+    copy_and_open_workfile,
+    copy_and_open_workfile_representation,
 )
 from ayon_core.pipeline.version_start import get_versioning_start
-from ayon_core.pipeline.context_tools import change_current_context
 from ayon_core.tools.workfiles.abstract import (
     WorkareaFilepathResult,
     AbstractWorkfilesBackend,
@@ -81,6 +82,12 @@ class WorkfilesModel:
             levels=1, default_factory=list
         )
 
+        # Published workfiles
+        self._repre_by_id = {}
+        self._published_workfile_items_cache = NestedCacheItem(
+            levels=1, default_factory=list
+        )
+
         # Entities
         self._workfile_entities_by_task_id = {}
 
@@ -91,6 +98,9 @@ class WorkfilesModel:
         self._workdir_by_context = {}
         self._workarea_file_items_mapping = {}
         self._workarea_file_items_cache.reset()
+
+        self._repre_by_id = {}
+        self._published_workfile_items_cache.reset()
 
         self._workfile_entities_by_task_id = {}
 
@@ -123,26 +133,50 @@ class WorkfilesModel:
         folder_id,
         task_id,
         rootless_workdir,
+        workdir,
         filename,
-        template_key,
         version,
         comment,
         description,
     ):
         self._emit_event("save_as.started")
 
+        filepath = os.path.join(workdir, filename)
+        rootless_path = f"{rootless_workdir}/{filename}"
+        project_name = self._controller.get_current_project_name()
+        folder_entity = self._controller.get_folder_entity(
+            project_name, folder_id
+        )
+        task_entity = self._controller.get_task_entity(
+            project_name, task_id
+        )
+        workfile_entities = self.get_workfile_entities(task_id)
         failed = False
         try:
-            self._save_as_workfile(
-                folder_id,
-                task_id,
-                rootless_workdir,
-                filename,
-                template_key,
+            workfile_info = save_current_workfile_to(
+                filepath,
+                folder_entity,
+                task_entity,
                 version,
                 comment,
                 description,
+                source="workfiles.tool",
+                rootless_path=rootless_path,
+                workfile_entities=workfile_entities,
+                username=self._get_current_username(),
+                project_entity=self._controller.get_project_entity(
+                    project_name
+                ),
+                project_settings=self._controller.project_settings,
+                anatomy=self._controller.project_anatomy,
             )
+            self._update_workfile_info(
+                task_id, rootless_path, description, workfile_info
+            )
+            self._update_current_context(
+                folder_id, folder_entity["path"], task_entity["name"]
+            )
+
         except Exception:
             failed = True
             self._log.warning("Save as failed", exc_info=True)
@@ -160,27 +194,53 @@ class WorkfilesModel:
         task_id,
         workdir,
         filename,
-        template_key,
+        rootless_workdir,
         version,
         comment,
         description,
     ):
-        # TODO move to workfiles pipeline
         self._emit_event("copy_representation.started")
+
+        project_name = self._project_name
+        folder_entity = self._controller.get_folder_entity(
+            self._project_name, folder_id
+        )
+        task_entity = self._controller.get_task_entity(
+            self._project_name, task_id
+        )
+        repre_entity = self._repre_by_id.get(representation_id)
+        dst_filepath = os.path.join(workdir, filename)
+        rootless_path = f"{rootless_workdir}/{filename}"
 
         failed = False
         try:
-            self._save_as_workfile(
-                folder_id,
-                task_id,
-                workdir,
-                filename,
-                template_key,
-                version,
-                comment,
-                description,
-                src_filepath=representation_filepath
+            workfile_info = copy_and_open_workfile_representation(
+                project_name,
+                representation_id,
+                dst_filepath,
+                folder_entity,
+                task_entity,
+                version=version,
+                comment=comment,
+                description=description,
+                rootless_path=rootless_path,
+                representation_entity=repre_entity,
+                representation_path=representation_filepath,
+                workfile_entities=self.get_workfile_entities(task_id),
+                username=self._get_current_username(),
+                project_entity=self._controller.get_project_entity(
+                    project_name
+                ),
+                project_settings=self._controller.project_settings,
+                anatomy=self._controller.project_anatomy,
             )
+            self._update_workfile_info(
+                task_id, rootless_path, description, workfile_info
+            )
+            self._update_current_context(
+                folder_id, folder_entity["path"], task_entity["name"]
+            )
+
         except Exception:
             failed = True
             self._log.warning(
@@ -193,15 +253,47 @@ class WorkfilesModel:
         )
 
     def duplicate_workfile(
-        self, src_filepath, workdir, filename, version, comment, description
+        self,
+        folder_id,
+        task_id,
+        src_filepath,
+        rootless_workdir,
+        workdir,
+        filename,
+        version,
+        comment,
+        description
     ):
-        # TODO save workfile information
         self._emit_event("workfile_duplicate.started")
 
+        project_name = self._controller.get_current_project_name()
+        project_entity = self._controller.get_project_entity(project_name)
+        folder_entity = self._controller.get_folder_entity(
+            project_name, folder_id
+        )
+        task_entity = self._controller.get_task_entity(project_name, task_id)
+        workfile_entities = self.get_workfile_entities(task_id)
+        rootless_path = f"{rootless_workdir}/{filename}"
+        workfile_path = os.path.join(workdir, filename)
         failed = False
         try:
-            dst_filepath = os.path.join(workdir, filename)
-            shutil.copy(src_filepath, dst_filepath)
+            copy_and_open_workfile(
+                src_filepath,
+                workfile_path,
+                folder_entity,
+                task_entity,
+                version,
+                comment,
+                description,
+                source="workfiles.tool",
+                rootless_path=rootless_path,
+                workfile_entities=workfile_entities,
+                username=self._get_current_username(),
+                project_entity=project_entity,
+                project_settings=self._controller.project_settings,
+                anatomy=self._controller.project_anatomy,
+            )
+
         except Exception:
             failed = True
             self._log.warning("Duplication of workfile failed", exc_info=True)
@@ -257,9 +349,6 @@ class WorkfilesModel:
         self._update_file_description(
             task_id, rootless_path, description
         )
-
-    def reset_workarea_file_items(self, task_id: str):
-        self._reset_workarea_file_items(task_id)
 
     def get_workarea_dir_by_context(
         self, folder_id: str, task_id: str
@@ -480,13 +569,51 @@ class WorkfilesModel:
             list[PublishedWorkfileInfo]: List of files for published workfiles.
 
         """
-        project_name = self._project_name
-        anatomy = self._controller.project_anatomy
-        items = self._host.list_published_workfiles(
-            project_name,
-            folder_id,
-            anatomy,
-        )
+        if not folder_id:
+            return []
+
+        cache = self._published_workfile_items_cache[folder_id]
+        if not cache.is_valid:
+            project_name = self._project_name
+            anatomy = self._controller.project_anatomy
+
+            product_entities = ayon_api.get_products(
+                project_name,
+                folder_ids={folder_id},
+                product_types={"workfile"},
+                fields={"id", "name"}
+            )
+
+            version_entities = []
+            product_ids = {product["id"] for product in product_entities}
+            if product_ids:
+                # Get version docs of products with their families
+                version_entities = list(ayon_api.get_versions(
+                    project_name,
+                    product_ids=product_ids,
+                    fields={"id", "author", "taskId"},
+                ))
+
+            repre_entities = []
+            if version_entities:
+                repre_entities = list(ayon_api.get_representations(
+                    project_name,
+                    version_ids={v["id"] for v in version_entities}
+                ))
+
+            self._repre_by_id.update({
+                repre_entity["id"]: repre_entity
+                for repre_entity in repre_entities
+            })
+
+            cache.update_data(self._host.list_published_workfiles(
+                project_name,
+                folder_id,
+                anatomy,
+            ))
+
+        items = cache.get_data()
+
         if task_id:
             items = [
                 item
@@ -540,121 +667,21 @@ class WorkfilesModel:
     def _open_workfile(self, folder_id: str, task_id: str, filepath: str):
         # TODO move to workfiles pipeline
         project_name = self._project_name
-        event_data = self._get_event_context_data(
-            project_name, folder_id, task_id
-        )
-        event_data["filepath"] = filepath
-
-        emit_event("workfile.open.before", event_data, source="workfiles.tool")
-
-        # Change context
-        task_name = event_data["task_name"]
-        if (
-            folder_id != self._controller.get_current_folder_id()
-            or task_name != self._controller.get_current_task_name()
-        ):
-            self._change_current_context(project_name, folder_id, task_id)
-
-        self._host.open_workfile(filepath)
-
-        emit_event("workfile.open.after", event_data, source="workfiles.tool")
-
-    def _save_as_workfile(
-        self,
-        folder_id: str,
-        task_id: str,
-        rootless_workdir: str,
-        filename: str,
-        template_key: str,
-        version: Optional[int],
-        comment: Optional[str],
-        description: Optional[str],
-        src_filepath=None,
-    ):
-        # TODO move to workfiles pipeline
-        # Trigger before save event
-        project_name = self._project_name
-        folder = self._controller.get_folder_entity(project_name, folder_id)
-        task = self._controller.get_task_entity(project_name, task_id)
-        task_name = task["name"]
-
-        workdir = self._controller.project_anatomy.fill_root(rootless_workdir)
-
-        # QUESTION should the data be different for 'before' and 'after'?
-        event_data = self._get_event_context_data(
-            project_name, folder_id, task_id, folder, task
-        )
-        event_data.update({
-            "filename": filename,
-            "workdir_path": workdir,
-        })
-
-        emit_event("workfile.save.before", event_data, source="workfiles.tool")
-
-        # Create workfiles root folder
-        if not os.path.exists(workdir):
-            self._log.debug("Initializing work directory: %s", workdir)
-            os.makedirs(workdir)
-
-        # Change context
-        if (
-            folder_id != self._controller.get_current_folder_id()
-            or task_name != self._controller.get_current_task_name()
-        ):
-            self._change_current_context(
-                project_name, folder_id, task_id, template_key
-            )
-
-        # Save workfile
-        dst_filepath = os.path.join(workdir, filename)
-        if src_filepath:
-            shutil.copyfile(src_filepath, dst_filepath)
-            self._host.open_workfile(dst_filepath)
-        else:
-            self._host.save_workfile(dst_filepath)
-
-        # Make sure workfile info exists
-        if not description:
-            description = None
-        if not comment:
-            comment = None
-        self.save_workfile_info(
-            task_id,
-            f"{rootless_workdir}/{filename}",
-            version,
-            comment,
-            description,
-        )
-        self.reset_workarea_file_items(task_id)
-
-        # Create extra folders
-        create_workdir_extra_folders(
-            workdir,
-            self._host_name,
-            task["taskType"],
-            task_name,
-            project_name
-        )
-
-        # Trigger after save events
-        emit_event("workfile.save.after", event_data, source="workfiles.tool")
-
-    def _change_current_context(
-        self, project_name, folder_id, task_id, template_key=None
-    ):
-        # Change current context
         folder_entity = self._controller.get_folder_entity(
             project_name, folder_id
         )
-        task_entity = self._controller.get_task_entity(project_name, task_id)
-        change_current_context(
-            folder_entity,
-            task_entity,
-            template_key=template_key
+        task_entity = self._controller.get_task_entity(
+            project_name, task_id
         )
-        self._current_folder_id = folder_entity["id"]
-        self._current_folder_path = folder_entity["path"]
-        self._current_task_name = task_entity["name"]
+        open_workfile(filepath, folder_entity, task_entity)
+        self._update_current_context(
+            folder_id, folder_entity["path"], task_entity["name"]
+        )
+
+    def _update_current_context(self, folder_id, folder_path, task_name):
+        self._current_folder_id = folder_id
+        self._current_folder_path = folder_path
+        self._current_task_name = task_name
 
     # --- Workarea ---
     def _reset_workarea_file_items(self, task_id: str):
@@ -819,6 +846,28 @@ class WorkfilesModel:
             "work", template_key, "directory"
         )
         return directory_template.format_strict(fill_data).normalized()
+
+    def _update_workfile_info(
+        self,
+        task_id: str,
+        rootless_path: str,
+        description: str,
+        workfile_entity: dict[str, Any],
+    ):
+        self._update_file_description(task_id, rootless_path, description)
+        workfile_entities = self.get_workfile_entities(task_id)
+        target_idx = None
+        for idx, workfile_entity in enumerate(workfile_entities):
+            if workfile_entity["path"] == rootless_path:
+                target_idx = idx
+                break
+
+        if target_idx is None:
+            workfile_entities.append(workfile_entity)
+        else:
+            workfile_entities[target_idx] = workfile_entity
+
+        self._reset_workarea_file_items(task_id)
 
     def _update_file_description(
         self, task_id: str, rootless_path: str, description: str
