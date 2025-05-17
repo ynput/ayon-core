@@ -186,8 +186,9 @@ class ExtractOIIOTranscode(publish.Extractor):
                             additional_command_args,
                             self.log
                         )
-                    except MissingRGBAChannelsError:
+                    except MissingRGBAChannelsError as exc:
                         unknown_rgba_channels = True
+                        self.log.error(exc)
                         self.log.error(
                             "Skipping OIIO Transcode. Unknown RGBA channels"
                             f" for colorspace conversion in file: {input_path}"
