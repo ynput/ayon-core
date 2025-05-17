@@ -11,7 +11,7 @@ from ayon_core.lib import (
     is_oiio_supported,
 )
 from ayon_core.lib.transcoding import (
-    UnknownRGBAChannelsError,
+    MissingRGBAChannelsError,
     convert_colorspace,
 )
 
@@ -186,7 +186,7 @@ class ExtractOIIOTranscode(publish.Extractor):
                             additional_command_args,
                             self.log
                         )
-                    except UnknownRGBAChannelsError:
+                    except MissingRGBAChannelsError:
                         unknown_rgba_channels = True
                         self.log.error(
                             "Skipping OIIO Transcode. Unknown RGBA channels"

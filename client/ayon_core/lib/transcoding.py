@@ -67,7 +67,7 @@ VIDEO_EXTENSIONS = {
 }
 
 
-class UnknownRGBAChannelsError(ValueError):
+class MissingRGBAChannelsError(ValueError):
     """Raised when we can't find RGB channels for conversion in input media."""
     pass
 
@@ -1337,7 +1337,7 @@ def get_oiio_input_and_channel_args(oiio_input_info, alpha_default=None):
     review_channels = get_convert_rgb_channels(channel_names)
 
     if review_channels is None:
-        raise UnknownRGBAChannelsError(
+        raise MissingRGBAChannelsError(
             "Couldn't find channels that can be used for conversion "
             f"among channels: {channel_names}."
         )
