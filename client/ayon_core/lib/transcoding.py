@@ -351,7 +351,8 @@ def get_review_info_by_layer_name(channel_names):
         ]
 
     This tries to find suitable outputs good for review purposes, by
-    searching for channel names like 'red', 'green', 'blue' or 'R', 'G', 'B',
+    searching for channel names like RGBA, but also XYZ, Z, N, AR, AG, AB
+    channels.
 
     Args:
         channel_names (list[str]): List of channel names.
