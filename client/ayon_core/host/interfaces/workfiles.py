@@ -243,12 +243,11 @@ class IWorkfileHost:
 
         Args:
             filepath (str): Path to workfile.
-            folder_id (str): Folder id.
-            task_id (str): Task id.
+            folder_entity (dict[str, Any]): Folder id.
+            task_entity (dict[str, Any]): Task id.
 
         """
         self.open_workfile(filepath)
-
 
     def list_workfiles(
         self,
