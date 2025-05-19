@@ -389,7 +389,7 @@ def get_review_info_by_layer_name(channel_names):
             layer_names_order.append(layer_name)
 
         # R, G, B, A or X, Y, Z, N, AR, AG, AB
-        channel = last_part[0].upper()
+        channel = last_part.upper()
         channels_by_layer_name[layer_name][channel] = channel_name
 
     # Put empty layer to the beginning of the list
