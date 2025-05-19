@@ -74,7 +74,6 @@ class MissingRGBAChannelsError(ValueError):
     This may be other channels than solely RGBA, like Z-channel. The error is
     raised when no matching 'reviewable' channel was found.
     """
-    pass
 
 
 def get_transcode_temp_directory():
