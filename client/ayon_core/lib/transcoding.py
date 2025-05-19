@@ -6,6 +6,7 @@ import collections
 import tempfile
 import subprocess
 import platform
+import psutil
 from typing import Optional
 
 import xml.etree.ElementTree
@@ -1010,11 +1011,18 @@ def convert_colorspace(
     input_arg, channels_arg = get_oiio_input_and_channel_args(input_info)
 
     # Prepare subprocess arguments
+    # Use 50% of available memory for cache (in bytes)
+    available_memory = psutil.virtual_memory().available
+    cache_size = int(available_memory * 0.5)
+
+    # Prepare subprocess arguments
     oiio_cmd = get_oiio_tool_args(
         "oiiotool",
         # Don't add any additional attributes
         "--nosoftwareattrib",
-        "--colorconfig", config_path
+        "--threads", str(os.cpu_count()),
+        "--cache",  str(cache_size),
+        "--colorconfig", config_path,
     )
 
     oiio_cmd.extend([
