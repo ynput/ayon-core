@@ -1021,7 +1021,7 @@ def convert_colorspace(
         # Don't add any additional attributes
         "--nosoftwareattrib",
         "--threads", str(os.cpu_count()),
-        "--cache",  str(cache_size),
+        "--cache", str(cache_size),
         "--colorconfig", config_path,
     )
 
