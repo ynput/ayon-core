@@ -212,10 +212,8 @@ class IWorkfileHost:
     def save_workfile_with_context(
         self,
         filepath: str,
-        folder_id: str,
-        task_id: str,
-        folder_entity: Optional[dict[str, Any]] = None,
-        task_entity: Optional[dict[str, Any]] = None,
+        folder_entity: dict[str, Any] = None,
+        task_entity: dict[str, Any] = None,
     ):
         """Save current workfile with context.
 
@@ -224,8 +222,8 @@ class IWorkfileHost:
 
         Args:
             filepath (str): Where the current scene should be saved.
-            folder_id (str): Folder id.
-            task_id (str): Task id.
+            folder_entity (dict[str, Any]): Folder entity.
+            task_entity (dict[str, Any]): Task entity.
 
         """
         self.save_workfile(filepath)
@@ -233,10 +231,8 @@ class IWorkfileHost:
     def open_workfile_with_context(
         self,
         filepath: str,
-        folder_id: str,
-        task_id: str,
-        folder_entity: Optional[dict[str, Any]] = None,
-        task_entity: Optional[dict[str, Any]] = None,
+        folder_entity: dict[str, Any],
+        task_entity: dict[str, Any],
     ):
         """Open passed filepath in the host with context.
 
@@ -257,11 +253,9 @@ class IWorkfileHost:
     def list_workfiles(
         self,
         project_name: str,
-        folder_id: str,
-        task_id: str,
+        folder_entity: dict[str, Any],
+        task_entity: dict[str, Any],
         project_entity: Optional[dict[str, Any]] = None,
-        folder_entity: Optional[dict[str, Any]] = None,
-        task_entity: Optional[dict[str, Any]] = None,
         workfile_entities: Optional[list[dict[str, Any]]] = None,
         template_key: Optional[str] = None,
         project_settings: Optional[dict[str, Any]] = None,
@@ -278,11 +272,9 @@ class IWorkfileHost:
 
         Args:
             project_name (str): Name of project.
-            folder_id (str): ID of folder.
-            task_id (str): ID of task.
+            folder_entity (dict[str, Any]): Folder entity.
+            task_entity (dict[str, Any]): Task entity.
             project_entity (Optional[dict[str, Any]]): Project entity.
-            folder_entity (Optional[dict[str, Any]]): Folder entity.
-            task_entity (Optional[dict[str, Any]]): Task entity.
             workfile_entities (Optional[list[dict[str, Any]]]): Workfile
                 entities.
             template_key (Optional[str]): Template key.
@@ -304,13 +296,8 @@ class IWorkfileHost:
         if project_entity is None:
             project_entity = ayon_api.get_project(project_name)
 
-        if folder_entity is None:
-            folder_entity = ayon_api.get_folder_by_id(project_name, folder_id)
-
-        if task_entity is None:
-            task_entity = ayon_api.get_task_by_id(project_name, task_id)
-
         if workfile_entities is None:
+            task_id = task_entity["id"]
             workfile_entities = list(ayon_api.get_workfiles_info(
                 project_name, task_ids=[task_id]
             ))
@@ -492,11 +479,9 @@ class IWorkfileHost:
         self,
         src_path: str,
         dst_path: str,
-        folder_id: str,
-        task_id: str,
+        folder_entity: dict[str, Any],
+        task_entity: dict[str, Any],
         open_workfile: bool = False,
-        folder_entity: Optional[dict[str, Any]] = None,
-        task_entity: Optional[dict[str, Any]] = None,
     ):
         """Save workfile path with target folder and task context.
 
@@ -506,8 +491,8 @@ class IWorkfileHost:
         Args:
             src_path (str): Path to the source scene.
             dst_path (str): Where the scene should be saved.
-            folder_id (str): Folder id.
-            task_id (str): Task id.
+            folder_entity (dict[str, Any]): Folder entity.
+            task_entity (dict[str, Any]): Task entity.
             open_workfile (bool): Open workfile when copied.
 
         """
@@ -520,25 +505,20 @@ class IWorkfileHost:
         if open_workfile:
             self.open_workfile_with_context(
                 dst_path,
-                folder_id,
-                task_id,
-                folder_entity=folder_entity,
-                task_entity=task_entity,
+                folder_entity,
+                task_entity,
             )
 
     def copy_workfile_representation(
         self,
         src_project_name: str,
-        src_representation_id: str,
+        src_representation_entity: dict[str, Any],
         dst_path: str,
-        folder_id: str,
-        task_id: str,
+        folder_entity: dict[str, Any],
+        task_entity: dict[str, Any],
         open_workfile: bool = False,
         anatomy: Optional[Anatomy] = None,
-        src_representation_entity: Optional[dict[str, Any]] = None,
         src_representation_path: Optional[str] = None,
-        folder_entity: Optional[dict[str, Any]] = None,
-        task_entity: Optional[dict[str, Any]] = None,
     ):
         """Copy workfile representation.
 
@@ -546,14 +526,13 @@ class IWorkfileHost:
 
         Args:
             src_project_name (str): Project name.
-            src_representation_id (str): Representation id.
+            src_representation_entity (dict[str, Any]): Representation
+                entity.
             dst_path (str): Where the scene should be saved.
-            folder_id (str): Folder id.
-            task_id (str): Task id.
+            folder_entity (dict[str, Any): Folder entity.
+            task_entity (dict[str, Any]): Task entity.
             open_workfile (bool): Open workfile when copied.
             anatomy (Optional[Anatomy]): Project anatomy.
-            src_representation_entity (Optional[dict[str, Any]]): Representation
-                entity.
             src_representation_path (Optional[str]): Representation path.
 
         """
@@ -565,11 +544,6 @@ class IWorkfileHost:
         )
 
         if src_representation_path is None:
-            if src_representation_entity is None:
-                src_representation_entity = ayon_api.get_representation_by_id(
-                    src_project_name, src_representation_id
-                )
-
             if anatomy is None:
                 anatomy = Anatomy(src_project_name)
             src_representation_path = get_representation_path_with_anatomy(
@@ -580,11 +554,9 @@ class IWorkfileHost:
         self.copy_workfile(
             src_representation_path,
             dst_path,
-            folder_id,
-            task_id,
+            folder_entity,
+            task_entity,
             open_workfile=open_workfile,
-            folder_entity=folder_entity,
-            task_entity=task_entity,
         )
 
     # --- Deprecated method names ---

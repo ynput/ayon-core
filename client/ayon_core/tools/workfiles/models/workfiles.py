@@ -770,11 +770,9 @@ class WorkfilesModel:
 
         items = self._host.list_workfiles(
             self._project_name,
-            folder_id,
-            task_id,
+            folder_entity,
+            task_entity,
             project_entity=project_entity,
-            folder_entity=folder_entity,
-            task_entity=task_entity,
             anatomy=anatomy,
             template_key=template_key,
             project_settings=project_settings,
