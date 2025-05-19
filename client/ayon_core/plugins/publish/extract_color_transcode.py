@@ -166,7 +166,7 @@ class ExtractOIIOTranscode(publish.Extractor):
                 files_to_convert = self._translate_to_sequence(
                     files_to_convert)
                 self.log.debug("Files to convert: {}".format(files_to_convert))
-                unknown_rgba_channels = False
+                missing_rgba_review_channels = False
                 for file_name in files_to_convert:
                     self.log.debug("Transcoding file: `{}`".format(file_name))
                     input_path = os.path.join(original_staging_dir,
@@ -187,7 +187,7 @@ class ExtractOIIOTranscode(publish.Extractor):
                             self.log
                         )
                     except MissingRGBAChannelsError as exc:
-                        unknown_rgba_channels = True
+                        missing_rgba_review_channels = True
                         self.log.error(exc)
                         self.log.error(
                             "Skipping OIIO Transcode. Unknown RGBA channels"
@@ -195,7 +195,7 @@ class ExtractOIIOTranscode(publish.Extractor):
                         )
                         break
 
-                if unknown_rgba_channels:
+                if missing_rgba_review_channels:
                     # Stop processing this representation
                     break
 
