@@ -564,7 +564,6 @@ def _save_workfile(
     current_folder_path = context["folder_path"]
     current_task_name = context["task_name"]
 
-    folder_id = folder_entity["id"]
     task_name = task_entity["name"]
     task_type = task_entity["taskType"]
     task_id = task_entity["id"]

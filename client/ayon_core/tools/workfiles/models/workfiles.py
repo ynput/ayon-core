@@ -4,7 +4,6 @@ import copy
 import uuid
 import platform
 import typing
-import shutil
 from typing import Optional, Any
 
 import ayon_api

@@ -48,7 +48,9 @@ class SidePanelWidget(QtWidgets.QWidget):
         description_widget = QtWidgets.QWidget(self)
         description_label = QtWidgets.QLabel("Artist note", description_widget)
         description_input = QtWidgets.QPlainTextEdit(description_widget)
-        btn_description_save = QtWidgets.QPushButton("Save note", description_widget)
+        btn_description_save = QtWidgets.QPushButton(
+            "Save note", description_widget
+        )
 
         description_layout = QtWidgets.QVBoxLayout(description_widget)
         description_layout.setContentsMargins(0, 0, 0, 0)

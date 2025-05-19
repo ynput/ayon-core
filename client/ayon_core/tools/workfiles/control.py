@@ -1,6 +1,4 @@
 import os
-import shutil
-from typing import Optional
 
 import ayon_api
 
