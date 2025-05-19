@@ -82,6 +82,29 @@ class GetReviewInfoByLayerName(unittest.TestCase):
             }
         }])
 
+    def test_ar_ag_ab_channels(self):
+
+        info = get_review_info_by_layer_name(["AR", "AG", "AB"])
+        self.assertEqual(info, [{
+            "name": "",
+            "review_channels": {
+                "R": "AR",
+                "G": "AG",
+                "B": "AB",
+                "A": None,
+            }
+        }])
+
+        info = get_review_info_by_layer_name(["AR", "AG", "AB", "A"])
+        self.assertEqual(info, [{
+            "name": "",
+            "review_channels": {
+                "R": "AR",
+                "G": "AG",
+                "B": "AB",
+                "A": "A",
+            }
+        }])
 
     def test_unknown_channels(self):
         info = get_review_info_by_layer_name(["hello", "world"])
