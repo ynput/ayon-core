@@ -291,8 +291,6 @@ def open_workfile(
 
     host.open_workfile_with_context(
         filepath,
-        folder_entity["id"],
-        task_entity["id"],
         folder_entity,
         task_entity,
     )
@@ -603,34 +601,27 @@ def _save_workfile(
         host.copy_workfile(
             src_workfile_path,
             workfile_path,
-            folder_id,
-            task_id,
+            folder_entity,
+            task_entity,
             open_workfile=True,
-            dst_folder_entity=folder_entity,
-            dst_task_entity=task_entity,
         )
     elif representation_entity:
         host.copy_workfile_representation(
             representation_project_name,
-            representation_entity["id"],
+            representation_entity,
             workfile_path,
-            folder_id,
-            task_id,
+            folder_entity,
+            task_entity,
             open_workfile=True,
-            folder_entity=folder_entity,
-            task_entity=task_entity,
-            src_representation_entity=representation_entity,
             src_representation_path=representation_path,
             anatomy=anatomy,
         )
     else:
         host.save_workfile_with_context(
             workfile_path,
-            folder_id,
-            task_id,
+            folder_entity,
+            task_entity,
             open_workfile=True,
-            folder_entity=folder_entity,
-            task_entity=task_entity,
         )
 
     if not description:
