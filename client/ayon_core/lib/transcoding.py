@@ -68,7 +68,12 @@ VIDEO_EXTENSIONS = {
 
 
 class MissingRGBAChannelsError(ValueError):
-    """Raised when we can't find RGB channels for conversion in input media."""
+    """Raised when we can't find channels to use as RGBA for conversion in
+    input media.
+
+    This may be other channels than solely RGBA, like Z-channel. The error is
+    raised when no matching 'reviewable' channel was found.
+    """
     pass
 
 
