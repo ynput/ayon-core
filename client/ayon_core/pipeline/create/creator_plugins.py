@@ -25,34 +25,34 @@ from .product_name import get_product_name
 from .structures import CreatedInstance
 from .utils import get_next_versions_for_instances
 
+
 if TYPE_CHECKING:
     from ayon_core.lib import AbstractAttrDef
-
-    from .context import CreateContext
+    from .context import CreateContext, UpdateData  # noqa: F401
 
 
 class ProductConvertorPlugin(ABC):
     """Helper for conversion of instances created using legacy creators.
 
-    Conversion from legacy creators would mean to lose legacy instances,
+    Conversion from legacy creators would mean losing legacy instances,
     convert them automatically or write a script which must user run. All of
     these solutions are working but will happen without asking or user must
     know about them. This plugin can be used to show legacy instances in
-    Publisher and give user ability to run conversion script.
+    Publisher and allow the user to run the conversion script.
 
     Convertor logic should be very simple. Method 'find_instances' is to
-    look for legacy instances in scene and possibly call pre-implemented
+    look for legacy instances in the scene and possibly call pre-implemented
     'add_convertor_item'.
 
-    User will have ability to trigger conversion which is executed by calling
-    'convert' which should call 'remove_convertor_item' when is done.
+    User will be able to trigger the conversion which is executed by calling
+    'convert' which should call 'remove_convertor_item' when it is done.
 
     It does make sense to add only one or none legacy item to create context
-    for convertor as it's not possible to choose which instace are converted
+    for convertor as it's not possible to choose which instances are converted
     and which are not.
 
-    Convertor can use 'collection_shared_data' property like creators. Also
-    can store any information to it's object for conversion purposes.
+    Convertor can use 'collection_shared_data' property like creators. Also,
+    can store any information to its object for conversion purposes.
 
     Args:
         create_context (CreateContext): Context which initialized the plugin.
@@ -60,7 +60,7 @@ class ProductConvertorPlugin(ABC):
 
     _log = None
 
-    def __init__(self, create_context: CreateContext):
+    def __init__(self, create_context):
         """Constructor of convertor plugin."""
         self._create_context = create_context
 
@@ -613,7 +613,7 @@ class BaseCreator(ABC):
 
 
 class Creator(BaseCreator):
-    """Creator that has more information for artist to show in UI.
+    """Creator that has more information for an artist to show in UI.
 
     Creation requires prepared product name and instance data.
     """
@@ -621,16 +621,16 @@ class Creator(BaseCreator):
     # GUI Purposes
     # - default_variants may not be used if `get_default_variants`
     #   is overridden
-    default_variants = []
+    default_variants: list[str] = []
 
     # Default variant used in 'get_default_variant'
     _default_variant = None
 
-    # Short description of product type
+    # Short description of the product type
     # - may not be used if `get_description` is overridden
     description = None
 
-    # Detailed description of product type for artists
+    # Detailed description of the product type for artists
     # - may not be used if `get_detail_description` is overridden
     detailed_description = None
 
