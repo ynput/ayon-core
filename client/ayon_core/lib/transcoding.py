@@ -552,12 +552,11 @@ def _get_attributes_to_erase(
             erase_attrs[attr_name] = reason
             break
 
-    if logger is not None:
-        for attr_name, reason in erase_attrs.items():
-            logger.info(
-                f"Removed attribute \"{attr_name}\" from metadata"
-                f" because {reason}."
-            )
+    for attr_name, reason in erase_attrs.items():
+        logger.info(
+            f"Removed attribute \"{attr_name}\" from metadata"
+            f" because {reason}."
+        )
     return list(erase_attrs.keys())
 
 
