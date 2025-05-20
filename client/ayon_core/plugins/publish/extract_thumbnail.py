@@ -508,27 +508,36 @@ class ExtractThumbnail(pyblish.api.InstancePlugin):
         # Set video input attributes
         max_int = str(2147483647)
         video_data = get_ffprobe_data(video_file_path, logger=self.log)
-        # Use duration of the individual streams since it is returned with
-        # higher decimal precision than 'format.duration'. We need this
-        # more precise value for calculating the correct amount of frames
-        # for higher FPS ranges or decimal ranges, e.g. 29.97 FPS
-        duration = max(
-            float(stream.get("duration", 0))
-            for stream in video_data["streams"]
-            if stream.get("codec_type") == "video"
-        )
 
-        cmd_args = [
-            "-y",
-            "-ss", str(duration * self.duration_split),
+        # Get duration or use a safe default (single frame)
+        duration = 0
+        for stream in video_data["streams"]:
+            if stream.get("codec_type") == "video":
+                stream_duration = float(stream.get("duration", 0))
+                if stream_duration > duration:
+                    duration = stream_duration
+
+        # For very short videos, just use the first frame
+        # Calculate seek position safely
+        seek_position = 0.0
+        # Only use timestamp calculation for videos longer than 0.1 seconds
+        if duration > 0.1:
+            seek_position = duration * self.duration_split
+
+        # Build command args
+        cmd_args = []
+        if seek_position > 0.0:
+            cmd_args.extend(["-ss", str(seek_position)])
+
+        # Add generic ffmpeg commands
+        cmd_args.extend([
             "-i", video_file_path,
             "-analyzeduration", max_int,
             "-probesize", max_int,
-            "-frames:v", "1"
-        ]
-
-        # add output file path
-        cmd_args.append(output_thumb_file_path)
+            "-y",
+            "-frames:v", "1",
+            output_thumb_file_path
+        ])
 
         # create ffmpeg command
         cmd = get_ffmpeg_tool_args(
@@ -539,15 +548,53 @@ class ExtractThumbnail(pyblish.api.InstancePlugin):
             # run subprocess
             self.log.debug("Executing: {}".format(" ".join(cmd)))
             run_subprocess(cmd, logger=self.log)
-            self.log.debug(
-                "Thumbnail created: {}".format(output_thumb_file_path))
-            return output_thumb_file_path
+
+            # Verify the output file was created
+            if (
+                os.path.exists(output_thumb_file_path)
+                and os.path.getsize(output_thumb_file_path) > 0
+            ):
+                self.log.debug(
+                    "Thumbnail created: {}".format(output_thumb_file_path))
+                return output_thumb_file_path
+            self.log.warning("Output file was not created or is empty")
+
+            # Try to create thumbnail without offset
+            # - skip if offset did not happen
+            if "-ss" not in cmd_args:
+                return None
+
+            self.log.debug("Trying fallback without offset")
+            # Remove -ss and its value
+            ss_index = cmd_args.index("-ss")
+            cmd_args.pop(ss_index)  # Remove -ss
+            cmd_args.pop(ss_index)  # Remove the timestamp value
+
+            # Create new command and try again
+            cmd = get_ffmpeg_tool_args("ffmpeg", *cmd_args)
+            self.log.debug("Fallback command: {}".format(" ".join(cmd)))
+            run_subprocess(cmd, logger=self.log)
+
+            if (
+                os.path.exists(output_thumb_file_path)
+                and os.path.getsize(output_thumb_file_path) > 0
+            ):
+                self.log.debug("Fallback thumbnail created")
+                return output_thumb_file_path
+            return None
         except RuntimeError as error:
             self.log.warning(
                 "Failed intermediate thumb source using ffmpeg: {}".format(
                     error)
             )
             return None
+        finally:
+            # Remove output file if is empty
+            if (
+                os.path.exists(output_thumb_file_path)
+                and os.path.getsize(output_thumb_file_path) == 0
+            ):
+                os.remove(output_thumb_file_path)
 
     def _get_resolution_arg(
         self,

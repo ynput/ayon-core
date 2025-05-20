@@ -834,7 +834,7 @@ def _get_global_config_data(
 
     if not product_entities_by_name:
         # in case no product was found we need to use fallback
-        fallback_type = fallback_data["type"]
+        fallback_type = fallback_data["fallback_type"]
         return _get_config_path_from_profile_data(
             fallback_data, fallback_type, template_data
         )
