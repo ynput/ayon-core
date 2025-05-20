@@ -6,6 +6,8 @@ import collections
 import tempfile
 import subprocess
 import platform
+import warnings
+import functools
 from typing import Optional
 
 import xml.etree.ElementTree
@@ -65,6 +67,48 @@ VIDEO_EXTENSIONS = {
     ".mpv", ".mxf", ".nsv", ".ogg", ".ogv", ".qt", ".rm", ".rmvb",
     ".roq", ".svi", ".vob", ".webm", ".wmv", ".yuv"
 }
+
+
+
+def deprecated(new_destination):
+    """Mark functions as deprecated.
+
+    It will result in a warning being emitted when the function is used.
+    """
+
+    func = None
+    if callable(new_destination):
+        func = new_destination
+        new_destination = None
+
+    def _decorator(decorated_func):
+        if new_destination is None:
+            warning_message = (
+                " Please check content of deprecated function to figure out"
+                " possible replacement."
+            )
+        else:
+            warning_message = " Please replace your usage with '{}'.".format(
+                new_destination
+            )
+
+        @functools.wraps(decorated_func)
+        def wrapper(*args, **kwargs):
+            warnings.simplefilter("always", DeprecationWarning)
+            warnings.warn(
+                (
+                    "Call to deprecated function '{}'"
+                    "\nFunction was moved or removed.{}"
+                ).format(decorated_func.__name__, warning_message),
+                category=DeprecationWarning,
+                stacklevel=4
+            )
+            return decorated_func(*args, **kwargs)
+        return wrapper
+
+    if func is None:
+        return _decorator
+    return _decorator(func)
 
 
 def get_transcode_temp_directory():
@@ -966,6 +1010,8 @@ def convert_ffprobe_fps_to_float(value):
     return dividend / divisor
 
 
+# --- Deprecated functions ---
+@deprecated("oiiotool_transcode")
 def convert_colorspace(
     input_path,
     output_path,
@@ -977,7 +1023,7 @@ def convert_colorspace(
     additional_command_args=None,
     logger=None,
 ):
-    """Backward compatibility function for convert_colorspace.
+    """DEPRECATED function use `oiiotool_transcode` instead
 
     Args:
         input_path (str): Path to input file that should be converted.
@@ -1105,8 +1151,10 @@ def oiiotool_transcode(
             "provided."
         )
 
-    if ((source_view and not source_display) or
-            (source_display and not source_view)):
+    if (
+        (source_view and not source_display)
+        or (source_display and not source_view)
+    ):
         raise ValueError(
             "Both source_view and source_display must be provided if using "
             "display/view inputs."
@@ -1128,14 +1176,18 @@ def oiiotool_transcode(
             # This could be a config parameter or determined from OCIO config
             tmp_role_space = "scene_linear"
             oiio_cmd.extend([
-                "--ociodisplay:inverse=1:subimages=0", source_display,
-                source_view, "--colorconvert:subimages=0", tmp_role_space,
+                "--ociodisplay:inverse=1:subimages=0",
+                source_display,
+                source_view,
+                "--colorconvert:subimages=0",
+                tmp_role_space,
                 target_colorspace,
             ])
         else:
             # Standard color space to color space conversion
             oiio_cmd.extend([
-                "--colorconvert:subimages=0", source_colorspace,
+                "--colorconvert:subimages=0",
+                source_colorspace,
                 target_colorspace,
             ])
     else:  # Using display/view target
@@ -1147,10 +1199,9 @@ def oiiotool_transcode(
                     "Source and target display/view pairs are identical. "
                     "No color conversion needed."
                 )
-            elif source_display == target_display:
-                # When only the view changes but display stays the same
-                # First convert from source view to a reference space, then to
-                # target view
+            else:
+                # Complete display/view pair conversion
+                # Similar approach: go through a reference space
                 # This could be configured
                 tmp_role_space = "scene_linear"
                 oiio_cmd.extend([
@@ -1161,23 +1212,14 @@ def oiiotool_transcode(
                     target_display,
                     target_view,
                 ])
-            else:
-                # Complete display/view pair conversion
-                # Similar approach: go through a reference space
-                # This could be configured
-                tmp_role_space = "scene_linear"
-                oiio_cmd.extend([
-                    "--ociodisplay:inverse=1:subimages=0",
-                    source_display,
-                    source_view, "--ociodisplay:subimages=0",
-                    target_display,
-                    target_view,
-                ])
         else:
             # Standard conversion from colorspace to display/view
             oiio_cmd.extend([
-                "--iscolorspace", source_colorspace,
-                "--ociodisplay:subimages=0", target_display, target_view,
+                "--iscolorspace",
+                source_colorspace,
+                "--ociodisplay:subimages=0",
+                target_display,
+                target_view,
             ])
 
     oiio_cmd.extend(["-o", output_path])
