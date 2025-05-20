@@ -69,7 +69,6 @@ VIDEO_EXTENSIONS = {
 }
 
 
-
 def deprecated(new_destination):
     """Mark functions as deprecated.
 
@@ -1033,11 +1032,13 @@ def convert_colorspace(
         target_colorspace (str, optional): OCIO valid target color space.
             If filled, 'view' and 'display' must be empty.
         view (str, optional): Name for target viewer space (OCIO valid).
-            Both 'view' and 'display' must be filled (if not 'target_colorspace').
-        display (str, optional): Name for target display-referred reference space.
-            Both 'view' and 'display' must be filled (if not 'target_colorspace').
-        additional_command_args (list, optional): Additional arguments for oiiotool
-            (like binary depth for .dpx).
+            Both 'view' and 'display' must be filled
+            (if not 'target_colorspace').
+        display (str, optional): Name for target display-referred
+            reference space. Both 'view' and 'display' must be filled
+            (if not 'target_colorspace').
+        additional_command_args (list, optional): Additional arguments
+            for oiiotool (like binary depth for .dpx).
         logger (logging.Logger, optional): Logger used for logging.
 
     Returns:
