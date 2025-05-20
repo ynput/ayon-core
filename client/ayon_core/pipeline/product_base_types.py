@@ -6,14 +6,13 @@ There is an abstract base class `ProductBaseType` that defines the interface
 for product base types. All product base types should inherit from this class
 and implement the required methods.
 
-Maybe we should also consider deriver UI related class so we can
+Maybe we should also consider deriving UI-related class so we can
 have icon etc.
 
 """
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import ClassVar
 
 
 class ProductBaseType(ABC):
@@ -23,13 +22,8 @@ class ProductBaseType(ABC):
     All product base types should inherit from this class and implement
     the required methods.
 
-    It should handle `data` field to store additional information about the
-    product base type.
-
-    Attributes:
-        name (str): The name of the product base type.
-        label (str): A description of the product base type.
-        description (str): A detailed description of the product base type.
+    It should handle the `data` field to store additional information about
+    the product base type.
 
     """
     @property
@@ -63,6 +57,94 @@ class ProductBaseType(ABC):
         """Set the description of the product base type."""
 
 
+class Workfile(ProductBaseType):
+    """Workfile product base type.
+
+    This class represents the workfile product base type.
+    It is used to define the interface for workfile product base types.
+    """
+    name = "workfile"
+    label = "Workfile"
+    description = "Workfile product base type."
+
+
+class Pointcache(ProductBaseType):
+    """Pointcache product base type.
+
+    This class represents the pointcache product base type.
+    It is used to define the interface for pointcache product base types.
+    """
+    name = "pointcache"
+    label = "Pointcache"
+    description = "Pointcache product base type."
+
+
+class Camera(ProductBaseType):
+    """Camera product base type.
+
+    This class represents the camera product base type.
+    It is used to define the interface for camera product base types.
+    """
+    name = "camera"
+    label = "Camera"
+    description = "Camera product base type."
+
+
+class Layout(ProductBaseType):
+    """Layout product base type.
+
+    This class represents the layout product base type.
+    It is used to define the interface for layout product base types.
+    """
+    name = "layout"
+    label = "Layout"
+    description = "Layout product base type."
+
+
+class Look(ProductBaseType):
+    """Look product base type.
+
+    This class represents the look product base type.
+    It is used to define the interface for look product base types.
+    """
+    name = "look"
+    label = "Look"
+    description = "Look product base type."
+
+
+class Matchmove(ProductBaseType):
+    """Matchmove product base type.
+
+    This class represents the matchmove product base type.
+    It is used to define the interface for matchmove product base types.
+    """
+    name = "matchmove"
+    label = "Matchmove"
+    description = "Matchmove Script product base type."
+
+
+class USD(ProductBaseType):
+    """USD product base type.
+
+    This class represents the USD product base type.
+    It is used to define the interface for USD product base types.
+    """
+    name = "usd"
+    label = "USD"
+    description = "USD product base type."
+
+
+class Model(ProductBaseType):
+    """Model product base type.
+
+    This class represents the model product base type.
+    It is used to define the interface for model product base types.
+    """
+    name = "model"
+    label = "Model"
+    description = "Model product base type."
+
+
 class Image(ProductBaseType):
     """Image product base type.
 
@@ -74,48 +156,15 @@ class Image(ProductBaseType):
     description = "Image product base type."
 
 
-class Video(ProductBaseType):
-    """Video product base type.
+class Shot(ProductBaseType):
+    """Shot product base type.
 
-    This class represents the video product base type.
-    It is used to define the interface for video product base types.
+    This class represents the shot product base type.
+    It is used to define the interface for shot product base types.
     """
-    name = "video"
-    label = "Video"
-    description = "Video product base type."
-
-
-class Audio(ProductBaseType):
-    """Audio product base type.
-
-    This class represents the audio product base type.
-    It is used to define the interface for audio product base types.
-    """
-    name = "audio"
-    label = "Audio"
-    description = "Audio product base type."
-
-
-class Document(ProductBaseType):
-    """Document product base type.
-
-    This class represents the document product base type.
-    It is used to define the interface for document product base types.
-    """
-    name = "document"
-    label = "Document"
-    description = "Document product base type."
-
-
-class Geometry(ProductBaseType):
-    """Geometry product base type.
-
-    This class represents the geometry product base type.
-    It is used to define the interface for geometry product base types.
-    """
-    name = "geometry"
-    label = "Geometry"
-    description = "Geometry product base type."
+    name = "shot"
+    label = "Shot"
+    description = "Shot product base type."
 
 
 class Animation(ProductBaseType):
@@ -129,49 +178,12 @@ class Animation(ProductBaseType):
     description = "Animation product base type."
 
 
-class Workfile(ProductBaseType):
-    """Workfile product base type.
+class Rig(ProductBaseType):
+    """Rig product base type.
 
-    This class represents the workfile product base type.
-    It is used to define the interface for workfile product base types.
+    This class represents the rig product base type.
+    It is used to define the interface for rig product base types.
     """
-    name = "workfile"
-    label = "Workfile"
-    description = "Workfile product base type."
-
-
-class ProductBaseTypeFactory:
-    """Factory class for creating product base type instances.
-
-    This class is used to create instances of product base types.
-    It uses a mapping of product base type names to their corresponding
-    classes to create instances of the desired product base type.
-    """
-    _product_base_type_map: ClassVar[dict[str, ProductBaseType]] = {
-        "image": Image,
-        "video": Video,
-        "audio": Audio,
-        "document": Document,
-        "geometry": Geometry,
-        "animation": Animation,
-        "workfile": Workfile,
-    }
-
-    @classmethod
-    def create_product_base_type(cls, name: str) -> ProductBaseType:
-        """Create an instance of the specified product base type.
-
-        Args:
-            name (str): The name of the product base type.
-
-        Returns:
-            ProductBaseType: An instance of the specified product base type.
-
-        Raises:
-            ValueError: If the specified product base type does not exist.
-        """
-        if name not in cls._product_base_type_map:
-            msg = f"Product base type '{name}' does not exist."
-            raise ValueError(msg)
-
-        return cls._product_base_type_map[name]()
+    name = "rig"
+    label = "Rig"
+    description = "Rig product base type."
