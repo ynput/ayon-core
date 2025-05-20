@@ -1,3 +1,4 @@
+"""Get product name template and calculate product name."""
 from __future__ import annotations
 
 from typing import TYPE_CHECKING, Optional
