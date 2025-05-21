@@ -510,7 +510,6 @@ class ActionsWidget(QtWidgets.QWidget):
             self._controller.trigger_action(*args)
 
         self._start_animation(index)
-        self._start_animation(index)
 
     def _show_menu_on_group(self, action_id):
         action_items = self._model.get_group_items(action_id)
