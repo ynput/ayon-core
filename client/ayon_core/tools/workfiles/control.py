@@ -531,6 +531,7 @@ class BaseWorkfileController(
             folder_id,
             task_id,
             rootless_workdir,
+            workdir,
             filename,
             version,
             comment,
