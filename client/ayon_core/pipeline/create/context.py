@@ -55,6 +55,7 @@ from .exceptions import (
     HostMissRequiredMethod,
     UnavailableSharedData,
 )
+from .product_name import ProductContext
 from .structures import ConvertorItem, InstanceContextInfo, PublishAttributes
 
 if typing.TYPE_CHECKING:
@@ -106,7 +107,7 @@ class CreatorOperationInfo:
     creator_identifier: str
     creator_label: str
     message: str
-    traceback: str
+    traceback: Optional[str]
 
 
 _NOT_SET = object()
@@ -247,7 +248,7 @@ class CreateContext:  # noqa: PLR0904
 
         # Publish context plugins attributes and it's values
         self._publish_attributes = PublishAttributes(self, {})
-        self._original_context_data = {}
+        self._original_context_data: dict[str, Any] = {}
 
         # Validate host implementation
         # - defines if context is capable of handling context data
@@ -280,7 +281,7 @@ class CreateContext:  # noqa: PLR0904
         self.headless = headless
 
         # Instances by their ID
-        self._instances_by_id = {}
+        self._instances_by_id: dict[str, Any] = {}
 
         self.creator_discover_result = None
         self.convertor_discover_result = None
@@ -419,7 +420,7 @@ class CreateContext:  # noqa: PLR0904
         return set(IPublishHost.get_missing_publish_methods(host))
 
     @property
-    def host_is_valid(self):
+    def host_is_valid(self) -> bool:
         """Is host valid for creation."""
         return self._host_is_valid
 
@@ -1204,6 +1205,12 @@ class CreateContext:  # noqa: PLR0904
                 task_entity = ayon_api.get_task_by_name(
                     project_name, folder_entity["id"], current_task_name
                 )
+        # We require task in get_product_name so it is prudent to fail here
+        # if task is not set. However, AYON itself doesn't require task so
+        # maybe we should make it optional?
+        if task_entity is None:
+            msg = "Task was not found."
+            raise CreatorError(msg)
 
         if pre_create_data is None:
             pre_create_data = {}
@@ -1214,27 +1221,25 @@ class CreateContext:  # noqa: PLR0904
             precreate_attr_defs = creator.get_pre_create_attr_defs()
 
         # Create default values of precreate data
-        _pre_create_data = get_default_values(precreate_attr_defs)
+        pre_create_data = get_default_values(precreate_attr_defs)
         # Update passed precreate data to default values
         # TODO validate types
-        _pre_create_data.update(pre_create_data)
+        pre_create_data.update(pre_create_data)
 
         project_entity = self.get_current_project_entity()
-        args = (
-            project_name,
-            folder_entity,
-            task_entity,
-            variant,
-            self.host_name,
+        context = ProductContext(
+            project_name=project_name,
+            task_name=task_entity["name"] if task_entity else None,
+            task_type=task_entity["taskType"] if task_entity else None,
+            variant=variant,
+            host_name=self.host_name,
+            product_base_type=creator.product_base_type,
         )
         kwargs = {"project_entity": project_entity}
-        # Backwards compatibility for 'project_entity' argument
-        # - 'get_product_name' signature changed 24/07/08
-        if not is_func_signature_supported(
-            creator.get_product_name, *args, **kwargs
-        ):
-            kwargs.pop("project_entity")
-        product_name = creator.get_product_name(*args, **kwargs)
+
+        product_name = creator.get_product_name(
+            context
+        )
 
         instance_data = {
             "folderPath": folder_entity["path"],
@@ -2403,7 +2408,7 @@ class CreateContext:  # noqa: PLR0904
 
     def _bulk_publish_attrs_change_finished(
         self,
-        attr_info: Tuple[str, Union[str, None]],
+        attr_info: Tuple[str, Optional[str]],
         sender: Optional[str],
     ):
         if not attr_info:

@@ -1,5 +1,8 @@
+"""Functions for product name resolution."""
 from __future__ import annotations
 
+from copy import copy
+from dataclasses import dataclass
 from typing import TYPE_CHECKING, Optional
 
 import ayon_api
@@ -15,31 +18,52 @@ from .constants import DEFAULT_PRODUCT_TEMPLATE
 from .exceptions import TaskNotSetError, TemplateFillError
 
 if TYPE_CHECKING:
-    from ayon_core.pipeline.product_base_types import ProductBaseType
+    from ayon_core.pipeline.create.base_product_types import BaseProductType
+
+
+@dataclass
+class ProductContext:
+    """Product context for product name resolution.
+
+    To get the product name, we need to know the context in which the product
+    is created. This context is defined by the project name, task name,
+    task type, host name, product base type and variant. The context is
+    passed to the `get_product_name` function, which uses it to resolve the
+    product name based on the AYON settings.
+
+    Args:
+        project_name (str): Project name.
+        task_name (str): Task name.
+        task_type (str): Task type.
+        host_name (str): Host name.
+        product_base_type (BaseProductType): Product base type.
+        variant (str): Variant value.
+        product_type (Optional[str]): Product type.
+
+    """
+
+    project_name: str
+    task_name: str
+    task_type: str
+    host_name: str
+    product_base_type: BaseProductType
+    variant: str
+    product_type: Optional[str] = None
 
 
 def get_product_name_template(
-    project_name: str,
-    product_type: str,
-    task_name: str,
-    task_type: str,
-    host_name: str,
+    context: ProductContext,
     default_template: Optional[str] = None,
     project_settings: Optional[dict] = None
 ) -> str:
     """Get product name template based on passed context.
 
     Args:
-        project_name (str): Project on which the context lives.
-        product_type (str): Product type for which the product name is
-            calculated.
-        host_name (str): Name of host in which the product name is calculated.
-        task_name (str): Name of task in which context the product is created.
-        task_type (str): Type of task in which context the product is created.
-        default_template (Union[str, None]): Default template which is used if
+        context (ProductContext): Product context.
+        default_template (Optional[str]): Default template which is used if
             settings won't find any matching possibility. Constant
             'DEFAULT_PRODUCT_TEMPLATE' is used if not defined.
-        project_settings (Union[Dict[str, Any], None]): Prepared settings for
+        project_settings (Optional[Dict[str, Any]]): Prepared settings for
             project. Settings are queried if not passed.
 
     Returns:
@@ -47,33 +71,24 @@ def get_product_name_template(
 
     """
     if project_settings is None:
-        project_settings = get_project_settings(project_name)
+        project_settings = get_project_settings(context.project_name)
+
+    if not context.product_type:
+        context.product_type = context.product_base_type.name
+
     tools_settings = project_settings["core"]["tools"]
     profiles = tools_settings["creator"]["product_name_profiles"]
     filtering_criteria = {
-        "product_types": product_type,
-        "hosts": host_name,
-        "tasks": task_name,
-        "task_types": task_type
+        "product_types": context.product_type,
+        "hosts": context.host_name,
+        "tasks": context.task_name,
+        "task_types": context.task_type
     }
 
     matching_profile = filter_profiles(profiles, filtering_criteria)
     template = None
     if matching_profile:
-        # TODO remove formatting keys replacement
-        template = (
-            matching_profile["template"]
-            .replace("{task}", "{task[name]}")
-            .replace("{Task}", "{Task[name]}")
-            .replace("{TASK}", "{TASK[NAME]}")
-            .replace("{family}", "{product[type]}")
-            .replace("{Family}", "{Product[type]}")
-            .replace("{FAMILY}", "{PRODUCT[TYPE]}")
-            .replace("{asset}", "{folder[name]}")
-            .replace("{Asset}", "{Folder[name]}")
-            .replace("{ASSET}", "{FOLDER[NAME]}")
-        )
-
+        template = matching_profile["template"]
     # Make sure template is set (matching may have empty string)
     if not template:
         template = default_template or DEFAULT_PRODUCT_TEMPLATE
@@ -81,18 +96,12 @@ def get_product_name_template(
 
 
 def get_product_name(
-    project_name: str,
-    task_name: str,
-    task_type: str,
-    host_name: str,
-    product_type: str,
-    variant: str,
+    context: ProductContext,
     default_template: Optional[str] = None,
     dynamic_data: Optional[dict] = None,
     project_settings: Optional[dict] = None,
     product_type_filter: Optional[str] = None,
     project_entity: Optional[dict] = None,
-    product_base_type: Optional[ProductBaseType] = None,
 ) -> str:
     """Calculate product name based on passed context and AYON settings.
 
@@ -104,18 +113,8 @@ def get_product_name(
     That's main reason why so many arguments are required to calculate product
     name.
 
-    Todos:
-        Find better filtering options to avoid requirement of
-            argument 'family_filter'.
-
     Args:
-        project_name (str): Project name.
-        task_name (Union[str, None]): Task name.
-        task_type (Union[str, None]): Task type.
-        host_name (str): Host name.
-        product_type (str): Product type.
-        product_base_type (ProductBaseType): Product base type.
-        variant (str): In most of the cases it is user input during creation.
+        context (ProductContext): Product context.
         default_template (Optional[str]): Default template if any profile does
             not match passed context. Constant 'DEFAULT_PRODUCT_TEMPLATE'
             is used if is not passed.
@@ -138,56 +137,58 @@ def get_product_name(
             is not collected.
 
     """
-    if not product_type:
-        return ""
+    # Product type was mandatory. If it is missing, use name from base type
+    # to avoid breaking changes.
+    if context.product_type is None:
+        product_type = context.product_base_type.name
+
+    template_context = copy(context)
+    if product_type_filter:
+        template_context.product_type = product_type_filter
 
     template = get_product_name_template(
-        project_name,
-        product_type_filter or product_type,
-        task_name,
-        task_type,
-        host_name,
+        template_context,
         default_template=default_template,
         project_settings=project_settings
     )
     # Simple check of task name existence for template with {task} in
     #   - missing task should be possible only in Standalone publisher
-    if not task_name and "{task" in template.lower():
+    if not context.task_name and "{task" in template.lower():
         raise TaskNotSetError
 
     task_value = {
-        "name": task_name,
-        "type": task_type,
+        "name": context.task_name,
+        "type": context.task_type,
     }
 
     # task_value can be for backwards compatibility
     # single string or dict
     if "{task}" in template.lower():
-        task_value = task_name  # type: ignore[assignment]
+        task_value = context.task_name  # type: ignore[assignment]
 
     elif "{task[short]}" in template.lower():
         if project_entity is None:
-            project_entity = ayon_api.get_project(project_name)
+            project_entity = ayon_api.get_project(context.project_name)
         task_types_by_name = {
             task["name"]: task for task in
             project_entity["taskTypes"]
         }
-        task_short = task_types_by_name.get(task_type, {}).get("shortName")
+        task_short = task_types_by_name.get(
+            context.task_type, {}).get("shortName")
         task_value["short"] = task_short
 
     fill_pairs = {
-        "variant": variant,
+        "variant": context.variant,
         "family": product_type,
         "task": task_value,
         "product": {
             "type": product_type,
-            "base": product_base_type
+            "base": context.product_base_type.name
         }
     }
     if dynamic_data:
         # Dynamic data may override default values
-        for key, value in dynamic_data.items():
-            fill_pairs[key] = value
+        fill_pairs = dict(dynamic_data.items())
 
     try:
         return StringTemplate.format_strict_template(
