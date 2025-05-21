@@ -1,5 +1,6 @@
 import os
 import copy
+import uuid
 from dataclasses import dataclass, asdict
 from urllib.parse import urlencode, urlparse
 from typing import Any, Optional
@@ -244,6 +245,7 @@ class ActionsModel:
         error_message = None
         action_label = identifier
         action_items = self._get_action_items(project_name)
+        trigger_id = uuid.uuid4().hex
         try:
             action = self._actions[identifier]
             action_item = action_items[identifier]
@@ -251,6 +253,7 @@ class ActionsModel:
             self._controller.emit_event(
                 "action.trigger.started",
                 {
+                    "trigger_id": trigger_id,
                     "identifier": identifier,
                     "full_label": action_label,
                 }
@@ -265,6 +268,7 @@ class ActionsModel:
         self._controller.emit_event(
             "action.trigger.finished",
             {
+                "trigger_id": trigger_id,
                 "identifier": identifier,
                 "failed": failed,
                 "error_message": error_message,
@@ -307,10 +311,13 @@ class ActionsModel:
         if form_data is not None:
             context["formData"] = form_data
 
+        trigger_id = uuid.uuid4().hex
+        failed = False
         try:
             self._controller.emit_event(
                 "webaction.trigger.started",
                 {
+                    "trigger_id": trigger_id,
                     "identifier": identifier,
                     "full_label": action_label,
                 }
@@ -329,6 +336,7 @@ class ActionsModel:
             handle_response = self._handle_webaction_response(response.data)
 
         except Exception:
+            failed = True
             self.log.warning("Action trigger failed.", exc_info=True)
             handle_response = WebactionResponse(
                 "unknown",
@@ -338,8 +346,10 @@ class ActionsModel:
 
         data = handle_response.to_data()
         data.update({
+            "trigger_failed": failed,
+            "trigger_id": trigger_id,
             "identifier": identifier,
-            "action_label": action_label,
+            "full_label": action_label,
             "project_name": project_name,
             "folder_id": folder_id,
             "task_id": task_id,
