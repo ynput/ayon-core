@@ -295,8 +295,8 @@ def run_detached_process(args, **kwargs):
 
 
 def run_ayon_launcher_process(
-    *args, add_sys_paths=False, **kwargs
-):
+    *args, add_sys_paths: bool = False, **kwargs
+) -> str:
     """Execute AYON process with passed arguments and wait.
 
     Wrapper for 'run_process' which prepends AYON executable arguments
@@ -325,8 +325,8 @@ def run_ayon_launcher_process(
 
 
 def run_detached_ayon_launcher_process(
-    *args, add_sys_paths=False, **kwargs
-):
+    *args, add_sys_paths: bool = False, **kwargs
+) -> subprocess.Popen:
     """Execute AYON process with passed arguments and wait.
 
     Wrapper for 'run_process' which prepends AYON executable arguments
