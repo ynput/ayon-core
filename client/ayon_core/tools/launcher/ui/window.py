@@ -219,16 +219,16 @@ class LauncherWindow(QtWidgets.QWidget):
 
     def _on_action_trigger_started(self, event):
         self._show_toast_message(
-            "Running action: {}".format(event["full_label"]),
+            "Running: {}".format(event["full_label"]),
             message_id=event["trigger_id"],
         )
 
     def _on_action_trigger_finished(self, event):
         action_label = event["full_label"]
         if event["failed"]:
-            message = f"Failed to run action: {action_label}"
+            message = f"Failed to run: {action_label}"
         else:
-            message = f"Action finished: {action_label}"
+            message = f"Finished: {action_label}"
         self._show_toast_message(
             message,
             not event["failed"],
@@ -237,7 +237,7 @@ class LauncherWindow(QtWidgets.QWidget):
 
     def _on_webaction_trigger_started(self, event):
         self._show_toast_message(
-            "Running webaction: {}".format(event["full_label"]),
+            "Running: {}".format(event["full_label"]),
             message_id=event["trigger_id"],
         )
 
@@ -251,7 +251,7 @@ class LauncherWindow(QtWidgets.QWidget):
         # Avoid to show exception message
         if event["trigger_failed"]:
             self._show_toast_message(
-                f"Failed to run action: {action_label}",
+                f"Failed to run: {action_label}",
                 message_id=event["trigger_id"]
             )
             return
