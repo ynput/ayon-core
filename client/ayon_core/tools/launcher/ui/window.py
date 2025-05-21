@@ -267,7 +267,7 @@ class LauncherWindow(QtWidgets.QWidget):
             return
 
         if event["message"]:
-            self._show_toast_message(event["message"])
+            self._show_toast_message(event["message"], event["success"])
 
         if event["form"]:
             self._actions_widget.handle_webaction_form_event(event)
