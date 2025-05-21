@@ -1,3 +1,4 @@
+from __future__ import annotations
 import os
 import sys
 import subprocess
@@ -201,7 +202,9 @@ def clean_envs_for_ayon_process(env=None):
     return env
 
 
-def _prepare_ayon_launcher_env(add_sys_paths: bool, kwargs):
+def _prepare_ayon_launcher_env(
+    add_sys_paths: bool, kwargs: dict
+) -> dict[str, str]:
     env = kwargs.pop("env", None)
     # Keep env untouched if are passed and not empty
     if not env:
