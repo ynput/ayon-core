@@ -1,4 +1,5 @@
 from pydantic import validator
+from typing import Any
 
 from ayon_server.settings import (
     BaseSettingsModel,
@@ -9,8 +10,17 @@ from ayon_server.settings import (
     task_types_enum,
     anatomy_template_items_enum
 )
-
+from ayon_server.exceptions import BadRequestException
 from ayon_server.types import ColorRGBA_uint8
+
+
+def _handle_missing_frames_enum():
+    return [
+        {"value": "closest_existing", "label": "Use closest existing"},
+        {"value": "blank", "label": "Generate blank frame"},
+        {"value": "previous_version", "label": "Use previous version"},
+        {"value": "only_rendered", "label": "Use only rendered"},
+    ]
 
 
 class EnabledModel(BaseSettingsModel):
@@ -155,6 +165,78 @@ class CollectUSDLayerContributionsModel(BaseSettingsModel):
     @validator("contribution_layers")
     def validate_unique_outputs(cls, value):
         ensure_unique_names(value)
+        return value
+
+
+class ResolutionOptionsModel(BaseSettingsModel):
+    _layout = "compact"
+    width: int = SettingsField(
+        1920,
+        ge=0,
+        le=100000,
+        title="Width",
+        description=(
+            "Width resolution number value"),
+        placeholder="Width"
+    )
+    height: int = SettingsField(
+        1080,
+        title="Height",
+        ge=0,
+        le=100000,
+        description=(
+            "Height resolution number value"),
+        placeholder="Height"
+    )
+    pixel_aspect: float = SettingsField(
+        1.0,
+        title="Pixel aspect",
+        ge=0.0,
+        le=100000.0,
+        description=(
+            "Pixel Aspect resolution decimal number value"),
+        placeholder="Pixel aspect"
+    )
+
+
+def ensure_unique_resolution_option(
+        objects: list[Any], field_name: str | None = None) -> None:  # noqa: C901
+    """Ensure a list of objects have unique option attributes.
+
+    This function checks if the list of objects has unique 'width',
+    'height' and 'pixel_aspect' properties.
+    """
+    options = set()
+    for obj in objects:
+        item_test_text = f"{obj.width}x{obj.height}x{obj.pixel_aspect}"
+        if item_test_text in options:
+            raise BadRequestException(
+                f"Duplicate option '{item_test_text}'")
+
+        options.add(item_test_text)
+
+
+class CollectExplicitResolutionModel(BaseSettingsModel):
+    enabled: bool = SettingsField(True, title="Enabled")
+    product_types: list[str] = SettingsField(
+        default_factory=list,
+        title="Product types",
+        description=(
+            "Only activate the attribute for following product types."
+        )
+    )
+    options: list[ResolutionOptionsModel] = SettingsField(
+        default_factory=list,
+        title="Resolution choices",
+        description=(
+            "Available resolution choices to be displayed in "
+            "the publishers attribute."
+        )
+    )
+
+    @validator("options")
+    def validate_unique_resolution_options(cls, value):
+        ensure_unique_resolution_option(value)
         return value
 
 
@@ -643,6 +725,12 @@ class ExtractReviewOutputDefModel(BaseSettingsModel):
         default_factory=ExtractReviewLetterBox,
         title="Letter Box"
     )
+    fill_missing_frames: str = SettingsField(
+        title="Handle missing frames",
+        default="closest_existing",
+        description="How to handle gaps in sequence frame ranges.",
+        enum_resolver=_handle_missing_frames_enum
+    )
 
     @validator("name")
     def validate_name(cls, value):
@@ -997,6 +1085,10 @@ class PublishPuginsModel(BaseSettingsModel):
             title="Collect USD Layer Contributions",
         )
     )
+    CollectExplicitResolution: CollectExplicitResolutionModel = SettingsField(
+        default_factory=CollectExplicitResolutionModel,
+        title="Collect Explicit Resolution"
+    )
     ValidateEditorialAssetName: ValidateBaseModel = SettingsField(
         default_factory=ValidateBaseModel,
         title="Validate Editorial Asset Name"
@@ -1171,6 +1263,13 @@ DEFAULT_PUBLISH_VALUES = {
             },
         ]
     },
+    "CollectExplicitResolution": {
+        "enabled": True,
+        "product_types": [
+            "shot"
+        ],
+        "options": []
+    },
     "ValidateEditorialAssetName": {
         "enabled": True,
         "optional": False,
@@ -1288,7 +1387,8 @@ DEFAULT_PUBLISH_VALUES = {
                             "fill_color": [0, 0, 0, 1.0],
                             "line_thickness": 0,
                             "line_color": [255, 0, 0, 1.0]
-                        }
+                        },
+                        "fill_missing_frames": "closest_existing"
                     },
                     {
                         "name": "h264",
@@ -1338,7 +1438,8 @@ DEFAULT_PUBLISH_VALUES = {
                             "fill_color": [0, 0, 0, 1.0],
                             "line_thickness": 0,
                             "line_color": [255, 0, 0, 1.0]
-                        }
+                        },
+                        "fill_missing_frames": "closest_existing"
                     }
                 ]
             }
