@@ -54,7 +54,7 @@ class ExtractOTIOReview(
     # plugin default attributes
     to_width = 1280
     to_height = 720
-    output_ext = ".jpg"
+    output_ext = ".png"
 
     def process(self, instance):
         # Not all hosts can import these modules.
@@ -510,6 +510,12 @@ class ExtractOTIOReview(
                 "-tune", "stillimage"
             ])
 
+        if video or sequence:
+            command.extend([
+                "-vf", f"scale={self.to_width}:{self.to_height}:flags=lanczos",
+                "-compression_level", "5",
+            ])
+
         # add output attributes
         command.extend([
             "-start_number", str(out_frame_start)
@@ -520,9 +526,10 @@ class ExtractOTIOReview(
             input_extension
             and self.output_ext == input_extension
         ):
-            command.extend([
-                "-c", "copy"
-            ])
+            command.extend(["-c", "copy"])
+        else:
+            # For lossy formats, force re-encode
+            command.extend(["-pix_fmt", "rgba"])
 
         # add output path at the end
         command.append(output_path)
