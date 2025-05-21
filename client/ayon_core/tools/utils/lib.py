@@ -550,7 +550,7 @@ class _IconsCache:
                 icon = QtGui.QIcon(pix)
             except Exception:
                 log.warning(
-                    f"Failed to download image '{url}'", exc_info=True
+                    f"Failed to download image '%s'", url, exc_info=True
                 )
                 icon = None
 
