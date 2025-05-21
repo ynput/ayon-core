@@ -620,7 +620,6 @@ def _save_workfile(
             workfile_path,
             folder_entity,
             task_entity,
-            open_workfile=True,
         )
 
     if not description:
