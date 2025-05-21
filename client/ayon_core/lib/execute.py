@@ -346,7 +346,8 @@ def run_detached_ayon_launcher_process(
         **kwargs (Any): Keyword arguments for subprocess.Popen.
 
     Returns:
-        str: Full output of subprocess concatenated stdout and stderr.
+        subprocess.Popen: Pointer to launched process but it is possible that
+            launched process is already killed (on linux).
 
     """
     args = get_ayon_launcher_args(*args)
