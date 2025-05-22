@@ -206,6 +206,7 @@ class ActionsModel:
         self._discovered_actions = None
         self._actions = None
         self._action_items = {}
+        self._webaction_items.reset()
 
         self._controller.emit_event("actions.refresh.started")
         self._get_action_objects()
