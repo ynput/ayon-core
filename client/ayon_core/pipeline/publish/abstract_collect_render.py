@@ -49,10 +49,6 @@ class RenderInstance(object):
     handleStart = attr.ib(default=None)  # start frame
     handleEnd = attr.ib(default=None)  # start frame
 
-    # for software (like Harmony) where frame range cannot be set by DB
-    # handles need to be propagated if exist
-    ignoreFrameHandleCheck = attr.ib(default=False)
-
     # --------------------
     # With default values
     # metadata
@@ -167,44 +163,21 @@ class AbstractCollectRender(
                     "product is not supported"
                 )
 
-            frame_start_render = int(render_instance.frameStart)
-            frame_end_render = int(render_instance.frameEnd)
-            # TODO: Refactor hacky frame range workaround below
-            if (render_instance.ignoreFrameHandleCheck or
-                    int(context.data['frameStartHandle']) == frame_start_render
-                    and int(context.data['frameEndHandle']) == frame_end_render):  # noqa: W503, E501
-                # only for Harmony where frame range cannot be set by DB
-                handle_start = context.data['handleStart']
-                handle_end = context.data['handleEnd']
-                frame_start = context.data['frameStart']
-                frame_end = context.data['frameEnd']
-                frame_start_handle = context.data['frameStartHandle']
-                frame_end_handle = context.data['frameEndHandle']
-            elif (hasattr(render_instance, "frameStartHandle")
-                  and hasattr(render_instance, "frameEndHandle")):
-                handle_start = int(render_instance.handleStart)
-                handle_end = int(render_instance.handleEnd)
-                frame_start = int(render_instance.frameStart)
-                frame_end = int(render_instance.frameEnd)
-                frame_start_handle = int(render_instance.frameStartHandle)
-                frame_end_handle = int(render_instance.frameEndHandle)
-            else:
-                handle_start = 0
-                handle_end = 0
-                frame_start = frame_start_render
-                frame_end = frame_end_render
-                frame_start_handle = frame_start_render
-                frame_end_handle = frame_end_render
-
             data = {
-                "handleStart": handle_start,
-                "handleEnd": handle_end,
-                "frameStart": frame_start,
-                "frameEnd": frame_end,
-                "frameStartHandle": frame_start_handle,
-                "frameEndHandle": frame_end_handle,
+                # Deal with frames
+                "handleStart": int(render_instance.handleStart),
+                "handleEnd": int(render_instance.handleEnd),
+                "frameStart": int(render_instance.frameStart),
+                "frameEnd": int(render_instance.frameEnd),
+                "frameStartHandle": int(
+                    getattr(
+                        render_instance, "frameStartHandle", render_instance.frameStart
+                    )
+                ),
+                "frameEndHandle": int(
+                    getattr(render_instance, "frameEndHandle", render_instance.frameEnd)
+                ),
                 "byFrameStep": int(render_instance.frameStep),
-
                 "author": context.data["user"],
                 # Add source to allow tracing back to the scene from
                 # which was submitted originally
