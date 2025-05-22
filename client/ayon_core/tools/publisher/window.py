@@ -856,11 +856,7 @@ class PublisherWindow(QtWidgets.QDialog):
 
     def _invalidate_comment_field(self):
         self._comment_invalid_timer.start()
-        self._comment_input.setStyleSheet(
-            "border-style: solid;"
-            "border-width: 1px;"
-            "border-color: #DD2020"
-        )
+        self._comment_input.setStyleSheet("border-color: #DD2020")
         # Set focus so user can start typing and is pointed towards the field
         self._comment_input.setFocus()
 
