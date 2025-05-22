@@ -1,5 +1,4 @@
 import os
-import copy
 import uuid
 from dataclasses import dataclass, asdict
 from urllib.parse import urlencode, urlparse
@@ -23,81 +22,7 @@ from ayon_core.pipeline.actions import (
     register_launcher_action_path,
 )
 
-
-class ActionItem:
-    """Item representing single action to trigger.
-
-    Todos:
-        Get rid of application specific logic.
-
-    Args:
-        action_type (Literal["webaction", "local"]): Type of action.
-        identifier (str): Unique identifier of action item.
-        label (str): Action label.
-        variant_label (Union[str, None]): Variant label, full label is
-            concatenated with space. Actions are grouped under single
-            action if it has same 'label' and have set 'variant_label'.
-        icon (dict[str, str]): Icon definition.
-        order (int): Action ordering.
-        addon_name (str): Addon name.
-        addon_version (str): Addon version.
-        config_fields (list[dict]): Config fields for webaction.
-        full_label (Optional[str]): Full label, if not set it is generated
-            from 'label' and 'variant_label'.
-    """
-
-    def __init__(
-        self,
-        action_type,
-        identifier,
-        label,
-        variant_label,
-        icon,
-        order,
-        addon_name=None,
-        addon_version=None,
-        config_fields=None,
-        full_label=None
-    ):
-        if config_fields is None:
-            config_fields = []
-        self.action_type = action_type
-        self.identifier = identifier
-        self.label = label
-        self.variant_label = variant_label
-        self.icon = icon
-        self.order = order
-        self.addon_name = addon_name
-        self.addon_version = addon_version
-        self.config_fields = config_fields
-        self._full_label = full_label
-
-    def copy(self):
-        return self.from_data(self.to_data())
-
-    @property
-    def full_label(self):
-        if self._full_label is None:
-            if self.variant_label:
-                self._full_label = " ".join([self.label, self.variant_label])
-            else:
-                self._full_label = self.label
-        return self._full_label
-
-    def to_data(self):
-        return {
-            "identifier": self.identifier,
-            "label": self.label,
-            "variant_label": self.variant_label,
-            "icon": self.icon,
-            "order": self.order,
-            "full_label": self._full_label,
-            "config_fields": copy.deepcopy(self.config_fields),
-        }
-
-    @classmethod
-    def from_data(cls, data):
-        return cls(**data)
+from ayon_core.tools.launcher.abstract import ActionItem
 
 
 @dataclass
