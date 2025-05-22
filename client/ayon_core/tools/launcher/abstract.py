@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import copy
 from abc import ABC, abstractmethod
+from dataclasses import dataclass
 from typing import Optional, Any
 
 from ayon_core.tools.common_models import (
@@ -11,6 +12,18 @@ from ayon_core.tools.common_models import (
     TaskItem,
     TaskTypeItem,
 )
+
+
+@dataclass
+class WebactionContext:
+    """Context used for methods related to webactions."""
+    identifier: str
+    project_name: str
+    folder_id: str
+    task_id: str
+    addon_name: str
+    addon_version: str
+
 
 class ActionItem:
     """Item representing single action to trigger.
@@ -417,25 +430,15 @@ class AbstractLauncherFrontEnd(AbstractLauncherCommon):
     @abstractmethod
     def trigger_webaction(
         self,
-        identifier,
-        project_name,
-        folder_id,
-        task_id,
-        action_label,
-        addon_name,
-        addon_version,
-        form_data=None,
+        context: WebactionContext,
+        action_label: str,
+        form_data: Optional[dict[str, Any]] = None,
     ):
         """Trigger action on given context.
 
         Args:
-            identifier (str): Action identifier.
-            project_name (Union[str, None]): Project name.
-            folder_id (Union[str, None]): Folder id.
-            task_id (Union[str, None]): Task id.
+            context (WebactionContext): Webaction context.
             action_label (str): Action label.
-            addon_name (str): Addon name.
-            addon_version (str): Addon version.
             form_data (Optional[dict[str, Any]]): Form values of action.
 
         """
@@ -443,27 +446,32 @@ class AbstractLauncherFrontEnd(AbstractLauncherCommon):
 
     @abstractmethod
     def get_action_config_values(
-        self,
-        action_id,
-        project_name,
-        folder_id,
-        task_id,
-        addon_name,
-        addon_version,
-    ):
+        self, context: WebactionContext
+    ) -> dict[str, Any]:
+        """Get action config values.
+
+        Args:
+            context (WebactionContext): Webaction context.
+
+        Returns:
+            dict[str, Any]: Action config values.
+
+        """
         pass
 
     @abstractmethod
     def set_action_config_values(
         self,
-        action_id,
-        project_name,
-        folder_id,
-        task_id,
-        addon_name,
-        addon_version,
-        values,
+        context: WebactionContext,
+        values: dict[str, Any],
     ):
+        """Set action config values.
+
+        Args:
+            context (WebactionContext): Webaction context.
+            values (dict[str, Any]): Action config values.
+
+        """
         pass
 
     @abstractmethod

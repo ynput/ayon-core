@@ -16,6 +16,7 @@ from ayon_core.lib.attribute_definitions import (
 from ayon_core.tools.flickcharm import FlickCharm
 from ayon_core.tools.utils import get_qt_icon
 from ayon_core.tools.attribute_defs import AttributeDefinitionsDialog
+from ayon_core.tools.launcher.abstract import WebactionContext
 
 from .resources import get_options_image_path
 
@@ -428,13 +429,15 @@ class ActionsWidget(QtWidgets.QWidget):
             return
         form_data = dialog.get_values()
         self._controller.trigger_webaction(
-            identifier,
-            event["project_name"],
-            event["folder_id"],
-            event["task_id"],
+            WebactionContext(
+                identifier,
+                event["project_name"],
+                event["folder_id"],
+                event["task_id"],
+                event["addon_name"],
+                event["addon_version"],
+            ),
             event["action_label"],
-            event["addon_name"],
-            event["addon_version"],
             form_data,
         )
 
@@ -502,12 +505,20 @@ class ActionsWidget(QtWidgets.QWidget):
             addon_name = index.data(ACTION_ADDON_NAME_ROLE)
             addon_version = index.data(ACTION_ADDON_VERSION_ROLE)
 
-        args = [action_id, project_name, folder_id, task_id]
         if action_type == "webaction":
-            args.extend([action_label, addon_name, addon_version])
-            self._controller.trigger_webaction(*args)
+            context = WebactionContext(
+                action_id,
+                project_name,
+                folder_id,
+                task_id,
+                addon_name,
+                addon_version
+            )
+            self._controller.trigger_webaction(context, action_label)
         else:
-            self._controller.trigger_action(*args)
+            self._controller.trigger_action(
+                action_id, project_name, folder_id, task_id
+            )
 
         self._start_animation(index)
 
@@ -547,7 +558,7 @@ class ActionsWidget(QtWidgets.QWidget):
         task_id = self._model.get_selected_task_id()
         addon_name = index.data(ACTION_ADDON_NAME_ROLE)
         addon_version = index.data(ACTION_ADDON_VERSION_ROLE)
-        values = self._controller.get_action_config_values(
+        context = WebactionContext(
             action_id,
             project_name=project_name,
             folder_id=folder_id,
@@ -555,6 +566,7 @@ class ActionsWidget(QtWidgets.QWidget):
             addon_name=addon_name,
             addon_version=addon_version,
         )
+        values = self._controller.get_action_config_values(context)
 
         dialog = self._create_attrs_dialog(
             config_fields,
@@ -567,15 +579,7 @@ class ActionsWidget(QtWidgets.QWidget):
         if result != QtWidgets.QDialog.Accepted:
             return
         new_values = dialog.get_values()
-        self._controller.set_action_config_values(
-            action_id,
-            project_name=project_name,
-            folder_id=folder_id,
-            task_id=task_id,
-            addon_name=addon_name,
-            addon_version=addon_version,
-            values=new_values,
-        )
+        self._controller.set_action_config_values(context, new_values)
 
     def _create_attrs_dialog(
         self,

@@ -149,65 +149,16 @@ class BaseLauncherController(
             task_id,
         )
 
-    def trigger_webaction(
-        self,
-        identifier,
-        project_name,
-        folder_id,
-        task_id,
-        action_label,
-        addon_name,
-        addon_version,
-        form_data=None,
-    ):
+    def trigger_webaction(self, context, action_label, form_data=None):
         self._actions_model.trigger_webaction(
-            identifier,
-            project_name,
-            folder_id,
-            task_id,
-            action_label,
-            addon_name,
-            addon_version,
-            form_data,
+            context, action_label, form_data
         )
 
-    def get_action_config_values(
-        self,
-        action_id,
-        project_name,
-        folder_id,
-        task_id,
-        addon_name,
-        addon_version,
-    ):
-        return self._actions_model.get_action_config_values(
-            action_id,
-            project_name,
-            folder_id,
-            task_id,
-            addon_name,
-            addon_version,
-        )
+    def get_action_config_values(self, context):
+        return self._actions_model.get_action_config_values(context)
 
-    def set_action_config_values(
-        self,
-        action_id,
-        project_name,
-        folder_id,
-        task_id,
-        addon_name,
-        addon_version,
-        values,
-    ):
-        return self._actions_model.set_action_config_values(
-            action_id,
-            project_name,
-            folder_id,
-            task_id,
-            addon_name,
-            addon_version,
-            values,
-        )
+    def set_action_config_values(self, context, values):
+        return self._actions_model.set_action_config_values(context, values)
 
     # General methods
     def refresh(self):
