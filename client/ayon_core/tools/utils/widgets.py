@@ -143,10 +143,18 @@ class MarkdownLabel(QtWidgets.QLabel):
         # Enable word wrap by default
         self.setWordWrap(True)
 
+        text_format_available = hasattr(QtCore.Qt, "MarkdownText")
+        if text_format_available:
+            self.setTextFormat(QtCore.Qt.MarkdownText)
+
+        self._text_format_available = text_format_available
+
         self.setText(self.text())
 
     def setText(self, text):
-        super().setText(self._md_to_html(text))
+        if not self._text_format_available:
+            text = self._md_to_html(text)
+        super().setText(text)
 
     @staticmethod
     def _md_to_html(text):
