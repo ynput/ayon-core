@@ -189,7 +189,7 @@ class ActionsModel:
         self._actions = None
         self._action_items = {}
         self._webaction_items = NestedCacheItem(
-            levels=2, default_factory=list
+            levels=2, default_factory=list, lifetime=20,
         )
 
         self._addons_manager = None
