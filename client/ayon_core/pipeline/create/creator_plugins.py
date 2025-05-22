@@ -1,10 +1,11 @@
 """Definition of creator plugins."""
+from __future__ import annotations
+
 import collections
 import copy
-import logging
 import os
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING, Any, Dict, Optional
+from typing import TYPE_CHECKING, Any, ClassVar, Optional
 
 from ayon_core.lib import Logger, get_version_from_path
 from ayon_core.pipeline.plugin_discover import (
@@ -27,6 +28,9 @@ from .utils import get_next_versions_for_instances
 
 
 if TYPE_CHECKING:
+    import logging
+
+    from ayon_core.host import HostBase
     from ayon_core.lib import AbstractAttrDef
     from .context import CreateContext, UpdateData  # noqa: F401
 
@@ -76,12 +80,18 @@ class ProductConvertorPlugin(ABC):
         return self._log
 
     @property
-    def host(self):
+    def host(self) -> HostBase:
+        """Host definition.
+
+        Returns:
+            HostBase: Host which initialized the plugin.
+
+        """
         return self._create_context.host
 
     @property
     @abstractmethod
-    def identifier(self):
+    def identifier(self) -> str:
         """Converted identifier.
 
         Returns:
@@ -89,7 +99,7 @@ class ProductConvertorPlugin(ABC):
         """
 
     @abstractmethod
-    def find_instances(self):
+    def find_instances(self) -> None:
         """Look for legacy instances in the scene.
 
         Should call 'add_convertor_item' if there is at least one instance to
@@ -97,20 +107,21 @@ class ProductConvertorPlugin(ABC):
         """
 
     @abstractmethod
-    def convert(self):
+    def convert(self) -> None:
         """Conversion code."""
 
     @property
-    def create_context(self):
+    def create_context(self) -> CreateContext:
         """Quick access to create context.
 
         Returns:
             CreateContext: Context which initialized the plugin.
+
         """
         return self._create_context
 
     @property
-    def collection_shared_data(self):
+    def collection_shared_data(self) -> dict[str, Any]:
         """Access to shared data that can be used during 'find_instances'.
 
         Returns:
@@ -118,23 +129,25 @@ class ProductConvertorPlugin(ABC):
 
         Raises:
             UnavailableSharedData: When called out of collection phase.
+
         """
         return self._create_context.collection_shared_data
 
-    def add_convertor_item(self, label):
+    def add_convertor_item(self, label: str) -> None:
         """Add item to CreateContext.
 
         Args:
             label (str): Label of item which will show in UI.
+
         """
         self._create_context.add_convertor_item(self.identifier, label)
 
-    def remove_convertor_item(self):
+    def remove_convertor_item(self) -> None:
         """Remove legacy item from create context when conversion finished."""
         self._create_context.remove_convertor_item(self.identifier)
 
 
-class BaseCreator(ABC):
+class BaseCreator(ABC):  # noqa: PLR0904
     """Plugin that create and modify instance data before publishing process.
 
     We should maybe find better name as creation is only one part of its logic
@@ -173,7 +186,7 @@ class BaseCreator(ABC):
     # Instance attribute definitions that can be changed per instance
     # - returns list of attribute definitions from
     #       `ayon_core.lib.attribute_definitions`
-    instance_attr_defs: "list[AbstractAttrDef]" = []
+    instance_attr_defs: ClassVar[list[AbstractAttrDef]] = []
 
     # Filtering by host name - can be used to be filtered by host name
     # - used on all hosts when set to 'None' for Backwards compatibility
@@ -188,8 +201,20 @@ class BaseCreator(ABC):
     settings_name: Optional[str] = None
 
     def __init__(
-        self, project_settings, create_context, headless=False
+        self,
+        project_settings: dict[str, Any],
+        create_context: CreateContext,
+        *,
+        headless: bool = False
     ):
+        """Base creator constructor.
+
+        Args:
+            project_settings (dict[str, Any]): Project settings.
+            create_context (CreateContext): Context which initialized creator.
+            headless (bool): Running in headless mode.
+
+        """
         # Reference to CreateContext
         self.create_context = create_context
         self.project_settings = project_settings
@@ -202,7 +227,10 @@ class BaseCreator(ABC):
         self.register_callbacks()
 
     @staticmethod
-    def _get_settings_values(project_settings, category_name, plugin_name):
+    def _get_settings_values(
+            project_settings: dict[str, Any],
+            category_name: str,
+            plugin_name: str) -> Optional[dict[str, Any]]:
         """Helper method to get settings values.
 
         Args:
@@ -223,13 +251,18 @@ class BaseCreator(ABC):
 
         return create_settings.get(plugin_name)
 
-    def apply_settings(self, project_settings):
+    def apply_settings(self, project_settings: dict[str, Any]) -> None:
         """Method called on initialization of plugin to apply settings.
 
         Default implementation tries to auto-apply settings values if are
-            in expected hierarchy.
+        in expected hierarchy.
 
-        Data hierarchy to auto-apply settings:
+        Args:
+            project_settings (dict[str, Any]): Project settings.
+
+        Example:
+            Data hierarchy to auto-apply settings::
+
             ├─ {self.settings_category}                 - Root key in settings
             │ └─ "create"                               - Hardcoded key
             │   └─ {self.settings_name} | {class name}  - Name of plugin
@@ -238,7 +271,8 @@ class BaseCreator(ABC):
         It is mandatory to define 'settings_category' attribute. Attribute
         'settings_name' is optional and class name is used if is not defined.
 
-        Example data:
+        Example data::
+
             ProjectSettings {
                 "maya": {                    # self.settings_category
                     "create": {              # Hardcoded key
@@ -257,6 +291,7 @@ class BaseCreator(ABC):
 
         Args:
             project_settings (dict[str, Any]): Project settings.
+
         """
         settings_category = self.settings_category
         if not settings_category:
@@ -266,7 +301,9 @@ class BaseCreator(ABC):
         settings_name = self.settings_name or cls_name
 
         settings = self._get_settings_values(
-            project_settings, settings_category, settings_name
+            project_settings: dict[str, Any],
+            settings_category: str,
+            settings_name: str
         )
         if settings is None:
             self.log.debug(f"No settings found for {cls_name}")
