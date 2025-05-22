@@ -842,16 +842,18 @@ class PublisherWindow(QtWidgets.QDialog):
     def _validate_comment(self) -> bool:
         # Validate comment length
         comment_def = self._controller.get_comment_def()
-        if comment_def.minimum_chars_required:
-            char_count = len(self._comment_input.text())
-            if char_count < comment_def.minimum_chars_required:
-                self._overlay_object.add_message(
-                    "Please enter a comment of at least "
-                    f"{comment_def.minimum_chars_required} characters",
-                    message_type="error"
-                )
-                self._invalidate_comment_field()
-                return False
+        char_count = len(self._comment_input.text())
+        if (
+            comment_def.minimum_chars_required
+            and char_count < comment_def.minimum_chars_required
+        ):
+            self._overlay_object.add_message(
+                "Please enter a comment of at least "
+                f"{comment_def.minimum_chars_required} characters",
+                message_type="error"
+            )
+            self._invalidate_comment_field()
+            return False
         return True
 
     def _invalidate_comment_field(self):
