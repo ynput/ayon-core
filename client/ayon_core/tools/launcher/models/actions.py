@@ -21,8 +21,7 @@ from ayon_core.pipeline.actions import (
     LauncherActionSelection,
     register_launcher_action_path,
 )
-
-from ayon_core.tools.launcher.abstract import ActionItem
+from ayon_core.tools.launcher.abstract import ActionItem, WebactionContext
 
 
 @dataclass
@@ -202,19 +201,16 @@ class ActionsModel:
             }
         )
 
-    def trigger_webaction(
-        self,
-        identifier,
-        project_name,
-        folder_id,
-        task_id,
-        action_label,
-        addon_name,
-        addon_version,
-        form_data,
-    ):
+    def trigger_webaction(self, context, action_label, form_data):
         entity_type = None
         entity_ids = []
+        identifier = context.identifier
+        folder_id = context.folder_id
+        task_id = context.task_id
+        project_name = context.project_name
+        addon_name = context.addon_name
+        addon_version = context.addon_version
+
         if task_id:
             entity_type = "task"
             entity_ids.append(task_id)
@@ -229,13 +225,13 @@ class ActionsModel:
             "variant": self._variant,
         }
         url = f"actions/execute?{urlencode(query)}"
-        context = {
+        request_data = {
             "projectName": project_name,
             "entityType": entity_type,
             "entityIds": entity_ids,
         }
         if form_data is not None:
-            context["formData"] = form_data
+            request_data["formData"] = form_data
 
         trigger_id = uuid.uuid4().hex
         failed = False
@@ -257,7 +253,9 @@ class ActionsModel:
                 headers = None
             else:
                 headers["referer"] = conn.get_base_url()
-            response = ayon_api.raw_post(url, headers=headers, json=context)
+            response = ayon_api.raw_post(
+                url, headers=headers, json=request_data
+            )
             response.raise_for_status()
             handle_response = self._handle_webaction_response(response.data)
 
@@ -287,30 +285,24 @@ class ActionsModel:
             data,
         )
 
-    def get_action_config_values(
-        self,
-        identifier,
-        project_name,
-        folder_id,
-        task_id,
-        addon_name,
-        addon_version,
-    ):
-        selection = self._prepare_selection(project_name, folder_id, task_id)
+    def get_action_config_values(self, context: WebactionContext):
+        selection = self._prepare_selection(
+            context.project_name, context.folder_id, context.task_id
+        )
         if not selection.is_project_selected:
             return {}
 
-        context = self._get_webaction_context(selection)
+        request_data = self._get_webaction_request_data(selection)
 
         query = {
-            "addonName": addon_name,
-            "addonVersion": addon_version,
-            "identifier": identifier,
+            "addonName": context.addon_name,
+            "addonVersion": context.addon_version,
+            "identifier": context.identifier,
             "variant": self._variant,
         }
         url = f"actions/config?{urlencode(query)}"
         try:
-            response = ayon_api.post(url, **context)
+            response = ayon_api.post(url, **request_data)
             response.raise_for_status()
         except Exception:
             self.log.warning(
@@ -320,32 +312,25 @@ class ActionsModel:
             return {}
         return response.data
 
-    def set_action_config_values(
-        self,
-        identifier,
-        project_name,
-        folder_id,
-        task_id,
-        addon_name,
-        addon_version,
-        values,
-    ):
-        selection = self._prepare_selection(project_name, folder_id, task_id)
+    def set_action_config_values(self, context, values):
+        selection = self._prepare_selection(
+            context.project_name, context.folder_id, context.task_id
+        )
         if not selection.is_project_selected:
             return {}
 
-        context = self._get_webaction_context(selection)
-        context["value"] = values
+        request_data = self._get_webaction_request_data(selection)
+        request_data["value"] = values
 
         query = {
-            "addonName": addon_name,
-            "addonVersion": addon_version,
-            "identifier": identifier,
+            "addonName": context.addon_name,
+            "addonVersion": context.addon_version,
+            "identifier": context.identifier,
             "variant": self._variant,
         }
         url = f"actions/config?{urlencode(query)}"
         try:
-            response = ayon_api.post(url, **context)
+            response = ayon_api.post(url, **request_data)
             response.raise_for_status()
         except Exception:
             self.log.warning(
@@ -371,7 +356,7 @@ class ActionsModel:
             project_settings=project_settings,
         )
 
-    def _get_webaction_context(self, selection: LauncherActionSelection):
+    def _get_webaction_request_data(self, selection: LauncherActionSelection):
         if not selection.is_project_selected:
             return None
 
@@ -404,18 +389,18 @@ class ActionsModel:
         if not selection.is_project_selected:
             return []
 
-        context = self._get_webaction_context(selection)
+        request_data = self._get_webaction_request_data(selection)
         project_name = selection.project_name
         entity_id = None
-        if context["entityIds"]:
-            entity_id = context["entityIds"][0]
+        if request_data["entityIds"]:
+            entity_id = request_data["entityIds"][0]
 
         cache: CacheItem = self._webaction_items[project_name][entity_id]
         if cache.is_valid:
             return cache.get_data()
 
         try:
-            response = ayon_api.post("actions/list", **context)
+            response = ayon_api.post("actions/list", **request_data)
             response.raise_for_status()
         except Exception:
             self.log.warning("Failed to collect webactions.", exc_info=True)
