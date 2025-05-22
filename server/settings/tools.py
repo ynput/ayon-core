@@ -342,14 +342,6 @@ class CustomStagingDirProfileModel(BaseSettingsModel):
 
 
 class PublishToolModel(BaseSettingsModel):
-    comment_minimum_required_chars: int = SettingsField(
-        0,
-        title="Publish comment minimum required characters",
-        description=(
-            "Minimum number of characters required in the comment field "
-            "before the publisher UI is allowed to continue publishing"
-        )
-    )
     template_name_profiles: list[PublishTemplateNameProfile] = SettingsField(
         default_factory=list,
         title="Template name profiles"
@@ -364,6 +356,14 @@ class PublishToolModel(BaseSettingsModel):
         SettingsField(
             default_factory=list,
             title="Custom Staging Dir Profiles"
+        )
+    )
+    comment_minimum_required_chars: int = SettingsField(
+        0,
+        title="Publish comment minimum required characters",
+        description=(
+            "Minimum number of characters required in the comment field "
+            "before the publisher UI is allowed to continue publishing"
         )
     )
 
@@ -578,7 +578,6 @@ DEFAULT_TOOLS_VALUES = {
         "product_type_filter_profiles": []
     },
     "publish": {
-        "comment_minimum_required_chars": 0,
         "template_name_profiles": [
             {
                 "product_types": [],
@@ -680,6 +679,7 @@ DEFAULT_TOOLS_VALUES = {
                 "task_names": [],
                 "template_name": "simpleUnrealTextureHero"
             }
-        ]
+        ],
+        "comment_minimum_required_chars": 0,
     }
 }
