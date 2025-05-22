@@ -171,7 +171,6 @@ def save_workfile_info(
     username: Optional[str] = None,
     workfile_entities: Optional[list[dict[str, Any]]] = None,
 ):
-    # TODO create pipeline function for this
     if workfile_entities is None:
         workfile_entities = list(ayon_api.get_workfiles_info(
             project_name,
