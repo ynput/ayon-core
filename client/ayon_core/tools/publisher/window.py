@@ -842,7 +842,7 @@ class PublisherWindow(QtWidgets.QDialog):
     def _validate_comment(self) -> bool:
         # Validate comment length
         comment_def = self._controller.get_comment_def()
-        char_count = len(self._comment_input.text())
+        char_count = len(self._comment_input.text().strip())
         if (
             comment_def.minimum_chars_required
             and char_count < comment_def.minimum_chars_required
