@@ -830,16 +830,16 @@ class PublisherWindow(QtWidgets.QDialog):
         self._controller.set_comment(self._comment_input.text())
 
     def _on_validate_clicked(self):
-        if self._start_publish_preflight() and self._save_changes(False):
+        if self._validate_comment() and self._save_changes(False):
             self._set_publish_comment()
             self._controller.validate()
 
     def _on_publish_clicked(self):
-        if self._start_publish_preflight() and self._save_changes(False):
+        if self._validate_comment() and self._save_changes(False):
             self._set_publish_comment()
             self._controller.publish()
 
-    def _start_publish_preflight(self) -> bool:
+    def _validate_comment(self) -> bool:
         # Validate comment length
         comment_def = self._controller.get_comment_def()
         if comment_def.minimum_chars_required:
