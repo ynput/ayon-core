@@ -1,4 +1,81 @@
+from __future__ import annotations
+
+import copy
 from abc import ABC, abstractmethod
+from typing import Optional, Any
+
+
+class ActionItem:
+    """Item representing single action to trigger.
+
+    Args:
+        action_type (Literal["webaction", "local"]): Type of action.
+        identifier (str): Unique identifier of action item.
+        label (str): Action label.
+        variant_label (Union[str, None]): Variant label, full label is
+            concatenated with space. Actions are grouped under single
+            action if it has same 'label' and have set 'variant_label'.
+        icon (dict[str, str]): Icon definition.
+        order (int): Action ordering.
+        addon_name (Optional[str]): Addon name.
+        addon_version (Optional[str]): Addon version.
+        config_fields (Optional[list[dict]]): Config fields for webaction.
+        full_label (Optional[str]): Full label, if not set it is generated
+            from 'label' and 'variant_label'.
+
+    """
+    def __init__(
+        self,
+        action_type: str,
+        identifier: str,
+        label: str,
+        variant_label: Optional[str],
+        icon: dict[str, str],
+        order: int,
+        addon_name: Optional[str] = None,
+        addon_version: Optional[str] = None,
+        config_fields: Optional[list[dict]] = None,
+        full_label: Optional[str] = None,
+    ):
+        if config_fields is None:
+            config_fields = []
+        self.action_type = action_type
+        self.identifier = identifier
+        self.label = label
+        self.variant_label = variant_label
+        self.icon = icon
+        self.order = order
+        self.addon_name = addon_name
+        self.addon_version = addon_version
+        self.config_fields = config_fields
+        self._full_label = full_label
+
+    def copy(self):
+        return self.from_data(self.to_data())
+
+    @property
+    def full_label(self):
+        if self._full_label is None:
+            if self.variant_label:
+                self._full_label = " ".join([self.label, self.variant_label])
+            else:
+                self._full_label = self.label
+        return self._full_label
+
+    def to_data(self) -> dict[str, Any]:
+        return {
+            "identifier": self.identifier,
+            "label": self.label,
+            "variant_label": self.variant_label,
+            "icon": self.icon,
+            "order": self.order,
+            "full_label": self._full_label,
+            "config_fields": copy.deepcopy(self.config_fields),
+        }
+
+    @classmethod
+    def from_data(cls, data: dict[str, Any]) -> "ActionItem":
+        return cls(**data)
 
 
 class AbstractLauncherCommon(ABC):
