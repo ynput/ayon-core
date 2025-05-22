@@ -171,11 +171,17 @@ class AbstractCollectRender(
                 "frameEnd": int(render_instance.frameEnd),
                 "frameStartHandle": int(
                     getattr(
-                        render_instance, "frameStartHandle", render_instance.frameStart
+                        render_instance,
+                        "frameStartHandle",
+                        render_instance.frameStart,
                     )
                 ),
                 "frameEndHandle": int(
-                    getattr(render_instance, "frameEndHandle", render_instance.frameEnd)
+                    getattr(
+                        render_instance,
+                        "frameEndHandle",
+                        render_instance.frameEnd,
+                    )
                 ),
                 "byFrameStep": int(render_instance.frameStep),
                 "author": context.data["user"],
