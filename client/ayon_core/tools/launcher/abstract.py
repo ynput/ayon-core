@@ -165,7 +165,9 @@ class AbstractLauncherBackend(AbstractLauncherCommon):
 class AbstractLauncherFrontEnd(AbstractLauncherCommon):
     # Entity items for UI
     @abstractmethod
-    def get_project_items(self, sender=None):
+    def get_project_items(
+        self, sender: Optional[str] = None
+    ) -> list[ProjectItem]:
         """Project items for all projects.
 
         This function may trigger events 'projects.refresh.started' and
@@ -183,7 +185,9 @@ class AbstractLauncherFrontEnd(AbstractLauncherCommon):
         pass
 
     @abstractmethod
-    def get_folder_type_items(self, project_name, sender=None):
+    def get_folder_type_items(
+        self, project_name: str, sender: Optional[str] = None
+    ) -> list[FolderTypeItem]:
         """Folder type items for a project.
 
         This function may trigger events with topics
@@ -203,7 +207,9 @@ class AbstractLauncherFrontEnd(AbstractLauncherCommon):
         pass
 
     @abstractmethod
-    def get_task_type_items(self, project_name, sender=None):
+    def get_task_type_items(
+        self, project_name: str, sender: Optional[str] = None
+    ) -> list[TaskTypeItem]:
         """Task type items for a project.
 
         This function may trigger events with topics
@@ -223,7 +229,9 @@ class AbstractLauncherFrontEnd(AbstractLauncherCommon):
         pass
 
     @abstractmethod
-    def get_folder_items(self, project_name, sender=None):
+    def get_folder_items(
+        self, project_name: str, sender: Optional[str] = None
+    ) -> list[FolderItem]:
         """Folder items to visualize project hierarchy.
 
         This function may trigger events 'folders.refresh.started' and
@@ -242,7 +250,9 @@ class AbstractLauncherFrontEnd(AbstractLauncherCommon):
         pass
 
     @abstractmethod
-    def get_task_items(self, project_name, folder_id, sender=None):
+    def get_task_items(
+        self, project_name: str, folder_id: str, sender: Optional[str] = None
+    ) -> list[TaskItem]:
         """Task items.
 
         This function may trigger events 'tasks.refresh.started' and
@@ -262,7 +272,7 @@ class AbstractLauncherFrontEnd(AbstractLauncherCommon):
         pass
 
     @abstractmethod
-    def get_selected_project_name(self):
+    def get_selected_project_name(self) -> Optional[str]:
         """Selected project name.
 
         Returns:
@@ -272,7 +282,7 @@ class AbstractLauncherFrontEnd(AbstractLauncherCommon):
         pass
 
     @abstractmethod
-    def get_selected_folder_id(self):
+    def get_selected_folder_id(self) -> Optional[str]:
         """Selected folder id.
 
         Returns:
@@ -282,7 +292,7 @@ class AbstractLauncherFrontEnd(AbstractLauncherCommon):
         pass
 
     @abstractmethod
-    def get_selected_task_id(self):
+    def get_selected_task_id(self) -> Optional[str]:
         """Selected task id.
 
         Returns:
@@ -292,7 +302,7 @@ class AbstractLauncherFrontEnd(AbstractLauncherCommon):
         pass
 
     @abstractmethod
-    def get_selected_task_name(self):
+    def get_selected_task_name(self) -> Optional[str]:
         """Selected task name.
 
         Returns:
@@ -302,7 +312,7 @@ class AbstractLauncherFrontEnd(AbstractLauncherCommon):
         pass
 
     @abstractmethod
-    def get_selected_context(self):
+    def get_selected_context(self) -> dict[str, Optional[str]]:
         """Get whole selected context.
 
         Example:
@@ -320,7 +330,7 @@ class AbstractLauncherFrontEnd(AbstractLauncherCommon):
         pass
 
     @abstractmethod
-    def set_selected_project(self, project_name):
+    def set_selected_project(self, project_name: Optional[str]):
         """Change selected folder.
 
         Args:
@@ -331,7 +341,7 @@ class AbstractLauncherFrontEnd(AbstractLauncherCommon):
         pass
 
     @abstractmethod
-    def set_selected_folder(self, folder_id):
+    def set_selected_folder(self, folder_id: Optional[str]):
         """Change selected folder.
 
         Args:
@@ -342,7 +352,9 @@ class AbstractLauncherFrontEnd(AbstractLauncherCommon):
         pass
 
     @abstractmethod
-    def set_selected_task(self, task_id, task_name):
+    def set_selected_task(
+        self, task_id: Optional[str], task_name: Optional[str]
+    ):
         """Change selected task.
 
         Args:
@@ -356,7 +368,12 @@ class AbstractLauncherFrontEnd(AbstractLauncherCommon):
 
     # Actions
     @abstractmethod
-    def get_action_items(self, project_name, folder_id, task_id):
+    def get_action_items(
+        self,
+        project_name: Optional[str],
+        folder_id: Optional[str],
+        task_id: Optional[str],
+    ) -> list[ActionItem]:
         """Get action items for given context.
 
         Args:
@@ -374,10 +391,10 @@ class AbstractLauncherFrontEnd(AbstractLauncherCommon):
     @abstractmethod
     def trigger_action(
         self,
-        action_id,
-        project_name,
-        folder_id,
-        task_id,
+        action_id: str,
+        project_name: Optional[str],
+        folder_id: Optional[str],
+        task_id: Optional[str],
     ):
         """Trigger action on given context.
 
@@ -462,14 +479,16 @@ class AbstractLauncherFrontEnd(AbstractLauncherCommon):
         pass
 
     @abstractmethod
-    def get_my_tasks_entity_ids(self, project_name: str):
+    def get_my_tasks_entity_ids(
+        self, project_name: str
+    ) -> dict[str, list[str]]:
         """Get entity ids for my tasks.
 
         Args:
             project_name (str): Project name.
 
         Returns:
-            dict[str, Union[list[str]]]: Folder and task ids.
+            dict[str, list[str]]: Folder and task ids.
 
         """
         pass
