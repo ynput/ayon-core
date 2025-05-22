@@ -4,6 +4,13 @@ import copy
 from abc import ABC, abstractmethod
 from typing import Optional, Any
 
+from ayon_core.tools.common_models import (
+    ProjectItem,
+    FolderItem,
+    FolderTypeItem,
+    TaskItem,
+    TaskTypeItem,
+)
 
 class ActionItem:
     """Item representing single action to trigger.
