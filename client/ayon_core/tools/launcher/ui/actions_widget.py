@@ -14,7 +14,7 @@ from ayon_core.lib.attribute_definitions import (
     HiddenDef,
 )
 from ayon_core.tools.flickcharm import FlickCharm
-from ayon_core.tools.utils import get_qt_icon
+from ayon_core.tools.utils import get_qt_icon, SquareButton
 from ayon_core.tools.attribute_defs import AttributeDefinitionsDialog
 from ayon_core.tools.launcher.abstract import WebactionContext
 
@@ -45,6 +45,93 @@ def _variant_label_sort_getter(action_item):
     """
 
     return action_item.variant_label or ""
+
+
+# --- Replacement for QAction for action variants ---
+class LauncherSettingsButton(SquareButton):
+    _settings_icon = None
+
+    def __init__(self, parent):
+        super().__init__(parent)
+        self.setIcon(self._get_settings_icon())
+
+    @classmethod
+    def _get_settings_icon(cls):
+        if cls._settings_icon is None:
+            cls._settings_icon = get_qt_icon({
+                "type": "material-symbols",
+                "name": "settings",
+            })
+        return cls._settings_icon
+
+
+class ActionVariantWidget(QtWidgets.QFrame):
+    settings_requested = QtCore.Signal(str)
+
+    def __init__(self, item_id, label, has_settings, parent):
+        super().__init__(parent)
+
+        self.setMouseTracking(True)
+
+        label_widget = QtWidgets.QLabel(label, self)
+        settings_btn = None
+        if has_settings:
+            settings_btn = LauncherSettingsButton(self)
+
+        layout = QtWidgets.QHBoxLayout(self)
+        layout.setContentsMargins(6, 4, 4, 4)
+        layout.setSpacing(0)
+        layout.addWidget(label_widget, 1)
+        if settings_btn is not None:
+            layout.addSpacing(6)
+            layout.addWidget(settings_btn, 0)
+
+            settings_btn.clicked.connect(self._on_settings_clicked)
+
+        self._item_id = item_id
+        self._label_widget = label_widget
+        self._settings_btn = settings_btn
+
+    def enterEvent(self, event):
+        """Handle mouse enter event."""
+        self._set_hover_properties(True)
+        super().enterEvent(event)
+
+    def leaveEvent(self, event):
+        """Handle mouse enter event."""
+        self._set_hover_properties(False)
+        self.setProperty("state", "")
+        self.style().polish(self)
+        super().leaveEvent(event)
+
+    def _on_settings_clicked(self):
+        self.settings_requested.emit(self._item_id)
+
+    def _set_hover_properties(self, hovered):
+        state = "hover" if hovered else ""
+        if self.property("state") != state:
+            self.setProperty("state", state)
+            self.style().polish(self)
+
+
+class ActionVariantAction(QtWidgets.QWidgetAction):
+    """Menu action with settings button."""
+    settings_requested = QtCore.Signal(str)
+
+    def __init__(self, item_id, label, has_settings, parent):
+        super().__init__(parent)
+        self._item_id = item_id
+        self._label = label
+        self._has_settings = has_settings
+        self._widget = None
+
+    def createWidget(self, parent):
+        widget = ActionVariantWidget(
+            self._item_id, self._label, self._has_settings, parent
+        )
+        widget.settings_requested.connect(self.settings_requested)
+        self._widget = widget
+        return widget
 
 
 class ActionsQtModel(QtGui.QStandardItemModel):
@@ -122,8 +209,10 @@ class ActionsQtModel(QtGui.QStandardItemModel):
         root_item = self.invisibleRootItem()
 
         all_action_items_info = []
+        action_items_by_id = {}
         items_by_label = collections.defaultdict(list)
         for item in items:
+            action_items_by_id[item.identifier] = item
             if not item.variant_label:
                 all_action_items_info.append((item, False))
             else:
@@ -139,7 +228,6 @@ class ActionsQtModel(QtGui.QStandardItemModel):
         transparent_icon = {"type": "transparent", "size": 256}
         new_items = []
         items_by_id = {}
-        action_items_by_id = {}
         for action_item_info in all_action_items_info:
             action_item, is_group = action_item_info
             icon_def = action_item.icon
@@ -175,7 +263,6 @@ class ActionsQtModel(QtGui.QStandardItemModel):
             item.setData(action_item.addon_version, ACTION_ADDON_VERSION_ROLE)
             item.setData(action_item.order, ACTION_SORT_ROLE)
             items_by_id[action_item.identifier] = item
-            action_items_by_id[action_item.identifier] = action_item
 
         if new_items:
             root_item.appendRows(new_items)
@@ -528,8 +615,31 @@ class ActionsWidget(QtWidgets.QWidget):
         menu = QtWidgets.QMenu(self)
         actions_mapping = {}
 
+        def on_settings_clicked(identifier):
+            # Close menu
+            menu.close()
+
+            # Show config dialog
+            action_item = next(
+                item
+                for item in action_items
+                if item.identifier == identifier
+            )
+            self._show_config_dialog(
+                identifier,
+                False,
+                action_item.addon_name,
+                action_item.addon_version,
+            )
+
         for action_item in action_items:
-            menu_action = QtWidgets.QAction(action_item.full_label)
+            menu_action = ActionVariantAction(
+                action_item.identifier,
+                action_item.full_label,
+                bool(action_item.config_fields),
+                menu,
+            )
+            menu_action.settings_requested.connect(on_settings_clicked)
             menu.addAction(menu_action)
             actions_mapping[menu_action] = action_item
 
@@ -548,18 +658,23 @@ class ActionsWidget(QtWidgets.QWidget):
         action_id = index.data(ACTION_ID_ROLE)
         if not action_id:
             return
+        is_group = index.data(ACTION_IS_GROUP_ROLE)
+        addon_name = index.data(ACTION_ADDON_NAME_ROLE)
+        addon_version = index.data(ACTION_ADDON_VERSION_ROLE)
+        self._show_config_dialog(
+            action_id, is_group, addon_name, addon_version
+        )
 
+    def _show_config_dialog(
+        self, action_id, is_group, addon_name, addon_version
+    ):
         config_fields = self._model.get_action_config_fields(action_id)
         if not config_fields:
             return
 
-        is_group = index.data(ACTION_IS_GROUP_ROLE)
-
         project_name = self._model.get_selected_project_name()
         folder_id = self._model.get_selected_folder_id()
         task_id = self._model.get_selected_task_id()
-        addon_name = index.data(ACTION_ADDON_NAME_ROLE)
-        addon_version = index.data(ACTION_ADDON_VERSION_ROLE)
         context = WebactionContext(
             action_id,
             project_name=project_name,

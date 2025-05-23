@@ -829,6 +829,22 @@ HintedLineEditButton {
 }
 
 /* Launcher specific stylesheets */
+ActionVariantWidget {
+    background: transparent;
+}
+
+ActionVariantWidget[state="hover"], #OptionalActionOption[state="hover"] {
+    background: {color:bg-view-hover};
+}
+
+LauncherSettingsButton {
+    background: transparent;
+}
+
+LauncherSettingsButton:hover {
+    border: 1px solid #f4f5f5;
+}
+
 #IconView[mode="icon"] {
     /* font size can't be set on items */
     font-size: 9pt;
