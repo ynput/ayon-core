@@ -553,6 +553,8 @@ class ActionsWidget(QtWidgets.QWidget):
         if not config_fields:
             return
 
+        is_group = index.data(ACTION_IS_GROUP_ROLE)
+
         project_name = self._model.get_selected_project_name()
         folder_id = self._model.get_selected_folder_id()
         task_id = self._model.get_selected_task_id()
@@ -579,7 +581,15 @@ class ActionsWidget(QtWidgets.QWidget):
         if result != QtWidgets.QDialog.Accepted:
             return
         new_values = dialog.get_values()
-        self._controller.set_action_config_values(context, new_values)
+        if is_group:
+            action_items = self._model.get_group_items(action_id)
+            action_ids = [item.identifier for item in action_items]
+        else:
+            action_ids = [action_id]
+
+        for action_id in action_ids:
+            context.identifier = action_id
+            self._controller.set_action_config_values(context, new_values)
 
     def _create_attrs_dialog(
         self,
