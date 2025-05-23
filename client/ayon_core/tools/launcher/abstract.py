@@ -1,4 +1,101 @@
+from __future__ import annotations
+
+import copy
 from abc import ABC, abstractmethod
+from dataclasses import dataclass
+from typing import Optional, Any
+
+from ayon_core.tools.common_models import (
+    ProjectItem,
+    FolderItem,
+    FolderTypeItem,
+    TaskItem,
+    TaskTypeItem,
+)
+
+
+@dataclass
+class WebactionContext:
+    """Context used for methods related to webactions."""
+    identifier: str
+    project_name: str
+    folder_id: str
+    task_id: str
+    addon_name: str
+    addon_version: str
+
+
+class ActionItem:
+    """Item representing single action to trigger.
+
+    Args:
+        action_type (Literal["webaction", "local"]): Type of action.
+        identifier (str): Unique identifier of action item.
+        label (str): Action label.
+        variant_label (Union[str, None]): Variant label, full label is
+            concatenated with space. Actions are grouped under single
+            action if it has same 'label' and have set 'variant_label'.
+        icon (dict[str, str]): Icon definition.
+        order (int): Action ordering.
+        addon_name (Optional[str]): Addon name.
+        addon_version (Optional[str]): Addon version.
+        config_fields (Optional[list[dict]]): Config fields for webaction.
+        full_label (Optional[str]): Full label, if not set it is generated
+            from 'label' and 'variant_label'.
+
+    """
+    def __init__(
+        self,
+        action_type: str,
+        identifier: str,
+        label: str,
+        variant_label: Optional[str],
+        icon: dict[str, str],
+        order: int,
+        addon_name: Optional[str] = None,
+        addon_version: Optional[str] = None,
+        config_fields: Optional[list[dict]] = None,
+        full_label: Optional[str] = None,
+    ):
+        if config_fields is None:
+            config_fields = []
+        self.action_type = action_type
+        self.identifier = identifier
+        self.label = label
+        self.variant_label = variant_label
+        self.icon = icon
+        self.order = order
+        self.addon_name = addon_name
+        self.addon_version = addon_version
+        self.config_fields = config_fields
+        self._full_label = full_label
+
+    def copy(self):
+        return self.from_data(self.to_data())
+
+    @property
+    def full_label(self):
+        if self._full_label is None:
+            if self.variant_label:
+                self._full_label = " ".join([self.label, self.variant_label])
+            else:
+                self._full_label = self.label
+        return self._full_label
+
+    def to_data(self) -> dict[str, Any]:
+        return {
+            "identifier": self.identifier,
+            "label": self.label,
+            "variant_label": self.variant_label,
+            "icon": self.icon,
+            "order": self.order,
+            "full_label": self._full_label,
+            "config_fields": copy.deepcopy(self.config_fields),
+        }
+
+    @classmethod
+    def from_data(cls, data: dict[str, Any]) -> "ActionItem":
+        return cls(**data)
 
 
 class AbstractLauncherCommon(ABC):
@@ -88,7 +185,9 @@ class AbstractLauncherBackend(AbstractLauncherCommon):
 class AbstractLauncherFrontEnd(AbstractLauncherCommon):
     # Entity items for UI
     @abstractmethod
-    def get_project_items(self, sender=None):
+    def get_project_items(
+        self, sender: Optional[str] = None
+    ) -> list[ProjectItem]:
         """Project items for all projects.
 
         This function may trigger events 'projects.refresh.started' and
@@ -106,7 +205,9 @@ class AbstractLauncherFrontEnd(AbstractLauncherCommon):
         pass
 
     @abstractmethod
-    def get_folder_type_items(self, project_name, sender=None):
+    def get_folder_type_items(
+        self, project_name: str, sender: Optional[str] = None
+    ) -> list[FolderTypeItem]:
         """Folder type items for a project.
 
         This function may trigger events with topics
@@ -126,7 +227,9 @@ class AbstractLauncherFrontEnd(AbstractLauncherCommon):
         pass
 
     @abstractmethod
-    def get_task_type_items(self, project_name, sender=None):
+    def get_task_type_items(
+        self, project_name: str, sender: Optional[str] = None
+    ) -> list[TaskTypeItem]:
         """Task type items for a project.
 
         This function may trigger events with topics
@@ -146,7 +249,9 @@ class AbstractLauncherFrontEnd(AbstractLauncherCommon):
         pass
 
     @abstractmethod
-    def get_folder_items(self, project_name, sender=None):
+    def get_folder_items(
+        self, project_name: str, sender: Optional[str] = None
+    ) -> list[FolderItem]:
         """Folder items to visualize project hierarchy.
 
         This function may trigger events 'folders.refresh.started' and
@@ -165,7 +270,9 @@ class AbstractLauncherFrontEnd(AbstractLauncherCommon):
         pass
 
     @abstractmethod
-    def get_task_items(self, project_name, folder_id, sender=None):
+    def get_task_items(
+        self, project_name: str, folder_id: str, sender: Optional[str] = None
+    ) -> list[TaskItem]:
         """Task items.
 
         This function may trigger events 'tasks.refresh.started' and
@@ -185,7 +292,7 @@ class AbstractLauncherFrontEnd(AbstractLauncherCommon):
         pass
 
     @abstractmethod
-    def get_selected_project_name(self):
+    def get_selected_project_name(self) -> Optional[str]:
         """Selected project name.
 
         Returns:
@@ -195,7 +302,7 @@ class AbstractLauncherFrontEnd(AbstractLauncherCommon):
         pass
 
     @abstractmethod
-    def get_selected_folder_id(self):
+    def get_selected_folder_id(self) -> Optional[str]:
         """Selected folder id.
 
         Returns:
@@ -205,7 +312,7 @@ class AbstractLauncherFrontEnd(AbstractLauncherCommon):
         pass
 
     @abstractmethod
-    def get_selected_task_id(self):
+    def get_selected_task_id(self) -> Optional[str]:
         """Selected task id.
 
         Returns:
@@ -215,7 +322,7 @@ class AbstractLauncherFrontEnd(AbstractLauncherCommon):
         pass
 
     @abstractmethod
-    def get_selected_task_name(self):
+    def get_selected_task_name(self) -> Optional[str]:
         """Selected task name.
 
         Returns:
@@ -225,7 +332,7 @@ class AbstractLauncherFrontEnd(AbstractLauncherCommon):
         pass
 
     @abstractmethod
-    def get_selected_context(self):
+    def get_selected_context(self) -> dict[str, Optional[str]]:
         """Get whole selected context.
 
         Example:
@@ -243,7 +350,7 @@ class AbstractLauncherFrontEnd(AbstractLauncherCommon):
         pass
 
     @abstractmethod
-    def set_selected_project(self, project_name):
+    def set_selected_project(self, project_name: Optional[str]):
         """Change selected folder.
 
         Args:
@@ -254,7 +361,7 @@ class AbstractLauncherFrontEnd(AbstractLauncherCommon):
         pass
 
     @abstractmethod
-    def set_selected_folder(self, folder_id):
+    def set_selected_folder(self, folder_id: Optional[str]):
         """Change selected folder.
 
         Args:
@@ -265,7 +372,9 @@ class AbstractLauncherFrontEnd(AbstractLauncherCommon):
         pass
 
     @abstractmethod
-    def set_selected_task(self, task_id, task_name):
+    def set_selected_task(
+        self, task_id: Optional[str], task_name: Optional[str]
+    ):
         """Change selected task.
 
         Args:
@@ -279,7 +388,12 @@ class AbstractLauncherFrontEnd(AbstractLauncherCommon):
 
     # Actions
     @abstractmethod
-    def get_action_items(self, project_name, folder_id, task_id):
+    def get_action_items(
+        self,
+        project_name: Optional[str],
+        folder_id: Optional[str],
+        task_id: Optional[str],
+    ) -> list[ActionItem]:
         """Get action items for given context.
 
         Args:
@@ -295,30 +409,67 @@ class AbstractLauncherFrontEnd(AbstractLauncherCommon):
         pass
 
     @abstractmethod
-    def trigger_action(self, project_name, folder_id, task_id, action_id):
+    def trigger_action(
+        self,
+        action_id: str,
+        project_name: Optional[str],
+        folder_id: Optional[str],
+        task_id: Optional[str],
+    ):
         """Trigger action on given context.
 
         Args:
+            action_id (str): Action identifier.
             project_name (Union[str, None]): Project name.
             folder_id (Union[str, None]): Folder id.
             task_id (Union[str, None]): Task id.
-            action_id (str): Action identifier.
 
         """
         pass
 
     @abstractmethod
-    def set_application_force_not_open_workfile(
-        self, project_name, folder_id, task_id, action_ids, enabled
+    def trigger_webaction(
+        self,
+        context: WebactionContext,
+        action_label: str,
+        form_data: Optional[dict[str, Any]] = None,
     ):
-        """This is application action related to force not open last workfile.
+        """Trigger action on given context.
 
         Args:
-            project_name (Union[str, None]): Project name.
-            folder_id (Union[str, None]): Folder id.
-            task_id (Union[str, None]): Task id.
-            action_ids (Iterable[str]): Action identifiers.
-            enabled (bool): New value of force not open workfile.
+            context (WebactionContext): Webaction context.
+            action_label (str): Action label.
+            form_data (Optional[dict[str, Any]]): Form values of action.
+
+        """
+        pass
+
+    @abstractmethod
+    def get_action_config_values(
+        self, context: WebactionContext
+    ) -> dict[str, Any]:
+        """Get action config values.
+
+        Args:
+            context (WebactionContext): Webaction context.
+
+        Returns:
+            dict[str, Any]: Action config values.
+
+        """
+        pass
+
+    @abstractmethod
+    def set_action_config_values(
+        self,
+        context: WebactionContext,
+        values: dict[str, Any],
+    ):
+        """Set action config values.
+
+        Args:
+            context (WebactionContext): Webaction context.
+            values (dict[str, Any]): Action config values.
 
         """
         pass
@@ -343,14 +494,16 @@ class AbstractLauncherFrontEnd(AbstractLauncherCommon):
         pass
 
     @abstractmethod
-    def get_my_tasks_entity_ids(self, project_name: str):
+    def get_my_tasks_entity_ids(
+        self, project_name: str
+    ) -> dict[str, list[str]]:
         """Get entity ids for my tasks.
 
         Args:
             project_name (str): Project name.
 
         Returns:
-            dict[str, Union[list[str]]]: Folder and task ids.
+            dict[str, list[str]]: Folder and task ids.
 
         """
         pass

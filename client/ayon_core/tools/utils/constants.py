@@ -14,3 +14,4 @@ except AttributeError:
 DEFAULT_PROJECT_LABEL = "< Default >"
 PROJECT_NAME_ROLE = QtCore.Qt.UserRole + 101
 PROJECT_IS_ACTIVE_ROLE = QtCore.Qt.UserRole + 102
+DEFAULT_WEB_ICON_COLOR = "#f4f5f5"
