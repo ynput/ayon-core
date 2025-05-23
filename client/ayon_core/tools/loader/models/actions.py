@@ -17,6 +17,9 @@ from ayon_core.pipeline.load import (
     load_with_product_contexts,
     LoadError,
     IncompatibleLoaderError,
+    get_loaders_by_name,
+    get_hook_loaders_by_identifier
+
 )
 from ayon_core.tools.loader.abstract import ActionItem
 
@@ -50,6 +53,8 @@ class LoaderActionsModel:
             levels=1, lifetime=self.loaders_cache_lifetime)
         self._repre_loaders = NestedCacheItem(
             levels=1, lifetime=self.loaders_cache_lifetime)
+        self._hook_loaders_by_identifier = NestedCacheItem(
+            levels=1, lifetime=self.loaders_cache_lifetime)
 
     def reset(self):
         """Reset the model with all cached items."""
@@ -58,6 +63,7 @@ class LoaderActionsModel:
         self._loaders_by_identifier.reset()
         self._product_loaders.reset()
         self._repre_loaders.reset()
+        self._hook_loaders_by_identifier.reset()
 
     def get_versions_action_items(self, project_name, version_ids):
         """Get action items for given version ids.
@@ -143,12 +149,14 @@ class LoaderActionsModel:
             ACTIONS_MODEL_SENDER,
         )
         loader = self._get_loader_by_identifier(project_name, identifier)
+        hooks = self._get_hook_loaders_by_identifier(project_name, identifier)
         if representation_ids is not None:
             error_info = self._trigger_representation_loader(
                 loader,
                 options,
                 project_name,
                 representation_ids,
+                hooks
             )
         elif version_ids is not None:
             error_info = self._trigger_version_loader(
@@ -156,6 +164,7 @@ class LoaderActionsModel:
                 options,
                 project_name,
                 version_ids,
+                hooks
             )
         else:
             raise NotImplementedError(
@@ -307,22 +316,29 @@ class LoaderActionsModel:
                 we want to show loaders for?
 
         Returns:
-            tuple[list[ProductLoaderPlugin], list[LoaderPlugin]]: Discovered
-                loader plugins.
+            tuple(
+                list[ProductLoaderPlugin],
+                list[LoaderPlugin],
+            ): Discovered loader plugins.
         """
 
         loaders_by_identifier_c = self._loaders_by_identifier[project_name]
         product_loaders_c = self._product_loaders[project_name]
         repre_loaders_c = self._repre_loaders[project_name]
+        hook_loaders_by_identifier_c = self._hook_loaders_by_identifier[project_name]
         if loaders_by_identifier_c.is_valid:
-            return product_loaders_c.get_data(), repre_loaders_c.get_data()
+            return (
+                product_loaders_c.get_data(),
+                repre_loaders_c.get_data(),
+                hook_loaders_by_identifier_c.get_data()
+            )
 
         # Get all representation->loader combinations available for the
         # index under the cursor, so we can list the user the options.
         available_loaders = self._filter_loaders_by_tool_name(
             project_name, discover_loader_plugins(project_name)
         )
-
+        hook_loaders_by_identifier = get_hook_loaders_by_identifier()
         repre_loaders = []
         product_loaders = []
         loaders_by_identifier = {}
@@ -340,6 +356,8 @@ class LoaderActionsModel:
         loaders_by_identifier_c.update_data(loaders_by_identifier)
         product_loaders_c.update_data(product_loaders)
         repre_loaders_c.update_data(repre_loaders)
+        hook_loaders_by_identifier_c.update_data(hook_loaders_by_identifier)
+
         return product_loaders, repre_loaders
 
     def _get_loader_by_identifier(self, project_name, identifier):
@@ -348,6 +366,13 @@ class LoaderActionsModel:
         loaders_by_identifier_c = self._loaders_by_identifier[project_name]
         loaders_by_identifier = loaders_by_identifier_c.get_data()
         return loaders_by_identifier.get(identifier)
+
+    def _get_hook_loaders_by_identifier(self, project_name, identifier):
+        if not self._hook_loaders_by_identifier[project_name].is_valid:
+            self._get_loaders(project_name)
+        hook_loaders_by_identifier_c = self._hook_loaders_by_identifier[project_name]
+        hook_loaders_by_identifier_c = hook_loaders_by_identifier_c.get_data()
+        return hook_loaders_by_identifier_c.get(identifier)
 
     def _actions_sorter(self, action_item):
         """Sort the Loaders by their order and then their name.
@@ -606,6 +631,7 @@ class LoaderActionsModel:
         options,
         project_name,
         version_ids,
+        hooks=None
     ):
         """Trigger version loader.
 
@@ -655,7 +681,7 @@ class LoaderActionsModel:
             })
 
         return self._load_products_by_loader(
-            loader, product_contexts, options
+            loader, product_contexts, options, hooks=hooks
         )
 
     def _trigger_representation_loader(
@@ -664,6 +690,7 @@ class LoaderActionsModel:
         options,
         project_name,
         representation_ids,
+        hooks
     ):
         """Trigger representation loader.
 
@@ -716,10 +743,16 @@ class LoaderActionsModel:
             })
 
         return self._load_representations_by_loader(
-            loader, repre_contexts, options
+            loader, repre_contexts, options, hooks
         )
 
-    def _load_representations_by_loader(self, loader, repre_contexts, options):
+    def _load_representations_by_loader(
+        self,
+        loader,
+        repre_contexts,
+        options,
+        hooks=None
+    ):
         """Loops through list of repre_contexts and loads them with one loader
 
         Args:
@@ -737,10 +770,12 @@ class LoaderActionsModel:
             if version < 0:
                 version = "Hero"
             try:
+
                 load_with_repre_context(
                     loader,
                     repre_context,
-                    options=options
+                    options=options,
+                    hooks=hooks
                 )
 
             except IncompatibleLoaderError as exc:
@@ -770,7 +805,13 @@ class LoaderActionsModel:
                 ))
         return error_info
 
-    def _load_products_by_loader(self, loader, version_contexts, options):
+    def _load_products_by_loader(
+        self,
+        loader,
+        version_contexts,
+        options,
+        hooks=None
+    ):
         """Triggers load with ProductLoader type of loaders.
 
         Warning:
@@ -794,9 +835,9 @@ class LoaderActionsModel:
                 load_with_product_contexts(
                     loader,
                     version_contexts,
-                    options=options
+                    options=options,
+                    hooks=hooks
                 )
-
             except Exception as exc:
                 formatted_traceback = None
                 if not isinstance(exc, LoadError):
@@ -820,7 +861,8 @@ class LoaderActionsModel:
                     load_with_product_context(
                         loader,
                         version_context,
-                        options=options
+                        options=options,
+                        hooks=hooks
                     )
 
                 except Exception as exc:
