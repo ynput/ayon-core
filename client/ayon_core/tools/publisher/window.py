@@ -862,6 +862,9 @@ class PublisherWindow(QtWidgets.QDialog):
         self._comment_input.setStyleSheet("border-color: #DD2020")
         # Set focus so user can start typing and is pointed towards the field
         self._comment_input.setFocus()
+        self._comment_input.setCursorPosition(
+            len(self._comment_input.text())
+        )
 
     def _on_comment_invalid_timeout(self):
         # Reset style
