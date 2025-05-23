@@ -186,7 +186,7 @@ run_command () {
 run_tests () {
   echo -e "${BIGreen}>>>${RST} Running tests..."
   shift;  # will remove first arg ("run-tests") from the "$@"
-  "$POETRY_HOME/bin/poetry" run pytest ./tests
+  "$POETRY_HOME/bin/poetry" run pytest ./tests -m "not server"
 }
 
 main () {

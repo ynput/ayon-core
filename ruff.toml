@@ -57,6 +57,7 @@ exclude = [
 
 [lint.per-file-ignores]
 "client/ayon_core/lib/__init__.py" = ["E402"]
+"tests/*.py" = ["S101", "PLR2004"]  # allow asserts and magical values
 
 [format]
 # Like Black, use double quotes for strings.
