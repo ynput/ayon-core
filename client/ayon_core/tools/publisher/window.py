@@ -246,6 +246,7 @@ class PublisherWindow(QtWidgets.QDialog):
         show_timer.timeout.connect(self._on_show_timer)
 
         comment_invalid_timer = QtCore.QTimer()
+        comment_invalid_timer.setSingleShot(True)
         comment_invalid_timer.setInterval(2500)
         comment_invalid_timer.timeout.connect(
             self._on_comment_invalid_timeout
