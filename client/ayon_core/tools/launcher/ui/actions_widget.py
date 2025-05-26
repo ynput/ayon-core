@@ -92,6 +92,11 @@ class ActionVariantWidget(QtWidgets.QFrame):
         self._label_widget = label_widget
         self._settings_btn = settings_btn
 
+    def showEvent(self, event):
+        super().showEvent(event)
+        # Make sure to set up current state
+        self._set_hover_properties(self.underMouse())
+
     def enterEvent(self, event):
         """Handle mouse enter event."""
         self._set_hover_properties(True)
@@ -100,8 +105,6 @@ class ActionVariantWidget(QtWidgets.QFrame):
     def leaveEvent(self, event):
         """Handle mouse enter event."""
         self._set_hover_properties(False)
-        self.setProperty("state", "")
-        self.style().polish(self)
         super().leaveEvent(event)
 
     def _on_settings_clicked(self):
