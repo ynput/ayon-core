@@ -382,7 +382,7 @@ class ActionDelegate(QtWidgets.QStyledItemDelegate):
         if index.data(ANIMATION_STATE_ROLE):
             self._draw_animation(painter, option, index)
 
-        super(ActionDelegate, self).paint(painter, option, index)
+        super().paint(painter, option, index)
 
         if not index.data(ACTION_IS_GROUP_ROLE):
             return
@@ -623,17 +623,7 @@ class ActionsWidget(QtWidgets.QWidget):
             menu.close()
 
             # Show config dialog
-            action_item = next(
-                item
-                for item in action_items
-                if item.identifier == identifier
-            )
-            self._show_config_dialog(
-                identifier,
-                False,
-                action_item.addon_name,
-                action_item.addon_version,
-            )
+            self._show_config_dialog(identifier, False)
 
         for action_item in action_items:
             menu_action = ActionVariantAction(
@@ -662,18 +652,16 @@ class ActionsWidget(QtWidgets.QWidget):
         if not action_id:
             return
         is_group = index.data(ACTION_IS_GROUP_ROLE)
-        addon_name = index.data(ACTION_ADDON_NAME_ROLE)
-        addon_version = index.data(ACTION_ADDON_VERSION_ROLE)
-        self._show_config_dialog(
-            action_id, is_group, addon_name, addon_version
-        )
+        self._show_config_dialog(action_id, is_group)
 
-    def _show_config_dialog(
-        self, action_id, is_group, addon_name, addon_version
-    ):
+    def _show_config_dialog(self, action_id, is_group):
+        item = self._model.get_item_by_id(action_id)
         config_fields = self._model.get_action_config_fields(action_id)
         if not config_fields:
             return
+
+        addon_name = item.data(ACTION_ADDON_NAME_ROLE)
+        addon_version = item.data(ACTION_ADDON_VERSION_ROLE)
 
         project_name = self._model.get_selected_project_name()
         folder_id = self._model.get_selected_folder_id()
