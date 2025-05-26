@@ -16,6 +16,29 @@ if typing.TYPE_CHECKING:
 
 @dataclass
 class WorkfileInfo:
+    """Information about workfile.
+
+    Host can open, copy and use the workfile using this information object.
+
+    Attributes:
+        filepath (str): Path to the workfile.
+        rootless_path (str): Path to the workfile without root. And without
+            backslashes on Windows.
+        file_size (Optional[float]): Size of the workfile in bytes.
+        file_created (Optional[float]): Timestamp when the workfile was
+            created on the filesystem.
+        file_modified (Optional[float]): Timestamp when the workfile was
+            modified on the filesystem.
+        workfile_entity_id (Optional[str]): Workfile entity id. If None then
+            the workfile is not in the database.
+        description (str): Description of the workfile.
+        created_by (Optional[str]): User id of the user who created the
+            workfile entity.
+        updated_by (Optional[str]): User id of the user who updated the
+            workfile entity.
+        available (bool): True if workfile is available on the machine.
+
+    """
     filepath: str
     rootless_path: str
     file_size: Optional[float]
@@ -81,6 +104,27 @@ class WorkfileInfo:
 
 @dataclass
 class PublishedWorkfileInfo:
+    """Information about published workfile.
+
+    Host can copy and use the workfile using this information object.
+
+    Attributes:
+        project_name (str): Name of the project where workfile lives.
+        folder_id (str): Folder id under which is workfile stored.
+        task_id (Optional[str]): Task id under which is workfile stored.
+        representation_id (str): Representation id of the workfile.
+        filepath (str): Path to the workfile.
+        created_at (float): Timestamp when the workfile representation
+            was created.
+        author (str): Author of the workfile representation.
+        available (bool): True if workfile is available on the machine.
+        file_size (Optional[float]): Size of the workfile in bytes.
+        file_created (Optional[float]): Timestamp when the workfile was
+            created on the filesystem.
+        file_modified (Optional[float]): Timestamp when the workfile was
+            modified on the filesystem.
+
+    """
     project_name: str
     folder_id: str
     task_id: Optional[str]
