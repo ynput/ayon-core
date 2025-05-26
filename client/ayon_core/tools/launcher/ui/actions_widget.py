@@ -763,9 +763,9 @@ class ActionsWidget(QtWidgets.QWidget):
                     default=value,
                     label=config_field.get("label"),
                     decimals=0 if field_type == "integer" else 5,
-                    placeholder=config_field.get("placeholder"),
-                    min_value=config_field.get("min"),
-                    max_value=config_field.get("max"),
+                    # placeholder=config_field.get("placeholder"),
+                    minimum=config_field.get("min"),
+                    maximum=config_field.get("max"),
                 )
             elif field_type in ("select", "multiselect"):
                 attr_def = EnumDef(
