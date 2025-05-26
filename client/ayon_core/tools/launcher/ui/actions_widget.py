@@ -71,7 +71,6 @@ class ActionVariantWidget(QtWidgets.QFrame):
     def __init__(self, item_id, label, has_settings, parent):
         super().__init__(parent)
 
-        self.setMouseTracking(True)
 
         label_widget = QtWidgets.QLabel(label, self)
         settings_btn = None
