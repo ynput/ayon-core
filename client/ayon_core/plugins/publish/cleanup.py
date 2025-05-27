@@ -76,8 +76,8 @@ class CleanUp(pyblish.api.InstancePlugin):
         #  product_type in self.exclude_families check.
         product_type = instance.data["productType"]
         if any(
-                exclude_family in product_type
-                for exclude_family in self.exclude_families
+            exclude_family in product_type
+            for exclude_family in self.exclude_families
         ):
             self.log.debug(
                 "Skipping cleanup for instance because product "
