@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from copy import copy
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Optional
+from typing import Optional
 
 import ayon_api
 
@@ -12,13 +12,11 @@ from ayon_core.lib import (
     filter_profiles,
     prepare_template_data,
 )
+from ayon_core.pipeline.product_base_types import ProductBaseType
 from ayon_core.settings import get_project_settings
 
 from .constants import DEFAULT_PRODUCT_TEMPLATE
 from .exceptions import TaskNotSetError, TemplateFillError
-
-if TYPE_CHECKING:
-    from ayon_core.pipeline.create.base_product_types import BaseProductType
 
 
 @dataclass
@@ -36,7 +34,7 @@ class ProductContext:
         task_name (str): Task name.
         task_type (str): Task type.
         host_name (str): Host name.
-        product_base_type (BaseProductType): Product base type.
+        product_base_type (ProductBaseType): Product base type.
         variant (str): Variant value.
         product_type (Optional[str]): Product type.
 
@@ -46,7 +44,7 @@ class ProductContext:
     task_name: str
     task_type: str
     host_name: str
-    product_base_type: BaseProductType
+    product_base_type: ProductBaseType
     variant: str
     product_type: Optional[str] = None
 

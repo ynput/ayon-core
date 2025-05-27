@@ -41,6 +41,7 @@ from .changes import TrackChangesItem
 from .creator_plugins import (
     AutoCreator,
     Creator,
+    ProductConvertorPlugin,
     discover_convertor_plugins,
     discover_creator_plugins,
 )
@@ -286,16 +287,16 @@ class CreateContext:  # noqa: PLR0904
         self.creator_discover_result = None
         self.convertor_discover_result = None
         # Discovered creators
-        self.creators = {}
+        self.creators: dict[str, Creator] = {}
         # Prepare categories of creators
-        self.autocreators = {}
+        self.autocreators: dict[str, AutoCreator] = {}
         # Manual creators
-        self.manual_creators = {}
+        self.manual_creators: dict[str, Creator] = {}
         # Creators that are disabled
-        self.disabled_creators = {}
+        self.disabled_creators: dict[str, Creator] = {}
 
-        self.convertors_plugins = {}
-        self.convertor_items_by_id = {}
+        self.convertors_plugins: dict[str, ProductConvertorPlugin] = {}
+        self.convertor_items_by_id: dict[str, ConvertorItem] = {}
 
         self.publish_discover_result: Optional[DiscoverResult] = None
         self.publish_plugins_mismatch_targets = []
@@ -869,6 +870,7 @@ class CreateContext:  # noqa: PLR0904
             self._publish_attributes = PublishAttributes(self, {})
             return
 
+        # get_context_data is implemented in IPublishHost
         original_data = self.host.get_context_data() or {}
         self._original_context_data = copy.deepcopy(original_data)
 

@@ -18,20 +18,21 @@ from ayon_core.pipeline.plugin_discover import (
 from ayon_core.pipeline.staging_dir import StagingDir, get_staging_dir_info
 from ayon_core.settings import get_project_settings
 
+from ..product_base_types import ProductBaseType
 from .constants import DEFAULT_VARIANT_VALUE
 
 # Avoid cyclic imports
 from .legacy_create import LegacyCreator
-from .product_name import get_product_name
+from .product_name import ProductContext, get_product_name
 from .structures import CreatedInstance
 from .utils import get_next_versions_for_instances
-
 
 if TYPE_CHECKING:
     import logging
 
     from ayon_core.host import HostBase
     from ayon_core.lib import AbstractAttrDef
+
     from .context import CreateContext, UpdateData  # noqa: F401
 
 
@@ -200,6 +201,8 @@ class BaseCreator(ABC):  # noqa: PLR0904
     # Name of plugin in create settings > class name is used if not set
     settings_name: Optional[str] = None
 
+    product_base_type: ClassVar[ProductBaseType] = None
+
     def __init__(
         self,
         project_settings: dict[str, Any],
@@ -301,9 +304,9 @@ class BaseCreator(ABC):  # noqa: PLR0904
         settings_name = self.settings_name or cls_name
 
         settings = self._get_settings_values(
-            project_settings: dict[str, Any],
-            settings_category: str,
-            settings_name: str
+            project_settings,
+            settings_category,
+            settings_name
         )
         if settings is None:
             self.log.debug(f"No settings found for {cls_name}")
@@ -394,7 +397,7 @@ class BaseCreator(ABC):  # noqa: PLR0904
     def _create_instance(
         self,
         product_name: str,
-        data: Dict[str, Any],
+        data: dict[str, Any],
         product_type: Optional[str] = None
     ) -> CreatedInstance:
         """Create instance and add instance to context.
@@ -444,15 +447,6 @@ class BaseCreator(ABC):  # noqa: PLR0904
             instance (CreatedInstance): Instance which should be removed.
         """
         self.create_context.creator_removed_instance(instance)
-
-    @abstractmethod
-    def create(self):
-        """Create new instance.
-
-        Replacement of `process` method from avalon implementation.
-        - must expect all data that were passed to init in previous
-            implementation
-        """
 
     @abstractmethod
     def collect_instances(self):
@@ -571,13 +565,18 @@ class BaseCreator(ABC):  # noqa: PLR0904
         if not project_entity and project_name == cur_project_name:
             project_entity = self.create_context.get_current_project_entity()
 
+        product_context = ProductContext(
+            project_name=project_name,
+            task_name=task_name,
+            task_type=task_type,
+            host_name=host_name,
+            product_type=self.product_type,
+            variant=variant,
+            product_base_type=self.product_base_type,
+        )
+
         return get_product_name(
-            project_name,
-            task_name,
-            task_type,
-            host_name,
-            self.product_type,
-            variant,
+            product_context,
             dynamic_data=dynamic_data,
             project_settings=self.project_settings,
             project_entity=project_entity,
@@ -685,7 +684,7 @@ class Creator(BaseCreator):
 
     # Precreate attribute definitions showed before creation
     # - similar to instance attribute definitions
-    pre_create_attr_defs = []
+    pre_create_attr_defs: list[AbstractAttrDef] = []
 
     def __init__(self, *args, **kwargs):
         cls = self.__class__
@@ -713,7 +712,10 @@ class Creator(BaseCreator):
         return self.order
 
     @abstractmethod
-    def create(self, product_name, instance_data, pre_create_data):
+    def create(
+            self, product_name: str,
+            instance_data: dict,
+            pre_create_data: dict) -> None:
         """Create new instance and store it.
 
         Ideally should be stored to workfile using host implementation.
@@ -943,6 +945,23 @@ class Creator(BaseCreator):
 
 
 class HiddenCreator(BaseCreator):
+    """Creator which is not shown in UI.
+
+    It is used for automatic creation of instances without user
+    interaction. It is not shown in the list of creators and does not
+    have any UI elements.
+    
+    It is available for other creators. This creator is primarily meant for
+    cases when creation should create different types of instances.
+    For example during editorial publishing where input is single edl file
+    but should create 2 or more kind of instances each with different
+    family, attributes and abilities. Arguments for creation were limited
+    to instance_data and source_data. Data of instance_data should follow
+    what is sent to other creators and source_data can be used to send
+    custom data defined by main creator. It is expected that HiddenCreator
+    has specific main or "parent" creator.
+
+    """
     @abstractmethod
     def create(self, instance_data, source_data):
         pass
