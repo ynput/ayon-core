@@ -99,4 +99,3 @@ class CoreAddon(BaseServerAddon):
             return await executor.get_simple_response(
                 "Unknown action", success=False
             )
-        return
