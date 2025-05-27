@@ -1,9 +1,10 @@
 """Functions for product name resolution."""
 from __future__ import annotations
+from warnings import deprecated
 
 from copy import copy
 from dataclasses import dataclass
-from typing import Optional
+from typing import TYPE_CHECKING, Optional
 
 import ayon_api
 
@@ -12,11 +13,13 @@ from ayon_core.lib import (
     filter_profiles,
     prepare_template_data,
 )
-from ayon_core.pipeline.product_base_types import ProductBaseType
 from ayon_core.settings import get_project_settings
 
 from .constants import DEFAULT_PRODUCT_TEMPLATE
 from .exceptions import TaskNotSetError, TemplateFillError
+
+if TYPE_CHECKING:
+    from ayon_core.pipeline.product_base_types import ProductBaseType
 
 
 @dataclass
@@ -31,9 +34,11 @@ class ProductContext:
 
     Args:
         project_name (str): Project name.
-        task_name (str): Task name.
-        task_type (str): Task type.
         host_name (str): Host name.
+        task_name (Optional[str]): Task name.
+        task_type (Optional[str]): Task type.
+        task_entity (Optional[dict]): Task entity. If set, it is used to
+        folder_entity (Optional[dict]): Folder entity.
         product_base_type (ProductBaseType): Product base type.
         variant (str): Variant value.
         product_type (Optional[str]): Product type.
@@ -41,15 +46,77 @@ class ProductContext:
     """
 
     project_name: str
+    variant: str
+    host_name: str
     task_name: str
     task_type: str
-    host_name: str
+
     product_base_type: ProductBaseType
-    variant: str
     product_type: Optional[str] = None
+    task_entity: Optional[dict] = None
+    folder_entity: Optional[dict] = None
 
 
-def get_product_name_template(
+def get_product_name_template(*args, **kwargs) -> str:
+    """Get product name template based on passed context.
+
+    This function is a wrapper for `get_product_name_template` to maintain
+    compatibility with the previous implementation.
+
+    Args:
+        *args: Positional arguments.
+        **kwargs: Keyword arguments.
+
+    Returns:
+        str: Product name template.
+
+    """
+    if
+
+@deprecated(
+    "This usage of get_product_name_template is deprecated and will be "
+    "removed in a future version. Use `get_product_name_template` "
+    "with ProductContext instead.",
+)
+def _legacy_get_product_name_template(
+    project_name,
+    product_type,
+    task_name,
+    task_type,
+    host_name,
+    default_template=None,
+    project_settings=None
+) -> str:
+    """Get product name template based on passed parameters.
+
+    This function is deprecated and will be removed in a future version.
+    Use `get_product_name_template` with `ProductContext` instead.
+
+    Args:
+        project_name (str): Project name.
+        product_type (str): Product type.
+        task_name (Optional[str]): Task name.
+        task_type (Optional[str]): Task type.
+        host_name (str): Host name.
+        default_template (Optional[str]): Default template if no profile matches.
+        project_settings (Optional[dict]): Prepared settings for project.
+
+    Returns:
+        str: Product name template.
+
+    """
+    context = ProductContext(
+        project_name=project_name,
+        variant="",
+        host_name=host_name,
+        task_name=task_name or "",
+        task_type=task_type or "",
+        product_base_type=None,  # Not used in this legacy function
+        product_type=product_type
+    )
+    return _get_product_name_template(context, default_template, project_settings)
+
+def _get_product_name_template(
     context: ProductContext,
     default_template: Optional[str] = None,
     project_settings: Optional[dict] = None
