@@ -857,9 +857,6 @@ class AbstractTemplateBuilder(ABC):
                 "task_names": task_name
             }
         )
-
-        print("Build profiles", build_profiles)
-
         if not profile:
             raise TemplateProfileNotFound((
                 "No matching profile found for task '{}' of type '{}' "
