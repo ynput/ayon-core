@@ -17,6 +17,7 @@ import collections
 import copy
 from abc import ABC, abstractmethod
 
+import ayon_api
 from ayon_api import (
     get_folders,
     get_folder_by_path,
@@ -58,6 +59,28 @@ from ayon_core.pipeline.create import (
 )
 
 _NOT_SET = object()
+
+
+def resolve_entity_uri(entity_uri: str) -> str:
+    """Resolve AYON entity URI to a filesystem path for local system."""
+    response = ayon_api.post(
+        "resolve",
+        resolveRoots=True,
+        uris=[entity_uri]
+    )
+    if response.status_code != 200:
+        raise RuntimeError(
+            f"Unable to resolve AYON entity URI filepath for "
+            f"'{entity_uri}': {response.text}"
+        )
+
+    entities = response.data[0]["entities"]
+    if len(entities) != 1:
+        raise RuntimeError(
+            f"Unable to resolve AYON entity URI '{entity_uri}' to a "
+            f"single filepath. Received data: {response.data}"
+        )
+    return entities[0]["filePath"]
 
 
 class TemplateNotFound(Exception):
@@ -823,7 +846,6 @@ class AbstractTemplateBuilder(ABC):
         """
 
         host_name = self.host_name
-        project_name = self.project_name
         task_name = self.current_task_name
         task_type = self.current_task_type
 
@@ -836,6 +858,8 @@ class AbstractTemplateBuilder(ABC):
             }
         )
 
+        print("Build profiles", build_profiles)
+
         if not profile:
             raise TemplateProfileNotFound((
                 "No matching profile found for task '{}' of type '{}' "
@@ -843,6 +867,15 @@ class AbstractTemplateBuilder(ABC):
             ).format(task_name, task_type, host_name))
 
         path = profile["path"]
+        if not path:
+            raise TemplateLoadFailed((
+                "Template path is not set.\n"
+                "Path need to be set in {}\\Template Workfile Build "
+                "Settings\\Profiles"
+            ).format(host_name.title()))
+
+        resolved_path = self.resolve_template_path(path)
+        self.log.info(f"Found template at: '{resolved_path}'")
 
         # switch to remove placeholders after they are used
         keep_placeholder = profile.get("keep_placeholder")
@@ -852,86 +885,111 @@ class AbstractTemplateBuilder(ABC):
         if keep_placeholder is None:
             keep_placeholder = True
 
-        if not path:
-            raise TemplateLoadFailed((
-                "Template path is not set.\n"
-                "Path need to be set in {}\\Template Workfile Build "
-                "Settings\\Profiles"
-            ).format(host_name.title()))
-
-        # Try to fill path with environments and anatomy roots
-        anatomy = Anatomy(project_name)
-        fill_data = {
-            key: value
-            for key, value in os.environ.items()
-        }
-
-        fill_data["root"] = anatomy.roots
-        fill_data["project"] = {
-            "name": project_name,
-            "code": anatomy.project_code,
-        }
-
-        path = self.resolve_template_path(path, fill_data)
-
-        if path and os.path.exists(path):
-            self.log.info("Found template at: '{}'".format(path))
-            return {
-                "path": path,
-                "keep_placeholder": keep_placeholder,
-                "create_first_version": create_first_version
-            }
-
-        solved_path = None
-        while True:
-            try:
-                solved_path = anatomy.path_remapper(path)
-            except KeyError as missing_key:
-                raise KeyError(
-                    "Could not solve key '{}' in template path '{}'".format(
-                        missing_key, path))
-
-            if solved_path is None:
-                solved_path = path
-            if solved_path == path:
-                break
-            path = solved_path
-
-        solved_path = os.path.normpath(solved_path)
-        if not os.path.exists(solved_path):
-            raise TemplateNotFound(
-                "Template found in AYON settings for task '{}' with host "
-                "'{}' does not exists. (Not found : {})".format(
-                    task_name, host_name, solved_path))
-
-        self.log.info("Found template at: '{}'".format(solved_path))
-
         return {
-            "path": solved_path,
+            "path": resolved_path,
             "keep_placeholder": keep_placeholder,
             "create_first_version": create_first_version
         }
 
-    def resolve_template_path(self, path, fill_data) -> str:
+    def resolve_template_path(self, path, fill_data=None) -> str:
         """Resolve the template path.
 
-        By default, this does nothing except returning the path directly.
+        By default, this:
+          - Resolves AYON entity URI to a filesystem path
+          - Returns path directly if it exists on disk.
+          - Resolves template keys through anatomy and environment variables.
 
         This can be overridden in host integrations to perform additional
         resolving over the template. Like, `hou.text.expandString` in Houdini.
+        It's recommended to still call the super().resolve_template_path()
+        to ensure the basic resolving is done across all integrations.
 
         Arguments:
             path (str): The input path.
-            fill_data (dict[str, str]): Data to use for template formatting.
+            fill_data (dict[str, str]): Deprecated. This is computed inside
+                the method using the current environment and project settings.
+                Used to be the data to use for template formatting.
 
         Returns:
             str: The resolved path.
 
         """
-        result = StringTemplate.format_template(path, fill_data)
-        if result.solved:
-            path = result.normalized()
-        return path
+
+        # If the path is an AYON entity URI, then resolve the filepath
+        # through the backend
+        if path.startswith("ayon+entity://") or path.startswith("ayon://"):
+            # This is a special case where the path is an AYON entity URI
+            # We need to resolve it to a filesystem path
+            resolved_path = resolve_entity_uri(path)
+            if not os.path.exists(resolved_path):
+                raise TemplateNotFound(
+                    "Template found in AYON settings for task '{}' with host "
+                    "'{}' does not resolve AYON entity URI '{}' "
+                    "to an existing file on disk: '{}'".format(
+                        self.current_task_name,
+                        self.host_name,
+                        path,
+                        resolved_path,
+                    )
+                )
+            return resolved_path
+
+        # If the path is set and it's found on disk, return it directly
+        if path and os.path.exists(path):
+            return path
+
+        # Otherwise assume a path with template keys, we do a very mundane
+        # check whether `{` or `<` is present in the path.
+        if "{" in path or "<" in path:
+            # Resolve keys through anatomy
+            project_name = self.project_name
+            task_name = self.current_task_name
+            host_name = self.host_name
+
+            # Try to fill path with environments and anatomy roots
+            anatomy = Anatomy(project_name)
+            fill_data = {
+                key: value
+                for key, value in os.environ.items()
+            }
+
+            fill_data["root"] = anatomy.roots
+            fill_data["project"] = {
+                "name": project_name,
+                "code": anatomy.project_code,
+            }
+
+            # Recursively remap anatomy paths
+            while True:
+                try:
+                    solved_path = anatomy.path_remapper(path)
+                except KeyError as missing_key:
+                    raise KeyError(
+                        f"Could not solve key '{missing_key}'"
+                        f" in template path '{path}'"
+                    )
+
+                if solved_path is None:
+                    solved_path = path
+                if solved_path == path:
+                    break
+                path = solved_path
+
+            solved_path = os.path.normpath(solved_path)
+            if not os.path.exists(solved_path):
+                raise TemplateNotFound(
+                    "Template found in AYON settings for task '{}' with host "
+                    "'{}' does not exists. (Not found : {})".format(
+                        task_name, host_name, solved_path))
+
+            result = StringTemplate.format_template(path, fill_data)
+            if result.solved:
+                path = result.normalized()
+            return path
+
+        raise TemplateNotFound(
+            f"Unable to resolve template path: '{path}'"
+        )
 
     def emit_event(self, topic, data=None, source=None) -> Event:
         return self._event_system.emit(topic, data, source)
