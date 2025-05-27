@@ -1,11 +1,14 @@
 # -*- coding: utf-8 -*-
 """Cleanup leftover files from publish."""
 import os
-import shutil
-import pyblish.api
 import re
+import shutil
+import tempfile
+
+import pyblish.api
 
 from ayon_core.lib import is_in_tests
+from ayon_core.pipeline import PublishError
 
 
 class CleanUp(pyblish.api.InstancePlugin):
@@ -48,17 +51,15 @@ class CleanUp(pyblish.api.InstancePlugin):
         if is_in_tests():
             # let automatic test process clean up temporary data
             return
-        # Get the errored instances
-        failed = []
+
+        # If instance has errors, do not clean up
         for result in instance.context.data["results"]:
-            if (result["error"] is not None and result["instance"] is not None
-               and result["instance"] not in failed):
-                failed.append(result["instance"])
-        assert instance not in failed, (
-            "Result of '{}' instance were not success".format(
-                instance.data["name"]
-            )
-        )
+            if result["error"] is not None and result["instance"] is instance:
+                raise PublishError(
+                    "Result of '{}' instance were not success".format(
+                        instance.data["name"]
+                    )
+                )
 
         _skip_cleanup_filepaths = instance.context.data.get(
             "skipCleanupFilepaths"
@@ -71,10 +72,17 @@ class CleanUp(pyblish.api.InstancePlugin):
             self.log.debug("Cleaning renders new...")
             self.clean_renders(instance, skip_cleanup_filepaths)
 
-        if [ef for ef in self.exclude_families
-                if instance.data["productType"] in ef]:
+        # TODO: Figure out whether this could be refactored to just a
+        #  product_type in self.exclude_families check.
+        product_type = instance.data["productType"]
+        if any(
+            product_type in exclude_family
+            for exclude_family in self.exclude_families
+        ):
+            self.log.debug(
+                "Skipping cleanup for instance because product "
+                f"type is excluded from cleanup: {product_type}")
             return
-        import tempfile
 
         temp_root = tempfile.gettempdir()
         staging_dir = instance.data.get("stagingDir", None)
