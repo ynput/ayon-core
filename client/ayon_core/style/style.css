@@ -829,6 +829,11 @@ HintedLineEditButton {
 }
 
 /* Launcher specific stylesheets */
+ActionMenuToolTip {
+    border: 1px solid #555555;
+    background: {color:bg-inputs};
+}
+
 ActionVariantWidget {
     background: transparent;
 }
