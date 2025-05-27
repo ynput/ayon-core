@@ -55,7 +55,7 @@ class CoreAddon(BaseServerAddon):
                         "name": "create_new_folder",
                     },
                     order=100,
-                    entity_type="folder",
+                    entity_type="project",
                     entity_subtypes=None,
                     allow_multiselection=False,
                 )
