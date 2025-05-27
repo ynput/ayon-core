@@ -18,9 +18,6 @@ from .settings import (
 )
 
 
-IDENTIFIER_PREFIX = "core"
-
-
 class CoreAddon(BaseServerAddon):
     settings_model = CoreSettings
 
@@ -51,7 +48,7 @@ class CoreAddon(BaseServerAddon):
             # Add 'Create Project Folder Structure' action to folders.
             output.append(
                 SimpleActionManifest(
-                    identifier=f"{IDENTIFIER_PREFIX}.createprojectstructure",
+                    identifier="core.createprojectstructure",
                     label="Create Project Folder Structure",
                     icon={
                         "type": "material-symbols",
@@ -74,9 +71,7 @@ class CoreAddon(BaseServerAddon):
 
         project_name = executor.context.project_name
 
-        if executor.identifier == \
-              f"{IDENTIFIER_PREFIX}.create_project_structure":
-
+        if executor.identifier == "core.createprojectstructure":
             if not project_name:
                 logger.error(
                     f"Can't execute {executor.identifier} because"
