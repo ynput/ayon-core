@@ -72,8 +72,13 @@ class CleanUp(pyblish.api.InstancePlugin):
             self.log.debug("Cleaning renders new...")
             self.clean_renders(instance, skip_cleanup_filepaths)
 
+        # TODO: Figure out whether this could be refactored to just a
+        #  product_type in self.exclude_families check.
         product_type = instance.data["productType"]
-        if product_type in self.exclude_families:
+        if any(
+                exclude_family in product_type
+                for exclude_family in self.exclude_families
+        ):
             self.log.debug(
                 "Skipping cleanup for instance because product "
                 f"type is excluded from cleanup: {product_type}")
