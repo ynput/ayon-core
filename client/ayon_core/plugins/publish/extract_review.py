@@ -5,10 +5,14 @@ import json
 import shutil
 import subprocess
 from abc import ABC, abstractmethod
+from typing import Dict, Any, Optional
+import tempfile
 
 import clique
 import speedcopy
 import pyblish.api
+
+from ayon_api import get_last_version_by_product_name, get_representations
 
 from ayon_core.lib import (
     get_ffmpeg_tool_args,
@@ -400,15 +404,73 @@ class ExtractReview(pyblish.api.InstancePlugin):
             )
 
             temp_data = self.prepare_temp_data(instance, repre, output_def)
-            files_to_clean = []
+            new_frame_files = {}
             if temp_data["input_is_sequence"]:
                 self.log.debug("Checking sequence to fill gaps in sequence..")
-                files_to_clean = self.fill_sequence_gaps(
-                    files=temp_data["origin_repre"]["files"],
-                    staging_dir=new_repre["stagingDir"],
-                    start_frame=temp_data["frame_start"],
-                    end_frame=temp_data["frame_end"]
-                )
+
+                files = temp_data["origin_repre"]["files"]
+                collections = clique.assemble(
+                    files,
+                )[0]
+                if len(collections) != 1:
+                    raise KnownPublishError(
+                        "Multiple collections {} found.".format(collections))
+
+                collection = collections[0]
+
+                fill_missing_frames = _output_def["fill_missing_frames"]
+                if fill_missing_frames == "closest_existing":
+                    new_frame_files = self.fill_sequence_gaps_from_existing(
+                        collection=collection,
+                        staging_dir=new_repre["stagingDir"],
+                        start_frame=temp_data["frame_start"],
+                        end_frame=temp_data["frame_end"],
+                    )
+                elif fill_missing_frames == "blank":
+                    new_frame_files = self.fill_sequence_gaps_with_blanks(
+                        collection=collection,
+                        staging_dir=new_repre["stagingDir"],
+                        start_frame=temp_data["frame_start"],
+                        end_frame=temp_data["frame_end"],
+                        resolution_width=temp_data["resolution_width"],
+                        resolution_height=temp_data["resolution_height"],
+                        extension=temp_data["input_ext"],
+                        temp_data=temp_data
+                    )
+                elif fill_missing_frames == "previous_version":
+                    new_frame_files = self.fill_sequence_gaps_with_previous(
+                        collection=collection,
+                        staging_dir=new_repre["stagingDir"],
+                        instance=instance,
+                        current_repre_name=repre["name"],
+                        start_frame=temp_data["frame_start"],
+                        end_frame=temp_data["frame_end"],
+                    )
+                    # fallback to original workflow
+                    if new_frame_files is None:
+                        new_frame_files = (
+                            self.fill_sequence_gaps_from_existing(
+                            collection=collection,
+                            staging_dir=new_repre["stagingDir"],
+                            start_frame=temp_data["frame_start"],
+                            end_frame=temp_data["frame_end"],
+                        ))
+                elif fill_missing_frames == "only_rendered":
+                    temp_data["explicit_input_paths"] = [
+                        os.path.join(
+                            new_repre["stagingDir"], file
+                        ).replace("\\", "/")
+                        for file in files
+                    ]
+                    frame_start = min(collection.indexes)
+                    frame_end = max(collection.indexes)
+                    # modify range for burnins
+                    instance.data["frameStart"] = frame_start
+                    instance.data["frameEnd"] = frame_end
+                    temp_data["frame_start"] = frame_start
+                    temp_data["frame_end"] = frame_end
+
+            temp_data["filled_files"] = new_frame_files
 
             # create or update outputName
             output_name = new_repre.get("outputName", "")
@@ -465,9 +527,12 @@ class ExtractReview(pyblish.api.InstancePlugin):
             run_subprocess(subprcs_cmd, shell=True, logger=self.log)
 
             # delete files added to fill gaps
-            if files_to_clean:
-                for f in files_to_clean:
-                    os.unlink(f)
+            if new_frame_files:
+                for filepath in new_frame_files.values():
+                    os.unlink(filepath)
+
+            for filepath in temp_data["paths_to_remove"]:
+                os.unlink(filepath)
 
             new_repre.update({
                 "fps": temp_data["fps"],
@@ -560,6 +625,7 @@ class ExtractReview(pyblish.api.InstancePlugin):
         input_is_sequence = self.input_is_sequence(repre)
         input_allow_bg = False
         first_sequence_frame = None
+
         if input_is_sequence and repre["files"]:
             # Calculate first frame that should be used
             cols, _ = clique.assemble(repre["files"])
@@ -578,6 +644,8 @@ class ExtractReview(pyblish.api.InstancePlugin):
             ext = os.path.splitext(repre["files"][0])[1].replace(".", "")
             if ext.lower() in self.alpha_exts:
                 input_allow_bg = True
+        else:
+            ext = os.path.splitext(repre["files"])[1].replace(".", "")
 
         return {
             "fps": float(instance.data["fps"]),
@@ -598,7 +666,10 @@ class ExtractReview(pyblish.api.InstancePlugin):
             "input_allow_bg": input_allow_bg,
             "with_audio": with_audio,
             "without_handles": without_handles,
-            "handles_are_set": handles_are_set
+            "handles_are_set": handles_are_set,
+            "input_ext": ext,
+            "explicit_input_paths": [],  # absolute paths to rendered files
+            "paths_to_remove": []
         }
 
     def _ffmpeg_arguments(
@@ -680,7 +751,8 @@ class ExtractReview(pyblish.api.InstancePlugin):
         if layer_name:
             ffmpeg_input_args.extend(["-layer", layer_name])
 
-        if temp_data["input_is_sequence"]:
+        explicit_input_paths = temp_data["explicit_input_paths"]
+        if temp_data["input_is_sequence"] and not explicit_input_paths:
             # Set start frame of input sequence (just frame in filename)
             # - definition of input filepath
             # - add handle start if output should be without handles
@@ -707,7 +779,7 @@ class ExtractReview(pyblish.api.InstancePlugin):
                     "-to", "{:0.10f}".format(duration_seconds)
                 ])
 
-        if temp_data["output_is_sequence"]:
+        if temp_data["output_is_sequence"] and not explicit_input_paths:
             # Set start frame of output sequence (just frame in filename)
             # - this is definition of an output
             ffmpeg_output_args.extend([
@@ -738,10 +810,34 @@ class ExtractReview(pyblish.api.InstancePlugin):
                 "-frames:v", str(output_frames_len)
             ])
 
-        # Add video/image input path
-        ffmpeg_input_args.extend([
-            "-i", path_to_subprocess_arg(temp_data["full_input_path"])
-        ])
+        if not explicit_input_paths:
+            # Add video/image input path
+            ffmpeg_input_args.extend([
+                "-i", path_to_subprocess_arg(temp_data["full_input_path"])
+            ])
+        else:
+            frame_duration = 1 / temp_data["fps"]
+
+            explicit_frames_meta = tempfile.NamedTemporaryFile(
+                mode="w", prefix="explicit_frames", suffix=".txt", delete=False
+            )
+            explicit_frames_meta.close()
+            explicit_frames_path = explicit_frames_meta.name
+            with open(explicit_frames_path, "w") as fp:
+                lines = [
+                    f"file '{path}'{os.linesep}duration {frame_duration}"
+                    for path in temp_data["explicit_input_paths"]
+                ]
+                fp.write("\n".join(lines))
+            temp_data["paths_to_remove"].append(explicit_frames_path)
+
+            # let ffmpeg use only rendered files, might have gaps
+            ffmpeg_input_args.extend([
+                "-f", "concat",
+                "-safe", "0",
+                "-i", path_to_subprocess_arg(explicit_frames_path),
+                "-r", str(temp_data["fps"])
+            ])
 
         # Add audio arguments if there are any. Skipped when output are images.
         if not temp_data["output_ext_is_image"] and temp_data["with_audio"]:
@@ -881,8 +977,159 @@ class ExtractReview(pyblish.api.InstancePlugin):
 
         return all_args
 
-    def fill_sequence_gaps(self, files, staging_dir, start_frame, end_frame):
-        # type: (list, str, int, int) -> list
+    def fill_sequence_gaps_with_previous(
+        self,
+        collection: str,
+        staging_dir: str,
+        instance: pyblish.plugin.Instance,
+        current_repre_name: str,
+        start_frame: int,
+        end_frame: int
+    ) -> Optional[Dict[int, str]]:
+        """Tries to replace missing frames from ones from last version"""
+        repre_file_paths = self._get_last_version_files(
+            instance, current_repre_name)
+        if repre_file_paths is None:
+            # issues in getting last version files, falling back
+            return None
+
+        prev_collection = clique.assemble(
+            repre_file_paths,
+            patterns=[clique.PATTERNS["frames"]],
+            minimum_items=1
+        )[0][0]
+        prev_col_format = prev_collection.format("{head}{padding}{tail}")
+
+        added_files = {}
+        anatomy = instance.context.data["anatomy"]
+        col_format = collection.format("{head}{padding}{tail}")
+        for frame in range(start_frame, end_frame + 1):
+            if frame in collection.indexes:
+                continue
+            hole_fpath = os.path.join(staging_dir, col_format % frame)
+
+            previous_version_path = prev_col_format % frame
+            previous_version_path = anatomy.fill_root(previous_version_path)
+            if not os.path.exists(previous_version_path):
+                self.log.warning(
+                    "Missing frame should be replaced from "
+                    f"'{previous_version_path}' but that doesn't exist. "
+                    "Falling back to filling from currently last rendered."
+                )
+                return None
+
+            self.log.warning(
+                f"Replacing missing '{hole_fpath}' with "
+                f"'{previous_version_path}'"
+            )
+            speedcopy.copyfile(previous_version_path, hole_fpath)
+            added_files[frame] = hole_fpath
+
+        return added_files
+
+    def _get_last_version_files(
+        self,
+        instance: pyblish.plugin.Instance,
+        current_repre_name: str,
+    ):
+        product_name = instance.data["productName"]
+        project_name = instance.data["projectEntity"]["name"]
+        folder_entity = instance.data["folderEntity"]
+
+        version_entity = get_last_version_by_product_name(
+            project_name,
+            product_name,
+            folder_entity["id"],
+            fields={"id"}
+        )
+        if not version_entity:
+            return None
+
+        matching_repres = get_representations(
+            project_name,
+            version_ids=[version_entity["id"]],
+            representation_names=[current_repre_name],
+            fields={"files"}
+        )
+
+        if not matching_repres:
+            return None
+        matching_repre = list(matching_repres)[0]
+
+        repre_file_paths = [
+            file_info["path"]
+            for file_info in matching_repre["files"]
+        ]
+
+        return repre_file_paths
+
+    def fill_sequence_gaps_with_blanks(
+        self,
+        collection: str,
+        staging_dir: str,
+        start_frame: int,
+        end_frame: int,
+        resolution_width: int,
+        resolution_height: int,
+        extension: str,
+        temp_data: Dict[str, Any]
+    ) -> Optional[Dict[int, str]]:
+        """Fills missing files by blank frame."""
+
+        blank_frame_path = None
+
+        added_files = {}
+
+        col_format = collection.format("{head}{padding}{tail}")
+        for frame in range(start_frame, end_frame + 1):
+            if frame in collection.indexes:
+                continue
+            hole_fpath = os.path.join(staging_dir, col_format % frame)
+            if blank_frame_path is None:
+                blank_frame_path = self._create_blank_frame(
+                    staging_dir, extension, resolution_width, resolution_height
+                )
+                temp_data["paths_to_remove"].append(blank_frame_path)
+            speedcopy.copyfile(blank_frame_path, hole_fpath)
+            added_files[frame] = hole_fpath
+
+        return added_files
+
+    def _create_blank_frame(
+        self,
+        staging_dir,
+        extension,
+        resolution_width,
+        resolution_height
+    ):
+        blank_frame_path = os.path.join(staging_dir, f"blank.{extension}")
+
+        command = get_ffmpeg_tool_args(
+            "ffmpeg",
+            "-f", "lavfi",
+            "-i", "color=c=black:s={}x{}:d=1".format(
+                resolution_width, resolution_height
+            ),
+            "-tune", "stillimage",
+            "-frames:v", "1",
+            blank_frame_path
+        )
+
+        self.log.debug("Executing: {}".format(" ".join(command)))
+        output = run_subprocess(
+            command, logger=self.log
+        )
+        self.log.debug("Output: {}".format(output))
+
+        return blank_frame_path
+
+    def fill_sequence_gaps_from_existing(
+        self,
+        collection,
+        staging_dir: str,
+        start_frame: int,
+        end_frame: int
+    ) -> Dict[int, str]:
         """Fill missing files in sequence by duplicating existing ones.
 
         This will take nearest frame file and copy it with so as to fill
@@ -890,40 +1137,33 @@ class ExtractReview(pyblish.api.InstancePlugin):
         hole ahead.
 
         Args:
-            files (list): List of representation files.
+            collection (clique.collection)
             staging_dir (str): Path to staging directory.
             start_frame (int): Sequence start (no matter what files are there)
             end_frame (int): Sequence end (no matter what files are there)
 
         Returns:
-            list of added files. Those should be cleaned after work
+            dict[int, str] of added files. Those should be cleaned after work
                 is done.
 
         Raises:
             KnownPublishError: if more than one collection is obtained.
         """
 
-        collections = clique.assemble(files)[0]
-        if len(collections) != 1:
-            raise KnownPublishError(
-                "Multiple collections {} found.".format(collections))
-
-        col = collections[0]
-
         # Prepare which hole is filled with what frame
         #   - the frame is filled only with already existing frames
-        prev_frame = next(iter(col.indexes))
+        prev_frame = next(iter(collection.indexes))
         hole_frame_to_nearest = {}
         for frame in range(int(start_frame), int(end_frame) + 1):
-            if frame in col.indexes:
+            if frame in collection.indexes:
                 prev_frame = frame
             else:
                 # Use previous frame as source for hole
                 hole_frame_to_nearest[frame] = prev_frame
 
         # Calculate paths
-        added_files = []
-        col_format = col.format("{head}{padding}{tail}")
+        added_files = {}
+        col_format = collection.format("{head}{padding}{tail}")
         for hole_frame, src_frame in hole_frame_to_nearest.items():
             hole_fpath = os.path.join(staging_dir, col_format % hole_frame)
             src_fpath = os.path.join(staging_dir, col_format % src_frame)
@@ -932,7 +1172,7 @@ class ExtractReview(pyblish.api.InstancePlugin):
                     "Missing previously detected file: {}".format(src_fpath))
 
             speedcopy.copyfile(src_fpath, hole_fpath)
-            added_files.append(hole_fpath)
+            added_files[hole_frame] = hole_fpath
 
         return added_files
 
@@ -977,6 +1217,14 @@ class ExtractReview(pyblish.api.InstancePlugin):
 
             # Make sure to have full path to one input file
             full_input_path_single_file = full_input_path
+
+        filled_files = temp_data["filled_files"]
+        if filled_files:
+            first_frame, first_file = next(iter(filled_files.items()))
+            if first_file < full_input_path_single_file:
+                self.log.warning(f"Using filled frame: '{first_file}'")
+                full_input_path_single_file = first_file
+                temp_data["first_sequence_frame"] = first_frame
 
         filename_suffix = output_def["filename_suffix"]
 
@@ -1333,7 +1581,7 @@ class ExtractReview(pyblish.api.InstancePlugin):
                 bg_red, bg_green, bg_blue = overscan_color
             else:
                 # Backwards compatibility
-                bg_red, bg_green, bg_blue, _  = overscan_color
+                bg_red, bg_green, bg_blue, _ = overscan_color
 
             overscan_color_value = "#{0:0>2X}{1:0>2X}{2:0>2X}".format(
                 bg_red, bg_green, bg_blue

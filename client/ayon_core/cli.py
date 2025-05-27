@@ -172,7 +172,6 @@ def contextselection(
     main(output_path, project, folder, strict)
 
 
-
 @main_cli.command(
     context_settings=dict(
         ignore_unknown_options=True,
