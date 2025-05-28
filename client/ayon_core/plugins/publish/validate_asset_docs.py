@@ -185,6 +185,6 @@ class ValidateFolderCreationResolution(
             BoolDef(
                 "updateExistingFolderResolution",
                 default=True,
-                label="Update existing shot resolution.",
+                label="Update existing shot resolution",
             ),
         ]
