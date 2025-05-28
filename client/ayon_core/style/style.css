@@ -829,8 +829,35 @@ HintedLineEditButton {
 }
 
 /* Launcher specific stylesheets */
-ActionMenuPopup {
-    border: 1px solid {color:border};
+ActionsView[mode="icon"] {
+    /* font size can't be set on items */
+    font-size: 9pt;
+    border: 0px;
+    padding: 0px;
+    margin: 0px;
+}
+
+ActionsView[mode="icon"]::item  {
+    padding-top: 8px;
+    padding-bottom: 4px;
+    border: 0px;
+    border-radius: 0.3em;
+}
+
+ActionsView[mode="icon"]::item:hover {
+    color: {color:font-hover};
+}
+
+ActionsView[mode="icon"]::icon {}
+
+ActionMenuPopup #Wrapper {
+    border: 1px solid #f4f5f5;
+    border-radius: 0.3em;
+    background: {color:bg-inputs};
+}
+ActionMenuPopup ActionsView[mode="icon"] {
+    background: transparent;
+    border: none;
 }
 
 LauncherSettingsButton {

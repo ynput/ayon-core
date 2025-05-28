@@ -319,7 +319,7 @@ class ActionMenuPopupModel(QtGui.QStandardItemModel):
             root_item.appendRows(new_items)
 
 
-class ActionMenuPopup(QtWidgets.QFrame):
+class ActionMenuPopup(QtWidgets.QWidget):
     action_triggered = QtCore.Signal(str)
     config_requested = QtCore.Signal(str)
 
@@ -328,6 +328,7 @@ class ActionMenuPopup(QtWidgets.QFrame):
 
         self.setWindowFlags(QtCore.Qt.Tool | QtCore.Qt.FramelessWindowHint)
         self.setAttribute(QtCore.Qt.WA_ShowWithoutActivating, True)
+        self.setAttribute(QtCore.Qt.WA_TranslucentBackground, True)
         self.setAutoFillBackground(True)
         self.setBackgroundRole(QtGui.QPalette.Base)
 
@@ -341,7 +342,10 @@ class ActionMenuPopup(QtWidgets.QFrame):
         close_timer.setSingleShot(True)
         close_timer.setInterval(100)
 
-        view = ActionsView(self)
+        wrapper = QtWidgets.QFrame(self)
+        wrapper.setObjectName("Wrapper")
+
+        view = ActionsView(wrapper)
 
         model = ActionMenuPopupModel()
         proxy_model = ActionsProxyModel()
@@ -351,10 +355,15 @@ class ActionMenuPopup(QtWidgets.QFrame):
         view.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
         view.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
 
+        wrapper_layout = QtWidgets.QVBoxLayout(wrapper)
+        wrapper_layout.setContentsMargins(0, 0, 0, 0)
+        wrapper_layout.setSpacing(0)
+        wrapper_layout.addWidget(view, 0)
+
         main_layout = QtWidgets.QVBoxLayout(self)
         main_layout.setContentsMargins(0, 0, 0, 0)
         main_layout.setSpacing(0)
-        main_layout.addWidget(view, 0)
+        main_layout.addWidget(wrapper, 0)
 
         close_timer.timeout.connect(self.close)
         show_timer.timeout.connect(self._on_show_timer)
@@ -417,7 +426,7 @@ class ActionMenuPopup(QtWidgets.QFrame):
             size = self._get_size_hint()
             self.setGeometry(
                 pos.x() - 1, pos.y() - 1,
-                size.width() + 4, size.height() + 4
+                size.width(), size.height()
             )
         else:
             # Only resize if is current
@@ -457,15 +466,17 @@ class ActionMenuPopup(QtWidgets.QFrame):
         if rows == 1:
             cols = row_count
 
+        # QUESTION how to get the margins from Qt?
+        border = 2 * 1
         width = (
             (cols * grid_size.width())
             + ((cols - 1) * self._view.spacing())
-            + self._view.horizontalOffset() + 4
+            + self._view.horizontalOffset() + border + 1
         )
         height = (
             (rows * grid_size.height())
             + ((rows - 1) * self._view.spacing())
-            + self._view.verticalOffset() + 4
+            + self._view.verticalOffset() + border + 1
         )
         return QtCore.QSize(width, height)
 
@@ -566,7 +577,7 @@ class ActionDelegate(QtWidgets.QStyledItemDelegate):
 
         if index.data(ANIMATION_STATE_ROLE):
             self._draw_animation(painter, option, index)
-
+        option.displayAlignment = QtCore.Qt.AlignHCenter | QtCore.Qt.AlignTop
         super().paint(painter, option, index)
 
         if not index.data(ACTION_IS_GROUP_ROLE):
@@ -624,7 +635,6 @@ class ActionsView(QtWidgets.QListView):
     def __init__(self, parent):
         super().__init__(parent)
         self.setProperty("mode", "icon")
-        self.setObjectName("IconView")
         self.setViewMode(QtWidgets.QListView.IconMode)
         self.setResizeMode(QtWidgets.QListView.Adjust)
         self.setSelectionMode(QtWidgets.QListView.NoSelection)
