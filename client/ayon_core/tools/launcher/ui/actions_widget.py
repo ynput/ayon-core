@@ -842,7 +842,7 @@ class ActionsWidget(QtWidgets.QWidget):
         if not index or not index.isValid():
             return
 
-        is_group = index.data(ACTION_IS_GROUP_ROLE)
+        _is_group = index.data(ACTION_IS_GROUP_ROLE)
         # TODO define and store what is default action for a group
         action_id = index.data(ACTION_ID_ROLE)
         self._trigger_action(action_id, index)
