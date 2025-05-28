@@ -14,7 +14,12 @@ from ayon_core.lib.attribute_definitions import (
     HiddenDef,
 )
 from ayon_core.tools.flickcharm import FlickCharm
-from ayon_core.tools.utils import get_qt_icon, SquareButton, ClickableLabel
+from ayon_core.tools.utils import (
+    get_qt_icon,
+    SquareButton,
+    ClickableLabel,
+    PixmapLabel,
+)
 from ayon_core.tools.attribute_defs import AttributeDefinitionsDialog
 from ayon_core.tools.launcher.abstract import WebactionContext
 
@@ -69,8 +74,12 @@ class ActionVariantWidget(QtWidgets.QFrame):
     action_triggered = QtCore.Signal(str)
     settings_requested = QtCore.Signal(str)
 
-    def __init__(self, item_id, label, has_settings, parent):
+    def __init__(self, item_id, icon, label, has_settings, parent):
         super().__init__(parent)
+
+        icon_widget = None
+        if icon:
+            icon_widget = PixmapLabel(icon.pixmap(512, 512), self)
 
         label_widget = ClickableLabel(label, self)
         settings_btn = None
@@ -80,6 +89,10 @@ class ActionVariantWidget(QtWidgets.QFrame):
         layout = QtWidgets.QHBoxLayout(self)
         layout.setContentsMargins(6, 4, 4, 4)
         layout.setSpacing(0)
+        if icon_widget is not None:
+            layout.addWidget(icon_widget, 0)
+            layout.addSpacing(6)
+
         layout.addWidget(label_widget, 1)
         if settings_btn is not None:
             layout.addSpacing(6)
@@ -89,6 +102,7 @@ class ActionVariantWidget(QtWidgets.QFrame):
         label_widget.clicked.connect(self._on_trigger)
 
         self._item_id = item_id
+        self._icon_widget = icon_widget
         self._label_widget = label_widget
         self._settings_btn = settings_btn
 
@@ -471,7 +485,11 @@ class ActionMenuToolTip(QtWidgets.QFrame):
                 label = action_item.full_label
                 if widget is None:
                     widget = ActionVariantWidget(
-                        action_item.identifier, label, has_settings, self
+                        action_item.identifier,
+                        icon,
+                        label,
+                        has_settings,
+                        self
                     )
                     widget.action_triggered.connect(self._on_trigger)
                     widget.settings_requested.connect(
