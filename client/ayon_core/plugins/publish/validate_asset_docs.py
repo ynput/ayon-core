@@ -154,15 +154,29 @@ class ValidateFolderCreationResolution(
         # Validate existing shot resolution is matching new one
         # ask for confirmation instead of blind update, this prevents mistakes.
         if values.get("updateExistingFolderResolution", True):
+            similar = True
             for resolution_attrib in _RESOLUTION_ATTRIBS:
                 shot_value = shot_data.get(resolution_attrib)
                 entity_value = entity.attribs.get(resolution_attrib)
                 if shot_value and shot_value != entity_value:
-                    raise PublishValidationError(
+                    self.log.warning(
                         "Resolution mismatch for shot."
                         f"{resolution_attrib}={shot_value} but "
                         f"already existing shot is set to {entity_value}."
                     )
+                    similar = False
+
+            if not similar:
+                resolution_data = {
+                    key: value
+                    for key, value in shot_data.items()
+                    if key in _RESOLUTION_ATTRIBS
+                }
+                raise PublishValidationError(
+                    "Resolution mismatch for "
+                    f"shot: {resolution_data} does not "
+                    "correspond to existing entity."
+                )
 
         # If update existing shot is disabled, remove any resolution attribs.
         else:
