@@ -843,10 +843,18 @@ ActionVariantWidget[state="hover"], #OptionalActionOption[state="hover"] {
 }
 
 LauncherSettingsButton {
+    icon-size: 15px;
     background: transparent;
+    border: 1px solid #f4f5f5;
+    padding: 1px 3px 1px 3px;
 }
 
-LauncherSettingsButton:hover {
+LauncherSettingsButton[inMenu="1"] {
+    border: none;
+    padding: 3px 5px 3px 5px;
+}
+
+LauncherSettingsButton:hover, LauncherSettingsButton[inMenu="1"]:hover {
     border: 1px solid #f4f5f5;
 }
 
