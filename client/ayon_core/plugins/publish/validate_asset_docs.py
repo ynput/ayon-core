@@ -115,8 +115,8 @@ class ValidateFolderCreationResolution(
 
                 if entity and child:
                     entity_children = {
-                        child.name: child
-                        for child in entity.children
+                        chld.name: chld
+                        for chld in entity.children
                     }
                     entity_to_inspect.append((entity_children, child))
 
@@ -137,12 +137,12 @@ class ValidateFolderCreationResolution(
             hierarchy_context = instance.context.data["hierarchyContext"]
 
         except KeyError:
-            self.log.info("No hierarchy context defined for shot instance.")
+            self.log.debug("No hierarchy context defined for shot instance.")
             return
 
         validation_data = self.get_shot_data(hierarchy_context)
         if not validation_data:
-            self.log.info(
+            self.log.debug(
                 "Destination shot does not exist yet, "
                 "nothing to validate."
             )
@@ -169,7 +169,7 @@ class ValidateFolderCreationResolution(
             for resolution_attrib in _RESOLUTION_ATTRIBS:
                 shot_data.pop(resolution_attrib, None)
 
-            self.log.info(
+            self.log.debug(
                 "Ignore existing shot resolution validation "
                 "(update is disabled)."
             )
@@ -178,7 +178,7 @@ class ValidateFolderCreationResolution(
     def get_attr_defs_for_instance(
         cls, create_context, instance,
     ):
-        if instance.product_type not in cls.families:
+        if not cls.instance_matches_plugin_families(instance):
             return []
 
         return [
