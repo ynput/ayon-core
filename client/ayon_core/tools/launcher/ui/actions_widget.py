@@ -14,7 +14,7 @@ from ayon_core.lib.attribute_definitions import (
     HiddenDef,
 )
 from ayon_core.tools.flickcharm import FlickCharm
-from ayon_core.tools.utils import get_qt_icon, SquareButton
+from ayon_core.tools.utils import get_qt_icon, SquareButton, ClickableLabel
 from ayon_core.tools.attribute_defs import AttributeDefinitionsDialog
 from ayon_core.tools.launcher.abstract import WebactionContext
 
@@ -66,12 +66,13 @@ class LauncherSettingsButton(SquareButton):
 
 
 class ActionVariantWidget(QtWidgets.QFrame):
+    action_triggered = QtCore.Signal(str)
     settings_requested = QtCore.Signal(str)
 
     def __init__(self, item_id, label, has_settings, parent):
         super().__init__(parent)
 
-        label_widget = QtWidgets.QLabel(label, self)
+        label_widget = ClickableLabel(label, self)
         settings_btn = None
         if has_settings:
             settings_btn = LauncherSettingsButton(self)
@@ -85,6 +86,7 @@ class ActionVariantWidget(QtWidgets.QFrame):
             layout.addWidget(settings_btn, 0)
 
             settings_btn.clicked.connect(self._on_settings_clicked)
+        label_widget.clicked.connect(self._on_trigger)
 
         self._item_id = item_id
         self._label_widget = label_widget
@@ -104,6 +106,9 @@ class ActionVariantWidget(QtWidgets.QFrame):
         """Handle mouse enter event."""
         self._set_hover_properties(False)
         super().leaveEvent(event)
+
+    def _on_trigger(self):
+        self.action_triggered.emit(self._item_id)
 
     def _on_settings_clicked(self):
         self.settings_requested.emit(self._item_id)
@@ -185,6 +190,18 @@ class ActionsQtModel(QtGui.QStandardItemModel):
 
     def get_item_by_id(self, action_id):
         return self._items_by_id.get(action_id)
+
+    def get_group_item_by_action_id(self, action_id):
+        item = self._items_by_id.get(action_id)
+        if item is not None:
+            return item
+
+        for group_id, items in self._groups_by_id.items():
+            for item in items:
+                if item.identifier == action_id:
+                    return self._items_by_id[group_id]
+
+        return None
 
     def get_action_item_by_id(self, action_id):
         return self._action_items_by_id.get(action_id)
@@ -456,8 +473,9 @@ class ActionMenuToolTip(QtWidgets.QFrame):
                     widget = ActionVariantWidget(
                         action_item.identifier, label, has_settings, self
                     )
+                    widget.action_triggered.connect(self._on_trigger)
                     widget.settings_requested.connect(
-                        view.settings_requested
+                        self._on_settings_trigger
                     )
                     new_ids.add(action_item.identifier)
                     self._widgets_by_id[action_item.identifier] = widget
@@ -473,6 +491,15 @@ class ActionMenuToolTip(QtWidgets.QFrame):
 
         for idx, widget in widgets:
             self._main_layout.insertWidget(idx, widget, 0)
+
+    def _on_trigger(self, action_id):
+        self.close()
+        self._view.action_triggered.emit(action_id)
+
+    def _on_settings_trigger(self, action_id):
+        """Handle settings button click."""
+        self.close()
+        self._view.settings_requested.emit(action_id)
 
 
 class ActionDelegate(QtWidgets.QStyledItemDelegate):
@@ -637,6 +664,7 @@ class ActionsProxyModel(QtCore.QSortFilterProxyModel):
 
 
 class ActionsView(QtWidgets.QListView):
+    action_triggered = QtCore.Signal(str)
     settings_requested = QtCore.Signal(str)
 
     def __init__(self, parent):
@@ -697,6 +725,7 @@ class ActionsWidget(QtWidgets.QWidget):
         animation_timer.timeout.connect(self._on_animation)
 
         view.clicked.connect(self._on_clicked)
+        view.action_triggered.connect(self._trigger_action)
         view.settings_requested.connect(self._show_config_dialog)
         model.refreshed.connect(self._on_model_refresh)
 
@@ -798,13 +827,15 @@ class ActionsWidget(QtWidgets.QWidget):
         is_group = index.data(ACTION_IS_GROUP_ROLE)
         # TODO define and store what is default action for a group
         action_id = index.data(ACTION_ID_ROLE)
+        self._trigger_action(action_id, index)
 
+    def _trigger_action(self, action_id, index=None):
         project_name = self._model.get_selected_project_name()
         folder_id = self._model.get_selected_folder_id()
         task_id = self._model.get_selected_task_id()
+        action_item = self._model.get_action_item_by_id(action_id)
 
-        action_type = index.data(ACTION_TYPE_ROLE)
-        if action_type == "webaction":
+        if action_item.action_type == "webaction":
             action_item = self._model.get_action_item_by_id(action_id)
             context = WebactionContext(
                 action_id,
@@ -822,7 +853,13 @@ class ActionsWidget(QtWidgets.QWidget):
                 action_id, project_name, folder_id, task_id
             )
 
-        self._start_animation(index)
+        if index is None:
+            item = self._model.get_group_item_by_action_id(action_id)
+            if item is not None:
+                index = self._proxy_model.mapFromSource(item.index())
+
+        if index is not None:
+            self._start_animation(index)
 
     def _show_config_dialog(self, action_id):
         action_item = self._model.get_action_item_by_id(action_id)

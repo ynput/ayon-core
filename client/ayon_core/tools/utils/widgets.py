@@ -495,15 +495,15 @@ class ClickableLabel(QtWidgets.QLabel):
     """Label that catch left mouse click and can trigger 'clicked' signal."""
     clicked = QtCore.Signal()
 
-    def __init__(self, parent):
-        super(ClickableLabel, self).__init__(parent)
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
 
         self._mouse_pressed = False
 
     def mousePressEvent(self, event):
         if event.button() == QtCore.Qt.LeftButton:
             self._mouse_pressed = True
-        super(ClickableLabel, self).mousePressEvent(event)
+        super().mousePressEvent(event)
 
     def mouseReleaseEvent(self, event):
         if self._mouse_pressed:
@@ -511,7 +511,7 @@ class ClickableLabel(QtWidgets.QLabel):
             if self.rect().contains(event.pos()):
                 self.clicked.emit()
 
-        super(ClickableLabel, self).mouseReleaseEvent(event)
+        super().mouseReleaseEvent(event)
 
 
 class ExpandBtnLabel(QtWidgets.QLabel):
