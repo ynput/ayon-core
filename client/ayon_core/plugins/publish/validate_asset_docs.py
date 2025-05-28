@@ -57,9 +57,10 @@ class RepairOverrideResolution(RepairAction):
     label = "Force new shot resolution."
 
     def process(self, context, plugin):
-        entity_hub, entity, shot_data = ValidateFolderCreationResolution.get_shot_data(
+        values = ValidateFolderCreationResolution.get_shot_data(
             context.data["hierarchyContext"]
         )
+        entity_hub, entity, shot_data = values
 
         for attrib in _RESOLUTION_ATTRIBS:
             entity.attribs.set(attrib, shot_data[attrib])
@@ -84,7 +85,10 @@ class RepairIgnoreResolution(RepairAction):
         create_context.save_changes()
 
 
-class ValidateFolderCreationResolution(pyblish.api.InstancePlugin, AYONPyblishPluginMixin):
+class ValidateFolderCreationResolution(
+        pyblish.api.InstancePlugin,
+        AYONPyblishPluginMixin
+    ):
     """ Validate resolution values before updating an existing folder.
     """
 
@@ -110,11 +114,17 @@ class ValidateFolderCreationResolution(pyblish.api.InstancePlugin, AYONPyblishPl
                 child = value.get("children", None)
 
                 if entity and child:
-                    entity_children = {child.name: child for child in entity.children}
+                    entity_children = {
+                        child.name: child
+                        for child in entity.children
+                    }
                     entity_to_inspect.append((entity_children, child))
 
                 # Destination shot already exists return for validation.
-                elif value.get("folder_type") == "Shot" and entity and not child:
+                elif (
+                    value.get("folder_type") == "Shot"
+                    and entity and not child
+                ):
                     shot_data = value.get("attributes", {})
                     return entity_hub, entity, shot_data
 
@@ -132,7 +142,10 @@ class ValidateFolderCreationResolution(pyblish.api.InstancePlugin, AYONPyblishPl
 
         validation_data = self.get_shot_data(hierarchy_context)
         if not validation_data:
-            self.log.info("Destination shot does not exist yet, nothing to validate.")
+            self.log.info(
+                "Destination shot does not exist yet, "
+                "nothing to validate."
+            )
             return
 
         values = self.get_attr_values_from_data(instance.data)
@@ -147,8 +160,8 @@ class ValidateFolderCreationResolution(pyblish.api.InstancePlugin, AYONPyblishPl
                 if shot_value and shot_value != entity_value:
                     raise PublishValidationError(
                         "Resolution mismatch for shot."
-                        f"{resolution_attrib}={shot_value} but already existing "
-                        f"shot is set to {entity_value}."
+                        f"{resolution_attrib}={shot_value} but "
+                        f"already existing shot is set to {entity_value}."
                     )
 
         # If update existing shot is disabled, remove any resolution attribs.
