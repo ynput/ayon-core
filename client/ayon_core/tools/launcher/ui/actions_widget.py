@@ -99,71 +99,6 @@ class ActionOverlayWidget(QtWidgets.QFrame):
         self.config_requested.emit(self._item_id)
 
 
-class ActionVariantWidget(ClickableFrame):
-    action_triggered = QtCore.Signal(str)
-    config_requested = QtCore.Signal(str)
-
-    def __init__(self, item_id, icon, label, has_configs, parent):
-        super().__init__(parent)
-
-        icon_widget = None
-        if icon:
-            icon_widget = PixmapLabel(icon.pixmap(512, 512), self)
-
-        label_widget = QtWidgets.QLabel(label, self)
-        settings_btn = None
-        if has_configs:
-            settings_btn = LauncherSettingsButton(self)
-            settings_btn.set_is_in_menu(True)
-
-        layout = QtWidgets.QHBoxLayout(self)
-        layout.setContentsMargins(6, 4, 4, 4)
-        layout.setSpacing(0)
-        if icon_widget is not None:
-            layout.addWidget(icon_widget, 0)
-            layout.addSpacing(6)
-
-        layout.addWidget(label_widget, 1)
-        if settings_btn is not None:
-            layout.addSpacing(6)
-            layout.addWidget(settings_btn, 0)
-
-            settings_btn.clicked.connect(self._on_settings_clicked)
-        self.clicked.connect(self._on_trigger)
-
-        self._item_id = item_id
-        self._icon_widget = icon_widget
-        self._label_widget = label_widget
-        self._settings_btn = settings_btn
-
-    def showEvent(self, event):
-        super().showEvent(event)
-        # Make sure to set up current state
-        self._set_hover_properties(self.underMouse())
-
-    def enterEvent(self, event):
-        """Handle mouse enter event."""
-        self._set_hover_properties(True)
-        super().enterEvent(event)
-
-    def leaveEvent(self, event):
-        """Handle mouse enter event."""
-        self._set_hover_properties(False)
-        super().leaveEvent(event)
-
-    def _on_trigger(self):
-        self.action_triggered.emit(self._item_id)
-
-    def _on_settings_clicked(self):
-        self.config_requested.emit(self._item_id)
-
-    def _set_hover_properties(self, hovered):
-        state = "hover" if hovered else ""
-        if self.property("state") != state:
-            self.setProperty("state", state)
-            self.style().polish(self)
-
-
 class ActionsQtModel(QtGui.QStandardItemModel):
     """Qt model for actions.
 
@@ -299,6 +234,7 @@ class ActionsQtModel(QtGui.QStandardItemModel):
 
             item.setFlags(QtCore.Qt.ItemIsEnabled)
             item.setData(label, QtCore.Qt.DisplayRole)
+            item.setData(label, QtCore.Qt.ToolTipRole)
             item.setData(icon, QtCore.Qt.DecorationRole)
             item.setData(is_group, ACTION_IS_GROUP_ROLE)
             item.setData(has_configs, ACTION_HAS_CONFIGS_ROLE)
@@ -347,6 +283,42 @@ class ActionsQtModel(QtGui.QStandardItemModel):
         self.refresh()
 
 
+class ActionMenuPopupModel(QtGui.QStandardItemModel):
+    def set_action_items(self, action_items):
+        """Set action items for the popup."""
+        root_item = self.invisibleRootItem()
+        root_item.removeRows(0, root_item.rowCount())
+
+        transparent_icon = {"type": "transparent", "size": 256}
+        new_items = []
+        for action_item in action_items:
+            icon_def = action_item.icon
+            if not icon_def:
+                icon_def = transparent_icon.copy()
+
+            try:
+                icon = get_qt_icon(icon_def)
+            except Exception:
+                self._log.warning(
+                    "Failed to parse icon definition", exc_info=True
+                )
+                # Use empty icon if failed to parse definition
+                icon = get_qt_icon(transparent_icon.copy())
+
+            item = QtGui.QStandardItem()
+            item.setFlags(QtCore.Qt.ItemIsEnabled)
+            item.setData(action_item.full_label, QtCore.Qt.ToolTipRole)
+            item.setData(action_item.full_label, QtCore.Qt.DisplayRole)
+            item.setData(icon, QtCore.Qt.DecorationRole)
+            item.setData(action_item.identifier, ACTION_ID_ROLE)
+            item.setData(bool(action_item.config_fields), ACTION_HAS_CONFIGS_ROLE)
+            item.setData(action_item.order, ACTION_SORT_ROLE)
+            new_items.append(item)
+
+        if new_items:
+            root_item.appendRows(new_items)
+
+
 class ActionMenuPopup(QtWidgets.QFrame):
     action_triggered = QtCore.Signal(str)
     config_requested = QtCore.Signal(str)
@@ -354,7 +326,7 @@ class ActionMenuPopup(QtWidgets.QFrame):
     def __init__(self, parent):
         super().__init__(parent)
 
-        self.setWindowFlags(QtCore.Qt.Popup)
+        self.setWindowFlags(QtCore.Qt.Tool | QtCore.Qt.FramelessWindowHint)
         self.setAttribute(QtCore.Qt.WA_ShowWithoutActivating, True)
         self.setAutoFillBackground(True)
         self.setBackgroundRole(QtGui.QPalette.Base)
@@ -369,22 +341,36 @@ class ActionMenuPopup(QtWidgets.QFrame):
         close_timer.setSingleShot(True)
         close_timer.setInterval(100)
 
+        view = ActionsView(self)
+
+        model = ActionMenuPopupModel()
+        proxy_model = ActionsProxyModel()
+        proxy_model.setSourceModel(model)
+
+        view.setModel(proxy_model)
+        view.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
+        view.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
+
         main_layout = QtWidgets.QVBoxLayout(self)
         main_layout.setContentsMargins(0, 0, 0, 0)
         main_layout.setSpacing(0)
+        main_layout.addWidget(view, 0)
 
         close_timer.timeout.connect(self.close)
         show_timer.timeout.connect(self._on_show_timer)
+        view.clicked.connect(self._on_clicked)
+        view.config_requested.connect(self.config_requested)
 
-        self._main_layout = main_layout
+        self._view = view
+        self._model = model
+        self._proxy_model = proxy_model
+
         self._show_timer = show_timer
         self._close_timer = close_timer
 
         self._showed = False
-        self._mouse_entered = False
         self._current_id = None
         self._last_pos = QtCore.QPoint(0, 0)
-        self._widgets_by_id = {}
 
     def showEvent(self, event):
         self._showed = True
@@ -392,110 +378,103 @@ class ActionMenuPopup(QtWidgets.QFrame):
 
     def closeEvent(self, event):
         self._showed = False
-        self._mouse_entered = False
         super().closeEvent(event)
 
     def enterEvent(self, event):
-        self._mouse_entered = True
-        self._close_timer.stop()
         super().leaveEvent(event)
+        self._close_timer.stop()
 
     def leaveEvent(self, event):
-        self._mouse_entered = False
         super().leaveEvent(event)
         self._close_timer.start()
 
     def show_items(self, action_id, action_items, pos):
+        if not action_items:
+            if self._showed:
+                self._close_timer.start()
+            self._current_id = None
+            return
+
         self._close_timer.stop()
 
-        is_current = action_id == self._current_id
-        if not is_current:
+        update_position = False
+        if action_id != self._current_id:
+            update_position = True
             self._current_id = action_id
             self._update_items(action_items)
 
-        # Nothing to show
-        if not self._widgets_by_id:
-            if self._showed:
-                self.close()
-            return
-
         # Make sure is visible
-        update_position = not is_current
         if not self._showed:
             update_position = True
             self.show()
 
-        if not update_position:
-            # Only resize if is current
-            self.resize(self.sizeHint())
-        else:
+        if update_position:
             # Set geometry to position
             # - first make sure widget changes from '_update_items'
             #   are recalculated
             app = QtWidgets.QApplication.instance()
             app.processEvents()
-            size = self.sizeHint()
-            offset = 4
+            size = self._get_size_hint()
             self.setGeometry(
-                pos.x() + offset, pos.y() + offset,
-                size.width(), size.height()
+                pos.x() - 1, pos.y() - 1,
+                size.width() + 4, size.height() + 4
             )
+        else:
+            # Only resize if is current
+            self._update_size()
 
         self.raise_()
         self._show_timer.start()
 
+    def _on_clicked(self, index):
+        if not index or not index.isValid():
+            return
+
+        action_id = index.data(ACTION_ID_ROLE)
+        self.action_triggered.emit(action_id)
+
     def _on_show_timer(self):
-        size = self.sizeHint()
+        self._update_size()
+
+    def _update_size(self):
+        size = self._get_size_hint()
+        self._view.setMaximumHeight(size.height())
         self.resize(size)
+
+    def _get_size_hint(self):
+        grid_size = self._view.gridSize()
+        row_count = self._proxy_model.rowCount()
+        cols = 4
+        rows = 1
+        while True:
+            rows = row_count // cols
+            if row_count % cols:
+                rows += 1
+            if rows <= cols:
+                break
+            cols += 1
+
+        if rows == 1:
+            cols = row_count
+
+        width = (
+            (cols * grid_size.width())
+            + ((cols - 1) * self._view.spacing())
+            + self._view.horizontalOffset() + 4
+        )
+        height = (
+            (rows * grid_size.height())
+            + ((rows - 1) * self._view.spacing())
+            + self._view.verticalOffset() + 4
+        )
+        return QtCore.QSize(width, height)
 
     def _update_items(self, action_items):
         """Update items in the tooltip."""
         # This method can be used to update the content of the tooltip
         # with new icon, text and settings button visibility.
-
-        remove_ids = set(self._widgets_by_id.keys())
-        new_ids = set()
-        widgets = []
-
-        any_has_configs = False
-        prepared_items = []
-        for idx, action_item in enumerate(action_items):
-            has_configs = bool(action_item.config_fields)
-            if has_configs:
-                any_has_configs = True
-            prepared_items.append((idx, action_item, has_configs))
-
-        if any_has_configs or len(action_items) > 1:
-            for idx, action_item, has_configs in prepared_items:
-                widget = self._widgets_by_id.get(action_item.identifier)
-                icon = get_qt_icon(action_item.icon)
-                label = action_item.full_label
-                if widget is None:
-                    widget = ActionVariantWidget(
-                        action_item.identifier,
-                        icon,
-                        label,
-                        has_configs,
-                        self
-                    )
-                    widget.action_triggered.connect(self._on_trigger)
-                    widget.config_requested.connect(
-                        self._on_configs_trigger
-                    )
-                    new_ids.add(action_item.identifier)
-                    self._widgets_by_id[action_item.identifier] = widget
-                else:
-                    remove_ids.discard(action_item.identifier)
-                widgets.append((idx, widget))
-
-        for action_id in remove_ids:
-            widget = self._widgets_by_id.pop(action_id)
-            widget.setVisible(False)
-            self._main_layout.removeWidget(widget)
-            widget.deleteLater()
-
-        for idx, widget in widgets:
-            self._main_layout.insertWidget(idx, widget, 0)
+        self._model.set_action_items(action_items)
+        self._view.update_on_refresh()
 
     def _on_trigger(self, action_id):
         self.action_triggered.emit(action_id)
@@ -651,6 +630,8 @@ class ActionsView(QtWidgets.QListView):
         self.setSelectionMode(QtWidgets.QListView.NoSelection)
         self.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
         self.setEditTriggers(QtWidgets.QAbstractItemView.NoEditTriggers)
+        self.setContentsMargins(0, 0, 0, 0)
+        self.setViewportMargins(0, 0, 0, 0)
         self.setWrapping(True)
         self.setGridSize(QtCore.QSize(70, 75))
         self.setIconSize(QtCore.QSize(30, 30))
@@ -665,35 +646,78 @@ class ActionsView(QtWidgets.QListView):
         flick = FlickCharm(parent=self)
         flick.activateOn(self)
 
-        popup_widget = ActionMenuPopup(self)
-
-        popup_widget.action_triggered.connect(self.action_triggered)
-        popup_widget.config_requested.connect(self.config_requested)
-
+        self._overlay_widgets = []
         self._flick = flick
         self._delegate = delegate
-        self._popup_widget = popup_widget
+        self._popup_widget = None
 
     def mouseMoveEvent(self, event):
         """Handle mouse move event."""
         super().mouseMoveEvent(event)
         # Update hover state for the item under mouse
         index = self.indexAt(event.pos())
-        if not index.isValid():
-            return
-
-        if index.data(ACTION_IS_GROUP_ROLE):
+        if index.isValid() and index.data(ACTION_IS_GROUP_ROLE):
             self._show_group_popup(index)
+
+        elif self._popup_widget is not None:
+            self._popup_widget.close()
+
+    def _get_popup_widget(self):
+        if self._popup_widget is None:
+            popup_widget = ActionMenuPopup(self)
+
+            popup_widget.action_triggered.connect(self.action_triggered)
+            popup_widget.config_requested.connect(self.config_requested)
+            self._popup_widget = popup_widget
+        return self._popup_widget
 
     def _show_group_popup(self, index):
         action_id = index.data(ACTION_ID_ROLE)
-        source_model = self.model().sourceModel()
-        action_items = source_model.get_group_items(action_id)
-        rect = self.rectForIndex(index)
+        model = self.model()
+        while hasattr(model, "sourceModel"):
+            model = model.sourceModel()
+
+        if not hasattr(model, "get_group_items"):
+            return
+
+        action_items = model.get_group_items(action_id)
+        rect = self.visualRect(index)
         pos = self.mapToGlobal(rect.topLeft())
-        self._popup_widget.show_items(
+
+        popup_widget = self._get_popup_widget()
+        popup_widget.show_items(
             action_id, action_items, pos
         )
+
+    def update_on_refresh(self):
+        viewport = self.viewport()
+        viewport.update()
+        self._add_overlay_widgets()
+
+    def _add_overlay_widgets(self):
+        overlay_widgets = []
+        viewport = self.viewport()
+        model = self.model()
+        for row in range(model.rowCount()):
+            index = model.index(row, 0)
+            has_configs = index.data(ACTION_HAS_CONFIGS_ROLE)
+            widget = None
+            if has_configs:
+                item_id = index.data(ACTION_ID_ROLE)
+                widget = ActionOverlayWidget(item_id, viewport)
+                widget.config_requested.connect(
+                    self.config_requested
+                )
+                overlay_widgets.append(widget)
+            self.setIndexWidget(index, widget)
+
+        while self._overlay_widgets:
+            widget = self._overlay_widgets.pop(0)
+            widget.setVisible(False)
+            widget.setParent(None)
+            widget.deleteLater()
+
+        self._overlay_widgets = overlay_widgets
 
 
 class ActionsWidget(QtWidgets.QWidget):
@@ -729,8 +753,6 @@ class ActionsWidget(QtWidgets.QWidget):
         self._view = view
         self._model = model
         self._proxy_model = proxy_model
-
-        self._overlay_widgets = []
 
         self._set_row_height(1)
 
@@ -782,33 +804,7 @@ class ActionsWidget(QtWidgets.QWidget):
     def _on_model_refresh(self):
         self._proxy_model.sort(0)
         # Force repaint all items
-        viewport = self._view.viewport()
-        viewport.update()
-        self._add_overlay_widgets()
-
-    def _add_overlay_widgets(self):
-        overlay_widgets = []
-        viewport = self._view.viewport()
-        for row in range(self._proxy_model.rowCount()):
-            index = self._proxy_model.index(row, 0)
-            has_configs = index.data(ACTION_HAS_CONFIGS_ROLE)
-            widget = None
-            if has_configs:
-                item_id = index.data(ACTION_ID_ROLE)
-                widget = ActionOverlayWidget(item_id, viewport)
-                widget.config_requested.connect(
-                    self._on_config_request
-                )
-                overlay_widgets.append(widget)
-            self._view.setIndexWidget(index, widget)
-
-        while self._overlay_widgets:
-            widget = self._overlay_widgets.pop(0)
-            widget.setVisible(False)
-            widget.setParent(None)
-            widget.deleteLater()
-
-        self._overlay_widgets = overlay_widgets
+        self._view.update_on_refresh()
 
     def _on_animation(self):
         time_now = time.time()
