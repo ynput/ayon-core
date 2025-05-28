@@ -812,7 +812,7 @@ class ActionsWidget(QtWidgets.QWidget):
                 folder_id,
                 task_id,
                 action_item.addon_name,
-                action_item.add_version
+                action_item.addon_version
             )
             self._controller.trigger_webaction(
                 context, action_item.full_label
