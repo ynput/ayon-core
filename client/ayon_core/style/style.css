@@ -829,17 +829,8 @@ HintedLineEditButton {
 }
 
 /* Launcher specific stylesheets */
-ActionMenuToolTip {
-    border: 1px solid #555555;
-    background: {color:bg-inputs};
-}
-
-ActionVariantWidget {
-    background: transparent;
-}
-
-ActionVariantWidget[state="hover"], #OptionalActionOption[state="hover"] {
-    background: {color:bg-view-hover};
+ActionMenuPopup {
+    border: 1px solid {color:border};
 }
 
 LauncherSettingsButton {
