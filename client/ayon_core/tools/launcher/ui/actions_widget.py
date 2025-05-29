@@ -298,7 +298,10 @@ class ActionMenuPopupModel(QtGui.QStandardItemModel):
             item.setData(action_item.full_label, QtCore.Qt.DisplayRole)
             item.setData(icon, QtCore.Qt.DecorationRole)
             item.setData(action_item.identifier, ACTION_ID_ROLE)
-            item.setData(bool(action_item.config_fields), ACTION_HAS_CONFIGS_ROLE)
+            item.setData(
+                bool(action_item.config_fields),
+                ACTION_HAS_CONFIGS_ROLE
+            )
             item.setData(action_item.order, ACTION_SORT_ROLE)
             new_items.append(item)
 
