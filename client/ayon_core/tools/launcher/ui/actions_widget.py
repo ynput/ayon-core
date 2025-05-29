@@ -319,15 +319,14 @@ class ActionMenuPopup(QtWidgets.QWidget):
         self.setAutoFillBackground(True)
         self.setBackgroundRole(QtGui.QPalette.Base)
 
-        # Update size on show
-        show_timer = QtCore.QTimer()
-        show_timer.setSingleShot(True)
-        show_timer.setInterval(5)
-
         # Close widget if is not updated by event
         close_timer = QtCore.QTimer()
         close_timer.setSingleShot(True)
         close_timer.setInterval(100)
+
+        expand_anim = QtCore.QVariantAnimation()
+        expand_anim.setDuration(60)
+        expand_anim.setEasingCurve(QtCore.QEasingCurve.InOutQuad)
 
         wrapper = QtWidgets.QFrame(self)
         wrapper.setObjectName("Wrapper")
@@ -355,7 +354,9 @@ class ActionMenuPopup(QtWidgets.QWidget):
         main_layout.addWidget(wrapper, 0)
 
         close_timer.timeout.connect(self.close)
-        show_timer.timeout.connect(self._on_show_timer)
+        expand_anim.valueChanged.connect(self._on_expand_anim)
+        expand_anim.finished.connect(self._on_expand_finish)
+
         view.clicked.connect(self._on_clicked)
         view.config_requested.connect(self.config_requested)
 
@@ -364,12 +365,12 @@ class ActionMenuPopup(QtWidgets.QWidget):
         self._proxy_model = proxy_model
         self._wrapper_layout = wrapper_layout
 
-        self._show_timer = show_timer
         self._close_timer = close_timer
+        self._expand_anim = expand_anim
 
         self._showed = False
         self._current_id = None
-        self._last_pos = QtCore.QPoint(0, 0)
+        self._first_anim_frame = False
 
     def showEvent(self, event):
         self._showed = True
@@ -413,17 +414,21 @@ class ActionMenuPopup(QtWidgets.QWidget):
             #   are recalculated
             app = QtWidgets.QApplication.instance()
             app.processEvents()
-            size = self._get_size_hint()
+            size, target_size = self._get_size_hint()
             self.setGeometry(
                 pos.x() - 5, pos.y() - 4,
                 size.width(), size.height()
             )
-        else:
-            # Only resize if is current
-            self._update_size()
+            self._view.setMaximumHeight(size.height())
+
+            self._first_anim_frame = True
+            self._expand_anim.updateCurrentTime(0)
+            self._expand_anim.setStartValue(size)
+            self._expand_anim.setEndValue(target_size)
+            if self._expand_anim.state() != QtCore.QAbstractAnimation.Running:
+                self._expand_anim.start()
 
         self.raise_()
-        self._show_timer.start()
 
     def _on_clicked(self, index):
         if not index or not index.isValid():
@@ -435,13 +440,24 @@ class ActionMenuPopup(QtWidgets.QWidget):
         action_id = index.data(ACTION_ID_ROLE)
         self.action_triggered.emit(action_id)
 
-    def _on_show_timer(self):
-        self._update_size()
+    def _on_expand_anim(self, value):
+        if self._first_anim_frame:
+            _, size = self._get_size_hint()
+            self._expand_anim.setEndValue(size)
+            self._first_anim_frame = False
 
-    def _update_size(self):
-        size = self._get_size_hint()
-        self._view.setMaximumHeight(size.height())
-        self.resize(size)
+        self._view.setMaximumHeight(value.height())
+        self.resize(value)
+
+    def _on_expand_finish(self):
+        # Make sure that size is recalculated if src and targe size is same
+        if not self._first_anim_frame:
+            return
+
+        _, size = self._get_size_hint()
+        self._first_anim_frame = False
+        self._view.setMaximumHeight(value.height())
+        self.resize(value)
 
     def _get_size_hint(self):
         grid_size = self._view.gridSize()
@@ -462,17 +478,29 @@ class ActionMenuPopup(QtWidgets.QWidget):
         m_l, m_t, m_r, m_b = self._wrapper_layout.getContentsMargins()
         # QUESTION how to get the margins from Qt?
         border = 2 * 1
-        width = (
-            (cols * grid_size.width())
-            + ((cols - 1) * self._view.spacing())
+        single_width = (
+            grid_size.width()
             + self._view.horizontalOffset() + border + m_l + m_r + 1
         )
-        height = (
-            (rows * grid_size.height())
-            + ((rows - 1) * self._view.spacing())
+        single_height = (
+            grid_size.height()
             + self._view.verticalOffset() + border + m_b + m_t + 1
         )
-        return QtCore.QSize(width, height)
+        total_width = single_width
+        total_height = single_height
+        if cols > 1:
+            total_width += (
+                (cols - 1) * (self._view.spacing() + grid_size.width())
+            )
+
+        if rows > 1:
+            total_height += (
+                (rows - 1) * (grid_size.height() + self._view.spacing())
+            )
+        return (
+            QtCore.QSize(single_width, single_height),
+            QtCore.QSize(total_width, total_height)
+        )
 
     def _update_items(self, action_items):
         """Update items in the tooltip."""
