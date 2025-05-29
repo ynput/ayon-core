@@ -740,7 +740,7 @@ class PixmapLabel(QtWidgets.QLabel):
 
     def resizeEvent(self, event):
         self._set_resized_pix()
-        super(PixmapLabel, self).resizeEvent(event)
+        super().resizeEvent(event)
 
 
 class PixmapButtonPainter(QtWidgets.QWidget):

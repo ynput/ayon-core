@@ -16,14 +16,10 @@ from ayon_core.lib.attribute_definitions import (
 from ayon_core.tools.flickcharm import FlickCharm
 from ayon_core.tools.utils import (
     get_qt_icon,
-    SquareButton,
-    ClickableFrame,
     PixmapLabel,
 )
 from ayon_core.tools.attribute_defs import AttributeDefinitionsDialog
 from ayon_core.tools.launcher.abstract import WebactionContext
-
-from .resources import get_options_image_path
 
 ANIMATION_LEN = 7
 
@@ -54,12 +50,12 @@ def _variant_label_sort_getter(action_item):
 
 
 # --- Replacement for QAction for action variants ---
-class LauncherSettingsButton(SquareButton):
+class LauncherSettingsLabel(PixmapLabel):
     _settings_icon = None
 
     def __init__(self, parent):
-        super().__init__(parent)
-        self.setIcon(self._get_settings_icon())
+        icon = self._get_settings_icon()
+        super().__init__(icon.pixmap(256, 256), parent)
 
     @classmethod
     def _get_settings_icon(cls):
@@ -70,11 +66,6 @@ class LauncherSettingsButton(SquareButton):
             })
         return cls._settings_icon
 
-    def set_is_in_menu(self, in_menu):
-        value = "1" if in_menu else ""
-        self.setProperty("inMenu", value)
-        self.style().polish(self)
-
 
 class ActionOverlayWidget(QtWidgets.QFrame):
     config_requested = QtCore.Signal(str)
@@ -83,20 +74,16 @@ class ActionOverlayWidget(QtWidgets.QFrame):
         super().__init__(parent)
         self._item_id = item_id
 
-        settings_btn = LauncherSettingsButton(self)
+        settings_icon = LauncherSettingsLabel(self)
+        settings_icon.setToolTip("Right click for options")
 
         main_layout = QtWidgets.QGridLayout(self)
         main_layout.setContentsMargins(5, 5, 0, 0)
-        main_layout.addWidget(settings_btn, 0, 0)
+        main_layout.addWidget(settings_icon, 0, 0)
         main_layout.setColumnStretch(1, 1)
         main_layout.setRowStretch(1, 1)
 
-        settings_btn.clicked.connect(self._on_settings_click)
-
         self.setAttribute(QtCore.Qt.WA_TranslucentBackground)
-
-    def _on_settings_click(self):
-        self.config_requested.emit(self._item_id)
 
 
 class ActionsQtModel(QtGui.QStandardItemModel):
@@ -234,7 +221,7 @@ class ActionsQtModel(QtGui.QStandardItemModel):
 
             item.setFlags(QtCore.Qt.ItemIsEnabled)
             item.setData(label, QtCore.Qt.DisplayRole)
-            item.setData(label, QtCore.Qt.ToolTipRole)
+            # item.setData(label, QtCore.Qt.ToolTipRole)
             item.setData(icon, QtCore.Qt.DecorationRole)
             item.setData(is_group, ACTION_IS_GROUP_ROLE)
             item.setData(has_configs, ACTION_HAS_CONFIGS_ROLE)
@@ -307,7 +294,7 @@ class ActionMenuPopupModel(QtGui.QStandardItemModel):
 
             item = QtGui.QStandardItem()
             item.setFlags(QtCore.Qt.ItemIsEnabled)
-            item.setData(action_item.full_label, QtCore.Qt.ToolTipRole)
+            # item.setData(action_item.full_label, QtCore.Qt.ToolTipRole)
             item.setData(action_item.full_label, QtCore.Qt.DisplayRole)
             item.setData(icon, QtCore.Qt.DecorationRole)
             item.setData(action_item.identifier, ACTION_ID_ROLE)
@@ -346,6 +333,8 @@ class ActionMenuPopup(QtWidgets.QWidget):
         wrapper.setObjectName("Wrapper")
 
         view = ActionsView(wrapper)
+        view.setGridSize(QtCore.QSize(75, 80))
+        view.setIconSize(QtCore.QSize(32, 32))
 
         model = ActionMenuPopupModel()
         proxy_model = ActionsProxyModel()
@@ -356,7 +345,7 @@ class ActionMenuPopup(QtWidgets.QWidget):
         view.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
 
         wrapper_layout = QtWidgets.QVBoxLayout(wrapper)
-        wrapper_layout.setContentsMargins(0, 0, 0, 0)
+        wrapper_layout.setContentsMargins(3, 3, 1, 1)
         wrapper_layout.setSpacing(0)
         wrapper_layout.addWidget(view, 0)
 
@@ -373,6 +362,7 @@ class ActionMenuPopup(QtWidgets.QWidget):
         self._view = view
         self._model = model
         self._proxy_model = proxy_model
+        self._wrapper_layout = wrapper_layout
 
         self._show_timer = show_timer
         self._close_timer = close_timer
@@ -425,7 +415,7 @@ class ActionMenuPopup(QtWidgets.QWidget):
             app.processEvents()
             size = self._get_size_hint()
             self.setGeometry(
-                pos.x() - 1, pos.y() - 1,
+                pos.x() - 5, pos.y() - 4,
                 size.width(), size.height()
             )
         else:
@@ -437,6 +427,9 @@ class ActionMenuPopup(QtWidgets.QWidget):
 
     def _on_clicked(self, index):
         if not index or not index.isValid():
+            return
+
+        if not index.data(ACTION_HAS_CONFIGS_ROLE):
             return
 
         action_id = index.data(ACTION_ID_ROLE)
@@ -466,17 +459,18 @@ class ActionMenuPopup(QtWidgets.QWidget):
         if rows == 1:
             cols = row_count
 
+        m_l, m_t, m_r, m_b = self._wrapper_layout.getContentsMargins()
         # QUESTION how to get the margins from Qt?
         border = 2 * 1
         width = (
             (cols * grid_size.width())
             + ((cols - 1) * self._view.spacing())
-            + self._view.horizontalOffset() + border + 1
+            + self._view.horizontalOffset() + border + m_l + m_r + 1
         )
         height = (
             (rows * grid_size.height())
             + ((rows - 1) * self._view.spacing())
-            + self._view.verticalOffset() + border + 1
+            + self._view.verticalOffset() + border + m_b + m_t + 1
         )
         return QtCore.QSize(width, height)
 
@@ -498,6 +492,7 @@ class ActionMenuPopup(QtWidgets.QWidget):
 
 class ActionDelegate(QtWidgets.QStyledItemDelegate):
     _cached_extender = {}
+    _cached_extender_base_pix = None
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -561,7 +556,17 @@ class ActionDelegate(QtWidgets.QStyledItemDelegate):
         pix = cls._cached_extender.get(size)
         if pix is not None:
             return pix
-        pix = QtGui.QPixmap(get_options_image_path()).scaled(
+
+        base_pix = cls._cached_extender_base_pix
+        if base_pix is None:
+            icon = get_qt_icon({
+                "type": "material-symbols",
+                "name": "more_horiz",
+            })
+            base_pix = icon.pixmap(128, 128)
+            cls._cached_extender_base_pix = base_pix
+
+        pix = base_pix.scaled(
             size, size,
             QtCore.Qt.KeepAspectRatio,
             QtCore.Qt.SmoothTransformation
@@ -643,8 +648,6 @@ class ActionsView(QtWidgets.QListView):
         self.setContentsMargins(0, 0, 0, 0)
         self.setViewportMargins(0, 0, 0, 0)
         self.setWrapping(True)
-        self.setGridSize(QtCore.QSize(70, 75))
-        self.setIconSize(QtCore.QSize(30, 30))
         self.setSpacing(0)
         self.setWordWrap(True)
         self.setMouseTracking(True)
@@ -655,6 +658,8 @@ class ActionsView(QtWidgets.QListView):
         # Make view flickable
         flick = FlickCharm(parent=self)
         flick.activateOn(self)
+
+        self.customContextMenuRequested.connect(self._on_context_menu)
 
         self._overlay_widgets = []
         self._flick = flick
@@ -671,6 +676,14 @@ class ActionsView(QtWidgets.QListView):
 
         elif self._popup_widget is not None:
             self._popup_widget.close()
+
+    def _on_context_menu(self, point):
+        """Creates menu to force skip opening last workfile."""
+        index = self.indexAt(point)
+        if not index.isValid():
+            return
+        action_id = index.data(ACTION_ID_ROLE)
+        self.config_requested.emit(action_id)
 
     def _get_popup_widget(self):
         if self._popup_widget is None:
@@ -737,6 +750,8 @@ class ActionsWidget(QtWidgets.QWidget):
         self._controller = controller
 
         view = ActionsView(self)
+        view.setGridSize(QtCore.QSize(70, 75))
+        view.setIconSize(QtCore.QSize(30, 30))
 
         model = ActionsQtModel(controller)
 
