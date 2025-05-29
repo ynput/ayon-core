@@ -55,7 +55,7 @@ class LauncherSettingsLabel(PixmapLabel):
 
     def __init__(self, parent):
         icon = self._get_settings_icon()
-        super().__init__(icon.pixmap(256, 256), parent)
+        super().__init__(icon.pixmap(64, 64), parent)
 
     @classmethod
     def _get_settings_icon(cls):
@@ -563,7 +563,7 @@ class ActionDelegate(QtWidgets.QStyledItemDelegate):
                 "type": "material-symbols",
                 "name": "more_horiz",
             })
-            base_pix = icon.pixmap(128, 128)
+            base_pix = icon.pixmap(64, 64)
             cls._cached_extender_base_pix = base_pix
 
         pix = base_pix.scaled(
