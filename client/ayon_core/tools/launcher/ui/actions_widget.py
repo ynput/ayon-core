@@ -459,8 +459,8 @@ class ActionMenuPopup(QtWidgets.QWidget):
 
         _, size = self._get_size_hint()
         self._first_anim_frame = False
-        self._view.setMaximumHeight(value.height())
-        self.resize(value)
+        self._view.setMaximumHeight(size.height())
+        self.resize(size)
 
     def _get_size_hint(self):
         grid_size = self._view.gridSize()
