@@ -675,6 +675,7 @@ class ActionsView(QtWidgets.QListView):
         self.setResizeMode(QtWidgets.QListView.Adjust)
         self.setSelectionMode(QtWidgets.QListView.NoSelection)
         self.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
+        self.setVerticalScrollMode(QtWidgets.QAbstractItemView.ScrollPerPixel)
         self.setEditTriggers(QtWidgets.QAbstractItemView.NoEditTriggers)
         self.setContentsMargins(0, 0, 0, 0)
         self.setViewportMargins(0, 0, 0, 0)
@@ -682,6 +683,9 @@ class ActionsView(QtWidgets.QListView):
         self.setSpacing(0)
         self.setWordWrap(True)
         self.setMouseTracking(True)
+
+        vertical_scroll = self.verticalScrollBar()
+        vertical_scroll.setSingleStep(8)
 
         delegate = ActionDelegate(self)
         self.setItemDelegate(delegate)
