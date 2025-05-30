@@ -15,7 +15,7 @@ from ayon_core.lib import (
     path_to_subprocess_arg,
     run_subprocess,
 )
-from ayon_core.lib.transcoding import convert_colorspace
+from ayon_core.lib.transcoding import oiiotool_transcode
 
 from ayon_core.lib.transcoding import VIDEO_EXTENSIONS, IMAGE_EXTENSIONS
 
@@ -431,13 +431,15 @@ class ExtractThumbnail(pyblish.api.InstancePlugin):
                 oiio_default_view = display_and_view["view"]
 
         try:
-            convert_colorspace(
+            oiiotool_transcode(
                 src_path,
                 dst_path,
                 colorspace_data["config"]["path"],
                 colorspace_data["colorspace"],
-                display=repre_display or oiio_default_display,
-                view=repre_view or oiio_default_view,
+                source_display=colorspace_data.get("display"),
+                source_view=colorspace_data.get("view"),
+                target_display=repre_display or oiio_default_display,
+                target_view=repre_view or oiio_default_view,
                 target_colorspace=oiio_default_colorspace,
                 additional_command_args=resolution_arg,
                 logger=self.log,
