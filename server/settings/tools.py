@@ -358,6 +358,14 @@ class PublishToolModel(BaseSettingsModel):
             title="Custom Staging Dir Profiles"
         )
     )
+    comment_minimum_required_chars: int = SettingsField(
+        0,
+        title="Publish comment minimum required characters",
+        description=(
+            "Minimum number of characters required in the comment field "
+            "before the publisher UI is allowed to continue publishing"
+        )
+    )
 
 
 class GlobalToolsModel(BaseSettingsModel):
@@ -671,6 +679,7 @@ DEFAULT_TOOLS_VALUES = {
                 "task_names": [],
                 "template_name": "simpleUnrealTextureHero"
             }
-        ]
+        ],
+        "comment_minimum_required_chars": 0,
     }
 }
