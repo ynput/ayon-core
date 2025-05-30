@@ -22,6 +22,7 @@ from ayon_core.tools.utils import (
     FocusSpinBox,
     FocusDoubleSpinBox,
     MultiSelectionComboBox,
+    MarkdownLabel,
     PlaceholderLineEdit,
     PlaceholderPlainTextEdit,
     set_style_property,
@@ -247,12 +248,10 @@ class AttributeDefinitionsWidget(QtWidgets.QWidget):
 
     def set_value(self, value):
         new_value = copy.deepcopy(value)
-        unused_keys = set(new_value.keys())
         for widget in self._widgets_by_id.values():
             attr_def = widget.attr_def
             if attr_def.key not in new_value:
                 continue
-            unused_keys.remove(attr_def.key)
 
             widget_value = new_value[attr_def.key]
             if widget_value is None:
@@ -350,7 +349,7 @@ class SeparatorAttrWidget(_BaseAttrDefWidget):
 
 class LabelAttrWidget(_BaseAttrDefWidget):
     def _ui_init(self):
-        input_widget = QtWidgets.QLabel(self)
+        input_widget = MarkdownLabel(self)
         label = self.attr_def.label
         if label:
             input_widget.setText(str(label))
