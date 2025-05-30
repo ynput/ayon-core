@@ -128,8 +128,7 @@ class LoaderPlugin(list):
         plugin_product_base_types = cls.product_base_types
         if (
             not plugin_repre_names
-            or not plugin_product_types
-            or not plugin_product_base_types
+            or (not plugin_product_types and not plugin_product_base_types)
             or not cls.extensions
         ):
             return False
