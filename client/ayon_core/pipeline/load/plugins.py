@@ -1,3 +1,5 @@
+"""Plugins for loading representations and products into host applications."""
+from __future__ import annotations
 import os
 import logging
 
@@ -15,7 +17,8 @@ from .utils import get_representation_path_from_context
 class LoaderPlugin(list):
     """Load representation into host application"""
 
-    product_types = set()
+    product_types: set[str] = set()
+    product_base_types: set[str] = set()
     representations = set()
     extensions = {"*"}
     order = 0
@@ -122,9 +125,11 @@ class LoaderPlugin(list):
 
         plugin_repre_names = cls.get_representations()
         plugin_product_types = cls.product_types
+        plugin_product_base_types = cls.product_base_types
         if (
             not plugin_repre_names
             or not plugin_product_types
+            or not plugin_product_base_types
             or not cls.extensions
         ):
             return False
@@ -147,10 +152,20 @@ class LoaderPlugin(list):
         if "*" in plugin_product_types:
             return True
 
+        plugin_product_base_types = set(plugin_product_base_types)
+        if "*" in plugin_product_base_types:
+            # If plugin supports all product base types, then it is compatible
+            # with any product type.
+            return True
+
         product_entity = context["product"]
         product_type = product_entity["productType"]
+        product_base_type = product_entity.get("productBaseType")
 
-        return product_type in plugin_product_types
+        if product_type in plugin_product_types:
+            return True
+
+        return product_base_type in plugin_product_base_types
 
     @classmethod
     def get_representations(cls):
