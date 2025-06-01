@@ -191,7 +191,7 @@ class HostDirmap(ABC):
                 remote_site = "studio"
             for root_name, active_site_dir in active_roots_overrides.items():
                 # If my remote is SFTP or other kind of remote use work dir as path
-                if remote_provider == "SFTP":
+                if remote_provider == "sftp":
                     remote_site_dir = (
                         remote_roots_overrides.get(root_name)
                         or active_roots_overrides#sync_settings["sites"][remote_site]["root"][-1]["path"]#[root_name]
