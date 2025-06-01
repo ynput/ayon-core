@@ -190,10 +190,17 @@ class HostDirmap(ABC):
             if remote_provider != "local_drive":
                 remote_site = "studio"
             for root_name, active_site_dir in active_roots_overrides.items():
-                remote_site_dir = (
-                    remote_roots_overrides.get(root_name)
-                    or sync_settings["sites"][remote_site]["root"][root_name]
-                )
+                # If my remote is SFTP or other kind of remote use work dir as path
+                if remote_provider == "SFTP":
+                    remote_site_dir = (
+                        remote_roots_overrides.get(root_name)
+                        or active_roots_overrides#sync_settings["sites"][remote_site]["root"][-1]["path"]#[root_name]
+                    )
+                else:
+                    remote_site_dir = (
+                        remote_roots_overrides.get(root_name)
+                        or sync_settings["sites"][remote_site]["root"][root_name]
+                    )
 
                 if isinstance(remote_site_dir, dict):
                     remote_site_dir = remote_site_dir.get(current_platform)
