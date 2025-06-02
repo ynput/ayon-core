@@ -18,6 +18,7 @@ from typing import (
     Callable,
     Union,
 )
+from warnings import warn
 
 import pyblish.logic
 import pyblish.api
@@ -31,6 +32,7 @@ from ayon_core.host import IPublishHost, IWorkfileHost
 from ayon_core.pipeline import Anatomy
 from ayon_core.pipeline.template_data import get_template_data
 from ayon_core.pipeline.plugin_discover import DiscoverResult
+from ayon_core.pipeline import is_supporting_product_base_type
 
 from .exceptions import (
     CreatorError,
@@ -1194,6 +1196,22 @@ class CreateContext:
             "productType": creator.product_type,
             "variant": variant
         }
+
+        # Add product base type if supported.
+        # TODO (antirotor): Once all creators support product base type
+        #   remove this check.
+        if is_supporting_product_base_type():
+
+            if hasattr(creator, "product_base_type"):
+                instance_data["productBaseType"] = creator.product_base_type
+            else:
+                warn(
+                    f"Creator {creator_identifier} does not support "
+                    "product base type. This will be required in future.",
+                    DeprecationWarning,
+                    stacklevel=2,
+                )
+
         if active is not None:
             if not isinstance(active, bool):
                 self.log.warning(
