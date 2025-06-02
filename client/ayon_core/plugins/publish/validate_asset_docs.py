@@ -160,9 +160,9 @@ class ValidateFolderCreationResolution(
                 entity_value = entity.attribs.get(resolution_attrib)
                 if shot_value and shot_value != entity_value:
                     self.log.warning(
-                        "Resolution mismatch for shot."
+                        "Resolution mismatch for shot. "
                         f"{resolution_attrib}={shot_value} but "
-                        f"already existing shot is set to {entity_value}."
+                        f" existing shot is set to {entity_value}."
                     )
                     similar = False
 
