@@ -194,7 +194,7 @@ class HostDirmap(ABC):
                 if remote_provider == "sftp":
                     remote_site_dir = (
                         remote_roots_overrides.get(root_name)
-                        or active_roots_overrides#sync_settings["sites"][remote_site]["root"][-1]["path"]#[root_name]
+                        or active_roots_overrides
                     )
                 else:
                     remote_site_dir = (
