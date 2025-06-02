@@ -3,6 +3,7 @@ import os
 import copy
 import collections
 from typing import TYPE_CHECKING, Optional, Dict, Any
+from warnings import warn
 
 from abc import ABC, abstractmethod
 
@@ -16,6 +17,7 @@ from ayon_core.pipeline.plugin_discover import (
     deregister_plugin_path
 )
 from ayon_core.pipeline.staging_dir import get_staging_dir_info, StagingDir
+from ayon_core.pipeline import is_supporting_product_base_type
 
 from .constants import DEFAULT_VARIANT_VALUE
 from .product_name import get_product_name
@@ -308,12 +310,25 @@ class BaseCreator(ABC):
         Default implementation returns plugin's product type.
         """
 
+        if is_supporting_product_base_type():
+            return self.product_base_type
+
         return self.product_type
 
     @property
     @abstractmethod
     def product_type(self):
         """Family that plugin represents."""
+
+        pass
+
+    @property
+    @abstractmethod
+    def product_base_type(self):
+        """Base product type that plugin represents.
+
+        This is used to group products in UI.
+        """
 
         pass
 
@@ -378,7 +393,8 @@ class BaseCreator(ABC):
         self,
         product_name: str,
         data: Dict[str, Any],
-        product_type: Optional[str] = None
+        product_type: Optional[str] = None,
+        product_base_type: Optional[str] = None
     ) -> CreatedInstance:
         """Create instance and add instance to context.
 
@@ -387,6 +403,8 @@ class BaseCreator(ABC):
             data (Dict[str, Any]): Instance data.
             product_type (Optional[str]): Product type, object attribute
                 'product_type' is used if not passed.
+            product_base_type (Optional[str]): Product base type, object
+                attribute 'product_type' is used if not passed.
 
         Returns:
             CreatedInstance: Created instance.
@@ -394,6 +412,18 @@ class BaseCreator(ABC):
         """
         if product_type is None:
             product_type = self.product_type
+
+        if is_supporting_product_base_type() and not product_base_type:
+            if not self.product_base_type:
+                warn(
+                    f"Creator {self.identifier} does not support "
+                    "product base type. This will be required in future.",
+                    DeprecationWarning,
+                    stacklevel=2,
+                )
+                else:
+                    product_base_type = self.product_base_type
+
         instance = CreatedInstance(
             product_type,
             product_name,
