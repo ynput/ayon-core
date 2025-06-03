@@ -347,8 +347,8 @@ class HostBase(ABC):
             "AYON_WORKDIR": workdir,
         }
 
-        # Update the Session and environments. Pop from environments all keys with
-        # value set to None.
+        # Update the Session and environments. Pop from environments all
+        #   keys with value set to None.
         for key, value in envs.items():
             if value is None:
                 os.environ.pop(key, None)

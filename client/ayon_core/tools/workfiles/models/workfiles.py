@@ -1,13 +1,11 @@
 from __future__ import annotations
 import os
 import copy
-import uuid
 import platform
 import typing
 from typing import Optional, Any
 
 import ayon_api
-from ayon_api.operations import OperationsSession
 
 from ayon_core.lib import (
     get_ayon_username,
