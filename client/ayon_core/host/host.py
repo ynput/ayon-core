@@ -158,9 +158,7 @@ class HostBase(ABC):
         task_entity: dict[str, Any],
         *,
         reason: Optional[str] = None,
-        workdir: Optional[str] = None,
         project_entity: Optional[dict[str, Any]] = None,
-        project_settings: Optional[dict[str, Any]] = None,
         anatomy: Optional["Anatomy"] = None,
     ):
         """Set current context information.
@@ -178,9 +176,7 @@ class HostBase(ABC):
             folder_entity (Optional[dict[str, Any]]): Folder entity.
             task_entity (Optional[dict[str, Any]]): Task entity.
             reason (Optional[str]): Reason for context change.
-            workdir (Optional[str]): Work directory path.
             project_entity (Optional[dict[str, Any]]): Project entity data.
-            project_settings (Optional[dict[str, Any]]): Project settings data.
             anatomy (Optional[Anatomy]): Anatomy instance for the project.
 
         """
@@ -208,24 +204,22 @@ class HostBase(ABC):
             project_entity,
             folder_entity,
             task_entity,
-            anatomy,
             reason,
+            anatomy,
         )
         self._set_current_context(
             project_entity,
             folder_entity,
             task_entity,
             reason,
-            workdir,
             anatomy,
-            project_settings,
         )
         self._after_context_change(
             project_entity,
             folder_entity,
             task_entity,
-            anatomy,
             reason,
+            anatomy,
         )
 
         return self._emit_context_change_event(
@@ -309,10 +303,22 @@ class HostBase(ABC):
         folder_entity: Optional[dict[str, Any]],
         task_entity: Optional[dict[str, Any]],
         reason: Optional[str],
-        workdir: Optional[str],
-        anatomy: Optional["Anatomy"],
-        project_settings: Optional[dict[str, Any]],
+        anatomy: "Anatomy",
     ):
+        """Method that changes the context in host.
+
+        Can be overriden for hosts that do need different handling of context
+            than using environment variables.
+
+        Args:
+            project_entity (dict[str, Any]): Project entity.
+            folder_entity (dict[str, Any]): Folder entity of new context.
+            task_entity (dict[str, Any]): Task entity of new context.
+            reason (Optional[str]): Reason why change happened. Currently
+                known reasons are that workfile is being opened or saved.
+            anatomy (Anatomy): Project anatomy.
+
+        """
         from ayon_core.pipeline.workfile import get_workdir
 
         project_name = self.get_current_project_name()
@@ -323,28 +329,10 @@ class HostBase(ABC):
             if task_entity:
                 task_name = task_entity["name"]
 
-        if (
-            workdir is None
-            and isinstance(self, IWorkfileHost)
-            and folder_entity
-        ):
-            if project_entity is None:
-                project_entity = ayon_api.get_project(project_name)
-
-            workdir = get_workdir(
-                project_entity,
-                folder_entity,
-                task_entity,
-                self.name,
-                anatomy=anatomy,
-                project_settings=project_settings,
-            )
-
         envs = {
             "AYON_PROJECT_NAME": project_name,
             "AYON_FOLDER_PATH": folder_path,
             "AYON_TASK_NAME": task_name,
-            "AYON_WORKDIR": workdir,
         }
 
         # Update the Session and environments. Pop from environments all
@@ -360,8 +348,8 @@ class HostBase(ABC):
         project_entity: dict[str, Any],
         folder_entity: Optional[dict[str, Any]],
         task_entity: Optional[dict[str, Any]],
-        anatomy: "Anatomy",
         reason: Optional[str],
+        anatomy: "Anatomy",
     ):
         """Before context is changed.
 
@@ -382,8 +370,8 @@ class HostBase(ABC):
         project_entity: dict[str, Any],
         folder_entity: dict[str, Any],
         task_entity: dict[str, Any],
-        anatomy: "Anatomy",
         reason: Optional[str],
+        anatomy: "Anatomy",
     ):
         """After context is changed.
 
