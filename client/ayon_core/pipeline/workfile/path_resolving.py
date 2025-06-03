@@ -3,6 +3,7 @@ import os
 import re
 import copy
 import platform
+import typing
 from typing import Optional, Dict, Any
 
 import ayon_api
@@ -13,9 +14,11 @@ from ayon_core.lib import (
     Logger,
     StringTemplate,
 )
-from ayon_core.lib.path_templates import TemplateResult
 from ayon_core.pipeline import version_start, Anatomy
 from ayon_core.pipeline.template_data import get_template_data
+
+if typing.TYPE_CHECKING:
+    from ayon_core.lib.path_templates import TemplateResult
 
 
 def get_workfile_template_key_from_context(
@@ -113,7 +116,7 @@ def get_workdir_with_workdir_data(
     anatomy=None,
     template_key=None,
     project_settings=None
-) -> TemplateResult:
+) -> "TemplateResult":
     """Fill workdir path from entered data and project's anatomy.
 
     It is possible to pass only project's name instead of project's anatomy but
@@ -157,14 +160,14 @@ def get_workdir_with_workdir_data(
 
 
 def get_workdir(
-    project_entity,
-    folder_entity,
-    task_entity,
-    host_name,
+    project_entity: dict[str, Any],
+    folder_entity: dict[str, Any],
+    task_entity: dict[str, Any],
+    host_name: str,
     anatomy=None,
     template_key=None,
     project_settings=None
-):
+) -> "TemplateResult":
     """Fill workdir path from entered data and project's anatomy.
 
     Args:
@@ -186,8 +189,8 @@ def get_workdir(
 
     Returns:
         TemplateResult: Workdir path.
-    """
 
+    """
     if not anatomy:
         anatomy = Anatomy(
             project_entity["name"], project_entity=project_entity
