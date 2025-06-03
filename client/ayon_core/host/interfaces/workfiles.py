@@ -319,6 +319,9 @@ class IWorkfileHost:
 
         workdir = os.path.dirname(filepath)
 
+        # Set 'AYON_WORKDIR' environment variable
+        os.environ["AYON_WORKDIR"] = workdir
+
         self.set_current_context(
             folder_entity,
             task_entity,
