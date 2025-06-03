@@ -197,22 +197,26 @@ class PublishedWorkfileInfo:
             data (dict[str, Any]): Workfile item data.
 
         Returns:
-            WorkfileInfo: File item.
+            PublishedWorkfileInfo: File item.
 
         """
         return PublishedWorkfileInfo(**data)
 
 
 class IWorkfileHost:
-    """Implementation requirements to be able use workfile utils and tool."""
+    """Implementation requirements to be able to use workfiles utils and tool.
 
+    Some of the methods are pre-implemented as they generally do the same in
+        all host integrations.
+
+    """
     @abstractmethod
     def save_workfile(self, dst_path: Optional[str] = None):
-        """Save currently opened scene.
+        """Save the currently opened scene.
 
         Args:
             dst_path (str): Where the current scene should be saved. Or use
-                current path if 'None' is passed.
+                the current path if 'None' is passed.
 
         """
         pass
@@ -229,10 +233,10 @@ class IWorkfileHost:
 
     @abstractmethod
     def get_current_workfile(self) -> Optional[str]:
-        """Retrieve path to current opened file.
+        """Retrieve a path to current opened file.
 
         Returns:
-            Optional[str]: Path to file which is currently opened. None if
+            Optional[str]: Path to the file which is currently opened. None if
                 nothing is opened.
 
         """
@@ -241,8 +245,8 @@ class IWorkfileHost:
     def workfile_has_unsaved_changes(self) -> Optional[bool]:
         """Currently opened scene is saved.
 
-        Not all hosts can know if current scene is saved because the API of
-        DCC does not support it.
+        Not all hosts can know if the current scene is saved because the API
+            of DCC does not support it.
 
         Returns:
             Optional[bool]: True if scene is saved and False if has unsaved
@@ -253,7 +257,7 @@ class IWorkfileHost:
         return None
 
     def get_workfile_extensions(self) -> list[str]:
-        """Extensions that can be used as save workfile.
+        """Extensions that can be used to save the workfile to.
 
         Notes:
             Method may not be used if 'list_workfiles' and
@@ -269,8 +273,8 @@ class IWorkfileHost:
     def save_workfile_with_context(
         self,
         filepath: str,
-        folder_entity: Optional[dict[str, Any]],
-        task_entity: Optional[dict[str, Any]],
+        folder_entity: dict[str, Any],
+        task_entity: dict[str, Any],
         *,
         version: Optional[int],
         comment: Optional[str] = None,
@@ -281,7 +285,7 @@ class IWorkfileHost:
         project_entity: Optional[dict[str, Any]] = None,
         anatomy: Optional["Anatomy"] = None,
     ):
-        """Save current workfile with context.
+        """Save the current workfile with context.
 
         Notes:
             Should this method care about context change?
@@ -415,7 +419,7 @@ class IWorkfileHost:
     ) -> list[WorkfileInfo]:
         """List workfiles in the given folder.
 
-        NOTES:
+        Notes:
         - Better method name?
         - This method is pre-implemented as the logic can be shared across
             95% of host integrations. Ad-hoc implementation to give host
@@ -423,7 +427,7 @@ class IWorkfileHost:
         - Should this method also handle workfiles based on workfile entities?
 
         Args:
-            project_name (str): Name of project.
+            project_name (str): Project name.
             folder_entity (dict[str, Any]): Folder entity.
             task_entity (dict[str, Any]): Task entity.
             project_entity (Optional[dict[str, Any]]): Project entity.
@@ -505,7 +509,10 @@ class IWorkfileHost:
                 rootless_path, None
             )
             items.append(WorkfileInfo.new(
-                filepath, rootless_path, True, workfile_entity
+                filepath,
+                rootless_path,
+                available=True,
+                workfile_entity=workfile_entity,
             ))
 
         for workfile_entity in workfile_entities_by_path.values():
@@ -514,7 +521,10 @@ class IWorkfileHost:
             rootless_path = workfile_entity["path"]
             filepath = anatomy.fill_root(rootless_path)
             items.append(WorkfileInfo.new(
-                filepath, rootless_path, False, workfile_entity
+                filepath,
+                rootless_path,
+                available=False,
+                workfile_entity=workfile_entity,
             ))
 
         return items
@@ -528,9 +538,9 @@ class IWorkfileHost:
         version_entities: Optional[list[dict[str, Any]]] = None,
         repre_entities: Optional[list[dict[str, Any]]] = None,
     ) -> list[PublishedWorkfileInfo]:
-        """List published workfiles for given folder.
+        """List published workfiles for the given folder.
 
-        Default implementation looks for products with 'workfile'
+        The default implementation looks for products with the 'workfile'
             product type.
 
         Pre-fetched entities have mandatory fields to be fetched.
@@ -548,7 +558,7 @@ class IWorkfileHost:
 
         Returns:
             list[PublishedWorkfileInfo]: Published workfile information for
-                given context.
+                the given context.
 
         """
         from ayon_core.pipeline import Anatomy
@@ -601,7 +611,9 @@ class IWorkfileHost:
             try:
                 workfile_path = workfile_path.format(root=anatomy.roots)
             except Exception as exc:
-                print(f"Failed to format workfile path: {exc}")
+                self.log.warning(
+                    f"Failed to format workfile path.", exc_info=True
+                )
 
             is_available = False
             file_size = file_modified = file_created = None
@@ -647,8 +659,8 @@ class IWorkfileHost:
     ):
         """Save workfile path with target folder and task context.
 
-        It is expected that workfile is saved to current project, but can be
-            copied from other project.
+        It is expected that workfile is saved to the current project, but
+            can be copied from the other project.
 
         Args:
             src_path (str): Path to the source scene.
@@ -763,8 +775,6 @@ class IWorkfileHost:
             src_representation_path (Optional[str]): Representation path.
 
         """
-        # TODO We might need option to open file once copied as some DCC might
-        #   actually need to open the workfile to copy it.
         from ayon_core.pipeline import Anatomy
         from ayon_core.pipeline.load import (
             get_representation_path_with_anatomy
@@ -815,6 +825,7 @@ class IWorkfileHost:
 
         Todo:
             Remove when all usages are replaced.
+
         """
         return self.get_workfile_extensions()
 
@@ -823,8 +834,8 @@ class IWorkfileHost:
 
         Todo:
             Remove when all usages are replaced.
-        """
 
+        """
         self.save_workfile(dst_path)
 
     def open_file(self, filepath):
