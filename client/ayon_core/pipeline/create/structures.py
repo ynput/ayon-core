@@ -3,6 +3,7 @@ import collections
 from uuid import uuid4
 import typing
 from typing import Optional, Dict, List, Any
+import warnings
 
 from ayon_core.lib.attribute_definitions import (
     AbstractAttrDef,
@@ -10,6 +11,9 @@ from ayon_core.lib.attribute_definitions import (
     serialize_attr_defs,
     deserialize_attr_defs,
 )
+
+from ayon_core.pipeline.compatibility import is_supporting_product_base_type
+
 from ayon_core.pipeline import (
     AYON_INSTANCE_ID,
     AVALON_INSTANCE_ID,
@@ -471,6 +475,7 @@ class CreatedInstance:
         "id",
         "instance_id",
         "productType",
+        "productBaseType",
         "creator_identifier",
         "creator_attributes",
         "publish_attributes"
@@ -490,7 +495,17 @@ class CreatedInstance:
         data: Dict[str, Any],
         creator: "BaseCreator",
         transient_data: Optional[Dict[str, Any]] = None,
+        product_base_type: Optional[str] = None
     ):
+
+        if is_supporting_product_base_type() and product_base_type is None:
+            warnings.warn(
+                f"Creator {creator!r} doesn't support "
+                "product base type. This will be required in future.",
+                DeprecationWarning,
+                stacklevel=2
+            )
+
         self._creator = creator
         creator_identifier = creator.identifier
         group_label = creator.get_group_label()
@@ -540,6 +555,11 @@ class CreatedInstance:
         self._data["id"] = item_id
         self._data["productType"] = product_type
         self._data["productName"] = product_name
+
+        if is_supporting_product_base_type():
+            data.pop("productBaseType", None)
+            self._data["productBaseType"] = product_base_type
+
         self._data["active"] = data.get("active", True)
         self._data["creator_identifier"] = creator_identifier
 
