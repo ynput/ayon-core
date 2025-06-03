@@ -465,8 +465,8 @@ def get_last_workfile(
             product_type="workfile"
         )
         data.pop("comment", None)
-        if not data.get("ext"):
-            data["ext"] = extensions[0]
+        if data.get("ext") is None:
+            data["ext"] = next(iter(extensions), "")
         data["ext"] = data["ext"].lstrip(".")
         filename = StringTemplate.format_strict_template(file_template, data)
         filepath = os.path.join(workdir, filename)
