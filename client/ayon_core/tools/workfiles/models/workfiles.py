@@ -35,6 +35,7 @@ from ayon_core.pipeline.workfile import (
     save_current_workfile_to,
     copy_and_open_workfile,
     copy_and_open_workfile_representation,
+    save_workfile_info,
 )
 from ayon_core.pipeline.version_start import get_versioning_start
 from ayon_core.tools.workfiles.abstract import (
@@ -149,20 +150,18 @@ class WorkfilesModel:
         task_entity = self._controller.get_task_entity(
             project_name, task_id
         )
-        workfile_entities = self.get_workfile_entities(task_id)
+
         failed = False
         try:
-            workfile_info = save_current_workfile_to(
+            save_current_workfile_to(
                 filepath,
                 folder_entity,
                 task_entity,
-                version,
-                comment,
-                description,
-                source="workfiles.tool",
+                version=version,
+                comment=comment,
+                description=description,
                 rootless_path=rootless_path,
-                workfile_entities=workfile_entities,
-                username=self._get_current_username(),
+                workfile_entities=self.get_workfile_entities(task_id),
                 project_entity=self._controller.get_project_entity(
                     project_name
                 ),
@@ -170,7 +169,7 @@ class WorkfilesModel:
                 anatomy=self._controller.project_anatomy,
             )
             self._update_workfile_info(
-                task_id, rootless_path, description, workfile_info
+                task_id, rootless_path, description
             )
             self._update_current_context(
                 folder_id, folder_entity["path"], task_entity["name"]
@@ -212,8 +211,9 @@ class WorkfilesModel:
         rootless_path = f"{rootless_workdir}/{filename}"
 
         failed = False
+        workfile_entities = self.get_workfile_entities(task_id)
         try:
-            workfile_info = copy_and_open_workfile_representation(
+            copy_and_open_workfile_representation(
                 project_name,
                 representation_id,
                 dst_filepath,
@@ -225,8 +225,7 @@ class WorkfilesModel:
                 rootless_path=rootless_path,
                 representation_entity=repre_entity,
                 representation_path=representation_filepath,
-                workfile_entities=self.get_workfile_entities(task_id),
-                username=self._get_current_username(),
+                workfile_entities=workfile_entities,
                 project_entity=self._controller.get_project_entity(
                     project_name
                 ),
@@ -234,7 +233,7 @@ class WorkfilesModel:
                 anatomy=self._controller.project_anatomy,
             )
             self._update_workfile_info(
-                task_id, rootless_path, description, workfile_info
+                task_id, rootless_path, description
             )
             self._update_current_context(
                 folder_id, folder_entity["path"], task_entity["name"]
@@ -281,13 +280,11 @@ class WorkfilesModel:
                 workfile_path,
                 folder_entity,
                 task_entity,
-                version,
-                comment,
-                description,
-                source="workfiles.tool",
+                version=version,
+                comment=comment,
+                description=description,
                 rootless_path=rootless_path,
                 workfile_entities=workfile_entities,
-                username=self._get_current_username(),
                 project_entity=project_entity,
                 project_settings=self._controller.project_settings,
                 anatomy=self._controller.project_anatomy,
@@ -608,7 +605,9 @@ class WorkfilesModel:
             cache.update_data(self._host.list_published_workfiles(
                 project_name,
                 folder_id,
-                anatomy,
+                anatomy=anatomy,
+                version_entities=version_entities,
+                repre_entities=repre_entities,
             ))
 
         items = cache.get_data()
@@ -638,31 +637,6 @@ class WorkfilesModel:
         return self._current_username
 
     # --- Host ---
-    def _get_event_context_data(
-        self,
-        project_name: str,
-        folder_id: str,
-        task_id: str,
-        folder_entity: Optional[dict[str, Any]] = None,
-        task_entity: Optional[dict[str, Any]] = None,
-    ):
-        if folder_entity is None:
-            folder_entity = self._controller.get_folder_entity(
-                project_name, folder_id
-            )
-        if task_entity is None:
-            task_entity = self._controller.get_task_entity(
-                project_name, task_id
-            )
-        return {
-            "project_name": project_name,
-            "folder_id": folder_id,
-            "folder_path": folder_entity["path"],
-            "task_id": task_id,
-            "task_name": task_entity["name"],
-            "host_name": self._host_name,
-        }
-
     def _open_workfile(self, folder_id: str, task_id: str, filepath: str):
         # TODO move to workfiles pipeline
         project_name = self._project_name
@@ -849,22 +823,25 @@ class WorkfilesModel:
         task_id: str,
         rootless_path: str,
         description: str,
-        workfile_entity: dict[str, Any],
     ):
         self._update_file_description(task_id, rootless_path, description)
-        workfile_entities = self.get_workfile_entities(task_id)
-        target_idx = None
-        for idx, workfile_entity in enumerate(workfile_entities):
-            if workfile_entity["path"] == rootless_path:
-                target_idx = idx
-                break
-
-        if target_idx is None:
-            workfile_entities.append(workfile_entity)
-        else:
-            workfile_entities[target_idx] = workfile_entity
-
         self._reset_workarea_file_items(task_id)
+
+        # Update workfile entity cache if are cached
+        if task_id in self._workfile_entities_by_task_id:
+            workfile_entities = self.get_workfile_entities(task_id)
+
+            target_workfile_entity = None
+            for workfile_entity in workfile_entities:
+                if rootless_path == workfile_entity["path"]:
+                    target_workfile_entity = workfile_entity
+                    break
+
+            if target_workfile_entity is None:
+                self._workfile_entities_by_task_id.pop(task_id, None)
+                self.get_workfile_entities(task_id)
+            else:
+                target_workfile_entity["attrib"]["description"] = description
 
     def _update_file_description(
         self, task_id: str, rootless_path: str, description: str
@@ -885,119 +862,26 @@ class WorkfilesModel:
         comment: Optional[str],
         description: Optional[str],
     ):
-        # TODO create pipeline function for this
+        workfile_entity = save_workfile_info(
+            self._controller.get_current_project_name(),
+            task_id,
+            rootless_path,
+            self._controller.get_host_name(),
+            version=version,
+            comment=comment,
+            description=description,
+            workfile_entities=self.get_workfile_entities(task_id),
+        )
+        # Update cache
         workfile_entities = self.get_workfile_entities(task_id)
-        workfile_entity = next(
-            (
-                _ent
-                for _ent in workfile_entities
-                if _ent["path"] == rootless_path
-            ),
-            None
-        )
-        if not workfile_entity:
-            workfile_entity = self._create_workfile_info_entity(
-                task_id,
-                rootless_path,
-                version,
-                comment,
-                description,
-            )
+        match_idx = None
+        for idx, entity in enumerate(workfile_entities):
+            if entity["id"] == workfile_entity["id"]:
+                # Update existing entity
+                match_idx = idx
+                break
+
+        if match_idx is None:
             workfile_entities.append(workfile_entity)
-            return
-
-        data = {}
-        for key, value in (
-            ("host_name", self._host_name),
-            ("version", version),
-            ("comment", comment),
-        ):
-            if value is not None:
-                data[key] = value
-
-        old_data = workfile_entity["data"]
-
-        changed_data = {}
-        for key, value in data.items():
-            if key not in old_data or old_data[key] != value:
-                changed_data[key] = value
-
-        update_data = {}
-        if changed_data:
-            update_data["data"] = changed_data
-
-        old_description = workfile_entity["attrib"].get("description")
-        if description is not None and old_description != description:
-            update_data["attrib"] = {"description": description}
-            workfile_entity["attrib"]["description"] = description
-
-        username = self._get_current_username()
-        # Automatically fix 'createdBy' and 'updatedBy' fields
-        # NOTE both fields were not automatically filled by server
-        #   until 1.1.3 release.
-        if workfile_entity.get("createdBy") is None:
-            update_data["createdBy"] = username
-            workfile_entity["createdBy"] = username
-
-        if workfile_entity.get("updatedBy") != username:
-            update_data["updatedBy"] = username
-            workfile_entity["updatedBy"] = username
-
-        if not update_data:
-            return
-
-        session = OperationsSession()
-        session.update_entity(
-            self._project_name,
-            "workfile",
-            workfile_entity["id"],
-            update_data,
-        )
-        session.commit()
-
-    def _create_workfile_info_entity(
-        self,
-        task_id: str,
-        rootless_path: str,
-        version: Optional[int],
-        comment: Optional[str],
-        description: str,
-    ) -> dict[str, Any]:
-        extension = os.path.splitext(rootless_path)[1]
-
-        attrib = {}
-        for key, value in (
-            ("extension", extension),
-            ("description", description),
-        ):
-            if value is not None:
-                attrib[key] = value
-
-        data = {}
-        for key, value in (
-            ("host_name", self._host_name),
-            ("version", version),
-            ("comment", comment),
-        ):
-            if value is not None:
-                data[key] = value
-
-        username = self._get_current_username()
-        workfile_info = {
-            "id": uuid.uuid4().hex,
-            "path": rootless_path,
-            "taskId": task_id,
-            "attrib": attrib,
-            "data": data,
-            # TODO remove 'createdBy' and 'updatedBy' fields when server is
-            #   or above 1.1.3 .
-            "createdBy": username,
-            "updatedBy": username,
-        }
-
-        session = OperationsSession()
-        session.create_entity(
-            self._project_name, "workfile", workfile_info
-        )
-        session.commit()
-        return workfile_info
+        else:
+            workfile_entities[match_idx] = workfile_entity
