@@ -513,15 +513,13 @@ def change_current_context(
     task_entity: dict[str, Any],
     *,
     template_key: Optional[str] = _PLACEHOLDER,
-    workdir: Optional[str] = _PLACEHOLDER,
     reason: Optional[str] = None,
     project_entity: Optional[dict[str, Any]] = None,
-    project_settings: Optional[dict[str, Any]] = None,
     anatomy: Optional[Anatomy] = None,
-):
+) -> dict[str, str]:
     """Update active Session to a new task work area.
 
-    This updates the live Session to a different task under folder.
+    This updates the live Session to a different task under a folder.
 
     Notes:
         * This function does a lot of things related to workfiles which
@@ -536,33 +534,22 @@ def change_current_context(
         task_entity (Dict[str, Any]): Task entity to set.
         template_key (Optional[str]): DEPRECATED: Prepared template key to
             be used for workfile template in Anatomy.
-        workdir (Optional[str]): DEPRECATED: Workdir to set.
         reason (Optional[str]): Reason for changing context.
         anatomy (Optional[Anatomy]): Anatomy object used for workdir
             calculation.
         project_entity (Optional[dict[str, Any]]): Project entity used for
             workdir calculation.
-        project_settings (Optional[dict[str, Any]]): Project settings used for
-            workdir calculation.
 
     Returns:
-        Dict[str, str]: New context data.
+        dict[str, str]: New context data.
 
     """
-    depr_args = []
     if template_key is not _PLACEHOLDER:
-        depr_args.append("'template_key'")
-
-    if workdir is not _PLACEHOLDER:
-        depr_args.append("'workdir'")
-
-    if depr_args:
-        ending = "s" if len(depr_args) > 1 else ""
-        depr_args = ", ".join(depr_args)
         warnings.warn(
             (
-                f"Used deprecated argument{ending} {depr_args}."
-                " To change "
+                f"Used deprecated argument 'template_key' in"
+                f" 'change_current_context'."
+                " It is not necessary to pass it in anymore."
             ),
             DeprecationWarning,
         )
