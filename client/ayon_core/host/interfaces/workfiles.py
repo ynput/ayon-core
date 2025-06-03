@@ -10,8 +10,14 @@ from typing import Optional, Any
 import ayon_api
 import arrow
 
+from ayon_core.lib import emit_event
+
 if typing.TYPE_CHECKING:
     from ayon_core.pipeline import Anatomy
+
+
+WORKFILE_OPEN_REASON = "workfile.opened"
+WORKFILE_SAVE_REASON = "workfile.saved"
 
 
 @dataclass
@@ -256,8 +262,17 @@ class IWorkfileHost:
     def save_workfile_with_context(
         self,
         filepath: str,
-        folder_entity: dict[str, Any] = None,
-        task_entity: dict[str, Any] = None,
+        folder_entity: Optional[dict[str, Any]],
+        task_entity: Optional[dict[str, Any]],
+        *,
+        version: Optional[int],
+        comment: Optional[str] = None,
+        description: Optional[str] = None,
+        rootless_path: Optional[str] = None,
+        workfile_entities: Optional[list[dict[str, Any]]] = None,
+        project_settings: Optional[dict[str, Any]] = None,
+        project_entity: Optional[dict[str, Any]] = None,
+        anatomy: Optional["Anatomy"] = None,
     ):
         """Save current workfile with context.
 
@@ -268,15 +283,72 @@ class IWorkfileHost:
             filepath (str): Where the current scene should be saved.
             folder_entity (dict[str, Any]): Folder entity.
             task_entity (dict[str, Any]): Task entity.
+            version (Optional[int]): Version of the workfile.
+            comment (Optional[str]): Comment for the workfile.
+            description (Optional[str]): Description for the workfile.
+            rootless_path (Optional[str]): Rootless path of the workfile.
+            workfile_entities (Optional[list[dict[str, Any]]]): Workfile
+            project_settings (Optional[dict[str, Any]]): Project settings.
+            project_entity (Optional[dict[str, Any]]): Project entity.
+            anatomy (Optional[Anatomy]): Project anatomy.
 
         """
+        self._before_workfile_save(
+            filepath,
+            folder_entity,
+            task_entity,
+        )
+        event_data = self._get_workfile_event_data(
+            self.get_current_project_name(),
+            folder_entity,
+            task_entity,
+            filepath,
+        )
+        self._emit_workfile_save_event(event_data, after_open=False)
+
+        workdir = os.path.dirname(filepath)
+
+        self.set_current_context(
+            folder_entity,
+            task_entity,
+            reason=WORKFILE_SAVE_REASON,
+            workdir=workdir,
+            project_entity=project_entity,
+            project_settings=project_settings,
+            anatomy=anatomy,
+        )
+
         self.save_workfile(filepath)
+
+        self._save_workfile_entity(
+            filepath,
+            folder_entity,
+            task_entity,
+            version,
+            comment,
+            description,
+            rootless_path,
+            workfile_entities,
+            project_settings,
+            project_entity,
+            anatomy,
+        )
+        self._after_workfile_save(
+            filepath,
+            folder_entity,
+            task_entity,
+        )
+        self._emit_workfile_save_event(event_data)
 
     def open_workfile_with_context(
         self,
         filepath: str,
         folder_entity: dict[str, Any],
         task_entity: dict[str, Any],
+        *,
+        project_entity: Optional[dict[str, Any]] = None,
+        project_settings: Optional[dict[str, Any]] = None,
+        anatomy: Optional["Anatomy"] = None,
     ):
         """Open passed filepath in the host with context.
 
@@ -289,9 +361,41 @@ class IWorkfileHost:
             filepath (str): Path to workfile.
             folder_entity (dict[str, Any]): Folder id.
             task_entity (dict[str, Any]): Task id.
+            project_entity (Optional[dict[str, Any]]): Project entity.
+            project_settings (Optional[dict[str, Any]]): Project settings.
+            anatomy (Optional[Anatomy]): Project anatomy.
 
         """
+        context = self.get_current_context()
+        project_name = context["project_name"]
+        current_folder_path = context["folder_path"]
+        current_task_name = context["task_name"]
+
+        workdir = os.path.dirname(filepath)
+        # Set 'AYON_WORKDIR' environment variable
+        os.environ["AYON_WORKDIR"] = workdir
+
+        event_data = self._get_workfile_event_data(
+            project_name, folder_entity, task_entity, filepath
+        )
+
+        self._before_workfile_open(folder_entity, task_entity, filepath)
+        self._emit_workfile_open_event(event_data, after_open=False)
+
+        self.set_current_context(
+            folder_entity,
+            task_entity,
+            reason=WORKFILE_OPEN_REASON,
+            workdir=workdir,
+            project_entity=project_entity,
+            project_settings=project_settings,
+            anatomy=anatomy,
+        )
+
         self.open_workfile(filepath)
+
+        self._after_workfile_open(folder_entity, task_entity, filepath)
+        self._emit_workfile_open_event(event_data)
 
     def list_workfiles(
         self,
@@ -414,6 +518,7 @@ class IWorkfileHost:
         self,
         project_name: str,
         folder_id: str,
+        *,
         anatomy: Optional["Anatomy"] = None,
         version_entities: Optional[list[dict[str, Any]]] = None,
         repre_entities: Optional[list[dict[str, Any]]] = None,
@@ -524,7 +629,16 @@ class IWorkfileHost:
         dst_path: str,
         folder_entity: dict[str, Any],
         task_entity: dict[str, Any],
-        open_workfile: bool = False,
+        *,
+        version: Optional[int],
+        comment: Optional[str] = None,
+        description: Optional[str] = None,
+        rootless_path: Optional[str] = None,
+        workfile_entities: Optional[list[dict[str, Any]]] = None,
+        project_settings: Optional[dict[str, Any]] = None,
+        project_entity: Optional[dict[str, Any]] = None,
+        anatomy: Optional["Anatomy"] = None,
+        open_workfile: bool = True,
     ):
         """Save workfile path with target folder and task context.
 
@@ -536,21 +650,68 @@ class IWorkfileHost:
             dst_path (str): Where the scene should be saved.
             folder_entity (dict[str, Any]): Folder entity.
             task_entity (dict[str, Any]): Task entity.
+            version (Optional[int]): Version of the workfile.
+            comment (Optional[str]): Comment for the workfile.
+            description (Optional[str]): Description for the workfile.
+            rootless_path (Optional[str]): Rootless path of the workfile.
+            workfile_entities (Optional[list[dict[str, Any]]]): Workfile
+                entities to be saved with the workfile.
+            project_settings (Optional[dict[str, Any]]): Project settings.
+            project_entity (Optional[dict[str, Any]]): Project entity.
+            anatomy (Optional[Anatomy]): Project anatomy.
             open_workfile (bool): Open workfile when copied.
 
         """
-        # TODO We might need option to open file once copied as some DCC might
-        #   actually need to open the workfile to copy it.
+        self._before_workfile_copy(
+            src_path,
+            dst_path,
+            folder_entity,
+            task_entity,
+            open_workfile,
+        )
+        event_data = self._get_workfile_event_data(
+            self.get_current_project_name(),
+            folder_entity,
+            task_entity,
+            dst_path,
+        )
+        self._emit_workfile_save_event(event_data, after_open=False)
+
         dst_dir = os.path.dirname(dst_path)
         if not os.path.exists(dst_dir):
             os.makedirs(dst_dir, exist_ok=True)
         shutil.copy(src_path, dst_path)
-        if open_workfile:
-            self.open_workfile_with_context(
-                dst_path,
-                folder_entity,
-                task_entity,
-            )
+
+        self._save_workfile_entity(
+            dst_path,
+            folder_entity,
+            task_entity,
+            version,
+            comment,
+            description,
+            rootless_path,
+            workfile_entities,
+            project_settings,
+            project_entity,
+            anatomy,
+        )
+        self._after_workfile_copy(
+            src_path,
+            dst_path,
+            folder_entity,
+            task_entity,
+            open_workfile,
+        )
+        self._emit_workfile_save_event(event_data)
+
+        if not open_workfile:
+            return
+
+        self.open_workfile_with_context(
+            dst_path,
+            folder_entity,
+            task_entity,
+        )
 
     def copy_workfile_representation(
         self,
@@ -559,8 +720,17 @@ class IWorkfileHost:
         dst_path: str,
         folder_entity: dict[str, Any],
         task_entity: dict[str, Any],
-        open_workfile: bool = False,
-        anatomy: Optional[Anatomy] = None,
+        *,
+        version: Optional[int],
+        comment: Optional[str] = None,
+        description: Optional[str] = None,
+        rootless_path: Optional[str] = None,
+        workfile_entities: Optional[list[dict[str, Any]]] = None,
+        project_settings: Optional[dict[str, Any]] = None,
+        project_entity: Optional[dict[str, Any]] = None,
+        anatomy: Optional["Anatomy"] = None,
+        open_workfile: bool = True,
+        src_anatomy: Optional["Anatomy"] = None,
         src_representation_path: Optional[str] = None,
     ):
         """Copy workfile representation.
@@ -574,8 +744,17 @@ class IWorkfileHost:
             dst_path (str): Where the scene should be saved.
             folder_entity (dict[str, Any): Folder entity.
             task_entity (dict[str, Any]): Task entity.
-            open_workfile (bool): Open workfile when copied.
+            version (Optional[int]): Version of the workfile.
+            comment (Optional[str]): Comment for the workfile.
+            description (Optional[str]): Description for the workfile.
+            rootless_path (Optional[str]): Rootless path of the workfile.
+            workfile_entities (Optional[list[dict[str, Any]]]): Workfile
+                entities to be saved with the workfile.
+            project_settings (Optional[dict[str, Any]]): Project settings.
+            project_entity (Optional[dict[str, Any]]): Project entity.
             anatomy (Optional[Anatomy]): Project anatomy.
+            open_workfile (bool): Open workfile when copied.
+            src_anatomy (Optional[Anatomy]): Anatomy of the source
             src_representation_path (Optional[str]): Representation path.
 
         """
@@ -586,12 +765,27 @@ class IWorkfileHost:
             get_representation_path_with_anatomy
         )
 
-        if src_representation_path is None:
+        project_name = self.get_current_project_name()
+        # Re-use Anatomy or project entity if source context is same
+        if project_name == src_project_name:
+            if src_anatomy is None and anatomy is not None:
+                src_anatomy = anatomy
+            elif anatomy is None and src_anatomy is not None:
+                anatomy = src_anatomy
+            elif not project_entity:
+                project_entity = ayon_api.get_project(project_name)
+
             if anatomy is None:
-                anatomy = Anatomy(src_project_name)
+                anatomy = src_anatomy = Anatomy(
+                    project_name, project_entity=project_entity
+                )
+
+        if src_representation_path is None:
+            if src_anatomy is None:
+                src_anatomy = Anatomy(src_project_name)
             src_representation_path = get_representation_path_with_anatomy(
                 src_representation_entity,
-                anatomy,
+                src_anatomy,
             )
 
         self.copy_workfile(
@@ -599,6 +793,14 @@ class IWorkfileHost:
             dst_path,
             folder_entity,
             task_entity,
+            version=version,
+            comment=comment,
+            description=description,
+            rootless_path=rootless_path,
+            workfile_entities=workfile_entities,
+            project_settings=project_settings,
+            project_entity=project_entity,
+            anatomy=anatomy,
             open_workfile=open_workfile,
         )
 
@@ -696,3 +898,266 @@ class IWorkfileHost:
                 ))
 
         return version_entities, repre_entities
+
+    def _save_workfile_entity(
+        self,
+        workfile_path: str,
+        folder_entity: dict[str, Any],
+        task_entity: dict[str, Any],
+        version: Optional[int],
+        comment: Optional[str],
+        description: Optional[str],
+        rootless_path: Optional[str],
+        workfile_entities: Optional[list[dict[str, Any]]] = None,
+        project_settings: Optional[dict[str, Any]] = None,
+        project_entity: Optional[dict[str, Any]] = None,
+        anatomy: Optional["Anatomy"] = None,
+    ):
+        from ayon_core.pipeline.workfile.utils import (
+            save_workfile_info,
+            find_workfile_rootless_path,
+        )
+
+        project_name = self.get_current_project_name()
+        if not description:
+            description = None
+
+        if not comment:
+            comment = None
+
+        if rootless_path is None:
+            rootless_path = find_workfile_rootless_path(
+                workfile_path,
+                project_name,
+                folder_entity,
+                task_entity,
+                self.name,
+                project_entity=project_entity,
+                project_settings=project_settings,
+                anatomy=anatomy,
+            )
+
+        # It is not possible to create workfile infor without rootless path
+        workfile_info = None
+        if not rootless_path:
+            return workfile_info
+
+        if platform.system().lower() == "windows":
+            rootless_path = rootless_path.replace("\\", "/")
+
+        workfile_info = save_workfile_info(
+            project_name,
+            task_entity["id"],
+            rootless_path,
+            self.name,
+            version,
+            comment,
+            description,
+            workfile_entities=workfile_entities,
+        )
+        return workfile_info
+
+    def _create_extra_folders(self, folder_entity, task_entity, workdir):
+        from ayon_core.pipeline.workfile.path_resolving import (
+            create_workdir_extra_folders
+        )
+
+        project_name = self.get_current_project_name()
+
+        # Create extra folders
+        create_workdir_extra_folders(
+            workdir,
+            self.name,
+            task_entity["taskType"],
+            task_entity["name"],
+            project_name
+        )
+
+    def _get_workfile_event_data(
+        self,
+        project_name: str,
+        folder_entity: dict[str, Any],
+        task_entity: dict[str, Any],
+        filepath: str,
+    ):
+        workdir, filename = os.path.split(filepath)
+        return {
+            "project_name": project_name,
+            "folder_id": folder_entity["id"],
+            "folder_path": folder_entity["path"],
+            "task_id": task_entity["id"],
+            "task_name": task_entity["name"],
+            "host_name": self.name,
+            "filepath": filepath,
+            "filename": filename,
+            "workdir_path": workdir,
+        }
+
+    def _before_workfile_open(
+        self,
+        folder_entity: dict[str, Any],
+        task_entity: dict[str, Any],
+        filepath: str,
+    ):
+        """Before workfile is opened.
+
+        This method is called before the workfile is opened in the host.
+
+        Can be overriden to implement host specific logic.
+
+        Args:
+            folder_entity (dict[str, Any]): Folder entity.
+            task_entity (dict[str, Any]): Task entity.
+            filepath (str): Path to the workfile.
+
+        """
+        pass
+
+    def _after_workfile_open(
+        self,
+        folder_entity: dict[str, Any],
+        task_entity: dict[str, Any],
+        filepath: str,
+    ):
+        """After workfile is opened.
+
+        This method is called after the workfile is opened in the host.
+
+        Can be overriden to implement host specific logic.
+
+        Args:
+            folder_entity (dict[str, Any]): Folder entity.
+            task_entity (dict[str, Any]): Task entity.
+            filepath (str): Path to the workfile.
+
+        """
+        pass
+
+
+    def _before_workfile_save(
+        self,
+        filepath: str,
+        folder_entity: dict[str, Any],
+        task_entity: dict[str, Any],
+    ):
+        """Before workfile is saved.
+
+        This method is called before the workfile is saved in the host.
+
+        Can be overriden to implement host specific logic.
+
+        Args:
+            filepath (str): Path to the workfile.
+            folder_entity (dict[str, Any]): Folder entity.
+            task_entity (dict[str, Any]): Task entity.
+
+        """
+        pass
+
+    def _after_workfile_save(
+        self,
+        filepath: str,
+        folder_entity: dict[str, Any],
+        task_entity: dict[str, Any],
+    ):
+        """After workfile is saved.
+
+        This method is called after the workfile is saved in the host.
+
+        Can be overriden to implement host specific logic.
+
+        Args:
+            folder_entity (dict[str, Any]): Folder entity.
+            task_entity (dict[str, Any]): Task entity.
+            filepath (str): Path to the workfile.
+
+        """
+        workdir = os.path.dirname(filepath)
+        self._create_extra_folders(folder_entity, task_entity, workdir)
+
+    def _before_workfile_copy(
+        self,
+        src_path: str,
+        dst_path: str,
+        folder_entity: dict[str, Any],
+        task_entity: dict[str, Any],
+        open_workfile: bool = True,
+    ):
+        """Before workfile is copied.
+
+        This method is called before the workfile is copied by host
+            integration.
+
+        Can be overriden to implement host specific logic.
+
+        Args:
+            src_path (str): Path to the source workfile.
+            dst_path (str): Path to the destination workfile.
+            folder_entity (dict[str, Any]): Folder entity.
+            task_entity (dict[str, Any]): Task entity.
+            open_workfile (bool): Should be the path opened once copy is
+                finished.
+
+        """
+        pass
+
+    def _after_workfile_copy(
+        self,
+        src_path: str,
+        dst_path: str,
+        folder_entity: dict[str, Any],
+        task_entity: dict[str, Any],
+        open_workfile: bool = True,
+    ):
+        """After workfile is copied.
+
+        This method is called after the workfile is copied by host
+            integration.
+
+        Can be overriden to implement host specific logic.
+
+        Args:
+            src_path (str): Path to the source workfile.
+            dst_path (str): Path to the destination workfile.
+            folder_entity (dict[str, Any]): Folder entity.
+            task_entity (dict[str, Any]): Task entity.
+            open_workfile (bool): Should be the path opened once copy is
+                finished.
+
+        """
+        workdir = os.path.dirname(dst_path)
+        self._create_extra_folders(folder_entity, task_entity, workdir)
+
+    def _emit_workfile_open_event(
+        self,
+        event_data: dict[str, Optional[str]],
+        after_open: bool = True,
+    ):
+        topics = []
+        topic_end = "before"
+        if after_open:
+            topics.append("workfile.opened")
+            topic_end = "after"
+
+        # Keep backwards compatible event topic
+        topics.append(f"workfile.open.{topic_end}")
+
+        for topic in topics:
+            emit_event(topic, event_data)
+
+    def _emit_workfile_save_event(
+        self,
+        event_data: dict[str, Optional[str]],
+        after_open: bool = True,
+    ):
+        topics = []
+        topic_end = "before"
+        if after_open:
+            topics.append("workfile.saved")
+            topic_end = "after"
+
+        # Keep backwards compatible event topic
+        topics.append(f"workfile.save.{topic_end}")
+
+        for topic in topics:
+            emit_event(topic, event_data)
