@@ -17,7 +17,7 @@ from ayon_core.pipeline.plugin_discover import (
     deregister_plugin_path
 )
 from ayon_core.pipeline.staging_dir import get_staging_dir_info, StagingDir
-from ayon_core.pipeline import is_supporting_product_base_type
+from ayon_core.pipeline.compatibility import is_supporting_product_base_type
 
 from .constants import DEFAULT_VARIANT_VALUE
 from .product_name import get_product_name
@@ -308,12 +308,15 @@ class BaseCreator(ABC):
         """Identifier of creator (must be unique).
 
         Default implementation returns plugin's product type.
+
         """
-
+        identifier = self.product_type
         if is_supporting_product_base_type():
-            return self.product_base_type
+            identifier = self.product_base_type
+            if self.product_type:
+                identifier = f"{identifier}.{self.product_type}"
+        return identifier
 
-        return self.product_type
 
     @property
     @abstractmethod
@@ -323,14 +326,19 @@ class BaseCreator(ABC):
         pass
 
     @property
-    @abstractmethod
-    def product_base_type(self):
+    def product_base_type(self) -> Optional[str]:
         """Base product type that plugin represents.
 
-        This is used to group products in UI.
-        """
+        Todo (antirotor): This should be required in future - it
+            should be made abstract then.
 
-        pass
+        Returns:
+            Optional[str]: Base product type that plugin represents.
+                If not set, it is assumed that the creator plugin is obsolete
+                and does not support product base type.
+
+        """
+        return None
 
     @property
     def project_name(self):
@@ -361,13 +369,14 @@ class BaseCreator(ABC):
 
         Default implementation use attributes in this order:
             - 'group_label' -> 'label' -> 'identifier'
-                Keep in mind that 'identifier' use 'product_type' by default.
+        
+        Keep in mind that 'identifier' uses 'product_base_type' by default.
 
         Returns:
             str: Group label that can be used for grouping of instances in UI.
-                Group label can be overridden by instance itself.
+                Group label can be overridden by the instance itself.
+    
         """
-
         if self._cached_group_label is None:
             label = self.identifier
             if self.group_label:
@@ -413,22 +422,26 @@ class BaseCreator(ABC):
         if product_type is None:
             product_type = self.product_type
 
-        if is_supporting_product_base_type() and not product_base_type:
-            if not self.product_base_type:
-                warn(
-                    f"Creator {self.identifier} does not support "
-                    "product base type. This will be required in future.",
-                    DeprecationWarning,
-                    stacklevel=2,
-                )
-                else:
-                    product_base_type = self.product_base_type
+        if (
+                is_supporting_product_base_type()
+                and not product_base_type
+                and not self.product_base_type
+        ):
+            warn(
+                f"Creator {self.identifier} does not support "
+                "product base type. This will be required in future.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+        else:
+            product_base_type = self.product_base_type
 
         instance = CreatedInstance(
-            product_type,
-            product_name,
-            data,
+            product_type=product_type,
+            product_name=product_name,
+            data=data,
             creator=self,
+            product_base_type=product_base_type
         )
         self._add_instance_to_context(instance)
         return instance
