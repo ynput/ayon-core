@@ -563,14 +563,15 @@ def _create_workfile_info_entity(
         if value is not None:
             attrib[key] = value
 
-    data = {}
-    for key, value in (
-        ("host_name", host_name),
-        ("version", version),
-        ("comment", comment),
-    ):
-        if value is not None:
-            data[key] = value
+    data = {
+        key: value
+        for key, value in (
+            ("host_name", host_name),
+            ("version", version),
+            ("comment", comment),
+        )
+        if value is not None
+    }
 
     workfile_info = {
         "id": uuid.uuid4().hex,
