@@ -26,6 +26,8 @@ from .utils import (
     save_current_workfile_to,
     copy_and_open_workfile,
     copy_and_open_workfile_representation,
+    save_workfile_info,
+    find_workfile_rootless_path,
 )
 
 from .build_workfile import BuildWorkfile
@@ -50,6 +52,7 @@ __all__ = (
     "get_last_workfile_from_paths",
     "get_last_workfile_with_version",
     "get_last_workfile",
+    "find_workfile_rootless_path",
 
     "get_custom_workfile_template",
     "get_custom_workfile_template_by_string_context",
@@ -66,6 +69,7 @@ __all__ = (
     "save_current_workfile_to",
     "copy_and_open_workfile",
     "copy_and_open_workfile_representation",
+    "save_workfile_info",
 
     "BuildWorkfile",
 
