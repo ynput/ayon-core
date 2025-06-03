@@ -1,20 +1,21 @@
 """Core pipeline functionality"""
-
+from __future__ import annotations
 import os
 import logging
 import platform
 import uuid
+import warnings
+from typing import Optional, Any
 
 import ayon_api
 import pyblish.api
 from pyblish.lib import MessageHandler
 
 from ayon_core import AYON_CORE_ROOT
-from ayon_core.host import HostBase, IWorkfileHost
+from ayon_core.host import HostBase
 from ayon_core.lib import (
     is_in_tests,
     initialize_ayon_connection,
-    emit_event,
     version_up
 )
 from ayon_core.addon import load_addons, AddonsManager
@@ -24,7 +25,6 @@ from .publish.lib import filter_pyblish_plugins
 from .anatomy import Anatomy
 from .template_data import get_template_data_with_names
 from .workfile import (
-    get_workdir,
     get_custom_workfile_template_by_string_context,
     get_workfile_template_key_from_context,
     get_last_workfile,
@@ -505,14 +505,19 @@ def get_current_context_custom_workfile_template(project_settings=None):
     )
 
 
+_PLACEHOLDER = object()
+
+
 def change_current_context(
-    folder_entity,
-    task_entity,
-    template_key=None,
-    workdir=None,
-    anatomy=None,
-    project_entity=None,
-    project_settings=None,
+    folder_entity: dict[str, Any],
+    task_entity: dict[str, Any],
+    *,
+    template_key: Optional[str] = _PLACEHOLDER,
+    workdir: Optional[str] = _PLACEHOLDER,
+    reason: Optional[str] = None,
+    project_entity: Optional[dict[str, Any]] = None,
+    project_settings: Optional[dict[str, Any]] = None,
+    anatomy: Optional[Anatomy] = None,
 ):
     """Update active Session to a new task work area.
 
@@ -529,9 +534,10 @@ def change_current_context(
     Args:
         folder_entity (Dict[str, Any]): Folder entity to set.
         task_entity (Dict[str, Any]): Task entity to set.
-        template_key (Optional[str]): Prepared template key to be used for
-            workfile template in Anatomy.
-        workdir (Optional[str]): Workdir to set.
+        template_key (Optional[str]): DEPRECATED: Prepared template key to
+            be used for workfile template in Anatomy.
+        workdir (Optional[str]): DEPRECATED: Workdir to set.
+        reason (Optional[str]): Reason for changing context.
         anatomy (Optional[Anatomy]): Anatomy object used for workdir
             calculation.
         project_entity (Optional[dict[str, Any]]): Project entity used for
@@ -540,58 +546,36 @@ def change_current_context(
             workdir calculation.
 
     Returns:
-        Dict[str, str]: The changed key, values in the current Session.
+        Dict[str, str]: New context data.
 
     """
-    host = registered_host()
-    project_name = host.get_current_project_name()
-    folder_path = None
-    task_name = None
-    if folder_entity:
-        folder_path = folder_entity["path"]
-        if task_entity:
-            task_name = task_entity["name"]
+    depr_args = []
+    if template_key is not _PLACEHOLDER:
+        depr_args.append("'template_key'")
 
-    if isinstance(host, IWorkfileHost) and workdir is None and folder_entity:
-        if project_entity is None:
-            project_entity = ayon_api.get_project(project_name)
-        workdir = get_workdir(
-            project_entity,
-            folder_entity,
-            task_entity,
-            host.name,
-            anatomy=anatomy,
-            template_key=template_key,
-            project_settings=project_settings,
+    if workdir is not _PLACEHOLDER:
+        depr_args.append("'workdir'")
+
+    if depr_args:
+        ending = "s" if len(depr_args) > 1 else ""
+        depr_args = ", ".join(depr_args)
+        warnings.warn(
+            (
+                f"Used deprecated argument{ending} {depr_args}."
+                " To change "
+            ),
+            DeprecationWarning,
         )
 
-    envs = {
-        "AYON_PROJECT_NAME": project_name,
-        "AYON_FOLDER_PATH": folder_path,
-        "AYON_TASK_NAME": task_name,
-        "AYON_WORKDIR": workdir,
-    }
-
-    # Update the Session and environments. Pop from environments all keys with
-    # value set to None.
-    for key, value in envs.items():
-        if value is None:
-            os.environ.pop(key, None)
-        else:
-            os.environ[key] = value
-
-    data = envs.copy()
-
-    # Convert env keys to human readable keys
-    data["project_name"] = project_name
-    data["folder_path"] = folder_path
-    data["task_name"] = task_name
-    data["workdir_path"] = workdir
-
-    # Emit session change
-    emit_event("taskChanged", data)
-
-    return data
+    host = registered_host()
+    return host.set_current_context(
+        folder_entity,
+        task_entity,
+        reason=reason,
+        anatomy=anatomy,
+        project_entity=project_entity,
+        project_settings=project_settings,
+    )
 
 
 def get_process_id():

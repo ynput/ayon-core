@@ -1,10 +1,20 @@
+from __future__ import annotations
+
 import os
 import logging
 import contextlib
 from abc import ABC, abstractmethod
+import typing
+from typing import Optional, Any
 
-# NOTE can't import 'typing' because of issues in Maya 2020
-#   - shiboken crashes on 'typing' module import
+import ayon_api
+
+from ayon_core.lib import emit_event
+
+from .interfaces import IWorkfileHost
+
+if typing.TYPE_CHECKING:
+    from ayon_core.pipeline import Anatomy
 
 
 class HostBase(ABC):
@@ -94,12 +104,12 @@ class HostBase(ABC):
 
     @property
     @abstractmethod
-    def name(self):
+    def name(self) -> str:
         """Host name."""
 
         pass
 
-    def get_current_project_name(self):
+    def get_current_project_name(self) -> str:
         """
         Returns:
             Union[str, None]: Current project name.
@@ -107,7 +117,7 @@ class HostBase(ABC):
 
         return os.environ.get("AYON_PROJECT_NAME")
 
-    def get_current_folder_path(self):
+    def get_current_folder_path(self) -> Optional[str]:
         """
         Returns:
             Union[str, None]: Current asset name.
@@ -115,7 +125,7 @@ class HostBase(ABC):
 
         return os.environ.get("AYON_FOLDER_PATH")
 
-    def get_current_task_name(self):
+    def get_current_task_name(self) -> Optional[str]:
         """
         Returns:
             Union[str, None]: Current task name.
@@ -123,7 +133,7 @@ class HostBase(ABC):
 
         return os.environ.get("AYON_TASK_NAME")
 
-    def get_current_context(self):
+    def get_current_context(self) -> dict[str, Optional[str]]:
         """Get current context information.
 
         This method should be used to get current context of host. Usage of
@@ -141,6 +151,88 @@ class HostBase(ABC):
             "folder_path": self.get_current_folder_path(),
             "task_name": self.get_current_task_name()
         }
+
+    def set_current_context(
+        self,
+        folder_entity: dict[str, Any],
+        task_entity: dict[str, Any],
+        *,
+        reason: Optional[str] = None,
+        workdir: Optional[str] = None,
+        project_entity: Optional[dict[str, Any]] = None,
+        project_settings: Optional[dict[str, Any]] = None,
+        anatomy: Optional["Anatomy"] = None,
+    ):
+        """Set current context information.
+
+        This method should be used to set current context of host. Usage of
+        this method can be crucial for host implementations in DCCs where
+        can be opened multiple workfiles at one moment and change of context
+        can't be caught properly.
+
+        Notes:
+            This method should not care about change of workdir and expect any
+                of the arguments.
+
+        Args:
+            folder_entity (Optional[dict[str, Any]]): Folder entity.
+            task_entity (Optional[dict[str, Any]]): Task entity.
+            reason (Optional[str]): Reason for context change.
+            workdir (Optional[str]): Work directory path.
+            project_entity (Optional[dict[str, Any]]): Project entity data.
+            project_settings (Optional[dict[str, Any]]): Project settings data.
+            anatomy (Optional[Anatomy]): Anatomy instance for the project.
+
+        """
+        from ayon_core.pipeline import Anatomy
+
+        folder_path = folder_entity["path"]
+        task_name = task_entity["name"]
+
+        context = self.get_current_context()
+        # Don't do anything if context did not change
+        if (
+            context["folder_path"] == folder_path
+            and context["task_name"] == task_name
+        ):
+            return context
+
+        project_name = self.get_current_project_name()
+        if project_entity is None:
+            project_entity = ayon_api.get_project(project_name)
+
+        if anatomy is None:
+            anatomy = Anatomy(project_name, project_entity=project_entity)
+
+        self._before_context_change(
+            project_entity,
+            folder_entity,
+            task_entity,
+            anatomy,
+            reason,
+        )
+        self._set_current_context(
+            project_entity,
+            folder_entity,
+            task_entity,
+            reason,
+            workdir,
+            anatomy,
+            project_settings,
+        )
+        self._after_context_change(
+            project_entity,
+            folder_entity,
+            task_entity,
+            anatomy,
+            reason,
+        )
+
+        return self._emit_context_change_event(
+            project_name,
+            folder_path,
+            task_name,
+        )
 
     def get_context_title(self):
         """Context title shown for UI purposes.
@@ -188,3 +280,121 @@ class HostBase(ABC):
             yield
         finally:
             pass
+
+    def _emit_context_change_event(
+        self,
+        project_name: str,
+        folder_path: Optional[str],
+        task_name: Optional[str],
+    ):
+        """Emit context change event.
+
+        Args:
+            project_name (str): Name of the project.
+            folder_path (Optional[str]): Path of the folder.
+            task_name (Optional[str]): Name of the task.
+
+        """
+        data = {
+            "project_name": project_name,
+            "folder_path": folder_path,
+            "task_name": task_name,
+        }
+        emit_event("taskChanged", data)
+        return data
+
+    def _set_current_context(
+        self,
+        project_entity: dict[str, Any],
+        folder_entity: Optional[dict[str, Any]],
+        task_entity: Optional[dict[str, Any]],
+        reason: Optional[str],
+        workdir: Optional[str],
+        anatomy: Optional["Anatomy"],
+        project_settings: Optional[dict[str, Any]],
+    ):
+        from ayon_core.pipeline.workfile import get_workdir
+
+        project_name = self.get_current_project_name()
+        folder_path = None
+        task_name = None
+        if folder_entity:
+            folder_path = folder_entity["path"]
+            if task_entity:
+                task_name = task_entity["name"]
+
+        if (
+            workdir is None
+            and isinstance(self, IWorkfileHost)
+            and folder_entity
+        ):
+            if project_entity is None:
+                project_entity = ayon_api.get_project(project_name)
+
+            workdir = get_workdir(
+                project_entity,
+                folder_entity,
+                task_entity,
+                self.name,
+                anatomy=anatomy,
+                project_settings=project_settings,
+            )
+
+        envs = {
+            "AYON_PROJECT_NAME": project_name,
+            "AYON_FOLDER_PATH": folder_path,
+            "AYON_TASK_NAME": task_name,
+            "AYON_WORKDIR": workdir,
+        }
+
+        # Update the Session and environments. Pop from environments all keys with
+        # value set to None.
+        for key, value in envs.items():
+            if value is None:
+                os.environ.pop(key, None)
+            else:
+                os.environ[key] = value
+
+    def _before_context_change(
+        self,
+        project_entity: dict[str, Any],
+        folder_entity: Optional[dict[str, Any]],
+        task_entity: Optional[dict[str, Any]],
+        anatomy: "Anatomy",
+        reason: Optional[str],
+    ):
+        """Before context is changed.
+
+        This method is called before the context is changed in the host.
+
+        Can be overriden to implement host specific logic.
+
+        Args:
+            folder_entity (dict[str, Any]): Folder entity.
+            task_entity (dict[str, Any]): Task entity.
+            reason (Optional[str]): Reason for context change.
+
+        """
+        pass
+
+    def _after_context_change(
+        self,
+        project_entity: dict[str, Any],
+        folder_entity: dict[str, Any],
+        task_entity: dict[str, Any],
+        anatomy: "Anatomy",
+        reason: Optional[str],
+    ):
+        """After context is changed.
+
+        This method is called after the context is changed in the host.
+
+        Can be overriden to implement host specific logic.
+
+        Args:
+            folder_entity (dict[str, Any]): Folder entity.
+            task_entity (dict[str, Any]): Task entity.
+            reason (Optional[str]): Reason for context change.
+
+        """
+        pass
