@@ -34,6 +34,8 @@ from ayon_core.pipeline.create import (
     ConvertorsOperationFailed,
     ConvertorItem,
 )
+from ayon_core.pipeline.compatibility import is_supporting_product_base_type
+
 from ayon_core.tools.publisher.abstract import (
     AbstractPublisherBackend,
     CardMessageTypes,
@@ -631,12 +633,17 @@ class CreateModel:
             "instance": instance,
             "project_entity": project_entity,
         }
+
+        if is_supporting_product_base_type() and hasattr(creator, "product_base_type"):  # noqa: E501
+            kwargs["product_base_type"] = creator.product_base_type
+
         # Backwards compatibility for 'project_entity' argument
         # - 'get_product_name' signature changed 24/07/08
         if not is_func_signature_supported(
             creator.get_product_name, *args, **kwargs
         ):
             kwargs.pop("project_entity")
+            kwargs.pop("product_base_type")
         return creator.get_product_name(*args, **kwargs)
 
     def create(
