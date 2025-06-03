@@ -1,5 +1,5 @@
 class MissingMethodsError(ValueError):
-    """Exception when host miss some required methods for specific workflow.
+    """Exception when host miss some required methods for a specific workflow.
 
     Args:
         host (HostBase): Host implementation where are missing methods.

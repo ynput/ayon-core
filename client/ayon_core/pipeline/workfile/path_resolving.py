@@ -737,7 +737,7 @@ def get_comments_from_workfile_paths(
         extensions (set[str]): Set of file extensions.
         file_template (StringTemplate): Workfile file template.
         template_data (dict[str, Any]): Data to fill the template with.
-        current_filename (str): Filename to check for current comment.
+        current_filename (str): Filename to check for the current comment.
 
     Returns:
         tuple[list[str], str]: List of comments and the current comment.
