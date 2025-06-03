@@ -326,9 +326,7 @@ class IWorkfileHost:
             folder_entity,
             task_entity,
             reason=WORKFILE_SAVE_REASON,
-            workdir=workdir,
             project_entity=project_entity,
-            project_settings=project_settings,
             anatomy=anatomy,
         )
 
@@ -398,9 +396,7 @@ class IWorkfileHost:
             folder_entity,
             task_entity,
             reason=WORKFILE_OPEN_REASON,
-            workdir=workdir,
             project_entity=project_entity,
-            project_settings=project_settings,
             anatomy=anatomy,
         )
 

@@ -524,11 +524,11 @@ def change_current_context(
     This updates the live Session to a different task under folder.
 
     Notes:
-        This function does a lot of things related to workfiles which
+        * This function does a lot of things related to workfiles which
             extends arguments options a lot.
-        We might want to implement 'set_current_context' on host integration
+        * We might want to implement 'set_current_context' on host integration
             instead. But `AYON_WORKDIR`, which is related to 'IWorkfileHost',
-            would not be available in that case which might be break some
+            would not be available in that case which might break some
             logic.
 
     Args:
@@ -572,9 +572,8 @@ def change_current_context(
         folder_entity,
         task_entity,
         reason=reason,
-        anatomy=anatomy,
         project_entity=project_entity,
-        project_settings=project_settings,
+        anatomy=anatomy,
     )
 
 
