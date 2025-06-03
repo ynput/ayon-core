@@ -434,6 +434,18 @@ def get_last_workfile(
         str: Last or first workfile as filename of full path to filename.
 
     """
+    # TODO (iLLiCiTiT): Remove the argument 'full_path' and return only full
+    #   path. As far as I can tell it is always called with 'full_path' set
+    #   to 'True'.
+    # - it has to be 2 step operation, first warn about having it 'False', and
+    #   then warn about having it filled.
+    if full_path is False:
+        warnings.warn(
+            "Argument 'full_path' will be removed and will return"
+            " only full path in future.",
+            DeprecationWarning,
+        )
+
     filepaths, dotted_extensions = _filter_dir_files_by_ext(
         workdir, extensions
     )
