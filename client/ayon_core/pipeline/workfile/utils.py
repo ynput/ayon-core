@@ -11,10 +11,7 @@ from ayon_api.operations import OperationsSession
 from ayon_core.lib import filter_profiles, emit_event, get_ayon_username
 from ayon_core.settings import get_project_settings
 
-from .path_resolving import (
-    create_workdir_extra_folders,
-    get_workfile_template_key,
-)
+from .path_resolving import get_workfile_template_key
 
 if typing.TYPE_CHECKING:
     from ayon_core.pipeline import Anatomy
@@ -25,13 +22,60 @@ class MissingWorkdirError(Exception):
     pass
 
 
+def get_workfiles_info(
+    workfile_path: str,
+    project_name: str,
+    task_id: str,
+    *,
+    anatomy: Optional["Anatomy"] = None,
+    workfile_entities: Optional[list[dict[str, Any]]] = None,
+) -> Optional[dict[str, Any]]:
+    """Find workfile info entity for a workfile path.
+
+    Args:
+        workfile_path (str): Workfile path.
+        project_name (str): The name of the project.
+        task_id (str): Task id under which is workfile created.
+        anatomy (Optional[Anatomy]): Project anatomy used to get roots.
+        workfile_entities (Optional[list[dict[str, Any]]]): Pre-fetched
+            workfile entities related to task.
+
+    Returns:
+        Optional[dict[str, Any]]: Workfile info entity if found, otherwise
+            `None`.
+
+    """
+    if anatomy is None:
+        anatomy = Anatomy(project_name)
+
+    if workfile_entities is None:
+        workfile_entities = list(ayon_api.get_workfiles_info(
+            project_name,
+            task_ids=[task_id],
+        ))
+
+    if platform.system().lower()  == "windows":
+        workfile_path = workfile_path.replace("\\", "/")
+    workfile_path = workfile_path.lower()
+
+    for workfile_entity in workfile_entities:
+        path = workfile_entity["path"]
+        filled_path = anatomy.fill_root(path)
+        if platform.system().lower() == "windows":
+            filled_path = filled_path.replace("\\", "/")
+        filled_path = filled_path.lower()
+        if filled_path == workfile_path:
+            return workfile_entity
+    return None
+
+
 def should_use_last_workfile_on_launch(
-    project_name,
-    host_name,
-    task_name,
-    task_type,
-    default_output=False,
-    project_settings=None,
+    project_name: str,
+    host_name: str,
+    task_name: str,
+    task_type: str,
+    default_output: bool = False,
+    project_settings: Optional[dict[str, Any]] = None,
 ):
     """Define if host should start last version workfile if possible.
 
@@ -144,30 +188,14 @@ def should_open_workfiles_tool_on_launch(
     return output
 
 
-def _get_event_context_data(
-    project_name: str,
-    folder_entity: dict[str, Any],
-    task_entity: dict[str, Any],
-    host_name: str,
-):
-    return {
-        "project_name": project_name,
-        "folder_id": folder_entity["id"],
-        "folder_path": folder_entity["path"],
-        "task_id": task_entity["id"],
-        "task_name": task_entity["name"],
-        "host_name": host_name,
-    }
-
-
 def save_workfile_info(
     project_name: str,
     task_id: str,
     rootless_path: str,
     host_name: str,
-    version: Optional[int],
-    comment: Optional[str],
-    description: Optional[str],
+    version: Optional[int] = None,
+    comment: Optional[str] = None,
+    description: Optional[str] = None,
     username: Optional[str] = None,
     workfile_entities: Optional[list[dict[str, Any]]] = None,
 ):
@@ -255,63 +283,38 @@ def open_workfile(
     filepath: str,
     folder_entity: dict[str, Any],
     task_entity: dict[str, Any],
+    project_entity: Optional[dict[str, Any]] = None,
+    project_settings: Optional[dict[str, Any]] = None,
+    anatomy: Optional["Anatomy"] = None,
 ):
-    from ayon_core.pipeline.context_tools import (
-        registered_host, change_current_context
-    )
+    from ayon_core.pipeline.context_tools import registered_host
 
     # Trigger before save event
     host = registered_host()
-    context = host.get_current_context()
-    project_name = context["project_name"]
-    current_folder_path = context["folder_path"]
-    current_task_name = context["task_name"]
-    host_name = host.name
-
-    # TODO move to workfiles pipeline
-    event_data = _get_event_context_data(
-        project_name, folder_entity, task_entity, host_name
-    )
-    event_data["filepath"] = filepath
-
-    emit_event("workfile.open.before", event_data, source="workfiles.tool")
-
-    # Change context
-    if (
-        folder_entity["path"] != current_folder_path
-        or task_entity["name"] != current_task_name
-    ):
-        change_current_context(
-            project_name,
-            folder_entity,
-            task_entity,
-            workdir=os.path.dirname(filepath)
-        )
-
     host.open_workfile_with_context(
         filepath,
         folder_entity,
         task_entity,
+        project_entity=project_entity,
+        project_settings=project_settings,
+        anatomy=anatomy,
     )
-
-    emit_event("workfile.open.after", event_data, source="workfiles.tool")
 
 
 def save_current_workfile_to(
     workfile_path: str,
     folder_entity: dict[str, Any],
     task_entity: dict[str, Any],
-    version: Optional[int],
+    *,
+    version: Optional[int] = None,
     comment: Optional[str] = None,
     description: Optional[str] = None,
-    source: Optional[str] = None,
     rootless_path: Optional[str] = None,
     workfile_entities: Optional[list[dict[str, Any]]] = None,
-    username: Optional[str] = None,
     project_entity: Optional[dict[str, Any]] = None,
     project_settings: Optional[dict[str, Any]] = None,
     anatomy: Optional["Anatomy"] = None,
-) -> dict[str, Any]:
+):
     """Save current workfile to new location or context.
 
     Args:
@@ -321,12 +324,10 @@ def save_current_workfile_to(
         version (Optional[int]): Workfile version.
         comment (optional[str]): Workfile comment.
         description (Optional[str]): Workfile description.
-        source (Optional[str]): Source of the save action.
         rootless_path (Optional[str]): Rootless path of the workfile. Is
             calculated if not passed in.
         workfile_entities (Optional[list[dict[str, Any]]]): List of workfile
-        username (Optional[str]): Username of the user saving the workfile.
-            Current user is used if not passed.
+            entities related to task.
         project_entity (Optional[dict[str, Any]]): Project entity used for
             rootless path calculation.
         project_settings (Optional[dict[str, Any]]): Project settings used for
@@ -338,25 +339,22 @@ def save_current_workfile_to(
         dict[str, Any]: Workfile info entity.
 
     """
-    print("save_current_workfile_to")
-    return _save_workfile(
-        None,
-        None,
-        None,
-        None,
+    from ayon_core.pipeline.context_tools import registered_host
+
+    # Trigger before save event
+    host = registered_host()
+    host.save_workfile_with_context(
         workfile_path,
         folder_entity,
         task_entity,
         version,
         comment,
         description,
-        source,
-        rootless_path,
-        workfile_entities,
-        username,
-        project_entity,
-        project_settings,
-        anatomy,
+        rootless_path=rootless_path,
+        workfile_entities=workfile_entities,
+        project_entity=project_entity,
+        project_settings=project_settings,
+        anatomy=anatomy,
     )
 
 
@@ -365,17 +363,16 @@ def copy_and_open_workfile(
     workfile_path: str,
     folder_entity: dict[str, Any],
     task_entity: dict[str, Any],
-    version: Optional[int],
+    *,
+    version: Optional[int] = None,
     comment: Optional[str] = None,
     description: Optional[str] = None,
-    source: Optional[str] = None,
     rootless_path: Optional[str] = None,
     workfile_entities: Optional[list[dict[str, Any]]] = None,
-    username: Optional[str] = None,
     project_entity: Optional[dict[str, Any]] = None,
     project_settings: Optional[dict[str, Any]] = None,
     anatomy: Optional["Anatomy"] = None,
-) -> dict[str, Any]:
+):
     """Copy workfile to new location and open it.
 
     Args:
@@ -386,12 +383,9 @@ def copy_and_open_workfile(
         version (Optional[int]): Workfile version.
         comment (optional[str]): Workfile comment.
         description (Optional[str]): Workfile description.
-        source (Optional[str]): Source of the save action.
         rootless_path (Optional[str]): Rootless path of the workfile. Is
             calculated if not passed in.
         workfile_entities (Optional[list[dict[str, Any]]]): List of workfile
-        username (Optional[str]): Username of the user saving the workfile.
-            Current user is used if not passed.
         project_entity (Optional[dict[str, Any]]): Project entity used for
             rootless path calculation.
         project_settings (Optional[dict[str, Any]]): Project settings used for
@@ -403,51 +397,49 @@ def copy_and_open_workfile(
         dict[str, Any]: Workfile info entity.
 
     """
-    print("copy_and_open_workfile")
-    return _save_workfile(
+    from ayon_core.pipeline.context_tools import registered_host
+    
+    host = registered_host()
+    host.copy_workfile(
         src_workfile_path,
-        None,
-        None,
-        None,
         workfile_path,
         folder_entity,
         task_entity,
-        version,
-        comment,
-        description,
-        source,
-        rootless_path,
-        workfile_entities,
-        username,
-        project_entity,
-        project_settings,
-        anatomy,
+        version=version,
+        comment=comment,
+        description=description,
+        rootless_path=rootless_path,
+        workfile_entities=workfile_entities,
+        project_entity=project_entity,
+        project_settings=project_settings,
+        anatomy=anatomy,
+        open_workfile=True,
     )
 
 
 def copy_and_open_workfile_representation(
-    project_name: str,
+    src_project_name: str,
     representation_id: str,
     workfile_path: str,
     folder_entity: dict[str, Any],
     task_entity: dict[str, Any],
-    version: Optional[int],
+    *,
+    version: Optional[int] = None,
     comment: Optional[str] = None,
     description: Optional[str] = None,
-    source: Optional[str] = None,
     rootless_path: Optional[str] = None,
     representation_entity: Optional[dict[str, Any]] = None,
     representation_path: Optional[str] = None,
     workfile_entities: Optional[list[dict[str, Any]]] = None,
-    username: Optional[str] = None,
     project_entity: Optional[dict[str, Any]] = None,
     project_settings: Optional[dict[str, Any]] = None,
     anatomy: Optional["Anatomy"] = None,
-) -> dict[str, Any]:
+    src_anatomy: Optional["Anatomy"] = None,
+):
     """Copy workfile to new location and open it.
 
     Args:
-        project_name (str): Project name where representation is stored.
+        src_project_name (str): Project name where representation is stored.
         representation_id (str): Source representation id.
         workfile_path (str): Destination workfile path.
         folder_entity (dict[str, Any]): Target folder entity.
@@ -455,12 +447,13 @@ def copy_and_open_workfile_representation(
         version (Optional[int]): Workfile version.
         comment (optional[str]): Workfile comment.
         description (Optional[str]): Workfile description.
-        source (Optional[str]): Source of the save action.
         rootless_path (Optional[str]): Rootless path of the workfile. Is
             calculated if not passed in.
+        representation_entity (Optional[dict[str, Any]]): Representation
+            entity. If not provided, it will be fetched from the server.
+        representation_path (Optional[str]): Path to the representation.
+            Calculated if not provided.
         workfile_entities (Optional[list[dict[str, Any]]]): List of workfile
-        username (Optional[str]): Username of the user saving the workfile.
-            Current user is used if not passed.
         project_entity (Optional[dict[str, Any]]): Project entity used for
             rootless path calculation.
         project_settings (Optional[dict[str, Any]]): Project settings used for
@@ -472,209 +465,42 @@ def copy_and_open_workfile_representation(
         dict[str, Any]: Workfile info entity.
 
     """
-    print("copy_and_open_workfile_representation")
+    from ayon_core.pipeline.context_tools import registered_host
+
     if representation_entity is None:
         representation_entity = ayon_api.get_representation_by_id(
-            project_name,
+            src_project_name,
             representation_id,
         )
 
-    return _save_workfile(
-        None,
-        project_name,
+    host = registered_host()
+    host.copy_workfile_representation(
+        src_project_name,
         representation_entity,
-        representation_path,
         workfile_path,
         folder_entity,
         task_entity,
-        version,
-        comment,
-        description,
-        source,
-        rootless_path,
-        workfile_entities,
-        username,
-        project_entity,
-        project_settings,
-        anatomy,
+        version=version,
+        comment=comment,
+        description=description,
+        rootless_path=rootless_path,
+        workfile_entities=workfile_entities,
+        project_settings=project_settings,
+        project_entity=project_entity,
+        anatomy=anatomy,
+        src_anatomy=src_anatomy,
+        src_representation_path=representation_path,
+        open_workfile=open_workfile,
     )
 
 
-def _save_workfile(
-    src_workfile_path: Optional[str],
-    representation_project_name: Optional[str],
-    representation_entity: Optional[dict[str, Any]],
-    representation_path: Optional[str],
-    workfile_path: str,
-    folder_entity: dict[str, Any],
-    task_entity: dict[str, Any],
-    version: Optional[int],
-    comment: Optional[str],
-    description: Optional[str],
-    source: Optional[str],
-    rootless_path: Optional[str],
-    workfile_entities: Optional[list[dict[str, Any]]],
-    username: Optional[str],
-    project_entity: Optional[dict[str, Any]],
-    project_settings: Optional[dict[str, Any]],
-    anatomy: Optional["Anatomy"],
-) -> dict[str, Any]:
-    """Function used to save workfile to new location and context.
-
-    Because the functionality for 'save_current_workfile_to' and
-        'copy_and_open_workfile' is currently the same, except for used
-        function on host it is easier to create this wrapper function.
-
-    Args:
-        src_workfile_path (Optional[str]): Source workfile path.
-        representation_entity (Optional[dict[str, Any]]): Representation used
-            as source for workfile.
-        workfile_path (str): Destination workfile path.
-        folder_entity (dict[str, Any]): Target folder entity.
-        task_entity (dict[str, Any]): Target task entity.
-        version (Optional[int]): Workfile version.
-        comment (optional[str]): Workfile comment.
-        description (Optional[str]): Workfile description.
-        source (Optional[str]): Source of the save action.
-        rootless_path (Optional[str]): Rootless path of the workfile. Is
-            calculated if not passed in.
-        workfile_entities (Optional[list[dict[str, Any]]]): List of workfile
-        username (Optional[str]): Username of the user saving the workfile.
-            Current user is used if not passed.
-        project_entity (Optional[dict[str, Any]]): Project entity used for
-            rootless path calculation.
-        project_settings (Optional[dict[str, Any]]): Project settings used for
-            rootless path calculation.
-        anatomy (Optional[Anatomy]): Project anatomy used for rootless
-            path calculation.
-
-    Returns:
-        dict[str, Any]: Workfile info entity.
-
-    """
-    from ayon_core.pipeline.context_tools import (
-        registered_host, change_current_context
-    )
-
-    # Trigger before save event
-    host = registered_host()
-    context = host.get_current_context()
-    project_name = context["project_name"]
-    current_folder_path = context["folder_path"]
-    current_task_name = context["task_name"]
-
-    task_name = task_entity["name"]
-    task_type = task_entity["taskType"]
-    task_id = task_entity["id"]
-    host_name = host.name
-
-    workdir, filename = os.path.split(workfile_path)
-
-    # QUESTION should the data be different for 'before' and 'after'?
-    event_data = _get_event_context_data(
-        project_name, folder_entity, task_entity, host_name
-    )
-    event_data.update({
-        "filename": filename,
-        "workdir_path": workdir,
-    })
-
-    emit_event("workfile.save.before", event_data, source=source)
-
-    # Change context
-    if (
-        folder_entity["path"] != current_folder_path
-        or task_entity["name"] != current_task_name
-    ):
-        change_current_context(
-            folder_entity,
-            task_entity,
-            workdir=workdir,
-            anatomy=anatomy,
-            project_entity=project_entity,
-            project_settings=project_settings,
-        )
-
-    if src_workfile_path:
-        host.copy_workfile(
-            src_workfile_path,
-            workfile_path,
-            folder_entity,
-            task_entity,
-            open_workfile=True,
-        )
-    elif representation_entity:
-        host.copy_workfile_representation(
-            representation_project_name,
-            representation_entity,
-            workfile_path,
-            folder_entity,
-            task_entity,
-            open_workfile=True,
-            src_representation_path=representation_path,
-            anatomy=anatomy,
-        )
-    else:
-        host.save_workfile_with_context(
-            workfile_path,
-            folder_entity,
-            task_entity,
-        )
-
-    if not description:
-        description = None
-
-    if not comment:
-        comment = None
-
-    if rootless_path is None:
-        rootless_path = _find_rootless_path(
-            workfile_path,
-            project_name,
-            task_type,
-            host_name,
-            project_entity,
-            project_settings,
-            anatomy,
-        )
-
-    # It is not possible to create workfile infor without rootless path
-    workfile_info = None
-    if rootless_path:
-        if platform.system().lower() == "windows":
-            rootless_path = rootless_path.replace("\\", "/")
-
-        workfile_info = save_workfile_info(
-            project_name,
-            task_id,
-            rootless_path,
-            host_name,
-            version,
-            comment,
-            description,
-            username=username,
-            workfile_entities=workfile_entities,
-        )
-
-    # Create extra folders
-    create_workdir_extra_folders(
-        workdir,
-        host.name,
-        task_entity["taskType"],
-        task_name,
-        project_name
-    )
-
-    # Trigger after save events
-    emit_event("workfile.save.after", event_data, source=source)
-    return workfile_info
-
-
-def _find_rootless_path(
+def find_workfile_rootless_path(
     workfile_path: str,
     project_name: str,
-    task_type: str,
+    folder_entity: dict[str, Any],
+    task_entity: dict[str, Any],
     host_name: str,
+    *,
     project_entity: Optional[dict[str, Any]] = None,
     project_settings: Optional[dict[str, Any]] = None,
     anatomy: Optional["Anatomy"] = None,
@@ -684,6 +510,8 @@ def _find_rootless_path(
         from ayon_core.pipeline import Anatomy
 
         anatomy = Anatomy(project_name, project_entity=project_entity)
+
+    task_type = task_entity["taskType"]
     template_key = get_workfile_template_key(
         project_name,
         task_type,
