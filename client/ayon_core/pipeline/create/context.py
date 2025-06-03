@@ -32,7 +32,7 @@ from ayon_core.host import IPublishHost, IWorkfileHost
 from ayon_core.pipeline import Anatomy
 from ayon_core.pipeline.template_data import get_template_data
 from ayon_core.pipeline.plugin_discover import DiscoverResult
-from ayon_core.pipeline import is_supporting_product_base_type
+from ayon_core.pipeline.compatibility import is_supporting_product_base_type
 
 from .exceptions import (
     CreatorError,

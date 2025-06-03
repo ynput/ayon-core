@@ -317,7 +317,6 @@ class BaseCreator(ABC):
                 identifier = f"{identifier}.{self.product_type}"
         return identifier
 
-
     @property
     @abstractmethod
     def product_type(self):
@@ -562,14 +561,15 @@ class BaseCreator(ABC):
 
     def get_product_name(
         self,
-        project_name,
-        folder_entity,
-        task_entity,
-        variant,
-        host_name=None,
-        instance=None,
-        project_entity=None,
-    ):
+        project_name: str,
+        folder_entity: dict[str, Any],
+        task_entity: dict[str, Any],
+        variant: str,
+        host_name: Optional[str] = None,
+        instance: Optional[CreatedInstance] = None,
+        project_entity: Optional[dict[str, Any]] = None,
+        product_base_type: Optional[str] = None,
+    ) -> str:
         """Return product name for passed context.
 
         Method is also called on product name update. In that case origin
@@ -586,8 +586,12 @@ class BaseCreator(ABC):
                 for which is product name updated. Passed only on product name
                 update.
             project_entity (Optional[dict[str, Any]]): Project entity.
+            product_base_type (Optional[str]): Product base type.
 
         """
+        if is_supporting_product_base_type() and (instance and hasattr(instance, "product_base_type")):  # noqa: E501
+            product_base_type = instance.product_base_type
+
         if host_name is None:
             host_name = self.create_context.host_name
 
@@ -619,6 +623,7 @@ class BaseCreator(ABC):
             dynamic_data=dynamic_data,
             project_settings=self.project_settings,
             project_entity=project_entity,
+            product_base_type=product_base_type
         )
 
     def get_instance_attr_defs(self):
