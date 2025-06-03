@@ -11,8 +11,6 @@ import ayon_api
 
 from ayon_core.lib import emit_event
 
-from .interfaces import IWorkfileHost
-
 if typing.TYPE_CHECKING:
     from ayon_core.pipeline import Anatomy
 
@@ -319,8 +317,6 @@ class HostBase(ABC):
             anatomy (Anatomy): Project anatomy.
 
         """
-        from ayon_core.pipeline.workfile import get_workdir
-
         project_name = self.get_current_project_name()
         folder_path = None
         task_name = None
