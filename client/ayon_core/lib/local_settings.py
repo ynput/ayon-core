@@ -15,6 +15,10 @@ import ayon_api
 _PLACEHOLDER = object()
 
 
+class _Cache:
+    username = None
+
+
 def _get_ayon_appdirs(*args):
     return os.path.join(
         platformdirs.user_data_dir("AYON", "Ynput"),
@@ -591,10 +595,26 @@ def get_local_site_id():
 def get_ayon_username():
     """AYON username used for templates and publishing.
 
-    Uses curet ayon api username.
+    Uses current ayon api username.
 
     Returns:
         str: Username.
 
     """
-    return ayon_api.get_user()["name"]
+    # Look for username in the connection stack
+    # - this is used when service is working as other user
+    #   (e.g. in background sync)
+    # TODO @iLLiCiTiT - do not use private attribute of 'ServerAPI', rather
+    #      use public method to get username from connection stack.
+    con = ayon_api.get_server_api_connection()
+    user_stack = getattr(con, "_as_user_stack", None)
+    if user_stack is not None:
+        username = user_stack.username
+        if username is not None:
+            return username
+
+    # Cache the username to avoid multiple API calls
+    # - it is not expected that user would change
+    if _Cache.username is None:
+        _Cache.username = ayon_api.get_user()["name"]
+    return _Cache.username
