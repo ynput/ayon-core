@@ -1,10 +1,11 @@
 from __future__ import annotations
+
 import os
 import platform
 import shutil
+import typing
 from abc import abstractmethod
 from dataclasses import dataclass, asdict
-import typing
 from typing import Optional, Any
 
 import ayon_api
@@ -57,7 +58,13 @@ class WorkfileInfo:
     available: bool
 
     @classmethod
-    def new(cls, filepath, rootless_path, available, workfile_entity):
+    def new(
+        cls,
+        filepath: str,
+        rootless_path: str,
+        available: bool,
+        workfile_entity: dict[str, Any],
+    ):
         file_size = file_modified = file_created = None
         if filepath and os.path.exists(filepath):
             filestat = os.stat(filepath)
@@ -85,7 +92,7 @@ class WorkfileInfo:
             available=available,
         )
 
-    def to_data(self):
+    def to_data(self) -> dict[str, Any]:
         """Converts file item to data.
 
         Returns:
@@ -95,7 +102,7 @@ class WorkfileInfo:
         return asdict(self)
 
     @classmethod
-    def from_data(cls, data):
+    def from_data(cls, data: dict[str, Any]) -> "WorkfileInfo":
         """Converts data to workfile item.
 
         Args:
@@ -173,7 +180,7 @@ class PublishedWorkfileInfo:
             file_modified=file_modified,
         )
 
-    def to_data(self):
+    def to_data(self) -> dict[str, Any]:
         """Converts file item to data.
 
         Returns:
@@ -183,7 +190,7 @@ class PublishedWorkfileInfo:
         return asdict(self)
 
     @classmethod
-    def from_data(cls, data):
+    def from_data(cls, data: dict[str, Any]) -> "PublishedWorkfileInfo":
         """Converts data to workfile item.
 
         Args:
@@ -193,7 +200,7 @@ class PublishedWorkfileInfo:
             WorkfileInfo: File item.
 
         """
-        return WorkfileInfo(**data)
+        return PublishedWorkfileInfo(**data)
 
 
 class IWorkfileHost:
