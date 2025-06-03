@@ -221,7 +221,7 @@ def get_last_workfile_with_version_from_paths(
 ) -> tuple[Optional[str], Optional[int]]:
     """Return last workfile version.
 
-    Using workfile template and it's filling data find most possible last
+    Using the workfile template and its template data find most possible last
     version of workfile which was created for the context.
 
     Functionality is fully based on knowing which keys are optional or what
@@ -511,8 +511,8 @@ def get_custom_workfile_template(
         project_settings(Dict[str, Any]): Preloaded project settings.
 
     Returns:
-        Optional[str]: Path to template or None if none of profiles match current
-            context. Existence of formatted path is not validated.
+        Optional[str]: Path to template or None if none of profiles match
+            current context. Existence of formatted path is not validated.
 
     """
     log = Logger.get_logger("CustomWorkfileResolve")
@@ -734,7 +734,7 @@ class CommentMatcher:
         self._fname_regex = re.compile(f"^{fname_pattern}$")
 
     def parse_comment(self, filename: str) -> Optional[str]:
-        """Parse the {comment} part from a filename"""
+        """Parse the {comment} part from a filename."""
         if self._fname_regex:
             match = self._fname_regex.match(filename)
             if match:
