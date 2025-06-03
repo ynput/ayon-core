@@ -368,8 +368,6 @@ class IWorkfileHost:
         """
         context = self.get_current_context()
         project_name = context["project_name"]
-        current_folder_path = context["folder_path"]
-        current_task_name = context["task_name"]
 
         workdir = os.path.dirname(filepath)
         # Set 'AYON_WORKDIR' environment variable
@@ -1032,7 +1030,6 @@ class IWorkfileHost:
 
         """
         pass
-
 
     def _before_workfile_save(
         self,

@@ -8,7 +8,7 @@ from typing import Optional, Any
 import ayon_api
 from ayon_api.operations import OperationsSession
 
-from ayon_core.lib import filter_profiles, emit_event, get_ayon_username
+from ayon_core.lib import filter_profiles, get_ayon_username
 from ayon_core.settings import get_project_settings
 
 from .path_resolving import get_workfile_template_key
@@ -54,7 +54,7 @@ def get_workfiles_info(
             task_ids=[task_id],
         ))
 
-    if platform.system().lower()  == "windows":
+    if platform.system().lower() == "windows":
         workfile_path = workfile_path.replace("\\", "/")
     workfile_path = workfile_path.lower()
 
@@ -398,7 +398,7 @@ def copy_and_open_workfile(
 
     """
     from ayon_core.pipeline.context_tools import registered_host
-    
+
     host = registered_host()
     host.copy_workfile(
         src_workfile_path,
