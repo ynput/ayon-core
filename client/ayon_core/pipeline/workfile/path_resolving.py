@@ -213,8 +213,11 @@ def get_workdir(
 
 
 def get_last_workfile_with_version_from_paths(
-    filepaths, file_template, template_data, extensions
-):
+    filepaths: list[str],
+    file_template: str,
+    template_data: dict[str, Any],
+    extensions: set[str],
+) -> tuple[Optional[str], Optional[int]]:
     """Return last workfile version.
 
     Using workfile template and it's filling data find most possible last
@@ -230,10 +233,10 @@ def get_last_workfile_with_version_from_paths(
         filepaths (list[str]): Workfile paths.
         file_template (str): Template of file name.
         template_data (Dict[str, Any]): Data for filling template.
-        extensions (Iterable[str]): All allowed file extensions of workfile.
+        extensions (set[str]): All allowed file extensions of workfile.
 
     Returns:
-        tuple[Union[str, None], Union[int, None]]: Last workfile with version
+        tuple[Optional[str], Optional[int]]: Last workfile with version
             if there is any workfile otherwise None for both.
 
     """
@@ -295,6 +298,8 @@ def get_last_workfile_with_version_from_paths(
         if file_version == version:
             output_filepaths.append(filepath)
 
+    # Use file modification time to use most recent file if there are
+    #   multiple workfiles with the same version
     output_filepath = None
     last_time = None
     for _output_filepath in output_filepaths:
@@ -316,10 +321,10 @@ def get_last_workfile_from_paths(
     file_template: str,
     template_data: dict[str, Any],
     extensions: set[str],
-):
-    """Return last workfile filename.
+) -> Optional[str]:
+    """Return the last workfile filename.
 
-    Returns file with version 1 if there is not workfile yet.
+    Returns the file with version 1 if there is not workfile yet.
 
     Args:
         filepaths (list[str]): Paths to workfiles.
@@ -328,8 +333,7 @@ def get_last_workfile_from_paths(
         extensions (set[str]): All allowed file extensions of workfile.
 
     Returns:
-        Optional[str]: Last or first workfile as filename of full path
-            to filename.
+        Optional[str]: Last workfile path.
 
     """
     filepath, _version = get_last_workfile_with_version_from_paths(
@@ -341,7 +345,7 @@ def get_last_workfile_from_paths(
 def _filter_dir_files_by_ext(
     dirpath: str,
     extensions: set[str],
-):
+) -> tuple[list[str], set[str]]:
     """Filter files by extensions.
 
     Args:
@@ -366,12 +370,15 @@ def _filter_dir_files_by_ext(
 
 
 def get_last_workfile_with_version(
-    workdir, file_template, fill_data, extensions
-):
+    workdir: str,
+    file_template: str,
+    template_data: dict[str, Any],
+    extensions: set[str],
+) -> tuple[Optional[str], Optional[int]]:
     """Return last workfile version.
 
-    Usign workfile template and it's filling data find most possible last
-    version of workfile which was created for the context.
+    Using the workfile template and its filling data to find the most possible
+    last version of workfile which was created for the context.
 
     Functionality is fully based on knowing which keys are optional or what
     values are expected as value.
@@ -382,14 +389,14 @@ def get_last_workfile_with_version(
     Args:
         workdir (str): Path to dir where workfiles are stored.
         file_template (str): Template of file name.
-        fill_data (Dict[str, Any]): Data for filling template.
-        extensions (Iterable[str]): All allowed file extensions of workfile.
+        template_data (dict[str, Any]): Data for filling template.
+        extensions (set[str]): All allowed file extensions of workfile.
 
     Returns:
-        Tuple[Union[str, None], Union[int, None]]: Last workfile with version
+        tuple[Optional[str], Optional[int]]: Last workfile with version
             if there is any workfile otherwise None for both.
-    """
 
+    """
     if not os.path.exists(workdir):
         return None, None
 
@@ -400,7 +407,7 @@ def get_last_workfile_with_version(
     return get_last_workfile_with_version_from_paths(
         filepaths,
         file_template,
-        fill_data,
+        template_data,
         dotted_extensions,
     )
 
@@ -408,10 +415,10 @@ def get_last_workfile_with_version(
 def get_last_workfile(
     workdir: str,
     file_template: str,
-    fill_data: dict[str, Any],
+    template_data: dict[str, Any],
     extensions: set[str],
-    full_path: bool = False
-):
+    full_path: bool = False,
+) -> str:
     """Return last workfile filename.
 
     Returns file with version 1 if there is not workfile yet.
@@ -419,10 +426,9 @@ def get_last_workfile(
     Args:
         workdir (str): Path to dir where workfiles are stored.
         file_template (str): Template of file name.
-        fill_data (Dict[str, Any]): Data for filling template.
+        template_data (Dict[str, Any]): Data for filling template.
         extensions (Iterable[str]): All allowed file extensions of workfile.
-        full_path (bool): Full path to file is returned if
-            set to True.
+        full_path (bool): Return full path to the file or only filename.
 
     Returns:
         str: Last or first workfile as filename of full path to filename.
@@ -434,11 +440,11 @@ def get_last_workfile(
     filepath = get_last_workfile_from_paths(
         filepaths,
         file_template,
-        fill_data,
+        template_data,
         dotted_extensions
     )
     if filepath is None:
-        data = copy.deepcopy(fill_data)
+        data = copy.deepcopy(template_data)
         data["version"] = version_start.get_versioning_start(
             data["project"]["name"],
             data["app"],
@@ -492,11 +498,10 @@ def get_custom_workfile_template(
         project_settings(Dict[str, Any]): Preloaded project settings.
 
     Returns:
-        str: Path to template or None if none of profiles match current
+        Optional[str]: Path to template or None if none of profiles match current
             context. Existence of formatted path is not validated.
-        None: If no profile is matching context.
-    """
 
+    """
     log = Logger.get_logger("CustomWorkfileResolve")
 
     project_name = project_entity["name"]
