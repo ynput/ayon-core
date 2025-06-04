@@ -296,6 +296,7 @@ class IWorkfileHost:
             task_entity (dict[str, Any]): Task entity.
             version (Optional[int]): Version of the workfile.
             comment (Optional[str]): Comment for the workfile.
+                Usually used in the filename template.
             description (Optional[str]): Description for the workfile.
             rootless_path (Optional[str]): Rootless path of the workfile.
             workfile_entities (Optional[list[dict[str, Any]]]): Workfile
