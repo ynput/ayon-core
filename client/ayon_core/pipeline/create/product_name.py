@@ -117,8 +117,8 @@ def get_product_name(
     Deprecation:
         The `product_base_type` argument is optional now, but it will be
         mandatory in future versions. It is recommended to pass it now to
-        avoid issues in the future. If it is not passed, a warning will be raised
-        to inform about this change.
+        avoid issues in the future. If it is not passed, a warning will be
+        raised to inform about this change.
 
     Todos:
         Find better filtering options to avoid requirement of
