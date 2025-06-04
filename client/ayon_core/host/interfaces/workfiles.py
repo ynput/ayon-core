@@ -299,7 +299,8 @@ class IWorkfileHost:
                 Usually used in the filename template.
             description (Optional[str]): Description for the workfile.
             rootless_path (Optional[str]): Rootless path of the workfile.
-            workfile_entities (Optional[list[dict[str, Any]]]): Workfile
+            workfile_entities (Optional[list[dict[str, Any]]]): Pre-fetched
+                workfile entities for the task.
             project_settings (Optional[dict[str, Any]]): Project settings.
             project_entity (Optional[dict[str, Any]]): Project entity.
             anatomy (Optional[Anatomy]): Project anatomy.
@@ -431,8 +432,8 @@ class IWorkfileHost:
             folder_entity (dict[str, Any]): Folder entity.
             task_entity (dict[str, Any]): Task entity.
             project_entity (Optional[dict[str, Any]]): Project entity.
-            workfile_entities (Optional[list[dict[str, Any]]]): Workfile
-                entities.
+            workfile_entities (Optional[list[dict[str, Any]]]): Pre-fetched
+                workfile entities for the task.
             template_key (Optional[str]): Template key.
             project_settings (Optional[dict[str, Any]]): Project settings.
             anatomy (Anatomy): Project anatomy.
@@ -671,8 +672,8 @@ class IWorkfileHost:
             comment (Optional[str]): Comment for the workfile.
             description (Optional[str]): Description for the workfile.
             rootless_path (Optional[str]): Rootless path of the workfile.
-            workfile_entities (Optional[list[dict[str, Any]]]): Workfile
-                entities to be saved with the workfile.
+            workfile_entities (Optional[list[dict[str, Any]]]): Pre-fetched
+                workfile entities for the task.
             project_settings (Optional[dict[str, Any]]): Project settings.
             project_entity (Optional[dict[str, Any]]): Project entity.
             anatomy (Optional[Anatomy]): Project anatomy.
@@ -765,8 +766,8 @@ class IWorkfileHost:
             comment (Optional[str]): Comment for the workfile.
             description (Optional[str]): Description for the workfile.
             rootless_path (Optional[str]): Rootless path of the workfile.
-            workfile_entities (Optional[list[dict[str, Any]]]): Workfile
-                entities to be saved with the workfile.
+            workfile_entities (Optional[list[dict[str, Any]]]): Pre-fetched
+                workfile entities for the task.
             project_settings (Optional[dict[str, Any]]): Project settings.
             project_entity (Optional[dict[str, Any]]): Project entity.
             anatomy (Optional[Anatomy]): Project anatomy.
