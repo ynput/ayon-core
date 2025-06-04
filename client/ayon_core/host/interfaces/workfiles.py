@@ -610,9 +610,9 @@ class IWorkfileHost:
 
             try:
                 workfile_path = workfile_path.format(root=anatomy.roots)
-            except Exception as exc:
+            except Exception:
                 self.log.warning(
-                    f"Failed to format workfile path.", exc_info=True
+                    "Failed to format workfile path.", exc_info=True
                 )
 
             is_available = False
