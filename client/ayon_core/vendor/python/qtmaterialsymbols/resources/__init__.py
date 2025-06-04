@@ -11,7 +11,7 @@ def get_font_filepath(
 
 
 def get_mapping_filepath(
-    font_name: Optional[str] = "MaterialSymbolsOutlined"
+    font_name: Optional[str] = "MaterialSymbolsOutlined-Regular"
 ) -> str:
     return os.path.join(CURRENT_DIR, f"{font_name}.json")
 
