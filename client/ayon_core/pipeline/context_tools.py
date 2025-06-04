@@ -547,8 +547,8 @@ def change_current_context(
     if template_key is not _PLACEHOLDER:
         warnings.warn(
             (
-                f"Used deprecated argument 'template_key' in"
-                f" 'change_current_context'."
+                "Used deprecated argument 'template_key' in"
+                " 'change_current_context'."
                 " It is not necessary to pass it in anymore."
             ),
             DeprecationWarning,
