@@ -38,7 +38,7 @@ def get_workfiles_info(
         task_id (str): Task id under which is workfile created.
         anatomy (Optional[Anatomy]): Project anatomy used to get roots.
         workfile_entities (Optional[list[dict[str, Any]]]): Pre-fetched
-            workfile entities related to task.
+            workfile entities related to the task.
 
     Returns:
         Optional[dict[str, Any]]: Workfile info entity if found, otherwise
@@ -198,7 +198,25 @@ def save_workfile_info(
     description: Optional[str] = None,
     username: Optional[str] = None,
     workfile_entities: Optional[list[dict[str, Any]]] = None,
-):
+) -> dict[str, Any]:
+    """Save workfile info entity for a workfile path.
+    Args:
+        project_name (str): The name of the project.
+        task_id (str): Task id under which is workfile created.
+        rootless_path (str): Rootless path of the workfile.
+        host_name (str): Name of host which is saving the workfile.
+        version (Optional[int]): Workfile version.
+        comment (Optional[str]): Workfile comment.
+        description (Optional[str]): Workfile description.
+        username (Optional[str]): Username of user who saves the workfile.
+            If not provided, current user is used.
+        workfile_entities (Optional[list[dict[str, Any]]]): Pre-fetched
+            workfile entities related to task.
+
+    Returns:
+        dict[str, Any]: Workfile info entity.
+
+    """
     if workfile_entities is None:
         workfile_entities = list(ayon_api.get_workfiles_info(
             project_name,
@@ -266,7 +284,7 @@ def save_workfile_info(
         workfile_entity["updatedBy"] = username
 
     if not update_data:
-        return
+        return workfile_entity
 
     session = OperationsSession()
     session.update_entity(
@@ -326,8 +344,8 @@ def save_current_workfile_to(
         description (Optional[str]): Workfile description.
         rootless_path (Optional[str]): Rootless path of the workfile. Is
             calculated if not passed in.
-        workfile_entities (Optional[list[dict[str, Any]]]): List of workfile
-            entities related to task.
+        workfile_entities (Optional[list[dict[str, Any]]]): Pre-fetched
+            workfile entities related to the task.
         project_entity (Optional[dict[str, Any]]): Project entity used for
             rootless path calculation.
         project_settings (Optional[dict[str, Any]]): Project settings used for
@@ -385,7 +403,8 @@ def copy_and_open_workfile(
         description (Optional[str]): Workfile description.
         rootless_path (Optional[str]): Rootless path of the workfile. Is
             calculated if not passed in.
-        workfile_entities (Optional[list[dict[str, Any]]]): List of workfile
+        workfile_entities (Optional[list[dict[str, Any]]]): Pre-fetched
+            workfile entities related to the task.
         project_entity (Optional[dict[str, Any]]): Project entity used for
             rootless path calculation.
         project_settings (Optional[dict[str, Any]]): Project settings used for
@@ -453,7 +472,8 @@ def copy_and_open_workfile_representation(
             entity. If not provided, it will be fetched from the server.
         representation_path (Optional[str]): Path to the representation.
             Calculated if not provided.
-        workfile_entities (Optional[list[dict[str, Any]]]): List of workfile
+        workfile_entities (Optional[list[dict[str, Any]]]): Pre-fetched
+            workfile entities related to the task.
         project_entity (Optional[dict[str, Any]]): Project entity used for
             rootless path calculation.
         project_settings (Optional[dict[str, Any]]): Project settings used for
