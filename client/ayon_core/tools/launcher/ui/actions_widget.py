@@ -30,8 +30,9 @@ ACTION_HAS_CONFIGS_ROLE = QtCore.Qt.UserRole + 4
 ACTION_SORT_ROLE = QtCore.Qt.UserRole + 5
 ACTION_ADDON_NAME_ROLE = QtCore.Qt.UserRole + 6
 ACTION_ADDON_VERSION_ROLE = QtCore.Qt.UserRole + 7
-ANIMATION_START_ROLE = QtCore.Qt.UserRole + 8
-ANIMATION_STATE_ROLE = QtCore.Qt.UserRole + 9
+PLACEHOLDER_ITEM_ROLE = QtCore.Qt.UserRole + 8
+ANIMATION_START_ROLE = QtCore.Qt.UserRole + 9
+ANIMATION_STATE_ROLE = QtCore.Qt.UserRole + 10
 
 
 def _variant_label_sort_getter(action_item):
@@ -303,10 +304,43 @@ class ActionMenuPopupModel(QtGui.QStandardItemModel):
                 ACTION_HAS_CONFIGS_ROLE
             )
             item.setData(action_item.order, ACTION_SORT_ROLE)
+
             new_items.append(item)
 
         if new_items:
             root_item.appendRows(new_items)
+
+    def fill_to_count(self, count: int):
+        """Fill up items to specifi counter.
+
+        This is needed to visually organize structure or the viewed items. If
+            items are shown right to left then mouse would not hover over
+            last item i there are multiple rows that are uneven. This will
+            fill the "first items" with invisible items so visually it looks
+            correct.
+
+        Visually it will cause this:
+        [ ] [ ] [ ] [A]
+        [A] [A] [A] [A]
+
+        Instead of:
+        [A] [A] [A] [A]
+        [A] [ ] [ ] [ ]
+
+        """
+        remainders = count - self.rowCount()
+        if not remainders:
+            return
+
+        items = []
+        for _ in range(remainders):
+            item = QtGui.QStandardItem()
+            item.setFlags(QtCore.Qt.NoItemFlags)
+            item.setData(True, PLACEHOLDER_ITEM_ROLE)
+            items.append(item)
+
+        root_item = self.invisibleRootItem()
+        root_item.appendRows(items)
 
 
 class ActionMenuPopup(QtWidgets.QWidget):
@@ -319,8 +353,6 @@ class ActionMenuPopup(QtWidgets.QWidget):
         self.setWindowFlags(QtCore.Qt.Tool | QtCore.Qt.FramelessWindowHint)
         self.setAttribute(QtCore.Qt.WA_ShowWithoutActivating, True)
         self.setAttribute(QtCore.Qt.WA_TranslucentBackground, True)
-        self.setAutoFillBackground(True)
-        self.setBackgroundRole(QtGui.QPalette.Base)
 
         # Close widget if is not updated by event
         close_timer = QtCore.QTimer()
@@ -331,12 +363,16 @@ class ActionMenuPopup(QtWidgets.QWidget):
         expand_anim.setDuration(60)
         expand_anim.setEasingCurve(QtCore.QEasingCurve.InOutQuad)
 
-        wrapper = QtWidgets.QFrame(self)
-        wrapper.setObjectName("Wrapper")
-
-        view = ActionsView(wrapper)
+        # View with actions
+        view = ActionsView(self)
         view.setGridSize(QtCore.QSize(75, 80))
         view.setIconSize(QtCore.QSize(32, 32))
+        view.move(QtCore.QPoint(3, 3))
+
+        # Background draw
+        wrapper = QtWidgets.QFrame(self)
+        wrapper.setObjectName("Wrapper")
+        wrapper.stackUnder(view)
 
         model = ActionMenuPopupModel()
         proxy_model = ActionsProxyModel()
@@ -346,16 +382,6 @@ class ActionMenuPopup(QtWidgets.QWidget):
         view.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
         view.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
 
-        wrapper_layout = QtWidgets.QVBoxLayout(wrapper)
-        wrapper_layout.setContentsMargins(3, 3, 1, 1)
-        wrapper_layout.setSpacing(0)
-        wrapper_layout.addWidget(view, 0)
-
-        main_layout = QtWidgets.QVBoxLayout(self)
-        main_layout.setContentsMargins(0, 0, 0, 0)
-        main_layout.setSpacing(0)
-        main_layout.addWidget(wrapper, 0)
-
         close_timer.timeout.connect(self.close)
         expand_anim.valueChanged.connect(self._on_expand_anim)
         expand_anim.finished.connect(self._on_expand_finish)
@@ -364,16 +390,17 @@ class ActionMenuPopup(QtWidgets.QWidget):
         view.config_requested.connect(self.config_requested)
 
         self._view = view
+        self._wrapper = wrapper
         self._model = model
         self._proxy_model = proxy_model
-        self._wrapper_layout = wrapper_layout
 
         self._close_timer = close_timer
         self._expand_anim = expand_anim
 
         self._showed = False
         self._current_id = None
-        self._first_anim_frame = False
+        self._right_to_left = False
+        self._last_show_pos = QtCore.QPoint(0, 0)
 
     def showEvent(self, event):
         self._showed = True
@@ -411,25 +438,62 @@ class ActionMenuPopup(QtWidgets.QWidget):
             update_position = True
             self.show()
 
-        if update_position:
-            # Set geometry to position
-            # - first make sure widget changes from '_update_items'
-            #   are recalculated
-            app = QtWidgets.QApplication.instance()
-            app.processEvents()
-            size, target_size = self._get_size_hint()
-            self.setGeometry(
-                pos.x() - 5, pos.y() - 4,
-                size.width(), size.height()
-            )
-            self._view.setMaximumHeight(size.height())
+        if not update_position:
+            self.raise_()
+            return
 
-            self._first_anim_frame = True
-            self._expand_anim.updateCurrentTime(0)
-            self._expand_anim.setStartValue(size)
-            self._expand_anim.setEndValue(target_size)
-            if self._expand_anim.state() != QtCore.QAbstractAnimation.Running:
-                self._expand_anim.start()
+        # Set geometry to position
+        # - first make sure widget changes from '_update_items'
+        #   are recalculated
+        app = QtWidgets.QApplication.instance()
+        app.processEvents()
+        items_count, size, target_size = self._get_size_hint()
+        self._model.fill_to_count(items_count)
+
+        window = self.screen()
+        window_geo = window.geometry()
+        right_to_left = (
+            pos.x() + target_size.width() > window_geo.right()
+            or pos.y() + target_size.height() > window_geo.bottom()
+        )
+
+        pos_x = pos.x() - 5
+        pos_y = pos.y() - 4
+        self._last_show_pos = QtCore.QPoint(pos_x, pos_y)
+
+        wrap_x = wrap_y = 0
+        sort_order = QtCore.Qt.DescendingOrder
+        if right_to_left:
+            sort_order = QtCore.Qt.AscendingOrder
+            size_diff = target_size - size
+            pos_x -= size_diff.width()
+            pos_y -= size_diff.height()
+            wrap_x = size_diff.width()
+            wrap_y = size_diff.height()
+
+        wrap_geo = QtCore.QRect(
+            wrap_x, wrap_y, size.width(), size.height()
+        )
+        if self._expand_anim.state() == QtCore.QAbstractAnimation.Running:
+            self._expand_anim.stop()
+        self._first_anim_frame = True
+        self._right_to_left = right_to_left
+
+        self._proxy_model.sort(0, sort_order)
+        self.setUpdatesEnabled(False)
+        self._view.setMask(wrap_geo)
+        self._view.setMinimumWidth(target_size.width())
+        self._view.setMaximumWidth(target_size.width())
+        self._wrapper.setGeometry(wrap_geo)
+        self.setGeometry(
+            pos_x, pos_y,
+            target_size.width(), target_size.height()
+        )
+        self.setUpdatesEnabled(True)
+        self._expand_anim.updateCurrentTime(0)
+        self._expand_anim.setStartValue(size)
+        self._expand_anim.setEndValue(target_size)
+        self._expand_anim.start()
 
         self.raise_()
 
@@ -444,23 +508,30 @@ class ActionMenuPopup(QtWidgets.QWidget):
         self.action_triggered.emit(action_id)
 
     def _on_expand_anim(self, value):
-        if self._first_anim_frame:
-            _, size = self._get_size_hint()
-            self._expand_anim.setEndValue(size)
-            self._first_anim_frame = False
+        if not self._showed:
+            if self._expand_anim.state() == QtCore.QAbstractAnimation.Running:
+                self._expand_anim.stop()
+            return
 
-        self._view.setMaximumHeight(value.height())
-        self.resize(value)
+        wrapper_geo = self._wrapper.geometry()
+        wrapper_geo.setWidth(value.width())
+        wrapper_geo.setHeight(value.height())
+
+        if self._right_to_left:
+            geo = self.geometry()
+            pos = QtCore.QPoint(
+                geo.width() - value.width(),
+                geo.height() - value.height(),
+            )
+            wrapper_geo.setTopLeft(pos)
+
+        self._view.setMask(wrapper_geo)
+        self._wrapper.setGeometry(wrapper_geo)
 
     def _on_expand_finish(self):
         # Make sure that size is recalculated if src and targe size is same
-        if not self._first_anim_frame:
-            return
-
-        _, size = self._get_size_hint()
-        self._first_anim_frame = False
-        self._view.setMaximumHeight(size.height())
-        self.resize(size)
+        _, _, size = self._get_size_hint()
+        self._on_expand_anim(size)
 
     def _get_size_hint(self):
         grid_size = self._view.gridSize()
@@ -478,7 +549,7 @@ class ActionMenuPopup(QtWidgets.QWidget):
         if rows == 1:
             cols = row_count
 
-        m_l, m_t, m_r, m_b = self._wrapper_layout.getContentsMargins()
+        m_l, m_t, m_r, m_b = (3, 3, 1, 1)
         # QUESTION how to get the margins from Qt?
         border = 2 * 1
         single_width = (
@@ -501,6 +572,7 @@ class ActionMenuPopup(QtWidgets.QWidget):
                 (rows - 1) * (grid_size.height() + self._view.spacing())
             )
         return (
+            cols * rows,
             QtCore.QSize(single_width, single_height),
             QtCore.QSize(total_width, total_height)
         )
@@ -643,7 +715,11 @@ class ActionsProxyModel(QtCore.QSortFilterProxyModel):
         self.setSortCaseSensitivity(QtCore.Qt.CaseInsensitive)
 
     def lessThan(self, left, right):
-        # Sort by action order and then by label
+        if left.data(PLACEHOLDER_ITEM_ROLE):
+            return True
+        if right.data(PLACEHOLDER_ITEM_ROLE):
+            return False
+
         left_value = left.data(ACTION_SORT_ROLE)
         right_value = right.data(ACTION_SORT_ROLE)
 
