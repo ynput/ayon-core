@@ -400,7 +400,6 @@ class ActionMenuPopup(QtWidgets.QWidget):
         self._showed = False
         self._current_id = None
         self._right_to_left = False
-        self._last_show_pos = QtCore.QPoint(0, 0)
 
     def showEvent(self, event):
         self._showed = True
@@ -459,7 +458,6 @@ class ActionMenuPopup(QtWidgets.QWidget):
 
         pos_x = pos.x() - 5
         pos_y = pos.y() - 4
-        self._last_show_pos = QtCore.QPoint(pos_x, pos_y)
 
         wrap_x = wrap_y = 0
         sort_order = QtCore.Qt.DescendingOrder
