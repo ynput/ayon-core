@@ -84,15 +84,17 @@ def _get_options(action, action_item, parent):
     if not getattr(action, "optioned", False) or not options:
         return {}
 
+    dialog_title = action.label + " Options"
     if isinstance(options[0], AbstractAttrDef):
         qargparse_options = False
-        dialog = AttributeDefinitionsDialog(options, parent)
+        dialog = AttributeDefinitionsDialog(
+            options, title=dialog_title, parent=parent
+        )
     else:
         qargparse_options = True
         dialog = OptionDialog(parent)
         dialog.create(options)
-
-    dialog.setWindowTitle(action.label + " Options")
+        dialog.setWindowTitle(dialog_title)
 
     if not dialog.exec_():
         return None

@@ -1,22 +1,38 @@
 import time
+import uuid
 import collections
 
 from qtpy import QtWidgets, QtCore, QtGui
 
+from ayon_core.lib import Logger
+from ayon_core.lib.attribute_definitions import (
+    UILabelDef,
+    EnumDef,
+    TextDef,
+    BoolDef,
+    NumberDef,
+    HiddenDef,
+)
 from ayon_core.tools.flickcharm import FlickCharm
-from ayon_core.tools.utils import get_qt_icon
-
-from .resources import get_options_image_path
+from ayon_core.tools.utils import (
+    get_qt_icon,
+    PixmapLabel,
+)
+from ayon_core.tools.attribute_defs import AttributeDefinitionsDialog
+from ayon_core.tools.launcher.abstract import WebactionContext
 
 ANIMATION_LEN = 7
 
 ACTION_ID_ROLE = QtCore.Qt.UserRole + 1
-ACTION_IS_APPLICATION_ROLE = QtCore.Qt.UserRole + 2
+ACTION_TYPE_ROLE = QtCore.Qt.UserRole + 2
 ACTION_IS_GROUP_ROLE = QtCore.Qt.UserRole + 3
-ACTION_SORT_ROLE = QtCore.Qt.UserRole + 4
-ANIMATION_START_ROLE = QtCore.Qt.UserRole + 5
-ANIMATION_STATE_ROLE = QtCore.Qt.UserRole + 6
-FORCE_NOT_OPEN_WORKFILE_ROLE = QtCore.Qt.UserRole + 7
+ACTION_HAS_CONFIGS_ROLE = QtCore.Qt.UserRole + 4
+ACTION_SORT_ROLE = QtCore.Qt.UserRole + 5
+ACTION_ADDON_NAME_ROLE = QtCore.Qt.UserRole + 6
+ACTION_ADDON_VERSION_ROLE = QtCore.Qt.UserRole + 7
+PLACEHOLDER_ITEM_ROLE = QtCore.Qt.UserRole + 8
+ANIMATION_START_ROLE = QtCore.Qt.UserRole + 9
+ANIMATION_STATE_ROLE = QtCore.Qt.UserRole + 10
 
 
 def _variant_label_sort_getter(action_item):
@@ -34,6 +50,43 @@ def _variant_label_sort_getter(action_item):
     return action_item.variant_label or ""
 
 
+# --- Replacement for QAction for action variants ---
+class LauncherSettingsLabel(PixmapLabel):
+    _settings_icon = None
+
+    def __init__(self, parent):
+        icon = self._get_settings_icon()
+        super().__init__(icon.pixmap(64, 64), parent)
+
+    @classmethod
+    def _get_settings_icon(cls):
+        if cls._settings_icon is None:
+            cls._settings_icon = get_qt_icon({
+                "type": "material-symbols",
+                "name": "settings",
+            })
+        return cls._settings_icon
+
+
+class ActionOverlayWidget(QtWidgets.QFrame):
+    config_requested = QtCore.Signal(str)
+
+    def __init__(self, item_id, parent):
+        super().__init__(parent)
+        self._item_id = item_id
+
+        settings_icon = LauncherSettingsLabel(self)
+        settings_icon.setToolTip("Right click for options")
+
+        main_layout = QtWidgets.QGridLayout(self)
+        main_layout.setContentsMargins(5, 5, 0, 0)
+        main_layout.addWidget(settings_icon, 0, 0)
+        main_layout.setColumnStretch(1, 1)
+        main_layout.setRowStretch(1, 1)
+
+        self.setAttribute(QtCore.Qt.WA_TranslucentBackground)
+
+
 class ActionsQtModel(QtGui.QStandardItemModel):
     """Qt model for actions.
 
@@ -44,7 +97,8 @@ class ActionsQtModel(QtGui.QStandardItemModel):
     refreshed = QtCore.Signal()
 
     def __init__(self, controller):
-        super(ActionsQtModel, self).__init__()
+        self._log = Logger.get_logger(self.__class__.__name__)
+        super().__init__()
 
         controller.register_event_callback(
             "selection.project.changed",
@@ -84,6 +138,17 @@ class ActionsQtModel(QtGui.QStandardItemModel):
     def get_item_by_id(self, action_id):
         return self._items_by_id.get(action_id)
 
+    def get_group_item_by_action_id(self, action_id):
+        item = self._items_by_id.get(action_id)
+        if item is not None:
+            return item
+
+        for group_id, items in self._groups_by_id.items():
+            for item in items:
+                if item.identifier == action_id:
+                    return self._items_by_id[group_id]
+        return None
+
     def get_action_item_by_id(self, action_id):
         return self._action_items_by_id.get(action_id)
 
@@ -108,8 +173,10 @@ class ActionsQtModel(QtGui.QStandardItemModel):
         root_item = self.invisibleRootItem()
 
         all_action_items_info = []
+        action_items_by_id = {}
         items_by_label = collections.defaultdict(list)
         for item in items:
+            action_items_by_id[item.identifier] = item
             if not item.variant_label:
                 all_action_items_info.append((item, False))
             else:
@@ -122,16 +189,30 @@ class ActionsQtModel(QtGui.QStandardItemModel):
             all_action_items_info.append((first_item, len(action_items) > 1))
             groups_by_id[first_item.identifier] = action_items
 
+        transparent_icon = {"type": "transparent", "size": 256}
         new_items = []
         items_by_id = {}
-        action_items_by_id = {}
         for action_item_info in all_action_items_info:
             action_item, is_group = action_item_info
-            icon = get_qt_icon(action_item.icon)
+            icon_def = action_item.icon
+            if not icon_def:
+                icon_def = transparent_icon.copy()
+
+            try:
+                icon = get_qt_icon(icon_def)
+            except Exception:
+                self._log.warning(
+                    "Failed to parse icon definition", exc_info=True
+                )
+                # Use empty icon if failed to parse definition
+                icon = get_qt_icon(transparent_icon.copy())
+
             if is_group:
+                has_configs = False
                 label = action_item.label
             else:
                 label = action_item.full_label
+                has_configs = bool(action_item.config_fields)
 
             item = self._items_by_id.get(action_item.identifier)
             if item is None:
@@ -141,16 +222,15 @@ class ActionsQtModel(QtGui.QStandardItemModel):
 
             item.setFlags(QtCore.Qt.ItemIsEnabled)
             item.setData(label, QtCore.Qt.DisplayRole)
+            # item.setData(label, QtCore.Qt.ToolTipRole)
             item.setData(icon, QtCore.Qt.DecorationRole)
             item.setData(is_group, ACTION_IS_GROUP_ROLE)
+            item.setData(has_configs, ACTION_HAS_CONFIGS_ROLE)
+            item.setData(action_item.action_type, ACTION_TYPE_ROLE)
+            item.setData(action_item.addon_name, ACTION_ADDON_NAME_ROLE)
+            item.setData(action_item.addon_version, ACTION_ADDON_VERSION_ROLE)
             item.setData(action_item.order, ACTION_SORT_ROLE)
-            item.setData(
-                action_item.is_application, ACTION_IS_APPLICATION_ROLE)
-            item.setData(
-                action_item.force_not_open_workfile,
-                FORCE_NOT_OPEN_WORKFILE_ROLE)
             items_by_id[action_item.identifier] = item
-            action_items_by_id[action_item.identifier] = action_item
 
         if new_items:
             root_item.appendRows(new_items)
@@ -165,6 +245,12 @@ class ActionsQtModel(QtGui.QStandardItemModel):
         self._items_by_id = items_by_id
         self._action_items_by_id = action_items_by_id
         self.refreshed.emit()
+
+    def get_action_config_fields(self, action_id: str):
+        action_item = self._action_items_by_id.get(action_id)
+        if action_item is not None:
+            return action_item.config_fields
+        return None
 
     def _on_selection_project_changed(self, event):
         self._selected_project_name = event["project_name"]
@@ -185,13 +271,340 @@ class ActionsQtModel(QtGui.QStandardItemModel):
         self.refresh()
 
 
+class ActionMenuPopupModel(QtGui.QStandardItemModel):
+    def set_action_items(self, action_items):
+        """Set action items for the popup."""
+        root_item = self.invisibleRootItem()
+        root_item.removeRows(0, root_item.rowCount())
+
+        transparent_icon = {"type": "transparent", "size": 256}
+        new_items = []
+        for action_item in action_items:
+            icon_def = action_item.icon
+            if not icon_def:
+                icon_def = transparent_icon.copy()
+
+            try:
+                icon = get_qt_icon(icon_def)
+            except Exception:
+                self._log.warning(
+                    "Failed to parse icon definition", exc_info=True
+                )
+                # Use empty icon if failed to parse definition
+                icon = get_qt_icon(transparent_icon.copy())
+
+            item = QtGui.QStandardItem()
+            item.setFlags(QtCore.Qt.ItemIsEnabled)
+            # item.setData(action_item.full_label, QtCore.Qt.ToolTipRole)
+            item.setData(action_item.full_label, QtCore.Qt.DisplayRole)
+            item.setData(icon, QtCore.Qt.DecorationRole)
+            item.setData(action_item.identifier, ACTION_ID_ROLE)
+            item.setData(
+                bool(action_item.config_fields),
+                ACTION_HAS_CONFIGS_ROLE
+            )
+            item.setData(action_item.order, ACTION_SORT_ROLE)
+
+            new_items.append(item)
+
+        if new_items:
+            root_item.appendRows(new_items)
+
+    def fill_to_count(self, count: int):
+        """Fill up items to specifi counter.
+
+        This is needed to visually organize structure or the viewed items. If
+            items are shown right to left then mouse would not hover over
+            last item i there are multiple rows that are uneven. This will
+            fill the "first items" with invisible items so visually it looks
+            correct.
+
+        Visually it will cause this:
+        [ ] [ ] [ ] [A]
+        [A] [A] [A] [A]
+
+        Instead of:
+        [A] [A] [A] [A]
+        [A] [ ] [ ] [ ]
+
+        """
+        remainders = count - self.rowCount()
+        if not remainders:
+            return
+
+        items = []
+        for _ in range(remainders):
+            item = QtGui.QStandardItem()
+            item.setFlags(QtCore.Qt.NoItemFlags)
+            item.setData(True, PLACEHOLDER_ITEM_ROLE)
+            items.append(item)
+
+        root_item = self.invisibleRootItem()
+        root_item.appendRows(items)
+
+
+class ActionMenuPopup(QtWidgets.QWidget):
+    action_triggered = QtCore.Signal(str)
+    config_requested = QtCore.Signal(str)
+
+    def __init__(self, parent):
+        super().__init__(parent)
+
+        self.setWindowFlags(QtCore.Qt.Tool | QtCore.Qt.FramelessWindowHint)
+        self.setAttribute(QtCore.Qt.WA_ShowWithoutActivating, True)
+        self.setAttribute(QtCore.Qt.WA_TranslucentBackground, True)
+
+        # Close widget if is not updated by event
+        close_timer = QtCore.QTimer()
+        close_timer.setSingleShot(True)
+        close_timer.setInterval(100)
+
+        expand_anim = QtCore.QVariantAnimation()
+        expand_anim.setDuration(60)
+        expand_anim.setEasingCurve(QtCore.QEasingCurve.InOutQuad)
+
+        # View with actions
+        view = ActionsView(self)
+        view.setGridSize(QtCore.QSize(75, 80))
+        view.setIconSize(QtCore.QSize(32, 32))
+        view.move(QtCore.QPoint(3, 3))
+
+        # Background draw
+        wrapper = QtWidgets.QFrame(self)
+        wrapper.setObjectName("Wrapper")
+        wrapper.stackUnder(view)
+
+        model = ActionMenuPopupModel()
+        proxy_model = ActionsProxyModel()
+        proxy_model.setSourceModel(model)
+
+        view.setModel(proxy_model)
+        view.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
+        view.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
+
+        close_timer.timeout.connect(self.close)
+        expand_anim.valueChanged.connect(self._on_expand_anim)
+        expand_anim.finished.connect(self._on_expand_finish)
+
+        view.clicked.connect(self._on_clicked)
+        view.config_requested.connect(self.config_requested)
+
+        self._view = view
+        self._wrapper = wrapper
+        self._model = model
+        self._proxy_model = proxy_model
+
+        self._close_timer = close_timer
+        self._expand_anim = expand_anim
+
+        self._showed = False
+        self._current_id = None
+        self._right_to_left = False
+
+    def showEvent(self, event):
+        self._showed = True
+        super().showEvent(event)
+
+    def closeEvent(self, event):
+        self._showed = False
+        super().closeEvent(event)
+
+    def enterEvent(self, event):
+        super().leaveEvent(event)
+        self._close_timer.stop()
+
+    def leaveEvent(self, event):
+        super().leaveEvent(event)
+        self._close_timer.start()
+
+    def show_items(self, action_id, action_items, pos):
+        if not action_items:
+            if self._showed:
+                self._close_timer.start()
+            self._current_id = None
+            return
+
+        self._close_timer.stop()
+
+        update_position = False
+        if action_id != self._current_id:
+            update_position = True
+            self._current_id = action_id
+            self._update_items(action_items)
+
+        # Make sure is visible
+        if not self._showed:
+            update_position = True
+            self.show()
+
+        if not update_position:
+            self.raise_()
+            return
+
+        # Set geometry to position
+        # - first make sure widget changes from '_update_items'
+        #   are recalculated
+        app = QtWidgets.QApplication.instance()
+        app.processEvents()
+        items_count, size, target_size = self._get_size_hint()
+        self._model.fill_to_count(items_count)
+
+        window = self.screen()
+        window_geo = window.geometry()
+        right_to_left = (
+            pos.x() + target_size.width() > window_geo.right()
+            or pos.y() + target_size.height() > window_geo.bottom()
+        )
+
+        pos_x = pos.x() - 5
+        pos_y = pos.y() - 4
+
+        wrap_x = wrap_y = 0
+        sort_order = QtCore.Qt.DescendingOrder
+        if right_to_left:
+            sort_order = QtCore.Qt.AscendingOrder
+            size_diff = target_size - size
+            pos_x -= size_diff.width()
+            pos_y -= size_diff.height()
+            wrap_x = size_diff.width()
+            wrap_y = size_diff.height()
+
+        wrap_geo = QtCore.QRect(
+            wrap_x, wrap_y, size.width(), size.height()
+        )
+        if self._expand_anim.state() == QtCore.QAbstractAnimation.Running:
+            self._expand_anim.stop()
+        self._first_anim_frame = True
+        self._right_to_left = right_to_left
+
+        self._proxy_model.sort(0, sort_order)
+        self.setUpdatesEnabled(False)
+        self._view.setMask(wrap_geo)
+        self._view.setMinimumWidth(target_size.width())
+        self._view.setMaximumWidth(target_size.width())
+        self._wrapper.setGeometry(wrap_geo)
+        self.setGeometry(
+            pos_x, pos_y,
+            target_size.width(), target_size.height()
+        )
+        self.setUpdatesEnabled(True)
+        self._expand_anim.updateCurrentTime(0)
+        self._expand_anim.setStartValue(size)
+        self._expand_anim.setEndValue(target_size)
+        self._expand_anim.start()
+
+        self.raise_()
+
+    def _on_clicked(self, index):
+        if not index or not index.isValid():
+            return
+
+        if not index.data(ACTION_HAS_CONFIGS_ROLE):
+            return
+
+        action_id = index.data(ACTION_ID_ROLE)
+        self.action_triggered.emit(action_id)
+
+    def _on_expand_anim(self, value):
+        if not self._showed:
+            if self._expand_anim.state() == QtCore.QAbstractAnimation.Running:
+                self._expand_anim.stop()
+            return
+
+        wrapper_geo = self._wrapper.geometry()
+        wrapper_geo.setWidth(value.width())
+        wrapper_geo.setHeight(value.height())
+
+        if self._right_to_left:
+            geo = self.geometry()
+            pos = QtCore.QPoint(
+                geo.width() - value.width(),
+                geo.height() - value.height(),
+            )
+            wrapper_geo.setTopLeft(pos)
+
+        self._view.setMask(wrapper_geo)
+        self._wrapper.setGeometry(wrapper_geo)
+
+    def _on_expand_finish(self):
+        # Make sure that size is recalculated if src and targe size is same
+        _, _, size = self._get_size_hint()
+        self._on_expand_anim(size)
+
+    def _get_size_hint(self):
+        grid_size = self._view.gridSize()
+        row_count = self._proxy_model.rowCount()
+        cols = 4
+        rows = 1
+        while True:
+            rows = row_count // cols
+            if row_count % cols:
+                rows += 1
+            if rows <= cols:
+                break
+            cols += 1
+
+        if rows == 1:
+            cols = row_count
+
+        m_l, m_t, m_r, m_b = (3, 3, 1, 1)
+        # QUESTION how to get the margins from Qt?
+        border = 2 * 1
+        single_width = (
+            grid_size.width()
+            + self._view.horizontalOffset() + border + m_l + m_r + 1
+        )
+        single_height = (
+            grid_size.height()
+            + self._view.verticalOffset() + border + m_b + m_t + 1
+        )
+        total_width = single_width
+        total_height = single_height
+        if cols > 1:
+            total_width += (
+                (cols - 1) * (self._view.spacing() + grid_size.width())
+            )
+
+        if rows > 1:
+            total_height += (
+                (rows - 1) * (grid_size.height() + self._view.spacing())
+            )
+        return (
+            cols * rows,
+            QtCore.QSize(single_width, single_height),
+            QtCore.QSize(total_width, total_height)
+        )
+
+    def _update_items(self, action_items):
+        """Update items in the tooltip."""
+        # This method can be used to update the content of the tooltip
+        # with new icon, text and settings button visibility.
+        self._model.set_action_items(action_items)
+        self._view.update_on_refresh()
+
+    def _on_trigger(self, action_id):
+        self.action_triggered.emit(action_id)
+        self.close()
+
+    def _on_configs_trigger(self, action_id):
+        self.config_requested.emit(action_id)
+        self.close()
+
+
 class ActionDelegate(QtWidgets.QStyledItemDelegate):
     _cached_extender = {}
+    _cached_extender_base_pix = None
 
     def __init__(self, *args, **kwargs):
-        super(ActionDelegate, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         self._anim_start_color = QtGui.QColor(178, 255, 246)
         self._anim_end_color = QtGui.QColor(5, 44, 50)
+
+    def sizeHint(self, option, index):
+        return option.widget.gridSize()
+
+    def updateEditorGeometry(self, editor, option, index):
+        editor.setGeometry(option.rect)
 
     def _draw_animation(self, painter, option, index):
         grid_size = option.widget.gridSize()
@@ -244,7 +657,17 @@ class ActionDelegate(QtWidgets.QStyledItemDelegate):
         pix = cls._cached_extender.get(size)
         if pix is not None:
             return pix
-        pix = QtGui.QPixmap(get_options_image_path()).scaled(
+
+        base_pix = cls._cached_extender_base_pix
+        if base_pix is None:
+            icon = get_qt_icon({
+                "type": "material-symbols",
+                "name": "more_horiz",
+            })
+            base_pix = icon.pixmap(64, 64)
+            cls._cached_extender_base_pix = base_pix
+
+        pix = base_pix.scaled(
             size, size,
             QtCore.Qt.KeepAspectRatio,
             QtCore.Qt.SmoothTransformation
@@ -260,15 +683,8 @@ class ActionDelegate(QtWidgets.QStyledItemDelegate):
 
         if index.data(ANIMATION_STATE_ROLE):
             self._draw_animation(painter, option, index)
-
-        super(ActionDelegate, self).paint(painter, option, index)
-
-        if index.data(FORCE_NOT_OPEN_WORKFILE_ROLE):
-            rect = QtCore.QRectF(
-                option.rect.x(), option.rect.y() + option.rect.height(), 5, 5)
-            painter.setPen(QtCore.Qt.NoPen)
-            painter.setBrush(QtGui.QColor(200, 0, 0))
-            painter.drawEllipse(rect)
+        option.displayAlignment = QtCore.Qt.AlignHCenter | QtCore.Qt.AlignTop
+        super().paint(painter, option, index)
 
         if not index.data(ACTION_IS_GROUP_ROLE):
             return
@@ -297,7 +713,11 @@ class ActionsProxyModel(QtCore.QSortFilterProxyModel):
         self.setSortCaseSensitivity(QtCore.Qt.CaseInsensitive)
 
     def lessThan(self, left, right):
-        # Sort by action order and then by label
+        if left.data(PLACEHOLDER_ITEM_ROLE):
+            return True
+        if right.data(PLACEHOLDER_ITEM_ROLE):
+            return False
+
         left_value = left.data(ACTION_SORT_ROLE)
         right_value = right.data(ACTION_SORT_ROLE)
 
@@ -318,38 +738,135 @@ class ActionsProxyModel(QtCore.QSortFilterProxyModel):
             return True
 
 
+class ActionsView(QtWidgets.QListView):
+    action_triggered = QtCore.Signal(str)
+    config_requested = QtCore.Signal(str)
+
+    def __init__(self, parent):
+        super().__init__(parent)
+        self.setProperty("mode", "icon")
+        self.setViewMode(QtWidgets.QListView.IconMode)
+        self.setResizeMode(QtWidgets.QListView.Adjust)
+        self.setSelectionMode(QtWidgets.QListView.NoSelection)
+        self.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
+        self.setVerticalScrollMode(QtWidgets.QAbstractItemView.ScrollPerPixel)
+        self.setEditTriggers(QtWidgets.QAbstractItemView.NoEditTriggers)
+        self.setContentsMargins(0, 0, 0, 0)
+        self.setViewportMargins(0, 0, 0, 0)
+        self.setWrapping(True)
+        self.setSpacing(0)
+        self.setWordWrap(True)
+        self.setMouseTracking(True)
+
+        vertical_scroll = self.verticalScrollBar()
+        vertical_scroll.setSingleStep(8)
+
+        delegate = ActionDelegate(self)
+        self.setItemDelegate(delegate)
+
+        # Make view flickable
+        flick = FlickCharm(parent=self)
+        flick.activateOn(self)
+
+        self.customContextMenuRequested.connect(self._on_context_menu)
+
+        self._overlay_widgets = []
+        self._flick = flick
+        self._delegate = delegate
+        self._popup_widget = None
+
+    def mouseMoveEvent(self, event):
+        """Handle mouse move event."""
+        super().mouseMoveEvent(event)
+        # Update hover state for the item under mouse
+        index = self.indexAt(event.pos())
+        if index.isValid() and index.data(ACTION_IS_GROUP_ROLE):
+            self._show_group_popup(index)
+
+        elif self._popup_widget is not None:
+            self._popup_widget.close()
+
+    def _on_context_menu(self, point):
+        """Creates menu to force skip opening last workfile."""
+        index = self.indexAt(point)
+        if not index.isValid():
+            return
+        action_id = index.data(ACTION_ID_ROLE)
+        self.config_requested.emit(action_id)
+
+    def _get_popup_widget(self):
+        if self._popup_widget is None:
+            popup_widget = ActionMenuPopup(self)
+
+            popup_widget.action_triggered.connect(self.action_triggered)
+            popup_widget.config_requested.connect(self.config_requested)
+            self._popup_widget = popup_widget
+        return self._popup_widget
+
+    def _show_group_popup(self, index):
+        action_id = index.data(ACTION_ID_ROLE)
+        model = self.model()
+        while hasattr(model, "sourceModel"):
+            model = model.sourceModel()
+
+        if not hasattr(model, "get_group_items"):
+            return
+
+        action_items = model.get_group_items(action_id)
+        rect = self.visualRect(index)
+        pos = self.mapToGlobal(rect.topLeft())
+
+        popup_widget = self._get_popup_widget()
+        popup_widget.show_items(
+            action_id, action_items, pos
+        )
+
+    def update_on_refresh(self):
+        viewport = self.viewport()
+        viewport.update()
+        self._add_overlay_widgets()
+
+    def _add_overlay_widgets(self):
+        overlay_widgets = []
+        viewport = self.viewport()
+        model = self.model()
+        for row in range(model.rowCount()):
+            index = model.index(row, 0)
+            has_configs = index.data(ACTION_HAS_CONFIGS_ROLE)
+            widget = None
+            if has_configs:
+                item_id = index.data(ACTION_ID_ROLE)
+                widget = ActionOverlayWidget(item_id, viewport)
+                widget.config_requested.connect(
+                    self.config_requested
+                )
+                overlay_widgets.append(widget)
+            self.setIndexWidget(index, widget)
+
+        while self._overlay_widgets:
+            widget = self._overlay_widgets.pop(0)
+            widget.setVisible(False)
+            widget.setParent(None)
+            widget.deleteLater()
+
+        self._overlay_widgets = overlay_widgets
+
+
 class ActionsWidget(QtWidgets.QWidget):
     def __init__(self, controller, parent):
-        super(ActionsWidget, self).__init__(parent)
+        super().__init__(parent)
 
         self._controller = controller
 
-        view = QtWidgets.QListView(self)
-        view.setProperty("mode", "icon")
-        view.setObjectName("IconView")
-        view.setViewMode(QtWidgets.QListView.IconMode)
-        view.setResizeMode(QtWidgets.QListView.Adjust)
-        view.setSelectionMode(QtWidgets.QListView.NoSelection)
-        view.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
-        view.setEditTriggers(QtWidgets.QAbstractItemView.NoEditTriggers)
-        view.setWrapping(True)
+        view = ActionsView(self)
         view.setGridSize(QtCore.QSize(70, 75))
         view.setIconSize(QtCore.QSize(30, 30))
-        view.setSpacing(0)
-        view.setWordWrap(True)
-
-        # Make view flickable
-        flick = FlickCharm(parent=view)
-        flick.activateOn(view)
 
         model = ActionsQtModel(controller)
 
         proxy_model = ActionsProxyModel()
         proxy_model.setSourceModel(model)
         view.setModel(proxy_model)
-
-        delegate = ActionDelegate(self)
-        view.setItemDelegate(delegate)
 
         layout = QtWidgets.QHBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
@@ -360,15 +877,13 @@ class ActionsWidget(QtWidgets.QWidget):
         animation_timer.timeout.connect(self._on_animation)
 
         view.clicked.connect(self._on_clicked)
-        view.customContextMenuRequested.connect(self._on_context_menu)
+        view.action_triggered.connect(self._trigger_action)
+        view.config_requested.connect(self._on_config_request)
         model.refreshed.connect(self._on_model_refresh)
 
         self._animated_items = set()
         self._animation_timer = animation_timer
 
-        self._context_menu = None
-
-        self._flick = flick
         self._view = view
         self._model = model
         self._proxy_model = proxy_model
@@ -378,14 +893,52 @@ class ActionsWidget(QtWidgets.QWidget):
     def refresh(self):
         self._model.refresh()
 
+    def handle_webaction_form_event(self, event):
+        # NOTE The 'ActionsWidget' should be responsible for handling this
+        #   but because we're showing messages to user it is handled by window
+        identifier = event["identifier"]
+        form = event["form"]
+        submit_icon = form["submit_icon"]
+        if submit_icon:
+            submit_icon = get_qt_icon(submit_icon)
+
+        cancel_icon = form["cancel_icon"]
+        if cancel_icon:
+            cancel_icon = get_qt_icon(cancel_icon)
+
+        dialog = self._create_attrs_dialog(
+            form["fields"],
+            form["title"],
+            form["submit_label"],
+            form["cancel_label"],
+            submit_icon,
+            cancel_icon,
+        )
+        dialog.setMinimumSize(380, 180)
+        result = dialog.exec_()
+        if result != QtWidgets.QDialog.Accepted:
+            return
+        form_data = dialog.get_values()
+        self._controller.trigger_webaction(
+            WebactionContext(
+                identifier,
+                event["project_name"],
+                event["folder_id"],
+                event["task_id"],
+                event["addon_name"],
+                event["addon_version"],
+            ),
+            event["action_label"],
+            form_data,
+        )
+
     def _set_row_height(self, rows):
         self.setMinimumHeight(rows * 75)
 
     def _on_model_refresh(self):
         self._proxy_model.sort(0)
         # Force repaint all items
-        viewport = self._view.viewport()
-        viewport.update()
+        self._view.update_on_refresh()
 
     def _on_animation(self):
         time_now = time.time()
@@ -416,89 +969,193 @@ class ActionsWidget(QtWidgets.QWidget):
         self._animated_items.add(action_id)
         self._animation_timer.start()
 
-    def _on_context_menu(self, point):
-        """Creates menu to force skip opening last workfile."""
-        index = self._view.indexAt(point)
-        if not index.isValid():
-            return
-
-        if not index.data(ACTION_IS_APPLICATION_ROLE):
-            return
-
-        menu = QtWidgets.QMenu(self._view)
-        checkbox = QtWidgets.QCheckBox(
-            "Skip opening last workfile.", menu)
-        if index.data(FORCE_NOT_OPEN_WORKFILE_ROLE):
-            checkbox.setChecked(True)
-
-        action_id = index.data(ACTION_ID_ROLE)
-        is_group = index.data(ACTION_IS_GROUP_ROLE)
-        if is_group:
-            action_items = self._model.get_group_items(action_id)
-        else:
-            action_items = [self._model.get_action_item_by_id(action_id)]
-        action_ids = {action_item.identifier for action_item in action_items}
-        checkbox.stateChanged.connect(
-            lambda: self._on_checkbox_changed(
-                action_ids, checkbox.isChecked()
-            )
-        )
-        action = QtWidgets.QWidgetAction(menu)
-        action.setDefaultWidget(checkbox)
-
-        menu.addAction(action)
-
-        self._context_menu = menu
-        global_point = self.mapToGlobal(point)
-        menu.exec_(global_point)
-        self._context_menu = None
-
-    def _on_checkbox_changed(self, action_ids, is_checked):
-        if self._context_menu is not None:
-            self._context_menu.close()
-
-        project_name = self._model.get_selected_project_name()
-        folder_id = self._model.get_selected_folder_id()
-        task_id = self._model.get_selected_task_id()
-        self._controller.set_application_force_not_open_workfile(
-            project_name, folder_id, task_id, action_ids, is_checked)
-        self._model.refresh()
-
     def _on_clicked(self, index):
         if not index or not index.isValid():
             return
 
         is_group = index.data(ACTION_IS_GROUP_ROLE)
+        if is_group:
+            return
         action_id = index.data(ACTION_ID_ROLE)
+        self._trigger_action(action_id, index)
+
+    def _trigger_action(self, action_id, index=None):
+        project_name = self._model.get_selected_project_name()
+        folder_id = self._model.get_selected_folder_id()
+        task_id = self._model.get_selected_task_id()
+        action_item = self._model.get_action_item_by_id(action_id)
+
+        if action_item.action_type == "webaction":
+            action_item = self._model.get_action_item_by_id(action_id)
+            context = WebactionContext(
+                action_id,
+                project_name,
+                folder_id,
+                task_id,
+                action_item.addon_name,
+                action_item.addon_version
+            )
+            self._controller.trigger_webaction(
+                context, action_item.full_label
+            )
+        else:
+            self._controller.trigger_action(
+                action_id, project_name, folder_id, task_id
+            )
+
+        if index is None:
+            item = self._model.get_group_item_by_action_id(action_id)
+            if item is not None:
+                index = self._proxy_model.mapFromSource(item.index())
+
+        if index is not None:
+            self._start_animation(index)
+
+    def _on_config_request(self, action_id):
+        self._show_config_dialog(action_id)
+
+    def _show_config_dialog(self, action_id):
+        action_item = self._model.get_action_item_by_id(action_id)
+        config_fields = self._model.get_action_config_fields(action_id)
+        if not config_fields:
+            return
 
         project_name = self._model.get_selected_project_name()
         folder_id = self._model.get_selected_folder_id()
         task_id = self._model.get_selected_task_id()
-
-        if not is_group:
-            self._controller.trigger_action(
-                project_name, folder_id, task_id, action_id
-            )
-            self._start_animation(index)
-            return
-
-        action_items = self._model.get_group_items(action_id)
-
-        menu = QtWidgets.QMenu(self)
-        actions_mapping = {}
-
-        for action_item in action_items:
-            menu_action = QtWidgets.QAction(action_item.full_label)
-            menu.addAction(menu_action)
-            actions_mapping[menu_action] = action_item
-
-        result = menu.exec_(QtGui.QCursor.pos())
-        if not result:
-            return
-
-        action_item = actions_mapping[result]
-
-        self._controller.trigger_action(
-            project_name, folder_id, task_id, action_item.identifier
+        context = WebactionContext(
+            action_id,
+            project_name=project_name,
+            folder_id=folder_id,
+            task_id=task_id,
+            addon_name=action_item.addon_name,
+            addon_version=action_item.addon_version,
         )
-        self._start_animation(index)
+        values = self._controller.get_action_config_values(context)
+
+        dialog = self._create_attrs_dialog(
+            config_fields,
+            "Action Config",
+            "Save",
+            "Cancel",
+        )
+        dialog.set_values(values)
+        result = dialog.exec_()
+        if result == QtWidgets.QDialog.Accepted:
+            new_values = dialog.get_values()
+            self._controller.set_action_config_values(context, new_values)
+
+    def _create_attrs_dialog(
+        self,
+        config_fields,
+        title,
+        submit_label,
+        cancel_label,
+        submit_icon=None,
+        cancel_icon=None,
+    ):
+        """Creates attribute definitions dialog.
+
+        Types:
+            label - 'text'
+            text - 'label', 'value', 'placeholder', 'regex',
+                'multiline', 'syntax'
+            boolean - 'label', 'value'
+            select - 'label', 'value', 'options'
+            multiselect - 'label', 'value', 'options'
+            hidden - 'value'
+            integer - 'label', 'value', 'placeholder', 'min', 'max'
+            float - 'label', 'value', 'placeholder', 'min', 'max'
+
+        """
+        attr_defs = []
+        for config_field in config_fields:
+            field_type = config_field["type"]
+            attr_def = None
+            if field_type == "label":
+                label = config_field.get("value")
+                if label is None:
+                    label = config_field.get("text")
+                attr_def = UILabelDef(
+                    label, key=uuid.uuid4().hex
+                )
+            elif field_type == "boolean":
+                value = config_field["value"]
+                if isinstance(value, str):
+                    value = value.lower() == "true"
+
+                attr_def = BoolDef(
+                    config_field["name"],
+                    default=value,
+                    label=config_field.get("label"),
+                )
+            elif field_type == "text":
+                attr_def = TextDef(
+                    config_field["name"],
+                    default=config_field.get("value"),
+                    label=config_field.get("label"),
+                    placeholder=config_field.get("placeholder"),
+                    multiline=config_field.get("multiline", False),
+                    regex=config_field.get("regex"),
+                    # syntax=config_field["syntax"],
+                )
+            elif field_type in ("integer", "float"):
+                value = config_field.get("value")
+                if isinstance(value, str):
+                    if field_type == "integer":
+                        value = int(value)
+                    else:
+                        value = float(value)
+                attr_def = NumberDef(
+                    config_field["name"],
+                    default=value,
+                    label=config_field.get("label"),
+                    decimals=0 if field_type == "integer" else 5,
+                    # placeholder=config_field.get("placeholder"),
+                    minimum=config_field.get("min"),
+                    maximum=config_field.get("max"),
+                )
+            elif field_type in ("select", "multiselect"):
+                attr_def = EnumDef(
+                    config_field["name"],
+                    items=config_field["options"],
+                    default=config_field.get("value"),
+                    label=config_field.get("label"),
+                    multiselection=field_type == "multiselect",
+                )
+            elif field_type == "hidden":
+                attr_def = HiddenDef(
+                    config_field["name"],
+                    default=config_field.get("value"),
+                )
+
+            if attr_def is None:
+                print(f"Unknown config field type: {field_type}")
+                attr_def = UILabelDef(
+                    f"Unknown field type '{field_type}",
+                    key=uuid.uuid4().hex
+                )
+            attr_defs.append(attr_def)
+
+        dialog = AttributeDefinitionsDialog(
+            attr_defs,
+            title=title,
+            parent=self,
+        )
+        if submit_label:
+            dialog.set_submit_label(submit_label)
+        else:
+            dialog.set_submit_visible(False)
+
+        if submit_icon:
+            dialog.set_submit_icon(submit_icon)
+
+        if cancel_label:
+            dialog.set_cancel_label(cancel_label)
+        else:
+            dialog.set_cancel_visible(False)
+
+        if cancel_icon:
+            dialog.set_cancel_icon(cancel_icon)
+
+        return dialog
