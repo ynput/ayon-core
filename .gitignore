@@ -82,6 +82,7 @@ poetry.lock
 .editorconfig
 .pre-commit-config.yaml
 mypy.ini
+poetry.lock
 
 .github_changelog_generator
 
