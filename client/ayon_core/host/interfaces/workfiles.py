@@ -520,6 +520,9 @@ class IWorkfileHost:
             # Workfile entity is not in the filesystem
             #   but it is in the database
             rootless_path = workfile_entity["path"]
+            ext = os.path.splitext(rootless_path)[1].lower()
+            if ext not in extensions:
+                continue
             filepath = anatomy.fill_root(rootless_path)
             items.append(WorkfileInfo.new(
                 filepath,
