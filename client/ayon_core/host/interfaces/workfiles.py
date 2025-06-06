@@ -311,8 +311,9 @@ class IWorkfileHost:
             folder_entity,
             task_entity,
         )
+        project_name = self.get_current_project_name()
         event_data = self._get_workfile_event_data(
-            self.get_current_project_name(),
+            project_name,
             folder_entity,
             task_entity,
             filepath,
@@ -323,6 +324,9 @@ class IWorkfileHost:
 
         # Set 'AYON_WORKDIR' environment variable
         os.environ["AYON_WORKDIR"] = workdir
+
+        if project_entity is None:
+            project_entity = ayon_api.get_project(project_name)
 
         self.set_current_context(
             folder_entity,
