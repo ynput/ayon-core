@@ -177,10 +177,12 @@ def initialize_ayon_connection(force=False):
                 return _new_get_last_versions(
                     con, *args, **kwargs
                 )
+
             def _lv_by_pi_wrapper(*args, **kwargs):
                 return _new_get_last_version_by_product_id(
                     con, *args, **kwargs
                 )
+
             def _lv_by_pn_wrapper(*args, **kwargs):
                 return _new_get_last_version_by_product_name(
                     con, *args, **kwargs

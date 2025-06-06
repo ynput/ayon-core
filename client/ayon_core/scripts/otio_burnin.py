@@ -173,7 +173,6 @@ class ModifiedBurnins(ffmpeg_burnins.Burnins):
         if frame_end is not None:
             options["frame_end"] = frame_end
 
-
         options["label"] = align
         self._add_burnin(text, align, options, DRAWTEXT)
 

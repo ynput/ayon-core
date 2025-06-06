@@ -91,7 +91,8 @@ class ExtractReview(pyblish.api.InstancePlugin):
         "webpublisher",
         "aftereffects",
         "flame",
-        "unreal"
+        "unreal",
+        "circuit",
     ]
 
     # Supported extensions
@@ -1332,7 +1333,7 @@ class ExtractReview(pyblish.api.InstancePlugin):
                 bg_red, bg_green, bg_blue = overscan_color
             else:
                 # Backwards compatibility
-                bg_red, bg_green, bg_blue, _  = overscan_color
+                bg_red, bg_green, bg_blue, _ = overscan_color
 
             overscan_color_value = "#{0:0>2X}{1:0>2X}{2:0>2X}".format(
                 bg_red, bg_green, bg_blue
