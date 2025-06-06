@@ -351,7 +351,7 @@ class IWorkfileHost:
             task_entity,
             filepath,
         )
-        self._emit_workfile_save_event(event_data, after_open=False)
+        self._emit_workfile_save_event(event_data, after_save=False)
 
         workdir = os.path.dirname(filepath)
 
@@ -612,7 +612,7 @@ class IWorkfileHost:
         (
             version_entities,
             repre_entities
-        ) = self._fetch_workfile_entities(
+        ) = self._fetch_published_workfile_entities(
             project_name,
             folder_id,
             version_entities,
@@ -746,7 +746,7 @@ class IWorkfileHost:
             task_entity,
             dst_path,
         )
-        self._emit_workfile_save_event(event_data, after_open=False)
+        self._emit_workfile_save_event(event_data, after_save=False)
 
         dst_dir = os.path.dirname(dst_path)
         if not os.path.exists(dst_dir):
@@ -921,7 +921,7 @@ class IWorkfileHost:
 
         return self.workfile_has_unsaved_changes()
 
-    def _fetch_workfile_entities(
+    def _fetch_published_workfile_entities(
         self,
         project_name: str,
         folder_id: str,
@@ -931,6 +931,21 @@ class IWorkfileHost:
         list[dict[str, Any]],
         list[dict[str, Any]]
     ]:
+        """Fetch integrated workfile entities for the given folder.
+
+        Args:
+            project_name (str): Project name.
+            folder_id (str): Folder id.
+            version_entities (Optional[list[dict[str, Any]]]): Pre-fetched
+                version entities.
+            repre_entities (Optional[list[dict[str, Any]]]): Pre-fetched
+                representation entities.
+
+        Returns:
+            tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+                Tuple of version entities and representation entities.
+
+        """
         if repre_entities is not None and version_entities is None:
             # Get versions of representations
             version_ids = {r["versionId"] for r in repre_entities}
@@ -985,6 +1000,27 @@ class IWorkfileHost:
         project_entity: Optional[dict[str, Any]] = None,
         anatomy: Optional["Anatomy"] = None,
     ) -> Optional[dict[str, Any]]:
+        """Create of update workfile entity to AYON based on provided data.
+
+        Args:
+            workfile_path (str): Path to the workfile.
+            folder_entity (dict[str, Any]): Folder entity.
+            task_entity (dict[str, Any]): Task entity.
+            version (Optional[int]): Version of the workfile.
+            comment (Optional[str]): Comment for the workfile.
+            description (Optional[str]): Artist note for the workfile entity.
+            rootless_path (Optional[str]): Prepared rootless path of
+                the workfile.
+            workfile_entities (Optional[list[dict[str, Any]]]): Pre-fetched
+                workfile entities.
+            project_settings (Optional[dict[str, Any]]): Project settings.
+            project_entity (Optional[dict[str, Any]]): Project entity.
+            anatomy (Optional[Anatomy]): Project anatomy.
+
+        Returns:
+            Optional[dict[str, Any]]: Workfile entity.
+
+        """
         from ayon_core.pipeline.workfile.utils import (
             save_workfile_info,
             find_workfile_rootless_path,
@@ -1035,6 +1071,16 @@ class IWorkfileHost:
         task_entity: dict[str, Any],
         workdir: str,
     ) -> None:
+        """Create extra folders in the workdir.
+
+        This method should be called when workfile is saved or copied.
+
+        Args:
+            folder_entity (dict[str, Any]): Folder entity.
+            task_entity (dict[str, Any]): Task entity.
+            workdir (str): Workdir where workfile/s will be stored.
+
+        """
         from ayon_core.pipeline.workfile.path_resolving import (
             create_workdir_extra_folders
         )
@@ -1057,6 +1103,18 @@ class IWorkfileHost:
         task_entity: dict[str, Any],
         filepath: str,
     ) -> dict[str, Optional[str]]:
+        """Prepare workfile event data.
+
+        Args:
+            project_name (str): Name of the project where workfile lives.
+            folder_entity (dict[str, Any]): Folder entity.
+            task_entity (dict[str, Any]): Task entity.
+            filepath (str): Path to the workfile.
+
+        Returns:
+            dict[str, Optional[str]]: Data for workfile event.
+
+        """
         workdir, filename = os.path.split(filepath)
         return {
             "project_name": project_name,
@@ -1183,6 +1241,17 @@ class IWorkfileHost:
         event_data: dict[str, Optional[str]],
         after_open: bool = True,
     ) -> None:
+        """Emit workfile save event.
+
+        Emit event before and after workfile is opened.
+
+        Other addons can listen to this event and do additional steps.
+
+        Args:
+            event_data (dict[str, Optional[str]]): Prepare event data.
+            after_open (bool): Emit event after workfile is opened.
+
+        """
         topics = []
         topic_end = "before"
         if after_open:
@@ -1198,11 +1267,22 @@ class IWorkfileHost:
     def _emit_workfile_save_event(
         self,
         event_data: dict[str, Optional[str]],
-        after_open: bool = True,
+        after_save: bool = True,
     ) -> None:
+        """Emit workfile save event.
+
+        Emit event before and after workfile is saved or copied.
+
+        Other addons can listen to this event and do additional steps.
+
+        Args:
+            event_data (dict[str, Optional[str]]): Prepare event data.
+            after_save (bool): Emit event after workfile is saved.
+
+        """
         topics = []
         topic_end = "before"
-        if after_open:
+        if after_save:
             topics.append("workfile.saved")
             topic_end = "after"
 
