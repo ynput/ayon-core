@@ -142,6 +142,7 @@ class ProductsWidget(QtWidgets.QWidget):
     default_widths = (
         200,  # Product name
         90,   # Product type
+        90,   # Product base type
         130,  # Folder label
         60,   # Version
         100,  # Status

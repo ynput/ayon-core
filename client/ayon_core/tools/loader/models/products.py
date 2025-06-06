@@ -270,7 +270,7 @@ class ProductsModel:
     def get_product_base_type_items(
             self,
             project_name: Optional[str]) -> list[ProductBaseTypeItem]:
-        """Product base type items for project.
+        """Product base type items for the project.
 
         Args:
             project_name (optional, str): Project name.
