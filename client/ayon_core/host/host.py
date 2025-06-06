@@ -220,13 +220,7 @@ class HostBase(ABC):
             anatomy,
         )
         self._before_context_change(context_change_data)
-        self._set_current_context(
-            project_entity,
-            folder_entity,
-            task_entity,
-            reason,
-            anatomy,
-        )
+        self._set_current_context(context_change_data)
         self._after_context_change(context_change_data)
 
         return self._emit_context_change_event(
@@ -305,13 +299,8 @@ class HostBase(ABC):
         return data
 
     def _set_current_context(
-        self,
-        project_entity: dict[str, Any],
-        folder_entity: Optional[dict[str, Any]],
-        task_entity: Optional[dict[str, Any]],
-        reason: Optional[str],
-        anatomy: Anatomy,
-    ):
+        self, context_change_data: ContextChangeData
+    ) -> None:
         """Method that changes the context in host.
 
         Can be overriden for hosts that do need different handling of context
@@ -329,10 +318,10 @@ class HostBase(ABC):
         project_name = self.get_current_project_name()
         folder_path = None
         task_name = None
-        if folder_entity:
-            folder_path = folder_entity["path"]
-            if task_entity:
-                task_name = task_entity["name"]
+        if context_change_data.folder_entity:
+            folder_path = context_change_data.folder_entity["path"]
+            if context_change_data.task_entity:
+                task_name = context_change_data.task_entity["name"]
 
         envs = {
             "AYON_PROJECT_NAME": project_name,
