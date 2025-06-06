@@ -287,6 +287,13 @@ class IWorkfileHost:
     ):
         """Save the current workfile with context.
 
+        Arguments 'rootless_path', 'workfile_entities', 'project_entity'
+            and 'anatomy' can be filled to enhance efficiency if you already
+            have access to the values.
+
+        Argument 'project_settings' is used to calculate 'rootless_path'
+            if it is not provided.
+
         Notes:
             Should this method care about context change?
 
@@ -294,11 +301,13 @@ class IWorkfileHost:
             filepath (str): Where the current scene should be saved.
             folder_entity (dict[str, Any]): Folder entity.
             task_entity (dict[str, Any]): Task entity.
-            version (Optional[int]): Version of the workfile.
+            version (Optional[int]): Version of the workfile. Information
+                for workfile entity. Recommended to fill.
             comment (Optional[str]): Comment for the workfile.
                 Usually used in the filename template.
-            description (Optional[str]): Description for the workfile.
-            rootless_path (Optional[str]): Rootless path of the workfile.
+            description (Optional[str]): Artist note for the workfile entity.
+            rootless_path (Optional[str]): Prepared rootless path of
+                the workfile.
             workfile_entities (Optional[list[dict[str, Any]]]): Pre-fetched
                 workfile entities for the task.
             project_settings (Optional[dict[str, Any]]): Project settings.
@@ -422,14 +431,16 @@ class IWorkfileHost:
         project_settings: Optional[dict[str, Any]] = None,
         anatomy: Optional["Anatomy"] = None,
     ) -> list[WorkfileInfo]:
-        """List workfiles in the given folder.
+        """List workfiles in the given task.
+
+        The method should also return workfiles that are not available on
+            disk, but are in the AYON database.
 
         Notes:
         - Better method name?
         - This method is pre-implemented as the logic can be shared across
             95% of host integrations. Ad-hoc implementation to give host
             integration workfile api functionality.
-        - Should this method also handle workfiles based on workfile entities?
 
         Args:
             project_name (str): Project name.
@@ -670,14 +681,22 @@ class IWorkfileHost:
         It is expected that workfile is saved to the current project, but
             can be copied from the other project.
 
+        Arguments 'rootless_path', 'workfile_entities', 'project_entity'
+            and 'anatomy' can be filled to enhance efficiency if you already
+            have access to the values.
+
+        Argument 'project_settings' is used to calculate 'rootless_path'
+            if it is not provided.
+
         Args:
             src_path (str): Path to the source scene.
             dst_path (str): Where the scene should be saved.
             folder_entity (dict[str, Any]): Folder entity.
             task_entity (dict[str, Any]): Task entity.
-            version (Optional[int]): Version of the workfile.
+            version (Optional[int]): Version of the workfile. Information
+                for workfile entity. Recommended to fill.
             comment (Optional[str]): Comment for the workfile.
-            description (Optional[str]): Description for the workfile.
+            description (Optional[str]): Artist note for the workfile entity.
             rootless_path (Optional[str]): Rootless path of the workfile.
             workfile_entities (Optional[list[dict[str, Any]]]): Pre-fetched
                 workfile entities for the task.
@@ -762,6 +781,13 @@ class IWorkfileHost:
 
         Use representation as source for the workfile.
 
+        Arguments 'rootless_path', 'workfile_entities', 'project_entity'
+            and 'anatomy' can be filled to enhance efficiency if you already
+            have access to the values.
+
+        Argument 'project_settings' is used to calculate 'rootless_path'
+            if it is not provided.
+
         Args:
             src_project_name (str): Project name.
             src_representation_entity (dict[str, Any]): Representation
@@ -769,9 +795,10 @@ class IWorkfileHost:
             dst_path (str): Where the scene should be saved.
             folder_entity (dict[str, Any): Folder entity.
             task_entity (dict[str, Any]): Task entity.
-            version (Optional[int]): Version of the workfile.
+            version (Optional[int]): Version of the workfile. Information
+                for workfile entity. Recommended to fill.
             comment (Optional[str]): Comment for the workfile.
-            description (Optional[str]): Description for the workfile.
+            description (Optional[str]): Artist note for the workfile entity.
             rootless_path (Optional[str]): Rootless path of the workfile.
             workfile_entities (Optional[list[dict[str, Any]]]): Pre-fetched
                 workfile entities for the task.
