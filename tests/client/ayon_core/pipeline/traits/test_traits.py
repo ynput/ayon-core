@@ -362,7 +362,7 @@ def test_representation_equality() -> None:
         Planar(planar_configuration="RGBA"),
     ])
 
-    # lets assume ids are the same (because ids are randomly generated)
+    # let's assume ids are the same (because ids are randomly generated)
     rep_b.representation_id = rep_d.representation_id = rep_a.representation_id
     rep_c.representation_id = rep_e.representation_id = rep_a.representation_id
     rep_f.representation_id = rep_a.representation_id
@@ -378,6 +378,7 @@ def test_representation_equality() -> None:
     assert rep_d != rep_e
     # because of the trait difference
     assert rep_d != rep_f
+
 
 def test_get_repre_by_name():
     """Test getting representation by name."""
@@ -401,4 +402,4 @@ def test_get_repre_by_name():
     ])
 
     representations = [rep_a, rep_b]
-    repre = next(rep for rep in representations if rep.name == "test_a")
+    _ = next(rep for rep in representations if rep.name == "test_a")
