@@ -25,7 +25,6 @@ class ContextChangeData:
     anatomy: "Anatomy"
 
 
-
 class HostBase(ABC):
     """Base of host implementation class.
 
@@ -169,7 +168,7 @@ class HostBase(ABC):
         reason: Optional[str] = None,
         project_entity: Optional[dict[str, Any]] = None,
         anatomy: Optional["Anatomy"] = None,
-    ):
+    ) -> dict[str, Optional[str]]:
         """Set current context information.
 
         This method should be used to set current context of host. Usage of
@@ -187,6 +186,10 @@ class HostBase(ABC):
             reason (Optional[str]): Reason for context change.
             project_entity (Optional[dict[str, Any]]): Project entity data.
             anatomy (Optional[Anatomy]): Anatomy instance for the project.
+
+        Returns:
+            dict[str, Optional[str]]: Context information with project name,
+                folder path and task name.
 
         """
         from ayon_core.pipeline import Anatomy
