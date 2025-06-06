@@ -616,9 +616,12 @@ def convert_input_paths_for_ffmpeg(
         input_info, logger=logger
     )
 
+    # clique.PATTERNS["frames"] supports only `.1001.exr` not `_1001.exr` so
+    # we use a customized pattern.
+    pattern = "[_.](?P<index>(?P<padding>0*)\\d+)\\.\\D+\\d?$"
     input_collections, input_remainder = clique.assemble(
         input_paths,
-        patterns=[clique.PATTERNS["frames"]],
+        patterns=[pattern],
         assume_padded_when_ambiguous=True,
     )
     input_items = list(input_collections)
