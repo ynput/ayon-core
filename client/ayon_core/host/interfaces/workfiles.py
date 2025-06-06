@@ -147,7 +147,7 @@ class WorkfileInfo:
         return asdict(self)
 
     @classmethod
-    def from_data(cls, data: dict[str, Any]) -> "WorkfileInfo":
+    def from_data(cls, data: dict[str, Any]) -> WorkfileInfo:
         """Converts data to workfile item.
 
         Args:
@@ -328,7 +328,7 @@ class IWorkfileHost:
         workfile_entities: Optional[list[dict[str, Any]]] = None,
         project_settings: Optional[dict[str, Any]] = None,
         project_entity: Optional[dict[str, Any]] = None,
-        anatomy: Optional["Anatomy"] = None,
+        anatomy: Optional[Anatomy] = None,
     ) -> None:
         """Save the current workfile with context.
 
@@ -417,7 +417,7 @@ class IWorkfileHost:
         *,
         project_entity: Optional[dict[str, Any]] = None,
         project_settings: Optional[dict[str, Any]] = None,
-        anatomy: Optional["Anatomy"] = None,
+        anatomy: Optional[Anatomy] = None,
     ) -> None:
         """Open passed filepath in the host with context.
 
@@ -476,7 +476,7 @@ class IWorkfileHost:
         workfile_entities: Optional[list[dict[str, Any]]] = None,
         template_key: Optional[str] = None,
         project_settings: Optional[dict[str, Any]] = None,
-        anatomy: Optional["Anatomy"] = None,
+        anatomy: Optional[Anatomy] = None,
     ) -> list[WorkfileInfo]:
         """List workfiles in the given task.
 
@@ -601,7 +601,7 @@ class IWorkfileHost:
         project_name: str,
         folder_id: str,
         *,
-        anatomy: Optional["Anatomy"] = None,
+        anatomy: Optional[Anatomy] = None,
         version_entities: Optional[list[dict[str, Any]]] = None,
         repre_entities: Optional[list[dict[str, Any]]] = None,
     ) -> list[PublishedWorkfileInfo]:
@@ -721,7 +721,7 @@ class IWorkfileHost:
         workfile_entities: Optional[list[dict[str, Any]]] = None,
         project_settings: Optional[dict[str, Any]] = None,
         project_entity: Optional[dict[str, Any]] = None,
-        anatomy: Optional["Anatomy"] = None,
+        anatomy: Optional[Anatomy] = None,
         open_workfile: bool = True,
     ) -> None:
         """Save workfile path with target folder and task context.
@@ -815,9 +815,9 @@ class IWorkfileHost:
         workfile_entities: Optional[list[dict[str, Any]]] = None,
         project_settings: Optional[dict[str, Any]] = None,
         project_entity: Optional[dict[str, Any]] = None,
-        anatomy: Optional["Anatomy"] = None,
+        anatomy: Optional[Anatomy] = None,
         open_workfile: bool = True,
-        src_anatomy: Optional["Anatomy"] = None,
+        src_anatomy: Optional[Anatomy] = None,
         src_representation_path: Optional[str] = None,
     ) -> None:
         """Copy workfile representation.
@@ -1025,7 +1025,7 @@ class IWorkfileHost:
         workfile_entities: Optional[list[dict[str, Any]]] = None,
         project_settings: Optional[dict[str, Any]] = None,
         project_entity: Optional[dict[str, Any]] = None,
-        anatomy: Optional["Anatomy"] = None,
+        anatomy: Optional[Anatomy] = None,
     ) -> Optional[dict[str, Any]]:
         """Create of update workfile entity to AYON based on provided data.
 
