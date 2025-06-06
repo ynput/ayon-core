@@ -4,6 +4,7 @@ import os
 import logging
 import contextlib
 from abc import ABC, abstractmethod
+from dataclasses import dataclass
 import typing
 from typing import Optional, Any
 
@@ -13,6 +14,16 @@ from ayon_core.lib import emit_event
 
 if typing.TYPE_CHECKING:
     from ayon_core.pipeline import Anatomy
+
+
+@dataclass
+class ContextChangeData:
+    project_entity: dict[str, Any]
+    folder_entity: dict[str, Any]
+    task_entity: dict[str, Any]
+    reason: Optional[str]
+    anatomy: "Anatomy"
+
 
 
 class HostBase(ABC):
@@ -198,13 +209,14 @@ class HostBase(ABC):
         if anatomy is None:
             anatomy = Anatomy(project_name, project_entity=project_entity)
 
-        self._before_context_change(
+        context_change_data = ContextChangeData(
             project_entity,
             folder_entity,
             task_entity,
             reason,
             anatomy,
         )
+        self._before_context_change(context_change_data)
         self._set_current_context(
             project_entity,
             folder_entity,
@@ -212,13 +224,7 @@ class HostBase(ABC):
             reason,
             anatomy,
         )
-        self._after_context_change(
-            project_entity,
-            folder_entity,
-            task_entity,
-            reason,
-            anatomy,
-        )
+        self._after_context_change(context_change_data)
 
         return self._emit_context_change_event(
             project_name,
@@ -339,14 +345,7 @@ class HostBase(ABC):
             else:
                 os.environ[key] = value
 
-    def _before_context_change(
-        self,
-        project_entity: dict[str, Any],
-        folder_entity: Optional[dict[str, Any]],
-        task_entity: Optional[dict[str, Any]],
-        reason: Optional[str],
-        anatomy: "Anatomy",
-    ):
+    def _before_context_change(self, context_change_data: ContextChangeData):
         """Before context is changed.
 
         This method is called before the context is changed in the host.
@@ -354,21 +353,13 @@ class HostBase(ABC):
         Can be overriden to implement host specific logic.
 
         Args:
-            folder_entity (dict[str, Any]): Folder entity.
-            task_entity (dict[str, Any]): Task entity.
-            reason (Optional[str]): Reason for context change.
+            context_change_data (ContextChangeData): Object with information
+                about context change.
 
         """
         pass
 
-    def _after_context_change(
-        self,
-        project_entity: dict[str, Any],
-        folder_entity: dict[str, Any],
-        task_entity: dict[str, Any],
-        reason: Optional[str],
-        anatomy: "Anatomy",
-    ):
+    def _after_context_change(self, context_change_data: ContextChangeData):
         """After context is changed.
 
         This method is called after the context is changed in the host.
@@ -376,9 +367,8 @@ class HostBase(ABC):
         Can be overriden to implement host specific logic.
 
         Args:
-            folder_entity (dict[str, Any]): Folder entity.
-            task_entity (dict[str, Any]): Task entity.
-            reason (Optional[str]): Reason for context change.
+            context_change_data (ContextChangeData): Object with information
+                about context change.
 
         """
         pass
