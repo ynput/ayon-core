@@ -22,6 +22,29 @@ WORKFILE_SAVE_REASON = "workfile.saved"
 
 
 @dataclass
+class WorkfileOpenData:
+    filepath: str
+    folder_entity: dict[str, Any]
+    task_entity: dict[str, Any]
+
+
+@dataclass
+class WorkfileSaveData(WorkfileOpenData):
+    filepath: str
+    folder_entity: dict[str, Any]
+    task_entity: dict[str, Any]
+
+
+@dataclass
+class WorkfileCopyData:
+    source_path: str
+    destination_path: str
+    folder_entity: dict[str, Any]
+    task_entity: dict[str, Any]
+    open_workfile: bool
+
+
+@dataclass
 class WorkfileInfo:
     """Information about workfile.
 
@@ -315,11 +338,12 @@ class IWorkfileHost:
             anatomy (Optional[Anatomy]): Project anatomy.
 
         """
-        self._before_workfile_save(
-            filepath,
-            folder_entity,
-            task_entity,
+        save_workfile_data = WorkfileSaveData(
+            folder_entity=folder_entity,
+            task_entity=task_entity,
+            filepath=filepath,
         )
+        self._before_workfile_save(save_workfile_data)
         project_name = self.get_current_project_name()
         event_data = self._get_workfile_event_data(
             project_name,
@@ -360,11 +384,7 @@ class IWorkfileHost:
             project_entity,
             anatomy,
         )
-        self._after_workfile_save(
-            filepath,
-            folder_entity,
-            task_entity,
-        )
+        self._after_workfile_save(save_workfile_data)
         self._emit_workfile_save_event(event_data)
 
     def open_workfile_with_context(
@@ -403,8 +423,12 @@ class IWorkfileHost:
         event_data = self._get_workfile_event_data(
             project_name, folder_entity, task_entity, filepath
         )
-
-        self._before_workfile_open(folder_entity, task_entity, filepath)
+        open_workfile_data = WorkfileOpenData(
+            folder_entity=folder_entity,
+            task_entity=task_entity,
+            filepath=filepath,
+        )
+        self._before_workfile_open(open_workfile_data)
         self._emit_workfile_open_event(event_data, after_open=False)
 
         self.set_current_context(
@@ -417,7 +441,7 @@ class IWorkfileHost:
 
         self.open_workfile(filepath)
 
-        self._after_workfile_open(folder_entity, task_entity, filepath)
+        self._after_workfile_open(open_workfile_data)
         self._emit_workfile_open_event(event_data)
 
     def list_workfiles(
@@ -707,13 +731,15 @@ class IWorkfileHost:
             open_workfile (bool): Open workfile when copied.
 
         """
-        self._before_workfile_copy(
-            src_path,
-            dst_path,
-            folder_entity,
-            task_entity,
-            open_workfile,
+        copy_workfile_data = WorkfileCopyData(
+            source_path=src_path,
+            destination_path=dst_path,
+            folder_entity=folder_entity,
+            task_entity=task_entity,
+            open_workfile=open_workfile,
+            
         )
+        self._before_workfile_copy(copy_workfile_data)
         event_data = self._get_workfile_event_data(
             self.get_current_project_name(),
             folder_entity,
@@ -740,13 +766,7 @@ class IWorkfileHost:
             project_entity,
             anatomy,
         )
-        self._after_workfile_copy(
-            src_path,
-            dst_path,
-            folder_entity,
-            task_entity,
-            open_workfile,
-        )
+        self._after_workfile_copy(copy_workfile_data)
         self._emit_workfile_save_event(event_data)
 
         if not open_workfile:
@@ -1046,11 +1066,8 @@ class IWorkfileHost:
         }
 
     def _before_workfile_open(
-        self,
-        folder_entity: dict[str, Any],
-        task_entity: dict[str, Any],
-        filepath: str,
-    ):
+        self, open_workfile_data: WorkfileOpenData
+    ) -> None:
         """Before workfile is opened.
 
         This method is called before the workfile is opened in the host.
@@ -1058,19 +1075,15 @@ class IWorkfileHost:
         Can be overriden to implement host specific logic.
 
         Args:
-            folder_entity (dict[str, Any]): Folder entity.
-            task_entity (dict[str, Any]): Task entity.
-            filepath (str): Path to the workfile.
+            open_workfile_data (WorkfileOpenData): Context and path of
+                workfile to open.
 
         """
         pass
 
     def _after_workfile_open(
-        self,
-        folder_entity: dict[str, Any],
-        task_entity: dict[str, Any],
-        filepath: str,
-    ):
+        self, open_workfile_data: WorkfileOpenData
+    ) -> None:
         """After workfile is opened.
 
         This method is called after the workfile is opened in the host.
@@ -1078,19 +1091,15 @@ class IWorkfileHost:
         Can be overriden to implement host specific logic.
 
         Args:
-            folder_entity (dict[str, Any]): Folder entity.
-            task_entity (dict[str, Any]): Task entity.
-            filepath (str): Path to the workfile.
+            open_workfile_data (WorkfileOpenData): Context and path of
+                opened workfile.
 
         """
         pass
 
     def _before_workfile_save(
-        self,
-        filepath: str,
-        folder_entity: dict[str, Any],
-        task_entity: dict[str, Any],
-    ):
+        self, save_workfile_data: WorkfileSaveData
+    ) -> None:
         """Before workfile is saved.
 
         This method is called before the workfile is saved in the host.
@@ -1098,19 +1107,15 @@ class IWorkfileHost:
         Can be overriden to implement host specific logic.
 
         Args:
-            filepath (str): Path to the workfile.
-            folder_entity (dict[str, Any]): Folder entity.
-            task_entity (dict[str, Any]): Task entity.
+            save_workfile_data (WorkfileSaveData): Workfile path with target
+                folder and task context.
 
         """
         pass
 
     def _after_workfile_save(
-        self,
-        filepath: str,
-        folder_entity: dict[str, Any],
-        task_entity: dict[str, Any],
-    ):
+        self, save_workfile_data: WorkfileSaveData
+    ) -> None:
         """After workfile is saved.
 
         This method is called after the workfile is saved in the host.
@@ -1118,22 +1123,20 @@ class IWorkfileHost:
         Can be overriden to implement host specific logic.
 
         Args:
-            folder_entity (dict[str, Any]): Folder entity.
-            task_entity (dict[str, Any]): Task entity.
-            filepath (str): Path to the workfile.
+            save_workfile_data (WorkfileSaveData): Workfile path with target
+                folder and task context.
 
         """
-        workdir = os.path.dirname(filepath)
-        self._create_extra_folders(folder_entity, task_entity, workdir)
+        workdir = os.path.dirname(save_workfile_data.filepath)
+        self._create_extra_folders(
+            save_workfile_data.folder_entity,
+            save_workfile_data.task_entity,
+            workdir
+        )
 
     def _before_workfile_copy(
-        self,
-        src_path: str,
-        dst_path: str,
-        folder_entity: dict[str, Any],
-        task_entity: dict[str, Any],
-        open_workfile: bool = True,
-    ):
+        self, copy_workfile_data: WorkfileCopyData
+    ) -> None:
         """Before workfile is copied.
 
         This method is called before the workfile is copied by host
@@ -1142,24 +1145,15 @@ class IWorkfileHost:
         Can be overriden to implement host specific logic.
 
         Args:
-            src_path (str): Path to the source workfile.
-            dst_path (str): Path to the destination workfile.
-            folder_entity (dict[str, Any]): Folder entity.
-            task_entity (dict[str, Any]): Task entity.
-            open_workfile (bool): Should be the path opened once copy is
-                finished.
+            copy_workfile_data (WorkfileCopyData): Source and destination
+                path with context before workfile is copied.
 
         """
         pass
 
     def _after_workfile_copy(
-        self,
-        src_path: str,
-        dst_path: str,
-        folder_entity: dict[str, Any],
-        task_entity: dict[str, Any],
-        open_workfile: bool = True,
-    ):
+        self, copy_workfile_data: WorkfileCopyData
+    ) -> None:
         """After workfile is copied.
 
         This method is called after the workfile is copied by host
@@ -1168,22 +1162,22 @@ class IWorkfileHost:
         Can be overriden to implement host specific logic.
 
         Args:
-            src_path (str): Path to the source workfile.
-            dst_path (str): Path to the destination workfile.
-            folder_entity (dict[str, Any]): Folder entity.
-            task_entity (dict[str, Any]): Task entity.
-            open_workfile (bool): Should be the path opened once copy is
-                finished.
+            copy_workfile_data (WorkfileCopyData): Source and destination
+                path with context after workfile is copied.
 
         """
-        workdir = os.path.dirname(dst_path)
-        self._create_extra_folders(folder_entity, task_entity, workdir)
+        workdir = os.path.dirname(copy_workfile_data.destination_path)
+        self._create_extra_folders(
+            copy_workfile_data.folder_entity,
+            copy_workfile_data.task_entity,
+            workdir,
+        )
 
     def _emit_workfile_open_event(
         self,
         event_data: dict[str, Optional[str]],
         after_open: bool = True,
-    ):
+    ) -> None:
         topics = []
         topic_end = "before"
         if after_open:
@@ -1200,7 +1194,7 @@ class IWorkfileHost:
         self,
         event_data: dict[str, Optional[str]],
         after_open: bool = True,
-    ):
+    ) -> None:
         topics = []
         topic_end = "before"
         if after_open:
