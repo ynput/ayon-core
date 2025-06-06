@@ -425,6 +425,7 @@ class IWorkfileHost:
         project_name: str,
         folder_entity: dict[str, Any],
         task_entity: dict[str, Any],
+        *,
         project_entity: Optional[dict[str, Any]] = None,
         workfile_entities: Optional[list[dict[str, Any]]] = None,
         template_key: Optional[str] = None,
