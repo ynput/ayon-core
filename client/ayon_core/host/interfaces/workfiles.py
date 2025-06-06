@@ -186,7 +186,7 @@ class PublishedWorkfileInfo:
         file_size: Optional[float],
         file_modified: Optional[float],
         file_created: Optional[float],
-    ):
+    ) -> "PublishedWorkfileInfo":
         created_at = arrow.get(repre_entity["createdAt"]).to("local")
 
         return cls(
@@ -307,7 +307,7 @@ class IWorkfileHost:
         project_settings: Optional[dict[str, Any]] = None,
         project_entity: Optional[dict[str, Any]] = None,
         anatomy: Optional["Anatomy"] = None,
-    ):
+    ) -> None:
         """Save the current workfile with context.
 
         Arguments 'rootless_path', 'workfile_entities', 'project_entity'
@@ -396,7 +396,7 @@ class IWorkfileHost:
         project_entity: Optional[dict[str, Any]] = None,
         project_settings: Optional[dict[str, Any]] = None,
         anatomy: Optional["Anatomy"] = None,
-    ):
+    ) -> None:
         """Open passed filepath in the host with context.
 
         This function should be used to open workfile in different context.
@@ -701,7 +701,7 @@ class IWorkfileHost:
         project_entity: Optional[dict[str, Any]] = None,
         anatomy: Optional["Anatomy"] = None,
         open_workfile: bool = True,
-    ):
+    ) -> None:
         """Save workfile path with target folder and task context.
 
         It is expected that workfile is saved to the current project, but
@@ -797,7 +797,7 @@ class IWorkfileHost:
         open_workfile: bool = True,
         src_anatomy: Optional["Anatomy"] = None,
         src_representation_path: Optional[str] = None,
-    ):
+    ) -> None:
         """Copy workfile representation.
 
         Use representation as source for the workfile.
@@ -984,7 +984,7 @@ class IWorkfileHost:
         project_settings: Optional[dict[str, Any]] = None,
         project_entity: Optional[dict[str, Any]] = None,
         anatomy: Optional["Anatomy"] = None,
-    ):
+    ) -> Optional[dict[str, Any]]:
         from ayon_core.pipeline.workfile.utils import (
             save_workfile_info,
             find_workfile_rootless_path,
@@ -1029,7 +1029,12 @@ class IWorkfileHost:
         )
         return workfile_info
 
-    def _create_extra_folders(self, folder_entity, task_entity, workdir):
+    def _create_extra_folders(
+        self,
+        folder_entity: dict[str, Any],
+        task_entity: dict[str, Any],
+        workdir: str,
+    ) -> None:
         from ayon_core.pipeline.workfile.path_resolving import (
             create_workdir_extra_folders
         )
@@ -1051,7 +1056,7 @@ class IWorkfileHost:
         folder_entity: dict[str, Any],
         task_entity: dict[str, Any],
         filepath: str,
-    ):
+    ) -> dict[str, Optional[str]]:
         workdir, filename = os.path.split(filepath)
         return {
             "project_name": project_name,
