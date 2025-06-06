@@ -1,5 +1,6 @@
+from __future__ import annotations
 from abc import ABC, abstractmethod
-from typing import List
+from typing import List, Optional, TypedDict
 
 from ayon_core.lib.attribute_definitions import (
     AbstractAttrDef,
@@ -8,15 +9,62 @@ from ayon_core.lib.attribute_definitions import (
 )
 
 
+IconData = TypedDict("IconData", {
+    "type": str,
+    "name": str,
+    "color": str
+})
+
+ProductBaseTypeItemData = TypedDict("ProductBaseTypeItemData", {
+    "name": str,
+    "icon": IconData
+})
+
+
+VersionItemData = TypedDict("VersionItemData", {
+    "version_id": str,
+    "version": int,
+    "is_hero": bool,
+    "product_id": str,
+    "task_id": Optional[str],
+    "thumbnail_id": Optional[str],
+    "published_time": Optional[str],
+    "author": Optional[str],
+    "status": Optional[str],
+    "frame_range": Optional[str],
+    "duration": Optional[int],
+    "handles": Optional[str],
+    "step": Optional[int],
+    "comment": Optional[str],
+    "source": Optional[str]
+})
+
+
+ProductItemData = TypedDict("ProductItemData", {
+    "product_id": str,
+    "product_type": str,
+    "product_base_type": str,
+    "product_name": str,
+    "product_icon": IconData,
+    "product_type_icon": IconData,
+    "product_base_type_icon": IconData,
+    "group_name": str,
+    "folder_id": str,
+    "folder_label": str,
+    "version_items": dict[str, VersionItemData],
+    "product_in_scene": bool
+})
+
+
 class ProductTypeItem:
     """Item representing product type.
 
     Args:
         name (str): Product type name.
-        icon (dict[str, Any]): Product type icon definition.
+        icon (IconData): Product type icon definition.
     """
 
-    def __init__(self, name, icon):
+    def __init__(self, name: str, icon: IconData):
         self.name = name
         self.icon = icon
 
@@ -31,6 +79,24 @@ class ProductTypeItem:
         return cls(**data)
 
 
+class ProductBaseTypeItem:
+    """Item representing product base type."""
+
+    def __init__(self, name: str, icon: IconData):
+        self.name = name
+        self.icon = icon
+
+    def to_data(self) -> ProductBaseTypeItemData:
+        return {
+            "name": self.name,
+            "icon": self.icon,
+        }
+
+    @classmethod
+    def from_data(cls, data: ProductBaseTypeItemData):
+        return cls(**data)
+
+
 class ProductItem:
     """Product item with it versions.
 
@@ -38,8 +104,8 @@ class ProductItem:
         product_id (str): Product id.
         product_type (str): Product type.
         product_name (str): Product name.
-        product_icon (dict[str, Any]): Product icon definition.
-        product_type_icon (dict[str, Any]): Product type icon definition.
+        product_icon (IconData): Product icon definition.
+        product_type_icon (IconData): Product type icon definition.
         product_in_scene (bool): Is product in scene (only when used in DCC).
         group_name (str): Group name.
         folder_id (str): Folder id.
@@ -49,35 +115,42 @@ class ProductItem:
 
     def __init__(
         self,
-        product_id,
-        product_type,
-        product_name,
-        product_icon,
-        product_type_icon,
-        product_in_scene,
-        group_name,
-        folder_id,
-        folder_label,
-        version_items,
+        product_id: str,
+        product_type: str,
+        product_base_type: str,
+        product_name: str,
+        product_icon: IconData,
+        product_type_icon: IconData,
+        product_base_type_icon: IconData,
+        group_name: str,
+        folder_id: str,
+        folder_label: str,
+        version_items: dict[str, VersionItem],
+        *,
+        product_in_scene: bool,
     ):
         self.product_id = product_id
         self.product_type = product_type
+        self.product_base_type = product_base_type
         self.product_name = product_name
         self.product_icon = product_icon
         self.product_type_icon = product_type_icon
+        self.product_base_type_icon = product_base_type_icon
         self.product_in_scene = product_in_scene
         self.group_name = group_name
         self.folder_id = folder_id
         self.folder_label = folder_label
         self.version_items = version_items
 
-    def to_data(self):
+    def to_data(self) -> ProductItemData:
         return {
             "product_id": self.product_id,
             "product_type": self.product_type,
+            "product_base_type": self.product_base_type,
             "product_name": self.product_name,
             "product_icon": self.product_icon,
             "product_type_icon": self.product_type_icon,
+            "product_base_type_icon": self.product_base_type_icon,
             "product_in_scene": self.product_in_scene,
             "group_name": self.group_name,
             "folder_id": self.folder_id,
@@ -124,21 +197,22 @@ class VersionItem:
 
     def __init__(
         self,
-        version_id,
-        version,
-        is_hero,
-        product_id,
-        task_id,
-        thumbnail_id,
-        published_time,
-        author,
-        status,
-        frame_range,
-        duration,
-        handles,
-        step,
-        comment,
-        source,
+        *,
+        version_id: str,
+        version: int,
+        is_hero: bool,
+        product_id: str,
+        task_id: Optional[str] = None,
+        thumbnail_id: Optional[str] = None,
+        published_time: Optional[str] = None,
+        author: Optional[str] = None,
+        status: Optional[str] = None,
+        frame_range: Optional[str] = None,
+        duration: Optional[int] = None,
+        handles: Optional[str] = None,
+        step: Optional[int] = None,
+        comment: Optional[str] = None,
+        source: Optional[str] = None,
     ):
         self.version_id = version_id
         self.product_id = product_id
@@ -198,7 +272,7 @@ class VersionItem:
     def __le__(self, other):
         return self.__eq__(other) or self.__lt__(other)
 
-    def to_data(self):
+    def to_data(self) -> VersionItemData:
         return {
             "version_id": self.version_id,
             "product_id": self.product_id,
@@ -218,7 +292,7 @@ class VersionItem:
         }
 
     @classmethod
-    def from_data(cls, data):
+    def from_data(cls, data: VersionItemData):
         return cls(**data)
 
 
