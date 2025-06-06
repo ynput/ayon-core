@@ -4,6 +4,7 @@ from typing import Optional
 
 from qtpy import QtWidgets, QtCore
 
+from ayon_core.pipeline.compatibility import is_supporting_product_base_type
 from ayon_core.tools.utils import (
     RecursiveSortFilterProxyModel,
     DeselectableTreeView,
@@ -261,6 +262,12 @@ class ProductsWidget(QtWidgets.QWidget):
         self._set_sitesync_visibility(
             self._controller.is_sitesync_enabled()
         )
+
+        if not is_supporting_product_base_type():
+            # Hide product base type column
+            products_view.setColumnHidden(
+                products_model.product_base_type_col, True
+            )
 
     def set_name_filter(self, name):
         """Set filter of product name.
