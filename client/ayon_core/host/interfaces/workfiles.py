@@ -237,7 +237,7 @@ class IWorkfileHost:
 
         Returns:
             Optional[str]: Path to the file which is currently opened. None if
-                nothing is opened.
+                nothing is opened or the current workfile is unsaved.
 
         """
         return None
