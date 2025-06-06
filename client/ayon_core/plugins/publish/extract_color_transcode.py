@@ -159,9 +159,28 @@ class ExtractOIIOTranscode(publish.Extractor):
                     files_to_convert)
                 self.log.debug("Files to convert: {}".format(files_to_convert))
                 for file_name in files_to_convert:
+                    if isinstance(file_name, clique.Collection):
+                        # Support sequences with holes by supplying
+                        # dedicated `--frames` argument to `oiiotool`
+                        # Create `frames` string like "1001-1002,1004,1010-1012
+                        # Create `filename` string like "file.#.exr"
+                        frames = file_name.format("{ranges}").replace(" ", "")
+                        frame_padding = file_name.padding
+                        file_name = file_name.format("{head}#{tail}")
+                        parallel_frames = True
+                    elif isinstance(file_name, str):
+                        # Single file
+                        frames = None
+                        frame_padding = None
+                        parallel_frames = False
+                    else:
+                        raise TypeError(
+                            f"Unsupported file name type: {type(file_name)}."
+                            " Expected str or clique.Collection."
+                        )
+
                     self.log.debug("Transcoding file: `{}`".format(file_name))
-                    input_path = os.path.join(original_staging_dir,
-                                              file_name)
+                    input_path = os.path.join(original_staging_dir, file_name)
                     output_path = self._get_output_file_path(input_path,
                                                              new_staging_dir,
                                                              output_extension)
@@ -175,7 +194,10 @@ class ExtractOIIOTranscode(publish.Extractor):
                         view,
                         display,
                         additional_command_args,
-                        self.log
+                        frames=frames,
+                        frame_padding=frame_padding,
+                        parallel_frames=parallel_frames,
+                        logger=self.log
                     )
 
                 # cleanup temporary transcoded files
@@ -256,17 +278,18 @@ class ExtractOIIOTranscode(publish.Extractor):
         new_repre["files"] = renamed_files
 
     def _translate_to_sequence(self, files_to_convert):
-        """Returns original list or list with filename formatted in single
-        sequence format.
+        """Returns original individual filepaths or list of clique.Collection.
 
-        Uses clique to find frame sequence, in this case it merges all frames
-        into sequence format (FRAMESTART-FRAMEEND#) and returns it.
-        If sequence not found, it returns original list
+        Uses clique to find frame sequence, and return the collections instead.
+        If sequence not detected in input filenames, it returns original list.
 
         Args:
-            files_to_convert (list): list of file names
+            files_to_convert (list[str]): list of file names
         Returns:
-            (list) of [file.1001-1010#.exr] or [fileA.exr, fileB.exr]
+            list[str | clique.Collection]: List of
+                filepaths ['fileA.exr', 'fileB.exr']
+                or clique.Collection for a sequence.
+
         """
         pattern = [clique.PATTERNS["frames"]]
         collections, _ = clique.assemble(
@@ -278,16 +301,7 @@ class ExtractOIIOTranscode(publish.Extractor):
                 raise ValueError(
                     "Too many collections {}".format(collections))
 
-            collection = collections[0]
-            frames = list(collection.indexes)
-            if collection.holes():
-                return files_to_convert
-
-            frame_str = "{}-{}#".format(frames[0], frames[-1])
-            file_name = "{}{}{}".format(collection.head, frame_str,
-                                        collection.tail)
-
-            files_to_convert = [file_name]
+            return collections
 
         return files_to_convert
 

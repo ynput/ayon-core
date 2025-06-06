@@ -552,12 +552,11 @@ def _get_attributes_to_erase(
             erase_attrs[attr_name] = reason
             break
 
-    if logger is not None:
-        for attr_name, reason in erase_attrs.items():
-            logger.info(
-                f"Removed attribute \"{attr_name}\" from metadata"
-                f" because {reason}."
-            )
+    for attr_name, reason in erase_attrs.items():
+        logger.info(
+            f"Removed attribute \"{attr_name}\" from metadata"
+            f" because {reason}."
+        )
     return list(erase_attrs.keys())
 
 
@@ -640,11 +639,17 @@ def convert_input_paths_for_ffmpeg(
         # Convert a sequence of files using a single oiiotool command
         # using its sequence syntax
         if isinstance(_input, clique.Collection):
+            frames = _input.format("{head}#{tail}").replace(" ", "")
             oiio_cmd.extend([
                 "--framepadding", _input.padding,
-                "--frames", _input.format("{ranges}"),
+                "--frames", frames,
+                "--parallel-frames"
             ])
             _input: str = _input.format("{head}#{tail}")
+        elif not isinstance(_input, str):
+            raise TypeError(
+                f"Input is not a string or Collection: {_input}"
+            )
 
         oiio_cmd.extend([
             input_arg, _input,
@@ -1007,6 +1012,9 @@ def convert_colorspace(
     view=None,
     display=None,
     additional_command_args=None,
+    frames=None,
+    frame_padding=None,
+    parallel_frames=False,
     logger=None,
 ):
     """Convert source file from one color space to another.
@@ -1015,7 +1023,7 @@ def convert_colorspace(
         input_path (str): Path that should be converted. It is expected that
             contains single file or image sequence of same type
             (sequence in format 'file.FRAMESTART-FRAMEEND#.ext', see oiio docs,
-            eg `big.1-3#.tif`)
+            eg `big.1-3#.tif` or `big.1-3%d.ext` with `frames` argument)
         output_path (str): Path to output filename.
             (must follow format of 'input_path', eg. single file or
              sequence in 'file.FRAMESTART-FRAMEEND#.ext', `output.1-3#.tif`)
@@ -1029,6 +1037,13 @@ def convert_colorspace(
             both 'view' and 'display' must be filled (if 'target_colorspace')
         additional_command_args (list): arguments for oiiotool (like binary
             depth for .dpx)
+        frames (Optional[str]): Complex frame range to process. This requires
+            input path and output path to use frame token placeholder like
+            `#` or `%d`, e.g. file.#.exr
+        parallel_frames (bool): If True, process frames in parallel inside
+            the `oiiotool` process. Only supported in OIIO 2.5.20.0+.
+        frame_padding (Optional[int]): Frame padding to use for the input and
+            output when using a sequence filepath.
         logger (logging.Logger): Logger used for logging.
     Raises:
         ValueError: if misconfigured
@@ -1036,7 +1051,16 @@ def convert_colorspace(
     if logger is None:
         logger = logging.getLogger(__name__)
 
-    input_info = get_oiio_info_for_input(input_path, logger=logger)
+    # Get oiioinfo only from first image, otherwise file can't be found
+    first_input_path = input_path
+    if frames:
+        assert isinstance(frames, str)  # for type hints
+        first_frame = int(re.split("[ x-]", frames, 1)[0])
+        first_frame = str(first_frame).zfill(frame_padding or 0)
+        for token in ["#", "%d"]:
+            first_input_path = first_input_path.replace(token, first_frame)
+
+    input_info = get_oiio_info_for_input(first_input_path, logger=logger)
 
     # Collect channels to export
     input_arg, channels_arg = get_oiio_input_and_channel_args(input_info)
@@ -1048,6 +1072,24 @@ def convert_colorspace(
         "--nosoftwareattrib",
         "--colorconfig", config_path
     )
+
+    if frames:
+        # If `frames` is specified, then process the input and output
+        # as if it's a sequence of frames (must contain `%04d` as frame
+        # token placeholder in filepaths)
+        oiio_cmd.extend([
+            "--frames", frames,
+        ])
+
+    if frame_padding:
+        oiio_cmd.extend([
+            "--framepadding", str(frame_padding),
+        ])
+
+    if parallel_frames:
+        oiio_cmd.extend([
+            "--parallel-frames"
+        ])
 
     oiio_cmd.extend([
         input_arg, input_path,
