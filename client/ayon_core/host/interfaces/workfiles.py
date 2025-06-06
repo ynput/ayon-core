@@ -539,11 +539,12 @@ class IWorkfileHost:
 
         items = []
         for filename in filenames:
-            filepath = os.path.join(workdir, filename)
             # TODO add 'default' support for folders
-            ext = os.path.splitext(filepath)[1].lower()
+            ext = os.path.splitext(filename)[1].lower()
             if ext not in extensions:
                 continue
+
+            filepath = os.path.join(workdir, filename)
 
             rootless_path = f"{rootless_workdir}/{filename}"
             workfile_entity = workfile_entities_by_path.pop(
