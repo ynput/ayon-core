@@ -1,13 +1,14 @@
+"""Abstract base classes for loader tool."""
 from __future__ import annotations
+
 from abc import ABC, abstractmethod
 from typing import List, Optional, TypedDict
 
 from ayon_core.lib.attribute_definitions import (
     AbstractAttrDef,
-    serialize_attr_defs,
     deserialize_attr_defs,
+    serialize_attr_defs,
 )
-
 
 IconData = TypedDict("IconData", {
     "type": str,
@@ -80,20 +81,37 @@ class ProductTypeItem:
 
 
 class ProductBaseTypeItem:
-    """Item representing product base type."""
+    """Item representing the product base type."""
 
     def __init__(self, name: str, icon: IconData):
+        """Initialize product base type item."""
         self.name = name
         self.icon = icon
 
     def to_data(self) -> ProductBaseTypeItemData:
+        """Convert item to data dictionary.
+
+        Returns:
+            ProductBaseTypeItemData: Data representation of the item.
+
+        """
         return {
             "name": self.name,
             "icon": self.icon,
         }
 
     @classmethod
-    def from_data(cls, data: ProductBaseTypeItemData):
+    def from_data(
+            cls, data: ProductBaseTypeItemData) -> ProductBaseTypeItem:
+        """Create item from data dictionary.
+
+        Args:
+            data (ProductBaseTypeItemData): Data to create item from.
+
+        Returns:
+            ProductBaseTypeItem: Item created from the provided data.
+
+        """
         return cls(**data)
 
 
