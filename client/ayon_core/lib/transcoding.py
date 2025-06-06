@@ -567,7 +567,7 @@ def convert_input_paths_for_ffmpeg(
 ):
     """Convert source file to format supported in ffmpeg.
 
-    Currently, can convert only exrs. The input filepaths should be files
+    Can currently convert only EXRs. The input filepaths should be files
     with same type. Information about input is loaded only from first found
     file.
 
@@ -594,10 +594,10 @@ def convert_input_paths_for_ffmpeg(
     ext = os.path.splitext(first_input_path)[1].lower()
 
     if ext != ".exr":
-        raise ValueError((
-            "Function 'convert_for_ffmpeg' currently support only"
-            " \".exr\" extension. Got \"{}\"."
-        ).format(ext))
+        raise ValueError(
+            "Function 'convert_input_paths_for_ffmpeg' currently supports"
+            f" only \".exr\" extension. Got \"{ext}\"."
+        )
 
     input_info = get_oiio_info_for_input(first_input_path, logger=logger)
 
