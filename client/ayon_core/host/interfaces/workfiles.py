@@ -4,6 +4,8 @@ import os
 import platform
 import shutil
 import typing
+import warnings
+import functools
 from abc import abstractmethod
 from dataclasses import dataclass, asdict
 from typing import Optional, Any
@@ -19,6 +21,26 @@ if typing.TYPE_CHECKING:
 
 WORKFILE_OPEN_REASON = "workfile.opened"
 WORKFILE_SAVE_REASON = "workfile.saved"
+
+
+def deprecated(reason):
+    def decorator(func):
+        message = f"Call to deprecated function {func.__name__} ({reason})."
+
+        @functools.wraps(func)
+        def new_func(*args, **kwargs):
+            warnings.simplefilter("always", DeprecationWarning)
+            warnings.warn(
+                message,
+                category=DeprecationWarning,
+                stacklevel=2
+            )
+            warnings.simplefilter("default", DeprecationWarning)
+            return func(*args, **kwargs)
+
+        return new_func
+
+    return decorator
 
 
 @dataclass
@@ -876,6 +898,7 @@ class IWorkfileHost:
         )
 
     # --- Deprecated method names ---
+    @deprecated("Use 'get_workfile_extensions' instead")
     def file_extensions(self):
         """Deprecated variant of 'get_workfile_extensions'.
 
@@ -885,40 +908,44 @@ class IWorkfileHost:
         """
         return self.get_workfile_extensions()
 
+    @deprecated("Use 'save_workfile' instead")
     def save_file(self, dst_path=None):
         """Deprecated variant of 'save_workfile'.
 
         Todo:
-            Remove when all usages are replaced.
+            Remove when all usages are replaced
 
         """
         self.save_workfile(dst_path)
 
+    @deprecated("Use 'open_workfile' instead")
     def open_file(self, filepath):
         """Deprecated variant of 'open_workfile'.
 
         Todo:
             Remove when all usages are replaced.
-        """
 
+        """
         return self.open_workfile(filepath)
 
+    @deprecated("Use 'get_current_workfile' instead")
     def current_file(self):
         """Deprecated variant of 'get_current_workfile'.
 
         Todo:
             Remove when all usages are replaced.
-        """
 
+        """
         return self.get_current_workfile()
 
+    @deprecated("Use 'workfile_has_unsaved_changes' instead")
     def has_unsaved_changes(self):
         """Deprecated variant of 'workfile_has_unsaved_changes'.
 
         Todo:
             Remove when all usages are replaced.
-        """
 
+        """
         return self.workfile_has_unsaved_changes()
 
     def _fetch_published_workfile_entities(
