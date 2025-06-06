@@ -1,5 +1,7 @@
+from __future__ import annotations
 import os
 import logging
+from typing import ClassVar
 
 from ayon_core.settings import get_project_settings
 from ayon_core.pipeline.plugin_discover import (
@@ -251,6 +253,51 @@ class ProductLoaderPlugin(LoaderPlugin):
     """
 
 
+class PreLoaderHookPlugin:
+    """Plugin that should be run before any Loaders in 'loaders'
+
+    Should be used as non-invasive method to enrich core loading process.
+    Any external studio might want to modify loaded data before or after
+    they are loaded without need to override existing core plugins.
+    """
+    loader_identifiers: ClassVar[set[str]]
+
+    def process(self, context, name=None, namespace=None, options=None):
+        pass
+
+    def update(self, container, context):
+        pass
+
+    def switch(self, container, context):
+        pass
+
+
+class PostLoaderHookPlugin:
+    """Plugin that should be run after any Loaders in 'loaders'
+
+    Should be used as non-invasive method to enrich core loading process.
+    Any external studio might want to modify loaded data before or after
+    they are loaded without need to override existing core plugins.
+    """
+    loader_identifiers: ClassVar[set[str]]
+
+    def process(
+        self,
+        container,
+        context,
+        name=None,
+        namespace=None,
+        options=None
+    ):
+        pass
+
+    def update(self, container, context):
+        pass
+
+    def switch(self, container, context):
+        pass
+
+
 def discover_loader_plugins(project_name=None):
     from ayon_core.lib import Logger
     from ayon_core.pipeline import get_current_project_name
@@ -287,3 +334,35 @@ def deregister_loader_plugin_path(path):
 
 def register_loader_plugin_path(path):
     return register_plugin_path(LoaderPlugin, path)
+
+
+def register_loader_pre_hook_plugin(plugin):
+    return register_plugin(PreLoaderHookPlugin, plugin)
+
+
+def deregister_loader_pre_hook_plugin(plugin):
+    deregister_plugin(PreLoaderHookPlugin, plugin)
+
+
+def register_loader_pre_hook_plugin_path(path):
+    return register_plugin_path(PreLoaderHookPlugin, path)
+
+
+def deregister_loader_pre_hook_plugin_path(path):
+    deregister_plugin_path(PreLoaderHookPlugin, path)
+
+
+def register_loader_post_hook_plugin(plugin):
+    return register_plugin(PostLoaderHookPlugin, plugin)
+
+
+def deregister_loader_post_hook_plugin(plugin):
+    deregister_plugin(PostLoaderHookPlugin, plugin)
+
+
+def register_loader_post_hook_plugin_path(path):
+    return register_plugin_path(PostLoaderHookPlugin, path)
+
+
+def deregister_loader_post_hook_plugin_path(path):
+    deregister_plugin_path(PostLoaderHookPlugin, path)
