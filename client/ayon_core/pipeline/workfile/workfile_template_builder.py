@@ -604,7 +604,7 @@ class AbstractTemplateBuilder(ABC):
         """Open template file with registered host."""
         template_preset = self.get_template_preset()
         template_path = template_preset["path"]
-        self.host.open_file(template_path)
+        self.host.open_workfile(template_path)
 
     @abstractmethod
     def import_template(self, template_path):
