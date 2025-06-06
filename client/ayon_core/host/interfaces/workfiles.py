@@ -737,7 +737,6 @@ class IWorkfileHost:
             folder_entity=folder_entity,
             task_entity=task_entity,
             open_workfile=open_workfile,
-            
         )
         self._before_workfile_copy(copy_workfile_data)
         event_data = self._get_workfile_event_data(
