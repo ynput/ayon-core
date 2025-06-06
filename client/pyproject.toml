@@ -9,6 +9,7 @@ jsonschema = "^2.6.0"
 pyblish-base = "^1.8.11"
 speedcopy = "^2.1"
 six = "^1.15"
+psutil = "^5.9.0"
 qtawesome = "0.7.3"
 
 [ayon.runtimeDependencies]
