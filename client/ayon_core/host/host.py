@@ -22,7 +22,7 @@ class ContextChangeData:
     folder_entity: dict[str, Any]
     task_entity: dict[str, Any]
     reason: Optional[str]
-    anatomy: "Anatomy"
+    anatomy: Anatomy
 
 
 class HostBase(ABC):
@@ -167,7 +167,7 @@ class HostBase(ABC):
         *,
         reason: Optional[str] = None,
         project_entity: Optional[dict[str, Any]] = None,
-        anatomy: Optional["Anatomy"] = None,
+        anatomy: Optional[Anatomy] = None,
     ) -> dict[str, Optional[str]]:
         """Set current context information.
 
@@ -310,7 +310,7 @@ class HostBase(ABC):
         folder_entity: Optional[dict[str, Any]],
         task_entity: Optional[dict[str, Any]],
         reason: Optional[str],
-        anatomy: "Anatomy",
+        anatomy: Anatomy,
     ):
         """Method that changes the context in host.
 
