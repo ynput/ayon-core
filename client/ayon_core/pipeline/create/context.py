@@ -32,7 +32,7 @@ from ayon_core.host import IPublishHost, IWorkfileHost
 from ayon_core.pipeline import Anatomy
 from ayon_core.pipeline.template_data import get_template_data
 from ayon_core.pipeline.plugin_discover import DiscoverResult
-from ayon_core.pipeline.compatibility import is_supporting_product_base_type
+from ayon_core.pipeline.compatibility import is_product_base_type_supported
 
 from .exceptions import (
     CreatorError,
@@ -1199,7 +1199,7 @@ class CreateContext:
         # Add product base type if supported.
         # TODO (antirotor): Once all creators support product base type
         #   remove this check.
-        if is_supporting_product_base_type():
+        if is_product_base_type_supported():
 
             if hasattr(creator, "product_base_type"):
                 instance_data["productBaseType"] = creator.product_base_type
