@@ -101,7 +101,7 @@ from .context_tools import (
 )
 
 from .compatibility import (
-    is_supporting_product_base_type,
+    is_product_base_type_supported,
 )
 
 from .workfile import (
@@ -229,5 +229,5 @@ __all__ = (
     "uninstall",
 
     # Feature detection
-    "is_supporting_product_base_type",
+    "is_product_base_type_supported",
 )

@@ -1,7 +1,7 @@
 """Package to handle compatibility checks for pipeline components."""
 
 
-def is_supporting_product_base_type() -> bool:
+def is_product_base_type_supported() -> bool:
     """Check support for product base types.
 
     This function checks if the current pipeline supports product base types.
