@@ -12,7 +12,7 @@ from ayon_core.lib.attribute_definitions import (
     deserialize_attr_defs,
 )
 
-from ayon_core.pipeline.compatibility import is_supporting_product_base_type
+from ayon_core.pipeline.compatibility import is_product_base_type_supported
 
 from ayon_core.pipeline import (
     AYON_INSTANCE_ID,
@@ -502,7 +502,7 @@ class CreatedInstance:
         product_base_type: Optional[str] = None
     ):
         """Initialize CreatedInstance."""
-        if is_supporting_product_base_type():
+        if is_product_base_type_supported():
             if not hasattr(creator, "product_base_type"):
                 warn(
                     f"Provided creator {creator!r} doesn't have "
@@ -564,7 +564,7 @@ class CreatedInstance:
         self._data["productType"] = product_type
         self._data["productName"] = product_name
 
-        if is_supporting_product_base_type():
+        if is_product_base_type_supported():
             data.pop("productBaseType", None)
             self._data["productBaseType"] = product_base_type
 

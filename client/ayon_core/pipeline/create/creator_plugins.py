@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING, Any, Dict, Optional
 from warnings import warn
 
 from ayon_core.lib import Logger, get_version_from_path
-from ayon_core.pipeline.compatibility import is_supporting_product_base_type
+from ayon_core.pipeline.compatibility import is_product_base_type_supported
 from ayon_core.pipeline.plugin_discover import (
     deregister_plugin,
     deregister_plugin_path,
@@ -296,7 +296,7 @@ class BaseCreator(ABC):
 
         """
         identifier = self.product_type
-        if is_supporting_product_base_type():
+        if is_product_base_type_supported():
             identifier = self.product_base_type
             if self.product_type:
                 identifier = f"{identifier}.{self.product_type}"
@@ -402,7 +402,7 @@ class BaseCreator(ABC):
             product_type = self.product_type
 
         if (
-                is_supporting_product_base_type()
+                is_product_base_type_supported()
                 and not product_base_type
                 and not self.product_base_type
         ):
@@ -557,7 +557,7 @@ class BaseCreator(ABC):
             product_base_type (Optional[str]): Product base type.
 
         """
-        if is_supporting_product_base_type() and (instance and hasattr(instance, "product_base_type")):  # noqa: E501
+        if is_product_base_type_supported() and (instance and hasattr(instance, "product_base_type")):  # noqa: E501
             product_base_type = instance.product_base_type
 
         if host_name is None:

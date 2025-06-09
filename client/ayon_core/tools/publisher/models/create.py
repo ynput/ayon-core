@@ -34,7 +34,7 @@ from ayon_core.pipeline.create import (
     ConvertorsOperationFailed,
     ConvertorItem,
 )
-from ayon_core.pipeline.compatibility import is_supporting_product_base_type
+from ayon_core.pipeline.compatibility import is_product_base_type_supported
 
 from ayon_core.tools.publisher.abstract import (
     AbstractPublisherBackend,
@@ -634,7 +634,7 @@ class CreateModel:
             "project_entity": project_entity,
         }
 
-        if is_supporting_product_base_type() and hasattr(creator, "product_base_type"):  # noqa: E501
+        if is_product_base_type_supported() and hasattr(creator, "product_base_type"):  # noqa: E501
             kwargs["product_base_type"] = creator.product_base_type
 
         # Backwards compatibility for 'project_entity' argument

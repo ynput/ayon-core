@@ -10,7 +10,7 @@ from ayon_core.lib import (
     filter_profiles,
     prepare_template_data,
 )
-from ayon_core.pipeline.compatibility import is_supporting_product_base_type
+from ayon_core.pipeline.compatibility import is_product_base_type_supported
 from ayon_core.settings import get_project_settings
 
 from .constants import DEFAULT_PRODUCT_TEMPLATE
@@ -58,7 +58,7 @@ def get_product_name_template(
         "task_types": task_type
     }
 
-    if is_supporting_product_base_type():
+    if is_product_base_type_supported():
         if product_base_type:
             filtering_criteria["product_base_types"] = product_base_type
         else:
@@ -193,7 +193,7 @@ def get_product_name(
     # look what we have to do to make mypy happy. We should stop using
     # those undefined dict based types.
     product: dict[str, str] = {"type": product_type}
-    if is_supporting_product_base_type():
+    if is_product_base_type_supported():
         if product_base_type:
             product["baseType"] = product_base_type
         elif "{product[basetype]}" in template.lower():
