@@ -133,10 +133,8 @@ class ValidateFolderCreationResolution(
     def process(self, instance):
         """ Validate existing shot resolution.
         """
-        try:
-            hierarchy_context = instance.context.data["hierarchyContext"]
-
-        except KeyError:
+        hierarchy_context = instance.context.data.get("hierarchyContext")
+        if not hierarchy_context:
             self.log.debug("No hierarchy context defined for shot instance.")
             return
 
