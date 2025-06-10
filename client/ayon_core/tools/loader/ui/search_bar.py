@@ -1,0 +1,637 @@
+import copy
+import uuid
+from dataclasses import dataclass
+from typing import Any, Optional
+
+from qtpy import QtCore, QtWidgets
+
+from ayon_core.style import load_stylesheet
+from ayon_core.tools.utils import (
+    get_qt_icon,
+    SquareButton,
+    BaseClickableFrame,
+    ClickableFrame,
+    PixmapLabel,
+)
+
+
+@dataclass
+class FilterDefinition:
+    """Search bar definition.
+
+    Attributes:
+        name (str): Name of the definition.
+        title (str): Title of the search bar.
+        icon (str): Icon name for the search bar.
+        placeholder (str): Placeholder text for the search bar.
+
+    """
+    name: str
+    title: str
+    filter_type: str
+    icon: Optional[dict[str, Any]] = None
+    placeholder: Optional[str] = None
+    items: Optional[list[dict[str, str]]] = None
+
+
+class SearchItemDisplayWidget(QtWidgets.QFrame):
+    close_requested = QtCore.Signal(str)
+    edit_requested = QtCore.Signal(str)
+
+    def __init__(
+        self,
+        filter_def: FilterDefinition,
+        parent: QtWidgets.QWidget,
+    ):
+        super().__init__(parent)
+
+        self._filter_def = filter_def
+
+        close_icon = get_qt_icon({
+            "type": "material-symbols",
+            "name": "close",
+            "color": "#FFFFFF",
+        })
+
+        title_widget = QtWidgets.QLabel(f"{filter_def.title}:", self)
+
+        value_wrapper = QtWidgets.QWidget(self)
+        value_widget = QtWidgets.QLabel(value_wrapper)
+        value_widget.setObjectName("ValueWidget")
+        value_widget.setText(6 * " ")
+        value_layout = QtWidgets.QVBoxLayout(value_wrapper)
+        value_layout.setContentsMargins(2, 2, 2, 2)
+        value_layout.addWidget(value_widget)
+
+        close_btn = SquareButton(self)
+        close_btn.setObjectName("CloseButton")
+        close_btn.setIcon(close_icon)
+        close_btn.setAttribute(QtCore.Qt.WA_TranslucentBackground, True)
+
+        main_layout = QtWidgets.QHBoxLayout(self)
+        main_layout.setContentsMargins(4, 0, 0, 0)
+        main_layout.setSpacing(0)
+        main_layout.addWidget(title_widget, 0)
+        main_layout.addWidget(value_wrapper, 0)
+        main_layout.addWidget(close_btn, 0)
+
+        close_btn.clicked.connect(self._on_remove_clicked)
+
+        self._value_wrapper = value_wrapper
+        self._value_widget = value_widget
+        self._value = None
+
+    def set_value(self, value: "str | list[str]"):
+        text = ""
+        if isinstance(value, str):
+            text = value
+        elif len(value) == 1:
+            text = value[0]
+        elif len(value) > 1:
+            text = str(len(value))
+
+        if len(text) > 9:
+            text = text[:9] + "..."
+
+        text = " " + text + " "
+        text_diff = 4 - len(text)
+        if text_diff > 0:
+            text = " " * text_diff + text
+
+        self._value = copy.deepcopy(value)
+        self._value_widget.setText(text)
+
+    def get_value(self):
+        return copy.deepcopy(self._value)
+
+    def _on_remove_clicked(self):
+        self.close_requested.emit(self._filter_def.name)
+
+    def _request_edit(self):
+        self.edit_requested.emit(self._filter_def.name)
+
+
+class FilterItemButton(BaseClickableFrame):
+    filter_requested = QtCore.Signal(str)
+
+    def __init__(
+        self,
+        filter_def: FilterDefinition,
+        parent: QtWidgets.QWidget,
+    ):
+        super().__init__(parent)
+
+        self._filter_def = filter_def
+
+        title_widget = QtWidgets.QLabel(filter_def.title, self)
+        title_widget.setAttribute(QtCore.Qt.WA_TranslucentBackground, True)
+
+        main_layout = QtWidgets.QHBoxLayout(self)
+        main_layout.setContentsMargins(5, 5, 5, 5)
+        main_layout.addWidget(title_widget, 1)
+
+    def _mouse_release_callback(self):
+        """Handle mouse release event to emit filter request."""
+        self.filter_requested.emit(self._filter_def.name)
+
+
+class FiltersPopup(QtWidgets.QWidget):
+    filter_requested = QtCore.Signal(str)
+
+    def __init__(self, parent):
+        super().__init__(parent)
+        self.setWindowFlags(QtCore.Qt.Popup | QtCore.Qt.FramelessWindowHint)
+        self.setAttribute(QtCore.Qt.WA_TranslucentBackground)
+
+        wrapper = QtWidgets.QWidget(self)
+        wrapper.setObjectName("PopupWrapper")
+
+        wraper_layout = QtWidgets.QVBoxLayout(wrapper)
+        wraper_layout.setContentsMargins(5, 5, 5, 5)
+        wraper_layout.setSpacing(0)
+
+        main_layout = QtWidgets.QHBoxLayout(self)
+        main_layout.setContentsMargins(0, 0, 0, 0)
+        main_layout.addWidget(wrapper)
+
+        self._wrapper = wrapper
+        self._wrapper_layout = wraper_layout
+        self._preferred_width = None
+
+    def set_preferred_width(self, width: int):
+        self._preferred_width = width
+
+    def sizeHint(self):
+        sh = super().sizeHint()
+        if self._preferred_width is not None:
+            sh.setWidth(self._preferred_width)
+        return sh
+
+    def set_filter_items(self, filter_items):
+        while self._wrapper_layout.count() > 0:
+            item = self._wrapper_layout.takeAt(0)
+            widget = item.widget()
+            if widget is not None:
+                widget.setVisible(False)
+                widget.deleteLater()
+
+        for item in filter_items:
+            widget = FilterItemButton(item, self._wrapper)
+            widget.filter_requested.connect(self.filter_requested)
+            self._wrapper_layout.addWidget(widget)
+
+        if self._wrapper_layout.count() == 0:
+            empty_label = QtWidgets.QLabel(
+                "No filters available...", self._wrapper
+            )
+            self._wrapper_layout.addWidget(empty_label)
+
+
+class FilterValueItemWidget(BaseClickableFrame):
+    selected = QtCore.Signal(str)
+
+    def __init__(self, widget_id, value, icon, color, parent):
+        super().__init__(parent)
+
+        label_widget = QtWidgets.QLabel(str(value), self)
+        if color:
+            label_widget.setStyleSheet(f"color: {color};")
+
+        main_layout = QtWidgets.QHBoxLayout(self)
+        main_layout.setContentsMargins(5, 5, 5, 5)
+        main_layout.addWidget(label_widget, 1)
+
+        self._icon_widget = None
+        self._label_widget = label_widget
+        self._main_layout = main_layout
+        self._selected = False
+        self._value = value
+        self._widget_id = widget_id
+
+        if icon:
+            self.set_icon(icon)
+
+    def set_icon(self, icon: dict[str, Any]):
+        """Set the icon for the widget."""
+        icon = get_qt_icon(icon)
+        pixmap = icon.pixmap(64, 64)
+        if self._icon_widget is None:
+            self._icon_widget = PixmapLabel(pixmap, self)
+            self._main_layout.insertWidget(0, self._icon_widget, 0)
+        else:
+            self._icon_widget.setPixmap(pixmap)
+
+    def get_value(self):
+        return self._value
+
+    def set_selected(self, selected: bool):
+        """Set the selection state of the widget."""
+        if self._selected == selected:
+            return
+        self._selected = selected
+        self.setProperty("selected", "1" if selected else "")
+        self.style().polish(self)
+
+    def is_selected(self) -> bool:
+        return self._selected
+
+    def _mouse_release_callback(self):
+        """Handle mouse release event to emit filter request."""
+        self.selected.emit(self._widget_id)
+
+
+class FilterValueItemsView(QtWidgets.QWidget):
+    value_changed = QtCore.Signal()
+
+    def __init__(self, parent):
+        super().__init__(parent)
+        self.setAttribute(QtCore.Qt.WA_TranslucentBackground, True)
+
+        main_layout = QtWidgets.QVBoxLayout(self)
+        main_layout.setContentsMargins(0, 0, 0, 0)
+
+        self._multiselection = False
+        self._main_layout = main_layout
+        self._last_selected_widget = None
+        self._widgets_by_id = {}
+
+    def set_value(self, value):
+        current_value = self.get_value()
+        if self._multiselection:
+            if value is None:
+                value = []
+            if not isinstance(value, list):
+                value = [value]
+            for widget in self._widgets_by_id.values():
+                selected = widget.get_value() in value
+                if selected and self._last_selected_widget is None:
+                    self._last_selected_widget = widget
+                widget.set_selected(selected)
+
+            if value != current_value:
+                self.value_changed.emit()
+            return
+
+        if isinstance(value, list):
+            if len(value) > 0:
+                value = value[0]
+            else:
+                value = None
+
+        if value is None:
+            widget = next(iter(self._widgets_by_id.values()))
+            value = widget.get_value()
+
+        self._last_selected_widget = None
+        for widget in self._widgets_by_id.values():
+            selected = widget.get_value() in value
+            widget.set_selected(selected)
+            if selected:
+                self._last_selected_widget = widget
+
+        if self._last_selected_widget is None:
+            widget = next(iter(self._widgets_by_id.values()))
+            self._last_selected_widget = widget
+            widget.set_selected(True)
+
+        if value != current_value:
+            self.value_changed.emit()
+
+    def set_multiselection(self, multiselection: bool):
+        self._multiselection = multiselection
+        if not self._widgets_by_id or self._multiselection:
+            return
+
+        value_changed = False
+        if self._last_selected_widget is None:
+            value_changed = True
+            self._last_selected_widget = next(
+                iter(self._widgets_by_id.values())
+            )
+        for widget in self._widgets_by_id.values():
+            widget.set_selected(widget is self._last_selected_widget)
+
+        if value_changed:
+            self.value_changed.emit()
+
+    def get_value(self):
+        """Get the value from the items view."""
+        if self._multiselection:
+            return [
+                widget.get_value()
+                for widget in self._widgets_by_id.values()
+                if widget.is_selected()
+            ]
+        if self._last_selected_widget is not None:
+            return self._last_selected_widget.get_value()
+        return None
+
+    def set_items(self, items: list[dict[str, Any]]):
+        while self._main_layout.count() > 0:
+            item = self._main_layout.takeAt(0)
+            widget = item.widget()
+            if widget is not None:
+                widget.setVisible(False)
+                widget.deleteLater()
+        self._widgets_by_id = {}
+        self._last_selected_widget = None
+
+        for item in items:
+            widget_id = uuid.uuid4().hex
+            widget = FilterValueItemWidget(
+                widget_id,
+                item["value"],
+                item.get("icon"),
+                item.get("color"),
+                self,
+            )
+            widget.selected.connect(self._on_item_clicked)
+            self._widgets_by_id[widget_id] = widget
+            self._main_layout.addWidget(widget)
+
+    def _on_item_clicked(self, widget_id):
+        widget = self._widgets_by_id.get(widget_id)
+        if widget is None:
+            return
+
+        previous_widget = self._last_selected_widget
+        self._last_selected_widget = widget
+        if self._multiselection:
+            widget.set_selected(not widget.is_selected())
+        else:
+            widget.set_selected(True)
+            if previous_widget is not None:
+                previous_widget.set_selected(False)
+        self.value_changed.emit()
+
+
+class FilterValuePopup(QtWidgets.QWidget):
+    value_changed = QtCore.Signal(str)
+    closed = QtCore.Signal(str)
+
+    def __init__(self, parent):
+        super().__init__(parent)
+        self.setWindowFlags(QtCore.Qt.Popup | QtCore.Qt.FramelessWindowHint)
+        self.setAttribute(QtCore.Qt.WA_TranslucentBackground, True)
+
+        wrapper = QtWidgets.QWidget(self)
+        wrapper.setObjectName("PopupWrapper")
+
+        text_input = QtWidgets.QLineEdit(wrapper)
+        text_input.setVisible(False)
+
+        items_view = FilterValueItemsView(wrapper)
+        items_view.setVisible(False)
+
+        wraper_layout = QtWidgets.QVBoxLayout(wrapper)
+        wraper_layout.setContentsMargins(5, 5, 5, 5)
+        wraper_layout.addWidget(text_input, 0)
+        wraper_layout.addWidget(items_view, 0)
+
+        main_layout = QtWidgets.QHBoxLayout(self)
+        main_layout.setContentsMargins(0, 0, 0, 0)
+        main_layout.addWidget(wrapper)
+
+        text_input.textChanged.connect(self._text_changed)
+        text_input.returnPressed.connect(self._text_confirmed)
+
+        items_view.value_changed.connect(self._selection_changed)
+
+        self._wrapper = wrapper
+        self._wrapper_layout = wraper_layout
+        self._text_input = text_input
+        self._items_view = items_view
+
+        self._active_widget = None
+        self._filter_name = None
+        self._preferred_width = None
+
+    def set_preferred_width(self, width: int):
+        self._preferred_width = width
+
+    def sizeHint(self):
+        sh = super().sizeHint()
+        if self._preferred_width is not None:
+            sh.setWidth(self._preferred_width)
+        return sh
+
+    def set_filter_item(
+        self,
+        filter_def: FilterDefinition,
+        value,
+    ):
+        self._text_input.setVisible(False)
+        self._items_view.setVisible(False)
+        self._filter_name = filter_def.name
+        self._active_widget = None
+        if filter_def.filter_type == "text":
+            if filter_def.items:
+                if value is None:
+                    value = filter_def.items[0]["value"]
+                self._active_widget = self._items_view
+                self._items_view.set_items(filter_def.items)
+                self._items_view.set_multiselection(False)
+                self._items_view.set_value(value)
+            else:
+                if value is None:
+                    value = ""
+                self._text_input.setPlaceholderText(
+                    filter_def.placeholder or ""
+                )
+                self._text_input.setText(value)
+                self._active_widget = self._text_input
+
+        elif filter_def.filter_type == "list":
+            if value is None:
+                value = []
+            self._items_view.set_items(filter_def.items)
+            self._items_view.set_multiselection(True)
+            self._items_view.set_value(value)
+            self._active_widget = self._items_view
+
+        if self._active_widget is not None:
+            self._active_widget.setVisible(True)
+
+    def showEvent(self, event):
+        super().showEvent(event)
+        if self._active_widget is not None:
+            self._active_widget.setFocus()
+
+    def closeEvent(self, event):
+        super().closeEvent(event)
+        self.closed.emit(self._filter_name)
+
+    def hideEvent(self, event):
+        super().hideEvent(event)
+        self.closed.emit(self._filter_name)
+
+    def get_value(self):
+        """Get the value from the active widget."""
+        if self._active_widget is self._text_input:
+            return self._text_input.text()
+        elif self._active_widget is self._items_view:
+            return self._active_widget.get_value()
+        return None
+
+    def _text_changed(self):
+        """Handle text change in the text input."""
+        if self._active_widget == self._text_input:
+            # Emit value changed signal if text input is active
+            self.value_changed.emit(self._filter_name)
+
+    def _text_confirmed(self):
+        self.close()
+
+    def _selection_changed(self):
+        self.value_changed.emit(self._filter_name)
+
+
+class FiltersBar(ClickableFrame):
+    filters_changed = QtCore.Signal()
+
+    def __init__(self, parent):
+        super().__init__(parent)
+
+        search_icon = get_qt_icon({
+            "type": "material-symbols",
+            "name": "search",
+            "color": "#FFFFFF",
+        })
+        search_btn = SquareButton(self)
+        search_btn.setIcon(search_icon)
+        search_btn.setFlat(True)
+        search_btn.setObjectName("SearchButton")
+
+        filters_widget = QtWidgets.QWidget(self)
+        filters_widget.setAttribute(QtCore.Qt.WA_TranslucentBackground, True)
+        filters_layout = QtWidgets.QHBoxLayout(filters_widget)
+        filters_layout.setContentsMargins(0, 0, 0, 0)
+        filters_layout.addStretch(1)
+
+        main_layout = QtWidgets.QHBoxLayout(self)
+        main_layout.setContentsMargins(4, 4, 4, 4)
+        main_layout.setSpacing(5)
+        main_layout.addWidget(search_btn, 0)
+        main_layout.addWidget(filters_widget, 1)
+
+        search_btn.clicked.connect(self._on_filters_request)
+        self.clicked.connect(self._on_clicked)
+
+        self._search_btn = search_btn
+        self._filters_widget = filters_widget
+        self._filters_layout = filters_layout
+        self._widgets_by_name = {}
+        self._filter_defs_by_name = {}
+        self._filters_popup =  FiltersPopup(self)
+        self._filter_value_popup = FilterValuePopup(self)
+
+    def set_search_items(self, filter_defs: list[FilterDefinition]):
+        self._filter_defs_by_name = {
+            filter_def.name: filter_def
+            for filter_def in filter_defs
+        }
+
+    def add_item(self, name: str):
+        """Add a new item to the search bar.
+
+        Args:
+            name (str): Search definition name.
+
+        """
+        filter_def = self._filter_defs_by_name.get(name)
+        if filter_def is None:
+            return
+
+        item_widget = self._widgets_by_name.get(name)
+        if item_widget is not None:
+            return
+
+        item_widget = SearchItemDisplayWidget(
+            filter_def,
+            parent=self._filters_widget,
+        )
+        item_widget.close_requested.connect(self._on_item_close_requested)
+        self._widgets_by_name[name] = item_widget
+        idx = self._filters_layout.count() - 1
+        self._filters_layout.insertWidget(idx, item_widget, 0)
+
+    def _on_clicked(self):
+        self._show_filters_popup()
+
+    def _show_filters_popup(self):
+        filter_defs = [
+            filter_def
+            for filter_def in self._filter_defs_by_name.values()
+            if filter_def.name not in self._widgets_by_name
+        ]
+        filters_popup = FiltersPopup(self)
+        filters_popup.filter_requested.connect(self._on_filter_request)
+        filters_popup.set_filter_items(filter_defs)
+        filters_popup.set_preferred_width(self.width())
+
+        old_popup, self._filters_popup = self._filters_popup, filters_popup
+
+        self._show_popup(filters_popup)
+
+        old_popup.setVisible(False)
+        old_popup.deleteLater()
+
+    def _on_filters_request(self):
+        self._show_filters_popup()
+
+    def _on_filter_request(self, filter_name: str):
+        """Handle filter request from the popup."""
+        self.add_item(filter_name)
+        self._filters_popup.hide()
+        filter_def = self._filter_defs_by_name.get(filter_name)
+        widget = self._widgets_by_name.get(filter_name)
+        value = None
+        if widget is not None:
+            value = widget.get_value()
+
+        filter_value_popup = FilterValuePopup(self)
+        filter_value_popup.set_preferred_width(self.width())
+        filter_value_popup.set_filter_item(filter_def, value)
+        filter_value_popup.value_changed.connect(self._on_filter_value_change)
+        filter_value_popup.closed.connect(self._on_filter_value_closed)
+
+        old_popup, self._filter_value_popup = (
+            self._filter_value_popup, filter_value_popup
+        )
+
+        self._show_popup(filter_value_popup)
+        self._on_filter_value_change(filter_def.name)
+
+        old_popup.setVisible(False)
+        old_popup.deleteLater()
+
+    def _show_popup(self, popup: QtWidgets.QWidget):
+        """Show a popup widget."""
+        geo = self.geometry()
+        bl_pos_g = self.mapToGlobal(QtCore.QPoint(0, geo.height() + 5))
+        popup.show()
+        popup.move(bl_pos_g.x(), bl_pos_g.y())
+        popup.raise_()
+
+    def _on_filter_value_change(self, name):
+        value = self._filter_value_popup.get_value()
+        item_widget = self._widgets_by_name.get(name)
+        item_widget.set_value(value)
+
+    def _on_filter_value_closed(self, name):
+        widget = self._widgets_by_name.get(name)
+        if widget is None:
+            return
+
+        value = widget.get_value()
+        if not value:
+            self._on_item_close_requested(name)
+
+    def _on_item_close_requested(self, name):
+        widget = self._widgets_by_name.pop(name, None)
+        if widget is not None:
+            idx = self._filters_layout.indexOf(widget)
+            if idx > -1:
+                self._filters_layout.takeAt(idx)
+                widget.setVisible(False)
+                widget.deleteLater()

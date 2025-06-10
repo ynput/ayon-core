@@ -862,6 +862,46 @@ HintedLineEditButton {
     border-radius: 0.1em;
 }
 
+/* Launcher specific stylesheets */
+FiltersBar {
+    background: {color:bg-inputs};
+    border-radius: 5px;
+}
+
+FiltersBar #SearchButton {
+    background: transparent;
+}
+
+FiltersPopup #PopupWrapper, FilterValuePopup #PopupWrapper {
+    border-radius: 5px;
+    background: {color:bg-inputs};
+}
+
+FilterItemButton, FilterValueItemWidget {
+    border-radius: 5px;
+    background: transparent;
+}
+FilterItemButton:hover, FilterValueItemWidget:hover {
+    background: {color:bg-buttons-hover};
+}
+FilterValueItemWidget[selected="1"] {
+    background: {color:bg-view-selection};
+}
+FilterValueItemWidget[selected="1"]:hover {
+    background: {color:bg-view-selection-hover};
+}
+SearchItemDisplayWidget {
+    border-radius: 5px;
+}
+SearchItemDisplayWidget #CloseButton {
+    background: transparent;
+    border-radius: 5px;
+}
+SearchItemDisplayWidget #ValueWidget {
+    border-radius: 3px;
+    background: {color:bg-buttons};
+}
+
 /* Subset Manager */
 #SubsetManagerDetailsText {}
 #SubsetManagerDetailsText[state="invalid"] {
