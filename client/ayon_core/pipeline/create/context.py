@@ -733,7 +733,7 @@ class CreateContext:
         self.creator_discover_result = report
         for creator_class in report.abstract_plugins:
             self.log.debug(
-                f"Skipping abstract Creator '%s'", str(creator_class)
+                "Skipping abstract Creator '%s'", str(creator_class)
             )
 
         for creator_class in report.plugins:
