@@ -959,11 +959,13 @@ class SceneInventoryView(QtWidgets.QTreeView):
             remove_container(container)
         self.data_changed.emit()
 
-    def _show_version_error_dialog(self, version, item_ids):
+    def _show_version_error_dialog(self, version, item_ids, exception=None):
         """Shows QMessageBox when version switch doesn't work
 
         Args:
             version: str or int or None
+            item_ids (Iterable[str]): List of item ids to run the
+            exception (Exception, optional): Exception that occurred
         """
         if version == -1:
             version_str = "latest"
@@ -987,11 +989,14 @@ class SceneInventoryView(QtWidgets.QTreeView):
 
         dialog.addButton(QtWidgets.QMessageBox.Cancel)
 
+        exception = exception or "Unknown error"
+
         msg = (
-            "Version update to '{}' failed as representation doesn't exist."
+            "Version update to '{}' failed with the following error:\n"
+            "{}."
             "\n\nPlease update to version with a valid representation"
             " OR \n use 'Switch Folder' button to change folder."
-        ).format(version_str)
+        ).format(version_str, exception)
         dialog.setText(msg)
         dialog.exec_()
 
@@ -1105,10 +1110,10 @@ class SceneInventoryView(QtWidgets.QTreeView):
                 container = containers_by_id[item_id]
                 try:
                     update_container(container, item_version)
-                except AssertionError:
+                except Exception as e:
                     log.warning("Update failed", exc_info=True)
                     self._show_version_error_dialog(
-                        item_version, [item_id]
+                        item_version, [item_id], e
                     )
         finally:
             # Always update the scene inventory view, even if errors occurred
