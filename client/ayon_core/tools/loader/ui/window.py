@@ -530,6 +530,7 @@ class LoaderWindow(QtWidgets.QWidget):
                     "name": status_item.icon,
                     "color": status_item.color
                 },
+                "color": status_item.color,
                 "value": status_item.name,
             }
             for status_item in status_items
