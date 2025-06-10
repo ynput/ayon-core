@@ -1201,15 +1201,14 @@ class CreateContext:
         #   remove this check.
         if is_product_base_type_supported():
 
-            if hasattr(creator, "product_base_type"):
-                instance_data["productBaseType"] = creator.product_base_type
-            else:
-                warn(
-                    f"Creator {creator_identifier} does not support "
-                    "product base type. This will be required in future.",
-                    DeprecationWarning,
-                    stacklevel=2,
+            instance_data["productBaseType"] = creator.product_base_type
+            if creator.product_base_type is None:
+                msg = (
+                        f"Creator {creator_identifier} does not set "
+                        "product base type. This will be required in future."
                 )
+                warn(msg, DeprecationWarning, stacklevel=2)
+                self.log.warning(msg)
 
         if active is not None:
             if not isinstance(active, bool):
