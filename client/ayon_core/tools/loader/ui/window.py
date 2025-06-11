@@ -255,7 +255,7 @@ class LoaderWindow(QtWidgets.QWidget):
         folders_filter_input.textChanged.connect(
             self._on_folder_filter_change
         )
-        search_bar.filters_changed.connect(self._on_filters_change)
+        search_bar.filter_changed.connect(self._on_filter_change)
         # products_filter_input.textChanged.connect(
         #     self._on_product_filter_change
         # )
@@ -443,8 +443,17 @@ class LoaderWindow(QtWidgets.QWidget):
             self._product_group_checkbox.isChecked()
         )
 
-    def _on_filters_change(self):
-        pass
+    def _on_filter_change(self, filter_name):
+        if filter_name == "product_name":
+            self._products_widget.set_name_filter(
+                self._search_bar.get_filter_value("product_name")
+            )
+        elif filter_name == "product_types":
+            product_types = self._search_bar.get_filter_value("product_types")
+            self._products_widget.set_product_type_filter(product_types)
+        elif filter_name == "statuses":
+            status_names = self._search_bar.get_filter_value("statuses")
+            self._products_widget.set_statuses_filter(status_names)
 
     def _on_tasks_selection_change(self, event):
         self._products_widget.set_tasks_filter(event["task_ids"])
