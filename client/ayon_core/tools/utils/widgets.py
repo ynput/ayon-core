@@ -1159,7 +1159,7 @@ class SquareButton(QtWidgets.QPushButton):
     """
 
     def __init__(self, *args, **kwargs):
-        super(SquareButton, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
 
         sp = self.sizePolicy()
         sp.setVerticalPolicy(QtWidgets.QSizePolicy.Minimum)
@@ -1168,17 +1168,17 @@ class SquareButton(QtWidgets.QPushButton):
         self._ideal_width = None
 
     def showEvent(self, event):
-        super(SquareButton, self).showEvent(event)
+        super().showEvent(event)
         self._ideal_width = self.height()
         self.updateGeometry()
 
     def resizeEvent(self, event):
-        super(SquareButton, self).resizeEvent(event)
+        super().resizeEvent(event)
         self._ideal_width = self.height()
         self.updateGeometry()
 
     def sizeHint(self):
-        sh = super(SquareButton, self).sizeHint()
+        sh = super().sizeHint()
         ideal_width = self._ideal_width
         if ideal_width is None:
             ideal_width = sh.height()
