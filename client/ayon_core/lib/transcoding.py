@@ -374,23 +374,23 @@ def get_review_info_by_layer_name(channel_names):
         if "." in channel_name:
             layer_name, last_part = channel_name.rsplit(".", 1)
 
-        if last_part.lower() not in {
+        # R, G, B, A or X, Y, Z, N, AR, AG, AB, RED, GREEN, BLUE, ALPHA
+        channel = last_part.upper()
+        if channel not in {
             # Detect RGBA channels
-            "r", "g", "b", "a",
+            "R", "G", "B", "A",
             # Support fully written out rgba channel names
-            "red", "green", "blue", "alpha",
+            "RED", "GREEN", "BLUE", "ALPHA",
             # Allow detecting of x, y and z channels, and normal channels
-            "x", "y", "z", "n",
+            "X", "Y", "Z", "N",
             # red, green and blue alpha/opacity, for colored mattes
-            "ar", "ag", "ab"
+            "AR", "AG", "AB"
         }:
             continue
 
         if layer_name not in layer_names_order:
             layer_names_order.append(layer_name)
 
-        # R, G, B, A or X, Y, Z, N, AR, AG, AB
-        channel = last_part.upper()
         channels_by_layer_name[layer_name][channel] = channel_name
 
     # Put empty layer to the beginning of the list
