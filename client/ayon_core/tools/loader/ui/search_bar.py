@@ -578,7 +578,7 @@ class FilterValuePopup(QtWidgets.QWidget):
 
 
 class FiltersBar(BaseClickableFrame):
-    filters_changed = QtCore.Signal()
+    filter_changed = QtCore.Signal(str)
 
     def __init__(self, parent):
         super().__init__(parent)
@@ -635,6 +635,16 @@ class FiltersBar(BaseClickableFrame):
             filter_def.name: filter_def
             for filter_def in filter_defs
         }
+
+    def get_filter_value(self, name: str) -> Optional[Any]:
+        """Get the value of a filter by its name."""
+        item_widget = self._widgets_by_name.get(name)
+        if item_widget is not None:
+            value = item_widget.get_value()
+            if isinstance(value, list) and len(value) == 0:
+                return None
+            return value
+        return None
 
     def add_item(self, name: str):
         """Add a new item to the search bar.
@@ -734,6 +744,7 @@ class FiltersBar(BaseClickableFrame):
         value = self._filter_value_popup.get_value()
         item_widget = self._widgets_by_name.get(name)
         item_widget.set_value(value)
+        self.filter_changed.emit(name)
 
     def _on_filter_value_closed(self, name):
         widget = self._widgets_by_name.get(name)
