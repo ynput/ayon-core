@@ -641,6 +641,7 @@ class FiltersBar(ClickableFrame):
             filter_def,
             parent=self._filters_widget,
         )
+        item_widget.edit_requested.connect(self._on_filter_request)
         item_widget.close_requested.connect(self._on_item_close_requested)
         self._widgets_by_name[name] = item_widget
         idx = self._filters_layout.count() - 1
@@ -662,10 +663,11 @@ class FiltersBar(ClickableFrame):
 
         old_popup, self._filters_popup = self._filters_popup, filters_popup
 
-        self._show_popup(filters_popup)
-
+        self._filter_value_popup.setVisible(False)
         old_popup.setVisible(False)
         old_popup.deleteLater()
+
+        self._show_popup(filters_popup)
 
     def _on_filters_request(self):
         self._show_filters_popup()
@@ -690,11 +692,13 @@ class FiltersBar(ClickableFrame):
             self._filter_value_popup, filter_value_popup
         )
 
-        self._show_popup(filter_value_popup)
-        self._on_filter_value_change(filter_def.name)
-
         old_popup.setVisible(False)
         old_popup.deleteLater()
+
+        self._filters_popup.setVisible(False)
+
+        self._show_popup(filter_value_popup)
+        self._on_filter_value_change(filter_def.name)
 
     def _show_popup(self, popup: QtWidgets.QWidget):
         """Show a popup widget."""
