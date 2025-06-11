@@ -377,6 +377,8 @@ def get_review_info_by_layer_name(channel_names):
         if last_part.lower() not in {
             # Detect RGBA channels
             "r", "g", "b", "a",
+            # Support fully written out rgba channel names
+            "red", "green", "blue", "alpha",
             # Allow detecting of x, y and z channels, and normal channels
             "x", "y", "z", "n",
             # red, green and blue alpha/opacity, for colored mattes
@@ -410,9 +412,19 @@ def get_review_info_by_layer_name(channel_names):
     for layer_name in layer_names_order:
         channel_info = channels_by_layer_name[layer_name]
 
+        alpha = channel_info.get("A")
+
         # RGB channels
         if all(channel in channel_info for channel in "RGB"):
             rgb = "R", "G", "B"
+
+        # RGB channels using fully written out channel names
+        elif all(
+            channel in channel_info
+            for channel in ("RED", "GREEN", "BLUE")
+        ):
+            rgb = "RED", "GREEN", "BLUE"
+            alpha = channel_info.get("ALPHA")
 
         # XYZ channels (position pass)
         elif all(channel in channel_info for channel in "XYZ"):
@@ -443,7 +455,7 @@ def get_review_info_by_layer_name(channel_names):
                 "R": red,
                 "G": green,
                 "B": blue,
-                "A": channel_info.get("A"),
+                "A": alpha,
             }
         })
     return output
