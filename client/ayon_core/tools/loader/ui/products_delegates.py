@@ -185,7 +185,9 @@ class VersionDelegate(QtWidgets.QStyledItemDelegate):
             widget.set_tasks_filter(task_ids)
 
     def set_statuses_filter(self, status_names):
-        self._statuses_filter = set(status_names)
+        if status_names is not None:
+            status_names = set(status_names)
+        self._statuses_filter = status_names
         for widget in self._editor_by_id.values():
             widget.set_statuses_filter(status_names)
 
