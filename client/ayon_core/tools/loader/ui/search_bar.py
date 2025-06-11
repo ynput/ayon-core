@@ -94,7 +94,7 @@ class SearchItemDisplayWidget(QtWidgets.QFrame):
         value_wrapper = QtWidgets.QWidget(self)
         value_widget = QtWidgets.QLabel(value_wrapper)
         value_widget.setObjectName("ValueWidget")
-        value_widget.setText(6 * " ")
+        value_widget.setText("")
         value_layout = QtWidgets.QVBoxLayout(value_wrapper)
         value_layout.setContentsMargins(2, 2, 2, 2)
         value_layout.addWidget(value_widget)
@@ -116,20 +116,19 @@ class SearchItemDisplayWidget(QtWidgets.QFrame):
 
     def set_value(self, value: "str | list[str]"):
         text = ""
+        ellide = True
         if isinstance(value, str):
             text = value
         elif len(value) == 1:
             text = value[0]
         elif len(value) > 1:
-            text = str(len(value))
+            ellide = False
+            text = f"Items: {len(value)}"
 
-        if len(text) > 9:
+        if ellide and len(text) > 9:
             text = text[:9] + "..."
 
         text = " " + text + " "
-        text_diff = 4 - len(text)
-        if text_diff > 0:
-            text = " " * text_diff + text
 
         self._value = copy.deepcopy(value)
         self._value_widget.setText(text)
