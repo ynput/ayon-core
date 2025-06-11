@@ -217,6 +217,8 @@ class HierarchyModel(object):
     lifetime = 60  # A minute
 
     def __init__(self, controller):
+        self._tags_by_entity_type = NestedCacheItem(
+            levels=1, default_factory=dict, lifetime=self.lifetime)
         self._folders_items = NestedCacheItem(
             levels=1, default_factory=dict, lifetime=self.lifetime)
         self._folders_by_id = NestedCacheItem(
@@ -235,6 +237,7 @@ class HierarchyModel(object):
         self._controller = controller
 
     def reset(self):
+        self._tags_by_entity_type.reset()
         self._folders_items.reset()
         self._folders_by_id.reset()
 
@@ -513,6 +516,31 @@ class HierarchyModel(object):
             cache.update_data(assignee_data)
 
         return output
+
+    def get_available_tags_by_entity_type(
+        self, project_name: str
+    ) -> dict[str, list[str]]:
+        """Get available tags for all entity types in a project."""
+        cache = self._tags_by_entity_type.get(project_name)
+        if not cache.is_valid:
+            tags = None
+            if project_name:
+                response = ayon_api.get(f"projects/{project_name}/tags")
+                if response.status_code == 200:
+                    tags = response.data
+
+            # Fake empty tags
+            if tags is None:
+                tags = {
+                    "folders": [],
+                    "tasks": [],
+                    "products": [],
+                    "versions": [],
+                    "representations": [],
+                    "workfiles": []
+                }
+            cache.update_data(tags)
+        return cache.get_data()
 
     @contextlib.contextmanager
     def _folder_refresh_event_manager(self, project_name, sender):
