@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import numbers
 import uuid
 from typing import Dict
@@ -18,14 +20,22 @@ from .products_model import (
     SYNC_REMOTE_SITE_AVAILABILITY,
 )
 
-STATUS_NAME_ROLE = QtCore.Qt.UserRole + 1
+VERSION_ID_ROLE = QtCore.Qt.UserRole + 1
 TASK_ID_ROLE = QtCore.Qt.UserRole + 2
+STATUS_NAME_ROLE = QtCore.Qt.UserRole + 3
 
 
 class VersionsModel(QtGui.QStandardItemModel):
     def __init__(self):
         super().__init__()
         self._items_by_id = {}
+        self._tags_by_version_id = {}
+
+    def get_version_tags(self, version_id: str) -> set[str]:
+        tags = self._tags_by_version_id.get(version_id)
+        if tags is None:
+            tags = set()
+        return tags
 
     def update_versions(self, version_items):
         version_ids = {
@@ -39,6 +49,7 @@ class VersionsModel(QtGui.QStandardItemModel):
             item = self._items_by_id.pop(item_id)
             root_item.removeRow(item.row())
 
+        tags_by_version_id = {}
         for idx, version_item in enumerate(version_items):
             version_id = version_item.version_id
 
@@ -48,11 +59,14 @@ class VersionsModel(QtGui.QStandardItemModel):
                 item = QtGui.QStandardItem(label)
                 item.setData(version_id, QtCore.Qt.UserRole)
                 self._items_by_id[version_id] = item
+            item.setData(version_id, VERSION_ID_ROLE)
             item.setData(version_item.status, STATUS_NAME_ROLE)
             item.setData(version_item.task_id, TASK_ID_ROLE)
+            tags_by_version_id[version_id] = set(version_item.tags)
 
             if item.row() != idx:
                 root_item.insertRow(idx, item)
+        self._tags_by_version_id = tags_by_version_id
 
 
 class VersionsFilterModel(QtCore.QSortFilterProxyModel):
@@ -60,22 +74,39 @@ class VersionsFilterModel(QtCore.QSortFilterProxyModel):
         super().__init__()
         self._status_filter = None
         self._task_ids_filter = None
+        self._tags_filter = None
 
     def filterAcceptsRow(self, row, parent):
+        index = None
         if self._status_filter is not None:
             if not self._status_filter:
                 return False
-
-            index = self.sourceModel().index(row, 0, parent)
+            if index is None:
+                index = self.sourceModel().index(row, 0, parent)
             status = index.data(STATUS_NAME_ROLE)
             if status not in self._status_filter:
                 return False
 
         if self._task_ids_filter:
-            index = self.sourceModel().index(row, 0, parent)
+            if index is None:
+                index = self.sourceModel().index(row, 0, parent)
             task_id = index.data(TASK_ID_ROLE)
             if task_id not in self._task_ids_filter:
                 return False
+
+        if self._tags_filter is not None:
+            if not self._tags_filter:
+                return False
+
+            if index is None:
+                index = self.sourceModel().index(row, 0, parent)
+            version_id = index.data(VERSION_ID_ROLE)
+
+            model = self.sourceModel()
+            tags = model.get_version_tags(version_id)
+            if not tags & self._tags_filter:
+                return False
+
         return True
 
     def set_tasks_filter(self, task_ids):
@@ -88,6 +119,12 @@ class VersionsFilterModel(QtCore.QSortFilterProxyModel):
         if self._status_filter == status_names:
             return
         self._status_filter = status_names
+        self.invalidateFilter()
+
+    def set_tags_filter(self, tags):
+        if self._tags_filter == tags:
+            return
+        self._tags_filter = tags
         self.invalidateFilter()
 
 
@@ -125,6 +162,13 @@ class VersionComboBox(QtWidgets.QComboBox):
 
     def set_statuses_filter(self, status_names):
         self._proxy_model.set_statuses_filter(status_names)
+        if self.count() == 0:
+            return
+        if self.currentIndex() != 0:
+            self.setCurrentIndex(0)
+
+    def set_tags_filter(self, tags):
+        self._proxy_model.set_tags_filter(tags)
         if self.count() == 0:
             return
         if self.currentIndex() != 0:
@@ -173,6 +217,7 @@ class VersionDelegate(QtWidgets.QStyledItemDelegate):
         self._editor_by_id: Dict[str, VersionComboBox] = {}
         self._task_ids_filter = None
         self._statuses_filter = None
+        self._tags_filter = None
 
     def displayText(self, value, locale):
         if not isinstance(value, numbers.Integral):
@@ -190,6 +235,13 @@ class VersionDelegate(QtWidgets.QStyledItemDelegate):
         self._statuses_filter = status_names
         for widget in self._editor_by_id.values():
             widget.set_statuses_filter(status_names)
+
+    def set_tags_filter(self, tags):
+        if tags is not None:
+            tags = set(tags)
+        self._tags_filter = tags
+        for widget in self._editor_by_id.values():
+            widget.set_tags_filter(tags)
 
     def paint(self, painter, option, index):
         fg_color = index.data(QtCore.Qt.ForegroundRole)

@@ -41,6 +41,7 @@ SYNC_ACTIVE_SITE_AVAILABILITY = QtCore.Qt.UserRole + 30
 SYNC_REMOTE_SITE_AVAILABILITY = QtCore.Qt.UserRole + 31
 
 STATUS_NAME_FILTER_ROLE = QtCore.Qt.UserRole + 32
+VERSION_TAGS_FILTER_ROLE = QtCore.Qt.UserRole + 33
 
 
 class ProductsModel(QtGui.QStandardItemModel):
@@ -422,6 +423,10 @@ class ProductsModel(QtGui.QStandardItemModel):
             version_item.status
             for version_item in product_item.version_items.values()
         }
+        tags = set()
+        for version_item in product_item.version_items.values():
+            tags |= set(version_item.tags)
+
         if model_item is None:
             product_id = product_item.product_id
             model_item = QtGui.QStandardItem(product_item.product_name)
@@ -440,6 +445,7 @@ class ProductsModel(QtGui.QStandardItemModel):
             self._items_by_id[product_id] = model_item
 
         model_item.setData("|".join(statuses), STATUS_NAME_FILTER_ROLE)
+        model_item.setData("|".join(tags), VERSION_TAGS_FILTER_ROLE)
         model_item.setData(product_item.folder_label, FOLDER_LABEL_ROLE)
         in_scene = 1 if product_item.product_in_scene else 0
         model_item.setData(in_scene, PRODUCT_IN_SCENE_ROLE)

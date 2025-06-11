@@ -424,6 +424,10 @@ class LoaderWindow(QtWidgets.QWidget):
             status_names = self._search_bar.get_filter_value("statuses")
             self._products_widget.set_statuses_filter(status_names)
 
+        elif filter_name == "version_tags":
+            version_tags = self._search_bar.get_filter_value("version_tags")
+            self._products_widget.set_version_tags_filter(version_tags)
+
     def _on_tasks_selection_change(self, event):
         self._products_widget.set_tasks_filter(event["task_ids"])
 
@@ -483,6 +487,14 @@ class LoaderWindow(QtWidgets.QWidget):
         status_items: list[StatusItem] = (
             self._controller.get_project_status_items(project_name)
         )
+        tags_by_entity_type = (
+            self._controller.get_available_tags_by_entity_type(project_name)
+        )
+        tag_items = self._controller.get_project_anatomy_tags(project_name)
+        tag_color_by_name = {
+            tag_item.name: tag_item.color
+            for tag_item in tag_items
+        }
 
         filter_product_type_items = [
             {
@@ -503,6 +515,14 @@ class LoaderWindow(QtWidgets.QWidget):
             }
             for status_item in status_items
         ]
+        version_tags = [
+            {
+                "value": tag_name,
+                "color": tag_color_by_name.get(tag_name),
+            }
+            for tag_name in tags_by_entity_type.get("versions") or []
+        ]
+
 
         self._search_bar.set_search_items([
             FilterDefinition(
@@ -526,6 +546,13 @@ class LoaderWindow(QtWidgets.QWidget):
                 filter_type="list",
                 icon=None,
                 items=filter_status_items,
+            ),
+            FilterDefinition(
+                name="version_tags",
+                title="Version tags",
+                filter_type="list",
+                icon=None,
+                items=version_tags,
             ),
         ])
 
