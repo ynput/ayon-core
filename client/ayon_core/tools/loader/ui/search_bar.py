@@ -10,7 +10,6 @@ from ayon_core.tools.utils import (
     get_qt_icon,
     SquareButton,
     BaseClickableFrame,
-    ClickableFrame,
     PixmapLabel,
 )
 
@@ -75,7 +74,7 @@ class CloseButton(SquareButton):
         icon.paint(painter, rect)
 
 
-class SearchItemDisplayWidget(QtWidgets.QFrame):
+class SearchItemDisplayWidget(BaseClickableFrame):
     """Widget displaying a set filter in the bar."""
     close_requested = QtCore.Signal(str)
     edit_requested = QtCore.Signal(str)
@@ -92,6 +91,7 @@ class SearchItemDisplayWidget(QtWidgets.QFrame):
         title_widget = QtWidgets.QLabel(f"{filter_def.title}:", self)
 
         value_wrapper = QtWidgets.QWidget(self)
+        value_wrapper.setAttribute(QtCore.Qt.WA_TranslucentBackground, True)
         value_widget = QtWidgets.QLabel(value_wrapper)
         value_widget.setObjectName("ValueWidget")
         value_widget.setText("")
@@ -139,7 +139,7 @@ class SearchItemDisplayWidget(QtWidgets.QFrame):
     def _on_remove_clicked(self):
         self.close_requested.emit(self._filter_def.name)
 
-    def _request_edit(self):
+    def _mouse_release_callback(self):
         self.edit_requested.emit(self._filter_def.name)
 
 
@@ -174,7 +174,7 @@ class FiltersPopup(QtWidgets.QWidget):
     def __init__(self, parent):
         super().__init__(parent)
         self.setWindowFlags(QtCore.Qt.Popup | QtCore.Qt.FramelessWindowHint)
-        self.setAttribute(QtCore.Qt.WA_TranslucentBackground)
+        self.setAttribute(QtCore.Qt.WA_TranslucentBackground, True)
 
         shadow_frame = QtWidgets.QFrame(self)
         shadow_frame.setObjectName("ShadowFrame")
@@ -577,7 +577,7 @@ class FilterValuePopup(QtWidgets.QWidget):
         self.value_changed.emit(self._filter_name)
 
 
-class FiltersBar(ClickableFrame):
+class FiltersBar(BaseClickableFrame):
     filters_changed = QtCore.Signal()
 
     def __init__(self, parent):
@@ -612,7 +612,6 @@ class FiltersBar(ClickableFrame):
         main_layout.addWidget(filters_wrap, 1)
 
         search_btn.clicked.connect(self._on_filters_request)
-        self.clicked.connect(self._on_clicked)
 
         self._search_btn = search_btn
         self._filters_wrap = filters_wrap
@@ -670,7 +669,7 @@ class FiltersBar(ClickableFrame):
 
         self._filters_widget.setGeometry(geo)
 
-    def _on_clicked(self):
+    def _mouse_release_callback(self):
         self._show_filters_popup()
 
     def _show_filters_popup(self):
