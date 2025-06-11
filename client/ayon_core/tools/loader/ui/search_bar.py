@@ -414,7 +414,14 @@ class FilterValueItemsView(QtWidgets.QWidget):
             )
             widget.selected.connect(self._on_item_clicked)
             self._widgets_by_id[widget_id] = widget
-            self._content_layout.addWidget(widget)
+            self._content_layout.addWidget(widget, 0)
+
+        if self._content_layout.count() == 0:
+            empty_label = QtWidgets.QLabel(
+                "No items to select from...", self
+            )
+            self._content_layout.addWidget(empty_label, 0)
+        self._content_layout.addStretch(1)
 
     def _on_item_clicked(self, widget_id):
         widget = self._widgets_by_id.get(widget_id)
