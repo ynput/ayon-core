@@ -865,6 +865,7 @@ HintedLineEditButton {
 /* Launcher specific stylesheets */
 FiltersBar {
     background: {color:bg-inputs};
+    border: 1px solid {color:border};
     border-radius: 5px;
 }
 
