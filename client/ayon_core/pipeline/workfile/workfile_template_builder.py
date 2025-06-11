@@ -876,6 +876,12 @@ class AbstractTemplateBuilder(ABC):
             ).format(host_name.title()))
 
         resolved_path = self.resolve_template_path(path)
+        if not resolved_path:
+            raise TemplateNotFound(
+                f"Template path '{path}' does not resolve to a valid existing "
+                "template file on disk."
+            )
+
         self.log.info(f"Found template at: '{resolved_path}'")
 
         # switch to remove placeholders after they are used
@@ -923,7 +929,7 @@ class AbstractTemplateBuilder(ABC):
             # We need to resolve it to a filesystem path
             resolved_path = resolve_entity_uri(path)
             if not os.path.exists(resolved_path):
-                raise TemplateNotFound(
+                self.log.warning(
                     "Template found in AYON settings for task '{}' with host "
                     "'{}' does not resolve AYON entity URI '{}' "
                     "to an existing file on disk: '{}'".format(
@@ -978,19 +984,22 @@ class AbstractTemplateBuilder(ABC):
 
             solved_path = os.path.normpath(solved_path)
             if not os.path.exists(solved_path):
-                raise TemplateNotFound(
+                self.log.warning(
                     "Template found in AYON settings for task '{}' with host "
                     "'{}' does not exists. (Not found : {})".format(
-                        task_name, host_name, solved_path))
+                        task_name, host_name, solved_path)
+                )
+                return path
 
             result = StringTemplate.format_template(path, fill_data)
             if result.solved:
                 path = result.normalized()
             return path
 
-        raise TemplateNotFound(
+        self.log.warning(
             f"Unable to resolve template path: '{path}'"
         )
+        return path
 
     def emit_event(self, topic, data=None, source=None) -> Event:
         return self._event_system.emit(topic, data, source)
