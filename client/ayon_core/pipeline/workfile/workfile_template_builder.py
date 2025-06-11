@@ -940,8 +940,6 @@ class AbstractTemplateBuilder(ABC):
         if "{" in path or "<" in path:
             # Resolve keys through anatomy
             project_name = self.project_name
-            task_name = self.current_task_name
-            host_name = self.host_name
 
             # Try to fill path with environments and anatomy roots
             anatomy = Anatomy(project_name)
