@@ -451,6 +451,7 @@ class LoaderWindow(QtWidgets.QWidget):
         elif filter_name == "product_types":
             product_types = self._search_bar.get_filter_value("product_types")
             self._products_widget.set_product_type_filter(product_types)
+
         elif filter_name == "statuses":
             status_names = self._search_bar.get_filter_value("statuses")
             self._products_widget.set_statuses_filter(status_names)
