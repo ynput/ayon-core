@@ -426,7 +426,7 @@ class BaseClickableFrame(QtWidgets.QFrame):
     Callback is defined by overriding `_mouse_release_callback`.
     """
     def __init__(self, parent):
-        super(BaseClickableFrame, self).__init__(parent)
+        super().__init__(parent)
 
         self._mouse_pressed = False
 
@@ -434,17 +434,23 @@ class BaseClickableFrame(QtWidgets.QFrame):
         pass
 
     def mousePressEvent(self, event):
+        super().mousePressEvent(event)
+        if event.isAccepted():
+            return
         if event.button() == QtCore.Qt.LeftButton:
             self._mouse_pressed = True
-        super(BaseClickableFrame, self).mousePressEvent(event)
+            event.accept()
 
     def mouseReleaseEvent(self, event):
-        if self._mouse_pressed:
-            self._mouse_pressed = False
-            if self.rect().contains(event.pos()):
-                self._mouse_release_callback()
+        pressed, self._mouse_pressed = self._mouse_pressed, False
+        super().mouseReleaseEvent(event)
+        if event.isAccepted():
+            return
 
-        super(BaseClickableFrame, self).mouseReleaseEvent(event)
+        accepted = pressed and self.rect().contains(event.pos())
+        if accepted:
+            event.accept()
+            self._mouse_release_callback()
 
 
 class ClickableFrame(BaseClickableFrame):

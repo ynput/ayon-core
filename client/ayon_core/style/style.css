@@ -904,6 +904,9 @@ FilterValueItemsView #ContentWidget {
 SearchItemDisplayWidget {
     border-radius: 5px;
 }
+SearchItemDisplayWidget:hover {
+    background: {color:bg-buttons};
+}
 SearchItemDisplayWidget #ValueWidget {
     border-radius: 3px;
     background: {color:bg-buttons};
