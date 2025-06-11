@@ -593,7 +593,13 @@ class FiltersBar(ClickableFrame):
         search_btn.setFlat(True)
         search_btn.setObjectName("SearchButton")
 
-        filters_widget = QtWidgets.QWidget(self)
+        # Wrapper is used to avoid squashing filters
+        # - the filters are positioned manually without layout
+        filters_wrap = QtWidgets.QWidget(self)
+        filters_wrap.setAttribute(QtCore.Qt.WA_TranslucentBackground, True)
+
+        # Widget where set filters are displayed
+        filters_widget = QtWidgets.QWidget(filters_wrap)
         filters_widget.setAttribute(QtCore.Qt.WA_TranslucentBackground, True)
         filters_layout = QtWidgets.QHBoxLayout(filters_widget)
         filters_layout.setContentsMargins(0, 0, 0, 0)
@@ -603,18 +609,27 @@ class FiltersBar(ClickableFrame):
         main_layout.setContentsMargins(4, 4, 4, 4)
         main_layout.setSpacing(5)
         main_layout.addWidget(search_btn, 0)
-        main_layout.addWidget(filters_widget, 1)
+        main_layout.addWidget(filters_wrap, 1)
 
         search_btn.clicked.connect(self._on_filters_request)
         self.clicked.connect(self._on_clicked)
 
         self._search_btn = search_btn
+        self._filters_wrap = filters_wrap
         self._filters_widget = filters_widget
         self._filters_layout = filters_layout
         self._widgets_by_name = {}
         self._filter_defs_by_name = {}
         self._filters_popup =  FiltersPopup(self)
         self._filter_value_popup = FilterValuePopup(self)
+
+    def showEvent(self, event):
+        super().showEvent(event)
+        self._update_filters_geo()
+
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        self._update_filters_geo()
 
     def set_search_items(self, filter_defs: list[FilterDefinition]):
         self._filter_defs_by_name = {
@@ -646,6 +661,13 @@ class FiltersBar(ClickableFrame):
         self._widgets_by_name[name] = item_widget
         idx = self._filters_layout.count() - 1
         self._filters_layout.insertWidget(idx, item_widget, 0)
+
+    def _update_filters_geo(self):
+        geo = self._filters_wrap.geometry()
+        geo.moveTopLeft(QtCore.QPoint(0, 0))
+        geo.setWidth(geo.width() * 10)
+
+        self._filters_widget.setGeometry(geo)
 
     def _on_clicked(self):
         self._show_filters_popup()
