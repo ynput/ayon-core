@@ -876,7 +876,7 @@ class AbstractTemplateBuilder(ABC):
             ).format(host_name.title()))
 
         resolved_path = self.resolve_template_path(path)
-        if not resolved_path:
+        if not resolved_path or not os.path.exists(resolved_path):
             raise TemplateNotFound(
                 f"Template path '{path}' does not resolve to a valid existing "
                 "template file on disk."
