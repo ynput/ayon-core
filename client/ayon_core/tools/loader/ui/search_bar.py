@@ -315,10 +315,30 @@ class FilterValueItemsView(QtWidgets.QWidget):
 
         scroll_area.setWidget(content_widget)
 
+        btns_widget = QtWidgets.QWidget(self)
+        btns_widget.setAttribute(QtCore.Qt.WA_TranslucentBackground, True)
+
+        select_all_btn = QtWidgets.QPushButton("Select all", btns_widget)
+        clear_btn = QtWidgets.QPushButton("Clear", btns_widget)
+        swap_btn = QtWidgets.QPushButton("Swap", btns_widget)
+
+        btns_layout = QtWidgets.QHBoxLayout(btns_widget)
+        btns_layout.setContentsMargins(0, 0, 0, 0)
+        btns_layout.addStretch(1)
+        btns_layout.addWidget(select_all_btn, 0)
+        btns_layout.addWidget(clear_btn, 0)
+        btns_layout.addWidget(swap_btn, 0)
+
         main_layout = QtWidgets.QVBoxLayout(self)
         main_layout.setContentsMargins(0, 0, 0, 0)
         main_layout.addWidget(scroll_area)
+        main_layout.addWidget(btns_widget, 0)
 
+        select_all_btn.clicked.connect(self._on_select_all)
+        clear_btn.clicked.connect(self._on_clear_selection)
+        swap_btn.clicked.connect(self._on_swap_selection)
+
+        self._btns_widget = btns_widget
         self._multiselection = False
         self._content_layout = content_layout
         self._last_selected_widget = None
@@ -368,6 +388,11 @@ class FilterValueItemsView(QtWidgets.QWidget):
 
     def set_multiselection(self, multiselection: bool):
         self._multiselection = multiselection
+        if not self._widgets_by_id or not self._multiselection:
+            self._btns_widget.setVisible(False)
+        else:
+            self._btns_widget.setVisible(True)
+
         if not self._widgets_by_id or self._multiselection:
             return
 
@@ -422,8 +447,44 @@ class FilterValueItemsView(QtWidgets.QWidget):
             empty_label = QtWidgets.QLabel(
                 "No items to select from...", self
             )
+            self._btns_widget.setVisible(False)
             self._content_layout.addWidget(empty_label, 0)
+        else:
+            self._btns_widget.setVisible(self._multiselection)
         self._content_layout.addStretch(1)
+
+    def _on_select_all(self):
+        changed = False
+        for widget in self._widgets_by_id.values():
+            if not widget.is_selected():
+                changed = True
+                widget.set_selected(True)
+                if self._last_selected_widget is None:
+                    self._last_selected_widget = widget
+
+        if changed:
+            self.value_changed.emit()
+
+    def _on_swap_selection(self):
+        self._last_selected_widget = None
+        for widget in self._widgets_by_id.values():
+            selected = not widget.is_selected()
+            widget.set_selected(selected)
+            if selected and self._last_selected_widget is None:
+                self._last_selected_widget = widget
+
+        self.value_changed.emit()
+
+    def _on_clear_selection(self):
+        self._last_selected_widget = None
+        changed = False
+        for widget in self._widgets_by_id.values():
+            if widget.is_selected():
+                changed = True
+                widget.set_selected(False)
+
+        if changed:
+            self.value_changed.emit()
 
     def _on_item_clicked(self, widget_id):
         widget = self._widgets_by_id.get(widget_id)
