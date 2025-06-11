@@ -3,9 +3,9 @@ import uuid
 from dataclasses import dataclass
 from typing import Any, Optional
 
-from qtpy import QtCore, QtWidgets
+from qtpy import QtCore, QtWidgets, QtGui
 
-from ayon_core.style import load_stylesheet
+from ayon_core.style import load_stylesheet, get_objected_colors
 from ayon_core.tools.utils import (
     get_qt_icon,
     SquareButton,
@@ -34,7 +34,49 @@ class FilterDefinition:
     items: Optional[list[dict[str, str]]] = None
 
 
+class CloseButton(SquareButton):
+    """Close button for search item display widget."""
+    _icon = None
+    _hover_color = None
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if self.__class__._icon is None:
+            self.__class__._icon = get_qt_icon({
+                "type": "material-symbols",
+                "name": "close",
+                "color": "#FFFFFF",
+            })
+        if self.__class__._hover_color is None:
+            color = get_objected_colors("bg-view-selection-hover")
+            self.__class__._hover_color = color.get_qcolor()
+
+        self.setIcon(self.__class__._icon)
+
+    def paintEvent(self, event):
+        """Override paint event to draw a close button."""
+        painter = QtWidgets.QStylePainter(self)
+        painter.setRenderHint(QtGui.QPainter.Antialiasing)
+        option = QtWidgets.QStyleOptionButton()
+        self.initStyleOption(option)
+        icon = self.icon()
+        size = min(self.width(), self.height())
+        rect = QtCore.QRect(0, 0, size, size)
+        rect.adjust(2, 2, -2, -2)
+        painter.setPen(QtCore.Qt.NoPen)
+        bg_color = QtCore.Qt.transparent
+        if option.state & QtWidgets.QStyle.State_MouseOver:
+            bg_color = self._hover_color
+
+        painter.setBrush(bg_color)
+        painter.setClipRect(event.rect())
+        painter.drawEllipse(rect)
+        rect.adjust(2, 2, -2, -2)
+        icon.paint(painter, rect)
+
+
 class SearchItemDisplayWidget(QtWidgets.QFrame):
+    """Widget displaying a set filter in the bar."""
     close_requested = QtCore.Signal(str)
     edit_requested = QtCore.Signal(str)
 
@@ -47,12 +89,6 @@ class SearchItemDisplayWidget(QtWidgets.QFrame):
 
         self._filter_def = filter_def
 
-        close_icon = get_qt_icon({
-            "type": "material-symbols",
-            "name": "close",
-            "color": "#FFFFFF",
-        })
-
         title_widget = QtWidgets.QLabel(f"{filter_def.title}:", self)
 
         value_wrapper = QtWidgets.QWidget(self)
@@ -63,10 +99,7 @@ class SearchItemDisplayWidget(QtWidgets.QFrame):
         value_layout.setContentsMargins(2, 2, 2, 2)
         value_layout.addWidget(value_widget)
 
-        close_btn = SquareButton(self)
-        close_btn.setObjectName("CloseButton")
-        close_btn.setIcon(close_icon)
-        close_btn.setAttribute(QtCore.Qt.WA_TranslucentBackground, True)
+        close_btn = CloseButton(self)
 
         main_layout = QtWidgets.QHBoxLayout(self)
         main_layout.setContentsMargins(4, 0, 0, 0)
