@@ -117,7 +117,9 @@ class SearchItemDisplayWidget(BaseClickableFrame):
     def set_value(self, value: "str | list[str]"):
         text = ""
         ellide = True
-        if isinstance(value, str):
+        if value is None:
+            pass
+        elif isinstance(value, str):
             text = value
         elif len(value) == 1:
             text = value[0]
