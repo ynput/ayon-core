@@ -665,7 +665,8 @@ class FiltersBar(ClickableFrame):
     def _update_filters_geo(self):
         geo = self._filters_wrap.geometry()
         geo.moveTopLeft(QtCore.QPoint(0, 0))
-        geo.setWidth(geo.width() * 10)
+        # Arbitrary width
+        geo.setWidth(1000)
 
         self._filters_widget.setGeometry(geo)
 
