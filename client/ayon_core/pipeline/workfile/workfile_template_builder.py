@@ -61,6 +61,10 @@ from ayon_core.pipeline.create import (
 _NOT_SET = object()
 
 
+class EntityResolutionError(Exception):
+    """Exception raised when entity URI resolution fails."""
+
+
 def resolve_entity_uri(entity_uri: str) -> str:
     """Resolve AYON entity URI to a filesystem path for local system."""
     response = ayon_api.post(
@@ -76,7 +80,7 @@ def resolve_entity_uri(entity_uri: str) -> str:
 
     entities = response.data[0]["entities"]
     if len(entities) != 1:
-        raise RuntimeError(
+        raise EntityResolutionError(
             f"Unable to resolve AYON entity URI '{entity_uri}' to a "
             f"single filepath. Received data: {response.data}"
         )
