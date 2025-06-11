@@ -763,3 +763,4 @@ class FiltersBar(BaseClickableFrame):
                 self._filters_layout.takeAt(idx)
                 widget.setVisible(False)
                 widget.deleteLater()
+                self.filter_changed.emit(name)
