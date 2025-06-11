@@ -176,6 +176,9 @@ class FiltersPopup(QtWidgets.QWidget):
         self.setWindowFlags(QtCore.Qt.Popup | QtCore.Qt.FramelessWindowHint)
         self.setAttribute(QtCore.Qt.WA_TranslucentBackground)
 
+        shadow_frame = QtWidgets.QFrame(self)
+        shadow_frame.setObjectName("ShadowFrame")
+
         wrapper = QtWidgets.QWidget(self)
         wrapper.setObjectName("PopupWrapper")
 
@@ -184,9 +187,12 @@ class FiltersPopup(QtWidgets.QWidget):
         wraper_layout.setSpacing(5)
 
         main_layout = QtWidgets.QHBoxLayout(self)
-        main_layout.setContentsMargins(0, 0, 0, 0)
+        main_layout.setContentsMargins(2, 2, 2, 2)
         main_layout.addWidget(wrapper)
 
+        shadow_frame.stackUnder(wrapper)
+
+        self._shadow_frame = shadow_frame
         self._wrapper = wrapper
         self._wrapper_layout = wraper_layout
         self._preferred_width = None
@@ -211,13 +217,26 @@ class FiltersPopup(QtWidgets.QWidget):
         for item in filter_items:
             widget = FilterItemButton(item, self._wrapper)
             widget.filter_requested.connect(self.filter_requested)
-            self._wrapper_layout.addWidget(widget)
+            self._wrapper_layout.addWidget(widget, 0)
 
         if self._wrapper_layout.count() == 0:
             empty_label = QtWidgets.QLabel(
                 "No filters available...", self._wrapper
             )
-            self._wrapper_layout.addWidget(empty_label)
+            self._wrapper_layout.addWidget(empty_label, 0)
+
+    def showEvent(self, event):
+        super().showEvent(event)
+        self._update_shadow()
+
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        self._update_shadow()
+
+    def _update_shadow(self):
+        geo = self.geometry()
+        geo.moveTopLeft(QtCore.QPoint(0, 0))
+        self._shadow_frame.setGeometry(geo)
 
 
 class FilterValueItemButton(BaseClickableFrame):
@@ -422,6 +441,9 @@ class FilterValuePopup(QtWidgets.QWidget):
         self.setWindowFlags(QtCore.Qt.Popup | QtCore.Qt.FramelessWindowHint)
         self.setAttribute(QtCore.Qt.WA_TranslucentBackground, True)
 
+        shadow_frame = QtWidgets.QFrame(self)
+        shadow_frame.setObjectName("ShadowFrame")
+
         wrapper = QtWidgets.QWidget(self)
         wrapper.setObjectName("PopupWrapper")
 
@@ -438,7 +460,7 @@ class FilterValuePopup(QtWidgets.QWidget):
         wraper_layout.addWidget(items_view, 0)
 
         main_layout = QtWidgets.QHBoxLayout(self)
-        main_layout.setContentsMargins(0, 0, 0, 0)
+        main_layout.setContentsMargins(2, 2, 2, 2)
         main_layout.addWidget(wrapper)
 
         text_input.textChanged.connect(self._text_changed)
@@ -446,6 +468,9 @@ class FilterValuePopup(QtWidgets.QWidget):
 
         items_view.value_changed.connect(self._selection_changed)
 
+        shadow_frame.stackUnder(wrapper)
+
+        self._shadow_frame = shadow_frame
         self._wrapper = wrapper
         self._wrapper_layout = wraper_layout
         self._text_input = text_input
@@ -505,6 +530,7 @@ class FilterValuePopup(QtWidgets.QWidget):
         super().showEvent(event)
         if self._active_widget is not None:
             self._active_widget.setFocus()
+        self._update_shadow()
 
     def closeEvent(self, event):
         super().closeEvent(event)
@@ -513,6 +539,15 @@ class FilterValuePopup(QtWidgets.QWidget):
     def hideEvent(self, event):
         super().hideEvent(event)
         self.closed.emit(self._filter_name)
+
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        self._update_shadow()
+
+    def _update_shadow(self):
+        geo = self.geometry()
+        geo.moveTopLeft(QtCore.QPoint(0, 0))
+        self._shadow_frame.setGeometry(geo)
 
     def get_value(self):
         """Get the value from the active widget."""
