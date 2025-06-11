@@ -506,6 +506,10 @@ class LoaderWindow(QtWidgets.QWidget):
 
     def _update_filters(self):
         project_name = self._selected_project_name
+        if not project_name:
+            self._search_bar.set_search_items([])
+            return
+
         product_type_items: list[ProductTypeItem] = []
         status_items: list[StatusItem] = []
         if project_name:
