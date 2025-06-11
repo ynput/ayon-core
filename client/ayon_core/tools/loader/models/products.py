@@ -19,6 +19,7 @@ PRODUCTS_MODEL_SENDER = "products.model"
 
 def version_item_from_entity(version):
     version_attribs = version["attrib"]
+    tags = version["tags"]
     frame_start = version_attribs.get("frameStart")
     frame_end = version_attribs.get("frameEnd")
     handle_start = version_attribs.get("handleStart")
@@ -59,6 +60,7 @@ def version_item_from_entity(version):
         thumbnail_id=version["thumbnailId"],
         published_time=published_time,
         author=author,
+        tags=tags,
         status=version["status"],
         frame_range=frame_range,
         duration=duration,
