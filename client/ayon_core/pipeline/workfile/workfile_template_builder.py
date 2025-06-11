@@ -8,7 +8,7 @@ targeted by task types and names.
 
 Placeholders are created using placeholder plugins which should care about
 logic and data of placeholder items. 'PlaceholderItem' is used to keep track
-about it's progress.
+about its progress.
 """
 
 import os
