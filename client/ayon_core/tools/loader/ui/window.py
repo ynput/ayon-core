@@ -18,11 +18,9 @@ from ayon_core.tools.loader.control import LoaderController
 from .folders_widget import LoaderFoldersWidget
 from .tasks_widget import LoaderTasksWidget
 from .products_widget import ProductsWidget
-from .product_types_combo import ProductTypesCombobox
 from .product_group_dialog import ProductGroupDialog
 from .info_widget import InfoWidget
 from .repres_widget import RepresentationsWidget
-from .statuses_combo import StatusesCombobox
 from .search_bar import FiltersBar, FilterDefinition
 
 
@@ -186,15 +184,6 @@ class LoaderWindow(QtWidgets.QWidget):
 
         products_inputs_widget = QtWidgets.QWidget(products_wrap_widget)
         search_bar = FiltersBar(products_inputs_widget)
-        #
-        # products_filter_input = PlaceholderLineEdit(products_inputs_widget)
-        # products_filter_input.setPlaceholderText("Product name filter...")
-        #
-        # product_types_filter_combo = ProductTypesCombobox(
-        #     controller, products_inputs_widget
-        # )
-        #
-        # product_status_filter_combo = StatusesCombobox(controller, self)
 
         product_group_checkbox = QtWidgets.QCheckBox(
             "Enable grouping", products_inputs_widget)
@@ -202,9 +191,6 @@ class LoaderWindow(QtWidgets.QWidget):
 
         products_inputs_layout = QtWidgets.QHBoxLayout(products_inputs_widget)
         products_inputs_layout.setContentsMargins(0, 0, 0, 0)
-        # products_inputs_layout.addWidget(products_filter_input, 1)
-        # products_inputs_layout.addWidget(product_types_filter_combo, 1)
-        # products_inputs_layout.addWidget(product_status_filter_combo, 1)
         products_inputs_layout.addWidget(search_bar, 1)
         products_inputs_layout.addWidget(product_group_checkbox, 0)
 
@@ -256,15 +242,6 @@ class LoaderWindow(QtWidgets.QWidget):
             self._on_folder_filter_change
         )
         search_bar.filter_changed.connect(self._on_filter_change)
-        # products_filter_input.textChanged.connect(
-        #     self._on_product_filter_change
-        # )
-        # product_types_filter_combo.value_changed.connect(
-        #     self._on_product_type_filter_change
-        # )
-        # product_status_filter_combo.value_changed.connect(
-        #     self._on_status_filter_change
-        # )
         product_group_checkbox.stateChanged.connect(
             self._on_product_group_change
         )
@@ -323,9 +300,6 @@ class LoaderWindow(QtWidgets.QWidget):
         self._tasks_widget = tasks_widget
 
         self._search_bar = search_bar
-        # self._products_filter_input = products_filter_input
-        # self._product_types_filter_combo = product_types_filter_combo
-        # self._product_status_filter_combo = product_status_filter_combo
         self._product_group_checkbox = product_group_checkbox
         self._products_widget = products_widget
 
@@ -363,12 +337,6 @@ class LoaderWindow(QtWidgets.QWidget):
 
     def closeEvent(self, event):
         super().closeEvent(event)
-
-        # (
-        #     self
-        #     ._product_types_filter_combo
-        #     .reset_product_types_filter_on_refresh()
-        # )
 
         self._reset_on_show = True
 
@@ -459,17 +427,6 @@ class LoaderWindow(QtWidgets.QWidget):
     def _on_tasks_selection_change(self, event):
         self._products_widget.set_tasks_filter(event["task_ids"])
 
-    # def _on_product_filter_change(self, text):
-    #     self._products_widget.set_name_filter(text)
-    #
-    # def _on_status_filter_change(self):
-    #     status_names = self._product_status_filter_combo.get_value()
-    #     self._products_widget.set_statuses_filter(status_names)
-    #
-    # def _on_product_type_filter_change(self):
-    #     product_types = self._product_types_filter_combo.get_value()
-    #     self._products_widget.set_product_type_filter(product_types)
-
     def _on_merged_products_selection_change(self):
         items = self._products_widget.get_selected_merged_products()
         self._folders_widget.set_merged_products_selection(items)
@@ -520,15 +477,12 @@ class LoaderWindow(QtWidgets.QWidget):
             self._search_bar.set_search_items([])
             return
 
-        product_type_items: list[ProductTypeItem] = []
-        status_items: list[StatusItem] = []
-        if project_name:
-            product_type_items = self._controller.get_product_type_items(
-                project_name
-            )
-            status_items = self._controller.get_project_status_items(
-                project_name
-            )
+        product_type_items: list[ProductTypeItem] = (
+            self._controller.get_product_type_items(project_name)
+        )
+        status_items: list[StatusItem] = (
+            self._controller.get_project_status_items(project_name)
+        )
 
         filter_product_type_items = [
             {
