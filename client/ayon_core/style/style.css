@@ -880,6 +880,11 @@ FiltersPopup #PopupWrapper, FilterValuePopup #PopupWrapper {
     background: {color:bg-inputs};
 }
 
+FiltersPopup #ShadowFrame, FilterValuePopup #ShadowFrame {
+    border-radius: 5px;
+    background: rgba(0, 0, 0, 0.5);
+}
+
 FilterItemButton, FilterValueItemButton {
     border-radius: 5px;
     background: transparent;
