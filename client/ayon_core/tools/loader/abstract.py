@@ -1,3 +1,4 @@
+from __future__ import annotations
 from abc import ABC, abstractmethod
 from typing import List
 
@@ -6,6 +7,7 @@ from ayon_core.lib.attribute_definitions import (
     serialize_attr_defs,
     deserialize_attr_defs,
 )
+from ayon_core.tools.common_models import TagItem
 
 
 class ProductTypeItem:
@@ -517,8 +519,21 @@ class FrontendLoaderController(_BaseLoaderController):
 
         Returns:
             list[ProjectItem]: List of project items.
-        """
 
+        """
+        pass
+
+    @abstractmethod
+    def get_project_anatomy_tags(self, project_name: str) -> list[TagItem]:
+        """Tag items defined on project anatomy.
+
+        Args:
+            project_name (str): Project name.
+
+        Returns:
+            list[TagItem]: Tag definition items.
+
+        """
         pass
 
     @abstractmethod
@@ -586,6 +601,21 @@ class FrontendLoaderController(_BaseLoaderController):
 
         Returns:
             dict[str, Optional[str]]: Folder labels by folder id.
+
+        """
+        pass
+
+    @abstractmethod
+    def get_available_tags_by_entity_type(
+        self, project_name: str
+    ) -> dict[str, list[str]]:
+        """Get available tags by entity type.
+
+        Args:
+            project_name (str): Project name.
+
+        Returns:
+            dict[str, list[str]]: Available tags by entity type.
 
         """
         pass
