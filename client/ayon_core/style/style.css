@@ -868,6 +868,9 @@ FiltersBar {
     border-radius: 5px;
 }
 
+FiltersBar #ScrollArea {
+    background: {color:bg-inputs};
+}
 FiltersBar #SearchButton {
     background: transparent;
 }
@@ -877,24 +880,23 @@ FiltersPopup #PopupWrapper, FilterValuePopup #PopupWrapper {
     background: {color:bg-inputs};
 }
 
-FilterItemButton, FilterValueItemWidget {
+FilterItemButton, FilterValueItemButton {
     border-radius: 5px;
     background: transparent;
 }
-FilterItemButton:hover, FilterValueItemWidget:hover {
+FilterItemButton:hover, FilterValueItemButton:hover {
     background: {color:bg-buttons-hover};
 }
-FilterValueItemWidget[selected="1"] {
+FilterValueItemButton[selected="1"] {
     background: {color:bg-view-selection};
 }
-FilterValueItemWidget[selected="1"]:hover {
+FilterValueItemButton[selected="1"]:hover {
     background: {color:bg-view-selection-hover};
 }
-SearchItemDisplayWidget {
-    border-radius: 5px;
+FilterValueItemsView #ContentWidget {
+    background: {color:bg-inputs};
 }
-SearchItemDisplayWidget #CloseButton {
-    background: transparent;
+SearchItemDisplayWidget {
     border-radius: 5px;
 }
 SearchItemDisplayWidget #ValueWidget {

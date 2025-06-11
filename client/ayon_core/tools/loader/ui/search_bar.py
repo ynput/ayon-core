@@ -124,11 +124,12 @@ class FilterItemButton(BaseClickableFrame):
         self._filter_def = filter_def
 
         title_widget = QtWidgets.QLabel(filter_def.title, self)
-        title_widget.setAttribute(QtCore.Qt.WA_TranslucentBackground, True)
 
         main_layout = QtWidgets.QHBoxLayout(self)
         main_layout.setContentsMargins(5, 5, 5, 5)
         main_layout.addWidget(title_widget, 1)
+
+        self._title_widget = title_widget
 
     def _mouse_release_callback(self):
         """Handle mouse release event to emit filter request."""
@@ -148,7 +149,7 @@ class FiltersPopup(QtWidgets.QWidget):
 
         wraper_layout = QtWidgets.QVBoxLayout(wrapper)
         wraper_layout.setContentsMargins(5, 5, 5, 5)
-        wraper_layout.setSpacing(0)
+        wraper_layout.setSpacing(5)
 
         main_layout = QtWidgets.QHBoxLayout(self)
         main_layout.setContentsMargins(0, 0, 0, 0)
@@ -187,22 +188,22 @@ class FiltersPopup(QtWidgets.QWidget):
             self._wrapper_layout.addWidget(empty_label)
 
 
-class FilterValueItemWidget(BaseClickableFrame):
+class FilterValueItemButton(BaseClickableFrame):
     selected = QtCore.Signal(str)
 
     def __init__(self, widget_id, value, icon, color, parent):
         super().__init__(parent)
 
-        label_widget = QtWidgets.QLabel(str(value), self)
+        title_widget = QtWidgets.QLabel(str(value), self)
         if color:
-            label_widget.setStyleSheet(f"color: {color};")
+            title_widget.setStyleSheet(f"color: {color};")
 
         main_layout = QtWidgets.QHBoxLayout(self)
         main_layout.setContentsMargins(5, 5, 5, 5)
-        main_layout.addWidget(label_widget, 1)
+        main_layout.addWidget(title_widget, 1)
 
         self._icon_widget = None
-        self._label_widget = label_widget
+        self._title_widget = title_widget
         self._main_layout = main_layout
         self._selected = False
         self._value = value
@@ -245,13 +246,28 @@ class FilterValueItemsView(QtWidgets.QWidget):
 
     def __init__(self, parent):
         super().__init__(parent)
-        self.setAttribute(QtCore.Qt.WA_TranslucentBackground, True)
+
+        scroll_area = QtWidgets.QScrollArea(self)
+        scroll_area.setObjectName("ScrollArea")
+        srcoll_viewport = scroll_area.viewport()
+        srcoll_viewport.setContentsMargins(0, 0, 0, 0)
+        scroll_area.setWidgetResizable(True)
+        scroll_area.setMinimumHeight(20)
+        scroll_area.setMaximumHeight(400)
+
+        content_widget = QtWidgets.QWidget(scroll_area)
+        content_widget.setObjectName("ContentWidget")
+        content_layout = QtWidgets.QVBoxLayout(content_widget)
+        content_layout.setContentsMargins(0, 0, 0, 0)
+
+        scroll_area.setWidget(content_widget)
 
         main_layout = QtWidgets.QVBoxLayout(self)
         main_layout.setContentsMargins(0, 0, 0, 0)
+        main_layout.addWidget(scroll_area)
 
         self._multiselection = False
-        self._main_layout = main_layout
+        self._content_layout = content_layout
         self._last_selected_widget = None
         self._widgets_by_id = {}
 
@@ -327,8 +343,8 @@ class FilterValueItemsView(QtWidgets.QWidget):
         return None
 
     def set_items(self, items: list[dict[str, Any]]):
-        while self._main_layout.count() > 0:
-            item = self._main_layout.takeAt(0)
+        while self._content_layout.count() > 0:
+            item = self._content_layout.takeAt(0)
             widget = item.widget()
             if widget is not None:
                 widget.setVisible(False)
@@ -338,7 +354,7 @@ class FilterValueItemsView(QtWidgets.QWidget):
 
         for item in items:
             widget_id = uuid.uuid4().hex
-            widget = FilterValueItemWidget(
+            widget = FilterValueItemButton(
                 widget_id,
                 item["value"],
                 item.get("icon"),
@@ -347,7 +363,7 @@ class FilterValueItemsView(QtWidgets.QWidget):
             )
             widget.selected.connect(self._on_item_clicked)
             self._widgets_by_id[widget_id] = widget
-            self._main_layout.addWidget(widget)
+            self._content_layout.addWidget(widget)
 
     def _on_item_clicked(self, widget_id):
         widget = self._widgets_by_id.get(widget_id)
@@ -385,6 +401,7 @@ class FilterValuePopup(QtWidgets.QWidget):
 
         wraper_layout = QtWidgets.QVBoxLayout(wrapper)
         wraper_layout.setContentsMargins(5, 5, 5, 5)
+        wraper_layout.setSpacing(5)
         wraper_layout.addWidget(text_input, 0)
         wraper_layout.addWidget(items_view, 0)
 
