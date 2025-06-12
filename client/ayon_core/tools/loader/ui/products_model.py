@@ -173,6 +173,9 @@ class ProductsModel(QtGui.QStandardItemModel):
             self._last_folder_ids
         )
 
+    def get_task_tags_by_id(self, task_id):
+        return self._last_task_tags_by_task_id.get(task_id, set())
+
     def get_version_items_by_product_id(self, product_id: str):
         product_item = self._product_items_by_id.get(product_id)
         if product_item is None:
