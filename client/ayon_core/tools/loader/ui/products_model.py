@@ -423,9 +423,9 @@ class ProductsModel(QtGui.QStandardItemModel):
             version_item.status
             for version_item in product_item.version_items.values()
         }
-        tags = set()
+        version_tags = set()
         for version_item in product_item.version_items.values():
-            tags |= set(version_item.tags)
+            version_tags |= set(version_item.tags)
 
         if model_item is None:
             product_id = product_item.product_id
@@ -445,7 +445,7 @@ class ProductsModel(QtGui.QStandardItemModel):
             self._items_by_id[product_id] = model_item
 
         model_item.setData("|".join(statuses), STATUS_NAME_FILTER_ROLE)
-        model_item.setData("|".join(tags), VERSION_TAGS_FILTER_ROLE)
+        model_item.setData("|".join(version_tags), VERSION_TAGS_FILTER_ROLE)
         model_item.setData(product_item.folder_label, FOLDER_LABEL_ROLE)
         in_scene = 1 if product_item.product_in_scene else 0
         model_item.setData(in_scene, PRODUCT_IN_SCENE_ROLE)
