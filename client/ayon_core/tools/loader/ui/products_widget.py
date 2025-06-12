@@ -129,9 +129,10 @@ class ProductsProxyModel(RecursiveSortFilterProxyModel):
             return False
 
         value_s = index.data(role)
-        for value in value_s.split("|"):
-            if value in filter_value:
-                return True
+        if value_s:
+            for value in value_s.split("|"):
+                if value in filter_value:
+                    return True
         return False
 
     def lessThan(self, left, right):
