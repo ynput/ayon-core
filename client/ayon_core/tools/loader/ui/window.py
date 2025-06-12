@@ -325,7 +325,6 @@ class LoaderWindow(QtWidgets.QWidget):
     def refresh(self):
         self._reset_on_show = False
         self._controller.reset()
-        self._update_filters()
 
     def showEvent(self, event):
         super().showEvent(event)
@@ -462,6 +461,7 @@ class LoaderWindow(QtWidgets.QWidget):
         self._projects_combobox.set_current_context_project(project_name)
         if not self._refresh_handler.project_refreshed:
             self._projects_combobox.refresh()
+        self._update_filters()
 
     def _on_load_finished(self, event):
         error_info = event["error_info"]
