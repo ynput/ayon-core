@@ -108,6 +108,13 @@ class ActionsModel:
 
         self._variant = get_settings_variant()
 
+    @staticmethod
+    def calculate_full_label(label: str, variant_label: Optional[str]) -> str:
+        """Calculate full label from label and variant_label."""
+        if variant_label:
+            return " ".join([label, variant_label])
+        return label
+
     @property
     def log(self):
         if self._log is None:
@@ -410,7 +417,7 @@ class ActionsModel:
                 group_label = variant_label
                 variant_label = None
 
-            full_label = ActionItem.calculate_full_label(
+            full_label = self.calculate_full_label(
                 group_label, variant_label
             )
             action_items.append(ActionItem(
@@ -564,7 +571,7 @@ class ActionsModel:
 
             label = action.label or identifier
             variant_label = getattr(action, "label_variant", None)
-            full_label = ActionItem.calculate_full_label(
+            full_label = self.calculate_full_label(
                 label, variant_label
             )
             icon = get_action_icon(action)
