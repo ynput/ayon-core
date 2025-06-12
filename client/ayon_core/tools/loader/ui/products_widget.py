@@ -42,7 +42,7 @@ class ProductsProxyModel(RecursiveSortFilterProxyModel):
 
         self._product_type_filters = None
         self._statuses_filter = None
-        self._tags_filter = None
+        self._version_tags_filter = None
         self._task_ids_filter = None
         self._ascending_sort = True
 
@@ -70,9 +70,9 @@ class ProductsProxyModel(RecursiveSortFilterProxyModel):
         self.invalidateFilter()
 
     def set_version_tags_filter(self, tags):
-        if self._tags_filter == tags:
+        if self._version_tags_filter == tags:
             return
-        self._tags_filter = tags
+        self._version_tags_filter = tags
         self.invalidateFilter()
 
     def filterAcceptsRow(self, source_row, source_parent):
@@ -92,7 +92,7 @@ class ProductsProxyModel(RecursiveSortFilterProxyModel):
             return False
 
         if not self._accept_row_by_role_value(
-            index, self._tags_filter, VERSION_TAGS_FILTER_ROLE
+            index, self._version_tags_filter, VERSION_TAGS_FILTER_ROLE
         ):
             return False
 
@@ -303,9 +303,9 @@ class ProductsWidget(QtWidgets.QWidget):
         self._version_delegate.set_statuses_filter(status_names)
         self._products_proxy_model.set_statuses_filter(status_names)
 
-    def set_version_tags_filter(self, tags):
-        self._version_delegate.set_tags_filter(tags)
-        self._products_proxy_model.set_version_tags_filter(tags)
+    def set_version_tags_filter(self, version_tags):
+        self._version_delegate.set_version_tags_filter(version_tags)
+        self._products_proxy_model.set_version_tags_filter(version_tags)
 
     def set_product_type_filter(self, product_type_filters):
         """
