@@ -43,18 +43,6 @@ class WebactionResponse:
     form: Optional[WebactionForm] = None
     error_message: Optional[str] = None
 
-    def to_data(self):
-        return asdict(self)
-
-    @classmethod
-    def from_data(cls, data):
-        data = data.copy()
-        form = data["form"]
-        if form:
-            data["form"] = WebactionForm(**form)
-
-        return cls(**data)
-
 
 def get_action_icon(action):
     """Get action icon info.
@@ -268,7 +256,7 @@ class ActionsModel:
                 error_message="Failed to trigger webaction.",
             )
 
-        data = handle_response.to_data()
+        data = asdict(handle_response)
         data.update({
             "trigger_failed": failed,
             "trigger_id": trigger_id,
@@ -422,17 +410,21 @@ class ActionsModel:
                 group_label = variant_label
                 variant_label = None
 
+            full_label = ActionItem.calculate_full_label(
+                group_label, variant_label
+            )
             action_items.append(ActionItem(
-                "webaction",
-                action["identifier"],
-                group_label,
-                variant_label,
-                # action["category"],
-                icon,
-                action["order"],
-                action["addonName"],
-                action["addonVersion"],
-                config_fields,
+                action_type="webaction",
+                identifier=action["identifier"],
+                order=action["order"],
+                label=group_label,
+                variant_label=variant_label,
+                full_label=full_label,
+                icon=icon,
+                addon_name=action["addonName"],
+                addon_version=action["addonVersion"],
+                config_fields=config_fields,
+                # category=action["category"],
             ))
 
         cache.update_data(action_items)
@@ -572,15 +564,20 @@ class ActionsModel:
 
             label = action.label or identifier
             variant_label = getattr(action, "label_variant", None)
+            full_label = ActionItem.calculate_full_label(
+                label, variant_label
+            )
             icon = get_action_icon(action)
 
             item = ActionItem(
-                "local",
-                identifier,
-                label,
-                variant_label,
-                icon,
-                action.order,
+                action_type="local",
+                identifier=identifier,
+                order=action.order,
+                label=label,
+                variant_label=variant_label,
+                full_label=full_label,
+                icon=icon,
+                config_fields=[],
             )
             action_items[identifier] = item
         self._action_items[project_name] = action_items
