@@ -317,8 +317,12 @@ class VersionDelegate(QtWidgets.QStyledItemDelegate):
         editor.clear()
 
         # Current value of the index
-        versions = index.data(VERSION_NAME_EDIT_ROLE) or []
+        product_id = index.data(PRODUCT_ID_ROLE)
         version_id = index.data(VERSION_ID_ROLE)
+        model = index.model()
+        while hasattr(model, "sourceModel"):
+            model = model.sourceModel()
+        versions = model.get_version_items_by_product_id(product_id)
 
         editor.update_versions(versions, version_id)
         editor.set_tasks_filter(self._task_ids_filter)

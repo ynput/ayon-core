@@ -173,6 +173,14 @@ class ProductsModel(QtGui.QStandardItemModel):
             self._last_folder_ids
         )
 
+    def get_version_items_by_product_id(self, product_id: str):
+        product_item = self._product_items_by_id.get(product_id)
+        if product_item is None:
+            return None
+        version_items = list(product_item.version_items.values())
+        version_items.sort(reverse=True)
+        return version_items
+
     def flags(self, index):
         # Make the version column editable
         if index.column() == self.version_col and index.data(PRODUCT_ID_ROLE):
