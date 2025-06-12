@@ -55,13 +55,6 @@ class ActionItem:
     addon_name: Optional[str] = None
     addon_version: Optional[str] = None
 
-    @staticmethod
-    def calculate_full_label(label: str, variant_label: Optional[str]) -> str:
-        """Calculate full label from label and variant_label."""
-        if variant_label:
-            return " ".join([label, variant_label])
-        return label
-
 
 class AbstractLauncherCommon(ABC):
     @abstractmethod
