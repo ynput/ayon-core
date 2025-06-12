@@ -6,7 +6,7 @@ import json
 import shutil
 import subprocess
 from abc import ABC, abstractmethod
-from typing import Dict, Any, Optional
+from typing import Any, Optional
 from dataclasses import dataclass, field
 import tempfile
 
@@ -65,7 +65,7 @@ class TempData:
 
     # Set later
     full_output_path: str = ""
-    filled_files: Dict[int, str] = field(default_factory=list)
+    filled_files: dict[int, str] = field(default_factory=dict)
     output_ext_is_image: bool = True
     output_is_sequence: bool = True
 
@@ -1020,7 +1020,7 @@ class ExtractReview(pyblish.api.InstancePlugin):
         current_repre_name: str,
         start_frame: int,
         end_frame: int
-    ) -> Optional[Dict[int, str]]:
+    ) -> Optional[dict[int, str]]:
         """Tries to replace missing frames from ones from last version"""
         repre_file_paths = self._get_last_version_files(
             instance, current_repre_name)
@@ -1108,7 +1108,7 @@ class ExtractReview(pyblish.api.InstancePlugin):
         resolution_height: int,
         extension: str,
         temp_data: TempData
-    ) -> Optional[Dict[int, str]]:
+    ) -> Optional[dict[int, str]]:
         """Fills missing files by blank frame."""
 
         blank_frame_path = None
@@ -1164,7 +1164,7 @@ class ExtractReview(pyblish.api.InstancePlugin):
         staging_dir: str,
         start_frame: int,
         end_frame: int
-    ) -> Dict[int, str]:
+    ) -> dict[int, str]:
         """Fill missing files in sequence by duplicating existing ones.
 
         This will take nearest frame file and copy it with so as to fill
