@@ -1136,7 +1136,7 @@ def oiio_color_convert(
     # Validate input parameters
     if target_colorspace and target_view and target_display:
         raise ValueError(
-            "Colorspace and both screen and display cannot be set together."
+            "Colorspace and both view  and display cannot be set together."
             "Choose colorspace or screen and display"
         )
 
