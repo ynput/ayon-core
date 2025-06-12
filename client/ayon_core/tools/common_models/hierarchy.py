@@ -100,12 +100,14 @@ class TaskItem:
         label: Union[str, None],
         task_type: str,
         parent_id: str,
+        tags: list[str],
     ):
         self.task_id = task_id
         self.name = name
         self.label = label
         self.task_type = task_type
         self.parent_id = parent_id
+        self.tags = tags
 
         self._full_label = None
 
@@ -145,6 +147,7 @@ class TaskItem:
             "label": self.label,
             "parent_id": self.parent_id,
             "task_type": self.task_type,
+            "tags": self.tags,
         }
 
     @classmethod
@@ -176,7 +179,8 @@ def _get_task_items_from_tasks(tasks):
             task["name"],
             task["label"],
             task["type"],
-            folder_id
+            folder_id,
+            task["tags"],
         ))
     return output
 
@@ -645,6 +649,6 @@ class HierarchyModel(object):
         tasks = list(ayon_api.get_tasks(
             project_name,
             folder_ids=[folder_id],
-            fields={"id", "name", "label", "folderId", "type"}
+            fields={"id", "name", "label", "folderId", "type", "tags"}
         ))
         return _get_task_items_from_tasks(tasks)
