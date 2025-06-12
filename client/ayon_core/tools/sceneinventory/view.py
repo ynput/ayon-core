@@ -959,13 +959,13 @@ class SceneInventoryView(QtWidgets.QTreeView):
             remove_container(container)
         self.data_changed.emit()
 
-    def _show_version_error_dialog(self, version, item_ids, exception=None):
+    def _show_version_error_dialog(self, version, item_ids, exception):
         """Shows QMessageBox when version switch doesn't work
 
         Args:
             version: str or int or None
             item_ids (Iterable[str]): List of item ids to run the
-            exception (Exception, optional): Exception that occurred
+            exception (Exception): Exception that occurred
         """
         if version == -1:
             version_str = "latest"
@@ -1110,10 +1110,10 @@ class SceneInventoryView(QtWidgets.QTreeView):
                 container = containers_by_id[item_id]
                 try:
                     update_container(container, item_version)
-                except Exception as e:
+                except Exception as exc:
                     log.warning("Update failed", exc_info=True)
                     self._show_version_error_dialog(
-                        item_version, [item_id], e
+                        item_version, [item_id], exc
                     )
         finally:
             # Always update the scene inventory view, even if errors occurred
