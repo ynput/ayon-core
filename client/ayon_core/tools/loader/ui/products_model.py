@@ -227,9 +227,9 @@ class ProductsModel(QtGui.QStandardItemModel):
             product_item = self._product_items_by_id.get(product_id)
             if product_item is None:
                 return None
-            product_items = list(product_item.version_items.values())
-            product_items.sort(reverse=True)
-            return product_items
+            version_items = list(product_item.version_items.values())
+            version_items.sort(reverse=True)
+            return version_items
 
         if role == QtCore.Qt.EditRole:
             return None
