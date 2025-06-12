@@ -427,6 +427,10 @@ class LoaderWindow(QtWidgets.QWidget):
             version_tags = self._search_bar.get_filter_value("version_tags")
             self._products_widget.set_version_tags_filter(version_tags)
 
+        elif filter_name == "task_tags":
+            task_tags = self._search_bar.get_filter_value("task_tags")
+            self._products_widget.set_task_tags_filter(task_tags)
+
     def _on_tasks_selection_change(self, event):
         self._products_widget.set_tasks_filter(event["task_ids"])
 
@@ -522,7 +526,13 @@ class LoaderWindow(QtWidgets.QWidget):
             }
             for tag_name in tags_by_entity_type.get("versions") or []
         ]
-
+        task_tags = [
+            {
+                "value": tag_name,
+                "color": tag_color_by_name.get(tag_name),
+            }
+            for tag_name in tags_by_entity_type.get("tasks") or []
+        ]
 
         self._search_bar.set_search_items([
             FilterDefinition(
@@ -553,6 +563,13 @@ class LoaderWindow(QtWidgets.QWidget):
                 filter_type="list",
                 icon=None,
                 items=version_tags,
+            ),
+            FilterDefinition(
+                name="task_tags",
+                title="Task tags",
+                filter_type="list",
+                icon=None,
+                items=task_tags,
             ),
         ])
 
