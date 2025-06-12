@@ -1165,63 +1165,50 @@ def oiio_color_convert(
         oiio_cmd.extend(additional_command_args)
 
     # Handle the different conversion cases
-    if target_colorspace:
-        # Case 1: Converting to a named colorspace
-        if all([source_view, source_display]):
-            # First convert from source display/view to a role/reference space
-            # that can be used with colorconvert
-            # For example, converting to "scene_linear" or an appropriate
-            # intermediate space
+    # Source view and display are known
+    if source_view and source_display:
+        if target_colorspace:
             # This is a two-step conversion process since there's no direct
             # display/view to colorspace command
             # This could be a config parameter or determined from OCIO config
-            tmp_role_space = "scene_linear"
+            # Use temporarty role space 'scene_linear'
+            color_convert_args = ("scene_linear", target_colorspace)
+        elif source_display != target_display or source_view != target_view:
+            # Complete display/view pair conversion
+            # - go through a reference space
+            color_convert_args = (target_display, target_view)
+        else:
+            color_convert_args = None
+            logger.debug(
+                "Source and target display/view pairs are identical."
+                " No color conversion needed."
+            )
+
+        if color_convert_args:
             oiio_cmd.extend([
                 "--ociodisplay:inverse=1:subimages=0",
                 source_display,
                 source_view,
                 "--colorconvert:subimages=0",
-                tmp_role_space,
-                target_colorspace,
+                *color_convert_args
             ])
-        else:
-            # Standard color space to color space conversion
-            oiio_cmd.extend([
-                "--colorconvert:subimages=0",
-                source_colorspace,
-                target_colorspace,
-            ])
-    else:  # Using display/view target
-        if all([source_view, source_display]):
-            if source_display == target_display and source_view == target_view:
-                # No conversion needed if source and target display/view are
-                # the same
-                logger.debug(
-                    "Source and target display/view pairs are identical. "
-                    "No color conversion needed."
-                )
-            else:
-                # Complete display/view pair conversion
-                # Similar approach: go through a reference space
-                # This could be configured
-                tmp_role_space = "scene_linear"
-                oiio_cmd.extend([
-                    "--ociodisplay:inverse=1:subimages=0",
-                    source_display,
-                    source_view,
-                    "--ociodisplay:subimages=0",
-                    target_display,
-                    target_view,
-                ])
-        else:
-            # Standard conversion from colorspace to display/view
-            oiio_cmd.extend([
-                "--iscolorspace",
-                source_colorspace,
-                "--ociodisplay:subimages=0",
-                target_display,
-                target_view,
-            ])
+
+    elif target_colorspace:
+        # Standard color space to color space conversion
+        oiio_cmd.extend([
+            "--colorconvert:subimages=0",
+            source_colorspace,
+            target_colorspace,
+        ])
+    else:
+        # Standard conversion from colorspace to display/view
+        oiio_cmd.extend([
+            "--iscolorspace",
+            source_colorspace,
+            "--ociodisplay:subimages=0",
+            target_display,
+            target_view,
+        ])
 
     oiio_cmd.extend(["-o", output_path])
 
