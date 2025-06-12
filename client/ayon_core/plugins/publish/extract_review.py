@@ -65,7 +65,7 @@ class TempData:
 
     # Set later
     full_output_path: str = ""
-    filled_files: Dict[int, str] = field(default_factory=list)
+    filled_files: dict[int, str] = field(default_factory=dict)
     output_ext_is_image: bool = True
     output_is_sequence: bool = True
 
