@@ -1134,19 +1134,13 @@ def oiio_color_convert(
     ])
 
     # Validate input parameters
-    if all([target_colorspace, target_view, target_display]):
+    if target_colorspace and target_view and target_display:
         raise ValueError(
             "Colorspace and both screen and display cannot be set together."
             "Choose colorspace or screen and display"
         )
 
-    if all([source_view, source_display]) and source_colorspace:
-        logger.warning(
-            "Both source display/view and source_colorspace provided. "
-            "Using source display/view pair and ignoring source_colorspace."
-        )
-
-    if not target_colorspace and not all([target_view, target_display]):
+    if not target_colorspace and not target_view and not target_display:
         raise ValueError(
             "Both screen and display must be set if target_colorspace is not "
             "provided."
@@ -1159,6 +1153,12 @@ def oiio_color_convert(
         raise ValueError(
             "Both source_view and source_display must be provided if using "
             "display/view inputs."
+        )
+
+    if source_view and source_display and source_colorspace:
+        logger.warning(
+            "Both source display/view and source_colorspace provided. "
+            "Using source display/view pair and ignoring source_colorspace."
         )
 
     if additional_command_args:
