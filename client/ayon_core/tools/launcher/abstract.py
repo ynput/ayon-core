@@ -25,77 +25,43 @@ class WebactionContext:
     addon_version: str
 
 
+@dataclass
 class ActionItem:
     """Item representing single action to trigger.
 
-    Args:
+    Attributes:
         action_type (Literal["webaction", "local"]): Type of action.
         identifier (str): Unique identifier of action item.
+        order (int): Action ordering.
         label (str): Action label.
         variant_label (Union[str, None]): Variant label, full label is
             concatenated with space. Actions are grouped under single
             action if it has same 'label' and have set 'variant_label'.
+        full_label (str): Full label, if not set it is generated
+            from 'label' and 'variant_label'.
         icon (dict[str, str]): Icon definition.
-        order (int): Action ordering.
         addon_name (Optional[str]): Addon name.
         addon_version (Optional[str]): Addon version.
-        config_fields (Optional[list[dict]]): Config fields for webaction.
-        full_label (Optional[str]): Full label, if not set it is generated
-            from 'label' and 'variant_label'.
+        config_fields (list[dict]): Config fields for webaction.
 
     """
-    def __init__(
-        self,
-        action_type: str,
-        identifier: str,
-        label: str,
-        variant_label: Optional[str],
-        icon: dict[str, str],
-        order: int,
-        addon_name: Optional[str] = None,
-        addon_version: Optional[str] = None,
-        config_fields: Optional[list[dict]] = None,
-        full_label: Optional[str] = None,
-    ):
-        if config_fields is None:
-            config_fields = []
-        self.action_type = action_type
-        self.identifier = identifier
-        self.label = label
-        self.variant_label = variant_label
-        self.icon = icon
-        self.order = order
-        self.addon_name = addon_name
-        self.addon_version = addon_version
-        self.config_fields = config_fields
-        self._full_label = full_label
+    action_type: str
+    identifier: str
+    order: int
+    label: str
+    variant_label: Optional[str]
+    full_label: str
+    icon: Optional[dict[str, str]]
+    config_fields: list[dict]
+    addon_name: Optional[str] = None
+    addon_version: Optional[str] = None
 
-    def copy(self):
-        return self.from_data(self.to_data())
-
-    @property
-    def full_label(self):
-        if self._full_label is None:
-            if self.variant_label:
-                self._full_label = " ".join([self.label, self.variant_label])
-            else:
-                self._full_label = self.label
-        return self._full_label
-
-    def to_data(self) -> dict[str, Any]:
-        return {
-            "identifier": self.identifier,
-            "label": self.label,
-            "variant_label": self.variant_label,
-            "icon": self.icon,
-            "order": self.order,
-            "full_label": self._full_label,
-            "config_fields": copy.deepcopy(self.config_fields),
-        }
-
-    @classmethod
-    def from_data(cls, data: dict[str, Any]) -> "ActionItem":
-        return cls(**data)
+    @staticmethod
+    def calculate_full_label(label: str, variant_label: Optional[str]) -> str:
+        """Calculate full label from label and variant_label."""
+        if variant_label:
+            return " ".join([label, variant_label])
+        return label
 
 
 class AbstractLauncherCommon(ABC):
