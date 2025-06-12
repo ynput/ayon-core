@@ -434,7 +434,7 @@ class AbstractLauncherFrontEnd(AbstractLauncherCommon):
         action_label: str,
         form_data: Optional[dict[str, Any]] = None,
     ):
-        """Trigger action on given context.
+        """Trigger action on the given context.
 
         Args:
             context (WebactionContext): Webaction context.
