@@ -610,9 +610,9 @@ class IWorkfileHost:
         The default implementation looks for products with the 'workfile'
             product type.
 
-        Pre-fetched entities have mandatory fields to be fetched.
-         -  Version: 'id', 'author', 'taskId'
-         -  Representation: 'id', 'versionId', 'files'
+        Pre-fetched entities have mandatory fields to be fetched:
+            - Version: 'id', 'author', 'taskId'
+            - Representation: 'id', 'versionId', 'files'
 
         Args:
             project_name (str): Project name.
