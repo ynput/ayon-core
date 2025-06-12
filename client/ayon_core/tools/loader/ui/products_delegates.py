@@ -20,12 +20,12 @@ from .products_model import (
     SYNC_REMOTE_SITE_AVAILABILITY,
 )
 
-VERSION_ID_ROLE = QtCore.Qt.UserRole + 1
-TASK_ID_ROLE = QtCore.Qt.UserRole + 2
-STATUS_NAME_ROLE = QtCore.Qt.UserRole + 3
+COMBO_VERSION_ID_ROLE = QtCore.Qt.UserRole + 1
+COMBO_TASK_ID_ROLE = QtCore.Qt.UserRole + 2
+COMBO_STATUS_NAME_ROLE = QtCore.Qt.UserRole + 3
 
 
-class VersionsModel(QtGui.QStandardItemModel):
+class ComboVersionsModel(QtGui.QStandardItemModel):
     def __init__(self):
         super().__init__()
         self._items_by_id = {}
@@ -59,9 +59,9 @@ class VersionsModel(QtGui.QStandardItemModel):
                 item = QtGui.QStandardItem(label)
                 item.setData(version_id, QtCore.Qt.UserRole)
                 self._items_by_id[version_id] = item
-            item.setData(version_id, VERSION_ID_ROLE)
-            item.setData(version_item.status, STATUS_NAME_ROLE)
-            item.setData(version_item.task_id, TASK_ID_ROLE)
+            item.setData(version_id, COMBO_VERSION_ID_ROLE)
+            item.setData(version_item.status, COMBO_STATUS_NAME_ROLE)
+            item.setData(version_item.task_id, COMBO_TASK_ID_ROLE)
             version_tags_by_version_id[version_id] = set(version_item.tags)
 
             if item.row() != idx:
@@ -69,7 +69,7 @@ class VersionsModel(QtGui.QStandardItemModel):
         self._version_tags_by_version_id = version_tags_by_version_id
 
 
-class VersionsFilterModel(QtCore.QSortFilterProxyModel):
+class ComboVersionsFilterModel(QtCore.QSortFilterProxyModel):
     def __init__(self):
         super().__init__()
         self._status_filter = None
@@ -83,14 +83,14 @@ class VersionsFilterModel(QtCore.QSortFilterProxyModel):
                 return False
             if index is None:
                 index = self.sourceModel().index(row, 0, parent)
-            status = index.data(STATUS_NAME_ROLE)
+            status = index.data(COMBO_STATUS_NAME_ROLE)
             if status not in self._status_filter:
                 return False
 
         if self._task_ids_filter:
             if index is None:
                 index = self.sourceModel().index(row, 0, parent)
-            task_id = index.data(TASK_ID_ROLE)
+            task_id = index.data(COMBO_TASK_ID_ROLE)
             if task_id not in self._task_ids_filter:
                 return False
 
@@ -100,7 +100,7 @@ class VersionsFilterModel(QtCore.QSortFilterProxyModel):
 
             if index is None:
                 index = self.sourceModel().index(row, 0, parent)
-            version_id = index.data(VERSION_ID_ROLE)
+            version_id = index.data(COMBO_VERSION_ID_ROLE)
 
             model = self.sourceModel()
             tags = model.get_version_tags(version_id)
@@ -134,8 +134,8 @@ class VersionComboBox(QtWidgets.QComboBox):
     def __init__(self, product_id, parent):
         super().__init__(parent)
 
-        versions_model = VersionsModel()
-        proxy_model = VersionsFilterModel()
+        versions_model = ComboVersionsModel()
+        proxy_model = ComboVersionsFilterModel()
         proxy_model.setSourceModel(versions_model)
 
         self.setModel(proxy_model)
