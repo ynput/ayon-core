@@ -11,7 +11,7 @@ from ayon_core.lib import (
     is_oiio_supported,
 )
 from ayon_core.lib.transcoding import (
-    oiiotool_transcode,
+    oiio_color_convert,
 )
 
 from ayon_core.lib.profiles_filtering import filter_profiles
@@ -170,7 +170,7 @@ class ExtractOIIOTranscode(publish.Extractor):
                                                              new_staging_dir,
                                                              output_extension)
 
-                    oiiotool_transcode(
+                    oiio_color_convert(
                         input_path=input_path,
                         output_path=output_path,
                         config_path=config_path,

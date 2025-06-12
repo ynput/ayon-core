@@ -1010,7 +1010,7 @@ def convert_ffprobe_fps_to_float(value):
 
 
 # --- Deprecated functions ---
-@deprecated("oiiotool_transcode")
+@deprecated("oiio_color_convert")
 def convert_colorspace(
     input_path,
     output_path,
@@ -1022,7 +1022,7 @@ def convert_colorspace(
     additional_command_args=None,
     logger=None,
 ):
-    """DEPRECATED function use `oiiotool_transcode` instead
+    """DEPRECATED function use `oiio_color_convert` instead
 
     Args:
         input_path (str): Path to input file that should be converted.
@@ -1047,7 +1047,7 @@ def convert_colorspace(
     Raises:
         ValueError: If parameters are misconfigured.
     """
-    return oiiotool_transcode(
+    return oiio_color_convert(
         input_path,
         output_path,
         config_path,
@@ -1060,7 +1060,7 @@ def convert_colorspace(
     )
 
 
-def oiiotool_transcode(
+def oiio_color_convert(
     input_path,
     output_path,
     config_path,

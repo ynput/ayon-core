@@ -15,7 +15,7 @@ from ayon_core.lib import (
     path_to_subprocess_arg,
     run_subprocess,
 )
-from ayon_core.lib.transcoding import oiiotool_transcode
+from ayon_core.lib.transcoding import oiio_color_convert
 
 from ayon_core.lib.transcoding import VIDEO_EXTENSIONS, IMAGE_EXTENSIONS
 
@@ -431,7 +431,7 @@ class ExtractThumbnail(pyblish.api.InstancePlugin):
                 oiio_default_view = display_and_view["view"]
 
         try:
-            oiiotool_transcode(
+            oiio_color_convert(
                 src_path,
                 dst_path,
                 colorspace_data["config"]["path"],
