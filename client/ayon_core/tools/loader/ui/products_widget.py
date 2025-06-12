@@ -322,6 +322,7 @@ class ProductsWidget(QtWidgets.QWidget):
         self._products_proxy_model.set_version_tags_filter(version_tags)
 
     def set_task_tags_filter(self, task_tags):
+        self._version_delegate.set_task_tags_filter(task_tags)
         self._products_proxy_model.set_task_tags_filter(task_tags)
 
     def set_product_type_filter(self, product_type_filters):
