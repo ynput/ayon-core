@@ -989,8 +989,6 @@ class SceneInventoryView(QtWidgets.QTreeView):
 
         dialog.addButton(QtWidgets.QMessageBox.Cancel)
 
-        exception = exception or "Unknown error"
-
         msg = (
             "Version update to '{}' failed with the following error:\n"
             "{}."
