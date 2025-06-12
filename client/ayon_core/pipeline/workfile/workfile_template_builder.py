@@ -935,51 +935,53 @@ class AbstractTemplateBuilder(ABC):
         if path and os.path.exists(path):
             return path
 
-        # Otherwise assume a path with template keys, we do a very mundane
-        # check whether `{` or `<` is present in the path.
-        if "{" in path or "<" in path:
-            # Resolve keys through anatomy
-            project_name = self.project_name
+        # We may have path for another platform, like C:/path/to/file
+        # or a path with template keys, like {project[code]} or both.
+        # Try to fill path with environments and anatomy roots
+        project_name = self.project_name
+        anatomy = Anatomy(project_name)
 
-            # Try to fill path with environments and anatomy roots
-            anatomy = Anatomy(project_name)
+        # Simple check whether the path contains any template keys
+        if "{" in path:
             fill_data = {
                 key: value
                 for key, value in os.environ.items()
             }
-
             fill_data["root"] = anatomy.roots
             fill_data["project"] = {
                 "name": project_name,
                 "code": anatomy.project_code,
             }
 
-            # Recursively remap anatomy paths
-            while True:
-                try:
-                    solved_path = anatomy.path_remapper(path)
-                except KeyError as missing_key:
-                    raise KeyError(
-                        f"Could not solve key '{missing_key}'"
-                        f" in template path '{path}'"
-                    )
-
-                if solved_path is None:
-                    solved_path = path
-                if solved_path == path:
-                    break
-                path = solved_path
-
-            solved_path = os.path.normpath(solved_path)
-            if not os.path.exists(solved_path):
+            # Format the template using local fill data
+            result = StringTemplate.format_template(path, fill_data)
+            if not result.solved:
                 return path
 
-            result = StringTemplate.format_template(path, fill_data)
-            if result.solved:
-                path = result.normalized()
-            return path
+            path = result.normalized()
+            if os.path.exists(path):
+                return path
 
-        return path
+        # If the path were set in settings using a Windows path and we
+        # are now on a Linux system, we try to convert the solved path to
+        # the current platform.
+        while True:
+            try:
+                solved_path = anatomy.path_remapper(path)
+            except KeyError as missing_key:
+                raise KeyError(
+                    f"Could not solve key '{missing_key}'"
+                    f" in template path '{path}'"
+                )
+
+            if solved_path is None:
+                solved_path = path
+            if solved_path == path:
+                break
+            path = solved_path
+
+        solved_path = os.path.normpath(solved_path)
+        return solved_path
 
     def emit_event(self, topic, data=None, source=None) -> Event:
         return self._event_system.emit(topic, data, source)
