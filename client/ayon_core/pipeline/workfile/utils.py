@@ -247,14 +247,15 @@ def save_workfile_info(
             description,
         )
 
-    data = {}
-    for key, value in (
-        ("host_name", host_name),
-        ("version", version),
-        ("comment", comment),
-    ):
-        if value is not None:
-            data[key] = value
+    data = {
+        key: value
+        for key, value in (
+            ("host_name", host_name),
+            ("version", version),
+            ("comment", comment),
+        )
+        if value is not None
+    }
 
     old_data = workfile_entity["data"]
 

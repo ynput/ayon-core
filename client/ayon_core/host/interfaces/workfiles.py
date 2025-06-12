@@ -74,7 +74,7 @@ class WorkfileInfo:
 
     Attributes:
         filepath (str): Path to the workfile.
-        rootless_path (str): Path to the workfile without root. And without
+        rootless_path (str): Path to the workfile without the root. And without
             backslashes on Windows.
         file_size (Optional[float]): Size of the workfile in bytes.
         file_created (Optional[float]): Timestamp when the workfile was
@@ -256,7 +256,7 @@ class IWorkfileHost:
 
     """
     @abstractmethod
-    def save_workfile(self, dst_path: Optional[str] = None):
+    def save_workfile(self, dst_path: Optional[str] = None) -> None:
         """Save the currently opened scene.
 
         Args:
@@ -267,7 +267,7 @@ class IWorkfileHost:
         pass
 
     @abstractmethod
-    def open_workfile(self, filepath: str):
+    def open_workfile(self, filepath: str) -> None:
         """Open passed filepath in the host.
 
         Args:
