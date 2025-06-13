@@ -260,9 +260,8 @@ class PrePostLoaderHookPlugin:
     Any studio might want to modify loaded data before or after
     they are loaded without need to override existing core plugins.
     """
-    loader_identifiers: ClassVar[set[str]]
-
-    def process(self, context, name=None, namespace=None, options=None):
+    @classmethod
+    def is_compatible(cls, Loader: LoaderPlugin) -> bool:
         pass
 
     def pre_process(
