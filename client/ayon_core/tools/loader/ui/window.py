@@ -23,6 +23,13 @@ from .info_widget import InfoWidget
 from .repres_widget import RepresentationsWidget
 from .search_bar import FiltersBar, FilterDefinition
 
+FIND_KEY_SEQUENCE = QtGui.QKeySequence(
+    QtCore.Qt.Modifier.CTRL | QtCore.Qt.Key_F
+)
+GROUP_KEY_SEQUENCE = QtGui.QKeySequence(
+    QtCore.Qt.Modifier.CTRL | QtCore.Qt.Key_G
+)
+
 
 class LoadErrorMessageBox(ErrorMessageBox):
     def __init__(self, messages, parent=None):
@@ -342,22 +349,18 @@ class LoaderWindow(QtWidgets.QWidget):
         self._reset_on_show = True
 
     def keyPressEvent(self, event):
-        modifiers = event.modifiers()
-        ctrl_pressed = QtCore.Qt.ControlModifier & modifiers
-
-        # Grouping products on pressing Ctrl + G
+        combination = event.keyCombination()
         if (
-            ctrl_pressed
-            and event.key() == QtCore.Qt.Key_F
+            FIND_KEY_SEQUENCE.matches(combination)
             and not event.isAutoRepeat()
         ):
             self._search_bar.show_filters_popup()
             event.setAccepted(True)
             return
 
+        # Grouping products on pressing Ctrl + G
         if (
-            ctrl_pressed
-            and event.key() == QtCore.Qt.Key_G
+            GROUP_KEY_SEQUENCE.matches(combination)
             and not event.isAutoRepeat()
         ):
             self._show_group_dialog()
