@@ -6,6 +6,11 @@ from qtpy import QtWidgets, QtCore, QtGui
 import qargparse
 import qtawesome
 
+try:
+    import markdown
+except Exception:
+    markdown = None
+
 from ayon_core.style import (
     get_objected_colors,
     get_style_image_path,
@@ -129,6 +134,37 @@ class PlaceholderPlainTextEdit(QtWidgets.QPlainTextEdit):
                 _Cache.get_placeholder_color()
             )
             viewport.setPalette(filter_palette)
+
+
+class MarkdownLabel(QtWidgets.QLabel):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        # Enable word wrap by default
+        self.setWordWrap(True)
+
+        text_format_available = hasattr(QtCore.Qt, "MarkdownText")
+        if text_format_available:
+            self.setTextFormat(QtCore.Qt.MarkdownText)
+
+        self._text_format_available = text_format_available
+
+        self.setText(self.text())
+
+    def setText(self, text):
+        if not self._text_format_available:
+            text = self._md_to_html(text)
+        super().setText(text)
+
+    @staticmethod
+    def _md_to_html(text):
+        if markdown is None:
+            # This does add style definition to the markdown which does not
+            #   feel natural in the UI (but still better than raw MD).
+            doc = QtGui.QTextDocument()
+            doc.setMarkdown(text)
+            return doc.toHtml()
+        return markdown.markdown(text)
 
 
 class ElideLabel(QtWidgets.QLabel):
@@ -465,15 +501,15 @@ class ClickableLabel(QtWidgets.QLabel):
     """Label that catch left mouse click and can trigger 'clicked' signal."""
     clicked = QtCore.Signal()
 
-    def __init__(self, parent):
-        super(ClickableLabel, self).__init__(parent)
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
 
         self._mouse_pressed = False
 
     def mousePressEvent(self, event):
         if event.button() == QtCore.Qt.LeftButton:
             self._mouse_pressed = True
-        super(ClickableLabel, self).mousePressEvent(event)
+        super().mousePressEvent(event)
 
     def mouseReleaseEvent(self, event):
         if self._mouse_pressed:
@@ -481,7 +517,7 @@ class ClickableLabel(QtWidgets.QLabel):
             if self.rect().contains(event.pos()):
                 self.clicked.emit()
 
-        super(ClickableLabel, self).mouseReleaseEvent(event)
+        super().mouseReleaseEvent(event)
 
 
 class ExpandBtnLabel(QtWidgets.QLabel):
@@ -710,7 +746,7 @@ class PixmapLabel(QtWidgets.QLabel):
 
     def resizeEvent(self, event):
         self._set_resized_pix()
-        super(PixmapLabel, self).resizeEvent(event)
+        super().resizeEvent(event)
 
 
 class PixmapButtonPainter(QtWidgets.QWidget):
