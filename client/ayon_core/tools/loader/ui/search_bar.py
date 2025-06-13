@@ -745,6 +745,25 @@ class FiltersBar(BaseClickableFrame):
         super().resizeEvent(event)
         self._update_filters_geo()
 
+    def show_filters_popup(self):
+        filter_defs = [
+            filter_def
+            for filter_def in self._filter_defs_by_name.values()
+            if filter_def.name not in self._widgets_by_name
+        ]
+        filters_popup = FiltersPopup(self)
+        filters_popup.filter_requested.connect(self._on_filter_request)
+        filters_popup.set_filter_items(filter_defs)
+        filters_popup.set_preferred_width(self.width())
+
+        old_popup, self._filters_popup = self._filters_popup, filters_popup
+
+        self._filter_value_popup.setVisible(False)
+        old_popup.setVisible(False)
+        old_popup.deleteLater()
+
+        self._show_popup(filters_popup)
+
     def set_search_items(self, filter_defs: list[FilterDefinition]):
         self._filter_defs_by_name = {
             filter_def.name: filter_def
@@ -809,25 +828,6 @@ class FiltersBar(BaseClickableFrame):
 
     def _mouse_release_callback(self):
         self.show_filters_popup()
-
-    def show_filters_popup(self):
-        filter_defs = [
-            filter_def
-            for filter_def in self._filter_defs_by_name.values()
-            if filter_def.name not in self._widgets_by_name
-        ]
-        filters_popup = FiltersPopup(self)
-        filters_popup.filter_requested.connect(self._on_filter_request)
-        filters_popup.set_filter_items(filter_defs)
-        filters_popup.set_preferred_width(self.width())
-
-        old_popup, self._filters_popup = self._filters_popup, filters_popup
-
-        self._filter_value_popup.setVisible(False)
-        old_popup.setVisible(False)
-        old_popup.deleteLater()
-
-        self._show_popup(filters_popup)
 
     def _on_filters_request(self):
         self.show_filters_popup()
