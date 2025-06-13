@@ -446,8 +446,11 @@ class FilterValueItemsView(QtWidgets.QWidget):
             if widget is not None:
                 widget.setVisible(False)
                 widget.deleteLater()
+
         self._widgets_by_id = {}
         self._last_selected_widget = None
+        # Change filter
+        self._filter_input.setText("")
 
         for item in items:
             widget_id = uuid.uuid4().hex
