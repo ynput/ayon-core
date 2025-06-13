@@ -1,13 +1,13 @@
 from __future__ import annotations
 from abc import ABC, abstractmethod
-from typing import List
+from typing import Iterable, Optional
 
 from ayon_core.lib.attribute_definitions import (
     AbstractAttrDef,
     serialize_attr_defs,
     deserialize_attr_defs,
 )
-from ayon_core.tools.common_models import TagItem
+from ayon_core.tools.common_models import TaskItem, TagItem
 
 
 class ProductTypeItem:
@@ -360,8 +360,8 @@ class ProductTypesFilter:
 
     Defines the filtering for product types.
     """
-    def __init__(self, product_types: List[str], is_allow_list: bool):
-        self.product_types: List[str] = product_types
+    def __init__(self, product_types: list[str], is_allow_list: bool):
+        self.product_types: list[str] = product_types
         self.is_allow_list: bool = is_allow_list
 
 
@@ -561,7 +561,12 @@ class FrontendLoaderController(_BaseLoaderController):
         pass
 
     @abstractmethod
-    def get_task_items(self, project_name, folder_ids, sender=None):
+    def get_task_items(
+        self,
+        project_name: str,
+        folder_ids: Iterable[str],
+        sender: Optional[str] = None,
+    ) -> list[TaskItem]:
         """Task items for folder ids.
 
         Args:
