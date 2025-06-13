@@ -198,7 +198,7 @@ class LoaderWindow(QtWidgets.QWidget):
 
         products_wrap_layout = QtWidgets.QVBoxLayout(products_wrap_widget)
         products_wrap_layout.setContentsMargins(0, 0, 0, 0)
-        products_wrap_layout.addWidget(search_bar, 0)
+        products_wrap_layout.addWidget(products_inputs_widget, 0)
         products_wrap_layout.addWidget(products_widget, 1)
 
         right_panel_splitter = QtWidgets.QSplitter(main_splitter)
