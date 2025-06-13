@@ -321,14 +321,7 @@ def load_with_repre_context(
     )
 
     loader = Loader()
-    return _load_context(
-        Loader,
-        repre_context,
-        name,
-        namespace,
-        options,
-        hooks
-    )
+    loader.load(repre_context, name, namespace, options)
 
 
 def load_with_product_context(
@@ -355,14 +348,7 @@ def load_with_product_context(
             Loader.__name__, product_context["folder"]["path"]
         )
     )
-    return _load_context(
-        Loader,
-        product_context,
-        name,
-        namespace,
-        options,
-        hooks
-    )
+    return Loader().load(product_context, name, namespace, options)
 
 
 def load_with_product_contexts(
@@ -393,38 +379,7 @@ def load_with_product_contexts(
             Loader.__name__, joined_product_names
         )
     )
-    return _load_context(
-        Loader,
-        product_contexts,
-        name,
-        namespace,
-        options,
-        hooks
-    )
-
-
-def _load_context(Loader, contexts, name, namespace, options, hooks):
-    """Helper function to wrap hooks around generic load function.
-
-    Only dynamic part is different context(s) to be loaded.
-    """
-    for hook_plugin_cls in hooks.get("pre", []):
-        hook_plugin_cls().process(
-            contexts,
-            name,
-            namespace,
-            options,
-        )
-    loaded_container = Loader().load(contexts, name, namespace, options)
-    for hook_plugin_cls in hooks.get("post", []):
-        hook_plugin_cls().process(
-            loaded_container,
-            contexts,
-            name,
-            namespace,
-            options,
-        )
-    return loaded_container
+    return Loader().load(product_contexts, name, namespace, options)
 
 
 def load_container(
