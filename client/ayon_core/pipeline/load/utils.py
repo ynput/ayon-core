@@ -321,7 +321,7 @@ def load_with_repre_context(
     )
 
     loader = Loader()
-    loader.load(repre_context, name, namespace, options)
+    return loader.load(repre_context, name, namespace, options)
 
 
 def load_with_product_context(
