@@ -1340,11 +1340,7 @@ class SwitchAssetDialog(QtWidgets.QDialog):
 
         error = None
         try:
-            switch_container(
-                container,
-                repre_entity,
-                loader,
-            )
+            switch_container(container, repre_entity, loader)
         except (
             LoaderSwitchNotImplementedError,
             IncompatibleLoaderError,
