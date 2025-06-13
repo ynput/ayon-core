@@ -292,10 +292,11 @@ def discover_loader_plugins(project_name=None):
     from ayon_core.pipeline import get_current_project_name
 
     log = Logger.get_logger("LoaderDiscover")
-    plugins = discover(LoaderPlugin)
     if not project_name:
         project_name = get_current_project_name()
     project_settings = get_project_settings(project_name)
+    plugins = discover(LoaderPlugin)
+    hooks = discover(PrePostLoaderHookPlugin)
     for plugin in plugins:
         try:
             plugin.apply_settings(project_settings)
@@ -304,9 +305,36 @@ def discover_loader_plugins(project_name=None):
                 "Failed to apply settings to loader {}".format(
                     plugin.__name__
                 ),
-                exc_info=True
+                exc_info=True,
             )
+        for Hook in hooks:
+            if Hook.is_compatible(plugin):
+                hook_loader_load(plugin, Hook())
     return plugins
+
+
+def hook_loader_load(loader_class, hook_instance):
+    # If this is the first hook being added, wrap the original load method
+    if not hasattr(loader_class, '_load_hooks'):
+        loader_class._load_hooks = []
+
+        original_load = loader_class.load
+
+        def wrapped_load(self, *args, **kwargs):
+            # Call pre_load on all hooks
+            for hook in loader_class._load_hooks:
+                hook.pre_load(*args, **kwargs)
+            # Call original load
+            result = original_load(self, *args, **kwargs)
+            # Call post_load on all hooks
+            for hook in loader_class._load_hooks:
+                hook.post_load(*args, **kwargs)
+            return result
+
+        loader_class.load = wrapped_load
+
+    # Add the new hook instance to the list
+    loader_class._load_hooks.append(hook_instance)
 
 
 def register_loader_plugin(plugin):
