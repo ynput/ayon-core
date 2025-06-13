@@ -100,6 +100,10 @@ from .context_tools import (
     get_current_task_name
 )
 
+from .compatibility import (
+    is_product_base_type_supported,
+)
+
 from .workfile import (
     discover_workfile_build_plugins,
     register_workfile_build_plugin,
@@ -223,4 +227,7 @@ __all__ = (
     # Backwards compatible function names
     "install",
     "uninstall",
+
+    # Feature detection
+    "is_product_base_type_supported",
 )
