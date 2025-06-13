@@ -51,8 +51,6 @@ class LoaderActionsModel:
             levels=1, lifetime=self.loaders_cache_lifetime)
         self._repre_loaders = NestedCacheItem(
             levels=1, lifetime=self.loaders_cache_lifetime)
-        self._hook_loaders_by_identifier = NestedCacheItem(
-            levels=1, lifetime=self.loaders_cache_lifetime)
 
     def reset(self):
         """Reset the model with all cached items."""
@@ -61,7 +59,6 @@ class LoaderActionsModel:
         self._loaders_by_identifier.reset()
         self._product_loaders.reset()
         self._repre_loaders.reset()
-        self._hook_loaders_by_identifier.reset()
 
     def get_versions_action_items(self, project_name, version_ids):
         """Get action items for given version ids.
@@ -318,13 +315,8 @@ class LoaderActionsModel:
         loaders_by_identifier_c = self._loaders_by_identifier[project_name]
         product_loaders_c = self._product_loaders[project_name]
         repre_loaders_c = self._repre_loaders[project_name]
-        hook_loaders_by_identifier_c = self._hook_loaders_by_identifier[project_name]
         if loaders_by_identifier_c.is_valid:
-            return (
-                product_loaders_c.get_data(),
-                repre_loaders_c.get_data(),
-                hook_loaders_by_identifier_c.get_data()
-            )
+            return product_loaders_c.get_data(), repre_loaders_c.get_data()
 
         # Get all representation->loader combinations available for the
         # index under the cursor, so we can list the user the options.
