@@ -351,7 +351,7 @@ class LoaderWindow(QtWidgets.QWidget):
     def keyPressEvent(self, event):
         combination = event.keyCombination()
         if (
-            FIND_KEY_SEQUENCE.matches(combination)
+            FIND_KEY_SEQUENCE == combination
             and not event.isAutoRepeat()
         ):
             self._search_bar.show_filters_popup()
@@ -360,7 +360,7 @@ class LoaderWindow(QtWidgets.QWidget):
 
         # Grouping products on pressing Ctrl + G
         if (
-            GROUP_KEY_SEQUENCE.matches(combination)
+            GROUP_KEY_SEQUENCE == combination
             and not event.isAutoRepeat()
         ):
             self._show_group_dialog()
