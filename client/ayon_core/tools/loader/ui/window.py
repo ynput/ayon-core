@@ -318,6 +318,8 @@ class LoaderWindow(QtWidgets.QWidget):
         self._selected_folder_ids = set()
         self._selected_version_ids = set()
 
+        self._set_product_type_filters = True
+
         self._products_widget.set_enable_grouping(
             self._product_group_checkbox.isChecked()
         )
@@ -572,6 +574,29 @@ class LoaderWindow(QtWidgets.QWidget):
                 items=task_tags,
             ),
         ])
+
+        # Set product types filter from settings
+        if self._set_product_type_filters:
+            self._set_product_type_filters = False
+            product_types_filter = self._controller.get_product_types_filter()
+            product_types = []
+            for item in filter_product_type_items:
+                product_type = item["value"]
+                matching = (
+                    int(product_type in product_types_filter.product_types)
+                    + int(product_types_filter.is_allow_list)
+                )
+                if matching % 2 == 0:
+                    product_types.append(product_type)
+
+            if (
+                product_types
+                and len(product_types) < len(filter_product_type_items)
+            ):
+                self._search_bar.set_filter_value(
+                    "product_types",
+                    product_types
+                )
 
     def _on_folders_selection_changed(self, event):
         self._selected_folder_ids = set(event["folder_ids"])
