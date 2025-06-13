@@ -348,6 +348,7 @@ def load_with_product_context(
             Loader.__name__, product_context["folder"]["path"]
         )
     )
+
     return Loader().load(product_context, name, namespace, options)
 
 
@@ -379,6 +380,7 @@ def load_with_product_contexts(
             Loader.__name__, joined_product_names
         )
     )
+
     return Loader().load(product_contexts, name, namespace, options)
 
 
