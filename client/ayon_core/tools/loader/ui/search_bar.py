@@ -808,9 +808,9 @@ class FiltersBar(BaseClickableFrame):
         self._filters_widget.setGeometry(geo)
 
     def _mouse_release_callback(self):
-        self._show_filters_popup()
+        self.show_filters_popup()
 
-    def _show_filters_popup(self):
+    def show_filters_popup(self):
         filter_defs = [
             filter_def
             for filter_def in self._filter_defs_by_name.values()
@@ -830,7 +830,7 @@ class FiltersBar(BaseClickableFrame):
         self._show_popup(filters_popup)
 
     def _on_filters_request(self):
-        self._show_filters_popup()
+        self.show_filters_popup()
 
     def _on_filter_request(self, filter_name: str):
         """Handle filter request from the popup."""
