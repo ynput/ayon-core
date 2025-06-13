@@ -215,22 +215,21 @@ class VersionItem:
 
     def __init__(
         self,
-        *,
         version_id: str,
         version: int,
         is_hero: bool,
         product_id: str,
-        task_id: Optional[str] = None,
-        thumbnail_id: Optional[str] = None,
-        published_time: Optional[str] = None,
-        author: Optional[str] = None,
-        status: Optional[str] = None,
-        frame_range: Optional[str] = None,
-        duration: Optional[int] = None,
-        handles: Optional[str] = None,
-        step: Optional[int] = None,
-        comment: Optional[str] = None,
-        source: Optional[str] = None,
+        task_id: Optional[str],
+        thumbnail_id: Optional[str],
+        published_time: Optional[str],
+        author: Optional[str],
+        status: Optional[str],
+        frame_range: Optional[str],
+        duration: Optional[int],
+        handles: Optional[str],
+        step: Optional[int],
+        comment: Optional[str],
+        source: Optional[str],
     ):
         self.version_id = version_id
         self.product_id = product_id
