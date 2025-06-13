@@ -172,6 +172,7 @@ class FilterItemButton(BaseClickableFrame):
 
 class FiltersPopup(QtWidgets.QWidget):
     filter_requested = QtCore.Signal(str)
+    text_filter_requested = QtCore.Signal(str)
 
     def __init__(self, parent):
         super().__init__(parent)
@@ -204,6 +205,19 @@ class FiltersPopup(QtWidgets.QWidget):
             event.accept()
             self.close()
             return
+
+        if event.key() not in (
+            QtCore.Qt.Key_Escape,
+            QtCore.Qt.Key_Tab,
+            QtCore.Qt.Key_Backtab,
+            QtCore.Qt.Key_Backspace,
+            QtCore.Qt.Key_Return,
+        ):
+            text = event.text()
+            if text:
+                event.accept()
+                self.text_filter_requested.emit(text)
+                return
         super().keyPressEvent(event)
 
     def set_preferred_width(self, width: int):
@@ -608,6 +622,17 @@ class FilterValuePopup(QtWidgets.QWidget):
             sh.setWidth(self._preferred_width)
         return sh
 
+    def set_text_filter(self, text: str):
+        if self._active_widget is None:
+            return
+
+        if isinstance(self._active_widget, QtWidgets.QLineEdit):
+            full_text = self._active_widget.text() + text
+            self._active_widget.setText(full_text)
+            self._active_widget.setFocus()
+            self._active_widget.setCursorPosition(len(full_text))
+            return
+
     def set_filter_item(
         self,
         filter_def: FilterDefinition,
@@ -726,7 +751,13 @@ class FiltersBar(BaseClickableFrame):
         main_layout.addWidget(search_btn, 0)
         main_layout.addWidget(filters_wrap, 1)
 
+        filters_popup = FiltersPopup(self)
+        filter_value_popup = FilterValuePopup(self)
+
         search_btn.clicked.connect(self._on_filters_request)
+        filters_popup.text_filter_requested.connect(
+            self._on_text_filter_request
+        )
 
         self._search_btn = search_btn
         self._filters_wrap = filters_wrap
@@ -734,8 +765,8 @@ class FiltersBar(BaseClickableFrame):
         self._filters_layout = filters_layout
         self._widgets_by_name = {}
         self._filter_defs_by_name = {}
-        self._filters_popup = FiltersPopup(self)
-        self._filter_value_popup = FilterValuePopup(self)
+        self._filters_popup = filters_popup
+        self._filter_value_popup = filter_value_popup
 
     def showEvent(self, event):
         super().showEvent(event)
@@ -753,6 +784,9 @@ class FiltersBar(BaseClickableFrame):
         ]
         filters_popup = FiltersPopup(self)
         filters_popup.filter_requested.connect(self._on_filter_request)
+        filters_popup.text_filter_requested.connect(
+            self._on_text_filter_request
+        )
         filters_popup.set_filter_items(filter_defs)
         filters_popup.set_preferred_width(self.width())
 
@@ -831,6 +865,10 @@ class FiltersBar(BaseClickableFrame):
 
     def _on_filters_request(self):
         self.show_filters_popup()
+
+    def _on_text_filter_request(self, text: str):
+        self._on_filter_request("product_name")
+        self._filter_value_popup.set_text_filter(text)
 
     def _on_filter_request(self, filter_name: str):
         """Handle filter request from the popup."""
