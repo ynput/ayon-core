@@ -1,3 +1,4 @@
+from __future__ import annotations
 import os
 import logging
 
@@ -251,15 +252,50 @@ class ProductLoaderPlugin(LoaderPlugin):
     """
 
 
+class PrePostLoaderHookPlugin:
+    """Plugin that should be run before or post specific Loader in 'loaders'
+
+    Should be used as non-invasive method to enrich core loading process.
+    Any studio might want to modify loaded data before or after
+    they are loaded without need to override existing core plugins.
+    """
+    @classmethod
+    def is_compatible(cls, Loader: LoaderPlugin) -> bool:
+        pass
+
+    def pre_load(
+        self,
+        context: dict,
+        name: str | None = None,
+        namespace: str | None = None,
+        options: dict | None = None,
+    ):
+        pass
+
+    def post_load(
+        self,
+        context: dict,
+        name: str | None = None,
+        namespace: str | None = None,
+        options: dict | None = None,
+        container: dict | None = None,  # (ayon:container-3.0)
+    ):
+        pass
+
+    def switch(self, container, context):
+        pass
+
+
 def discover_loader_plugins(project_name=None):
     from ayon_core.lib import Logger
     from ayon_core.pipeline import get_current_project_name
 
     log = Logger.get_logger("LoaderDiscover")
-    plugins = discover(LoaderPlugin)
     if not project_name:
         project_name = get_current_project_name()
     project_settings = get_project_settings(project_name)
+    plugins = discover(LoaderPlugin)
+    hooks = discover(PrePostLoaderHookPlugin)
     for plugin in plugins:
         try:
             plugin.apply_settings(project_settings)
@@ -268,9 +304,41 @@ def discover_loader_plugins(project_name=None):
                 "Failed to apply settings to loader {}".format(
                     plugin.__name__
                 ),
-                exc_info=True
+                exc_info=True,
             )
+        for hookCls in hooks:
+            if hookCls.is_compatible(plugin):
+                hook_loader_load(plugin, hookCls())
     return plugins
+
+
+def hook_loader_load(
+    loader_class: LoaderPlugin,
+    hook_instance: PrePostLoaderHookPlugin
+) -> None:
+    """Monkey patch method replacing Loader.load method with wrapped hooks."""
+    # If this is the first hook being added, wrap the original load method
+    if not hasattr(loader_class, '_load_hooks'):
+        loader_class._load_hooks = []
+
+        original_load = loader_class.load
+
+        def wrapped_load(self, *args, **kwargs):
+            # Call pre_load on all hooks
+            for hook in loader_class._load_hooks:
+                hook.pre_load(*args, **kwargs)
+            # Call original load
+            container = original_load(self, *args, **kwargs)
+            kwargs["container"] = container
+            # Call post_load on all hooks
+            for hook in loader_class._load_hooks:
+                hook.post_load(*args, **kwargs)
+            return container
+
+        loader_class.load = wrapped_load
+
+    # Add the new hook instance to the list
+    loader_class._load_hooks.append(hook_instance)
 
 
 def register_loader_plugin(plugin):
@@ -287,3 +355,19 @@ def deregister_loader_plugin_path(path):
 
 def register_loader_plugin_path(path):
     return register_plugin_path(LoaderPlugin, path)
+
+
+def register_loader_hook_plugin(plugin):
+    return register_plugin(PrePostLoaderHookPlugin, plugin)
+
+
+def deregister_loader_hook_plugin(plugin):
+    deregister_plugin(PrePostLoaderHookPlugin, plugin)
+
+
+def register_loader_hook_plugin_path(path):
+    return register_plugin_path(PrePostLoaderHookPlugin, path)
+
+
+def deregister_loader_hook_plugin_path(path):
+    deregister_plugin_path(PrePostLoaderHookPlugin, path)

@@ -17,6 +17,7 @@ from ayon_core.pipeline.load import (
     load_with_product_contexts,
     LoadError,
     IncompatibleLoaderError,
+
 )
 from ayon_core.tools.loader.abstract import ActionItem
 
@@ -322,7 +323,6 @@ class LoaderActionsModel:
         available_loaders = self._filter_loaders_by_tool_name(
             project_name, discover_loader_plugins(project_name)
         )
-
         repre_loaders = []
         product_loaders = []
         loaders_by_identifier = {}
@@ -340,6 +340,7 @@ class LoaderActionsModel:
         loaders_by_identifier_c.update_data(loaders_by_identifier)
         product_loaders_c.update_data(product_loaders)
         repre_loaders_c.update_data(repre_loaders)
+
         return product_loaders, repre_loaders
 
     def _get_loader_by_identifier(self, project_name, identifier):
@@ -719,7 +720,12 @@ class LoaderActionsModel:
             loader, repre_contexts, options
         )
 
-    def _load_representations_by_loader(self, loader, repre_contexts, options):
+    def _load_representations_by_loader(
+        self,
+        loader,
+        repre_contexts,
+        options
+    ):
         """Loops through list of repre_contexts and loads them with one loader
 
         Args:
@@ -737,6 +743,7 @@ class LoaderActionsModel:
             if version < 0:
                 version = "Hero"
             try:
+
                 load_with_repre_context(
                     loader,
                     repre_context,
@@ -770,7 +777,12 @@ class LoaderActionsModel:
                 ))
         return error_info
 
-    def _load_products_by_loader(self, loader, version_contexts, options):
+    def _load_products_by_loader(
+        self,
+        loader,
+        version_contexts,
+        options
+    ):
         """Triggers load with ProductLoader type of loaders.
 
         Warning:
@@ -796,7 +808,6 @@ class LoaderActionsModel:
                     version_contexts,
                     options=options
                 )
-
             except Exception as exc:
                 formatted_traceback = None
                 if not isinstance(exc, LoadError):
