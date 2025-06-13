@@ -724,7 +724,7 @@ class LoaderActionsModel:
         self,
         loader,
         repre_contexts,
-        options,
+        options
     ):
         """Loops through list of repre_contexts and loads them with one loader
 
@@ -747,7 +747,7 @@ class LoaderActionsModel:
                 load_with_repre_context(
                     loader,
                     repre_context,
-                    options=options,
+                    options=options
                 )
 
             except IncompatibleLoaderError as exc:
@@ -781,7 +781,7 @@ class LoaderActionsModel:
         self,
         loader,
         version_contexts,
-        options,
+        options
     ):
         """Triggers load with ProductLoader type of loaders.
 
@@ -806,7 +806,7 @@ class LoaderActionsModel:
                 load_with_product_contexts(
                     loader,
                     version_contexts,
-                    options=options,
+                    options=options
                 )
             except Exception as exc:
                 formatted_traceback = None
@@ -831,7 +831,7 @@ class LoaderActionsModel:
                     load_with_product_context(
                         loader,
                         version_context,
-                        options=options,
+                        options=options
                     )
 
                 except Exception as exc:
