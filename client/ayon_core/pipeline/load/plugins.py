@@ -265,33 +265,23 @@ class PrePostLoaderHookPlugin:
     def process(self, context, name=None, namespace=None, options=None):
         pass
 
-    def update(self, container, context):
-        pass
-
-    def switch(self, container, context):
-        pass
-
-
-class PostLoaderHookPlugin:
-    """Plugin that should be run after any Loaders in 'loaders'
-
-    Should be used as non-invasive method to enrich core loading process.
-    Any external studio might want to modify loaded data before or after
-    they are loaded without need to override existing core plugins.
-    """
-    loader_identifiers: ClassVar[set[str]]
-
-    def process(
+    def pre_process(
         self,
-        container,
-        context,
-        name=None,
-        namespace=None,
-        options=None
+        context: dict,
+        name: str | None = None,
+        namespace: str | None = None,
+        options: dict | None = None,
     ):
         pass
 
-    def update(self, container, context):
+    def post_process(
+        self,
+        container: dict,  # (ayon:container-3.0)
+        context: dict,
+        name: str | None = None,
+        namespace: str | None = None,
+        options: dict | None = None
+    ):
         pass
 
     def switch(self, container, context):
