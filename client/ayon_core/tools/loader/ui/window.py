@@ -348,6 +348,15 @@ class LoaderWindow(QtWidgets.QWidget):
         # Grouping products on pressing Ctrl + G
         if (
             ctrl_pressed
+            and event.key() == QtCore.Qt.Key_F
+            and not event.isAutoRepeat()
+        ):
+            self._search_bar.show_filters_popup()
+            event.setAccepted(True)
+            return
+
+        if (
+            ctrl_pressed
             and event.key() == QtCore.Qt.Key_G
             and not event.isAutoRepeat()
         ):
