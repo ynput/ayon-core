@@ -5,7 +5,7 @@ from typing import Any, Optional
 
 from qtpy import QtCore, QtWidgets, QtGui
 
-from ayon_core.style import load_stylesheet, get_objected_colors
+from ayon_core.style import get_objected_colors
 from ayon_core.tools.utils import (
     get_qt_icon,
     SquareButton,
@@ -682,7 +682,7 @@ class FiltersBar(BaseClickableFrame):
         self._filters_layout = filters_layout
         self._widgets_by_name = {}
         self._filter_defs_by_name = {}
-        self._filters_popup =  FiltersPopup(self)
+        self._filters_popup = FiltersPopup(self)
         self._filter_value_popup = FilterValuePopup(self)
 
     def showEvent(self, event):
