@@ -42,16 +42,6 @@ from .load import (
     register_loader_plugin_path,
     deregister_loader_plugin,
 
-    register_loader_pre_hook_plugin,
-    deregister_loader_pre_hook_plugin,
-    register_loader_pre_hook_plugin_path,
-    deregister_loader_pre_hook_plugin_path,
-
-    register_loader_post_hook_plugin,
-    deregister_loader_post_hook_plugin,
-    register_loader_post_hook_plugin_path,
-    deregister_loader_post_hook_plugin_path,
-
     load_container,
     remove_container,
     update_container,
@@ -61,7 +51,6 @@ from .load import (
     get_representation_path,
     get_representation_context,
     get_repres_contexts,
-    get_hook_loaders_by_identifier
 )
 
 from .publish import (
@@ -171,16 +160,6 @@ __all__ = (
     "register_loader_plugin_path",
     "deregister_loader_plugin",
 
-    "register_loader_pre_hook_plugin",
-    "deregister_loader_pre_hook_plugin",
-    "register_loader_pre_hook_plugin_path",
-    "deregister_loader_pre_hook_plugin_path",
-
-    "register_loader_post_hook_plugin",
-    "deregister_loader_post_hook_plugin",
-    "register_loader_post_hook_plugin_path",
-    "deregister_loader_post_hook_plugin_path",
-
     "load_container",
     "remove_container",
     "update_container",
@@ -240,8 +219,6 @@ __all__ = (
     "deregister_workfile_build_plugin",
     "register_workfile_build_plugin_path",
     "deregister_workfile_build_plugin_path",
-
-    "get_hook_loaders_by_identifier",
 
     # Backwards compatible function names
     "install",
