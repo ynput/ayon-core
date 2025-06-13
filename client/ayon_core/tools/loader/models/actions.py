@@ -17,8 +17,6 @@ from ayon_core.pipeline.load import (
     load_with_product_contexts,
     LoadError,
     IncompatibleLoaderError,
-    get_loaders_by_name,
-    get_hook_loaders_by_identifier
 
 )
 from ayon_core.tools.loader.abstract import ActionItem
@@ -149,14 +147,12 @@ class LoaderActionsModel:
             ACTIONS_MODEL_SENDER,
         )
         loader = self._get_loader_by_identifier(project_name, identifier)
-        hooks = self._get_hook_loaders_by_identifier(project_name, identifier)
         if representation_ids is not None:
             error_info = self._trigger_representation_loader(
                 loader,
                 options,
                 project_name,
                 representation_ids,
-                hooks
             )
         elif version_ids is not None:
             error_info = self._trigger_version_loader(
@@ -164,7 +160,6 @@ class LoaderActionsModel:
                 options,
                 project_name,
                 version_ids,
-                hooks
             )
         else:
             raise NotImplementedError(
@@ -336,7 +331,6 @@ class LoaderActionsModel:
         available_loaders = self._filter_loaders_by_tool_name(
             project_name, discover_loader_plugins(project_name)
         )
-        hook_loaders_by_identifier = get_hook_loaders_by_identifier()
         repre_loaders = []
         product_loaders = []
         loaders_by_identifier = {}
@@ -354,7 +348,6 @@ class LoaderActionsModel:
         loaders_by_identifier_c.update_data(loaders_by_identifier)
         product_loaders_c.update_data(product_loaders)
         repre_loaders_c.update_data(repre_loaders)
-        hook_loaders_by_identifier_c.update_data(hook_loaders_by_identifier)
 
         return product_loaders, repre_loaders
 
@@ -364,13 +357,6 @@ class LoaderActionsModel:
         loaders_by_identifier_c = self._loaders_by_identifier[project_name]
         loaders_by_identifier = loaders_by_identifier_c.get_data()
         return loaders_by_identifier.get(identifier)
-
-    def _get_hook_loaders_by_identifier(self, project_name, identifier):
-        if not self._hook_loaders_by_identifier[project_name].is_valid:
-            self._get_loaders(project_name)
-        hook_loaders_by_identifier_c = self._hook_loaders_by_identifier[project_name]
-        hook_loaders_by_identifier_c = hook_loaders_by_identifier_c.get_data()
-        return hook_loaders_by_identifier_c.get(identifier)
 
     def _actions_sorter(self, action_item):
         """Sort the Loaders by their order and then their name.
@@ -629,7 +615,6 @@ class LoaderActionsModel:
         options,
         project_name,
         version_ids,
-        hooks=None
     ):
         """Trigger version loader.
 
@@ -679,7 +664,7 @@ class LoaderActionsModel:
             })
 
         return self._load_products_by_loader(
-            loader, product_contexts, options, hooks=hooks
+            loader, product_contexts, options
         )
 
     def _trigger_representation_loader(
@@ -688,7 +673,6 @@ class LoaderActionsModel:
         options,
         project_name,
         representation_ids,
-        hooks
     ):
         """Trigger representation loader.
 
@@ -741,7 +725,7 @@ class LoaderActionsModel:
             })
 
         return self._load_representations_by_loader(
-            loader, repre_contexts, options, hooks
+            loader, repre_contexts, options
         )
 
     def _load_representations_by_loader(
@@ -749,7 +733,6 @@ class LoaderActionsModel:
         loader,
         repre_contexts,
         options,
-        hooks=None
     ):
         """Loops through list of repre_contexts and loads them with one loader
 
@@ -773,7 +756,6 @@ class LoaderActionsModel:
                     loader,
                     repre_context,
                     options=options,
-                    hooks=hooks
                 )
 
             except IncompatibleLoaderError as exc:
@@ -808,7 +790,6 @@ class LoaderActionsModel:
         loader,
         version_contexts,
         options,
-        hooks=None
     ):
         """Triggers load with ProductLoader type of loaders.
 
@@ -834,7 +815,6 @@ class LoaderActionsModel:
                     loader,
                     version_contexts,
                     options=options,
-                    hooks=hooks
                 )
             except Exception as exc:
                 formatted_traceback = None
@@ -860,7 +840,6 @@ class LoaderActionsModel:
                         loader,
                         version_context,
                         options=options,
-                        hooks=hooks
                     )
 
                 except Exception as exc:

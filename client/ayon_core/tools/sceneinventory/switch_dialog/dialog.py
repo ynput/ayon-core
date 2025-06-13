@@ -1339,13 +1339,11 @@ class SwitchAssetDialog(QtWidgets.QDialog):
                 repre_entity = repres_by_name[container_repre_name]
 
         error = None
-        hook_loaders_by_id = self._controller.get_hook_loaders_by_identifier()
         try:
             switch_container(
                 container,
                 repre_entity,
                 loader,
-                hook_loaders_by_id
             )
         except (
             LoaderSwitchNotImplementedError,
