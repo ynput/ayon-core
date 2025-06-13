@@ -106,7 +106,8 @@ def get_publish_template_name(
     task_type,
     project_settings=None,
     hero=False,
-    logger=None
+    logger=None,
+    product_base_type: Optional[str] = None
 ):
     """Get template name which should be used for passed context.
 
@@ -126,6 +127,8 @@ def get_publish_template_name(
         hero (bool): Template is for hero version publishing.
         logger (logging.Logger): Custom logger used for 'filter_profiles'
             function.
+        product_base_type (Optional[str]): Product type for which should
+            be found template.
 
     Returns:
         str: Template name which should be used for integration.
@@ -135,6 +138,7 @@ def get_publish_template_name(
     filter_criteria = {
         "hosts": host_name,
         "product_types": product_type,
+        "product_base_types": product_base_type,
         "task_names": task_name,
         "task_types": task_type,
     }
