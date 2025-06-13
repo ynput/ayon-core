@@ -709,6 +709,19 @@ class FiltersBar(BaseClickableFrame):
             return value
         return None
 
+    def set_filter_value(self, name: str, value: Any):
+        """Set the value of a filter by its name."""
+        if name not in self._filter_defs_by_name:
+            return
+
+        item_widget = self._widgets_by_name.get(name)
+        if item_widget is None:
+            self.add_item(name)
+            item_widget = self._widgets_by_name.get(name)
+
+        item_widget.set_value(value)
+        self.filter_changed.emit(name)
+
     def add_item(self, name: str):
         """Add a new item to the search bar.
 
