@@ -313,7 +313,11 @@ def discover_loader_plugins(project_name=None):
     return plugins
 
 
-def hook_loader_load(loader_class, hook_instance):
+def hook_loader_load(
+    loader_class: LoaderPlugin,
+    hook_instance: PrePostLoaderHookPlugin
+) -> None:
+    """Monkey patch method replacing Loader.load method with wrapped hooks."""
     # If this is the first hook being added, wrap the original load method
     if not hasattr(loader_class, '_load_hooks'):
         loader_class._load_hooks = []
