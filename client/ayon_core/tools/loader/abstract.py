@@ -144,7 +144,6 @@ class ProductItem:
         folder_id: str,
         folder_label: str,
         version_items: dict[str, VersionItem],
-        *,
         product_in_scene: bool,
     ):
         self.product_id = product_id
