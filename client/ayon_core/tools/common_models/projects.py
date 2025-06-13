@@ -82,7 +82,6 @@ class TagItem:
     color: str
 
 
-
 class FolderTypeItem:
     """Item representing folder type of project.
 
