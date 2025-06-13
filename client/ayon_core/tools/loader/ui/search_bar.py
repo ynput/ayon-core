@@ -199,6 +199,13 @@ class FiltersPopup(QtWidgets.QWidget):
         self._wrapper_layout = wraper_layout
         self._preferred_width = None
 
+    def keyPressEvent(self, event):
+        if event.key() in (QtCore.Qt.Key_Enter, QtCore.Qt.Key_Return):
+            event.accept()
+            self.close()
+            return
+        super().keyPressEvent(event)
+
     def set_preferred_width(self, width: int):
         self._preferred_width = width
 
@@ -296,12 +303,15 @@ class FilterValueItemButton(BaseClickableFrame):
 
 class FilterValueItemsView(QtWidgets.QWidget):
     value_changed = QtCore.Signal()
+    close_requested = QtCore.Signal()
 
     def __init__(self, parent):
         super().__init__(parent)
 
         filter_input = QtWidgets.QLineEdit(self)
 
+        # Timeout is used to delay the filter focus change on 'showEvent'
+        # - the focus is changed to something else if is not delayed
         filter_timeout = QtCore.QTimer(self)
         filter_timeout.setSingleShot(True)
         filter_timeout.setInterval(20)
@@ -344,6 +354,7 @@ class FilterValueItemsView(QtWidgets.QWidget):
 
         filter_timeout.timeout.connect(self._on_filter_timeout)
         filter_input.textChanged.connect(self._on_filter_change)
+        filter_input.returnPressed.connect(self.close_requested)
         select_all_btn.clicked.connect(self._on_select_all)
         clear_btn.clicked.connect(self._on_clear_selection)
         swap_btn.clicked.connect(self._on_swap_selection)
@@ -360,8 +371,12 @@ class FilterValueItemsView(QtWidgets.QWidget):
         super().showEvent(event)
         self._filter_timeout.start()
 
-    def _on_filter_timeout(self):
-        self._filter_input.setFocus()
+    def keyPressEvent(self, event):
+        if event.key() in (QtCore.Qt.Key_Enter, QtCore.Qt.Key_Return):
+            event.accept()
+            self.close_requested.emit()
+            return
+        super().keyPressEvent(event)
 
     def set_value(self, value):
         current_value = self.get_value()
@@ -470,10 +485,15 @@ class FilterValueItemsView(QtWidgets.QWidget):
                 "No items to select from...", self
             )
             self._btns_widget.setVisible(False)
+            self._filter_input.setVisible(False)
             self._content_layout.addWidget(empty_label, 0)
         else:
+            self._filter_input.setVisible(True)
             self._btns_widget.setVisible(self._multiselection)
         self._content_layout.addStretch(1)
+
+    def _on_filter_timeout(self):
+        self._filter_input.setFocus()
 
     def _on_filter_change(self, text):
         text = text.lower()
@@ -565,6 +585,7 @@ class FilterValuePopup(QtWidgets.QWidget):
         text_input.returnPressed.connect(self._text_confirmed)
 
         items_view.value_changed.connect(self._selection_changed)
+        items_view.close_requested.connect(self._close_requested)
 
         shadow_frame.stackUnder(wrapper)
 
@@ -666,6 +687,9 @@ class FilterValuePopup(QtWidgets.QWidget):
 
     def _selection_changed(self):
         self.value_changed.emit(self._filter_name)
+
+    def _close_requested(self):
+        self.close()
 
 
 class FiltersBar(BaseClickableFrame):
