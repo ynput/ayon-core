@@ -307,9 +307,9 @@ def discover_loader_plugins(project_name=None):
                 ),
                 exc_info=True,
             )
-        for Hook in hooks:
-            if Hook.is_compatible(plugin):
-                hook_loader_load(plugin, Hook())
+        for hookCls in hooks:
+            if hookCls.is_compatible(plugin):
+                hook_loader_load(plugin, hookCls())
     return plugins
 
 
