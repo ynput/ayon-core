@@ -469,7 +469,7 @@ def remove_container(container):
     return Loader().remove(container)
 
 
-def update_container(container, version=-1, hooks_by_identifier=None):
+def update_container(container, version=-1):
     """Update a container"""
     from ayon_core.pipeline import get_current_project_name
 
@@ -565,20 +565,7 @@ def update_container(container, version=-1, hooks_by_identifier=None):
     if not path or not os.path.exists(path):
         raise ValueError("Path {} doesn't exist".format(path))
 
-    loader_identifier = get_loader_identifier(Loader)
-    hooks = hooks_by_identifier.get(loader_identifier, {})
-    for hook_plugin_cls in hooks.get("pre", []):
-        hook_plugin_cls().update(
-            context,
-            container
-        )
-    updated_container = Loader().update(container, context)
-    for hook_plugin_cls in hooks.get("post", []):
-        hook_plugin_cls().update(
-            context,
-            container
-        )
-    return updated_container
+    return Loader().update(container, context)
 
 
 def switch_container(
@@ -635,21 +622,7 @@ def switch_container(
 
     loader = loader_plugin(context)
 
-    loader_identifier = get_loader_identifier(loader)
-    hooks = hooks_by_identifier.get(loader_identifier, {})
-    for hook_plugin_cls in hooks.get("pre", []):
-        hook_plugin_cls().switch(
-            context,
-            container
-        )
-    switched_container = loader.switch(container, context)
-    for hook_plugin_cls in hooks.get("post", []):
-        hook_plugin_cls().switch(
-            context,
-            container
-        )
-
-    return switched_container
+    return loader.switch(container, context)
 
 
 def _fix_representation_context_compatibility(repre_context):
