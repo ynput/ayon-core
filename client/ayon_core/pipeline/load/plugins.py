@@ -1,7 +1,6 @@
 from __future__ import annotations
 import os
 import logging
-from typing import ClassVar
 
 from ayon_core.settings import get_project_settings
 from ayon_core.pipeline.plugin_discover import (
