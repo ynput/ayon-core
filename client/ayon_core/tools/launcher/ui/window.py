@@ -1,9 +1,9 @@
 from qtpy import QtWidgets, QtCore, QtGui
 
-from ayon_core import style
-from ayon_core import resources
+from ayon_core import style, resources
 
 from ayon_core.tools.launcher.control import BaseLauncherController
+from ayon_core.tools.utils import MessageOverlayObject
 
 from .projects_widget import ProjectsWidget
 from .hierarchy_page import HierarchyPage
@@ -40,6 +40,8 @@ class LauncherWindow(QtWidgets.QWidget):
         )
 
         self._controller = controller
+
+        overlay_object = MessageOverlayObject(self)
 
         # Main content - Pages & Actions
         content_body = QtWidgets.QSplitter(self)
@@ -78,26 +80,18 @@ class LauncherWindow(QtWidgets.QWidget):
         content_body.setSizes([580, 160])
 
         # Footer
-        footer_widget = QtWidgets.QWidget(self)
-
-        # - Message label
-        message_label = QtWidgets.QLabel(footer_widget)
-
+        # footer_widget = QtWidgets.QWidget(self)
+        #
         # action_history = ActionHistory(footer_widget)
         # action_history.setStatusTip("Show Action History")
-
-        footer_layout = QtWidgets.QHBoxLayout(footer_widget)
-        footer_layout.setContentsMargins(0, 0, 0, 0)
-        footer_layout.addWidget(message_label, 1)
+        #
+        # footer_layout = QtWidgets.QHBoxLayout(footer_widget)
+        # footer_layout.setContentsMargins(0, 0, 0, 0)
         # footer_layout.addWidget(action_history, 0)
 
         layout = QtWidgets.QVBoxLayout(self)
         layout.addWidget(content_body, 1)
-        layout.addWidget(footer_widget, 0)
-
-        message_timer = QtCore.QTimer()
-        message_timer.setInterval(self.message_interval)
-        message_timer.setSingleShot(True)
+        # layout.addWidget(footer_widget, 0)
 
         actions_refresh_timer = QtCore.QTimer()
         actions_refresh_timer.setInterval(self.refresh_interval)
@@ -109,7 +103,6 @@ class LauncherWindow(QtWidgets.QWidget):
         page_slide_anim.setEasingCurve(QtCore.QEasingCurve.OutQuad)
 
         projects_page.refreshed.connect(self._on_projects_refresh)
-        message_timer.timeout.connect(self._on_message_timeout)
         actions_refresh_timer.timeout.connect(
             self._on_actions_refresh_timeout)
         page_slide_anim.valueChanged.connect(
@@ -128,6 +121,16 @@ class LauncherWindow(QtWidgets.QWidget):
             "action.trigger.finished",
             self._on_action_trigger_finished,
         )
+        controller.register_event_callback(
+            "webaction.trigger.started",
+            self._on_webaction_trigger_started,
+        )
+        controller.register_event_callback(
+            "webaction.trigger.finished",
+            self._on_webaction_trigger_finished,
+        )
+
+        self._overlay_object = overlay_object
 
         self._controller = controller
 
@@ -141,11 +144,8 @@ class LauncherWindow(QtWidgets.QWidget):
         self._projects_page = projects_page
         self._hierarchy_page = hierarchy_page
         self._actions_widget = actions_widget
-
-        self._message_label = message_label
         # self._action_history = action_history
 
-        self._message_timer = message_timer
         self._actions_refresh_timer = actions_refresh_timer
         self._page_slide_anim = page_slide_anim
 
@@ -185,13 +185,6 @@ class LauncherWindow(QtWidgets.QWidget):
         else:
             self._refresh_on_activate = True
 
-    def _echo(self, message):
-        self._message_label.setText(str(message))
-        self._message_timer.start()
-
-    def _on_message_timeout(self):
-        self._message_label.setText("")
-
     def _on_project_selection_change(self, event):
         project_name = event["project_name"]
         self._selected_project_name = project_name
@@ -215,13 +208,69 @@ class LauncherWindow(QtWidgets.QWidget):
         self._hierarchy_page.refresh()
         self._actions_widget.refresh()
 
+    def _show_toast_message(self, message, success=True, message_id=None):
+        message_type = None
+        if not success:
+            message_type = "error"
+
+        self._overlay_object.add_message(
+            message, message_type, message_id=message_id
+        )
+
     def _on_action_trigger_started(self, event):
-        self._echo("Running action: {}".format(event["full_label"]))
+        self._show_toast_message(
+            "Running: {}".format(event["full_label"]),
+            message_id=event["trigger_id"],
+        )
 
     def _on_action_trigger_finished(self, event):
-        if not event["failed"]:
+        action_label = event["full_label"]
+        if event["failed"]:
+            message = f"Failed to run: {action_label}"
+        else:
+            message = f"Finished: {action_label}"
+        self._show_toast_message(
+            message,
+            not event["failed"],
+            message_id=event["trigger_id"],
+        )
+
+    def _on_webaction_trigger_started(self, event):
+        self._show_toast_message(
+            "Running: {}".format(event["full_label"]),
+            message_id=event["trigger_id"],
+        )
+
+    def _on_webaction_trigger_finished(self, event):
+        clipboard_text = event["clipboard_text"]
+        if clipboard_text:
+            clipboard = QtWidgets.QApplication.clipboard()
+            clipboard.setText(clipboard_text)
+
+        action_label = event["full_label"]
+        # Avoid to show exception message
+        if event["trigger_failed"]:
+            self._show_toast_message(
+                f"Failed to run: {action_label}",
+                message_id=event["trigger_id"]
+            )
             return
-        self._echo("Failed: {}".format(event["error_message"]))
+
+        # Failed to run webaction, e.g. because of missing webaction handling
+        # - not reported by server
+        if event["error_message"]:
+            self._show_toast_message(
+                event["error_message"],
+                success=False,
+                message_id=event["trigger_id"]
+            )
+            return
+
+        if event["message"]:
+            self._show_toast_message(event["message"], event["success"])
+
+        if event["form"]:
+            self._actions_widget.handle_webaction_form_event(event)
 
     def _is_page_slide_anim_running(self):
         return (
