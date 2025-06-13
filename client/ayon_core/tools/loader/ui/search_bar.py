@@ -300,6 +300,12 @@ class FilterValueItemsView(QtWidgets.QWidget):
     def __init__(self, parent):
         super().__init__(parent)
 
+        filter_input = QtWidgets.QLineEdit(self)
+
+        filter_timeout = QtCore.QTimer(self)
+        filter_timeout.setSingleShot(True)
+        filter_timeout.setInterval(20)
+
         scroll_area = QtWidgets.QScrollArea(self)
         scroll_area.setObjectName("ScrollArea")
         srcoll_viewport = scroll_area.viewport()
@@ -310,6 +316,7 @@ class FilterValueItemsView(QtWidgets.QWidget):
 
         content_widget = QtWidgets.QWidget(scroll_area)
         content_widget.setObjectName("ContentWidget")
+
         content_layout = QtWidgets.QVBoxLayout(content_widget)
         content_layout.setContentsMargins(0, 0, 0, 0)
 
@@ -331,18 +338,30 @@ class FilterValueItemsView(QtWidgets.QWidget):
 
         main_layout = QtWidgets.QVBoxLayout(self)
         main_layout.setContentsMargins(0, 0, 0, 0)
+        main_layout.addWidget(filter_input, 0)
         main_layout.addWidget(scroll_area)
         main_layout.addWidget(btns_widget, 0)
 
+        filter_timeout.timeout.connect(self._on_filter_timeout)
+        filter_input.textChanged.connect(self._on_filter_change)
         select_all_btn.clicked.connect(self._on_select_all)
         clear_btn.clicked.connect(self._on_clear_selection)
         swap_btn.clicked.connect(self._on_swap_selection)
 
+        self._filter_timeout = filter_timeout
+        self._filter_input = filter_input
         self._btns_widget = btns_widget
         self._multiselection = False
         self._content_layout = content_layout
         self._last_selected_widget = None
         self._widgets_by_id = {}
+
+    def showEvent(self, event):
+        super().showEvent(event)
+        self._filter_timeout.start()
+
+    def _on_filter_timeout(self):
+        self._filter_input.setFocus()
 
     def set_value(self, value):
         current_value = self.get_value()
@@ -452,6 +471,12 @@ class FilterValueItemsView(QtWidgets.QWidget):
         else:
             self._btns_widget.setVisible(self._multiselection)
         self._content_layout.addStretch(1)
+
+    def _on_filter_change(self, text):
+        text = text.lower()
+        for widget in self._widgets_by_id.values():
+            visible = not text or text in widget.get_value().lower()
+            widget.setVisible(visible)
 
     def _on_select_all(self):
         changed = False
