@@ -316,10 +316,8 @@ class LoaderActionsModel:
                 we want to show loaders for?
 
         Returns:
-            tuple(
-                list[ProductLoaderPlugin],
-                list[LoaderPlugin],
-            ): Discovered loader plugins.
+            tuple[list[ProductLoaderPlugin], list[LoaderPlugin]]: Discovered
+                loader plugins.
         """
 
         loaders_by_identifier_c = self._loaders_by_identifier[project_name]
