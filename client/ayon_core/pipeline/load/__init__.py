@@ -24,7 +24,6 @@ from .utils import (
 
     get_loader_identifier,
     get_loaders_by_name,
-    get_hook_loaders_by_identifier,
 
     get_representation_path_from_context,
     get_representation_path,
@@ -51,15 +50,10 @@ from .plugins import (
     register_loader_plugin_path,
     deregister_loader_plugin,
 
-    register_loader_pre_hook_plugin,
-    deregister_loader_pre_hook_plugin,
-    register_loader_pre_hook_plugin_path,
-    deregister_loader_pre_hook_plugin_path,
-
-    register_loader_post_hook_plugin,
-    deregister_loader_post_hook_plugin,
-    register_loader_post_hook_plugin_path,
-    deregister_loader_post_hook_plugin_path,
+    register_loader_hook_plugin,
+    deregister_loader_hook_plugin,
+    register_loader_hook_plugin_path,
+    deregister_loader_hook_plugin_path,
 )
 
 
@@ -90,7 +84,6 @@ __all__ = (
 
     "get_loader_identifier",
     "get_loaders_by_name",
-    "get_hook_loaders_by_identifier",
 
     "get_representation_path_from_context",
     "get_representation_path",
@@ -116,13 +109,9 @@ __all__ = (
     "register_loader_plugin_path",
     "deregister_loader_plugin",
 
-    "register_loader_pre_hook_plugin",
-    "deregister_loader_pre_hook_plugin",
-    "register_loader_pre_hook_plugin_path",
-    "deregister_loader_pre_hook_plugin_path",
+    "register_loader_hook_plugin",
+    "deregister_loader_hook_plugin",
+    "register_loader_hook_plugin_path",
+    "deregister_loader_hook_plugin_path",
 
-    "register_loader_post_hook_plugin",
-    "deregister_loader_post_hook_plugin",
-    "register_loader_post_hook_plugin_path",
-    "deregister_loader_post_hook_plugin_path",
 )

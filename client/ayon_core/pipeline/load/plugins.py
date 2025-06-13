@@ -253,8 +253,8 @@ class ProductLoaderPlugin(LoaderPlugin):
     """
 
 
-class PreLoaderHookPlugin:
-    """Plugin that should be run before any Loaders in 'loaders'
+class PrePostLoaderHookPlugin:
+    """Plugin that should be run before or post specific Loader in 'loaders'
 
     Should be used as non-invasive method to enrich core loading process.
     Any studio might want to modify loaded data before or after
@@ -336,33 +336,17 @@ def register_loader_plugin_path(path):
     return register_plugin_path(LoaderPlugin, path)
 
 
-def register_loader_pre_hook_plugin(plugin):
-    return register_plugin(PreLoaderHookPlugin, plugin)
+def register_loader_hook_plugin(plugin):
+    return register_plugin(PrePostLoaderHookPlugin, plugin)
 
 
-def deregister_loader_pre_hook_plugin(plugin):
-    deregister_plugin(PreLoaderHookPlugin, plugin)
+def deregister_loader_hook_plugin(plugin):
+    deregister_plugin(PrePostLoaderHookPlugin, plugin)
 
 
-def register_loader_pre_hook_plugin_path(path):
-    return register_plugin_path(PreLoaderHookPlugin, path)
+def register_loader_hook_plugin_path(path):
+    return register_plugin_path(PrePostLoaderHookPlugin, path)
 
 
-def deregister_loader_pre_hook_plugin_path(path):
-    deregister_plugin_path(PreLoaderHookPlugin, path)
-
-
-def register_loader_post_hook_plugin(plugin):
-    return register_plugin(PostLoaderHookPlugin, plugin)
-
-
-def deregister_loader_post_hook_plugin(plugin):
-    deregister_plugin(PostLoaderHookPlugin, plugin)
-
-
-def register_loader_post_hook_plugin_path(path):
-    return register_plugin_path(PostLoaderHookPlugin, path)
-
-
-def deregister_loader_post_hook_plugin_path(path):
-    deregister_plugin_path(PostLoaderHookPlugin, path)
+def deregister_loader_hook_plugin_path(path):
+    deregister_plugin_path(PrePostLoaderHookPlugin, path)
