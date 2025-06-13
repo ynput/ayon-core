@@ -264,7 +264,7 @@ class PrePostLoaderHookPlugin:
     def is_compatible(cls, Loader: LoaderPlugin) -> bool:
         pass
 
-    def pre_process(
+    def pre_load(
         self,
         context: dict,
         name: str | None = None,
@@ -273,13 +273,13 @@ class PrePostLoaderHookPlugin:
     ):
         pass
 
-    def post_process(
+    def post_load(
         self,
-        container: dict,  # (ayon:container-3.0)
         context: dict,
         name: str | None = None,
         namespace: str | None = None,
-        options: dict | None = None
+        options: dict | None = None,
+        container: dict | None = None,  # (ayon:container-3.0)
     ):
         pass
 
@@ -329,11 +329,12 @@ def hook_loader_load(
             for hook in loader_class._load_hooks:
                 hook.pre_load(*args, **kwargs)
             # Call original load
-            result = original_load(self, *args, **kwargs)
+            container = original_load(self, *args, **kwargs)
+            kwargs["container"] = container
             # Call post_load on all hooks
             for hook in loader_class._load_hooks:
                 hook.post_load(*args, **kwargs)
-            return result
+            return container
 
         loader_class.load = wrapped_load
 
