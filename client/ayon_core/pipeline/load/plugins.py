@@ -257,7 +257,7 @@ class PreLoaderHookPlugin:
     """Plugin that should be run before any Loaders in 'loaders'
 
     Should be used as non-invasive method to enrich core loading process.
-    Any external studio might want to modify loaded data before or after
+    Any studio might want to modify loaded data before or after
     they are loaded without need to override existing core plugins.
     """
     loader_identifiers: ClassVar[set[str]]
