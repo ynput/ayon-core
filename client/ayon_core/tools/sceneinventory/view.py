@@ -1100,7 +1100,6 @@ class SceneInventoryView(QtWidgets.QTreeView):
         containers_by_id = self._controller.get_containers_by_item_ids(
             item_ids
         )
-        hook_loaders_by_id = self._controller.get_hook_loaders_by_identifier()
         try:
             for item_id, item_version in zip(item_ids, versions):
                 container = containers_by_id[item_id]
@@ -1108,7 +1107,6 @@ class SceneInventoryView(QtWidgets.QTreeView):
                     update_container(
                         container,
                         item_version,
-                        hook_loaders_by_id
                     )
                 except AssertionError:
                     log.warning("Update failed", exc_info=True)

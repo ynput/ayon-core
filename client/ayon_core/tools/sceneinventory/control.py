@@ -5,7 +5,6 @@ from ayon_core.host import HostBase
 from ayon_core.pipeline import (
     registered_host,
     get_current_context,
-    get_hook_loaders_by_identifier
 )
 from ayon_core.tools.common_models import HierarchyModel, ProjectsModel
 
@@ -35,8 +34,6 @@ class SceneInventoryController:
         self._hierarchy_model = HierarchyModel(self)
         self._projects_model = ProjectsModel(self)
         self._event_system = self._create_event_system()
-
-        self._hooks_by_identifier = None
 
     def get_host(self) -> HostBase:
         return self._host
@@ -117,16 +114,6 @@ class SceneInventoryController:
     def get_version_items(self, project_name, product_ids):
         return self._containers_model.get_version_items(
             project_name, product_ids)
-
-    def get_hook_loaders_by_identifier(self):
-        """Returns lists of pre|post hooks per Loader identifier.
-
-        Returns:
-        (dict) {"LoaderName": {"pre": ["PreLoader1"], "post":["PreLoader2]}
-        """
-        if self._hooks_by_identifier is None:
-            self._hooks_by_identifier = get_hook_loaders_by_identifier()
-        return self._hooks_by_identifier
 
     # Site Sync methods
     def is_sitesync_enabled(self):
