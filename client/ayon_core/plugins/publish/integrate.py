@@ -881,15 +881,6 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
             "fps": instance.data.get("fps", context.data.get("fps"))
         }
 
-        # todo: preferably we wouldn't need this "if dict" etc. logic and
-        #       instead be able to rely what the input value is if it's set.
-        intent_value = context.data.get("intent")
-        if intent_value and isinstance(intent_value, dict):
-            intent_value = intent_value.get("value")
-
-        if intent_value:
-            version_data["intent"] = intent_value
-
         # Include optional data if present in
         optionals = [
             "frameStart", "frameEnd", "step",
