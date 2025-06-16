@@ -15,6 +15,13 @@ from ayon_core.lib import emit_event
 if typing.TYPE_CHECKING:
     from ayon_core.pipeline import Anatomy
 
+    from typing import TypedDict
+
+    class HostContextData(TypedDict):
+        project_name: str
+        folder_path: Optional[str]
+        task_name: Optional[str]
+
 
 @dataclass
 class ContextChangeData:
@@ -141,7 +148,7 @@ class HostBase(ABC):
 
         return os.environ.get("AYON_TASK_NAME")
 
-    def get_current_context(self) -> dict[str, Optional[str]]:
+    def get_current_context(self) -> "HostContextData":
         """Get current context information.
 
         This method should be used to get current context of host. Usage of
@@ -168,7 +175,7 @@ class HostBase(ABC):
         reason: Optional[str] = None,
         project_entity: Optional[dict[str, Any]] = None,
         anatomy: Optional[Anatomy] = None,
-    ) -> dict[str, Optional[str]]:
+    ) -> "HostContextData":
         """Set current context information.
 
         This method should be used to set current context of host. Usage of
@@ -281,13 +288,16 @@ class HostBase(ABC):
         project_name: str,
         folder_path: Optional[str],
         task_name: Optional[str],
-    ):
+    ) -> "HostContextData":
         """Emit context change event.
 
         Args:
             project_name (str): Name of the project.
             folder_path (Optional[str]): Path of the folder.
             task_name (Optional[str]): Name of the task.
+
+        Returns:
+            HostContextData: Data send to context change event.
 
         """
         data = {
