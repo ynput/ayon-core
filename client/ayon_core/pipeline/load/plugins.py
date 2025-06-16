@@ -313,39 +313,36 @@ def discover_loader_plugins(project_name=None):
                 ),
                 exc_info=True,
             )
+        compatible_hooks = []
         for hook_cls in sorted_hooks:
             if hook_cls.is_compatible(plugin):
-                hook_loader_load(plugin, hook_cls())
+                compatible_hooks.append(hook_cls)
+        add_hooks_to_loader(plugin, compatible_hooks)
     return plugins
 
 
-def hook_loader_load(
+def add_hooks_to_loader(
     loader_class: LoaderPlugin,
-    hook_instance: PrePostLoaderHookPlugin
+    compatible_hooks: list[PrePostLoaderHookPlugin]
 ) -> None:
     """Monkey patch method replacing Loader.load method with wrapped hooks."""
-    # If this is the first hook being added, wrap the original load method
-    if not hasattr(loader_class, '_load_hooks'):
-        loader_class._load_hooks = []
+    loader_class._load_hooks = compatible_hooks
 
-        original_load = loader_class.load
+    original_load = loader_class.load
 
-        def wrapped_load(self, *args, **kwargs):
-            # Call pre_load on all hooks
-            for hook in loader_class._load_hooks:
-                hook.pre_load(*args, **kwargs)
-            # Call original load
-            container = original_load(self, *args, **kwargs)
-            kwargs["container"] = container
-            # Call post_load on all hooks
-            for hook in loader_class._load_hooks:
-                hook.post_load(*args, **kwargs)
-            return container
+    def wrapped_load(self, *args, **kwargs):
+        # Call pre_load on all hooks
+        for hook in loader_class._load_hooks:
+            hook.pre_load(*args, **kwargs)
+        # Call original load
+        container = original_load(self, *args, **kwargs)
+        kwargs["container"] = container
+        # Call post_load on all hooks
+        for hook in loader_class._load_hooks:
+            hook.post_load(*args, **kwargs)
+        return container
 
-        loader_class.load = wrapped_load
-
-    # Add the new hook instance to the list
-    loader_class._load_hooks.append(hook_instance)
+    loader_class.load = wrapped_load
 
 
 def register_loader_plugin(plugin):
