@@ -1,6 +1,11 @@
+import asyncio
 import os
 import time
 from typing import Callable
+from ayon_core.tools.console_log.log_server import LogServer
+
+import zmq
+import zmq.asyncio
 
 from ayon_core.addon import AddonsManager, ITrayAddon, ITrayService
 from ayon_core.tools.tray.webserver import (
@@ -27,6 +32,8 @@ class TrayAddonsManager(AddonsManager):
         self._tray_manager = tray_manager
 
         self._webserver_manager = WebServerManager(find_free_port(), None)
+        self._log_server = LogServer()
+        self._log_server.start()
 
         self.doubleclick_callbacks = {}
         self.doubleclick_callback = None
