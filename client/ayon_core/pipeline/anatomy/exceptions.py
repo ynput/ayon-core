@@ -5,6 +5,11 @@ class ProjectNotSet(Exception):
     """Exception raised when is created Anatomy without project name."""
 
 
+class RootMissingEnv(KeyError):
+    """Raised when root requires environment variables which is not filled."""
+    pass
+
+
 class RootCombinationError(Exception):
     """This exception is raised when templates has combined root types."""
 
