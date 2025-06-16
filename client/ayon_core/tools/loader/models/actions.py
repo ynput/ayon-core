@@ -17,7 +17,6 @@ from ayon_core.pipeline.load import (
     load_with_product_contexts,
     LoadError,
     IncompatibleLoaderError,
-
 )
 from ayon_core.tools.loader.abstract import ActionItem
 
@@ -743,7 +742,6 @@ class LoaderActionsModel:
             if version < 0:
                 version = "Hero"
             try:
-
                 load_with_repre_context(
                     loader,
                     repre_context,
