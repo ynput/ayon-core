@@ -1,6 +1,7 @@
 from __future__ import annotations
 import os
 import logging
+from abc import abstractmethod
 
 from ayon_core.settings import get_project_settings
 from ayon_core.pipeline.plugin_discover import (
@@ -260,9 +261,11 @@ class PrePostLoaderHookPlugin:
     they are loaded without need to override existing core plugins.
     """
     @classmethod
+    @abstractmethod
     def is_compatible(cls, Loader: LoaderPlugin) -> bool:
         pass
 
+    @abstractmethod
     def pre_load(
         self,
         context: dict,
@@ -272,6 +275,7 @@ class PrePostLoaderHookPlugin:
     ):
         pass
 
+    @abstractmethod
     def post_load(
         self,
         context: dict,
