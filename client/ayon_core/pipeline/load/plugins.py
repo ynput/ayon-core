@@ -254,7 +254,7 @@ class ProductLoaderPlugin(LoaderPlugin):
 
 
 class PrePostLoaderHookPlugin:
-    """Plugin that should be run before or post specific Loader in 'loaders'
+    """Plugin that runs before and post specific Loader in 'loaders'
 
     Should be used as non-invasive method to enrich core loading process.
     Any studio might want to modify loaded data before or after
