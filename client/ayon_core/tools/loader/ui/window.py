@@ -349,7 +349,10 @@ class LoaderWindow(QtWidgets.QWidget):
         self._reset_on_show = True
 
     def keyPressEvent(self, event):
-        combination = event.keyCombination()
+        if hasattr(event, "keyCombination"):
+            combination = event.keyCombination()
+        else:
+            combination = QtGui.QKeySequence(event.modifiers() | event.key())
         if (
             FIND_KEY_SEQUENCE == combination
             and not event.isAutoRepeat()
