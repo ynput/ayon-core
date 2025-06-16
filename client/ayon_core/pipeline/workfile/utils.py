@@ -334,7 +334,7 @@ def save_current_workfile_to(
     project_entity: Optional[dict[str, Any]] = None,
     project_settings: Optional[dict[str, Any]] = None,
     anatomy: Optional["Anatomy"] = None,
-):
+) -> None:
     """Save current workfile to new location or context.
 
     Args:
@@ -354,9 +354,6 @@ def save_current_workfile_to(
             rootless path calculation.
         anatomy (Optional[Anatomy]): Project anatomy used for rootless
             path calculation.
-
-    Returns:
-        dict[str, Any]: Workfile info entity.
 
     """
     from ayon_core.pipeline.context_tools import registered_host
@@ -392,7 +389,7 @@ def copy_and_open_workfile(
     project_entity: Optional[dict[str, Any]] = None,
     project_settings: Optional[dict[str, Any]] = None,
     anatomy: Optional["Anatomy"] = None,
-):
+) -> None:
     """Copy workfile to new location and open it.
 
     Args:
@@ -413,9 +410,6 @@ def copy_and_open_workfile(
             rootless path calculation.
         anatomy (Optional[Anatomy]): Project anatomy used for rootless
             path calculation.
-
-    Returns:
-        dict[str, Any]: Workfile info entity.
 
     """
     from ayon_core.pipeline.context_tools import registered_host
@@ -456,7 +450,7 @@ def copy_and_open_workfile_representation(
     project_settings: Optional[dict[str, Any]] = None,
     anatomy: Optional["Anatomy"] = None,
     src_anatomy: Optional["Anatomy"] = None,
-):
+) -> None:
     """Copy workfile to new location and open it.
 
     Args:
@@ -482,9 +476,6 @@ def copy_and_open_workfile_representation(
             rootless path calculation.
         anatomy (Optional[Anatomy]): Project anatomy used for rootless
             path calculation.
-
-    Returns:
-        dict[str, Any]: Workfile info entity.
 
     """
     from ayon_core.pipeline.context_tools import registered_host
