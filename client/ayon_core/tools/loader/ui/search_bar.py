@@ -413,6 +413,26 @@ class FilterValueItemsView(QtWidgets.QWidget):
             event.accept()
             self.close_requested.emit()
             return
+
+        if event.key() in (
+            QtCore.Qt.Key_Backtab,
+            QtCore.Qt.Key_Backspace,
+        ):
+            event.accept()
+            set_line_edit_focus(self._filter_input, backspace=True)
+            return
+
+        if event.key() not in (
+            QtCore.Qt.Key_Escape,
+            QtCore.Qt.Key_Tab,
+            QtCore.Qt.Key_Return,
+        ):
+            text = event.text()
+            if text:
+                event.accept()
+                set_line_edit_focus(self._filter_input, append_text=text)
+                return
+
         super().keyPressEvent(event)
 
     def set_value(self, value):
