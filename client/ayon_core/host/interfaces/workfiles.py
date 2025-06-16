@@ -822,7 +822,7 @@ class IWorkfileHost:
     ) -> None:
         """Copy workfile representation.
 
-        Use representation as source for the workfile.
+        Use representation as a source for the workfile.
 
         Arguments 'rootless_path', 'workfile_entities', 'project_entity'
             and 'anatomy' can be filled to enhance efficiency if you already
@@ -1162,7 +1162,7 @@ class IWorkfileHost:
 
         This method is called before the workfile is opened in the host.
 
-        Can be overriden to implement host specific logic.
+        Can be overridden to implement host specific logic.
 
         Args:
             open_workfile_data (WorkfileOpenData): Context and path of
@@ -1178,7 +1178,7 @@ class IWorkfileHost:
 
         This method is called after the workfile is opened in the host.
 
-        Can be overriden to implement host specific logic.
+        Can be overridden to implement host specific logic.
 
         Args:
             open_workfile_data (WorkfileOpenData): Context and path of
@@ -1194,7 +1194,7 @@ class IWorkfileHost:
 
         This method is called before the workfile is saved in the host.
 
-        Can be overriden to implement host specific logic.
+        Can be overridden to implement host specific logic.
 
         Args:
             save_workfile_data (WorkfileSaveData): Workfile path with target
@@ -1210,7 +1210,7 @@ class IWorkfileHost:
 
         This method is called after the workfile is saved in the host.
 
-        Can be overriden to implement host specific logic.
+        Can be overridden to implement host specific logic.
 
         Args:
             save_workfile_data (WorkfileSaveData): Workfile path with target
@@ -1232,7 +1232,7 @@ class IWorkfileHost:
         This method is called before the workfile is copied by host
             integration.
 
-        Can be overriden to implement host specific logic.
+        Can be overridden to implement host specific logic.
 
         Args:
             copy_workfile_data (WorkfileCopyData): Source and destination
@@ -1249,7 +1249,7 @@ class IWorkfileHost:
         This method is called after the workfile is copied by host
             integration.
 
-        Can be overriden to implement host specific logic.
+        Can be overridden to implement host specific logic.
 
         Args:
             copy_workfile_data (WorkfileCopyData): Source and destination
