@@ -206,11 +206,17 @@ class FiltersPopup(QtWidgets.QWidget):
             self.close()
             return
 
+        if event.key() in (
+            QtCore.Qt.Key_Backtab,
+            QtCore.Qt.Key_Backspace,
+        ):
+            self.text_filter_requested.emit("")
+            event.accept()
+            return
+
         if event.key() not in (
             QtCore.Qt.Key_Escape,
             QtCore.Qt.Key_Tab,
-            QtCore.Qt.Key_Backtab,
-            QtCore.Qt.Key_Backspace,
             QtCore.Qt.Key_Return,
         ):
             text = event.text()
