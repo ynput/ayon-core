@@ -342,7 +342,7 @@ class HostBase(ABC):
 
         This method is called before the context is changed in the host.
 
-        Can be overriden to implement host specific logic.
+        Can be overridden to implement host specific logic.
 
         Args:
             context_change_data (ContextChangeData): Object with information
@@ -356,7 +356,7 @@ class HostBase(ABC):
 
         This method is called after the context is changed in the host.
 
-        Can be overriden to implement host specific logic.
+        Can be overridden to implement host specific logic.
 
         Args:
             context_change_data (ContextChangeData): Object with information
