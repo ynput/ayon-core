@@ -892,6 +892,9 @@ class FiltersBar(BaseClickableFrame):
         self.show_filters_popup()
 
     def _on_text_filter_request(self, text: str):
+        if "product_name" not in self._filter_defs_by_name:
+            return
+
         self._on_filter_request("product_name")
         self._filter_value_popup.set_text_filter(text)
 
