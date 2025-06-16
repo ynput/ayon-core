@@ -14,6 +14,23 @@ from ayon_core.tools.utils import (
 )
 
 
+def set_line_edit_focus(
+    widget: QtWidgets.QLineEdit,
+    *,
+    append_text: Optional[str] = None,
+    backspace: bool = False,
+):
+    full_text = widget.text()
+    if backspace and full_text:
+        full_text = full_text[:-1]
+
+    if append_text:
+        full_text += append_text
+    widget.setText(full_text)
+    widget.setFocus()
+    widget.setCursorPosition(len(full_text))
+
+
 @dataclass
 class FilterDefinition:
     """Search bar definition.
@@ -633,11 +650,13 @@ class FilterValuePopup(QtWidgets.QWidget):
             return
 
         if isinstance(self._active_widget, QtWidgets.QLineEdit):
-            full_text = self._active_widget.text() + text
-            self._active_widget.setText(full_text)
-            self._active_widget.setFocus()
-            self._active_widget.setCursorPosition(len(full_text))
-            return
+            kwargs = {}
+            if text:
+                kwargs["append_text"] = text
+            else:
+                kwargs["backspace"] = True
+
+            set_line_edit_focus(self._active_widget, **kwargs)
 
     def set_filter_item(
         self,
