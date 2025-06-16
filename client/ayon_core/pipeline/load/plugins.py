@@ -310,9 +310,9 @@ def discover_loader_plugins(project_name=None):
                 ),
                 exc_info=True,
             )
-        for hookCls in hooks:
-            if hookCls.is_compatible(plugin):
-                hook_loader_load(plugin, hookCls())
+        for hook_cls in hooks:
+            if hook_cls.is_compatible(plugin):
+                hook_loader_load(plugin, hook_cls())
     return plugins
 
 
