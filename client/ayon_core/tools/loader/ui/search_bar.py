@@ -346,6 +346,7 @@ class FilterValueItemsView(QtWidgets.QWidget):
         super().__init__(parent)
 
         filter_input = QtWidgets.QLineEdit(self)
+        filter_input.setPlaceholderText("Filter items...")
 
         # Timeout is used to delay the filter focus change on 'showEvent'
         # - the focus is changed to something else if is not delayed
