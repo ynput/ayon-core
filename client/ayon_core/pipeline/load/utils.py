@@ -572,7 +572,6 @@ def switch_container(
     container,
     representation,
     loader_plugin=None,
-    hooks_by_identifier=None
 ):
     """Switch a container to representation
 
@@ -580,7 +579,6 @@ def switch_container(
         container (dict): container information
         representation (dict): representation entity
         loader_plugin (LoaderPlugin)
-        hooks_by_identifier (dict): {"pre": [PreHookPlugin1], "post":[]}
 
     Returns:
         return from function call
