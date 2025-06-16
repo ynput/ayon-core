@@ -1,10 +1,12 @@
-from ayon_core.lib import Logger
+from ayon_core.lib import Logger, get_ayon_username
 from ayon_core.lib.events import QueuedEventSystem
 from ayon_core.settings import get_project_settings
 from ayon_core.tools.common_models import ProjectsModel, HierarchyModel
 
 from .abstract import AbstractLauncherFrontEnd, AbstractLauncherBackend
 from .models import LauncherSelectionModel, ActionsModel
+
+NOT_SET = object()
 
 
 class BaseLauncherController(
@@ -14,6 +16,8 @@ class BaseLauncherController(
         self._project_settings = {}
         self._event_system = None
         self._log = None
+
+        self._username = NOT_SET
 
         self._selection_model = LauncherSelectionModel(self)
         self._projects_model = ProjectsModel(self)
@@ -28,7 +32,7 @@ class BaseLauncherController(
 
     @property
     def event_system(self):
-        """Inner event system for workfiles tool controller.
+        """Inner event system for launcher tool controller.
 
         Is used for communication with UI. Event system is created on demand.
 
@@ -131,16 +135,30 @@ class BaseLauncherController(
         return self._actions_model.get_action_items(
             project_name, folder_id, task_id)
 
-    def set_application_force_not_open_workfile(
-        self, project_name, folder_id, task_id, action_ids, enabled
+    def trigger_action(
+        self,
+        identifier,
+        project_name,
+        folder_id,
+        task_id,
     ):
-        self._actions_model.set_application_force_not_open_workfile(
-            project_name, folder_id, task_id, action_ids, enabled
+        self._actions_model.trigger_action(
+            identifier,
+            project_name,
+            folder_id,
+            task_id,
         )
 
-    def trigger_action(self, project_name, folder_id, task_id, identifier):
-        self._actions_model.trigger_action(
-            project_name, folder_id, task_id, identifier)
+    def trigger_webaction(self, context, action_label, form_data=None):
+        self._actions_model.trigger_webaction(
+            context, action_label, form_data
+        )
+
+    def get_action_config_values(self, context):
+        return self._actions_model.get_action_config_values(context)
+
+    def set_action_config_values(self, context, values):
+        return self._actions_model.set_action_config_values(context, values)
 
     # General methods
     def refresh(self):
@@ -167,6 +185,20 @@ class BaseLauncherController(
         self._actions_model.refresh()
 
         self._emit_event("controller.refresh.actions.finished")
+
+    def get_my_tasks_entity_ids(self, project_name: str):
+        username = self._get_my_username()
+        assignees = []
+        if username:
+            assignees.append(username)
+        return self._hierarchy_model.get_entity_ids_for_assignees(
+            project_name, assignees
+        )
+
+    def _get_my_username(self):
+        if self._username is NOT_SET:
+            self._username = get_ayon_username()
+        return self._username
 
     def _emit_event(self, topic, data=None):
         self.emit_event(topic, data, "controller")
