@@ -260,6 +260,8 @@ class PrePostLoaderHookPlugin:
     Any studio might want to modify loaded data before or after
     they are loaded without need to override existing core plugins.
     """
+    order = 0
+
     @classmethod
     @abstractmethod
     def is_compatible(cls, Loader: LoaderPlugin) -> bool:
@@ -300,6 +302,7 @@ def discover_loader_plugins(project_name=None):
     project_settings = get_project_settings(project_name)
     plugins = discover(LoaderPlugin)
     hooks = discover(PrePostLoaderHookPlugin)
+    sorted_hooks = sorted(hooks, key=lambda hook: hook.order)
     for plugin in plugins:
         try:
             plugin.apply_settings(project_settings)
@@ -310,7 +313,7 @@ def discover_loader_plugins(project_name=None):
                 ),
                 exc_info=True,
             )
-        for hook_cls in hooks:
+        for hook_cls in sorted_hooks:
             if hook_cls.is_compatible(plugin):
                 hook_loader_load(plugin, hook_cls())
     return plugins
