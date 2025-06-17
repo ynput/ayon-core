@@ -288,7 +288,33 @@ class PrePostLoaderHookPlugin:
     ):
         pass
 
-    def switch(self, container, context):
+    @abstractmethod
+    def pre_update(
+        self,
+        container: dict,  # (ayon:container-3.0)
+        context: dict,
+    ):
+        pass
+
+    @abstractmethod
+    def post_update(
+        container: dict,  # (ayon:container-3.0)
+        context: dict,
+    ):
+        pass
+
+    @abstractmethod
+    def pre_remove(
+        self,
+        container: dict,  # (ayon:container-3.0)
+    ):
+        pass
+
+    @abstractmethod
+    def post_remove(
+        container: dict,  # (ayon:container-3.0)
+        context: dict,
+    ):
         pass
 
 
@@ -322,27 +348,47 @@ def discover_loader_plugins(project_name=None):
 
 
 def add_hooks_to_loader(
-    loader_class: LoaderPlugin,
-    compatible_hooks: list[PrePostLoaderHookPlugin]
+    loader_class: LoaderPlugin, compatible_hooks: list[PrePostLoaderHookPlugin]
 ) -> None:
-    """Monkey patch method replacing Loader.load method with wrapped hooks."""
+    """Monkey patch method replacing Loader.load|update|remove methods
+
+    It wraps applicable loaders with pre/post hooks. Discovery is called only
+    once per loaders discovery.
+    """
     loader_class._load_hooks = compatible_hooks
 
-    original_load = loader_class.load
+    def wrap_method(method_name: str):
+        original_method = getattr(loader_class, method_name)
 
-    def wrapped_load(self, *args, **kwargs):
-        # Call pre_load on all hooks
-        for hook in loader_class._load_hooks:
-            hook.pre_load(*args, **kwargs)
-        # Call original load
-        container = original_load(self, *args, **kwargs)
-        kwargs["container"] = container
-        # Call post_load on all hooks
-        for hook in loader_class._load_hooks:
-            hook.post_load(*args, **kwargs)
-        return container
+        def wrapped_method(self, *args, **kwargs):
+            # Call pre_<method_name> on all hooks
+            pre_hook_name = f"pre_{method_name}"
+            for hook in loader_class._load_hooks:
+                pre_hook = getattr(hook, pre_hook_name, None)
+                if callable(pre_hook):
+                    pre_hook(self, *args, **kwargs)
 
-    loader_class.load = wrapped_load
+            # Call original method
+            result = original_method(self, *args, **kwargs)
+
+            # Add result to kwargs if needed
+            # Assuming container-like result for load, update, remove
+            kwargs["container"] = result
+
+            # Call post_<method_name> on all hooks
+            post_hook_name = f"post_{method_name}"
+            for hook in loader_class._load_hooks:
+                post_hook = getattr(hook, post_hook_name, None)
+                if callable(post_hook):
+                    post_hook(self, *args, **kwargs)
+
+            return result
+
+        setattr(loader_class, method_name, wrapped_method)
+
+    for method in ("load", "update", "remove"):
+        if hasattr(loader_class, method):
+            wrap_method(method)
 
 
 def register_loader_plugin(plugin):
