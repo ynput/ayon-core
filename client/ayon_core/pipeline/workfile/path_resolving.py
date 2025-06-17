@@ -420,9 +420,9 @@ def get_last_workfile(
     extensions: set[str],
     full_path: bool = False,
 ) -> str:
-    """Return last workfile filename.
+    """Return last the workfile filename.
 
-    Returns file with version 1 if there is not workfile yet.
+    Returns first file name/path if there are not workfiles yet.
 
     Args:
         workdir (str): Path to dir where workfiles are stored.
