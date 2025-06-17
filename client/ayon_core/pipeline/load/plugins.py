@@ -278,6 +278,7 @@ class LoaderHookPlugin:
         name: str | None = None,
         namespace: str | None = None,
         options: dict | None = None,
+        plugin: LoaderPlugin | None = None,
     ):
         pass
 
@@ -288,6 +289,7 @@ class LoaderHookPlugin:
         name: str | None = None,
         namespace: str | None = None,
         options: dict | None = None,
+        plugin: LoaderPlugin | None = None,
         result: Any = None,
     ):
         pass
@@ -297,6 +299,8 @@ class LoaderHookPlugin:
         self,
         container: dict,  # (ayon:container-3.0)
         context: dict,
+        plugin: LoaderPlugin | None = None,
+
     ):
         pass
 
@@ -305,6 +309,7 @@ class LoaderHookPlugin:
         self,
         container: dict,  # (ayon:container-3.0)
         context: dict,
+        plugin: LoaderPlugin | None = None,
         result: Any = None,
     ):
         pass
@@ -313,6 +318,7 @@ class LoaderHookPlugin:
     def pre_remove(
         self,
         container: dict,  # (ayon:container-3.0)
+        plugin: LoaderPlugin | None = None,
     ):
         pass
 
@@ -320,6 +326,7 @@ class LoaderHookPlugin:
     def post_remove(
         self,
         container: dict,  # (ayon:container-3.0)
+        plugin: LoaderPlugin | None = None,
         result: Any = None,
     ):
         pass
@@ -355,7 +362,7 @@ def discover_loader_plugins(project_name=None):
 
 
 def add_hooks_to_loader(
-    loader_class: LoaderPlugin, compatible_hooks: list[LoaderHookPlugin]
+    loader_class: LoaderPlugin, compatible_hooks: list[Type[LoaderHookPlugin]]
 ) -> None:
     """Monkey patch method replacing Loader.load|update|remove methods
 
@@ -370,24 +377,31 @@ def add_hooks_to_loader(
         def wrapped_method(self, *args, **kwargs):
             # Call pre_<method_name> on all hooks
             pre_hook_name = f"pre_{method_name}"
-            for hook in loader_class._load_hooks:
+
+            # Pass the LoaderPlugin instance to the hooks
+            hook_kwargs = kwargs.copy()
+            hook_kwargs["plugin"] = self
+
+            hooks: list[LoaderHookPlugin] = []
+            for Hook in loader_class._load_hooks:
+                hook = Hook()  # Instantiate the hook
+                hooks.append(hook)
                 pre_hook = getattr(hook, pre_hook_name, None)
                 if callable(pre_hook):
-                    pre_hook(self, *args, **kwargs)
+                    pre_hook(*args, **hook_kwargs)
 
             # Call original method
             result = original_method(self, *args, **kwargs)
 
-            # Add result to kwargs if needed
-            # Assuming container-like result for load, update, remove
-            kwargs["result"] = result
+            # Add result to kwargs for post hooks from the original method
+            hook_kwargs["result"] = result
 
             # Call post_<method_name> on all hooks
             post_hook_name = f"post_{method_name}"
-            for hook in loader_class._load_hooks:
+            for hook in hooks:
                 post_hook = getattr(hook, post_hook_name, None)
                 if callable(post_hook):
-                    post_hook(self, *args, **kwargs)
+                    post_hook(*args, **hook_kwargs)
 
             return result
 
