@@ -1,6 +1,7 @@
 from __future__ import annotations
 import os
 import logging
+from typing import Any
 from abc import abstractmethod
 
 from ayon_core.settings import get_project_settings
@@ -259,6 +260,9 @@ class LoaderHookPlugin:
     Should be used as non-invasive method to enrich core loading process.
     Any studio might want to modify loaded data before or after
     they are loaded without need to override existing core plugins.
+
+    The post methods are called after the loader's methods and receive the
+    return value of the loader's method as `result` argument.
     """
     order = 0
 
@@ -284,7 +288,7 @@ class LoaderHookPlugin:
         name: str | None = None,
         namespace: str | None = None,
         options: dict | None = None,
-        container: dict | None = None,  # (ayon:container-3.0)
+        result: Any = None,
     ):
         pass
 
@@ -301,6 +305,7 @@ class LoaderHookPlugin:
         self,
         container: dict,  # (ayon:container-3.0)
         context: dict,
+        result: Any = None,
     ):
         pass
 
@@ -315,6 +320,7 @@ class LoaderHookPlugin:
     def post_remove(
         self,
         container: dict,  # (ayon:container-3.0)
+        result: Any = None,
     ):
         pass
 
@@ -374,7 +380,7 @@ def add_hooks_to_loader(
 
             # Add result to kwargs if needed
             # Assuming container-like result for load, update, remove
-            kwargs["container"] = result
+            kwargs["result"] = result
 
             # Call post_<method_name> on all hooks
             post_hook_name = f"post_{method_name}"
