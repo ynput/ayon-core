@@ -1,7 +1,7 @@
 from __future__ import annotations
 import os
 import logging
-from typing import Any
+from typing import Any, Type
 from abc import abstractmethod
 
 from ayon_core.settings import get_project_settings
@@ -268,7 +268,7 @@ class LoaderHookPlugin:
 
     @classmethod
     @abstractmethod
-    def is_compatible(cls, Loader: LoaderPlugin) -> bool:
+    def is_compatible(cls, Loader: Type[LoaderPlugin]) -> bool:
         pass
 
     @abstractmethod
