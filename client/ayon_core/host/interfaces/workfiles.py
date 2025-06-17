@@ -107,6 +107,7 @@ class WorkfileInfo:
         cls,
         filepath: str,
         rootless_path: str,
+        *,
         available: bool,
         workfile_entity: dict[str, Any],
     ):
@@ -202,6 +203,7 @@ class PublishedWorkfileInfo:
         folder_id: str,
         task_id: Optional[str],
         repre_entity: dict[str, Any],
+        *,
         filepath: str,
         author: str,
         available: bool,
@@ -696,12 +698,12 @@ class IWorkfileHost:
                 folder_id,
                 task_id,
                 repre_entity,
-                workfile_path,
-                version_entity["author"],
-                is_available,
-                file_size,
-                file_created,
-                file_modified,
+                filepath=workfile_path,
+                author=version_entity["author"],
+                available=is_available,
+                file_size=file_size,
+                file_created=file_created,
+                file_modified=file_modified,
             )
             items.append(workfile_item)
 
