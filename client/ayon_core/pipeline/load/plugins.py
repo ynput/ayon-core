@@ -298,6 +298,7 @@ class LoaderHookPlugin:
 
     @abstractmethod
     def post_update(
+        self,
         container: dict,  # (ayon:container-3.0)
         context: dict,
     ):
@@ -312,8 +313,8 @@ class LoaderHookPlugin:
 
     @abstractmethod
     def post_remove(
+        self,
         container: dict,  # (ayon:container-3.0)
-        context: dict,
     ):
         pass
 
