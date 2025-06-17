@@ -432,7 +432,8 @@ def get_last_workfile(
         full_path (bool): Return full path to the file or only filename.
 
     Returns:
-        str: Last or first workfile as filename of full path to filename.
+        str: Last or first workfile file name or path based on
+            'full_path' value.
 
     """
     # TODO (iLLiCiTiT): Remove the argument 'full_path' and return only full
