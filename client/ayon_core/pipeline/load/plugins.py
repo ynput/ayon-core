@@ -253,7 +253,7 @@ class ProductLoaderPlugin(LoaderPlugin):
     """
 
 
-class PrePostLoaderHookPlugin:
+class LoaderHookPlugin:
     """Plugin that runs before and post specific Loader in 'loaders'
 
     Should be used as non-invasive method to enrich core loading process.
@@ -327,7 +327,7 @@ def discover_loader_plugins(project_name=None):
         project_name = get_current_project_name()
     project_settings = get_project_settings(project_name)
     plugins = discover(LoaderPlugin)
-    hooks = discover(PrePostLoaderHookPlugin)
+    hooks = discover(LoaderHookPlugin)
     sorted_hooks = sorted(hooks, key=lambda hook: hook.order)
     for plugin in plugins:
         try:
@@ -348,7 +348,7 @@ def discover_loader_plugins(project_name=None):
 
 
 def add_hooks_to_loader(
-    loader_class: LoaderPlugin, compatible_hooks: list[PrePostLoaderHookPlugin]
+    loader_class: LoaderPlugin, compatible_hooks: list[LoaderHookPlugin]
 ) -> None:
     """Monkey patch method replacing Loader.load|update|remove methods
 
@@ -408,16 +408,16 @@ def register_loader_plugin_path(path):
 
 
 def register_loader_hook_plugin(plugin):
-    return register_plugin(PrePostLoaderHookPlugin, plugin)
+    return register_plugin(LoaderHookPlugin, plugin)
 
 
 def deregister_loader_hook_plugin(plugin):
-    deregister_plugin(PrePostLoaderHookPlugin, plugin)
+    deregister_plugin(LoaderHookPlugin, plugin)
 
 
 def register_loader_hook_plugin_path(path):
-    return register_plugin_path(PrePostLoaderHookPlugin, path)
+    return register_plugin_path(LoaderHookPlugin, path)
 
 
 def deregister_loader_hook_plugin_path(path):
-    deregister_plugin_path(PrePostLoaderHookPlugin, path)
+    deregister_plugin_path(LoaderHookPlugin, path)
