@@ -22,7 +22,6 @@ if typing.TYPE_CHECKING:
         current: Optional[str]
         selected: Optional[str]
 
-
     class ExpectedSelectionData(TypedDict):
         project: ExpectedProjectSelectionData
 
@@ -554,7 +553,9 @@ class ProjectsDelegate(QtWidgets.QStyledItemDelegate):
                 cg = QtGui.QPalette.Normal
 
             if opt.state & QtWidgets.QStyle.State_Selected:
-                painter.setPen(opt.palette.color(cg, QtGui.QPalette.HighlightedText))
+                painter.setPen(
+                    opt.palette.color(cg, QtGui.QPalette.HighlightedText)
+                )
             else:
                 painter.setPen(opt.palette.color(cg, QtGui.QPalette.Text))
 
@@ -941,4 +942,3 @@ class ProjectsWidget(QtWidgets.QWidget):
     def _on_projects_refresh_finished(self, event):
         if event["sender"] != PROJECTS_MODEL_SENDER:
             self._projects_model.refresh()
-
