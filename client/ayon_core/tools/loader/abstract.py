@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import List, Optional, TypedDict
+from typing import Any, List, Optional
 
 from ayon_core.lib.attribute_definitions import (
     AbstractAttrDef,
@@ -10,62 +10,16 @@ from ayon_core.lib.attribute_definitions import (
     serialize_attr_defs,
 )
 
-IconData = TypedDict("IconData", {
-    "type": str,
-    "name": str,
-    "color": str
-})
-
-ProductBaseTypeItemData = TypedDict("ProductBaseTypeItemData", {
-    "name": str,
-    "icon": IconData
-})
-
-
-VersionItemData = TypedDict("VersionItemData", {
-    "version_id": str,
-    "version": int,
-    "is_hero": bool,
-    "product_id": str,
-    "task_id": Optional[str],
-    "thumbnail_id": Optional[str],
-    "published_time": Optional[str],
-    "author": Optional[str],
-    "status": Optional[str],
-    "frame_range": Optional[str],
-    "duration": Optional[int],
-    "handles": Optional[str],
-    "step": Optional[int],
-    "comment": Optional[str],
-    "source": Optional[str]
-})
-
-
-ProductItemData = TypedDict("ProductItemData", {
-    "product_id": str,
-    "product_type": str,
-    "product_base_type": str,
-    "product_name": str,
-    "product_icon": IconData,
-    "product_type_icon": IconData,
-    "product_base_type_icon": IconData,
-    "group_name": str,
-    "folder_id": str,
-    "folder_label": str,
-    "version_items": dict[str, VersionItemData],
-    "product_in_scene": bool
-})
-
 
 class ProductTypeItem:
     """Item representing product type.
 
     Args:
         name (str): Product type name.
-        icon (IconData): Product type icon definition.
+        icon (dict[str, str]): Product type icon definition.
     """
 
-    def __init__(self, name: str, icon: IconData):
+    def __init__(self, name: str, icon: dict[str, str]):
         self.name = name
         self.icon = icon
 
@@ -83,16 +37,16 @@ class ProductTypeItem:
 class ProductBaseTypeItem:
     """Item representing the product base type."""
 
-    def __init__(self, name: str, icon: IconData):
+    def __init__(self, name: str, icon: dict[str, str]):
         """Initialize product base type item."""
         self.name = name
         self.icon = icon
 
-    def to_data(self) -> ProductBaseTypeItemData:
+    def to_data(self) -> dict[str, Any]:
         """Convert item to data dictionary.
 
         Returns:
-            ProductBaseTypeItemData: Data representation of the item.
+            dict[str, Any]: Data representation of the item.
 
         """
         return {
@@ -102,11 +56,11 @@ class ProductBaseTypeItem:
 
     @classmethod
     def from_data(
-            cls, data: ProductBaseTypeItemData) -> ProductBaseTypeItem:
+            cls, data: dict[str, Any]) -> ProductBaseTypeItem:
         """Create item from data dictionary.
 
         Args:
-            data (ProductBaseTypeItemData): Data to create item from.
+            data (dict[str, Any]): Data to create item from.
 
         Returns:
             ProductBaseTypeItem: Item created from the provided data.
@@ -122,8 +76,8 @@ class ProductItem:
         product_id (str): Product id.
         product_type (str): Product type.
         product_name (str): Product name.
-        product_icon (IconData): Product icon definition.
-        product_type_icon (IconData): Product type icon definition.
+        product_icon (dict[str, str]): Product icon definition.
+        product_type_icon (dict[str, str]): Product type icon definition.
         product_in_scene (bool): Is product in scene (only when used in DCC).
         group_name (str): Group name.
         folder_id (str): Folder id.
@@ -137,9 +91,9 @@ class ProductItem:
         product_type: str,
         product_base_type: str,
         product_name: str,
-        product_icon: IconData,
-        product_type_icon: IconData,
-        product_base_type_icon: IconData,
+        product_icon: dict[str, str],
+        product_type_icon: dict[str, str],
+        product_base_type_icon: dict[str, str],
         group_name: str,
         folder_id: str,
         folder_label: str,
@@ -159,7 +113,7 @@ class ProductItem:
         self.folder_label = folder_label
         self.version_items = version_items
 
-    def to_data(self) -> ProductItemData:
+    def to_data(self) -> dict[str, Any]:
         return {
             "product_id": self.product_id,
             "product_type": self.product_type,
@@ -408,10 +362,8 @@ class ActionItem:
         #   future development of detached UI tools it would be better to be
         #   prepared for it.
         raise NotImplementedError(
-            "{}.to_data is not implemented. Use Attribute definitions"
-            " from 'ayon_core.lib' instead of 'qargparse'.".format(
-                self.__class__.__name__
-            )
+            f"{self.__class__.__name__}.to_data is not implemented. Use Attribute definitions"
+            " from 'ayon_core.lib' instead of 'qargparse'."
         )
 
     def to_data(self):
@@ -470,8 +422,6 @@ class _BaseLoaderController(ABC):
             dict[str, Union[str, None]]: Context data.
         """
 
-        pass
-
     @abstractmethod
     def reset(self):
         """Reset all cached data to reload everything.
@@ -479,8 +429,6 @@ class _BaseLoaderController(ABC):
         Triggers events "controller.reset.started" and
         "controller.reset.finished".
         """
-
-        pass
 
     # Model wrappers
     @abstractmethod
@@ -495,8 +443,6 @@ class _BaseLoaderController(ABC):
             list[FolderItem]: Folder items for the project.
         """
 
-        pass
-
     # Expected selection helpers
     @abstractmethod
     def get_expected_selection_data(self):
@@ -510,8 +456,6 @@ class _BaseLoaderController(ABC):
             dict[str, Any]: Expected selection data.
         """
 
-        pass
-
     @abstractmethod
     def set_expected_selection(self, project_name, folder_id):
         """Set expected selection.
@@ -520,8 +464,6 @@ class _BaseLoaderController(ABC):
             project_name (str): Name of project to be selected.
             folder_id (str): Id of folder to be selected.
         """
-
-        pass
 
 
 class BackendLoaderController(_BaseLoaderController):
@@ -542,8 +484,6 @@ class BackendLoaderController(_BaseLoaderController):
             source (Optional[str]): Event source.
         """
 
-        pass
-
     @abstractmethod
     def get_loaded_product_ids(self):
         """Return set of loaded product ids.
@@ -551,8 +491,6 @@ class BackendLoaderController(_BaseLoaderController):
         Returns:
             set[str]: Set of loaded product ids.
         """
-
-        pass
 
 
 class FrontendLoaderController(_BaseLoaderController):
@@ -565,8 +503,6 @@ class FrontendLoaderController(_BaseLoaderController):
             callback (func): Callback triggered when the event is emitted.
         """
 
-        pass
-
     # Expected selection helpers
     @abstractmethod
     def expected_project_selected(self, project_name):
@@ -576,8 +512,6 @@ class FrontendLoaderController(_BaseLoaderController):
             project_name (str): Project name.
         """
 
-        pass
-
     @abstractmethod
     def expected_folder_selected(self, folder_id):
         """Expected folder was selected in frontend.
@@ -585,8 +519,6 @@ class FrontendLoaderController(_BaseLoaderController):
         Args:
             folder_id (str): Folder id.
         """
-
-        pass
 
     # Model wrapper calls
     @abstractmethod
@@ -609,8 +541,6 @@ class FrontendLoaderController(_BaseLoaderController):
             list[ProjectItem]: List of project items.
         """
 
-        pass
-
     @abstractmethod
     def get_folder_type_items(self, project_name, sender=None):
         """Folder type items for a project.
@@ -629,7 +559,6 @@ class FrontendLoaderController(_BaseLoaderController):
             list[FolderTypeItem]: Folder type information.
 
         """
-        pass
 
     @abstractmethod
     def get_task_items(self, project_name, folder_ids, sender=None):
@@ -644,7 +573,6 @@ class FrontendLoaderController(_BaseLoaderController):
             list[TaskItem]: List of task items.
 
         """
-        pass
 
     @abstractmethod
     def get_task_type_items(self, project_name, sender=None):
@@ -664,7 +592,6 @@ class FrontendLoaderController(_BaseLoaderController):
             list[TaskTypeItem]: Task type information.
 
         """
-        pass
 
     @abstractmethod
     def get_folder_labels(self, project_name, folder_ids):
@@ -678,7 +605,6 @@ class FrontendLoaderController(_BaseLoaderController):
             dict[str, Optional[str]]: Folder labels by folder id.
 
         """
-        pass
 
     @abstractmethod
     def get_project_status_items(self, project_name, sender=None):
@@ -698,8 +624,6 @@ class FrontendLoaderController(_BaseLoaderController):
         Returns:
             list[StatusItem]: List of status items.
         """
-
-        pass
 
     @abstractmethod
     def get_product_items(self, project_name, folder_ids, sender=None):
@@ -722,8 +646,6 @@ class FrontendLoaderController(_BaseLoaderController):
             list[ProductItem]: List of product items.
         """
 
-        pass
-
     @abstractmethod
     def get_product_item(self, project_name, product_id):
         """Receive single product item.
@@ -735,8 +657,6 @@ class FrontendLoaderController(_BaseLoaderController):
         Returns:
              Union[ProductItem, None]: Product info or None if not found.
         """
-
-        pass
 
     @abstractmethod
     def get_product_type_items(self, project_name):
@@ -750,8 +670,6 @@ class FrontendLoaderController(_BaseLoaderController):
         Returns:
             list[ProductTypeItem]: List of product type items for a project.
         """
-
-        pass
 
     @abstractmethod
     def get_representation_items(
@@ -776,8 +694,6 @@ class FrontendLoaderController(_BaseLoaderController):
             list[RepreItem]: List of representation items.
         """
 
-        pass
-
     @abstractmethod
     def get_version_thumbnail_ids(self, project_name, version_ids):
         """Get thumbnail ids for version ids.
@@ -789,8 +705,6 @@ class FrontendLoaderController(_BaseLoaderController):
         Returns:
             dict[str, Union[str, Any]]: Thumbnail id by version id.
         """
-
-        pass
 
     @abstractmethod
     def get_folder_thumbnail_ids(self, project_name, folder_ids):
@@ -804,14 +718,11 @@ class FrontendLoaderController(_BaseLoaderController):
             dict[str, Union[str, Any]]: Thumbnail id by folder id.
         """
 
-        pass
-
     @abstractmethod
     def get_versions_representation_count(
         self, project_name, version_ids, sender=None
     ):
-        """
-        Args:
+        """Args:
             project_name (str): Project name.
             version_ids (Iterable[str]): Version ids.
             sender (Optional[str]): Sender who requested the items.
@@ -819,8 +730,6 @@ class FrontendLoaderController(_BaseLoaderController):
         Returns:
             dict[str, int]: Representation count by version id.
         """
-
-        pass
 
     @abstractmethod
     def get_thumbnail_paths(
@@ -844,8 +753,6 @@ class FrontendLoaderController(_BaseLoaderController):
             dict[str, Union[str, None]]: Thumbnail path by entity id.
         """
 
-        pass
-
     # Selection model wrapper calls
     @abstractmethod
     def get_selected_project_name(self):
@@ -857,8 +764,6 @@ class FrontendLoaderController(_BaseLoaderController):
             Union[str, None]: Selected project name.
         """
 
-        pass
-
     @abstractmethod
     def get_selected_folder_ids(self):
         """Get selected folder ids.
@@ -869,7 +774,6 @@ class FrontendLoaderController(_BaseLoaderController):
             list[str]: Selected folder ids.
 
         """
-        pass
 
     @abstractmethod
     def get_selected_task_ids(self):
@@ -881,7 +785,6 @@ class FrontendLoaderController(_BaseLoaderController):
             list[str]: Selected folder ids.
 
         """
-        pass
 
     @abstractmethod
     def set_selected_tasks(self, task_ids):
@@ -891,7 +794,6 @@ class FrontendLoaderController(_BaseLoaderController):
             task_ids (Iterable[str]): Selected task ids.
 
         """
-        pass
 
     @abstractmethod
     def get_selected_version_ids(self):
@@ -903,7 +805,6 @@ class FrontendLoaderController(_BaseLoaderController):
             list[str]: Selected version ids.
 
         """
-        pass
 
     @abstractmethod
     def get_selected_representation_ids(self):
@@ -914,8 +815,6 @@ class FrontendLoaderController(_BaseLoaderController):
         Returns:
             list[str]: Selected representation ids.
         """
-
-        pass
 
     @abstractmethod
     def set_selected_project(self, project_name):
@@ -930,8 +829,6 @@ class FrontendLoaderController(_BaseLoaderController):
         Args:
             project_name (Union[str, None]): Selected project name.
         """
-
-        pass
 
     @abstractmethod
     def set_selected_folders(self, folder_ids):
@@ -948,8 +845,6 @@ class FrontendLoaderController(_BaseLoaderController):
             folder_ids (Iterable[str]): Selected folder ids.
         """
 
-        pass
-
     @abstractmethod
     def set_selected_versions(self, version_ids):
         """Set selected versions.
@@ -965,8 +860,6 @@ class FrontendLoaderController(_BaseLoaderController):
         Args:
             version_ids (Iterable[str]): Selected version ids.
         """
-
-        pass
 
     @abstractmethod
     def set_selected_representations(self, repre_ids):
@@ -985,8 +878,6 @@ class FrontendLoaderController(_BaseLoaderController):
             repre_ids (Iterable[str]): Selected representation ids.
         """
 
-        pass
-
     # Load action items
     @abstractmethod
     def get_versions_action_items(self, project_name, version_ids):
@@ -999,8 +890,6 @@ class FrontendLoaderController(_BaseLoaderController):
         Returns:
             list[ActionItem]: List of action items.
         """
-
-        pass
 
     @abstractmethod
     def get_representations_action_items(
@@ -1015,8 +904,6 @@ class FrontendLoaderController(_BaseLoaderController):
         Returns:
             list[ActionItem]: List of action items.
         """
-
-        pass
 
     @abstractmethod
     def trigger_action_item(
@@ -1050,8 +937,6 @@ class FrontendLoaderController(_BaseLoaderController):
             representation_ids (Iterable[str]): Representation ids.
         """
 
-        pass
-
     @abstractmethod
     def change_products_group(self, project_name, product_ids, group_name):
         """Change group of products.
@@ -1070,8 +955,6 @@ class FrontendLoaderController(_BaseLoaderController):
             group_name (str): New group name.
         """
 
-        pass
-
     @abstractmethod
     def fill_root_in_source(self, source):
         """Fill root in source path.
@@ -1080,8 +963,6 @@ class FrontendLoaderController(_BaseLoaderController):
             source (Union[str, None]): Source of a published version. Usually
                 rootless workfile path.
         """
-
-        pass
 
     # NOTE: Methods 'is_loaded_products_supported' and
     #   'is_standard_projects_filter_enabled' are both based on being in host
@@ -1094,8 +975,6 @@ class FrontendLoaderController(_BaseLoaderController):
             bool: True if it is supported.
         """
 
-        pass
-
     @abstractmethod
     def is_standard_projects_filter_enabled(self):
         """Is standard projects filter enabled.
@@ -1107,8 +986,6 @@ class FrontendLoaderController(_BaseLoaderController):
             bool: Frontend should filter out non-library projects, except
                 current context project.
         """
-
-        pass
 
     # Site sync functions
     @abstractmethod
@@ -1127,8 +1004,6 @@ class FrontendLoaderController(_BaseLoaderController):
             bool: True if site sync is enabled.
         """
 
-        pass
-
     @abstractmethod
     def get_active_site_icon_def(self, project_name):
         """Active site icon definition.
@@ -1140,8 +1015,6 @@ class FrontendLoaderController(_BaseLoaderController):
             Union[dict[str, Any], None]: Icon definition or None if site sync
                 is not enabled for the project.
         """
-
-        pass
 
     @abstractmethod
     def get_remote_site_icon_def(self, project_name):
@@ -1155,8 +1028,6 @@ class FrontendLoaderController(_BaseLoaderController):
                 is not enabled for the project.
         """
 
-        pass
-
     @abstractmethod
     def get_version_sync_availability(self, project_name, version_ids):
         """Version sync availability.
@@ -1168,8 +1039,6 @@ class FrontendLoaderController(_BaseLoaderController):
         Returns:
             dict[str, tuple[int, int]]: Sync availability by version id.
         """
-
-        pass
 
     @abstractmethod
     def get_representations_sync_status(
@@ -1185,8 +1054,6 @@ class FrontendLoaderController(_BaseLoaderController):
             dict[str, tuple[int, int]]: Sync status by representation id.
         """
 
-        pass
-
     @abstractmethod
     def get_product_types_filter(self):
         """Return product type filter for current context.
@@ -1194,5 +1061,3 @@ class FrontendLoaderController(_BaseLoaderController):
         Returns:
             ProductTypesFilter: Product type filter for current context
         """
-
-        pass
