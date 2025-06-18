@@ -889,15 +889,17 @@ class ProjectsWidget(QtWidgets.QWidget):
         self._projects_proxy_model.setFilterFixedString(text)
 
     def set_selected_project(self, project_name: Optional[str]):
-        selection_model = self._projects_view.selectionModel()
         if project_name is None:
-            selection_model.clearSelection()
+            self._projects_view.clearSelection()
+            self._projects_view.setCurrentIndex(QtCore.QModelIndex())
             return
+
         index = self._projects_model.get_index_by_project_name(project_name)
         if not index.isValid():
             return
         proxy_index = self._projects_proxy_model.mapFromSource(index)
         if proxy_index.isValid():
+            selection_model = self._projects_view.selectionModel()
             selection_model.select(
                 proxy_index,
                 QtCore.QItemSelectionModel.ClearAndSelect
