@@ -358,9 +358,72 @@ def save_current_workfile_to(
     """
     from ayon_core.pipeline.context_tools import registered_host
 
-    # Trigger before save event
     host = registered_host()
     host.save_workfile_with_context(
+        workfile_path,
+        folder_entity,
+        task_entity,
+        version=version,
+        comment=comment,
+        description=description,
+        rootless_path=rootless_path,
+        workfile_entities=workfile_entities,
+        project_entity=project_entity,
+        project_settings=project_settings,
+        anatomy=anatomy,
+    )
+
+
+def save_workfile_with_current_context(
+    workfile_path: str,
+    *,
+    version: Optional[int] = None,
+    comment: Optional[str] = None,
+    description: Optional[str] = None,
+    rootless_path: Optional[str] = None,
+    workfile_entities: Optional[list[dict[str, Any]]] = None,
+    project_entity: Optional[dict[str, Any]] = None,
+    project_settings: Optional[dict[str, Any]] = None,
+    anatomy: Optional["Anatomy"] = None,
+) -> None:
+    """Save current workfile to new location using current context.
+
+    Helper function to save workfile using current context. Calls
+        'save_current_workfile_to' at the end.
+
+    Args:
+        workfile_path (str): Destination workfile path.
+        version (Optional[int]): Workfile version.
+        comment (optional[str]): Workfile comment.
+        description (Optional[str]): Workfile description.
+        rootless_path (Optional[str]): Rootless path of the workfile. Is
+            calculated if not passed in.
+        workfile_entities (Optional[list[dict[str, Any]]]): Pre-fetched
+            workfile entities related to the task.
+        project_entity (Optional[dict[str, Any]]): Project entity used for
+            rootless path calculation.
+        project_settings (Optional[dict[str, Any]]): Project settings used for
+            rootless path calculation.
+        anatomy (Optional[Anatomy]): Project anatomy used for rootless
+            path calculation.
+
+    """
+    from ayon_core.pipeline.context_tools import registered_host
+
+    host = registered_host()
+    context = host.get_current_context()
+    project_name = context["project_name"]
+    folder_path = context["folder_path"]
+    task_name = context["task_name"]
+    folder_entity = task_entity = None
+    if folder_path:
+        folder_entity = ayon_api.get_folder_by_path(project_name, folder_path)
+        if folder_entity and task_name:
+            task_entity = ayon_api.get_task_by_name(
+                project_name, folder_entity["id"], task_name
+            )
+
+    save_current_workfile_to(
         workfile_path,
         folder_entity,
         task_entity,
