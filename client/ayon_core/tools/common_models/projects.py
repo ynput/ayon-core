@@ -441,6 +441,7 @@ class ProjectsModel(object):
             .get("frontendPreferences", {})
             .get("pinnedProjects")
         ) or []
+        pinned_projects = set(pinned_projects)
         project_items = _get_project_items_from_entitiy(list(projects))
         for project in project_items:
             project.is_pinned = project.name in pinned_projects
