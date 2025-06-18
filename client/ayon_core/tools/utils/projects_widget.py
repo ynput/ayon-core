@@ -419,7 +419,6 @@ class ProjectSortFilterProxy(QtCore.QSortFilterProxyModel):
             return r_is_library
         return super().lessThan(left_index, right_index)
 
-
     def filterAcceptsRow(self, source_row, source_parent):
         index = self.sourceModel().index(source_row, 0, source_parent)
         project_name = index.data(PROJECT_NAME_ROLE)
@@ -834,6 +833,7 @@ class ProjectsWidget(QtWidgets.QWidget):
     """
     refreshed = QtCore.Signal()
     selection_changed = QtCore.Signal(str)
+    double_clicked = QtCore.Signal()
 
     def __init__(
         self,
@@ -868,6 +868,7 @@ class ProjectsWidget(QtWidgets.QWidget):
         projects_view.selectionModel().selectionChanged.connect(
             self._on_selection_change
         )
+        projects_view.double_clicked.connect(self.double_clicked)
         projects_model.refreshed.connect(self._on_model_refresh)
 
         controller.register_event_callback(
@@ -882,6 +883,9 @@ class ProjectsWidget(QtWidgets.QWidget):
         self._projects_proxy_model = projects_proxy_model
         self._projects_delegate = projects_delegate
 
+    def refresh(self):
+        self._projects_model.refresh()
+
     def has_content(self) -> bool:
         """Model has at least one project.
 
@@ -893,6 +897,14 @@ class ProjectsWidget(QtWidgets.QWidget):
 
     def set_name_filter(self, text: str):
         self._projects_proxy_model.setFilterFixedString(text)
+
+    def get_selected_project(self) -> Optional[str]:
+        selection_model = self._projects_view.selectionModel()
+        for index in selection_model.selectedIndexes():
+            project_name = index.data(PROJECT_NAME_ROLE)
+            if project_name:
+                return project_name
+        return None
 
     def set_selected_project(self, project_name: Optional[str]):
         if project_name is None:
