@@ -563,6 +563,12 @@ class ProjectsDelegate(QtWidgets.QStyledItemDelegate):
                 painter.setPen(opt.palette.color(cg, QtGui.QPalette.Text))
                 painter.drawRect(text_rect.adjusted(0, 0, -1, -1))
 
+            margin = proxy.pixelMetric(
+                QtWidgets.QStyle.PM_FocusFrameHMargin, None, widget
+            ) + 1
+            text_rect.adjust(margin, 0, -margin, 0)
+            # NOTE skipping some steps e.g. word wrapping and elided
+            #   text (adding '...' when too long).
             painter.drawText(
                 text_rect,
                 opt.displayAlignment,
