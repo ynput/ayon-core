@@ -925,6 +925,24 @@ class FiltersBar(BaseClickableFrame):
         super().resizeEvent(event)
         self._update_filters_geo()
 
+    def wheelEvent(self, event):
+        scroll_speed = 15
+        diff = event.angleDelta().y() / 120.0
+        pos_x = self._filters_widget.pos().x()
+        if diff > 0:
+            pos_x = min(0, pos_x + scroll_speed)
+            self._filters_widget.move(pos_x, 0)
+            return
+
+        rect = self._filters_wrap.rect()
+        size_hint = self._filters_widget.sizeHint()
+        if size_hint.width() < rect.width():
+            return
+        pos_x = max(
+            pos_x - scroll_speed, rect.width() - size_hint.width()
+        )
+        self._filters_widget.move(pos_x, 0)
+
     def show_filters_popup(self):
         filter_defs = [
             filter_def
@@ -1009,6 +1027,18 @@ class FiltersBar(BaseClickableFrame):
 
         self._filters_widget.setGeometry(geo)
 
+    def _reposition_filters_widget(self):
+        rect = self._filters_wrap.rect()
+        size_hint = self._filters_widget.sizeHint()
+        if size_hint.width() < rect.width():
+            self._filters_widget.move(0, 0)
+            return
+        pos_x = self._filters_widget.pos().x()
+        pos_x = max(
+            pos_x, rect.width() - size_hint.width()
+        )
+        self._filters_widget.move(pos_x, 0)
+
     def _mouse_release_callback(self):
         self.show_filters_popup()
 
@@ -1080,10 +1110,13 @@ class FiltersBar(BaseClickableFrame):
 
     def _on_item_close_requested(self, name):
         widget = self._widgets_by_name.pop(name, None)
-        if widget is not None:
-            idx = self._filters_layout.indexOf(widget)
-            if idx > -1:
-                self._filters_layout.takeAt(idx)
-                widget.setVisible(False)
-                widget.deleteLater()
-                self.filter_changed.emit(name)
+        if widget is None:
+            return
+        idx = self._filters_layout.indexOf(widget)
+        if idx > -1:
+            self._filters_layout.takeAt(idx)
+            widget.setVisible(False)
+            widget.deleteLater()
+            self.filter_changed.emit(name)
+
+        self._reposition_filters_widget()
