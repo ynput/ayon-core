@@ -1,16 +1,18 @@
 """Plugins for loading representations and products into host applications."""
 from __future__ import annotations
-import os
-import logging
 
-from ayon_core.settings import get_project_settings
+import logging
+import os
+
 from ayon_core.pipeline.plugin_discover import (
+    deregister_plugin,
+    deregister_plugin_path,
     discover,
     register_plugin,
     register_plugin_path,
-    deregister_plugin,
-    deregister_plugin_path
 )
+from ayon_core.settings import get_project_settings
+
 from .utils import get_representation_path_from_context
 
 
@@ -61,12 +63,12 @@ class LoaderPlugin(list):
         if not plugin_settings:
             return
 
-        print(">>> We have preset for {}".format(plugin_name))
+        print(f">>> We have preset for {plugin_name}")
         for option, value in plugin_settings.items():
             if option == "enabled" and value is False:
                 print("  - is disabled by preset")
             else:
-                print("  - setting `{}`: `{}`".format(option, value))
+                print(f"  - setting `{option}`: `{value}`")
             setattr(cls, option, value)
 
     @classmethod
@@ -79,7 +81,6 @@ class LoaderPlugin(list):
         Returns:
              bool: Representation has valid extension
         """
-
         if "*" in cls.extensions:
             return True
 
@@ -122,10 +123,21 @@ class LoaderPlugin(list):
         Returns:
             bool: Is loader compatible for context.
         """
+        """
+            product_types: set[str] = set()
+            product_base_types: set[str] = set()
+            representations = set()
+            extensions = {"*"}
+        """
 
         plugin_repre_names = cls.get_representations()
         plugin_product_types = cls.product_types
         plugin_product_base_types = cls.product_base_types
+        repre_entity = context.get("representation")
+        product_entity = context["product"]
+
+        # If no representation names, product types or extensions are defined
+        # then loader is not compatible with any context.
         if (
             not plugin_repre_names
             or (not plugin_product_types and not plugin_product_base_types)
@@ -133,38 +145,45 @@ class LoaderPlugin(list):
         ):
             return False
 
-        repre_entity = context.get("representation")
+        # If no representation entity is provided then loader is not
+        # compatible with context.
         if not repre_entity:
             return False
 
+        # Check the compatibility with the representation names.
         plugin_repre_names = set(plugin_repre_names)
-        if (
+        if not plugin_repre_names or (
             "*" not in plugin_repre_names
             and repre_entity["name"] not in plugin_repre_names
         ):
             return False
 
+        # Check the compatibility with the extension of the representation.
         if not cls.has_valid_extension(repre_entity):
             return False
 
         plugin_product_types = set(plugin_product_types)
-        if "*" in plugin_product_types:
-            return True
-
-        plugin_product_base_types = set(plugin_product_base_types)
-        if "*" in plugin_product_base_types:
-            # If plugin supports all product base types, then it is compatible
-            # with any product type.
-            return True
-
-        product_entity = context["product"]
-        product_type = product_entity["productType"]
+        product_type = product_entity.get("productType")
         product_base_type = product_entity.get("productBaseType")
 
-        if product_type in plugin_product_types:
+        # Use product base type if defined, otherwise use product type.
+        product_filter = product_base_type
+        # If there is no product base type defined in the product entity,
+        # then we will use the product type.
+        if product_filter is None:
+            product_filter = product_type
+
+        # If no product type isn't defined on the loader plugin,
+        # then we will use the product types.
+        plugin_product_filter = (
+                plugin_product_base_types or plugin_product_types)
+
+        # If wildcard is used in product types or base types,
+        # then we will consider the loader compatible with any product type.
+        if "*" in plugin_product_filter:
             return True
 
-        return product_base_type in plugin_product_base_types
+        return product_filter in plugin_product_filter
 
     @classmethod
     def get_representations(cls):
@@ -219,19 +238,17 @@ class LoaderPlugin(list):
             bool: Whether the container was deleted
 
         """
-
         raise NotImplementedError("Loader.remove() must be "
                                   "implemented by subclass")
 
     @classmethod
     def get_options(cls, contexts):
-        """
-            Returns static (cls) options or could collect from 'contexts'.
+        """Returns static (cls) options or could collect from 'contexts'.
 
-            Args:
-                contexts (list): of repre or product contexts
-            Returns:
-                (list)
+        Args:
+            contexts (list): of repre or product contexts
+        Returns:
+            (list)
         """
         return cls.options or []
 
@@ -279,9 +296,7 @@ def discover_loader_plugins(project_name=None):
             plugin.apply_settings(project_settings)
         except Exception:
             log.warning(
-                "Failed to apply settings to loader {}".format(
-                    plugin.__name__
-                ),
+                f"Failed to apply settings to loader {plugin.__name__}",
                 exc_info=True
             )
     return plugins
