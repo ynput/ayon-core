@@ -29,6 +29,7 @@ from .widgets import (
 from .views import (
     DeselectableTreeView,
     TreeView,
+    ListView,
 )
 from .error_dialog import ErrorMessageBox
 from .lib import (
@@ -114,6 +115,7 @@ __all__ = (
 
     "DeselectableTreeView",
     "TreeView",
+    "ListView",
 
     "ErrorMessageBox",
 
