@@ -231,7 +231,11 @@ class FiltersPopup(QtWidgets.QWidget):
             event.accept()
             return
 
-        if event.key() not in (
+        valid_modifiers = event.modifiers() in (
+            QtCore.Qt.NoModifier,
+            QtCore.Qt.ShiftModifier,
+        )
+        if valid_modifiers and event.key() not in (
             QtCore.Qt.Key_Escape,
             QtCore.Qt.Key_Tab,
             QtCore.Qt.Key_Return,
@@ -423,7 +427,11 @@ class FilterValueItemsView(QtWidgets.QWidget):
             set_line_edit_focus(self._filter_input, backspace=True)
             return
 
-        if event.key() not in (
+        valid_modifiers = event.modifiers() in (
+            QtCore.Qt.NoModifier,
+            QtCore.Qt.ShiftModifier,
+        )
+        if valid_modifiers and event.key() not in (
             QtCore.Qt.Key_Escape,
             QtCore.Qt.Key_Tab,
             QtCore.Qt.Key_Return,
