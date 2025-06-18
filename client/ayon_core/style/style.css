@@ -907,6 +907,19 @@ FiltersBar #SearchButton {
     background: transparent;
 }
 
+FiltersBar #BackButton {
+    background: transparent;
+}
+
+FiltersBar #BackButton:hover {
+    background: {color:bg-buttons-hover};
+}
+
+FiltersBar #ConfirmButton {
+    background: #91CDFB;
+    color: #03344D;
+}
+
 FiltersPopup #PopupWrapper, FilterValuePopup #PopupWrapper {
     border-radius: 5px;
     background: {color:bg-inputs};
