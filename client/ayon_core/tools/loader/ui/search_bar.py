@@ -11,6 +11,7 @@ from ayon_core.tools.utils import (
     SquareButton,
     BaseClickableFrame,
     PixmapLabel,
+    SeparatorWidget,
 )
 
 
@@ -342,9 +343,88 @@ class FilterValueItemButton(BaseClickableFrame):
         self.selected.emit(self._widget_id)
 
 
+class FilterValueTextInput(QtWidgets.QWidget):
+    back_requested = QtCore.Signal()
+    value_changed = QtCore.Signal(str)
+    close_requested = QtCore.Signal()
+
+    def __init__(self, parent):
+        super().__init__(parent)
+        self.setAttribute(QtCore.Qt.WA_TranslucentBackground, True)
+
+        # Timeout is used to delay the filter focus change on 'showEvent'
+        # - the focus is changed to something else if is not delayed
+        filter_timeout = QtCore.QTimer(self)
+        filter_timeout.setSingleShot(True)
+        filter_timeout.setInterval(20)
+
+        btns_sep = SeparatorWidget(size=1, parent=self)
+        btns_widget = QtWidgets.QWidget(self)
+        btns_widget.setAttribute(QtCore.Qt.WA_TranslucentBackground, True)
+
+        text_input = QtWidgets.QLineEdit(self)
+
+        back_btn = QtWidgets.QPushButton("Back", btns_widget)
+        back_btn.setObjectName("BackButton")
+        back_btn.setIcon(get_qt_icon({
+            "type": "material-symbols",
+            "name": "arrow_back",
+        }))
+        confirm_btn = QtWidgets.QPushButton("Confirm", btns_widget)
+        confirm_btn.setObjectName("ConfirmButton")
+
+        btns_layout = QtWidgets.QHBoxLayout(btns_widget)
+        btns_layout.setContentsMargins(0, 0, 0, 0)
+        btns_layout.addWidget(back_btn, 0)
+        btns_layout.addStretch(1)
+        btns_layout.addWidget(confirm_btn, 0)
+
+        main_layout = QtWidgets.QVBoxLayout(self)
+        main_layout.setContentsMargins(0, 0, 0, 0)
+        main_layout.addWidget(text_input, 0)
+        main_layout.addWidget(btns_sep, 0)
+        main_layout.addWidget(btns_widget, 0)
+
+        filter_timeout.timeout.connect(self._on_filter_timeout)
+        text_input.textChanged.connect(self.value_changed)
+        text_input.returnPressed.connect(self.close_requested)
+        back_btn.clicked.connect(self.back_requested)
+        confirm_btn.clicked.connect(self.close_requested)
+
+        self._filter_timeout = filter_timeout
+        self._text_input = text_input
+
+    def showEvent(self, event):
+        super().showEvent(event)
+
+        self._filter_timeout.start()
+
+    def get_value(self) -> str:
+        return self._text_input.text()
+
+    def set_value(self, value: str):
+        self._text_input.setText(value)
+
+    def set_placeholder_text(self, placeholder_text: str):
+        self._text_input.setPlaceholderText(placeholder_text)
+
+    def set_text_filter(self, text: str):
+        kwargs = {}
+        if text:
+            kwargs["append_text"] = text
+        else:
+            kwargs["backspace"] = True
+
+        set_line_edit_focus(self._text_input, **kwargs)
+
+    def _on_filter_timeout(self):
+        set_line_edit_focus(self._text_input)
+
+
 class FilterValueItemsView(QtWidgets.QWidget):
     value_changed = QtCore.Signal()
     close_requested = QtCore.Signal()
+    back_requested = QtCore.Signal()
 
     def __init__(self, parent):
         super().__init__(parent)
@@ -374,29 +454,46 @@ class FilterValueItemsView(QtWidgets.QWidget):
 
         scroll_area.setWidget(content_widget)
 
+        btns_sep = SeparatorWidget(size=1, parent=self)
         btns_widget = QtWidgets.QWidget(self)
         btns_widget.setAttribute(QtCore.Qt.WA_TranslucentBackground, True)
 
+        back_btn = QtWidgets.QPushButton("Back", btns_widget)
+        back_btn.setObjectName("BackButton")
+        back_btn.setIcon(get_qt_icon({
+            "type": "material-symbols",
+            "name": "arrow_back",
+        }))
+
         select_all_btn = QtWidgets.QPushButton("Select all", btns_widget)
         clear_btn = QtWidgets.QPushButton("Clear", btns_widget)
-        swap_btn = QtWidgets.QPushButton("Swap", btns_widget)
+        swap_btn = QtWidgets.QPushButton("Invert", btns_widget)
+
+        confirm_btn = QtWidgets.QPushButton("Confirm", btns_widget)
+        confirm_btn.setObjectName("ConfirmButton")
+        confirm_btn.clicked.connect(self.close_requested)
 
         btns_layout = QtWidgets.QHBoxLayout(btns_widget)
         btns_layout.setContentsMargins(0, 0, 0, 0)
+        btns_layout.addWidget(back_btn, 0)
         btns_layout.addStretch(1)
         btns_layout.addWidget(select_all_btn, 0)
         btns_layout.addWidget(clear_btn, 0)
         btns_layout.addWidget(swap_btn, 0)
+        btns_layout.addStretch(1)
+        btns_layout.addWidget(confirm_btn, 0)
 
         main_layout = QtWidgets.QVBoxLayout(self)
         main_layout.setContentsMargins(0, 0, 0, 0)
         main_layout.addWidget(filter_input, 0)
         main_layout.addWidget(scroll_area)
+        main_layout.addWidget(btns_sep, 0)
         main_layout.addWidget(btns_widget, 0)
 
         filter_timeout.timeout.connect(self._on_filter_timeout)
         filter_input.textChanged.connect(self._on_filter_change)
         filter_input.returnPressed.connect(self.close_requested)
+        back_btn.clicked.connect(self.back_requested)
         select_all_btn.clicked.connect(self._on_select_all)
         clear_btn.clicked.connect(self._on_clear_selection)
         swap_btn.clicked.connect(self._on_swap_selection)
@@ -619,6 +716,7 @@ class FilterValueItemsView(QtWidgets.QWidget):
 class FilterValuePopup(QtWidgets.QWidget):
     value_changed = QtCore.Signal(str)
     closed = QtCore.Signal(str)
+    back_requested = QtCore.Signal(str)
 
     def __init__(self, parent):
         super().__init__(parent)
@@ -631,7 +729,7 @@ class FilterValuePopup(QtWidgets.QWidget):
         wrapper = QtWidgets.QWidget(self)
         wrapper.setObjectName("PopupWrapper")
 
-        text_input = QtWidgets.QLineEdit(wrapper)
+        text_input = FilterValueTextInput(wrapper)
         text_input.setVisible(False)
 
         items_view = FilterValueItemsView(wrapper)
@@ -647,11 +745,13 @@ class FilterValuePopup(QtWidgets.QWidget):
         main_layout.setContentsMargins(2, 2, 2, 2)
         main_layout.addWidget(wrapper)
 
-        text_input.textChanged.connect(self._text_changed)
-        text_input.returnPressed.connect(self._text_confirmed)
+        text_input.value_changed.connect(self._text_changed)
+        text_input.close_requested.connect(self._close_requested)
+        text_input.back_requested.connect(self._back_requested)
 
         items_view.value_changed.connect(self._selection_changed)
         items_view.close_requested.connect(self._close_requested)
+        items_view.back_requested.connect(self._back_requested)
 
         shadow_frame.stackUnder(wrapper)
 
@@ -678,14 +778,8 @@ class FilterValuePopup(QtWidgets.QWidget):
         if self._active_widget is None:
             return
 
-        if isinstance(self._active_widget, QtWidgets.QLineEdit):
-            kwargs = {}
-            if text:
-                kwargs["append_text"] = text
-            else:
-                kwargs["backspace"] = True
-
-            set_line_edit_focus(self._active_widget, **kwargs)
+        if self._active_widget is self._text_input:
+            self._active_widget.set_text_filter(text)
 
     def set_filter_item(
         self,
@@ -707,10 +801,10 @@ class FilterValuePopup(QtWidgets.QWidget):
             else:
                 if value is None:
                     value = ""
-                self._text_input.setPlaceholderText(
+                self._text_input.set_placeholder_text(
                     filter_def.placeholder or ""
                 )
-                self._text_input.setText(value)
+                self._text_input.set_value(value)
                 self._active_widget = self._text_input
 
         elif filter_def.filter_type == "list":
@@ -750,24 +844,25 @@ class FilterValuePopup(QtWidgets.QWidget):
     def get_value(self):
         """Get the value from the active widget."""
         if self._active_widget is self._text_input:
-            return self._text_input.text()
+            return self._text_input.get_value()
         elif self._active_widget is self._items_view:
             return self._active_widget.get_value()
         return None
 
     def _text_changed(self):
         """Handle text change in the text input."""
-        if self._active_widget == self._text_input:
+        if self._active_widget is self._text_input:
             # Emit value changed signal if text input is active
             self.value_changed.emit(self._filter_name)
-
-    def _text_confirmed(self):
-        self.close()
 
     def _selection_changed(self):
         self.value_changed.emit(self._filter_name)
 
     def _close_requested(self):
+        self.close()
+
+    def _back_requested(self):
+        self.back_requested.emit(self._filter_name)
         self.close()
 
 
@@ -942,6 +1037,7 @@ class FiltersBar(BaseClickableFrame):
         filter_value_popup.set_filter_item(filter_def, value)
         filter_value_popup.value_changed.connect(self._on_filter_value_change)
         filter_value_popup.closed.connect(self._on_filter_value_closed)
+        filter_value_popup.back_requested.connect(self._on_filter_value_back)
 
         old_popup, self._filter_value_popup = (
             self._filter_value_popup, filter_value_popup
@@ -977,6 +1073,10 @@ class FiltersBar(BaseClickableFrame):
         value = widget.get_value()
         if not value:
             self._on_item_close_requested(name)
+
+    def _on_filter_value_back(self, name):
+        self._on_filter_value_closed(name)
+        self.show_filters_popup()
 
     def _on_item_close_requested(self, name):
         widget = self._widgets_by_name.pop(name, None)
