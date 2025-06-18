@@ -11,6 +11,7 @@ from ayon_core.tools.common_models import (
     PROJECTS_MODEL_SENDER,
 )
 
+from .views import ListView
 from .lib import RefreshThread, get_qt_icon
 
 if typing.TYPE_CHECKING:
@@ -328,7 +329,7 @@ class ProjectsQtModel(QtGui.QStandardItemModel):
 
 class ProjectSortFilterProxy(QtCore.QSortFilterProxyModel):
     def __init__(self, *args, **kwargs):
-        super(ProjectSortFilterProxy, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         self._filter_inactive = True
         self._filter_standard = False
         self._filter_library = False
@@ -614,9 +615,10 @@ class ProjectsDelegate(QtWidgets.QStyledItemDelegate):
             })
         return self._pin_icon
 
+
 class ProjectsCombobox(QtWidgets.QWidget):
     refreshed = QtCore.Signal()
-    selection_changed = QtCore.Signal()
+    selection_changed = QtCore.Signal(str)
 
     def __init__(
         self,
@@ -672,7 +674,7 @@ class ProjectsCombobox(QtWidgets.QWidget):
     def refresh(self):
         self._projects_model.refresh()
 
-    def set_selection(self, project_name):
+    def set_selection(self, project_name: str):
         """Set selection to a given project.
 
         Selection change is ignored if project is not found.
@@ -684,8 +686,8 @@ class ProjectsCombobox(QtWidgets.QWidget):
             bool: True if selection was changed, False otherwise. NOTE:
                 Selection may not be changed if project is not found, or if
                 project is already selected.
-        """
 
+        """
         idx = self._projects_combobox.findData(
             project_name, PROJECT_NAME_ROLE)
         if idx < 0:
@@ -695,7 +697,7 @@ class ProjectsCombobox(QtWidgets.QWidget):
             return True
         return False
 
-    def set_listen_to_selection_change(self, listen):
+    def set_listen_to_selection_change(self, listen: bool):
         """Disable listening to changes of the selection.
 
         Because combobox is triggering selection change when it's model
@@ -721,11 +723,11 @@ class ProjectsCombobox(QtWidgets.QWidget):
             return None
         return self._projects_combobox.itemData(idx, PROJECT_NAME_ROLE)
 
-    def set_current_context_project(self, project_name):
+    def set_current_context_project(self, project_name: str):
         self._projects_model.set_current_context_project(project_name)
         self._projects_proxy_model.invalidateFilter()
 
-    def set_select_item_visible(self, visible):
+    def set_select_item_visible(self, visible: bool):
         self._select_item_visible = visible
         self._projects_model.set_select_item_visible(visible)
         self._update_select_item_visiblity()
@@ -763,7 +765,7 @@ class ProjectsCombobox(QtWidgets.QWidget):
             idx, PROJECT_NAME_ROLE)
         self._update_select_item_visiblity(project_name=project_name)
         self._controller.set_selected_project(project_name)
-        self.selection_changed.emit()
+        self.selection_changed.emit(project_name or "")
 
     def _on_model_refresh(self):
         self._projects_proxy_model.sort(0)
@@ -818,5 +820,105 @@ class ProjectsCombobox(QtWidgets.QWidget):
 
 
 class ProjectsWidget(QtWidgets.QWidget):
-    # TODO implement
-    pass
+    """Projects widget showing projects in list.
+
+    Warnings:
+        This widget does not support expected selection handling.
+
+    """
+    refreshed = QtCore.Signal()
+    selection_changed = QtCore.Signal(str)
+
+    def __init__(
+        self,
+        controller: AbstractProjectController,
+        parent: Optional[QtWidgets.QWidget] = None
+    ):
+        super().__init__(parent=parent)
+
+        projects_view = ListView(parent=self)
+        projects_view.setResizeMode(QtWidgets.QListView.Adjust)
+        projects_view.setVerticalScrollMode(
+            QtWidgets.QAbstractItemView.ScrollPerPixel
+        )
+        projects_view.setAlternatingRowColors(False)
+        projects_view.setWrapping(False)
+        projects_view.setWordWrap(False)
+        projects_view.setSpacing(0)
+        projects_delegate = ProjectsDelegate(projects_view)
+        projects_view.setItemDelegate(projects_delegate)
+        projects_view.activate_flick_charm()
+        projects_view.set_deselectable(True)
+
+        projects_model = ProjectsQtModel(controller)
+        projects_proxy_model = ProjectSortFilterProxy()
+        projects_proxy_model.setSourceModel(projects_model)
+        projects_view.setModel(projects_proxy_model)
+
+        main_layout = QtWidgets.QVBoxLayout(self)
+        main_layout.setContentsMargins(0, 0, 0, 0)
+        main_layout.addWidget(projects_view, 1)
+
+        projects_view.selectionModel().selectionChanged.connect(
+            self._on_selection_change
+        )
+        projects_model.refreshed.connect(self._on_model_refresh)
+
+        controller.register_event_callback(
+            "projects.refresh.finished",
+            self._on_projects_refresh_finished
+        )
+
+        self._controller = controller
+
+        self._projects_view = projects_view
+        self._projects_model = projects_model
+        self._projects_proxy_model = projects_proxy_model
+        self._projects_delegate = projects_delegate
+
+    def has_content(self) -> bool:
+        """Model has at least one project.
+
+        Returns:
+             bool: True if there is any content in the model.
+
+        """
+        return self._projects_model.has_content()
+
+    def set_name_filter(self, text: str):
+        self._projects_proxy_model.setFilterFixedString(text)
+
+    def set_selected_project(self, project_name: Optional[str]):
+        selection_model = self._projects_view.selectionModel()
+        if project_name is None:
+            selection_model.clearSelection()
+            return
+        index = self._projects_model.get_index_by_project_name(project_name)
+        if not index.isValid():
+            return
+        proxy_index = self._projects_proxy_model.mapFromSource(index)
+        if proxy_index.isValid():
+            selection_model.select(
+                proxy_index,
+                QtCore.QItemSelectionModel.ClearAndSelect
+            )
+
+    def _on_model_refresh(self):
+        self._projects_proxy_model.sort(0)
+        self._projects_proxy_model.invalidateFilter()
+        self.refreshed.emit()
+
+    def _on_selection_change(self, new_selection, _old_selection):
+        project_name = None
+        for index in new_selection.indexes():
+            name = index.data(PROJECT_NAME_ROLE)
+            if name:
+                project_name = name
+                break
+        self.selection_changed.emit(project_name or "")
+        self._controller.set_selected_project(project_name)
+
+    def _on_projects_refresh_finished(self, event):
+        if event["sender"] != PROJECTS_MODEL_SENDER:
+            self._projects_model.refresh()
+

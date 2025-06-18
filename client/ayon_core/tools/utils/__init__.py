@@ -62,6 +62,7 @@ from .dialogs import (
 )
 from .projects_widget import (
     ProjectsCombobox,
+    ProjectsWidget,
     ProjectsQtModel,
     ProjectSortFilterProxy,
     PROJECT_NAME_ROLE,
@@ -147,6 +148,7 @@ __all__ = (
     "PopupUpdateKeys",
 
     "ProjectsCombobox",
+    "ProjectsWidget",
     "ProjectsQtModel",
     "ProjectSortFilterProxy",
     "PROJECT_NAME_ROLE",
