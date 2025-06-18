@@ -300,7 +300,6 @@ class LoaderHookPlugin:
         container: dict,  # (ayon:container-3.0)
         context: dict,
         plugin: LoaderPlugin | None = None,
-
     ):
         pass
 
