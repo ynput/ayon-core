@@ -124,12 +124,6 @@ class LoaderPlugin(list):
         Returns:
             bool: Is loader compatible for context.
         """
-        """
-            product_types: set[str] = set()
-            product_base_types: set[str] = set()
-            representations = set()
-            extensions = {"*"}
-        """
 
         plugin_repre_names = cls.get_representations()
         plugin_product_types = cls.product_types
