@@ -276,9 +276,9 @@ class LoaderHookPlugin:
         self,
         plugin: LoaderPlugin,
         context: dict,
-        name: Optional[str] = None,
-        namespace: Optional[str] = None,
-        options: Optional[dict] = None,
+        name: Optional[str],
+        namespace: Optional[str],
+        options: Optional[dict],
     ):
         pass
 
@@ -288,9 +288,9 @@ class LoaderHookPlugin:
         plugin: LoaderPlugin,
         result: Any,
         context: dict,
-        name: Optional[str] = None,
-        namespace: Optional[str] = None,
-        options: Optional[dict] = None,
+        name: Optional[str],
+        namespace: Optional[str],
+        options: Optional[dict],
     ):
         pass
 
