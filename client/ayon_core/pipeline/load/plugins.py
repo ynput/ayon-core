@@ -274,59 +274,59 @@ class LoaderHookPlugin:
     @abstractmethod
     def pre_load(
         self,
+        plugin: LoaderPlugin,
         context: dict,
         name: Optional[str] = None,
         namespace: Optional[str] = None,
         options: Optional[dict] = None,
-        plugin: Optional[LoaderPlugin] = None,
     ):
         pass
 
     @abstractmethod
     def post_load(
         self,
+        plugin: LoaderPlugin,
+        result: Any,
         context: dict,
         name: Optional[str] = None,
         namespace: Optional[str] = None,
         options: Optional[dict] = None,
-        plugin: Optional[LoaderPlugin] = None,
-        result: Any = None,
     ):
         pass
 
     @abstractmethod
     def pre_update(
         self,
+        plugin: LoaderPlugin,
         container: dict,  # (ayon:container-3.0)
         context: dict,
-        plugin: Optional[LoaderPlugin] = None,
     ):
         pass
 
     @abstractmethod
     def post_update(
         self,
+        plugin: LoaderPlugin,
+        result: Any,
         container: dict,  # (ayon:container-3.0)
         context: dict,
-        plugin: Optional[LoaderPlugin] = None,
-        result: Any = None,
     ):
         pass
 
     @abstractmethod
     def pre_remove(
         self,
+        plugin: LoaderPlugin,
         container: dict,  # (ayon:container-3.0)
-        plugin: Optional[LoaderPlugin] = None,
     ):
         pass
 
     @abstractmethod
     def post_remove(
         self,
+        plugin: LoaderPlugin,
+        result: Any,
         container: dict,  # (ayon:container-3.0)
-        plugin: Optional[LoaderPlugin] = None,
-        result: Any = None,
     ):
         pass
 
@@ -377,30 +377,21 @@ def add_hooks_to_loader(
             # Call pre_<method_name> on all hooks
             pre_hook_name = f"pre_{method_name}"
 
-            # Pass the LoaderPlugin instance to the hooks
-            hook_kwargs = kwargs.copy()
-            hook_kwargs["plugin"] = self
-
             hooks: list[LoaderHookPlugin] = []
-            for Hook in loader_class._load_hooks:
-                hook = Hook()  # Instantiate the hook
+            for cls in loader_class._load_hooks:
+                hook = cls()  # Instantiate the hook
                 hooks.append(hook)
                 pre_hook = getattr(hook, pre_hook_name, None)
                 if callable(pre_hook):
-                    pre_hook(*args, **hook_kwargs)
-
+                    pre_hook(hook, *args, **kwargs)
             # Call original method
             result = original_method(self, *args, **kwargs)
-
-            # Add result to kwargs for post hooks from the original method
-            hook_kwargs["result"] = result
-
             # Call post_<method_name> on all hooks
             post_hook_name = f"post_{method_name}"
             for hook in hooks:
                 post_hook = getattr(hook, post_hook_name, None)
                 if callable(post_hook):
-                    post_hook(*args, **hook_kwargs)
+                    post_hook(hook, result, *args, **kwargs)
 
             return result
 
