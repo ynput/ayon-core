@@ -242,7 +242,7 @@ class VersionItem:
     def __le__(self, other):
         return self.__eq__(other) or self.__lt__(other)
 
-    def to_data(self) -> VersionItemData:
+    def to_data(self) -> dict[str, Any]:
         return {
             "version_id": self.version_id,
             "product_id": self.product_id,
@@ -262,7 +262,7 @@ class VersionItem:
         }
 
     @classmethod
-    def from_data(cls, data: VersionItemData):
+    def from_data(cls, data: dict[str, Any]) -> VersionItem:
         return cls(**data)
 
 
@@ -362,8 +362,9 @@ class ActionItem:
         #   future development of detached UI tools it would be better to be
         #   prepared for it.
         raise NotImplementedError(
-            f"{self.__class__.__name__}.to_data is not implemented. Use Attribute definitions"
-            " from 'ayon_core.lib' instead of 'qargparse'."
+            f"{self.__class__.__name__}.to_data is not implemented. "
+            "Use Attribute definitions "
+            "from 'ayon_core.lib' instead of 'qargparse'."
         )
 
     def to_data(self):
