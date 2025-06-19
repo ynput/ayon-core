@@ -1142,7 +1142,7 @@ def oiio_color_convert(
 
     if not target_colorspace and not target_view and not target_display:
         raise ValueError(
-            "Both screen and display must be set if target_colorspace is not "
+            "Both view and display must be set if target_colorspace is not "
             "provided."
         )
 
