@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import logging
 import os
+from typing import Optional
 
 from ayon_core.pipeline.plugin_discover import (
     deregister_plugin,
@@ -19,8 +20,8 @@ from .utils import get_representation_path_from_context
 class LoaderPlugin(list):
     """Load representation into host application"""
 
-    product_types: set[str] = set()
-    product_base_types: set[str] = set()
+    product_types: Optional[set[str]] = None
+    product_base_types: Optional[set[str]] = None
     representations = set()
     extensions = {"*"}
     order = 0
