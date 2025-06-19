@@ -391,7 +391,7 @@ def add_hooks_to_loader(
             for hook in hooks:
                 post_hook = getattr(hook, post_hook_name, None)
                 if callable(post_hook):
-                    post_hook(hook, result, *args, **kwargs)
+                    post_hook(self, result, *args, **kwargs)
 
             return result
 
