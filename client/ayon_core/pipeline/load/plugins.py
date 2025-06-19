@@ -20,7 +20,7 @@ from .utils import get_representation_path_from_context
 class LoaderPlugin(list):
     """Load representation into host application"""
 
-    product_types: Optional[set[str]] = None
+    product_types: set[str] = set()
     product_base_types: Optional[set[str]] = None
     representations = set()
     extensions = {"*"}
