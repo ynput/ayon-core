@@ -1,9 +1,10 @@
 """Plugins for loading representations and products into host applications."""
 from __future__ import annotations
 
+from abc import abstractmethod
 import logging
 import os
-from typing import Optional
+from typing import Any, Optional, Type
 
 from ayon_core.pipeline.plugin_discover import (
     deregister_plugin,
@@ -277,15 +278,94 @@ class ProductLoaderPlugin(LoaderPlugin):
     """
 
 
+class LoaderHookPlugin:
+    """Plugin that runs before and post specific Loader in 'loaders'
+
+    Should be used as non-invasive method to enrich core loading process.
+    Any studio might want to modify loaded data before or after
+    they are loaded without need to override existing core plugins.
+
+    The post methods are called after the loader's methods and receive the
+    return value of the loader's method as `result` argument.
+    """
+    order = 0
+
+    @classmethod
+    @abstractmethod
+    def is_compatible(cls, Loader: Type[LoaderPlugin]) -> bool:
+        pass
+
+    @abstractmethod
+    def pre_load(
+        self,
+        plugin: LoaderPlugin,
+        context: dict,
+        name: Optional[str],
+        namespace: Optional[str],
+        options: Optional[dict],
+    ):
+        pass
+
+    @abstractmethod
+    def post_load(
+        self,
+        plugin: LoaderPlugin,
+        result: Any,
+        context: dict,
+        name: Optional[str],
+        namespace: Optional[str],
+        options: Optional[dict],
+    ):
+        pass
+
+    @abstractmethod
+    def pre_update(
+        self,
+        plugin: LoaderPlugin,
+        container: dict,  # (ayon:container-3.0)
+        context: dict,
+    ):
+        pass
+
+    @abstractmethod
+    def post_update(
+        self,
+        plugin: LoaderPlugin,
+        result: Any,
+        container: dict,  # (ayon:container-3.0)
+        context: dict,
+    ):
+        pass
+
+    @abstractmethod
+    def pre_remove(
+        self,
+        plugin: LoaderPlugin,
+        container: dict,  # (ayon:container-3.0)
+    ):
+        pass
+
+    @abstractmethod
+    def post_remove(
+        self,
+        plugin: LoaderPlugin,
+        result: Any,
+        container: dict,  # (ayon:container-3.0)
+    ):
+        pass
+
+
 def discover_loader_plugins(project_name=None):
     from ayon_core.lib import Logger
     from ayon_core.pipeline import get_current_project_name
 
     log = Logger.get_logger("LoaderDiscover")
-    plugins = discover(LoaderPlugin)
     if not project_name:
         project_name = get_current_project_name()
     project_settings = get_project_settings(project_name)
+    plugins = discover(LoaderPlugin)
+    hooks = discover(LoaderHookPlugin)
+    sorted_hooks = sorted(hooks, key=lambda hook: hook.order)
     for plugin in plugins:
         try:
             plugin.apply_settings(project_settings)
@@ -294,7 +374,54 @@ def discover_loader_plugins(project_name=None):
                 f"Failed to apply settings to loader {plugin.__name__}",
                 exc_info=True
             )
+        compatible_hooks = []
+        for hook_cls in sorted_hooks:
+            if hook_cls.is_compatible(plugin):
+                compatible_hooks.append(hook_cls)
+        add_hooks_to_loader(plugin, compatible_hooks)
     return plugins
+
+
+def add_hooks_to_loader(
+    loader_class: LoaderPlugin, compatible_hooks: list[Type[LoaderHookPlugin]]
+) -> None:
+    """Monkey patch method replacing Loader.load|update|remove methods
+
+    It wraps applicable loaders with pre/post hooks. Discovery is called only
+    once per loaders discovery.
+    """
+    loader_class._load_hooks = compatible_hooks
+
+    def wrap_method(method_name: str):
+        original_method = getattr(loader_class, method_name)
+
+        def wrapped_method(self, *args, **kwargs):
+            # Call pre_<method_name> on all hooks
+            pre_hook_name = f"pre_{method_name}"
+
+            hooks: list[LoaderHookPlugin] = []
+            for cls in loader_class._load_hooks:
+                hook = cls()  # Instantiate the hook
+                hooks.append(hook)
+                pre_hook = getattr(hook, pre_hook_name, None)
+                if callable(pre_hook):
+                    pre_hook(self, *args, **kwargs)
+            # Call original method
+            result = original_method(self, *args, **kwargs)
+            # Call post_<method_name> on all hooks
+            post_hook_name = f"post_{method_name}"
+            for hook in hooks:
+                post_hook = getattr(hook, post_hook_name, None)
+                if callable(post_hook):
+                    post_hook(self, result, *args, **kwargs)
+
+            return result
+
+        setattr(loader_class, method_name, wrapped_method)
+
+    for method in ("load", "update", "remove"):
+        if hasattr(loader_class, method):
+            wrap_method(method)
 
 
 def register_loader_plugin(plugin):
@@ -311,3 +438,19 @@ def deregister_loader_plugin_path(path):
 
 def register_loader_plugin_path(path):
     return register_plugin_path(LoaderPlugin, path)
+
+
+def register_loader_hook_plugin(plugin):
+    return register_plugin(LoaderHookPlugin, plugin)
+
+
+def deregister_loader_hook_plugin(plugin):
+    deregister_plugin(LoaderHookPlugin, plugin)
+
+
+def register_loader_hook_plugin_path(path):
+    return register_plugin_path(LoaderHookPlugin, path)
+
+
+def deregister_loader_hook_plugin_path(path):
+    deregister_plugin_path(LoaderHookPlugin, path)
