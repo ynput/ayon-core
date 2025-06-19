@@ -383,7 +383,7 @@ def add_hooks_to_loader(
                 hooks.append(hook)
                 pre_hook = getattr(hook, pre_hook_name, None)
                 if callable(pre_hook):
-                    pre_hook(hook, *args, **kwargs)
+                    pre_hook(self, *args, **kwargs)
             # Call original method
             result = original_method(self, *args, **kwargs)
             # Call post_<method_name> on all hooks
