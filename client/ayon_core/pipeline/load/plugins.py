@@ -1,7 +1,7 @@
 from __future__ import annotations
 import os
 import logging
-from typing import Any, Type
+from typing import Any, Type, Optional
 from abc import abstractmethod
 
 from ayon_core.settings import get_project_settings
@@ -275,10 +275,10 @@ class LoaderHookPlugin:
     def pre_load(
         self,
         context: dict,
-        name: str | None = None,
-        namespace: str | None = None,
-        options: dict | None = None,
-        plugin: LoaderPlugin | None = None,
+        name: Optional[str] = None,
+        namespace: Optional[str] = None,
+        options: Optional[dict] = None,
+        plugin: Optional[LoaderPlugin] = None,
     ):
         pass
 
@@ -286,10 +286,10 @@ class LoaderHookPlugin:
     def post_load(
         self,
         context: dict,
-        name: str | None = None,
-        namespace: str | None = None,
-        options: dict | None = None,
-        plugin: LoaderPlugin | None = None,
+        name: Optional[str] = None,
+        namespace: Optional[str] = None,
+        options: Optional[dict] = None,
+        plugin: Optional[LoaderPlugin] = None,
         result: Any = None,
     ):
         pass
@@ -299,7 +299,7 @@ class LoaderHookPlugin:
         self,
         container: dict,  # (ayon:container-3.0)
         context: dict,
-        plugin: LoaderPlugin | None = None,
+        plugin: Optional[LoaderPlugin] = None,
     ):
         pass
 
@@ -308,7 +308,7 @@ class LoaderHookPlugin:
         self,
         container: dict,  # (ayon:container-3.0)
         context: dict,
-        plugin: LoaderPlugin | None = None,
+        plugin: Optional[LoaderPlugin] = None,
         result: Any = None,
     ):
         pass
@@ -317,7 +317,7 @@ class LoaderHookPlugin:
     def pre_remove(
         self,
         container: dict,  # (ayon:container-3.0)
-        plugin: LoaderPlugin | None = None,
+        plugin: Optional[LoaderPlugin] = None,
     ):
         pass
 
@@ -325,7 +325,7 @@ class LoaderHookPlugin:
     def post_remove(
         self,
         container: dict,  # (ayon:container-3.0)
-        plugin: LoaderPlugin | None = None,
+        plugin: Optional[LoaderPlugin] = None,
         result: Any = None,
     ):
         pass
