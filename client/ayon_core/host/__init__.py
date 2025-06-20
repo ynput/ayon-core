@@ -4,6 +4,8 @@ from .host import (
 
 from .interfaces import (
     IWorkfileHost,
+    WorkfileInfo,
+    PublishedWorkfileInfo,
     ILoadHost,
     IPublishHost,
     INewPublisher,
@@ -16,6 +18,8 @@ __all__ = (
     "HostBase",
 
     "IWorkfileHost",
+    "WorkfileInfo",
+    "PublishedWorkfileInfo",
     "ILoadHost",
     "IPublishHost",
     "INewPublisher",

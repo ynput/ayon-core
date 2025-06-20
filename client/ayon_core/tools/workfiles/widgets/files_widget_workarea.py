@@ -1,3 +1,5 @@
+import os
+
 import qtawesome
 from qtpy import QtWidgets, QtCore, QtGui
 
@@ -10,8 +12,10 @@ from ayon_core.tools.utils.delegates import PrettyTimeDelegate
 
 FILENAME_ROLE = QtCore.Qt.UserRole + 1
 FILEPATH_ROLE = QtCore.Qt.UserRole + 2
-AUTHOR_ROLE = QtCore.Qt.UserRole + 3
-DATE_MODIFIED_ROLE = QtCore.Qt.UserRole + 4
+ROOTLESS_PATH_ROLE = QtCore.Qt.UserRole + 3
+AUTHOR_ROLE = QtCore.Qt.UserRole + 4
+DATE_MODIFIED_ROLE = QtCore.Qt.UserRole + 5
+WORKFILE_ENTITY_ID_ROLE = QtCore.Qt.UserRole + 6
 
 
 class WorkAreaFilesModel(QtGui.QStandardItemModel):
@@ -198,7 +202,7 @@ class WorkAreaFilesModel(QtGui.QStandardItemModel):
         items_to_remove = set(self._items_by_filename.keys())
         new_items = []
         for file_item in file_items:
-            filename = file_item.filename
+            filename = os.path.basename(file_item.filepath)
             if filename in self._items_by_filename:
                 items_to_remove.discard(filename)
                 item = self._items_by_filename[filename]
@@ -206,23 +210,28 @@ class WorkAreaFilesModel(QtGui.QStandardItemModel):
                 item = QtGui.QStandardItem()
                 new_items.append(item)
                 item.setColumnCount(self.columnCount())
-                item.setFlags(
-                    QtCore.Qt.ItemIsEnabled | QtCore.Qt.ItemIsSelectable
-                )
                 item.setData(self._file_icon, QtCore.Qt.DecorationRole)
-                item.setData(file_item.filename, QtCore.Qt.DisplayRole)
-                item.setData(file_item.filename, FILENAME_ROLE)
+                item.setData(filename, QtCore.Qt.DisplayRole)
+                item.setData(filename, FILENAME_ROLE)
 
+            flags = QtCore.Qt.ItemIsSelectable
+            if file_item.available:
+                flags |= QtCore.Qt.ItemIsEnabled
+            item.setFlags(flags)
             updated_by = file_item.updated_by
             user_item = user_items_by_name.get(updated_by)
             if user_item is not None and user_item.full_name:
                 updated_by = user_item.full_name
 
+            item.setData(
+                file_item.workfile_entity_id, WORKFILE_ENTITY_ID_ROLE
+            )
             item.setData(file_item.filepath, FILEPATH_ROLE)
+            item.setData(file_item.rootless_path, ROOTLESS_PATH_ROLE)
+            item.setData(file_item.file_modified, DATE_MODIFIED_ROLE)
             item.setData(updated_by, AUTHOR_ROLE)
-            item.setData(file_item.modified, DATE_MODIFIED_ROLE)
 
-            self._items_by_filename[file_item.filename] = item
+            self._items_by_filename[filename] = item
 
         if new_items:
             root_item.appendRows(new_items)
@@ -354,14 +363,18 @@ class WorkAreaFilesWidget(QtWidgets.QWidget):
 
     def _get_selected_info(self):
         selection_model = self._view.selectionModel()
-        filepath = None
-        filename = None
+        workfile_entity_id = filename = rootless_path = filepath = None
         for index in selection_model.selectedIndexes():
             filepath = index.data(FILEPATH_ROLE)
+            rootless_path = index.data(ROOTLESS_PATH_ROLE)
             filename = index.data(FILENAME_ROLE)
+            workfile_entity_id = index.data(WORKFILE_ENTITY_ID_ROLE)
+
         return {
             "filepath": filepath,
+            "rootless_path": rootless_path,
             "filename": filename,
+            "workfile_entity_id": workfile_entity_id,
         }
 
     def get_selected_path(self):
@@ -374,8 +387,12 @@ class WorkAreaFilesWidget(QtWidgets.QWidget):
         return self._get_selected_info()["filepath"]
 
     def _on_selection_change(self):
-        filepath = self.get_selected_path()
-        self._controller.set_selected_workfile_path(filepath)
+        info = self._get_selected_info()
+        self._controller.set_selected_workfile_path(
+            info["rootless_path"],
+            info["filepath"],
+            info["workfile_entity_id"],
+        )
 
     def _on_mouse_double_click(self, event):
         if event.button() == QtCore.Qt.LeftButton:
@@ -430,19 +447,25 @@ class WorkAreaFilesWidget(QtWidgets.QWidget):
         )
 
     def _on_model_refresh(self):
-        if (
-            not self._change_selection_on_refresh
-            or self._proxy_model.rowCount() < 1
-        ):
+        if not self._change_selection_on_refresh:
             return
 
         # Find the row with latest date modified
+        indexes = [
+            self._proxy_model.index(idx, 0)
+            for idx in range(self._proxy_model.rowCount())
+        ]
+        filtered_indexes = [
+            index
+            for index in indexes
+            if self._proxy_model.flags(index) & QtCore.Qt.ItemIsEnabled
+        ]
+        if not filtered_indexes:
+            return
+
         latest_index = max(
-            (
-                self._proxy_model.index(idx, 0)
-                for idx in range(self._proxy_model.rowCount())
-            ),
-            key=lambda model_index: model_index.data(DATE_MODIFIED_ROLE)
+            filtered_indexes,
+            key=lambda model_index: model_index.data(DATE_MODIFIED_ROLE) or 0
         )
 
         # Select row of latest modified
