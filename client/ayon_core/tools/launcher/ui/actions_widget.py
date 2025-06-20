@@ -116,6 +116,8 @@ class ActionOverlayWidget(QtWidgets.QFrame):
 
         self.setAttribute(QtCore.Qt.WA_TranslucentBackground, True)
 
+        self._settings_icon = settings_icon
+
     def enterEvent(self, event):
         super().enterEvent(event)
         self._settings_icon.setVisible(True)
