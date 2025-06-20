@@ -69,15 +69,12 @@ class LauncherSettingsLabel(QtWidgets.QWidget):
         return cls._settings_icon
 
     def paintEvent(self, event):
-        painter = QtGui.QPainter()
-        painter.begin(self)
+        painter = QtGui.QPainter(self)
 
-        render_hints = (
+        painter.setRenderHints(
             QtGui.QPainter.Antialiasing
             | QtGui.QPainter.SmoothPixmapTransform
         )
-        if hasattr(QtGui.QPainter, "HighQualityAntialiasing"):
-            render_hints |= QtGui.QPainter.HighQualityAntialiasing
 
         rect = event.rect()
         size = min(rect.height(), rect.width())
@@ -85,14 +82,11 @@ class LauncherSettingsLabel(QtWidgets.QWidget):
             rect.x(), rect.y(),
             size, size
         )
-        pixmap = self._pixmap.scaled(
-            pix_rect.size(),
-            QtCore.Qt.KeepAspectRatio,
-            QtCore.Qt.SmoothTransformation
-
+        src_rect = QtCore.QRect(
+            0, 0,
+            self._pixmap.width(), self._pixmap.height()
         )
-        painter.setRenderHints(render_hints)
-        painter.drawPixmap(0, 0, pixmap)
+        painter.drawPixmap(pix_rect, self._pixmap, src_rect)
 
         painter.end()
 
