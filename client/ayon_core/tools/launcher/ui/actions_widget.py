@@ -744,7 +744,6 @@ class ActionsProxyModel(QtCore.QSortFilterProxyModel):
 
 
 class ActionsView(QtWidgets.QListView):
-    action_triggered = QtCore.Signal(str)
     config_requested = QtCore.Signal(str)
 
     def __init__(self, parent):
@@ -778,18 +777,6 @@ class ActionsView(QtWidgets.QListView):
         self._overlay_widgets = []
         self._flick = flick
         self._delegate = delegate
-        self._popup_widget = None
-
-    def mouseMoveEvent(self, event):
-        """Handle mouse move event."""
-        super().mouseMoveEvent(event)
-        # Update hover state for the item under mouse
-        index = self.indexAt(event.pos())
-        if index.isValid() and index.data(ACTION_IS_GROUP_ROLE):
-            self._show_group_popup(index)
-
-        elif self._popup_widget is not None:
-            self._popup_widget.close()
 
     def _on_context_menu(self, point):
         """Creates menu to force skip opening last workfile."""
@@ -798,33 +785,6 @@ class ActionsView(QtWidgets.QListView):
             return
         action_id = index.data(ACTION_ID_ROLE)
         self.config_requested.emit(action_id)
-
-    def _get_popup_widget(self):
-        if self._popup_widget is None:
-            popup_widget = ActionMenuPopup(self)
-
-            popup_widget.action_triggered.connect(self.action_triggered)
-            popup_widget.config_requested.connect(self.config_requested)
-            self._popup_widget = popup_widget
-        return self._popup_widget
-
-    def _show_group_popup(self, index):
-        action_id = index.data(ACTION_ID_ROLE)
-        model = self.model()
-        while hasattr(model, "sourceModel"):
-            model = model.sourceModel()
-
-        if not hasattr(model, "get_group_items"):
-            return
-
-        action_items = model.get_group_items(action_id)
-        rect = self.visualRect(index)
-        pos = self.mapToGlobal(rect.topLeft())
-
-        popup_widget = self._get_popup_widget()
-        popup_widget.show_items(
-            action_id, action_items, pos
-        )
 
     def update_on_refresh(self):
         viewport = self.viewport()
@@ -882,7 +842,6 @@ class ActionsWidget(QtWidgets.QWidget):
         animation_timer.timeout.connect(self._on_animation)
 
         view.clicked.connect(self._on_clicked)
-        view.action_triggered.connect(self._trigger_action)
         view.config_requested.connect(self._on_config_request)
         model.refreshed.connect(self._on_model_refresh)
 
@@ -892,6 +851,8 @@ class ActionsWidget(QtWidgets.QWidget):
         self._view = view
         self._model = model
         self._proxy_model = proxy_model
+
+        self._popup_widget = None
 
         self._set_row_height(1)
 
@@ -979,10 +940,31 @@ class ActionsWidget(QtWidgets.QWidget):
             return
 
         is_group = index.data(ACTION_IS_GROUP_ROLE)
-        if is_group:
-            return
         action_id = index.data(ACTION_ID_ROLE)
-        self._trigger_action(action_id, index)
+        if is_group:
+            self._show_group_popup(index)
+        else:
+            self._trigger_action(action_id, index)
+
+    def _get_popup_widget(self):
+        if self._popup_widget is None:
+            popup_widget = ActionMenuPopup(self)
+
+            popup_widget.action_triggered.connect(self._trigger_action)
+            popup_widget.config_requested.connect(self._on_config_request)
+            self._popup_widget = popup_widget
+        return self._popup_widget
+
+    def _show_group_popup(self, index):
+        action_id = index.data(ACTION_ID_ROLE)
+        action_items = self._model.get_group_items(action_id)
+        rect = self._view.visualRect(index)
+        pos = self.mapToGlobal(rect.topLeft())
+
+        popup_widget = self._get_popup_widget()
+        popup_widget.show_items(
+            action_id, action_items, pos
+        )
 
     def _trigger_action(self, action_id, index=None):
         project_name = self._model.get_selected_project_name()
