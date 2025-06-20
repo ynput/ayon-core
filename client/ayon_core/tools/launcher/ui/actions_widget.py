@@ -16,12 +16,12 @@ from ayon_core.lib.attribute_definitions import (
 from ayon_core.tools.flickcharm import FlickCharm
 from ayon_core.tools.utils import (
     get_qt_icon,
-    PixmapLabel,
 )
 from ayon_core.tools.attribute_defs import AttributeDefinitionsDialog
 from ayon_core.tools.launcher.abstract import WebactionContext
 
 ANIMATION_LEN = 7
+SHADOW_FRAME_MARGINS = (2, 2, 2, 2)
 
 ACTION_ID_ROLE = QtCore.Qt.UserRole + 1
 ACTION_TYPE_ROLE = QtCore.Qt.UserRole + 2
@@ -51,12 +51,8 @@ def _variant_label_sort_getter(action_item):
 
 
 # --- Replacement for QAction for action variants ---
-class LauncherSettingsLabel(PixmapLabel):
+class LauncherSettingsLabel(QtWidgets.QWidget):
     _settings_icon = None
-
-    def __init__(self, parent):
-        icon = self._get_settings_icon()
-        super().__init__(icon.pixmap(64, 64), parent)
 
     @classmethod
     def _get_settings_icon(cls):
@@ -67,24 +63,52 @@ class LauncherSettingsLabel(PixmapLabel):
             })
         return cls._settings_icon
 
+    def paintEvent(self, event):
+        painter = QtGui.QPainter(self)
+
+        painter.setRenderHints(
+            QtGui.QPainter.Antialiasing
+            | QtGui.QPainter.SmoothPixmapTransform
+        )
+
+        rect = event.rect()
+        size = min(rect.height(), rect.width())
+        pix_rect = QtCore.QRect(
+            rect.x(), rect.y(),
+            size, size
+        )
+        pix = self._get_settings_icon().pixmap(size, size)
+        painter.drawPixmap(pix_rect, pix)
+
+        painter.end()
+
 
 class ActionOverlayWidget(QtWidgets.QFrame):
-    config_requested = QtCore.Signal(str)
-
     def __init__(self, item_id, parent):
         super().__init__(parent)
         self._item_id = item_id
 
         settings_icon = LauncherSettingsLabel(self)
         settings_icon.setToolTip("Right click for options")
+        settings_icon.setVisible(False)
 
         main_layout = QtWidgets.QGridLayout(self)
         main_layout.setContentsMargins(5, 5, 0, 0)
         main_layout.addWidget(settings_icon, 0, 0)
-        main_layout.setColumnStretch(1, 1)
-        main_layout.setRowStretch(1, 1)
+        main_layout.setColumnStretch(0, 1)
+        main_layout.setColumnStretch(1, 5)
 
-        self.setAttribute(QtCore.Qt.WA_TranslucentBackground)
+        self.setAttribute(QtCore.Qt.WA_TranslucentBackground, True)
+
+        self._settings_icon = settings_icon
+
+    def enterEvent(self, event):
+        super().enterEvent(event)
+        self._settings_icon.setVisible(True)
+
+    def leaveEvent(self, event):
+        super().leaveEvent(event)
+        self._settings_icon.setVisible(False)
 
 
 class ActionsQtModel(QtGui.QStandardItemModel):
@@ -137,6 +161,12 @@ class ActionsQtModel(QtGui.QStandardItemModel):
 
     def get_item_by_id(self, action_id):
         return self._items_by_id.get(action_id)
+
+    def get_index_by_id(self, action_id):
+        item = self.get_item_by_id(action_id)
+        if item is not None:
+            return self.indexFromItem(item)
+        return QtCore.QModelIndex()
 
     def get_group_item_by_action_id(self, action_id):
         item = self._items_by_id.get(action_id)
@@ -345,7 +375,7 @@ class ActionMenuPopupModel(QtGui.QStandardItemModel):
 
 class ActionMenuPopup(QtWidgets.QWidget):
     action_triggered = QtCore.Signal(str)
-    config_requested = QtCore.Signal(str)
+    config_requested = QtCore.Signal(str, QtCore.QPoint)
 
     def __init__(self, parent):
         super().__init__(parent)
@@ -363,16 +393,25 @@ class ActionMenuPopup(QtWidgets.QWidget):
         expand_anim.setDuration(60)
         expand_anim.setEasingCurve(QtCore.QEasingCurve.InOutQuad)
 
+        sh_l, sh_t, sh_r, sh_b = SHADOW_FRAME_MARGINS
+
         # View with actions
         view = ActionsView(self)
         view.setGridSize(QtCore.QSize(75, 80))
         view.setIconSize(QtCore.QSize(32, 32))
-        view.move(QtCore.QPoint(3, 3))
+        view.move(QtCore.QPoint(sh_l, sh_t))
 
         # Background draw
+        bg_frame = QtWidgets.QFrame(self)
+        bg_frame.setObjectName("ShadowFrame")
+        bg_frame.stackUnder(view)
+
         wrapper = QtWidgets.QFrame(self)
         wrapper.setObjectName("Wrapper")
-        wrapper.stackUnder(view)
+
+        bg_layout = QtWidgets.QVBoxLayout(bg_frame)
+        bg_layout.setContentsMargins(sh_l, sh_t, sh_r, sh_b)
+        bg_layout.addWidget(wrapper)
 
         model = ActionMenuPopupModel()
         proxy_model = ActionsProxyModel()
@@ -387,10 +426,10 @@ class ActionMenuPopup(QtWidgets.QWidget):
         expand_anim.finished.connect(self._on_expand_finish)
 
         view.clicked.connect(self._on_clicked)
-        view.config_requested.connect(self.config_requested)
+        view.config_requested.connect(self._on_configs_trigger)
 
         self._view = view
-        self._wrapper = wrapper
+        self._bg_frame = bg_frame
         self._model = model
         self._proxy_model = proxy_model
 
@@ -456,21 +495,23 @@ class ActionMenuPopup(QtWidgets.QWidget):
             or pos.y() + target_size.height() > window_geo.bottom()
         )
 
-        pos_x = pos.x() - 5
-        pos_y = pos.y() - 4
+        sh_l, sh_t, sh_r, sh_b = SHADOW_FRAME_MARGINS
+        viewport_offset = self._view.viewport().geometry().topLeft()
+        pos_x = pos.x() - (sh_l + viewport_offset.x() + 2)
+        pos_y = pos.y() - (sh_t + viewport_offset.y() + 1)
 
-        wrap_x = wrap_y = 0
+        bg_x = bg_y = 0
         sort_order = QtCore.Qt.DescendingOrder
         if right_to_left:
             sort_order = QtCore.Qt.AscendingOrder
             size_diff = target_size - size
             pos_x -= size_diff.width()
             pos_y -= size_diff.height()
-            wrap_x = size_diff.width()
-            wrap_y = size_diff.height()
+            bg_x = size_diff.width()
+            bg_y = size_diff.height()
 
-        wrap_geo = QtCore.QRect(
-            wrap_x, wrap_y, size.width(), size.height()
+        bg_geo = QtCore.QRect(
+            bg_x, bg_y, size.width(), size.height()
         )
         if self._expand_anim.state() == QtCore.QAbstractAnimation.Running:
             self._expand_anim.stop()
@@ -479,10 +520,10 @@ class ActionMenuPopup(QtWidgets.QWidget):
 
         self._proxy_model.sort(0, sort_order)
         self.setUpdatesEnabled(False)
-        self._view.setMask(wrap_geo)
+        self._view.setMask(bg_geo.adjusted(sh_l, sh_t, -sh_r, -sh_b))
         self._view.setMinimumWidth(target_size.width())
         self._view.setMaximumWidth(target_size.width())
-        self._wrapper.setGeometry(wrap_geo)
+        self._bg_frame.setGeometry(bg_geo)
         self.setGeometry(
             pos_x, pos_y,
             target_size.width(), target_size.height()
@@ -511,9 +552,9 @@ class ActionMenuPopup(QtWidgets.QWidget):
                 self._expand_anim.stop()
             return
 
-        wrapper_geo = self._wrapper.geometry()
-        wrapper_geo.setWidth(value.width())
-        wrapper_geo.setHeight(value.height())
+        bg_geo = self._bg_frame.geometry()
+        bg_geo.setWidth(value.width())
+        bg_geo.setHeight(value.height())
 
         if self._right_to_left:
             geo = self.geometry()
@@ -521,10 +562,11 @@ class ActionMenuPopup(QtWidgets.QWidget):
                 geo.width() - value.width(),
                 geo.height() - value.height(),
             )
-            wrapper_geo.setTopLeft(pos)
+            bg_geo.setTopLeft(pos)
 
-        self._view.setMask(wrapper_geo)
-        self._wrapper.setGeometry(wrapper_geo)
+        sh_l, sh_t, sh_r, sh_b = SHADOW_FRAME_MARGINS
+        self._view.setMask(bg_geo.adjusted(sh_l, sh_t, -sh_r, -sh_b))
+        self._bg_frame.setGeometry(bg_geo)
 
     def _on_expand_finish(self):
         # Make sure that size is recalculated if src and targe size is same
@@ -547,16 +589,25 @@ class ActionMenuPopup(QtWidgets.QWidget):
         if rows == 1:
             cols = row_count
 
-        m_l, m_t, m_r, m_b = (3, 3, 1, 1)
-        # QUESTION how to get the margins from Qt?
-        border = 2 * 1
+        viewport_geo = self._view.viewport().geometry()
+        viewport_offset = viewport_geo.topLeft()
+        # QUESTION how to get the bottom and right margins from Qt?
+        vp_lr = viewport_offset.x()
+        vp_tb = viewport_offset.y()
+        m_l, m_t, m_r, m_b = (
+            s_m + vp_m
+            for s_m, vp_m in zip(
+                SHADOW_FRAME_MARGINS,
+                (vp_lr, vp_tb, vp_lr, vp_tb)
+            )
+        )
         single_width = (
             grid_size.width()
-            + self._view.horizontalOffset() + border + m_l + m_r + 1
+            + self._view.horizontalOffset() + m_l + m_r + 1
         )
         single_height = (
             grid_size.height()
-            + self._view.verticalOffset() + border + m_b + m_t + 1
+            + self._view.verticalOffset() + m_b + m_t + 1
         )
         total_width = single_width
         total_height = single_height
@@ -586,14 +637,13 @@ class ActionMenuPopup(QtWidgets.QWidget):
         self.action_triggered.emit(action_id)
         self.close()
 
-    def _on_configs_trigger(self, action_id):
-        self.config_requested.emit(action_id)
+    def _on_configs_trigger(self, action_id, center_pos):
+        self.config_requested.emit(action_id, center_pos)
         self.close()
 
 
 class ActionDelegate(QtWidgets.QStyledItemDelegate):
-    _cached_extender = {}
-    _cached_extender_base_pix = None
+    _extender_icon = None
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -653,27 +703,13 @@ class ActionDelegate(QtWidgets.QStyledItemDelegate):
         painter.restore()
 
     @classmethod
-    def _get_extender_pixmap(cls, size):
-        pix = cls._cached_extender.get(size)
-        if pix is not None:
-            return pix
-
-        base_pix = cls._cached_extender_base_pix
-        if base_pix is None:
-            icon = get_qt_icon({
+    def _get_extender_pixmap(cls):
+        if cls._extender_icon is None:
+            cls._extender_icon = get_qt_icon({
                 "type": "material-symbols",
                 "name": "more_horiz",
             })
-            base_pix = icon.pixmap(64, 64)
-            cls._cached_extender_base_pix = base_pix
-
-        pix = base_pix.scaled(
-            size, size,
-            QtCore.Qt.KeepAspectRatio,
-            QtCore.Qt.SmoothTransformation
-        )
-        cls._cached_extender[size] = pix
-        return pix
+        return cls._extender_icon
 
     def paint(self, painter, option, index):
         painter.setRenderHints(
@@ -690,20 +726,15 @@ class ActionDelegate(QtWidgets.QStyledItemDelegate):
             return
 
         grid_size = option.widget.gridSize()
-        x_offset = int(
-            (grid_size.width() / 2)
-            - (option.rect.width() / 2)
-        )
-        item_x = option.rect.x() - x_offset
 
-        tenth_size = int(grid_size.width() / 10)
-        extender_size = int(tenth_size * 2.4)
+        extender_rect = option.rect.adjusted(5, 5, 0, 0)
+        extender_size = grid_size.width() // 6
+        extender_rect.setWidth(extender_size)
+        extender_rect.setHeight(extender_size)
 
-        extender_x = item_x + tenth_size
-        extender_y = option.rect.y() + tenth_size
-
-        pix = self._get_extender_pixmap(extender_size)
-        painter.drawPixmap(extender_x, extender_y, pix)
+        icon = self._get_extender_pixmap()
+        pix = icon.pixmap(extender_size, extender_size)
+        painter.drawPixmap(extender_rect, pix)
 
 
 class ActionsProxyModel(QtCore.QSortFilterProxyModel):
@@ -739,12 +770,10 @@ class ActionsProxyModel(QtCore.QSortFilterProxyModel):
 
 
 class ActionsView(QtWidgets.QListView):
-    action_triggered = QtCore.Signal(str)
-    config_requested = QtCore.Signal(str)
+    config_requested = QtCore.Signal(str, QtCore.QPoint)
 
     def __init__(self, parent):
         super().__init__(parent)
-        self.setProperty("mode", "icon")
         self.setViewMode(QtWidgets.QListView.IconMode)
         self.setResizeMode(QtWidgets.QListView.Adjust)
         self.setSelectionMode(QtWidgets.QListView.NoSelection)
@@ -773,18 +802,6 @@ class ActionsView(QtWidgets.QListView):
         self._overlay_widgets = []
         self._flick = flick
         self._delegate = delegate
-        self._popup_widget = None
-
-    def mouseMoveEvent(self, event):
-        """Handle mouse move event."""
-        super().mouseMoveEvent(event)
-        # Update hover state for the item under mouse
-        index = self.indexAt(event.pos())
-        if index.isValid() and index.data(ACTION_IS_GROUP_ROLE):
-            self._show_group_popup(index)
-
-        elif self._popup_widget is not None:
-            self._popup_widget.close()
 
     def _on_context_menu(self, point):
         """Creates menu to force skip opening last workfile."""
@@ -792,34 +809,9 @@ class ActionsView(QtWidgets.QListView):
         if not index.isValid():
             return
         action_id = index.data(ACTION_ID_ROLE)
-        self.config_requested.emit(action_id)
-
-    def _get_popup_widget(self):
-        if self._popup_widget is None:
-            popup_widget = ActionMenuPopup(self)
-
-            popup_widget.action_triggered.connect(self.action_triggered)
-            popup_widget.config_requested.connect(self.config_requested)
-            self._popup_widget = popup_widget
-        return self._popup_widget
-
-    def _show_group_popup(self, index):
-        action_id = index.data(ACTION_ID_ROLE)
-        model = self.model()
-        while hasattr(model, "sourceModel"):
-            model = model.sourceModel()
-
-        if not hasattr(model, "get_group_items"):
-            return
-
-        action_items = model.get_group_items(action_id)
         rect = self.visualRect(index)
-        pos = self.mapToGlobal(rect.topLeft())
-
-        popup_widget = self._get_popup_widget()
-        popup_widget.show_items(
-            action_id, action_items, pos
-        )
+        global_center = self.mapToGlobal(rect.center())
+        self.config_requested.emit(action_id, global_center)
 
     def update_on_refresh(self):
         viewport = self.viewport()
@@ -837,9 +829,6 @@ class ActionsView(QtWidgets.QListView):
             if has_configs:
                 item_id = index.data(ACTION_ID_ROLE)
                 widget = ActionOverlayWidget(item_id, viewport)
-                widget.config_requested.connect(
-                    self.config_requested
-                )
                 overlay_widgets.append(widget)
             self.setIndexWidget(index, widget)
 
@@ -877,8 +866,7 @@ class ActionsWidget(QtWidgets.QWidget):
         animation_timer.timeout.connect(self._on_animation)
 
         view.clicked.connect(self._on_clicked)
-        view.action_triggered.connect(self._trigger_action)
-        view.config_requested.connect(self._on_config_request)
+        view.config_requested.connect(self._show_config_dialog)
         model.refreshed.connect(self._on_model_refresh)
 
         self._animated_items = set()
@@ -887,6 +875,8 @@ class ActionsWidget(QtWidgets.QWidget):
         self._view = view
         self._model = model
         self._proxy_model = proxy_model
+
+        self._popup_widget = None
 
         self._set_row_height(1)
 
@@ -974,10 +964,31 @@ class ActionsWidget(QtWidgets.QWidget):
             return
 
         is_group = index.data(ACTION_IS_GROUP_ROLE)
-        if is_group:
-            return
         action_id = index.data(ACTION_ID_ROLE)
-        self._trigger_action(action_id, index)
+        if is_group:
+            self._show_group_popup(index)
+        else:
+            self._trigger_action(action_id, index)
+
+    def _get_popup_widget(self):
+        if self._popup_widget is None:
+            popup_widget = ActionMenuPopup(self)
+
+            popup_widget.action_triggered.connect(self._trigger_action)
+            popup_widget.config_requested.connect(self._show_config_dialog)
+            self._popup_widget = popup_widget
+        return self._popup_widget
+
+    def _show_group_popup(self, index):
+        action_id = index.data(ACTION_ID_ROLE)
+        action_items = self._model.get_group_items(action_id)
+        rect = self._view.visualRect(index)
+        pos = self.mapToGlobal(rect.topLeft())
+
+        popup_widget = self._get_popup_widget()
+        popup_widget.show_items(
+            action_id, action_items, pos
+        )
 
     def _trigger_action(self, action_id, index=None):
         project_name = self._model.get_selected_project_name()
@@ -1011,10 +1022,7 @@ class ActionsWidget(QtWidgets.QWidget):
         if index is not None:
             self._start_animation(index)
 
-    def _on_config_request(self, action_id):
-        self._show_config_dialog(action_id)
-
-    def _show_config_dialog(self, action_id):
+    def _show_config_dialog(self, action_id, center_point):
         action_item = self._model.get_action_item_by_id(action_id)
         config_fields = self._model.get_action_config_fields(action_id)
         if not config_fields:
@@ -1040,10 +1048,30 @@ class ActionsWidget(QtWidgets.QWidget):
             "Cancel",
         )
         dialog.set_values(values)
+        dialog.show()
+        self._center_dialog(dialog, center_point)
         result = dialog.exec_()
         if result == QtWidgets.QDialog.Accepted:
             new_values = dialog.get_values()
             self._controller.set_action_config_values(context, new_values)
+
+    @staticmethod
+    def _center_dialog(dialog, target_center_pos):
+        dialog_geo = dialog.geometry()
+        dialog_geo.moveCenter(target_center_pos)
+
+        screen = dialog.screen()
+        screen_geo = screen.availableGeometry()
+        if screen_geo.left() > dialog_geo.left():
+            dialog_geo.moveLeft(screen_geo.left())
+        elif screen_geo.right() < dialog_geo.right():
+            dialog_geo.moveRight(screen_geo.right())
+
+        if screen_geo.top() > dialog_geo.top():
+            dialog_geo.moveTop(screen_geo.top())
+        elif screen_geo.bottom() < dialog_geo.bottom():
+            dialog_geo.moveBottom(screen_geo.bottom())
+        dialog.move(dialog_geo.topLeft())
 
     def _create_attrs_dialog(
         self,
