@@ -714,6 +714,7 @@ class ActionDelegate(QtWidgets.QStyledItemDelegate):
     def paint(self, painter, option, index):
         painter.setRenderHints(
             QtGui.QPainter.Antialiasing
+            | QtGui.QPainter.TextAntialiasing
             | QtGui.QPainter.SmoothPixmapTransform
         )
 
