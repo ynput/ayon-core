@@ -21,6 +21,7 @@ from ayon_core.tools.attribute_defs import AttributeDefinitionsDialog
 from ayon_core.tools.launcher.abstract import WebactionContext
 
 ANIMATION_LEN = 7
+SHADOW_FRAME_MARGINS = (2, 2, 2, 2)
 
 ACTION_ID_ROLE = QtCore.Qt.UserRole + 1
 ACTION_TYPE_ROLE = QtCore.Qt.UserRole + 2
@@ -392,15 +393,25 @@ class ActionMenuPopup(QtWidgets.QWidget):
         expand_anim.setDuration(60)
         expand_anim.setEasingCurve(QtCore.QEasingCurve.InOutQuad)
 
+        sh_l, sh_t, sh_r, sh_b = SHADOW_FRAME_MARGINS
+
         # View with actions
         view = ActionsView(self)
         view.setGridSize(QtCore.QSize(75, 80))
         view.setIconSize(QtCore.QSize(32, 32))
+        view.move(QtCore.QPoint(sh_l, sh_t))
 
         # Background draw
+        bg_frame = QtWidgets.QFrame(self)
+        bg_frame.setObjectName("ShadowFrame")
+        bg_frame.stackUnder(view)
+
         wrapper = QtWidgets.QFrame(self)
         wrapper.setObjectName("Wrapper")
-        wrapper.stackUnder(view)
+
+        bg_layout = QtWidgets.QVBoxLayout(bg_frame)
+        bg_layout.setContentsMargins(sh_l, sh_t, sh_r, sh_b)
+        bg_layout.addWidget(wrapper)
 
         model = ActionMenuPopupModel()
         proxy_model = ActionsProxyModel()
@@ -418,7 +429,7 @@ class ActionMenuPopup(QtWidgets.QWidget):
         view.config_requested.connect(self._on_configs_trigger)
 
         self._view = view
-        self._wrapper = wrapper
+        self._bg_frame = bg_frame
         self._model = model
         self._proxy_model = proxy_model
 
@@ -484,22 +495,23 @@ class ActionMenuPopup(QtWidgets.QWidget):
             or pos.y() + target_size.height() > window_geo.bottom()
         )
 
+        sh_l, sh_t, sh_r, sh_b = SHADOW_FRAME_MARGINS
         viewport_offset = self._view.viewport().geometry().topLeft()
-        pos_x = pos.x() - (viewport_offset.x() + 2)
-        pos_y = pos.y() - (viewport_offset.y() + 1)
+        pos_x = pos.x() - (sh_l + viewport_offset.x() + 2)
+        pos_y = pos.y() - (sh_t + viewport_offset.y() + 1)
 
-        wrap_x = wrap_y = 0
+        bg_x = bg_y = 0
         sort_order = QtCore.Qt.DescendingOrder
         if right_to_left:
             sort_order = QtCore.Qt.AscendingOrder
             size_diff = target_size - size
             pos_x -= size_diff.width()
             pos_y -= size_diff.height()
-            wrap_x = size_diff.width()
-            wrap_y = size_diff.height()
+            bg_x = size_diff.width()
+            bg_y = size_diff.height()
 
-        wrap_geo = QtCore.QRect(
-            wrap_x, wrap_y, size.width(), size.height()
+        bg_geo = QtCore.QRect(
+            bg_x, bg_y, size.width(), size.height()
         )
         if self._expand_anim.state() == QtCore.QAbstractAnimation.Running:
             self._expand_anim.stop()
@@ -508,10 +520,10 @@ class ActionMenuPopup(QtWidgets.QWidget):
 
         self._proxy_model.sort(0, sort_order)
         self.setUpdatesEnabled(False)
-        self._view.setMask(wrap_geo)
+        self._view.setMask(bg_geo.adjusted(sh_l, sh_t, -sh_r, -sh_b))
         self._view.setMinimumWidth(target_size.width())
         self._view.setMaximumWidth(target_size.width())
-        self._wrapper.setGeometry(wrap_geo)
+        self._bg_frame.setGeometry(bg_geo)
         self.setGeometry(
             pos_x, pos_y,
             target_size.width(), target_size.height()
@@ -540,9 +552,9 @@ class ActionMenuPopup(QtWidgets.QWidget):
                 self._expand_anim.stop()
             return
 
-        wrapper_geo = self._wrapper.geometry()
-        wrapper_geo.setWidth(value.width())
-        wrapper_geo.setHeight(value.height())
+        bg_geo = self._bg_frame.geometry()
+        bg_geo.setWidth(value.width())
+        bg_geo.setHeight(value.height())
 
         if self._right_to_left:
             geo = self.geometry()
@@ -550,10 +562,11 @@ class ActionMenuPopup(QtWidgets.QWidget):
                 geo.width() - value.width(),
                 geo.height() - value.height(),
             )
-            wrapper_geo.setTopLeft(pos)
+            bg_geo.setTopLeft(pos)
 
-        self._view.setMask(wrapper_geo)
-        self._wrapper.setGeometry(wrapper_geo)
+        sh_l, sh_t, sh_r, sh_b = SHADOW_FRAME_MARGINS
+        self._view.setMask(bg_geo.adjusted(sh_l, sh_t, -sh_r, -sh_b))
+        self._bg_frame.setGeometry(bg_geo)
 
     def _on_expand_finish(self):
         # Make sure that size is recalculated if src and targe size is same
@@ -582,6 +595,13 @@ class ActionMenuPopup(QtWidgets.QWidget):
         vp_lr = viewport_offset.x()
         vp_tb = viewport_offset.y()
         m_l, m_t, m_r, m_b = (vp_lr, vp_tb, vp_lr, vp_tb)
+        m_l, m_t, m_r, m_b = (
+            s_m + vp_m
+            for s_m, vp_m in zip(
+                SHADOW_FRAME_MARGINS,
+                (vp_lr, vp_tb, vp_lr, vp_tb)
+            )
+        )
         single_width = (
             grid_size.width()
             + self._view.horizontalOffset() + m_l + m_r + 1
