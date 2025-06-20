@@ -77,14 +77,22 @@ class ActionOverlayWidget(QtWidgets.QFrame):
 
         settings_icon = LauncherSettingsLabel(self)
         settings_icon.setToolTip("Right click for options")
+        settings_icon.setVisible(False)
 
         main_layout = QtWidgets.QGridLayout(self)
         main_layout.setContentsMargins(5, 5, 0, 0)
         main_layout.addWidget(settings_icon, 0, 0)
         main_layout.setColumnStretch(1, 1)
         main_layout.setRowStretch(1, 1)
+        self.setAttribute(QtCore.Qt.WA_TranslucentBackground, True)
 
-        self.setAttribute(QtCore.Qt.WA_TranslucentBackground)
+    def enterEvent(self, event):
+        super().enterEvent(event)
+        self._settings_icon.setVisible(True)
+
+    def leaveEvent(self, event):
+        super().leaveEvent(event)
+        self._settings_icon.setVisible(False)
 
 
 class ActionsQtModel(QtGui.QStandardItemModel):
