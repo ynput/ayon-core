@@ -83,8 +83,6 @@ class LauncherSettingsLabel(QtWidgets.QWidget):
 
 
 class ActionOverlayWidget(QtWidgets.QFrame):
-    config_requested = QtCore.Signal(str)
-
     def __init__(self, item_id, parent):
         super().__init__(parent)
         self._item_id = item_id
@@ -162,6 +160,12 @@ class ActionsQtModel(QtGui.QStandardItemModel):
 
     def get_item_by_id(self, action_id):
         return self._items_by_id.get(action_id)
+
+    def get_index_by_id(self, action_id):
+        item = self.get_item_by_id(action_id)
+        if item is not None:
+            return self.indexFromItem(item)
+        return QtCore.QModelIndex()
 
     def get_group_item_by_action_id(self, action_id):
         item = self._items_by_id.get(action_id)
@@ -370,7 +374,7 @@ class ActionMenuPopupModel(QtGui.QStandardItemModel):
 
 class ActionMenuPopup(QtWidgets.QWidget):
     action_triggered = QtCore.Signal(str)
-    config_requested = QtCore.Signal(str)
+    config_requested = QtCore.Signal(str, QtCore.QPoint)
 
     def __init__(self, parent):
         super().__init__(parent)
@@ -412,7 +416,7 @@ class ActionMenuPopup(QtWidgets.QWidget):
         expand_anim.finished.connect(self._on_expand_finish)
 
         view.clicked.connect(self._on_clicked)
-        view.config_requested.connect(self.config_requested)
+        view.config_requested.connect(self._on_configs_trigger)
 
         self._view = view
         self._wrapper = wrapper
@@ -611,8 +615,8 @@ class ActionMenuPopup(QtWidgets.QWidget):
         self.action_triggered.emit(action_id)
         self.close()
 
-    def _on_configs_trigger(self, action_id):
-        self.config_requested.emit(action_id)
+    def _on_configs_trigger(self, action_id, center_pos):
+        self.config_requested.emit(action_id, center_pos)
         self.close()
 
 
@@ -744,7 +748,7 @@ class ActionsProxyModel(QtCore.QSortFilterProxyModel):
 
 
 class ActionsView(QtWidgets.QListView):
-    config_requested = QtCore.Signal(str)
+    config_requested = QtCore.Signal(str, QtCore.QPoint)
 
     def __init__(self, parent):
         super().__init__(parent)
@@ -783,7 +787,9 @@ class ActionsView(QtWidgets.QListView):
         if not index.isValid():
             return
         action_id = index.data(ACTION_ID_ROLE)
-        self.config_requested.emit(action_id)
+        rect = self.visualRect(index)
+        global_center = self.mapToGlobal(rect.center())
+        self.config_requested.emit(action_id, global_center)
 
     def update_on_refresh(self):
         viewport = self.viewport()
@@ -801,9 +807,6 @@ class ActionsView(QtWidgets.QListView):
             if has_configs:
                 item_id = index.data(ACTION_ID_ROLE)
                 widget = ActionOverlayWidget(item_id, viewport)
-                widget.config_requested.connect(
-                    self.config_requested
-                )
                 overlay_widgets.append(widget)
             self.setIndexWidget(index, widget)
 
@@ -841,7 +844,7 @@ class ActionsWidget(QtWidgets.QWidget):
         animation_timer.timeout.connect(self._on_animation)
 
         view.clicked.connect(self._on_clicked)
-        view.config_requested.connect(self._on_config_request)
+        view.config_requested.connect(self._show_config_dialog)
         model.refreshed.connect(self._on_model_refresh)
 
         self._animated_items = set()
@@ -950,7 +953,7 @@ class ActionsWidget(QtWidgets.QWidget):
             popup_widget = ActionMenuPopup(self)
 
             popup_widget.action_triggered.connect(self._trigger_action)
-            popup_widget.config_requested.connect(self._on_config_request)
+            popup_widget.config_requested.connect(self._show_config_dialog)
             self._popup_widget = popup_widget
         return self._popup_widget
 
@@ -997,10 +1000,7 @@ class ActionsWidget(QtWidgets.QWidget):
         if index is not None:
             self._start_animation(index)
 
-    def _on_config_request(self, action_id):
-        self._show_config_dialog(action_id)
-
-    def _show_config_dialog(self, action_id):
+    def _show_config_dialog(self, action_id, center_point):
         action_item = self._model.get_action_item_by_id(action_id)
         config_fields = self._model.get_action_config_fields(action_id)
         if not config_fields:
@@ -1026,10 +1026,30 @@ class ActionsWidget(QtWidgets.QWidget):
             "Cancel",
         )
         dialog.set_values(values)
+        dialog.show()
+        self._center_dialog(dialog, center_point)
         result = dialog.exec_()
         if result == QtWidgets.QDialog.Accepted:
             new_values = dialog.get_values()
             self._controller.set_action_config_values(context, new_values)
+
+    @staticmethod
+    def _center_dialog(dialog, target_center_pos):
+        dialog_geo = dialog.geometry()
+        dialog_geo.moveCenter(target_center_pos)
+
+        screen = dialog.screen()
+        screen_geo = screen.availableGeometry()
+        if screen_geo.left() > dialog_geo.left():
+            dialog_geo.moveLeft(screen_geo.left())
+        elif screen_geo.right() < dialog_geo.right():
+            dialog_geo.moveRight(screen_geo.right())
+
+        if screen_geo.top() > dialog_geo.top():
+            dialog_geo.moveTop(screen_geo.top())
+        elif screen_geo.bottom() < dialog_geo.bottom():
+            dialog_geo.moveBottom(screen_geo.bottom())
+        dialog.move(dialog_geo.topLeft())
 
     def _create_attrs_dialog(
         self,
