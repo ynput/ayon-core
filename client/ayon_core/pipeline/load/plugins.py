@@ -129,6 +129,10 @@ class LoaderPlugin(list):
         plugin_repre_names = cls.get_representations()
         plugin_product_types = cls.product_types
         plugin_product_base_types = cls.product_base_types
+        # If product type isn't defined on the loader plugin,
+        # then we will use the product types.
+        plugin_product_filter = (
+                plugin_product_base_types or plugin_product_types)
         repre_entity = context.get("representation")
         product_entity = context["product"]
 
@@ -136,8 +140,8 @@ class LoaderPlugin(list):
         # then loader is not compatible with any context.
         if (
             not plugin_repre_names
-            or (not plugin_product_types and not plugin_product_base_types)
-            or not cls.extensions
+            and not plugin_product_filter
+            and not cls.extensions
         ):
             return False
 
@@ -148,7 +152,7 @@ class LoaderPlugin(list):
 
         # Check the compatibility with the representation names.
         plugin_repre_names = set(plugin_repre_names)
-        if not plugin_repre_names or (
+        if (
             "*" not in plugin_repre_names
             and repre_entity["name"] not in plugin_repre_names
         ):
@@ -169,8 +173,6 @@ class LoaderPlugin(list):
         if product_filter is None:
             product_filter = product_type
 
-        # If no product type isn't defined on the loader plugin,
-        # then we will use the product types.
         plugin_product_filter = (
                 plugin_product_base_types or plugin_product_types)
 
@@ -178,6 +180,14 @@ class LoaderPlugin(list):
         # then we will consider the loader compatible with any product type.
         if "*" in plugin_product_filter:
             return True
+
+        # compatibility with legacy loader
+        if cls.product_base_types is None and product_base_type:
+            cls.log.error(
+                f"Loader {cls.__name__} is doesn't specify "
+                "`product_base_types` but product entity has "
+                f"`productBaseType` defined as `{product_base_type}`. "
+            )
 
         return product_filter in plugin_product_filter
 
