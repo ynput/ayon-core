@@ -841,7 +841,7 @@ ActionsView::item {
     padding-top: 8px;
     padding-bottom: 4px;
     border: 0px;
-    border-radius: 0.3em;
+    border-radius: 5px;
 }
 
 ActionsView::item:hover {
@@ -851,8 +851,13 @@ ActionsView::item:hover {
 
 ActionsView::icon {}
 
+ActionMenuPopup #ShadowFrame {
+    border-radius: 5px;
+    background: rgba(0, 0, 0, 0.3);
+}
+
 ActionMenuPopup #Wrapper {
-    border-radius: 0.3em;
+    border-radius: 5px;
     background: #353B46;
 }
 
