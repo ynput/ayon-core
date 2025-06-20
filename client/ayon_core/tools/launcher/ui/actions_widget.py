@@ -748,7 +748,6 @@ class ActionsView(QtWidgets.QListView):
 
     def __init__(self, parent):
         super().__init__(parent)
-        self.setProperty("mode", "icon")
         self.setViewMode(QtWidgets.QListView.IconMode)
         self.setResizeMode(QtWidgets.QListView.Adjust)
         self.setSelectionMode(QtWidgets.QListView.NoSelection)
