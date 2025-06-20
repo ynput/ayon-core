@@ -51,12 +51,13 @@ def _variant_label_sort_getter(action_item):
 
 
 # --- Replacement for QAction for action variants ---
-class LauncherSettingsLabel(PixmapLabel):
+class LauncherSettingsLabel(QtWidgets.QWidget):
     _settings_icon = None
 
     def __init__(self, parent):
+        super().__init__(parent)
         icon = self._get_settings_icon()
-        super().__init__(icon.pixmap(64, 64), parent)
+        self._pixmap = icon.pixmap(64, 64)
 
     @classmethod
     def _get_settings_icon(cls):
@@ -66,6 +67,34 @@ class LauncherSettingsLabel(PixmapLabel):
                 "name": "settings",
             })
         return cls._settings_icon
+
+    def paintEvent(self, event):
+        painter = QtGui.QPainter()
+        painter.begin(self)
+
+        render_hints = (
+            QtGui.QPainter.Antialiasing
+            | QtGui.QPainter.SmoothPixmapTransform
+        )
+        if hasattr(QtGui.QPainter, "HighQualityAntialiasing"):
+            render_hints |= QtGui.QPainter.HighQualityAntialiasing
+
+        rect = event.rect()
+        size = min(rect.height(), rect.width())
+        pix_rect = QtCore.QRect(
+            rect.x(), rect.y(),
+            size, size
+        )
+        pixmap = self._pixmap.scaled(
+            pix_rect.size(),
+            QtCore.Qt.KeepAspectRatio,
+            QtCore.Qt.SmoothTransformation
+
+        )
+        painter.setRenderHints(render_hints)
+        painter.drawPixmap(0, 0, pixmap)
+
+        painter.end()
 
 
 class ActionOverlayWidget(QtWidgets.QFrame):
@@ -82,8 +111,9 @@ class ActionOverlayWidget(QtWidgets.QFrame):
         main_layout = QtWidgets.QGridLayout(self)
         main_layout.setContentsMargins(5, 5, 0, 0)
         main_layout.addWidget(settings_icon, 0, 0)
-        main_layout.setColumnStretch(1, 1)
-        main_layout.setRowStretch(1, 1)
+        main_layout.setColumnStretch(0, 1)
+        main_layout.setColumnStretch(1, 5)
+
         self.setAttribute(QtCore.Qt.WA_TranslucentBackground, True)
 
     def enterEvent(self, event):
