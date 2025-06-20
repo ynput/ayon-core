@@ -829,7 +829,7 @@ HintedLineEditButton {
 }
 
 /* Launcher specific stylesheets */
-ActionsView[mode="icon"] {
+ActionsView {
     /* font size can't be set on items */
     font-size: 9pt;
     border: 0px;
@@ -837,25 +837,25 @@ ActionsView[mode="icon"] {
     margin: 0px;
 }
 
-ActionsView[mode="icon"]::item {
+ActionsView::item {
     padding-top: 8px;
     padding-bottom: 4px;
     border: 0px;
     border-radius: 0.3em;
 }
 
-ActionsView[mode="icon"]::item:hover {
+ActionsView::item:hover {
     color: {color:font-hover};
     background: #424A57;
 }
 
-ActionsView[mode="icon"]::icon {}
+ActionsView::icon {}
 
 ActionMenuPopup #Wrapper {
     border-radius: 0.3em;
     background: #353B46;
 }
-ActionMenuPopup ActionsView[mode="icon"] {
+ActionMenuPopup ActionsView {
     background: transparent;
     border: none;
 }
