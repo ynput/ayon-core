@@ -396,7 +396,6 @@ class ActionMenuPopup(QtWidgets.QWidget):
         view = ActionsView(self)
         view.setGridSize(QtCore.QSize(75, 80))
         view.setIconSize(QtCore.QSize(32, 32))
-        view.move(QtCore.QPoint(3, 3))
 
         # Background draw
         wrapper = QtWidgets.QFrame(self)
@@ -485,8 +484,9 @@ class ActionMenuPopup(QtWidgets.QWidget):
             or pos.y() + target_size.height() > window_geo.bottom()
         )
 
-        pos_x = pos.x() - 5
-        pos_y = pos.y() - 4
+        viewport_offset = self._view.viewport().geometry().topLeft()
+        pos_x = pos.x() - (viewport_offset.x() + 2)
+        pos_y = pos.y() - (viewport_offset.y() + 1)
 
         wrap_x = wrap_y = 0
         sort_order = QtCore.Qt.DescendingOrder
@@ -576,16 +576,19 @@ class ActionMenuPopup(QtWidgets.QWidget):
         if rows == 1:
             cols = row_count
 
-        m_l, m_t, m_r, m_b = (3, 3, 1, 1)
-        # QUESTION how to get the margins from Qt?
-        border = 2 * 1
+        viewport_geo = self._view.viewport().geometry()
+        viewport_offset = viewport_geo.topLeft()
+        # QUESTION how to get the bottom and right margins from Qt?
+        vp_lr = viewport_offset.x()
+        vp_tb = viewport_offset.y()
+        m_l, m_t, m_r, m_b = (vp_lr, vp_tb, vp_lr, vp_tb)
         single_width = (
             grid_size.width()
-            + self._view.horizontalOffset() + border + m_l + m_r + 1
+            + self._view.horizontalOffset() + m_l + m_r + 1
         )
         single_height = (
             grid_size.height()
-            + self._view.verticalOffset() + border + m_b + m_t + 1
+            + self._view.verticalOffset() + m_b + m_t + 1
         )
         total_width = single_width
         total_height = single_height

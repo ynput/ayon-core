@@ -855,9 +855,11 @@ ActionMenuPopup #Wrapper {
     border-radius: 0.3em;
     background: #353B46;
 }
+
 ActionMenuPopup ActionsView {
     background: transparent;
     border: none;
+    margin: 4px;
 }
 
 #IconView[mode="icon"] {
