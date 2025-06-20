@@ -594,7 +594,6 @@ class ActionMenuPopup(QtWidgets.QWidget):
         # QUESTION how to get the bottom and right margins from Qt?
         vp_lr = viewport_offset.x()
         vp_tb = viewport_offset.y()
-        m_l, m_t, m_r, m_b = (vp_lr, vp_tb, vp_lr, vp_tb)
         m_l, m_t, m_r, m_b = (
             s_m + vp_m
             for s_m, vp_m in zip(
