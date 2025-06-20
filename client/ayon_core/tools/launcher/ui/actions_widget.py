@@ -16,7 +16,6 @@ from ayon_core.lib.attribute_definitions import (
 from ayon_core.tools.flickcharm import FlickCharm
 from ayon_core.tools.utils import (
     get_qt_icon,
-    PixmapLabel,
 )
 from ayon_core.tools.attribute_defs import AttributeDefinitionsDialog
 from ayon_core.tools.launcher.abstract import WebactionContext
@@ -54,11 +53,6 @@ def _variant_label_sort_getter(action_item):
 class LauncherSettingsLabel(QtWidgets.QWidget):
     _settings_icon = None
 
-    def __init__(self, parent):
-        super().__init__(parent)
-        icon = self._get_settings_icon()
-        self._pixmap = icon.pixmap(64, 64)
-
     @classmethod
     def _get_settings_icon(cls):
         if cls._settings_icon is None:
@@ -82,11 +76,8 @@ class LauncherSettingsLabel(QtWidgets.QWidget):
             rect.x(), rect.y(),
             size, size
         )
-        src_rect = QtCore.QRect(
-            0, 0,
-            self._pixmap.width(), self._pixmap.height()
-        )
-        painter.drawPixmap(pix_rect, self._pixmap, src_rect)
+        pix = self._get_settings_icon().pixmap(size, size)
+        painter.drawPixmap(pix_rect, pix)
 
         painter.end()
 
@@ -626,8 +617,7 @@ class ActionMenuPopup(QtWidgets.QWidget):
 
 
 class ActionDelegate(QtWidgets.QStyledItemDelegate):
-    _cached_extender = {}
-    _cached_extender_base_pix = None
+    _extender_icon = None
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -687,27 +677,13 @@ class ActionDelegate(QtWidgets.QStyledItemDelegate):
         painter.restore()
 
     @classmethod
-    def _get_extender_pixmap(cls, size):
-        pix = cls._cached_extender.get(size)
-        if pix is not None:
-            return pix
-
-        base_pix = cls._cached_extender_base_pix
-        if base_pix is None:
-            icon = get_qt_icon({
+    def _get_extender_pixmap(cls):
+        if cls._extender_icon is None:
+            cls._extender_icon = get_qt_icon({
                 "type": "material-symbols",
                 "name": "more_horiz",
             })
-            base_pix = icon.pixmap(64, 64)
-            cls._cached_extender_base_pix = base_pix
-
-        pix = base_pix.scaled(
-            size, size,
-            QtCore.Qt.KeepAspectRatio,
-            QtCore.Qt.SmoothTransformation
-        )
-        cls._cached_extender[size] = pix
-        return pix
+        return cls._extender_icon
 
     def paint(self, painter, option, index):
         painter.setRenderHints(
@@ -724,20 +700,15 @@ class ActionDelegate(QtWidgets.QStyledItemDelegate):
             return
 
         grid_size = option.widget.gridSize()
-        x_offset = int(
-            (grid_size.width() / 2)
-            - (option.rect.width() / 2)
-        )
-        item_x = option.rect.x() - x_offset
 
-        tenth_size = int(grid_size.width() / 10)
-        extender_size = int(tenth_size * 2.4)
+        extender_rect = option.rect.adjusted(5, 5, 0, 0)
+        extender_size = grid_size.width() // 6
+        extender_rect.setWidth(extender_size)
+        extender_rect.setHeight(extender_size)
 
-        extender_x = item_x + tenth_size
-        extender_y = option.rect.y() + tenth_size
-
-        pix = self._get_extender_pixmap(extender_size)
-        painter.drawPixmap(extender_x, extender_y, pix)
+        icon = self._get_extender_pixmap()
+        pix = icon.pixmap(extender_size, extender_size)
+        painter.drawPixmap(extender_rect, pix)
 
 
 class ActionsProxyModel(QtCore.QSortFilterProxyModel):
