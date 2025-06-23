@@ -528,6 +528,7 @@ class ActionMenuPopup(QtWidgets.QWidget):
         self._view.setMask(bg_geo.adjusted(sh_l, sh_t, -sh_r, -sh_b))
         self._view.setMinimumWidth(target_size.width())
         self._view.setMaximumWidth(target_size.width())
+        self._view.setMinimumHeight(target_size.height())
         self._bg_frame.setGeometry(bg_geo)
         self.setGeometry(
             pos_x, pos_y,
