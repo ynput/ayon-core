@@ -129,10 +129,12 @@ class LoaderPlugin(list):
         plugin_repre_names = cls.get_representations()
         plugin_product_types = cls.product_types
         plugin_product_base_types = cls.product_base_types
-        # If product type isn't defined on the loader plugin,
+
+        # If the product base type isn't defined on the loader plugin,
         # then we will use the product types.
-        plugin_product_filter = (
-                plugin_product_base_types or plugin_product_types)
+        plugin_product_filter = plugin_product_base_types
+        if plugin_product_filter is None:
+            plugin_product_filter = plugin_product_types
         repre_entity = context.get("representation")
         product_entity = context["product"]
 
