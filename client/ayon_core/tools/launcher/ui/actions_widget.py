@@ -252,7 +252,7 @@ class ActionsQtModel(QtGui.QStandardItemModel):
 
             item.setFlags(QtCore.Qt.ItemIsEnabled)
             item.setData(label, QtCore.Qt.DisplayRole)
-            # item.setData(label, QtCore.Qt.ToolTipRole)
+            item.setData(label, QtCore.Qt.ToolTipRole)
             item.setData(icon, QtCore.Qt.DecorationRole)
             item.setData(is_group, ACTION_IS_GROUP_ROLE)
             item.setData(has_configs, ACTION_HAS_CONFIGS_ROLE)
@@ -325,8 +325,8 @@ class ActionMenuPopupModel(QtGui.QStandardItemModel):
 
             item = QtGui.QStandardItem()
             item.setFlags(QtCore.Qt.ItemIsEnabled)
-            # item.setData(action_item.full_label, QtCore.Qt.ToolTipRole)
             item.setData(action_item.full_label, QtCore.Qt.DisplayRole)
+            item.setData(action_item.full_label, QtCore.Qt.ToolTipRole)
             item.setData(icon, QtCore.Qt.DecorationRole)
             item.setData(action_item.identifier, ACTION_ID_ROLE)
             item.setData(
