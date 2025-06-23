@@ -124,7 +124,7 @@ class HostBase(ABC):
 
         pass
 
-    def get_current_project_name(self) -> str:
+    def get_current_project_name(self):
         """
         Returns:
             Union[str, None]: Current project name.
