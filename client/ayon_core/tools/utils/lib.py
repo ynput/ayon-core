@@ -118,9 +118,6 @@ def paint_image_with_color(image, color):
         QtGui.QPainter.Antialiasing
         | QtGui.QPainter.SmoothPixmapTransform
     )
-    # Deprecated since 5.14
-    if hasattr(QtGui.QPainter, "HighQualityAntialiasing"):
-        render_hints |= QtGui.QPainter.HighQualityAntialiasing
     painter.setRenderHints(render_hints)
 
     painter.setClipRegion(alpha_region)
