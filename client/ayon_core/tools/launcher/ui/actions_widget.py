@@ -21,7 +21,7 @@ from ayon_core.tools.attribute_defs import AttributeDefinitionsDialog
 from ayon_core.tools.launcher.abstract import WebactionContext
 
 ANIMATION_LEN = 7
-SHADOW_FRAME_MARGINS = (2, 2, 2, 2)
+SHADOW_FRAME_MARGINS = (1, 1, 1, 1)
 
 ACTION_ID_ROLE = QtCore.Qt.UserRole + 1
 ACTION_TYPE_ROLE = QtCore.Qt.UserRole + 2
@@ -409,6 +409,10 @@ class ActionMenuPopup(QtWidgets.QWidget):
         wrapper = QtWidgets.QFrame(self)
         wrapper.setObjectName("Wrapper")
 
+        effect = QtWidgets.QGraphicsBlurEffect(wrapper)
+        effect.setBlurRadius(3.0)
+        wrapper.setGraphicsEffect(effect)
+
         bg_layout = QtWidgets.QVBoxLayout(bg_frame)
         bg_layout.setContentsMargins(sh_l, sh_t, sh_r, sh_b)
         bg_layout.addWidget(wrapper)
@@ -430,6 +434,7 @@ class ActionMenuPopup(QtWidgets.QWidget):
 
         self._view = view
         self._bg_frame = bg_frame
+        self._effect = effect
         self._model = model
         self._proxy_model = proxy_model
 
