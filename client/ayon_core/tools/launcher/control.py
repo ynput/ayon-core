@@ -1,6 +1,6 @@
 from ayon_core.lib import Logger, get_ayon_username
 from ayon_core.lib.events import QueuedEventSystem
-from ayon_core.settings import get_project_settings
+from ayon_core.settings import get_project_settings, get_studio_settings
 from ayon_core.tools.common_models import ProjectsModel, HierarchyModel
 
 from .abstract import AbstractLauncherFrontEnd, AbstractLauncherBackend
@@ -85,7 +85,10 @@ class BaseLauncherController(
     def get_project_settings(self, project_name):
         if project_name in self._project_settings:
             return self._project_settings[project_name]
-        settings = get_project_settings(project_name)
+        if project_name:
+            settings = get_project_settings(project_name)
+        else:
+            settings = get_studio_settings()
         self._project_settings[project_name] = settings
         return settings
 

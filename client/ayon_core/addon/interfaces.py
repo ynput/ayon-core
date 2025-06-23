@@ -1,16 +1,27 @@
+"""Addon interfaces for AYON."""
+from __future__ import annotations
+
 from abc import ABCMeta, abstractmethod
+from typing import TYPE_CHECKING, Callable, Optional, Type
 
 from ayon_core import resources
 
+if TYPE_CHECKING:
+    from qtpy import QtWidgets
+
+    from ayon_core.addon.base import AddonsManager
+    from ayon_core.pipeline.traits import TraitBase
+    from ayon_core.tools.tray.ui.tray import TrayManager
+
 
 class _AYONInterfaceMeta(ABCMeta):
-    """AYONInterface meta class to print proper string."""
+    """AYONInterface metaclass to print proper string."""
 
-    def __str__(self):
-        return "<'AYONInterface.{}'>".format(self.__name__)
+    def __str__(cls):
+        return f"<'AYONInterface.{cls.__name__}'>"
 
-    def __repr__(self):
-        return str(self)
+    def __repr__(cls):
+        return str(cls)
 
 
 class AYONInterface(metaclass=_AYONInterfaceMeta):
@@ -24,7 +35,7 @@ class AYONInterface(metaclass=_AYONInterfaceMeta):
     in the interface. By default, interface does not have any abstract parts.
     """
 
-    pass
+    log = None
 
 
 class IPluginPaths(AYONInterface):
@@ -38,10 +49,25 @@ class IPluginPaths(AYONInterface):
     """
 
     @abstractmethod
-    def get_plugin_paths(self):
-        pass
+    def get_plugin_paths(self) -> dict[str, list[str]]:
+        """Return plugin paths for addon.
 
-    def _get_plugin_paths_by_type(self, plugin_type):
+        Returns:
+            dict[str, list[str]]: Plugin paths for addon.
+
+        """
+
+    def _get_plugin_paths_by_type(
+            self, plugin_type: str) -> list[str]:
+        """Get plugin paths by type.
+
+        Args:
+            plugin_type (str): Type of plugin paths to get.
+
+        Returns:
+            list[str]: List of plugin paths.
+
+        """
         paths = self.get_plugin_paths()
         if not paths or plugin_type not in paths:
             return []
@@ -54,14 +80,18 @@ class IPluginPaths(AYONInterface):
             paths = [paths]
         return paths
 
-    def get_launcher_action_paths(self):
+    def get_launcher_action_paths(self) -> list[str]:
         """Receive launcher actions paths.
 
         Give addons ability to add launcher actions paths.
+
+        Returns:
+            list[str]: List of launcher action paths.
+
         """
         return self._get_plugin_paths_by_type("actions")
 
-    def get_create_plugin_paths(self, host_name):
+    def get_create_plugin_paths(self, host_name: str) -> list[str]:
         """Receive create plugin paths.
 
         Give addons ability to add create plugin paths based on host name.
@@ -72,11 +102,14 @@ class IPluginPaths(AYONInterface):
 
         Args:
             host_name (str): For which host are the plugins meant.
-        """
 
+        Returns:
+            list[str]: List of create plugin paths.
+
+        """
         return self._get_plugin_paths_by_type("create")
 
-    def get_load_plugin_paths(self, host_name):
+    def get_load_plugin_paths(self, host_name: str) -> list[str]:
         """Receive load plugin paths.
 
         Give addons ability to add load plugin paths based on host name.
@@ -87,11 +120,14 @@ class IPluginPaths(AYONInterface):
 
         Args:
             host_name (str): For which host are the plugins meant.
-        """
 
+        Returns:
+            list[str]: List of load plugin paths.
+
+        """
         return self._get_plugin_paths_by_type("load")
 
-    def get_publish_plugin_paths(self, host_name):
+    def get_publish_plugin_paths(self, host_name: str) -> list[str]:
         """Receive publish plugin paths.
 
         Give addons ability to add publish plugin paths based on host name.
@@ -102,11 +138,14 @@ class IPluginPaths(AYONInterface):
 
         Args:
            host_name (str): For which host are the plugins meant.
-        """
 
+        Returns:
+            list[str]: List of publish plugin paths.
+
+        """
         return self._get_plugin_paths_by_type("publish")
 
-    def get_inventory_action_paths(self, host_name):
+    def get_inventory_action_paths(self, host_name: str) -> list[str]:
         """Receive inventory action paths.
 
         Give addons ability to add inventory action plugin paths.
@@ -117,77 +156,84 @@ class IPluginPaths(AYONInterface):
 
         Args:
            host_name (str): For which host are the plugins meant.
-        """
 
+        Returns:
+            list[str]: List of inventory action plugin paths.
+
+        """
         return self._get_plugin_paths_by_type("inventory")
 
 
 class ITrayAddon(AYONInterface):
     """Addon has special procedures when used in Tray tool.
 
-    IMPORTANT:
-    The addon. still must be usable if is not used in tray even if
-    would do nothing.
-    """
+    Important:
+        The addon. still must be usable if is not used in tray even if it
+        would do nothing.
 
+    """
+    manager: AddonsManager
     tray_initialized = False
-    _tray_manager = None
+    _tray_manager: TrayManager = None
     _admin_submenu = None
 
     @abstractmethod
-    def tray_init(self):
+    def tray_init(self) -> None:
         """Initialization part of tray implementation.
 
         Triggered between `initialization` and `connect_with_addons`.
 
         This is where GUIs should be loaded or tray specific parts should be
-        prepared.
+        prepared
+
         """
 
-        pass
-
     @abstractmethod
-    def tray_menu(self, tray_menu):
+    def tray_menu(self, tray_menu: QtWidgets.QMenu) -> None:
         """Add addon's action to tray menu."""
 
-        pass
-
     @abstractmethod
-    def tray_start(self):
+    def tray_start(self) -> None:
         """Start procedure in tray tool."""
 
-        pass
-
     @abstractmethod
-    def tray_exit(self):
+    def tray_exit(self) -> None:
         """Cleanup method which is executed on tray shutdown.
 
         This is place where all threads should be shut.
+
         """
 
-        pass
+    def execute_in_main_thread(self, callback: Callable) -> None:
+        """Pushes callback to the queue or process 'callback' on a main thread.
 
-    def execute_in_main_thread(self, callback):
-        """ Pushes callback to the queue or process 'callback' on a main thread
+        Some callbacks need to be processed on main thread (menu actions
+        must be added on main thread else they won't get triggered etc.)
 
-            Some callbacks need to be processed on main thread (menu actions
-            must be added on main thread or they won't get triggered etc.)
+        Args:
+            callback (Callable): Function to be executed on main thread
+
         """
-
         if not self.tray_initialized:
-            # TODO Called without initialized tray, still main thread needed
+            # TODO (Illicit): Called without initialized tray, still
+            #   main thread needed.
             try:
                 callback()
 
-            except Exception:
+            except Exception:  # noqa: BLE001
                 self.log.warning(
-                    "Failed to execute {} in main thread".format(callback),
-                    exc_info=True)
+                    "Failed to execute %s callback in main thread",
+                    str(callback), exc_info=True)
 
             return
-        self.manager.tray_manager.execute_in_main_thread(callback)
+        self._tray_manager.tray_manager.execute_in_main_thread(callback)
 
-    def show_tray_message(self, title, message, icon=None, msecs=None):
+    def show_tray_message(
+            self,
+            title: str,
+            message: str,
+            icon: Optional[QtWidgets.QSystemTrayIcon] = None,
+            msecs: Optional[int] = None) -> None:
         """Show tray message.
 
         Args:
@@ -198,16 +244,22 @@ class ITrayAddon(AYONInterface):
             msecs (int): Duration of message visibility in milliseconds.
                 Default is 10000 msecs, may differ by Qt version.
         """
-
         if self._tray_manager:
             self._tray_manager.show_tray_message(title, message, icon, msecs)
 
-    def add_doubleclick_callback(self, callback):
+    def add_doubleclick_callback(self, callback: Callable) -> None:
+        """Add callback to be triggered on tray icon double click."""
         if hasattr(self.manager, "add_doubleclick_callback"):
             self.manager.add_doubleclick_callback(self, callback)
 
     @staticmethod
-    def admin_submenu(tray_menu):
+    def admin_submenu(tray_menu: QtWidgets.QMenu) -> QtWidgets.QMenu:
+        """Get or create admin submenu.
+
+        Returns:
+            QtWidgets.QMenu: Admin submenu.
+
+        """
         if ITrayAddon._admin_submenu is None:
             from qtpy import QtWidgets
 
@@ -217,7 +269,18 @@ class ITrayAddon(AYONInterface):
         return ITrayAddon._admin_submenu
 
     @staticmethod
-    def add_action_to_admin_submenu(label, tray_menu):
+    def add_action_to_admin_submenu(
+            label: str, tray_menu: QtWidgets.QMenu) -> QtWidgets.QAction:
+        """Add action to admin submenu.
+
+        Args:
+            label (str): Label of action.
+            tray_menu (QtWidgets.QMenu): Tray menu to add action to.
+
+        Returns:
+            QtWidgets.QAction: Action added to admin submenu
+
+        """
         from qtpy import QtWidgets
 
         menu = ITrayAddon.admin_submenu(tray_menu)
@@ -244,16 +307,15 @@ class ITrayAction(ITrayAddon):
 
     @property
     @abstractmethod
-    def label(self):
+    def label(self) -> str:
         """Service label showed in menu."""
-        pass
 
     @abstractmethod
-    def on_action_trigger(self):
+    def on_action_trigger(self) -> None:
         """What happens on actions click."""
-        pass
 
-    def tray_menu(self, tray_menu):
+    def tray_menu(self, tray_menu: QtWidgets.QMenu) -> None:
+        """Add action to tray menu."""
         from qtpy import QtWidgets
 
         if self.admin_action:
@@ -265,36 +327,44 @@ class ITrayAction(ITrayAddon):
         action.triggered.connect(self.on_action_trigger)
         self._action_item = action
 
-    def tray_start(self):
+    def tray_start(self) -> None:  # noqa: PLR6301
+        """Start procedure in tray tool."""
         return
 
-    def tray_exit(self):
+    def tray_exit(self) -> None:  # noqa: PLR6301
+        """Cleanup method which is executed on tray shutdown."""
         return
 
 
 class ITrayService(ITrayAddon):
+    """Tray service Interface."""
     # Module's property
-    menu_action = None
+    menu_action: QtWidgets.QAction = None
 
     # Class properties
-    _services_submenu = None
-    _icon_failed = None
-    _icon_running = None
-    _icon_idle = None
+    _services_submenu: QtWidgets.QMenu = None
+    _icon_failed: QtWidgets.QIcon = None
+    _icon_running: QtWidgets.QIcon = None
+    _icon_idle: QtWidgets.QIcon = None
 
     @property
     @abstractmethod
-    def label(self):
+    def label(self) -> str:
         """Service label showed in menu."""
-        pass
 
-    # TODO be able to get any sort of information to show/print
+    # TODO (Illicit): be able to get any sort of information to show/print
     # @abstractmethod
     # def get_service_info(self):
     #     pass
 
     @staticmethod
-    def services_submenu(tray_menu):
+    def services_submenu(tray_menu: QtWidgets.QMenu) -> QtWidgets.QMenu:
+        """Get or create services submenu.
+
+        Returns:
+            QtWidgets.QMenu: Services submenu.
+
+        """
         if ITrayService._services_submenu is None:
             from qtpy import QtWidgets
 
@@ -304,13 +374,15 @@ class ITrayService(ITrayAddon):
         return ITrayService._services_submenu
 
     @staticmethod
-    def add_service_action(action):
+    def add_service_action(action: QtWidgets.QAction) -> None:
+        """Add service action to services submenu."""
         ITrayService._services_submenu.addAction(action)
         if not ITrayService._services_submenu.menuAction().isVisible():
             ITrayService._services_submenu.menuAction().setVisible(True)
 
     @staticmethod
-    def _load_service_icons():
+    def _load_service_icons() -> None:
+        """Load service icons."""
         from qtpy import QtGui
 
         ITrayService._failed_icon = QtGui.QIcon(
@@ -324,24 +396,43 @@ class ITrayService(ITrayAddon):
         )
 
     @staticmethod
-    def get_icon_running():
+    def get_icon_running() -> QtWidgets.QIcon:
+        """Get running icon.
+
+        Returns:
+            QtWidgets.QIcon: Returns "running" icon.
+
+        """
         if ITrayService._icon_running is None:
             ITrayService._load_service_icons()
         return ITrayService._icon_running
 
     @staticmethod
-    def get_icon_idle():
+    def get_icon_idle() -> QtWidgets.QIcon:
+        """Get idle icon.
+
+        Returns:
+            QtWidgets.QIcon: Returns "idle" icon.
+
+        """
         if ITrayService._icon_idle is None:
             ITrayService._load_service_icons()
         return ITrayService._icon_idle
 
     @staticmethod
-    def get_icon_failed():
-        if ITrayService._failed_icon is None:
-            ITrayService._load_service_icons()
-        return ITrayService._failed_icon
+    def get_icon_failed() -> QtWidgets.QIcon:
+        """Get failed icon.
 
-    def tray_menu(self, tray_menu):
+        Returns:
+            QtWidgets.QIcon: Returns "failed" icon.
+
+        """
+        if ITrayService._icon_failed is None:
+            ITrayService._load_service_icons()
+        return ITrayService._icon_failed
+
+    def tray_menu(self, tray_menu: QtWidgets.QMenu) -> None:
+        """Add service to tray menu."""
         from qtpy import QtWidgets
 
         action = QtWidgets.QAction(
@@ -354,21 +445,18 @@ class ITrayService(ITrayAddon):
 
         self.set_service_running_icon()
 
-    def set_service_running_icon(self):
+    def set_service_running_icon(self) -> None:
         """Change icon of an QAction to green circle."""
-
         if self.menu_action:
             self.menu_action.setIcon(self.get_icon_running())
 
-    def set_service_failed_icon(self):
+    def set_service_failed_icon(self) -> None:
         """Change icon of an QAction to red circle."""
-
         if self.menu_action:
             self.menu_action.setIcon(self.get_icon_failed())
 
-    def set_service_idle_icon(self):
+    def set_service_idle_icon(self) -> None:
         """Change icon of an QAction to orange circle."""
-
         if self.menu_action:
             self.menu_action.setIcon(self.get_icon_idle())
 
@@ -378,18 +466,29 @@ class IHostAddon(AYONInterface):
 
     @property
     @abstractmethod
-    def host_name(self):
+    def host_name(self) -> str:
         """Name of host which addon represents."""
 
-        pass
-
-    def get_workfile_extensions(self):
+    def get_workfile_extensions(self) -> list[str]:  # noqa: PLR6301
         """Define workfile extensions for host.
 
         Not all hosts support workfiles thus this is optional implementation.
 
         Returns:
             List[str]: Extensions used for workfiles with dot.
-        """
 
+        """
         return []
+
+
+class ITraits(AYONInterface):
+    """Interface for traits."""
+
+    @abstractmethod
+    def get_addon_traits(self) -> list[Type[TraitBase]]:
+        """Get trait classes for the addon.
+
+        Returns:
+            list[Type[TraitBase]]: Traits for the addon.
+
+        """
