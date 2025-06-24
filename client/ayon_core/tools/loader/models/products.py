@@ -12,7 +12,6 @@ from ayon_api.operations import OperationsSession
 from ayon_core.lib import NestedCacheItem
 from ayon_core.style import get_default_entity_icon_color
 from ayon_core.tools.loader.abstract import (
-    IconData,
     ProductTypeItem,
     ProductBaseTypeItem,
     ProductItem,
@@ -113,7 +112,7 @@ def product_item_from_entity(
 
     product_type_icon = product_type_item.icon
     product_base_type_icon = product_base_type_item.icon
-    product_icon: IconData = {
+    product_icon = {
         "type": "awesome-font",
         "name": "fa.file-o",
         "color": get_default_entity_icon_color(),
@@ -144,7 +143,7 @@ def product_type_item_from_data(
     # TODO implement icon implementation
     # icon = product_type_data["icon"]
     # color = product_type_data["color"]
-    icon: IconData = {
+    icon = {
         "type": "awesome-font",
         "name": "fa.folder",
         "color": "#0091B2",
@@ -165,7 +164,7 @@ def product_base_type_item_from_data(
         ProductBaseTypeDict: Product base type item.
 
     """
-    icon: IconData = {
+    icon = {
         "type": "awesome-font",
         "name": "fa.folder",
         "color": "#0091B2",
@@ -176,7 +175,7 @@ def product_base_type_item_from_data(
 
 
 def create_default_product_type_item(product_type: str) -> ProductTypeItem:
-    icon: IconData = {
+    icon = {
         "type": "awesome-font",
         "name": "fa.folder",
         "color": "#0091B2",
@@ -194,7 +193,7 @@ def create_default_product_base_type_item(
     Returns:
         ProductBaseTypeItem: Default product base type item.
     """
-    icon: IconData = {
+    icon = {
         "type": "awesome-font",
         "name": "fa.folder",
         "color": "#0091B2",
@@ -284,8 +283,13 @@ class ProductsModel:
 
         cache = self._product_base_type_items_cache[project_name]
         if not cache.is_valid:
-            product_base_types = ayon_api.get_project_product_base_types(
-                project_name)
+            product_base_types = []
+            # TODO add temp implementation here when it is actually
+            #   implemented and available on server.
+            if hasattr(ayon_api, "get_project_product_base_types"):
+                product_base_types = ayon_api.get_project_product_base_types(
+                    project_name
+                )
             cache.update_data([
                 product_base_type_item_from_data(product_base_type)
                 for product_base_type in product_base_types
