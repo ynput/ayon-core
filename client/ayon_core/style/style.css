@@ -853,10 +853,9 @@ ActionsView::icon {}
 
 ActionMenuPopup #GroupLabel {
     padding: 5px;
-    border-radius: 3px;
-    background: #1C2C40;
     color: #ffffff;
 }
+
 ActionMenuPopup #ShadowFrame {
     border-radius: 5px;
     background: rgba(12, 13, 24, 0.5);
