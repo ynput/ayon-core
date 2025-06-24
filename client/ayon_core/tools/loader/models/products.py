@@ -283,8 +283,11 @@ class ProductsModel:
 
         cache = self._product_base_type_items_cache[project_name]
         if not cache.is_valid:
-            product_base_types = ayon_api.get_project_product_base_types(
-                project_name)
+            product_base_types = []
+            if hasattr(ayon_api, "get_project_product_base_types"):
+                product_base_types = ayon_api.get_project_product_base_types(
+                    project_name
+                )
             cache.update_data([
                 product_base_type_item_from_data(product_base_type)
                 for product_base_type in product_base_types
