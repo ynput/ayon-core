@@ -150,6 +150,7 @@ class TaskTypeItem:
         )
 
 
+@dataclass
 class ProjectItem:
     """Item representing folder entity on a server.
 
@@ -160,21 +161,14 @@ class ProjectItem:
         active (Union[str, None]): Parent folder id. If 'None' then project
             is parent.
     """
-
-    def __init__(self, name, active, is_library, icon=None):
-        self.name = name
-        self.active = active
-        self.is_library = is_library
-        if icon is None:
-            icon = {
-                "type": "awesome-font",
-                "name": "fa.book" if is_library else "fa.map",
-                "color": get_default_entity_icon_color(),
-            }
-        self.icon = icon
+    name: str
+    active: bool
+    is_library: bool
+    icon: dict[str, Any]
+    is_pinned: bool = False
 
     @classmethod
-    def from_entity(cls, project_entity):
+    def from_entity(cls, project_entity: dict[str, Any]) -> "ProjectItem":
         """Creates folder item from entity.
 
         Args:
@@ -184,10 +178,16 @@ class ProjectItem:
             ProjectItem: Project item.
 
         """
+        icon = {
+            "type": "awesome-font",
+            "name": "fa.book" if project_entity["library"] else "fa.map",
+            "color": get_default_entity_icon_color(),
+        }
         return cls(
             project_entity["name"],
             project_entity["active"],
             project_entity["library"],
+            icon
         )
 
     def to_data(self):
@@ -218,16 +218,18 @@ class ProjectItem:
         return cls(**data)
 
 
-def _get_project_items_from_entitiy(projects):
+def _get_project_items_from_entitiy(
+    projects: list[dict[str, Any]]
+) -> list[ProjectItem]:
     """
 
     Args:
         projects (list[dict[str, Any]]): List of projects.
 
     Returns:
-        ProjectItem: Project item.
-    """
+        list[ProjectItem]: Project item.
 
+    """
     return [
         ProjectItem.from_entity(project)
         for project in projects
@@ -454,9 +456,20 @@ class ProjectsModel(object):
             self._projects_cache.update_data(project_items)
         return self._projects_cache.get_data()
 
-    def _query_projects(self):
+    def _query_projects(self) -> list[ProjectItem]:
         projects = ayon_api.get_projects(fields=["name", "active", "library"])
-        return _get_project_items_from_entitiy(projects)
+        user = ayon_api.get_user()
+        pinned_projects = (
+            user
+            .get("data", {})
+            .get("frontendPreferences", {})
+            .get("pinnedProjects")
+        ) or []
+        pinned_projects = set(pinned_projects)
+        project_items = _get_project_items_from_entitiy(list(projects))
+        for project in project_items:
+            project.is_pinned = project.name in pinned_projects
+        return project_items
 
     def _status_items_getter(self, project_entity):
         if not project_entity:
