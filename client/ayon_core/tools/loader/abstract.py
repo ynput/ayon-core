@@ -1,11 +1,13 @@
+"""Abstract base classes for loader tool."""
 from __future__ import annotations
+
 from abc import ABC, abstractmethod
-from typing import Iterable, Optional
+from typing import Iterable, Any, Optional
 
 from ayon_core.lib.attribute_definitions import (
     AbstractAttrDef,
-    serialize_attr_defs,
     deserialize_attr_defs,
+    serialize_attr_defs,
 )
 from ayon_core.tools.common_models import TaskItem, TagItem
 
@@ -18,7 +20,7 @@ class ProductTypeItem:
         icon (dict[str, Any]): Product type icon definition.
     """
 
-    def __init__(self, name, icon):
+    def __init__(self, name: str, icon: dict[str, Any]):
         self.name = name
         self.icon = icon
 
@@ -30,6 +32,41 @@ class ProductTypeItem:
 
     @classmethod
     def from_data(cls, data):
+        return cls(**data)
+
+
+class ProductBaseTypeItem:
+    """Item representing the product base type."""
+
+    def __init__(self, name: str, icon: dict[str, Any]):
+        """Initialize product base type item."""
+        self.name = name
+        self.icon = icon
+
+    def to_data(self) -> dict[str, Any]:
+        """Convert item to data dictionary.
+
+        Returns:
+            dict[str, Any]: Data representation of the item.
+
+        """
+        return {
+            "name": self.name,
+            "icon": self.icon,
+        }
+
+    @classmethod
+    def from_data(
+            cls, data: dict[str, Any]) -> ProductBaseTypeItem:
+        """Create item from data dictionary.
+
+        Args:
+            data (dict[str, Any]): Data to create item from.
+
+        Returns:
+            ProductBaseTypeItem: Item created from the provided data.
+
+        """
         return cls(**data)
 
 
@@ -51,35 +88,41 @@ class ProductItem:
 
     def __init__(
         self,
-        product_id,
-        product_type,
-        product_name,
-        product_icon,
-        product_type_icon,
-        product_in_scene,
-        group_name,
-        folder_id,
-        folder_label,
-        version_items,
+        product_id: str,
+        product_type: str,
+        product_base_type: str,
+        product_name: str,
+        product_icon: dict[str, Any],
+        product_type_icon: dict[str, Any],
+        product_base_type_icon: dict[str, Any],
+        group_name: str,
+        folder_id: str,
+        folder_label: str,
+        version_items: dict[str, VersionItem],
+        product_in_scene: bool,
     ):
         self.product_id = product_id
         self.product_type = product_type
+        self.product_base_type = product_base_type
         self.product_name = product_name
         self.product_icon = product_icon
         self.product_type_icon = product_type_icon
+        self.product_base_type_icon = product_base_type_icon
         self.product_in_scene = product_in_scene
         self.group_name = group_name
         self.folder_id = folder_id
         self.folder_label = folder_label
         self.version_items = version_items
 
-    def to_data(self):
+    def to_data(self) -> dict[str, Any]:
         return {
             "product_id": self.product_id,
             "product_type": self.product_type,
+            "product_base_type": self.product_base_type,
             "product_name": self.product_name,
             "product_icon": self.product_icon,
             "product_type_icon": self.product_type_icon,
+            "product_base_type_icon": self.product_base_type_icon,
             "product_in_scene": self.product_in_scene,
             "group_name": self.group_name,
             "folder_id": self.folder_id,
@@ -127,22 +170,22 @@ class VersionItem:
 
     def __init__(
         self,
-        version_id,
-        version,
-        is_hero,
-        product_id,
-        task_id,
-        thumbnail_id,
-        published_time,
-        tags,
-        author,
-        status,
-        frame_range,
-        duration,
-        handles,
-        step,
-        comment,
-        source,
+        version_id: str,
+        version: int,
+        is_hero: bool,
+        product_id: str,
+        task_id: Optional[str],
+        thumbnail_id: Optional[str],
+        published_time: Optional[str],
+        tags: Optional[list[str]],
+        author: Optional[str],
+        status: Optional[str],
+        frame_range: Optional[str],
+        duration: Optional[int],
+        handles: Optional[str],
+        step: Optional[int],
+        comment: Optional[str],
+        source: Optional[str],
     ):
         self.version_id = version_id
         self.product_id = product_id
@@ -203,7 +246,7 @@ class VersionItem:
     def __le__(self, other):
         return self.__eq__(other) or self.__lt__(other)
 
-    def to_data(self):
+    def to_data(self) -> dict[str, Any]:
         return {
             "version_id": self.version_id,
             "product_id": self.product_id,
@@ -224,7 +267,7 @@ class VersionItem:
         }
 
     @classmethod
-    def from_data(cls, data):
+    def from_data(cls, data: dict[str, Any]) -> VersionItem:
         return cls(**data)
 
 
