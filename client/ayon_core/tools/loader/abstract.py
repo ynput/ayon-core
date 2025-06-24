@@ -2,13 +2,14 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Any, List, Optional
+from typing import Iterable, Any, Optional
 
 from ayon_core.lib.attribute_definitions import (
     AbstractAttrDef,
     deserialize_attr_defs,
     serialize_attr_defs,
 )
+from ayon_core.tools.common_models import TaskItem, TagItem
 
 
 class ProductTypeItem:
@@ -16,10 +17,10 @@ class ProductTypeItem:
 
     Args:
         name (str): Product type name.
-        icon (dict[str, str]): Product type icon definition.
+        icon (dict[str, Any]): Product type icon definition.
     """
 
-    def __init__(self, name: str, icon: dict[str, str]):
+    def __init__(self, name: str, icon: dict[str, Any]):
         self.name = name
         self.icon = icon
 
@@ -37,7 +38,7 @@ class ProductTypeItem:
 class ProductBaseTypeItem:
     """Item representing the product base type."""
 
-    def __init__(self, name: str, icon: dict[str, str]):
+    def __init__(self, name: str, icon: dict[str, Any]):
         """Initialize product base type item."""
         self.name = name
         self.icon = icon
@@ -76,8 +77,8 @@ class ProductItem:
         product_id (str): Product id.
         product_type (str): Product type.
         product_name (str): Product name.
-        product_icon (dict[str, str]): Product icon definition.
-        product_type_icon (dict[str, str]): Product type icon definition.
+        product_icon (dict[str, Any]): Product icon definition.
+        product_type_icon (dict[str, Any]): Product type icon definition.
         product_in_scene (bool): Is product in scene (only when used in DCC).
         group_name (str): Group name.
         folder_id (str): Folder id.
@@ -91,9 +92,9 @@ class ProductItem:
         product_type: str,
         product_base_type: str,
         product_name: str,
-        product_icon: dict[str, str],
-        product_type_icon: dict[str, str],
-        product_base_type_icon: dict[str, str],
+        product_icon: dict[str, Any],
+        product_type_icon: dict[str, Any],
+        product_base_type_icon: dict[str, Any],
         group_name: str,
         folder_id: str,
         folder_label: str,
@@ -157,6 +158,7 @@ class VersionItem:
         published_time (Union[str, None]): Published time in format
             '%Y%m%dT%H%M%SZ'.
         status (Union[str, None]): Status name.
+        tags (Union[list[str], None]): Tags.
         author (Union[str, None]): Author.
         frame_range (Union[str, None]): Frame range.
         duration (Union[int, None]): Duration.
@@ -175,6 +177,7 @@ class VersionItem:
         task_id: Optional[str],
         thumbnail_id: Optional[str],
         published_time: Optional[str],
+        tags: Optional[list[str]],
         author: Optional[str],
         status: Optional[str],
         frame_range: Optional[str],
@@ -192,6 +195,7 @@ class VersionItem:
         self.is_hero = is_hero
         self.published_time = published_time
         self.author = author
+        self.tags = tags
         self.status = status
         self.frame_range = frame_range
         self.duration = duration
@@ -252,6 +256,7 @@ class VersionItem:
             "is_hero": self.is_hero,
             "published_time": self.published_time,
             "author": self.author,
+            "tags": self.tags,
             "status": self.status,
             "frame_range": self.frame_range,
             "duration": self.duration,
@@ -398,8 +403,8 @@ class ProductTypesFilter:
 
     Defines the filtering for product types.
     """
-    def __init__(self, product_types: List[str], is_allow_list: bool):
-        self.product_types: List[str] = product_types
+    def __init__(self, product_types: list[str], is_allow_list: bool):
+        self.product_types: list[str] = product_types
         self.is_allow_list: bool = is_allow_list
 
 
@@ -561,8 +566,21 @@ class FrontendLoaderController(_BaseLoaderController):
 
         Returns:
             list[ProjectItem]: List of project items.
-        """
 
+        """
+        pass
+
+    @abstractmethod
+    def get_project_anatomy_tags(self, project_name: str) -> list[TagItem]:
+        """Tag items defined on project anatomy.
+
+        Args:
+            project_name (str): Project name.
+
+        Returns:
+            list[TagItem]: Tag definition items.
+
+        """
         pass
 
     @abstractmethod
@@ -586,7 +604,12 @@ class FrontendLoaderController(_BaseLoaderController):
         pass
 
     @abstractmethod
-    def get_task_items(self, project_name, folder_ids, sender=None):
+    def get_task_items(
+        self,
+        project_name: str,
+        folder_ids: Iterable[str],
+        sender: Optional[str] = None,
+    ) -> list[TaskItem]:
         """Task items for folder ids.
 
         Args:
@@ -630,6 +653,21 @@ class FrontendLoaderController(_BaseLoaderController):
 
         Returns:
             dict[str, Optional[str]]: Folder labels by folder id.
+
+        """
+        pass
+
+    @abstractmethod
+    def get_available_tags_by_entity_type(
+        self, project_name: str
+    ) -> dict[str, list[str]]:
+        """Get available tags by entity type.
+
+        Args:
+            project_name (str): Project name.
+
+        Returns:
+            dict[str, list[str]]: Available tags by entity type.
 
         """
         pass
