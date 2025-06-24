@@ -470,20 +470,14 @@ class ActionMenuPopup(QtWidgets.QWidget):
 
         self._close_timer.stop()
 
-        update_position = False
         if action_id != self._current_id:
-            update_position = True
+            self.setGeometry(pos.x(), pos.y(), 1, 1)
             self._current_id = action_id
             self._update_items(action_items)
 
         # Make sure is visible
         if not self._showed:
-            update_position = True
             self.show()
-
-        if not update_position:
-            self.raise_()
-            return
 
         # Set geometry to position
         # - first make sure widget changes from '_update_items'
