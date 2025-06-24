@@ -374,6 +374,22 @@ class ActionMenuPopupModel(QtGui.QStandardItemModel):
 
 
 class ActionMenuPopup(QtWidgets.QWidget):
+    """Popup widget for group varaints.
+
+    The popup is handling most of the layout and showing of the items
+        manually.
+
+    There 4 parts:
+        1. Shadow - semi transparent black widget used as shadow.
+        2. Background - painted over the shadow with blur effect. All
+            other items are painted over.
+        3. Label - show group label and positioned manually at the top
+            of the popup.
+        4. View - View with variant action items. View is positioned
+            and resized manually according to the items in the group and then
+            animated using mask region.
+
+    """
     action_triggered = QtCore.Signal(str)
     config_requested = QtCore.Signal(str, QtCore.QPoint)
 
