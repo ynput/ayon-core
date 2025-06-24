@@ -284,6 +284,8 @@ class ProductsModel:
         cache = self._product_base_type_items_cache[project_name]
         if not cache.is_valid:
             product_base_types = []
+            # TODO add temp implementation here when it is actually
+            #   implemented and available on server.
             if hasattr(ayon_api, "get_project_product_base_types"):
                 product_base_types = ayon_api.get_project_product_base_types(
                     project_name
