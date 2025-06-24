@@ -494,11 +494,12 @@ class ActionMenuPopup(QtWidgets.QWidget):
         items_count, start_size, target_size = self._get_size_hint()
         self._model.fill_to_count(items_count)
 
-        label_y_offset = self._get_label_y_offset()
+        label_sh = self._group_label.sizeHint()
+        label_width, label_height = label_sh.width(), label_sh.height()
         window = self.screen()
         window_geo = window.geometry()
         _target_x = pos.x() + target_size.width()
-        _target_y = pos.y() + target_size.height() + label_y_offset
+        _target_y = pos.y() + target_size.height() + label_height
         right_to_left = (
             _target_x > window_geo.right()
             or _target_y > window_geo.bottom()
@@ -508,8 +509,7 @@ class ActionMenuPopup(QtWidgets.QWidget):
         viewport_offset = self._view.viewport().geometry().topLeft()
         pos_x = pos.x() - (sh_l + viewport_offset.x() + 2)
         pos_y = pos.y() - (sh_t + viewport_offset.y() + 1)
-        bg_x = 0
-        bg_y = label_y_offset
+        bg_x = bg_y = 0
         sort_order = QtCore.Qt.DescendingOrder
         if right_to_left:
             sort_order = QtCore.Qt.AscendingOrder
@@ -517,10 +517,18 @@ class ActionMenuPopup(QtWidgets.QWidget):
             pos_x -= size_diff.width()
             pos_y -= size_diff.height()
             bg_x = size_diff.width()
+            bg_y = size_diff.height() - label_height
 
         bg_geo = QtCore.QRect(
-            bg_x, bg_y, start_size.width(), start_size.height()
+            bg_x, bg_y,
+            start_size.width(), start_size.height() + label_height
         )
+
+        label_pos_x = sh_l
+        label_pos_y = bg_y + sh_t
+        if label_width < start_size.width():
+            label_pos_x = bg_x + (start_size.width() - label_width) // 2
+
         if self._expand_anim.state() == QtCore.QAbstractAnimation.Running:
             self._expand_anim.stop()
 
@@ -529,20 +537,18 @@ class ActionMenuPopup(QtWidgets.QWidget):
         self._proxy_model.sort(0, sort_order)
         self.setUpdatesEnabled(False)
         self._view.setMask(
-            bg_geo.adjusted(
-                sh_l, sh_t - label_y_offset,
-                -sh_r, -(sh_b + label_y_offset)
-            )
+            bg_geo.adjusted(sh_l, sh_t, -sh_r, -sh_b)
         )
         self._view.setMinimumWidth(target_size.width())
         self._view.setMaximumWidth(target_size.width())
         self._view.setMinimumHeight(target_size.height())
-        self._view.move(0, label_y_offset)
+        self._view.move(0, label_height)
         self.setGeometry(
-            pos_x, pos_y - label_y_offset,
-            target_size.width(), target_size.height() + label_y_offset
+            pos_x, pos_y - label_height,
+            target_size.width(), target_size.height() + label_height
         )
         self._bg_frame.setGeometry(bg_geo)
+        self._group_label.move(label_pos_x, label_pos_y)
         self.setUpdatesEnabled(True)
 
         self._expand_anim.updateCurrentTime(0)
@@ -562,11 +568,6 @@ class ActionMenuPopup(QtWidgets.QWidget):
         action_id = index.data(ACTION_ID_ROLE)
         self.action_triggered.emit(action_id)
 
-    def _get_label_y_offset(self):
-        height = self._group_label.sizeHint().height()
-        # Is over view but does not cover the settings icon
-        return height - 5
-
     def _on_expand_anim(self, value):
         if not self._showed:
             if self._expand_anim.state() == QtCore.QAbstractAnimation.Running:
@@ -575,37 +576,33 @@ class ActionMenuPopup(QtWidgets.QWidget):
 
         bg_geo = self._bg_frame.geometry()
 
-        label_y_offset = self._get_label_y_offset()
+        label_sh = self._group_label.sizeHint()
+        label_width, label_height = label_sh.width(), label_sh.height()
         if self._right_to_left:
             popup_geo = self.geometry()
             diff_size = popup_geo.size() - value
             pos = QtCore.QPoint(
-                diff_size.width(), diff_size.height()
+                diff_size.width(), diff_size.height() - label_height
             )
 
             bg_geo.moveTopLeft(pos)
 
         bg_geo.setWidth(value.width())
-        bg_geo.setHeight(value.height())
+        bg_geo.setHeight(value.height() + label_height)
 
         label_width = self._group_label.sizeHint().width()
-        label_pos_x = 0
         bgeo_tl = bg_geo.topLeft()
-        label_pos_y = bgeo_tl.y() - label_y_offset
+        sh_l, sh_t, sh_r, sh_b = SHADOW_FRAME_MARGINS
+
+        label_pos_x = sh_l
         if label_width < value.width():
             label_pos_x = bgeo_tl.x() + (value.width() - label_width) // 2
 
-        label_pos = QtCore.QPoint(label_pos_x, label_pos_y)
-
-        sh_l, sh_t, sh_r, sh_b = SHADOW_FRAME_MARGINS
         self.setUpdatesEnabled(False)
         self._view.setMask(
-            bg_geo.adjusted(
-                sh_l, sh_t - label_y_offset,
-                -sh_r, -(sh_b + label_y_offset)
-            )
+            bg_geo.adjusted(sh_l, sh_t, -sh_r, -sh_b)
         )
-        self._group_label.move(label_pos)
+        self._group_label.move(label_pos_x, sh_t)
         self._bg_frame.setGeometry(bg_geo)
         self.setUpdatesEnabled(True)
 
