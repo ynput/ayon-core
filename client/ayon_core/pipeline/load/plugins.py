@@ -127,14 +127,16 @@ class LoaderPlugin(list):
         """
 
         plugin_repre_names = cls.get_representations()
-        plugin_product_types = cls.product_types
-        plugin_product_base_types = cls.product_base_types
 
         # If the product base type isn't defined on the loader plugin,
         # then we will use the product types.
-        plugin_product_filter = plugin_product_base_types
+        plugin_product_filter = cls.product_base_types
         if plugin_product_filter is None:
-            plugin_product_filter = plugin_product_types
+            plugin_product_filter = cls.product_types
+
+        if plugin_product_filter:
+            plugin_product_filter = set(plugin_product_filter)
+
         repre_entity = context.get("representation")
         product_entity = context["product"]
 
@@ -164,7 +166,6 @@ class LoaderPlugin(list):
         if not cls.has_valid_extension(repre_entity):
             return False
 
-        plugin_product_types = set(plugin_product_types)
         product_type = product_entity.get("productType")
         product_base_type = product_entity.get("productBaseType")
 
@@ -174,9 +175,6 @@ class LoaderPlugin(list):
         # then we will use the product type.
         if product_filter is None:
             product_filter = product_type
-
-        plugin_product_filter = (
-                plugin_product_base_types or plugin_product_types)
 
         # If wildcard is used in product types or base types,
         # then we will consider the loader compatible with any product type.
