@@ -1598,6 +1598,10 @@ class ExtractReview(pyblish.api.InstancePlugin):
                 "FFprobe couldn't read resolution from input file: \"{}\""
             ).format(full_input_path_single_file))
 
+        # collect source values to be potentially used in burnins later
+        new_repre["source_resolution_width"] = input_width
+        new_repre["source_resolution_height"] = input_height
+
         # NOTE Setting only one of `width` or `height` is not allowed
         # - settings value can't have None but has value of 0
         output_width = output_def["width"] or output_width or None
