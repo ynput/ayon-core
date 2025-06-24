@@ -325,7 +325,7 @@ class ActionMenuPopupModel(QtGui.QStandardItemModel):
 
             item = QtGui.QStandardItem()
             item.setFlags(QtCore.Qt.ItemIsEnabled)
-            item.setData(action_item.full_label, QtCore.Qt.DisplayRole)
+            item.setData(action_item.variant_label, QtCore.Qt.DisplayRole)
             item.setData(action_item.full_label, QtCore.Qt.ToolTipRole)
             item.setData(icon, QtCore.Qt.DecorationRole)
             item.setData(action_item.identifier, ACTION_ID_ROLE)
