@@ -402,7 +402,7 @@ class ActionMenuPopup(QtWidgets.QWidget):
         view = ActionsView(self)
         view.setGridSize(QtCore.QSize(75, 80))
         view.setIconSize(QtCore.QSize(32, 32))
-        view.move(QtCore.QPoint(sh_l, sh_t))
+        view.move(sh_l, sh_t)
 
         view.stackUnder(group_label)
 
@@ -542,7 +542,7 @@ class ActionMenuPopup(QtWidgets.QWidget):
         self._view.setMinimumWidth(target_size.width())
         self._view.setMaximumWidth(target_size.width())
         self._view.setMinimumHeight(target_size.height())
-        self._view.move(0, label_height)
+        self._view.move(sh_l, sh_t + label_height)
         self.setGeometry(
             pos_x, pos_y - label_height,
             target_size.width(), target_size.height() + label_height
