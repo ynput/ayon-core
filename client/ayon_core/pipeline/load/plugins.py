@@ -142,8 +142,8 @@ class LoaderPlugin(list):
         # then loader is not compatible with any context.
         if (
             not plugin_repre_names
-            and not plugin_product_filter
-            and not cls.extensions
+            or not plugin_product_filter
+            or not cls.extensions
         ):
             return False
 
