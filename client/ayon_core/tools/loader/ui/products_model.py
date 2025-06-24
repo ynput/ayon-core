@@ -42,6 +42,8 @@ SYNC_ACTIVE_SITE_AVAILABILITY = QtCore.Qt.UserRole + 31
 SYNC_REMOTE_SITE_AVAILABILITY = QtCore.Qt.UserRole + 32
 
 STATUS_NAME_FILTER_ROLE = QtCore.Qt.UserRole + 33
+TASK_TAGS_FILTER_ROLE = QtCore.Qt.UserRole + 34
+VERSION_TAGS_FILTER_ROLE = QtCore.Qt.UserRole + 35
 
 
 class ProductsModel(QtGui.QStandardItemModel):
@@ -134,6 +136,7 @@ class ProductsModel(QtGui.QStandardItemModel):
         self._last_folder_ids = []
         self._last_project_statuses = {}
         self._last_status_icons_by_name = {}
+        self._last_task_tags_by_task_id = {}
 
     def get_product_item_indexes(self):
         return [
@@ -173,6 +176,17 @@ class ProductsModel(QtGui.QStandardItemModel):
             self._last_project_name,
             self._last_folder_ids
         )
+
+    def get_task_tags_by_id(self, task_id):
+        return self._last_task_tags_by_task_id.get(task_id, set())
+
+    def get_version_items_by_product_id(self, product_id: str):
+        product_item = self._product_items_by_id.get(product_id)
+        if product_item is None:
+            return None
+        version_items = list(product_item.version_items.values())
+        version_items.sort(reverse=True)
+        return version_items
 
     def flags(self, index):
         # Make the version column editable
@@ -228,9 +242,9 @@ class ProductsModel(QtGui.QStandardItemModel):
             product_item = self._product_items_by_id.get(product_id)
             if product_item is None:
                 return None
-            product_items = list(product_item.version_items.values())
-            product_items.sort(reverse=True)
-            return product_items
+            version_items = list(product_item.version_items.values())
+            version_items.sort(reverse=True)
+            return version_items
 
         if role == QtCore.Qt.EditRole:
             return None
@@ -426,6 +440,16 @@ class ProductsModel(QtGui.QStandardItemModel):
             version_item.status
             for version_item in product_item.version_items.values()
         }
+        version_tags = set()
+        task_tags = set()
+        for version_item in product_item.version_items.values():
+            version_tags |= set(version_item.tags)
+            _task_tags = self._last_task_tags_by_task_id.get(
+                version_item.task_id
+            )
+            if _task_tags:
+                task_tags |= set(_task_tags)
+
         if model_item is None:
             product_id = product_item.product_id
             model_item = QtGui.QStandardItem(product_item.product_name)
@@ -447,6 +471,8 @@ class ProductsModel(QtGui.QStandardItemModel):
             self._items_by_id[product_id] = model_item
 
         model_item.setData("|".join(statuses), STATUS_NAME_FILTER_ROLE)
+        model_item.setData("|".join(version_tags), VERSION_TAGS_FILTER_ROLE)
+        model_item.setData("|".join(task_tags), TASK_TAGS_FILTER_ROLE)
         model_item.setData(product_item.folder_label, FOLDER_LABEL_ROLE)
         in_scene = 1 if product_item.product_in_scene else 0
         model_item.setData(in_scene, PRODUCT_IN_SCENE_ROLE)
@@ -477,6 +503,14 @@ class ProductsModel(QtGui.QStandardItemModel):
         }
         self._last_status_icons_by_name = {}
 
+        task_items = self._controller.get_task_items(
+            project_name, folder_ids, sender=PRODUCTS_MODEL_SENDER_NAME
+        )
+        self._last_task_tags_by_task_id = {
+            task_item.task_id: task_item.tags
+            for task_item in task_items
+        }
+
         active_site_icon_def = self._controller.get_active_site_icon_def(
             project_name
         )
@@ -491,6 +525,7 @@ class ProductsModel(QtGui.QStandardItemModel):
             folder_ids,
             sender=PRODUCTS_MODEL_SENDER_NAME
         )
+
         product_items_by_id = {
             product_item.product_id: product_item
             for product_item in product_items

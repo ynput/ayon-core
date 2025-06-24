@@ -27,6 +27,8 @@ from .products_model import (
     VERSION_STATUS_ICON_ROLE,
     VERSION_THUMBNAIL_ID_ROLE,
     STATUS_NAME_FILTER_ROLE,
+    VERSION_TAGS_FILTER_ROLE,
+    TASK_TAGS_FILTER_ROLE,
 )
 from .products_delegates import (
     VersionDelegate,
@@ -42,6 +44,8 @@ class ProductsProxyModel(RecursiveSortFilterProxyModel):
 
         self._product_type_filters = None
         self._statuses_filter = None
+        self._version_tags_filter = None
+        self._task_tags_filter = None
         self._task_ids_filter = None
         self._ascending_sort = True
 
@@ -68,6 +72,18 @@ class ProductsProxyModel(RecursiveSortFilterProxyModel):
         self._statuses_filter = statuses_filter
         self.invalidateFilter()
 
+    def set_version_tags_filter(self, tags):
+        if self._version_tags_filter == tags:
+            return
+        self._version_tags_filter = tags
+        self.invalidateFilter()
+
+    def set_task_tags_filter(self, tags):
+        if self._task_tags_filter == tags:
+            return
+        self._task_tags_filter = tags
+        self.invalidateFilter()
+
     def filterAcceptsRow(self, source_row, source_parent):
         source_model = self.sourceModel()
         index = source_model.index(source_row, 0, source_parent)
@@ -81,6 +97,16 @@ class ProductsProxyModel(RecursiveSortFilterProxyModel):
 
         if not self._accept_row_by_role_value(
             index, self._statuses_filter, STATUS_NAME_FILTER_ROLE
+        ):
+            return False
+
+        if not self._accept_row_by_role_value(
+            index, self._version_tags_filter, VERSION_TAGS_FILTER_ROLE
+        ):
+            return False
+
+        if not self._accept_row_by_role_value(
+            index, self._task_tags_filter, TASK_TAGS_FILTER_ROLE
         ):
             return False
 
@@ -103,10 +129,11 @@ class ProductsProxyModel(RecursiveSortFilterProxyModel):
         if not filter_value:
             return False
 
-        status_s = index.data(role)
-        for status in status_s.split("|"):
-            if status in filter_value:
-                return True
+        value_s = index.data(role)
+        if value_s:
+            for value in value_s.split("|"):
+                if value in filter_value:
+                    return True
         return False
 
     def lessThan(self, left, right):
@@ -297,6 +324,14 @@ class ProductsWidget(QtWidgets.QWidget):
         """
         self._version_delegate.set_statuses_filter(status_names)
         self._products_proxy_model.set_statuses_filter(status_names)
+
+    def set_version_tags_filter(self, version_tags):
+        self._version_delegate.set_version_tags_filter(version_tags)
+        self._products_proxy_model.set_version_tags_filter(version_tags)
+
+    def set_task_tags_filter(self, task_tags):
+        self._version_delegate.set_task_tags_filter(task_tags)
+        self._products_proxy_model.set_task_tags_filter(task_tags)
 
     def set_product_type_filter(self, product_type_filters):
         """
