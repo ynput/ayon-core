@@ -1599,8 +1599,10 @@ class ExtractReview(pyblish.api.InstancePlugin):
             ).format(full_input_path_single_file))
 
         # collect source values to be potentially used in burnins later
-        new_repre["source_resolution_width"] = input_width
-        new_repre["source_resolution_height"] = input_height
+        if "source_resolution_width" not in new_repre:
+            new_repre["source_resolution_width"] = input_width
+        if "source_resolution_height" not in new_repre:
+            new_repre["source_resolution_height"] = input_height
 
         # NOTE Setting only one of `width` or `height` is not allowed
         # - settings value can't have None but has value of 0
