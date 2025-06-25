@@ -1,21 +1,69 @@
+from __future__ import annotations
+from abc import ABC, abstractmethod
+from collections.abc import Callable
+import typing
+from typing import Optional
+
 from qtpy import QtWidgets, QtCore, QtGui
 
-from ayon_core.tools.common_models import PROJECTS_MODEL_SENDER
+from ayon_core.tools.common_models import (
+    ProjectItem,
+    PROJECTS_MODEL_SENDER,
+)
 
+from .views import ListView
 from .lib import RefreshThread, get_qt_icon
+
+if typing.TYPE_CHECKING:
+    from typing import TypedDict
+
+    class ExpectedProjectSelectionData(TypedDict):
+        name: Optional[str]
+        current: Optional[str]
+        selected: Optional[str]
+
+    class ExpectedSelectionData(TypedDict):
+        project: ExpectedProjectSelectionData
+
 
 PROJECT_NAME_ROLE = QtCore.Qt.UserRole + 1
 PROJECT_IS_ACTIVE_ROLE = QtCore.Qt.UserRole + 2
 PROJECT_IS_LIBRARY_ROLE = QtCore.Qt.UserRole + 3
 PROJECT_IS_CURRENT_ROLE = QtCore.Qt.UserRole + 4
-LIBRARY_PROJECT_SEPARATOR_ROLE = QtCore.Qt.UserRole + 5
+PROJECT_IS_PINNED_ROLE = QtCore.Qt.UserRole + 5
+LIBRARY_PROJECT_SEPARATOR_ROLE = QtCore.Qt.UserRole + 6
+
+
+class AbstractProjectController(ABC):
+    @abstractmethod
+    def register_event_callback(self, topic: str, callback: Callable):
+        pass
+
+    @abstractmethod
+    def get_project_items(
+        self, sender: Optional[str] = None
+    ) -> list[str]:
+        pass
+
+    @abstractmethod
+    def set_selected_project(self, project_name: str):
+        pass
+
+    # These are required only if widget should handle expected selection
+    @abstractmethod
+    def expected_project_selected(self, project_name: str):
+        pass
+
+    @abstractmethod
+    def get_expected_selection_data(self) -> "ExpectedSelectionData":
+        pass
 
 
 class ProjectsQtModel(QtGui.QStandardItemModel):
     refreshed = QtCore.Signal()
 
-    def __init__(self, controller):
-        super(ProjectsQtModel, self).__init__()
+    def __init__(self, controller: AbstractProjectController):
+        super().__init__()
         self._controller = controller
 
         self._project_items = {}
@@ -213,7 +261,7 @@ class ProjectsQtModel(QtGui.QStandardItemModel):
         else:
             self.refreshed.emit()
 
-    def _fill_items(self, project_items):
+    def _fill_items(self, project_items: list[ProjectItem]):
         new_project_names = {
             project_item.name
             for project_item in project_items
@@ -252,6 +300,7 @@ class ProjectsQtModel(QtGui.QStandardItemModel):
             item.setData(project_name, PROJECT_NAME_ROLE)
             item.setData(project_item.active, PROJECT_IS_ACTIVE_ROLE)
             item.setData(project_item.is_library, PROJECT_IS_LIBRARY_ROLE)
+            item.setData(project_item.is_pinned, PROJECT_IS_PINNED_ROLE)
             is_current = project_name == self._current_context_project
             item.setData(is_current, PROJECT_IS_CURRENT_ROLE)
             self._project_items[project_name] = item
@@ -279,7 +328,7 @@ class ProjectsQtModel(QtGui.QStandardItemModel):
 
 class ProjectSortFilterProxy(QtCore.QSortFilterProxyModel):
     def __init__(self, *args, **kwargs):
-        super(ProjectSortFilterProxy, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         self._filter_inactive = True
         self._filter_standard = False
         self._filter_library = False
@@ -323,26 +372,51 @@ class ProjectSortFilterProxy(QtCore.QSortFilterProxyModel):
             return False
 
         # Library separator should be before library projects
-        result = self._type_sort(left_index, right_index)
-        if result is not None:
-            return result
+        l_is_library = left_index.data(PROJECT_IS_LIBRARY_ROLE)
+        r_is_library = right_index.data(PROJECT_IS_LIBRARY_ROLE)
+        l_is_sep = left_index.data(LIBRARY_PROJECT_SEPARATOR_ROLE)
+        r_is_sep = right_index.data(LIBRARY_PROJECT_SEPARATOR_ROLE)
+        if l_is_sep:
+            return bool(r_is_library)
 
-        if left_index.data(PROJECT_NAME_ROLE) is None:
+        if r_is_sep:
+            return not l_is_library
+
+        # Non project items should be on top
+        l_project_name = left_index.data(PROJECT_NAME_ROLE)
+        r_project_name = right_index.data(PROJECT_NAME_ROLE)
+        if l_project_name is None:
             return True
-
-        if right_index.data(PROJECT_NAME_ROLE) is None:
+        if r_project_name is None:
             return False
 
         left_is_active = left_index.data(PROJECT_IS_ACTIVE_ROLE)
         right_is_active = right_index.data(PROJECT_IS_ACTIVE_ROLE)
-        if right_is_active == left_is_active:
-            return super(ProjectSortFilterProxy, self).lessThan(
-                left_index, right_index
-            )
+        if right_is_active != left_is_active:
+            return left_is_active
 
-        if left_is_active:
+        l_is_pinned = left_index.data(PROJECT_IS_PINNED_ROLE)
+        r_is_pinned = right_index.data(PROJECT_IS_PINNED_ROLE)
+        if l_is_pinned is True and not r_is_pinned:
             return True
-        return False
+
+        if r_is_pinned is True and not l_is_pinned:
+            return False
+
+        # Move inactive projects to the end
+        left_is_active = left_index.data(PROJECT_IS_ACTIVE_ROLE)
+        right_is_active = right_index.data(PROJECT_IS_ACTIVE_ROLE)
+        if right_is_active != left_is_active:
+            return left_is_active
+
+        # Move library projects after standard projects
+        if (
+            l_is_library is not None
+            and r_is_library is not None
+            and l_is_library != r_is_library
+        ):
+            return r_is_library
+        return super().lessThan(left_index, right_index)
 
     def filterAcceptsRow(self, source_row, source_parent):
         index = self.sourceModel().index(source_row, 0, source_parent)
@@ -350,20 +424,20 @@ class ProjectSortFilterProxy(QtCore.QSortFilterProxyModel):
         if project_name is None:
             return True
 
-        string_pattern = self.filterRegularExpression().pattern()
-        if string_pattern:
-            return string_pattern.lower() in project_name.lower()
-
-        # Current project keep always visible
-        default = super(ProjectSortFilterProxy, self).filterAcceptsRow(
-            source_row, source_parent
-        )
-        if not default:
-            return default
-
         # Make sure current project is visible
         if index.data(PROJECT_IS_CURRENT_ROLE):
             return True
+
+        default = super().filterAcceptsRow(source_row, source_parent)
+        if not default:
+            return default
+
+        string_pattern = self.filterRegularExpression().pattern()
+        if (
+            string_pattern
+            and string_pattern.lower() not in project_name.lower()
+        ):
+            return False
 
         if (
             self._filter_inactive
@@ -415,15 +489,153 @@ class ProjectSortFilterProxy(QtCore.QSortFilterProxyModel):
         self.invalidate()
 
 
+class ProjectsDelegate(QtWidgets.QStyledItemDelegate):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._pin_icon = None
+
+    def paint(self, painter, option, index):
+        is_pinned = index.data(PROJECT_IS_PINNED_ROLE)
+        if not is_pinned:
+            super().paint(painter, option, index)
+            return
+        opt = QtWidgets.QStyleOptionViewItem(option)
+        self.initStyleOption(opt, index)
+        widget = option.widget
+        if widget is None:
+            style = QtWidgets.QApplication.style()
+        else:
+            style = widget.style()
+        # CE_ItemViewItem
+        proxy = style.proxy()
+        painter.save()
+        painter.setClipRect(option.rect)
+        decor_rect = proxy.subElementRect(
+            QtWidgets.QStyle.SE_ItemViewItemDecoration, opt, widget
+        )
+        text_rect = proxy.subElementRect(
+            QtWidgets.QStyle.SE_ItemViewItemText, opt, widget
+        )
+        proxy.drawPrimitive(
+            QtWidgets.QStyle.PE_PanelItemViewItem, opt, painter, widget
+        )
+        mode = QtGui.QIcon.Normal
+        if not opt.state & QtWidgets.QStyle.State_Enabled:
+            mode = QtGui.QIcon.Disabled
+        elif opt.state & QtWidgets.QStyle.State_Selected:
+            mode = QtGui.QIcon.Selected
+        state = QtGui.QIcon.Off
+        if opt.state & QtWidgets.QStyle.State_Open:
+            state = QtGui.QIcon.On
+
+        # Draw project icon
+        opt.icon.paint(
+            painter, decor_rect, opt.decorationAlignment, mode, state
+        )
+
+        # Draw pin icon
+        if index.data(PROJECT_IS_PINNED_ROLE):
+            pin_icon = self._get_pin_icon()
+            pin_rect = QtCore.QRect(decor_rect)
+            diff = option.rect.width() - pin_rect.width()
+            pin_rect.moveLeft(diff)
+            pin_icon.paint(
+                painter, pin_rect, opt.decorationAlignment, mode, state
+            )
+
+        # Draw text
+        if opt.text:
+            if not opt.state & QtWidgets.QStyle.State_Enabled:
+                cg = QtGui.QPalette.Disabled
+            elif not (opt.state & QtWidgets.QStyle.State_Active):
+                cg = QtGui.QPalette.Inactive
+            else:
+                cg = QtGui.QPalette.Normal
+
+            if opt.state & QtWidgets.QStyle.State_Selected:
+                painter.setPen(
+                    opt.palette.color(cg, QtGui.QPalette.HighlightedText)
+                )
+            else:
+                painter.setPen(opt.palette.color(cg, QtGui.QPalette.Text))
+
+            if opt.state & QtWidgets.QStyle.State_Editing:
+                painter.setPen(opt.palette.color(cg, QtGui.QPalette.Text))
+                painter.drawRect(text_rect.adjusted(0, 0, -1, -1))
+
+            margin = proxy.pixelMetric(
+                QtWidgets.QStyle.PM_FocusFrameHMargin, None, widget
+            ) + 1
+            text_rect.adjust(margin, 0, -margin, 0)
+            # NOTE skipping some steps e.g. word wrapping and elided
+            #   text (adding '...' when too long).
+            painter.drawText(
+                text_rect,
+                opt.displayAlignment,
+                opt.text
+            )
+
+        # Draw focus rect
+        if opt.state & QtWidgets.QStyle.State_HasFocus:
+            focus_opt = QtWidgets.QStyleOptionFocusRect()
+            focus_opt.state = option.state
+            focus_opt.direction = option.direction
+            focus_opt.rect = option.rect
+            focus_opt.fontMetrics = option.fontMetrics
+            focus_opt.palette = option.palette
+
+            focus_opt.rect = style.subElementRect(
+                QtWidgets.QCommonStyle.SE_ItemViewItemFocusRect,
+                option,
+                option.widget
+            )
+            focus_opt.state |= (
+                QtWidgets.QStyle.State_KeyboardFocusChange
+                | QtWidgets.QStyle.State_Item
+            )
+            focus_opt.backgroundColor = option.palette.color(
+                (
+                    QtGui.QPalette.Normal
+                    if option.state & QtWidgets.QStyle.State_Enabled
+                    else QtGui.QPalette.Disabled
+                ),
+                (
+                    QtGui.QPalette.Highlight
+                    if option.state & QtWidgets.QStyle.State_Selected
+                    else QtGui.QPalette.Window
+                )
+            )
+            style.drawPrimitive(
+                QtWidgets.QCommonStyle.PE_FrameFocusRect,
+                focus_opt,
+                painter,
+                option.widget
+            )
+        painter.restore()
+
+    def _get_pin_icon(self):
+        if self._pin_icon is None:
+            self._pin_icon = get_qt_icon({
+                "type": "material-symbols",
+                "name": "keep",
+            })
+        return self._pin_icon
+
+
 class ProjectsCombobox(QtWidgets.QWidget):
     refreshed = QtCore.Signal()
-    selection_changed = QtCore.Signal()
+    selection_changed = QtCore.Signal(str)
 
-    def __init__(self, controller, parent, handle_expected_selection=False):
-        super(ProjectsCombobox, self).__init__(parent)
+    def __init__(
+        self,
+        controller: AbstractProjectController,
+        parent: QtWidgets.QWidget,
+        handle_expected_selection: bool = False,
+    ):
+        super().__init__(parent)
 
         projects_combobox = QtWidgets.QComboBox(self)
-        combobox_delegate = QtWidgets.QStyledItemDelegate(projects_combobox)
+        combobox_delegate = ProjectsDelegate(projects_combobox)
         projects_combobox.setItemDelegate(combobox_delegate)
         projects_model = ProjectsQtModel(controller)
         projects_proxy_model = ProjectSortFilterProxy()
@@ -468,7 +680,7 @@ class ProjectsCombobox(QtWidgets.QWidget):
     def refresh(self):
         self._projects_model.refresh()
 
-    def set_selection(self, project_name):
+    def set_selection(self, project_name: str):
         """Set selection to a given project.
 
         Selection change is ignored if project is not found.
@@ -480,8 +692,8 @@ class ProjectsCombobox(QtWidgets.QWidget):
             bool: True if selection was changed, False otherwise. NOTE:
                 Selection may not be changed if project is not found, or if
                 project is already selected.
-        """
 
+        """
         idx = self._projects_combobox.findData(
             project_name, PROJECT_NAME_ROLE)
         if idx < 0:
@@ -491,7 +703,7 @@ class ProjectsCombobox(QtWidgets.QWidget):
             return True
         return False
 
-    def set_listen_to_selection_change(self, listen):
+    def set_listen_to_selection_change(self, listen: bool):
         """Disable listening to changes of the selection.
 
         Because combobox is triggering selection change when it's model
@@ -517,11 +729,11 @@ class ProjectsCombobox(QtWidgets.QWidget):
             return None
         return self._projects_combobox.itemData(idx, PROJECT_NAME_ROLE)
 
-    def set_current_context_project(self, project_name):
+    def set_current_context_project(self, project_name: str):
         self._projects_model.set_current_context_project(project_name)
         self._projects_proxy_model.invalidateFilter()
 
-    def set_select_item_visible(self, visible):
+    def set_select_item_visible(self, visible: bool):
         self._select_item_visible = visible
         self._projects_model.set_select_item_visible(visible)
         self._update_select_item_visiblity()
@@ -559,7 +771,7 @@ class ProjectsCombobox(QtWidgets.QWidget):
             idx, PROJECT_NAME_ROLE)
         self._update_select_item_visiblity(project_name=project_name)
         self._controller.set_selected_project(project_name)
-        self.selection_changed.emit()
+        self.selection_changed.emit(project_name or "")
 
     def _on_model_refresh(self):
         self._projects_proxy_model.sort(0)
@@ -614,5 +826,119 @@ class ProjectsCombobox(QtWidgets.QWidget):
 
 
 class ProjectsWidget(QtWidgets.QWidget):
-    # TODO implement
-    pass
+    """Projects widget showing projects in list.
+
+    Warnings:
+        This widget does not support expected selection handling.
+
+    """
+    refreshed = QtCore.Signal()
+    selection_changed = QtCore.Signal(str)
+    double_clicked = QtCore.Signal()
+
+    def __init__(
+        self,
+        controller: AbstractProjectController,
+        parent: Optional[QtWidgets.QWidget] = None
+    ):
+        super().__init__(parent=parent)
+
+        projects_view = ListView(parent=self)
+        projects_view.setResizeMode(QtWidgets.QListView.Adjust)
+        projects_view.setVerticalScrollMode(
+            QtWidgets.QAbstractItemView.ScrollPerPixel
+        )
+        projects_view.setAlternatingRowColors(False)
+        projects_view.setWrapping(False)
+        projects_view.setWordWrap(False)
+        projects_view.setSpacing(0)
+        projects_delegate = ProjectsDelegate(projects_view)
+        projects_view.setItemDelegate(projects_delegate)
+        projects_view.activate_flick_charm()
+        projects_view.set_deselectable(True)
+
+        projects_model = ProjectsQtModel(controller)
+        projects_proxy_model = ProjectSortFilterProxy()
+        projects_proxy_model.setSourceModel(projects_model)
+        projects_view.setModel(projects_proxy_model)
+
+        main_layout = QtWidgets.QVBoxLayout(self)
+        main_layout.setContentsMargins(0, 0, 0, 0)
+        main_layout.addWidget(projects_view, 1)
+
+        projects_view.selectionModel().selectionChanged.connect(
+            self._on_selection_change
+        )
+        projects_view.double_clicked.connect(self.double_clicked)
+        projects_model.refreshed.connect(self._on_model_refresh)
+
+        controller.register_event_callback(
+            "projects.refresh.finished",
+            self._on_projects_refresh_finished
+        )
+
+        self._controller = controller
+
+        self._projects_view = projects_view
+        self._projects_model = projects_model
+        self._projects_proxy_model = projects_proxy_model
+        self._projects_delegate = projects_delegate
+
+    def refresh(self):
+        self._projects_model.refresh()
+
+    def has_content(self) -> bool:
+        """Model has at least one project.
+
+        Returns:
+             bool: True if there is any content in the model.
+
+        """
+        return self._projects_model.has_content()
+
+    def set_name_filter(self, text: str):
+        self._projects_proxy_model.setFilterFixedString(text)
+
+    def get_selected_project(self) -> Optional[str]:
+        selection_model = self._projects_view.selectionModel()
+        for index in selection_model.selectedIndexes():
+            project_name = index.data(PROJECT_NAME_ROLE)
+            if project_name:
+                return project_name
+        return None
+
+    def set_selected_project(self, project_name: Optional[str]):
+        if project_name is None:
+            self._projects_view.clearSelection()
+            self._projects_view.setCurrentIndex(QtCore.QModelIndex())
+            return
+
+        index = self._projects_model.get_index_by_project_name(project_name)
+        if not index.isValid():
+            return
+        proxy_index = self._projects_proxy_model.mapFromSource(index)
+        if proxy_index.isValid():
+            selection_model = self._projects_view.selectionModel()
+            selection_model.select(
+                proxy_index,
+                QtCore.QItemSelectionModel.ClearAndSelect
+            )
+
+    def _on_model_refresh(self):
+        self._projects_proxy_model.sort(0)
+        self._projects_proxy_model.invalidateFilter()
+        self.refreshed.emit()
+
+    def _on_selection_change(self, new_selection, _old_selection):
+        project_name = None
+        for index in new_selection.indexes():
+            name = index.data(PROJECT_NAME_ROLE)
+            if name:
+                project_name = name
+                break
+        self.selection_changed.emit(project_name or "")
+        self._controller.set_selected_project(project_name)
+
+    def _on_projects_refresh_finished(self, event):
+        if event["sender"] != PROJECTS_MODEL_SENDER:
+            self._projects_model.refresh()

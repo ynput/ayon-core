@@ -348,8 +348,6 @@ class ScreenMarquee(QtCore.QObject):
         #     QtGui.QPainter.Antialiasing
         #     | QtGui.QPainter.SmoothPixmapTransform
         # )
-        # if hasattr(QtGui.QPainter, "HighQualityAntialiasing"):
-        #     render_hints |= QtGui.QPainter.HighQualityAntialiasing
         # pix_painter.setRenderHints(render_hints)
         # for item in screen_pixes:
         #     (screen_pix, offset) = item

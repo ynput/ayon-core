@@ -1,24 +1,34 @@
+"""Products model for loader tools."""
+from __future__ import annotations
 import collections
 import contextlib
+from typing import TYPE_CHECKING, Iterable, Optional
 
 import arrow
 import ayon_api
 from ayon_api.operations import OperationsSession
 
+
 from ayon_core.lib import NestedCacheItem
 from ayon_core.style import get_default_entity_icon_color
 from ayon_core.tools.loader.abstract import (
     ProductTypeItem,
+    ProductBaseTypeItem,
     ProductItem,
     VersionItem,
     RepreItem,
 )
+
+if TYPE_CHECKING:
+    from ayon_api.typing import ProductBaseTypeDict, ProductDict, VersionDict
+
 
 PRODUCTS_MODEL_SENDER = "products.model"
 
 
 def version_item_from_entity(version):
     version_attribs = version["attrib"]
+    tags = version["tags"]
     frame_start = version_attribs.get("frameStart")
     frame_end = version_attribs.get("frameEnd")
     handle_start = version_attribs.get("handleStart")
@@ -59,6 +69,7 @@ def version_item_from_entity(version):
         thumbnail_id=version["thumbnailId"],
         published_time=published_time,
         author=author,
+        tags=tags,
         status=version["status"],
         frame_range=frame_range,
         duration=duration,
@@ -70,9 +81,10 @@ def version_item_from_entity(version):
 
 
 def product_item_from_entity(
-    product_entity,
+    product_entity: ProductDict,
     version_entities,
-    product_type_items_by_name,
+    product_type_items_by_name: dict[str, ProductTypeItem],
+    product_base_type_items_by_name: dict[str, ProductBaseTypeItem],
     folder_label,
     product_in_scene,
 ):
@@ -88,8 +100,20 @@ def product_item_from_entity(
         # Cache the item for future use
         product_type_items_by_name[product_type] = product_type_item
 
-    product_type_icon = product_type_item.icon
+    product_base_type = product_entity.get("productBaseType")
+    product_base_type_item = product_base_type_items_by_name.get(
+        product_base_type)
+    # Same as for product type item above. Not sure if this is still needed
+    # though.
+    if product_base_type_item is None:
+        product_base_type_item = create_default_product_base_type_item(
+            product_base_type)
+        # Cache the item for future use
+        product_base_type_items_by_name[product_base_type] = (
+            product_base_type_item)
 
+    product_type_icon = product_type_item.icon
+    product_base_type_icon = product_base_type_item.icon
     product_icon = {
         "type": "awesome-font",
         "name": "fa.file-o",
@@ -103,9 +127,11 @@ def product_item_from_entity(
     return ProductItem(
         product_id=product_entity["id"],
         product_type=product_type,
+        product_base_type=product_base_type,
         product_name=product_entity["name"],
         product_icon=product_icon,
         product_type_icon=product_type_icon,
+        product_base_type_icon=product_base_type_icon,
         product_in_scene=product_in_scene,
         group_name=group,
         folder_id=product_entity["folderId"],
@@ -114,7 +140,8 @@ def product_item_from_entity(
     )
 
 
-def product_type_item_from_data(product_type_data):
+def product_type_item_from_data(
+        product_type_data: ProductDict) -> ProductTypeItem:
     # TODO implement icon implementation
     # icon = product_type_data["icon"]
     # color = product_type_data["color"]
@@ -127,7 +154,29 @@ def product_type_item_from_data(product_type_data):
     return ProductTypeItem(product_type_data["name"], icon)
 
 
-def create_default_product_type_item(product_type):
+def product_base_type_item_from_data(
+        product_base_type_data: ProductBaseTypeDict
+) -> ProductBaseTypeItem:
+    """Create product base type item from data.
+
+    Args:
+        product_base_type_data (ProductBaseTypeDict): Product base type data.
+
+    Returns:
+        ProductBaseTypeDict: Product base type item.
+
+    """
+    icon = {
+        "type": "awesome-font",
+        "name": "fa.folder",
+        "color": "#0091B2",
+    }
+    return ProductBaseTypeItem(
+        name=product_base_type_data["name"],
+        icon=icon)
+
+
+def create_default_product_type_item(product_type: str) -> ProductTypeItem:
     icon = {
         "type": "awesome-font",
         "name": "fa.folder",
@@ -136,10 +185,28 @@ def create_default_product_type_item(product_type):
     return ProductTypeItem(product_type, icon)
 
 
+def create_default_product_base_type_item(
+        product_base_type: str) -> ProductBaseTypeItem:
+    """Create default product base type item.
+
+    Args:
+        product_base_type (str): Product base type name.
+
+    Returns:
+        ProductBaseTypeItem: Default product base type item.
+    """
+    icon = {
+        "type": "awesome-font",
+        "name": "fa.folder",
+        "color": "#0091B2",
+    }
+    return ProductBaseTypeItem(product_base_type, icon)
+
+
 class ProductsModel:
     """Model for products, version and representation.
 
-    All of the entities are product based. This model prepares data for UI
+    All the entities are product based. This model prepares data for UI
     and caches it for faster access.
 
     Note:
@@ -160,6 +227,8 @@ class ProductsModel:
 
         # Cache helpers
         self._product_type_items_cache = NestedCacheItem(
+            levels=1, default_factory=list, lifetime=self.lifetime)
+        self._product_base_type_items_cache = NestedCacheItem(
             levels=1, default_factory=list, lifetime=self.lifetime)
         self._product_items_cache = NestedCacheItem(
             levels=2, default_factory=dict, lifetime=self.lifetime)
@@ -196,6 +265,36 @@ class ProductsModel:
             cache.update_data([
                 product_type_item_from_data(product_type)
                 for product_type in product_types
+            ])
+        return cache.get_data()
+
+    def get_product_base_type_items(
+            self,
+            project_name: Optional[str]) -> list[ProductBaseTypeItem]:
+        """Product base type items for the project.
+
+        Args:
+            project_name (optional, str): Project name.
+
+        Returns:
+            list[ProductBaseTypeDict]: Product base type items.
+
+        """
+        if not project_name:
+            return []
+
+        cache = self._product_base_type_items_cache[project_name]
+        if not cache.is_valid:
+            product_base_types = []
+            # TODO add temp implementation here when it is actually
+            #   implemented and available on server.
+            if hasattr(ayon_api, "get_project_product_base_types"):
+                product_base_types = ayon_api.get_project_product_base_types(
+                    project_name
+                )
+            cache.update_data([
+                product_base_type_item_from_data(product_base_type)
+                for product_base_type in product_base_types
             ])
         return cache.get_data()
 
@@ -449,17 +548,23 @@ class ProductsModel:
 
     def _create_product_items(
         self,
-        project_name,
-        products,
-        versions,
+        project_name: str,
+        products: Iterable[ProductDict],
+        versions: Iterable[VersionDict],
         folder_items=None,
         product_type_items=None,
+        product_base_type_items: Optional[Iterable[ProductBaseTypeItem]] = None
     ):
         if folder_items is None:
             folder_items = self._controller.get_folder_items(project_name)
 
         if product_type_items is None:
             product_type_items = self.get_product_type_items(project_name)
+
+        if product_base_type_items is None:
+            product_base_type_items = self.get_product_base_type_items(
+                project_name
+            )
 
         loaded_product_ids = self._controller.get_loaded_product_ids()
 
@@ -470,7 +575,13 @@ class ProductsModel:
             product_type_item.name: product_type_item
             for product_type_item in product_type_items
         }
-        output = {}
+
+        product_base_type_items_by_name: dict[str, ProductBaseTypeItem] = {
+            product_base_type_item.name: product_base_type_item
+            for product_base_type_item in product_base_type_items
+        }
+
+        output: dict[str, ProductItem] = {}
         for product in products:
             product_id = product["id"]
             folder_id = product["folderId"]
@@ -484,6 +595,7 @@ class ProductsModel:
                 product,
                 versions,
                 product_type_items_by_name,
+                product_base_type_items_by_name,
                 folder_item.label,
                 product_id in loaded_product_ids,
             )

@@ -58,7 +58,7 @@ class ExtractOIIOTranscode(publish.Extractor):
     optional = True
 
     # Supported extensions
-    supported_exts = ["exr", "jpg", "jpeg", "png", "dpx"]
+    supported_exts = {"exr", "jpg", "jpeg", "png", "dpx"}
 
     # Configurable by Settings
     profiles = None
@@ -280,10 +280,14 @@ class ExtractOIIOTranscode(publish.Extractor):
 
             collection = collections[0]
             frames = list(collection.indexes)
-            if collection.holes():
+            if collection.holes().indexes:
                 return files_to_convert
 
-            frame_str = "{}-{}#".format(frames[0], frames[-1])
+            # Get the padding from the collection
+            # This is the number of digits used in the frame numbers
+            padding = collection.padding
+
+            frame_str = "{}-{}%0{}d".format(frames[0], frames[-1], padding)
             file_name = "{}{}{}".format(collection.head, frame_str,
                                         collection.tail)
 
