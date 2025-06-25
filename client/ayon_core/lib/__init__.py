@@ -62,6 +62,7 @@ from .execute import (
     run_subprocess,
     run_detached_process,
     run_ayon_launcher_process,
+    run_detached_ayon_launcher_process,
     path_to_subprocess_arg,
     CREATE_NO_WINDOW
 )
@@ -98,7 +99,6 @@ from .profiles_filtering import (
 from .transcoding import (
     get_transcode_temp_directory,
     should_convert_for_ffmpeg,
-    convert_for_ffmpeg,
     convert_input_paths_for_ffmpeg,
     get_ffprobe_data,
     get_ffprobe_streams,
@@ -132,6 +132,7 @@ from .ayon_info import (
     is_staging_enabled,
     is_dev_mode_enabled,
     is_in_tests,
+    get_settings_variant,
 )
 
 terminal = Terminal
@@ -161,6 +162,7 @@ __all__ = [
     "run_subprocess",
     "run_detached_process",
     "run_ayon_launcher_process",
+    "run_detached_ayon_launcher_process",
     "path_to_subprocess_arg",
     "CREATE_NO_WINDOW",
 
@@ -198,7 +200,6 @@ __all__ = [
 
     "get_transcode_temp_directory",
     "should_convert_for_ffmpeg",
-    "convert_for_ffmpeg",
     "convert_input_paths_for_ffmpeg",
     "get_ffprobe_data",
     "get_ffprobe_streams",
@@ -242,4 +243,5 @@ __all__ = [
     "is_staging_enabled",
     "is_dev_mode_enabled",
     "is_in_tests",
+    "get_settings_variant",
 ]

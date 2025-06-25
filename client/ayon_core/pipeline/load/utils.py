@@ -288,7 +288,12 @@ def get_representation_context(project_name, representation):
 
 
 def load_with_repre_context(
-    Loader, repre_context, namespace=None, name=None, options=None, **kwargs
+    Loader,
+    repre_context,
+    namespace=None,
+    name=None,
+    options=None,
+    **kwargs
 ):
 
     # Ensure the Loader is compatible for the representation
@@ -316,17 +321,16 @@ def load_with_repre_context(
     )
 
     loader = Loader()
-
-    # Backwards compatibility: Originally the loader's __init__ required the
-    # representation context to set `fname` attribute to the filename to load
-    # Deprecated - to be removed in OpenPype 3.16.6 or 3.17.0.
-    loader._fname = get_representation_path_from_context(repre_context)
-
     return loader.load(repre_context, name, namespace, options)
 
 
 def load_with_product_context(
-    Loader, product_context, namespace=None, name=None, options=None, **kwargs
+    Loader,
+    product_context,
+    namespace=None,
+    name=None,
+    options=None,
+    **kwargs
 ):
 
     # Ensure options is a dictionary when no explicit options provided
@@ -349,7 +353,12 @@ def load_with_product_context(
 
 
 def load_with_product_contexts(
-    Loader, product_contexts, namespace=None, name=None, options=None, **kwargs
+    Loader,
+    product_contexts,
+    namespace=None,
+    name=None,
+    options=None,
+    **kwargs
 ):
 
     # Ensure options is a dictionary when no explicit options provided
@@ -559,15 +568,20 @@ def update_container(container, version=-1):
     return Loader().update(container, context)
 
 
-def switch_container(container, representation, loader_plugin=None):
+def switch_container(
+    container,
+    representation,
+    loader_plugin=None,
+):
     """Switch a container to representation
 
     Args:
         container (dict): container information
         representation (dict): representation entity
+        loader_plugin (LoaderPlugin)
 
     Returns:
-        function call
+        return from function call
     """
     from ayon_core.pipeline import get_current_project_name
 
