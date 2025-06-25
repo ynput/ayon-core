@@ -319,6 +319,10 @@ class CoreSettings(BaseSettingsModel):
         "{}",
         widget="textarea",
         title="Project folder structure",
+        description=(
+            "Defines project folders to create on disk"
+            " for 'Create project folders' action."
+        ),
         section="---"
     )
     project_environments: str = SettingsField(
