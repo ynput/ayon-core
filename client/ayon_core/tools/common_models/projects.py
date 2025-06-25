@@ -1,4 +1,5 @@
 from __future__ import annotations
+
 import contextlib
 from abc import ABC, abstractmethod
 from typing import Dict, Any
@@ -72,6 +73,13 @@ class StatusItem:
             icon=status_data["icon"],
             state=status_data["state"],
         )
+
+
+@dataclass
+class TagItem:
+    """Tag definition set on project anatomy."""
+    name: str
+    color: str
 
 
 class FolderTypeItem:
@@ -291,6 +299,22 @@ class ProjectsModel(object):
                 entity = ayon_api.get_project(project_name)
             project_cache.update_data(entity)
         return project_cache.get_data()
+
+    def get_project_anatomy_tags(self, project_name: str) -> list[TagItem]:
+        """Get project anatomy tags.
+
+        Args:
+            project_name (str): Project name.
+
+        Returns:
+            list[TagItem]: Tag definitions.
+
+        """
+        project_entity = self.get_project_entity(project_name)
+        return [
+            TagItem(tag["name"], tag["color"])
+            for tag in project_entity["tags"]
+        ]
 
     def get_project_status_items(self, project_name, sender):
         """Get project status items.
