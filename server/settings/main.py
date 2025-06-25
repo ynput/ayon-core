@@ -106,7 +106,7 @@ class FallbackProductModel(BaseSettingsModel):
     fallback_type: str = SettingsField(
         title="Fallback config type",
         enum_resolver=_fallback_ocio_config_profile_types,
-        conditionalEnum=True,
+        conditional_enum=True,
         default="builtin_path",
         description=(
             "Type of config which needs to be used in case published "
@@ -162,7 +162,7 @@ class CoreImageIOConfigProfilesModel(BaseSettingsModel):
     type: str = SettingsField(
         title="Profile type",
         enum_resolver=_ocio_config_profile_types,
-        conditionalEnum=True,
+        conditional_enum=True,
         default="builtin_path",
         section="---",
     )
