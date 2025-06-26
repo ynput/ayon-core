@@ -319,12 +319,8 @@ class HostBase(ABC):
             than using environment variables.
 
         Args:
-            project_entity (dict[str, Any]): Project entity.
-            folder_entity (dict[str, Any]): Folder entity of new context.
-            task_entity (dict[str, Any]): Task entity of new context.
-            reason (Optional[str]): Reason why change happened. Currently
-                known reasons are that workfile is being opened or saved.
-            anatomy (Anatomy): Project anatomy.
+            context_change_data (ContextChangeData): Context change related
+                data.
 
         """
         project_name = self.get_current_project_name()
