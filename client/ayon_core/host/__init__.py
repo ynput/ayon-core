@@ -1,3 +1,4 @@
+from .constants import ContextChangeReason
 from .host import (
     HostBase,
 )
@@ -15,6 +16,8 @@ from .dirmap import HostDirmap
 
 
 __all__ = (
+    "ContextChangeReason",
+
     "HostBase",
 
     "IWorkfileHost",
