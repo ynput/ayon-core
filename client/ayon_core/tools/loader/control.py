@@ -13,6 +13,7 @@ from ayon_core.tools.common_models import (
     ProjectsModel,
     HierarchyModel,
     ThumbnailsModel,
+    TagItem,
 )
 
 from .abstract import (
@@ -222,6 +223,16 @@ class LoaderController(BackendLoaderController, FrontendLoaderController):
                 label = folder_item.label
             output[folder_id] = label
         return output
+
+    def get_available_tags_by_entity_type(
+        self, project_name: str
+    ) -> dict[str, list[str]]:
+        return self._hierarchy_model.get_available_tags_by_entity_type(
+            project_name
+        )
+
+    def get_project_anatomy_tags(self, project_name: str) -> list[TagItem]:
+        return self._projects_model.get_project_anatomy_tags(project_name)
 
     def get_product_items(self, project_name, folder_ids, sender=None):
         return self._products_model.get_product_items(
