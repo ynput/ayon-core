@@ -473,8 +473,8 @@ def copy_and_open_workfile_representation(
         version (Optional[int]): Workfile version.
         comment (optional[str]): Workfile comment.
         description (Optional[str]): Workfile description.
-        prepared_data (Optional[CopyPublishedWorkfileOptionalData]): Prepared data
-            for speed enhancements.
+        prepared_data (Optional[CopyPublishedWorkfileOptionalData]): Prepared
+            data for speed enhancements.
 
     """
     from ayon_core.pipeline.context_tools import registered_host

@@ -182,7 +182,6 @@ class ListPublishedWorkfilesOptionalData(_WorkfileOptionalData):
             version_entities = list(ayon_api.get_versions(
                 project_name,
                 product_ids=product_ids,
-                task_ids=task_filters,
                 fields={"id", "author", "taskId"},
             ))
 
@@ -443,7 +442,6 @@ def get_list_published_workfiles_context(
         version_entities,
         repre_entities,
     ) = prepared_data.get_entities(project_name, folder_id)
-
 
     return ListPublishedWorkfilesContext(
         data_version=prepared_data.data_version,
@@ -1598,8 +1596,8 @@ class IWorkfileHost:
         Can be overridden to implement host specific logic.
 
         Args:
-            save_workfile_context (SaveWorkfileContext): Workfile path with target
-                folder and task context.
+            save_workfile_context (SaveWorkfileContext): Workfile path with
+                target folder and task context.
 
         """
         pass
@@ -1614,8 +1612,8 @@ class IWorkfileHost:
         Can be overridden to implement host specific logic.
 
         Args:
-            save_workfile_context (SaveWorkfileContext): Workfile path with target
-                folder and task context.
+            save_workfile_context (SaveWorkfileContext): Workfile path with
+                target folder and task context.
 
         """
         workdir = os.path.dirname(save_workfile_context.dst_path)
