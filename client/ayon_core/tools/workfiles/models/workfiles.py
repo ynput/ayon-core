@@ -19,6 +19,14 @@ from ayon_core.host import (
     WorkfileInfo,
     PublishedWorkfileInfo,
 )
+from ayon_core.host.interfaces import (
+    OpenWorkfileOptionalData,
+    ListWorkfilesOptionalData,
+    ListPublishedWorkfilesOptionalData,
+    SaveWorkfileOptionalData,
+    CopyWorkfileOptionalData,
+    CopyPublishedWorkfileOptionalData,
+)
 from ayon_core.pipeline.template_data import (
     get_template_data,
     get_task_template_data,
@@ -142,6 +150,7 @@ class WorkfilesModel:
         filepath = os.path.join(workdir, filename)
         rootless_path = f"{rootless_workdir}/{filename}"
         project_name = self._controller.get_current_project_name()
+        project_entity = self._controller.get_project_entity(project_name)
         folder_entity = self._controller.get_folder_entity(
             project_name, folder_id
         )
@@ -149,6 +158,13 @@ class WorkfilesModel:
             project_name, task_id
         )
 
+        prepared_data = SaveWorkfileOptionalData(
+            project_entity=project_entity,
+            anatomy=self._controller.project_anatomy,
+            project_settings=self._controller.project_settings,
+            rootless_path=rootless_path,
+            workfile_entities=self.get_workfile_entities(task_id),
+        )
         failed = False
         try:
             save_current_workfile_to(
@@ -158,13 +174,7 @@ class WorkfilesModel:
                 version=version,
                 comment=comment,
                 description=description,
-                rootless_path=rootless_path,
-                workfile_entities=self.get_workfile_entities(task_id),
-                project_entity=self._controller.get_project_entity(
-                    project_name
-                ),
-                project_settings=self._controller.project_settings,
-                anatomy=self._controller.project_anatomy,
+                prepared_data=prepared_data,
             )
             self._update_workfile_info(
                 task_id, rootless_path, description
@@ -198,37 +208,38 @@ class WorkfilesModel:
         self._emit_event("copy_representation.started")
 
         project_name = self._project_name
+        project_entity = self._controller.get_project_entity(project_name)
         folder_entity = self._controller.get_folder_entity(
-            self._project_name, folder_id
+            project_name, folder_id
         )
         task_entity = self._controller.get_task_entity(
-            self._project_name, task_id
+            project_name, task_id
         )
         repre_entity = self._repre_by_id.get(representation_id)
         dst_filepath = os.path.join(workdir, filename)
         rootless_path = f"{rootless_workdir}/{filename}"
 
+        prepared_data = CopyPublishedWorkfileOptionalData(
+            project_entity=project_entity,
+            anatomy=self._controller.project_anatomy,
+            project_settings=self._controller.project_settings,
+            rootless_path=rootless_path,
+            representation_path=representation_filepath,
+            workfile_entities=self.get_workfile_entities(task_id),
+            src_anatomy=self._controller.project_anatomy,
+        )
         failed = False
-        workfile_entities = self.get_workfile_entities(task_id)
         try:
             copy_and_open_workfile_representation(
                 project_name,
-                representation_id,
+                repre_entity,
                 dst_filepath,
                 folder_entity,
                 task_entity,
                 version=version,
                 comment=comment,
                 description=description,
-                rootless_path=rootless_path,
-                representation_entity=repre_entity,
-                representation_path=representation_filepath,
-                workfile_entities=workfile_entities,
-                project_entity=self._controller.get_project_entity(
-                    project_name
-                ),
-                project_settings=self._controller.project_settings,
-                anatomy=self._controller.project_anatomy,
+                prepared_data=prepared_data,
             )
             self._update_workfile_info(
                 task_id, rootless_path, description
@@ -271,6 +282,14 @@ class WorkfilesModel:
         workfile_entities = self.get_workfile_entities(task_id)
         rootless_path = f"{rootless_workdir}/{filename}"
         workfile_path = os.path.join(workdir, filename)
+
+        prepared_data = CopyWorkfileOptionalData(
+            project_entity=project_entity,
+            project_settings=self._controller.project_settings,
+            anatomy=self._controller.project_anatomy,
+            rootless_path=rootless_path,
+            workfile_entities=workfile_entities,
+        )
         failed = False
         try:
             copy_and_open_workfile(
@@ -281,11 +300,7 @@ class WorkfilesModel:
                 version=version,
                 comment=comment,
                 description=description,
-                rootless_path=rootless_path,
-                workfile_entities=workfile_entities,
-                project_entity=project_entity,
-                project_settings=self._controller.project_settings,
-                anatomy=self._controller.project_anatomy,
+                prepared_data=prepared_data,
             )
 
         except Exception:
@@ -571,12 +586,12 @@ class WorkfilesModel:
             project_name = self._project_name
             anatomy = self._controller.project_anatomy
 
-            product_entities = ayon_api.get_products(
+            product_entities = list(ayon_api.get_products(
                 project_name,
                 folder_ids={folder_id},
                 product_types={"workfile"},
                 fields={"id", "name"}
-            )
+            ))
 
             version_entities = []
             product_ids = {product["id"] for product in product_entities}
@@ -599,13 +614,20 @@ class WorkfilesModel:
                 repre_entity["id"]: repre_entity
                 for repre_entity in repre_entities
             })
+            project_entity = self._controller.get_project_entity(project_name)
 
+            prepared_data = ListPublishedWorkfilesOptionalData(
+                project_entity=project_entity,
+                anatomy=anatomy,
+                project_settings=self._controller.project_settings,
+                product_entities=product_entities,
+                version_entities=version_entities,
+                repre_entities=repre_entities,
+            )
             cache.update_data(self._host.list_published_workfiles(
                 project_name,
                 folder_id,
-                anatomy=anatomy,
-                version_entities=version_entities,
-                repre_entities=repre_entities,
+                prepared_data=prepared_data,
             ))
 
         items = cache.get_data()
@@ -638,13 +660,21 @@ class WorkfilesModel:
     def _open_workfile(self, folder_id: str, task_id: str, filepath: str):
         # TODO move to workfiles pipeline
         project_name = self._project_name
+        project_entity = self._controller.get_project_entity(project_name)
         folder_entity = self._controller.get_folder_entity(
             project_name, folder_id
         )
         task_entity = self._controller.get_task_entity(
             project_name, task_id
         )
-        open_workfile(filepath, folder_entity, task_entity)
+        prepared_data = OpenWorkfileOptionalData(
+            project_entity=project_entity,
+            anatomy=self._controller.project_anatomy,
+            project_settings=self._controller.project_settings,
+        )
+        open_workfile(
+            filepath, folder_entity, task_entity, prepared_data=prepared_data
+        )
         self._update_current_context(
             folder_id, folder_entity["path"], task_entity["name"]
         )
@@ -739,15 +769,19 @@ class WorkfilesModel:
         fill_data = self._prepare_fill_data(folder_id, task_id)
         template_key = self._get_template_key(fill_data)
 
+        prepared_data = ListWorkfilesOptionalData(
+            project_entity=project_entity,
+            anatomy=anatomy,
+            project_settings=project_settings,
+            template_key=template_key,
+            workfile_entities=workfile_entities,
+        )
+
         items = self._host.list_workfiles(
             self._project_name,
             folder_entity,
             task_entity,
-            project_entity=project_entity,
-            anatomy=anatomy,
-            template_key=template_key,
-            project_settings=project_settings,
-            workfile_entities=workfile_entities,
+            prepared_data=prepared_data,
         )
         cache.update_data(items)
 

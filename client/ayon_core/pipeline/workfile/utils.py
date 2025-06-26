@@ -10,6 +10,12 @@ from ayon_api.operations import OperationsSession
 
 from ayon_core.lib import filter_profiles, get_ayon_username
 from ayon_core.settings import get_project_settings
+from ayon_core.host.interfaces import (
+    SaveWorkfileOptionalData,
+    OpenWorkfileOptionalData,
+    CopyWorkfileOptionalData,
+    CopyPublishedWorkfileOptionalData,
+)
 
 from .path_resolving import get_workfile_template_key
 
@@ -303,9 +309,8 @@ def open_workfile(
     filepath: str,
     folder_entity: dict[str, Any],
     task_entity: dict[str, Any],
-    project_entity: Optional[dict[str, Any]] = None,
-    project_settings: Optional[dict[str, Any]] = None,
-    anatomy: Optional["Anatomy"] = None,
+    *,
+    prepared_data: Optional[OpenWorkfileOptionalData] = None,
 ):
     from ayon_core.pipeline.context_tools import registered_host
 
@@ -315,9 +320,7 @@ def open_workfile(
         filepath,
         folder_entity,
         task_entity,
-        project_entity=project_entity,
-        project_settings=project_settings,
-        anatomy=anatomy,
+        prepared_data=prepared_data,
     )
 
 
@@ -329,11 +332,7 @@ def save_current_workfile_to(
     version: Optional[int] = None,
     comment: Optional[str] = None,
     description: Optional[str] = None,
-    rootless_path: Optional[str] = None,
-    workfile_entities: Optional[list[dict[str, Any]]] = None,
-    project_entity: Optional[dict[str, Any]] = None,
-    project_settings: Optional[dict[str, Any]] = None,
-    anatomy: Optional["Anatomy"] = None,
+    prepared_data: Optional[SaveWorkfileOptionalData] = None,
 ) -> None:
     """Save current workfile to new location or context.
 
@@ -344,16 +343,8 @@ def save_current_workfile_to(
         version (Optional[int]): Workfile version.
         comment (optional[str]): Workfile comment.
         description (Optional[str]): Workfile description.
-        rootless_path (Optional[str]): Rootless path of the workfile. Is
-            calculated if not passed in.
-        workfile_entities (Optional[list[dict[str, Any]]]): Pre-fetched
-            workfile entities related to the task.
-        project_entity (Optional[dict[str, Any]]): Project entity used for
-            rootless path calculation.
-        project_settings (Optional[dict[str, Any]]): Project settings used for
-            rootless path calculation.
-        anatomy (Optional[Anatomy]): Project anatomy used for rootless
-            path calculation.
+        prepared_data (Optional[SaveWorkfileOptionalData]): Prepared data
+            for speed enhancements.
 
     """
     from ayon_core.pipeline.context_tools import registered_host
@@ -366,11 +357,7 @@ def save_current_workfile_to(
         version=version,
         comment=comment,
         description=description,
-        rootless_path=rootless_path,
-        workfile_entities=workfile_entities,
-        project_entity=project_entity,
-        project_settings=project_settings,
-        anatomy=anatomy,
+        prepared_data=prepared_data,
     )
 
 
@@ -380,11 +367,7 @@ def save_workfile_with_current_context(
     version: Optional[int] = None,
     comment: Optional[str] = None,
     description: Optional[str] = None,
-    rootless_path: Optional[str] = None,
-    workfile_entities: Optional[list[dict[str, Any]]] = None,
-    project_entity: Optional[dict[str, Any]] = None,
-    project_settings: Optional[dict[str, Any]] = None,
-    anatomy: Optional["Anatomy"] = None,
+    prepared_data: Optional[SaveWorkfileOptionalData] = None,
 ) -> None:
     """Save current workfile to new location using current context.
 
@@ -396,16 +379,8 @@ def save_workfile_with_current_context(
         version (Optional[int]): Workfile version.
         comment (optional[str]): Workfile comment.
         description (Optional[str]): Workfile description.
-        rootless_path (Optional[str]): Rootless path of the workfile. Is
-            calculated if not passed in.
-        workfile_entities (Optional[list[dict[str, Any]]]): Pre-fetched
-            workfile entities related to the task.
-        project_entity (Optional[dict[str, Any]]): Project entity used for
-            rootless path calculation.
-        project_settings (Optional[dict[str, Any]]): Project settings used for
-            rootless path calculation.
-        anatomy (Optional[Anatomy]): Project anatomy used for rootless
-            path calculation.
+        prepared_data (Optional[SaveWorkfileOptionalData]): Prepared data
+            for speed enhancements.
 
     """
     from ayon_core.pipeline.context_tools import registered_host
@@ -430,11 +405,7 @@ def save_workfile_with_current_context(
         version=version,
         comment=comment,
         description=description,
-        rootless_path=rootless_path,
-        workfile_entities=workfile_entities,
-        project_entity=project_entity,
-        project_settings=project_settings,
-        anatomy=anatomy,
+        prepared_data=prepared_data,
     )
 
 
@@ -447,11 +418,7 @@ def copy_and_open_workfile(
     version: Optional[int] = None,
     comment: Optional[str] = None,
     description: Optional[str] = None,
-    rootless_path: Optional[str] = None,
-    workfile_entities: Optional[list[dict[str, Any]]] = None,
-    project_entity: Optional[dict[str, Any]] = None,
-    project_settings: Optional[dict[str, Any]] = None,
-    anatomy: Optional["Anatomy"] = None,
+    prepared_data: Optional[CopyWorkfileOptionalData] = None,
 ) -> None:
     """Copy workfile to new location and open it.
 
@@ -463,16 +430,8 @@ def copy_and_open_workfile(
         version (Optional[int]): Workfile version.
         comment (optional[str]): Workfile comment.
         description (Optional[str]): Workfile description.
-        rootless_path (Optional[str]): Rootless path of the workfile. Is
-            calculated if not passed in.
-        workfile_entities (Optional[list[dict[str, Any]]]): Pre-fetched
-            workfile entities related to the task.
-        project_entity (Optional[dict[str, Any]]): Project entity used for
-            rootless path calculation.
-        project_settings (Optional[dict[str, Any]]): Project settings used for
-            rootless path calculation.
-        anatomy (Optional[Anatomy]): Project anatomy used for rootless
-            path calculation.
+        prepared_data (Optional[CopyWorkfileOptionalData]): Prepared data
+            for speed enhancements.
 
     """
     from ayon_core.pipeline.context_tools import registered_host
@@ -486,18 +445,14 @@ def copy_and_open_workfile(
         version=version,
         comment=comment,
         description=description,
-        rootless_path=rootless_path,
-        workfile_entities=workfile_entities,
-        project_entity=project_entity,
-        project_settings=project_settings,
-        anatomy=anatomy,
         open_workfile=True,
+        prepared_data=prepared_data,
     )
 
 
 def copy_and_open_workfile_representation(
     src_project_name: str,
-    representation_id: str,
+    representation_entity: dict[str, Any],
     workfile_path: str,
     folder_entity: dict[str, Any],
     task_entity: dict[str, Any],
@@ -505,49 +460,24 @@ def copy_and_open_workfile_representation(
     version: Optional[int] = None,
     comment: Optional[str] = None,
     description: Optional[str] = None,
-    rootless_path: Optional[str] = None,
-    representation_entity: Optional[dict[str, Any]] = None,
-    representation_path: Optional[str] = None,
-    workfile_entities: Optional[list[dict[str, Any]]] = None,
-    project_entity: Optional[dict[str, Any]] = None,
-    project_settings: Optional[dict[str, Any]] = None,
-    anatomy: Optional["Anatomy"] = None,
-    src_anatomy: Optional["Anatomy"] = None,
+    prepared_data: Optional[CopyPublishedWorkfileOptionalData] = None,
 ) -> None:
     """Copy workfile to new location and open it.
 
     Args:
         src_project_name (str): Project name where representation is stored.
-        representation_id (str): Source representation id.
+        representation_entity (dict[str, Any]): Representation entity.
         workfile_path (str): Destination workfile path.
         folder_entity (dict[str, Any]): Target folder entity.
         task_entity (dict[str, Any]): Target task entity.
         version (Optional[int]): Workfile version.
         comment (optional[str]): Workfile comment.
         description (Optional[str]): Workfile description.
-        rootless_path (Optional[str]): Rootless path of the workfile. Is
-            calculated if not passed in.
-        representation_entity (Optional[dict[str, Any]]): Representation
-            entity. If not provided, it will be fetched from the server.
-        representation_path (Optional[str]): Path to the representation.
-            Calculated if not provided.
-        workfile_entities (Optional[list[dict[str, Any]]]): Pre-fetched
-            workfile entities related to the task.
-        project_entity (Optional[dict[str, Any]]): Project entity used for
-            rootless path calculation.
-        project_settings (Optional[dict[str, Any]]): Project settings used for
-            rootless path calculation.
-        anatomy (Optional[Anatomy]): Project anatomy used for rootless
-            path calculation.
+        prepared_data (Optional[CopyPublishedWorkfileOptionalData]): Prepared data
+            for speed enhancements.
 
     """
     from ayon_core.pipeline.context_tools import registered_host
-
-    if representation_entity is None:
-        representation_entity = ayon_api.get_representation_by_id(
-            src_project_name,
-            representation_id,
-        )
 
     host = registered_host()
     host.copy_workfile_representation(
@@ -559,14 +489,8 @@ def copy_and_open_workfile_representation(
         version=version,
         comment=comment,
         description=description,
-        rootless_path=rootless_path,
-        workfile_entities=workfile_entities,
-        project_settings=project_settings,
-        project_entity=project_entity,
-        anatomy=anatomy,
-        src_anatomy=src_anatomy,
-        src_representation_path=representation_path,
         open_workfile=open_workfile,
+        prepared_data=prepared_data,
     )
 
 

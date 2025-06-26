@@ -14,6 +14,7 @@ import ayon_api
 import arrow
 
 from ayon_core.lib import emit_event
+from ayon_core.settings import get_project_settings
 from ayon_core.host.constants import ContextChangeReason
 
 if typing.TYPE_CHECKING:
@@ -40,27 +41,558 @@ def deprecated(reason):
     return decorator
 
 
+# Wrappers for optional arguments that might change in future
+class _WorkfileOptionalData:
+    """Base class for optional data used in workfile operations."""
+    def __init__(
+        self,
+        *,
+        project_entity: Optional[dict[str, Any]] = None,
+        anatomy: Optional["Anatomy"] = None,
+        project_settings: Optional[dict[str, Any]] = None,
+        **kwargs
+    ):
+        if kwargs:
+            cls_name = self.__class__.__name__
+            keys = ", ".join(['"{}"'.format(k) for k in kwargs.keys()])
+            warnings.warn(
+                f"Unknown keywords passed to {cls_name}: {keys}",
+            )
+
+        self.project_entity = project_entity
+        self.anatomy = anatomy
+        self.project_settings = project_settings
+
+    def get_project_data(
+        self, project_name: str
+    ) -> tuple[dict[str, Any], "Anatomy", dict[str, Any]]:
+        from ayon_core.pipeline import Anatomy
+
+        project_entity = self.project_entity
+        anatomy = self.anatomy
+        project_settings = self.project_settings
+
+        if project_entity is None:
+            project_entity = ayon_api.get_project(project_name)
+
+        if anatomy is None:
+            anatomy = Anatomy(
+                project_name,
+                project_entity=project_entity
+            )
+
+        if project_settings is None:
+            project_settings = get_project_settings(project_name)
+        return (
+            project_entity,
+            anatomy,
+            project_settings,
+        )
+
+
+class OpenWorkfileOptionalData(_WorkfileOptionalData):
+    """Optional data for opening workfile."""
+    data_version = 1
+
+
+class ListWorkfilesOptionalData(_WorkfileOptionalData):
+    """Optional data to list workfiles."""
+    data_version = 1
+
+    def __init__(
+        self,
+        *,
+        template_key: Optional[str] = None,
+        workfile_entities: Optional[list[dict[str, Any]]] = None,
+        **kwargs
+    ):
+        super().__init__(**kwargs)
+        self.template_key = template_key
+        self.workfile_entities = workfile_entities
+
+    def get_template_key(
+        self,
+        project_name: str,
+        task_type: str,
+        host_name: str,
+        project_settings: dict[str, Any],
+    ) -> str:
+        from ayon_core.pipeline.workfile import get_workfile_template_key
+
+        if self.template_key is not None:
+            return self.template_key
+
+        return get_workfile_template_key(
+            project_name=project_name,
+            task_type=task_type,
+            host_name=host_name,
+            project_settings=project_settings,
+        )
+
+    def get_workfile_entities(
+        self, project_name: str, task_id: str
+    ) -> list[dict[str, Any]]:
+        """Fill workfile entities if not provided."""
+        if self.workfile_entities is not None:
+            return self.workfile_entities
+        return list(ayon_api.get_workfiles_info(
+            project_name, task_ids=[task_id]
+        ))
+
+
+class ListPublishedWorkfilesOptionalData(_WorkfileOptionalData):
+    """Optional data to list published workfiles."""
+    data_version = 1
+
+    def __init__(
+        self,
+        *,
+        product_entities: Optional[list[dict[str, Any]]] = None,
+        version_entities: Optional[list[dict[str, Any]]] = None,
+        repre_entities: Optional[list[dict[str, Any]]] = None,
+        **kwargs
+    ):
+        super().__init__(**kwargs)
+
+        self.product_entities = product_entities
+        self.version_entities = version_entities
+        self.repre_entities = repre_entities
+
+    def get_entities(
+        self,
+        project_name: str,
+        folder_id: str,
+    ) -> tuple[
+        list[dict[str, Any]],
+        list[dict[str, Any]],
+        list[dict[str, Any]]
+    ]:
+        product_entities = self.product_entities
+        if product_entities is None:
+            product_entities = list(ayon_api.get_products(
+                project_name,
+                folder_ids={folder_id},
+                product_types={"workfile"},
+                fields={"id", "name"},
+            ))
+
+        version_entities = self.version_entities
+        if version_entities is None:
+            product_ids = {p["id"] for p in product_entities}
+            version_entities = list(ayon_api.get_versions(
+                project_name,
+                product_ids=product_ids,
+                task_ids=task_filters,
+                fields={"id", "author", "taskId"},
+            ))
+
+        repre_entities = self.repre_entities
+        if repre_entities is None:
+            version_ids = {v["id"] for v in version_entities}
+            repre_entities = list(ayon_api.get_representations(
+                project_name,
+                version_ids=version_ids,
+            ))
+        return product_entities, version_entities, repre_entities
+
+
+class SaveWorkfileOptionalData(_WorkfileOptionalData):
+    """Optional data to save workfile."""
+    data_version = 1
+
+    def __init__(
+        self,
+        *,
+        rootless_path: Optional[str] = None,
+        workfile_entities: Optional[list[dict[str, Any]]] = None,
+        **kwargs
+    ):
+        super().__init__(**kwargs)
+
+        self.rootless_path = rootless_path
+        self.workfile_entities = workfile_entities
+
+    def get_workfile_entities(self, project_name: str, task_id: str):
+        """Fill workfile entities if not provided."""
+        if self.workfile_entities is not None:
+            return self.workfile_entities
+        return list(ayon_api.get_workfiles_info(
+            project_name, task_ids=[task_id]
+        ))
+
+    def get_rootless_path(
+        self,
+        workfile_path: str,
+        project_name: str,
+        folder_entity: dict[str, Any],
+        task_entity: dict[str, Any],
+        host_name: str,
+        project_entity: dict[str, Any],
+        project_settings: dict[str, Any],
+        anatomy: "Anatomy",
+    ):
+        from ayon_core.pipeline.workfile.utils import (
+            find_workfile_rootless_path
+        )
+
+        if self.rootless_path is not None:
+            return self.rootless_path
+
+        return find_workfile_rootless_path(
+            workfile_path,
+            project_name,
+            folder_entity,
+            task_entity,
+            host_name,
+            project_entity=project_entity,
+            project_settings=project_settings,
+            anatomy=anatomy,
+        )
+
+
+class CopyWorkfileOptionalData(SaveWorkfileOptionalData):
+    """Optional data to copy workfile."""
+    data_version = 1
+
+
+class CopyPublishedWorkfileOptionalData(SaveWorkfileOptionalData):
+    """Optional data to copy published workfile."""
+    data_version = 1
+
+    def __init__(
+        self,
+        src_anatomy: Optional["Anatomy"] = None,
+        src_representation_path: Optional[str] = None,
+        **kwargs
+    ):
+        super().__init__(**kwargs)
+        self.src_anatomy = src_anatomy
+        self.src_representation_path = src_representation_path
+
+    def get_source_data(
+        self,
+        current_anatomy: Optional["Anatomy"],
+        project_name: str,
+        representation_entity: dict[str, Any],
+    ) -> tuple["Anatomy", str]:
+        from ayon_core.pipeline import Anatomy
+        from ayon_core.pipeline.load import (
+            get_representation_path_with_anatomy
+        )
+
+        src_anatomy = self.src_anatomy
+
+        if (
+            src_anatomy is None
+            and current_anatomy is not None
+            and current_anatomy.project_name == project_name
+        ):
+            src_anatomy = current_anatomy
+        else:
+            src_anatomy = Anatomy(project_name)
+
+        repre_path = self.src_representation_path
+        if repre_path is None:
+            repre_path = get_representation_path_with_anatomy(
+                representation_entity,
+                src_anatomy,
+            )
+        return src_anatomy, repre_path
+
+
+# Dataclasses used during workfile operations
 @dataclass
-class WorkfileOpenData:
+class OpenWorkfileContext:
+    data_version: int
+    project_name: str
     filepath: str
+    project_entity: dict[str, Any]
     folder_entity: dict[str, Any]
     task_entity: dict[str, Any]
+    anatomy: "Anatomy"
+    project_settings: dict[str, Any]
 
 
 @dataclass
-class WorkfileSaveData(WorkfileOpenData):
-    filepath: str
+class ListWorkfilesContext:
+    data_version: int
+    project_name: str
+    project_entity: dict[str, Any]
     folder_entity: dict[str, Any]
     task_entity: dict[str, Any]
+    anatomy: "Anatomy"
+    project_settings: dict[str, Any]
+    template_key: str
+    workfile_entities: list[dict[str, Any]]
 
 
 @dataclass
-class WorkfileCopyData:
-    source_path: str
-    destination_path: str
+class ListPublishedWorkfilesContext:
+    data_version: int
+    project_name: str
+    project_entity: dict[str, Any]
+    folder_id: str
+    anatomy: "Anatomy"
+    project_settings: dict[str, Any]
+    product_entities: list[dict[str, Any]]
+    version_entities: list[dict[str, Any]]
+    repre_entities: list[dict[str, Any]]
+
+
+@dataclass
+class SaveWorkfileContext:
+    data_version: int
+    project_name: str
+    project_entity: dict[str, Any]
     folder_entity: dict[str, Any]
     task_entity: dict[str, Any]
+    anatomy: "Anatomy"
+    project_settings: dict[str, Any]
+    dst_path: str
+    rootless_path: str
+    workfile_entities: list[dict[str, Any]]
+
+
+@dataclass
+class CopyWorkfileContext(SaveWorkfileContext):
+    src_path: str
+    version: Optional[int]
+    comment: Optional[str]
+    description: Optional[str]
     open_workfile: bool
+
+
+@dataclass
+class CopyPublishedWorkfileContext(CopyWorkfileContext):
+    src_project_name: str
+    src_representation_entity: dict[str, Any]
+    src_anatomy: "Anatomy"
+
+
+def get_open_workfile_context(
+    project_name: str,
+    filepath: str,
+    folder_entity: dict[str, Any],
+    task_entity: dict[str, Any],
+    prepared_data: Optional[OpenWorkfileOptionalData],
+) -> OpenWorkfileContext:
+    if prepared_data is None:
+        prepared_data = OpenWorkfileOptionalData()
+    (
+        project_entity, anatomy, project_settings
+    ) = prepared_data.get_project_data(project_name)
+    return OpenWorkfileContext(
+        data_version=prepared_data.data_version,
+        filepath=filepath,
+        folder_entity=folder_entity,
+        task_entity=task_entity,
+        project_name=project_name,
+        project_entity=project_entity,
+        anatomy=anatomy,
+        project_settings=project_settings,
+    )
+
+
+def get_list_workfiles_context(
+    project_name: str,
+    folder_entity: dict[str, Any],
+    task_entity: dict[str, Any],
+    host_name: str,
+    prepared_data: Optional[ListWorkfilesOptionalData],
+) -> ListWorkfilesContext:
+    if prepared_data is None:
+        prepared_data = ListWorkfilesOptionalData()
+    (
+        project_entity, anatomy, project_settings
+    ) = prepared_data.get_project_data(project_name)
+
+    template_key = prepared_data.get_template_key(
+        project_name,
+        task_entity["taskType"],
+        host_name,
+        project_settings,
+    )
+    workfile_entities = prepared_data.get_workfile_entities(
+        project_name, task_entity["id"]
+    )
+    return ListWorkfilesContext(
+        data_version=prepared_data.data_version,
+        project_entity=project_entity,
+        folder_entity=folder_entity,
+        task_entity=task_entity,
+        project_name=project_name,
+        anatomy=anatomy,
+        project_settings=project_settings,
+        template_key=template_key,
+        workfile_entities=workfile_entities,
+    )
+
+
+def get_list_published_workfiles_context(
+    project_name: str,
+    folder_id: str,
+    prepared_data: Optional[ListPublishedWorkfilesOptionalData],
+) -> ListPublishedWorkfilesContext:
+    if prepared_data is None:
+        prepared_data = ListPublishedWorkfilesOptionalData()
+    (
+        project_entity, anatomy, project_settings
+    ) = prepared_data.get_project_data(project_name)
+    (
+        product_entities,
+        version_entities,
+        repre_entities,
+    ) = prepared_data.get_entities(project_name, folder_id)
+
+
+    return ListPublishedWorkfilesContext(
+        data_version=prepared_data.data_version,
+        project_name=project_name,
+        project_entity=project_entity,
+        folder_id=folder_id,
+        anatomy=anatomy,
+        project_settings=project_settings,
+        product_entities=product_entities,
+        version_entities=version_entities,
+        repre_entities=repre_entities,
+    )
+
+
+def get_save_workfile_context(
+    project_name: str,
+    filepath: str,
+    folder_entity: dict[str, Any],
+    task_entity: dict[str, Any],
+    host_name: str,
+    prepared_data: Optional[SaveWorkfileOptionalData],
+) -> SaveWorkfileContext:
+    if prepared_data is None:
+        prepared_data = SaveWorkfileOptionalData()
+
+    (
+        project_entity, anatomy, project_settings
+    ) = prepared_data.get_project_data(project_name)
+
+    rootless_path = prepared_data.get_rootless_path(
+        filepath,
+        project_name,
+        folder_entity,
+        task_entity,
+        host_name,
+        project_entity,
+        project_settings,
+        anatomy,
+    )
+    workfile_entities = prepared_data.get_workfile_entities(
+        project_name, task_entity["id"]
+    )
+    return SaveWorkfileContext(
+        data_version=prepared_data.data_version,
+        project_name=project_name,
+        project_entity=project_entity,
+        folder_entity=folder_entity,
+        task_entity=task_entity,
+        anatomy=anatomy,
+        project_settings=project_settings,
+        dst_path=filepath,
+        rootless_path=rootless_path,
+        workfile_entities=workfile_entities,
+    )
+
+
+def get_copy_workfile_context(
+    project_name: str,
+    src_path: str,
+    dst_path: str,
+    folder_entity: dict[str, Any],
+    task_entity: dict[str, Any],
+    *,
+    version: Optional[int],
+    comment: Optional[str],
+    description: Optional[str],
+    open_workfile: bool,
+    host_name: str,
+    prepared_data: Optional[CopyWorkfileOptionalData],
+) -> CopyWorkfileContext:
+    if prepared_data is None:
+        prepared_data = CopyWorkfileOptionalData()
+    context: SaveWorkfileContext = get_save_workfile_context(
+        project_name,
+        dst_path,
+        folder_entity,
+        task_entity,
+        host_name,
+        prepared_data,
+    )
+    return CopyWorkfileContext(
+        data_version=prepared_data.data_version,
+        src_path=src_path,
+        project_name=context.project_name,
+        project_entity=context.project_entity,
+        folder_entity=context.folder_entity,
+        task_entity=context.task_entity,
+        version=version,
+        comment=comment,
+        description=description,
+        open_workfile=open_workfile,
+        anatomy=context.anatomy,
+        project_settings=context.project_settings,
+        dst_path=context.dst_path,
+        rootless_path=context.rootless_path,
+        workfile_entities=context.workfile_entities,
+    )
+
+
+def get_copy_repre_workfile_context(
+    project_name: str,
+    src_project_name: str,
+    src_representation_entity: dict[str, Any],
+    dst_path: str,
+    folder_entity: dict[str, Any],
+    task_entity: dict[str, Any],
+    version: Optional[int],
+    comment: Optional[str],
+    description: Optional[str],
+    open_workfile: bool,
+    host_name: str,
+    prepared_data: Optional[CopyPublishedWorkfileOptionalData],
+) -> CopyPublishedWorkfileContext:
+    if prepared_data is None:
+        prepared_data = CopyPublishedWorkfileOptionalData()
+
+    context: SaveWorkfileContext = get_save_workfile_context(
+        project_name,
+        dst_path,
+        folder_entity,
+        task_entity,
+        host_name,
+        prepared_data,
+    )
+    src_anatomy, repre_path = prepared_data.get_source_data(
+        context.anatomy,
+        src_project_name,
+        src_representation_entity,
+    )
+    return CopyPublishedWorkfileContext(
+        data_version=prepared_data.data_version,
+        src_project_name=src_project_name,
+        src_representation_entity=src_representation_entity,
+        src_path=repre_path,
+        dst_path=context.dst_path,
+        project_name=context.project_name,
+        project_entity=context.project_entity,
+        folder_entity=context.folder_entity,
+        task_entity=context.task_entity,
+        version=version,
+        comment=comment,
+        description=description,
+        open_workfile=open_workfile,
+        anatomy=context.anatomy,
+        project_settings=context.project_settings,
+        rootless_path=context.rootless_path,
+        workfile_entities=context.workfile_entities,
+        src_anatomy=src_anatomy,
+    )
 
 
 @dataclass
@@ -323,11 +855,7 @@ class IWorkfileHost:
         version: Optional[int] = None,
         comment: Optional[str] = None,
         description: Optional[str] = None,
-        rootless_path: Optional[str] = None,
-        workfile_entities: Optional[list[dict[str, Any]]] = None,
-        project_settings: Optional[dict[str, Any]] = None,
-        project_entity: Optional[dict[str, Any]] = None,
-        anatomy: Optional[Anatomy] = None,
+        prepared_data: Optional[SaveWorkfileOptionalData] = None,
     ) -> None:
         """Save the current workfile with context.
 
@@ -350,22 +878,21 @@ class IWorkfileHost:
             comment (Optional[str]): Comment for the workfile.
                 Usually used in the filename template.
             description (Optional[str]): Artist note for the workfile entity.
-            rootless_path (Optional[str]): Prepared rootless path of
-                the workfile.
-            workfile_entities (Optional[list[dict[str, Any]]]): Pre-fetched
-                workfile entities for the task.
-            project_settings (Optional[dict[str, Any]]): Project settings.
-            project_entity (Optional[dict[str, Any]]): Project entity.
-            anatomy (Optional[Anatomy]): Project anatomy.
+            prepared_data (Optional[SaveWorkfileOptionalData]): Prepared data
+                for speed enhancements.
 
         """
-        save_workfile_data = WorkfileSaveData(
-            folder_entity=folder_entity,
-            task_entity=task_entity,
-            filepath=filepath,
-        )
-        self._before_workfile_save(save_workfile_data)
         project_name = self.get_current_project_name()
+        save_workfile_context = get_save_workfile_context(
+            project_name,
+            filepath,
+            folder_entity,
+            task_entity,
+            host_name=self.name,
+            prepared_data=prepared_data,
+        )
+
+        self._before_workfile_save(save_workfile_context)
         event_data = self._get_workfile_event_data(
             project_name,
             folder_entity,
@@ -379,33 +906,23 @@ class IWorkfileHost:
         # Set 'AYON_WORKDIR' environment variable
         os.environ["AYON_WORKDIR"] = workdir
 
-        if project_entity is None:
-            project_entity = ayon_api.get_project(project_name)
-
         self.set_current_context(
             folder_entity,
             task_entity,
-            project_entity=project_entity,
-            anatomy=anatomy,
             reason=ContextChangeReason.workfile_save,
+            project_entity=save_workfile_context.project_entity,
+            anatomy=save_workfile_context.anatomy,
         )
 
         self.save_workfile(filepath)
 
         self._save_workfile_entity(
-            filepath,
-            folder_entity,
-            task_entity,
+            save_workfile_context,
             version,
             comment,
             description,
-            rootless_path,
-            workfile_entities,
-            project_settings,
-            project_entity,
-            anatomy,
         )
-        self._after_workfile_save(save_workfile_data)
+        self._after_workfile_save(save_workfile_context)
         self._emit_workfile_save_event(event_data)
 
     def open_workfile_with_context(
@@ -414,9 +931,7 @@ class IWorkfileHost:
         folder_entity: dict[str, Any],
         task_entity: dict[str, Any],
         *,
-        project_entity: Optional[dict[str, Any]] = None,
-        project_settings: Optional[dict[str, Any]] = None,
-        anatomy: Optional[Anatomy] = None,
+        prepared_data: Optional[OpenWorkfileOptionalData] = None,
     ) -> None:
         """Open passed filepath in the host with context.
 
@@ -429,13 +944,20 @@ class IWorkfileHost:
             filepath (str): Path to workfile.
             folder_entity (dict[str, Any]): Folder id.
             task_entity (dict[str, Any]): Task id.
-            project_entity (Optional[dict[str, Any]]): Project entity.
-            project_settings (Optional[dict[str, Any]]): Project settings.
-            anatomy (Optional[Anatomy]): Project anatomy.
+            prepared_data (Optional[WorkfileOptionalData]): Prepared data
+                for speed enhancements.
 
         """
         context = self.get_current_context()
         project_name = context["project_name"]
+
+        open_workfile_context = get_open_workfile_context(
+            project_name,
+            filepath,
+            folder_entity,
+            task_entity,
+            prepared_data=prepared_data,
+        )
 
         workdir = os.path.dirname(filepath)
         # Set 'AYON_WORKDIR' environment variable
@@ -444,25 +966,20 @@ class IWorkfileHost:
         event_data = self._get_workfile_event_data(
             project_name, folder_entity, task_entity, filepath
         )
-        open_workfile_data = WorkfileOpenData(
-            folder_entity=folder_entity,
-            task_entity=task_entity,
-            filepath=filepath,
-        )
-        self._before_workfile_open(open_workfile_data)
+        self._before_workfile_open(open_workfile_context)
         self._emit_workfile_open_event(event_data, after_open=False)
 
         self.set_current_context(
             folder_entity,
             task_entity,
-            project_entity=project_entity,
-            anatomy=anatomy,
             reason=ContextChangeReason.workfile_open,
+            project_entity=open_workfile_context.project_entity,
+            anatomy=open_workfile_context.anatomy,
         )
 
         self.open_workfile(filepath)
 
-        self._after_workfile_open(open_workfile_data)
+        self._after_workfile_open(open_workfile_context)
         self._emit_workfile_open_event(event_data)
 
     def list_workfiles(
@@ -471,11 +988,7 @@ class IWorkfileHost:
         folder_entity: dict[str, Any],
         task_entity: dict[str, Any],
         *,
-        project_entity: Optional[dict[str, Any]] = None,
-        workfile_entities: Optional[list[dict[str, Any]]] = None,
-        template_key: Optional[str] = None,
-        project_settings: Optional[dict[str, Any]] = None,
-        anatomy: Optional[Anatomy] = None,
+        prepared_data: Optional[ListWorkfilesOptionalData] = None,
     ) -> list[WorkfileInfo]:
         """List workfiles in the given task.
 
@@ -492,18 +1005,13 @@ class IWorkfileHost:
             project_name (str): Project name.
             folder_entity (dict[str, Any]): Folder entity.
             task_entity (dict[str, Any]): Task entity.
-            project_entity (Optional[dict[str, Any]]): Project entity.
-            workfile_entities (Optional[list[dict[str, Any]]]): Pre-fetched
-                workfile entities for the task.
-            template_key (Optional[str]): Template key.
-            project_settings (Optional[dict[str, Any]]): Project settings.
-            anatomy (Anatomy): Project anatomy.
+            prepared_data (Optional[ListWorkfilesOptionalData]): Prepared
+                data for speed enhancements.
 
         Returns:
             list[WorkfileInfo]: List of workfiles.
 
         """
-        from ayon_core.pipeline import Anatomy
         from ayon_core.pipeline.template_data import get_template_data
         from ayon_core.pipeline.workfile import get_workdir_with_workdir_data
 
@@ -511,25 +1019,21 @@ class IWorkfileHost:
         if not extensions:
             return []
 
-        if project_entity is None:
-            project_entity = ayon_api.get_project(project_name)
-
-        if workfile_entities is None:
-            task_id = task_entity["id"]
-            workfile_entities = list(ayon_api.get_workfiles_info(
-                project_name, task_ids=[task_id]
-            ))
-
-        if anatomy is None:
-            anatomy = Anatomy(project_name, project_entity=project_entity)
+        list_workfiles_context = get_list_workfiles_context(
+            project_name,
+            folder_entity,
+            task_entity,
+            host_name=self.name,
+            prepared_data=prepared_data,
+        )
 
         workfile_entities_by_path = {
             workfile_entity["path"]: workfile_entity
-            for workfile_entity in workfile_entities
+            for workfile_entity in list_workfiles_context.workfile_entities
         }
 
         workdir_data = get_template_data(
-            project_entity,
+            list_workfiles_context.project_entity,
             folder_entity,
             task_entity,
             host_name=self.name,
@@ -537,9 +1041,9 @@ class IWorkfileHost:
         workdir = get_workdir_with_workdir_data(
             workdir_data,
             project_name,
-            anatomy=anatomy,
-            template_key=template_key,
-            project_settings=project_settings,
+            anatomy=list_workfiles_context.anatomy,
+            template_key=list_workfiles_context.template_key,
+            project_settings=list_workfiles_context.project_settings,
         )
 
         if platform.system().lower() == "windows":
@@ -585,7 +1089,7 @@ class IWorkfileHost:
             ext = os.path.splitext(rootless_path)[1].lower()
             if ext not in extensions:
                 continue
-            filepath = anatomy.fill_root(rootless_path)
+            filepath = prepared_data.anatomy.fill_root(rootless_path)
             items.append(WorkfileInfo.new(
                 filepath,
                 rootless_path,
@@ -600,9 +1104,7 @@ class IWorkfileHost:
         project_name: str,
         folder_id: str,
         *,
-        anatomy: Optional[Anatomy] = None,
-        version_entities: Optional[list[dict[str, Any]]] = None,
-        repre_entities: Optional[list[dict[str, Any]]] = None,
+        prepared_data: Optional[ListPublishedWorkfilesOptionalData] = None,
     ) -> list[PublishedWorkfileInfo]:
         """List published workfiles for the given folder.
 
@@ -616,45 +1118,32 @@ class IWorkfileHost:
         Args:
             project_name (str): Project name.
             folder_id (str): Folder id.
-            anatomy (Anatomy): Project anatomy.
-            version_entities (Optional[list[dict[str, Any]]]): Pre-fetched
-                version entities.
-            repre_entities (Optional[list[dict[str, Any]]]): Pre-fetched
-                representation entities.
+            prepared_data (Optional[ListPublishedWorkfilesOptionalData]):
+                Prepared data for speed enhancements.
 
         Returns:
             list[PublishedWorkfileInfo]: Published workfile information for
                 the given context.
 
         """
-        from ayon_core.pipeline import Anatomy
-
-        # Get all representations of the folder
-        (
-            version_entities,
-            repre_entities
-        ) = self._fetch_published_workfile_entities(
+        list_workfiles_context = get_list_published_workfiles_context(
             project_name,
             folder_id,
-            version_entities,
-            repre_entities,
+            prepared_data=prepared_data,
         )
-        if not repre_entities:
+        if not list_workfiles_context.repre_entities:
             return []
-
-        if anatomy is None:
-            anatomy = Anatomy(project_name)
 
         versions_by_id = {
             version_entity["id"]: version_entity
-            for version_entity in version_entities
+            for version_entity in prepared_data.version_entities
         }
         extensions = {
             ext.lstrip(".")
             for ext in self.get_workfile_extensions()
         }
         items = []
-        for repre_entity in repre_entities:
+        for repre_entity in prepared_data.repre_entities:
             version_id = repre_entity["versionId"]
             version_entity = versions_by_id[version_id]
             task_id = version_entity["taskId"]
@@ -675,7 +1164,9 @@ class IWorkfileHost:
                 continue
 
             try:
-                workfile_path = workfile_path.format(root=anatomy.roots)
+                workfile_path = workfile_path.format(
+                    root=prepared_data.anatomy.roots
+                )
             except Exception:
                 self.log.warning(
                     "Failed to format workfile path.", exc_info=True
@@ -716,12 +1207,8 @@ class IWorkfileHost:
         version: Optional[int] = None,
         comment: Optional[str] = None,
         description: Optional[str] = None,
-        rootless_path: Optional[str] = None,
-        workfile_entities: Optional[list[dict[str, Any]]] = None,
-        project_settings: Optional[dict[str, Any]] = None,
-        project_entity: Optional[dict[str, Any]] = None,
-        anatomy: Optional[Anatomy] = None,
         open_workfile: bool = True,
+        prepared_data: Optional[CopyWorkfileOptionalData] = None,
     ) -> None:
         """Save workfile path with target folder and task context.
 
@@ -744,59 +1231,31 @@ class IWorkfileHost:
                 for workfile entity. Recommended to fill.
             comment (Optional[str]): Comment for the workfile.
             description (Optional[str]): Artist note for the workfile entity.
-            rootless_path (Optional[str]): Rootless path of the workfile.
-            workfile_entities (Optional[list[dict[str, Any]]]): Pre-fetched
-                workfile entities for the task.
-            project_settings (Optional[dict[str, Any]]): Project settings.
-            project_entity (Optional[dict[str, Any]]): Project entity.
-            anatomy (Optional[Anatomy]): Project anatomy.
             open_workfile (bool): Open workfile when copied.
+            prepared_data (Optional[CopyWorkfileOptionalData]): Prepared data
+                for speed enhancements.
 
         """
-        copy_workfile_data = WorkfileCopyData(
-            source_path=src_path,
-            destination_path=dst_path,
-            folder_entity=folder_entity,
-            task_entity=task_entity,
+        project_name = self.get_current_project_name()
+        copy_workfile_context: CopyWorkfileContext = get_copy_workfile_context(
+            project_name,
+            src_path,
+            dst_path,
+            folder_entity,
+            task_entity,
+            version=version,
+            comment=comment,
+            description=description,
             open_workfile=open_workfile,
+            host_name=self.name,
+            prepared_data=prepared_data,
         )
-        self._before_workfile_copy(copy_workfile_data)
-        event_data = self._get_workfile_event_data(
-            self.get_current_project_name(),
-            folder_entity,
-            task_entity,
-            dst_path,
-        )
-        self._emit_workfile_save_event(event_data, after_save=False)
-
-        dst_dir = os.path.dirname(dst_path)
-        if not os.path.exists(dst_dir):
-            os.makedirs(dst_dir, exist_ok=True)
-        shutil.copy(src_path, dst_path)
-
-        self._save_workfile_entity(
-            dst_path,
-            folder_entity,
-            task_entity,
-            version,
-            comment,
-            description,
-            rootless_path,
-            workfile_entities,
-            project_settings,
-            project_entity,
-            anatomy,
-        )
-        self._after_workfile_copy(copy_workfile_data)
-        self._emit_workfile_save_event(event_data)
-
-        if not open_workfile:
-            return
-
-        self.open_workfile_with_context(
-            dst_path,
-            folder_entity,
-            task_entity,
+        self._copy_workfile(
+            copy_workfile_context,
+            version=version,
+            comment=comment,
+            description=description,
+            open_workfile=open_workfile,
         )
 
     def copy_workfile_representation(
@@ -810,14 +1269,8 @@ class IWorkfileHost:
         version: Optional[int] = None,
         comment: Optional[str] = None,
         description: Optional[str] = None,
-        rootless_path: Optional[str] = None,
-        workfile_entities: Optional[list[dict[str, Any]]] = None,
-        project_settings: Optional[dict[str, Any]] = None,
-        project_entity: Optional[dict[str, Any]] = None,
-        anatomy: Optional[Anatomy] = None,
         open_workfile: bool = True,
-        src_anatomy: Optional[Anatomy] = None,
-        src_representation_path: Optional[str] = None,
+        prepared_data: Optional[CopyPublishedWorkfileOptionalData] = None,
     ) -> None:
         """Copy workfile representation.
 
@@ -841,58 +1294,33 @@ class IWorkfileHost:
                 for workfile entity. Recommended to fill.
             comment (Optional[str]): Comment for the workfile.
             description (Optional[str]): Artist note for the workfile entity.
-            rootless_path (Optional[str]): Rootless path of the workfile.
-            workfile_entities (Optional[list[dict[str, Any]]]): Pre-fetched
-                workfile entities for the task.
-            project_settings (Optional[dict[str, Any]]): Project settings.
-            project_entity (Optional[dict[str, Any]]): Project entity.
-            anatomy (Optional[Anatomy]): Project anatomy.
             open_workfile (bool): Open workfile when copied.
-            src_anatomy (Optional[Anatomy]): Anatomy of the source
-            src_representation_path (Optional[str]): Representation path.
+            prepared_data (Optional[CopyPublishedWorkfileOptionalData]):
+                Prepared data for speed enhancements.
 
         """
-        from ayon_core.pipeline import Anatomy
-        from ayon_core.pipeline.load import (
-            get_representation_path_with_anatomy
-        )
-
         project_name = self.get_current_project_name()
-        # Re-use Anatomy or project entity if source context is same
-        if project_name == src_project_name:
-            if src_anatomy is None and anatomy is not None:
-                src_anatomy = anatomy
-            elif anatomy is None and src_anatomy is not None:
-                anatomy = src_anatomy
-            elif not project_entity:
-                project_entity = ayon_api.get_project(project_name)
-
-            if anatomy is None:
-                anatomy = src_anatomy = Anatomy(
-                    project_name, project_entity=project_entity
-                )
-
-        if src_representation_path is None:
-            if src_anatomy is None:
-                src_anatomy = Anatomy(src_project_name)
-            src_representation_path = get_representation_path_with_anatomy(
+        copy_repre_workfile_context: CopyPublishedWorkfileContext = (
+            get_copy_repre_workfile_context(
+                project_name,
+                src_project_name,
                 src_representation_entity,
-                src_anatomy,
+                dst_path,
+                folder_entity,
+                task_entity,
+                version=version,
+                comment=comment,
+                description=description,
+                open_workfile=open_workfile,
+                host_name=self.name,
+                prepared_data=prepared_data,
             )
-
-        self.copy_workfile(
-            src_representation_path,
-            dst_path,
-            folder_entity,
-            task_entity,
+        )
+        self._copy_workfile(
+            copy_repre_workfile_context,
             version=version,
             comment=comment,
             description=description,
-            rootless_path=rootless_path,
-            workfile_entities=workfile_entities,
-            project_settings=project_settings,
-            project_entity=project_entity,
-            anatomy=anatomy,
             open_workfile=open_workfile,
         )
 
@@ -947,109 +1375,94 @@ class IWorkfileHost:
         """
         return self.workfile_has_unsaved_changes()
 
-    def _fetch_published_workfile_entities(
+    def _copy_workfile(
         self,
-        project_name: str,
-        folder_id: str,
-        version_entities: Optional[list[dict[str, Any]]],
-        repre_entities: Optional[list[dict[str, Any]]],
-    ) -> tuple[
-        list[dict[str, Any]],
-        list[dict[str, Any]]
-    ]:
-        """Fetch integrated workfile entities for the given folder.
-
-        Args:
-            project_name (str): Project name.
-            folder_id (str): Folder id.
-            version_entities (Optional[list[dict[str, Any]]]): Pre-fetched
-                version entities.
-            repre_entities (Optional[list[dict[str, Any]]]): Pre-fetched
-                representation entities.
-
-        Returns:
-            tuple[list[dict[str, Any]], list[dict[str, Any]]]:
-                Tuple of version entities and representation entities.
-
-        """
-        if repre_entities is not None and version_entities is None:
-            # Get versions of representations
-            version_ids = {r["versionId"] for r in repre_entities}
-            version_entities = list(ayon_api.get_versions(
-                project_name,
-                version_ids=version_ids,
-                fields={"id", "author", "taskId"},
-            ))
-
-        if version_entities is None:
-            # Get product entities of folder
-            product_entities = ayon_api.get_products(
-                project_name,
-                folder_ids={folder_id},
-                product_types={"workfile"},
-                fields={"id", "name"}
-            )
-
-            version_entities = []
-            product_ids = {product["id"] for product in product_entities}
-            if product_ids:
-                # Get version docs of products with their families
-                version_entities = list(ayon_api.get_versions(
-                    project_name,
-                    product_ids=product_ids,
-                    fields={"id", "author", "taskId"},
-                ))
-
-        # Fetch representations of filtered versions and add filter for
-        #   extension
-        if repre_entities is None:
-            repre_entities = []
-            if version_entities:
-                repre_entities = list(ayon_api.get_representations(
-                    project_name,
-                    version_ids={v["id"] for v in version_entities}
-                ))
-
-        return version_entities, repre_entities
-
-    def _save_workfile_entity(
-        self,
-        workfile_path: str,
-        folder_entity: dict[str, Any],
-        task_entity: dict[str, Any],
+        copy_workfile_context: CopyWorkfileContext,
+        *,
         version: Optional[int],
         comment: Optional[str],
         description: Optional[str],
-        rootless_path: Optional[str],
-        workfile_entities: Optional[list[dict[str, Any]]] = None,
-        project_settings: Optional[dict[str, Any]] = None,
-        project_entity: Optional[dict[str, Any]] = None,
-        anatomy: Optional[Anatomy] = None,
+        open_workfile: bool,
+    ) -> None:
+        """Save workfile path with target folder and task context.
+
+        It is expected that workfile is saved to the current project, but
+            can be copied from the other project.
+
+        Arguments 'rootless_path', 'workfile_entities', 'project_entity'
+            and 'anatomy' can be filled to enhance efficiency if you already
+            have access to the values.
+
+        Argument 'project_settings' is used to calculate 'rootless_path'
+            if it is not provided.
+
+        Args:
+            copy_workfile_context (CopyWorkfileContext): Prepared data
+                for speed enhancements.
+            version (Optional[int]): Version of the workfile. Information
+                for workfile entity. Recommended to fill.
+            comment (Optional[str]): Comment for the workfile.
+            description (Optional[str]): Artist note for the workfile entity.
+            open_workfile (bool): Open workfile when copied.
+
+        """
+        self._before_workfile_copy(copy_workfile_context)
+        event_data = self._get_workfile_event_data(
+            copy_workfile_context.project_name,
+            copy_workfile_context.folder_entity,
+            copy_workfile_context.task_entity,
+            copy_workfile_context.dst_path,
+        )
+        self._emit_workfile_save_event(event_data, after_save=False)
+
+        dst_dir = os.path.dirname(copy_workfile_context.dst_path)
+        if not os.path.exists(dst_dir):
+            os.makedirs(dst_dir, exist_ok=True)
+        shutil.copy(
+            copy_workfile_context.src_path,
+            copy_workfile_context.dst_path
+        )
+
+        self._save_workfile_entity(
+            copy_workfile_context,
+            version,
+            comment,
+            description,
+        )
+        self._after_workfile_copy(copy_workfile_context)
+        self._emit_workfile_save_event(event_data)
+
+        if not open_workfile:
+            return
+
+        self.open_workfile_with_context(
+            copy_workfile_context.dst_path,
+            copy_workfile_context.folder_entity,
+            copy_workfile_context.task_entity,
+        )
+
+    def _save_workfile_entity(
+        self,
+        save_workfile_context: SaveWorkfileContext,
+        version: Optional[int],
+        comment: Optional[str],
+        description: Optional[str],
     ) -> Optional[dict[str, Any]]:
         """Create of update workfile entity to AYON based on provided data.
 
         Args:
-            workfile_path (str): Path to the workfile.
-            folder_entity (dict[str, Any]): Folder entity.
-            task_entity (dict[str, Any]): Task entity.
+            save_workfile_context (SaveWorkfileContext): Save workfile
+                context with all prepared data.
             version (Optional[int]): Version of the workfile.
             comment (Optional[str]): Comment for the workfile.
             description (Optional[str]): Artist note for the workfile entity.
-            rootless_path (Optional[str]): Prepared rootless path of
-                the workfile.
-            workfile_entities (Optional[list[dict[str, Any]]]): Pre-fetched
-                workfile entities.
-            project_settings (Optional[dict[str, Any]]): Project settings.
-            project_entity (Optional[dict[str, Any]]): Project entity.
-            anatomy (Optional[Anatomy]): Project anatomy.
 
         Returns:
             Optional[dict[str, Any]]: Workfile entity.
 
         """
         from ayon_core.pipeline.workfile.utils import (
-            save_workfile_info,
-            find_workfile_rootless_path,
+            save_workfile_info
         )
 
         project_name = self.get_current_project_name()
@@ -1059,18 +1472,7 @@ class IWorkfileHost:
         if not comment:
             comment = None
 
-        if rootless_path is None:
-            rootless_path = find_workfile_rootless_path(
-                workfile_path,
-                project_name,
-                folder_entity,
-                task_entity,
-                self.name,
-                project_entity=project_entity,
-                project_settings=project_settings,
-                anatomy=anatomy,
-            )
-
+        rootless_path = save_workfile_context.rootless_path
         # It is not possible to create workfile infor without rootless path
         workfile_info = None
         if not rootless_path:
@@ -1081,13 +1483,13 @@ class IWorkfileHost:
 
         workfile_info = save_workfile_info(
             project_name,
-            task_entity["id"],
+            save_workfile_context.task_entity["id"],
             rootless_path,
             self.name,
             version,
             comment,
             description,
-            workfile_entities=workfile_entities,
+            workfile_entities=save_workfile_context.workfile_entities,
         )
         return workfile_info
 
@@ -1155,7 +1557,7 @@ class IWorkfileHost:
         }
 
     def _before_workfile_open(
-        self, open_workfile_data: WorkfileOpenData
+        self, open_workfile_context: OpenWorkfileContext
     ) -> None:
         """Before workfile is opened.
 
@@ -1164,14 +1566,14 @@ class IWorkfileHost:
         Can be overridden to implement host specific logic.
 
         Args:
-            open_workfile_data (WorkfileOpenData): Context and path of
+            open_workfile_context (OpenWorkfileContext): Context and path of
                 workfile to open.
 
         """
         pass
 
     def _after_workfile_open(
-        self, open_workfile_data: WorkfileOpenData
+        self, open_workfile_context: OpenWorkfileContext
     ) -> None:
         """After workfile is opened.
 
@@ -1180,14 +1582,14 @@ class IWorkfileHost:
         Can be overridden to implement host specific logic.
 
         Args:
-            open_workfile_data (WorkfileOpenData): Context and path of
+            open_workfile_context (OpenWorkfileContext): Context and path of
                 opened workfile.
 
         """
         pass
 
     def _before_workfile_save(
-        self, save_workfile_data: WorkfileSaveData
+        self, save_workfile_context: SaveWorkfileContext
     ) -> None:
         """Before workfile is saved.
 
@@ -1196,14 +1598,14 @@ class IWorkfileHost:
         Can be overridden to implement host specific logic.
 
         Args:
-            save_workfile_data (WorkfileSaveData): Workfile path with target
+            save_workfile_context (SaveWorkfileContext): Workfile path with target
                 folder and task context.
 
         """
         pass
 
     def _after_workfile_save(
-        self, save_workfile_data: WorkfileSaveData
+        self, save_workfile_context: SaveWorkfileContext
     ) -> None:
         """After workfile is saved.
 
@@ -1212,19 +1614,19 @@ class IWorkfileHost:
         Can be overridden to implement host specific logic.
 
         Args:
-            save_workfile_data (WorkfileSaveData): Workfile path with target
+            save_workfile_context (SaveWorkfileContext): Workfile path with target
                 folder and task context.
 
         """
-        workdir = os.path.dirname(save_workfile_data.filepath)
+        workdir = os.path.dirname(save_workfile_context.dst_path)
         self._create_extra_folders(
-            save_workfile_data.folder_entity,
-            save_workfile_data.task_entity,
+            save_workfile_context.folder_entity,
+            save_workfile_context.task_entity,
             workdir
         )
 
     def _before_workfile_copy(
-        self, copy_workfile_data: WorkfileCopyData
+        self, copy_workfile_context: CopyWorkfileContext
     ) -> None:
         """Before workfile is copied.
 
@@ -1234,14 +1636,14 @@ class IWorkfileHost:
         Can be overridden to implement host specific logic.
 
         Args:
-            copy_workfile_data (WorkfileCopyData): Source and destination
+            copy_workfile_context (CopyWorkfileContext): Source and destination
                 path with context before workfile is copied.
 
         """
         pass
 
     def _after_workfile_copy(
-        self, copy_workfile_data: WorkfileCopyData
+        self, copy_workfile_context: CopyWorkfileContext
     ) -> None:
         """After workfile is copied.
 
@@ -1251,14 +1653,14 @@ class IWorkfileHost:
         Can be overridden to implement host specific logic.
 
         Args:
-            copy_workfile_data (WorkfileCopyData): Source and destination
+            copy_workfile_context (CopyWorkfileContext): Source and destination
                 path with context after workfile is copied.
 
         """
-        workdir = os.path.dirname(copy_workfile_data.destination_path)
+        workdir = os.path.dirname(copy_workfile_context.dst_path)
         self._create_extra_folders(
-            copy_workfile_data.folder_entity,
-            copy_workfile_data.task_entity,
+            copy_workfile_context.folder_entity,
+            copy_workfile_context.task_entity,
             workdir,
         )
 
@@ -1270,6 +1672,8 @@ class IWorkfileHost:
         """Emit workfile save event.
 
         Emit event before and after workfile is opened.
+
+        This method is not meant to be overridden.
 
         Other addons can listen to this event and do additional steps.
 
@@ -1298,6 +1702,8 @@ class IWorkfileHost:
         """Emit workfile save event.
 
         Emit event before and after workfile is saved or copied.
+
+        This method is not meant to be overridden.
 
         Other addons can listen to this event and do additional steps.
 
