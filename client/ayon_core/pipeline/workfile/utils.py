@@ -489,7 +489,7 @@ def copy_and_open_workfile_representation(
         version=version,
         comment=comment,
         description=description,
-        open_workfile=open_workfile,
+        open_workfile=True,
         prepared_data=prepared_data,
     )
 
