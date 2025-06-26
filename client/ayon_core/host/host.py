@@ -12,6 +12,8 @@ import ayon_api
 
 from ayon_core.lib import emit_event
 
+from .constants import ContextChangeReason
+
 if typing.TYPE_CHECKING:
     from ayon_core.pipeline import Anatomy
 
@@ -28,7 +30,7 @@ class ContextChangeData:
     project_entity: dict[str, Any]
     folder_entity: dict[str, Any]
     task_entity: dict[str, Any]
-    reason: Optional[str]
+    reason: ContextChangeReason
     anatomy: Anatomy
 
 
@@ -172,7 +174,7 @@ class HostBase(ABC):
         folder_entity: dict[str, Any],
         task_entity: dict[str, Any],
         *,
-        reason: Optional[str] = None,
+        reason: ContextChangeReason = ContextChangeReason.undefined,
         project_entity: Optional[dict[str, Any]] = None,
         anatomy: Optional[Anatomy] = None,
     ) -> "HostContextData":
@@ -190,7 +192,7 @@ class HostBase(ABC):
         Args:
             folder_entity (Optional[dict[str, Any]]): Folder entity.
             task_entity (Optional[dict[str, Any]]): Task entity.
-            reason (Optional[str]): Reason for context change.
+            reason (ContextChangeReason): Reason for context change.
             project_entity (Optional[dict[str, Any]]): Project entity data.
             anatomy (Optional[Anatomy]): Anatomy instance for the project.
 

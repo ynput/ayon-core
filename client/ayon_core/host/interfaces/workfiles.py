@@ -14,13 +14,10 @@ import ayon_api
 import arrow
 
 from ayon_core.lib import emit_event
+from ayon_core.host.constants import ContextChangeReason
 
 if typing.TYPE_CHECKING:
     from ayon_core.pipeline import Anatomy
-
-
-WORKFILE_OPEN_REASON = "workfile.opened"
-WORKFILE_SAVE_REASON = "workfile.saved"
 
 
 def deprecated(reason):
@@ -388,9 +385,9 @@ class IWorkfileHost:
         self.set_current_context(
             folder_entity,
             task_entity,
-            reason=WORKFILE_SAVE_REASON,
             project_entity=project_entity,
             anatomy=anatomy,
+            reason=ContextChangeReason.workfile_save,
         )
 
         self.save_workfile(filepath)
@@ -458,9 +455,9 @@ class IWorkfileHost:
         self.set_current_context(
             folder_entity,
             task_entity,
-            reason=WORKFILE_OPEN_REASON,
             project_entity=project_entity,
             anatomy=anatomy,
+            reason=ContextChangeReason.workfile_open,
         )
 
         self.open_workfile(filepath)
