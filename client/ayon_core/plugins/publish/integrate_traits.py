@@ -150,13 +150,13 @@ class TemplateItem:
     anatomy: Anatomy
     template: str
     template_data: dict[str, Any]
-    template_object: AnatomyTemplateItem
+    template_object: "AnatomyTemplateItem"
 
     def __init__(self,
-        anatomy: Anatomy,
+        anatomy: "Anatomy",
         template: str,
         template_data: dict[str, Any],
-        template_object: AnatomyTemplateItem):
+        template_object: "AnatomyTemplateItem"):
         """Initialize TemplateItem.
 
         Args:
