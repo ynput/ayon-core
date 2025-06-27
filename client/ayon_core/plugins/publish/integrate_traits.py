@@ -244,7 +244,7 @@ class IntegrateTraits(pyblish.api.InstancePlugin):
 
     label = "Integrate Traits of an Asset"
     order = pyblish.api.IntegratorOrder
-    log: logging.Logger
+    log: "logging.Logger"
 
     def process(self, instance: pyblish.api.Instance) -> None:
         """Integrate representations with traits.
