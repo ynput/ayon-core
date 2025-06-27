@@ -1138,7 +1138,7 @@ class ExtractReview(pyblish.api.InstancePlugin):
         resolution_height: int,
         extension: str,
         temp_data: TempData
-    ) -> Optional["dict[int, str]"]:
+    ) -> Optional[dict[int, str]]:
         """Fills missing files by blank frame."""
 
         blank_frame_path = None
@@ -1194,7 +1194,7 @@ class ExtractReview(pyblish.api.InstancePlugin):
         staging_dir: str,
         start_frame: int,
         end_frame: int
-    ) -> "dict[int, str]":
+    ) -> dict[int, str]:
         """Fill missing files in sequence by duplicating existing ones.
 
         This will take nearest frame file and copy it with so as to fill
