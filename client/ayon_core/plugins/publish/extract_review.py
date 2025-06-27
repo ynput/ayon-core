@@ -7,7 +7,6 @@ import shutil
 import subprocess
 from abc import ABC, abstractmethod
 from typing import Any, Optional
-from dataclasses import dataclass, field
 import tempfile
 
 import clique
@@ -37,37 +36,68 @@ from ayon_core.pipeline.publish import (
 from ayon_core.pipeline.publish.lib import add_repre_files_for_cleanup
 
 
-@dataclass
 class TempData:
     """Temporary data used across extractor's process."""
-    fps: float
-    frame_start: int
-    frame_end: int
-    handle_start: int
-    handle_end: int
-    frame_start_handle: int
-    frame_end_handle: int
-    output_frame_start: int
-    output_frame_end: int
-    pixel_aspect: float
-    resolution_width: int
-    resolution_height: int
-    origin_repre: dict[str, Any]
-    input_is_sequence: bool
-    first_sequence_frame: int
-    input_allow_bg: bool
-    with_audio: bool
-    without_handles: bool
-    handles_are_set: bool
-    input_ext: str
-    explicit_input_paths: list[str]
-    paths_to_remove: list[str]
+    def __init__(
+        self,
+        fps: float,
+        frame_start: int,
+        frame_end: int,
+        handle_start: int,
+        handle_end: int,
+        frame_start_handle: int,
+        frame_end_handle: int,
+        output_frame_start: int,
+        output_frame_end: int,
+        pixel_aspect: float,
+        resolution_width: int,
+        resolution_height: int,
+        origin_repre: dict[str, Any],
+        input_is_sequence: bool,
+        first_sequence_frame: int,
+        input_allow_bg: bool,
+        with_audio: bool,
+        without_handles: bool,
+        handles_are_set: bool,
+        input_ext: str,
+        explicit_input_paths: list[str],
+        paths_to_remove: list[str],
 
-    # Set later
-    full_output_path: str = ""
-    filled_files: dict[int, str] = field(default_factory=dict)
-    output_ext_is_image: bool = True
-    output_is_sequence: bool = True
+        # Set later
+        full_output_path: str = "",
+        filled_files: dict[int, str] = None,
+        output_ext_is_image: bool = True,
+        output_is_sequence: bool = True,
+    ):
+        if filled_files is None:
+            filled_files = {}
+        self.fps = fps
+        self.frame_start = frame_start
+        self.frame_end = frame_end
+        self.handle_start = handle_start
+        self.handle_end = handle_end
+        self.frame_start_handle = frame_start_handle
+        self.frame_end_handle = frame_end_handle
+        self.output_frame_start = output_frame_start
+        self.output_frame_end = output_frame_end
+        self.pixel_aspect = pixel_aspect
+        self.resolution_width = resolution_width
+        self.resolution_height = resolution_height
+        self.origin_repre = origin_repre
+        self.input_is_sequence = input_is_sequence
+        self.first_sequence_frame = first_sequence_frame
+        self.input_allow_bg = input_allow_bg
+        self.with_audio = with_audio
+        self.without_handles = without_handles
+        self.handles_are_set = handles_are_set
+        self.input_ext = input_ext
+        self.explicit_input_paths = explicit_input_paths
+        self.paths_to_remove = paths_to_remove
+
+        self.full_output_path = full_output_path
+        self.filled_files = filled_files
+        self.output_ext_is_image = output_ext_is_image
+        self.output_is_sequence = output_is_sequence
 
 
 def frame_to_timecode(frame: int, fps: float) -> str:
