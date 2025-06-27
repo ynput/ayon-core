@@ -1,9 +1,9 @@
 """Integrate representations with traits."""
+from __future__ import annotations
 import contextlib
 import copy
 import hashlib
 import json
-from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
@@ -62,7 +62,6 @@ if TYPE_CHECKING:
     )
 
 
-@dataclass(frozen=True)
 class TransferItem:
     """Represents a single transfer item.
 
@@ -85,9 +84,28 @@ class TransferItem:
     size: int
     checksum: str
     template: str
-    template_data: "dict[str, Any]"
+    template_data: dict[str, Any]
     representation: Representation
     related_trait: FileLocation
+
+    def __init__(self,
+        source: Path,
+        destination: Path,
+        size: int,
+        checksum: str,
+        template: str,
+        template_data: dict[str, Any],
+        representation: Representation,
+        related_trait: FileLocation):
+
+        self.source = source
+        self.destination = destination
+        self.size = size
+        self.checksum = checksum
+        self.template = template
+        self.template_data = template_data
+        self.representation = representation
+        self.related_trait = related_trait
 
     @staticmethod
     def get_size(file_path: Path) -> int:
@@ -118,7 +136,6 @@ class TransferItem:
         ).hexdigest()
 
 
-@dataclass
 class TemplateItem:
     """Represents single template item.
 
@@ -130,23 +147,72 @@ class TemplateItem:
         template_data (dict[str, Any]): Template data.
         template_object (AnatomyTemplateItem): Template object
     """
-    anatomy: "Anatomy"
+    anatomy: Anatomy
     template: str
-    template_data: "dict[str, Any]"
-    template_object: "AnatomyTemplateItem"
+    template_data: dict[str, Any]
+    template_object: AnatomyTemplateItem
+
+    def __init__(self,
+        anatomy: Anatomy,
+        template: str,
+        template_data: dict[str, Any],
+        template_object: AnatomyTemplateItem):
+        """Initialize TemplateItem.
+
+        Args:
+            anatomy (Anatomy): Anatomy object.
+            template (str): Template path.
+            template_data (dict[str, Any]): Template data.
+            template_object (AnatomyTemplateItem): Template object.
+
+        """
+        self.anatomy = anatomy
+        self.template = template
+        self.template_data = template_data
+        self.template_object = template_object
 
 
-@dataclass
 class RepresentationEntity:
     """Representation entity data."""
     id: str
     versionId: str  # noqa: N815
     name: str
-    files: "dict[str, Any]"
-    attrib: "dict[str, Any]"
+    files: dict[str, Any]
+    attrib: dict[str, Any]
     data: str
-    tags: "list[str]"
+    tags: list[str]
     status: str
+
+    def __init__(self,
+        id: str,
+        versionId: str,  # noqa: N815
+        name: str,
+        files: dict[str, Any],
+        attrib: dict[str, Any],
+        data: str,
+        tags: list[str],
+        status: str):
+        """Initialize RepresentationEntity.
+
+        Args:
+            id (str): Entity ID.
+            versionId (str): Version ID.
+            name (str): Representation name.
+            files (dict[str, Any]): Files in the representation.
+            attrib (dict[str, Any]): Attributes of the representation.
+            data (str): Data of the representation.
+            tags (list[str]): Tags of the representation.
+            status (str): Status of the representation.
+
+        """
+        self.id = id
+        self.versionId = versionId
+        self.name = name
+        self.files = files
+        self.attrib = attrib
+        self.data = data
+        self.tags = tags
+        self.status = status
 
 
 def get_instance_families(instance: pyblish.api.Instance) -> "list[str]":
