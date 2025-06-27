@@ -1046,16 +1046,15 @@ def main_cli_publish(
 
     log.info("Running publish ...")
 
-    plugins = pyblish.api.discover()
-    print("Using plugins:")
-    for plugin in plugins:
-        print(plugin)
+    discover_result = publish_plugins_discover()
+    publish_plugins = discover_result.plugins
+    print("\n".join(discover_result.get_report(only_errors=False)))
 
     # Error exit as soon as any error occurs.
     error_format = ("Failed {plugin.__name__}: "
                     "{error} -- {error.traceback}")
 
-    for result in pyblish.util.publish_iter():
+    for result in pyblish.util.publish_iter(plugins=publish_plugins):
         if result["error"]:
             log.error(error_format.format(**result))
             # uninstall()
