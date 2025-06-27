@@ -130,10 +130,10 @@ class TemplateItem:
         template_data (dict[str, Any]): Template data.
         template_object (AnatomyTemplateItem): Template object
     """
-    anatomy: Anatomy
+    anatomy: "Anatomy"
     template: str
     template_data: "dict[str, Any]"
-    template_object: AnatomyTemplateItem
+    template_object: "AnatomyTemplateItem"
 
 
 @dataclass
@@ -534,7 +534,7 @@ class IntegrateTraits(pyblish.api.InstancePlugin):
         return path_template_obj.template.replace("\\", "/")
 
     def get_publish_template_object(
-            self, instance: pyblish.api.Instance) -> AnatomyTemplateItem:
+            self, instance: pyblish.api.Instance) -> "AnatomyTemplateItem":
         """Return anatomy template object to use for integration.
 
         Note: What is the actual type of the object?
@@ -755,7 +755,7 @@ class IntegrateTraits(pyblish.api.InstancePlugin):
 
         return version_data
 
-    def get_rootless_path(self, anatomy: Anatomy, path: str) -> str:
+    def get_rootless_path(self, anatomy: "Anatomy", path: str) -> str:
         r"""Get rootless variant of the path.
 
         Returns, if possible, a path without an absolute portion from the root
@@ -1014,7 +1014,7 @@ class IntegrateTraits(pyblish.api.InstancePlugin):
 
         """
         udim: UDIM = representation.get_trait(UDIM)
-        path_template_object: AnatomyStringTemplate = (
+        path_template_object: "AnatomyStringTemplate" = (
             template_item.template_object["path"]
         )
         for file_loc in representation.get_trait(
@@ -1069,7 +1069,7 @@ class IntegrateTraits(pyblish.api.InstancePlugin):
             template_item (TemplateItem): Template item.
 
         """
-        path_template_object: AnatomyStringTemplate = (
+        path_template_object: "AnatomyStringTemplate" = (
             template_item.template_object["path"]
         )
         template_item.template_data["ext"] = (
@@ -1151,7 +1151,7 @@ class IntegrateTraits(pyblish.api.InstancePlugin):
                 )
 
     def _prepare_file_info(
-            self, path: Path, anatomy: Anatomy) -> "dict[str, Any]":
+            self, path: Path, anatomy: "Anatomy") -> "dict[str, Any]":
         """Prepare information for one file (asset or resource).
 
         Arguments:
@@ -1182,7 +1182,7 @@ class IntegrateTraits(pyblish.api.InstancePlugin):
             self,
             transfer_items: "list[TransferItem]",
             representation: Representation,
-            anatomy: Anatomy,
+            anatomy: "Anatomy",
         ) -> "list[dict[str, str]]":
         """Get legacy files for a given representation.
 
