@@ -215,7 +215,7 @@ class RepresentationEntity:
         self.status = status
 
 
-def get_instance_families(instance: pyblish.api.Instance) -> "list[str]":
+def get_instance_families(instance: pyblish.api.Instance) -> list[str]:
     """Get all families of the instance.
 
     Todo:
@@ -241,7 +241,7 @@ def get_instance_families(instance: pyblish.api.Instance) -> "list[str]":
 
 
 def get_changed_attributes(
-        old_entity: dict, new_entity: dict) -> ("dict[str, Any]"):
+        old_entity: dict, new_entity: dict) -> dict[str, Any]:
     """Prepare changes for entity update.
 
     Todo:
@@ -276,7 +276,7 @@ def get_changed_attributes(
     return changes
 
 
-def prepare_for_json(data: "dict[str, Any]") -> "dict[str, Any]":
+def prepare_for_json(data: dict[str, Any]) -> dict[str, Any]:
     """Prepare data for JSON serialization.
 
     If there are values that json cannot serialize, this function will
@@ -418,7 +418,7 @@ class IntegrateTraits(pyblish.api.InstancePlugin):
     def get_transfers_from_representations(
             self,
             instance: pyblish.api.Instance,
-            representations: "list[Representation]") -> "list[TransferItem]":
+            representations: list[Representation]) -> list[TransferItem]:
         """Get transfers from representations.
 
         This method will go through all representations and prepare transfers
@@ -440,7 +440,7 @@ class IntegrateTraits(pyblish.api.InstancePlugin):
         """
         template: str = self.get_publish_template(instance)
         instance_template_data: dict[str, str] = {}
-        transfers: "list[TransferItem]" = []
+        transfers: list[TransferItem] = []
         # prepare template and data to format it
         for representation in representations:
 
@@ -535,8 +535,8 @@ class IntegrateTraits(pyblish.api.InstancePlugin):
 
     @staticmethod
     def filter_lifecycle(
-            representations: "list[Representation]"
-    ) -> "list[Representation]":
+            representations: list[Representation]
+    ) -> list[Representation]:
         """Filter representations based on LifeCycle traits.
 
         Args:
@@ -952,7 +952,7 @@ class IntegrateTraits(pyblish.api.InstancePlugin):
     def get_transfers_from_file_locations(
             representation: Representation,
             template_item: TemplateItem,
-            transfers: "list[TransferItem]") -> None:
+            transfers: list[TransferItem]) -> None:
         """Get transfers from FileLocations trait.
 
         Args:
@@ -993,7 +993,7 @@ class IntegrateTraits(pyblish.api.InstancePlugin):
     def get_transfers_from_sequence(
             representation: Representation,
             template_item: TemplateItem,
-            transfers: "list[TransferItem]"
+            transfers: list[TransferItem]
     ) -> None:
         """Get transfers from Sequence trait.
 
@@ -1014,7 +1014,7 @@ class IntegrateTraits(pyblish.api.InstancePlugin):
         # template is higher, us the one from the template
         dst_padding = representation.get_trait(
             Sequence).frame_padding
-        frames: "list[int]" = sequence.get_frame_list(
+        frames: list[int] = sequence.get_frame_list(
             representation.get_trait(FileLocations),
             regex=sequence.frame_regex)
         template_padding = template_item.anatomy.templates_obj.frame_padding
@@ -1065,7 +1065,7 @@ class IntegrateTraits(pyblish.api.InstancePlugin):
     def get_transfers_from_udim(
             representation: Representation,
             template_item: TemplateItem,
-            transfers: "list[TransferItem]"
+            transfers: list[TransferItem]
     ) -> None:
         """Get transfers from UDIM trait.
 
@@ -1121,7 +1121,7 @@ class IntegrateTraits(pyblish.api.InstancePlugin):
     def get_transfers_from_file_location(
             representation: Representation,
             template_item: TemplateItem,
-            transfers: "list[TransferItem]"
+            transfers: list[TransferItem]
     ) -> None:
         """Get transfers from FileLocation trait.
 
@@ -1179,7 +1179,7 @@ class IntegrateTraits(pyblish.api.InstancePlugin):
     def get_transfers_from_bundle(
             representation: Representation,
             template_item: TemplateItem,
-            transfers: "list[TransferItem]"
+            transfers: list[TransferItem]
     ) -> None:
         """Get transfers from Bundle trait.
 
@@ -1217,7 +1217,7 @@ class IntegrateTraits(pyblish.api.InstancePlugin):
                 )
 
     def _prepare_file_info(
-            self, path: Path, anatomy: "Anatomy") -> "dict[str, Any]":
+            self, path: Path, anatomy: "Anatomy") -> dict[str, Any]:
         """Prepare information for one file (asset or resource).
 
         Arguments:
@@ -1246,10 +1246,10 @@ class IntegrateTraits(pyblish.api.InstancePlugin):
 
     def _get_legacy_files_for_representation(
             self,
-            transfer_items: "list[TransferItem]",
+            transfer_items: list[TransferItem],
             representation: Representation,
             anatomy: "Anatomy",
-        ) -> "list[dict[str, str]]":
+        ) -> list[dict[str, str]]:
         """Get legacy files for a given representation.
 
         This expects the file to exist - it must run after the transfer
@@ -1259,13 +1259,13 @@ class IntegrateTraits(pyblish.api.InstancePlugin):
             list: List of legacy files.
 
         """
-        selected: "list[TransferItem]" = []
+        selected: list[TransferItem] = []
         selected.extend(
             item
             for item in transfer_items
             if item.representation == representation
         )
-        files: "list[dict[str, str]]" = []
+        files: list[dict[str, str]] = []
         files.extend(
             self._prepare_file_info(item.destination, anatomy)
             for item in selected
