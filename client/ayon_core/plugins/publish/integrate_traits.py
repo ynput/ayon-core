@@ -1,11 +1,9 @@
 """Integrate representations with traits."""
 from __future__ import annotations
-
 import contextlib
 import copy
 import hashlib
 import json
-from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
@@ -64,7 +62,6 @@ if TYPE_CHECKING:
     )
 
 
-@dataclass(frozen=True)
 class TransferItem:
     """Represents a single transfer item.
 
@@ -90,6 +87,25 @@ class TransferItem:
     template_data: dict[str, Any]
     representation: Representation
     related_trait: FileLocation
+
+    def __init__(self,
+        source: Path,
+        destination: Path,
+        size: int,
+        checksum: str,
+        template: str,
+        template_data: dict[str, Any],
+        representation: Representation,
+        related_trait: FileLocation):
+
+        self.source = source
+        self.destination = destination
+        self.size = size
+        self.checksum = checksum
+        self.template = template
+        self.template_data = template_data
+        self.representation = representation
+        self.related_trait = related_trait
 
     @staticmethod
     def get_size(file_path: Path) -> int:
@@ -120,7 +136,6 @@ class TransferItem:
         ).hexdigest()
 
 
-@dataclass
 class TemplateItem:
     """Represents single template item.
 
@@ -135,10 +150,28 @@ class TemplateItem:
     anatomy: Anatomy
     template: str
     template_data: dict[str, Any]
-    template_object: AnatomyTemplateItem
+    template_object: "AnatomyTemplateItem"
+
+    def __init__(self,
+        anatomy: "Anatomy",
+        template: str,
+        template_data: dict[str, Any],
+        template_object: "AnatomyTemplateItem"):
+        """Initialize TemplateItem.
+
+        Args:
+            anatomy (Anatomy): Anatomy object.
+            template (str): Template path.
+            template_data (dict[str, Any]): Template data.
+            template_object (AnatomyTemplateItem): Template object.
+
+        """
+        self.anatomy = anatomy
+        self.template = template
+        self.template_data = template_data
+        self.template_object = template_object
 
 
-@dataclass
 class RepresentationEntity:
     """Representation entity data."""
     id: str
@@ -149,6 +182,37 @@ class RepresentationEntity:
     data: str
     tags: list[str]
     status: str
+
+    def __init__(self,
+        id: str,
+        versionId: str,  # noqa: N815
+        name: str,
+        files: dict[str, Any],
+        attrib: dict[str, Any],
+        data: str,
+        tags: list[str],
+        status: str):
+        """Initialize RepresentationEntity.
+
+        Args:
+            id (str): Entity ID.
+            versionId (str): Version ID.
+            name (str): Representation name.
+            files (dict[str, Any]): Files in the representation.
+            attrib (dict[str, Any]): Attributes of the representation.
+            data (str): Data of the representation.
+            tags (list[str]): Tags of the representation.
+            status (str): Status of the representation.
+
+        """
+        self.id = id
+        self.versionId = versionId
+        self.name = name
+        self.files = files
+        self.attrib = attrib
+        self.data = data
+        self.tags = tags
+        self.status = status
 
 
 def get_instance_families(instance: pyblish.api.Instance) -> list[str]:
@@ -177,7 +241,7 @@ def get_instance_families(instance: pyblish.api.Instance) -> list[str]:
 
 
 def get_changed_attributes(
-        old_entity: dict, new_entity: dict) -> (dict[str, Any]):
+        old_entity: dict, new_entity: dict) -> dict[str, Any]:
     """Prepare changes for entity update.
 
     Todo:
@@ -246,7 +310,7 @@ class IntegrateTraits(pyblish.api.InstancePlugin):
 
     label = "Integrate Traits of an Asset"
     order = pyblish.api.IntegratorOrder
-    log: logging.Logger
+    log: "logging.Logger"
 
     def process(self, instance: pyblish.api.Instance) -> None:
         """Integrate representations with traits.
@@ -471,7 +535,8 @@ class IntegrateTraits(pyblish.api.InstancePlugin):
 
     @staticmethod
     def filter_lifecycle(
-            representations: list[Representation]) -> list[Representation]:
+            representations: list[Representation]
+    ) -> list[Representation]:
         """Filter representations based on LifeCycle traits.
 
         Args:
@@ -535,7 +600,7 @@ class IntegrateTraits(pyblish.api.InstancePlugin):
         return path_template_obj.template.replace("\\", "/")
 
     def get_publish_template_object(
-            self, instance: pyblish.api.Instance) -> AnatomyTemplateItem:
+            self, instance: pyblish.api.Instance) -> "AnatomyTemplateItem":
         """Return anatomy template object to use for integration.
 
         Note: What is the actual type of the object?
@@ -756,7 +821,7 @@ class IntegrateTraits(pyblish.api.InstancePlugin):
 
         return version_data
 
-    def get_rootless_path(self, anatomy: Anatomy, path: str) -> str:
+    def get_rootless_path(self, anatomy: "Anatomy", path: str) -> str:
         r"""Get rootless variant of the path.
 
         Returns, if possible, a path without an absolute portion from the root
@@ -1015,7 +1080,7 @@ class IntegrateTraits(pyblish.api.InstancePlugin):
 
         """
         udim: UDIM = representation.get_trait(UDIM)
-        path_template_object: AnatomyStringTemplate = (
+        path_template_object: "AnatomyStringTemplate" = (
             template_item.template_object["path"]
         )
         for file_loc in representation.get_trait(
@@ -1070,7 +1135,7 @@ class IntegrateTraits(pyblish.api.InstancePlugin):
             template_item (TemplateItem): Template item.
 
         """
-        path_template_object: AnatomyStringTemplate = (
+        path_template_object: "AnatomyStringTemplate" = (
             template_item.template_object["path"]
         )
         template_item.template_data["ext"] = (
@@ -1152,7 +1217,7 @@ class IntegrateTraits(pyblish.api.InstancePlugin):
                 )
 
     def _prepare_file_info(
-            self, path: Path, anatomy: Anatomy) -> dict[str, Any]:
+            self, path: Path, anatomy: "Anatomy") -> dict[str, Any]:
         """Prepare information for one file (asset or resource).
 
         Arguments:
@@ -1183,7 +1248,7 @@ class IntegrateTraits(pyblish.api.InstancePlugin):
             self,
             transfer_items: list[TransferItem],
             representation: Representation,
-            anatomy: Anatomy,
+            anatomy: "Anatomy",
         ) -> list[dict[str, str]]:
         """Get legacy files for a given representation.
 
