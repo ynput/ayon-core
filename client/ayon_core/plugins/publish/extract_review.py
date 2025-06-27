@@ -1,4 +1,3 @@
-from __future__ import annotations
 import os
 import re
 import copy
@@ -52,7 +51,7 @@ class TempData:
     pixel_aspect: float
     resolution_width: int
     resolution_height: int
-    origin_repre: dict[str, Any]
+    origin_repre: "dict[str, Any]"
     input_is_sequence: bool
     first_sequence_frame: int
     input_allow_bg: bool
@@ -60,12 +59,12 @@ class TempData:
     without_handles: bool
     handles_are_set: bool
     input_ext: str
-    explicit_input_paths: list[str]
-    paths_to_remove: list[str]
+    explicit_input_paths: "list[str]"
+    paths_to_remove: "list[str]"
 
     # Set later
     full_output_path: str = ""
-    filled_files: dict[int, str] = field(default_factory=dict)
+    filled_files: "dict[int, str]" = field(default_factory=dict)
     output_ext_is_image: bool = True
     output_is_sequence: bool = True
 
@@ -1020,7 +1019,7 @@ class ExtractReview(pyblish.api.InstancePlugin):
         current_repre_name: str,
         start_frame: int,
         end_frame: int
-    ) -> Optional[dict[int, str]]:
+    ) -> Optional["dict[int, str]"]:
         """Tries to replace missing frames from ones from last version"""
         repre_file_paths = self._get_last_version_files(
             instance, current_repre_name)
@@ -1108,7 +1107,7 @@ class ExtractReview(pyblish.api.InstancePlugin):
         resolution_height: int,
         extension: str,
         temp_data: TempData
-    ) -> Optional[dict[int, str]]:
+    ) -> Optional["dict[int, str]"]:
         """Fills missing files by blank frame."""
 
         blank_frame_path = None
@@ -1164,7 +1163,7 @@ class ExtractReview(pyblish.api.InstancePlugin):
         staging_dir: str,
         start_frame: int,
         end_frame: int
-    ) -> dict[int, str]:
+    ) -> "dict[int, str]":
         """Fill missing files in sequence by duplicating existing ones.
 
         This will take nearest frame file and copy it with so as to fill
