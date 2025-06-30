@@ -51,7 +51,7 @@ from .creator_plugins import (
 if typing.TYPE_CHECKING:
     from ayon_core.host import HostBase, IPublishHost
     from ayon_core.lib import AbstractAttrDef
-    from ayon_core.lib.events import EventCallback
+    from ayon_core.lib.events import EventCallback, Event
 
     from .structures import CreatedInstance
     from .creator_plugins import BaseCreator
@@ -162,8 +162,8 @@ class CreateContext:
             context which should be handled by host.
 
     Args:
-        host (PublishHost): Host implementation which handles implementation and
-            global metadata.
+        host (PublishHost): Host implementation which handles implementation
+            and global metadata.
         headless (bool): Context is created out of UI (Current not used).
         reset (bool): Reset context on initialization.
         discover_publish_plugins (bool): Discover publish plugins during reset
@@ -1977,7 +1977,7 @@ class CreateContext:
 
     def remove_instances(
         self,
-        instances: list["CreatedInstances"],
+        instances: list["CreatedInstance"],
         sender: Optional[str] = None,
     ) -> None:
         """Remove instances from context.
