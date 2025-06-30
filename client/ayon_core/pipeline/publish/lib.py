@@ -1022,12 +1022,6 @@ def main_cli_publish(
     if addons_manager is None:
         addons_manager = AddonsManager()
 
-    # TODO validate if this has to happen
-    # - it should happen during 'install_ayon_plugins'
-    publish_paths = addons_manager.collect_plugin_paths()["publish"]
-    for plugin_path in publish_paths:
-        pyblish.api.register_plugin_path(plugin_path)
-
     applications_addon = addons_manager.get_enabled_addon("applications")
     if applications_addon is not None:
         context = get_global_context()
