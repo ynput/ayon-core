@@ -683,7 +683,7 @@ class CreateWidget(QtWidgets.QWidget):
         options = list(self._current_creator_variant_hints)
         if options:
             options.append("---")
-        options.extend(variant_hints)
+        options.extend(sorted(variant_hints))
         # Add hints to actions
         self._variant_widget.set_options(options)
 

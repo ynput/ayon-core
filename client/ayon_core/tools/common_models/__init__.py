@@ -2,6 +2,7 @@
 
 from .cache import CacheItem, NestedCacheItem
 from .projects import (
+    TagItem,
     StatusItem,
     StatusStates,
     ProjectItem,
@@ -25,6 +26,7 @@ __all__ = (
     "CacheItem",
     "NestedCacheItem",
 
+    "TagItem",
     "StatusItem",
     "StatusStates",
     "ProjectItem",
