@@ -494,6 +494,10 @@ class IntegrateHeroVersion(
             ):
                 shutil.rmtree(backup_hero_publish_dir)
 
+            instance.data["published_representations"][repre_entity["id"]] = (
+                repre_entity
+            )
+
         except Exception:
             if (
                 backup_hero_publish_dir is not None and
