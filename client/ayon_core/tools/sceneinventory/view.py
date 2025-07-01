@@ -1133,16 +1133,17 @@ class SceneInventoryView(QtWidgets.QTreeView):
                 and HeroTypeVersion instances set the hero version.
 
         """
-        non_frozen_item_ids = []
         containers_by_id = self._controller.get_containers_by_item_ids(
             item_ids
         )
+        non_frozen_item_ids = []
         for item_id in item_ids:
             container = containers_by_id[item_id]
-            if container.get("version_freeze", False):
-                continue
-            else:
+            if not container.get("version_freeze", False):
                 non_frozen_item_ids.append(item_id)
+
+        if not non_frozen_item_ids:
+            return
         versions = [version for _ in range(len(non_frozen_item_ids))]
         self._update_containers(non_frozen_item_ids, versions)
 
