@@ -131,31 +131,24 @@ class InventoryModel(QtGui.QStandardItemModel):
         return item.get("isOutdated", True)
 
     def generate_group_formatting_data(self, repre_info):
-        hierarchy_parts = repre_info.folder_path.split("/")
-        hierarchy_parts.pop(0)
-        hierarchy_parts.pop(-1)
-
-        folder = {
+        fake_folder_entity = {
             "name": repre_info.folder_name,
             "id": repre_info.folder_id,
             "folderType": repre_info.folder_type,
-            "path": repre_info.folder_type
+            "path": repre_info.folder_path
         }
-        extra_folder_keys = template_data.construct_extra_folder_template_keys(
-            self._controller.get_current_project_name(),
-            folder,
-            hierarchy_parts
+
+        folder_data = template_data.get_folder_template_data(
+            fake_folder_entity,
+            self._controller.get_current_project_name()
         )
 
         formatting_data = {
-            "folder": {
-                "name": repre_info.folder_name,
-                **extra_folder_keys
-            },
             "product": repre_info.product_name,
             "productType": repre_info.product_type,
             "representation": repre_info.representation_name
         }
+        formatting_data.update(folder_data)
         return formatting_data
 
     def refresh(self, selected=None):
