@@ -1123,6 +1123,8 @@ class SceneInventoryView(QtWidgets.QTreeView):
         If at least one item is specified this will always try to refresh
         the inventory even if errors occurred on any of the items.
 
+        This will skip items that have 'version_freeze' set to True.
+
         Arguments:
             item_ids (Iterable[str]): Items to update
             version (Union[int, HeroVersion]): Version to set to.
@@ -1131,8 +1133,18 @@ class SceneInventoryView(QtWidgets.QTreeView):
                 and HeroTypeVersion instances set the hero version.
 
         """
-        versions = [version for _ in range(len(item_ids))]
-        self._update_containers(item_ids, versions)
+        non_frozen_item_ids = []
+        containers_by_id = self._controller.get_containers_by_item_ids(
+            item_ids
+        )
+        for item_id in item_ids:
+            container = containers_by_id[item_id]
+            if container.get("version_freeze", False):
+                continue
+            else:
+                non_frozen_item_ids.append(item_id)
+        versions = [version for _ in range(len(non_frozen_item_ids))]
+        self._update_containers(non_frozen_item_ids, versions)
 
     def _update_containers_to_approved_versions(
         self, approved_version_by_item_id

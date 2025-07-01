@@ -37,6 +37,8 @@ REMOTE_SITE_ICON_ROLE = QtCore.Qt.UserRole + 23
 #     containers inbetween refresh.
 ITEM_UNIQUE_NAME_ROLE = QtCore.Qt.UserRole + 24
 PROJECT_NAME_ROLE = QtCore.Qt.UserRole + 25
+VERSION_FREEZE_ROLE = QtCore.Qt.UserRole + 26
+VERSION_FREEZE_ICON_ROLE = QtCore.Qt.UserRole + 27
 
 
 class InventoryModel(QtGui.QStandardItemModel):
@@ -85,6 +87,7 @@ class InventoryModel(QtGui.QStandardItemModel):
         product_group_col: PRODUCT_GROUP_ICON_ROLE,
         active_site_col: ACTIVE_SITE_ICON_ROLE,
         remote_site_col: REMOTE_SITE_ICON_ROLE,
+        count_col: VERSION_FREEZE_ICON_ROLE,
     }
     foreground_role_by_column = {
         name_col: NAME_COLOR_ROLE,
@@ -278,6 +281,14 @@ class InventoryModel(QtGui.QStandardItemModel):
                 )
                 container_model_items = []
                 for container_item in container_items:
+                    if container_item.version_freeze:
+                        freeze_icon = qtawesome.icon(
+                            "fa.snowflake-o", color="#0091B2"
+                        )
+                    else:
+                        freeze_icon = qtawesome.icon(
+                            "fa.fire", color="#FF0000"
+                        )
                     object_name = container_item.object_name or "<none>"
                     unique_name = repre_name + object_name
                     item = QtGui.QStandardItem()
@@ -294,6 +305,9 @@ class InventoryModel(QtGui.QStandardItemModel):
                     item.setData(container_item.object_name, OBJECT_NAME_ROLE)
                     item.setData(True, IS_CONTAINER_ITEM_ROLE)
                     item.setData(unique_name, ITEM_UNIQUE_NAME_ROLE)
+                    item.setData(container_item.version_freeze,
+                                 VERSION_FREEZE_ROLE)
+                    item.setData(freeze_icon, VERSION_FREEZE_ICON_ROLE)
                     container_model_items.append(item)
 
                 progress = progress_by_id[repre_id]
@@ -385,6 +399,11 @@ class InventoryModel(QtGui.QStandardItemModel):
             self._hierarchy_view = state
 
     def get_outdated_item_ids(self, ignore_hero=True):
+        '''
+        Return the ids of the container items that are outdated. This will
+        ignore all containers that have version_freeze set to True.
+
+        '''
         outdated_item_ids = []
         root_item = self.invisibleRootItem()
         for row in range(root_item.rowCount()):
@@ -397,6 +416,8 @@ class InventoryModel(QtGui.QStandardItemModel):
 
             for idx in range(group_item.rowCount()):
                 item = group_item.child(idx)
+                if item.data(VERSION_FREEZE_ROLE):
+                    continue
                 outdated_item_ids.append(item.data(ITEM_ID_ROLE))
         return outdated_item_ids
 
