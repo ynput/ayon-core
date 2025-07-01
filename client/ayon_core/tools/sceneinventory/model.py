@@ -87,7 +87,7 @@ class InventoryModel(QtGui.QStandardItemModel):
         product_group_col: PRODUCT_GROUP_ICON_ROLE,
         active_site_col: ACTIVE_SITE_ICON_ROLE,
         remote_site_col: REMOTE_SITE_ICON_ROLE,
-        count_col: VERSION_FREEZE_ICON_ROLE,
+        version_col: VERSION_FREEZE_ICON_ROLE,
     }
     foreground_role_by_column = {
         name_col: NAME_COLOR_ROLE,
@@ -96,7 +96,7 @@ class InventoryModel(QtGui.QStandardItemModel):
     }
     width_by_column = {
         name_col: 250,
-        version_col: 55,
+        version_col: 75,
         status_col: 100,
         count_col: 55,
         product_type_col: 150,

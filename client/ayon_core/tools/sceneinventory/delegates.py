@@ -15,6 +15,16 @@ class VersionDelegate(QtWidgets.QStyledItemDelegate):
             else:
                 fg_color = None
 
+        icon_data = index.data(QtCore.Qt.DecorationRole)
+        if icon_data is not None:
+            mode = QtGui.QIcon.Normal
+            option.decorationSize = QtCore.QSize(16, 16)
+            r = QtCore.QRect(QtCore.QPoint(), option.decorationSize)
+            r.moveCenter(option.rect.center())
+            r.setRight(option.rect.right() - 3)
+            state = QtGui.QIcon.On if option.state & QtWidgets.QStyle.State_Open else QtGui.QIcon.Off
+            icon_data.paint(painter, r, QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter, mode, state)
+
         if not fg_color:
             return super().paint(painter, option, index)
 
