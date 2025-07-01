@@ -9,6 +9,9 @@ import qtawesome
 from ayon_core.style import get_default_entity_icon_color
 from ayon_core.tools.utils import get_qt_icon
 from ayon_core.tools.utils.lib import format_version
+from ayon_core.pipeline import template_data
+from ayon_core.lib import filter_profiles
+from ayon_core.settings import get_project_settings
 
 ITEM_ID_ROLE = QtCore.Qt.UserRole + 1
 NAME_COLOR_ROLE = QtCore.Qt.UserRole + 2
@@ -127,13 +130,57 @@ class InventoryModel(QtGui.QStandardItemModel):
     def outdated(self, item):
         return item.get("isOutdated", True)
 
+    def generate_group_formatting_data(self, repre_info):
+        hierarchy_parts = repre_info.folder_path.split("/")
+        hierarchy_parts.pop(0)
+        hierarchy_parts.pop(-1)
+
+        folder = {
+            "name": repre_info.folder_name,
+            "id": repre_info.folder_id,
+            "folderType": repre_info.folder_type,
+            "path": repre_info.folder_type
+        }
+        extra_folder_keys = template_data.construct_extra_folder_template_keys(
+            self._controller.get_current_project_name(),
+            folder,
+            hierarchy_parts
+        )
+
+        formatting_data = {
+            "folder": {
+                "name": repre_info.folder_name,
+                **extra_folder_keys
+            },
+            "product": repre_info.product_name,
+            "productType": repre_info.product_type,
+            "representation": repre_info.representation_name
+        }
+        return formatting_data
+
     def refresh(self, selected=None):
         """Refresh the model"""
         # for debugging or testing, injecting items from outside
         container_items = self._controller.get_container_items()
 
         self._clear_items()
+        # fetch the label settings
 
+        settings = get_project_settings(
+            self._controller.get_current_project_name())
+
+        profiles = (settings["core"]["tools"]["inventory"]["profiles"])
+
+        selected_profile = filter_profiles(
+            profiles,
+            {
+                "host_name": self._controller.get_host().name,
+                "task_name": self._controller.get_current_context()["task_name"]
+            },
+            keys_order=["host_name", "task_name"])
+        group_name_template = selected_profile["inventory_name_format"]
+
+        items_by_repre_id = {}
         project_names = set()
         repre_ids_by_project = collections.defaultdict(set)
         version_items_by_project = collections.defaultdict(dict)
@@ -250,11 +297,9 @@ class InventoryModel(QtGui.QStandardItemModel):
                     status_name = None
 
                 else:
-                    group_name = "{}_{}: ({})".format(
-                        repre_info.folder_path.rsplit("/")[-1],
-                        repre_info.product_name,
-                        repre_info.representation_name
-                    )
+                    fmt_data = self.generate_group_formatting_data(repre_info)
+                    group_name = group_name_template.format(**fmt_data)
+
                     item_icon = valid_item_icon
 
                     version_items = (
