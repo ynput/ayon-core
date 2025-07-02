@@ -143,7 +143,7 @@ class InventoryModel(QtGui.QStandardItemModel):
             self._controller.get_current_project_name()
         )
 
-        formatting_data = {
+        template_data = {
             "product": {
                 "name": repre_info.product_name,
                 "type": repre_info.product_type,
