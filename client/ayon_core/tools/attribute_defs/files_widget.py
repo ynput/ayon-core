@@ -900,18 +900,20 @@ class FilesWidget(QtWidgets.QFrame):
         if not item_ids:
             return
 
-        all_paths = []
+        all_paths = set()
+        merged_item_ids = set()
         for item_id in item_ids:
             file_item = self._files_model.get_file_item_by_id(item_id)
-            if not file_item:
-                return
-
-            new_items = file_item.split_sequence()
-            for nitem in new_items:
-                all_paths.append(os.path.join(nitem.directory, nitem.filenames[0]))
-        unique_all_pahts = list(set(all_paths))
-        self._remove_item_by_ids(item_ids)
-        new_items = FileDefItem.from_value(unique_all_pahts, True)
+            if file_item is None:
+                continue
+            merged_item_ids.add(item_id)
+            all_paths |= {
+                os.path.join(file_item.directory, filename)
+                for filename in file_item.filenames
+            }
+        
+        self._remove_item_by_ids(merged_item_ids)
+        new_items = FileDefItem.from_value(list(all_paths), True)
         self._add_filepaths(new_items)
 
     def _on_remove_requested(self):
