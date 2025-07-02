@@ -152,8 +152,8 @@ class InventoryModel(QtGui.QStandardItemModel):
                 "name": repre_info.representation_name,
             }
         }
-        formatting_data.update(folder_data)
-        return formatting_data
+        template_data .update(folder_data)
+        return template_data 
 
     def refresh(self, selected=None):
         """Refresh the model"""
