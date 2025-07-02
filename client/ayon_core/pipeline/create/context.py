@@ -24,7 +24,7 @@ from ayon_core.settings import get_project_settings
 from ayon_core.lib import is_func_signature_supported
 from ayon_core.lib.events import QueuedEventSystem
 from ayon_core.lib.attribute_definitions import get_default_values
-from ayon_core.host import IWorkfileHost
+from ayon_core.host import IWorkfileHost, IPublishHost
 from ayon_core.pipeline import Anatomy
 from ayon_core.pipeline.template_data import get_template_data
 from ayon_core.pipeline.plugin_discover import DiscoverResult
@@ -49,7 +49,7 @@ from .creator_plugins import (
     discover_convertor_plugins,
 )
 if typing.TYPE_CHECKING:
-    from ayon_core.host import HostBase, IPublishHost
+    from ayon_core.host import HostBase
     from ayon_core.lib import AbstractAttrDef
     from ayon_core.lib.events import EventCallback, Event
 
