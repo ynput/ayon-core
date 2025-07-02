@@ -130,7 +130,7 @@ class InventoryModel(QtGui.QStandardItemModel):
     def outdated(self, item):
         return item.get("isOutdated", True)
 
-    def generate_group_formatting_data(self, repre_info):
+    def _get_repre_info_template_data(self, repre_info):
         fake_folder_entity = {
             "name": repre_info.folder_name,
             "id": repre_info.folder_id,
