@@ -166,10 +166,8 @@ class InventoryModel(QtGui.QStandardItemModel):
         settings = get_project_settings(
             self._controller.get_current_project_name())
 
-        profiles = (settings["core"]["tools"]["inventory"]["profiles"])
-
         selected_profile = filter_profiles(
-            profiles,
+            settings["core"]["tools"]["inventory"]["profiles"],
             {
                 "host_name": self._controller.get_host().name,
                 "task_name": self._controller.get_current_context()["task_name"]
