@@ -79,6 +79,7 @@ _NOT_SET = object()
 INSTANCE_ADDED_TOPIC = "instances.added"
 INSTANCE_REMOVED_TOPIC = "instances.removed"
 VALUE_CHANGED_TOPIC = "values.changed"
+INSTANCE_STATE_CHANGED_TOPIC = "instance.stated.changed"
 PRE_CREATE_ATTR_DEFS_CHANGED_TOPIC = "pre.create.attr.defs.changed"
 CREATE_ATTR_DEFS_CHANGED_TOPIC = "create.attr.defs.changed"
 PUBLISH_ATTR_DEFS_CHANGED_TOPIC = "publish.attr.defs.changed"
@@ -257,6 +258,10 @@ class CreateContext:
             "create_attrs_change": BulkInfo(),
             # Publish attribute definitions changed
             "publish_attrs_change": BulkInfo(),
+            # Instance state changed
+            # - right now used only for 'mandatory' state but can be extended
+            #   in future
+            "state_change": BulkInfo(),
         }
         self._bulk_order = []
 
@@ -1049,6 +1054,35 @@ class CreateContext:
             PUBLISH_ATTR_DEFS_CHANGED_TOPIC, callback
         )
 
+    def add_instance_state_change_callback(
+        self, callback: Callable
+    ) -> "EventCallback":
+        """Register callback to listen instance state changes.
+
+        Create plugin changed attribute definitions of instance.
+
+        Data structure of event::
+
+            ```python
+            {
+                "instances": [CreatedInstance, ...],
+                "create_context": CreateContext
+            }
+            ```
+
+        Args:
+            callback (Callable): Callback function that will be called when
+                create attributes changed.
+
+        Returns:
+            EventCallback: Created callback object which can be used to
+                stop listening.
+
+        """
+        return self._event_hub.add_callback(
+            INSTANCE_STATE_CHANGED_TOPIC, callback
+        )
+
     def context_data_to_store(self) -> dict[str, Any]:
         """Data that should be stored by host function.
 
@@ -1324,6 +1358,13 @@ class CreateContext:
             yield bulk_info
 
     @contextmanager
+    def bulk_instance_state_change(self, sender: Optional[str] = None):
+        with self._bulk_context(
+            "state_change", sender
+        ) as bulk_info:
+            yield bulk_info
+
+    @contextmanager
     def bulk_publish_attr_defs_change(self, sender: Optional[str] = None):
         with self._bulk_context("publish_attrs_change", sender) as bulk_info:
             yield bulk_info
@@ -1389,6 +1430,19 @@ class CreateContext:
         if self._is_instance_events_ready(instance_id):
             with self.bulk_value_changes() as bulk_item:
                 bulk_item.append((instance_id, new_values))
+
+    def instance_state_changed(self, instance_id: str) -> None:
+        """Instance state changed.
+
+        Triggered by `CreatedInstance`.
+
+        Args:
+            instance_id (Optional[str]): Instance id.
+
+        """
+        if self._is_instance_events_ready(instance_id):
+            with self.bulk_instance_state_change() as bulk_item:
+                bulk_item.append(instance_id)
 
     # --- context change callbacks ---
     def publish_attribute_value_changed(
@@ -2249,6 +2303,8 @@ class CreateContext:
             self._bulk_create_attrs_change_finished(data, sender)
         elif key == "publish_attrs_change":
             self._bulk_publish_attrs_change_finished(data, sender)
+        elif key == "state_change":
+            self._bulk_instance_state_change_finished(data, sender)
 
     def _bulk_add_instances_finished(
         self,
@@ -2441,5 +2497,24 @@ class CreateContext:
         self._emit_event(
             PUBLISH_ATTR_DEFS_CHANGED_TOPIC,
             {"instance_changes": instance_changes},
+            sender,
+        )
+
+    def _bulk_instance_state_change_finished(
+        self,
+        instance_ids: list[str],
+        sender: Optional[str],
+    ) -> None:
+        if not instance_ids:
+            return
+
+        instances = [
+            self.get_instance_by_id(instance_id)
+            for instance_id in set(instance_ids)
+        ]
+
+        self._emit_event(
+            INSTANCE_STATE_CHANGED_TOPIC,
+            {"instances": instances},
             sender,
         )
