@@ -167,7 +167,7 @@ class WorkfilesModel:
         )
         failed = False
         try:
-            save_current_workfile_to(
+            self._host.save_workfile_with_context(
                 filepath,
                 folder_entity,
                 task_entity,

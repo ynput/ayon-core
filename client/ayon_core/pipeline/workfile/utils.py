@@ -326,8 +326,8 @@ def open_workfile(
 
 def save_current_workfile_to(
     workfile_path: str,
-    folder_entity: dict[str, Any],
-    task_entity: dict[str, Any],
+    folder_path: str,
+    task_name: str,
     *,
     version: Optional[int] = None,
     comment: Optional[str] = None,
@@ -338,8 +338,8 @@ def save_current_workfile_to(
 
     Args:
         workfile_path (str): Destination workfile path.
-        folder_entity (dict[str, Any]): Target folder entity.
-        task_entity (dict[str, Any]): Target task entity.
+        folder_path (str): Target folder path.
+        task_name (str): Target task name.
         version (Optional[int]): Workfile version.
         comment (optional[str]): Workfile comment.
         description (Optional[str]): Workfile description.
@@ -350,6 +350,14 @@ def save_current_workfile_to(
     from ayon_core.pipeline.context_tools import registered_host
 
     host = registered_host()
+    context = host.get_current_context()
+    project_name = context["project_name"]
+    folder_entity = ayon_api.get_folder_by_path(
+        project_name, folder_path
+    )
+    task_entity = ayon_api.get_task_by_name(
+        project_name, folder_entity["id"], task_name
+    )
     host.save_workfile_with_context(
         workfile_path,
         folder_entity,
@@ -398,7 +406,7 @@ def save_workfile_with_current_context(
                 project_name, folder_entity["id"], task_name
             )
 
-    save_current_workfile_to(
+    host.save_workfile_with_context(
         workfile_path,
         folder_entity,
         task_entity,
