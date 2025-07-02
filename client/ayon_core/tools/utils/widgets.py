@@ -441,14 +441,18 @@ class ExpandingTextEdit(QtWidgets.QTextEdit):
         margins = self.contentsMargins()
 
         document_width = 0
-        if width >= margins.left() + margins.right():
-            document_width = width - margins.left() - margins.right()
+        margins_size = margins.left() + margins.right()
+        if width >= margins_size:
+            document_width = width - margins_size
 
         document = self.document().clone()
         document.setTextWidth(document_width)
 
         return math.ceil(
-            margins.top() + document.size().height() + margins.bottom()
+            margins.top()
+            + document.size().height()
+            + margins.bottom()
+            + 2
         )
 
     def sizeHint(self):
