@@ -155,6 +155,10 @@ class OverviewWidget(QtWidgets.QFrame):
             "create.model.instances.context.changed",
             self._on_instance_context_change
         )
+        controller.register_event_callback(
+            "create.model.instance.state.changed",
+            self._on_instance_state_changed
+        )
 
         self._product_content_widget = product_content_widget
         self._product_content_layout = product_content_layout
@@ -352,6 +356,12 @@ class OverviewWidget(QtWidgets.QFrame):
         )
 
     def _on_instance_context_change(self, event):
+        self._refresh_instance_states(event["instance_ids"])
+
+    def _on_instance_state_changed(self, event):
+        self._refresh_instance_states(event["instance_ids"])
+
+    def _refresh_instance_states(self, instance_ids):
         current_idx = self._product_views_layout.currentIndex()
         for idx in range(self._product_views_layout.count()):
             if idx == current_idx:
@@ -361,7 +371,7 @@ class OverviewWidget(QtWidgets.QFrame):
                 widget.set_refreshed(False)
 
         current_widget = self._product_views_layout.widget(current_idx)
-        current_widget.refresh_instance_states(event["instance_ids"])
+        current_widget.refresh_instance_states(instance_ids)
 
     def _on_convert_requested(self):
         self.convert_requested.emit()
