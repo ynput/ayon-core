@@ -132,6 +132,7 @@ class InstanceListItemWidget(QtWidgets.QWidget):
 
         active_checkbox = NiceCheckbox(parent=self)
         active_checkbox.setChecked(instance.is_active)
+        active_checkbox.setVisible(not instance.is_mandatory)
 
         layout = QtWidgets.QHBoxLayout(self)
         content_margins = layout.contentsMargins()
@@ -192,6 +193,7 @@ class InstanceListItemWidget(QtWidgets.QWidget):
             self._instance_label_widget.setText(html_escape(label))
         # Check active state
         self.set_active(instance.is_active)
+        self._set_is_mandatory(instance.is_mandatory)
         # Check valid states
         self._set_valid_property(context_info.is_valid)
 
@@ -202,6 +204,9 @@ class InstanceListItemWidget(QtWidgets.QWidget):
 
     def set_active_toggle_enabled(self, enabled):
         self._active_checkbox.setEnabled(enabled)
+
+    def _set_is_mandatory(self, is_mandatory: bool) -> None:
+        self._active_checkbox.setVisible(not is_mandatory)
 
 
 class ListContextWidget(QtWidgets.QFrame):
