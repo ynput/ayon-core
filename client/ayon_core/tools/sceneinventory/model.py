@@ -144,9 +144,13 @@ class InventoryModel(QtGui.QStandardItemModel):
         )
 
         formatting_data = {
-            "product": repre_info.product_name,
-            "productType": repre_info.product_type,
-            "representation": repre_info.representation_name
+            "product": {
+                "name": repre_info.product_name,
+                "type": repre_info.product_type,
+            },
+            "representation": {
+                "name": repre_info.representation_name,
+            }
         }
         formatting_data.update(folder_data)
         return formatting_data
