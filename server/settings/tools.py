@@ -378,8 +378,8 @@ class InventoryTemplateNameProfile(BaseSettingsModel):
         title="Current task",
         default_factory=list
     )
-    inventory_name_format: str = SettingsField(
-        title="Format",
+    template: str = SettingsField(
+        title="Template",
         default_factory=str
     )
 
