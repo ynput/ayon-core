@@ -171,7 +171,10 @@ class InventoryModel(QtGui.QStandardItemModel):
                 "task_name": self._controller.get_current_context()["task_name"]
             },
             keys_order=["host_name", "task_name"])
-        group_name_template = selected_profile["inventory_name_format"]
+        group_name_template = "{folder[name]}_{product[name]}: ({representation[name]})"
+        if selected_profile is not None:
+            group_name_template = selected_profile["inventory_name_format"]
+        
 
         items_by_repre_id = {}
         project_names = set()
