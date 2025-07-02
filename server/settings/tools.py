@@ -709,13 +709,6 @@ DEFAULT_TOOLS_VALUES = {
     },
     "comment_minimum_required_chars": 0,
     "inventory": {
-       "profiles": [
-            {
-                "host_name": [],
-                "task_name": [],
-                "inventory_name_format": "{folder[name]}_{product}: ({representation})",
-            },
-
-        ]
+       "profiles": []
     }
 }
