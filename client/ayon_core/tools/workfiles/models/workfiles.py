@@ -38,7 +38,6 @@ from ayon_core.pipeline.workfile import (
     get_last_workfile_with_version_from_paths,
     get_comments_from_workfile_paths,
     open_workfile,
-    save_current_workfile_to,
     copy_and_open_workfile,
     copy_and_open_workfile_representation,
     save_workfile_info,
