@@ -370,12 +370,12 @@ class PublishToolModel(BaseSettingsModel):
 
 class InventoryTemplateNameProfile(BaseSettingsModel):
     _layout = "expanded"
-    host_name: list[str] = SettingsField(
-        title="Host name",
+    host_names: list[str] = SettingsField(
+        title="Host names",
         default_factory=list
     )
     task_name: list[str] = SettingsField(
-        title="Current task",
+        title="Task names",
         default_factory=list
     )
     template: str = SettingsField(
