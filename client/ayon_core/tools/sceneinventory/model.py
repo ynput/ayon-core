@@ -295,8 +295,8 @@ class InventoryModel(QtGui.QStandardItemModel):
                     status_name = None
 
                 else:
-                    fmt_data = self.generate_group_formatting_data(repre_info)
-                    group_name = group_name_template.format(**fmt_data)
+                    template_data = self._get_repre_info_template_data(repre_info)
+                    group_name = group_name_template.format(**template_data)
 
                     item_icon = valid_item_icon
 
