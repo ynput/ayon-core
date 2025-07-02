@@ -390,6 +390,7 @@ class InventoryToolModel(BaseSettingsModel):
         title="Inventory label templates"
     )
 
+
 class GlobalToolsModel(BaseSettingsModel):
     ayon_menu: AYONMenuModel = SettingsField(
         default_factory=AYONMenuModel,
