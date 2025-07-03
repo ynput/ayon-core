@@ -85,6 +85,11 @@ class ExtractOIIOTranscode(publish.Extractor):
         new_representations = []
         repres = instance.data["representations"]
         for idx, repre in enumerate(list(repres)):
+            # target space, display and view might be defined upstream
+            target_colorspace = instance.data.get("targetOCIOColorspace")
+            target_display = instance.data.get("targetOCIODisplay")
+            target_view = instance.data.get("targetOCIOView")
+
             self.log.debug("repre ({}): `{}`".format(idx + 1, repre["name"]))
             if not self._repre_is_valid(repre):
                 continue
@@ -126,7 +131,6 @@ class ExtractOIIOTranscode(publish.Extractor):
 
                 transcoding_type = output_def["transcoding_type"]
 
-                target_colorspace = target_view = target_display = None
                 # NOTE: we use colorspace_data as the fallback values for
                 #     the target colorspace.
                 if transcoding_type == "colorspace":
