@@ -16,31 +16,34 @@ TASK_ID_ROLE = QtCore.Qt.UserRole + 5
 PRODUCT_ID_ROLE = QtCore.Qt.UserRole + 6
 PRODUCT_NAME_ROLE = QtCore.Qt.UserRole + 7
 PRODUCT_TYPE_ROLE = QtCore.Qt.UserRole + 8
-PRODUCT_TYPE_ICON_ROLE = QtCore.Qt.UserRole + 9
-PRODUCT_IN_SCENE_ROLE = QtCore.Qt.UserRole + 10
-VERSION_ID_ROLE = QtCore.Qt.UserRole + 11
-VERSION_HERO_ROLE = QtCore.Qt.UserRole + 12
-VERSION_NAME_ROLE = QtCore.Qt.UserRole + 13
-VERSION_NAME_EDIT_ROLE = QtCore.Qt.UserRole + 14
-VERSION_PUBLISH_TIME_ROLE = QtCore.Qt.UserRole + 15
-VERSION_STATUS_NAME_ROLE = QtCore.Qt.UserRole + 16
-VERSION_STATUS_SHORT_ROLE = QtCore.Qt.UserRole + 17
-VERSION_STATUS_COLOR_ROLE = QtCore.Qt.UserRole + 18
-VERSION_STATUS_ICON_ROLE = QtCore.Qt.UserRole + 19
-VERSION_AUTHOR_ROLE = QtCore.Qt.UserRole + 20
-VERSION_FRAME_RANGE_ROLE = QtCore.Qt.UserRole + 21
-VERSION_DURATION_ROLE = QtCore.Qt.UserRole + 22
-VERSION_HANDLES_ROLE = QtCore.Qt.UserRole + 23
-VERSION_STEP_ROLE = QtCore.Qt.UserRole + 24
-VERSION_AVAILABLE_ROLE = QtCore.Qt.UserRole + 25
-VERSION_THUMBNAIL_ID_ROLE = QtCore.Qt.UserRole + 26
-ACTIVE_SITE_ICON_ROLE = QtCore.Qt.UserRole + 27
-REMOTE_SITE_ICON_ROLE = QtCore.Qt.UserRole + 28
-REPRESENTATIONS_COUNT_ROLE = QtCore.Qt.UserRole + 29
-SYNC_ACTIVE_SITE_AVAILABILITY = QtCore.Qt.UserRole + 30
-SYNC_REMOTE_SITE_AVAILABILITY = QtCore.Qt.UserRole + 31
+PRODUCT_BASE_TYPE_ROLE = QtCore.Qt.UserRole + 9
+PRODUCT_TYPE_ICON_ROLE = QtCore.Qt.UserRole + 10
+PRODUCT_IN_SCENE_ROLE = QtCore.Qt.UserRole + 11
+VERSION_ID_ROLE = QtCore.Qt.UserRole + 12
+VERSION_HERO_ROLE = QtCore.Qt.UserRole + 13
+VERSION_NAME_ROLE = QtCore.Qt.UserRole + 14
+VERSION_NAME_EDIT_ROLE = QtCore.Qt.UserRole + 15
+VERSION_PUBLISH_TIME_ROLE = QtCore.Qt.UserRole + 16
+VERSION_STATUS_NAME_ROLE = QtCore.Qt.UserRole + 17
+VERSION_STATUS_SHORT_ROLE = QtCore.Qt.UserRole + 18
+VERSION_STATUS_COLOR_ROLE = QtCore.Qt.UserRole + 19
+VERSION_STATUS_ICON_ROLE = QtCore.Qt.UserRole + 20
+VERSION_AUTHOR_ROLE = QtCore.Qt.UserRole + 21
+VERSION_FRAME_RANGE_ROLE = QtCore.Qt.UserRole + 22
+VERSION_DURATION_ROLE = QtCore.Qt.UserRole + 23
+VERSION_HANDLES_ROLE = QtCore.Qt.UserRole + 24
+VERSION_STEP_ROLE = QtCore.Qt.UserRole + 25
+VERSION_AVAILABLE_ROLE = QtCore.Qt.UserRole + 26
+VERSION_THUMBNAIL_ID_ROLE = QtCore.Qt.UserRole + 27
+ACTIVE_SITE_ICON_ROLE = QtCore.Qt.UserRole + 28
+REMOTE_SITE_ICON_ROLE = QtCore.Qt.UserRole + 29
+REPRESENTATIONS_COUNT_ROLE = QtCore.Qt.UserRole + 30
+SYNC_ACTIVE_SITE_AVAILABILITY = QtCore.Qt.UserRole + 31
+SYNC_REMOTE_SITE_AVAILABILITY = QtCore.Qt.UserRole + 32
 
-STATUS_NAME_FILTER_ROLE = QtCore.Qt.UserRole + 32
+STATUS_NAME_FILTER_ROLE = QtCore.Qt.UserRole + 33
+TASK_TAGS_FILTER_ROLE = QtCore.Qt.UserRole + 34
+VERSION_TAGS_FILTER_ROLE = QtCore.Qt.UserRole + 35
 
 
 class ProductsModel(QtGui.QStandardItemModel):
@@ -49,6 +52,7 @@ class ProductsModel(QtGui.QStandardItemModel):
     column_labels = [
         "Product name",
         "Product type",
+        "Product base type",
         "Folder",
         "Version",
         "Status",
@@ -79,6 +83,7 @@ class ProductsModel(QtGui.QStandardItemModel):
 
     product_name_col = column_labels.index("Product name")
     product_type_col = column_labels.index("Product type")
+    product_base_type_col = column_labels.index("Product base type")
     folders_label_col = column_labels.index("Folder")
     version_col = column_labels.index("Version")
     status_col = column_labels.index("Status")
@@ -93,6 +98,7 @@ class ProductsModel(QtGui.QStandardItemModel):
     _display_role_mapping = {
         product_name_col: QtCore.Qt.DisplayRole,
         product_type_col: PRODUCT_TYPE_ROLE,
+        product_base_type_col: PRODUCT_BASE_TYPE_ROLE,
         folders_label_col: FOLDER_LABEL_ROLE,
         version_col: VERSION_NAME_ROLE,
         status_col: VERSION_STATUS_NAME_ROLE,
@@ -130,6 +136,7 @@ class ProductsModel(QtGui.QStandardItemModel):
         self._last_folder_ids = []
         self._last_project_statuses = {}
         self._last_status_icons_by_name = {}
+        self._last_task_tags_by_task_id = {}
 
     def get_product_item_indexes(self):
         return [
@@ -169,6 +176,17 @@ class ProductsModel(QtGui.QStandardItemModel):
             self._last_project_name,
             self._last_folder_ids
         )
+
+    def get_task_tags_by_id(self, task_id):
+        return self._last_task_tags_by_task_id.get(task_id, set())
+
+    def get_version_items_by_product_id(self, product_id: str):
+        product_item = self._product_items_by_id.get(product_id)
+        if product_item is None:
+            return None
+        version_items = list(product_item.version_items.values())
+        version_items.sort(reverse=True)
+        return version_items
 
     def flags(self, index):
         # Make the version column editable
@@ -224,9 +242,9 @@ class ProductsModel(QtGui.QStandardItemModel):
             product_item = self._product_items_by_id.get(product_id)
             if product_item is None:
                 return None
-            product_items = list(product_item.version_items.values())
-            product_items.sort(reverse=True)
-            return product_items
+            version_items = list(product_item.version_items.values())
+            version_items.sort(reverse=True)
+            return version_items
 
         if role == QtCore.Qt.EditRole:
             return None
@@ -422,6 +440,16 @@ class ProductsModel(QtGui.QStandardItemModel):
             version_item.status
             for version_item in product_item.version_items.values()
         }
+        version_tags = set()
+        task_tags = set()
+        for version_item in product_item.version_items.values():
+            version_tags |= set(version_item.tags)
+            _task_tags = self._last_task_tags_by_task_id.get(
+                version_item.task_id
+            )
+            if _task_tags:
+                task_tags |= set(_task_tags)
+
         if model_item is None:
             product_id = product_item.product_id
             model_item = QtGui.QStandardItem(product_item.product_name)
@@ -432,6 +460,9 @@ class ProductsModel(QtGui.QStandardItemModel):
             model_item.setData(icon, QtCore.Qt.DecorationRole)
             model_item.setData(product_id, PRODUCT_ID_ROLE)
             model_item.setData(product_item.product_name, PRODUCT_NAME_ROLE)
+            model_item.setData(
+                product_item.product_base_type, PRODUCT_BASE_TYPE_ROLE
+            )
             model_item.setData(product_item.product_type, PRODUCT_TYPE_ROLE)
             model_item.setData(product_type_icon, PRODUCT_TYPE_ICON_ROLE)
             model_item.setData(product_item.folder_id, FOLDER_ID_ROLE)
@@ -440,6 +471,8 @@ class ProductsModel(QtGui.QStandardItemModel):
             self._items_by_id[product_id] = model_item
 
         model_item.setData("|".join(statuses), STATUS_NAME_FILTER_ROLE)
+        model_item.setData("|".join(version_tags), VERSION_TAGS_FILTER_ROLE)
+        model_item.setData("|".join(task_tags), TASK_TAGS_FILTER_ROLE)
         model_item.setData(product_item.folder_label, FOLDER_LABEL_ROLE)
         in_scene = 1 if product_item.product_in_scene else 0
         model_item.setData(in_scene, PRODUCT_IN_SCENE_ROLE)
@@ -470,6 +503,14 @@ class ProductsModel(QtGui.QStandardItemModel):
         }
         self._last_status_icons_by_name = {}
 
+        task_items = self._controller.get_task_items(
+            project_name, folder_ids, sender=PRODUCTS_MODEL_SENDER_NAME
+        )
+        self._last_task_tags_by_task_id = {
+            task_item.task_id: task_item.tags
+            for task_item in task_items
+        }
+
         active_site_icon_def = self._controller.get_active_site_icon_def(
             project_name
         )
@@ -484,6 +525,7 @@ class ProductsModel(QtGui.QStandardItemModel):
             folder_ids,
             sender=PRODUCTS_MODEL_SENDER_NAME
         )
+
         product_items_by_id = {
             product_item.product_id: product_item
             for product_item in product_items

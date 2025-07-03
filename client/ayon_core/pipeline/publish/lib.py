@@ -1022,12 +1022,6 @@ def main_cli_publish(
     if addons_manager is None:
         addons_manager = AddonsManager()
 
-    # TODO validate if this has to happen
-    # - it should happen during 'install_ayon_plugins'
-    publish_paths = addons_manager.collect_plugin_paths()["publish"]
-    for plugin_path in publish_paths:
-        pyblish.api.register_plugin_path(plugin_path)
-
     applications_addon = addons_manager.get_enabled_addon("applications")
     if applications_addon is not None:
         context = get_global_context()
@@ -1052,16 +1046,15 @@ def main_cli_publish(
 
     log.info("Running publish ...")
 
-    plugins = pyblish.api.discover()
-    print("Using plugins:")
-    for plugin in plugins:
-        print(plugin)
+    discover_result = publish_plugins_discover()
+    publish_plugins = discover_result.plugins
+    print("\n".join(discover_result.get_report(only_errors=False)))
 
     # Error exit as soon as any error occurs.
     error_format = ("Failed {plugin.__name__}: "
                     "{error} -- {error.traceback}")
 
-    for result in pyblish.util.publish_iter():
+    for result in pyblish.util.publish_iter(plugins=publish_plugins):
         if result["error"]:
             log.error(error_format.format(**result))
             # uninstall()
