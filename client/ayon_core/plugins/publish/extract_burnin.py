@@ -757,6 +757,15 @@ class ExtractBurnin(publish.Extractor):
             )
         })
 
+        # burnin source resolution which might be different than on review
+        repre_source_resolution_width = repre.get("source_resolution_width")
+        repre_source_resolution_height = repre.get("source_resolution_height")
+        if repre_source_resolution_width and repre_source_resolution_height:
+            burnin_data.update({
+                "source_resolution_width": repre_source_resolution_width,
+                "source_resolution_height": repre_source_resolution_height
+            })
+
     def filter_burnins_defs(self, profile, instance):
         """Filter outputs by their values from settings.
 
