@@ -50,8 +50,10 @@ from .attribute_definitions import (
 )
 
 from .env_tools import (
+    compute_env_variables_structure,
     env_value_to_bool,
     get_paths_from_environ,
+    merge_env_variables,
 )
 
 from .terminal import Terminal
@@ -62,6 +64,7 @@ from .execute import (
     run_subprocess,
     run_detached_process,
     run_ayon_launcher_process,
+    run_detached_ayon_launcher_process,
     path_to_subprocess_arg,
     CREATE_NO_WINDOW
 )
@@ -131,6 +134,7 @@ from .ayon_info import (
     is_staging_enabled,
     is_dev_mode_enabled,
     is_in_tests,
+    get_settings_variant,
 )
 
 terminal = Terminal
@@ -160,11 +164,14 @@ __all__ = [
     "run_subprocess",
     "run_detached_process",
     "run_ayon_launcher_process",
+    "run_detached_ayon_launcher_process",
     "path_to_subprocess_arg",
     "CREATE_NO_WINDOW",
 
+    "compute_env_variables_structure",
     "env_value_to_bool",
     "get_paths_from_environ",
+    "merge_env_variables",
 
     "ToolNotFoundError",
     "find_executable",
@@ -240,4 +247,5 @@ __all__ = [
     "is_staging_enabled",
     "is_dev_mode_enabled",
     "is_in_tests",
+    "get_settings_variant",
 ]

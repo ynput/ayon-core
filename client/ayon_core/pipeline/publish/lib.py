@@ -6,7 +6,7 @@ import inspect
 import copy
 import warnings
 import xml.etree.ElementTree
-from typing import Optional, Union, List
+from typing import TYPE_CHECKING, Optional, Union, List
 
 import ayon_api
 import pyblish.util
@@ -26,6 +26,12 @@ from .constants import (
     DEFAULT_PUBLISH_TEMPLATE,
     DEFAULT_HERO_PUBLISH_TEMPLATE,
 )
+
+if TYPE_CHECKING:
+    from ayon_core.pipeline.traits import Representation
+
+
+TRAIT_INSTANCE_KEY: str = "representations_with_traits"
 
 
 def get_template_name_profiles(
@@ -1016,12 +1022,6 @@ def main_cli_publish(
     if addons_manager is None:
         addons_manager = AddonsManager()
 
-    # TODO validate if this has to happen
-    # - it should happen during 'install_ayon_plugins'
-    publish_paths = addons_manager.collect_plugin_paths()["publish"]
-    for plugin_path in publish_paths:
-        pyblish.api.register_plugin_path(plugin_path)
-
     applications_addon = addons_manager.get_enabled_addon("applications")
     if applications_addon is not None:
         context = get_global_context()
@@ -1046,19 +1046,81 @@ def main_cli_publish(
 
     log.info("Running publish ...")
 
-    plugins = pyblish.api.discover()
-    print("Using plugins:")
-    for plugin in plugins:
-        print(plugin)
+    discover_result = publish_plugins_discover()
+    publish_plugins = discover_result.plugins
+    print("\n".join(discover_result.get_report(only_errors=False)))
 
     # Error exit as soon as any error occurs.
     error_format = ("Failed {plugin.__name__}: "
                     "{error} -- {error.traceback}")
 
-    for result in pyblish.util.publish_iter():
+    for result in pyblish.util.publish_iter(plugins=publish_plugins):
         if result["error"]:
             log.error(error_format.format(**result))
             # uninstall()
             sys.exit(1)
 
     log.info("Publish finished.")
+
+
+def has_trait_representations(
+        instance: pyblish.api.Instance) -> bool:
+    """Check if instance has trait representation.
+
+    Args:
+        instance (pyblish.api.Instance): Instance to check.
+
+    Returns:
+        True: Instance has trait representation.
+        False: Instance does not have trait representation.
+
+    """
+    return TRAIT_INSTANCE_KEY in instance.data
+
+
+def add_trait_representations(
+        instance: pyblish.api.Instance,
+        representations: list[Representation]
+) -> None:
+    """Add trait representations to instance.
+
+    Args:
+        instance (pyblish.api.Instance): Instance to add trait
+            representations to.
+        representations (list[Representation]): List of representation
+            trait based representations to add.
+
+    """
+    repres = instance.data.setdefault(TRAIT_INSTANCE_KEY, [])
+    repres.extend(representations)
+
+
+def set_trait_representations(
+        instance: pyblish.api.Instance,
+        representations: list[Representation]
+) -> None:
+    """Set trait representations to instance.
+
+    Args:
+        instance (pyblish.api.Instance): Instance to set trait
+            representations to.
+        representations (list[Representation]): List of trait
+            based representations.
+
+    """
+    instance.data[TRAIT_INSTANCE_KEY] = representations
+
+
+def get_trait_representations(
+        instance: pyblish.api.Instance) -> list[Representation]:
+    """Get trait representations from instance.
+
+    Args:
+        instance (pyblish.api.Instance): Instance to get trait
+            representations from.
+
+    Returns:
+        list[Representation]: List of representation names.
+
+    """
+    return instance.data.get(TRAIT_INSTANCE_KEY, [])

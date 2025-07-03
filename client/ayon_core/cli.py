@@ -235,6 +235,30 @@ def version(build):
     print(os.environ["AYON_VERSION"])
 
 
+@main_cli.command()
+@click.option(
+    "--project",
+    type=str,
+    help="Project name",
+    required=True)
+def create_project_structure(
+    project,
+):
+    """Create project folder structure as defined in setting
+    `ayon+settings://core/project_folder_structure`
+
+    Args:
+        project (str): The name of the project for which you
+            want to create its additional folder structure.
+
+    """
+
+    from ayon_core.pipeline.project_folders import create_project_folders
+
+    print(f">>> Creating project folder structure for project '{project}'.")
+    create_project_folders(project)
+
+
 def _set_global_environments() -> None:
     """Set global AYON environments."""
     # First resolve general environment

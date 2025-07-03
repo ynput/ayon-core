@@ -56,14 +56,9 @@ class _AyonSettingsCache:
     @classmethod
     def _get_variant(cls):
         if _AyonSettingsCache.variant is None:
-            from ayon_core.lib import is_staging_enabled, is_dev_mode_enabled
+            from ayon_core.lib import get_settings_variant
 
-            variant = "production"
-            if is_dev_mode_enabled():
-                variant = cls._get_bundle_name()
-            elif is_staging_enabled():
-                variant = "staging"
-
+            variant = get_settings_variant()
             # Cache variant
             _AyonSettingsCache.variant = variant
 
