@@ -2,6 +2,7 @@
 """Package for handling AYON command line arguments."""
 import os
 import sys
+import logging
 import code
 import traceback
 from pathlib import Path
@@ -22,6 +23,9 @@ from ayon_core.lib.env_tools import (
     compute_env_variables_structure,
     merge_env_variables,
 )
+
+logging.basicConfig()
+log = logging.getLogger()
 
 
 @click.group(invoke_without_command=True)
