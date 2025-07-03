@@ -55,7 +55,7 @@ class ExtractBurnin(publish.Extractor):
         "max",
         "blender",
         "unreal",
-        "circuit",
+        "batchdelivery",
     ]
 
     optional = True

@@ -39,7 +39,7 @@ class CollectAudio(pyblish.api.ContextPlugin):
         "blender",
         "houdini",
         "max",
-        "circuit",
+        "batchdelivery",
     ]
 
     audio_product_name = "audioMain"

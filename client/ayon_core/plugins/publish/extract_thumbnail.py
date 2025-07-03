@@ -40,7 +40,7 @@ class ExtractThumbnail(pyblish.api.InstancePlugin):
         "aftereffects",
         "unreal",
         "houdini",
-        "circuit",
+        "batchdelivery",
     ]
     enabled = False
 
