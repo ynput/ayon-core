@@ -829,6 +829,49 @@ HintedLineEditButton {
 }
 
 /* Launcher specific stylesheets */
+ActionsView {
+    /* font size can't be set on items */
+    font-size: 8pt;
+    border: 0px;
+    padding: 0px;
+    margin: 0px;
+}
+
+ActionsView::item {
+    padding-top: 8px;
+    padding-bottom: 4px;
+    border: 0px;
+    border-radius: 5px;
+}
+
+ActionsView::item:hover {
+    color: {color:font-hover};
+    background: #424A57;
+}
+
+ActionsView::icon {}
+
+ActionMenuPopup #GroupLabel {
+    padding: 5px;
+    color: #ffffff;
+}
+
+ActionMenuPopup #ShadowFrame {
+    border-radius: 5px;
+    background: rgba(12, 13, 24, 0.5);
+}
+
+ActionMenuPopup #Wrapper {
+    border-radius: 5px;
+    background: #353B46;
+}
+
+ActionMenuPopup ActionsView {
+    background: transparent;
+    border: none;
+    margin: 4px;
+}
+
 #IconView[mode="icon"] {
     /* font size can't be set on items */
     font-size: 9pt;
@@ -860,6 +903,70 @@ HintedLineEditButton {
 #ComponentFrame {
     border: 1px solid {color:border};
     border-radius: 0.1em;
+}
+
+/* Launcher specific stylesheets */
+FiltersBar {
+    background: {color:bg-inputs};
+    border: 1px solid {color:border};
+    border-radius: 5px;
+}
+
+FiltersBar #ScrollArea {
+    background: {color:bg-inputs};
+}
+FiltersBar #SearchButton {
+    background: transparent;
+}
+
+FiltersBar #BackButton {
+    background: transparent;
+}
+
+FiltersBar #BackButton:hover {
+    background: {color:bg-buttons-hover};
+}
+
+FiltersBar #ConfirmButton {
+    background: #91CDFB;
+    color: #03344D;
+}
+
+FiltersPopup #PopupWrapper, FilterValuePopup #PopupWrapper {
+    border-radius: 5px;
+    background: {color:bg-inputs};
+}
+
+FiltersPopup #ShadowFrame, FilterValuePopup #ShadowFrame {
+    border-radius: 5px;
+    background: rgba(0, 0, 0, 0.5);
+}
+
+FilterItemButton, FilterValueItemButton {
+    border-radius: 5px;
+    background: transparent;
+}
+FilterItemButton:hover, FilterValueItemButton:hover {
+    background: {color:bg-buttons-hover};
+}
+FilterValueItemButton[selected="1"] {
+    background: {color:bg-view-selection};
+}
+FilterValueItemButton[selected="1"]:hover {
+    background: {color:bg-view-selection-hover};
+}
+FilterValueItemsView #ContentWidget {
+    background: {color:bg-inputs};
+}
+SearchItemDisplayWidget {
+    border-radius: 5px;
+}
+SearchItemDisplayWidget:hover {
+    background: {color:bg-buttons};
+}
+SearchItemDisplayWidget #ValueWidget {
+    border-radius: 3px;
+    background: {color:bg-buttons};
 }
 
 /* Subset Manager */

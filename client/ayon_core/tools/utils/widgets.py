@@ -6,6 +6,11 @@ from qtpy import QtWidgets, QtCore, QtGui
 import qargparse
 import qtawesome
 
+try:
+    import markdown
+except Exception:
+    markdown = None
+
 from ayon_core.style import (
     get_objected_colors,
     get_style_image_path,
@@ -129,6 +134,37 @@ class PlaceholderPlainTextEdit(QtWidgets.QPlainTextEdit):
                 _Cache.get_placeholder_color()
             )
             viewport.setPalette(filter_palette)
+
+
+class MarkdownLabel(QtWidgets.QLabel):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        # Enable word wrap by default
+        self.setWordWrap(True)
+
+        text_format_available = hasattr(QtCore.Qt, "MarkdownText")
+        if text_format_available:
+            self.setTextFormat(QtCore.Qt.MarkdownText)
+
+        self._text_format_available = text_format_available
+
+        self.setText(self.text())
+
+    def setText(self, text):
+        if not self._text_format_available:
+            text = self._md_to_html(text)
+        super().setText(text)
+
+    @staticmethod
+    def _md_to_html(text):
+        if markdown is None:
+            # This does add style definition to the markdown which does not
+            #   feel natural in the UI (but still better than raw MD).
+            doc = QtGui.QTextDocument()
+            doc.setMarkdown(text)
+            return doc.toHtml()
+        return markdown.markdown(text)
 
 
 class ElideLabel(QtWidgets.QLabel):
@@ -426,7 +462,7 @@ class BaseClickableFrame(QtWidgets.QFrame):
     Callback is defined by overriding `_mouse_release_callback`.
     """
     def __init__(self, parent):
-        super(BaseClickableFrame, self).__init__(parent)
+        super().__init__(parent)
 
         self._mouse_pressed = False
 
@@ -434,17 +470,23 @@ class BaseClickableFrame(QtWidgets.QFrame):
         pass
 
     def mousePressEvent(self, event):
+        super().mousePressEvent(event)
+        if event.isAccepted():
+            return
         if event.button() == QtCore.Qt.LeftButton:
             self._mouse_pressed = True
-        super(BaseClickableFrame, self).mousePressEvent(event)
+            event.accept()
 
     def mouseReleaseEvent(self, event):
-        if self._mouse_pressed:
-            self._mouse_pressed = False
-            if self.rect().contains(event.pos()):
-                self._mouse_release_callback()
+        pressed, self._mouse_pressed = self._mouse_pressed, False
+        super().mouseReleaseEvent(event)
+        if event.isAccepted():
+            return
 
-        super(BaseClickableFrame, self).mouseReleaseEvent(event)
+        accepted = pressed and self.rect().contains(event.pos())
+        if accepted:
+            event.accept()
+            self._mouse_release_callback()
 
 
 class ClickableFrame(BaseClickableFrame):
@@ -459,15 +501,15 @@ class ClickableLabel(QtWidgets.QLabel):
     """Label that catch left mouse click and can trigger 'clicked' signal."""
     clicked = QtCore.Signal()
 
-    def __init__(self, parent):
-        super(ClickableLabel, self).__init__(parent)
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
 
         self._mouse_pressed = False
 
     def mousePressEvent(self, event):
         if event.button() == QtCore.Qt.LeftButton:
             self._mouse_pressed = True
-        super(ClickableLabel, self).mousePressEvent(event)
+        super().mousePressEvent(event)
 
     def mouseReleaseEvent(self, event):
         if self._mouse_pressed:
@@ -475,7 +517,7 @@ class ClickableLabel(QtWidgets.QLabel):
             if self.rect().contains(event.pos()):
                 self.clicked.emit()
 
-        super(ClickableLabel, self).mouseReleaseEvent(event)
+        super().mouseReleaseEvent(event)
 
 
 class ExpandBtnLabel(QtWidgets.QLabel):
@@ -588,8 +630,6 @@ class ClassicExpandBtnLabel(ExpandBtnLabel):
             QtGui.QPainter.Antialiasing
             | QtGui.QPainter.SmoothPixmapTransform
         )
-        if hasattr(QtGui.QPainter, "HighQualityAntialiasing"):
-            render_hints |= QtGui.QPainter.HighQualityAntialiasing
         painter.setRenderHints(render_hints)
         painter.drawPixmap(QtCore.QPoint(pos_x, pos_y), pixmap)
         painter.end()
@@ -704,7 +744,7 @@ class PixmapLabel(QtWidgets.QLabel):
 
     def resizeEvent(self, event):
         self._set_resized_pix()
-        super(PixmapLabel, self).resizeEvent(event)
+        super().resizeEvent(event)
 
 
 class PixmapButtonPainter(QtWidgets.QWidget):
@@ -752,8 +792,6 @@ class PixmapButtonPainter(QtWidgets.QWidget):
             QtGui.QPainter.Antialiasing
             | QtGui.QPainter.SmoothPixmapTransform
         )
-        if hasattr(QtGui.QPainter, "HighQualityAntialiasing"):
-            render_hints |= QtGui.QPainter.HighQualityAntialiasing
 
         painter.setRenderHints(render_hints)
         if self._cached_pixmap is None:
@@ -1153,7 +1191,7 @@ class SquareButton(QtWidgets.QPushButton):
     """
 
     def __init__(self, *args, **kwargs):
-        super(SquareButton, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
 
         sp = self.sizePolicy()
         sp.setVerticalPolicy(QtWidgets.QSizePolicy.Minimum)
@@ -1162,17 +1200,17 @@ class SquareButton(QtWidgets.QPushButton):
         self._ideal_width = None
 
     def showEvent(self, event):
-        super(SquareButton, self).showEvent(event)
+        super().showEvent(event)
         self._ideal_width = self.height()
         self.updateGeometry()
 
     def resizeEvent(self, event):
-        super(SquareButton, self).resizeEvent(event)
+        super().resizeEvent(event)
         self._ideal_width = self.height()
         self.updateGeometry()
 
     def sizeHint(self):
-        sh = super(SquareButton, self).sizeHint()
+        sh = super().sizeHint()
         ideal_width = self._ideal_width
         if ideal_width is None:
             ideal_width = sh.height()
