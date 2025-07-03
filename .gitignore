@@ -77,9 +77,14 @@ dump.sql
 # Poetry
 ########
 .poetry/
+poetry.lock
 .python-version
 .editorconfig
 .pre-commit-config.yaml
 mypy.ini
+poetry.lock
 
 .github_changelog_generator
+
+# ignore mkdocs build
+site/

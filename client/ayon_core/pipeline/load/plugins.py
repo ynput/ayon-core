@@ -1,29 +1,28 @@
-import os
-import logging
+"""Plugins for loading representations and products into host applications."""
+from __future__ import annotations
 
-from ayon_core.settings import get_project_settings
+from abc import abstractmethod
+import logging
+import os
+from typing import Any, Optional, Type
+
 from ayon_core.pipeline.plugin_discover import (
+    deregister_plugin,
+    deregister_plugin_path,
     discover,
     register_plugin,
     register_plugin_path,
-    deregister_plugin,
-    deregister_plugin_path
 )
+from ayon_core.settings import get_project_settings
+
 from .utils import get_representation_path_from_context
 
 
 class LoaderPlugin(list):
-    """Load representation into host application
+    """Load representation into host application"""
 
-    Arguments:
-        context (dict): avalon-core:context-1.0
-
-    .. versionadded:: 4.0
-       This class was introduced
-
-    """
-
-    product_types = set()
+    product_types: set[str] = set()
+    product_base_types: Optional[set[str]] = None
     representations = set()
     extensions = {"*"}
     order = 0
@@ -66,12 +65,12 @@ class LoaderPlugin(list):
         if not plugin_settings:
             return
 
-        print(">>> We have preset for {}".format(plugin_name))
+        print(f">>> We have preset for {plugin_name}")
         for option, value in plugin_settings.items():
             if option == "enabled" and value is False:
                 print("  - is disabled by preset")
             else:
-                print("  - setting `{}`: `{}`".format(option, value))
+                print(f"  - setting `{option}`: `{value}`")
             setattr(cls, option, value)
 
     @classmethod
@@ -84,7 +83,6 @@ class LoaderPlugin(list):
         Returns:
              bool: Representation has valid extension
         """
-
         if "*" in cls.extensions:
             return True
 
@@ -129,18 +127,34 @@ class LoaderPlugin(list):
         """
 
         plugin_repre_names = cls.get_representations()
-        plugin_product_types = cls.product_types
+
+        # If the product base type isn't defined on the loader plugin,
+        # then we will use the product types.
+        plugin_product_filter = cls.product_base_types
+        if plugin_product_filter is None:
+            plugin_product_filter = cls.product_types
+
+        if plugin_product_filter:
+            plugin_product_filter = set(plugin_product_filter)
+
+        repre_entity = context.get("representation")
+        product_entity = context["product"]
+
+        # If no representation names, product types or extensions are defined
+        # then loader is not compatible with any context.
         if (
             not plugin_repre_names
-            or not plugin_product_types
+            or not plugin_product_filter
             or not cls.extensions
         ):
             return False
 
-        repre_entity = context.get("representation")
+        # If no representation entity is provided then loader is not
+        # compatible with context.
         if not repre_entity:
             return False
 
+        # Check the compatibility with the representation names.
         plugin_repre_names = set(plugin_repre_names)
         if (
             "*" not in plugin_repre_names
@@ -148,17 +162,34 @@ class LoaderPlugin(list):
         ):
             return False
 
+        # Check the compatibility with the extension of the representation.
         if not cls.has_valid_extension(repre_entity):
             return False
 
-        plugin_product_types = set(plugin_product_types)
-        if "*" in plugin_product_types:
+        product_type = product_entity.get("productType")
+        product_base_type = product_entity.get("productBaseType")
+
+        # Use product base type if defined, otherwise use product type.
+        product_filter = product_base_type
+        # If there is no product base type defined in the product entity,
+        # then we will use the product type.
+        if product_filter is None:
+            product_filter = product_type
+
+        # If wildcard is used in product types or base types,
+        # then we will consider the loader compatible with any product type.
+        if "*" in plugin_product_filter:
             return True
 
-        product_entity = context["product"]
-        product_type = product_entity["productType"]
+        # compatibility with legacy loader
+        if cls.product_base_types is None and product_base_type:
+            cls.log.error(
+                f"Loader {cls.__name__} is doesn't specify "
+                "`product_base_types` but product entity has "
+                f"`productBaseType` defined as `{product_base_type}`. "
+            )
 
-        return product_type in plugin_product_types
+        return product_filter in plugin_product_filter
 
     @classmethod
     def get_representations(cls):
@@ -213,34 +244,19 @@ class LoaderPlugin(list):
             bool: Whether the container was deleted
 
         """
-
         raise NotImplementedError("Loader.remove() must be "
                                   "implemented by subclass")
 
     @classmethod
     def get_options(cls, contexts):
-        """
-            Returns static (cls) options or could collect from 'contexts'.
+        """Returns static (cls) options or could collect from 'contexts'.
 
-            Args:
-                contexts (list): of repre or product contexts
-            Returns:
-                (list)
+        Args:
+            contexts (list): of repre or product contexts
+        Returns:
+            (list)
         """
         return cls.options or []
-
-    @property
-    def fname(self):
-        """Backwards compatibility with deprecation warning"""
-
-        self.log.warning((
-            "DEPRECATION WARNING: Source - Loader plugin {}."
-            " The 'fname' property on the Loader plugin will be removed in"
-            " future versions of OpenPype. Planned version to drop the support"
-            " is 3.16.6 or 3.17.0."
-        ).format(self.__class__.__name__))
-        if hasattr(self, "_fname"):
-            return self._fname
 
     @classmethod
     def get_representation_name_aliases(cls, representation_name: str):
@@ -272,26 +288,150 @@ class ProductLoaderPlugin(LoaderPlugin):
     """
 
 
+class LoaderHookPlugin:
+    """Plugin that runs before and post specific Loader in 'loaders'
+
+    Should be used as non-invasive method to enrich core loading process.
+    Any studio might want to modify loaded data before or after
+    they are loaded without need to override existing core plugins.
+
+    The post methods are called after the loader's methods and receive the
+    return value of the loader's method as `result` argument.
+    """
+    order = 0
+
+    @classmethod
+    @abstractmethod
+    def is_compatible(cls, Loader: Type[LoaderPlugin]) -> bool:
+        pass
+
+    @abstractmethod
+    def pre_load(
+        self,
+        plugin: LoaderPlugin,
+        context: dict,
+        name: Optional[str],
+        namespace: Optional[str],
+        options: Optional[dict],
+    ):
+        pass
+
+    @abstractmethod
+    def post_load(
+        self,
+        plugin: LoaderPlugin,
+        result: Any,
+        context: dict,
+        name: Optional[str],
+        namespace: Optional[str],
+        options: Optional[dict],
+    ):
+        pass
+
+    @abstractmethod
+    def pre_update(
+        self,
+        plugin: LoaderPlugin,
+        container: dict,  # (ayon:container-3.0)
+        context: dict,
+    ):
+        pass
+
+    @abstractmethod
+    def post_update(
+        self,
+        plugin: LoaderPlugin,
+        result: Any,
+        container: dict,  # (ayon:container-3.0)
+        context: dict,
+    ):
+        pass
+
+    @abstractmethod
+    def pre_remove(
+        self,
+        plugin: LoaderPlugin,
+        container: dict,  # (ayon:container-3.0)
+    ):
+        pass
+
+    @abstractmethod
+    def post_remove(
+        self,
+        plugin: LoaderPlugin,
+        result: Any,
+        container: dict,  # (ayon:container-3.0)
+    ):
+        pass
+
+
 def discover_loader_plugins(project_name=None):
     from ayon_core.lib import Logger
     from ayon_core.pipeline import get_current_project_name
 
     log = Logger.get_logger("LoaderDiscover")
-    plugins = discover(LoaderPlugin)
     if not project_name:
         project_name = get_current_project_name()
     project_settings = get_project_settings(project_name)
+    plugins = discover(LoaderPlugin)
+    hooks = discover(LoaderHookPlugin)
+    sorted_hooks = sorted(hooks, key=lambda hook: hook.order)
     for plugin in plugins:
         try:
             plugin.apply_settings(project_settings)
         except Exception:
             log.warning(
-                "Failed to apply settings to loader {}".format(
-                    plugin.__name__
-                ),
+                f"Failed to apply settings to loader {plugin.__name__}",
                 exc_info=True
             )
+        compatible_hooks = []
+        for hook_cls in sorted_hooks:
+            if hook_cls.is_compatible(plugin):
+                compatible_hooks.append(hook_cls)
+        add_hooks_to_loader(plugin, compatible_hooks)
     return plugins
+
+
+def add_hooks_to_loader(
+    loader_class: LoaderPlugin, compatible_hooks: list[Type[LoaderHookPlugin]]
+) -> None:
+    """Monkey patch method replacing Loader.load|update|remove methods
+
+    It wraps applicable loaders with pre/post hooks. Discovery is called only
+    once per loaders discovery.
+    """
+    loader_class._load_hooks = compatible_hooks
+
+    def wrap_method(method_name: str):
+        original_method = getattr(loader_class, method_name)
+
+        def wrapped_method(self, *args, **kwargs):
+            # Call pre_<method_name> on all hooks
+            pre_hook_name = f"pre_{method_name}"
+
+            hooks: list[LoaderHookPlugin] = []
+            for cls in loader_class._load_hooks:
+                hook = cls()  # Instantiate the hook
+                hooks.append(hook)
+                pre_hook = getattr(hook, pre_hook_name, None)
+                if callable(pre_hook):
+                    pre_hook(self, *args, **kwargs)
+            # Call original method
+            result = original_method(self, *args, **kwargs)
+            # Call post_<method_name> on all hooks
+            post_hook_name = f"post_{method_name}"
+            for hook in hooks:
+                post_hook = getattr(hook, post_hook_name, None)
+                if callable(post_hook):
+                    post_hook(self, result, *args, **kwargs)
+
+            return result
+
+        setattr(loader_class, method_name, wrapped_method)
+
+    for method in ("load", "update", "remove"):
+        if hasattr(loader_class, method):
+            wrap_method(method)
 
 
 def register_loader_plugin(plugin):
@@ -308,3 +448,19 @@ def deregister_loader_plugin_path(path):
 
 def register_loader_plugin_path(path):
     return register_plugin_path(LoaderPlugin, path)
+
+
+def register_loader_hook_plugin(plugin):
+    return register_plugin(LoaderHookPlugin, plugin)
+
+
+def deregister_loader_hook_plugin(plugin):
+    deregister_plugin(LoaderHookPlugin, plugin)
+
+
+def register_loader_hook_plugin_path(path):
+    return register_plugin_path(LoaderHookPlugin, path)
+
+
+def deregister_loader_hook_plugin_path(path):
+    deregister_plugin_path(LoaderHookPlugin, path)

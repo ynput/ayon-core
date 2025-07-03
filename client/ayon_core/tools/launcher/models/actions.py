@@ -1,219 +1,47 @@
 import os
+import uuid
+from dataclasses import dataclass, asdict
+from urllib.parse import urlencode, urlparse
+from typing import Any, Optional
+import webbrowser
+
+import ayon_api
 
 from ayon_core import resources
-from ayon_core.lib import Logger, AYONSettingsRegistry
+from ayon_core.lib import (
+    Logger,
+    NestedCacheItem,
+    CacheItem,
+    get_settings_variant,
+    run_detached_ayon_launcher_process,
+)
 from ayon_core.addon import AddonsManager
 from ayon_core.pipeline.actions import (
     discover_launcher_actions,
-    LauncherAction,
     LauncherActionSelection,
     register_launcher_action_path,
 )
-from ayon_core.pipeline.workfile import should_use_last_workfile_on_launch
-
-try:
-    # Available since applications addon 0.2.4
-    from ayon_applications.action import ApplicationAction
-except ImportError:
-    # Backwards compatibility from 0.3.3 (24/06/10)
-    # TODO: Remove in future releases
-    class ApplicationAction(LauncherAction):
-        """Action to launch an application.
-
-        Application action based on 'ApplicationManager' system.
-
-        Handling of applications in launcher is not ideal and should be
-        completely redone from scratch. This is just a temporary solution
-        to keep backwards compatibility with AYON launcher.
-
-        Todos:
-            Move handling of errors to frontend.
-        """
-
-        # Application object
-        application = None
-        # Action attributes
-        name = None
-        label = None
-        label_variant = None
-        group = None
-        icon = None
-        color = None
-        order = 0
-        data = {}
-        project_settings = {}
-        project_entities = {}
-
-        _log = None
-
-        @property
-        def log(self):
-            if self._log is None:
-                self._log = Logger.get_logger(self.__class__.__name__)
-            return self._log
-
-        def is_compatible(self, selection):
-            if not selection.is_task_selected:
-                return False
-
-            project_entity = self.project_entities[selection.project_name]
-            apps = project_entity["attrib"].get("applications")
-            if not apps or self.application.full_name not in apps:
-                return False
-
-            project_settings = self.project_settings[selection.project_name]
-            only_available = project_settings["applications"]["only_available"]
-            if only_available and not self.application.find_executable():
-                return False
-            return True
-
-        def _show_message_box(self, title, message, details=None):
-            from qtpy import QtWidgets, QtGui
-            from ayon_core import style
-
-            dialog = QtWidgets.QMessageBox()
-            icon = QtGui.QIcon(resources.get_ayon_icon_filepath())
-            dialog.setWindowIcon(icon)
-            dialog.setStyleSheet(style.load_stylesheet())
-            dialog.setWindowTitle(title)
-            dialog.setText(message)
-            if details:
-                dialog.setDetailedText(details)
-            dialog.exec_()
-
-        def process(self, selection, **kwargs):
-            """Process the full Application action"""
-
-            from ayon_applications import (
-                ApplicationExecutableNotFound,
-                ApplicationLaunchFailed,
-            )
-
-            try:
-                self.application.launch(
-                    project_name=selection.project_name,
-                    folder_path=selection.folder_path,
-                    task_name=selection.task_name,
-                    **self.data
-                )
-
-            except ApplicationExecutableNotFound as exc:
-                details = exc.details
-                msg = exc.msg
-                log_msg = str(msg)
-                if details:
-                    log_msg += "\n" + details
-                self.log.warning(log_msg)
-                self._show_message_box(
-                    "Application executable not found", msg, details
-                )
-
-            except ApplicationLaunchFailed as exc:
-                msg = str(exc)
-                self.log.warning(msg, exc_info=True)
-                self._show_message_box("Application launch failed", msg)
+from ayon_core.tools.launcher.abstract import ActionItem, WebactionContext
 
 
-# class Action:
-#     def __init__(self, label, icon=None, identifier=None):
-#         self._label = label
-#         self._icon = icon
-#         self._callbacks = []
-#         self._identifier = identifier or uuid.uuid4().hex
-#         self._checked = True
-#         self._checkable = False
-#
-#     def set_checked(self, checked):
-#         self._checked = checked
-#
-#     def set_checkable(self, checkable):
-#         self._checkable = checkable
-#
-#     def set_label(self, label):
-#         self._label = label
-#
-#     def add_callback(self, callback):
-#         self._callbacks = callback
-#
-#
-# class Menu:
-#     def __init__(self, label, icon=None):
-#         self.label = label
-#         self.icon = icon
-#         self._actions = []
-#
-#     def add_action(self, action):
-#         self._actions.append(action)
+@dataclass
+class WebactionForm:
+    fields: list[dict[str, Any]]
+    title: str
+    submit_label: str
+    submit_icon: str
+    cancel_label: str
+    cancel_icon: str
 
 
-class ActionItem:
-    """Item representing single action to trigger.
-
-    Todos:
-        Get rid of application specific logic.
-
-    Args:
-        identifier (str): Unique identifier of action item.
-        label (str): Action label.
-        variant_label (Union[str, None]): Variant label, full label is
-            concatenated with space. Actions are grouped under single
-            action if it has same 'label' and have set 'variant_label'.
-        icon (dict[str, str]): Icon definition.
-        order (int): Action ordering.
-        is_application (bool): Is action application action.
-        force_not_open_workfile (bool): Force not open workfile. Application
-            related.
-        full_label (Optional[str]): Full label, if not set it is generated
-            from 'label' and 'variant_label'.
-    """
-
-    def __init__(
-        self,
-        identifier,
-        label,
-        variant_label,
-        icon,
-        order,
-        is_application,
-        force_not_open_workfile,
-        full_label=None
-    ):
-        self.identifier = identifier
-        self.label = label
-        self.variant_label = variant_label
-        self.icon = icon
-        self.order = order
-        self.is_application = is_application
-        self.force_not_open_workfile = force_not_open_workfile
-        self._full_label = full_label
-
-    def copy(self):
-        return self.from_data(self.to_data())
-
-    @property
-    def full_label(self):
-        if self._full_label is None:
-            if self.variant_label:
-                self._full_label = " ".join([self.label, self.variant_label])
-            else:
-                self._full_label = self.label
-        return self._full_label
-
-    def to_data(self):
-        return {
-            "identifier": self.identifier,
-            "label": self.label,
-            "variant_label": self.variant_label,
-            "icon": self.icon,
-            "order": self.order,
-            "is_application": self.is_application,
-            "force_not_open_workfile": self.force_not_open_workfile,
-            "full_label": self._full_label,
-        }
-
-    @classmethod
-    def from_data(cls, data):
-        return cls(**data)
+@dataclass
+class WebactionResponse:
+    response_type: str
+    success: bool
+    message: Optional[str] = None
+    clipboard_text: Optional[str] = None
+    form: Optional[WebactionForm] = None
+    error_message: Optional[str] = None
 
 
 def get_action_icon(action):
@@ -264,8 +92,6 @@ class ActionsModel:
         controller (AbstractLauncherBackend): Controller instance.
     """
 
-    _not_open_workfile_reg_key = "force_not_open_workfile"
-
     def __init__(self, controller):
         self._controller = controller
 
@@ -274,10 +100,20 @@ class ActionsModel:
         self._discovered_actions = None
         self._actions = None
         self._action_items = {}
-
-        self._launcher_tool_reg = AYONSettingsRegistry("launcher_tool")
+        self._webaction_items = NestedCacheItem(
+            levels=2, default_factory=list, lifetime=20,
+        )
 
         self._addons_manager = None
+
+        self._variant = get_settings_variant()
+
+    @staticmethod
+    def calculate_full_label(label: str, variant_label: Optional[str]) -> str:
+        """Calculate full label from label and variant_label."""
+        if variant_label:
+            return " ".join([label, variant_label])
+        return label
 
     @property
     def log(self):
@@ -289,38 +125,11 @@ class ActionsModel:
         self._discovered_actions = None
         self._actions = None
         self._action_items = {}
+        self._webaction_items.reset()
 
         self._controller.emit_event("actions.refresh.started")
         self._get_action_objects()
         self._controller.emit_event("actions.refresh.finished")
-
-    def _should_start_last_workfile(
-        self,
-        project_name,
-        task_id,
-        identifier,
-        host_name,
-        not_open_workfile_actions
-    ):
-        if identifier in not_open_workfile_actions:
-            return not not_open_workfile_actions[identifier]
-
-        task_name = None
-        task_type = None
-        if task_id is not None:
-            task_entity = self._controller.get_task_entity(
-                project_name, task_id
-            )
-            task_name = task_entity["name"]
-            task_type = task_entity["taskType"]
-
-        output = should_use_last_workfile_on_launch(
-            project_name,
-            host_name,
-            task_name,
-            task_type
-        )
-        return output
 
     def get_action_items(self, project_name, folder_id, task_id):
         """Get actions for project.
@@ -332,53 +141,31 @@ class ActionsModel:
 
         Returns:
             list[ActionItem]: List of actions.
+
         """
-        not_open_workfile_actions = self._get_no_last_workfile_for_context(
-            project_name, folder_id, task_id)
         selection = self._prepare_selection(project_name, folder_id, task_id)
         output = []
         action_items = self._get_action_items(project_name)
         for identifier, action in self._get_action_objects().items():
-            if not action.is_compatible(selection):
-                continue
+            if action.is_compatible(selection):
+                output.append(action_items[identifier])
+        output.extend(self._get_webactions(selection))
 
-            action_item = action_items[identifier]
-            # Handling of 'force_not_open_workfile' for applications
-            if action_item.is_application:
-                action_item = action_item.copy()
-                start_last_workfile = self._should_start_last_workfile(
-                    project_name,
-                    task_id,
-                    identifier,
-                    action.application.host_name,
-                    not_open_workfile_actions
-                )
-                action_item.force_not_open_workfile = (
-                    not start_last_workfile
-                )
-
-            output.append(action_item)
         return output
 
-    def set_application_force_not_open_workfile(
-        self, project_name, folder_id, task_id, action_ids, enabled
+    def trigger_action(
+        self,
+        identifier,
+        project_name,
+        folder_id,
+        task_id,
     ):
-        no_workfile_reg_data = self._get_no_last_workfile_reg_data()
-        project_data = no_workfile_reg_data.setdefault(project_name, {})
-        folder_data = project_data.setdefault(folder_id, {})
-        task_data = folder_data.setdefault(task_id, {})
-        for action_id in action_ids:
-            task_data[action_id] = enabled
-        self._launcher_tool_reg.set_item(
-            self._not_open_workfile_reg_key, no_workfile_reg_data
-        )
-
-    def trigger_action(self, project_name, folder_id, task_id, identifier):
         selection = self._prepare_selection(project_name, folder_id, task_id)
         failed = False
         error_message = None
         action_label = identifier
         action_items = self._get_action_items(project_name)
+        trigger_id = uuid.uuid4().hex
         try:
             action = self._actions[identifier]
             action_item = action_items[identifier]
@@ -386,22 +173,11 @@ class ActionsModel:
             self._controller.emit_event(
                 "action.trigger.started",
                 {
+                    "trigger_id": trigger_id,
                     "identifier": identifier,
                     "full_label": action_label,
                 }
             )
-            if isinstance(action, ApplicationAction):
-                per_action = self._get_no_last_workfile_for_context(
-                    project_name, folder_id, task_id
-                )
-                start_last_workfile = self._should_start_last_workfile(
-                    project_name,
-                    task_id,
-                    identifier,
-                    action.application.host_name,
-                    per_action
-                )
-                action.data["start_last_workfile"] = start_last_workfile
 
             action.process(selection)
         except Exception as exc:
@@ -412,6 +188,7 @@ class ActionsModel:
         self._controller.emit_event(
             "action.trigger.finished",
             {
+                "trigger_id": trigger_id,
                 "identifier": identifier,
                 "failed": failed,
                 "error_message": error_message,
@@ -419,31 +196,147 @@ class ActionsModel:
             }
         )
 
+    def trigger_webaction(self, context, action_label, form_data):
+        entity_type = None
+        entity_ids = []
+        identifier = context.identifier
+        folder_id = context.folder_id
+        task_id = context.task_id
+        project_name = context.project_name
+        addon_name = context.addon_name
+        addon_version = context.addon_version
+
+        if task_id:
+            entity_type = "task"
+            entity_ids.append(task_id)
+        elif folder_id:
+            entity_type = "folder"
+            entity_ids.append(folder_id)
+
+        query = {
+            "addonName": addon_name,
+            "addonVersion": addon_version,
+            "identifier": identifier,
+            "variant": self._variant,
+        }
+        url = f"actions/execute?{urlencode(query)}"
+        request_data = {
+            "projectName": project_name,
+            "entityType": entity_type,
+            "entityIds": entity_ids,
+        }
+        if form_data is not None:
+            request_data["formData"] = form_data
+
+        trigger_id = uuid.uuid4().hex
+        failed = False
+        try:
+            self._controller.emit_event(
+                "webaction.trigger.started",
+                {
+                    "trigger_id": trigger_id,
+                    "identifier": identifier,
+                    "full_label": action_label,
+                }
+            )
+
+            conn = ayon_api.get_server_api_connection()
+            # Add 'referer' header to the request
+            # - ayon-api 1.1.1 adds the value to the header automatically
+            headers = conn.get_headers()
+            if "referer" in headers:
+                headers = None
+            else:
+                headers["referer"] = conn.get_base_url()
+            response = ayon_api.raw_post(
+                url, headers=headers, json=request_data
+            )
+            response.raise_for_status()
+            handle_response = self._handle_webaction_response(response.data)
+
+        except Exception:
+            failed = True
+            self.log.warning("Action trigger failed.", exc_info=True)
+            handle_response = WebactionResponse(
+                "unknown",
+                False,
+                error_message="Failed to trigger webaction.",
+            )
+
+        data = asdict(handle_response)
+        data.update({
+            "trigger_failed": failed,
+            "trigger_id": trigger_id,
+            "identifier": identifier,
+            "full_label": action_label,
+            "project_name": project_name,
+            "folder_id": folder_id,
+            "task_id": task_id,
+            "addon_name": addon_name,
+            "addon_version": addon_version,
+        })
+        self._controller.emit_event(
+            "webaction.trigger.finished",
+            data,
+        )
+
+    def get_action_config_values(self, context: WebactionContext):
+        selection = self._prepare_selection(
+            context.project_name, context.folder_id, context.task_id
+        )
+        if not selection.is_project_selected:
+            return {}
+
+        request_data = self._get_webaction_request_data(selection)
+
+        query = {
+            "addonName": context.addon_name,
+            "addonVersion": context.addon_version,
+            "identifier": context.identifier,
+            "variant": self._variant,
+        }
+        url = f"actions/config?{urlencode(query)}"
+        try:
+            response = ayon_api.post(url, **request_data)
+            response.raise_for_status()
+        except Exception:
+            self.log.warning(
+                "Failed to collect webaction config values.",
+                exc_info=True
+            )
+            return {}
+        return response.data
+
+    def set_action_config_values(self, context, values):
+        selection = self._prepare_selection(
+            context.project_name, context.folder_id, context.task_id
+        )
+        if not selection.is_project_selected:
+            return {}
+
+        request_data = self._get_webaction_request_data(selection)
+        request_data["value"] = values
+
+        query = {
+            "addonName": context.addon_name,
+            "addonVersion": context.addon_version,
+            "identifier": context.identifier,
+            "variant": self._variant,
+        }
+        url = f"actions/config?{urlencode(query)}"
+        try:
+            response = ayon_api.post(url, **request_data)
+            response.raise_for_status()
+        except Exception:
+            self.log.warning(
+                "Failed to store webaction config values.",
+                exc_info=True
+            )
+
     def _get_addons_manager(self):
         if self._addons_manager is None:
             self._addons_manager = AddonsManager()
         return self._addons_manager
-
-    def _get_no_last_workfile_reg_data(self):
-        try:
-            no_workfile_reg_data = self._launcher_tool_reg.get_item(
-                self._not_open_workfile_reg_key)
-        except ValueError:
-            no_workfile_reg_data = {}
-            self._launcher_tool_reg.set_item(
-                self._not_open_workfile_reg_key, no_workfile_reg_data)
-        return no_workfile_reg_data
-
-    def _get_no_last_workfile_for_context(
-        self, project_name, folder_id, task_id
-    ):
-        not_open_workfile_reg_data = self._get_no_last_workfile_reg_data()
-        return (
-            not_open_workfile_reg_data
-            .get(project_name, {})
-            .get(folder_id, {})
-            .get(task_id, {})
-        )
 
     def _prepare_selection(self, project_name, folder_id, task_id):
         project_entity = None
@@ -458,6 +351,183 @@ class ActionsModel:
             project_settings=project_settings,
         )
 
+    def _get_webaction_request_data(self, selection: LauncherActionSelection):
+        entity_type = None
+        entity_id = None
+        entity_subtypes = []
+        if selection.is_task_selected:
+            entity_type = "task"
+            entity_id = selection.task_entity["id"]
+            entity_subtypes = [selection.task_entity["taskType"]]
+
+        elif selection.is_folder_selected:
+            entity_type = "folder"
+            entity_id = selection.folder_entity["id"]
+            entity_subtypes = [selection.folder_entity["folderType"]]
+
+        elif selection.is_project_selected:
+            # Project actions are supported since AYON 1.9.1
+            ma, mi, pa, _, _ = ayon_api.get_server_version_tuple()
+            if (ma, mi, pa) < (1, 9, 1):
+                return None
+            entity_type = "project"
+
+        entity_ids = []
+        if entity_id:
+            entity_ids.append(entity_id)
+
+        project_name = selection.project_name
+        return {
+            "projectName": project_name,
+            "entityType": entity_type,
+            "entitySubtypes": entity_subtypes,
+            "entityIds": entity_ids,
+        }
+
+    def _get_webactions(self, selection: LauncherActionSelection):
+        request_data = self._get_webaction_request_data(selection)
+        if request_data is None:
+            return []
+
+        project_name = selection.project_name
+        entity_id = None
+        if request_data["entityIds"]:
+            entity_id = request_data["entityIds"][0]
+
+        cache: CacheItem = self._webaction_items[project_name][entity_id]
+        if cache.is_valid:
+            return cache.get_data()
+
+        try:
+            response = ayon_api.post("actions/list", **request_data)
+            response.raise_for_status()
+        except Exception:
+            self.log.warning("Failed to collect webactions.", exc_info=True)
+            return []
+
+        action_items = []
+        for action in response.data["actions"]:
+            # NOTE Settings variant may be important for triggering?
+            # - action["variant"]
+            icon = action.get("icon")
+            if icon and icon["type"] == "url":
+                if not urlparse(icon["url"]).scheme:
+                    icon["type"] = "ayon_url"
+
+            config_fields = action.get("configFields") or []
+            variant_label = action["label"]
+            group_label = action.get("groupLabel")
+            if not group_label:
+                group_label = variant_label
+                variant_label = None
+
+            full_label = self.calculate_full_label(
+                group_label, variant_label
+            )
+            action_items.append(ActionItem(
+                action_type="webaction",
+                identifier=action["identifier"],
+                order=action["order"],
+                label=group_label,
+                variant_label=variant_label,
+                full_label=full_label,
+                icon=icon,
+                addon_name=action["addonName"],
+                addon_version=action["addonVersion"],
+                config_fields=config_fields,
+                # category=action["category"],
+            ))
+
+        cache.update_data(action_items)
+        return cache.get_data()
+
+    def _handle_webaction_response(self, data) -> WebactionResponse:
+        response_type = data["type"]
+        # Backwards compatibility -> 'server' type is not available since
+        #   AYON backend 1.8.3
+        if response_type == "server":
+            return WebactionResponse(
+                response_type,
+                False,
+                error_message="Please use AYON web UI to run the action.",
+            )
+
+        payload = data.get("payload") or {}
+
+        download_uri = payload.get("extra_download")
+        if download_uri is not None:
+            # Find out if is relative or absolute URL
+            if not urlparse(download_uri).scheme:
+                ayon_url = ayon_api.get_base_url().rstrip("/")
+                path = download_uri.lstrip("/")
+                download_uri = f"{ayon_url}/{path}"
+
+            # Use webbrowser to open file
+            webbrowser.open_new_tab(download_uri)
+
+        response = WebactionResponse(
+            response_type,
+            data["success"],
+            data.get("message"),
+            payload.get("extra_clipboard"),
+        )
+        if response_type == "simple":
+            pass
+
+        elif response_type == "redirect":
+            # NOTE unused 'newTab' key because we always have to
+            #   open new tab from desktop app.
+            if not webbrowser.open_new_tab(payload["uri"]):
+                payload.error_message = "Failed to open web browser."
+
+        elif response_type == "form":
+            submit_icon = payload["submit_icon"] or None
+            cancel_icon = payload["cancel_icon"] or None
+            if submit_icon:
+                submit_icon = {
+                    "type": "material-symbols",
+                    "name": submit_icon,
+                }
+
+            if cancel_icon:
+                cancel_icon = {
+                    "type": "material-symbols",
+                    "name": cancel_icon,
+                }
+
+            response.form = WebactionForm(
+                fields=payload["fields"],
+                title=payload["title"],
+                submit_label=payload["submit_label"],
+                cancel_label=payload["cancel_label"],
+                submit_icon=submit_icon,
+                cancel_icon=cancel_icon,
+            )
+
+        elif response_type == "launcher":
+            # Run AYON launcher process with uri in arguments
+            # NOTE This does pass environment variables of current process
+            #   to the subprocess.
+            # NOTE We could 'take action' directly and use the arguments here
+            if payload is not None:
+                uri = payload["uri"]
+            else:
+                uri = data["uri"]
+            run_detached_ayon_launcher_process(uri)
+
+        elif response_type in ("query", "navigate"):
+            response.error_message = (
+                "Please use AYON web UI to run the action."
+            )
+
+        else:
+            self.log.warning(
+                f"Unknown webaction response type '{response_type}'"
+            )
+            response.error_message = "Unknown webaction response type."
+
+        return response
+
     def _get_discovered_action_classes(self):
         if self._discovered_actions is None:
             # NOTE We don't need to register the paths, but that would
@@ -470,7 +540,6 @@ class ActionsModel:
                     register_launcher_action_path(path)
             self._discovered_actions = (
                 discover_launcher_actions()
-                + self._get_applications_action_classes()
             )
         return self._discovered_actions
 
@@ -498,62 +567,29 @@ class ActionsModel:
 
         action_items = {}
         for identifier, action in self._get_action_objects().items():
-            is_application = isinstance(action, ApplicationAction)
             # Backwards compatibility from 0.3.3 (24/06/10)
             # TODO: Remove in future releases
-            if is_application and hasattr(action, "project_settings"):
+            if hasattr(action, "project_settings"):
                 action.project_entities[project_name] = project_entity
                 action.project_settings[project_name] = project_settings
 
             label = action.label or identifier
             variant_label = getattr(action, "label_variant", None)
+            full_label = self.calculate_full_label(
+                label, variant_label
+            )
             icon = get_action_icon(action)
 
             item = ActionItem(
-                identifier,
-                label,
-                variant_label,
-                icon,
-                action.order,
-                is_application,
-                False
+                action_type="local",
+                identifier=identifier,
+                order=action.order,
+                label=label,
+                variant_label=variant_label,
+                full_label=full_label,
+                icon=icon,
+                config_fields=[],
             )
             action_items[identifier] = item
         self._action_items[project_name] = action_items
         return action_items
-
-    def _get_applications_action_classes(self):
-        addons_manager = self._get_addons_manager()
-        applications_addon = addons_manager.get_enabled_addon("applications")
-        if hasattr(applications_addon, "get_applications_action_classes"):
-            return applications_addon.get_applications_action_classes()
-
-        # Backwards compatibility from 0.3.3 (24/06/10)
-        # TODO: Remove in future releases
-        actions = []
-        if applications_addon is None:
-            return actions
-
-        manager = applications_addon.get_applications_manager()
-        for full_name, application in manager.applications.items():
-            if not application.enabled:
-                continue
-
-            action = type(
-                "app_{}".format(full_name),
-                (ApplicationAction,),
-                {
-                    "identifier": "application.{}".format(full_name),
-                    "application": application,
-                    "name": application.name,
-                    "label": application.group.label,
-                    "label_variant": application.label,
-                    "group": None,
-                    "icon": application.icon,
-                    "color": getattr(application, "color", None),
-                    "order": getattr(application, "order", None) or 0,
-                    "data": {}
-                }
-            )
-            actions.append(action)
-        return actions

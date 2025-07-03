@@ -1,4 +1,6 @@
+from __future__ import annotations
 import collections
+from typing import Optional
 
 from qtpy import QtWidgets, QtGui, QtCore
 
@@ -118,7 +120,10 @@ class FoldersQtModel(QtGui.QStandardItemModel):
     refreshed = QtCore.Signal()
 
     def __init__(self, controller):
-        super(FoldersQtModel, self).__init__()
+        super().__init__()
+
+        self.setColumnCount(1)
+        self.setHeaderData(0, QtCore.Qt.Horizontal, "Folders")
 
         self._controller = controller
         self._items_by_id = {}
@@ -445,6 +450,29 @@ class FoldersQtModel(QtGui.QStandardItemModel):
         self.refreshed.emit()
 
 
+class FoldersProxyModel(RecursiveSortFilterProxyModel):
+    def __init__(self):
+        super().__init__()
+
+        self._folder_ids_filter = None
+
+    def set_folder_ids_filter(self, folder_ids: Optional[list[str]]):
+        if self._folder_ids_filter == folder_ids:
+            return
+        self._folder_ids_filter = folder_ids
+        self.invalidateFilter()
+
+    def filterAcceptsRow(self, row, parent_index):
+        if self._folder_ids_filter is not None:
+            if not self._folder_ids_filter:
+                return False
+            source_index = self.sourceModel().index(row, 0, parent_index)
+            folder_id = source_index.data(FOLDER_ID_ROLE)
+            if folder_id not in self._folder_ids_filter:
+                return False
+        return super().filterAcceptsRow(row, parent_index)
+
+
 class FoldersWidget(QtWidgets.QWidget):
     """Folders widget.
 
@@ -480,13 +508,13 @@ class FoldersWidget(QtWidgets.QWidget):
     refreshed = QtCore.Signal()
 
     def __init__(self, controller, parent, handle_expected_selection=False):
-        super(FoldersWidget, self).__init__(parent)
+        super().__init__(parent)
 
         folders_view = TreeView(self)
         folders_view.setHeaderHidden(True)
 
         folders_model = FoldersQtModel(controller)
-        folders_proxy_model = RecursiveSortFilterProxyModel()
+        folders_proxy_model = FoldersProxyModel()
         folders_proxy_model.setSourceModel(folders_model)
         folders_proxy_model.setSortCaseSensitivity(QtCore.Qt.CaseInsensitive)
 
@@ -556,6 +584,18 @@ class FoldersWidget(QtWidgets.QWidget):
         self._folders_proxy_model.setFilterFixedString(name)
         if name:
             self._folders_view.expandAll()
+
+    def set_folder_ids_filter(self, folder_ids: Optional[list[str]]):
+        """Set filter of folder ids.
+
+        Args:
+            folder_ids (list[str]): The list of folder ids.
+
+        """
+        self._folders_proxy_model.set_folder_ids_filter(folder_ids)
+
+    def set_header_visible(self, visible: bool):
+        self._folders_view.setHeaderHidden(not visible)
 
     def refresh(self):
         """Refresh folders model.

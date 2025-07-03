@@ -329,9 +329,9 @@ def get_last_workfile(
 
     Returns:
         str: Last or first workfile as filename of full path to filename.
-    """
 
-    filename, version = get_last_workfile_with_version(
+    """
+    filename, _version = get_last_workfile_with_version(
         workdir, file_template, fill_data, extensions
     )
     if filename is None:

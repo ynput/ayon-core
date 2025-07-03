@@ -1,7 +1,10 @@
+from __future__ import annotations
 import collections
+from typing import Optional
 
 from qtpy import QtWidgets, QtCore
 
+from ayon_core.pipeline.compatibility import is_product_base_type_supported
 from ayon_core.tools.utils import (
     RecursiveSortFilterProxyModel,
     DeselectableTreeView,
@@ -15,6 +18,7 @@ from .products_model import (
     GROUP_TYPE_ROLE,
     MERGED_COLOR_ROLE,
     FOLDER_ID_ROLE,
+    TASK_ID_ROLE,
     PRODUCT_ID_ROLE,
     VERSION_ID_ROLE,
     VERSION_STATUS_NAME_ROLE,
@@ -23,6 +27,8 @@ from .products_model import (
     VERSION_STATUS_ICON_ROLE,
     VERSION_THUMBNAIL_ID_ROLE,
     STATUS_NAME_FILTER_ROLE,
+    VERSION_TAGS_FILTER_ROLE,
+    TASK_TAGS_FILTER_ROLE,
 )
 from .products_delegates import (
     VersionDelegate,
@@ -36,8 +42,11 @@ class ProductsProxyModel(RecursiveSortFilterProxyModel):
     def __init__(self, parent=None):
         super().__init__(parent)
 
-        self._product_type_filters = {}
+        self._product_type_filters = None
         self._statuses_filter = None
+        self._version_tags_filter = None
+        self._task_tags_filter = None
+        self._task_ids_filter = None
         self._ascending_sort = True
 
     def get_statuses_filter(self):
@@ -45,7 +54,15 @@ class ProductsProxyModel(RecursiveSortFilterProxyModel):
             return None
         return set(self._statuses_filter)
 
+    def set_tasks_filter(self, task_ids_filter):
+        if self._task_ids_filter == task_ids_filter:
+            return
+        self._task_ids_filter = task_ids_filter
+        self.invalidateFilter()
+
     def set_product_type_filters(self, product_type_filters):
+        if self._product_type_filters == product_type_filters:
+            return
         self._product_type_filters = product_type_filters
         self.invalidateFilter()
 
@@ -55,33 +72,68 @@ class ProductsProxyModel(RecursiveSortFilterProxyModel):
         self._statuses_filter = statuses_filter
         self.invalidateFilter()
 
+    def set_version_tags_filter(self, tags):
+        if self._version_tags_filter == tags:
+            return
+        self._version_tags_filter = tags
+        self.invalidateFilter()
+
+    def set_task_tags_filter(self, tags):
+        if self._task_tags_filter == tags:
+            return
+        self._task_tags_filter = tags
+        self.invalidateFilter()
+
     def filterAcceptsRow(self, source_row, source_parent):
         source_model = self.sourceModel()
         index = source_model.index(source_row, 0, source_parent)
-
-        product_types_s = source_model.data(index, PRODUCT_TYPE_ROLE)
-        product_types = []
-        if product_types_s:
-            product_types = product_types_s.split("|")
-
-        for product_type in product_types:
-            if not self._product_type_filters.get(product_type, True):
-                return False
-
-        if not self._accept_row_by_statuses(index):
+        if not self._accept_task_ids_filter(index):
             return False
+
+        if not self._accept_row_by_role_value(
+            index, self._product_type_filters, PRODUCT_TYPE_ROLE
+        ):
+            return False
+
+        if not self._accept_row_by_role_value(
+            index, self._statuses_filter, STATUS_NAME_FILTER_ROLE
+        ):
+            return False
+
+        if not self._accept_row_by_role_value(
+            index, self._version_tags_filter, VERSION_TAGS_FILTER_ROLE
+        ):
+            return False
+
+        if not self._accept_row_by_role_value(
+            index, self._task_tags_filter, TASK_TAGS_FILTER_ROLE
+        ):
+            return False
+
         return super().filterAcceptsRow(source_row, source_parent)
 
-    def _accept_row_by_statuses(self, index):
-        if self._statuses_filter is None:
+    def _accept_task_ids_filter(self, index):
+        if not self._task_ids_filter:
             return True
-        if not self._statuses_filter:
+        task_id = index.data(TASK_ID_ROLE)
+        return task_id in self._task_ids_filter
+
+    def _accept_row_by_role_value(
+        self,
+        index: QtCore.QModelIndex,
+        filter_value: Optional[set[str]],
+        role: int
+    ):
+        if filter_value is None:
+            return True
+        if not filter_value:
             return False
 
-        status_s = index.data(STATUS_NAME_FILTER_ROLE)
-        for status in status_s.split("|"):
-            if status in self._statuses_filter:
-                return True
+        value_s = index.data(role)
+        if value_s:
+            for value in value_s.split("|"):
+                if value in filter_value:
+                    return True
         return False
 
     def lessThan(self, left, right):
@@ -118,9 +170,10 @@ class ProductsWidget(QtWidgets.QWidget):
     default_widths = (
         200,  # Product name
         90,   # Product type
+        90,   # Product base type
         130,  # Folder label
         60,   # Version
-        100,   # Status
+        100,  # Status
         125,  # Time
         75,   # Author
         75,   # Frames
@@ -237,6 +290,12 @@ class ProductsWidget(QtWidgets.QWidget):
             self._controller.is_sitesync_enabled()
         )
 
+        if not is_product_base_type_supported():
+            # Hide product base type column
+            products_view.setColumnHidden(
+                products_model.product_base_type_col, True
+            )
+
     def set_name_filter(self, name):
         """Set filter of product name.
 
@@ -245,6 +304,16 @@ class ProductsWidget(QtWidgets.QWidget):
 
         """
         self._products_proxy_model.setFilterFixedString(name)
+
+    def set_tasks_filter(self, task_ids):
+        """Set filter of version tasks.
+
+        Args:
+            task_ids (set[str]): Task ids.
+
+        """
+        self._version_delegate.set_tasks_filter(task_ids)
+        self._products_proxy_model.set_tasks_filter(task_ids)
 
     def set_statuses_filter(self, status_names):
         """Set filter of version statuses.
@@ -255,6 +324,14 @@ class ProductsWidget(QtWidgets.QWidget):
         """
         self._version_delegate.set_statuses_filter(status_names)
         self._products_proxy_model.set_statuses_filter(status_names)
+
+    def set_version_tags_filter(self, version_tags):
+        self._version_delegate.set_version_tags_filter(version_tags)
+        self._products_proxy_model.set_version_tags_filter(version_tags)
+
+    def set_task_tags_filter(self, task_tags):
+        self._version_delegate.set_task_tags_filter(task_tags)
+        self._products_proxy_model.set_task_tags_filter(task_tags)
 
     def set_product_type_filter(self, product_type_filters):
         """

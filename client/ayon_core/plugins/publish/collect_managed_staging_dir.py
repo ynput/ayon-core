@@ -32,16 +32,16 @@ class CollectManagedStagingDir(pyblish.api.InstancePlugin):
     label = "Collect Managed Staging Directory"
     order = pyblish.api.CollectorOrder + 0.4990
 
-    def process(self, instance):
+    def process(self, instance: pyblish.api.Instance):
         """ Collect the staging data and stores it to the instance.
 
         Args:
             instance (object): The instance to inspect.
         """
         staging_dir_path = get_instance_staging_dir(instance)
-        persistance = instance.data.get("stagingDir_persistent", False)
+        persistence: bool = instance.data.get("stagingDir_persistent", False)
 
-        self.log.info((
+        self.log.debug(
             f"Instance staging dir was set to `{staging_dir_path}` "
-            f"and persistence is set to `{persistance}`"
-        ))
+            f"and persistence is set to `{persistence}`"
+        )
