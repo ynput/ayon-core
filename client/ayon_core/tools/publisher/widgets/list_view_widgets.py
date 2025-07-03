@@ -132,6 +132,7 @@ class InstanceListItemWidget(QtWidgets.QWidget):
 
         active_checkbox = NiceCheckbox(parent=self)
         active_checkbox.setChecked(instance.is_active)
+        active_checkbox.setVisible(not instance.is_mandatory)
 
         layout = QtWidgets.QHBoxLayout(self)
         content_margins = layout.contentsMargins()
@@ -150,6 +151,8 @@ class InstanceListItemWidget(QtWidgets.QWidget):
         self._active_checkbox = active_checkbox
 
         self._has_valid_context = None
+
+        self._checkbox_enabled = not instance.is_mandatory
 
         self._set_valid_property(context_info.is_valid)
 
@@ -184,6 +187,10 @@ class InstanceListItemWidget(QtWidgets.QWidget):
             self._active_checkbox.setChecked(new_value)
             self._active_checkbox.blockSignals(False)
 
+    def is_checkbox_enabled(self) -> bool:
+        """Checkbox can be changed by user."""
+        return self._checkbox_enabled
+
     def update_instance(self, instance, context_info):
         """Update instance object."""
         # Check product name
@@ -192,6 +199,7 @@ class InstanceListItemWidget(QtWidgets.QWidget):
             self._instance_label_widget.setText(html_escape(label))
         # Check active state
         self.set_active(instance.is_active)
+        self._set_is_mandatory(instance.is_mandatory)
         # Check valid states
         self._set_valid_property(context_info.is_valid)
 
@@ -202,6 +210,10 @@ class InstanceListItemWidget(QtWidgets.QWidget):
 
     def set_active_toggle_enabled(self, enabled):
         self._active_checkbox.setEnabled(enabled)
+
+    def _set_is_mandatory(self, is_mandatory: bool) -> None:
+        self._checkbox_enabled = not is_mandatory
+        self._active_checkbox.setVisible(not is_mandatory)
 
 
 class ListContextWidget(QtWidgets.QFrame):
@@ -949,11 +961,17 @@ class InstanceListView(AbstractInstanceView):
             return
 
         active_by_id = {}
+        all_changed = True
         for row in range(group_item.rowCount()):
             item = group_item.child(row)
             instance_id = item.data(INSTANCE_ID_ROLE)
-            if instance_id is not None:
+            widget = self._widgets_by_id.get(instance_id)
+            if widget is None:
+                continue
+            if widget.is_checkbox_enabled():
                 active_by_id[instance_id] = active
+            else:
+                all_changed = False
 
         self._controller.set_instances_active_state(active_by_id)
 
@@ -962,6 +980,10 @@ class InstanceListView(AbstractInstanceView):
         proxy_index = self._proxy_model.mapFromSource(group_item.index())
         if not self._instance_view.isExpanded(proxy_index):
             self._instance_view.expand(proxy_index)
+
+        if not all_changed:
+            # If not all instances were changed, update group checkstate
+            self._update_group_checkstate(group_name)
 
     def has_items(self):
         if self._convertor_group_widget is not None:

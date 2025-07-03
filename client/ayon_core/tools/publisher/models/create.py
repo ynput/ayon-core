@@ -217,6 +217,7 @@ class InstanceItem:
         folder_path: Optional[str],
         task_name: Optional[str],
         is_active: bool,
+        is_mandatory: bool,
         has_promised_context: bool,
     ):
         self._instance_id: str = instance_id
@@ -229,6 +230,7 @@ class InstanceItem:
         self._folder_path: Optional[str] = folder_path
         self._task_name: Optional[str] = task_name
         self._is_active: bool = is_active
+        self._is_mandatory: bool = is_mandatory
         self._has_promised_context: bool = has_promised_context
 
     @property
@@ -250,6 +252,10 @@ class InstanceItem:
     @property
     def product_type(self):
         return self._product_type
+
+    @property
+    def is_mandatory(self):
+        return self._is_mandatory
 
     @property
     def has_promised_context(self):
@@ -304,6 +310,7 @@ class InstanceItem:
             instance["folderPath"],
             instance["task"],
             instance["active"],
+            instance.is_mandatory,
             instance.has_promised_context,
         )
 
@@ -475,6 +482,9 @@ class CreateModel:
         )
         self._create_context.add_publish_attr_defs_change_callback(
             self._cc_publish_attr_changed
+        )
+        self._create_context.add_instance_state_change_callback(
+            self._cc_instance_state_changed
         )
 
         self._create_context.reset_finalization()
@@ -1169,6 +1179,16 @@ class CreateModel:
         self._emit_event(
             "create.context.publish.attrs.changed",
             event_data,
+        )
+
+    def _cc_instance_state_changed(self, event):
+        instance_ids = {
+            instance.id
+            for instance in event.data["instances"]
+        }
+        self._emit_event(
+            "create.context.instance.state.changed",
+            {"instance_ids": instance_ids},
         )
 
     def _get_allowed_creators_pattern(self) -> Union[Pattern, None]:
