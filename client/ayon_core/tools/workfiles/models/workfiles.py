@@ -37,9 +37,6 @@ from ayon_core.pipeline.workfile import (
     get_workfile_template_key,
     get_last_workfile_with_version_from_paths,
     get_comments_from_workfile_paths,
-    open_workfile,
-    copy_and_open_workfile,
-    copy_and_open_workfile_representation,
     save_workfile_info,
 )
 from ayon_core.pipeline.version_start import get_versioning_start
@@ -229,7 +226,7 @@ class WorkfilesModel:
         )
         failed = False
         try:
-            copy_and_open_workfile_representation(
+            self._host.copy_workfile_representation(
                 project_name,
                 repre_entity,
                 dst_filepath,
@@ -291,7 +288,7 @@ class WorkfilesModel:
         )
         failed = False
         try:
-            copy_and_open_workfile(
+            self._host.copy_workfile(
                 src_filepath,
                 workfile_path,
                 folder_entity,
@@ -671,7 +668,7 @@ class WorkfilesModel:
             anatomy=self._controller.project_anatomy,
             project_settings=self._controller.project_settings,
         )
-        open_workfile(
+        self._host.open_workfile_with_context(
             filepath, folder_entity, task_entity, prepared_data=prepared_data
         )
         self._update_current_context(
