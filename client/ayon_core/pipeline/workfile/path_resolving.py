@@ -6,6 +6,7 @@ import platform
 import warnings
 import typing
 from typing import Optional, Dict, Any
+from dataclasses import dataclass
 
 import ayon_api
 
@@ -211,6 +212,85 @@ def get_workdir(
         template_key,
         project_settings
     )
+
+
+@dataclass
+class WorkfileParsedData:
+    version: Optional[int] = None
+    comment: Optional[str] = None
+    ext: Optional[str] = None
+
+
+class WorkfileDataParser:
+    """Parse dynamic data from existing filenames based on template.
+
+    Args:
+        file_template (str): Workfile file template.
+        data (dict[str, Any]): Data to fill the template with.
+
+    """
+    def __init__(
+        self,
+        file_template: str,
+        data: dict[str, Any],
+    ):
+        data = copy.deepcopy(data)
+        file_template = str(file_template)
+        # Use placeholders that will never be in the filename
+        ext_replacement = "CIextID"
+        version_replacement = "CIversionID"
+        comment_replacement = "CIcommentID"
+        data["version"] = version_replacement
+        data["comment"] = comment_replacement
+        for pattern, replacement in (
+            # Replace `.{ext}` with `{ext}` so we are sure dot is not at the end
+            (r"\.?{ext}", ext_replacement),
+        ):
+            file_template = re.sub(pattern, replacement, file_template)
+
+        file_template = StringTemplate(file_template)
+        comment_template = re.escape(str(file_template.format_strict(data)))
+        data.pop("comment")
+        file_template = re.escape(str(file_template.format_strict(data)))
+        for src, replacement in (
+            (ext_replacement, r"(?P<ext>\..*)"),
+            (version_replacement, r"(?P<version>[0-9]+)"),
+            (comment_replacement, r"(?P<comment>.+?)"),
+        ):
+            comment_template = comment_template.replace(src, replacement)
+            file_template = file_template.replace(src, replacement)
+
+        kwargs = {}
+        if platform.system().lower() == "windows":
+            kwargs["flags"] = re.IGNORECASE
+
+        # Match from beginning to end of string to be safe
+        self._comment_template = re.compile(f"^{comment_template}$", **kwargs)
+        self._file_template = re.compile(f"^{file_template}$", **kwargs)
+
+    def parse_data(self, filename: str) -> WorkfileParsedData:
+        """Parse the dynamic data from a filename."""
+        match = self._comment_template.match(filename)
+        if not match:
+            match = self._file_template.match(filename)
+
+        if not match:
+            return WorkfileParsedData()
+
+        kwargs = match.groupdict()
+        version = kwargs.get("version")
+        if version is not None:
+            kwargs["version"] = int(version)
+        return WorkfileParsedData(**kwargs)
+
+
+def parse_data_from_workfile(
+    filename: str,
+    file_template: str,
+    template_data: dict[str, Any],
+) -> WorkfileParsedData:
+    parser = WorkfileDataParser(file_template, template_data)
+    return parser.parse_data(filename)
 
 
 def get_last_workfile_with_version_from_paths(
