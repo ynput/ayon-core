@@ -12,9 +12,6 @@ from ayon_core.lib import filter_profiles, get_ayon_username
 from ayon_core.settings import get_project_settings
 from ayon_core.host.interfaces import (
     SaveWorkfileOptionalData,
-    OpenWorkfileOptionalData,
-    CopyWorkfileOptionalData,
-    CopyPublishedWorkfileOptionalData,
 )
 
 from .path_resolving import get_workfile_template_key
