@@ -362,6 +362,10 @@ def _filter_dir_files_by_ext(
         if not ext.startswith("."):
             ext = f".{ext}"
         dotted_extensions.add(ext)
+
+    if not os.path.exists(dirpath):
+        return [], dotted_extensions
+
     filtered_paths = [
         os.path.join(dirpath, filename)
         for filename in os.listdir(dirpath)
