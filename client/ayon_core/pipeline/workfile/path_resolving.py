@@ -19,7 +19,7 @@ from ayon_core.pipeline import version_start, Anatomy
 from ayon_core.pipeline.template_data import get_template_data
 
 if typing.TYPE_CHECKING:
-    from ayon_core.lib.path_templates import TemplateResult
+    from ayon_core.pipeline.anatomy import AnatomyTemplateResult
 
 
 def get_workfile_template_key_from_context(
@@ -117,7 +117,7 @@ def get_workdir_with_workdir_data(
     anatomy=None,
     template_key=None,
     project_settings=None
-) -> "TemplateResult":
+) -> "AnatomyTemplateResult":
     """Fill workdir path from entered data and project's anatomy.
 
     It is possible to pass only project's name instead of project's anatomy but
@@ -136,7 +136,7 @@ def get_workdir_with_workdir_data(
             if 'template_key' is not passed.
 
     Returns:
-        TemplateResult: Workdir path.
+        AnatomyTemplateResult: Workdir path.
 
     """
     if not anatomy:
@@ -153,7 +153,7 @@ def get_workdir_with_workdir_data(
     template_obj = anatomy.get_template_item(
         "work", template_key, "directory"
     )
-    # Output is TemplateResult object which contain useful data
+    # Output is AnatomyTemplateResult object which contain useful data
     output = template_obj.format_strict(workdir_data)
     if output:
         return output.normalized()
@@ -168,7 +168,7 @@ def get_workdir(
     anatomy=None,
     template_key=None,
     project_settings=None
-) -> "TemplateResult":
+) -> "AnatomyTemplateResult":
     """Fill workdir path from entered data and project's anatomy.
 
     Args:
@@ -189,7 +189,7 @@ def get_workdir(
             if 'template_key' is not passed.
 
     Returns:
-        TemplateResult: Workdir path.
+        AnatomyTemplateResult: Workdir path.
 
     """
     if not anatomy:
@@ -203,7 +203,7 @@ def get_workdir(
         task_entity,
         host_name,
     )
-    # Output is TemplateResult object which contain useful data
+    # Output is AnatomyTemplateResult object which contain useful data
     return get_workdir_with_workdir_data(
         workdir_data,
         anatomy.project_name,
