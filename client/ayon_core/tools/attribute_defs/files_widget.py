@@ -911,7 +911,6 @@ class FilesWidget(QtWidgets.QFrame):
                 os.path.join(file_item.directory, filename)
                 for filename in file_item.filenames
             }
-        
         self._remove_item_by_ids(merged_item_ids)
         new_items = FileDefItem.from_value(list(all_paths), True)
         self._add_filepaths(new_items)
