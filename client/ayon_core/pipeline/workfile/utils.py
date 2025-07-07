@@ -12,9 +12,16 @@ from ayon_core.lib import filter_profiles, get_ayon_username
 from ayon_core.settings import get_project_settings
 from ayon_core.host.interfaces import (
     SaveWorkfileOptionalData,
+    ListWorkfilesOptionalData,
 )
+from ayon_core.pipeline.version_start import get_versioning_start
+from ayon_core.pipeline.template_data import get_template_data
 
-from .path_resolving import get_workfile_template_key
+from .path_resolving import (
+    get_workdir,
+    get_workfile_template_key,
+    get_last_workfile_with_version_from_paths,
+)
 
 if typing.TYPE_CHECKING:
     from ayon_core.pipeline import Anatomy
@@ -384,6 +391,131 @@ def save_workfile_with_current_context(
                 project_name, folder_entity["id"], task_name
             )
 
+    host.save_workfile_with_context(
+        workfile_path,
+        folder_entity,
+        task_entity,
+        version=version,
+        comment=comment,
+        description=description,
+        prepared_data=prepared_data,
+    )
+
+
+def save_next_version(
+    version: Optional[int] = None,
+    comment: Optional[str] = None,
+    description: Optional[str] = None,
+) -> None:
+    """Save workfile using current context, version and comment.
+
+    Helper function to save workfile using current context. Last workfile
+        version + 1 is used if is not passed in.
+
+    Args:
+        version (Optional[int]): Workfile version that will be used. Last
+            version + 1 is used if is not passed in.
+        comment (optional[str]): Workfile comment.
+        description (Optional[str]): Workfile description.
+
+    """
+    from ayon_core.pipeline import Anatomy
+    from ayon_core.pipeline.context_tools import registered_host
+
+    host = registered_host()
+
+    context = host.get_current_context()
+    project_name = context["project_name"]
+    folder_path = context["folder_path"]
+    task_name = context["task_name"]
+    project_entity = ayon_api.get_project(project_name)
+    project_settings = get_project_settings(project_name)
+    anatomy = Anatomy(project_name, project_entity=project_entity)
+    folder_entity = ayon_api.get_folder_by_path(project_name, folder_path)
+    task_entity = ayon_api.get_task_by_name(
+        project_name, folder_entity["id"], task_name
+    )
+
+    template_key = get_workfile_template_key(
+        project_name,
+        task_entity["taskType"],
+        host.name,
+        project_settings=project_settings
+    )
+    file_template = anatomy.get_template_item("work", template_key, "file")
+    template_data = get_template_data(
+        project_entity,
+        folder_entity,
+        task_entity,
+        host.name,
+        project_settings,
+    )
+    workdir = get_workdir(
+        project_entity,
+        folder_entity,
+        task_entity,
+        host.name,
+        anatomy=anatomy,
+        template_key=template_key,
+        project_settings=project_settings,
+    )
+    rootless_dir = workdir.rootless
+    if version is None:
+        workfile_extensions = host.get_workfile_extensions()
+        if not workfile_extensions:
+            raise ValueError("Host does not have defined file extensions")
+        workfiles = host.list_workfiles(
+            project_name, folder_entity, task_entity,
+            prepared_data=ListWorkfilesOptionalData(
+                project_entity=project_entity,
+                anatomy=anatomy,
+                project_settings=project_settings,
+                template_key=template_key,
+            )
+        )
+        filepaths = [
+            workfile.filepath
+            for workfile in workfiles
+        ]
+
+        dotted_extensions = set()
+        for ext in workfile_extensions:
+            if not ext.startswith("."):
+                ext = f".{ext}"
+            dotted_extensions.add(ext)
+
+        last_path, last_version = get_last_workfile_with_version_from_paths(
+            filepaths,
+            file_template,
+            template_data,
+            dotted_extensions,
+        )
+        if last_path is None:
+            version = get_versioning_start(
+                project_name,
+                host.name,
+                task_name=task_entity["name"],
+                task_type=task_entity["taskType"],
+                product_type="workfile"
+            )
+        else:
+            version = last_version + 1
+
+    template_data["version"] = version
+    template_data["comment"] = comment
+
+    filename = file_template.format_strict(template_data)
+    workfile_path = os.path.join(workdir, filename)
+    rootless_path = f"{rootless_dir}/{filename}"
+    if platform.system().lower() == "windows":
+        rootless_path = rootless_path.replace("\\", "/")
+
+    prepared_data = SaveWorkfileOptionalData(
+        project_entity=project_entity,
+        anatomy=anatomy,
+        project_settings=project_settings,
+        rootless_path=rootless_path,
+    )
     host.save_workfile_with_context(
         workfile_path,
         folder_entity,
