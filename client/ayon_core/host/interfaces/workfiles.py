@@ -102,11 +102,19 @@ class ListWorkfilesOptionalData(_WorkfileOptionalData):
     def __init__(
         self,
         *,
+        project_entity: Optional[dict[str, Any]] = None,
+        anatomy: Optional["Anatomy"] = None,
+        project_settings: Optional[dict[str, Any]] = None,
         template_key: Optional[str] = None,
         workfile_entities: Optional[list[dict[str, Any]]] = None,
         **kwargs
     ):
-        super().__init__(**kwargs)
+        super().__init__(
+            project_entity=project_entity,
+            anatomy=anatomy,
+            project_settings=project_settings,
+            **kwargs
+        )
         self.template_key = template_key
         self.workfile_entities = workfile_entities
 
@@ -147,12 +155,20 @@ class ListPublishedWorkfilesOptionalData(_WorkfileOptionalData):
     def __init__(
         self,
         *,
+        project_entity: Optional[dict[str, Any]] = None,
+        anatomy: Optional["Anatomy"] = None,
+        project_settings: Optional[dict[str, Any]] = None,
         product_entities: Optional[list[dict[str, Any]]] = None,
         version_entities: Optional[list[dict[str, Any]]] = None,
         repre_entities: Optional[list[dict[str, Any]]] = None,
         **kwargs
     ):
-        super().__init__(**kwargs)
+        super().__init__(
+            project_entity=project_entity,
+            anatomy=anatomy,
+            project_settings=project_settings,
+            **kwargs
+        )
 
         self.product_entities = product_entities
         self.version_entities = version_entities
@@ -202,11 +218,19 @@ class SaveWorkfileOptionalData(_WorkfileOptionalData):
     def __init__(
         self,
         *,
+        project_entity: Optional[dict[str, Any]] = None,
+        anatomy: Optional["Anatomy"] = None,
+        project_settings: Optional[dict[str, Any]] = None,
         rootless_path: Optional[str] = None,
         workfile_entities: Optional[list[dict[str, Any]]] = None,
         **kwargs
     ):
-        super().__init__(**kwargs)
+        super().__init__(
+            project_entity=project_entity,
+            anatomy=anatomy,
+            project_settings=project_settings,
+            **kwargs
+        )
 
         self.rootless_path = rootless_path
         self.workfile_entities = workfile_entities
@@ -260,11 +284,23 @@ class CopyPublishedWorkfileOptionalData(SaveWorkfileOptionalData):
 
     def __init__(
         self,
+        project_entity: Optional[dict[str, Any]] = None,
+        anatomy: Optional["Anatomy"] = None,
+        project_settings: Optional[dict[str, Any]] = None,
+        rootless_path: Optional[str] = None,
+        workfile_entities: Optional[list[dict[str, Any]]] = None,
         src_anatomy: Optional["Anatomy"] = None,
         src_representation_path: Optional[str] = None,
         **kwargs
     ):
-        super().__init__(**kwargs)
+        super().__init__(
+            rootless_path=rootless_path,
+            workfile_entities=workfile_entities,
+            project_entity=project_entity,
+            anatomy=anatomy,
+            project_settings=project_settings,
+            **kwargs
+        )
         self.src_anatomy = src_anatomy
         self.src_representation_path = src_representation_path
 
