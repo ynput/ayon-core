@@ -24,9 +24,6 @@ from ayon_core.lib.env_tools import (
     merge_env_variables,
 )
 
-logging.basicConfig()
-log = logging.getLogger()
-
 
 @click.group(invoke_without_command=True)
 @click.pass_context
@@ -310,6 +307,8 @@ def _add_addons(addons_manager):
 
 
 def main(*args, **kwargs):
+    logging.basicConfig()
+
     initialize_ayon_connection()
     python_path = os.getenv("PYTHONPATH", "")
     split_paths = python_path.split(os.pathsep)
