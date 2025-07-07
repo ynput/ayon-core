@@ -24,6 +24,7 @@ from .utils import (
 
     open_workfile,
     save_current_workfile_to,
+    save_workfile_with_current_context,
     copy_and_open_workfile,
     copy_and_open_workfile_representation,
     save_workfile_info,
@@ -67,6 +68,7 @@ __all__ = (
 
     "open_workfile",
     "save_current_workfile_to",
+    "save_workfile_with_current_context",
     "copy_and_open_workfile",
     "copy_and_open_workfile_representation",
     "save_workfile_info",
