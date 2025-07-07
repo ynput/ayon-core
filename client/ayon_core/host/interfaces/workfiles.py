@@ -639,6 +639,8 @@ class WorkfileInfo:
         filepath (str): Path to the workfile.
         rootless_path (str): Path to the workfile without the root. And without
             backslashes on Windows.
+        version (Optional[int]): Version of the workfile.
+        comment (Optional[str]): Comment of the workfile.
         file_size (Optional[float]): Size of the workfile in bytes.
         file_created (Optional[float]): Timestamp when the workfile was
             created on the filesystem.
@@ -656,6 +658,8 @@ class WorkfileInfo:
     """
     filepath: str
     rootless_path: str
+    version: Optional[int]
+    comment: Optional[str]
     file_size: Optional[float]
     file_created: Optional[float]
     file_modified: Optional[float]
@@ -671,6 +675,8 @@ class WorkfileInfo:
         filepath: str,
         rootless_path: str,
         *,
+        version: Optional[int],
+        comment: Optional[str],
         available: bool,
         workfile_entity: dict[str, Any],
     ):
@@ -691,6 +697,8 @@ class WorkfileInfo:
         return cls(
             filepath=filepath,
             rootless_path=rootless_path,
+            version=version,
+            comment=comment,
             file_size=file_size,
             file_created=file_created,
             file_modified=file_modified,
@@ -1047,7 +1055,10 @@ class IWorkfileHost:
 
         """
         from ayon_core.pipeline.template_data import get_template_data
-        from ayon_core.pipeline.workfile import get_workdir_with_workdir_data
+        from ayon_core.pipeline.workfile.path_resolving import (
+            get_workdir_with_workdir_data,
+            WorkfileDataParser,
+        )
 
         extensions = self.get_workfile_extensions()
         if not extensions:
@@ -1080,22 +1091,18 @@ class IWorkfileHost:
             project_settings=list_workfiles_context.project_settings,
         )
 
+        file_template = list_workfiles_context.anatomy.get_template_item(
+            "work", list_workfiles_context.template_key, "file"
+        )
+        rootless_workdir = workdir.rootless
         if platform.system().lower() == "windows":
-            rootless_workdir = workdir.replace("\\", "/")
-        else:
-            rootless_workdir = workdir
-
-        used_roots = workdir.used_values.get("root")
-        if used_roots:
-            used_root_name = next(iter(used_roots))
-            root_value = used_roots[used_root_name]
-            workdir_end = rootless_workdir[len(root_value):].lstrip("/")
-            rootless_workdir = f"{{root[{used_root_name}]}}/{workdir_end}"
+            rootless_workdir = rootless_workdir.replace("\\", "/")
 
         filenames = []
         if os.path.exists(workdir):
             filenames = list(os.listdir(workdir))
 
+        data_parser = WorkfileDataParser(file_template, workdir_data)
         items = []
         for filename in filenames:
             # TODO add 'default' support for folders
@@ -1109,12 +1116,26 @@ class IWorkfileHost:
             workfile_entity = workfile_entities_by_path.pop(
                 rootless_path, None
             )
-            items.append(WorkfileInfo.new(
+            version = comment = None
+            if workfile_entity:
+                _data = workfile_entity["data"]
+                version = _data.get("version")
+                comment = _data.get("comment")
+
+            if version is None:
+                parsed_data = data_parser.parse_data(filename)
+                version = parsed_data.version
+                comment = parsed_data.comment
+
+            item = WorkfileInfo.new(
                 filepath,
                 rootless_path,
+                version=version,
+                comment=comment,
                 available=True,
                 workfile_entity=workfile_entity,
-            ))
+            )
+            items.append(item)
 
         for workfile_entity in workfile_entities_by_path.values():
             # Workfile entity is not in the filesystem
@@ -1123,10 +1144,22 @@ class IWorkfileHost:
             ext = os.path.splitext(rootless_path)[1].lower()
             if ext not in extensions:
                 continue
+
+            _data = workfile_entity["data"]
+            version = _data.get("version")
+            comment = _data.get("comment")
+            if version is None:
+                filename = os.path.basename(rootless_path)
+                parsed_data = data_parser.parse_data(filename)
+                version = parsed_data.version
+                comment = parsed_data.comment
+
             filepath = prepared_data.anatomy.fill_root(rootless_path)
             items.append(WorkfileInfo.new(
                 filepath,
                 rootless_path,
+                version=version,
+                comment=comment,
                 available=False,
                 workfile_entity=workfile_entity,
             ))
