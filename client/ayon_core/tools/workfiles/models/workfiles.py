@@ -466,19 +466,20 @@ class WorkfilesModel:
         template_has_comment = "{comment" in file_template_str
 
         file_items = self.get_workarea_file_items(folder_id, task_id)
-        filepaths = [
-            item.filepath
-            for item in file_items
-        ]
-        comment_hints, comment = get_comments_from_workfile_paths(
-            filepaths,
-            extensions,
-            file_template,
-            fill_data,
-            current_filename,
-        )
+        comment_hints = set()
+        comment = None
+        for item in file_items:
+            filepath = item.filepath
+            filename = os.path.basename(filepath)
+            if filename == current_filename:
+                comment = item.comment
+
+            if item.comment:
+                comment_hints.add(item.comment)
+        comment_hints = list(comment_hints)
+
         last_version = self._get_last_workfile_version(
-            filepaths, file_template_str, fill_data, extensions
+            file_items, task_entity
         )
 
         return {
@@ -530,15 +531,11 @@ class WorkfilesModel:
 
         if use_last_version:
             file_items = self.get_workarea_file_items(folder_id, task_id)
-            filepaths = [
-                item.filepath
-                for item in file_items
-            ]
+            task_entity = self._controller.get_task_entity(
+                self._project_name, task_id
+            )
             version = self._get_last_workfile_version(
-                filepaths,
-                file_template.template,
-                fill_data,
-                self._extensions
+                file_items, task_entity
             )
         fill_data["version"] = version
         fill_data["ext"] = extension.lstrip(".")
@@ -800,11 +797,7 @@ class WorkfilesModel:
         )
 
     def _get_last_workfile_version(
-        self,
-        filepaths: list[str],
-        file_template: str,
-        fill_data: dict[str, Any],
-        extensions: set[str]
+        self, file_items: list[WorkfileInfo], task_entity: dict[str, Any]
     ) -> int:
         """
 
@@ -813,27 +806,26 @@ class WorkfilesModel:
                 last version + 1 which might be wrong.
 
         Args:
-            filepaths (list[str]): Workfile paths.
-            file_template (str): File template.
-            fill_data (dict[str, Any]): Fill data.
-            extensions (set[str]): Extensions.
+            file_items (list[WorkfileInfo]): Workfile items.
+            task_entity (dict[str, Any]): Task entity.
 
         Returns:
             int: Next workfile version.
 
         """
-        version = get_last_workfile_with_version_from_paths(
-            filepaths, file_template, fill_data, extensions
-        )[1]
-        if version is not None:
-            return version + 1
+        versions = {
+            item.version
+            for item in file_items
+            if item.version is not None
+        }
+        if versions:
+            return max(versions) + 1
 
-        task_info = fill_data.get("task", {})
         return get_versioning_start(
             self._project_name,
             self._host_name,
-            task_name=task_info.get("name"),
-            task_type=task_info.get("type"),
+            task_name=task_entity["name"],
+            task_type=task_entity["taskType"],
             product_type="workfile",
             project_settings=self._controller.project_settings,
         )
