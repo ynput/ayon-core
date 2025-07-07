@@ -20,7 +20,6 @@ from ayon_core.pipeline.template_data import get_template_data
 from .path_resolving import (
     get_workdir,
     get_workfile_template_key,
-    get_last_workfile_with_version_from_paths,
 )
 
 if typing.TYPE_CHECKING:
@@ -473,24 +472,16 @@ def save_next_version(
                 template_key=template_key,
             )
         )
-        filepaths = [
-            workfile.filepath
+        versions = {
+            workfile.version
             for workfile in workfiles
-        ]
+            if workfile.version is not None
+        }
+        version = None
+        if versions:
+            version = max(versions) + 1
 
-        dotted_extensions = set()
-        for ext in workfile_extensions:
-            if not ext.startswith("."):
-                ext = f".{ext}"
-            dotted_extensions.add(ext)
-
-        last_path, last_version = get_last_workfile_with_version_from_paths(
-            filepaths,
-            file_template,
-            template_data,
-            dotted_extensions,
-        )
-        if last_path is None:
+        if version is None:
             version = get_versioning_start(
                 project_name,
                 host.name,
@@ -498,8 +489,6 @@ def save_next_version(
                 task_type=task_entity["taskType"],
                 product_type="workfile"
             )
-        else:
-            version = last_version + 1
 
     template_data["version"] = version
     template_data["comment"] = comment
