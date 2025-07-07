@@ -586,13 +586,9 @@ def _create_workfile_info_entity(
             attrib[key] = value
 
     data = {
-        key: value
-        for key, value in (
-            ("host_name", host_name),
-            ("version", version),
-            ("comment", comment),
-        )
-        if value is not None
+        "host_name": host_name,
+        "version": version,
+        "comment": comment,
     }
 
     workfile_info = {
