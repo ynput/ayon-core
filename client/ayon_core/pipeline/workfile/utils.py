@@ -305,25 +305,6 @@ def save_workfile_info(
     return workfile_entity
 
 
-def open_workfile(
-    filepath: str,
-    folder_entity: dict[str, Any],
-    task_entity: dict[str, Any],
-    *,
-    prepared_data: Optional[OpenWorkfileOptionalData] = None,
-):
-    from ayon_core.pipeline.context_tools import registered_host
-
-    # Trigger before save event
-    host = registered_host()
-    host.open_workfile_with_context(
-        filepath,
-        folder_entity,
-        task_entity,
-        prepared_data=prepared_data,
-    )
-
-
 def save_current_workfile_to(
     workfile_path: str,
     folder_path: str,
@@ -413,91 +394,6 @@ def save_workfile_with_current_context(
         version=version,
         comment=comment,
         description=description,
-        prepared_data=prepared_data,
-    )
-
-
-def copy_and_open_workfile(
-    src_workfile_path: str,
-    workfile_path: str,
-    folder_entity: dict[str, Any],
-    task_entity: dict[str, Any],
-    *,
-    version: Optional[int] = None,
-    comment: Optional[str] = None,
-    description: Optional[str] = None,
-    prepared_data: Optional[CopyWorkfileOptionalData] = None,
-) -> None:
-    """Copy workfile to new location and open it.
-
-    Args:
-        src_workfile_path (str): Source workfile path.
-        workfile_path (str): Destination workfile path.
-        folder_entity (dict[str, Any]): Target folder entity.
-        task_entity (dict[str, Any]): Target task entity.
-        version (Optional[int]): Workfile version.
-        comment (optional[str]): Workfile comment.
-        description (Optional[str]): Workfile description.
-        prepared_data (Optional[CopyWorkfileOptionalData]): Prepared data
-            for speed enhancements.
-
-    """
-    from ayon_core.pipeline.context_tools import registered_host
-
-    host = registered_host()
-    host.copy_workfile(
-        src_workfile_path,
-        workfile_path,
-        folder_entity,
-        task_entity,
-        version=version,
-        comment=comment,
-        description=description,
-        open_workfile=True,
-        prepared_data=prepared_data,
-    )
-
-
-def copy_and_open_workfile_representation(
-    src_project_name: str,
-    representation_entity: dict[str, Any],
-    workfile_path: str,
-    folder_entity: dict[str, Any],
-    task_entity: dict[str, Any],
-    *,
-    version: Optional[int] = None,
-    comment: Optional[str] = None,
-    description: Optional[str] = None,
-    prepared_data: Optional[CopyPublishedWorkfileOptionalData] = None,
-) -> None:
-    """Copy workfile to new location and open it.
-
-    Args:
-        src_project_name (str): Project name where representation is stored.
-        representation_entity (dict[str, Any]): Representation entity.
-        workfile_path (str): Destination workfile path.
-        folder_entity (dict[str, Any]): Target folder entity.
-        task_entity (dict[str, Any]): Target task entity.
-        version (Optional[int]): Workfile version.
-        comment (optional[str]): Workfile comment.
-        description (Optional[str]): Workfile description.
-        prepared_data (Optional[CopyPublishedWorkfileOptionalData]): Prepared
-            data for speed enhancements.
-
-    """
-    from ayon_core.pipeline.context_tools import registered_host
-
-    host = registered_host()
-    host.copy_workfile_representation(
-        src_project_name,
-        representation_entity,
-        workfile_path,
-        folder_entity,
-        task_entity,
-        version=version,
-        comment=comment,
-        description=description,
-        open_workfile=True,
         prepared_data=prepared_data,
     )
 
