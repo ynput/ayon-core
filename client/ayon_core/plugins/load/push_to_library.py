@@ -14,7 +14,7 @@ class PushToLibraryProject(load.ProductLoaderPlugin):
     representations = {"*"}
     product_types = {"*"}
 
-    label = "Push to Library project"
+    label = "Push to (Library) project"
     order = 35
     icon = "send"
     color = "#d8d8d8"
