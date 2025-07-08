@@ -23,6 +23,7 @@ class OCIOEnvHook(PreLaunchHook):
         "openrv",
         "cinema4d",
         "silhouette",
+        "gaffer",
     }
     launch_types = set()
 
