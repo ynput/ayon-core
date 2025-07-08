@@ -750,7 +750,7 @@ class CreatedInstance:
         self._is_mandatory = value
         if value is True:
             self["active"] = True
-        self._create_context.instance_state_changed(self.id)
+        self._create_context.instance_requirement_changed(self.id)
 
     def changes(self):
         """Calculate and return changes."""

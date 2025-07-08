@@ -53,7 +53,8 @@ class PublisherController(
             changed.
         "create.context.create.attrs.changed" - Create attributes changed.
         "create.context.publish.attrs.changed" - Publish attributes changed.
-        "create.context.instance.state.changed" - Instance state changed.
+        "create.context.instance.requirement.changed" - Instance requirement
+            changed.
         "create.context.removed.instance" - Instance removed from context.
         "create.model.instances.context.changed" - Instances changed context.
             like folder, task or variant.
