@@ -85,6 +85,14 @@ class PushToContextSelectWindow(QtWidgets.QWidget):
 
         header_widget = QtWidgets.QWidget(main_context_widget)
 
+        library_only = self._controller.get_library_only()
+        library_only_label = QtWidgets.QLabel(
+            "Show only libraries",
+            header_widget
+        )
+        library_only_checkbox = NiceCheckbox(
+            library_only, parent=header_widget)
+
         header_label = QtWidgets.QLabel(
             controller.get_source_label(),
             header_widget
@@ -93,6 +101,14 @@ class PushToContextSelectWindow(QtWidgets.QWidget):
         header_layout = QtWidgets.QHBoxLayout(header_widget)
         header_layout.setContentsMargins(0, 0, 0, 0)
         header_layout.addWidget(header_label)
+        header_layout.addStretch()
+
+        library_only_layout = QtWidgets.QHBoxLayout()
+        library_only_layout.addWidget(library_only_label)
+        library_only_layout.addWidget(library_only_checkbox)
+        library_only_layout.setSpacing(5)  # or whatever spacing you prefer
+
+        header_layout.addLayout(library_only_layout)
 
         main_splitter = QtWidgets.QSplitter(
             QtCore.Qt.Horizontal, main_context_widget
@@ -102,7 +118,7 @@ class PushToContextSelectWindow(QtWidgets.QWidget):
 
         projects_combobox = ProjectsCombobox(controller, context_widget)
         projects_combobox.set_select_item_visible(True)
-        projects_combobox.set_standard_filter_enabled(True)
+        projects_combobox.set_standard_filter_enabled(library_only)
 
         context_splitter = QtWidgets.QSplitter(
             QtCore.Qt.Vertical, context_widget
@@ -240,6 +256,7 @@ class PushToContextSelectWindow(QtWidgets.QWidget):
         folder_name_input.textChanged.connect(self._on_new_folder_change)
         variant_input.textChanged.connect(self._on_variant_change)
         comment_input.textChanged.connect(self._on_comment_change)
+        library_only_checkbox.stateChanged.connect(self._on_library_only_change)
 
         publish_btn.clicked.connect(self._on_select_click)
         cancel_btn.clicked.connect(self._on_close_click)
@@ -393,6 +410,13 @@ class PushToContextSelectWindow(QtWidgets.QWidget):
     def _on_comment_change(self, text):
         self._comment_input_text = text
         self._user_input_changed_timer.start()
+
+    def _on_library_only_change(self, state: int) -> None:
+        """Change toggle state, reset filter, recalculate dropdown"""
+        state = bool(state)
+        self._controller.set_library_only(state)
+        self._projects_combobox.set_standard_filter_enabled(state)
+        self._projects_combobox.refresh()
 
     def _on_user_input_timer(self):
         folder_name_enabled = self._new_folder_name_enabled

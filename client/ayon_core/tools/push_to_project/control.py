@@ -40,6 +40,8 @@ class PushToContextController:
 
         self.set_source(project_name, version_id)
 
+        self._library_only = True
+
     # Events system
     def emit_event(self, topic, data=None, source=None):
         """Use implemented event system to trigger event."""
@@ -127,6 +129,14 @@ class PushToContextController:
         if self._src_label is None:
             self._src_label = self._prepare_source_label()
         return self._src_label
+
+    def get_library_only(self):
+        """Returns state of library filter"""
+        return self._library_only
+
+    def set_library_only(self, state: bool):
+        """Change state of library filter"""
+        self._library_only = state
 
     def get_project_items(self, sender=None):
         return self._projects_model.get_project_items(sender)
