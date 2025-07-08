@@ -157,7 +157,7 @@ class OverviewWidget(QtWidgets.QFrame):
         )
         controller.register_event_callback(
             "create.model.instance.requirement.changed",
-            self._on_instance_state_changed
+            self._on_instance_requirement_changed
         )
 
         self._product_content_widget = product_content_widget
@@ -358,7 +358,7 @@ class OverviewWidget(QtWidgets.QFrame):
     def _on_instance_context_change(self, event):
         self._refresh_instance_states(event["instance_ids"])
 
-    def _on_instance_state_changed(self, event):
+    def _on_instance_requirement_changed(self, event):
         self._refresh_instance_states(event["instance_ids"])
 
     def _refresh_instance_states(self, instance_ids):
