@@ -156,7 +156,7 @@ class OverviewWidget(QtWidgets.QFrame):
             self._on_instance_context_change
         )
         controller.register_event_callback(
-            "create.model.instance.state.changed",
+            "create.model.instance.requirement.changed",
             self._on_instance_state_changed
         )
 

@@ -483,8 +483,8 @@ class CreateModel:
         self._create_context.add_publish_attr_defs_change_callback(
             self._cc_publish_attr_changed
         )
-        self._create_context.add_instance_state_change_callback(
-            self._cc_instance_state_changed
+        self._create_context.add_instance_requirement_change_callback(
+            self._cc_instance_requirement_changed
         )
 
         self._create_context.reset_finalization()
@@ -1181,13 +1181,13 @@ class CreateModel:
             event_data,
         )
 
-    def _cc_instance_state_changed(self, event):
+    def _cc_instance_requirement_changed(self, event):
         instance_ids = {
             instance.id
             for instance in event.data["instances"]
         }
         self._emit_event(
-            "create.context.instance.state.changed",
+            "create.model.instance.requirement.changed",
             {"instance_ids": instance_ids},
         )
 

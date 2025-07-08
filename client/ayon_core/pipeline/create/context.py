@@ -79,7 +79,7 @@ _NOT_SET = object()
 INSTANCE_ADDED_TOPIC = "instances.added"
 INSTANCE_REMOVED_TOPIC = "instances.removed"
 VALUE_CHANGED_TOPIC = "values.changed"
-INSTANCE_STATE_CHANGED_TOPIC = "instance.state.changed"
+INSTANCE_REQUIREMENT_CHANGED_TOPIC = "instance.requirement.changed"
 PRE_CREATE_ATTR_DEFS_CHANGED_TOPIC = "pre.create.attr.defs.changed"
 CREATE_ATTR_DEFS_CHANGED_TOPIC = "create.attr.defs.changed"
 PUBLISH_ATTR_DEFS_CHANGED_TOPIC = "publish.attr.defs.changed"
@@ -258,10 +258,10 @@ class CreateContext:
             "create_attrs_change": BulkInfo(),
             # Publish attribute definitions changed
             "publish_attrs_change": BulkInfo(),
-            # Instance state changed
-            # - right now used only for 'mandatory' state but can be extended
+            # Instance requirement changed
+            # - right now used only for 'mandatory' but can be extended
             #   in future
-            "state_change": BulkInfo(),
+            "requirement_change": BulkInfo(),
         }
         self._bulk_order = []
 
@@ -1054,10 +1054,10 @@ class CreateContext:
             PUBLISH_ATTR_DEFS_CHANGED_TOPIC, callback
         )
 
-    def add_instance_state_change_callback(
+    def add_instance_requirement_change_callback(
         self, callback: Callable
     ) -> "EventCallback":
-        """Register callback to listen instance state changes.
+        """Register callback to listen instance requirement changes.
 
         Create plugin changed attribute definitions of instance.
 
@@ -1072,7 +1072,7 @@ class CreateContext:
 
         Args:
             callback (Callable): Callback function that will be called when
-                create attributes changed.
+                instance requirement changed.
 
         Returns:
             EventCallback: Created callback object which can be used to
@@ -1080,7 +1080,7 @@ class CreateContext:
 
         """
         return self._event_hub.add_callback(
-            INSTANCE_STATE_CHANGED_TOPIC, callback
+            INSTANCE_REQUIREMENT_CHANGED_TOPIC, callback
         )
 
     def context_data_to_store(self) -> dict[str, Any]:
@@ -1358,9 +1358,9 @@ class CreateContext:
             yield bulk_info
 
     @contextmanager
-    def bulk_instance_state_change(self, sender: Optional[str] = None):
+    def bulk_instance_requirement_change(self, sender: Optional[str] = None):
         with self._bulk_context(
-            "state_change", sender
+            "requirement_change", sender
         ) as bulk_info:
             yield bulk_info
 
@@ -1431,8 +1431,8 @@ class CreateContext:
             with self.bulk_value_changes() as bulk_item:
                 bulk_item.append((instance_id, new_values))
 
-    def instance_state_changed(self, instance_id: str) -> None:
-        """Instance state changed.
+    def instance_requirement_changed(self, instance_id: str) -> None:
+        """Instance requirement changed.
 
         Triggered by `CreatedInstance`.
 
@@ -1441,7 +1441,7 @@ class CreateContext:
 
         """
         if self._is_instance_events_ready(instance_id):
-            with self.bulk_instance_state_change() as bulk_item:
+            with self.bulk_instance_requirement_change() as bulk_item:
                 bulk_item.append(instance_id)
 
     # --- context change callbacks ---
@@ -2303,8 +2303,8 @@ class CreateContext:
             self._bulk_create_attrs_change_finished(data, sender)
         elif key == "publish_attrs_change":
             self._bulk_publish_attrs_change_finished(data, sender)
-        elif key == "state_change":
-            self._bulk_instance_state_change_finished(data, sender)
+        elif key == "requirement_change":
+            self._bulk_instance_requirement_change_finished(data, sender)
 
     def _bulk_add_instances_finished(
         self,
@@ -2500,7 +2500,7 @@ class CreateContext:
             sender,
         )
 
-    def _bulk_instance_state_change_finished(
+    def _bulk_instance_requirement_change_finished(
         self,
         instance_ids: list[str],
         sender: Optional[str],
@@ -2514,7 +2514,7 @@ class CreateContext:
         ]
 
         self._emit_event(
-            INSTANCE_STATE_CHANGED_TOPIC,
+            INSTANCE_REQUIREMENT_CHANGED_TOPIC,
             {"instances": instances},
             sender,
         )
