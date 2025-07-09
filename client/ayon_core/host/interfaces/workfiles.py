@@ -1154,7 +1154,7 @@ class IWorkfileHost:
                 version = parsed_data.version
                 comment = parsed_data.comment
 
-            filepath = prepared_data.anatomy.fill_root(rootless_path)
+            filepath = list_workfiles_context.anatomy.fill_root(rootless_path)
             items.append(WorkfileInfo.new(
                 filepath,
                 rootless_path,
@@ -1203,14 +1203,14 @@ class IWorkfileHost:
 
         versions_by_id = {
             version_entity["id"]: version_entity
-            for version_entity in prepared_data.version_entities
+            for version_entity in list_workfiles_context.version_entities
         }
         extensions = {
             ext.lstrip(".")
             for ext in self.get_workfile_extensions()
         }
         items = []
-        for repre_entity in prepared_data.repre_entities:
+        for repre_entity in list_workfiles_context.repre_entities:
             version_id = repre_entity["versionId"]
             version_entity = versions_by_id[version_id]
             task_id = version_entity["taskId"]
@@ -1232,7 +1232,7 @@ class IWorkfileHost:
 
             try:
                 workfile_path = workfile_path.format(
-                    root=prepared_data.anatomy.roots
+                    root=list_workfiles_context.anatomy.roots
                 )
             except Exception:
                 self.log.warning(
