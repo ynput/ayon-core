@@ -249,7 +249,14 @@ class WorkfileDataParser:
             file_template = re.sub(pattern, replacement, file_template)
 
         file_template = StringTemplate(file_template)
+        # Prepare template that does contain 'comment'
         comment_template = re.escape(str(file_template.format_strict(data)))
+        # Prepare template that does not contain 'comment'
+        # - comment is usually marked as optional and in that case the regex
+        #   to find the comment is different based on the filename
+        #   - if filename contains comment then 'comment_template' will match
+        #   - if filename does not contain comment then 'file_template' will
+        #     match
         data.pop("comment")
         file_template = re.escape(str(file_template.format_strict(data)))
         for src, replacement in (
