@@ -243,7 +243,8 @@ class WorkfileDataParser:
         data["version"] = version_replacement
         data["comment"] = comment_replacement
         for pattern, replacement in (
-            # Replace `.{ext}` with `{ext}` so we are sure dot is not at the end
+            # Replace `.{ext}` with `{ext}` so we are sure dot is not
+            #   at the end
             (r"\.?{ext}", ext_replacement),
         ):
             file_template = re.sub(pattern, replacement, file_template)
