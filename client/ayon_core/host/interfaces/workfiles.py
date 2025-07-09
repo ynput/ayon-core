@@ -1113,11 +1113,6 @@ class IWorkfileHost:
             filepath = os.path.join(workdir, filename)
 
             rootless_path = f"{rootless_workdir}/{filename}"
-            # Double slashes can happen when root leads to root of disk or
-            #   when task exists on root folder
-            #   - '/{hierarchy}/{folder[name]}' -> '//some_folder'
-            while "//" in rootless_path:
-                rootless_path = rootless_path.replace("//", "/")
             workfile_entity = workfile_entities_by_path.pop(
                 rootless_path, None
             )
