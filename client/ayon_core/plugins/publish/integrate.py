@@ -368,6 +368,8 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
         folder_entity = instance.data["folderEntity"]
         product_name = instance.data["productName"]
         product_type = instance.data["productType"]
+        product_base_type = instance.data.get("productBaseType")
+
         self.log.debug("Product: {}".format(product_name))
 
         # Get existing product if it exists
@@ -401,7 +403,8 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
             folder_entity["id"],
             data=data,
             attribs=attributes,
-            entity_id=product_id
+            entity_id=product_id,
+            product_base_type=product_base_type
         )
 
         if existing_product_entity is None:
@@ -917,6 +920,7 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
         host_name = context.data["hostName"]
         anatomy_data = instance.data["anatomyData"]
         product_type = instance.data["productType"]
+        product_base_type = instance.data.get("productBaseType")
         task_info = anatomy_data.get("task") or {}
 
         return get_publish_template_name(
@@ -926,7 +930,8 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
             task_name=task_info.get("name"),
             task_type=task_info.get("type"),
             project_settings=context.data["project_settings"],
-            logger=self.log
+            logger=self.log,
+            product_base_type=product_base_type
         )
 
     def get_rootless_path(self, anatomy, path):
