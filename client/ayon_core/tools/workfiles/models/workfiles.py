@@ -35,8 +35,6 @@ from ayon_core.pipeline.template_data import (
 from ayon_core.pipeline.workfile import (
     get_workdir_with_workdir_data,
     get_workfile_template_key,
-    get_last_workfile_with_version_from_paths,
-    get_comments_from_workfile_paths,
     save_workfile_info,
 )
 from ayon_core.pipeline.version_start import get_versioning_start
