@@ -284,13 +284,52 @@ class WorkfileDataParser:
         return WorkfileParsedData(**kwargs)
 
 
-def parse_data_from_workfile(
+def parse_dynamic_data_from_workfile(
     filename: str,
     file_template: str,
     template_data: dict[str, Any],
 ) -> WorkfileParsedData:
+    """Parse dynamic data from a workfile filename.
+
+    Dynamic data are 'version', 'comment' and 'ext'.
+
+    Args:
+        filename (str): Workfile filename.
+        file_template (str): Workfile file template.
+        template_data (dict[str, Any]): Data to fill the template with.
+
+    Returns:
+        WorkfileParsedData: Dynamic data parsed from the filename.
+
+    """
     parser = WorkfileDataParser(file_template, template_data)
     return parser.parse_data(filename)
+
+
+def parse_dynamic_data_from_workfiles(
+    filenames: list[str],
+    file_template: str,
+    template_data: dict[str, Any],
+) -> dict[str, WorkfileParsedData]:
+    """Parse dynamic data from a workfiles filenames.
+
+    Dynamic data are 'version', 'comment' and 'ext'.
+
+    Args:
+        filenames (list[str]): Workfiles filenames.
+        file_template (str): Workfile file template.
+        template_data (dict[str, Any]): Data to fill the template with.
+
+    Returns:
+        dict[str, WorkfileParsedData]: Dynamic data parsed from the filenames
+            by filename.
+
+    """
+    parser = WorkfileDataParser(file_template, template_data)
+    return {
+        filename: parser.parse_data(filename)
+        for filename in filenames
+    }
 
 
 def get_last_workfile_with_version_from_paths(
