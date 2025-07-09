@@ -824,6 +824,12 @@ class CommentMatcher:
         file_template: StringTemplate,
         data: dict[str, Any]
     ):
+        warnings.warn(
+            "Class 'CommentMatcher' is deprecated. Please"
+            " use 'parse_dynamic_data_from_workfiles' instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
         self._fname_regex = None
 
         if "{comment}" not in file_template:
@@ -873,7 +879,7 @@ def get_comments_from_workfile_paths(
     template_data: dict[str, Any],
     current_filename: Optional[str] = None,
 ) -> tuple[list[str], str]:
-    """Collect comments from workfile filenames.
+    """DEPRECATED Collect comments from workfile filenames.
 
     Based on 'current_filename' is also returned "current comment".
 
@@ -888,6 +894,12 @@ def get_comments_from_workfile_paths(
         tuple[list[str], str]: List of comments and the current comment.
 
     """
+    warnings.warn(
+        "Function 'get_comments_from_workfile_paths' is deprecated. Please"
+        " use 'parse_dynamic_data_from_workfiles' instead.",
+        DeprecationWarning,
+        stacklevel=2,
+    )
     current_comment = ""
     if not filepaths:
         return [], current_comment
