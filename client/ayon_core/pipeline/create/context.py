@@ -79,6 +79,7 @@ _NOT_SET = object()
 INSTANCE_ADDED_TOPIC = "instances.added"
 INSTANCE_REMOVED_TOPIC = "instances.removed"
 VALUE_CHANGED_TOPIC = "values.changed"
+INSTANCE_REQUIREMENT_CHANGED_TOPIC = "instance.requirement.changed"
 PRE_CREATE_ATTR_DEFS_CHANGED_TOPIC = "pre.create.attr.defs.changed"
 CREATE_ATTR_DEFS_CHANGED_TOPIC = "create.attr.defs.changed"
 PUBLISH_ATTR_DEFS_CHANGED_TOPIC = "publish.attr.defs.changed"
@@ -257,6 +258,10 @@ class CreateContext:
             "create_attrs_change": BulkInfo(),
             # Publish attribute definitions changed
             "publish_attrs_change": BulkInfo(),
+            # Instance requirement changed
+            # - right now used only for 'mandatory' but can be extended
+            #   in future
+            "requirement_change": BulkInfo(),
         }
         self._bulk_order = []
 
@@ -867,7 +872,7 @@ class CreateContext:
         Event is triggered when instances are already available in context
             and have set create/publish attribute definitions.
 
-        Data structure of event::
+        Data structure of event:
 
             ```python
             {
@@ -894,7 +899,7 @@ class CreateContext:
 
         Event is triggered when instances are already removed from context.
 
-        Data structure of event::
+        Data structure of event:
 
             ```python
             {
@@ -922,7 +927,7 @@ class CreateContext:
         Event is triggered when any value changes on any instance or
             context data.
 
-        Data structure of event::
+        Data structure of event:
 
             ```python
             {
@@ -960,7 +965,7 @@ class CreateContext:
         Create plugin can trigger refresh of pre-create attributes. Usage of
             this event is mainly for publisher UI.
 
-        Data structure of event::
+        Data structure of event:
 
             ```python
             {
@@ -989,7 +994,7 @@ class CreateContext:
 
         Create plugin changed attribute definitions of instance.
 
-        Data structure of event::
+        Data structure of event:
 
             ```python
             {
@@ -1018,7 +1023,7 @@ class CreateContext:
 
         Publish plugin changed attribute definitions of instance of context.
 
-        Data structure of event::
+        Data structure of event:
 
             ```python
             {
@@ -1047,6 +1052,35 @@ class CreateContext:
         """
         return self._event_hub.add_callback(
             PUBLISH_ATTR_DEFS_CHANGED_TOPIC, callback
+        )
+
+    def add_instance_requirement_change_callback(
+        self, callback: Callable
+    ) -> "EventCallback":
+        """Register callback to listen to instance requirement changes.
+
+        Instance changed requirement of active state.
+
+        Data structure of event:
+
+            ```python
+            {
+                "instances": [CreatedInstance, ...],
+                "create_context": CreateContext
+            }
+            ```
+
+        Args:
+            callback (Callable): Callback function that will be called when
+                instance requirement changed.
+
+        Returns:
+            EventCallback: Created callback object which can be used to
+                stop listening.
+
+        """
+        return self._event_hub.add_callback(
+            INSTANCE_REQUIREMENT_CHANGED_TOPIC, callback
         )
 
     def context_data_to_store(self) -> dict[str, Any]:
@@ -1324,6 +1358,13 @@ class CreateContext:
             yield bulk_info
 
     @contextmanager
+    def bulk_instance_requirement_change(self, sender: Optional[str] = None):
+        with self._bulk_context(
+            "requirement_change", sender
+        ) as bulk_info:
+            yield bulk_info
+
+    @contextmanager
     def bulk_publish_attr_defs_change(self, sender: Optional[str] = None):
         with self._bulk_context("publish_attrs_change", sender) as bulk_info:
             yield bulk_info
@@ -1389,6 +1430,19 @@ class CreateContext:
         if self._is_instance_events_ready(instance_id):
             with self.bulk_value_changes() as bulk_item:
                 bulk_item.append((instance_id, new_values))
+
+    def instance_requirement_changed(self, instance_id: str) -> None:
+        """Instance requirement changed.
+
+        Triggered by `CreatedInstance`.
+
+        Args:
+            instance_id (Optional[str]): Instance id.
+
+        """
+        if self._is_instance_events_ready(instance_id):
+            with self.bulk_instance_requirement_change() as bulk_item:
+                bulk_item.append(instance_id)
 
     # --- context change callbacks ---
     def publish_attribute_value_changed(
@@ -2249,6 +2303,8 @@ class CreateContext:
             self._bulk_create_attrs_change_finished(data, sender)
         elif key == "publish_attrs_change":
             self._bulk_publish_attrs_change_finished(data, sender)
+        elif key == "requirement_change":
+            self._bulk_instance_requirement_change_finished(data, sender)
 
     def _bulk_add_instances_finished(
         self,
@@ -2441,5 +2497,24 @@ class CreateContext:
         self._emit_event(
             PUBLISH_ATTR_DEFS_CHANGED_TOPIC,
             {"instance_changes": instance_changes},
+            sender,
+        )
+
+    def _bulk_instance_requirement_change_finished(
+        self,
+        instance_ids: list[str],
+        sender: Optional[str],
+    ) -> None:
+        if not instance_ids:
+            return
+
+        instances = [
+            self.get_instance_by_id(instance_id)
+            for instance_id in set(instance_ids)
+        ]
+
+        self._emit_event(
+            INSTANCE_REQUIREMENT_CHANGED_TOPIC,
+            {"instances": instances},
             sender,
         )
