@@ -1442,6 +1442,103 @@ DEFAULT_PUBLISH_VALUES = {
                         "fill_missing_frames": "closest_existing"
                     }
                 ]
+            },
+            {
+                "product_types": [],
+                "hosts": ["photoshop"],
+                "outputs": [
+                    {
+                        "name": "jpg",
+                        "ext": "jpg",
+                        "tags": [
+                            "ftrackreview",
+                            "kitsureview",
+                            "webreview"
+                        ],
+                        "burnins": [],
+                        "ffmpeg_args": {
+                            "video_filters": [],
+                            "audio_filters": [],
+                            "input": [],
+                            "output": []
+                        },
+                        "filter": {
+                            "families": [
+                                "render",
+                                "review",
+                                "ftrack"
+                            ],
+                            "product_names": [],
+                            "custom_tags": [],
+                            "single_frame_filter": "single_frame"
+                        },
+                        "overscan_crop": "",
+                        # "overscan_color": [0, 0, 0],
+                        "overscan_color": [0, 0, 0, 0.0],
+                        "width": 1920,
+                        "height": 1080,
+                        "scale_pixel_aspect": True,
+                        "bg_color": [0, 0, 0, 0.0],
+                        "letter_box": {
+                            "enabled": False,
+                            "ratio": 0.0,
+                            "fill_color": [0, 0, 0, 1.0],
+                            "line_thickness": 0,
+                            "line_color": [255, 0, 0, 1.0]
+                        },
+                        "fill_missing_frames": "closest_existing"
+                    },
+                    {
+                        "name": "mov",
+                        "ext": "mov",
+                        "tags": [
+                            "ftrackreview",
+                            "kitsureview",
+                            "webreview"
+                        ],
+                        "burnins": [],
+                        "ffmpeg_args": {
+                            "video_filters": [],
+                            "audio_filters": [],
+                            "input": [
+                                "-apply_trc gamma22"
+                            ],
+                            "output": [
+                                "-pix_fmt yuv420p",
+                                "-crf 18",
+                                "-c:a aac",
+                                "-b:a 192k",
+                                "-g 1",
+                                "-movflags faststart"
+                            ]
+                        },
+                        "filter": {
+                            "families": [
+                                "render",
+                                "review",
+                                "ftrack"
+                            ],
+                            "product_names": [],
+                            "custom_tags": [],
+                            "single_frame_filter": "multi_frame"
+                        },
+                        "overscan_crop": "",
+                        # "overscan_color": [0, 0, 0],
+                        "overscan_color": [0, 0, 0, 0.0],
+                        "width": 0,
+                        "height": 0,
+                        "scale_pixel_aspect": True,
+                        "bg_color": [0, 0, 0, 0.0],
+                        "letter_box": {
+                            "enabled": False,
+                            "ratio": 0.0,
+                            "fill_color": [0, 0, 0, 1.0],
+                            "line_thickness": 0,
+                            "line_color": [255, 0, 0, 1.0]
+                        },
+                        "fill_missing_frames": "closest_existing"
+                    }
+                ]
             }
         ]
     },

@@ -38,6 +38,7 @@ class ExtractThumbnail(pyblish.api.InstancePlugin):
         "substancedesigner",
         "nuke",
         "aftereffects",
+        "photoshop",
         "unreal",
         "houdini",
         "circuit",
