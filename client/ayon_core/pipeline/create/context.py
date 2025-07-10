@@ -1057,9 +1057,9 @@ class CreateContext:
     def add_instance_requirement_change_callback(
         self, callback: Callable
     ) -> "EventCallback":
-        """Register callback to listen instance requirement changes.
+        """Register callback to listen to instance requirement changes.
 
-        Create plugin changed attribute definitions of instance.
+        Instance changed requirement of active state.
 
         Data structure of event::
 
