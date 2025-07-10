@@ -507,6 +507,7 @@ class CreatedInstance:
         if transient_data is None:
             transient_data = {}
         self._transient_data = transient_data
+        self._is_mandatory = False
 
         # Create a copy of passed data to avoid changing them on the fly
         data = copy.deepcopy(data or {})
@@ -604,6 +605,12 @@ class CreatedInstance:
 
         if key in self._data and self._data[key] == value:
             return
+
+        if self.is_mandatory and key == "active" and value is not True:
+            raise ImmutableKeyError(
+                key,
+                "Instance is mandatory and can't be disabled."
+            )
 
         self._data[key] = value
         self._create_context.instance_values_changed(
@@ -717,6 +724,33 @@ class CreatedInstance:
         """
 
         return self._transient_data
+
+    @property
+    def is_mandatory(self) -> bool:
+        """Check if instance is mandatory.
+
+        Returns:
+            bool: True if instance is mandatory, False otherwise.
+
+        """
+        return self._is_mandatory
+
+    def set_mandatory(self, value: bool) -> None:
+        """Set instance as mandatory or not.
+
+        Mandatory instance can't be disabled in UI.
+
+        Args:
+            value (bool): True if instance should be mandatory, False
+                otherwise.
+
+        """
+        if value is self._is_mandatory:
+            return
+        self._is_mandatory = value
+        if value is True:
+            self["active"] = True
+        self._create_context.instance_requirement_changed(self.id)
 
     def changes(self):
         """Calculate and return changes."""
