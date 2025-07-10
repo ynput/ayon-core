@@ -872,7 +872,7 @@ class CreateContext:
         Event is triggered when instances are already available in context
             and have set create/publish attribute definitions.
 
-        Data structure of event::
+        Data structure of event:
 
             ```python
             {
@@ -899,7 +899,7 @@ class CreateContext:
 
         Event is triggered when instances are already removed from context.
 
-        Data structure of event::
+        Data structure of event:
 
             ```python
             {
@@ -927,7 +927,7 @@ class CreateContext:
         Event is triggered when any value changes on any instance or
             context data.
 
-        Data structure of event::
+        Data structure of event:
 
             ```python
             {
@@ -965,7 +965,7 @@ class CreateContext:
         Create plugin can trigger refresh of pre-create attributes. Usage of
             this event is mainly for publisher UI.
 
-        Data structure of event::
+        Data structure of event:
 
             ```python
             {
@@ -994,7 +994,7 @@ class CreateContext:
 
         Create plugin changed attribute definitions of instance.
 
-        Data structure of event::
+        Data structure of event:
 
             ```python
             {
@@ -1023,7 +1023,7 @@ class CreateContext:
 
         Publish plugin changed attribute definitions of instance of context.
 
-        Data structure of event::
+        Data structure of event:
 
             ```python
             {
@@ -1061,7 +1061,7 @@ class CreateContext:
 
         Instance changed requirement of active state.
 
-        Data structure of event::
+        Data structure of event:
 
             ```python
             {
