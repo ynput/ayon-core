@@ -101,14 +101,9 @@ class PushToContextSelectWindow(QtWidgets.QWidget):
         header_layout = QtWidgets.QHBoxLayout(header_widget)
         header_layout.setContentsMargins(0, 0, 0, 0)
         header_layout.addWidget(header_label)
-        header_layout.addStretch()
-
-        library_only_layout = QtWidgets.QHBoxLayout()
-        library_only_layout.addWidget(library_only_label)
-        library_only_layout.addWidget(library_only_checkbox)
-        library_only_layout.setSpacing(5)  # or whatever spacing you prefer
-
-        header_layout.addLayout(library_only_layout)
+        header_layout.addStretch(1)
+        header_layout.addWidget(library_only_label, 0)
+        header_layout.addWidget(library_only_checkbox, 0)
 
         main_splitter = QtWidgets.QSplitter(
             QtCore.Qt.Horizontal, main_context_widget
