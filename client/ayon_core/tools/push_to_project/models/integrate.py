@@ -3,6 +3,7 @@ import re
 import copy
 import itertools
 import sys
+import tempfile
 import traceback
 import uuid
 
@@ -484,6 +485,7 @@ class ProjectPushItemProcess:
             self._make_sure_version_exists()
             self._log_info("Prerequirements were prepared")
             self._integrate_representations()
+            self._copy_version_thumbnail()
             self._log_info("Integration finished")
 
         except PushToProjectError as exc:
@@ -1145,7 +1147,38 @@ class ProjectPushItemProcess:
                 "representation",
                 repre_entity["id"],
                 {"active": False}
+
+    def _copy_version_thumbnail(self):
+        version_thumbnail = ayon_api.get_version_thumbnail(
+            self._item.src_project_name, self._src_version_entity["id"])
+        if not version_thumbnail or not version_thumbnail.id:
+            return
+
+        temp_file_name = None
+        try:
+            with tempfile.NamedTemporaryFile(mode='w+b', delete=False) as fp:
+                fp.write(version_thumbnail.content)
+                temp_file_name = fp.name
+
+            new_thumbnail_id = ayon_api.create_thumbnail(
+                self._item.dst_project_name,
+                temp_file_name
             )
+
+            task_id = None
+            if self._task_info:
+                task_id = self._task_info["id"]
+
+            self._operations.update_version(
+                project_name=self._item.dst_project_name,
+                version_id=self._version_entity["id"],
+                task_id=task_id,
+                thumbnail_id=new_thumbnail_id
+            )
+            self._operations.commit()
+        finally:
+            if temp_file_name and os.path.exists(temp_file_name):
+                os.remove(temp_file_name)
 
 
 class IntegrateModel:
