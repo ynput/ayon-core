@@ -781,6 +781,8 @@ class ExtractBurninOptionsModel(BaseSettingsModel):
     x_offset: int = SettingsField(0, title="X Offset")
     y_offset: int = SettingsField(0, title="Y Offset")
     bg_padding: int = SettingsField(0, title="Padding around text")
+    top_line_spacing: int = SettingsField(5, title="Top line spacing")
+    bottom_line_spacing: int = SettingsField(5, title="Bottom line spacing")
     font_filepath: MultiplatformPathModel = SettingsField(
         default_factory=MultiplatformPathModel,
         title="Font file path"
@@ -1454,6 +1456,8 @@ DEFAULT_PUBLISH_VALUES = {
             "x_offset": 5,
             "y_offset": 5,
             "bg_padding": 5,
+            "top_line_spacing": 5,
+            "bottom_line_spacing": 5,
             "font_filepath": {
                 "windows": "",
                 "darwin": "",

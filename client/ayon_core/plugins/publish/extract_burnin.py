@@ -71,7 +71,9 @@ class ExtractBurnin(publish.Extractor):
         "bg_color": [0, 0, 0, 0.5],
         "bg_padding": 5,
         "x_offset": 5,
-        "y_offset": 5
+        "y_offset": 5,
+        "top_line_spacing": 5,
+        "bottom_line_spacing": 5,
     }
 
     # Configurable by Settings
