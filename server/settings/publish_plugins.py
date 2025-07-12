@@ -519,6 +519,13 @@ class ExtractOIIOTranscodeOutputModel(BaseSettingsModel):
             " to the created representation."
         )
     )
+    override_layer: str = SettingsField(
+        "",
+        title="Override Layer",
+        description=(
+            "EXR layer to use for transcoding (e.g. 'composite')."
+        ),
+    )
 
 
 class ExtractOIIOTranscodeProfileModel(BaseSettingsModel):
