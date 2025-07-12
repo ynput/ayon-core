@@ -35,11 +35,6 @@ CURRENT_FRAME_SPLITTER = "_-_CURRENT_FRAME_-_"
 TIMECODE_KEY = "{timecode}"
 SOURCE_TIMECODE_KEY = "{source_timecode}"
 
-# Spacing between multiline burnins in pixels
-DEFAULT_LINE_SPACING = 5
-DEFAULT_TOP_LINE_SPACING = DEFAULT_LINE_SPACING
-DEFAULT_BOTTOM_LINE_SPACING = DEFAULT_LINE_SPACING
-
 
 def _get_ffprobe_data(source):
     """Reimplemented from otio burnins to be able use full path to ffprobe
@@ -123,9 +118,7 @@ class ModifiedBurnins(ffmpeg_burnins.Burnins):
         'y_offset': 5,
         'bg_padding': 5,
         'bg_opacity': 0.5,
-        'font_size': 42,
-        'top_line_spacing': DEFAULT_LINE_SPACING,
-        'bottom_line_spacing': DEFAULT_LINE_SPACING,
+        'font_size': 42
     }
 
     def __init__(
@@ -614,9 +607,7 @@ def burnins_from_data(
             rendered.
         data (dict): Data required for burnin settings (more info below).
         codec_data (list): All codec related arguments in list.
-        options (dict): Options for burnins. Supports ``top_line_spacing`` and
-            ``bottom_line_spacing`` to define gaps between multiline texts in
-            pixels.
+        options (dict): Options for burnins.
         burnin_values (dict): Contain positioned values.
         overwrite (bool): Output will be overwritten if already exists,
             True by default.
@@ -668,16 +659,6 @@ def burnins_from_data(
         ffprobe_data = _get_ffprobe_data(full_input_path)
 
     burnin = ModifiedBurnins(input_path, ffprobe_data, options, first_frame)
-
-    top_line_spacing = DEFAULT_TOP_LINE_SPACING
-    bottom_line_spacing = DEFAULT_BOTTOM_LINE_SPACING
-    if options is not None:
-        top_line_spacing = options.get(
-            "top_line_spacing", DEFAULT_TOP_LINE_SPACING
-        )
-        bottom_line_spacing = options.get(
-            "bottom_line_spacing", DEFAULT_BOTTOM_LINE_SPACING
-        )
 
     frame_start = data.get("frame_start")
     frame_end = data.get("frame_end")
@@ -738,8 +719,6 @@ def burnins_from_data(
                 " (Make sure you have new burnin presets)."
             ).format(str(type(value)), str(value)))
 
-        values = value if isinstance(value, list) else [value]
-
         align = None
         align_text = align_text.strip().lower()
         if align_text == "top_left":
@@ -755,85 +734,64 @@ def burnins_from_data(
         elif align_text == "bottom_right":
             align = ModifiedBurnins.BOTTOM_RIGHT
 
-        sign = 1 if align_text.startswith("top") else -1
-        base_offset = burnin.options_init.get("y_offset", 0)
-        spacing = top_line_spacing if sign == 1 else -bottom_line_spacing
-
-        for idx, line_value in enumerate(values):
-            has_timecode = TIMECODE_KEY in line_value
-            if frame_start_tc is None and has_timecode:
-                has_timecode = False
-                print(
-                    "`frame_start` and `frame_start_tc`"
-                    " are not set in entered data."
-                )
-                line_value = line_value.replace(
-                    TIMECODE_KEY, MISSING_KEY_VALUE
-                )
-
-            has_source_timecode = SOURCE_TIMECODE_KEY in line_value
-            if source_timecode is None and has_source_timecode:
-                has_source_timecode = False
-                print("Source does not have set timecode value.")
-                line_value = line_value.replace(
-                    SOURCE_TIMECODE_KEY, MISSING_KEY_VALUE
-                )
-
-            fill_values, listed_keys, missing_keys = prepare_fill_values(
-                line_value, data
+        has_timecode = TIMECODE_KEY in value
+        # Replace with missing key value if frame_start_tc is not set
+        if frame_start_tc is None and has_timecode:
+            has_timecode = False
+            print(
+                "`frame_start` and `frame_start_tc`"
+                " are not set in entered data."
             )
+            value = value.replace(TIMECODE_KEY, MISSING_KEY_VALUE)
 
-            for key in missing_keys:
-                line_value = line_value.replace(key, MISSING_KEY_VALUE)
+        has_source_timecode = SOURCE_TIMECODE_KEY in value
+        if source_timecode is None and has_source_timecode:
+            has_source_timecode = False
+            print("Source does not have set timecode value.")
+            value = value.replace(SOURCE_TIMECODE_KEY, MISSING_KEY_VALUE)
 
-            y_offset = base_offset + idx * spacing
-            line_options = {
-                **burnin.options_init,
-                "y_offset": y_offset,
-            }
-            if sign == -1:
-                line_options["line_spacing"] = -abs(bottom_line_spacing)
-            else:
-                line_options["line_spacing"] = abs(top_line_spacing)
+        # Failsafe for missing keys.
+        fill_values, listed_keys, missing_keys = prepare_fill_values(
+            value, data
+        )
 
-            if listed_keys:
-                for key, key_value in fill_values.items():
-                    if key == CURRENT_FRAME_KEY:
-                        key_value = CURRENT_FRAME_SPLITTER
-                    line_value = line_value.replace(key, str(key_value))
-                burnin.add_per_frame_text(
-                    line_value,
-                    align,
-                    frame_start,
-                    frame_end,
-                    listed_keys,
-                    line_options,
-                )
-                continue
+        for key in missing_keys:
+            value = value.replace(key, MISSING_KEY_VALUE)
 
-            if has_source_timecode:
-                args = [align, frame_start, frame_end, source_timecode]
-                if not line_value.startswith(SOURCE_TIMECODE_KEY):
-                    value_items = line_value.split(SOURCE_TIMECODE_KEY)
-                    text = value_items[0].format(**data)
-                    args.append(text)
+        if listed_keys:
+            for key, key_value in fill_values.items():
+                if key == CURRENT_FRAME_KEY:
+                    key_value = CURRENT_FRAME_SPLITTER
+                value = value.replace(key, str(key_value))
+            burnin.add_per_frame_text(
+                value, align, frame_start, frame_end, listed_keys
+            )
+            continue
 
-                burnin.add_timecode(*args, options=line_options)
-                continue
+        # Handle timecode differently
+        if has_source_timecode:
+            args = [align, frame_start, frame_end, source_timecode]
+            if not value.startswith(SOURCE_TIMECODE_KEY):
+                value_items = value.split(SOURCE_TIMECODE_KEY)
+                text = value_items[0].format(**data)
+                args.append(text)
 
-            if has_timecode:
-                args = [align, frame_start, frame_end, frame_start_tc]
-                if not line_value.startswith(TIMECODE_KEY):
-                    value_items = line_value.split(TIMECODE_KEY)
-                    text = value_items[0].format(**data)
-                    args.append(text)
+            burnin.add_timecode(*args)
+            continue
 
-                burnin.add_timecode(*args, options=line_options)
-                continue
+        if has_timecode:
+            args = [align, frame_start, frame_end, frame_start_tc]
+            if not value.startswith(TIMECODE_KEY):
+                value_items = value.split(TIMECODE_KEY)
+                text = value_items[0].format(**data)
+                args.append(text)
 
-            text = line_value.format(**data)
+            burnin.add_timecode(*args)
+            continue
 
-            burnin.add_text(text, align, frame_start, frame_end, line_options)
+        text = value.format(**data)
+
+        burnin.add_text(text, align, frame_start, frame_end)
 
     ffmpeg_args = []
     if codec_data:

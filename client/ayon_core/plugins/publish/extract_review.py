@@ -389,8 +389,7 @@ class ExtractReview(pyblish.api.InstancePlugin):
                 convert_input_paths_for_ffmpeg(
                     input_filepaths,
                     new_staging_dir,
-                    logger=self.log,
-                    override_layer=layer_name,
+                    self.log
                 )
 
             try:
