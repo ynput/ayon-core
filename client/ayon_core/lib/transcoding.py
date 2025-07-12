@@ -529,7 +529,8 @@ def should_convert_for_ffmpeg(src_filepath):
 def convert_input_paths_for_ffmpeg(
     input_paths,
     output_dir,
-    logger=None
+    logger=None,
+    override_layer=None,
 ):
     """Convert source file to format supported in ffmpeg.
 
@@ -548,6 +549,7 @@ def convert_input_paths_for_ffmpeg(
         output_dir (str): Path to directory where output will be rendered.
             Must not be same as input's directory.
         logger (logging.Logger): Logger used for logging.
+        override_layer (str | None): Name of the EXR layer to override.
 
     Raises:
         ValueError: If input filepath has extension not supported by function.
