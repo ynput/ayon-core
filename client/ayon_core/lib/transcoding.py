@@ -574,10 +574,7 @@ def convert_input_paths_for_ffmpeg(
         compression = "none"
 
     # Collect channels to export
-    input_arg, channels_arg = get_oiio_input_and_channel_args(
-        input_info,
-        override_layer=override_layer,
-    )
+    input_arg, channels_arg = get_oiio_input_and_channel_args(input_info)
 
     for input_path in input_paths:
         # Prepare subprocess arguments
@@ -978,7 +975,6 @@ def convert_colorspace(
     view=None,
     display=None,
     additional_command_args=None,
-    override_layer=None,
     logger=None,
 ):
     """Convert source file from one color space to another.
@@ -1011,10 +1007,7 @@ def convert_colorspace(
     input_info = get_oiio_info_for_input(input_path, logger=logger)
 
     # Collect channels to export
-    input_arg, channels_arg = get_oiio_input_and_channel_args(
-        input_info,
-        override_layer=override_layer,
-    )
+    input_arg, channels_arg = get_oiio_input_and_channel_args(input_info)
 
     # Prepare subprocess arguments
     oiio_cmd = get_oiio_tool_args(
@@ -1290,11 +1283,7 @@ def convert_color_values(application, color_value):
         )
 
 
-def get_oiio_input_and_channel_args(
-    oiio_input_info,
-    alpha_default=None,
-    override_layer=None,
-):
+def get_oiio_input_and_channel_args(oiio_input_info, alpha_default=None):
     """Get input and channel arguments for oiiotool.
     Args:
         oiio_input_info (dict): Information about input from oiio tool.
@@ -1304,31 +1293,14 @@ def get_oiio_input_and_channel_args(
         tuple[str, str]: Tuple of input and channel arguments.
     """
     channel_names = oiio_input_info["channelnames"]
+    review_channels = get_convert_rgb_channels(channel_names)
 
-    if override_layer:
-        layers = get_review_info_by_layer_name(channel_names)
-        selected = next(
-            (item for item in layers if item["name"].lower() == override_layer.lower()),
-            None,
+    if review_channels is None:
+        raise ValueError(
+            "Couldn't find channels that can be used for conversion."
         )
-        if not selected:
-            raise ValueError(f"Layer '{override_layer}' not found")
-        rc = selected["review_channels"]
-        red, green, blue, alpha = (
-            rc["R"],
-            rc["G"],
-            rc["B"],
-            rc.get("A"),
-        )
-    else:
-        review_channels = get_convert_rgb_channels(channel_names)
 
-        if review_channels is None:
-            raise ValueError(
-                "Couldn't find channels that can be used for conversion."
-            )
-
-        red, green, blue, alpha = review_channels
+    red, green, blue, alpha = review_channels
     input_channels = [red, green, blue]
 
     channels_arg = "R={0},G={1},B={2}".format(red, green, blue)
