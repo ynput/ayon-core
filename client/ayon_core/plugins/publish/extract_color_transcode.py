@@ -12,8 +12,6 @@ from ayon_core.lib import (
 )
 from ayon_core.lib.transcoding import (
     convert_colorspace,
-    get_oiio_info_for_input,
-    get_review_info_by_layer_name,
 )
 
 from ayon_core.lib.profiles_filtering import filter_profiles
@@ -162,21 +160,11 @@ class ExtractOIIOTranscode(publish.Extractor):
                 self.log.debug("Files to convert: {}".format(files_to_convert))
                 for file_name in files_to_convert:
                     self.log.debug("Transcoding file: `{}`".format(file_name))
-                    input_path = os.path.join(
-                        original_staging_dir,
-                        file_name,
-                    )
-                    output_path = self._get_output_file_path(
-                        input_path,
-                        new_staging_dir,
-                        output_extension,
-                    )
-
-                    info = get_oiio_info_for_input(input_path, logger=self.log)
-                    layers = [
-                        l["name"] for l in get_review_info_by_layer_name(info["channelnames"])
-                    ]
-                    self.log.debug(f"Available layers: {layers}")
+                    input_path = os.path.join(original_staging_dir,
+                                              file_name)
+                    output_path = self._get_output_file_path(input_path,
+                                                             new_staging_dir,
+                                                             output_extension)
 
                     convert_colorspace(
                         input_path,
@@ -187,8 +175,7 @@ class ExtractOIIOTranscode(publish.Extractor):
                         view,
                         display,
                         additional_command_args,
-                        override_layer=output_def.get("override_layer"),
-                        logger=self.log,
+                        self.log
                     )
 
                 # cleanup temporary transcoded files
