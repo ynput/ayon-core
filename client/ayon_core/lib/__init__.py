@@ -50,8 +50,10 @@ from .attribute_definitions import (
 )
 
 from .env_tools import (
+    compute_env_variables_structure,
     env_value_to_bool,
     get_paths_from_environ,
+    merge_env_variables,
 )
 
 from .terminal import Terminal
@@ -166,8 +168,10 @@ __all__ = [
     "path_to_subprocess_arg",
     "CREATE_NO_WINDOW",
 
+    "compute_env_variables_structure",
     "env_value_to_bool",
     "get_paths_from_environ",
+    "merge_env_variables",
 
     "ToolNotFoundError",
     "find_executable",
