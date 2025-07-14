@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import numbers
 import uuid
-from typing import Dict
 
 from qtpy import QtWidgets, QtCore, QtGui
 
@@ -249,7 +248,7 @@ class VersionDelegate(QtWidgets.QStyledItemDelegate):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        self._editor_by_id: Dict[str, VersionComboBox] = {}
+        self._editor_by_id: dict[str, VersionComboBox] = {}
         self._task_ids_filter = None
         self._statuses_filter = None
         self._version_tags_filter = None
