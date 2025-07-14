@@ -1048,7 +1048,7 @@ def main_cli_publish(
 
     discover_result = publish_plugins_discover()
     publish_plugins = discover_result.plugins
-    print("\n".join(discover_result.get_report(only_errors=False)))
+    print(discover_result.get_report(only_errors=False))
 
     # Error exit as soon as any error occurs.
     error_format = ("Failed {plugin.__name__}: "
