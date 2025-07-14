@@ -34,7 +34,11 @@ class ValidateProductUniqueness(pyblish.api.ContextPlugin):
         for instance in context:
 
             # Ignore disabled instances
-            if not instance.data.get('publish', True):
+            if not instance.data.get("publish", True):
+                continue
+
+            # Ignore disabled instances
+            if not instance.data.get("integrate", True):
                 continue
 
             # Ignore instance without folder data
