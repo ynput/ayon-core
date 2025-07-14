@@ -654,6 +654,10 @@ class CreatedInstance:
         return self._data["productName"]
 
     @property
+    def parent_instance_id(self) -> Optional[str]:
+        return self._data.get("parentInstanceId")
+
+    @property
     def label(self):
         label = self._data.get("label")
         if not label:
