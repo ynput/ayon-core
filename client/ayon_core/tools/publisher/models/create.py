@@ -219,6 +219,7 @@ class InstanceItem:
         is_active: bool,
         is_mandatory: bool,
         has_promised_context: bool,
+        parent_instance_id: Optional[str],
     ):
         self._instance_id: str = instance_id
         self._creator_identifier: str = creator_identifier
@@ -232,6 +233,7 @@ class InstanceItem:
         self._is_active: bool = is_active
         self._is_mandatory: bool = is_mandatory
         self._has_promised_context: bool = has_promised_context
+        self._parent_instance_id: Optional[str] = parent_instance_id
 
     @property
     def id(self):
@@ -260,6 +262,10 @@ class InstanceItem:
     @property
     def has_promised_context(self):
         return self._has_promised_context
+
+    @property
+    def parent_instance_id(self):
+        return self._parent_instance_id
 
     def get_variant(self):
         return self._variant
@@ -312,6 +318,7 @@ class InstanceItem:
             instance["active"],
             instance.is_mandatory,
             instance.has_promised_context,
+            instance.parent_instance_id,
         )
 
 
