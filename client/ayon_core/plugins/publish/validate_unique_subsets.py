@@ -37,7 +37,7 @@ class ValidateProductUniqueness(pyblish.api.ContextPlugin):
             if not instance.data.get("publish", True):
                 continue
 
-            # Ignore disabled instances
+            # Ignore instances not marked to integrate
             if not instance.data.get("integrate", True):
                 continue
 
