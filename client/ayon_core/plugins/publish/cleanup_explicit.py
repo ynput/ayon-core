@@ -93,9 +93,7 @@ class ExplicitCleanUp(pyblish.api.ContextPlugin):
             )
 
         # Prepare lines for report of failed removals
-        lines = []
-        for filepath, exc in failed:
-            lines.append("{}: {}".format(filepath, str(exc)))
+        lines = [f"{filepath}: {exc}" for filepath, exc in failed]
 
         if lines:
             self.log.warning(
