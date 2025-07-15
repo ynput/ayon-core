@@ -73,7 +73,7 @@ class ExplicitCleanUp(pyblish.api.ContextPlugin):
             )
 
         # Delete folders with its content
-        succeeded = set()
+        succeeded_dirs = set()
         for dirpath in dirpaths:
             # Check if directory still exists
             #   - it is possible that directory was already deleted with
@@ -81,14 +81,14 @@ class ExplicitCleanUp(pyblish.api.ContextPlugin):
             if os.path.exists(dirpath):
                 try:
                     shutil.rmtree(dirpath)
-                    succeeded.add(dirpath)
+                    succeeded_dirs.add(dirpath)
                 except Exception:
                     failed.append(dirpath)
 
-        if succeeded:
+        if succeeded_dirs:
             self.log.info(
                 "Removed directories:\n{}".format(
-                    "\n".join(sorted(succeeded))
+                    "\n".join(sorted(succeeded_dirs))
                 )
             )
 
