@@ -29,7 +29,7 @@ class ExplicitCleanUp(pyblish.api.ContextPlugin):
         self._remove_empty_dirs(cleanup_empty_dirs)
 
     def _remove_full_paths(self, full_paths):
-        """Remove files and folders from disc.
+        """Remove files and folders from disk.
 
         Folders are removed with whole content.
         """
