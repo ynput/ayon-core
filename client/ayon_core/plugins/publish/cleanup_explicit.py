@@ -112,7 +112,7 @@ class ExplicitCleanUp(pyblish.api.ContextPlugin):
         #   existing directories
         filtered_dirpaths = set()
         for path in empty_dirpaths:
-            if path and os.path.isdir(path):
+            if path and os.path.exists(path) and os.path.isdir(path):
                 filtered_dirpaths.add(os.path.normpath(path))
 
         to_delete_dirpaths = set()
