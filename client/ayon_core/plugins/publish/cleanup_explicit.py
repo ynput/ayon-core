@@ -44,12 +44,12 @@ class ExplicitCleanUp(pyblish.api.ContextPlugin):
             # Skip empty items
             if not path:
                 continue
-            # Normalize path
-            normalized = os.path.normpath(path)
             # Check if path exists
-            if not os.path.exists(normalized):
+            if not os.path.exists(path):
                 continue
 
+            # Normalize path
+            normalized = os.path.normpath(path)
             if os.path.isfile(normalized):
                 filepaths.add(normalized)
             else:
