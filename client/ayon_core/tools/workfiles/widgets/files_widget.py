@@ -200,6 +200,9 @@ class FilesWidget(QtWidgets.QWidget):
         self._open_workfile(folder_id, task_id, path)
 
     def _on_current_open_requests(self):
+        # TODO validate if item under mouse is enabled
+        # - thi uses selected item, but that does not have to be the one
+        #   under mouse
         self._on_workarea_open_clicked()
 
     def _on_duplicate_request(self):
@@ -210,11 +213,18 @@ class FilesWidget(QtWidgets.QWidget):
         result = self._exec_save_as_dialog()
         if result is None:
             return
+        folder_id = self._selected_folder_id
+        task_id = self._selected_task_id
         self._controller.duplicate_workfile(
+            folder_id,
+            task_id,
             filepath,
+            result["rootless_workdir"],
             result["workdir"],
             result["filename"],
-            artist_note=result["artist_note"]
+            version=result["version"],
+            comment=result["comment"],
+            description=result["description"]
         )
 
     def _on_workarea_browse_clicked(self):
@@ -259,10 +269,12 @@ class FilesWidget(QtWidgets.QWidget):
         self._controller.save_as_workfile(
             result["folder_id"],
             result["task_id"],
+            result["rootless_workdir"],
             result["workdir"],
             result["filename"],
-            result["template_key"],
-            artist_note=result["artist_note"]
+            version=result["version"],
+            comment=result["comment"],
+            description=result["description"]
         )
 
     def _on_workarea_path_changed(self, event):
@@ -314,8 +326,10 @@ class FilesWidget(QtWidgets.QWidget):
             result["task_id"],
             result["workdir"],
             result["filename"],
-            result["template_key"],
-            artist_note=result["artist_note"]
+            result["rootless_workdir"],
+            version=result["version"],
+            comment=result["comment"],
+            description=result["description"],
         )
 
     def _on_save_as_request(self):
