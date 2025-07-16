@@ -1089,7 +1089,8 @@ def filter_containers(containers, project_name):
             continue
 
         version_id = repre_entity["versionId"]
-        if version_id in outdated_version_ids:
+        version_freeze = container.get("version_freeze", False)
+        if version_id in outdated_version_ids and not version_freeze:
             outdated_containers.append(container)
 
         elif version_id not in verisons_by_id:
