@@ -240,6 +240,11 @@ class TrayManager:
             self.log.warning("Other tray started meanwhile. Exiting.")
             self.exit()
 
+        project_bundle = os.getenv("AYON_BUNDLE_NAME")
+        studio_bundle = os.getenv("AYON_STUDIO_BUNDLE_NAME")
+        if studio_bundle and project_bundle != studio_bundle:
+            self.restart()
+
     def get_services_submenu(self):
         return self._services_submenu
 
@@ -270,11 +275,18 @@ class TrayManager:
         elif is_staging_enabled():
             additional_args.append("--use-staging")
 
+        if "--project" in additional_args:
+            idx = additional_args.index("--project")
+            additional_args.pop(idx)
+            additional_args.pop(idx)
+
         args.extend(additional_args)
 
         envs = dict(os.environ.items())
         for key in {
             "AYON_BUNDLE_NAME",
+            "AYON_STUDIO_BUNDLE_NAME",
+            "AYON_PROJECT_NAME",
         }:
             envs.pop(key, None)
 
@@ -329,6 +341,7 @@ class TrayManager:
         return json_response({
             "username": self._cached_username,
             "bundle": os.getenv("AYON_BUNDLE_NAME"),
+            "studio_bundle": os.getenv("AYON_STUDIO_BUNDLE_NAME"),
             "dev_mode": is_dev_mode_enabled(),
             "staging_mode": is_staging_enabled(),
             "addons": {
@@ -516,6 +529,8 @@ class TrayManager:
                 "AYON_SERVER_URL",
                 "AYON_API_KEY",
                 "AYON_BUNDLE_NAME",
+                "AYON_STUDIO_BUNDLE_NAME",
+                "AYON_PROJECT_NAME",
             }:
                 os.environ.pop(key, None)
             self.restart()
@@ -549,6 +564,8 @@ class TrayManager:
         envs = dict(os.environ.items())
         for key in {
             "AYON_BUNDLE_NAME",
+            "AYON_STUDIO_BUNDLE_NAME",
+            "AYON_PROJECT_NAME",
         }:
             envs.pop(key, None)
 
