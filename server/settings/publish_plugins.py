@@ -747,6 +747,11 @@ class ExtractReviewProfileModel(BaseSettingsModel):
     hosts: list[str] = SettingsField(
         default_factory=list, title="Host names"
     )
+    task_types: list[str] = SettingsField(
+        default_factory=list,
+        title="Task Types",
+        enum_resolver=task_types_enum,
+    )
     outputs: list[ExtractReviewOutputDefModel] = SettingsField(
         default_factory=list, title="Output Definitions"
     )
@@ -1348,6 +1353,7 @@ DEFAULT_PUBLISH_VALUES = {
             {
                 "product_types": [],
                 "hosts": [],
+                "task_types": [],
                 "outputs": [
                     {
                         "name": "png",
