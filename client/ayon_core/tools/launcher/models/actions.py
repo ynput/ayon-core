@@ -513,7 +513,12 @@ class ActionsModel:
                 uri = payload["uri"]
             else:
                 uri = data["uri"]
-            run_detached_ayon_launcher_process(uri)
+
+            # Remove bundles from environment variables
+            env = os.environ.copy()
+            env.pop("AYON_BUNDLE_NAME", None)
+            env.pop("AYON_STUDIO_BUNDLE_NAME", None)
+            run_detached_ayon_launcher_process(uri, env=env)
 
         elif response_type in ("query", "navigate"):
             response.error_message = (
