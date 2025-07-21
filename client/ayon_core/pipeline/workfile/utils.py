@@ -709,6 +709,22 @@ def _create_workfile_info_entity(
     comment: Optional[str],
     description: Optional[str],
 ) -> dict[str, Any]:
+    """Create workfile entity data.
+
+    Args:
+        project_name (str): Project name.
+        task_id (str): Task id.
+        host_name (str): Host name.
+        rootless_path (str): Rootless workfile path.
+        username (str): Username.
+        version (Optional[int]): Workfile version.
+        comment (Optional[str]): Workfile comment.
+        description (Optional[str]): Workfile description.
+
+    Returns:
+        dict[str, Any]: Created workfile entity data.
+
+    """
     extension = os.path.splitext(rootless_path)[1]
 
     attrib = {}
