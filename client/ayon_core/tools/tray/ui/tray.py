@@ -243,6 +243,11 @@ class TrayManager:
         project_bundle = os.getenv("AYON_BUNDLE_NAME")
         studio_bundle = os.getenv("AYON_STUDIO_BUNDLE_NAME")
         if studio_bundle and project_bundle != studio_bundle:
+            self.log.info(
+                f"Project bundle '{project_bundle}' is defined, but tray"
+                " cannot be running in project scope. Restarting tray to use"
+                " studio bundle."
+            )
             self.restart()
 
     def get_services_submenu(self):
