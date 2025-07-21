@@ -8,7 +8,6 @@ import logging
 import weakref
 from uuid import uuid4
 
-from .python_2_comp import WeakMethod
 from .python_module_tools import is_func_signature_supported
 
 
@@ -18,7 +17,7 @@ class MissingEventSystem(Exception):
 
 def _get_func_ref(func):
     if inspect.ismethod(func):
-        return WeakMethod(func)
+        return weakref.WeakMethod(func)
     return weakref.ref(func)
 
 
@@ -123,7 +122,7 @@ class weakref_partial:
         )
 
 
-class EventCallback(object):
+class EventCallback:
     """Callback registered to a topic.
 
     The callback function is registered to a topic. Topic is a string which
@@ -380,8 +379,7 @@ class EventCallback(object):
             self._partial_func = None
 
 
-# Inherit from 'object' for Python 2 hosts
-class Event(object):
+class Event:
     """Base event object.
 
     Can be used for any event because is not specific. Only required argument
@@ -488,7 +486,7 @@ class Event(object):
         return obj
 
 
-class EventSystem(object):
+class EventSystem:
     """Encapsulate event handling into an object.
 
     System wraps registered callbacks and triggered events into single object,
@@ -567,6 +565,10 @@ class EventSystem(object):
         """
 
         self._process_event(event)
+
+    def clear_callbacks(self):
+        """Clear all registered callbacks."""
+        self._registered_callbacks = []
 
     def _process_event(self, event):
         """Process event topic and trigger callbacks.

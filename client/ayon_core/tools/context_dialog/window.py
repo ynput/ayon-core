@@ -227,6 +227,16 @@ class ContextDialogController:
     def get_project_items(self, sender=None):
         return self._projects_model.get_project_items(sender)
 
+    def get_folder_type_items(self, project_name, sender=None):
+        return self._projects_model.get_folder_type_items(
+            project_name, sender
+        )
+
+    def get_task_type_items(self, project_name, sender=None):
+        return self._projects_model.get_task_type_items(
+            project_name, sender
+        )
+
     def get_folder_items(self, project_name, sender=None):
         return self._hierarchy_model.get_folder_items(project_name, sender)
 
@@ -791,3 +801,12 @@ def main(
     window.show()
     app.exec_()
     controller.store_output()
+
+
+def ask_for_context(strict=True):
+    controller = ContextDialogController()
+    controller.set_strict(strict)
+    window = ContextDialog(controller=controller)
+    window.exec_()
+
+    return controller.get_selected_context()

@@ -1,92 +1,241 @@
+import dataclasses
 import os
-import re
 import logging
 
-import ayon_api
 try:
-    from pxr import Usd, UsdGeom, Sdf, Kind
+    from pxr import UsdGeom, Sdf, Kind
 except ImportError:
     # Allow to fall back on Multiverse 6.3.0+ pxr usd library
-    from mvpxr import Usd, UsdGeom, Sdf, Kind
-
-from ayon_core.pipeline import Anatomy, get_current_project_name
-from ayon_core.pipeline.template_data import get_template_data
+    from mvpxr import UsdGeom, Sdf, Kind
 
 log = logging.getLogger(__name__)
 
 
-# The predefined steps order used for bootstrapping USD Shots and Assets.
-# These are ordered in order from strongest to weakest opinions, like in USD.
-PIPELINE = {
-    "shot": [
-        "usdLighting",
-        "usdFx",
-        "usdSimulation",
-        "usdAnimation",
-        "usdLayout",
-    ],
-    "asset": ["usdShade", "usdModel"],
-}
+@dataclasses.dataclass
+class Layer:
+    layer: Sdf.Layer
+    path: str
+    # Allow to anchor a layer to another so that when the layer would be
+    # exported it'd write itself out relative to its anchor
+    anchor: 'Layer' = None
+
+    @property
+    def identifier(self):
+        return self.layer.identifier
+
+    def get_full_path(self):
+        """Return full path relative to the anchor layer"""
+        if not os.path.isabs(self.path) and self.anchor:
+            anchor_path = self.anchor.get_full_path()
+            root = os.path.dirname(anchor_path)
+            return os.path.normpath(os.path.join(root, self.path))
+        return self.path
+
+    def export(self, path=None, args=None):
+        """Save the layer"""
+        if path is None:
+            path = self.get_full_path()
+
+        if args is None:
+            args = self.layer.GetFileFormatArguments()
+
+        self.layer.Export(path, args=args)
+
+    @classmethod
+    def create_anonymous(cls, path, tag="LOP", anchor=None):
+        """Create an anonymous layer instance.
+
+        Arguments:
+            path (str): The layer's filepath.
+            tag (Optional[str]): The tag to give to the anonymous layer.
+                This defaults to 'LOP' because Houdini requires that tag for
+                its in-memory layers that it will be able to manage. In other
+                integrations no similar requirements have been found so it was
+                deemed a 'safe' default for now.
+            anchor (Optional[Layer]): Another layer to relatively anchor to.
+        """
+        sdf_layer = Sdf.Layer.CreateAnonymous(tag)
+        return cls(layer=sdf_layer, path=path, anchor=anchor)
 
 
-def create_asset(
-    filepath, asset_name, reference_layers, kind=Kind.Tokens.component
+def setup_asset_layer(
+        layer,
+        asset_name,
+        reference_layers=None,
+        kind=Kind.Tokens.component,
+        define_class=True,
+        force_add_payload=False,
+        set_payload_path=False
 ):
     """
-    Creates an asset file that consists of a top level layer and sublayers for
-    shading and geometry.
+    Adds an asset prim to the layer with the `reference_layers` added as
+    references for e.g. geometry and shading.
+
+    The referenced layers will be moved into a separate `./payload.usd` file
+    that the asset file uses to allow deferred loading of the heavier
+    geometrical data. An example would be:
+
+    asset.usd      <-- out filepath
+      payload.usd  <-- always automatically added in-between
+        look.usd   <-- reference layer 0 from `reference_layers` argument
+        model.usd  <-- reference layer 1 from `reference_layers` argument
+
+    If `define_class` is enabled then a `/__class__/{asset_name}` class
+    definition will be created that the root asset inherits from
+
+    Examples:
+        >>> create_asset("/path/to/asset.usd",
+        >>>              asset_name="test",
+        >>>              reference_layers=["./model.usd", "./look.usd"])
+
+    Returns:
+        List[Tuple[Sdf.Layer, str]]: List of created layers with their
+            preferred output save paths.
 
     Args:
-        filepath (str): Filepath where the asset.usd file will be saved.
+        layer (Sdf.Layer): Layer to set up the asset structure for.
+        asset_name (str): The name for the Asset identifier and default prim.
         reference_layers (list): USD Files to reference in the asset.
             Note that the bottom layer (first file, like a model) would
             be last in the list. The strongest layer will be the first
             index.
-        asset_name (str): The name for the Asset identifier and default prim.
         kind (pxr.Kind): A USD Kind for the root asset.
+        define_class: Define a `/__class__/{asset_name}` class which the
+            root asset prim will inherit from.
+        force_add_payload (bool): Generate payload layer even if no
+            reference paths are set - thus generating an enmpty layer.
+        set_payload_path (bool): Whether to directly set the payload asset
+            path to `./payload.usd` or not Defaults to True.
+
+    """
+    # Define root prim for the asset and make it the default for the stage.
+    prim_name = asset_name
+
+    if define_class:
+        class_prim = Sdf.PrimSpec(
+            layer.pseudoRoot,
+            "__class__",
+            Sdf.SpecifierClass,
+        )
+        Sdf.PrimSpec(
+            class_prim,
+            prim_name,
+            Sdf.SpecifierClass,
+        )
+
+    asset_prim = Sdf.PrimSpec(
+        layer.pseudoRoot,
+        prim_name,
+        Sdf.SpecifierDef,
+        "Xform"
+    )
+
+    if define_class:
+        asset_prim.inheritPathList.prependedItems[:] = [
+            "/__class__/{}".format(prim_name)
+        ]
+
+    # Define Kind
+    # Usually we will "loft up" the kind authored into the exported geometry
+    # layer rather than re-stamping here; we'll leave that for a later
+    # tutorial, and just be explicit here.
+    asset_prim.kind = kind
+
+    # Set asset info
+    asset_prim.assetInfo["name"] = asset_name
+    asset_prim.assetInfo["identifier"] = "%s/%s.usd" % (asset_name, asset_name)
+
+    # asset.assetInfo["version"] = asset_version
+    set_layer_defaults(layer, default_prim=asset_name)
+
+    created_layers = []
+
+    # Add references to the  asset prim
+    if force_add_payload or reference_layers:
+        # Create a relative payload file to filepath through which we sublayer
+        # the heavier payloads
+        # Prefix with `LOP` just so so that if Houdini ROP were to save
+        # the nodes it's capable of exporting with explicit save path
+        payload_layer = Sdf.Layer.CreateAnonymous("LOP",
+                                                  args={"format": "usda"})
+        set_layer_defaults(payload_layer, default_prim=asset_name)
+        created_layers.append(Layer(layer=payload_layer,
+                                    path="./payload.usd"))
+
+        # Add payload
+        if set_payload_path:
+            payload_identifier = "./payload.usd"
+        else:
+            payload_identifier = payload_layer.identifier
+
+        asset_prim.payloadList.prependedItems[:] = [
+            Sdf.Payload(assetPath=payload_identifier)
+        ]
+
+        # Add sublayers to the payload layer
+        # Note: Sublayering is tricky because it requires that the sublayers
+        #   actually define the path at defaultPrim otherwise the payload
+        #   reference will not find the defaultPrim and turn up empty.
+        if reference_layers:
+            for ref_layer in reference_layers:
+                payload_layer.subLayerPaths.append(ref_layer)
+
+    return created_layers
+
+
+def create_asset(
+        filepath,
+        asset_name,
+        reference_layers=None,
+        kind=Kind.Tokens.component,
+        define_class=True
+):
+    """Creates and saves a prepared asset stage layer.
+
+    Creates an asset file that consists of a top level asset prim, asset info
+     and references in the provided `reference_layers`.
+
+    Returns:
+        list: Created layers
 
     """
     # Also see create_asset.py in PixarAnimationStudios/USD endToEnd example
 
-    log.info("Creating asset at %s", filepath)
+    sdf_layer = Sdf.Layer.CreateAnonymous()
+    layer = Layer(layer=sdf_layer, path=filepath)
+
+    created_layers = setup_asset_layer(
+        layer=sdf_layer,
+        asset_name=asset_name,
+        reference_layers=reference_layers,
+        kind=kind,
+        define_class=define_class,
+        set_payload_path=True
+    )
+    for created_layer in created_layers:
+        created_layer.anchor = layer
+        created_layer.export()
 
     # Make the layer ascii - good for readability, plus the file is small
-    root_layer = Sdf.Layer.CreateNew(filepath, args={"format": "usda"})
-    stage = Usd.Stage.Open(root_layer)
+    log.debug("Creating asset at %s", filepath)
+    layer.export(args={"format": "usda"})
 
-    # Define a prim for the asset and make it the default for the stage.
-    asset_prim = UsdGeom.Xform.Define(stage, "/%s" % asset_name).GetPrim()
-    stage.SetDefaultPrim(asset_prim)
-
-    # Let viewing applications know how to orient a free camera properly
-    UsdGeom.SetStageUpAxis(stage, UsdGeom.Tokens.y)
-
-    # Usually we will "loft up" the kind authored into the exported geometry
-    # layer rather than re-stamping here; we'll leave that for a later
-    # tutorial, and just be explicit here.
-    model = Usd.ModelAPI(asset_prim)
-    if kind:
-        model.SetKind(kind)
-
-    model.SetAssetName(asset_name)
-    model.SetAssetIdentifier("%s/%s.usd" % (asset_name, asset_name))
-
-    # Add references to the  asset prim
-    references = asset_prim.GetReferences()
-    for reference_filepath in reference_layers:
-        references.AddReference(reference_filepath)
-
-    stage.GetRootLayer().Save()
+    return [layer] + created_layers
 
 
 def create_shot(filepath, layers, create_layers=False):
     """Create a shot with separate layers for departments.
 
+    Examples:
+        >>> create_shot("/path/to/shot.usd",
+        >>>             layers=["lighting.usd", "fx.usd", "animation.usd"])
+        "/path/to/shot.usd"
+
     Args:
         filepath (str): Filepath where the asset.usd file will be saved.
-        layers (str): When provided this will be added verbatim in the
+        layers (list): When provided this will be added verbatim in the
             subLayerPaths layers. When the provided layer paths do not exist
-            they are generated using  Sdf.Layer.CreateNew
+            they are generated using Sdf.Layer.CreateNew
         create_layers (bool): Whether to create the stub layers on disk if
             they do not exist yet.
 
@@ -95,10 +244,9 @@ def create_shot(filepath, layers, create_layers=False):
 
     """
     # Also see create_shot.py in PixarAnimationStudios/USD endToEnd example
+    root_layer = Sdf.Layer.CreateAnonymous()
 
-    stage = Usd.Stage.CreateNew(filepath)
-    log.info("Creating shot at %s" % filepath)
-
+    created_layers = [root_layer]
     for layer_path in layers:
         if create_layers and not os.path.exists(layer_path):
             # We use the Sdf API here to quickly create layers.  Also, we're
@@ -108,143 +256,114 @@ def create_shot(filepath, layers, create_layers=False):
             if not os.path.exists(layer_folder):
                 os.makedirs(layer_folder)
 
-            Sdf.Layer.CreateNew(layer_path)
+            new_layer = Sdf.Layer.CreateNew(layer_path)
+            created_layers.append(new_layer)
 
-        stage.GetRootLayer().subLayerPaths.append(layer_path)
+        root_layer.subLayerPaths.append(layer_path)
 
-    # Lets viewing applications know how to orient a free camera properly
-    UsdGeom.SetStageUpAxis(stage, UsdGeom.Tokens.y)
-    stage.GetRootLayer().Save()
+    set_layer_defaults(root_layer)
+    log.debug("Creating shot at %s" % filepath)
+    root_layer.Export(filepath, args={"format": "usda"})
 
-    return filepath
+    return created_layers
 
 
-def create_model(filename, folder_path, variant_product_names):
-    """Create a USD Model file.
+def add_ordered_sublayer(layer, contribution_path, layer_id, order=None,
+                         add_sdf_arguments_metadata=True):
+    """Add sublayer paths in the Sdf.Layer at given "orders"
 
-    For each of the variation paths it will payload the path and set its
-    relevant variation name.
+    USD does not provide a way to set metadata per sublayer entry, but we can
+    'sneak it in' by adding it as part of the file url after :SDF_FORMAT_ARGS:
+    There they will then just be unused args that we can parse later again
+    to access our data.
+
+    A higher order will appear earlier in the subLayerPaths as a stronger
+    opinion. An unordered layer (`order=None`) will be stronger than any
+    ordered opinion and thus will be inserted at the start of the list.
+
+    Args:
+        layer (Sdf.Layer): Layer to add sublayers in.
+        contribution_path (str): Path/URI to add.
+        layer_id (str): Token that if found for an existing layer it will
+            replace that layer.
+        order (Any[int, None]): Order to place the contribution in
+            the sublayers. When `None` no ordering is considered nor will
+            ordering metadata be written if `add_sdf_arguments_metadata` is
+            False.
+        add_sdf_arguments_metadata (bool): Add metadata into the filepath
+            to store the `layer_id` and `order` so ordering can be maintained
+            in the future as intended.
+
+    Returns:
+        str: The resulting contribution path (which maybe include the
+            sdf format args metadata if enabled)
 
     """
 
-    project_name = get_current_project_name()
-    folder_entity = ayon_api.get_folder_by_path(project_name, folder_path)
-    assert folder_entity, "Folder not found: %s" % folder_path
+    # Add the order with the contribution path so that for future
+    # contributions we can again use it to magically fit into the
+    # ordering. We put this in the path because sublayer paths do
+    # not allow customData to be stored.
+    def _format_path(path, layer_id, order):
+        # TODO: Avoid this hack to store 'order' and 'layer' metadata
+        #   for sublayers; in USD sublayers can't hold customdata
+        if not add_sdf_arguments_metadata:
+            return path
+        data = {"layer_id": str(layer_id)}
+        if order is not None:
+            data["order"] = str(order)
+        return Sdf.Layer.CreateIdentifier(path, data)
 
-    variants = []
-    for product_name in variant_product_names:
-        prefix = "usdModel"
-        if product_name.startswith(prefix):
-            # Strip off `usdModel_`
-            variant = product_name[len(prefix):]
-        else:
-            raise ValueError(
-                "Model products must start with usdModel: %s" % product_name
+    # If the layer was already in the layers, then replace it
+    for index, existing_path in enumerate(layer.subLayerPaths):
+        args = get_sdf_format_args(existing_path)
+        existing_layer = args.get("layer_id")
+        if existing_layer == layer_id:
+            # Put it in the same position where it was before when swapping
+            # it with the original, also take over its order metadata
+            order = args.get("order")
+            if order is not None:
+                order = int(order)
+            else:
+                order = None
+            contribution_path = _format_path(contribution_path,
+                                             order=order,
+                                             layer_id=layer_id)
+            log.debug(
+                f"Replacing existing layer: {layer.subLayerPaths[index]} "
+                f"-> {contribution_path}"
             )
+            layer.subLayerPaths[index] = contribution_path
+            return contribution_path
 
-        path = get_usd_master_path(
-            folder_entity=folder_entity,
-            product_name=product_name,
-            representation="usd"
-        )
-        variants.append((variant, path))
+    contribution_path = _format_path(contribution_path,
+                                     order=order,
+                                     layer_id=layer_id)
 
-    stage = _create_variants_file(
-        filename,
-        variants=variants,
-        variantset="model",
-        variant_prim="/root",
-        reference_prim="/root/geo",
-        as_payload=True,
-    )
+    # If an order is defined and other layers are ordered than place it before
+    # the first order where existing order is lower
+    if order is not None:
+        for index, existing_path in enumerate(layer.subLayerPaths):
+            args = get_sdf_format_args(existing_path)
+            existing_order = args.get("order")
+            if existing_order is not None and int(existing_order) < order:
+                log.debug(
+                    f"Inserting new layer at {index}: {contribution_path}"
+                )
+                layer.subLayerPaths.insert(index, contribution_path)
+                return
+        # Weakest ordered opinion
+        layer.subLayerPaths.append(contribution_path)
+        return contribution_path
 
-    UsdGeom.SetStageMetersPerUnit(stage, 1)
-    UsdGeom.SetStageUpAxis(stage, UsdGeom.Tokens.y)
-
-    # modelAPI = Usd.ModelAPI(root_prim)
-    # modelAPI.SetKind(Kind.Tokens.component)
-
-    # See http://openusd.org/docs/api/class_usd_model_a_p_i.html#details
-    # for more on assetInfo
-    # modelAPI.SetAssetName(asset)
-    # modelAPI.SetAssetIdentifier(asset)
-
-    stage.GetRootLayer().Save()
-
-
-def create_shade(filename, folder_path, variant_product_names):
-    """Create a master USD shade file for an asset.
-
-    For each available model variation this should generate a reference
-    to a `usdShade_{modelVariant}` product.
-
-    """
-
-    project_name = get_current_project_name()
-    folder_entity = ayon_api.get_folder_by_path(project_name, folder_path)
-    assert folder_entity, "Folder not found: %s" % folder_path
-
-    variants = []
-
-    for product_name in variant_product_names:
-        prefix = "usdModel"
-        if product_name.startswith(prefix):
-            # Strip off `usdModel_`
-            variant = product_name[len(prefix):]
-        else:
-            raise ValueError(
-                "Model products must start " "with usdModel: %s" % product_name
-            )
-
-        shade_product_name = re.sub(
-            "^usdModel", "usdShade", product_name
-        )
-        path = get_usd_master_path(
-            folder_entity=folder_entity,
-            product_name=shade_product_name,
-            representation="usd"
-        )
-        variants.append((variant, path))
-
-    stage = _create_variants_file(
-        filename, variants=variants, variantset="model", variant_prim="/root"
-    )
-
-    stage.GetRootLayer().Save()
+    # If no paths found with an order to put it next to
+    # then put the sublayer at the end
+    log.debug(f"Appending new layer: {contribution_path}")
+    layer.subLayerPaths.insert(0, contribution_path)
+    return contribution_path
 
 
-def create_shade_variation(filename, folder_path, model_variant, shade_variants):
-    """Create the master Shade file for a specific model variant.
-
-    This should reference all shade variants for the specific model variant.
-
-    """
-
-    project_name = get_current_project_name()
-    folder_entity = ayon_api.get_folder_by_path(project_name, folder_path)
-    assert folder_entity, "Folder not found: %s" % folder_path
-
-    variants = []
-    for variant in shade_variants:
-        product_name = "usdShade_{model}_{shade}".format(
-            model=model_variant, shade=variant
-        )
-        path = get_usd_master_path(
-            folder_entity=folder_entity,
-            product_name=product_name,
-            representation="usd"
-        )
-        variants.append((variant, path))
-
-    stage = _create_variants_file(
-        filename, variants=variants, variantset="shade", variant_prim="/root"
-    )
-
-    stage.GetRootLayer().Save()
-
-
-def _create_variants_file(
-    filename,
+def add_variant_references_to_layer(
     variants,
     variantset,
     default_variant=None,
@@ -252,112 +371,316 @@ def _create_variants_file(
     reference_prim=None,
     set_default_variant=True,
     as_payload=False,
-    skip_variant_on_single_file=True,
+    skip_variant_on_single_file=False,
+    layer=None
 ):
+    """Add or set a prim's variants to reference specified paths in the layer.
 
-    root_layer = Sdf.Layer.CreateNew(filename, args={"format": "usda"})
-    stage = Usd.Stage.Open(root_layer)
+    Note:
+        This does not clear any of the other opinions than replacing
+        `prim.referenceList.prependedItems` with the new reference.
+        If `as_payload=True` then this only does it for payloads and leaves
+        references as they were in-tact.
 
-    root_prim = stage.DefinePrim(variant_prim)
-    stage.SetDefaultPrim(root_prim)
+    Note:
+        If `skip_variant_on_single_file=True` it does *not* check if any
+        other variants do exist; it only checks whether you are currently
+        adding more than one since it'd be hard to find out whether previously
+        this was also skipped and should now if you're adding a new one
+        suddenly also be its original 'variant'. As such it's recommended to
+        keep this disabled unless you know you're not updating the file later
+        into the same variant set.
 
-    def _reference(path):
-        """Reference/Payload path depending on function arguments"""
+    Examples:
+    >>> layer = add_variant_references_to_layer("model.usd",
+    >>>     variants=[
+    >>>         ("main", "main.usd"),
+    >>>         ("damaged", "damaged.usd"),
+    >>>         ("twisted", "twisted.usd")
+    >>>     ],
+    >>>     variantset="model")
+    >>> layer.Export("model.usd", args={"format": "usda"})
 
-        if reference_prim:
-            prim = stage.DefinePrim(reference_prim)
-        else:
-            prim = root_prim
+    Arguments:
+        variants (List[List[str, str]): List of two-tuples of variant name to
+            the filepath that should be referenced in for that variant.
+        variantset (str): Name of the variant set
+        default_variant (str): Default variant to set. If not provided
+            the first variant will be used.
+        variant_prim (str): Variant prim?
+        reference_prim (str): Path to the reference prim where to add the
+            references and variant sets.
+        set_default_variant (bool): Whether to set the default variant.
+            When False no default variant will be set, even if a value
+            was provided to `default_variant`
+        as_payload (bool): When enabled, instead of referencing use payloads
+        skip_variant_on_single_file (bool): If this is enabled and only
+            a single variant is provided then do not create the variant set
+            but just reference that single file.
+        layer (Optional[Sdf.Layer]): When provided operate on this layer,
+            otherwise create an anonymous layer in memory.
 
-        if as_payload:
-            # Payload
-            prim.GetPayloads().AddPayload(Sdf.Payload(path))
-        else:
-            # Reference
-            prim.GetReferences().AddReference(Sdf.Reference(path))
+    Returns:
+        Sdf.Layer: The layer with the added references inside the variants.
+
+    """
+    if layer is None:
+        layer = Sdf.Layer.CreateAnonymous()
+        set_layer_defaults(layer, default_prim=variant_prim.strip("/"))
+
+    prim_path_to_get_variants = Sdf.Path(variant_prim)
+    root_prim = get_or_define_prim_spec(layer, variant_prim, "Xform")
+
+    # TODO: Define why there's a need for separate variant_prim and
+    #   reference_prim attribute. When should they differ? Does it even work?
+    if not reference_prim:
+        reference_prim = root_prim
+    else:
+        reference_prim = get_or_define_prim_spec(layer, reference_prim,
+                                                 "Xform")
 
     assert variants, "Must have variants, got: %s" % variants
-
-    log.info(filename)
 
     if skip_variant_on_single_file and len(variants) == 1:
         # Reference directly, no variants
         variant_path = variants[0][1]
-        _reference(variant_path)
+        if as_payload:
+            # Payload
+            reference_prim.payloadList.prependedItems.append(
+                Sdf.Payload(variant_path)
+            )
+        else:
+            # Reference
+            reference_prim.referenceList.prependedItems.append(
+                Sdf.Reference(variant_path)
+            )
 
-        log.info("Non-variants..")
-        log.info("Path: %s" % variant_path)
+        log.debug("Creating without variants due to single file only.")
+        log.debug("Path: %s", variant_path)
 
     else:
         # Variants
-        append = Usd.ListPositionBackOfAppendList
-        variant_set = root_prim.GetVariantSets().AddVariantSet(
-            variantset, append
-        )
-
-        for variant, variant_path in variants:
-
+        for variant, variant_filepath in variants:
             if default_variant is None:
                 default_variant = variant
 
-            variant_set.AddVariant(variant, append)
-            variant_set.SetVariantSelection(variant)
-            with variant_set.GetVariantEditContext():
-                _reference(variant_path)
+            set_variant_reference(layer,
+                                  prim_path=prim_path_to_get_variants,
+                                  variant_selections=[[variantset, variant]],
+                                  path=variant_filepath,
+                                  as_payload=as_payload)
 
-                log.info("Variants..")
-                log.info("Variant: %s" % variant)
-                log.info("Path: %s" % variant_path)
+        if set_default_variant and default_variant is not None:
+            # Set default variant selection
+            root_prim.variantSelections[variantset] = default_variant
 
-        if set_default_variant:
-            variant_set.SetVariantSelection(default_variant)
-
-    return stage
+    return layer
 
 
-def get_usd_master_path(folder_entity, product_name, representation):
-    """Get the filepath for a .usd file of a product.
+def set_layer_defaults(layer,
+                       up_axis=UsdGeom.Tokens.y,
+                       meters_per_unit=1.0,
+                       default_prim=None):
+    """Set some default metadata for the SdfLayer.
 
-    This will return the path to an unversioned master file generated by
-    `usd_master_file.py`.
+    Arguments:
+        layer (Sdf.Layer): The layer to set default for via Sdf API.
+        up_axis (UsdGeom.Token); Which axis is the up-axis
+        meters_per_unit (float): Meters per unit
+        default_prim (Optional[str]: Default prim name
+
+    """
+    # Set default prim
+    if default_prim is not None:
+        layer.defaultPrim = default_prim
+
+    # Let viewing applications know how to orient a free camera properly
+    # Similar to: UsdGeom.SetStageUpAxis(stage, UsdGeom.Tokens.y)
+    layer.pseudoRoot.SetInfo(UsdGeom.Tokens.upAxis, up_axis)
+
+    # Set meters per unit
+    layer.pseudoRoot.SetInfo(UsdGeom.Tokens.metersPerUnit,
+                             float(meters_per_unit))
+
+
+def get_or_define_prim_spec(layer, prim_path, type_name):
+    """Get or create a PrimSpec in the layer.
+
+    Note:
+        This creates a Sdf.PrimSpec with Sdf.SpecifierDef but if the PrimSpec
+        already exists this will not force it to be a Sdf.SpecifierDef and
+        it may remain what it was, e.g. Sdf.SpecifierOver
 
     Args:
-        folder_entity (Union[str, dict]): Folder entity.
-        product_name (str): Product name.
-        representation (str): Representation name.
+        layer (Sdf.Layer): The layer to create it in.
+        prim_path (Any[str, Sdf.Path]): Prim path to create.
+        type_name (str): Type name for the PrimSpec.
+            This will only be set if the prim does not exist in the layer
+            yet. It does not update type for an existing prim.
+
+    Returns:
+        Sdf.PrimSpec: The PrimSpec in the layer for the given prim path.
+
     """
+    prim_spec = layer.GetPrimAtPath(prim_path)
+    if prim_spec:
+        return prim_spec
 
-    project_name = get_current_project_name()
-    project_entity = ayon_api.get_project(project_name)
-    anatomy = Anatomy(project_name, project_entity=project_entity)
+    prim_spec = Sdf.CreatePrimInLayer(layer, prim_path)
+    prim_spec.specifier = Sdf.SpecifierDef
+    prim_spec.typeName = type_name
+    return prim_spec
 
-    template_data = get_template_data(project_entity, folder_entity)
-    template_data.update({
-        "product": {
-            "name": product_name
-        },
-        "subset": product_name,
-        "representation": representation,
-        "version": 0,  # stub version zero
-    })
 
-    template_obj = anatomy.get_template_item(
-        "publish", "default", "path"
+def variant_nested_prim_path(prim_path, variant_selections):
+    """Return the Sdf.Path for a nested variant selection at prim path.
+
+    Examples:
+    >>> prim_path = Sdf.Path("/asset")
+    >>> variant_spec = variant_nested_prim_path(
+    >>>     prim_path,
+    >>>     variant_selections=[["model", "main"], ["look", "main"]]
+    >>> )
+    >>> variant_spec.path
+
+    Args:
+        prim_path (Sdf.PrimPath): The prim path to create the spec in
+        variant_selections (List[List[str, str]]): A list of variant set names
+            and variant names to get the prim spec in.
+
+    Returns:
+        Sdf.Path: The variant prim path
+
+    """
+    variant_prim_path = Sdf.Path(prim_path)
+    for variant_set_name, variant_name in variant_selections:
+        variant_prim_path = variant_prim_path.AppendVariantSelection(
+            variant_set_name, variant_name)
+    return variant_prim_path
+
+
+def add_ordered_reference(
+        layer,
+        prim_path,
+        reference,
+        order
+):
+    """Add reference alongside other ordered references.
+
+    Args:
+        layer (Sdf.Layer): Layer to operate in.
+        prim_path (Sdf.Path): Prim path to reference into.
+            This may include variant selections to reference into a prim
+            inside the variant selection.
+        reference (Sdf.Reference): Reference to add.
+        order  (int): Order.
+
+    Returns:
+        Sdf.PrimSpec: The prim spec for the prim path.
+
+    """
+    assert isinstance(order, int), "order must be integer"
+
+    # Sdf.Reference is immutable, see: `pxr/usd/sdf/wrapReference.cpp`
+    # A Sdf.Reference can't be edited in Python so we create a new entry
+    # matching the original with the extra data entry added.
+    custom_data = reference.customData
+    custom_data["ayon_order"] = order
+    reference = Sdf.Reference(
+        assetPath=reference.assetPath,
+        primPath=reference.primPath,
+        layerOffset=reference.layerOffset,
+        customData=custom_data
     )
-    path = template_obj.format_strict(template_data)
 
-    # Remove the version folder
-    product_folder = os.path.dirname(os.path.dirname(path))
-    master_folder = os.path.join(product_folder, "master")
-    fname = "{0}.{1}".format(product_name, representation)
+    # TODO: inherit type from outside of variants if it has it
+    prim_spec = get_or_define_prim_spec(layer, prim_path, "Xform")
 
-    return os.path.join(master_folder, fname).replace("\\", "/")
+    # Insert new entry at correct order
+    entries = list(prim_spec.referenceList.prependedItems)
+
+    if not entries:
+        prim_spec.referenceList.prependedItems.append(reference)
+        return prim_spec
+
+    for index, existing_ref in enumerate(entries):
+        existing_order = existing_ref.customData.get("order")
+        if existing_order is not None and existing_order < order:
+            log.debug(
+                f"Inserting new reference at {index}: {reference}"
+            )
+            entries.insert(index, reference)
+            break
+    else:
+        prim_spec.referenceList.prependedItems.append(reference)
+        return prim_spec
+
+    prim_spec.referenceList.prependedItems[:] = entries
+    return prim_spec
 
 
-def parse_avalon_uri(uri):
-    # URI Pattern: avalon://{folder}/{product}.{ext}
-    pattern = r"avalon://(?P<folder>[^/.]*)/(?P<product>[^/]*)\.(?P<ext>.*)"
-    if uri.startswith("avalon://"):
-        match = re.match(pattern, uri)
-        if match:
-            return match.groupdict()
+def set_variant_reference(
+        sdf_layer,
+        prim_path,
+        variant_selections,
+        path,
+        as_payload=False,
+        append=True
+):
+    """Get or define variant selection at prim path and add a reference
+
+    If the Variant Prim already exists the prepended references are replaced
+    with a reference to `path`, it is overridden.
+
+    Args:
+        sdf_layer (Sdf.Layer): Layer to operate in.
+        prim_path (Any[str, Sdf.Path]): Prim path to add variant to.
+        variant_selections (List[List[str, str]]): A list of variant set names
+            and variant names to get the prim spec in.
+        path (str): Path to reference or payload
+        as_payload (bool): When enabled it will generate a payload instead of
+            a reference. Defaults to False.
+        append (bool): When enabled it will append the reference of payload
+            to prepended items, otherwise it will replace it.
+
+    Returns:
+        Sdf.PrimSpec: The prim spec for the prim path at the given
+            variant selection.
+
+    """
+    prim_path = Sdf.Path(prim_path)
+    # TODO: inherit type from outside of variants if it has it
+    get_or_define_prim_spec(sdf_layer, prim_path, "Xform")
+    variant_prim_path = variant_nested_prim_path(prim_path, variant_selections)
+    variant_prim = get_or_define_prim_spec(sdf_layer,
+                                           variant_prim_path,
+                                           "Xform")
+    # Replace the prepended references or payloads
+    if as_payload:
+        # Payload
+        if append:
+            variant_prim.payloadList.prependedItems.append(
+                Sdf.Payload(assetPath=path)
+            )
+        else:
+            variant_prim.payloadList.prependedItems[:] = [
+                Sdf.Payload(assetPath=path)
+            ]
+    else:
+        # Reference
+        if append:
+            variant_prim.referenceList.prependedItems.append(
+                Sdf.Reference(assetPath=path)
+            )
+        else:
+            variant_prim.referenceList.prependedItems[:] = [
+                Sdf.Reference(assetPath=path)
+            ]
+
+    return variant_prim
+
+
+def get_sdf_format_args(path):
+    """Return SDF_FORMAT_ARGS parsed to `dict`"""
+    _raw_path, data = Sdf.Layer.SplitIdentifier(path)
+    return data

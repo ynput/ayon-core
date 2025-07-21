@@ -7,7 +7,7 @@ import os
 
 import pyblish.api
 
-from ayon_core.host import ILoadHost
+from ayon_core.host import ILoadHost, IPublishHost
 from ayon_core.lib import Logger
 from ayon_core.pipeline import registered_host
 
@@ -236,7 +236,7 @@ class HostToolsHelper:
             from ayon_core.tools.publisher.window import PublisherWindow
 
             host = registered_host()
-            ILoadHost.validate_load_methods(host)
+            IPublishHost.validate_publish_methods(host)
 
             publisher_window = PublisherWindow(
                 controller=controller,

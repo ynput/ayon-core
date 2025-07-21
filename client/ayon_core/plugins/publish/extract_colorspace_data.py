@@ -37,6 +37,9 @@ class ExtractColorspaceData(publish.Extractor,
         # get colorspace settings
         context = instance.context
 
+        # colorspace name could be kept in instance.data
+        colorspace = instance.data.get("colorspace")
+
         # loop representations
         for representation in representations:
             # skip if colorspaceData is already at representation
@@ -44,5 +47,4 @@ class ExtractColorspaceData(publish.Extractor,
                 continue
 
             self.set_representation_colorspace(
-                representation, context
-            )
+                representation, context, colorspace)

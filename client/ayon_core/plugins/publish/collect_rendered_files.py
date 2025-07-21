@@ -31,6 +31,9 @@ class CollectRenderedFiles(pyblish.api.ContextPlugin):
     # Keep "filesequence" for backwards compatibility of older jobs
     targets = ["filesequence", "farm"]
     label = "Collect rendered frames"
+    settings_category = "core"
+
+    remove_files = False
 
     _context = None
 
@@ -93,8 +96,7 @@ class CollectRenderedFiles(pyblish.api.ContextPlugin):
 
         # now we can just add instances from json file and we are done
         any_staging_dir_persistent = False
-        for instance_data in data.get("instances"):
-
+        for instance_data in data["instances"]:
             self.log.debug("  - processing instance for {}".format(
                 instance_data.get("productName")))
             instance = self._context.create_instance(
@@ -105,7 +107,11 @@ class CollectRenderedFiles(pyblish.api.ContextPlugin):
             instance.data.update(instance_data)
 
             # stash render job id for later validation
-            instance.data["render_job_id"] = data.get("job").get("_id")
+            instance.data["publishJobMetadata"] = data
+            # TODO remove 'render_job_id' here and rather use
+            #   'publishJobMetadata' where is needed.
+            #   - this is deadline specific
+            instance.data["render_job_id"] = data.get("job", {}).get("_id")
             staging_dir_persistent = instance.data.get(
                 "stagingDir_persistent", False
             )
@@ -117,7 +123,7 @@ class CollectRenderedFiles(pyblish.api.ContextPlugin):
                 self._fill_staging_dir(repre_data, anatomy)
                 representations.append(repre_data)
 
-                if not staging_dir_persistent:
+                if self.remove_files and not staging_dir_persistent:
                     add_repre_files_for_cleanup(instance, repre_data)
 
             instance.data["representations"] = representations
@@ -138,10 +144,7 @@ class CollectRenderedFiles(pyblish.api.ContextPlugin):
     def process(self, context):
         self._context = context
 
-        publish_data_paths = (
-            os.environ.get("AYON_PUBLISH_DATA")
-            or os.environ.get("OPENPYPE_PUBLISH_DATA")
-        )
+        publish_data_paths = os.environ.get("AYON_PUBLISH_DATA")
         if not publish_data_paths:
             raise KnownPublishError("Missing `AYON_PUBLISH_DATA`")
 
@@ -170,7 +173,7 @@ class CollectRenderedFiles(pyblish.api.ContextPlugin):
                     os.environ.update(session_data)
 
                 staging_dir_persistent = self._process_path(data, anatomy)
-                if not staging_dir_persistent:
+                if self.remove_files and not staging_dir_persistent:
                     context.data["cleanupFullPaths"].append(path)
                     context.data["cleanupEmptyDirs"].append(
                         os.path.dirname(path)

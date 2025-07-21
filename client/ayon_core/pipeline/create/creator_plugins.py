@@ -1,13 +1,13 @@
 # -*- coding: utf-8 -*-
+import os
 import copy
 import collections
+from typing import TYPE_CHECKING, Optional, Dict, Any
 
-from abc import ABCMeta, abstractmethod
-
-import six
+from abc import ABC, abstractmethod
 
 from ayon_core.settings import get_project_settings
-from ayon_core.lib import Logger
+from ayon_core.lib import Logger, get_version_from_path
 from ayon_core.pipeline.plugin_discover import (
     discover,
     register_plugin,
@@ -15,36 +15,32 @@ from ayon_core.pipeline.plugin_discover import (
     deregister_plugin,
     deregister_plugin_path
 )
+from ayon_core.pipeline.staging_dir import get_staging_dir_info, StagingDir
 
 from .constants import DEFAULT_VARIANT_VALUE
 from .product_name import get_product_name
 from .utils import get_next_versions_for_instances
 from .legacy_create import LegacyCreator
+from .structures import CreatedInstance
+
+if TYPE_CHECKING:
+    from ayon_core.lib import AbstractAttrDef
+    # Avoid cyclic imports
+    from .context import CreateContext, UpdateData  # noqa: F401
 
 
-class CreatorError(Exception):
-    """Should be raised when creator failed because of known issue.
-
-    Message of error should be user readable.
-    """
-
-    def __init__(self, message):
-        super(CreatorError, self).__init__(message)
-
-
-@six.add_metaclass(ABCMeta)
-class ProductConvertorPlugin(object):
+class ProductConvertorPlugin(ABC):
     """Helper for conversion of instances created using legacy creators.
 
-    Conversion from legacy creators would mean to loose legacy instances,
+    Conversion from legacy creators would mean to lose legacy instances,
     convert them automatically or write a script which must user run. All of
-    these solutions are workign but will happen without asking or user must
+    these solutions are working but will happen without asking or user must
     know about them. This plugin can be used to show legacy instances in
     Publisher and give user ability to run conversion script.
 
     Convertor logic should be very simple. Method 'find_instances' is to
-    look for legacy instances in scene a possibly call
-    pre-implemented 'add_convertor_item'.
+    look for legacy instances in scene and possibly call pre-implemented
+    'add_convertor_item'.
 
     User will have ability to trigger conversion which is executed by calling
     'convert' which should call 'remove_convertor_item' when is done.
@@ -57,7 +53,7 @@ class ProductConvertorPlugin(object):
     can store any information to it's object for conversion purposes.
 
     Args:
-        create_context
+        create_context (CreateContext): Context which initialized the plugin.
     """
 
     _log = None
@@ -122,8 +118,8 @@ class ProductConvertorPlugin(object):
     def collection_shared_data(self):
         """Access to shared data that can be used during 'find_instances'.
 
-        Retruns:
-            Dict[str, Any]: Shared data.
+        Returns:
+            dict[str, Any]: Shared data.
 
         Raises:
             UnavailableSharedData: When called out of collection phase.
@@ -146,11 +142,10 @@ class ProductConvertorPlugin(object):
         self._create_context.remove_convertor_item(self.identifier)
 
 
-@six.add_metaclass(ABCMeta)
-class BaseCreator:
+class BaseCreator(ABC):
     """Plugin that create and modify instance data before publishing process.
 
-    We should maybe find better name as creation is only one part of it's logic
+    We should maybe find better name as creation is only one part of its logic
     and to avoid expectations that it is the same as `avalon.api.Creator`.
 
     Single object should be used for multiple instances instead of single
@@ -158,7 +153,7 @@ class BaseCreator:
     to `self` if it's not Plugin specific.
 
     Args:
-        project_settings (Dict[str, Any]): Project settings.
+        project_settings (dict[str, Any]): Project settings.
         create_context (CreateContext): Context which initialized creator.
         headless (bool): Running in headless mode.
     """
@@ -185,20 +180,20 @@ class BaseCreator:
 
     # Instance attribute definitions that can be changed per instance
     # - returns list of attribute definitions from
-    #       `ayon_core.pipeline.attribute_definitions`
-    instance_attr_defs = []
+    #       `ayon_core.lib.attribute_definitions`
+    instance_attr_defs: "list[AbstractAttrDef]" = []
 
     # Filtering by host name - can be used to be filtered by host name
     # - used on all hosts when set to 'None' for Backwards compatibility
     #   - was added afterwards
     # QUESTION make this required?
-    host_name = None
+    host_name: Optional[str] = None
 
     # Settings auto-apply helpers
     # Root key in project settings (mandatory for auto-apply to work)
-    settings_category = None
+    settings_category: Optional[str] = None
     # Name of plugin in create settings > class name is used if not set
-    settings_name = None
+    settings_name: Optional[str] = None
 
     def __init__(
         self, project_settings, create_context, headless=False
@@ -207,11 +202,12 @@ class BaseCreator:
         self.create_context = create_context
         self.project_settings = project_settings
 
-        # Creator is running in headless mode (without UI elemets)
+        # Creator is running in headless mode (without UI elements)
         # - we may use UI inside processing this attribute should be checked
         self.headless = headless
 
         self.apply_settings(project_settings)
+        self.register_callbacks()
 
     @staticmethod
     def _get_settings_values(project_settings, category_name, plugin_name):
@@ -223,7 +219,7 @@ class BaseCreator:
             plugin_name (str): Name of settings.
 
         Returns:
-            Union[dict[str, Any], None]: Settings values or None.
+            Optional[dict[str, Any]]: Settings values or None.
         """
 
         settings = project_settings.get(category_name)
@@ -297,6 +293,13 @@ class BaseCreator:
                 ))
             setattr(self, key, value)
 
+    def register_callbacks(self):
+        """Register callbacks for creator.
+
+        Default implementation does nothing. It can be overridden to register
+        callbacks for creator.
+        """
+        pass
 
     @property
     def identifier(self):
@@ -371,6 +374,35 @@ class BaseCreator:
             self._log = Logger.get_logger(self.__class__.__name__)
         return self._log
 
+    def _create_instance(
+        self,
+        product_name: str,
+        data: Dict[str, Any],
+        product_type: Optional[str] = None
+    ) -> CreatedInstance:
+        """Create instance and add instance to context.
+
+        Args:
+            product_name (str): Product name.
+            data (Dict[str, Any]): Instance data.
+            product_type (Optional[str]): Product type, object attribute
+                'product_type' is used if not passed.
+
+        Returns:
+            CreatedInstance: Created instance.
+
+        """
+        if product_type is None:
+            product_type = self.product_type
+        instance = CreatedInstance(
+            product_type,
+            product_name,
+            data,
+            creator=self,
+        )
+        self._add_instance_to_context(instance)
+        return instance
+
     def _add_instance_to_context(self, instance):
         """Helper method to add instance to create context.
 
@@ -389,7 +421,7 @@ class BaseCreator:
         """Helper method to remove instance from create context.
 
         Instances must be removed from DCC workfile metadat aand from create
-        context in which plugin is existing at the moment of removement to
+        context in which plugin is existing at the moment of removal to
         propagate the change without restarting create context.
 
         Args:
@@ -441,7 +473,7 @@ class BaseCreator:
         """Store changes of existing instances so they can be recollected.
 
         Args:
-            update_list(List[UpdateData]): Gets list of tuples. Each item
+            update_list (list[UpdateData]): Gets list of tuples. Each item
                 contain changed instance and it's changes.
         """
 
@@ -449,13 +481,13 @@ class BaseCreator:
 
     @abstractmethod
     def remove_instances(self, instances):
-        """Method called on instance removement.
+        """Method called on instance removal.
 
         Can also remove instance metadata from context but should return
         'True' if did so.
 
         Args:
-            instance(List[CreatedInstance]): Instance objects which should be
+            instances (list[CreatedInstance]): Instance objects which should be
                 removed.
         """
 
@@ -480,8 +512,7 @@ class BaseCreator:
     ):
         """Dynamic data for product name filling.
 
-        These may be get dynamically created based on current context of
-        workfile.
+        These may be dynamically created based on current context of workfile.
         """
 
         return {}
@@ -493,7 +524,8 @@ class BaseCreator:
         task_entity,
         variant,
         host_name=None,
-        instance=None
+        instance=None,
+        project_entity=None,
     ):
         """Return product name for passed context.
 
@@ -510,8 +542,9 @@ class BaseCreator:
             instance (Optional[CreatedInstance]): Object of 'CreatedInstance'
                 for which is product name updated. Passed only on product name
                 update.
-        """
+            project_entity (Optional[dict[str, Any]]): Project entity.
 
+        """
         if host_name is None:
             host_name = self.create_context.host_name
 
@@ -529,6 +562,10 @@ class BaseCreator:
             instance
         )
 
+        cur_project_name = self.create_context.get_current_project_name()
+        if not project_entity and project_name == cur_project_name:
+            project_entity = self.create_context.get_current_project_entity()
+
         return get_product_name(
             project_name,
             task_name,
@@ -537,7 +574,8 @@ class BaseCreator:
             self.product_type,
             variant,
             dynamic_data=dynamic_data,
-            project_settings=self.project_settings
+            project_settings=self.project_settings,
+            project_entity=project_entity,
         )
 
     def get_instance_attr_defs(self):
@@ -552,18 +590,28 @@ class BaseCreator:
         keys/values when plugin attributes change.
 
         Returns:
-            List[AbstractAttrDef]: Attribute definitions that can be tweaked
+            list[AbstractAttrDef]: Attribute definitions that can be tweaked
                 for created instance.
         """
 
         return self.instance_attr_defs
 
+    def get_attr_defs_for_instance(self, instance):
+        """Get attribute definitions for an instance.
+
+        Args:
+            instance (CreatedInstance): Instance for which to get
+                attribute definitions.
+
+        """
+        return self.get_instance_attr_defs()
+
     @property
     def collection_shared_data(self):
         """Access to shared data that can be used during creator's collection.
 
-        Retruns:
-            Dict[str, Any]: Shared data.
+        Returns:
+            dict[str, Any]: Shared data.
 
         Raises:
             UnavailableSharedData: When called out of collection phase.
@@ -592,7 +640,7 @@ class BaseCreator:
                 versions.
 
         Returns:
-            Dict[str, int]: Next versions by instance id.
+            dict[str, int]: Next versions by instance id.
         """
 
         return get_next_versions_for_instances(
@@ -651,7 +699,7 @@ class Creator(BaseCreator):
                 cls._get_default_variant_wrap,
                 cls._set_default_variant_wrap
             )
-        super(Creator, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
 
     @property
     def show_order(self):
@@ -711,7 +759,7 @@ class Creator(BaseCreator):
         By default, returns `default_variants` value.
 
         Returns:
-            List[str]: Whisper variants for user input.
+            list[str]: Whisper variants for user input.
         """
 
         return copy.deepcopy(self.default_variants)
@@ -784,10 +832,122 @@ class Creator(BaseCreator):
             updating keys/values when plugin attributes change.
 
         Returns:
-            List[AbstractAttrDef]: Attribute definitions that can be tweaked
+            list[AbstractAttrDef]: Attribute definitions that can be tweaked
                 for created instance.
         """
         return self.pre_create_attr_defs
+
+    def get_staging_dir(self, instance) -> Optional[StagingDir]:
+        """Return the staging dir and persistence from instance.
+
+        Args:
+            instance (CreatedInstance): Instance for which should be staging
+                dir gathered.
+
+        Returns:
+            Optional[namedtuple]: Staging dir path and persistence or None
+        """
+        create_ctx = self.create_context
+        product_name = instance.get("productName")
+        product_type = instance.get("productType")
+        folder_path = instance.get("folderPath")
+
+        # this can only work if product name and folder path are available
+        if not product_name or not folder_path:
+            return None
+
+        publish_settings = self.project_settings["core"]["publish"]
+        follow_workfile_version = (
+            publish_settings
+            ["CollectAnatomyInstanceData"]
+            ["follow_workfile_version"]
+        )
+        follow_version_hosts = (
+            publish_settings
+            ["CollectSceneVersion"]
+            ["hosts"]
+        )
+
+        current_host = create_ctx.host.name
+        follow_workfile_version = (
+            follow_workfile_version and
+            current_host in follow_version_hosts
+        )
+
+        # Gather version number provided from the instance.
+        current_workfile = create_ctx.get_current_workfile_path()
+        version = instance.get("version")
+
+        # If follow workfile, gather version from workfile path.
+        if version is None and follow_workfile_version and current_workfile:
+            workfile_version = get_version_from_path(current_workfile)
+            if workfile_version is not None:
+                version = int(workfile_version)
+
+        # Fill-up version with next version available.
+        if version is None:
+            versions = self.get_next_versions_for_instances(
+                [instance]
+            )
+            version, = tuple(versions.values())
+
+        template_data = {"version": version}
+
+        staging_dir_info = get_staging_dir_info(
+            create_ctx.get_current_project_entity(),
+            create_ctx.get_folder_entity(folder_path),
+            create_ctx.get_task_entity(folder_path, instance.get("task")),
+            product_type,
+            product_name,
+            create_ctx.host_name,
+            anatomy=create_ctx.get_current_project_anatomy(),
+            project_settings=create_ctx.get_current_project_settings(),
+            always_return_path=False,
+            logger=self.log,
+            template_data=template_data,
+        )
+
+        return staging_dir_info or None
+
+    def apply_staging_dir(self, instance):
+        """Apply staging dir with persistence to instance's transient data.
+
+        Method is called on instance creation and on instance update.
+
+        Args:
+            instance (CreatedInstance): Instance for which should be staging
+                dir applied.
+
+        Returns:
+            Optional[str]: Staging dir path or None if not applied.
+        """
+        staging_dir_info = self.get_staging_dir(instance)
+        if staging_dir_info is None:
+            return None
+
+        # path might be already created by get_staging_dir_info
+        staging_dir_path = staging_dir_info.directory
+        os.makedirs(staging_dir_path, exist_ok=True)
+
+        instance.transient_data.update({
+            "stagingDir": staging_dir_path,
+            "stagingDir_persistent": staging_dir_info.is_persistent,
+            "stagingDir_is_custom": staging_dir_info.is_custom,
+        })
+
+        self.log.info(f"Applied staging dir to instance: {staging_dir_path}")
+
+        return staging_dir_path
+
+    def _pre_create_attr_defs_changed(self):
+        """Called when pre-create attribute definitions change.
+
+        Create plugin can call this method when knows that
+            'get_pre_create_attr_defs' should be called again.
+        """
+        self.create_context.create_plugin_pre_create_attr_defs_changed(
+            self.identifier
+        )
 
 
 class HiddenCreator(BaseCreator):
@@ -803,7 +963,7 @@ class AutoCreator(BaseCreator):
     """
 
     def remove_instances(self, instances):
-        """Skip removement."""
+        """Skip removal."""
         pass
 
 
@@ -916,7 +1076,7 @@ def cache_and_get_instances(creator, shared_key, list_instances_func):
             if data were not yet stored under 'shared_key'.
 
     Returns:
-        Dict[str, Dict[str, Any]]: Cached instances by creator identifier from
+        dict[str, dict[str, Any]]: Cached instances by creator identifier from
             result of passed function.
     """
 

@@ -157,6 +157,8 @@ default_help() {
   echo -e "  ${BWhite}ruff-check${RST}      ${BCyan}Run Ruff check for the repository${RST}"
   echo -e "  ${BWhite}ruff-fix${RST}        ${BCyan}Run Ruff fix for the repository${RST}"
   echo -e "  ${BWhite}codespell${RST}       ${BCyan}Run codespell check for the repository${RST}"
+  echo -e "  ${BWhite}run${RST}             ${BCyan}Run a poetry command in the repository environment${RST}"
+  echo -e "  ${BWhite}run-tests${RST}       ${BCyan}Run ayon-core tests${RST}"
   echo ""
 }
 
@@ -173,6 +175,18 @@ run_ruff_check () {
 run_codespell () {
   echo -e "${BIGreen}>>>${RST} Running codespell check ..."
   "$POETRY_HOME/bin/poetry" run codespell
+}
+
+run_command () {
+  echo -e "${BIGreen}>>>${RST} Running ..."
+  shift;  # will remove first arg ("run") from the "$@"
+  "$POETRY_HOME/bin/poetry" run "$@"
+}
+
+run_tests () {
+  echo -e "${BIGreen}>>>${RST} Running tests..."
+  shift;  # will remove first arg ("run-tests") from the "$@"
+  "$POETRY_HOME/bin/poetry" run pytest ./tests -m "not server"
 }
 
 main () {
@@ -205,6 +219,14 @@ main () {
       ;;
     "codespell")
       run_codespell || return_code=$?
+      exit $return_code
+      ;;
+    "run")
+      run_command "$@" || return_code=$?
+      exit $return_code
+      ;;
+    "runtests")
+      run_tests "$@" || return_code=$?
       exit $return_code
       ;;
   esac

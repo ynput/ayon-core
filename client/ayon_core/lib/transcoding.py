@@ -6,6 +6,7 @@ import collections
 import tempfile
 import subprocess
 import platform
+from typing import Optional
 
 import xml.etree.ElementTree
 
@@ -52,7 +53,7 @@ IMAGE_EXTENSIONS = {
     ".kra", ".logluv", ".mng", ".miff", ".nrrd", ".ora",
     ".pam", ".pbm", ".pgm", ".ppm", ".pnm", ".pcx", ".pgf",
     ".pictor", ".png", ".psd", ".psb", ".psp", ".qtvr",
-    ".ras", ".rgbe", ".sgi", ".tga",
+    ".ras", ".rgbe", ".sgi", ".sxr", ".tga",
     ".tif", ".tiff", ".tiff/ep", ".tiff/it", ".ufo", ".ufp",
     ".wbmp", ".webp", ".xr", ".xt", ".xbm", ".xcf", ".xpm", ".xwd"
 }
@@ -525,137 +526,6 @@ def should_convert_for_ffmpeg(src_filepath):
     return False
 
 
-# Deprecated since 2022 4 20
-# - Reason - Doesn't convert sequences right way: Can't handle gaps, reuse
-#       first frame for all frames and changes filenames when input
-#       is sequence.
-# - use 'convert_input_paths_for_ffmpeg' instead
-def convert_for_ffmpeg(
-    first_input_path,
-    output_dir,
-    input_frame_start=None,
-    input_frame_end=None,
-    logger=None
-):
-    """Convert source file to format supported in ffmpeg.
-
-    Currently can convert only exrs.
-
-    Args:
-        first_input_path (str): Path to first file of a sequence or a single
-            file path for non-sequential input.
-        output_dir (str): Path to directory where output will be rendered.
-            Must not be same as input's directory.
-        input_frame_start (int): Frame start of input.
-        input_frame_end (int): Frame end of input.
-        logger (logging.Logger): Logger used for logging.
-
-    Raises:
-        ValueError: If input filepath has extension not supported by function.
-            Currently is supported only ".exr" extension.
-    """
-    if logger is None:
-        logger = logging.getLogger(__name__)
-
-    logger.warning((
-        "DEPRECATED: 'ayon_core.lib.transcoding.convert_for_ffmpeg' is"
-        " deprecated function of conversion for FFMpeg. Please replace usage"
-        " with 'ayon_core.lib.transcoding.convert_input_paths_for_ffmpeg'"
-    ))
-
-    ext = os.path.splitext(first_input_path)[1].lower()
-    if ext != ".exr":
-        raise ValueError((
-            "Function 'convert_for_ffmpeg' currently support only"
-            " \".exr\" extension. Got \"{}\"."
-        ).format(ext))
-
-    is_sequence = False
-    if input_frame_start is not None and input_frame_end is not None:
-        is_sequence = int(input_frame_end) != int(input_frame_start)
-
-    input_info = get_oiio_info_for_input(first_input_path, logger=logger)
-
-    # Change compression only if source compression is "dwaa" or "dwab"
-    #   - they're not supported in ffmpeg
-    compression = input_info["attribs"].get("compression")
-    if compression in ("dwaa", "dwab"):
-        compression = "none"
-
-    # Prepare subprocess arguments
-    oiio_cmd = get_oiio_tool_args(
-        "oiiotool",
-        # Don't add any additional attributes
-        "--nosoftwareattrib",
-    )
-    # Add input compression if available
-    if compression:
-        oiio_cmd.extend(["--compression", compression])
-
-    # Collect channels to export
-    input_arg, channels_arg = get_oiio_input_and_channel_args(input_info)
-
-    oiio_cmd.extend([
-        input_arg, first_input_path,
-        # Tell oiiotool which channels should be put to top stack (and output)
-        "--ch", channels_arg,
-        # Use first subimage
-        "--subimage", "0"
-    ])
-
-    # Add frame definitions to arguments
-    if is_sequence:
-        oiio_cmd.extend([
-            "--frames", "{}-{}".format(input_frame_start, input_frame_end)
-        ])
-
-    for attr_name, attr_value in input_info["attribs"].items():
-        if not isinstance(attr_value, str):
-            continue
-
-        # Remove attributes that have string value longer than allowed length
-        #   for ffmpeg or when contain prohibited symbols
-        erase_reason = "Missing reason"
-        erase_attribute = False
-        if len(attr_value) > MAX_FFMPEG_STRING_LEN:
-            erase_reason = "has too long value ({} chars).".format(
-                len(attr_value)
-            )
-            erase_attribute = True
-
-        if not erase_attribute:
-            for char in NOT_ALLOWED_FFMPEG_CHARS:
-                if char in attr_value:
-                    erase_attribute = True
-                    erase_reason = (
-                        "contains unsupported character \"{}\"."
-                    ).format(char)
-                    break
-
-        if erase_attribute:
-            # Set attribute to empty string
-            logger.info((
-                "Removed attribute \"{}\" from metadata because {}."
-            ).format(attr_name, erase_reason))
-            oiio_cmd.extend(["--eraseattrib", attr_name])
-
-    # Add last argument - path to output
-    if is_sequence:
-        ext = os.path.splitext(first_input_path)[1]
-        base_filename = "tmp.%{:0>2}d{}".format(
-            len(str(input_frame_end)), ext
-        )
-    else:
-        base_filename = os.path.basename(first_input_path)
-    output_path = os.path.join(output_dir, base_filename)
-    oiio_cmd.extend([
-        "-o", output_path
-    ])
-
-    logger.debug("Conversion command: {}".format(" ".join(oiio_cmd)))
-    run_subprocess(oiio_cmd, logger=logger)
-
-
 def convert_input_paths_for_ffmpeg(
     input_paths,
     output_dir,
@@ -663,7 +533,7 @@ def convert_input_paths_for_ffmpeg(
 ):
     """Convert source file to format supported in ffmpeg.
 
-    Currently can convert only exrs. The input filepaths should be files
+    Can currently convert only EXRs. The input filepaths should be files
     with same type. Information about input is loaded only from first found
     file.
 
@@ -690,10 +560,10 @@ def convert_input_paths_for_ffmpeg(
     ext = os.path.splitext(first_input_path)[1].lower()
 
     if ext != ".exr":
-        raise ValueError((
-            "Function 'convert_for_ffmpeg' currently support only"
-            " \".exr\" extension. Got \"{}\"."
-        ).format(ext))
+        raise ValueError(
+            "Function 'convert_input_paths_for_ffmpeg' currently supports"
+            f" only \".exr\" extension. Got \"{ext}\"."
+        )
 
     input_info = get_oiio_info_for_input(first_input_path, logger=logger)
 
@@ -978,7 +848,7 @@ def _ffmpeg_h264_codec_args(stream_data, source_ffmpeg_cmd):
     if pix_fmt:
         output.extend(["-pix_fmt", pix_fmt])
 
-    output.extend(["-intra", "-g", "1"])
+    output.extend(["-g", "1"])
     return output
 
 
@@ -1151,9 +1021,7 @@ def convert_colorspace(
         input_arg, input_path,
         # Tell oiiotool which channels should be put to top stack
         #   (and output)
-        "--ch", channels_arg,
-        # Use first subimage
-        "--subimage", "0"
+        "--ch", channels_arg
     ])
 
     if all([target_colorspace, view, display]):
@@ -1167,12 +1035,12 @@ def convert_colorspace(
         oiio_cmd.extend(additional_command_args)
 
     if target_colorspace:
-        oiio_cmd.extend(["--colorconvert",
+        oiio_cmd.extend(["--colorconvert:subimages=0",
                          source_colorspace,
                          target_colorspace])
     if view and display:
         oiio_cmd.extend(["--iscolorspace", source_colorspace])
-        oiio_cmd.extend(["--ociodisplay", display, view])
+        oiio_cmd.extend(["--ociodisplay:subimages=0", display, view])
 
     oiio_cmd.extend(["-o", output_path])
 
@@ -1455,3 +1323,87 @@ def get_oiio_input_and_channel_args(oiio_input_info, alpha_default=None):
         input_arg += ":ch={}".format(input_channels_str)
 
     return input_arg, channels_arg
+
+
+def _get_media_mime_type_from_ftyp(content):
+    if content[8:10] == b"qt":
+        return "video/quicktime"
+
+    if content[8:12] == b"isom":
+        return "video/mp4"
+    if content[8:12] in (b"M4V\x20", b"mp42"):
+        return "video/mp4v"
+    # (
+    #     b"avc1", b"iso2", b"isom", b"mmp4", b"mp41", b"mp71",
+    #     b"msnv", b"ndas", b"ndsc", b"ndsh", b"ndsm", b"ndsp", b"ndss",
+    #     b"ndxc", b"ndxh", b"ndxm", b"ndxp", b"ndxs"
+    # )
+    return None
+
+
+def get_media_mime_type(filepath: str) -> Optional[str]:
+    """Determine Mime-Type of a file.
+
+    Args:
+        filepath (str): Path to file.
+
+    Returns:
+        Optional[str]: Mime type or None if is unknown mime type.
+
+    """
+    if not filepath or not os.path.exists(filepath):
+        return None
+
+    with open(filepath, "rb") as stream:
+        content = stream.read()
+
+    content_len = len(content)
+    # Pre-validation (largest definition check)
+    # - hopefully there cannot be media defined in less than 12 bytes
+    if content_len < 12:
+        return None
+
+    # FTYP
+    if content[4:8] == b"ftyp":
+        return _get_media_mime_type_from_ftyp(content)
+
+    # BMP
+    if content[0:2] == b"BM":
+        return "image/bmp"
+
+    # Tiff
+    if content[0:2] in (b"MM", b"II"):
+        return "tiff"
+
+    # PNG
+    if content[0:4] == b"\211PNG":
+        return "image/png"
+
+    # SVG
+    if b'xmlns="http://www.w3.org/2000/svg"' in content:
+        return "image/svg+xml"
+
+    # JPEG, JFIF or Exif
+    if (
+        content[0:4] == b"\xff\xd8\xff\xdb"
+        or content[6:10] in (b"JFIF", b"Exif")
+    ):
+        return "image/jpeg"
+
+    # Webp
+    if content[0:4] == b"RIFF" and content[8:12] == b"WEBP":
+        return "image/webp"
+
+    # Gif
+    if content[0:6] in (b"GIF87a", b"GIF89a"):
+        return "gif"
+
+    # Adobe PhotoShop file (8B > Adobe, PS > PhotoShop)
+    if content[0:4] == b"8BPS":
+        return "image/vnd.adobe.photoshop"
+
+    # Windows ICO > this might be wild guess as multiple files can start
+    #   with this header
+    if content[0:4] == b"\x00\x00\x01\x00":
+        return "image/x-icon"
+    return None

@@ -19,15 +19,17 @@ from ayon_core.tools.utils import (
     paint_image_with_color,
     SeparatorWidget,
 )
-from .widgets import IconValuePixmapLabel
-from .icons import (
-    get_pixmap,
-    get_image,
-)
-from ..constants import (
+from ayon_core.tools.publisher.abstract import AbstractPublisherFrontend
+from ayon_core.tools.publisher.constants import (
     INSTANCE_ID_ROLE,
     CONTEXT_ID,
     CONTEXT_LABEL,
+)
+
+from .widgets import PublishPixmapLabel, IconValuePixmapLabel
+from .icons import (
+    get_pixmap,
+    get_image,
 )
 
 LOG_DEBUG_VISIBLE = 1 << 0
@@ -40,7 +42,7 @@ INFO_VISIBLE = 1 << 6
 
 
 class VerticalScrollArea(QtWidgets.QScrollArea):
-    """Scroll area for validation error titles.
+    """Scroll area for publish error titles.
 
     The biggest difference is that the scroll area has scroll bar on left side
     and resize of content will also resize scrollarea itself.
@@ -50,7 +52,7 @@ class VerticalScrollArea(QtWidgets.QScrollArea):
     """
 
     def __init__(self, *args, **kwargs):
-        super(VerticalScrollArea, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
 
         self.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
         self.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarAsNeeded)
@@ -80,7 +82,7 @@ class VerticalScrollArea(QtWidgets.QScrollArea):
         if old_widget:
             old_widget.removeEventFilter(self)
 
-        super(VerticalScrollArea, self).setVerticalScrollBar(widget)
+        super().setVerticalScrollBar(widget)
         if widget:
             widget.installEventFilter(self)
 
@@ -89,7 +91,7 @@ class VerticalScrollArea(QtWidgets.QScrollArea):
         if old_widget:
             old_widget.removeEventFilter(self)
 
-        super(VerticalScrollArea, self).setWidget(widget)
+        super().setWidget(widget)
         if widget:
             widget.installEventFilter(self)
 
@@ -105,7 +107,7 @@ class VerticalScrollArea(QtWidgets.QScrollArea):
             and (obj is self.widget() or obj is self.verticalScrollBar())
         ):
             self._size_changed_timer.start()
-        return super(VerticalScrollArea, self).eventFilter(obj, event)
+        return super().eventFilter(obj, event)
 
 
 # --- Publish actions widget ---
@@ -122,9 +124,9 @@ class ActionButton(BaseClickableFrame):
     action_clicked = QtCore.Signal(str, str)
 
     def __init__(self, plugin_action_item, parent):
-        super(ActionButton, self).__init__(parent)
+        super().__init__(parent)
 
-        self.setObjectName("ValidationActionButton")
+        self.setObjectName("PublishActionButton")
 
         self.plugin_action_item = plugin_action_item
 
@@ -153,14 +155,16 @@ class ActionButton(BaseClickableFrame):
         )
 
 
-class ValidateActionsWidget(QtWidgets.QFrame):
+class PublishActionsWidget(QtWidgets.QFrame):
     """Wrapper widget for plugin actions.
 
-    Change actions based on selected validation error.
+    Change actions based on selected publish error.
     """
 
-    def __init__(self, controller, parent):
-        super(ValidateActionsWidget, self).__init__(parent)
+    def __init__(
+        self, controller: AbstractPublisherFrontend, parent: QtWidgets.QWidget
+    ):
+        super().__init__(parent)
 
         self.setAttribute(QtCore.Qt.WA_TranslucentBackground)
 
@@ -172,7 +176,7 @@ class ValidateActionsWidget(QtWidgets.QFrame):
         layout.setContentsMargins(0, 0, 0, 0)
         layout.addWidget(content_widget)
 
-        self._controller = controller
+        self._controller: AbstractPublisherFrontend = controller
         self._content_widget = content_widget
         self._content_layout = content_layout
 
@@ -239,16 +243,16 @@ class ValidateActionsWidget(QtWidgets.QFrame):
         self._controller.run_action(plugin_id, action_id)
 
 
-# --- Validation error titles ---
-class ValidationErrorInstanceList(QtWidgets.QListView):
-    """List of publish instances that caused a validation error.
+# --- Publish error titles ---
+class PublishErrorInstanceList(QtWidgets.QListView):
+    """List of publish instances that caused a publish error.
 
-    Instances are collected per plugin's validation error title.
+    Instances are collected per plugin's publish error title.
     """
     def __init__(self, *args, **kwargs):
-        super(ValidationErrorInstanceList, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
 
-        self.setObjectName("ValidationErrorInstanceList")
+        self.setObjectName("PublishErrorInstanceList")
 
         self.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
         self.setSelectionMode(QtWidgets.QAbstractItemView.ExtendedSelection)
@@ -257,7 +261,7 @@ class ValidationErrorInstanceList(QtWidgets.QListView):
         return self.sizeHint()
 
     def sizeHint(self):
-        result = super(ValidationErrorInstanceList, self).sizeHint()
+        result = super().sizeHint()
         row_count = self.model().rowCount()
         height = 0
         if row_count > 0:
@@ -266,50 +270,38 @@ class ValidationErrorInstanceList(QtWidgets.QListView):
         return result
 
 
-class ValidationErrorTitleWidget(QtWidgets.QWidget):
-    """Title of validation error.
+class PublishErrorTitleWidget(QtWidgets.QWidget):
+    """Title of publish error.
 
     Widget is used as radio button so requires clickable functionality and
     changing style on selection/deselection.
 
-    Has toggle button to show/hide instances on which validation error happened
+    Has toggle button to show/hide instances on which publish error happened
     if there is a list (Valdation error may happen on context).
     """
 
     selected = QtCore.Signal(str)
     instance_changed = QtCore.Signal(str)
+    _error_pixmap = None
 
     def __init__(self, title_id, error_info, parent):
-        super(ValidationErrorTitleWidget, self).__init__(parent)
+        super().__init__(parent)
 
         self._title_id = title_id
         self._error_info = error_info
         self._selected = False
-
-        title_frame = ClickableFrame(self)
-        title_frame.setObjectName("ValidationErrorTitleFrame")
-
-        toggle_instance_btn = QtWidgets.QToolButton(title_frame)
-        toggle_instance_btn.setObjectName("ArrowBtn")
-        toggle_instance_btn.setArrowType(QtCore.Qt.RightArrow)
-        toggle_instance_btn.setMaximumWidth(14)
-
-        label_widget = QtWidgets.QLabel(error_info["title"], title_frame)
-
-        title_frame_layout = QtWidgets.QHBoxLayout(title_frame)
-        title_frame_layout.addWidget(label_widget, 1)
-        title_frame_layout.addWidget(toggle_instance_btn, 0)
 
         instances_model = QtGui.QStandardItemModel()
 
         instance_ids = []
 
         items = []
-        context_validation = False
+        is_context_plugin = False
+        is_crashing_error = False
         for error_item in error_info["error_items"]:
-            context_validation = error_item.context_validation
-            if context_validation:
-                toggle_instance_btn.setArrowType(QtCore.Qt.NoArrow)
+            is_crashing_error = not error_item.is_validation_error
+            is_context_plugin = error_item.is_context_plugin
+            if is_context_plugin:
                 instance_ids.append(CONTEXT_ID)
                 # Add fake item to have minimum size hint of view widget
                 items.append(QtGui.QStandardItem(CONTEXT_LABEL))
@@ -329,7 +321,33 @@ class ValidationErrorTitleWidget(QtWidgets.QWidget):
             root_item = instances_model.invisibleRootItem()
             root_item.appendRows(items)
 
-        instances_view = ValidationErrorInstanceList(self)
+        title_frame = ClickableFrame(self)
+        title_frame.setObjectName("PublishErrorTitleFrame")
+
+        toggle_instance_btn = QtWidgets.QToolButton(title_frame)
+        toggle_instance_btn.setObjectName("ArrowBtn")
+        toggle_instance_btn.setArrowType(QtCore.Qt.RightArrow)
+        toggle_instance_btn.setMaximumWidth(14)
+        if is_context_plugin:
+            toggle_instance_btn.setArrowType(QtCore.Qt.NoArrow)
+
+        icon_label = None
+        if is_crashing_error:
+            error_pixmap = self._get_error_pixmap()
+            icon_label = PublishPixmapLabel(error_pixmap, self)
+
+        label_widget = QtWidgets.QLabel(error_info["title"], title_frame)
+
+        title_frame_layout = QtWidgets.QHBoxLayout(title_frame)
+        title_frame_layout.setContentsMargins(8, 8, 8, 8)
+        title_frame_layout.setSpacing(0)
+        if icon_label is not None:
+            title_frame_layout.addWidget(icon_label, 0)
+            title_frame_layout.addSpacing(6)
+        title_frame_layout.addWidget(label_widget, 1)
+        title_frame_layout.addWidget(toggle_instance_btn, 0)
+
+        instances_view = PublishErrorInstanceList(self)
         instances_view.setModel(instances_model)
 
         self.setLayoutDirection(QtCore.Qt.LeftToRight)
@@ -348,7 +366,7 @@ class ValidationErrorTitleWidget(QtWidgets.QWidget):
         layout.addWidget(view_widget, 0)
         view_widget.setVisible(False)
 
-        if not context_validation:
+        if not is_context_plugin:
             toggle_instance_btn.clicked.connect(self._on_toggle_btn_click)
 
         title_frame.clicked.connect(self._mouse_release_callback)
@@ -365,13 +383,14 @@ class ValidationErrorTitleWidget(QtWidgets.QWidget):
         self._instances_model = instances_model
         self._instances_view = instances_view
 
-        self._context_validation = context_validation
+        self._is_context_plugin = is_context_plugin
+        self._is_crashing_error = is_crashing_error
 
         self._instance_ids = instance_ids
         self._expanded = False
 
     def sizeHint(self):
-        result = super(ValidationErrorTitleWidget, self).sizeHint()
+        result = super().sizeHint()
         expected_width = max(
             self._view_widget.minimumSizeHint().width(),
             self._view_widget.sizeHint().width()
@@ -407,6 +426,10 @@ class ValidationErrorTitleWidget(QtWidgets.QWidget):
     def id(self):
         return self._title_id
 
+    @property
+    def is_crashing_error(self):
+        return self._is_crashing_error
+
     def _change_style_property(self, selected):
         """Change style of widget based on selection."""
 
@@ -434,6 +457,12 @@ class ValidationErrorTitleWidget(QtWidgets.QWidget):
             self.selected.emit(self._title_id)
             self._set_expanded(True)
 
+    @classmethod
+    def _get_error_pixmap(cls):
+        if cls._error_pixmap is None:
+            cls._error_pixmap = get_pixmap("error")
+        return cls._error_pixmap
+
     def _on_toggle_btn_click(self):
         """Show/hide instances list."""
 
@@ -446,7 +475,7 @@ class ValidationErrorTitleWidget(QtWidgets.QWidget):
         elif expanded is self._expanded:
             return
 
-        if expanded and self._context_validation:
+        if expanded and self._is_context_plugin:
             return
 
         self._expanded = expanded
@@ -460,7 +489,7 @@ class ValidationErrorTitleWidget(QtWidgets.QWidget):
         self.instance_changed.emit(self._title_id)
 
     def get_selected_instances(self):
-        if self._context_validation:
+        if self._is_context_plugin:
             return [CONTEXT_ID]
         sel_model = self._instances_view.selectionModel()
         return [
@@ -473,25 +502,11 @@ class ValidationErrorTitleWidget(QtWidgets.QWidget):
         return list(self._instance_ids)
 
 
-class ValidationArtistMessage(QtWidgets.QWidget):
-    def __init__(self, message, parent):
-        super(ValidationArtistMessage, self).__init__(parent)
-
-        artist_msg_label = QtWidgets.QLabel(message, self)
-        artist_msg_label.setAlignment(QtCore.Qt.AlignCenter)
-
-        main_layout = QtWidgets.QHBoxLayout(self)
-        main_layout.setContentsMargins(0, 0, 0, 0)
-        main_layout.addWidget(
-            artist_msg_label, 1, QtCore.Qt.AlignCenter
-        )
-
-
-class ValidationErrorsView(QtWidgets.QWidget):
+class PublishErrorsView(QtWidgets.QWidget):
     selection_changed = QtCore.Signal()
 
     def __init__(self, parent):
-        super(ValidationErrorsView, self).__init__(parent)
+        super().__init__(parent)
 
         errors_scroll = VerticalScrollArea(self)
         errors_scroll.setWidgetResizable(True)
@@ -506,8 +521,9 @@ class ValidationErrorsView(QtWidgets.QWidget):
         #   scroll widget
         errors_layout.setContentsMargins(5, 0, 0, 0)
 
-        layout = QtWidgets.QVBoxLayout(self)
-        layout.addWidget(errors_scroll, 1)
+        main_layout = QtWidgets.QVBoxLayout(self)
+        main_layout.setContentsMargins(8, 8, 8, 8)
+        main_layout.addWidget(errors_scroll, 1)
 
         self._errors_widget = errors_widget
         self._errors_layout = errors_layout
@@ -529,28 +545,30 @@ class ValidationErrorsView(QtWidgets.QWidget):
         """Set errors into context and created titles.
 
         Args:
-            validation_error_report (PublishValidationErrorsReport): Report
-                with information about validation errors and publish plugin
+            grouped_error_items (List[Dict[str, Any]]): Report
+                with information about publish errors and publish plugin
                 actions.
         """
 
         self._clear()
 
-        first_id = None
+        select_id = None
         for title_item in grouped_error_items:
             title_id = title_item["id"]
-            if first_id is None:
-                first_id = title_id
-            widget = ValidationErrorTitleWidget(title_id, title_item, self)
+            if select_id is None:
+                select_id = title_id
+            widget = PublishErrorTitleWidget(title_id, title_item, self)
             widget.selected.connect(self._on_select)
             widget.instance_changed.connect(self._on_instance_change)
+            if widget.is_crashing_error:
+                select_id = title_id
             self._errors_layout.addWidget(widget)
             self._title_widgets[title_id] = widget
 
         self._errors_layout.addStretch(1)
 
-        if first_id:
-            self._title_widgets[first_id].set_selected(True)
+        if select_id:
+            self._title_widgets[select_id].set_selected(True)
         else:
             self.selection_changed.emit()
 
@@ -715,7 +733,7 @@ class _InstanceItem:
 
 class FamilyGroupLabel(QtWidgets.QWidget):
     def __init__(self, family, parent):
-        super(FamilyGroupLabel, self).__init__(parent)
+        super().__init__(parent)
 
         self.setLayoutDirection(QtCore.Qt.LeftToRight)
 
@@ -742,8 +760,8 @@ class PublishInstanceCardWidget(BaseClickableFrame):
     _success_pix = None
     _in_progress_pix = None
 
-    def __init__(self, instance, icon, publish_finished, parent):
-        super(PublishInstanceCardWidget, self).__init__(parent)
+    def __init__(self, instance, icon, publish_can_continue, parent):
+        super().__init__(parent)
 
         self.setObjectName("CardViewWidget")
 
@@ -756,10 +774,10 @@ class PublishInstanceCardWidget(BaseClickableFrame):
             state_pix = self.get_error_pix()
         elif instance.warned:
             state_pix = self.get_warning_pix()
-        elif publish_finished:
-            state_pix = self.get_success_pix()
-        else:
+        elif publish_can_continue:
             state_pix = self.get_in_progress_pix()
+        else:
+            state_pix = self.get_success_pix()
 
         state_label = IconValuePixmapLabel(state_pix, self)
 
@@ -874,8 +892,10 @@ class PublishInstancesViewWidget(QtWidgets.QWidget):
     _min_width_measure_string = 24 * "O"
     selection_changed = QtCore.Signal()
 
-    def __init__(self, controller, parent):
-        super(PublishInstancesViewWidget, self).__init__(parent)
+    def __init__(
+        self, controller: AbstractPublisherFrontend, parent: QtWidgets.QWidget
+    ):
+        super().__init__(parent)
 
         scroll_area = VerticalScrollArea(self)
         scroll_area.setWidgetResizable(True)
@@ -898,7 +918,7 @@ class PublishInstancesViewWidget(QtWidgets.QWidget):
         layout.setContentsMargins(0, 0, 0, 0)
         layout.addWidget(scroll_area, 1)
 
-        self._controller = controller
+        self._controller: AbstractPublisherFrontend = controller
         self._scroll_area = scroll_area
         self._instance_view = instance_view
         self._instance_layout = instance_layout
@@ -927,7 +947,7 @@ class PublishInstancesViewWidget(QtWidgets.QWidget):
             + scroll_bar.sizeHint().width()
         )
 
-        result = super(PublishInstancesViewWidget, self).sizeHint()
+        result = super().sizeHint()
         result.setWidth(width)
         return result
 
@@ -970,11 +990,7 @@ class PublishInstancesViewWidget(QtWidgets.QWidget):
         widgets = []
         group_widgets = []
 
-        publish_finished = (
-            self._controller.publish_has_crashed
-            or self._controller.publish_has_validation_errors
-            or self._controller.publish_has_finished
-        )
+        publish_can_continue = self._controller.publish_can_continue()
         instances_by_family = collections.defaultdict(list)
         for instance_item in instance_items:
             if not instance_item.exists:
@@ -996,7 +1012,10 @@ class PublishInstancesViewWidget(QtWidgets.QWidget):
                 icon = identifier_icons[instance_item.creator_identifier]
 
                 widget = PublishInstanceCardWidget(
-                    instance_item, icon, publish_finished, self._instance_view
+                    instance_item,
+                    icon,
+                    publish_can_continue,
+                    self._instance_view
                 )
                 widget.selection_requested.connect(self._on_selection_request)
                 self._instance_layout.addWidget(widget, 0)
@@ -1040,7 +1059,7 @@ class LogIconFrame(QtWidgets.QFrame):
     _validation_error_pix = None
 
     def __init__(self, parent, log_type, log_level, is_validation_error):
-        super(LogIconFrame, self).__init__(parent)
+        super().__init__(parent)
 
         self.setAttribute(QtCore.Qt.WA_TranslucentBackground)
 
@@ -1098,6 +1117,57 @@ class LogIconFrame(QtWidgets.QFrame):
         painter.end()
 
 
+class LogItemMessage(QtWidgets.QTextEdit):
+    def __init__(self, msg, parent):
+        super().__init__(parent)
+
+        # Set as plain text to propagate new line characters
+        self.setPlainText(msg)
+
+        self.setObjectName("PublishLogMessage")
+        self.setReadOnly(True)
+        self.setFrameStyle(QtWidgets.QFrame.NoFrame)
+        self.setLineWidth(0)
+        self.setMidLineWidth(0)
+        pal = self.palette()
+        pal.setColor(QtGui.QPalette.Base, QtCore.Qt.transparent)
+        self.setPalette(pal)
+        self.setContentsMargins(0, 0, 0, 0)
+        viewport = self.viewport()
+        viewport.setContentsMargins(0, 0, 0, 0)
+
+        self.setTextInteractionFlags(
+            QtCore.Qt.TextBrowserInteraction)
+        self.setCursor(QtGui.QCursor(QtCore.Qt.IBeamCursor))
+        self.setLineWrapMode(QtWidgets.QTextEdit.WidgetWidth)
+        self.setWordWrapMode(
+            QtGui.QTextOption.WrapMode.WrapAtWordBoundaryOrAnywhere
+        )
+        self.setSizePolicy(
+            QtWidgets.QSizePolicy.Preferred,
+            QtWidgets.QSizePolicy.Maximum
+        )
+        document = self.document()
+        document.documentLayout().documentSizeChanged.connect(
+            self._adjust_minimum_size
+        )
+        document.setDocumentMargin(0.0)
+        self._height = None
+
+    def _adjust_minimum_size(self, size):
+        self._height = size.height() + (2 * self.frameWidth())
+        self.updateGeometry()
+
+    def sizeHint(self):
+        size = super().sizeHint()
+        if self._height is not None:
+            size.setHeight(self._height)
+        return size
+
+    def minimumSizeHint(self):
+        return self.sizeHint()
+
+
 class LogItemWidget(QtWidgets.QWidget):
     log_level_to_flag = {
         10: LOG_DEBUG_VISIBLE,
@@ -1108,17 +1178,12 @@ class LogItemWidget(QtWidgets.QWidget):
     }
 
     def __init__(self, log, parent):
-        super(LogItemWidget, self).__init__(parent)
+        super().__init__(parent)
 
         type_flag, level_n = self._get_log_info(log)
         icon_label = LogIconFrame(
             self, log["type"], level_n, log.get("is_validation_error"))
-        message_label = QtWidgets.QLabel(log["msg"].rstrip(), self)
-        message_label.setObjectName("PublishLogMessage")
-        message_label.setTextInteractionFlags(
-            QtCore.Qt.TextBrowserInteraction)
-        message_label.setCursor(QtGui.QCursor(QtCore.Qt.IBeamCursor))
-        message_label.setWordWrap(True)
+        message_label = LogItemMessage(log["msg"].rstrip(), self)
 
         main_layout = QtWidgets.QHBoxLayout(self)
         main_layout.setContentsMargins(0, 0, 0, 0)
@@ -1185,7 +1250,7 @@ class LogsWithIconsView(QtWidgets.QWidget):
     """
 
     def __init__(self, logs, parent):
-        super(LogsWithIconsView, self).__init__(parent)
+        super().__init__(parent)
         self.setAttribute(QtCore.Qt.WA_TranslucentBackground)
 
         logs_layout = QtWidgets.QVBoxLayout(self)
@@ -1265,12 +1330,13 @@ class InstanceLogsWidget(QtWidgets.QWidget):
     """
 
     def __init__(self, instance, parent):
-        super(InstanceLogsWidget, self).__init__(parent)
+        super().__init__(parent)
 
         self.setAttribute(QtCore.Qt.WA_TranslucentBackground)
 
         label_widget = QtWidgets.QLabel(instance.label, self)
         label_widget.setObjectName("PublishInstanceLogsLabel")
+        label_widget.setWordWrap(True)
         logs_grid = LogsWithIconsView(instance.logs, self)
 
         layout = QtWidgets.QVBoxLayout(self)
@@ -1296,7 +1362,7 @@ class InstancesLogsView(QtWidgets.QFrame):
     """Publish instances logs view widget."""
 
     def __init__(self, parent):
-        super(InstancesLogsView, self).__init__(parent)
+        super().__init__(parent)
         self.setObjectName("InstancesLogsView")
 
         scroll_area = QtWidgets.QScrollArea(self)
@@ -1310,10 +1376,13 @@ class InstancesLogsView(QtWidgets.QFrame):
 
         content_wrap_widget = QtWidgets.QWidget(scroll_area)
         content_wrap_widget.setAttribute(QtCore.Qt.WA_TranslucentBackground)
+        content_wrap_widget.setMinimumWidth(80)
 
         content_widget = QtWidgets.QWidget(content_wrap_widget)
         content_widget.setAttribute(QtCore.Qt.WA_TranslucentBackground)
+
         content_layout = QtWidgets.QVBoxLayout(content_widget)
+        content_layout.setContentsMargins(8, 8, 8, 8)
         content_layout.setSpacing(15)
 
         scroll_area.setWidget(content_wrap_widget)
@@ -1349,16 +1418,16 @@ class InstancesLogsView(QtWidgets.QFrame):
         self._plugin_ids_filter = None
 
     def showEvent(self, event):
-        super(InstancesLogsView, self).showEvent(event)
+        super().showEvent(event)
         self._is_showed = True
         self._update_instances()
 
     def hideEvent(self, event):
-        super(InstancesLogsView, self).hideEvent(event)
+        super().hideEvent(event)
         self._is_showed = False
 
     def closeEvent(self, event):
-        super(InstancesLogsView, self).closeEvent(event)
+        super().closeEvent(event)
         self._is_showed = False
 
     def _update_instances(self):
@@ -1449,6 +1518,78 @@ class InstancesLogsView(QtWidgets.QFrame):
         self._update_instances()
 
 
+class ErrorDetailWidget(QtWidgets.QWidget):
+    def __init__(self, parent):
+        super().__init__(parent)
+
+        error_detail_top = ClickableFrame(self)
+
+        line_l_widget = SeparatorWidget(1, parent=error_detail_top)
+        error_detail_expand_btn = ClassicExpandBtn(error_detail_top)
+        error_detail_expand_label = QtWidgets.QLabel(
+            "Details", error_detail_top)
+
+        line_r_widget = SeparatorWidget(1, parent=error_detail_top)
+
+        error_detail_top_l = QtWidgets.QHBoxLayout(error_detail_top)
+        error_detail_top_l.setContentsMargins(0, 0, 10, 0)
+        error_detail_top_l.addWidget(line_l_widget, 1)
+        error_detail_top_l.addWidget(error_detail_expand_btn, 0)
+        error_detail_top_l.addWidget(error_detail_expand_label, 0)
+        error_detail_top_l.addWidget(line_r_widget, 9)
+
+        error_detail_input = ExpandingTextEdit(self)
+        error_detail_input.setObjectName("InfoText")
+        error_detail_input.setTextInteractionFlags(
+            QtCore.Qt.TextBrowserInteraction
+        )
+
+        main_layout = QtWidgets.QVBoxLayout(self)
+        main_layout.setContentsMargins(0, 0, 0, 0)
+        main_layout.addWidget(error_detail_top, 0)
+        main_layout.addWidget(error_detail_input, 0)
+        main_layout.addStretch(1)
+
+        error_detail_input.setVisible(not error_detail_expand_btn.collapsed)
+
+        error_detail_top.clicked.connect(self._on_detail_toggle)
+
+        self._error_detail_top = error_detail_top
+        self._error_detail_expand_btn = error_detail_expand_btn
+        self._error_detail_input = error_detail_input
+
+    def set_detail(self, detail):
+        if not detail:
+            self._set_visible_inputs(False)
+            return
+
+        if commonmark:
+            self._error_detail_input.setHtml(
+                commonmark.commonmark(detail)
+            )
+
+        elif hasattr(self._error_detail_input, "setMarkdown"):
+            self._error_detail_input.setMarkdown(detail)
+
+        else:
+            self._error_detail_input.setText(detail)
+
+        self._set_visible_inputs(True)
+
+    def _set_visible_inputs(self, visible):
+        self._error_detail_top.setVisible(visible)
+        input_visible = visible
+        if input_visible:
+            input_visible = not self._error_detail_expand_btn.collapsed
+        self._error_detail_input.setVisible(input_visible)
+
+    def _on_detail_toggle(self):
+        self._error_detail_expand_btn.set_collapsed()
+        self._error_detail_input.setVisible(
+            not self._error_detail_expand_btn.collapsed
+        )
+
+
 class CrashWidget(QtWidgets.QWidget):
     """Widget shown when publishing crashes.
 
@@ -1456,8 +1597,10 @@ class CrashWidget(QtWidgets.QWidget):
     actions.
     """
 
-    def __init__(self, controller, parent):
-        super(CrashWidget, self).__init__(parent)
+    def __init__(
+        self, controller: AbstractPublisherFrontend, parent: QtWidgets.QWidget
+    ):
+        super().__init__(parent)
 
         main_label = QtWidgets.QLabel("This is not your fault", self)
         main_label.setAlignment(QtCore.Qt.AlignCenter)
@@ -1481,6 +1624,8 @@ class CrashWidget(QtWidgets.QWidget):
             "Save to disk", btns_widget)
 
         btns_layout = QtWidgets.QHBoxLayout(btns_widget)
+        btns_layout.setContentsMargins(0, 0, 0, 0)
+        btns_layout.setSpacing(0)
         btns_layout.addStretch(1)
         btns_layout.addWidget(copy_clipboard_btn, 0)
         btns_layout.addSpacing(20)
@@ -1488,31 +1633,33 @@ class CrashWidget(QtWidgets.QWidget):
         btns_layout.addStretch(1)
 
         layout = QtWidgets.QVBoxLayout(self)
+        layout.setContentsMargins(5, 5, 5, 5)
+        layout.setSpacing(0)
         layout.addStretch(1)
         layout.addWidget(main_label, 0)
-        layout.addSpacing(20)
+        layout.addSpacing(30)
         layout.addWidget(report_label, 0)
-        layout.addSpacing(20)
+        layout.addSpacing(30)
         layout.addWidget(btns_widget, 0)
         layout.addStretch(2)
 
         copy_clipboard_btn.clicked.connect(self._on_copy_to_clipboard)
         save_to_disk_btn.clicked.connect(self._on_save_to_disk_click)
 
-        self._controller = controller
+        self._controller: AbstractPublisherFrontend = controller
 
     def _on_copy_to_clipboard(self):
-        self._controller.event_system.emit(
+        self._controller.emit_event(
             "copy_report.request", {}, "report_page")
 
     def _on_save_to_disk_click(self):
-        self._controller.event_system.emit(
+        self._controller.emit_event(
             "export_report.request", {}, "report_page")
 
 
-class ErrorDetailsWidget(QtWidgets.QWidget):
+class PublishFailWidget(QtWidgets.QWidget):
     def __init__(self, parent):
-        super(ErrorDetailsWidget, self).__init__(parent)
+        super().__init__(parent)
 
         inputs_widget = QtWidgets.QWidget(self)
         # Error 'Description' input
@@ -1523,34 +1670,7 @@ class ErrorDetailsWidget(QtWidgets.QWidget):
         )
 
         # Error 'Details' widget -> Collapsible
-        error_details_widget = QtWidgets.QWidget(inputs_widget)
-
-        error_details_top = ClickableFrame(error_details_widget)
-
-        error_details_expand_btn = ClassicExpandBtn(error_details_top)
-        error_details_expand_label = QtWidgets.QLabel(
-            "Details", error_details_top)
-
-        line_widget = SeparatorWidget(1, parent=error_details_top)
-
-        error_details_top_l = QtWidgets.QHBoxLayout(error_details_top)
-        error_details_top_l.setContentsMargins(0, 0, 10, 0)
-        error_details_top_l.addWidget(error_details_expand_btn, 0)
-        error_details_top_l.addWidget(error_details_expand_label, 0)
-        error_details_top_l.addWidget(line_widget, 1)
-
-        error_details_input = ExpandingTextEdit(error_details_widget)
-        error_details_input.setObjectName("InfoText")
-        error_details_input.setTextInteractionFlags(
-            QtCore.Qt.TextBrowserInteraction
-        )
-        error_details_input.setVisible(not error_details_expand_btn.collapsed)
-
-        error_details_layout = QtWidgets.QVBoxLayout(error_details_widget)
-        error_details_layout.setContentsMargins(0, 0, 0, 0)
-        error_details_layout.addWidget(error_details_top, 0)
-        error_details_layout.addWidget(error_details_input, 0)
-        error_details_layout.addStretch(1)
+        error_details_widget = ErrorDetailWidget(inputs_widget)
 
         # Description and Details layout
         inputs_layout = QtWidgets.QVBoxLayout(inputs_widget)
@@ -1563,17 +1683,8 @@ class ErrorDetailsWidget(QtWidgets.QWidget):
         main_layout.setContentsMargins(0, 0, 0, 0)
         main_layout.addWidget(inputs_widget, 1)
 
-        error_details_top.clicked.connect(self._on_detail_toggle)
-
-        self._error_details_widget = error_details_widget
         self._error_description_input = error_description_input
-        self._error_details_expand_btn = error_details_expand_btn
-        self._error_details_input = error_details_input
-
-    def _on_detail_toggle(self):
-        self._error_details_expand_btn.set_collapsed()
-        self._error_details_input.setVisible(
-            not self._error_details_expand_btn.collapsed)
+        self._error_details_widget = error_details_widget
 
     def set_error_item(self, error_item):
         detail = ""
@@ -1582,23 +1693,18 @@ class ErrorDetailsWidget(QtWidgets.QWidget):
             description = error_item.description or description
             detail = error_item.detail or detail
 
+        self._error_details_widget.set_detail(detail)
+
         if commonmark:
             self._error_description_input.setHtml(
                 commonmark.commonmark(description)
             )
-            self._error_details_input.setHtml(
-                commonmark.commonmark(detail)
-            )
 
-        elif hasattr(self._error_details_input, "setMarkdown"):
+        elif hasattr(self._error_description_input, "setMarkdown"):
             self._error_description_input.setMarkdown(description)
-            self._error_details_input.setMarkdown(detail)
 
         else:
             self._error_description_input.setText(description)
-            self._error_details_input.setText(detail)
-
-        self._error_details_widget.setVisible(bool(detail))
 
 
 class ReportsWidget(QtWidgets.QWidget):
@@ -1615,7 +1721,7 @@ class ReportsWidget(QtWidgets.QWidget):
         │      │                   │
         │      │                   │
         └──────┴───────────────────┘
-        # Validation errors layout
+        # Publish errors layout
         ┌──────┬─────────┬─────────┐
         │Views │ Actions │         │
         │      ├─────────┤ Details │
@@ -1624,20 +1730,22 @@ class ReportsWidget(QtWidgets.QWidget):
         └──────┴─────────┴─────────┘
     """
 
-    def __init__(self, controller, parent):
-        super(ReportsWidget, self).__init__(parent)
+    def __init__(
+        self, controller: AbstractPublisherFrontend, parent: QtWidgets.QWidget
+    ):
+        super().__init__(parent)
 
         # Instances view
         views_widget = QtWidgets.QWidget(self)
 
         instances_view = PublishInstancesViewWidget(controller, views_widget)
 
-        validation_error_view = ValidationErrorsView(views_widget)
+        publish_error_view = PublishErrorsView(views_widget)
 
         views_layout = QtWidgets.QStackedLayout(views_widget)
         views_layout.setContentsMargins(0, 0, 0, 0)
         views_layout.addWidget(instances_view)
-        views_layout.addWidget(validation_error_view)
+        views_layout.addWidget(publish_error_view)
 
         views_layout.setCurrentWidget(instances_view)
 
@@ -1646,9 +1754,12 @@ class ReportsWidget(QtWidgets.QWidget):
         details_widget.setObjectName("PublishInstancesDetails")
 
         # Actions widget
-        actions_widget = ValidateActionsWidget(controller, details_widget)
+        actions_widget = PublishActionsWidget(controller, details_widget)
 
         pages_widget = QtWidgets.QWidget(details_widget)
+
+        # Crash information
+        crash_widget = CrashWidget(controller, details_widget)
 
         # Logs view
         logs_view = InstancesLogsView(pages_widget)
@@ -1662,30 +1773,24 @@ class ReportsWidget(QtWidgets.QWidget):
 
         detail_input_scroll = QtWidgets.QScrollArea(pages_widget)
 
-        detail_inputs_widget = ErrorDetailsWidget(detail_input_scroll)
+        detail_inputs_widget = PublishFailWidget(detail_input_scroll)
         detail_inputs_widget.setAttribute(QtCore.Qt.WA_TranslucentBackground)
 
         detail_input_scroll.setWidget(detail_inputs_widget)
         detail_input_scroll.setWidgetResizable(True)
         detail_input_scroll.setViewportMargins(0, 0, 0, 0)
 
-        # Crash information
-        crash_widget = CrashWidget(controller, details_widget)
-
         # Layout pages
         pages_layout = QtWidgets.QHBoxLayout(pages_widget)
         pages_layout.setContentsMargins(0, 0, 0, 0)
+        pages_layout.addWidget(crash_widget, 1)
         pages_layout.addWidget(logs_view, 1)
         pages_layout.addWidget(detail_inputs_spacer, 0)
         pages_layout.addWidget(detail_input_scroll, 1)
-        pages_layout.addWidget(crash_widget, 1)
 
         details_layout = QtWidgets.QVBoxLayout(details_widget)
-        margins = details_layout.contentsMargins()
-        margins.setTop(margins.top() * 2)
-        margins.setBottom(margins.bottom() * 2)
-        details_layout.setContentsMargins(margins)
-        details_layout.setSpacing(margins.top())
+        details_layout.setContentsMargins(8, 16, 8, 16)
+        details_layout.setSpacing(8)
         details_layout.addWidget(actions_widget, 0)
         details_layout.addWidget(pages_widget, 1)
 
@@ -1695,12 +1800,12 @@ class ReportsWidget(QtWidgets.QWidget):
         content_layout.addWidget(details_widget, 1)
 
         instances_view.selection_changed.connect(self._on_instance_selection)
-        validation_error_view.selection_changed.connect(
+        publish_error_view.selection_changed.connect(
             self._on_error_selection)
 
         self._views_layout = views_layout
         self._instances_view = instances_view
-        self._validation_error_view = validation_error_view
+        self._publish_error_view = publish_error_view
 
         self._actions_widget = actions_widget
         self._detail_inputs_widget = detail_inputs_widget
@@ -1709,9 +1814,9 @@ class ReportsWidget(QtWidgets.QWidget):
         self._detail_input_scroll = detail_input_scroll
         self._crash_widget = crash_widget
 
-        self._controller = controller
+        self._controller: AbstractPublisherFrontend = controller
 
-        self._validation_errors_by_id = {}
+        self._publish_errors_by_id = {}
 
     def _get_instance_items(self):
         report = self._controller.get_publish_report()
@@ -1741,39 +1846,50 @@ class ReportsWidget(QtWidgets.QWidget):
         return instance_items
 
     def update_data(self):
-        view = self._instances_view
-        validation_error_mode = False
-        if (
-            not self._controller.publish_has_crashed
-            and self._controller.publish_has_validation_errors
-        ):
-            view = self._validation_error_view
-            validation_error_mode = True
+        has_validation_error = self._controller.publish_has_validation_errors()
+        has_finished = self._controller.publish_has_finished()
+        has_crashed = self._controller.publish_has_crashed()
+        error_info = None
+        if has_crashed:
+            error_info = self._controller.get_publish_error_info()
 
-        self._actions_widget.set_visible_mode(validation_error_mode)
-        self._detail_inputs_spacer.setVisible(validation_error_mode)
-        self._detail_input_scroll.setVisible(validation_error_mode)
+        publish_error_mode = False
+        if error_info is not None:
+            publish_error_mode = not error_info.is_unknown_error
+        elif has_validation_error:
+            publish_error_mode = True
+
+        if publish_error_mode:
+            view = self._publish_error_view
+        else:
+            view = self._instances_view
+
         self._views_layout.setCurrentWidget(view)
 
-        self._crash_widget.setVisible(self._controller.publish_has_crashed)
-        self._logs_view.setVisible(not self._controller.publish_has_crashed)
+        self._actions_widget.set_visible_mode(publish_error_mode)
+        self._detail_inputs_spacer.setVisible(publish_error_mode)
+        self._detail_input_scroll.setVisible(publish_error_mode)
+
+        logs_visible = publish_error_mode or has_finished or not has_crashed
+        self._logs_view.setVisible(logs_visible)
+        self._crash_widget.setVisible(not logs_visible)
 
         # Instance view & logs update
         instance_items = self._get_instance_items()
         self._instances_view.update_instances(instance_items)
         self._logs_view.update_instances(instance_items)
 
-        # Validation errors
-        validation_errors = self._controller.get_validation_errors()
-        grouped_error_items = validation_errors.group_items_by_title()
+        # Publish errors
+        publish_errors_report = self._controller.get_publish_errors_report()
+        grouped_error_items = publish_errors_report.group_items_by_title()
 
-        validation_errors_by_id = {
+        publish_errors_by_id = {
             title_item["id"]: title_item
             for title_item in grouped_error_items
         }
 
-        self._validation_errors_by_id = validation_errors_by_id
-        self._validation_error_view.set_errors(grouped_error_items)
+        self._publish_errors_by_id = publish_errors_by_id
+        self._publish_error_view.set_errors(grouped_error_items)
 
     def _on_instance_selection(self):
         instance_ids = self._instances_view.get_selected_instance_ids()
@@ -1781,8 +1897,8 @@ class ReportsWidget(QtWidgets.QWidget):
 
     def _on_error_selection(self):
         title_id, instance_ids = (
-            self._validation_error_view.get_selected_items())
-        error_info = self._validation_errors_by_id.get(title_id)
+            self._publish_error_view.get_selected_items())
+        error_info = self._publish_errors_by_id.get(title_id)
         if error_info is None:
             self._actions_widget.set_error_info(None)
             self._detail_inputs_widget.set_error_item(None)
@@ -1810,16 +1926,18 @@ class ReportPageWidget(QtWidgets.QFrame):
     2. Publishing is paused.                ┐
     3. Publishing successfully finished.    │> Instances with logs.
     4. Publishing crashed.                  ┘
-    5. Crashed because of validation error.  > Errors with logs.
+    5. Crashed because of publish error.     > Errors with logs.
 
-    This widget is shown if validation errors happened during validation part.
+    This widget is shown if publish errors happened.
 
-    Shows validation error titles with instances on which they happened
-    and validation error detail with possible actions (repair).
+    Shows publish error titles with instances on which they happened
+    and publish error detail with possible actions (repair).
     """
 
-    def __init__(self, controller, parent):
-        super(ReportPageWidget, self).__init__(parent)
+    def __init__(
+        self, controller: AbstractPublisherFrontend, parent: QtWidgets.QWidget
+    ):
+        super().__init__(parent)
 
         header_label = QtWidgets.QLabel(self)
         header_label.setAlignment(QtCore.Qt.AlignCenter)
@@ -1832,30 +1950,30 @@ class ReportPageWidget(QtWidgets.QFrame):
         layout.addWidget(header_label, 0)
         layout.addWidget(publish_instances_widget, 0)
 
-        controller.event_system.add_callback(
+        controller.register_event_callback(
             "publish.process.started", self._on_publish_start
         )
-        controller.event_system.add_callback(
+        controller.register_event_callback(
             "publish.reset.finished", self._on_publish_reset
         )
-        controller.event_system.add_callback(
+        controller.register_event_callback(
             "publish.process.stopped", self._on_publish_stop
         )
 
         self._header_label = header_label
         self._publish_instances_widget = publish_instances_widget
 
-        self._controller = controller
+        self._controller: AbstractPublisherFrontend = controller
 
     def _update_label(self):
-        if not self._controller.publish_has_started:
+        if not self._controller.publish_has_started():
             # This probably never happen when this widget is visible
             header_label = "Nothing to report until you run publish"
-        elif self._controller.publish_has_crashed:
+        elif self._controller.publish_has_crashed():
             header_label = "Publish error report"
-        elif self._controller.publish_has_validation_errors:
+        elif self._controller.publish_has_validation_errors():
             header_label = "Publish validation report"
-        elif self._controller.publish_has_finished:
+        elif self._controller.publish_has_finished():
             header_label = "Publish success report"
         else:
             header_label = "Publish report"
@@ -1863,7 +1981,7 @@ class ReportPageWidget(QtWidgets.QFrame):
 
     def _update_state(self):
         self._update_label()
-        publish_started = self._controller.publish_has_started
+        publish_started = self._controller.publish_has_started()
         self._publish_instances_widget.setVisible(publish_started)
         if publish_started:
             self._publish_instances_widget.update_data()

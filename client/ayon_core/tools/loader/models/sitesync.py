@@ -1,10 +1,14 @@
+from __future__ import annotations
+
 import collections
 
-from ayon_api import get_representations, get_versions_links
+from ayon_api import (
+    get_representations,
+    get_versions_links,
+)
 
-from ayon_core.lib import Logger
+from ayon_core.lib import Logger, NestedCacheItem
 from ayon_core.addon import AddonsManager
-from ayon_core.tools.common_models import NestedCacheItem
 from ayon_core.tools.loader.abstract import ActionItem
 
 DOWNLOAD_IDENTIFIER = "sitesync.download"
@@ -510,18 +514,19 @@ class SiteSyncModel:
             "reference"
         )
         for link_repre_id in links:
-            try:
+            if not self._sitesync_addon.is_representation_on_site(
+                project_name,
+                link_repre_id,
+                site_name
+            ):
                 print("Adding {} to linked representation: {}".format(
                     site_name, link_repre_id))
                 self._sitesync_addon.add_site(
                     project_name,
                     link_repre_id,
                     site_name,
-                    force=False
+                    force=True
                 )
-            except Exception:
-                # do not add/reset working site for references
-                log.debug("Site present", exc_info=True)
 
     def _get_linked_representation_id(
         self,
@@ -576,7 +581,7 @@ class SiteSyncModel:
                 project_name,
                 versions_to_check,
                 link_types=link_types,
-                link_direction="out")
+                link_direction="in")  # looking for 'in'puts for version
 
             versions_to_check = set()
             for links in versions_links.values():
@@ -585,9 +590,6 @@ class SiteSyncModel:
                     if link["entityType"] != "version":
                         continue
                     entity_id = link["entityId"]
-                    # Skip already found linked version ids
-                    if entity_id in linked_version_ids:
-                        continue
                     linked_version_ids.add(entity_id)
                     versions_to_check.add(entity_id)
 

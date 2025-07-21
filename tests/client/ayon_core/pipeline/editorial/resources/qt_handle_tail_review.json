@@ -1,0 +1,417 @@
+{
+    "OTIO_SCHEMA": "Clip.2",
+    "metadata": {
+        "Resolve_OTIO": {}
+    },
+    "name": "qt_no_tc_24fps.mov",
+    "source_range": {
+        "OTIO_SCHEMA": "TimeRange.1",
+        "duration": {
+            "OTIO_SCHEMA": "RationalTime.1",
+            "rate": 24.0,
+            "value": 66.0
+        },
+        "start_time": {
+            "OTIO_SCHEMA": "RationalTime.1",
+            "rate": 24.0,
+            "value": 35.0
+        }
+    },
+    "effects": [
+        {
+            "OTIO_SCHEMA": "Effect.1",
+            "metadata": {
+                "Resolve_OTIO": {
+                    "Effect Name": "Transform",
+                    "Enabled": true,
+                    "Name": "Transform",
+                    "Parameters": [],
+                    "Type": 2
+                }
+            },
+            "name": "",
+            "effect_name": "Resolve Effect"
+        },
+        {
+            "OTIO_SCHEMA": "Effect.1",
+            "metadata": {
+                "Resolve_OTIO": {
+                    "Effect Name": "Cropping",
+                    "Enabled": true,
+                    "Name": "Cropping",
+                    "Parameters": [],
+                    "Type": 3
+                }
+            },
+            "name": "",
+            "effect_name": "Resolve Effect"
+        },
+        {
+            "OTIO_SCHEMA": "Effect.1",
+            "metadata": {
+                "Resolve_OTIO": {
+                    "Effect Name": "Dynamic Zoom",
+                    "Enabled": false,
+                    "Name": "Dynamic Zoom",
+                    "Parameters": [
+                        {
+                            "Default Parameter Value": [
+                                0.0,
+                                0.0
+                            ],
+                            "Key Frames": {
+                                "-35": {
+                                    "Value": [
+                                        0.0,
+                                        0.0
+                                    ],
+                                    "Variant Type": "POINTF"
+                                },
+                                "965": {
+                                    "Value": [
+                                        0.0,
+                                        0.0
+                                    ],
+                                    "Variant Type": "POINTF"
+                                }
+                            },
+                            "Parameter ID": "dynamicZoomCenter",
+                            "Parameter Value": [
+                                0.0,
+                                0.0
+                            ],
+                            "Variant Type": "POINTF"
+                        },
+                        {
+                            "Default Parameter Value": 1.0,
+                            "Key Frames": {
+                                "-35": {
+                                    "Value": 0.8,
+                                    "Variant Type": "Double"
+                                },
+                                "965": {
+                                    "Value": 1.0,
+                                    "Variant Type": "Double"
+                                }
+                            },
+                            "Parameter ID": "dynamicZoomScale",
+                            "Parameter Value": 1.0,
+                            "Variant Type": "Double",
+                            "maxValue": 100.0,
+                            "minValue": 0.01
+                        }
+                    ],
+                    "Type": 59
+                }
+            },
+            "name": "",
+            "effect_name": "Resolve Effect"
+        },
+        {
+            "OTIO_SCHEMA": "Effect.1",
+            "metadata": {
+                "Resolve_OTIO": {
+                    "Effect Name": "Composite",
+                    "Enabled": true,
+                    "Name": "Composite",
+                    "Parameters": [],
+                    "Type": 1
+                }
+            },
+            "name": "",
+            "effect_name": "Resolve Effect"
+        },
+        {
+            "OTIO_SCHEMA": "Effect.1",
+            "metadata": {
+                "Resolve_OTIO": {
+                    "Effect Name": "Lens Correction",
+                    "Enabled": true,
+                    "Name": "Lens Correction",
+                    "Parameters": [],
+                    "Type": 43
+                }
+            },
+            "name": "",
+            "effect_name": "Resolve Effect"
+        },
+        {
+            "OTIO_SCHEMA": "Effect.1",
+            "metadata": {
+                "Resolve_OTIO": {
+                    "Effect Name": "Retime and Scaling",
+                    "Enabled": true,
+                    "Name": "Retime and Scaling",
+                    "Parameters": [],
+                    "Type": 22
+                }
+            },
+            "name": "",
+            "effect_name": "Resolve Effect"
+        },
+        {
+            "OTIO_SCHEMA": "Effect.1",
+            "metadata": {
+                "Resolve_OTIO": {
+                    "Effect Name": "Video Faders",
+                    "Enabled": true,
+                    "Name": "Video Faders",
+                    "Parameters": [],
+                    "Type": 36
+                }
+            },
+            "name": "",
+            "effect_name": "Resolve Effect"
+        }
+    ],
+    "markers": [
+        {
+            "OTIO_SCHEMA": "Marker.2",
+            "metadata": {
+                "Resolve_OTIO": {
+                    "Keywords": [],
+                    "Note": "{\"resolve_sub_products\": {\"io.ayon.creators.resolve.shot\": {\"id\": \"pyblish.avalon.instance\", \"productType\": \"shot\", \"productName\": \"shotMain\", \"active\": true, \"creator_identifier\": \"io.ayon.creators.resolve.shot\", \"variant\": \"Main\", \"folderPath\": \"/shots/seq_native_otio_resolve/sh040\", \"task\": \"Generic\", \"clip_variant\": \"main\", \"clip_index\": \"1c8b84d2-4cf0-4528-9854-5c13a7ab64f7\", \"clip_source_resolution\": {\"width\": \"1920\", \"height\": \"1080\", \"pixelAspect\": 1.0}, \"folder\": \"shots\", \"episode\": \"ep01\", \"sequence\": \"seq_native_otio_resolve\", \"track\": \"{_track_}\", \"shot\": \"sh###\", \"hierarchy\": \"shots/seq_native_otio_resolve\", \"sourceResolution\": true, \"workfileFrameStart\": 1001, \"handleStart\": 10, \"handleEnd\": 10, \"parents\": [{\"folder_type\": \"folder\", \"entity_name\": \"shots\"}, {\"folder_type\": \"sequence\", \"entity_name\": \"seq_native_otio_resolve\"}], \"hierarchyData\": {\"folder\": \"shots\", \"episode\": \"ep01\", \"sequence\": \"seq_native_otio_resolve\", \"track\": \"Video1\", \"shot\": \"sh040\"}, \"heroTrack\": true, \"uuid\": \"6259d185-d57e-444f-b667-b5970a67a655\", \"reviewTrack\": \"Video1\", \"label\": \"/shots/seq_native_otio_resolve/sh040 shot\", \"has_promised_context\": true, \"newHierarchyIntegration\": true, \"newAssetPublishing\": true, \"instance_id\": \"24c94533-8ae5-490c-98cf-cd3a27183d3e\", \"creator_attributes\": {\"folderPath\": \"/shots/seq_native_otio_resolve/sh040\", \"workfileFrameStart\": 1001, \"handleStart\": 10, \"handleEnd\": 10, \"frameStart\": 1001, \"frameEnd\": 1067, \"clipIn\": 87088, \"clipOut\": 87154, \"clipDuration\": 66, \"sourceIn\": 35, \"sourceOut\": 101, \"fps\": \"from_selection\"}, \"publish_attributes\": {\"CollectSlackFamilies\": {\"additional_message\": \"\"}}}, \"io.ayon.creators.resolve.plate\": {\"id\": \"pyblish.avalon.instance\", \"productType\": \"plate\", \"productName\": \"platemain\", \"active\": true, \"creator_identifier\": \"io.ayon.creators.resolve.plate\", \"variant\": \"main\", \"folderPath\": \"/shots/seq_native_otio_resolve/sh040\", \"task\": \"Generic\", \"clip_variant\": \"main\", \"clip_index\": \"1c8b84d2-4cf0-4528-9854-5c13a7ab64f7\", \"clip_source_resolution\": {\"width\": \"1920\", \"height\": \"1080\", \"pixelAspect\": 1.0}, \"folder\": \"shots\", \"episode\": \"ep01\", \"sequence\": \"seq_native_otio_resolve\", \"track\": \"{_track_}\", \"shot\": \"sh###\", \"hierarchy\": \"shots/seq_native_otio_resolve\", \"sourceResolution\": true, \"workfileFrameStart\": 1001, \"handleStart\": 10, \"handleEnd\": 10, \"parents\": [{\"folder_type\": \"folder\", \"entity_name\": \"shots\"}, {\"folder_type\": \"sequence\", \"entity_name\": \"seq_native_otio_resolve\"}], \"hierarchyData\": {\"folder\": \"shots\", \"episode\": \"ep01\", \"sequence\": \"seq_native_otio_resolve\", \"track\": \"Video1\", \"shot\": \"sh040\"}, \"heroTrack\": true, \"uuid\": \"6259d185-d57e-444f-b667-b5970a67a655\", \"reviewTrack\": \"Video1\", \"parent_instance_id\": \"24c94533-8ae5-490c-98cf-cd3a27183d3e\", \"label\": \"/shots/seq_native_otio_resolve/sh040 plate\", \"has_promised_context\": true, \"newHierarchyIntegration\": true, \"newAssetPublishing\": true, \"instance_id\": \"92adedc5-4e65-4a0a-9f09-e6522f2327d2\", \"creator_attributes\": {\"parentInstance\": \"/shots/seq_native_otio_resolve/sh040 shot\", \"vSyncOn\": true, \"vSyncTrack\": \"Video1\"}, \"publish_attributes\": {\"CollectSlackFamilies\": {\"additional_message\": \"\"}}}, \"io.ayon.creators.resolve.audio\": {\"id\": \"pyblish.avalon.instance\", \"productType\": \"audio\", \"productName\": \"audioMain\", \"active\": false, \"creator_identifier\": \"io.ayon.creators.resolve.audio\", \"variant\": \"Main\", \"folderPath\": \"/shots/seq_native_otio_resolve/sh040\", \"task\": \"Generic\", \"clip_variant\": \"main\", \"clip_index\": \"1c8b84d2-4cf0-4528-9854-5c13a7ab64f7\", \"clip_source_resolution\": {\"width\": \"1920\", \"height\": \"1080\", \"pixelAspect\": 1.0}, \"folder\": \"shots\", \"episode\": \"ep01\", \"sequence\": \"seq_native_otio_resolve\", \"track\": \"{_track_}\", \"shot\": \"sh###\", \"hierarchy\": \"shots/seq_native_otio_resolve\", \"sourceResolution\": true, \"workfileFrameStart\": 1001, \"handleStart\": 10, \"handleEnd\": 10, \"parents\": [{\"folder_type\": \"folder\", \"entity_name\": \"shots\"}, {\"folder_type\": \"sequence\", \"entity_name\": \"seq_native_otio_resolve\"}], \"hierarchyData\": {\"folder\": \"shots\", \"episode\": \"ep01\", \"sequence\": \"seq_native_otio_resolve\", \"track\": \"Video1\", \"shot\": \"sh040\"}, \"heroTrack\": true, \"uuid\": \"6259d185-d57e-444f-b667-b5970a67a655\", \"reviewTrack\": \"Video1\", \"parent_instance_id\": \"24c94533-8ae5-490c-98cf-cd3a27183d3e\", \"label\": \"/shots/seq_native_otio_resolve/sh040 audio\", \"has_promised_context\": true, \"newHierarchyIntegration\": true, \"newAssetPublishing\": true, \"instance_id\": \"f22878b9-e9d2-415f-93f7-784474d2ff2f\", \"creator_attributes\": {\"parentInstance\": \"/shots/seq_native_otio_resolve/sh040 shot\"}, \"publish_attributes\": {\"CollectSlackFamilies\": {\"additional_message\": \"\"}}}}, \"clip_index\": \"1c8b84d2-4cf0-4528-9854-5c13a7ab64f7\", \"publish\": true}"
+                },
+                "clip_index": "1c8b84d2-4cf0-4528-9854-5c13a7ab64f7",
+                "publish": true,
+                "resolve_sub_products": {
+                    "io.ayon.creators.resolve.audio": {
+                        "active": false,
+                        "clip_index": "1c8b84d2-4cf0-4528-9854-5c13a7ab64f7",
+                        "clip_source_resolution": {
+                            "height": "1080",
+                            "pixelAspect": 1.0,
+                            "width": "1920"
+                        },
+                        "clip_variant": "main",
+                        "creator_attributes": {
+                            "parentInstance": "/shots/seq_native_otio_resolve/sh040 shot"
+                        },
+                        "creator_identifier": "io.ayon.creators.resolve.audio",
+                        "episode": "ep01",
+                        "folder": "shots",
+                        "folderPath": "/shots/seq_native_otio_resolve/sh040",
+                        "handleEnd": 10,
+                        "handleStart": 10,
+                        "has_promised_context": true,
+                        "heroTrack": true,
+                        "hierarchy": "shots/seq_native_otio_resolve",
+                        "hierarchyData": {
+                            "episode": "ep01",
+                            "folder": "shots",
+                            "sequence": "seq_native_otio_resolve",
+                            "shot": "sh040",
+                            "track": "Video1"
+                        },
+                        "id": "pyblish.avalon.instance",
+                        "instance_id": "f22878b9-e9d2-415f-93f7-784474d2ff2f",
+                        "label": "/shots/seq_native_otio_resolve/sh040 audio",
+                        "newAssetPublishing": true,
+                        "newHierarchyIntegration": true,
+                        "parent_instance_id": "24c94533-8ae5-490c-98cf-cd3a27183d3e",
+                        "parents": [
+                            {
+                                "entity_name": "shots",
+                                "folder_type": "folder"
+                            },
+                            {
+                                "entity_name": "seq_native_otio_resolve",
+                                "folder_type": "sequence"
+                            }
+                        ],
+                        "productName": "audioMain",
+                        "productType": "audio",
+                        "publish_attributes": {
+                            "CollectSlackFamilies": {
+                                "additional_message": ""
+                            }
+                        },
+                        "reviewTrack": "Video1",
+                        "sequence": "seq_native_otio_resolve",
+                        "shot": "sh###",
+                        "sourceResolution": true,
+                        "task": "Generic",
+                        "track": "{_track_}",
+                        "uuid": "6259d185-d57e-444f-b667-b5970a67a655",
+                        "variant": "Main",
+                        "workfileFrameStart": 1001
+                    },
+                    "io.ayon.creators.resolve.plate": {
+                        "active": true,
+                        "clip_index": "1c8b84d2-4cf0-4528-9854-5c13a7ab64f7",
+                        "clip_source_resolution": {
+                            "height": "1080",
+                            "pixelAspect": 1.0,
+                            "width": "1920"
+                        },
+                        "clip_variant": "main",
+                        "creator_attributes": {
+                            "parentInstance": "/shots/seq_native_otio_resolve/sh040 shot",
+                            "vSyncOn": true,
+                            "vSyncTrack": "Video1"
+                        },
+                        "creator_identifier": "io.ayon.creators.resolve.plate",
+                        "episode": "ep01",
+                        "folder": "shots",
+                        "folderPath": "/shots/seq_native_otio_resolve/sh040",
+                        "handleEnd": 10,
+                        "handleStart": 10,
+                        "has_promised_context": true,
+                        "heroTrack": true,
+                        "hierarchy": "shots/seq_native_otio_resolve",
+                        "hierarchyData": {
+                            "episode": "ep01",
+                            "folder": "shots",
+                            "sequence": "seq_native_otio_resolve",
+                            "shot": "sh040",
+                            "track": "Video1"
+                        },
+                        "id": "pyblish.avalon.instance",
+                        "instance_id": "92adedc5-4e65-4a0a-9f09-e6522f2327d2",
+                        "label": "/shots/seq_native_otio_resolve/sh040 plate",
+                        "newAssetPublishing": true,
+                        "newHierarchyIntegration": true,
+                        "parent_instance_id": "24c94533-8ae5-490c-98cf-cd3a27183d3e",
+                        "parents": [
+                            {
+                                "entity_name": "shots",
+                                "folder_type": "folder"
+                            },
+                            {
+                                "entity_name": "seq_native_otio_resolve",
+                                "folder_type": "sequence"
+                            }
+                        ],
+                        "productName": "platemain",
+                        "productType": "plate",
+                        "publish_attributes": {
+                            "CollectSlackFamilies": {
+                                "additional_message": ""
+                            }
+                        },
+                        "reviewTrack": "Video1",
+                        "sequence": "seq_native_otio_resolve",
+                        "shot": "sh###",
+                        "sourceResolution": true,
+                        "task": "Generic",
+                        "track": "{_track_}",
+                        "uuid": "6259d185-d57e-444f-b667-b5970a67a655",
+                        "variant": "main",
+                        "workfileFrameStart": 1001
+                    },
+                    "io.ayon.creators.resolve.shot": {
+                        "active": true,
+                        "clip_index": "1c8b84d2-4cf0-4528-9854-5c13a7ab64f7",
+                        "clip_source_resolution": {
+                            "height": "1080",
+                            "pixelAspect": 1.0,
+                            "width": "1920"
+                        },
+                        "clip_variant": "main",
+                        "creator_attributes": {
+                            "clipDuration": 66,
+                            "clipIn": 87088,
+                            "clipOut": 87154,
+                            "folderPath": "/shots/seq_native_otio_resolve/sh040",
+                            "fps": "from_selection",
+                            "frameEnd": 1067,
+                            "frameStart": 1001,
+                            "handleEnd": 10,
+                            "handleStart": 10,
+                            "sourceIn": 35,
+                            "sourceOut": 101,
+                            "workfileFrameStart": 1001
+                        },
+                        "creator_identifier": "io.ayon.creators.resolve.shot",
+                        "episode": "ep01",
+                        "folder": "shots",
+                        "folderPath": "/shots/seq_native_otio_resolve/sh040",
+                        "handleEnd": 10,
+                        "handleStart": 10,
+                        "has_promised_context": true,
+                        "heroTrack": true,
+                        "hierarchy": "shots/seq_native_otio_resolve",
+                        "hierarchyData": {
+                            "episode": "ep01",
+                            "folder": "shots",
+                            "sequence": "seq_native_otio_resolve",
+                            "shot": "sh040",
+                            "track": "Video1"
+                        },
+                        "id": "pyblish.avalon.instance",
+                        "instance_id": "24c94533-8ae5-490c-98cf-cd3a27183d3e",
+                        "label": "/shots/seq_native_otio_resolve/sh040 shot",
+                        "newAssetPublishing": true,
+                        "newHierarchyIntegration": true,
+                        "parents": [
+                            {
+                                "entity_name": "shots",
+                                "folder_type": "folder"
+                            },
+                            {
+                                "entity_name": "seq_native_otio_resolve",
+                                "folder_type": "sequence"
+                            }
+                        ],
+                        "productName": "shotMain",
+                        "productType": "shot",
+                        "publish_attributes": {
+                            "CollectSlackFamilies": {
+                                "additional_message": ""
+                            }
+                        },
+                        "reviewTrack": "Video1",
+                        "sequence": "seq_native_otio_resolve",
+                        "shot": "sh###",
+                        "sourceResolution": true,
+                        "task": "Generic",
+                        "track": "{_track_}",
+                        "uuid": "6259d185-d57e-444f-b667-b5970a67a655",
+                        "variant": "Main",
+                        "workfileFrameStart": 1001
+                    }
+                }
+            },
+            "name": "AyonData",
+            "color": "GREEN",
+            "marked_range": {
+                "OTIO_SCHEMA": "TimeRange.1",
+                "duration": {
+                    "OTIO_SCHEMA": "RationalTime.1",
+                    "rate": 24.0,
+                    "value": 1.0
+                },
+                "start_time": {
+                    "OTIO_SCHEMA": "RationalTime.1",
+                    "rate": 24.0,
+                    "value": 68.0
+                }
+            },
+            "comment": ""
+        }
+    ],
+    "enabled": true,
+    "media_references": {
+        "DEFAULT_MEDIA": {
+            "OTIO_SCHEMA": "ExternalReference.1",
+            "metadata": {},
+            "name": "qt_no_tc_24fps.mov",
+            "available_range": {
+                "OTIO_SCHEMA": "TimeRange.1",
+                "duration": {
+                    "OTIO_SCHEMA": "RationalTime.1",
+                    "rate": 24.0,
+                    "value": 101.0
+                },
+                "start_time": {
+                    "OTIO_SCHEMA": "RationalTime.1",
+                    "rate": 24.0,
+                    "value": 0.0
+                }
+            },
+            "available_image_bounds": null,
+            "target_url": "C:\\data\\qt_no_tc_24fps.mov"
+        }
+    },
+    "active_media_reference_key": "DEFAULT_MEDIA"
+}

@@ -1,32 +1,34 @@
 from qtpy import QtWidgets, QtCore
 
-from .border_label_widget import BorderedLabelWidget
+from ayon_core.tools.publisher.abstract import AbstractPublisherFrontend
 
+from .border_label_widget import BorderedLabelWidget
 from .card_view_widgets import InstanceCardView
 from .list_view_widgets import InstanceListView
 from .widgets import (
-    ProductAttributesWidget,
     CreateInstanceBtn,
     RemoveInstanceBtn,
     ChangeViewBtn,
 )
 from .create_widget import CreateWidget
+from .product_info import ProductInfoWidget
 
 
 class OverviewWidget(QtWidgets.QFrame):
-    active_changed = QtCore.Signal()
-    instance_context_changed = QtCore.Signal()
     create_requested = QtCore.Signal()
     convert_requested = QtCore.Signal()
+    publish_tab_requested = QtCore.Signal()
 
     anim_end_value = 200
     anim_duration = 200
 
-    def __init__(self, controller, parent):
-        super(OverviewWidget, self).__init__(parent)
+    def __init__(
+        self, controller: AbstractPublisherFrontend, parent: QtWidgets.QWidget
+    ):
+        super().__init__(parent)
 
         self._refreshing_instances = False
-        self._controller = controller
+        self._controller: AbstractPublisherFrontend = controller
 
         product_content_widget = QtWidgets.QWidget(self)
 
@@ -57,7 +59,7 @@ class OverviewWidget(QtWidgets.QFrame):
         product_attributes_wrap = BorderedLabelWidget(
             "Publish options", product_content_widget
         )
-        product_attributes_widget = ProductAttributesWidget(
+        product_attributes_widget = ProductInfoWidget(
             controller, product_attributes_wrap
         )
         product_attributes_wrap.set_center_widget(product_attributes_widget)
@@ -113,36 +115,49 @@ class OverviewWidget(QtWidgets.QFrame):
         product_list_view.selection_changed.connect(
             self._on_product_change
         )
+        product_list_view.double_clicked.connect(
+            self.publish_tab_requested
+        )
         product_view_cards.selection_changed.connect(
             self._on_product_change
         )
-        # Active instances changed
-        product_list_view.active_changed.connect(
-            self._on_active_changed
-        )
-        product_view_cards.active_changed.connect(
-            self._on_active_changed
+        product_view_cards.double_clicked.connect(
+            self.publish_tab_requested
         )
         # Instance context has changed
-        product_attributes_widget.instance_context_changed.connect(
-            self._on_instance_context_change
-        )
         product_attributes_widget.convert_requested.connect(
             self._on_convert_requested
         )
 
         # --- Controller callbacks ---
-        controller.event_system.add_callback(
+        controller.register_event_callback(
             "publish.process.started", self._on_publish_start
         )
-        controller.event_system.add_callback(
+        controller.register_event_callback(
             "controller.reset.started", self._on_controller_reset_start
         )
-        controller.event_system.add_callback(
+        controller.register_event_callback(
             "publish.reset.finished", self._on_publish_reset
         )
-        controller.event_system.add_callback(
-            "instances.refresh.finished", self._on_instances_refresh
+        controller.register_event_callback(
+            "create.model.reset",
+            self._on_create_model_reset
+        )
+        controller.register_event_callback(
+            "create.context.added.instance",
+            self._on_instances_added
+        )
+        controller.register_event_callback(
+            "create.context.removed.instance",
+            self._on_instances_removed
+        )
+        controller.register_event_callback(
+            "create.model.instances.context.changed",
+            self._on_instance_context_change
+        )
+        controller.register_event_callback(
+            "create.model.instance.requirement.changed",
+            self._on_instance_requirement_changed
         )
 
         self._product_content_widget = product_content_widget
@@ -284,7 +299,7 @@ class OverviewWidget(QtWidgets.QFrame):
         # Disable delete button if nothing is selected
         self._delete_btn.setEnabled(len(instance_ids) > 0)
 
-        instances_by_id = self._controller.instances
+        instances_by_id = self._controller.get_instances_by_id(instance_ids)
         instances = [
             instances_by_id[instance_id]
             for instance_id in instance_ids
@@ -292,11 +307,6 @@ class OverviewWidget(QtWidgets.QFrame):
         self._product_attributes_widget.set_current_instances(
             instances, context_selected, convertor_identifiers
         )
-
-    def _on_active_changed(self):
-        if self._refreshing_instances:
-            return
-        self.active_changed.emit()
 
     def _on_change_anim(self, value):
         self._create_widget.setVisible(True)
@@ -333,7 +343,9 @@ class OverviewWidget(QtWidgets.QFrame):
         self._change_visibility_for_state()
         self._product_content_layout.addWidget(self._create_widget, 7)
         self._product_content_layout.addWidget(self._product_views_widget, 3)
-        self._product_content_layout.addWidget(self._product_attributes_wrap, 7)
+        self._product_content_layout.addWidget(
+            self._product_attributes_wrap, 7
+        )
 
     def _change_visibility_for_state(self):
         self._create_widget.setVisible(
@@ -343,7 +355,13 @@ class OverviewWidget(QtWidgets.QFrame):
             self._current_state == "publish"
         )
 
-    def _on_instance_context_change(self):
+    def _on_instance_context_change(self, event):
+        self._refresh_instance_states(event["instance_ids"])
+
+    def _on_instance_requirement_changed(self, event):
+        self._refresh_instance_states(event["instance_ids"])
+
+    def _refresh_instance_states(self, instance_ids):
         current_idx = self._product_views_layout.currentIndex()
         for idx in range(self._product_views_layout.count()):
             if idx == current_idx:
@@ -353,9 +371,7 @@ class OverviewWidget(QtWidgets.QFrame):
                 widget.set_refreshed(False)
 
         current_widget = self._product_views_layout.widget(current_idx)
-        current_widget.refresh_instance_states()
-
-        self.instance_context_changed.emit()
+        current_widget.refresh_instance_states(instance_ids)
 
     def _on_convert_requested(self):
         self.convert_requested.emit()
@@ -377,7 +393,7 @@ class OverviewWidget(QtWidgets.QFrame):
 
         Returns:
             list[str]: Selected legacy convertor identifiers.
-                Example: ['io.openpype.creators.houdini.legacy']
+                Example: ['io.ayon.creators.houdini.legacy']
         """
 
         _, _, convertor_identifiers = self.get_selected_items()
@@ -426,6 +442,12 @@ class OverviewWidget(QtWidgets.QFrame):
         # Force to change instance and refresh details
         self._on_product_change()
 
+        # Give a change to process Resize Request
+        QtWidgets.QApplication.processEvents()
+        # Trigger update geometry of
+        widget = self._product_views_layout.currentWidget()
+        widget.updateGeometry()
+
     def _on_publish_start(self):
         """Publish started."""
 
@@ -447,15 +469,15 @@ class OverviewWidget(QtWidgets.QFrame):
 
         self._create_btn.setEnabled(True)
         self._product_attributes_wrap.setEnabled(True)
-        self._product_content_widget.setEnabled(self._controller.host_is_valid)
+        self._product_content_widget.setEnabled(
+            self._controller.is_host_valid()
+        )
 
-    def _on_instances_refresh(self):
-        """Controller refreshed instances."""
-
+    def _on_create_model_reset(self):
         self._refresh_instances()
 
-        # Give a change to process Resize Request
-        QtWidgets.QApplication.processEvents()
-        # Trigger update geometry of
-        widget = self._product_views_layout.currentWidget()
-        widget.updateGeometry()
+    def _on_instances_added(self):
+        self._refresh_instances()
+
+    def _on_instances_removed(self):
+        self._refresh_instances()

@@ -15,7 +15,7 @@ class _VLineWidget(QtWidgets.QWidget):
     It is expected that parent widget will set width.
     """
     def __init__(self, color, line_size, left, parent):
-        super(_VLineWidget, self).__init__(parent)
+        super().__init__(parent)
         self._color = color
         self._left = left
         self._line_size = line_size
@@ -69,7 +69,7 @@ class _HBottomLineWidget(QtWidgets.QWidget):
     It is expected that parent widget will set height and radius.
     """
     def __init__(self, color, line_size, parent):
-        super(_HBottomLineWidget, self).__init__(parent)
+        super().__init__(parent)
         self._color = color
         self._radius = 0
         self._line_size = line_size
@@ -128,7 +128,7 @@ class _HTopCornerLineWidget(QtWidgets.QWidget):
     """
 
     def __init__(self, color, line_size, left_side, parent):
-        super(_HTopCornerLineWidget, self).__init__(parent)
+        super().__init__(parent)
         self._left_side = left_side
         self._line_size = line_size
         self._color = color
@@ -192,7 +192,7 @@ class BorderedLabelWidget(QtWidgets.QFrame):
     └──────────────────────┘
     """
     def __init__(self, label, parent):
-        super(BorderedLabelWidget, self).__init__(parent)
+        super().__init__(parent)
         color_value = get_objected_colors("border")
         color = None
         if color_value:
@@ -269,7 +269,7 @@ class BorderedLabelWidget(QtWidgets.QFrame):
         self._recalculate_sizes()
 
     def showEvent(self, event):
-        super(BorderedLabelWidget, self).showEvent(event)
+        super().showEvent(event)
         self._recalculate_sizes()
 
     def _recalculate_sizes(self):

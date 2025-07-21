@@ -1,4 +1,8 @@
+from __future__ import annotations
+
 import numbers
+import uuid
+
 from qtpy import QtWidgets, QtCore, QtGui
 
 from ayon_core.tools.utils.lib import format_version
@@ -15,36 +19,31 @@ from .products_model import (
     SYNC_REMOTE_SITE_AVAILABILITY,
 )
 
+COMBO_VERSION_ID_ROLE = QtCore.Qt.UserRole + 1
+COMBO_TASK_ID_ROLE = QtCore.Qt.UserRole + 2
+COMBO_STATUS_NAME_ROLE = QtCore.Qt.UserRole + 3
+COMBO_VERSION_TAGS_ROLE = QtCore.Qt.UserRole + 4
+COMBO_TASK_TAGS_ROLE = QtCore.Qt.UserRole + 5
 
-class VersionComboBox(QtWidgets.QComboBox):
-    value_changed = QtCore.Signal(str)
 
-    def __init__(self, product_id, parent):
-        super(VersionComboBox, self).__init__(parent)
-        self._product_id = product_id
+class ComboVersionsModel(QtGui.QStandardItemModel):
+    def __init__(self):
+        super().__init__()
         self._items_by_id = {}
 
-        self._current_id = None
-
-        self.currentIndexChanged.connect(self._on_index_change)
-
-    def update_versions(self, version_items, current_version_id):
-        model = self.model()
-        root_item = model.invisibleRootItem()
-        version_items = list(reversed(version_items))
-        version_ids = [
+    def update_versions(self, version_items, task_tags_by_version_id):
+        version_ids = {
             version_item.version_id
             for version_item in version_items
-        ]
-        if current_version_id not in version_ids and version_ids:
-            current_version_id = version_ids[0]
-        self._current_id = current_version_id
+        }
 
+        root_item = self.invisibleRootItem()
         to_remove = set(self._items_by_id.keys()) - set(version_ids)
         for item_id in to_remove:
             item = self._items_by_id.pop(item_id)
             root_item.removeRow(item.row())
 
+        version_tags_by_version_id = {}
         for idx, version_item in enumerate(version_items):
             version_id = version_item.version_id
 
@@ -54,13 +53,183 @@ class VersionComboBox(QtWidgets.QComboBox):
                 item = QtGui.QStandardItem(label)
                 item.setData(version_id, QtCore.Qt.UserRole)
                 self._items_by_id[version_id] = item
+            version_tags = set(version_item.tags)
+            task_tags = task_tags_by_version_id[version_id]
+            item.setData(version_id, COMBO_VERSION_ID_ROLE)
+            item.setData(version_item.status, COMBO_STATUS_NAME_ROLE)
+            item.setData(version_item.task_id, COMBO_TASK_ID_ROLE)
+            item.setData("|".join(version_tags), COMBO_VERSION_TAGS_ROLE)
+            item.setData("|".join(task_tags), COMBO_TASK_TAGS_ROLE)
+            version_tags_by_version_id[version_id] = set(version_item.tags)
 
             if item.row() != idx:
                 root_item.insertRow(idx, item)
 
+
+class ComboVersionsFilterModel(QtCore.QSortFilterProxyModel):
+    def __init__(self):
+        super().__init__()
+        self._status_filter = None
+        self._task_ids_filter = None
+        self._version_tags_filter = None
+        self._task_tags_filter = None
+
+    def filterAcceptsRow(self, row, parent):
+        index = None
+        if self._status_filter is not None:
+            if not self._status_filter:
+                return False
+            if index is None:
+                index = self.sourceModel().index(row, 0, parent)
+            status = index.data(COMBO_STATUS_NAME_ROLE)
+            if status not in self._status_filter:
+                return False
+
+        if self._task_ids_filter:
+            if index is None:
+                index = self.sourceModel().index(row, 0, parent)
+            task_id = index.data(COMBO_TASK_ID_ROLE)
+            if task_id not in self._task_ids_filter:
+                return False
+
+        if self._version_tags_filter is not None:
+            if not self._version_tags_filter:
+                return False
+
+            if index is None:
+                model = self.sourceModel()
+                index = model.index(row, 0, parent)
+            version_tags_s = index.data(COMBO_TASK_TAGS_ROLE)
+            version_tags = set()
+            if version_tags_s:
+                version_tags = set(version_tags_s.split("|"))
+
+            if not version_tags & self._version_tags_filter:
+                return False
+
+        if self._task_tags_filter is not None:
+            if not self._task_tags_filter:
+                return False
+
+            if index is None:
+                model = self.sourceModel()
+                index = model.index(row, 0, parent)
+            task_tags_s = index.data(COMBO_TASK_TAGS_ROLE)
+            task_tags = set()
+            if task_tags_s:
+                task_tags = set(task_tags_s.split("|"))
+            if not (task_tags & self._task_tags_filter):
+                return False
+
+        return True
+
+    def set_tasks_filter(self, task_ids):
+        if self._task_ids_filter == task_ids:
+            return
+        self._task_ids_filter = task_ids
+        self.invalidateFilter()
+
+    def set_task_tags_filter(self, tags):
+        if self._task_tags_filter == tags:
+            return
+        self._task_tags_filter = tags
+        self.invalidateFilter()
+
+    def set_statuses_filter(self, status_names):
+        if self._status_filter == status_names:
+            return
+        self._status_filter = status_names
+        self.invalidateFilter()
+
+    def set_version_tags_filter(self, tags):
+        if self._version_tags_filter == tags:
+            return
+        self._version_tags_filter = tags
+        self.invalidateFilter()
+
+
+class VersionComboBox(QtWidgets.QComboBox):
+    value_changed = QtCore.Signal(str, str)
+
+    def __init__(self, product_id, parent):
+        super().__init__(parent)
+
+        versions_model = ComboVersionsModel()
+        proxy_model = ComboVersionsFilterModel()
+        proxy_model.setSourceModel(versions_model)
+
+        self.setModel(proxy_model)
+
+        self._product_id = product_id
+        self._items_by_id = {}
+
+        self._current_id = None
+
+        self._versions_model = versions_model
+        self._proxy_model = proxy_model
+
+        self.currentIndexChanged.connect(self._on_index_change)
+
+    def get_product_id(self):
+        return self._product_id
+
+    def set_tasks_filter(self, task_ids):
+        self._proxy_model.set_tasks_filter(task_ids)
+        if self.count() == 0:
+            return
+        if self.currentIndex() != 0:
+            self.setCurrentIndex(0)
+
+    def set_task_tags_filter(self, tags):
+        self._proxy_model.set_task_tags_filter(tags)
+        if self.count() == 0:
+            return
+        if self.currentIndex() != 0:
+            self.setCurrentIndex(0)
+
+    def set_statuses_filter(self, status_names):
+        self._proxy_model.set_statuses_filter(status_names)
+        if self.count() == 0:
+            return
+        if self.currentIndex() != 0:
+            self.setCurrentIndex(0)
+
+    def set_version_tags_filter(self, tags):
+        self._proxy_model.set_version_tags_filter(tags)
+        if self.count() == 0:
+            return
+        if self.currentIndex() != 0:
+            self.setCurrentIndex(0)
+
+    def all_versions_filtered_out(self):
+        if self._items_by_id:
+            return self.count() == 0
+        return False
+
+    def update_versions(
+        self,
+        version_items,
+        current_version_id,
+        task_tags_by_version_id,
+    ):
+        self.blockSignals(True)
+        version_items = list(version_items)
+        version_ids = [
+            version_item.version_id
+            for version_item in version_items
+        ]
+        if current_version_id not in version_ids and version_ids:
+            current_version_id = version_ids[0]
+        self._current_id = current_version_id
+
+        self._versions_model.update_versions(
+            version_items, task_tags_by_version_id
+        )
+
         index = version_ids.index(current_version_id)
         if self.currentIndex() != index:
             self.setCurrentIndex(index)
+        self.blockSignals(False)
 
     def _on_index_change(self):
         idx = self.currentIndex()
@@ -68,22 +237,53 @@ class VersionComboBox(QtWidgets.QComboBox):
         if value == self._current_id:
             return
         self._current_id = value
-        self.value_changed.emit(self._product_id)
+        self.value_changed.emit(self._product_id, value)
 
 
 class VersionDelegate(QtWidgets.QStyledItemDelegate):
     """A delegate that display version integer formatted as version string."""
 
-    version_changed = QtCore.Signal()
+    version_changed = QtCore.Signal(str, str)
 
     def __init__(self, *args, **kwargs):
-        super(VersionDelegate, self).__init__(*args, **kwargs)
-        self._editor_by_product_id = {}
+        super().__init__(*args, **kwargs)
+
+        self._editor_by_id: dict[str, VersionComboBox] = {}
+        self._task_ids_filter = None
+        self._statuses_filter = None
+        self._version_tags_filter = None
+        self._task_tags_filter = None
 
     def displayText(self, value, locale):
         if not isinstance(value, numbers.Integral):
             return "N/A"
         return format_version(value)
+
+    def set_tasks_filter(self, task_ids):
+        self._task_ids_filter = set(task_ids)
+        for widget in self._editor_by_id.values():
+            widget.set_tasks_filter(task_ids)
+
+    def set_statuses_filter(self, status_names):
+        if status_names is not None:
+            status_names = set(status_names)
+        self._statuses_filter = status_names
+        for widget in self._editor_by_id.values():
+            widget.set_statuses_filter(status_names)
+
+    def set_version_tags_filter(self, tags):
+        if tags is not None:
+            tags = set(tags)
+        self._version_tags_filter = tags
+        for widget in self._editor_by_id.values():
+            widget.set_version_tags_filter(tags)
+
+    def set_task_tags_filter(self, tags):
+        if tags is not None:
+            tags = set(tags)
+        self._task_tags_filter = tags
+        for widget in self._editor_by_id.values():
+            widget.set_task_tags_filter(tags)
 
     def paint(self, painter, option, index):
         fg_color = index.data(QtCore.Qt.ForegroundRole)
@@ -96,7 +296,7 @@ class VersionDelegate(QtWidgets.QStyledItemDelegate):
                 fg_color = None
 
         if not fg_color:
-            return super(VersionDelegate, self).paint(painter, option, index)
+            return super().paint(painter, option, index)
 
         if option.widget:
             style = option.widget.style()
@@ -104,7 +304,10 @@ class VersionDelegate(QtWidgets.QStyledItemDelegate):
             style = QtWidgets.QApplication.style()
 
         style.drawControl(
-            style.CE_ItemViewItem, option, painter, option.widget
+            QtWidgets.QCommonStyle.CE_ItemViewItem,
+            option,
+            painter,
+            option.widget
         )
 
         painter.save()
@@ -116,9 +319,14 @@ class VersionDelegate(QtWidgets.QStyledItemDelegate):
         pen.setColor(fg_color)
         painter.setPen(pen)
 
-        text_rect = style.subElementRect(style.SE_ItemViewItemText, option)
+        text_rect = style.subElementRect(
+            QtWidgets.QCommonStyle.SE_ItemViewItemText,
+            option
+        )
         text_margin = style.proxy().pixelMetric(
-            style.PM_FocusFrameHMargin, option, option.widget
+            QtWidgets.QCommonStyle.PM_FocusFrameHMargin,
+            option,
+            option.widget
         ) + 1
 
         painter.drawText(
@@ -134,33 +342,53 @@ class VersionDelegate(QtWidgets.QStyledItemDelegate):
         if not product_id:
             return
 
+        item_id = uuid.uuid4().hex
+
         editor = VersionComboBox(product_id, parent)
-        self._editor_by_product_id[product_id] = editor
+        editor.setProperty("itemId", item_id)
+        editor.setFocusPolicy(QtCore.Qt.NoFocus)
+
         editor.value_changed.connect(self._on_editor_change)
+        editor.destroyed.connect(self._on_destroy)
+
+        self._editor_by_id[item_id] = editor
 
         return editor
-
-    def _on_editor_change(self, product_id):
-        editor = self._editor_by_product_id[product_id]
-
-        # Update model data
-        self.commitData.emit(editor)
-        # Display model data
-        self.version_changed.emit()
 
     def setEditorData(self, editor, index):
         editor.clear()
 
         # Current value of the index
-        versions = index.data(VERSION_NAME_EDIT_ROLE) or []
+        product_id = index.data(PRODUCT_ID_ROLE)
         version_id = index.data(VERSION_ID_ROLE)
-        editor.update_versions(versions, version_id)
+        model = index.model()
+        while hasattr(model, "sourceModel"):
+            model = model.sourceModel()
+        versions = model.get_version_items_by_product_id(product_id)
+        task_tags_by_version_id = {
+            version_item.version_id: model.get_task_tags_by_id(
+                version_item.task_id
+            )
+            for version_item in versions
+        }
+
+        editor.update_versions(versions, version_id, task_tags_by_version_id)
+        editor.set_tasks_filter(self._task_ids_filter)
+        editor.set_task_tags_filter(self._task_tags_filter)
+        editor.set_statuses_filter(self._statuses_filter)
 
     def setModelData(self, editor, model, index):
         """Apply the integer version back in the model"""
 
         version_id = editor.itemData(editor.currentIndex())
         model.setData(index, version_id, VERSION_NAME_EDIT_ROLE)
+
+    def _on_editor_change(self, product_id, version_id):
+        self.version_changed.emit(product_id, version_id)
+
+    def _on_destroy(self, obj):
+        item_id = obj.property("itemId")
+        self._editor_by_id.pop(item_id, None)
 
 
 class LoadedInSceneDelegate(QtWidgets.QStyledItemDelegate):

@@ -1,0 +1,16 @@
+name: 📤 Upload to Ynput Cloud
+
+on:
+  workflow_dispatch:
+  release:
+    types: [published]
+
+jobs:
+  call-upload-to-ynput-cloud:
+    uses: ynput/ops-repo-automation/.github/workflows/upload_to_ynput_cloud.yml@main
+    secrets:
+      CI_EMAIL: ${{ secrets.CI_EMAIL }}
+      CI_USER: ${{ secrets.CI_USER }}
+      YNPUT_BOT_TOKEN: ${{ secrets.YNPUT_BOT_TOKEN }}
+      YNPUT_CLOUD_URL: ${{ secrets.YNPUT_CLOUD_URL }}
+      YNPUT_CLOUD_TOKEN: ${{ secrets.YNPUT_CLOUD_TOKEN }}

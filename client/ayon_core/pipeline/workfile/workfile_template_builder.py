@@ -3,21 +3,21 @@
 Build templates are manually prepared using plugin definitions which create
 placeholders inside the template which are populated on import.
 
-This approach is very explicit to achive very specific build logic that can be
+This approach is very explicit to achieve very specific build logic that can be
 targeted by task types and names.
 
 Placeholders are created using placeholder plugins which should care about
 logic and data of placeholder items. 'PlaceholderItem' is used to keep track
-about it's progress.
+about its progress.
 """
 
 import os
 import re
 import collections
 import copy
-from abc import ABCMeta, abstractmethod
+from abc import ABC, abstractmethod
 
-import six
+import ayon_api
 from ayon_api import (
     get_folders,
     get_folder_by_path,
@@ -36,6 +36,7 @@ from ayon_core.lib import (
     filter_profiles,
     attribute_definitions,
 )
+from ayon_core.lib.events import EventSystem, EventCallback, Event
 from ayon_core.lib.attribute_definitions import get_attributes_keys
 from ayon_core.pipeline import Anatomy
 from ayon_core.pipeline.load import (
@@ -43,13 +44,47 @@ from ayon_core.pipeline.load import (
     get_representation_contexts,
     load_with_repre_context,
 )
+from ayon_core.pipeline.plugin_discover import (
+    discover,
+    register_plugin,
+    register_plugin_path,
+    deregister_plugin,
+    deregister_plugin_path
+)
 
 from ayon_core.pipeline.create import (
     discover_legacy_creator_plugins,
     CreateContext,
+    HiddenCreator,
 )
 
 _NOT_SET = object()
+
+
+class EntityResolutionError(Exception):
+    """Exception raised when entity URI resolution fails."""
+
+
+def resolve_entity_uri(entity_uri: str) -> str:
+    """Resolve AYON entity URI to a filesystem path for local system."""
+    response = ayon_api.post(
+        "resolve",
+        resolveRoots=True,
+        uris=[entity_uri]
+    )
+    if response.status_code != 200:
+        raise RuntimeError(
+            f"Unable to resolve AYON entity URI filepath for "
+            f"'{entity_uri}': {response.text}"
+        )
+
+    entities = response.data[0]["entities"]
+    if len(entities) != 1:
+        raise EntityResolutionError(
+            f"Unable to resolve AYON entity URI '{entity_uri}' to a "
+            f"single filepath. Received data: {response.data}"
+        )
+    return entities[0]["filePath"]
 
 
 class TemplateNotFound(Exception):
@@ -74,12 +109,11 @@ class TemplateLoadFailed(Exception):
     pass
 
 
-@six.add_metaclass(ABCMeta)
-class AbstractTemplateBuilder(object):
+class AbstractTemplateBuilder(ABC):
     """Abstraction of Template Builder.
 
     Builder cares about context, shared data, cache, discovery of plugins
-    and trigger logic. Provides public api for host workfile build systen.
+    and trigger logic. Provides public api for host workfile build system.
 
     Rest of logic is based on plugins that care about collection and creation
     of placeholder items.
@@ -123,6 +157,8 @@ class AbstractTemplateBuilder(object):
         self._current_folder_entity = _NOT_SET
         self._current_task_entity = _NOT_SET
         self._linked_folder_entities = _NOT_SET
+
+        self._event_system = EventSystem()
 
     @property
     def project_name(self):
@@ -211,10 +247,14 @@ class AbstractTemplateBuilder(object):
         Returns:
             List[PlaceholderPlugin]: Plugin classes available for host.
         """
+        plugins = []
 
+        # Backwards compatibility
         if hasattr(self._host, "get_workfile_build_placeholder_plugins"):
             return self._host.get_workfile_build_placeholder_plugins()
-        return []
+
+        plugins.extend(discover(PlaceholderPlugin))
+        return plugins
 
     @property
     def host(self):
@@ -257,6 +297,8 @@ class AbstractTemplateBuilder(object):
 
         self._project_settings = None
 
+        self._event_system = EventSystem()
+
         self.clear_shared_data()
         self.clear_shared_populate_data()
 
@@ -295,7 +337,13 @@ class AbstractTemplateBuilder(object):
         self._creators_by_name = creators_by_name
 
     def _collect_creators(self):
-        self._creators_by_name = dict(self.create_context.creators)
+        self._creators_by_name = {
+            identifier: creator
+            for identifier, creator
+            in self.create_context.manual_creators.items()
+            # Do not list HiddenCreator even though it is a 'manual creator'
+            if not isinstance(creator, HiddenCreator)
+        }
 
     def get_creators_by_name(self):
         if self._creators_by_name is None:
@@ -329,7 +377,7 @@ class AbstractTemplateBuilder(object):
         is good practice to check if the same value is not already stored under
         different key or if the key is not already used for something else.
 
-        Key should be self explanatory to content.
+        Key should be self-explanatory to content.
         - wrong: 'folder'
         - good: 'folder_name'
 
@@ -375,7 +423,7 @@ class AbstractTemplateBuilder(object):
         is good practice to check if the same value is not already stored under
         different key or if the key is not already used for something else.
 
-        Key should be self explanatory to content.
+        Key should be self-explanatory to content.
         - wrong: 'folder'
         - good: 'folder_path'
 
@@ -395,7 +443,7 @@ class AbstractTemplateBuilder(object):
         is good practice to check if the same value is not already stored under
         different key or if the key is not already used for something else.
 
-        Key should be self explanatory to content.
+        Key should be self-explanatory to content.
         - wrong: 'folder'
         - good: 'folder_path'
 
@@ -466,7 +514,7 @@ class AbstractTemplateBuilder(object):
 
         return list(sorted(
             placeholders,
-            key=lambda i: i.order
+            key=lambda placeholder: placeholder.order
         ))
 
     def build_template(
@@ -492,49 +540,61 @@ class AbstractTemplateBuilder(object):
             keep_placeholders (bool): Add flag to placeholder data for
                 hosts to decide if they want to remove
                 placeholder after it is used.
-            create_first_version (bool): create first version of a workfile
-            workfile_creation_enabled (bool): If True, it might create
-                                              first version but ignore
-                                              process if version is created
+            create_first_version (bool): Create first version of a workfile.
+                 When set to True, this option initiates the saving of the
+                 workfile for an initial version. It will skip saving if
+                 a version already exists.
+            workfile_creation_enabled (bool): Whether the call is part of
+                creating a new workfile.
+                When True, we only build if the current file is not
+                an existing saved workfile but a "new" file. Basically when
+                enabled we assume the user tries to load it only into a
+                "New File" (unsaved empty workfile).
+                When False, the default value, we assume we explicitly want to
+                build the template in our current scene regardless of current
+                scene state.
 
         """
-        template_preset = self.get_template_preset()
+        # More accurate variable name
+        # - logic related to workfile creation should be moved out in future
+        explicit_build_requested = not workfile_creation_enabled
 
-        if template_path is None:
-            template_path = template_preset["path"]
-
-        if keep_placeholders is None:
-            keep_placeholders = template_preset["keep_placeholder"]
-        if create_first_version is None:
-            create_first_version = template_preset["create_first_version"]
-
-        # check if first version is created
-        created_version_workfile = False
-        if create_first_version:
-            created_version_workfile = self.create_first_workfile_version()
-
-        # if first version is created, import template
-        # and populate placeholders
+        # Get default values if not provided
         if (
-            create_first_version
-            and workfile_creation_enabled
-            and created_version_workfile
+            template_path is None
+            or keep_placeholders is None
+            or create_first_version is None
         ):
+            preset = self.get_template_preset()
+            template_path: str = template_path or preset["path"]
+            if keep_placeholders is None:
+                keep_placeholders: bool = preset["keep_placeholder"]
+            if create_first_version is None:
+                create_first_version: bool = preset["create_first_version"]
+
+        # Build the template if we are explicitly requesting it or if it's
+        # an unsaved "new file".
+        is_new_file = not self.host.get_current_workfile()
+        if is_new_file or explicit_build_requested:
+            self.log.info(f"Building the workfile template: {template_path}")
             self.import_template(template_path)
             self.populate_scene_placeholders(
                 level_limit, keep_placeholders)
 
-            # save workfile after template is populated
-            self.save_workfile(created_version_workfile)
-
-        # ignore process if first workfile is enabled
-        # but a version is already created
-        if workfile_creation_enabled:
+        # Do not consider saving a first workfile version, if this is not set
+        # to be a "workfile creation" or `create_first_version` is disabled.
+        if explicit_build_requested or not create_first_version:
             return
 
-        self.import_template(template_path)
-        self.populate_scene_placeholders(
-            level_limit, keep_placeholders)
+        # If there is no existing workfile, save the first version
+        workfile_path = self.get_workfile_path()
+        if not os.path.exists(workfile_path):
+            self.log.info("Saving first workfile: %s", workfile_path)
+            self.save_workfile(workfile_path)
+        else:
+            self.log.info(
+                "A workfile already exists. Skipping save of workfile as "
+                "initial version.")
 
     def rebuild_template(self):
         """Go through existing placeholders in scene and update them.
@@ -571,7 +631,7 @@ class AbstractTemplateBuilder(object):
         """Open template file with registered host."""
         template_preset = self.get_template_preset()
         template_path = template_preset["path"]
-        self.host.open_file(template_path)
+        self.host.open_workfile(template_path)
 
     @abstractmethod
     def import_template(self, template_path):
@@ -588,29 +648,16 @@ class AbstractTemplateBuilder(object):
 
         pass
 
-    def create_first_workfile_version(self):
-        """
-        Create first version of workfile.
+    def get_workfile_path(self):
+        """Return last known workfile path or the first workfile path create.
 
-        Should load the content of template into scene so
-        'populate_scene_placeholders' can be started.
-
-        Args:
-            template_path (str): Fullpath for current task and
-                host's template file.
+        Return:
+            str: Last workfile path, or first version to create if none exist.
         """
+        # AYON_LAST_WORKFILE will be set to the last existing workfile OR
+        # if none exist it will be set to the first version.
         last_workfile_path = os.environ.get("AYON_LAST_WORKFILE")
         self.log.info("__ last_workfile_path: {}".format(last_workfile_path))
-        if os.path.exists(last_workfile_path):
-            # ignore in case workfile existence
-            self.log.info("Workfile already exists, skipping creation.")
-            return False
-
-        # Create first version
-        self.log.info("Creating first version of workfile.")
-        self.save_workfile(last_workfile_path)
-
-        # Confirm creation of first version
         return last_workfile_path
 
     def save_workfile(self, workfile_path):
@@ -685,7 +732,7 @@ class AbstractTemplateBuilder(object):
             for placeholder in placeholders
         }
         all_processed = len(placeholders) == 0
-        # Counter is checked at the ned of a loop so the loop happens at least
+        # Counter is checked at the end of a loop so the loop happens at least
         #   once.
         iter_counter = 0
         while not all_processed:
@@ -729,6 +776,16 @@ class AbstractTemplateBuilder(object):
 
                 placeholder.set_finished()
 
+            # Trigger on_depth_processed event
+            self.emit_event(
+                topic="template.depth_processed",
+                data={
+                    "depth": iter_counter,
+                    "placeholders_by_scene_id": placeholder_by_scene_id
+                },
+                source="builder"
+            )
+
             # Clear shared data before getting new placeholders
             self.clear_shared_populate_data()
 
@@ -747,6 +804,16 @@ class AbstractTemplateBuilder(object):
                 placeholder_by_scene_id[identifier] = placeholder
                 placeholders.append(placeholder)
 
+        # Trigger on_finished event
+        self.emit_event(
+            topic="template.finished",
+            data={
+                "depth": iter_counter,
+                "placeholders_by_scene_id": placeholder_by_scene_id,
+            },
+            source="builder"
+        )
+
         self.refresh()
 
     def _get_build_profiles(self):
@@ -764,7 +831,7 @@ class AbstractTemplateBuilder(object):
         )
 
     def get_template_preset(self):
-        """Unified way how template preset is received usign settings.
+        """Unified way how template preset is received using settings.
 
         Method is dependent on '_get_build_profiles' which should return filter
         profiles to resolve path to a template. Default implementation looks
@@ -772,16 +839,17 @@ class AbstractTemplateBuilder(object):
         - 'project_settings/{host name}/templated_workfile_build/profiles'
 
         Returns:
-            str: Path to a template file with placeholders.
+            dict: Dictionary with `path`, `keep_placeholder` and
+                `create_first_version` settings from the template preset
+                for current context.
 
         Raises:
             TemplateProfileNotFound: When profiles are not filled.
             TemplateLoadFailed: Profile was found but path is not set.
-            TemplateNotFound: Path was set but file does not exists.
+            TemplateNotFound: Path was set but file does not exist.
         """
 
         host_name = self.host_name
-        project_name = self.project_name
         task_name = self.current_task_name
         task_type = self.current_task_type
 
@@ -793,7 +861,6 @@ class AbstractTemplateBuilder(object):
                 "task_names": task_name
             }
         )
-
         if not profile:
             raise TemplateProfileNotFound((
                 "No matching profile found for task '{}' of type '{}' "
@@ -801,6 +868,22 @@ class AbstractTemplateBuilder(object):
             ).format(task_name, task_type, host_name))
 
         path = profile["path"]
+        if not path:
+            raise TemplateLoadFailed((
+                "Template path is not set.\n"
+                "Path need to be set in {}\\Template Workfile Build "
+                "Settings\\Profiles"
+            ).format(host_name.title()))
+
+        resolved_path = self.resolve_template_path(path)
+        if not resolved_path or not os.path.exists(resolved_path):
+            raise TemplateNotFound(
+                "Template file found in AYON settings for task '{}' with host "
+                "'{}' does not exists. (Not found : {})".format(
+                    task_name, host_name, resolved_path)
+            )
+
+        self.log.info(f"Found template at: '{resolved_path}'")
 
         # switch to remove placeholders after they are used
         keep_placeholder = profile.get("keep_placeholder")
@@ -810,46 +893,86 @@ class AbstractTemplateBuilder(object):
         if keep_placeholder is None:
             keep_placeholder = True
 
-        if not path:
-            raise TemplateLoadFailed((
-                "Template path is not set.\n"
-                "Path need to be set in {}\\Template Workfile Build "
-                "Settings\\Profiles"
-            ).format(host_name.title()))
-
-        # Try fill path with environments and anatomy roots
-        anatomy = Anatomy(project_name)
-        fill_data = {
-            key: value
-            for key, value in os.environ.items()
+        return {
+            "path": resolved_path,
+            "keep_placeholder": keep_placeholder,
+            "create_first_version": create_first_version
         }
 
-        fill_data["root"] = anatomy.roots
-        fill_data["project"] = {
-            "name": project_name,
-            "code": anatomy.project_code,
-        }
+    def resolve_template_path(self, path, fill_data=None) -> str:
+        """Resolve the template path.
 
-        result = StringTemplate.format_template(path, fill_data)
-        if result.solved:
-            path = result.normalized()
+        By default, this:
+          - Resolves AYON entity URI to a filesystem path
+          - Returns path directly if it exists on disk.
+          - Resolves template keys through anatomy and environment variables.
 
+        This can be overridden in host integrations to perform additional
+        resolving over the template. Like, `hou.text.expandString` in Houdini.
+        It's recommended to still call the super().resolve_template_path()
+        to ensure the basic resolving is done across all integrations.
+
+        Arguments:
+            path (str): The input path.
+            fill_data (dict[str, str]): Deprecated. This is computed inside
+                the method using the current environment and project settings.
+                Used to be the data to use for template formatting.
+
+        Returns:
+            str: The resolved path.
+
+        """
+
+        # If the path is an AYON entity URI, then resolve the filepath
+        # through the backend
+        if path.startswith("ayon+entity://") or path.startswith("ayon://"):
+            # This is a special case where the path is an AYON entity URI
+            # We need to resolve it to a filesystem path
+            resolved_path = resolve_entity_uri(path)
+            return resolved_path
+
+        # If the path is set and it's found on disk, return it directly
         if path and os.path.exists(path):
-            self.log.info("Found template at: '{}'".format(path))
-            return {
-                "path": path,
-                "keep_placeholder": keep_placeholder,
-                "create_first_version": create_first_version
+            return path
+
+        # We may have path for another platform, like C:/path/to/file
+        # or a path with template keys, like {project[code]} or both.
+        # Try to fill path with environments and anatomy roots
+        project_name = self.project_name
+        anatomy = Anatomy(project_name)
+
+        # Simple check whether the path contains any template keys
+        if "{" in path:
+            fill_data = {
+                key: value
+                for key, value in os.environ.items()
+            }
+            fill_data["root"] = anatomy.roots
+            fill_data["project"] = {
+                "name": project_name,
+                "code": anatomy.project_code,
             }
 
-        solved_path = None
+            # Format the template using local fill data
+            result = StringTemplate.format_template(path, fill_data)
+            if not result.solved:
+                return path
+
+            path = result.normalized()
+            if os.path.exists(path):
+                return path
+
+        # If the path were set in settings using a Windows path and we
+        # are now on a Linux system, we try to convert the solved path to
+        # the current platform.
         while True:
             try:
                 solved_path = anatomy.path_remapper(path)
             except KeyError as missing_key:
                 raise KeyError(
-                    "Could not solve key '{}' in template path '{}'".format(
-                        missing_key, path))
+                    f"Could not solve key '{missing_key}'"
+                    f" in template path '{path}'"
+                )
 
             if solved_path is None:
                 solved_path = path
@@ -858,23 +981,34 @@ class AbstractTemplateBuilder(object):
             path = solved_path
 
         solved_path = os.path.normpath(solved_path)
-        if not os.path.exists(solved_path):
-            raise TemplateNotFound(
-                "Template found in AYON settings for task '{}' with host "
-                "'{}' does not exists. (Not found : {})".format(
-                    task_name, host_name, solved_path))
+        return solved_path
 
-        self.log.info("Found template at: '{}'".format(solved_path))
+    def emit_event(self, topic, data=None, source=None) -> Event:
+        return self._event_system.emit(topic, data, source)
 
-        return {
-            "path": solved_path,
-            "keep_placeholder": keep_placeholder,
-            "create_first_version": create_first_version
-        }
+    def add_event_callback(self, topic, callback, order=None):
+        return self._event_system.add_callback(topic, callback, order=order)
+
+    def add_on_finished_callback(
+        self, callback, order=None
+    ) -> EventCallback:
+        return self.add_event_callback(
+            topic="template.finished",
+            callback=callback,
+            order=order
+        )
+
+    def add_on_depth_processed_callback(
+        self, callback, order=None
+    ) -> EventCallback:
+        return self.add_event_callback(
+            topic="template.depth_processed",
+            callback=callback,
+            order=order
+        )
 
 
-@six.add_metaclass(ABCMeta)
-class PlaceholderPlugin(object):
+class PlaceholderPlugin(ABC):
     """Plugin which care about handling of placeholder items logic.
 
     Plugin create and update placeholders in scene and populate them on
@@ -1045,7 +1179,7 @@ class PlaceholderPlugin(object):
 
         Using shared data from builder but stored under plugin identifier.
 
-        Key should be self explanatory to content.
+        Key should be self-explanatory to content.
         - wrong: 'folder'
         - good: 'folder_path'
 
@@ -1085,7 +1219,7 @@ class PlaceholderPlugin(object):
 
         Using shared data from builder but stored under plugin identifier.
 
-        Key should be self explanatory to content.
+        Key should be self-explanatory to content.
         - wrong: 'folder'
         - good: 'folder_path'
 
@@ -1107,10 +1241,10 @@ class PlaceholderItem(object):
     """Item representing single item in scene that is a placeholder to process.
 
     Items are always created and updated by their plugins. Each plugin can use
-    modified class of 'PlacehoderItem' but only to add more options instead of
+    modified class of 'PlaceholderItem' but only to add more options instead of
     new other.
 
-    Scene identifier is used to avoid processing of the palceholder item
+    Scene identifier is used to avoid processing of the placeholder item
     multiple times so must be unique across whole workfile builder.
 
     Args:
@@ -1162,7 +1296,7 @@ class PlaceholderItem(object):
         """Placeholder data which can modify how placeholder is processed.
 
         Possible general keys
-        - order: Can define the order in which is palceholder processed.
+        - order: Can define the order in which is placeholder processed.
                     Lower == earlier.
 
         Other keys are defined by placeholder and should validate them on item
@@ -1264,11 +1398,9 @@ class PlaceholderLoadMixin(object):
         """Unified attribute definitions for load placeholder.
 
         Common function for placeholder plugins used for loading of
-        repsentations. Use it in 'get_placeholder_options'.
+        representations. Use it in 'get_placeholder_options'.
 
         Args:
-            plugin (PlaceholderPlugin): Plugin used for loading of
-                representations.
             options (Dict[str, Any]): Already available options which are used
                 as defaults for attributes.
 
@@ -1361,7 +1493,7 @@ class PlaceholderLoadMixin(object):
                 placeholder='{"camera":"persp", "lights":True}',
                 tooltip=(
                     "Loader"
-                    "\nDefines a dictionnary of arguments used to load assets."
+                    "\nDefines a dictionary of arguments used to load assets."
                     "\nUseable arguments depend on current placeholder Loader."
                     "\nField should be a valid python dict."
                     " Anything else will be ignored."
@@ -1406,7 +1538,7 @@ class PlaceholderLoadMixin(object):
         ]
 
     def parse_loader_args(self, loader_args):
-        """Helper function to parse string of loader arugments.
+        """Helper function to parse string of loader arguments.
 
         Empty dictionary is returned if conversion fails.
 
@@ -1456,9 +1588,10 @@ class PlaceholderLoadMixin(object):
         if "asset" in placeholder.data:
             return []
 
-        representation_name = placeholder.data["representation"]
-        if not representation_name:
-            return []
+        representation_names = None
+        representation_name: str = placeholder.data["representation"]
+        if representation_name:
+            representation_names = [representation_name]
 
         project_name = self.builder.project_name
         current_folder_entity = self.builder.current_folder_entity
@@ -1468,7 +1601,9 @@ class PlaceholderLoadMixin(object):
         product_name_regex = None
         if product_name_regex_value:
             product_name_regex = re.compile(product_name_regex_value)
-        product_type = placeholder.data["family"]
+        product_type = placeholder.data.get("product_type")
+        if product_type is None:
+            product_type = placeholder.data["family"]
 
         builder_type = placeholder.data["builder_type"]
         folder_ids = []
@@ -1513,7 +1648,7 @@ class PlaceholderLoadMixin(object):
         )
         return list(get_representations(
             project_name,
-            representation_names={representation_name},
+            representation_names=representation_names,
             version_ids=version_ids
         ))
 
@@ -1529,35 +1664,22 @@ class PlaceholderLoadMixin(object):
 
         pass
 
-    def _reduce_last_version_repre_entities(self, representations):
-        """Reduce representations to last verison."""
+    def _reduce_last_version_repre_entities(self, repre_contexts):
+        """Reduce representations to last version."""
 
-        mapping = {}
-        # TODO use representation context with entities
-        # - using 'folder', 'subset' and 'version' from context on
-        #   representation is danger
-        for repre_entity in representations:
-            repre_context = repre_entity["context"]
-
-            folder_name = repre_context["asset"]
-            product_name = repre_context["subset"]
-            version = repre_context.get("version", -1)
-
-            if folder_name not in mapping:
-                mapping[folder_name] = {}
-
-            product_mapping = mapping[folder_name]
-            if product_name not in product_mapping:
-                product_mapping[product_name] = collections.defaultdict(list)
-
-            version_mapping = product_mapping[product_name]
-            version_mapping[version].append(repre_entity)
+        version_mapping_by_product_id = {}
+        for repre_context in repre_contexts:
+            product_id = repre_context["product"]["id"]
+            version = repre_context["version"]["version"]
+            version_mapping = version_mapping_by_product_id.setdefault(
+                product_id, {}
+            )
+            version_mapping.setdefault(version, []).append(repre_context)
 
         output = []
-        for product_mapping in mapping.values():
-            for version_mapping in product_mapping.values():
-                last_version = tuple(sorted(version_mapping.keys()))[-1]
-                output.extend(version_mapping[last_version])
+        for version_mapping in version_mapping_by_product_id.values():
+            last_version = max(version_mapping.keys())
+            output.extend(version_mapping[last_version])
         return output
 
     def populate_load_placeholder(self, placeholder, ignore_repre_ids=None):
@@ -1585,32 +1707,33 @@ class PlaceholderLoadMixin(object):
         loader_name = placeholder.data["loader"]
         loader_args = self.parse_loader_args(placeholder.data["loader_args"])
 
-        placeholder_representations = self._get_representations(placeholder)
+        placeholder_representations = [
+            repre_entity
+            for repre_entity in self._get_representations(placeholder)
+            if repre_entity["id"] not in ignore_repre_ids
+        ]
 
-        filtered_representations = []
-        for representation in self._reduce_last_version_repre_entities(
-            placeholder_representations
-        ):
-            repre_id = representation["id"]
-            if repre_id not in ignore_repre_ids:
-                filtered_representations.append(representation)
-
-        if not filtered_representations:
+        repre_load_contexts = get_representation_contexts(
+            self.project_name, placeholder_representations
+        )
+        filtered_repre_contexts = self._reduce_last_version_repre_entities(
+            repre_load_contexts.values()
+        )
+        if not filtered_repre_contexts:
             self.log.info((
                 "There's no representation for this placeholder: {}"
             ).format(placeholder.scene_identifier))
+            if not placeholder.data.get("keep_placeholder", True):
+                self.delete_placeholder(placeholder)
             return
 
-        repre_load_contexts = get_representation_contexts(
-            self.project_name, filtered_representations
-        )
         loaders_by_name = self.builder.get_loaders_by_name()
         self._before_placeholder_load(
             placeholder
         )
 
         failed = False
-        for repre_load_context in repre_load_contexts.values():
+        for repre_load_context in filtered_repre_contexts:
             folder_path = repre_load_context["folder"]["path"]
             product_name = repre_load_context["product"]["name"]
             representation = repre_load_context["representation"]
@@ -1695,8 +1818,6 @@ class PlaceholderCreateMixin(object):
         publishable instances. Use it with 'get_placeholder_options'.
 
         Args:
-            plugin (PlaceholderPlugin): Plugin used for creating of
-                publish instances.
             options (Dict[str, Any]): Already available options which are used
                 as defaults for attributes.
 
@@ -1743,6 +1864,16 @@ class PlaceholderCreateMixin(object):
                     "\ncompiling of product name."
                 )
             ),
+            attribute_definitions.BoolDef(
+                "active",
+                label="Active",
+                default=options.get("active", True),
+                tooltip=(
+                    "Active"
+                    "\nDefines whether the created instance will default to "
+                    "active or not."
+                )
+            ),
             attribute_definitions.UISeparatorDef(),
             attribute_definitions.NumberDef(
                 "order",
@@ -1772,6 +1903,7 @@ class PlaceholderCreateMixin(object):
         legacy_create = self.builder.use_legacy_creators
         creator_name = placeholder.data["creator"]
         create_variant = placeholder.data["create_variant"]
+        active = placeholder.data.get("active")
 
         creator_plugin = self.builder.get_creators_by_name()[creator_name]
 
@@ -1818,8 +1950,9 @@ class PlaceholderCreateMixin(object):
                     creator_plugin.identifier,
                     create_variant,
                     folder_entity,
-                    task_name=task_name,
-                    pre_create_data=pre_create_data
+                    task_entity,
+                    pre_create_data=pre_create_data,
+                    active=active
                 )
 
         except:  # noqa: E722
@@ -1918,3 +2051,23 @@ class CreatePlaceholderItem(PlaceholderItem):
 
     def create_failed(self, creator_data):
         self._failed_created_publish_instances.append(creator_data)
+
+
+def discover_workfile_build_plugins(*args, **kwargs):
+    return discover(PlaceholderPlugin, *args, **kwargs)
+
+
+def register_workfile_build_plugin(plugin: PlaceholderPlugin):
+    register_plugin(PlaceholderPlugin, plugin)
+
+
+def deregister_workfile_build_plugin(plugin: PlaceholderPlugin):
+    deregister_plugin(PlaceholderPlugin, plugin)
+
+
+def register_workfile_build_plugin_path(path: str):
+    register_plugin_path(PlaceholderPlugin, path)
+
+
+def deregister_workfile_build_plugin_path(path: str):
+    deregister_plugin_path(PlaceholderPlugin, path)

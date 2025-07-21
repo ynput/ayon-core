@@ -82,20 +82,6 @@ class BaseObj:
     def main_style(self):
         return load_default_style()
 
-    def height(self):
-        raise NotImplementedError(
-            "Attribute `height` is not implemented for <{}>".format(
-                self.__clas__.__name__
-            )
-        )
-
-    def width(self):
-        raise NotImplementedError(
-            "Attribute `width` is not implemented for <{}>".format(
-                self.__clas__.__name__
-            )
-        )
-
     def collect_data(self):
         return None
 
@@ -189,7 +175,7 @@ class BaseObj:
                         self.log.warning("Invalid range '{}'".format(part))
                         continue
 
-                    for idx in range(sub_parts[0], sub_parts[1]+1):
+                    for idx in range(sub_parts[0], sub_parts[1] + 1):
                         indexes.append(idx)
                 return indexes
 
@@ -366,7 +352,6 @@ class BaseObj:
     def add_item(self, item):
         self.items[item.id] = item
         item.fill_data_format()
-
 
     def reset(self):
         for item in self.items.values():

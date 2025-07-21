@@ -8,116 +8,123 @@ import inspect
 import logging
 import threading
 import collections
-
 from uuid import uuid4
-from abc import ABCMeta, abstractmethod
+from abc import ABC, abstractmethod
+from typing import Optional
 
-import six
-import appdirs
 import ayon_api
+from semver import VersionInfo
 
 from ayon_core import AYON_CORE_ROOT
-from ayon_core.lib import Logger, is_dev_mode_enabled
+from ayon_core.lib import (
+    Logger,
+    is_dev_mode_enabled,
+    get_launcher_storage_dir,
+    is_headless_mode_enabled,
+)
 from ayon_core.settings import get_studio_settings
 
 from .interfaces import (
     IPluginPaths,
     IHostAddon,
-    ITrayAddon,
-    ITrayService
 )
 
 # Files that will be always ignored on addons import
-IGNORED_FILENAMES = (
+IGNORED_FILENAMES = {
     "__pycache__",
-)
-# Files ignored on addons import from "./ayon_core/modules"
-IGNORED_DEFAULT_FILENAMES = (
-    "__init__.py",
-    "base.py",
-    "interfaces.py",
-    "click_wrap.py",
-    "example_addons",
-    "default_modules",
-)
-IGNORED_HOSTS_IN_AYON = {
-    "flame",
-    "harmony",
 }
-IGNORED_MODULES_IN_AYON = set()
+# Files ignored on addons import from "./ayon_core/modules"
+IGNORED_DEFAULT_FILENAMES = {
+    "__init__.py",
+}
+
+# When addon was moved from ayon-core codebase
+# - this is used to log the missing addon
+MOVED_ADDON_MILESTONE_VERSIONS = {
+    "aftereffects": VersionInfo(0, 2, 0),
+    "applications": VersionInfo(0, 2, 0),
+    "blender": VersionInfo(0, 2, 0),
+    "celaction": VersionInfo(0, 2, 0),
+    "clockify": VersionInfo(0, 2, 0),
+    "deadline": VersionInfo(0, 2, 0),
+    "flame": VersionInfo(0, 2, 0),
+    "fusion": VersionInfo(0, 2, 0),
+    "harmony": VersionInfo(0, 2, 0),
+    "hiero": VersionInfo(0, 2, 0),
+    "max": VersionInfo(0, 2, 0),
+    "photoshop": VersionInfo(0, 2, 0),
+    "timers_manager": VersionInfo(0, 2, 0),
+    "traypublisher": VersionInfo(0, 2, 0),
+    "tvpaint": VersionInfo(0, 2, 0),
+    "maya": VersionInfo(0, 2, 0),
+    "nuke": VersionInfo(0, 2, 0),
+    "resolve": VersionInfo(0, 2, 0),
+    "royalrender": VersionInfo(0, 2, 0),
+    "substancepainter": VersionInfo(0, 2, 0),
+    "houdini": VersionInfo(0, 3, 0),
+    "unreal": VersionInfo(0, 2, 0),
+}
 
 
-# Inherit from `object` for Python 2 hosts
-class _ModuleClass(object):
-    """Fake module class for storing AYON addons.
+class ProcessPreparationError(Exception):
+    """Exception that can be used when process preparation failed.
 
-    Object of this class can be stored to `sys.modules` and used for storing
-    dynamically imported modules.
+    The message is shown to user (either as UI dialog or printed). If
+        different error is raised a "generic" error message is shown to user
+        with option to copy error message to clipboard.
+
     """
+    pass
 
-    def __init__(self, name):
-        # Call setattr on super class
-        super(_ModuleClass, self).__setattr__("name", name)
-        super(_ModuleClass, self).__setattr__("__name__", name)
 
-        # Where modules and interfaces are stored
-        super(_ModuleClass, self).__setattr__("__attributes__", dict())
-        super(_ModuleClass, self).__setattr__("__defaults__", set())
+class ProcessContext:
+    """Hold context of process that is going to be started.
 
-        super(_ModuleClass, self).__setattr__("_log", None)
+    Right now the context is simple, having information about addon that wants
+        to trigger preparation and possibly project name for which it should
+        happen.
 
-    def __getattr__(self, attr_name):
-        if attr_name not in self.__attributes__:
-            if attr_name in ("__path__", "__file__"):
-                return None
-            raise AttributeError("'{}' has not attribute '{}'".format(
-                self.name, attr_name
-            ))
-        return self.__attributes__[attr_name]
+    Preparation for process can be required for ayon-core or any other addon.
+        It can be, change of environment variables, or request login to
+        a project management.
 
-    def __iter__(self):
-        for module in self.values():
-            yield module
+    At the moment of creation is 'ProcessContext' only data holder, but that
+        might change in future if there will be need.
 
-    def __setattr__(self, attr_name, value):
-        if attr_name in self.__attributes__:
-            self.log.warning(
-                "Duplicated name \"{}\" in {}. Overriding.".format(
-                    attr_name, self.name
-                )
-            )
-        self.__attributes__[attr_name] = value
+    Args:
+        addon_name (str): Addon name which triggered process.
+        addon_version (str): Addon version which triggered process.
+        project_name (Optional[str]): Project name. Can be filled in case
+            process is triggered for specific project. Some addons can have
+            different behavior based on project. Value is NOT autofilled.
+        headless (Optional[bool]): Is process running in headless mode. Value
+            is filled with value based on state set in AYON launcher.
 
-    def __setitem__(self, key, value):
-        self.__setattr__(key, value)
+    """
+    def __init__(
+        self,
+        addon_name: str,
+        addon_version: str,
+        project_name: Optional[str] = None,
+        headless: Optional[bool] = None,
+        **kwargs,
+    ):
+        if headless is None:
+            headless = is_headless_mode_enabled()
+        self.addon_name: str = addon_name
+        self.addon_version: str = addon_version
+        self.project_name: Optional[str] = project_name
+        self.headless: bool = headless
 
-    def __getitem__(self, key):
-        return getattr(self, key)
-
-    @property
-    def log(self):
-        if self._log is None:
-            super(_ModuleClass, self).__setattr__(
-                "_log", Logger.get_logger(self.name)
-            )
-        return self._log
-
-    def get(self, key, default=None):
-        return self.__attributes__.get(key, default)
-
-    def keys(self):
-        return self.__attributes__.keys()
-
-    def values(self):
-        return self.__attributes__.values()
-
-    def items(self):
-        return self.__attributes__.items()
+        if kwargs:
+            unknown_keys = ", ".join([f'"{key}"' for key in kwargs.keys()])
+            print(f"Unknown keys in ProcessContext: {unknown_keys}")
 
 
 class _LoadCache:
     addons_lock = threading.Lock()
     addons_loaded = False
+    addon_modules = []
 
 
 def load_addons(force=False):
@@ -192,7 +199,46 @@ def _get_ayon_addons_information(bundle_info):
     return output
 
 
-def _load_ayon_addons(openpype_modules, modules_key, log):
+def _handle_moved_addons(addon_name, milestone_version, log):
+    """Log message that addon version is not compatible with current core.
+
+    The function can return path to addon client code, but that can happen
+        only if ayon-core is used from code (for development), but still
+        logs a warning.
+
+    Args:
+        addon_name (str): Addon name.
+        milestone_version (str): Milestone addon version.
+        log (logging.Logger): Logger object.
+
+    Returns:
+        Union[str, None]: Addon dir or None.
+    """
+    # Handle addons which were moved out of ayon-core
+    # - Try to fix it by loading it directly from server addons dir in
+    #   ayon-core repository. But that will work only if ayon-core is
+    #   used from code.
+    addon_dir = os.path.join(
+        os.path.dirname(os.path.dirname(AYON_CORE_ROOT)),
+        "server_addon",
+        addon_name,
+        "client",
+    )
+    if not os.path.exists(addon_dir):
+        log.error(
+            f"Addon '{addon_name}' is not available. Please update "
+            f"{addon_name} addon to '{milestone_version}' or higher."
+        )
+        return None
+
+    log.warning((
+        "Please update '{}' addon to '{}' or higher."
+        " Using client code from ayon-core repository."
+    ).format(addon_name, milestone_version))
+    return addon_dir
+
+
+def _load_ayon_addons(log):
     """Load AYON addons based on information from server.
 
     This function should not trigger downloading of any addons but only use
@@ -200,30 +246,18 @@ def _load_ayon_addons(openpype_modules, modules_key, log):
     development).
 
     Args:
-        openpype_modules (_ModuleClass): Module object where modules are
-            stored.
-        modules_key (str): Key under which will be modules imported in
-            `sys.modules`.
         log (logging.Logger): Logger object.
 
-    Returns:
-        List[str]: List of v3 addons to skip to load because v4 alternative is
-            imported.
     """
-
-    addons_to_skip_in_core = []
-
+    all_addon_modules = []
     bundle_info = _get_ayon_bundle_data()
     addons_info = _get_ayon_addons_information(bundle_info)
     if not addons_info:
-        return addons_to_skip_in_core
+        return all_addon_modules
 
     addons_dir = os.environ.get("AYON_ADDONS_DIR")
     if not addons_dir:
-        addons_dir = os.path.join(
-            appdirs.user_data_dir("AYON", "Ynput"),
-            "addons"
-        )
+        addons_dir = get_launcher_storage_dir("addons")
 
     dev_mode_enabled = is_dev_mode_enabled()
     dev_addons_info = {}
@@ -242,19 +276,30 @@ def _load_ayon_addons(openpype_modules, modules_key, log):
         addon_version = addon_info["version"]
 
         # core addon does not have any addon object
-        if addon_name in ("openpype", "core"):
+        if addon_name == "core":
             continue
 
         dev_addon_info = dev_addons_info.get(addon_name, {})
         use_dev_path = dev_addon_info.get("enabled", False)
 
         addon_dir = None
+        milestone_version = MOVED_ADDON_MILESTONE_VERSIONS.get(addon_name)
         if use_dev_path:
             addon_dir = dev_addon_info["path"]
             if not addon_dir or not os.path.exists(addon_dir):
                 log.warning((
                     "Dev addon {} {} path does not exists. Path \"{}\""
                 ).format(addon_name, addon_version, addon_dir))
+                continue
+
+        elif (
+            milestone_version is not None
+            and VersionInfo.parse(addon_version) < milestone_version
+        ):
+            addon_dir = _handle_moved_addons(
+                addon_name, milestone_version, log
+            )
+            if not addon_dir:
                 continue
 
         elif addons_dir_exists:
@@ -270,7 +315,7 @@ def _load_ayon_addons(openpype_modules, modules_key, log):
             continue
 
         sys.path.insert(0, addon_dir)
-        imported_modules = []
+        addon_modules = []
         for name in os.listdir(addon_dir):
             # Ignore of files is implemented to be able to run code from code
             #   where usually is more files than just the addon
@@ -297,7 +342,7 @@ def _load_ayon_addons(openpype_modules, modules_key, log):
                         inspect.isclass(attr)
                         and issubclass(attr, AYONAddon)
                     ):
-                        imported_modules.append(mod)
+                        addon_modules.append(mod)
                         break
 
             except BaseException:
@@ -306,238 +351,49 @@ def _load_ayon_addons(openpype_modules, modules_key, log):
                     exc_info=True
                 )
 
-        if not imported_modules:
+        if not addon_modules:
             log.warning("Addon {} {} has no content to import".format(
                 addon_name, addon_version
             ))
             continue
 
-        if len(imported_modules) > 1:
+        if len(addon_modules) > 1:
             log.warning((
-                "Skipping addon '{}'."
-                " Multiple modules were found ({}) in dir {}."
+                "Multiple modules ({}) were found in addon '{}' in dir {}."
             ).format(
+                ", ".join([m.__name__ for m in addon_modules]),
                 addon_name,
-                ", ".join([m.__name__ for m in imported_modules]),
                 addon_dir,
             ))
-            continue
+        all_addon_modules.extend(addon_modules)
 
-        mod = imported_modules[0]
-        addon_alias = getattr(mod, "V3_ALIAS", None)
-        if not addon_alias:
-            addon_alias = addon_name
-        addons_to_skip_in_core.append(addon_alias)
-        new_import_str = "{}.{}".format(modules_key, addon_alias)
-
-        sys.modules[new_import_str] = mod
-        setattr(openpype_modules, addon_alias, mod)
-
-    return addons_to_skip_in_core
-
-
-def _load_ayon_core_addons_dir(
-    ignore_addon_names, openpype_modules, modules_key, log
-):
-    addons_dir = os.path.join(AYON_CORE_ROOT, "addons")
-    if not os.path.exists(addons_dir):
-        return
-
-    imported_modules = []
-
-    # Make sure that addons which already have client code are not loaded
-    #   from core again, with older code
-    filtered_paths = []
-    for name in os.listdir(addons_dir):
-        if name in ignore_addon_names:
-            continue
-        path = os.path.join(addons_dir, name)
-        if os.path.isdir(path):
-            filtered_paths.append(path)
-
-    for path in filtered_paths:
-        while path in sys.path:
-            sys.path.remove(path)
-        sys.path.insert(0, path)
-
-        for name in os.listdir(path):
-            fullpath = os.path.join(path, name)
-            if os.path.isfile(fullpath):
-                basename, ext = os.path.splitext(name)
-                if ext != ".py":
-                    continue
-            else:
-                basename = name
-            try:
-                module = __import__(basename, fromlist=("",))
-                for attr_name in dir(module):
-                    attr = getattr(module, attr_name)
-                    if (
-                        inspect.isclass(attr)
-                        and issubclass(attr, AYONAddon)
-                    ):
-                        new_import_str = "{}.{}".format(modules_key, basename)
-                        sys.modules[new_import_str] = module
-                        setattr(openpype_modules, basename, module)
-                        imported_modules.append(module)
-                        break
-
-            except Exception:
-                log.error(
-                    "Failed to import addon '{}'.".format(fullpath),
-                    exc_info=True
-                )
-    return imported_modules
-
-
-def _load_addons_in_core(
-    ignore_addon_names, openpype_modules, modules_key, log
-):
-    _load_ayon_core_addons_dir(
-        ignore_addon_names, openpype_modules, modules_key, log
-    )
-    # Add current directory at first place
-    #   - has small differences in import logic
-    hosts_dir = os.path.join(AYON_CORE_ROOT, "hosts")
-    modules_dir = os.path.join(AYON_CORE_ROOT, "modules")
-
-    ignored_host_names = set(IGNORED_HOSTS_IN_AYON)
-    ignored_module_dir_filenames = (
-        set(IGNORED_DEFAULT_FILENAMES)
-        | IGNORED_MODULES_IN_AYON
-    )
-
-    for dirpath in {hosts_dir, modules_dir}:
-        if not os.path.exists(dirpath):
-            log.warning((
-                "Could not find path when loading AYON addons \"{}\""
-            ).format(dirpath))
-            continue
-
-        is_in_modules_dir = dirpath == modules_dir
-        if is_in_modules_dir:
-            ignored_filenames = ignored_module_dir_filenames
-        else:
-            ignored_filenames = ignored_host_names
-
-        for filename in os.listdir(dirpath):
-            # Ignore filenames
-            if filename in IGNORED_FILENAMES or filename in ignored_filenames:
-                continue
-
-            fullpath = os.path.join(dirpath, filename)
-            basename, ext = os.path.splitext(filename)
-
-            if basename in ignore_addon_names:
-                continue
-
-            # Validations
-            if os.path.isdir(fullpath):
-                # Check existence of init file
-                init_path = os.path.join(fullpath, "__init__.py")
-                if not os.path.exists(init_path):
-                    log.debug((
-                        "Addon directory does not contain __init__.py"
-                        " file {}"
-                    ).format(fullpath))
-                    continue
-
-            elif ext not in (".py", ):
-                continue
-
-            # TODO add more logic how to define if folder is addon or not
-            # - check manifest and content of manifest
-            try:
-                # Don't import dynamically current directory modules
-                new_import_str = "{}.{}".format(modules_key, basename)
-                if is_in_modules_dir:
-                    import_str = "ayon_core.modules.{}".format(basename)
-                    default_module = __import__(import_str, fromlist=("", ))
-                    sys.modules[new_import_str] = default_module
-                    setattr(openpype_modules, basename, default_module)
-
-                else:
-                    import_str = "ayon_core.hosts.{}".format(basename)
-                    # Until all hosts are converted to be able use them as
-                    #   modules is this error check needed
-                    try:
-                        default_module = __import__(
-                            import_str, fromlist=("", )
-                        )
-                        sys.modules[new_import_str] = default_module
-                        setattr(openpype_modules, basename, default_module)
-
-                    except Exception:
-                        log.warning(
-                            "Failed to import host folder {}".format(basename),
-                            exc_info=True
-                        )
-
-            except Exception:
-                if is_in_modules_dir:
-                    msg = "Failed to import in-core addon '{}'.".format(
-                        basename
-                    )
-                else:
-                    msg = "Failed to import addon '{}'.".format(fullpath)
-                log.error(msg, exc_info=True)
+    return all_addon_modules
 
 
 def _load_addons():
-    # Support to use 'openpype' imports
-    sys.modules["openpype"] = sys.modules["ayon_core"]
-
-    # Key under which will be modules imported in `sys.modules`
-    modules_key = "openpype_modules"
-
-    # Change `sys.modules`
-    sys.modules[modules_key] = openpype_modules = _ModuleClass(modules_key)
-
     log = Logger.get_logger("AddonsLoader")
 
-    ignore_addon_names = _load_ayon_addons(
-        openpype_modules, modules_key, log
-    )
-    _load_addons_in_core(
-        ignore_addon_names, openpype_modules, modules_key, log
-    )
+    # Store modules to local cache
+    _LoadCache.addon_modules = _load_ayon_addons(log)
 
 
-_MARKING_ATTR = "_marking"
-def mark_func(func):
-    """Mark function to be used in report.
-
-    Args:
-        func (Callable): Function to mark.
-
-    Returns:
-        Callable: Marked function.
-    """
-
-    setattr(func, _MARKING_ATTR, True)
-    return func
-
-
-def is_func_marked(func):
-    return getattr(func, _MARKING_ATTR, False)
-
-
-@six.add_metaclass(ABCMeta)
-class AYONAddon(object):
+class AYONAddon(ABC):
     """Base class of AYON addon.
 
     Attributes:
-        id (UUID): Addon object id.
         enabled (bool): Is addon enabled.
         name (str): Addon name.
 
     Args:
         manager (AddonsManager): Manager object who discovered addon.
         settings (dict[str, Any]): AYON settings.
-    """
 
+    """
     enabled = True
     _id = None
+
+    # Temporary variable for 'version' property
+    _missing_version_warned = False
 
     def __init__(self, manager, settings):
         self.manager = manager
@@ -552,8 +408,8 @@ class AYONAddon(object):
 
         Returns:
             str: Object id.
-        """
 
+        """
         if self._id is None:
             self._id = uuid4()
         return self._id
@@ -565,9 +421,29 @@ class AYONAddon(object):
 
         Returns:
             str: Addon name.
-        """
 
+        """
         pass
+
+    @property
+    def version(self):
+        """Addon version.
+
+        Todo:
+            Should be abstract property (required). Introduced in
+                ayon-core 0.3.3 .
+
+        Returns:
+            str: Addon version as semver compatible string.
+
+        """
+        if not self.__class__._missing_version_warned:
+            self.__class__._missing_version_warned = True
+            print(
+                f"DEV WARNING: Addon '{self.name}' does not have"
+                f" defined version."
+            )
+        return "0.0.0"
 
     def initialize(self, settings):
         """Initialization of addon attributes.
@@ -577,18 +453,40 @@ class AYONAddon(object):
 
         Args:
             settings (dict[str, Any]): Settings.
-        """
 
+        """
         pass
 
-    @mark_func
     def connect_with_addons(self, enabled_addons):
         """Connect with other enabled addons.
 
         Args:
             enabled_addons (list[AYONAddon]): Addons that are enabled.
-        """
 
+        """
+        pass
+
+    def ensure_is_process_ready(
+        self, process_context: ProcessContext
+    ):
+        """Make sure addon is prepared for a process.
+
+        This method is called when some action makes sure that addon has set
+        necessary data. For example if user should be logged in
+        and filled credentials in environment variables this method should
+        ask user for credentials.
+
+        Implementation of this method is optional.
+
+        Note:
+            The logic can be similar to logic in tray, but tray does not
+                require to be logged in.
+
+        Args:
+            process_context (ProcessContext): Context of child
+                process.
+
+        """
         pass
 
     def get_global_environments(self):
@@ -598,8 +496,8 @@ class AYONAddon(object):
 
         Returns:
             dict[str, str]: Environment variables.
-        """
 
+        """
         return {}
 
     def modify_application_launch_arguments(self, application, env):
@@ -611,8 +509,8 @@ class AYONAddon(object):
         Args:
             application (Application): Application that is launched.
             env (dict[str, str]): Current environment variables.
-        """
 
+        """
         pass
 
     def on_host_install(self, host, host_name, project_name):
@@ -631,8 +529,8 @@ class AYONAddon(object):
             host_name (str): Name of host.
             project_name (str): Project name which is main part of host
                 context.
-        """
 
+        """
         pass
 
     def cli(self, addon_click_group):
@@ -659,29 +557,33 @@ class AYONAddon(object):
         Args:
             addon_click_group (click.Group): Group to which can be added
                 commands.
-        """
 
+        """
         pass
 
 
-class OpenPypeModule(AYONAddon):
-    """Base class of OpenPype module.
+class _AddonReportInfo:
+    def __init__(
+        self, class_name, name, version, report_value_by_label
+    ):
+        self.class_name = class_name
+        self.name = name
+        self.version = version
+        self.report_value_by_label = report_value_by_label
 
-    Deprecated:
-        Use `AYONAddon` instead.
-
-    Args:
-        manager (AddonsManager): Manager object who discovered addon.
-        settings (dict[str, Any]): Module settings (OpenPype settings).
-    """
-
-    # Disable by default
-    enabled = False
-
-
-class OpenPypeAddOn(OpenPypeModule):
-    # Enable Addon by default
-    enabled = True
+    @classmethod
+    def from_addon(cls, addon, report):
+        class_name = addon.__class__.__name__
+        report_value_by_label = {
+            label: reported.get(class_name)
+            for label, reported in report.items()
+        }
+        return cls(
+            addon.__class__.__name__,
+            addon.name,
+            addon.version,
+            report_value_by_label
+        )
 
 
 class AddonsManager:
@@ -691,8 +593,8 @@ class AddonsManager:
         settings (Optional[dict[str, Any]]): AYON studio settings.
         initialize (Optional[bool]): Initialize addons on init.
             True by default.
-    """
 
+    """
     # Helper attributes for report
     _report_total_key = "Total"
     _log = None
@@ -728,8 +630,8 @@ class AddonsManager:
 
         Returns:
             Union[AYONAddon, Any]: Addon found by name or `default`.
-        """
 
+        """
         return self._addons_by_name.get(addon_name, default)
 
     @property
@@ -756,8 +658,8 @@ class AddonsManager:
 
         Returns:
             Union[AYONAddon, None]: Enabled addon found by name or None.
-        """
 
+        """
         addon = self.get(addon_name)
         if addon is not None and addon.enabled:
             return addon
@@ -768,8 +670,8 @@ class AddonsManager:
 
         Returns:
             list[AYONAddon]: Initialized and enabled addons.
-        """
 
+        """
         return [
             addon
             for addon in self._addons
@@ -781,8 +683,6 @@ class AddonsManager:
         # Make sure modules are loaded
         load_addons()
 
-        import openpype_modules
-
         self.log.debug("*** AYON addons initialization.")
 
         # Prepare settings for addons
@@ -790,14 +690,12 @@ class AddonsManager:
         if settings is None:
             settings = get_studio_settings()
 
-        modules_settings = {}
-
         report = {}
         time_start = time.time()
         prev_start_time = time_start
 
         addon_classes = []
-        for module in openpype_modules:
+        for module in _LoadCache.addon_modules:
             # Go through globals in `ayon_core.modules`
             for name in dir(module):
                 modules_item = getattr(module, name, None)
@@ -806,8 +704,6 @@ class AddonsManager:
                 if (
                     not inspect.isclass(modules_item)
                     or modules_item is AYONAddon
-                    or modules_item is OpenPypeModule
-                    or modules_item is OpenPypeAddOn
                     or not issubclass(modules_item, AYONAddon)
                 ):
                     continue
@@ -833,37 +729,14 @@ class AddonsManager:
 
                 addon_classes.append(modules_item)
 
-        aliased_names = []
         for addon_cls in addon_classes:
             name = addon_cls.__name__
-            if issubclass(addon_cls, OpenPypeModule):
-                # TODO change to warning
-                self.log.debug((
-                    "Addon '{}' is inherited from 'OpenPypeModule'."
-                    " Please use 'AYONAddon'."
-                ).format(name))
-
             try:
-                # Try initialize module
-                if issubclass(addon_cls, OpenPypeModule):
-                    addon = addon_cls(self, modules_settings)
-                else:
-                    addon = addon_cls(self, settings)
+                addon = addon_cls(self, settings)
                 # Store initialized object
                 self._addons.append(addon)
                 self._addons_by_id[addon.id] = addon
                 self._addons_by_name[addon.name] = addon
-                # NOTE This will be removed with release 1.0.0 of ayon-core
-                #   please use carefully.
-                # Gives option to use alias name for addon for cases when
-                #   name in OpenPype was not the same as in AYON.
-                name_alias = getattr(addon, "openpype_alias", None)
-                if name_alias:
-                    aliased_names.append((name_alias, addon))
-                enabled_str = "X"
-                if not addon.enabled:
-                    enabled_str = " "
-                self.log.debug("[{}] {}".format(enabled_str, name))
 
                 now = time.time()
                 report[addon.__class__.__name__] = now - prev_start_time
@@ -875,15 +748,11 @@ class AddonsManager:
                     exc_info=True
                 )
 
-        for item in aliased_names:
-            name_alias, addon = item
-            if name_alias not in self._addons_by_name:
-                self._addons_by_name[name_alias] = addon
-                continue
-            self.log.warning(
-                "Alias name '{}' of addon '{}' is already assigned.".format(
-                    name_alias, addon.name
-                )
+        for addon_name in sorted(self._addons_by_name.keys()):
+            addon = self._addons_by_name[addon_name]
+            enabled_str = "X" if addon.enabled else " "
+            self.log.debug(
+                f"[{enabled_str}] {addon.name} ({addon.version})"
             )
 
         if self._report is not None:
@@ -898,20 +767,11 @@ class AddonsManager:
         report = {}
         time_start = time.time()
         prev_start_time = time_start
-        enabled_modules = self.get_enabled_addons()
-        self.log.debug("Has {} enabled modules.".format(len(enabled_modules)))
-        for module in enabled_modules:
+        enabled_addons = self.get_enabled_addons()
+        self.log.debug("Has {} enabled addons.".format(len(enabled_addons)))
+        for addon in enabled_addons:
             try:
-                if not is_func_marked(module.connect_with_addons):
-                    module.connect_with_addons(enabled_modules)
-
-                elif hasattr(module, "connect_with_modules"):
-                    self.log.warning((
-                        "DEPRECATION WARNING: Addon '{}' still uses"
-                        " 'connect_with_modules' method. Please switch to use"
-                        " 'connect_with_addons' method."
-                    ).format(module.name))
-                    module.connect_with_modules(enabled_modules)
+                addon.connect_with_addons(enabled_addons)
 
             except Exception:
                 self.log.error(
@@ -920,7 +780,7 @@ class AddonsManager:
                 )
 
             now = time.time()
-            report[module.__class__.__name__] = now - prev_start_time
+            report[addon.__class__.__name__] = now - prev_start_time
             prev_start_time = now
 
         if self._report is not None:
@@ -1032,6 +892,21 @@ class AddonsManager:
                 if not isinstance(paths, (list, tuple, set)):
                     paths = [paths]
                 output.extend(paths)
+        return output
+
+    def collect_launcher_action_paths(self):
+        """Helper to collect launcher action paths from addons.
+
+        Returns:
+            list: List of paths to launcher actions.
+
+        """
+        output = self._collect_plugin_paths(
+            "get_launcher_action_paths"
+        )
+        # Add default core actions
+        actions_dir = os.path.join(AYON_CORE_ROOT, "plugins", "actions")
+        output.insert(0, actions_dir)
         return output
 
     def collect_create_plugin_paths(self, host_name):
@@ -1163,39 +1038,55 @@ class AddonsManager:
             available_col_names |= set(addon_names.keys())
 
         # Prepare ordered dictionary for columns
-        cols = collections.OrderedDict()
-        # Add addon names to first columnt
-        cols["Addon name"] = list(sorted(
-            addon.__class__.__name__
+        addons_info = [
+            _AddonReportInfo.from_addon(addon, self._report)
             for addon in self.addons
             if addon.__class__.__name__ in available_col_names
-        ))
+        ]
+        addons_info.sort(key=lambda x: x.name)
+
+        addon_name_rows = [
+            addon_info.name
+            for addon_info in addons_info
+        ]
+        addon_version_rows = [
+            addon_info.version
+            for addon_info in addons_info
+        ]
+
         # Add total key (as last addon)
-        cols["Addon name"].append(self._report_total_key)
+        addon_name_rows.append(self._report_total_key)
+        addon_version_rows.append(f"({len(addons_info)})")
+
+        cols = collections.OrderedDict()
+        # Add addon names to first columnt
+        cols["Addon name"] = addon_name_rows
+        cols["Version"] = addon_version_rows
 
         # Add columns from report
+        total_by_addon = {
+            row: 0
+            for row in addon_name_rows
+        }
         for label in self._report.keys():
-            cols[label] = []
-
-        total_addon_times = {}
-        for addon_name in cols["Addon name"]:
-            total_addon_times[addon_name] = 0
-
-        for label, reported in self._report.items():
-            for addon_name in cols["Addon name"]:
-                col_time = reported.get(addon_name)
-                if col_time is None:
-                    cols[label].append("N/A")
+            rows = []
+            col_total = 0
+            for addon_info in addons_info:
+                value = addon_info.report_value_by_label.get(label)
+                if value is None:
+                    rows.append("N/A")
                     continue
-                cols[label].append("{:.3f}".format(col_time))
-                total_addon_times[addon_name] += col_time
-
+                rows.append("{:.3f}".format(value))
+                total_by_addon[addon_info.name] += value
+                col_total += value
+            total_by_addon[self._report_total_key] += col_total
+            rows.append("{:.3f}".format(col_total))
+            cols[label] = rows
         # Add to also total column that should sum the row
-        cols[self._report_total_key] = []
-        for addon_name in cols["Addon name"]:
-            cols[self._report_total_key].append(
-                "{:.3f}".format(total_addon_times[addon_name])
-            )
+        cols[self._report_total_key] = [
+            "{:.3f}".format(total_by_addon[addon_name])
+            for addon_name in cols["Addon name"]
+        ]
 
         # Prepare column widths and total row count
         # - column width is by
@@ -1244,238 +1135,3 @@ class AddonsManager:
         # Join rows with newline char and add new line at the end
         output = "\n".join(formatted_rows) + "\n"
         print(output)
-
-    # DEPRECATED - Module compatibility
-    @property
-    def modules(self):
-        self.log.warning(
-            "DEPRECATION WARNING: Used deprecated property"
-            " 'modules' please use 'addons' instead."
-        )
-        return self.addons
-
-    @property
-    def modules_by_id(self):
-        self.log.warning(
-            "DEPRECATION WARNING: Used deprecated property"
-            " 'modules_by_id' please use 'addons_by_id' instead."
-        )
-        return self.addons_by_id
-
-    @property
-    def modules_by_name(self):
-        self.log.warning(
-            "DEPRECATION WARNING: Used deprecated property"
-            " 'modules_by_name' please use 'addons_by_name' instead."
-        )
-        return self.addons_by_name
-
-    def get_enabled_module(self, *args, **kwargs):
-        self.log.warning(
-            "DEPRECATION WARNING: Used deprecated method"
-            " 'get_enabled_module' please use 'get_enabled_addon' instead."
-        )
-        return self.get_enabled_addon(*args, **kwargs)
-
-    def initialize_modules(self):
-        self.log.warning(
-            "DEPRECATION WARNING: Used deprecated method"
-            " 'initialize_modules' please use 'initialize_addons' instead."
-        )
-        self.initialize_addons()
-
-    def get_enabled_modules(self):
-        self.log.warning(
-            "DEPRECATION WARNING: Used deprecated method"
-            " 'get_enabled_modules' please use 'get_enabled_addons' instead."
-        )
-        return self.get_enabled_addons()
-
-    def get_host_module(self, host_name):
-        self.log.warning(
-            "DEPRECATION WARNING: Used deprecated method"
-            " 'get_host_module' please use 'get_host_addon' instead."
-        )
-        return self.get_host_addon(host_name)
-
-
-class TrayAddonsManager(AddonsManager):
-    # Define order of addons in menu
-    # TODO find better way how to define order
-    addons_menu_order = (
-        "user",
-        "ftrack",
-        "kitsu",
-        "launcher_tool",
-        "avalon",
-        "clockify",
-        "traypublish_tool",
-        "log_viewer",
-    )
-
-    def __init__(self, settings=None):
-        super(TrayAddonsManager, self).__init__(settings, initialize=False)
-
-        self.tray_manager = None
-
-        self.doubleclick_callbacks = {}
-        self.doubleclick_callback = None
-
-    def add_doubleclick_callback(self, addon, callback):
-        """Register doubleclick callbacks on tray icon.
-
-        Currently, there is no way how to determine which is launched. Name of
-        callback can be defined with `doubleclick_callback` attribute.
-
-        Missing feature how to define default callback.
-
-        Args:
-            addon (AYONAddon): Addon object.
-            callback (FunctionType): Function callback.
-        """
-
-        callback_name = "_".join([addon.name, callback.__name__])
-        if callback_name not in self.doubleclick_callbacks:
-            self.doubleclick_callbacks[callback_name] = callback
-            if self.doubleclick_callback is None:
-                self.doubleclick_callback = callback_name
-            return
-
-        self.log.warning((
-            "Callback with name \"{}\" is already registered."
-        ).format(callback_name))
-
-    def initialize(self, tray_manager, tray_menu):
-        self.tray_manager = tray_manager
-        self.initialize_addons()
-        self.tray_init()
-        self.connect_addons()
-        self.tray_menu(tray_menu)
-
-    def get_enabled_tray_addons(self):
-        """Enabled tray addons.
-
-        Returns:
-            list[AYONAddon]: Enabled addons that inherit from tray interface.
-        """
-
-        return [
-            addon
-            for addon in self.get_enabled_addons()
-            if isinstance(addon, ITrayAddon)
-        ]
-
-    def restart_tray(self):
-        if self.tray_manager:
-            self.tray_manager.restart()
-
-    def tray_init(self):
-        report = {}
-        time_start = time.time()
-        prev_start_time = time_start
-        for addon in self.get_enabled_tray_addons():
-            try:
-                addon._tray_manager = self.tray_manager
-                addon.tray_init()
-                addon.tray_initialized = True
-            except Exception:
-                self.log.warning(
-                    "Addon \"{}\" crashed on `tray_init`.".format(
-                        addon.name
-                    ),
-                    exc_info=True
-                )
-
-            now = time.time()
-            report[addon.__class__.__name__] = now - prev_start_time
-            prev_start_time = now
-
-        if self._report is not None:
-            report[self._report_total_key] = time.time() - time_start
-            self._report["Tray init"] = report
-
-    def tray_menu(self, tray_menu):
-        ordered_addons = []
-        enabled_by_name = {
-            addon.name: addon
-            for addon in self.get_enabled_tray_addons()
-        }
-
-        for name in self.addons_menu_order:
-            addon_by_name = enabled_by_name.pop(name, None)
-            if addon_by_name:
-                ordered_addons.append(addon_by_name)
-        ordered_addons.extend(enabled_by_name.values())
-
-        report = {}
-        time_start = time.time()
-        prev_start_time = time_start
-        for addon in ordered_addons:
-            if not addon.tray_initialized:
-                continue
-
-            try:
-                addon.tray_menu(tray_menu)
-            except Exception:
-                # Unset initialized mark
-                addon.tray_initialized = False
-                self.log.warning(
-                    "Addon \"{}\" crashed on `tray_menu`.".format(
-                        addon.name
-                    ),
-                    exc_info=True
-                )
-            now = time.time()
-            report[addon.__class__.__name__] = now - prev_start_time
-            prev_start_time = now
-
-        if self._report is not None:
-            report[self._report_total_key] = time.time() - time_start
-            self._report["Tray menu"] = report
-
-    def start_addons(self):
-        report = {}
-        time_start = time.time()
-        prev_start_time = time_start
-        for addon in self.get_enabled_tray_addons():
-            if not addon.tray_initialized:
-                if isinstance(addon, ITrayService):
-                    addon.set_service_failed_icon()
-                continue
-
-            try:
-                addon.tray_start()
-            except Exception:
-                self.log.warning(
-                    "Addon \"{}\" crashed on `tray_start`.".format(
-                        addon.name
-                    ),
-                    exc_info=True
-                )
-            now = time.time()
-            report[addon.__class__.__name__] = now - prev_start_time
-            prev_start_time = now
-
-        if self._report is not None:
-            report[self._report_total_key] = time.time() - time_start
-            self._report["Addons start"] = report
-
-    def on_exit(self):
-        for addon in self.get_enabled_tray_addons():
-            if addon.tray_initialized:
-                try:
-                    addon.tray_exit()
-                except Exception:
-                    self.log.warning(
-                        "Addon \"{}\" crashed on `tray_exit`.".format(
-                            addon.name
-                        ),
-                        exc_info=True
-                    )
-
-    # DEPRECATED
-    def get_enabled_tray_modules(self):
-        return self.get_enabled_tray_addons()
-
-    def start_modules(self):
-        self.start_addons()

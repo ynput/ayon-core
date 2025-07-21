@@ -1,31 +1,37 @@
+"""Library functions for publishing."""
+from __future__ import annotations
 import os
 import sys
 import inspect
 import copy
-import tempfile
+import warnings
 import xml.etree.ElementTree
+from typing import TYPE_CHECKING, Optional, Union, List
 
+import ayon_api
 import pyblish.util
 import pyblish.plugin
 import pyblish.api
 
 from ayon_core.lib import (
-    Logger,
     import_filepath,
+    Logger,
     filter_profiles,
 )
 from ayon_core.settings import get_project_settings
-from ayon_core.pipeline import (
-    tempdir,
-    Anatomy
-)
+from ayon_core.addon import AddonsManager
+from ayon_core.pipeline import get_staging_dir_info
 from ayon_core.pipeline.plugin_discover import DiscoverResult
-
 from .constants import (
     DEFAULT_PUBLISH_TEMPLATE,
     DEFAULT_HERO_PUBLISH_TEMPLATE,
-    TRANSIENT_DIR_TEMPLATE
 )
+
+if TYPE_CHECKING:
+    from ayon_core.pipeline.traits import Representation
+
+
+TRAIT_INSTANCE_KEY: str = "representations_with_traits"
 
 
 def get_template_name_profiles(
@@ -165,7 +171,7 @@ class HelpContent:
 
 def load_help_content_from_filepath(filepath):
     """Load help content from xml file.
-    Xml file may containt errors and warnings.
+    Xml file may contain errors and warnings.
     """
     errors = {}
     warnings = {}
@@ -210,8 +216,9 @@ def load_help_content_from_plugin(plugin):
     return load_help_content_from_filepath(filepath)
 
 
-def publish_plugins_discover(paths=None):
-    """Find and return available pyblish plug-ins
+def publish_plugins_discover(
+        paths: Optional[list[str]] = None) -> DiscoverResult:
+    """Find and return available pyblish plug-ins.
 
     Overridden function from `pyblish` module to be able to collect
         crashed files and reason of their crash.
@@ -254,17 +261,14 @@ def publish_plugins_discover(paths=None):
                 continue
 
             try:
-                module = import_filepath(abspath, mod_name)
+                module = import_filepath(
+                    abspath, mod_name, sys_module_name=mod_name)
 
-                # Store reference to original module, to avoid
-                # garbage collection from collecting it's global
-                # imports, such as `import os`.
-                sys.modules[abspath] = module
-
-            except Exception as err:
+            except Exception as err:  # noqa: BLE001
+                # we need broad exception to catch all possible errors.
                 result.crashed_file_paths[abspath] = sys.exc_info()
 
-                log.debug("Skipped: \"%s\" (%s)", mod_name, err)
+                log.debug('Skipped: "%s" (%s)', mod_name, err)
                 continue
 
             for plugin in pyblish.plugin.plugins_from_module(module):
@@ -282,9 +286,8 @@ def publish_plugins_discover(paths=None):
                     continue
 
                 plugin_names.append(plugin.__name__)
-
-                plugin.__module__ = module.__file__
-                key = "{0}.{1}".format(plugin.__module__, plugin.__name__)
+                plugin.__file__ = module.__file__
+                key = f"{module.__file__}.{plugin.__name__}"
                 plugins[key] = plugin
 
     # Include plug-ins from registration.
@@ -336,17 +339,16 @@ def get_plugin_settings(plugin, project_settings, log, category=None):
     settings_category = getattr(plugin, "settings_category", None)
     if settings_category:
         try:
-            return (
-                project_settings
-                [settings_category]
-                ["publish"]
-                [plugin.__name__]
-            )
+            category_settings = project_settings[settings_category]
         except KeyError:
             log.warning((
-                "Couldn't find plugin '{}' settings"
-                " under settings category '{}'"
-            ).format(plugin.__name__, settings_category))
+                "Couldn't find settings category '{}' in project settings"
+            ).format(settings_category))
+            return {}
+
+        try:
+            return category_settings["publish"][plugin.__name__]
+        except KeyError:
             return {}
 
     # Use project settings based on a category name
@@ -364,7 +366,7 @@ def get_plugin_settings(plugin, project_settings, log, category=None):
     # Settings category determined from path
     # - usually path is './<category>/plugins/publish/<plugin file>'
     # - category can be host name of addon name ('maya', 'deadline', ...)
-    filepath = os.path.normpath(inspect.getsourcefile(plugin))
+    filepath = os.path.normpath(inspect.getfile(plugin))
 
     split_path = filepath.rsplit(os.path.sep, 5)
     if len(split_path) < 4:
@@ -378,7 +380,7 @@ def get_plugin_settings(plugin, project_settings, log, category=None):
     plugin_kind = split_path[-2]
 
     # TODO: change after all plugins are moved one level up
-    if category_from_file in ("ayon_core", "openpype"):
+    if category_from_file == "ayon_core":
         category_from_file = "core"
 
     try:
@@ -430,7 +432,7 @@ def filter_pyblish_plugins(plugins):
     log = Logger.get_logger("filter_pyblish_plugins")
 
     # TODO: Don't use host from 'pyblish.api' but from defined host by us.
-    #   - kept becau on farm is probably used host 'shell' which propably
+    #   - kept because on farm is probably used host 'shell' which probably
     #       affect how settings are applied there
     host_name = pyblish.api.current_host()
     project_name = os.environ.get("AYON_PROJECT_NAME")
@@ -465,6 +467,12 @@ def filter_pyblish_plugins(plugins):
 
         # Remove disabled plugins
         if getattr(plugin, "enabled", True) is False:
+            plugins.remove(plugin)
+
+        # Pyblish already operated a filter based on host.
+        # But applying settings might have changed "hosts"
+        # value in plugin so re-filter.
+        elif not pyblish.plugin.host_is_compatible(plugin):
             plugins.remove(plugin)
 
 
@@ -526,7 +534,7 @@ def filter_instances_for_context_plugin(plugin, context):
 
     Args:
         plugin (pyblish.api.Plugin): Plugin with filters.
-        context (pyblish.api.Context): Pyblish context with insances.
+        context (pyblish.api.Context): Pyblish context with instances.
 
     Returns:
         Iterator[pyblish.lib.Instance]: Iteration of valid instances.
@@ -578,58 +586,6 @@ def context_plugin_should_run(plugin, context):
     for _ in filter_instances_for_context_plugin(plugin, context):
         return True
     return False
-
-
-def get_instance_staging_dir(instance):
-    """Unified way how staging dir is stored and created on instances.
-
-    First check if 'stagingDir' is already set in instance data.
-    In case there already is new tempdir will not be created.
-
-    It also supports `AYON_TMPDIR`, so studio can define own temp
-    shared repository per project or even per more granular context.
-    Template formatting is supported also with optional keys. Folder is
-    created in case it doesn't exists.
-
-    Available anatomy formatting keys:
-        - root[work | <root name key>]
-        - project[name | code]
-
-    Note:
-        Staging dir does not have to be necessarily in tempdir so be careful
-        about its usage.
-
-    Args:
-        instance (pyblish.lib.Instance): Instance for which we want to get
-            staging dir.
-
-    Returns:
-        str: Path to staging dir of instance.
-    """
-    staging_dir = instance.data.get('stagingDir')
-    if staging_dir:
-        return staging_dir
-
-    anatomy = instance.context.data.get("anatomy")
-
-    # get customized tempdir path from `AYON_TMPDIR` env var
-    custom_temp_dir = tempdir.create_custom_tempdir(
-        anatomy.project_name, anatomy)
-
-    if custom_temp_dir:
-        staging_dir = os.path.normpath(
-            tempfile.mkdtemp(
-                prefix="pyblish_tmp_",
-                dir=custom_temp_dir
-            )
-        )
-    else:
-        staging_dir = os.path.normpath(
-            tempfile.mkdtemp(prefix="pyblish_tmp_")
-        )
-    instance.data['stagingDir'] = staging_dir
-
-    return staging_dir
 
 
 def get_publish_repre_path(instance, repre, only_published=False):
@@ -684,6 +640,8 @@ def get_publish_repre_path(instance, repre, only_published=False):
     return None
 
 
+# deprecated: backward compatibility only (2024-09-12)
+# TODO: remove in the future
 def get_custom_staging_dir_info(
     project_name,
     host_name,
@@ -693,67 +651,88 @@ def get_custom_staging_dir_info(
     product_name,
     project_settings=None,
     anatomy=None,
-    log=None
+    log=None,
 ):
-    """Checks profiles if context should use special custom dir as staging.
+    from ayon_core.pipeline.staging_dir import get_staging_dir_config
+    warnings.warn(
+        (
+            "Function 'get_custom_staging_dir_info' in"
+            " 'ayon_core.pipeline.publish' is deprecated. Please use"
+            " 'get_custom_staging_dir_info'"
+            " in 'ayon_core.pipeline.stagingdir'."
+        ),
+        DeprecationWarning,
+    )
+    tr_data = get_staging_dir_config(
+        project_name,
+        task_type,
+        task_name,
+        product_type,
+        product_name,
+        host_name,
+        project_settings=project_settings,
+        anatomy=anatomy,
+        log=log,
+    )
 
-    Args:
-        project_name (str)
-        host_name (str)
-        product_type (str)
-        task_name (str)
-        task_type (str)
-        product_name (str)
-        project_settings(Dict[str, Any]): Prepared project settings.
-        anatomy (Dict[str, Any])
-        log (Logger) (optional)
+    if not tr_data:
+        return None, None
+
+    return tr_data["template"], tr_data["persistence"]
+
+
+def get_instance_staging_dir(instance):
+    """Unified way how staging dir is stored and created on instances.
+
+    First check if 'stagingDir' is already set in instance data.
+    In case there already is new tempdir will not be created.
 
     Returns:
-        (tuple)
-    Raises:
-        ValueError - if misconfigured template should be used
+        str: Path to staging dir
     """
-    settings = project_settings or get_project_settings(project_name)
-    custom_staging_dir_profiles = (settings["core"]
-                                           ["tools"]
-                                           ["publish"]
-                                           ["custom_staging_dir_profiles"])
-    if not custom_staging_dir_profiles:
-        return None, None
+    staging_dir = instance.data.get("stagingDir")
 
-    if not log:
-        log = Logger.get_logger("get_custom_staging_dir_info")
+    if staging_dir:
+        return staging_dir
 
-    filtering_criteria = {
-        "hosts": host_name,
-        "families": product_type,
-        "task_names": task_name,
-        "task_types": task_type,
-        "subsets": product_name
-    }
-    profile = filter_profiles(custom_staging_dir_profiles,
-                              filtering_criteria,
-                              logger=log)
+    anatomy_data = instance.data["anatomyData"]
+    template_data = copy.deepcopy(anatomy_data)
 
-    if not profile or not profile["active"]:
-        return None, None
+    # context data based variables
+    context = instance.context
 
-    if not anatomy:
-        anatomy = Anatomy(project_name)
+    # add current file as workfile name into formatting data
+    current_file = context.data.get("currentFile")
+    if current_file:
+        workfile = os.path.basename(current_file)
+        workfile_name, _ = os.path.splitext(workfile)
+        template_data["workfile_name"] = workfile_name
 
-    template_name = profile["template_name"] or TRANSIENT_DIR_TEMPLATE
-
-    custom_staging_dir = anatomy.get_template_item(
-        "staging", template_name, "directory", default=None
+    staging_dir_info = get_staging_dir_info(
+        context.data["projectEntity"],
+        instance.data.get("folderEntity"),
+        instance.data.get("taskEntity"),
+        instance.data["productType"],
+        instance.data["productName"],
+        context.data["hostName"],
+        anatomy=context.data["anatomy"],
+        project_settings=context.data["project_settings"],
+        template_data=template_data,
+        always_return_path=True,
+        username=context.data["user"],
     )
-    if custom_staging_dir is None:
-        raise ValueError((
-            "Anatomy of project \"{}\" does not have set"
-            " \"{}\" template key!"
-        ).format(project_name, template_name))
-    is_persistent = profile["custom_staging_dir_persistent"]
 
-    return custom_staging_dir.template, is_persistent
+    staging_dir_path = staging_dir_info.directory
+
+    # path might be already created by get_staging_dir_info
+    os.makedirs(staging_dir_path, exist_ok=True)
+    instance.data.update({
+        "stagingDir": staging_dir_path,
+        "stagingDir_persistent": staging_dir_info.is_persistent,
+        "stagingDir_is_custom": staging_dir_info.is_custom
+    })
+
+    return staging_dir_path
 
 
 def get_published_workfile_instance(context):
@@ -798,7 +777,7 @@ def replace_with_published_scene_path(instance, replace_in_path=True):
         return
 
     # determine published path from Anatomy.
-    template_data = workfile_instance.data.get("anatomyData")
+    template_data = copy.deepcopy(workfile_instance.data["anatomyData"])
     rep = workfile_instance.data["representations"][0]
     template_data["representation"] = rep.get("name")
     template_data["ext"] = rep.get("ext")
@@ -934,3 +913,214 @@ def get_publish_instance_families(instance):
         families.discard(family)
     output.extend(families)
     return output
+
+
+def get_instance_expected_output_path(
+        instance: pyblish.api.Instance,
+        representation_name: str,
+        ext: Union[str, None],
+        version: Optional[str] = None
+):
+    """Return expected publish filepath for representation in instance
+
+    This does not validate whether the instance has any representation by the
+    given name, extension and/or version.
+
+    Arguments:
+        instance (pyblish.api.Instance): Publish instance
+        representation_name (str): Representation name
+        ext (Union[str, None]): Extension for the file.
+            When None, the `ext` will be set to the representation name.
+        version (Optional[int]): If provided, force it to format to this
+            particular version.
+
+    Returns:
+        str: Resolved path
+
+    """
+
+    if ext is None:
+        ext = representation_name
+    if version is None:
+        version = instance.data["version"]
+
+    context = instance.context
+    anatomy = context.data["anatomy"]
+
+    template_data = copy.deepcopy(instance.data["anatomyData"])
+    template_data.update({
+        "ext": ext,
+        "representation": representation_name,
+        "variant": instance.data.get("variant"),
+        "version": version
+    })
+
+    path_template_obj = anatomy.get_template_item("publish", "default")["path"]
+    template_filled = path_template_obj.format_strict(template_data)
+    return os.path.normpath(template_filled)
+
+
+def main_cli_publish(
+    path: str,
+    targets: Optional[List[str]] = None,
+    addons_manager: Optional[AddonsManager] = None,
+):
+    """Start headless publishing.
+
+    Publish use json from passed path argument.
+
+    Args:
+        path (str): Path to JSON.
+        targets (Optional[List[str]]): List of pyblish targets.
+        addons_manager (Optional[AddonsManager]): Addons manager instance.
+
+    Raises:
+        RuntimeError: When there is no path to process or when executed with
+            list of JSON paths.
+
+    """
+    from ayon_core.pipeline import (
+        install_ayon_plugins,
+        get_global_context,
+    )
+
+    # Register target and host
+    if not isinstance(path, str):
+        raise RuntimeError("Path to JSON must be a string.")
+
+    # Fix older jobs
+    for src_key, dst_key in (
+        ("AVALON_PROJECT", "AYON_PROJECT_NAME"),
+        ("AVALON_ASSET", "AYON_FOLDER_PATH"),
+        ("AVALON_TASK", "AYON_TASK_NAME"),
+        ("AVALON_WORKDIR", "AYON_WORKDIR"),
+        ("AVALON_APP_NAME", "AYON_APP_NAME"),
+        ("AVALON_APP", "AYON_HOST_NAME"),
+    ):
+        if src_key in os.environ and dst_key not in os.environ:
+            os.environ[dst_key] = os.environ[src_key]
+        # Remove old keys, so we're sure they're not used
+        os.environ.pop(src_key, None)
+
+    log = Logger.get_logger("CLI-publish")
+
+    # Make public ayon api behave as other user
+    # - this works only if public ayon api is using service user
+    username = os.environ.get("AYON_USERNAME")
+    if username:
+        # NOTE: ayon-python-api does not have public api function to find
+        #   out if is used service user. So we need to have try > except
+        #   block.
+        con = ayon_api.get_server_api_connection()
+        try:
+            con.set_default_service_username(username)
+        except ValueError:
+            pass
+
+    install_ayon_plugins()
+
+    if addons_manager is None:
+        addons_manager = AddonsManager()
+
+    applications_addon = addons_manager.get_enabled_addon("applications")
+    if applications_addon is not None:
+        context = get_global_context()
+        env = applications_addon.get_farm_publish_environment_variables(
+            context["project_name"],
+            context["folder_path"],
+            context["task_name"],
+        )
+        os.environ.update(env)
+
+    pyblish.api.register_host("shell")
+
+    if targets:
+        for target in targets:
+            print(f"setting target: {target}")
+            pyblish.api.register_target(target)
+    else:
+        pyblish.api.register_target("farm")
+
+    os.environ["AYON_PUBLISH_DATA"] = path
+    os.environ["HEADLESS_PUBLISH"] = 'true'  # to use in app lib
+
+    log.info("Running publish ...")
+
+    discover_result = publish_plugins_discover()
+    publish_plugins = discover_result.plugins
+    print(discover_result.get_report(only_errors=False))
+
+    # Error exit as soon as any error occurs.
+    error_format = ("Failed {plugin.__name__}: "
+                    "{error} -- {error.traceback}")
+
+    for result in pyblish.util.publish_iter(plugins=publish_plugins):
+        if result["error"]:
+            log.error(error_format.format(**result))
+            # uninstall()
+            sys.exit(1)
+
+    log.info("Publish finished.")
+
+
+def has_trait_representations(
+        instance: pyblish.api.Instance) -> bool:
+    """Check if instance has trait representation.
+
+    Args:
+        instance (pyblish.api.Instance): Instance to check.
+
+    Returns:
+        True: Instance has trait representation.
+        False: Instance does not have trait representation.
+
+    """
+    return TRAIT_INSTANCE_KEY in instance.data
+
+
+def add_trait_representations(
+        instance: pyblish.api.Instance,
+        representations: list[Representation]
+) -> None:
+    """Add trait representations to instance.
+
+    Args:
+        instance (pyblish.api.Instance): Instance to add trait
+            representations to.
+        representations (list[Representation]): List of representation
+            trait based representations to add.
+
+    """
+    repres = instance.data.setdefault(TRAIT_INSTANCE_KEY, [])
+    repres.extend(representations)
+
+
+def set_trait_representations(
+        instance: pyblish.api.Instance,
+        representations: list[Representation]
+) -> None:
+    """Set trait representations to instance.
+
+    Args:
+        instance (pyblish.api.Instance): Instance to set trait
+            representations to.
+        representations (list[Representation]): List of trait
+            based representations.
+
+    """
+    instance.data[TRAIT_INSTANCE_KEY] = representations
+
+
+def get_trait_representations(
+        instance: pyblish.api.Instance) -> list[Representation]:
+    """Get trait representations from instance.
+
+    Args:
+        instance (pyblish.api.Instance): Instance to get trait
+            representations from.
+
+    Returns:
+        list[Representation]: List of representation names.
+
+    """
+    return instance.data.get(TRAIT_INSTANCE_KEY, [])

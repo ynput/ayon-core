@@ -9,14 +9,8 @@ from ayon_core.pipeline.create import (
     TaskNotSetError,
 )
 
-from .thumbnail_widget import ThumbnailWidget
-from .widgets import (
-    IconValuePixmapLabel,
-    CreateBtn,
-)
-from .create_context_widgets import CreateContextWidget
-from .precreate_widget import PreCreateWidget
-from ..constants import (
+from ayon_core.tools.publisher.abstract import AbstractPublisherFrontend
+from ayon_core.tools.publisher.constants import (
     VARIANT_TOOLTIP,
     PRODUCT_TYPE_ROLE,
     CREATOR_IDENTIFIER_ROLE,
@@ -25,22 +19,29 @@ from ..constants import (
     INPUTS_LAYOUT_HSPACING,
     INPUTS_LAYOUT_VSPACING,
 )
+from ayon_core.tools.utils import HintedLineEdit
 
-SEPARATORS = ("---separator---", "---")
+from .thumbnail_widget import ThumbnailWidget
+from .widgets import (
+    IconValuePixmapLabel,
+    CreateBtn,
+)
+from .create_context_widgets import CreateContextWidget
+from .precreate_widget import PreCreateWidget
 
 
 class ResizeControlWidget(QtWidgets.QWidget):
     resized = QtCore.Signal()
 
     def resizeEvent(self, event):
-        super(ResizeControlWidget, self).resizeEvent(event)
+        super().resizeEvent(event)
         self.resized.emit()
 
 
 # TODO add creator identifier/label to details
 class CreatorShortDescWidget(QtWidgets.QWidget):
     def __init__(self, parent=None):
-        super(CreatorShortDescWidget, self).__init__(parent=parent)
+        super().__init__(parent=parent)
 
         # --- Short description widget ---
         icon_widget = IconValuePixmapLabel(None, self)
@@ -98,19 +99,19 @@ class CreatorsProxyModel(QtCore.QSortFilterProxyModel):
         l_show_order = left.data(CREATOR_SORT_ROLE)
         r_show_order = right.data(CREATOR_SORT_ROLE)
         if l_show_order == r_show_order:
-            return super(CreatorsProxyModel, self).lessThan(left, right)
+            return super().lessThan(left, right)
         return l_show_order < r_show_order
 
 
 class CreateWidget(QtWidgets.QWidget):
     def __init__(self, controller, parent=None):
-        super(CreateWidget, self).__init__(parent)
+        super().__init__(parent)
 
-        self._controller = controller
+        self._controller: AbstractPublisherFrontend = controller
 
         self._folder_path = None
         self._product_names = None
-        self._selected_creator = None
+        self._selected_creator_identifier = None
 
         self._prereq_available = False
 
@@ -166,25 +167,9 @@ class CreateWidget(QtWidgets.QWidget):
 
         product_variant_widget = QtWidgets.QWidget(creator_basics_widget)
         # Variant and product input
-        variant_widget = ResizeControlWidget(product_variant_widget)
-        variant_widget.setObjectName("VariantInputsWidget")
-
-        variant_input = QtWidgets.QLineEdit(variant_widget)
-        variant_input.setObjectName("VariantInput")
-        variant_input.setToolTip(VARIANT_TOOLTIP)
-
-        variant_hints_btn = QtWidgets.QToolButton(variant_widget)
-        variant_hints_btn.setArrowType(QtCore.Qt.DownArrow)
-        variant_hints_btn.setIconSize(QtCore.QSize(12, 12))
-
-        variant_hints_menu = QtWidgets.QMenu(variant_widget)
-        variant_hints_group = QtWidgets.QActionGroup(variant_hints_menu)
-
-        variant_layout = QtWidgets.QHBoxLayout(variant_widget)
-        variant_layout.setContentsMargins(0, 0, 0, 0)
-        variant_layout.setSpacing(0)
-        variant_layout.addWidget(variant_input, 1)
-        variant_layout.addWidget(variant_hints_btn, 0, QtCore.Qt.AlignVCenter)
+        variant_widget = HintedLineEdit(parent=product_variant_widget)
+        variant_widget.set_text_widget_object_name("VariantInput")
+        variant_widget.setToolTip(VARIANT_TOOLTIP)
 
         product_name_input = QtWidgets.QLineEdit(product_variant_widget)
         product_name_input.setEnabled(False)
@@ -260,25 +245,26 @@ class CreateWidget(QtWidgets.QWidget):
         prereq_timer.timeout.connect(self._invalidate_prereq)
 
         create_btn.clicked.connect(self._on_create)
-        variant_widget.resized.connect(self._on_variant_widget_resize)
         creator_basics_widget.resized.connect(self._on_creator_basics_resize)
-        variant_input.returnPressed.connect(self._on_create)
-        variant_input.textChanged.connect(self._on_variant_change)
+        variant_widget.returnPressed.connect(self._on_create)
+        variant_widget.textChanged.connect(self._on_variant_change)
         creators_view.selectionModel().currentChanged.connect(
             self._on_creator_item_change
         )
-        variant_hints_btn.clicked.connect(self._on_variant_btn_click)
-        variant_hints_menu.triggered.connect(self._on_variant_action)
         context_widget.folder_changed.connect(self._on_folder_change)
         context_widget.task_changed.connect(self._on_task_change)
         thumbnail_widget.thumbnail_created.connect(self._on_thumbnail_create)
         thumbnail_widget.thumbnail_cleared.connect(self._on_thumbnail_clear)
 
-        controller.event_system.add_callback(
+        controller.register_event_callback(
             "main.window.closed", self._on_main_window_close
         )
-        controller.event_system.add_callback(
-            "plugins.refresh.finished", self._on_plugins_refresh
+        controller.register_event_callback(
+            "controller.reset.finished", self._on_controler_reset
+        )
+        controller.register_event_callback(
+            "create.context.pre.create.attrs.changed",
+            self._pre_create_attr_changed
         )
 
         self._main_splitter_widget = main_splitter_widget
@@ -289,10 +275,7 @@ class CreateWidget(QtWidgets.QWidget):
 
         self.product_name_input = product_name_input
 
-        self.variant_input = variant_input
-        self.variant_hints_btn = variant_hints_btn
-        self.variant_hints_menu = variant_hints_menu
-        self.variant_hints_group = variant_hints_group
+        self._variant_widget = variant_widget
 
         self._creators_model = creators_model
         self._creators_sort_model = creators_sort_model
@@ -312,14 +295,13 @@ class CreateWidget(QtWidgets.QWidget):
         self._last_current_context_folder_path = None
         self._last_current_context_task = None
         self._use_current_context = True
+        self._current_creator_variant_hints = []
 
-    @property
-    def current_folder_path(self):
-        return self._controller.current_folder_path
+    def get_current_folder_path(self):
+        return self._controller.get_current_folder_path()
 
-    @property
-    def current_task_name(self):
-        return self._controller.current_task_name
+    def get_current_task_name(self):
+        return self._controller.get_current_task_name()
 
     def _context_change_is_enabled(self):
         return self._context_widget.is_enabled()
@@ -330,7 +312,7 @@ class CreateWidget(QtWidgets.QWidget):
             folder_path = self._context_widget.get_selected_folder_path()
 
         if folder_path is None:
-            folder_path = self.current_folder_path
+            folder_path = self.get_current_folder_path()
         return folder_path or None
 
     def _get_folder_id(self):
@@ -348,7 +330,7 @@ class CreateWidget(QtWidgets.QWidget):
                 task_name = self._context_widget.get_selected_task_name()
 
         if not task_name:
-            task_name = self.current_task_name
+            task_name = self.get_current_task_name()
         return task_name
 
     def _set_context_enabled(self, enabled):
@@ -364,8 +346,8 @@ class CreateWidget(QtWidgets.QWidget):
         self._use_current_context = True
 
     def refresh(self):
-        current_folder_path = self._controller.current_folder_path
-        current_task_name = self._controller.current_task_name
+        current_folder_path = self._controller.get_current_folder_path()
+        current_task_name = self._controller.get_current_task_name()
 
         # Get context before refresh to keep selection of folder and
         #   task widgets
@@ -438,8 +420,7 @@ class CreateWidget(QtWidgets.QWidget):
 
             self._create_btn.setEnabled(prereq_available)
 
-            self.variant_input.setEnabled(prereq_available)
-            self.variant_hints_btn.setEnabled(prereq_available)
+            self._variant_widget.setEnabled(prereq_available)
 
         tooltip = ""
         if creator_btn_tooltips:
@@ -481,7 +462,7 @@ class CreateWidget(QtWidgets.QWidget):
 
         # Add new create plugins
         new_creators = set()
-        creator_items_by_identifier = self._controller.creator_items
+        creator_items_by_identifier = self._controller.get_creator_items()
         for identifier, creator_item in creator_items_by_identifier.items():
             if creator_item.creator_type != "artist":
                 continue
@@ -531,9 +512,18 @@ class CreateWidget(QtWidgets.QWidget):
 
         self._set_creator(create_item)
 
-    def _on_plugins_refresh(self):
+    def _on_controler_reset(self):
         # Trigger refresh only if is visible
         self.refresh()
+
+    def _pre_create_attr_changed(self, event):
+        if (
+            self._selected_creator_identifier is None
+            or self._selected_creator_identifier not in event["identifiers"]
+        ):
+            return
+
+        self._set_creator_by_identifier(self._selected_creator_identifier)
 
     def _on_folder_change(self):
         self._refresh_product_name()
@@ -562,7 +552,7 @@ class CreateWidget(QtWidgets.QWidget):
         description = ""
         if creator_item is not None:
             description = creator_item.detailed_description or description
-        self._controller.event_system.emit(
+        self._controller.emit_event(
             "show.detailed.help",
             {
                 "message": description
@@ -571,7 +561,7 @@ class CreateWidget(QtWidgets.QWidget):
         )
 
     def _set_creator_by_identifier(self, identifier):
-        creator_item = self._controller.creator_items.get(identifier)
+        creator_item = self._controller.get_creator_item_by_id(identifier)
         self._set_creator(creator_item)
 
     def _set_creator(self, creator_item):
@@ -586,11 +576,12 @@ class CreateWidget(QtWidgets.QWidget):
         self._set_creator_detailed_text(creator_item)
         self._pre_create_widget.set_creator_item(creator_item)
 
-        self._selected_creator = creator_item
-
         if not creator_item:
+            self._selected_creator_identifier = None
             self._set_context_enabled(False)
             return
+
+        self._selected_creator_identifier = creator_item.identifier
 
         if (
             creator_item.create_allow_context_change
@@ -611,48 +602,28 @@ class CreateWidget(QtWidgets.QWidget):
         if not default_variant:
             default_variant = default_variants[0]
 
-        for action in tuple(self.variant_hints_menu.actions()):
-            self.variant_hints_menu.removeAction(action)
-            action.deleteLater()
-
-        for variant in default_variants:
-            if variant in SEPARATORS:
-                self.variant_hints_menu.addSeparator()
-            elif variant:
-                self.variant_hints_menu.addAction(variant)
+        self._current_creator_variant_hints = list(default_variants)
+        self._variant_widget.set_options(default_variants)
 
         variant_text = default_variant or DEFAULT_VARIANT_VALUE
         # Make sure product name is updated to new plugin
-        if variant_text == self.variant_input.text():
+        if variant_text == self._variant_widget.text():
             self._on_variant_change()
         else:
-            self.variant_input.setText(variant_text)
-
-    def _on_variant_widget_resize(self):
-        self.variant_hints_btn.setFixedHeight(self.variant_input.height())
-
-    def _on_variant_btn_click(self):
-        pos = self.variant_hints_btn.rect().bottomLeft()
-        point = self.variant_hints_btn.mapToGlobal(pos)
-        self.variant_hints_menu.popup(point)
-
-    def _on_variant_action(self, action):
-        value = action.text()
-        if self.variant_input.text() != value:
-            self.variant_input.setText(value)
+            self._variant_widget.setText(variant_text)
 
     def _on_variant_change(self, variant_value=None):
         if not self._prereq_available:
             return
 
         # This should probably never happen?
-        if not self._selected_creator:
+        if not self._selected_creator_identifier:
             if self.product_name_input.text():
                 self.product_name_input.setText("")
             return
 
         if variant_value is None:
-            variant_value = self.variant_input.text()
+            variant_value = self._variant_widget.text()
 
         if not self._compiled_name_pattern.match(variant_value):
             self._create_btn.setEnabled(False)
@@ -668,11 +639,13 @@ class CreateWidget(QtWidgets.QWidget):
 
         folder_path = self._get_folder_path()
         task_name = self._get_task_name()
-        creator_idenfier = self._selected_creator.identifier
         # Calculate product name with Creator plugin
         try:
             product_name = self._controller.get_product_name(
-                creator_idenfier, variant_value, task_name, folder_path
+                self._selected_creator_identifier,
+                variant_value,
+                task_name,
+                folder_path
             )
         except TaskNotSetError:
             self._create_btn.setEnabled(False)
@@ -707,20 +680,12 @@ class CreateWidget(QtWidgets.QWidget):
                 if _result:
                     variant_hints |= set(_result.groups())
 
-        # Remove previous hints from menu
-        for action in tuple(self.variant_hints_group.actions()):
-            self.variant_hints_group.removeAction(action)
-            self.variant_hints_menu.removeAction(action)
-            action.deleteLater()
-
-        # Add separator if there are hints and menu already has actions
-        if variant_hints and self.variant_hints_menu.actions():
-            self.variant_hints_menu.addSeparator()
-
+        options = list(self._current_creator_variant_hints)
+        if options:
+            options.append("---")
+        options.extend(sorted(variant_hints))
         # Add hints to actions
-        for variant_hint in variant_hints:
-            action = self.variant_hints_menu.addAction(variant_hint)
-            self.variant_hints_group.addAction(action)
+        self._variant_widget.set_options(options)
 
         # Indicate product existence
         if not variant_value:
@@ -741,10 +706,7 @@ class CreateWidget(QtWidgets.QWidget):
             self._create_btn.setEnabled(variant_is_valid)
 
     def _set_variant_state_property(self, state):
-        current_value = self.variant_input.property("state")
-        if current_value != state:
-            self.variant_input.setProperty("state", state)
-            self.variant_input.style().polish(self.variant_input)
+        self._variant_widget.set_text_widget_property("state", state)
 
     def _on_first_show(self):
         width = self.width()
@@ -755,7 +717,7 @@ class CreateWidget(QtWidgets.QWidget):
         self._creators_splitter.setSizes([part, rem_width])
 
     def showEvent(self, event):
-        super(CreateWidget, self).showEvent(event)
+        super().showEvent(event)
         if self._first_show:
             self._first_show = False
             self._on_first_show()
@@ -776,7 +738,7 @@ class CreateWidget(QtWidgets.QWidget):
         index = indexes[0]
         creator_identifier = index.data(CREATOR_IDENTIFIER_ROLE)
         product_type = index.data(PRODUCT_TYPE_ROLE)
-        variant = self.variant_input.text()
+        variant = self._variant_widget.text()
         # Care about product name only if context change is enabled
         product_name = None
         folder_path = None
@@ -809,8 +771,8 @@ class CreateWidget(QtWidgets.QWidget):
         )
 
         if success:
-            self._set_creator(self._selected_creator)
-            self.variant_input.setText(variant)
+            self._set_creator_by_identifier(self._selected_creator_identifier)
+            self._variant_widget.setText(variant)
             self._controller.emit_card_message("Creation finished...")
             self._last_thumbnail_path = None
             self._thumbnail_widget.set_current_thumbnails()

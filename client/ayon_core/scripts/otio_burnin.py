@@ -14,9 +14,10 @@ from ayon_core.lib import (
     convert_ffprobe_fps_value,
 )
 
+FFMPEG_EXE_COMMAND = subprocess.list2cmdline(get_ffmpeg_tool_args("ffmpeg"))
 FFMPEG = (
     '{}%(input_args)s -i "%(input)s" %(filters)s %(args)s%(output)s'
-).format(subprocess.list2cmdline(get_ffmpeg_tool_args("ffmpeg")))
+).format(FFMPEG_EXE_COMMAND)
 
 DRAWTEXT = (
     "drawtext@'%(label)s'=fontfile='%(font)s':text=\\'%(text)s\\':"
@@ -78,7 +79,8 @@ class ModifiedBurnins(ffmpeg_burnins.Burnins):
     - Datatypes explanation:
     <color> string format must be supported by FFmpeg.
         Examples: "#000000", "0x000000", "black"
-    <font> must be accesible by ffmpeg = name of registered Font in system or path to font file.
+    <font> must be accesible by ffmpeg = name of registered Font in system
+        or path to font file.
         Examples: "Arial", "C:/Windows/Fonts/arial.ttf"
 
     - Possible keys:
@@ -86,17 +88,21 @@ class ModifiedBurnins(ffmpeg_burnins.Burnins):
     "bg_opacity" - Opacity of background (box around text) - <float, Range:0-1>
     "bg_color" - Background color - <color>
     "bg_padding" - Background padding in pixels - <int>
-    "x_offset" - offsets burnin vertically by entered pixels from border - <int>
-    "y_offset" - offsets burnin horizontally by entered pixels from border - <int>
+    "x_offset" - offsets burnin vertically by entered pixels
+        from border - <int>
+    "y_offset" - offsets burnin horizontally by entered pixels
+        from border - <int>
     - x_offset & y_offset should be set at least to same value as bg_padding!!
     "font" - Font Family for text - <font>
     "font_size" - Font size in pixels - <int>
     "font_color" - Color of text - <color>
     "frame_offset" - Default start frame - <int>
-        - required IF start frame is not set when using frames or timecode burnins
+        - required IF start frame is not set when using frames
+          or timecode burnins
 
-    On initializing class can be set General options through "options_init" arg.
-    General can be overridden when adding burnin
+    On initializing class can be set General options through
+        "options_init" arg.
+    General options can be overridden when adding burnin.
 
     '''
     TOP_CENTERED = ffmpeg_burnins.TOP_CENTERED
@@ -166,7 +172,6 @@ class ModifiedBurnins(ffmpeg_burnins.Burnins):
         # `frame_end` is only for meassurements of text position
         if frame_end is not None:
             options["frame_end"] = frame_end
-
 
         options["label"] = align
         self._add_burnin(text, align, options, DRAWTEXT)
@@ -482,10 +487,19 @@ class ModifiedBurnins(ffmpeg_burnins.Burnins):
         )
         print("Launching command: {}".format(command))
 
+        use_shell = True
+        try:
+            test_proc = subprocess.Popen(
+                f"{FFMPEG_EXE_COMMAND} --help", shell=True
+            )
+            test_proc.wait()
+        except BaseException:
+            use_shell = False
+
         kwargs = {
             "stdout": subprocess.PIPE,
             "stderr": subprocess.PIPE,
-            "shell": True,
+            "shell": use_shell,
         }
         proc = subprocess.Popen(command, **kwargs)
 

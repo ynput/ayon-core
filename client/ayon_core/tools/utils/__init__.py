@@ -5,6 +5,10 @@ from .widgets import (
     ComboBox,
     CustomTextComboBox,
     PlaceholderLineEdit,
+    PlaceholderPlainTextEdit,
+    MarkdownLabel,
+    ElideLabel,
+    HintedLineEdit,
     ExpandingTextEdit,
     BaseClickableFrame,
     ClickableFrame,
@@ -25,6 +29,7 @@ from .widgets import (
 from .views import (
     DeselectableTreeView,
     TreeView,
+    ListView,
 )
 from .error_dialog import ErrorMessageBox
 from .lib import (
@@ -36,7 +41,6 @@ from .lib import (
     qt_app_context,
     get_qt_app,
     get_ayon_qt_app,
-    get_openpype_qt_app,
     get_qt_icon,
 )
 
@@ -58,6 +62,7 @@ from .dialogs import (
 )
 from .projects_widget import (
     ProjectsCombobox,
+    ProjectsWidget,
     ProjectsQtModel,
     ProjectSortFilterProxy,
     PROJECT_NAME_ROLE,
@@ -88,6 +93,10 @@ __all__ = (
     "ComboBox",
     "CustomTextComboBox",
     "PlaceholderLineEdit",
+    "PlaceholderPlainTextEdit",
+    "MarkdownLabel",
+    "ElideLabel",
+    "HintedLineEdit",
     "ExpandingTextEdit",
     "BaseClickableFrame",
     "ClickableFrame",
@@ -107,6 +116,7 @@ __all__ = (
 
     "DeselectableTreeView",
     "TreeView",
+    "ListView",
 
     "ErrorMessageBox",
 
@@ -118,7 +128,6 @@ __all__ = (
     "qt_app_context",
     "get_qt_app",
     "get_ayon_qt_app",
-    "get_openpype_qt_app",
     "get_qt_icon",
 
     "RecursiveSortFilterProxyModel",
@@ -139,6 +148,7 @@ __all__ = (
     "PopupUpdateKeys",
 
     "ProjectsCombobox",
+    "ProjectsWidget",
     "ProjectsQtModel",
     "ProjectSortFilterProxy",
     "PROJECT_NAME_ROLE",

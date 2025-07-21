@@ -3,32 +3,125 @@
 import os
 import json
 import platform
+import configparser
+import warnings
 from datetime import datetime
-from abc import ABCMeta, abstractmethod
+from abc import ABC, abstractmethod
+from functools import lru_cache
 
-# disable lru cache in Python 2
-try:
-    from functools import lru_cache
-except ImportError:
-    def lru_cache(maxsize):
-        def max_size(func):
-            def wrapper(*args, **kwargs):
-                value = func(*args, **kwargs)
-                return value
-            return wrapper
-        return max_size
-
-# ConfigParser was renamed in python3 to configparser
-try:
-    import configparser
-except ImportError:
-    import ConfigParser as configparser
-
-import six
-import appdirs
+import platformdirs
 import ayon_api
 
 _PLACEHOLDER = object()
+
+
+class _Cache:
+    username = None
+
+
+def _get_ayon_appdirs(*args):
+    return os.path.join(
+        platformdirs.user_data_dir("AYON", "Ynput"),
+        *args
+    )
+
+
+def get_ayon_appdirs(*args):
+    """Local app data directory of AYON client.
+
+    Deprecated:
+        Use 'get_launcher_local_dir' or 'get_launcher_storage_dir' based on
+            use-case. Deprecation added 24/08/09 (0.4.4-dev.1).
+
+    Args:
+        *args (Iterable[str]): Subdirectories/files in local app data dir.
+
+    Returns:
+        str: Path to directory/file in local app data dir.
+
+    """
+    warnings.warn(
+        (
+            "Function 'get_ayon_appdirs' is deprecated. Should be replaced"
+            " with 'get_launcher_local_dir' or 'get_launcher_storage_dir'"
+            " based on use-case."
+        ),
+        DeprecationWarning
+    )
+    return _get_ayon_appdirs(*args)
+
+
+def get_launcher_storage_dir(*subdirs: str) -> str:
+    """Get storage directory for launcher.
+
+    Storage directory is used for storing shims, addons, dependencies, etc.
+
+    It is not recommended, but the location can be shared across
+        multiple machines.
+
+    Note:
+        This function should be called at least once on bootstrap.
+
+    Args:
+        *subdirs (str): Subdirectories relative to storage dir.
+
+    Returns:
+        str: Path to storage directory.
+
+    """
+    storage_dir = os.getenv("AYON_LAUNCHER_STORAGE_DIR")
+    if not storage_dir:
+        storage_dir = _get_ayon_appdirs()
+
+    return os.path.join(storage_dir, *subdirs)
+
+
+def get_launcher_local_dir(*subdirs: str) -> str:
+    """Get local directory for launcher.
+
+    Local directory is used for storing machine or user specific data.
+
+    The location is user specific.
+
+    Note:
+        This function should be called at least once on bootstrap.
+
+    Args:
+        *subdirs (str): Subdirectories relative to local dir.
+
+    Returns:
+        str: Path to local directory.
+
+    """
+    storage_dir = os.getenv("AYON_LAUNCHER_LOCAL_DIR")
+    if not storage_dir:
+        storage_dir = _get_ayon_appdirs()
+
+    return os.path.join(storage_dir, *subdirs)
+
+
+def get_addons_resources_dir(addon_name: str, *args) -> str:
+    """Get directory for storing resources for addons.
+
+    Some addons might need to store ad-hoc resources that are not part of
+        addon client package (e.g. because of size). Studio might define
+        dedicated directory to store them with 'AYON_ADDONS_RESOURCES_DIR'
+        environment variable. By default, is used 'addons_resources' in
+        launcher storage (might be shared across platforms).
+
+    Args:
+        addon_name (str): Addon name.
+        *args (str): Subfolders in resources directory.
+
+    Returns:
+        str: Path to resources directory.
+
+    """
+    addons_resources_dir = os.getenv("AYON_ADDONS_RESOURCES_DIR")
+    if not addons_resources_dir:
+        addons_resources_dir = get_launcher_storage_dir("addons_resources")
+
+    return os.path.join(addons_resources_dir, addon_name, *args)
 
 
 class AYONSecureRegistry:
@@ -133,8 +226,7 @@ class AYONSecureRegistry:
         keyring.delete_password(self._name, name)
 
 
-@six.add_metaclass(ABCMeta)
-class ASettingRegistry():
+class ASettingRegistry(ABC):
     """Abstract class defining structure of **SettingRegistry** class.
 
     It is implementing methods to store secure items into keyring, otherwise
@@ -212,12 +304,7 @@ class ASettingRegistry():
     @abstractmethod
     def _delete_item(self, name):
         # type: (str) -> None
-        """Delete item from settings.
-
-        Note:
-            see :meth:`ayon_core.lib.user_settings.ARegistrySettings.delete_item`
-
-        """
+        """Delete item from settings."""
         pass
 
     def __delitem__(self, name):
@@ -369,12 +456,7 @@ class IniSettingRegistry(ASettingRegistry):
             config.write(cfg)
 
     def _delete_item(self, name):
-        """Delete item from default section.
-
-        Note:
-            See :meth:`~ayon_core.lib.IniSettingsRegistry.delete_item_from_section`
-
-        """
+        """Delete item from default section."""
         self.delete_item_from_section("MAIN", name)
 
 
@@ -472,53 +554,15 @@ class JSONSettingRegistry(ASettingRegistry):
 class AYONSettingsRegistry(JSONSettingRegistry):
     """Class handling AYON general settings registry.
 
-    Attributes:
-        vendor (str): Name used for path construction.
-        product (str): Additional name used for path construction.
-
     Args:
         name (Optional[str]): Name of the registry.
     """
 
     def __init__(self, name=None):
-        self.vendor = "Ynput"
-        self.product = "AYON"
         if not name:
             name = "AYON_settings"
-        path = appdirs.user_data_dir(self.product, self.vendor)
+        path = get_launcher_storage_dir()
         super(AYONSettingsRegistry, self).__init__(name, path)
-
-
-def _create_local_site_id(registry=None):
-    """Create a local site identifier."""
-    from coolname import generate_slug
-
-    if registry is None:
-        registry = AYONSettingsRegistry()
-
-    new_id = generate_slug(3)
-
-    print("Created local site id \"{}\"".format(new_id))
-
-    registry.set_item("localId", new_id)
-
-    return new_id
-
-
-def get_ayon_appdirs(*args):
-    """Local app data directory of AYON client.
-
-    Args:
-        *args (Iterable[str]): Subdirectories/files in local app data dir.
-
-    Returns:
-        str: Path to directory/file in local app data dir.
-    """
-
-    return os.path.join(
-        appdirs.user_data_dir("AYON", "Ynput"),
-        *args
-    )
 
 
 def get_local_site_id():
@@ -531,7 +575,7 @@ def get_local_site_id():
     if site_id:
         return site_id
 
-    site_id_path = get_ayon_appdirs("site_id")
+    site_id_path = get_launcher_local_dir("site_id")
     if os.path.exists(site_id_path):
         with open(site_id_path, "r") as stream:
             site_id = stream.read()
@@ -551,18 +595,26 @@ def get_local_site_id():
 def get_ayon_username():
     """AYON username used for templates and publishing.
 
-    Uses curet ayon api username.
+    Uses current ayon api username.
 
     Returns:
         str: Username.
 
     """
-    return ayon_api.get_user()["name"]
+    # Look for username in the connection stack
+    # - this is used when service is working as other user
+    #   (e.g. in background sync)
+    # TODO @iLLiCiTiT - do not use private attribute of 'ServerAPI', rather
+    #      use public method to get username from connection stack.
+    con = ayon_api.get_server_api_connection()
+    user_stack = getattr(con, "_as_user_stack", None)
+    if user_stack is not None:
+        username = user_stack.username
+        if username is not None:
+            return username
 
-
-def get_openpype_username():
-    return get_ayon_username()
-
-
-OpenPypeSecureRegistry = AYONSecureRegistry
-OpenPypeSettingsRegistry = AYONSettingsRegistry
+    # Cache the username to avoid multiple API calls
+    # - it is not expected that user would change
+    if _Cache.username is None:
+        _Cache.username = ayon_api.get_user()["name"]
+    return _Cache.username

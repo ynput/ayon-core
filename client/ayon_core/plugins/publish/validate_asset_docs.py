@@ -24,7 +24,11 @@ class ValidateFolderEntities(pyblish.api.InstancePlugin):
         if instance.data.get("folderEntity"):
             self.log.debug("Instance has set fodler entity in its data.")
 
-        elif instance.data.get("newAssetPublishing"):
+        elif (
+            instance.data.get("newHierarchyIntegration")
+            # Backwards compatible (Deprecated since 24/06/06)
+            or instance.data.get("newAssetPublishing")
+        ):
             # skip if it is editorial
             self.log.debug("Editorial instance has no need to check...")
 

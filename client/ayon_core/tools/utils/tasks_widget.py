@@ -1,6 +1,12 @@
+from __future__ import annotations
+from typing import Optional
+
 from qtpy import QtWidgets, QtGui, QtCore
 
-from ayon_core.style import get_disabled_entity_icon_color
+from ayon_core.style import (
+    get_disabled_entity_icon_color,
+    get_default_entity_icon_color,
+)
 
 from .views import DeselectableTreeView
 from .lib import RefreshThread, get_qt_icon
@@ -17,12 +23,18 @@ class TasksQtModel(QtGui.QStandardItemModel):
 
     Args:
         controller (AbstractWorkfilesFrontend): The control object.
-    """
 
+    """
+    _default_task_icon = None
     refreshed = QtCore.Signal()
+    column_labels = ["Tasks"]
 
     def __init__(self, controller):
-        super(TasksQtModel, self).__init__()
+        super().__init__()
+
+        self.setColumnCount(len(self.column_labels))
+        for idx, label in enumerate(self.column_labels):
+            self.setHeaderData(idx, QtCore.Qt.Horizontal, label)
 
         self._controller = controller
 
@@ -49,7 +61,8 @@ class TasksQtModel(QtGui.QStandardItemModel):
         self._has_content = False
         self._remove_invalid_items()
         root_item = self.invisibleRootItem()
-        root_item.removeRows(0, root_item.rowCount())
+        while root_item.rowCount() != 0:
+            root_item.takeRow(0)
 
     def refresh(self):
         """Refresh tasks for last project and folder."""
@@ -176,7 +189,7 @@ class TasksQtModel(QtGui.QStandardItemModel):
             return
         thread = RefreshThread(
             folder_id,
-            self._controller.get_task_items,
+            self._thread_getter,
             project_name,
             folder_id
         )
@@ -185,8 +198,55 @@ class TasksQtModel(QtGui.QStandardItemModel):
         thread.refresh_finished.connect(self._on_refresh_thread)
         thread.start()
 
+    def _thread_getter(self, project_name, folder_id):
+        task_items = self._controller.get_task_items(
+            project_name, folder_id, sender=TASKS_MODEL_SENDER_NAME
+        )
+        task_type_items = {}
+        if hasattr(self._controller, "get_task_type_items"):
+            task_type_items = self._controller.get_task_type_items(
+                project_name, sender=TASKS_MODEL_SENDER_NAME
+            )
+        return task_items, task_type_items
+
+    @classmethod
+    def _get_default_task_icon(cls):
+        if cls._default_task_icon is None:
+            cls._default_task_icon = get_qt_icon({
+                "type": "awesome-font",
+                "name": "fa.male",
+                "color": get_default_entity_icon_color()
+            })
+        return cls._default_task_icon
+
+    def _get_task_item_icon(
+        self,
+        task_item,
+        task_type_item_by_name,
+        task_type_icon_cache
+    ):
+        icon = task_type_icon_cache.get(task_item.task_type)
+        if icon is not None:
+            return icon
+
+        task_type_item = task_type_item_by_name.get(
+            task_item.task_type
+        )
+        icon = None
+        if task_type_item is not None:
+            icon = get_qt_icon({
+                "type": "material-symbols",
+                "name": task_type_item.icon,
+                "color": get_default_entity_icon_color()
+            })
+
+        if icon is None:
+            icon = self._get_default_task_icon()
+        task_type_icon_cache[task_item.task_type] = icon
+        return icon
+
     def _fill_data_from_thread(self, thread):
-        task_items = thread.get_result()
+        task_items, task_type_items = thread.get_result()
         # Task items are refreshed
         if task_items is None:
             return
@@ -197,6 +257,11 @@ class TasksQtModel(QtGui.QStandardItemModel):
             return
         self._remove_invalid_items()
 
+        task_type_item_by_name = {
+            task_type_item.name: task_type_item
+            for task_type_item in task_type_items
+        }
+        task_type_icon_cache = {}
         new_items = []
         new_names = set()
         for task_item in task_items:
@@ -209,9 +274,12 @@ class TasksQtModel(QtGui.QStandardItemModel):
                 new_items.append(item)
                 self._items_by_name[name] = item
 
-            # TODO cache locally
-            icon = get_qt_icon(task_item.icon)
-            item.setData(task_item.label, QtCore.Qt.DisplayRole)
+            icon = self._get_task_item_icon(
+                task_item,
+                task_type_item_by_name,
+                task_type_icon_cache
+            )
+            item.setData(task_item.full_label, QtCore.Qt.DisplayRole)
             item.setData(name, ITEM_NAME_ROLE)
             item.setData(task_item.id, ITEM_ID_ROLE)
             item.setData(task_item.task_type, TASK_TYPE_ROLE)
@@ -277,18 +345,28 @@ class TasksQtModel(QtGui.QStandardItemModel):
 
         return self._has_content
 
-    def headerData(self, section, orientation, role):
-        # Show nice labels in the header
-        if (
-            role == QtCore.Qt.DisplayRole
-            and orientation == QtCore.Qt.Horizontal
-        ):
-            if section == 0:
-                return "Tasks"
 
-        return super(TasksQtModel, self).headerData(
-            section, orientation, role
-        )
+class TasksProxyModel(QtCore.QSortFilterProxyModel):
+    def __init__(self):
+        super().__init__()
+
+        self._task_ids_filter: Optional[set[str]] = None
+
+    def set_task_ids_filter(self, task_ids: Optional[set[str]]):
+        if self._task_ids_filter == task_ids:
+            return
+        self._task_ids_filter = task_ids
+        self.invalidateFilter()
+
+    def filterAcceptsRow(self, row, parent_index):
+        if self._task_ids_filter is not None:
+            if not self._task_ids_filter:
+                return False
+            source_index = self.sourceModel().index(row, 0, parent_index)
+            task_id = source_index.data(ITEM_ID_ROLE)
+            if task_id is not None and task_id not in self._task_ids_filter:
+                return False
+        return super().filterAcceptsRow(row, parent_index)
 
 
 class TasksWidget(QtWidgets.QWidget):
@@ -306,13 +384,13 @@ class TasksWidget(QtWidgets.QWidget):
     selection_changed = QtCore.Signal()
 
     def __init__(self, controller, parent, handle_expected_selection=False):
-        super(TasksWidget, self).__init__(parent)
+        super().__init__(parent)
 
         tasks_view = DeselectableTreeView(self)
         tasks_view.setIndentation(0)
 
         tasks_model = TasksQtModel(controller)
-        tasks_proxy_model = QtCore.QSortFilterProxyModel()
+        tasks_proxy_model = TasksProxyModel()
         tasks_proxy_model.setSourceModel(tasks_model)
         tasks_proxy_model.setSortCaseSensitivity(QtCore.Qt.CaseInsensitive)
 
@@ -438,6 +516,15 @@ class TasksWidget(QtWidgets.QWidget):
         )
         return True
 
+    def set_task_ids_filter(self, task_ids: Optional[list[str]]):
+        """Set filter of folder ids.
+
+        Args:
+            task_ids (list[str]): The list of folder ids.
+
+        """
+        self._tasks_proxy_model.set_task_ids_filter(task_ids)
+
     def _on_tasks_refresh_finished(self, event):
         """Tasks were refreshed in controller.
 
@@ -488,7 +575,7 @@ class TasksWidget(QtWidgets.QWidget):
         if self._tasks_model.is_refreshing:
             return
 
-        parent_id, task_id, task_name, _ = self._get_selected_item_ids()
+        _parent_id, task_id, task_name, _ = self._get_selected_item_ids()
         self._controller.set_selected_task(task_id, task_name)
         self.selection_changed.emit()
 
@@ -521,6 +608,7 @@ class TasksWidget(QtWidgets.QWidget):
             return
         if expected_data is None:
             expected_data = self._controller.get_expected_selection_data()
+
         folder_data = expected_data.get("folder")
         task_data = expected_data.get("task")
         if (

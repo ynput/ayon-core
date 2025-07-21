@@ -56,14 +56,9 @@ class _AyonSettingsCache:
     @classmethod
     def _get_variant(cls):
         if _AyonSettingsCache.variant is None:
-            from ayon_core.lib import is_staging_enabled, is_dev_mode_enabled
+            from ayon_core.lib import get_settings_variant
 
-            variant = "production"
-            if is_dev_mode_enabled():
-                variant = cls._get_bundle_name()
-            elif is_staging_enabled():
-                variant = "staging"
-
+            variant = get_settings_variant()
             # Cache variant
             _AyonSettingsCache.variant = variant
 
@@ -121,22 +116,6 @@ class _AyonSettingsCache:
             cache_item.update_value(addons)
 
         return cache_item.get_value()
-
-
-def get_site_local_overrides(project_name, site_name, local_settings=None):
-    """Site overrides from local settings for passet project and site name.
-
-    Deprecated:
-        This function is not implemented for AYON and will be removed.
-
-    Args:
-        project_name (str): For which project are overrides.
-        site_name (str): For which site are overrides needed.
-        local_settings (dict): Preloaded local settings. They are loaded
-            automatically if not passed.
-    """
-
-    return {}
 
 
 def get_ayon_settings(project_name=None):
@@ -206,6 +185,7 @@ def get_current_project_settings():
     project_name = os.environ.get("AYON_PROJECT_NAME")
     if not project_name:
         raise ValueError(
-            "Missing context project in environemt variable `AYON_PROJECT_NAME`."
+            "Missing context project in environment"
+            " variable `AYON_PROJECT_NAME`."
         )
     return get_project_settings(project_name)

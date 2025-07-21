@@ -14,21 +14,7 @@ class CollectSceneVersion(pyblish.api.ContextPlugin):
     order = pyblish.api.CollectorOrder
     label = 'Collect Scene Version'
     # configurable in Settings
-    hosts = [
-        "aftereffects",
-        "blender",
-        "celaction",
-        "fusion",
-        "harmony",
-        "hiero",
-        "houdini",
-        "maya",
-        "max",
-        "nuke",
-        "photoshop",
-        "resolve",
-        "tvpaint"
-    ]
+    hosts = ["*"]
 
     # in some cases of headless publishing (for example webpublisher using PS)
     # you want to ignore version from name and let integrate use next version
@@ -45,8 +31,9 @@ class CollectSceneVersion(pyblish.api.ContextPlugin):
             return
 
         if not context.data.get('currentFile'):
-            raise KnownPublishError("Cannot get current workfile path. "
-                                    "Make sure your scene is saved.")
+            self.log.error("Cannot get current workfile path. "
+                           "Make sure your scene is saved.")
+            return
 
         filename = os.path.basename(context.data.get('currentFile'))
 

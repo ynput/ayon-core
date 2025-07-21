@@ -1,6 +1,7 @@
 import os
 import re
 import copy
+import platform
 import collections
 import numbers
 
@@ -14,8 +15,8 @@ from .exceptions import (
     TemplateMissingKey,
     AnatomyTemplateUnsolved,
 )
-from .roots import RootItem
 
+_IS_WINDOWS = platform.system().lower() == "windows"
 _PLACEHOLDER = object()
 
 
@@ -526,6 +527,14 @@ class AnatomyTemplates:
 
             root_key = "{" + root_key + "}"
             output = output.replace(str(used_value), root_key)
+
+        # Make sure rootless path is with forward slashes
+        if _IS_WINDOWS:
+            output.replace("\\", "/")
+
+        # Make sure there are no double slashes
+        while "//" in output:
+            output = output.replace("//", "/")
 
         return output
 

@@ -54,9 +54,135 @@ class CoreImageIOFileRulesModel(BaseSettingsModel):
         return value
 
 
-class CoreImageIOConfigModel(BaseSettingsModel):
-    filepath: list[str] = SettingsField(
-        default_factory=list, title="Config path"
+def _ocio_config_profile_types():
+    return [
+        {"value": "builtin_path", "label": "AYON built-in OCIO config"},
+        {"value": "custom_path", "label": "Path to OCIO config"},
+        {"value": "published_product", "label": "Published product"},
+    ]
+
+
+def _fallback_ocio_config_profile_types():
+    return [
+        {"value": "builtin_path", "label": "AYON built-in OCIO config"},
+        {"value": "custom_path", "label": "Path to OCIO config"},
+    ]
+
+
+def _ocio_built_in_paths():
+    return [
+        {
+            "value": "{BUILTIN_OCIO_ROOT}/aces_2.0/studio-config-v3.0.0_aces-v2.0_ocio-v2.4.ocio",  # noqa: E501
+            "label": "ACES 2.0 Studio (OCIO v2.4)",
+            "description": (
+                "Aces 2.0 Studio OCIO config file. Requires OCIO v2.4.")
+        },
+        {
+            "value": "{BUILTIN_OCIO_ROOT}/aces_1.3/studio-config-v1.0.0_aces-v1.3_ocio-v2.1.ocio",  # noqa: E501
+            "label": "ACES 1.3 Studio (OCIO v2.1)",
+            "description": (
+                "Aces 1.3 Studio OCIO config file. Requires OCIO v2.1.")
+        },
+        {
+            "value": "{BUILTIN_OCIO_ROOT}/aces_1.3/studio-config-v1.0.0_aces-v1.3_ocio-v2.0.ocio",  # noqa: E501
+            "label": "ACES 1.3 Studio (OCIO v2)",
+            "description": (
+                "Aces 1.3 Studio OCIO config file. Requires OCIO v2.")
+        },
+        {
+            "value": "{BUILTIN_OCIO_ROOT}/aces_1.2/config.ocio",
+            "label": "ACES 1.2",
+            "description": "Aces 1.2 OCIO config file."
+        },
+        {
+            "value": "{BUILTIN_OCIO_ROOT}/nuke-default/config.ocio",
+            "label": "Nuke default",
+        },
+    ]
+
+
+class FallbackProductModel(BaseSettingsModel):
+    _layout = "expanded"
+    fallback_type: str = SettingsField(
+        title="Fallback config type",
+        enum_resolver=_fallback_ocio_config_profile_types,
+        conditional_enum=True,
+        default="builtin_path",
+        description=(
+            "Type of config which needs to be used in case published "
+            "product is not found."
+        ),
+    )
+    builtin_path: str = SettingsField(
+        "ACES 1.2",
+        title="Built-in OCIO config",
+        enum_resolver=_ocio_built_in_paths,
+        description=(
+            "AYON ocio addon distributed OCIO config. "
+            "Activated addon in bundle is required: 'ayon_ocio' >= 1.1.1"
+        ),
+    )
+    custom_path: str = SettingsField(
+        "",
+        title="OCIO config path",
+        description="Path to OCIO config. Anatomy formatting is supported.",
+    )
+
+
+class PublishedProductModel(BaseSettingsModel):
+    _layout = "expanded"
+    product_name: str = SettingsField(
+        "",
+        title="Product name",
+        description=(
+            "Context related published product name to get OCIO config from. "
+            "Partial match is supported via use of regex expression."
+        ),
+    )
+    fallback: FallbackProductModel = SettingsField(
+        default_factory=FallbackProductModel,
+    )
+
+
+class CoreImageIOConfigProfilesModel(BaseSettingsModel):
+    _layout = "expanded"
+    host_names: list[str] = SettingsField(
+        default_factory=list,
+        title="Host names"
+    )
+    task_types: list[str] = SettingsField(
+        default_factory=list,
+        title="Task types",
+        enum_resolver=task_types_enum
+    )
+    task_names: list[str] = SettingsField(
+        default_factory=list,
+        title="Task names"
+    )
+    type: str = SettingsField(
+        title="Profile type",
+        enum_resolver=_ocio_config_profile_types,
+        conditional_enum=True,
+        default="builtin_path",
+        section="---",
+    )
+    builtin_path: str = SettingsField(
+        "ACES 1.2",
+        title="Built-in OCIO config",
+        enum_resolver=_ocio_built_in_paths,
+        description=(
+            "AYON ocio addon distributed OCIO config. "
+            "Activated addon in bundle is required: 'ayon_ocio' >= 1.1.1"
+        ),
+    )
+    custom_path: str = SettingsField(
+        "",
+        title="OCIO config path",
+        description="Path to OCIO config. Anatomy formatting is supported.",
+    )
+    published_product: PublishedProductModel = SettingsField(
+        default_factory=PublishedProductModel,
+        title="Published product",
     )
 
 
@@ -65,9 +191,8 @@ class CoreImageIOBaseModel(BaseSettingsModel):
         False,
         title="Enable Color Management"
     )
-    ocio_config: CoreImageIOConfigModel = SettingsField(
-        default_factory=CoreImageIOConfigModel,
-        title="OCIO config"
+    ocio_config_profiles: list[CoreImageIOConfigProfilesModel] = SettingsField(
+        default_factory=list, title="OCIO config profiles"
     )
     file_rules: CoreImageIOFileRulesModel = SettingsField(
         default_factory=CoreImageIOFileRulesModel,
@@ -109,6 +234,46 @@ class VersionStartCategoryModel(BaseSettingsModel):
     profiles: list[VersionStartCategoryProfileModel] = SettingsField(
         default_factory=list,
         title="Profiles"
+    )
+
+
+class EnvironmentReplacementModel(BaseSettingsModel):
+    environment_key: str = SettingsField("", title="Enviroment variable")
+    pattern: str = SettingsField("", title="Pattern")
+    replacement: str = SettingsField("", title="Replacement")
+
+
+class FilterEnvsProfileModel(BaseSettingsModel):
+    _layout = "expanded"
+
+    host_names: list[str] = SettingsField(
+        default_factory=list,
+        title="Host names"
+    )
+
+    task_types: list[str] = SettingsField(
+        default_factory=list,
+        title="Task types",
+        enum_resolver=task_types_enum
+    )
+
+    task_names: list[str] = SettingsField(
+        default_factory=list,
+        title="Task names"
+    )
+
+    folder_paths: list[str] = SettingsField(
+        default_factory=list,
+        title="Folder paths"
+    )
+
+    skip_env_keys: list[str] = SettingsField(
+        default_factory=list,
+        title="Skip environment variables"
+    )
+    replace_in_environment: list[EnvironmentReplacementModel] = SettingsField(
+        default_factory=list,
+        title="Replace values in environment"
     )
 
 
@@ -154,6 +319,10 @@ class CoreSettings(BaseSettingsModel):
         "{}",
         widget="textarea",
         title="Project folder structure",
+        description=(
+            "Defines project folders to create on disk"
+            " for 'Create project folders' action."
+        ),
         section="---"
     )
     project_environments: str = SettingsField(
@@ -161,6 +330,9 @@ class CoreSettings(BaseSettingsModel):
         widget="textarea",
         title="Project environments",
         section="---"
+    )
+    filter_env_profiles: list[FilterEnvsProfileModel] = SettingsField(
+        default_factory=list,
     )
 
     @validator(
@@ -186,12 +358,24 @@ class CoreSettings(BaseSettingsModel):
 DEFAULT_VALUES = {
     "imageio": {
         "activate_global_color_management": False,
-        "ocio_config": {
-            "filepath": [
-                "{BUILTIN_OCIO_ROOT}/aces_1.2/config.ocio",
-                "{BUILTIN_OCIO_ROOT}/nuke-default/config.ocio"
-            ]
-        },
+        "ocio_config_profiles": [
+            {
+                "host_names": [],
+                "task_types": [],
+                "task_names": [],
+                "type": "builtin_path",
+                "builtin_path": "{BUILTIN_OCIO_ROOT}/aces_1.2/config.ocio",
+                "custom_path": "",
+                "published_product": {
+                    "product_name": "",
+                    "fallback": {
+                        "fallback_type": "builtin_path",
+                        "builtin_path": "ACES 1.2",
+                        "custom_path": ""
+                    }
+                }
+            }
+        ],
         "file_rules": {
             "activate_global_file_rules": False,
             "rules": [
@@ -199,42 +383,58 @@ DEFAULT_VALUES = {
                     "name": "example",
                     "pattern": ".*(beauty).*",
                     "colorspace": "ACES - ACEScg",
-                    "ext": "exr"
+                    "ext": "exr",
                 }
-            ]
-        }
+            ],
+        },
     },
     "studio_name": "",
     "studio_code": "",
-    "environments": "{\n\"STUDIO_SW\": {\n        \"darwin\": \"/mnt/REPO_SW\",\n        \"linux\": \"/mnt/REPO_SW\",\n        \"windows\": \"P:/REPO_SW\"\n    }\n}",
+    "environments": json.dumps(
+        {
+            "STUDIO_SW": {
+                "darwin": "/mnt/REPO_SW",
+                "linux": "/mnt/REPO_SW",
+                "windows": "P:/REPO_SW"
+            }
+        },
+        indent=4
+    ),
     "tools": DEFAULT_TOOLS_VALUES,
     "version_start_category": {
         "profiles": []
     },
     "publish": DEFAULT_PUBLISH_VALUES,
-    "project_folder_structure": json.dumps({
-        "__project_root__": {
-            "prod": {},
-            "resources": {
-                "footage": {
-                    "plates": {},
-                    "offline": {}
+    "project_folder_structure": json.dumps(
+        {
+            "__project_root__": {
+                "prod": {},
+                "resources": {
+                    "footage": {
+                        "plates": {},
+                        "offline": {}
+                    },
+                    "audio": {},
+                    "art_dept": {}
                 },
-                "audio": {},
-                "art_dept": {}
-            },
-            "editorial": {},
-            "assets": {
-                "characters": {},
-                "locations": {}
-            },
-            "shots": {}
-        }
-    }, indent=4),
+                "editorial": {},
+                "assets": {
+                    "characters": {},
+                    "locations": {}
+                },
+                "shots": {}
+            }
+        },
+        indent=4
+    ),
     "project_plugins": {
         "windows": [],
         "darwin": [],
         "linux": []
     },
-    "project_environments": "{}"
+    "project_environments": json.dumps(
+        {},
+        indent=4
+    ),
+    "filter_env_profiles": [],
 }

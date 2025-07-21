@@ -1,10 +1,11 @@
 """Core pipeline functionality"""
-
+from __future__ import annotations
 import os
-import types
 import logging
 import platform
 import uuid
+import warnings
+from typing import Optional, Any
 
 import ayon_api
 import pyblish.api
@@ -12,7 +13,11 @@ from pyblish.lib import MessageHandler
 
 from ayon_core import AYON_CORE_ROOT
 from ayon_core.host import HostBase
-from ayon_core.lib import is_in_tests, initialize_ayon_connection, emit_event
+from ayon_core.lib import (
+    is_in_tests,
+    initialize_ayon_connection,
+    version_up
+)
 from ayon_core.addon import load_addons, AddonsManager
 from ayon_core.settings import get_project_settings
 
@@ -20,9 +25,10 @@ from .publish.lib import filter_pyblish_plugins
 from .anatomy import Anatomy
 from .template_data import get_template_data_with_names
 from .workfile import (
-    get_workdir,
-    get_workfile_template_key,
     get_custom_workfile_template_by_string_context,
+    get_workfile_template_key_from_context,
+    get_last_workfile,
+    MissingWorkdirError,
 )
 from . import (
     register_loader_plugin_path,
@@ -127,7 +133,10 @@ def install_host(host):
 
     def modified_emit(obj, record):
         """Method replacing `emit` in Pyblish's MessageHandler."""
-        record.msg = record.getMessage()
+        try:
+            record.msg = record.getMessage()
+        except Exception:
+            record.msg = str(record.msg)
         obj.records.append(record)
 
     MessageHandler.emit = modified_emit
@@ -229,16 +238,6 @@ def install_ayon_plugins(project_name=None, host_name=None):
             register_inventory_action_path(path)
 
 
-def install_openpype_plugins(project_name=None, host_name=None):
-    """Install AYON core plugins and make sure the core is initialized.
-
-    Deprecated:
-        Use `install_ayon_plugins` instead.
-
-    """
-    install_ayon_plugins(project_name, host_name)
-
-
 def uninstall_host():
     """Undo all of what `install()` did"""
     host = registered_host()
@@ -253,7 +252,7 @@ def uninstall_host():
     pyblish.api.deregister_discovery_filter(filter_pyblish_plugins)
     deregister_loader_plugin_path(LOAD_PATH)
     deregister_inventory_action_path(INVENTORY_PATH)
-    log.info("Global plug-ins unregistred")
+    log.info("Global plug-ins unregistered")
 
     deregister_host()
 
@@ -461,36 +460,6 @@ def is_representation_from_latest(representation):
     )
 
 
-def get_template_data_from_session(session=None, settings=None):
-    """Template data for template fill from session keys.
-
-    Args:
-        session (Union[Dict[str, str], None]): The Session to use. If not
-            provided use the currently active global Session.
-        settings (Optional[Dict[str, Any]]): Prepared studio or project
-            settings.
-
-    Returns:
-        Dict[str, Any]: All available data from session.
-    """
-
-    if session is not None:
-        project_name = session["AYON_PROJECT_NAME"]
-        folder_path = session["AYON_FOLDER_PATH"]
-        task_name = session["AYON_TASK_NAME"]
-        host_name = session["AYON_HOST_NAME"]
-    else:
-        context = get_current_context()
-        project_name = context["project_name"]
-        folder_path = context["folder_path"]
-        task_name = context["task_name"]
-        host_name = get_current_host_name()
-
-    return get_template_data_with_names(
-        project_name, folder_path, task_name, host_name, settings
-    )
-
-
 def get_current_context_template_data(settings=None):
     """Prepare template data for current context.
 
@@ -536,66 +505,63 @@ def get_current_context_custom_workfile_template(project_settings=None):
     )
 
 
-def change_current_context(folder_entity, task_entity, template_key=None):
+_PLACEHOLDER = object()
+
+
+def change_current_context(
+    folder_entity: dict[str, Any],
+    task_entity: dict[str, Any],
+    *,
+    template_key: Optional[str] = _PLACEHOLDER,
+    reason: Optional[str] = None,
+    project_entity: Optional[dict[str, Any]] = None,
+    anatomy: Optional[Anatomy] = None,
+) -> dict[str, str]:
     """Update active Session to a new task work area.
 
-    This updates the live Session to a different task under folder.
+    This updates the live Session to a different task under a folder.
+
+    Notes:
+        * This function does a lot of things related to workfiles which
+            extends arguments options a lot.
+        * We might want to implement 'set_current_context' on host integration
+            instead. But `AYON_WORKDIR`, which is related to 'IWorkfileHost',
+            would not be available in that case which might break some
+            logic.
 
     Args:
         folder_entity (Dict[str, Any]): Folder entity to set.
         task_entity (Dict[str, Any]): Task entity to set.
-        template_key (Union[str, None]): Prepared template key to be used for
-            workfile template in Anatomy.
+        template_key (Optional[str]): DEPRECATED: Prepared template key to
+            be used for workfile template in Anatomy.
+        reason (Optional[str]): Reason for changing context.
+        anatomy (Optional[Anatomy]): Anatomy object used for workdir
+            calculation.
+        project_entity (Optional[dict[str, Any]]): Project entity used for
+            workdir calculation.
 
     Returns:
-        Dict[str, str]: The changed key, values in the current Session.
-    """
+        dict[str, str]: New context data.
 
-    project_name = get_current_project_name()
-    workdir = None
-    folder_path = None
-    task_name = None
-    if folder_entity:
-        folder_path = folder_entity["path"]
-        if task_entity:
-            task_name = task_entity["name"]
-        project_entity = ayon_api.get_project(project_name)
-        host_name = get_current_host_name()
-        workdir = get_workdir(
-            project_entity,
-            folder_entity,
-            task_entity,
-            host_name,
-            template_key=template_key
+    """
+    if template_key is not _PLACEHOLDER:
+        warnings.warn(
+            (
+                "Used deprecated argument 'template_key' in"
+                " 'change_current_context'."
+                " It is not necessary to pass it in anymore."
+            ),
+            DeprecationWarning,
         )
 
-    envs = {
-        "AYON_PROJECT_NAME": project_name,
-        "AYON_FOLDER_PATH": folder_path,
-        "AYON_TASK_NAME": task_name,
-        "AYON_WORKDIR": workdir,
-    }
-
-    # Update the Session and environments. Pop from environments all keys with
-    # value set to None.
-    for key, value in envs.items():
-        if value is None:
-            os.environ.pop(key, None)
-        else:
-            os.environ[key] = value
-
-    data = envs.copy()
-
-    # Convert env keys to human readable keys
-    data["project_name"] = project_name
-    data["folder_path"] = folder_path
-    data["task_name"] = task_name
-    data["workdir_path"] = workdir
-
-    # Emit session change
-    emit_event("taskChanged", data)
-
-    return data
+    host = registered_host()
+    return host.set_current_context(
+        folder_entity,
+        task_entity,
+        reason=reason,
+        project_entity=project_entity,
+        anatomy=anatomy,
+    )
 
 
 def get_process_id():
@@ -611,3 +577,56 @@ def get_process_id():
     if _process_id is None:
         _process_id = str(uuid.uuid4())
     return _process_id
+
+
+def version_up_current_workfile():
+    """Function to increment and save workfile
+    """
+    host = registered_host()
+
+    project_name = get_current_project_name()
+    folder_path = get_current_folder_path()
+    task_name = get_current_task_name()
+    host_name = get_current_host_name()
+
+    template_key = get_workfile_template_key_from_context(
+        project_name,
+        folder_path,
+        task_name,
+        host_name,
+    )
+    anatomy = Anatomy(project_name)
+
+    data = get_template_data_with_names(
+        project_name, folder_path, task_name, host_name
+    )
+    data["root"] = anatomy.roots
+
+    work_template = anatomy.get_template_item("work", template_key)
+
+    # Define saving file extension
+    extensions = host.get_workfile_extensions()
+    current_file = host.get_current_workfile()
+    if current_file:
+        extensions = [os.path.splitext(current_file)[-1]]
+
+    work_root = work_template["directory"].format_strict(data)
+    file_template = work_template["file"].template
+    last_workfile_path = get_last_workfile(
+        work_root, file_template, data, extensions, True
+    )
+    # `get_last_workfile` will return the first expected file version
+    # if no files exist yet. In that case, if they do not exist we will
+    # want to save v001
+    new_workfile_path = last_workfile_path
+    if os.path.exists(new_workfile_path):
+        new_workfile_path = version_up(new_workfile_path)
+
+    # Raise an error if the parent folder doesn't exist as `host.save_workfile`
+    # is not supposed/able to create missing folders.
+    parent_folder = os.path.dirname(new_workfile_path)
+    if not os.path.exists(parent_folder):
+        raise MissingWorkdirError(
+            f"Work area directory '{parent_folder}' does not exist.")
+
+    host.save_workfile(new_workfile_path)

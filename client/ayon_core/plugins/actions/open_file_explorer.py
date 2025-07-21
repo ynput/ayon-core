@@ -3,8 +3,6 @@ import platform
 import subprocess
 from string import Formatter
 
-import ayon_api
-
 from ayon_core.pipeline import (
     Anatomy,
     LauncherAction,
@@ -101,7 +99,7 @@ class OpenTaskPath(LauncherAction):
         if platform_name == "windows":
             args = ["start", path]
         elif platform_name == "darwin":
-            args = ["open", "-na", path]
+            args = ["open", "-R", path]
         elif platform_name == "linux":
             args = ["xdg-open", path]
         else:

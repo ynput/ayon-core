@@ -1,9 +1,11 @@
 import os
+import uuid
 import platform
 import logging
 import inspect
 import collections
 import numbers
+from typing import Optional, Union, Any
 
 import ayon_api
 
@@ -286,7 +288,12 @@ def get_representation_context(project_name, representation):
 
 
 def load_with_repre_context(
-    Loader, repre_context, namespace=None, name=None, options=None, **kwargs
+    Loader,
+    repre_context,
+    namespace=None,
+    name=None,
+    options=None,
+    **kwargs
 ):
 
     # Ensure the Loader is compatible for the representation
@@ -314,17 +321,16 @@ def load_with_repre_context(
     )
 
     loader = Loader()
-
-    # Backwards compatibility: Originally the loader's __init__ required the
-    # representation context to set `fname` attribute to the filename to load
-    # Deprecated - to be removed in OpenPype 3.16.6 or 3.17.0.
-    loader._fname = get_representation_path_from_context(repre_context)
-
     return loader.load(repre_context, name, namespace, options)
 
 
 def load_with_product_context(
-    Loader, product_context, namespace=None, name=None, options=None, **kwargs
+    Loader,
+    product_context,
+    namespace=None,
+    name=None,
+    options=None,
+    **kwargs
 ):
 
     # Ensure options is a dictionary when no explicit options provided
@@ -347,7 +353,12 @@ def load_with_product_context(
 
 
 def load_with_product_contexts(
-    Loader, product_contexts, namespace=None, name=None, options=None, **kwargs
+    Loader,
+    product_contexts,
+    namespace=None,
+    name=None,
+    options=None,
+    **kwargs
 ):
 
     # Ensure options is a dictionary when no explicit options provided
@@ -463,9 +474,16 @@ def update_container(container, version=-1):
     from ayon_core.pipeline import get_current_project_name
 
     # Compute the different version from 'representation'
-    project_name = get_current_project_name()
+    project_name = container.get("project_name")
+    if project_name is None:
+        project_name = get_current_project_name()
+    repre_id = container["representation"]
+    if not _is_valid_representation_id(repre_id):
+        raise ValueError(
+            f"Got container with invalid representation id '{repre_id}'"
+        )
     current_representation = ayon_api.get_representation_by_id(
-        project_name, container["representation"]
+        project_name, repre_id
     )
 
     assert current_representation is not None, "This is a bug"
@@ -498,21 +516,6 @@ def update_container(container, version=-1):
         project_name, product_entity["folderId"]
     )
 
-    repre_name = current_representation["name"]
-    new_representation = ayon_api.get_representation_by_name(
-        project_name, repre_name, new_version["id"]
-    )
-    if new_representation is None:
-        raise ValueError(
-            "Representation '{}' wasn't found on requested version".format(
-                repre_name
-            )
-        )
-
-    path = get_representation_path(new_representation)
-    if not path or not os.path.exists(path):
-        raise ValueError("Path {} doesn't exist".format(path))
-
     # Run update on the Loader for this container
     Loader = _get_container_loader(container)
     if not Loader:
@@ -520,6 +523,36 @@ def update_container(container, version=-1):
             "Can't update container because loader '{}' was not found."
             .format(container.get("loader"))
         )
+
+    repre_name = current_representation["name"]
+    new_representation = ayon_api.get_representation_by_name(
+        project_name, repre_name, new_version["id"]
+    )
+    if new_representation is None:
+        # The representation name is not found in the new version.
+        # Allow updating to a 'matching' representation if the loader
+        # has defined compatible update conversions
+        repre_name_aliases = Loader.get_representation_name_aliases(repre_name)
+        if repre_name_aliases:
+            representations = ayon_api.get_representations(
+                project_name,
+                representation_names=repre_name_aliases,
+                version_ids=[new_version["id"]])
+            representations_by_name = {
+                repre["name"]: repre for repre in representations
+            }
+            for name in repre_name_aliases:
+                if name in representations_by_name:
+                    new_representation = representations_by_name[name]
+                    break
+
+        if new_representation is None:
+            raise ValueError(
+                "Representation '{}' wasn't found on requested version".format(
+                    repre_name
+                )
+            )
+
     project_entity = ayon_api.get_project(project_name)
     context = {
         "project": project_entity,
@@ -528,19 +561,27 @@ def update_container(container, version=-1):
         "version": new_version,
         "representation": new_representation,
     }
+    path = get_representation_path_from_context(context)
+    if not path or not os.path.exists(path):
+        raise ValueError("Path {} doesn't exist".format(path))
 
     return Loader().update(container, context)
 
 
-def switch_container(container, representation, loader_plugin=None):
+def switch_container(
+    container,
+    representation,
+    loader_plugin=None,
+):
     """Switch a container to representation
 
     Args:
         container (dict): container information
         representation (dict): representation entity
+        loader_plugin (LoaderPlugin)
 
     Returns:
-        function call
+        return from function call
     """
     from ayon_core.pipeline import get_current_project_name
 
@@ -563,7 +604,9 @@ def switch_container(container, representation, loader_plugin=None):
         )
 
     # Get the new representation to switch to
-    project_name = get_current_project_name()
+    project_name = container.get("project_name")
+    if project_name is None:
+        project_name = get_current_project_name()
 
     context = get_representation_context(
         project_name, representation["id"]
@@ -578,6 +621,21 @@ def switch_container(container, representation, loader_plugin=None):
     loader = loader_plugin(context)
 
     return loader.switch(container, context)
+
+
+def _fix_representation_context_compatibility(repre_context):
+    """Helper function to fix representation context compatibility.
+
+    Args:
+        repre_context (dict): Representation context.
+
+    """
+    # Auto-fix 'udim' being list of integers
+    # - This is a legacy issue for old representation entities,
+    #   added 24/07/10
+    udim = repre_context.get("udim")
+    if isinstance(udim, list):
+        repre_context["udim"] = udim[0]
 
 
 def get_representation_path_from_context(context):
@@ -631,7 +689,9 @@ def get_representation_path_with_anatomy(repre_entity, anatomy):
 
     try:
         context = repre_entity["context"]
+        _fix_representation_context_compatibility(context)
         context["root"] = anatomy.roots
+
         path = StringTemplate.format_strict_template(template, context)
 
     except TemplateUnsolved as exc:
@@ -674,6 +734,9 @@ def get_representation_path(representation, root=None):
 
         try:
             context = representation["context"]
+
+            _fix_representation_context_compatibility(context)
+
             context["root"] = root
             path = StringTemplate.format_strict_template(
                 template, context
@@ -730,6 +793,91 @@ def get_representation_path(representation, root=None):
     return (
         path_from_representation() or path_from_data()
     )
+
+
+def get_representation_path_by_names(
+        project_name: str,
+        folder_path: str,
+        product_name: str,
+        version_name: str,
+        representation_name: str,
+        anatomy: Optional[Anatomy] = None) -> Optional[str]:
+    """Get (latest) filepath for representation for folder and product.
+
+    See `get_representation_by_names` for more details.
+
+    Returns:
+        str: The representation path if the representation exists.
+
+    """
+    representation = get_representation_by_names(
+        project_name,
+        folder_path,
+        product_name,
+        version_name,
+        representation_name
+    )
+    if not representation:
+        return
+
+    if not anatomy:
+        anatomy = Anatomy(project_name)
+
+    if representation:
+        path = get_representation_path_with_anatomy(representation, anatomy)
+        return str(path).replace("\\", "/")
+
+
+def get_representation_by_names(
+        project_name: str,
+        folder_path: str,
+        product_name: str,
+        version_name: Union[int, str],
+        representation_name: str,
+) -> Optional[dict]:
+    """Get representation entity for asset and subset.
+
+    If version_name is "hero" then return the hero version
+    If version_name is "latest" then return the latest version
+    Otherwise use version_name as the exact integer version name.
+
+    """
+
+    if isinstance(folder_path, dict) and "name" in folder_path:
+        # Allow explicitly passing asset document
+        folder_entity = folder_path
+    else:
+        folder_entity = ayon_api.get_folder_by_path(
+            project_name, folder_path, fields=["id"])
+    if not folder_entity:
+        return
+
+    if isinstance(product_name, dict) and "name" in product_name:
+        # Allow explicitly passing subset document
+        product_entity = product_name
+    else:
+        product_entity = ayon_api.get_product_by_name(
+            project_name,
+            product_name,
+            folder_id=folder_entity["id"],
+            fields=["id"])
+    if not product_entity:
+        return
+
+    if version_name == "hero":
+        version_entity = ayon_api.get_hero_version_by_product_id(
+            project_name, product_id=product_entity["id"])
+    elif version_name == "latest":
+        version_entity = ayon_api.get_last_version_by_product_id(
+            project_name, product_id=product_entity["id"])
+    else:
+        version_entity = ayon_api.get_version_by_name(
+            project_name, version_name, product_id=product_entity["id"])
+    if not version_entity:
+        return
+
+    return ayon_api.get_representation_by_name(
+        project_name, representation_name, version_id=version_entity["id"])
 
 
 def is_compatible_loader(Loader, context):
@@ -817,6 +965,16 @@ def get_outdated_containers(host=None, project_name=None):
     return filter_containers(containers, project_name).outdated
 
 
+def _is_valid_representation_id(repre_id: Any) -> bool:
+    if not repre_id:
+        return False
+    try:
+        uuid.UUID(repre_id)
+    except (ValueError, TypeError, AttributeError):
+        return False
+    return True
+
+
 def filter_containers(containers, project_name):
     """Filter containers and split them into 4 categories.
 
@@ -852,7 +1010,7 @@ def filter_containers(containers, project_name):
     repre_ids = {
         container["representation"]
         for container in containers
-        if container["representation"]
+        if _is_valid_representation_id(container["representation"])
     }
     if not repre_ids:
         if containers:
@@ -917,7 +1075,7 @@ def filter_containers(containers, project_name):
     for container in containers:
         container_name = container["objectName"]
         repre_id = container["representation"]
-        if not repre_id:
+        if not _is_valid_representation_id(repre_id):
             invalid_containers.append(container)
             continue
 

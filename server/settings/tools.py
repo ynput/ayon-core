@@ -5,6 +5,7 @@ from ayon_server.settings import (
     normalize_name,
     ensure_unique_names,
     task_types_enum,
+    anatomy_template_items_enum
 )
 
 
@@ -22,6 +23,7 @@ class ProductTypeSmartSelectModel(BaseSettingsModel):
 
 class ProductNameProfile(BaseSettingsModel):
     _layout = "expanded"
+
     product_types: list[str] = SettingsField(
         default_factory=list, title="Product types"
     )
@@ -35,6 +37,28 @@ class ProductNameProfile(BaseSettingsModel):
     template: str = SettingsField("", title="Template")
 
 
+class FilterCreatorProfile(BaseSettingsModel):
+    """Provide list of allowed Creator identifiers for context"""
+
+    _layout = "expanded"
+    host_names: list[str] = SettingsField(
+        default_factory=list, title="Host names"
+    )
+    task_types: list[str] = SettingsField(
+        default_factory=list,
+        title="Task types",
+        enum_resolver=task_types_enum
+    )
+    task_names: list[str] = SettingsField(
+        default_factory=list,
+        title="Task names")
+    creator_labels: list[str] = SettingsField(
+        default_factory=list,
+        title="Allowed Creator Labels",
+        description="Copy creator label from Publisher, regex supported."
+    )
+
+
 class CreatorToolModel(BaseSettingsModel):
     # TODO this was dynamic dictionary '{name: task_names}'
     product_types_smart_select: list[ProductTypeSmartSelectModel] = (
@@ -43,9 +67,25 @@ class CreatorToolModel(BaseSettingsModel):
             title="Create Smart Select"
         )
     )
+    # TODO: change to False in next releases
+    use_legacy_product_names_for_renders: bool = SettingsField(
+        True,
+        title="Use legacy product names for renders",
+        description="Use product naming templates for renders. "
+                    "This is for backwards compatibility enabled by default."
+                    "When enabled, it will ignore any templates for renders "
+                    "that are set in the product name profiles.")
+
     product_name_profiles: list[ProductNameProfile] = SettingsField(
         default_factory=list,
         title="Product name profiles"
+    )
+
+    filter_creator_profiles: list[FilterCreatorProfile] = SettingsField(
+        default_factory=list,
+        title="Filter creator profiles",
+        description="Allowed list of creator labels that will be only shown"
+                    " if profile matches context."
     )
 
     @validator("product_types_smart_select")
@@ -118,6 +158,15 @@ class WorkfilesLockProfile(BaseSettingsModel):
     enabled: bool = SettingsField(True, title="Enabled")
 
 
+class AYONMenuModel(BaseSettingsModel):
+    _layout = "expanded"
+    version_up_current_workfile: bool = SettingsField(
+        False,
+        title="Version Up Workfile",
+        description="Add 'Version Up Workfile' to AYON menu"
+    )
+
+
 class WorkfilesToolModel(BaseSettingsModel):
     workfile_template_profiles: list[WorkfileTemplateProfile] = SettingsField(
         default_factory=list,
@@ -157,6 +206,7 @@ def _product_types_enum():
         "editorial",
         "gizmo",
         "image",
+        "imagesequence",
         "layout",
         "look",
         "matchmove",
@@ -173,13 +223,20 @@ def _product_types_enum():
         "rig",
         "setdress",
         "take",
-        "usdShade",
+        "usd",
         "vdbcache",
         "vrayproxy",
         "workfile",
         "xgen",
         "yetiRig",
         "yeticache"
+    ]
+
+
+def filter_type_enum():
+    return [
+        {"value": "is_allow_list", "label": "Allow list"},
+        {"value": "is_deny_list", "label": "Deny list"},
     ]
 
 
@@ -192,9 +249,15 @@ class LoaderProductTypeFilterProfile(BaseSettingsModel):
         title="Task types",
         enum_resolver=task_types_enum
     )
-    is_include: bool = SettingsField(True, title="Exclude / Include")
+    filter_type: str = SettingsField(
+        "is_allow_list",
+        title="Filter type",
+        section="Product type filter",
+        enum_resolver=filter_type_enum
+    )
     filter_product_types: list[str] = SettingsField(
         default_factory=list,
+        title="Product types",
         enum_resolver=_product_types_enum
     )
 
@@ -221,7 +284,34 @@ class PublishTemplateNameProfile(BaseSettingsModel):
     task_names: list[str] = SettingsField(
         default_factory=list, title="Task names"
     )
-    template_name: str = SettingsField("", title="Template name")
+    template_name: str = SettingsField(
+        "",
+        title="Template name",
+        enum_resolver=anatomy_template_items_enum(category="publish")
+    )
+
+
+class HeroTemplateNameProfile(BaseSettingsModel):
+    _layout = "expanded"
+    product_types: list[str] = SettingsField(
+        default_factory=list,
+        title="Product types"
+    )
+    # TODO this should use hosts enum
+    hosts: list[str] = SettingsField(default_factory=list, title="Hosts")
+    task_types: list[str] = SettingsField(
+        default_factory=list,
+        title="Task types",
+        enum_resolver=task_types_enum
+    )
+    task_names: list[str] = SettingsField(
+        default_factory=list, title="Task names"
+    )
+    template_name: str = SettingsField(
+        "",
+        title="Template name",
+        enum_resolver=anatomy_template_items_enum(category="hero")
+    )
 
 
 class CustomStagingDirProfileModel(BaseSettingsModel):
@@ -244,7 +334,11 @@ class CustomStagingDirProfileModel(BaseSettingsModel):
     custom_staging_dir_persistent: bool = SettingsField(
         False, title="Custom Staging Folder Persistent"
     )
-    template_name: str = SettingsField("", title="Template Name")
+    template_name: str = SettingsField(
+        "",
+        title="Template name",
+        enum_resolver=anatomy_template_items_enum(category="staging")
+    )
 
 
 class PublishToolModel(BaseSettingsModel):
@@ -252,7 +346,7 @@ class PublishToolModel(BaseSettingsModel):
         default_factory=list,
         title="Template name profiles"
     )
-    hero_template_name_profiles: list[PublishTemplateNameProfile] = (
+    hero_template_name_profiles: list[HeroTemplateNameProfile] = (
         SettingsField(
             default_factory=list,
             title="Hero template name profiles"
@@ -264,9 +358,21 @@ class PublishToolModel(BaseSettingsModel):
             title="Custom Staging Dir Profiles"
         )
     )
+    comment_minimum_required_chars: int = SettingsField(
+        0,
+        title="Publish comment minimum required characters",
+        description=(
+            "Minimum number of characters required in the comment field "
+            "before the publisher UI is allowed to continue publishing"
+        )
+    )
 
 
 class GlobalToolsModel(BaseSettingsModel):
+    ayon_menu: AYONMenuModel = SettingsField(
+        default_factory=AYONMenuModel,
+        title="AYON Menu"
+    )
     creator: CreatorToolModel = SettingsField(
         default_factory=CreatorToolModel,
         title="Creator"
@@ -286,6 +392,9 @@ class GlobalToolsModel(BaseSettingsModel):
 
 
 DEFAULT_TOOLS_VALUES = {
+    "ayon_menu": {
+        "version_up_current_workfile": False
+    },
     "creator": {
         "product_types_smart_select": [
             {
@@ -357,7 +466,9 @@ DEFAULT_TOOLS_VALUES = {
                 ],
                 "task_types": [],
                 "tasks": [],
-                "template": "{product[type]}{Task[name]}_{Renderlayer}_{Renderpass}"
+                "template": (
+                    "{product[type]}{Task[name]}_{Renderlayer}_{Renderpass}"
+                )
             },
             {
                 "product_types": [
@@ -402,8 +513,31 @@ DEFAULT_TOOLS_VALUES = {
                 "task_types": [],
                 "tasks": [],
                 "template": "SK_{folder[name]}{variant}"
+            },
+            {
+                "product_types": [
+                    "hda"
+                ],
+                "hosts": [
+                    "houdini"
+                ],
+                "task_types": [],
+                "tasks": [],
+                "template": "{folder[name]}_{variant}"
+            },
+            {
+                "product_types": [
+                    "textureSet"
+                ],
+                "hosts": [
+                    "substancedesigner"
+                ],
+                "task_types": [],
+                "tasks": [],
+                "template": "T_{folder[name]}{variant}"
             }
-        ]
+        ],
+        "filter_creator_profiles": []
     },
     "Workfiles": {
         "workfile_template_profiles": [
@@ -441,14 +575,7 @@ DEFAULT_TOOLS_VALUES = {
         "workfile_lock_profiles": []
     },
     "loader": {
-        "product_type_filter_profiles": [
-            {
-                "hosts": [],
-                "task_types": [],
-                "is_include": True,
-                "filter_product_types": []
-            }
-        ]
+        "product_type_filter_profiles": []
     },
     "publish": {
         "template_name_profiles": [
@@ -476,6 +603,18 @@ DEFAULT_TOOLS_VALUES = {
                 ],
                 "hosts": [
                     "standalonepublisher"
+                ],
+                "task_types": [],
+                "task_names": [],
+                "template_name": "simpleUnrealTexture"
+            },
+            {
+                "product_types": [
+                    "image",
+                    "textures",
+                ],
+                "hosts": [
+                    "substancedesigner"
                 ],
                 "task_types": [],
                 "task_names": [],
@@ -527,7 +666,20 @@ DEFAULT_TOOLS_VALUES = {
                 "task_types": [],
                 "task_names": [],
                 "template_name": "simpleUnrealTextureHero"
+            },
+            {
+                "product_types": [
+                    "image",
+                    "textures"
+                ],
+                "hosts": [
+                    "substancedesigner"
+                ],
+                "task_types": [],
+                "task_names": [],
+                "template_name": "simpleUnrealTextureHero"
             }
-        ]
+        ],
+        "comment_minimum_required_chars": 0,
     }
 }

@@ -4,7 +4,6 @@ import sys
 import copy
 
 import clique
-import six
 import pyblish.api
 from ayon_api import (
     get_attributes_for_type,
@@ -42,7 +41,7 @@ def prepare_changes(old_entity, new_entity):
 
     Returns:
         dict[str, Any]: Changes that have new entity.
-        
+
     """
     changes = {}
     for key in set(new_entity.keys()):
@@ -108,67 +107,6 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
 
     label = "Integrate Asset"
     order = pyblish.api.IntegratorOrder
-    families = ["workfile",
-                "pointcache",
-                "pointcloud",
-                "proxyAbc",
-                "camera",
-                "animation",
-                "model",
-                "maxScene",
-                "mayaAscii",
-                "mayaScene",
-                "setdress",
-                "layout",
-                "ass",
-                "vdbcache",
-                "scene",
-                "vrayproxy",
-                "vrayscene_layer",
-                "render",
-                "prerender",
-                "imagesequence",
-                "review",
-                "rendersetup",
-                "rig",
-                "plate",
-                "look",
-                "ociolook",
-                "audio",
-                "yetiRig",
-                "yeticache",
-                "nukenodes",
-                "gizmo",
-                "source",
-                "matchmove",
-                "image",
-                "assembly",
-                "fbx",
-                "gltf",
-                "textures",
-                "action",
-                "harmony.template",
-                "harmony.palette",
-                "editorial",
-                "background",
-                "camerarig",
-                "redshiftproxy",
-                "effect",
-                "xgen",
-                "hda",
-                "usd",
-                "staticMesh",
-                "skeletalMesh",
-                "mvLook",
-                "mvUsd",
-                "mvUsdComposition",
-                "mvUsdOverride",
-                "online",
-                "uasset",
-                "blendScene",
-                "yeticacheUE",
-                "tycache"
-                ]
 
     default_template_name = "publish"
 
@@ -176,18 +114,19 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
     # the database even if not used by the destination template
     db_representation_context_keys = [
         "project",
-        "asset",
         "hierarchy",
         "folder",
         "task",
         "product",
-        "subset",
-        "family",
         "version",
         "representation",
         "username",
         "user",
-        "output"
+        "output",
+        # OpenPype keys - should be removed
+        "asset",  # folder[name]
+        "subset",  # product[name]
+        "family",  # product[type]
     ]
 
     def process(self, instance):
@@ -221,15 +160,14 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
             # Raise DuplicateDestinationError as KnownPublishError
             # and rollback the transactions
             file_transactions.rollback()
-            six.reraise(KnownPublishError,
-                        KnownPublishError(exc),
-                        sys.exc_info()[2])
-        except Exception:
+            raise KnownPublishError(exc).with_traceback(sys.exc_info()[2])
+
+        except Exception as exc:
             # clean destination
             # todo: preferably we'd also rollback *any* changes to the database
             file_transactions.rollback()
             self.log.critical("Error when registering", exc_info=True)
-            six.reraise(*sys.exc_info())
+            raise exc
 
         # Finalizing can't rollback safely so no use for moving it to
         # the try, except.
@@ -358,7 +296,7 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
 
         # Compute the resource file infos once (files belonging to the
         # version instance instead of an individual representation) so
-        # we can re-use those file infos per representation
+        # we can reuse those file infos per representation
         resource_file_infos = self.get_files_info(
             resource_destinations, anatomy
         )
@@ -441,29 +379,28 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
         data = {
             "families": get_instance_families(instance)
         }
-        attribibutes = {}
+        attributes = {}
 
         product_group = instance.data.get("productGroup")
         if product_group:
-            attribibutes["productGroup"] = product_group
+            attributes["productGroup"] = product_group
         elif existing_product_entity:
             # Preserve previous product group if new version does not set it
             product_group = existing_product_entity.get("attrib", {}).get(
                 "productGroup"
             )
             if product_group is not None:
-                attribibutes["productGroup"] = product_group
+                attributes["productGroup"] = product_group
 
         product_id = None
         if existing_product_entity:
             product_id = existing_product_entity["id"]
-
         product_entity = new_product_entity(
             product_name,
             product_type,
             folder_entity["id"],
             data=data,
-            attribs=attribibutes,
+            attribs=attributes,
             entity_id=product_id
         )
 
@@ -525,6 +462,7 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
             version_number,
             product_entity["id"],
             task_id=task_id,
+            status=instance.data.get("status"),
             data=version_data,
             attribs=version_attributes,
             entity_id=version_id,
@@ -571,8 +509,11 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
         if not is_sequence_representation:
             files = [files]
 
-        if any(os.path.isabs(fname) for fname in files):
-            raise KnownPublishError("Given file names contain full paths")
+        for fname in files:
+            if os.path.isabs(fname):
+                raise KnownPublishError(
+                    f"Representation file names contains full paths: {fname}"
+                )
 
         if not is_sequence_representation:
             return
@@ -678,8 +619,7 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
             # used for all represe
             # from temp to final
             original_directory = (
-                instance.data.get("originalDirname") or instance_stagingdir)
-
+                instance.data.get("originalDirname") or stagingdir)
             _rootless = self.get_rootless_path(anatomy, original_directory)
             if _rootless == original_directory:
                 raise KnownPublishError((
@@ -743,7 +683,7 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
 
         elif is_sequence_representation:
             # Collection of files (sequence)
-            src_collections, remainders = clique.assemble(files)
+            src_collections, _remainders = clique.assemble(files)
 
             src_collection = src_collections[0]
             destination_indexes = list(src_collection.indexes)
@@ -765,7 +705,8 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
                 # In case source are published in place we need to
                 # skip renumbering
                 repre_frame_start = repre.get("frameStart")
-                if repre_frame_start is not None:
+                explicit_frames = instance.data.get("hasExplicitFrames", False)
+                if not explicit_frames and repre_frame_start is not None:
                     index_frame_start = int(repre_frame_start)
                     # Shift destination sequence to the start frame
                     destination_indexes = [
@@ -805,6 +746,11 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
             #   contain '{frame}' in template -> Do we want support it?
             if not is_udim:
                 repre_context["frame"] = first_index_padded
+
+            # store renderlayer in context if it exists
+            # to be later used for example by delivery templates
+            if instance.data.get("renderlayer"):
+                repre_context["renderlayer"] = instance.data["renderlayer"]
 
             # Update the destination indexes and padding
             dst_collection = clique.assemble(dst_filepaths)[0][0]
@@ -849,11 +795,6 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
             value = template_data.get(key)
             if value is not None:
                 repre_context[key] = value
-
-        # Explicitly store the full list even though template data might
-        # have a different value because it uses just a single udim tile
-        if repre.get("udim"):
-            repre_context["udim"] = repre.get("udim")  # store list
 
         # Use previous representation's id if there is a name match
         existing = existing_repres_by_name.get(repre["name"].lower())

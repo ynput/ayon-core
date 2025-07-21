@@ -1,7 +1,11 @@
 import os
 import copy
 import errno
+import itertools
 import shutil
+from concurrent.futures import ThreadPoolExecutor
+
+from speedcopy import copyfile
 
 import clique
 import pyblish.api
@@ -13,6 +17,7 @@ from ayon_api.operations import (
 from ayon_api.utils import create_entity_id
 
 from ayon_core.lib import create_hard_link, source_hash
+from ayon_core.lib.file_transaction import wait_for_future_errors
 from ayon_core.pipeline.publish import (
     get_publish_template_name,
     OptionalPyblishPluginMixin,
@@ -87,7 +92,9 @@ class IntegrateHeroVersion(
     ]
     # QUESTION/TODO this process should happen on server if crashed due to
     # permissions error on files (files were used or user didn't have perms)
-    # *but all other plugins must be sucessfully completed
+    # *but all other plugins must be successfully completed
+
+    use_hardlinks = False
 
     def process(self, instance):
         if not self.is_active(instance.data):
@@ -263,6 +270,9 @@ class IntegrateHeroVersion(
                 project_name, "version", new_hero_version
             )
 
+        # Store hero entity to 'instance.data'
+        instance.data["heroVersionEntity"] = new_hero_version
+
         # Separate old representations into `to replace` and `to delete`
         old_repres_to_replace = {}
         old_repres_to_delete = {}
@@ -410,11 +420,14 @@ class IntegrateHeroVersion(
             # Copy(hardlink) paths of source and destination files
             # TODO should we *only* create hardlinks?
             # TODO should we keep files for deletion until this is successful?
-            for src_path, dst_path in src_to_dst_file_paths:
-                self.copy_file(src_path, dst_path)
-
-            for src_path, dst_path in other_file_paths_mapping:
-                self.copy_file(src_path, dst_path)
+            with ThreadPoolExecutor(max_workers=8) as executor:
+                futures = [
+                    executor.submit(self.copy_file, src_path, dst_path)
+                    for src_path, dst_path in itertools.chain(
+                        src_to_dst_file_paths, other_file_paths_mapping
+                    )
+                ]
+                wait_for_future_errors(executor, futures)
 
             # Update prepared representation etity data with files
             #   and integrate it to server.
@@ -617,25 +630,33 @@ class IntegrateHeroVersion(
 
             self.log.debug("Folder already exists: \"{}\"".format(dirname))
 
+        if self.use_hardlinks:
+            # First try hardlink and copy if paths are cross drive
+            self.log.debug("Hardlinking file \"{}\" to \"{}\"".format(
+                src_path, dst_path
+            ))
+            try:
+                create_hard_link(src_path, dst_path)
+                # Return when successful
+                return
+
+            except OSError as exc:
+                # re-raise exception if different than
+                # EXDEV - cross drive path
+                # EINVAL - wrong format, must be NTFS
+                self.log.debug(
+                    "Hardlink failed with errno:'{}'".format(exc.errno))
+                if exc.errno not in [errno.EXDEV, errno.EINVAL]:
+                    raise
+
+            self.log.debug(
+                "Hardlinking failed, falling back to regular copy...")
+
         self.log.debug("Copying file \"{}\" to \"{}\"".format(
             src_path, dst_path
         ))
 
-        # First try hardlink and copy if paths are cross drive
-        try:
-            create_hard_link(src_path, dst_path)
-            # Return when successful
-            return
-
-        except OSError as exc:
-            # re-raise exception if different than
-            # EXDEV - cross drive path
-            # EINVAL - wrong format, must be NTFS
-            self.log.debug("Hardlink failed with errno:'{}'".format(exc.errno))
-            if exc.errno not in [errno.EXDEV, errno.EINVAL]:
-                raise
-
-        shutil.copy(src_path, dst_path)
+        copyfile(src_path, dst_path)
 
     def version_from_representations(self, project_name, repres):
         for repre in repres:

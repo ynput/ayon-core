@@ -11,7 +11,11 @@ Multiples instances from your scene are set to publish into the same folder > pr
 
 ### How to repair?
 
-Remove the offending instances or rename to have a unique name.
+Remove the offending instances or rename to have a unique name. Also, please
+    check your product name templates to ensure that resolved names are
+    sufficiently unique. You can find that settings:
+
+    ayon+settings://core/tools/creator/product_name_profiles
 </description>
 </error>
 </root>

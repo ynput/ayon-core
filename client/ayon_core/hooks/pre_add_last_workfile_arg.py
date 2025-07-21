@@ -26,9 +26,13 @@ class AddLastWorkfileToLaunchArgs(PreLaunchHook):
         "photoshop",
         "tvpaint",
         "substancepainter",
+        "substancedesigner",
         "aftereffects",
         "wrap",
-        "openrv"
+        "openrv",
+        "cinema4d",
+        "silhouette",
+        "gaffer",
     }
     launch_types = {LaunchTypes.local}
 
