@@ -162,6 +162,7 @@ class ExtractReview(pyblish.api.InstancePlugin):
         "flame",
         "unreal",
         "circuit",
+        "photoshop"
     ]
 
     # Supported extensions
