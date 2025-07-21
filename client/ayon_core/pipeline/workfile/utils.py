@@ -13,6 +13,7 @@ from ayon_core.settings import get_project_settings
 from ayon_core.host.interfaces import (
     SaveWorkfileOptionalData,
     ListWorkfilesOptionalData,
+    CopyWorkfileOptionalData,
 )
 from ayon_core.pipeline.version_start import get_versioning_start
 from ayon_core.pipeline.template_data import get_template_data
@@ -512,6 +513,124 @@ def save_next_version(
         version=version,
         comment=comment,
         description=description,
+        prepared_data=prepared_data,
+    )
+
+
+def copy_workfile_to_context(
+    src_workfile_path: str,
+    folder_entity: dict[str, Any],
+    task_entity: dict[str, Any],
+    *,
+    version: Optional[int] = None,
+    comment: Optional[str] = None,
+    description: Optional[str] = None,
+    open_workfile: bool = True,
+    prepared_data: Optional[CopyWorkfileOptionalData] = None,
+) -> None:
+    """Copy workfile to a context.
+
+    Copy workfile to a specified folder and task. Destination path is
+        calculated based on passed information.
+
+    Args:
+        src_workfile_path (str): Source workfile path.
+        folder_entity (dict[str, Any]): Target folder entity.
+        task_entity (dict[str, Any]): Target task entity.
+        version (Optional[int]): Workfile version. Use next version if not
+            passed.
+        comment (optional[str]): Workfile comment.
+        description (Optional[str]): Workfile description.
+        prepared_data (Optional[CopyWorkfileOptionalData]): Prepared data
+            for speed enhancements. Rootless path is calculated in this
+            function.
+
+    """
+    from ayon_core.pipeline import Anatomy
+    from ayon_core.pipeline.context_tools import registered_host
+
+    host = registered_host()
+    project_name = host.get_current_project_name()
+
+    anatomy = prepared_data.anatomy
+    if anatomy is None:
+        if prepared_data.project_entity is None:
+            prepared_data.project_entity = ayon_api.get_project(
+                project_name
+            )
+        anatomy = Anatomy(
+            project_name, project_entity=prepared_data.project_entity
+        )
+        prepared_data.anatomy = anatomy
+
+    project_settings = prepared_data.project_settings
+    if project_settings is None:
+        project_settings = get_project_settings(project_name)
+        prepared_data.project_settings = project_settings
+
+    if version is None:
+        list_prepared_data = None
+        if prepared_data is not None:
+            list_prepared_data = ListWorkfilesOptionalData(
+                project_entity=prepared_data.project_entity,
+                anatomy=prepared_data.anatomy,
+                project_settings=prepared_data.project_settings,
+                workfile_entities=prepared_data.workfile_entities,
+            )
+
+        workfiles = host.list_workfiles(
+            project_name,
+            folder_entity,
+            task_entity,
+            prepared_data=list_prepared_data
+        )
+        if workfiles:
+            version = max(
+                workfile.version
+                for workfile in workfiles
+            ) + 1
+        else:
+            version = get_versioning_start(
+                project_name,
+                host.name,
+                task_name=task_entity["name"],
+                task_type=task_entity["taskType"],
+                product_type="workfile"
+            )
+
+    task_type = task_entity["taskType"]
+    template_key = get_workfile_template_key(
+        project_name,
+        task_type,
+        host.name,
+        project_settings=prepared_data.project_settings
+    )
+
+    template_data = get_template_data(
+        prepared_data.project_entity,
+        folder_entity,
+        task_entity,
+        host.name,
+        prepared_data.project_settings,
+    )
+    template_data["version"] = version
+    if comment:
+        template_data["comment"] = comment
+
+    workfile_template = anatomy.get_template_item(
+        "work", template_key, "path"
+    )
+    workfile_path = workfile_template.format_strict(template_data)
+    prepared_data.rootless_path = workfile_path.rootless
+    host.copy_workfile(
+        src_workfile_path,
+        workfile_path,
+        folder_entity,
+        task_entity,
+        version=version,
+        comment=comment,
+        description=description,
+        open_workfile=open_workfile,
         prepared_data=prepared_data,
     )
 
