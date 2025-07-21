@@ -86,7 +86,7 @@ def should_use_last_workfile_on_launch(
     task_type: str,
     default_output: bool = False,
     project_settings: Optional[dict[str, Any]] = None,
-):
+) -> bool:
     """Define if host should start last version workfile if possible.
 
     Default output is `False`. Can be overridden with environment variable
