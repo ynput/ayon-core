@@ -201,7 +201,7 @@ class FilesWidget(QtWidgets.QWidget):
 
     def _on_current_open_requests(self):
         # TODO validate if item under mouse is enabled
-        # - thi uses selected item, but that does not have to be the one
+        # - this uses selected item, but that does not have to be the one
         #   under mouse
         self._on_workarea_open_clicked()
 
