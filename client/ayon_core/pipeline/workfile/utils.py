@@ -406,6 +406,8 @@ def save_next_version(
     version: Optional[int] = None,
     comment: Optional[str] = None,
     description: Optional[str] = None,
+    *,
+    prepared_data: Optional[SaveWorkfileOptionalData] = None,
 ) -> None:
     """Save workfile using current context, version and comment.
 
@@ -417,6 +419,8 @@ def save_next_version(
             version + 1 is used if is not passed in.
         comment (optional[str]): Workfile comment.
         description (Optional[str]): Workfile description.
+        prepared_data (Optional[SaveWorkfileOptionalData]): Prepared data
+            for speed enhancements.
 
     """
     from ayon_core.pipeline import Anatomy
@@ -428,9 +432,25 @@ def save_next_version(
     project_name = context["project_name"]
     folder_path = context["folder_path"]
     task_name = context["task_name"]
-    project_entity = ayon_api.get_project(project_name)
-    project_settings = get_project_settings(project_name)
-    anatomy = Anatomy(project_name, project_entity=project_entity)
+    if prepared_data is None:
+        prepared_data = SaveWorkfileOptionalData()
+
+    project_entity = prepared_data.project_entity
+    anatomy = prepared_data.anatomy
+    project_settings = prepared_data.project_settings
+
+    if project_entity is None:
+        project_entity = ayon_api.get_project(project_name)
+        prepared_data.project_entity = project_entity
+
+    if project_settings is None:
+        project_settings = get_project_settings(project_name)
+        prepared_data.project_settings = project_settings
+
+    if anatomy is None:
+        anatomy = Anatomy(project_name, project_entity=project_entity)
+        prepared_data.anatomy = anatomy
+
     folder_entity = ayon_api.get_folder_by_path(project_name, folder_path)
     task_entity = ayon_api.get_task_by_name(
         project_name, folder_entity["id"], task_name
@@ -499,13 +519,8 @@ def save_next_version(
     rootless_path = f"{rootless_dir}/{filename}"
     if platform.system().lower() == "windows":
         rootless_path = rootless_path.replace("\\", "/")
+    prepared_data.rootless_path = rootless_path
 
-    prepared_data = SaveWorkfileOptionalData(
-        project_entity=project_entity,
-        anatomy=anatomy,
-        project_settings=project_settings,
-        rootless_path=rootless_path,
-    )
     host.save_workfile_with_context(
         workfile_path,
         folder_entity,
