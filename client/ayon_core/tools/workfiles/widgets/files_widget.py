@@ -333,7 +333,9 @@ class FilesWidget(QtWidgets.QWidget):
         )
 
     def _on_save_as_request(self):
-        self._on_published_save_clicked()
+        # Make sure the save is enabled
+        if self._is_save_enabled and self._valid_selected_context:
+            self._on_published_save_clicked()
 
     def _set_select_contex_mode(self, enabled):
         if self._select_context_mode is enabled:
