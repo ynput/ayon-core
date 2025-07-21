@@ -1,5 +1,6 @@
 """Products model for loader tools."""
 from __future__ import annotations
+
 import collections
 import contextlib
 from typing import TYPE_CHECKING, Iterable, Optional
