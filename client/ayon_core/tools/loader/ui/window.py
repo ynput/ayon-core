@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from qtpy import QtWidgets, QtCore, QtGui
 
 from ayon_core.resources import get_ayon_icon_filepath

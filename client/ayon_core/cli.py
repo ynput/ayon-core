@@ -2,6 +2,7 @@
 """Package for handling AYON command line arguments."""
 import os
 import sys
+import logging
 import code
 import traceback
 from pathlib import Path
@@ -306,6 +307,8 @@ def _add_addons(addons_manager):
 
 
 def main(*args, **kwargs):
+    logging.basicConfig()
+
     initialize_ayon_connection()
     python_path = os.getenv("PYTHONPATH", "")
     split_paths = python_path.split(os.pathsep)
