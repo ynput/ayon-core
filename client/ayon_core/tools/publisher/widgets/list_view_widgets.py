@@ -25,7 +25,7 @@ selection can be enabled disabled using checkbox or keyboard key presses:
 from __future__ import annotations
 
 import collections
-import typing
+from typing import Optional
 
 from qtpy import QtWidgets, QtCore, QtGui
 
@@ -33,7 +33,14 @@ from ayon_core.style import get_objected_colors
 from ayon_core.tools.utils import NiceCheckbox, BaseClickableFrame
 from ayon_core.tools.utils.lib import html_escape, checkstate_int_to_enum
 
+from ayon_core.pipeline.create import (
+    InstanceContextInfo,
+)
+
 from ayon_core.tools.publisher.abstract import AbstractPublisherFrontend
+from ayon_core.tools.publisher.models.create import (
+    InstanceItem,
+)
 from ayon_core.tools.publisher.constants import (
     INSTANCE_ID_ROLE,
     SORT_VALUE_ROLE,
@@ -46,9 +53,6 @@ from ayon_core.tools.publisher.constants import (
 )
 
 from .widgets import AbstractInstanceView
-
-if typing.TYPE_CHECKING:
-    from ayon_core.tools.publisher.abstract import InstanceItem
 
 
 class ListItemDelegate(QtWidgets.QStyledItemDelegate):
@@ -121,7 +125,13 @@ class InstanceListItemWidget(QtWidgets.QWidget):
     active_changed = QtCore.Signal(str, bool)
     double_clicked = QtCore.Signal()
 
-    def __init__(self, instance, context_info, parent):
+    def __init__(
+        self,
+        instance: InstanceItem,
+        context_info: InstanceContextInfo,
+        parent_is_active: bool,
+        parent: QtWidgets.QWidget,
+    ):
         super().__init__(parent)
 
         self._instance_id = instance.id
@@ -137,8 +147,6 @@ class InstanceListItemWidget(QtWidgets.QWidget):
         product_name_label.setObjectName("ListViewProductName")
 
         active_checkbox = NiceCheckbox(parent=self)
-        active_checkbox.setChecked(instance.is_active)
-        active_checkbox.setVisible(not instance.is_mandatory)
 
         layout = QtWidgets.QHBoxLayout(self)
         layout.setContentsMargins(2, 0, 2, 0)
@@ -146,20 +154,32 @@ class InstanceListItemWidget(QtWidgets.QWidget):
         layout.addStretch(1)
         layout.addWidget(active_checkbox)
 
-        self.setAttribute(QtCore.Qt.WA_TranslucentBackground)
-        product_name_label.setAttribute(QtCore.Qt.WA_TranslucentBackground)
-        active_checkbox.setAttribute(QtCore.Qt.WA_TranslucentBackground)
+        for widget in (
+            self,
+            product_name_label,
+            active_checkbox,
+        ):
+            widget.setAttribute(QtCore.Qt.WA_TranslucentBackground)
 
         active_checkbox.stateChanged.connect(self._on_active_change)
 
         self._instance_label_widget = product_name_label
         self._active_checkbox = active_checkbox
 
-        self._has_valid_context = None
+        # Instance info
+        self._has_valid_context = context_info.is_valid
+        self._is_mandatory = instance.is_mandatory
+        self._instance_is_active = instance.is_active
 
-        self._checkbox_enabled = not instance.is_mandatory
+        # Parent active state is fluent and can change
+        self._parent_is_active = parent_is_active
 
-        self._set_valid_property(context_info.is_valid)
+        # Widget logic info
+        self._state = None
+        self._toggle_is_enabled = True
+
+        self._update_style_state()
+        self._update_checkbox_state()
 
     def mouseDoubleClickEvent(self, event):
         widget = self.childAt(event.pos())
@@ -167,59 +187,107 @@ class InstanceListItemWidget(QtWidgets.QWidget):
         if widget is not self._active_checkbox:
             self.double_clicked.emit()
 
-    def _set_valid_property(self, valid):
-        if self._has_valid_context == valid:
-            return
-        self._has_valid_context = valid
-        state = ""
-        if not valid:
-            state = "invalid"
-        self._instance_label_widget.setProperty("state", state)
-        self._instance_label_widget.style().polish(self._instance_label_widget)
-
-    def is_active(self):
+    def is_active(self) -> bool:
         """Instance is activated."""
         return self._active_checkbox.isChecked()
 
-    def set_active(self, new_value):
-        """Change active state of instance and checkbox."""
-        old_value = self.is_active()
-        if new_value is None:
-            new_value = not old_value
-
-        if new_value != old_value:
-            self._active_checkbox.blockSignals(True)
-            self._active_checkbox.setChecked(new_value)
-            self._active_checkbox.blockSignals(False)
-
     def is_checkbox_enabled(self) -> bool:
         """Checkbox can be changed by user."""
-        return self._checkbox_enabled
+        return (
+            self._parent_is_active
+            and not self._is_mandatory
+        )
 
-    def update_instance(self, instance, context_info):
+    def set_active_toggle_enabled(self, enabled: bool) -> None:
+        """Toggle can be available for user."""
+        self._toggle_is_enabled = enabled
+        self._update_checkbox_state()
+
+    def set_active(self, new_value: Optional[bool]) -> None:
+        """Change active state of instance and checkbox by user interaction.
+
+        Args:
+            new_value (Optional[bool]): New active state of instance. Toggle
+                if is 'None'.
+
+        """
+        # Do not allow to change state if is mandatory or parent is not active
+        if not self.is_checkbox_enabled():
+            return
+
+        if new_value is None:
+            new_value = not self._active_checkbox.isChecked()
+        # Update instance active state
+        self._instance_is_active = new_value
+        self._set_checked(new_value)
+
+    def update_instance(
+        self,
+        instance: InstanceItem,
+        context_info: InstanceContextInfo,
+        parent_is_active: bool,
+    ) -> None:
         """Update instance object."""
         # Check product name
         self._instance_id = instance.id
         label = instance.label
         if label != self._instance_label_widget.text():
             self._instance_label_widget.setText(html_escape(label))
-        # Check active state
-        self.set_active(instance.is_active)
-        self._set_is_mandatory(instance.is_mandatory)
-        # Check valid states
-        self._set_valid_property(context_info.is_valid)
+
+        self._is_mandatory = instance.is_mandatory
+        self._instance_is_active = instance.is_active
+        self._has_valid_context = context_info.is_valid
+        self._parent_is_active = parent_is_active
+
+        self._update_checkbox_state()
+        self._update_style_state()
+
+    def set_parent_is_active(self, active: bool) -> None:
+        if self._parent_is_active is active:
+            return
+        self._parent_is_active = active
+        self._update_style_state()
+        self._update_checkbox_state()
+
+    def _set_checked(self, checked: bool) -> None:
+        """Change checked state in UI without triggering checkstate change."""
+        old_value = self._active_checkbox.isChecked()
+        if checked is not old_value:
+            self._active_checkbox.blockSignals(True)
+            self._active_checkbox.setChecked(checked)
+            self._active_checkbox.blockSignals(False)
+
+    def _update_style_state(self) -> None:
+        state = ""
+        if not self._parent_is_active:
+            state = "disabled"
+        elif not self._has_valid_context:
+            state = "invalid"
+
+        if state == self._state:
+            return
+        self._state = state
+        self._instance_label_widget.setProperty("state", state)
+        self._instance_label_widget.style().polish(self._instance_label_widget)
+
+    def _update_checkbox_state(self) -> None:
+        self._active_checkbox.setEnabled(
+            self._toggle_is_enabled
+            and not self._is_mandatory
+            and self._parent_is_active
+        )
+        # Hide checkbox for mandatory instances
+        self._active_checkbox.setVisible(not self._is_mandatory)
+
+        # Visually disable instance if parent is disabled
+        checked = self._parent_is_active and self._instance_is_active
+        if checked is not self._active_checkbox.isChecked():
+            self._active_checkbox.setChecked(checked)
 
     def _on_active_change(self):
         self.active_changed.emit(
             self._instance_id, self._active_checkbox.isChecked()
         )
-
-    def set_active_toggle_enabled(self, enabled):
-        self._active_checkbox.setEnabled(enabled)
-
-    def _set_is_mandatory(self, is_mandatory: bool) -> None:
-        self._checkbox_enabled = not is_mandatory
-        self._active_checkbox.setVisible(not is_mandatory)
 
 
 class ListContextWidget(QtWidgets.QFrame):
@@ -421,7 +489,7 @@ class InstanceListView(AbstractInstanceView):
 
         self._active_toggle_enabled = True
 
-    def _on_toggle_request(self, toggle):
+    def _on_toggle_request(self, toggle: int) -> None:
         if not self._active_toggle_enabled:
             return
 
@@ -432,20 +500,7 @@ class InstanceListView(AbstractInstanceView):
             active = True
         else:
             active = False
-
-        group_names = set()
-        for instance_id in selected_instance_ids:
-            widget = self._widgets_by_id.get(instance_id)
-            if widget is None:
-                continue
-
-            widget.set_active(active)
-            group_name = self._group_by_instance_id.get(instance_id)
-            if group_name is not None:
-                group_names.add(group_name)
-
-        for group_name in group_names:
-            self._update_group_checkstate(group_name)
+        self._toggle_active_state(selected_instance_ids, active)
 
     def _update_group_checkstate(self, group_name):
         """Update checkstate of one group."""
@@ -454,8 +509,10 @@ class InstanceListView(AbstractInstanceView):
             return
 
         activity = None
-        for instance_id, _group_name in self._group_by_instance_id.items():
-            if _group_name != group_name:
+        for (
+            instance_id, instance_group_name
+        ) in self._group_by_instance_id.items():
+            if instance_group_name != group_name:
                 continue
 
             instance_widget = self._widgets_by_id.get(instance_id)
@@ -509,13 +566,7 @@ class InstanceListView(AbstractInstanceView):
             group_label = instance.group_label
             group_names.add(group_label)
             instances_by_group_name[group_label].append(instance)
-
-        missing_parent_ids = set(instances_by_parent_id) - instance_ids
-        for instance_id in missing_parent_ids:
-            for instance in instances_by_parent_id[instance_id]:
-                group_label = instance.group_label
-                group_names.add(group_label)
-                instances_by_group_name[group_label].append(instance)
+            self._group_by_instance_id[instance.id] = group_label
 
         # Create new groups based on prepared `instances_by_group_name`
         if self._make_sure_groups_exists(group_names):
@@ -525,15 +576,42 @@ class InstanceListView(AbstractInstanceView):
         self._remove_groups_except(group_names)
         self._remove_instances_except(instance_items)
 
-        expand_groups = set()
         expand_to_items = []
         widgets_by_id = {}
+        group_items = [
+            (
+                self._group_widgets[group_name],
+                instances_by_group_name[group_name],
+                group_item,
+            )
+            for group_name, group_item in self._group_items.items()
+        ]
+
+        # Handle orphaned instances
+        missing_parent_ids = set(instances_by_parent_id) - instance_ids
+        if not missing_parent_ids:
+            # Make sure the item is not in view if there are no orhpaned items
+            self._remove_missing_parent_item()
+        else:
+            # Add orphaned group item and append them to 'group_items'
+            orphans_item = self._add_missing_parent_item()
+            for instance_id in missing_parent_ids:
+                group_items.append((
+                    None,
+                    instances_by_parent_id[instance_id],
+                    orphans_item,
+                ))
 
         # Process changes in each group item
         # - create new instance, update existing and remove not existing
-        for group_name, group_item in self._group_items.items():
-            # Collect all new instances that are not existing under group
-            # New items
+        for group_widget, group_instances, group_item in group_items:
+            # Group widget is not set if is orphaned
+            #   - This might need to be changed in future if widget could
+            #       be 'None'
+            is_orpaned_item = group_widget is None
+
+            # Collect all new instances by parent id
+            # - 'None' is used if parent is group item
             new_items = collections.defaultdict(list)
             # Tuples of model item and instance itself
             items_with_instance = []
@@ -542,7 +620,7 @@ class InstanceListView(AbstractInstanceView):
             # - 1 when all instances are enabled
             # - -1 when it's mixed
             activity = None
-            for instance in instances_by_group_name[group_name]:
+            for instance in group_instances:
                 _queue = collections.deque()
                 _queue.append((instance, group_item, None))
                 while _queue:
@@ -556,7 +634,9 @@ class InstanceListView(AbstractInstanceView):
                     elif activity != instance.is_active:
                         activity = -1
 
-                    self._group_by_instance_id[instance_id] = group_name
+                    # Remove group name from groups mapping
+                    if parent_id is not None:
+                        self._group_by_instance_id.pop(instance_id, None)
 
                     # Create new item and store it as new
                     item = self._items_by_id.get(instance_id)
@@ -572,7 +652,13 @@ class InstanceListView(AbstractInstanceView):
 
                     children = instances_by_parent_id.pop(instance_id, [])
                     items_with_instance.append(
-                        (item, instance, bool(children))
+                        (
+                            item,
+                            instance,
+                            parent_id,
+                            is_orpaned_item,
+                            bool(children)
+                        )
                     )
 
                     item.setData(instance.product_name, SORT_VALUE_ROLE)
@@ -582,15 +668,13 @@ class InstanceListView(AbstractInstanceView):
                         _queue.append((child, item, instance_id))
 
             # Set checkstate of group checkbox
-            state = QtCore.Qt.PartiallyChecked
-            if activity == 0:
-                state = QtCore.Qt.Unchecked
-            elif activity == 1:
-                state = QtCore.Qt.Checked
-
-            if group_name is not None:
-                widget = self._group_widgets[group_name]
-                widget.set_checkstate(state)
+            if group_widget is not None:
+                state = QtCore.Qt.PartiallyChecked
+                if activity == 0:
+                    state = QtCore.Qt.Unchecked
+                elif activity == 1:
+                    state = QtCore.Qt.Checked
+                group_widget.set_checkstate(state)
 
             # Process new instance items and add them to model and create
             #   their widgets
@@ -607,20 +691,38 @@ class InstanceListView(AbstractInstanceView):
 
                     parent_item.appendRows(items)
 
-            for item, instance, has_children in items_with_instance:
+            for (
+                item, instance, parent_id, is_orpaned_item, has_children
+            ) in items_with_instance:
                 context_info = context_info_by_id[instance.id]
                 # TODO expand all parents
                 if not context_info.is_valid:
-                    expand_groups.add(group_name)
                     expand_to_items.append(item)
+
+                parent_active = True
+                if is_orpaned_item:
+                    parent_active = False
+
+                if parent_id:
+                    parent_widget = widgets_by_id.get(parent_id)
+                    parent_active = False
+                    if parent_widget is not None:
+                        parent_active = parent_widget.is_active()
                 item_index = self._instance_model.indexFromItem(item)
                 proxy_index = self._proxy_model.mapFromSource(item_index)
                 widget = self._instance_view.indexWidget(proxy_index)
                 if isinstance(widget, InstanceListItemWidget):
-                    widget.update_instance(instance, context_info)
+                    widget.update_instance(
+                        instance,
+                        context_info,
+                        parent_active,
+                    )
                 else:
                     widget = InstanceListItemWidget(
-                        instance, context_info, self._instance_view
+                        instance,
+                        context_info,
+                        parent_active,
+                        self._instance_view
                     )
                     widget.active_changed.connect(self._on_active_changed)
                     widget.double_clicked.connect(self.double_clicked)
@@ -639,10 +741,7 @@ class InstanceListView(AbstractInstanceView):
         self._widgets_by_id = widgets_by_id
 
         # Expand items marked for expanding
-        items_to_expand = [
-            self._group_items[group_name]
-            for group_name in expand_groups
-        ]
+        items_to_expand = []
         _marked_ids = set()
         for item in expand_to_items:
             parent = item.parent()
@@ -669,7 +768,7 @@ class InstanceListView(AbstractInstanceView):
         if sort_at_the_end:
             self._proxy_model.sort(0)
 
-    def _make_sure_context_item_exists(self):
+    def _make_sure_context_item_exists(self) -> bool:
         if self._context_item is not None:
             return False
 
@@ -692,7 +791,7 @@ class InstanceListView(AbstractInstanceView):
         self._context_item = context_item
         return True
 
-    def _update_convertor_items_group(self):
+    def _update_convertor_items_group(self) -> bool:
         created_new_items = False
         convertor_items_by_id = self._controller.get_convertor_items()
         group_item = self._convertor_group_item
@@ -758,7 +857,7 @@ class InstanceListView(AbstractInstanceView):
 
         return created_new_items
 
-    def _make_sure_groups_exists(self, group_names):
+    def _make_sure_groups_exists(self, group_names: set[str]) -> bool:
         new_group_items = []
         for group_name in group_names:
             if group_name in self._group_items:
@@ -800,7 +899,7 @@ class InstanceListView(AbstractInstanceView):
 
         return True
 
-    def _remove_groups_except(self, group_names):
+    def _remove_groups_except(self, group_names: set[str]) -> None:
         # Remove groups that are not available anymore
         root_item = self._instance_model.invisibleRootItem()
         for group_name in tuple(self._group_items.keys()):
@@ -840,14 +939,14 @@ class InstanceListView(AbstractInstanceView):
 
         for instance_id in all_removed_ids:
             self._items_by_id.pop(instance_id)
-            self._group_by_instance_id.pop(instance_id)
             self._parent_id_by_id.pop(instance_id)
+            self._group_by_instance_id.pop(instance_id, None)
             widget = self._widgets_by_id.pop(instance_id, None)
             if widget is not None:
                 widget.setVisible(False)
                 widget.deleteLater()
 
-    def _add_missing_parent_item(self):
+    def _add_missing_parent_item(self) -> QtGui.QStandardItem:
         label = "! Orphaned instances !"
         if self._missing_parent_item is None:
             item = QtGui.QStandardItem()
@@ -857,7 +956,7 @@ class InstanceListView(AbstractInstanceView):
             item.setFlags(QtCore.Qt.ItemIsEnabled)
             self._missing_parent_item = item
 
-        if self._missing_parent_item.parent() is None:
+        if self._missing_parent_item.row() < 0:
             root_item = self._instance_model.invisibleRootItem()
             root_item.appendRow(self._missing_parent_item)
             index = self._missing_parent_item.index()
@@ -867,7 +966,7 @@ class InstanceListView(AbstractInstanceView):
             self._instance_view.setIndexWidget(proxy_index, widget)
         return self._missing_parent_item
 
-    def _remove_missing_parent_item(self):
+    def _remove_missing_parent_item(self) -> None:
         if self._missing_parent_item is None:
             return
 
@@ -890,34 +989,130 @@ class InstanceListView(AbstractInstanceView):
         """Trigger update of all instances."""
         if instance_ids is not None:
             instance_ids = set(instance_ids)
-        context_info_by_id = self._controller.get_instances_context_info()
+
+        context_info_by_id = self._controller.get_instances_context_info(
+            instance_ids
+        )
         instance_items_by_id = self._controller.get_instance_items_by_id(
             instance_ids
         )
-        for instance_id, widget in self._widgets_by_id.items():
-            if instance_ids is not None and instance_id not in instance_ids:
+        instance_ids = set(instance_items_by_id)
+
+        group_items = list(self._group_items.values())
+        if self._missing_parent_item is not None:
+            group_items.append(self._missing_parent_item)
+
+        _queue = collections.deque()
+        for group_item in group_items:
+            if not group_item.hasChildren():
                 continue
-            widget.update_instance(
-                instance_items_by_id[instance_id],
-                context_info_by_id[instance_id],
-            )
+
+            children = [
+                group_item.child(row)
+                for row in range(group_item.rowCount())
+            ]
+            _queue.append((children, True))
+
+        while _queue:
+            if not instance_ids:
+                break
+
+            children, parent_active = _queue.popleft()
+            for child in children:
+                instance_id = child.data(INSTANCE_ID_ROLE)
+                widget = self._widgets_by_id[instance_id]
+                if instance_id in instance_ids:
+                    instance_ids.discard(instance_id)
+                    widget.update_instance(
+                        instance_items_by_id[instance_id],
+                        context_info_by_id[instance_id],
+                        parent_active,
+                    )
+                    if not instance_ids:
+                        break
+
+                if not child.hasChildren():
+                    continue
+
+                children = [
+                    child.child(row)
+                    for row in range(child.rowCount())
+                ]
+                _queue.append((children, widget.is_active()))
 
     def _on_active_changed(self, changed_instance_id, new_value):
         selected_instance_ids, _, _ = self.get_selected_items()
+        if changed_instance_id not in selected_instance_ids:
+            selected_instance_ids = {changed_instance_id}
 
+        self._toggle_active_state(
+            set(selected_instance_ids),
+            new_value,
+            changed_instance_id
+        )
+
+    def _toggle_active_state(
+        self,
+        instance_ids: set[str],
+        new_value: Optional[bool],
+        active_id: Optional[str] = None,
+    ) -> None:
+        active_widget = None
+        if active_id:
+            active_widget = self._widgets_by_id[active_id]
         active_by_id = {}
-        found = False
-        for instance_id in selected_instance_ids:
-            active_by_id[instance_id] = new_value
-            if not found and instance_id == changed_instance_id:
-                found = True
+        if active_id and active_id not in instance_ids:
+            if not active_widget.is_checkbox_enabled():
+                return
+            if new_value is None:
+                new_value = not active_widget.is_active()
+            active_by_id[active_id] = new_value
+            active_widget.set_active(new_value)
+        else:
+            # First make sure that the item under mouse is changed if possible
+            if active_widget and active_widget.is_checkbox_enabled():
+                value = new_value
+                if value is None:
+                    value = not active_widget.is_active()
 
-        if not found:
-            active_by_id = {changed_instance_id: new_value}
+                active_by_id[active_id] = value
+                active_widget.set_active(new_value)
+                instance_ids.discard(active_id)
+
+            # Change the states from top to bottom
+            group_items = list(self._group_items.values())
+            if self._missing_parent_item is not None:
+                group_items.append(self._missing_parent_item)
+
+            _queue = collections.deque()
+            for group_item in group_items:
+                children = [
+                    group_item.child(row)
+                    for row in range(group_item.rowCount())
+                ]
+                _queue.append((children, True))
+
+            while _queue:
+                children, parent_active = _queue.popleft()
+                for child in children:
+                    instance_id = child.data(INSTANCE_ID_ROLE)
+                    widget = self._widgets_by_id[instance_id]
+                    widget.set_parent_is_active(parent_active)
+                    if parent_active and instance_id in instance_ids:
+                        value = new_value
+                        if value is None:
+                            value = not widget.is_active()
+                        widget.set_active(value)
+                        active_by_id[instance_id] = value
+
+                    children = [
+                        child.child(row)
+                        for row in range(child.rowCount())
+                    ]
+                    _queue.append((children, widget.is_active()))
 
         self._controller.set_instances_active_state(active_by_id)
 
-        self._change_active_instances(active_by_id, new_value)
         group_names = set()
         for instance_id in active_by_id:
             group_name = self._group_by_instance_id.get(instance_id)
@@ -926,15 +1121,6 @@ class InstanceListView(AbstractInstanceView):
 
         for group_name in group_names:
             self._update_group_checkstate(group_name)
-
-    def _change_active_instances(self, instance_ids, new_value):
-        if not instance_ids:
-            return
-
-        for instance_id in instance_ids:
-            widget = self._widgets_by_id.get(instance_id)
-            if widget:
-                widget.set_active(new_value)
 
     def _on_selection_change(self, *_args):
         self.selection_changed.emit()
@@ -952,64 +1138,39 @@ class InstanceListView(AbstractInstanceView):
         if state == QtCore.Qt.PartiallyChecked:
             return
 
-        if state == QtCore.Qt.Checked:
-            active = True
-        else:
-            active = False
-
         group_item = self._group_items.get(group_name)
         if not group_item:
             return
 
-        active_by_id = {}
-        all_changed = True
-        items_to_expand = [group_item]
-        _queue = collections.deque()
-        _queue.append(group_item)
-        while _queue:
-            item = _queue.popleft()
-            for row in range(item.rowCount()):
-                child = item.child(row)
-                instance_id = child.data(INSTANCE_ID_ROLE)
-                if child.hasChildren():
-                    items_to_expand.append(child)
-                    _queue.append(child)
-                widget = self._widgets_by_id.get(instance_id)
-                if widget is None:
-                    continue
-                if widget.is_checkbox_enabled():
-                    active_by_id[instance_id] = active
-                else:
-                    all_changed = False
+        active = state == QtCore.Qt.Checked
 
-        self._controller.set_instances_active_state(active_by_id)
+        instance_ids = set()
+        for row in range(group_item.rowCount()):
+            child = group_item.child(row)
+            instance_id = child.data(INSTANCE_ID_ROLE)
+            instance_ids.add(instance_id)
 
-        self._change_active_instances(active_by_id, active)
+        self._toggle_active_state(instance_ids, active)
 
-        for item in items_to_expand:
-            proxy_index = self._proxy_model.mapFromSource(item.index())
-            if not self._instance_view.isExpanded(proxy_index):
-                self._instance_view.expand(proxy_index)
+        proxy_index = self._proxy_model.mapFromSource(group_item.index())
+        if not self._instance_view.isExpanded(proxy_index):
+            self._instance_view.expand(proxy_index)
 
-        if not all_changed:
-            # If not all instances were changed, update group checkstate
-            self._update_group_checkstate(group_name)
-
-    def has_items(self):
+    def has_items(self) -> bool:
         if self._convertor_group_widget is not None:
             return True
         if self._group_items:
             return True
         return False
 
-    def get_selected_items(self):
+    def get_selected_items(self) -> tuple[list[str], bool, list[str]]:
         """Get selected instance ids and context selection.
 
         Returns:
-            tuple<list, bool>: Selected instance ids and boolean if context
-                is selected.
-        """
+            tuple[list[str], bool, list[str]]: Selected instance ids,
+                boolean if context is selected and selected convertor ids.
 
+        """
         instance_ids = []
         convertor_identifiers = []
         context_selected = False
@@ -1133,7 +1294,7 @@ class InstanceListView(AbstractInstanceView):
             | QtCore.QItemSelectionModel.Rows
         )
 
-    def set_active_toggle_enabled(self, enabled):
+    def set_active_toggle_enabled(self, enabled: bool) -> bool:
         if self._active_toggle_enabled is enabled:
             return
 
