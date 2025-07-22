@@ -27,6 +27,7 @@ from .structures import (
     CreatorAttributeValues,
     PublishAttributeValues,
     PublishAttributes,
+    InstanceContextInfo,
 )
 from .utils import (
     get_last_versions_for_instances,
@@ -91,6 +92,7 @@ __all__ = (
     "CreatorAttributeValues",
     "PublishAttributeValues",
     "PublishAttributes",
+    "InstanceContextInfo",
 
     "get_last_versions_for_instances",
     "get_next_versions_for_instances",
