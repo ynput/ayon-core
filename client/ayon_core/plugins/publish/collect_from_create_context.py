@@ -2,6 +2,8 @@
 
 """
 import os
+import collections
+
 import pyblish.api
 
 from ayon_core.host import IPublishHost
@@ -36,18 +38,42 @@ class CollectFromCreateContext(pyblish.api.ContextPlugin):
         if project_name:
             context.data["projectName"] = project_name
 
+        # Filter active instances and skip instances which have disabled
+        #   parent instance
+        instances_by_parent_id = collections.defaultdict(list)
+        filtered_instances = []
         for created_instance in create_context.instances:
+            if not created_instance["active"]:
+                continue
+            parent_id = created_instance.parent_instance_id
+            if parent_id is None:
+                filtered_instances.append(created_instance)
+            else:
+                instances_by_parent_id[parent_id].append(created_instance)
+
+        parent_ids_queue = collections.deque()
+        parent_ids_queue.extend(
+            instance.id for instance in filtered_instances
+        )
+        while parent_ids_queue:
+            parent_id = parent_ids_queue.popleft()
+            children = instances_by_parent_id[parent_id]
+            if not children:
+                continue
+            filtered_instances.extend(children)
+            parent_ids_queue.extend(instance.id for instance in children)
+
+        for created_instance in filtered_instances:
             instance_data = created_instance.data_to_store()
-            if instance_data["active"]:
-                thumbnail_path = thumbnail_paths_by_instance_id.get(
-                    created_instance.id
-                )
-                self.create_instance(
-                    context,
-                    instance_data,
-                    created_instance.transient_data,
-                    thumbnail_path
-                )
+            thumbnail_path = thumbnail_paths_by_instance_id.get(
+                created_instance.id
+            )
+            self.create_instance(
+                context,
+                instance_data,
+                created_instance.transient_data,
+                thumbnail_path
+            )
 
         # Update global data to context
         context.data.update(create_context.context_data_to_store())
