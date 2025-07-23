@@ -1,7 +1,9 @@
 import ayon_api
 import ayon_api.utils
 
+from ayon_core.host import ILoadHost
 from ayon_core.pipeline import registered_host
+
 import pyblish.api
 
 
@@ -30,14 +32,19 @@ class CollectSceneLoadedVersions(pyblish.api.ContextPlugin):
             self.log.warning("No registered host.")
             return
 
-        if not hasattr(host, "ls"):
+        if isinstance(host, ILoadHost):
+            containers = list(host.get_containers())
+        elif hasattr(host, "ls"):
+            # Backwards compatibility for legacy host implementations
+            containers = list(host.ls())
+        else:
             host_name = host.__name__
             self.log.warning(
-                f"Host {host_name} doesn't have ls() implemented.")
+                f"Host {host_name} does not implement ILoadHost "
+                f"nor does it have ls() implemented. Skipping querying of "
+                f"loaded versions in scene.")
             return
 
-        loaded_versions = []
-        containers = list(host.ls())
         repre_ids = {
             container["representation"]
             for container in containers
@@ -62,6 +69,7 @@ class CollectSceneLoadedVersions(pyblish.api.ContextPlugin):
 
         # QUESTION should we add same representation id when loaded multiple
         #   times?
+        loaded_versions = []
         for con in containers:
             repre_id = con["representation"]
             repre_entity = repre_entities_by_id.get(repre_id)
