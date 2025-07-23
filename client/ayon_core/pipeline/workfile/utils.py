@@ -411,8 +411,8 @@ def save_next_version(
 ) -> None:
     """Save workfile using current context, version and comment.
 
-    Helper function to save workfile using current context. Last workfile
-        version + 1 is used if is not passed in.
+    Helper function to save a workfile using the current context. Last
+        workfile version + 1 is used if is not passed in.
 
     Args:
         version (Optional[int]): Workfile version that will be used. Last
@@ -480,10 +480,8 @@ def save_next_version(
         project_settings=project_settings,
     )
     rootless_dir = workdir.rootless
+    last_workfile = None
     if version is None:
-        workfile_extensions = host.get_workfile_extensions()
-        if not workfile_extensions:
-            raise ValueError("Host does not have defined file extensions")
         workfiles = host.list_workfiles(
             project_name, folder_entity, task_entity,
             prepared_data=ListWorkfilesOptionalData(
@@ -493,14 +491,18 @@ def save_next_version(
                 template_key=template_key,
             )
         )
-        versions = {
-            workfile.version
-            for workfile in workfiles
-            if workfile.version is not None
-        }
+        for workfile in workfiles:
+            if workfile.version is None:
+                continue
+            if (
+                last_workfile is None
+                or last_workfile.version < workfile.version
+            ):
+                last_workfile = workfile
+
         version = None
-        if versions:
-            version = max(versions) + 1
+        if last_workfile is not None:
+            version = last_workfile.version + 1
 
         if version is None:
             version = get_versioning_start(
@@ -513,6 +515,26 @@ def save_next_version(
 
     template_data["version"] = version
     template_data["comment"] = comment
+
+    # Resolve extension
+    # - Don't fill any if the host does not have defined any -> e.g. if host
+    #   uses directory instead of a file.
+    # 1. Use the current file extension.
+    # 2. Use the last known workfile extension.
+    # 3. Use the first extensions from 'get_workfile_extensions'.
+    ext = None
+    workfile_extensions = host.get_workfile_extensions()
+    if workfile_extensions:
+        current_path = host.get_current_workfile()
+        if current_path:
+            ext = os.path.splitext(current_path)[1].lstrip(".")
+        elif last_workfile is not None:
+            ext = os.path.splitext(last_workfile.filepath)[1].lstrip(".")
+        else:
+            ext = next(iter(workfile_extensions), None)
+
+    if ext:
+        template_data["ext"] = ext
 
     filename = file_template.format_strict(template_data)
     workfile_path = os.path.join(workdir, filename)
@@ -631,6 +653,11 @@ def copy_workfile_to_context(
     template_data["version"] = version
     if comment:
         template_data["comment"] = comment
+
+    workfile_extensions = host.get_workfile_extensions()
+    if workfile_extensions:
+        ext = os.path.splitext(src_workfile_path)[1].lstrip(".")
+        template_data["ext"] = ext
 
     workfile_template = anatomy.get_template_item(
         "work", template_key, "path"
