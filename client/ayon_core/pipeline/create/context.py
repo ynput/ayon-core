@@ -80,6 +80,7 @@ INSTANCE_ADDED_TOPIC = "instances.added"
 INSTANCE_REMOVED_TOPIC = "instances.removed"
 VALUE_CHANGED_TOPIC = "values.changed"
 INSTANCE_REQUIREMENT_CHANGED_TOPIC = "instance.requirement.changed"
+INSTANCE_PARENT_CHANGED_TOPIC = "instance.parent.changed"
 PRE_CREATE_ATTR_DEFS_CHANGED_TOPIC = "pre.create.attr.defs.changed"
 CREATE_ATTR_DEFS_CHANGED_TOPIC = "create.attr.defs.changed"
 PUBLISH_ATTR_DEFS_CHANGED_TOPIC = "publish.attr.defs.changed"
@@ -262,6 +263,8 @@ class CreateContext:
             # - right now used only for 'mandatory' but can be extended
             #   in future
             "requirement_change": BulkInfo(),
+            # Instance parent changed
+            "parent_change": BulkInfo(),
         }
         self._bulk_order = []
 
@@ -1365,6 +1368,13 @@ class CreateContext:
             yield bulk_info
 
     @contextmanager
+    def bulk_instance_parent_change(self, sender: Optional[str] = None):
+        with self._bulk_context(
+            "parent_change", sender
+        ) as bulk_info:
+            yield bulk_info
+
+    @contextmanager
     def bulk_publish_attr_defs_change(self, sender: Optional[str] = None):
         with self._bulk_context("publish_attrs_change", sender) as bulk_info:
             yield bulk_info
@@ -1442,6 +1452,19 @@ class CreateContext:
         """
         if self._is_instance_events_ready(instance_id):
             with self.bulk_instance_requirement_change() as bulk_item:
+                bulk_item.append(instance_id)
+
+    def instance_parent_changed(self, instance_id: str) -> None:
+        """Instance parent changed.
+
+        Triggered by `CreatedInstance`.
+
+        Args:
+            instance_id (Optional[str]): Instance id.
+
+        """
+        if self._is_instance_events_ready(instance_id):
+            with self.bulk_instance_parent_change() as bulk_item:
                 bulk_item.append(instance_id)
 
     # --- context change callbacks ---
@@ -2305,6 +2328,8 @@ class CreateContext:
             self._bulk_publish_attrs_change_finished(data, sender)
         elif key == "requirement_change":
             self._bulk_instance_requirement_change_finished(data, sender)
+        elif key == "parent_change":
+            self._bulk_instance_parent_change_finished(data, sender)
 
     def _bulk_add_instances_finished(
         self,
@@ -2515,6 +2540,25 @@ class CreateContext:
 
         self._emit_event(
             INSTANCE_REQUIREMENT_CHANGED_TOPIC,
+            {"instances": instances},
+            sender,
+        )
+
+    def _bulk_instance_parent_change_finished(
+        self,
+        instance_ids: list[str],
+        sender: Optional[str],
+    ):
+        if not instance_ids:
+            return
+
+        instances = [
+            self.get_instance_by_id(instance_id)
+            for instance_id in set(instance_ids)
+        ]
+
+        self._emit_event(
+            INSTANCE_PARENT_CHANGED_TOPIC,
             {"instances": instances},
             sender,
         )
