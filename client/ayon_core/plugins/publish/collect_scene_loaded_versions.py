@@ -45,6 +45,11 @@ class CollectSceneLoadedVersions(pyblish.api.ContextPlugin):
                 f"loaded versions in scene.")
             return
 
+        if not containers:
+            # Opt out early if there are no containers
+            self.log.debug("No loaded containers found in scene.")
+            return
+
         repre_ids = {
             container["representation"]
             for container in containers
