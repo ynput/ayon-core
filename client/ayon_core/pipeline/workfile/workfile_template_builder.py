@@ -313,7 +313,8 @@ class AbstractTemplateBuilder(ABC):
         if not folder_entity:
             return []
         links = get_folder_links(
-            project_name, folder_entity["id"], link_direction="in"
+            project_name,
+            folder_entity["id"], link_types=["template"], link_direction="in"
         )
         linked_folder_ids = {
             link["entityId"]
@@ -1429,8 +1430,7 @@ class PlaceholderLoadMixin(object):
 
         builder_type_enum_items = [
             {"label": "Current folder", "value": "context_folder"},
-            # TODO implement linked folders
-            # {"label": "Linked folders", "value": "linked_folders"},
+            {"label": "Linked folders", "value": "linked_folders"},
             {"label": "All folders", "value": "all_folders"},
         ]
         build_type_label = "Folder Builder Type"
@@ -1607,10 +1607,7 @@ class PlaceholderLoadMixin(object):
 
         builder_type = placeholder.data["builder_type"]
         folder_ids = []
-        if builder_type == "context_folder":
-            folder_ids = [current_folder_entity["id"]]
-
-        elif builder_type == "all_folders":
+        if builder_type == "all_folders":
             folder_ids = {
                 folder_entity["id"]
                 for folder_entity in get_folders(
@@ -1619,6 +1616,19 @@ class PlaceholderLoadMixin(object):
                     fields={"id"}
                 )
             }
+
+        elif builder_type == "context_folder":
+            folder_ids = [current_folder_entity["id"]]
+
+        elif builder_type == "linked_folders":
+            # Get all linked folders for the current folder
+            if hasattr(self, "builder") and isinstance(
+                    self.builder, AbstractTemplateBuilder):
+                # self.builder: AbstractTemplateBuilder
+                folder_ids = [
+                    linked_folder_entity["id"]
+                    for linked_folder_entity in self.builder.linked_folder_entities  # noqa: E501
+                ]
 
         if not folder_ids:
             return []
