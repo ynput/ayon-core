@@ -94,4 +94,5 @@ class CollectSceneLoadedVersions(pyblish.api.ContextPlugin):
             }
             loaded_versions.append(version)
 
+        self.log.debug(f"Collected {len(loaded_versions)} loaded versions.")
         context.data["loadedVersions"] = loaded_versions
