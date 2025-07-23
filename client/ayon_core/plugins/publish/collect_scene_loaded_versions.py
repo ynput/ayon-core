@@ -27,12 +27,13 @@ class CollectSceneLoadedVersions(pyblish.api.ContextPlugin):
     def process(self, context):
         host = registered_host()
         if host is None:
-            self.log.warn("No registered host.")
+            self.log.warning("No registered host.")
             return
 
         if not hasattr(host, "ls"):
             host_name = host.__name__
-            self.log.warn("Host %r doesn't have ls() implemented." % host_name)
+            self.log.warning(
+                f"Host {host_name} doesn't have ls() implemented.")
             return
 
         loaded_versions = []
