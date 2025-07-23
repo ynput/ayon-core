@@ -21,6 +21,7 @@ from .exceptions import (
     TemplateFillError,
 )
 from .structures import (
+    ParentFlags,
     CreatedInstance,
     ConvertorItem,
     AttributeValues,
@@ -86,6 +87,7 @@ __all__ = (
     "TaskNotSetError",
     "TemplateFillError",
 
+    "ParentFlags",
     "CreatedInstance",
     "ConvertorItem",
     "AttributeValues",
