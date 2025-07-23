@@ -34,9 +34,6 @@ class CollectSceneLoadedVersions(pyblish.api.ContextPlugin):
 
         if isinstance(host, ILoadHost):
             containers = list(host.get_containers())
-        elif hasattr(host, "ls"):
-            # Backwards compatibility for legacy host implementations
-            containers = list(host.ls())
         else:
             host_name = host.__name__
             self.log.warning(
