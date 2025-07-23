@@ -13,15 +13,23 @@ class CollectSceneLoadedVersions(pyblish.api.ContextPlugin):
         "aftereffects",
         "blender",
         "celaction",
+        "cinema4d",
+        "flame",
         "fusion",
         "harmony",
         "hiero",
         "houdini",
+        "max",
         "maya",
+        "motionbuilder",
         "nuke",
         "photoshop",
+        "silhouette",
+        "substancepainter",
+        "substancedesigner",
         "resolve",
-        "tvpaint"
+        "tvpaint",
+        "zbrush",
     ]
 
     def process(self, context):
