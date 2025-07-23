@@ -32,16 +32,15 @@ class CollectSceneLoadedVersions(pyblish.api.ContextPlugin):
             self.log.warning("No registered host.")
             return
 
-        if isinstance(host, ILoadHost):
-            containers = list(host.get_containers())
-        else:
+        if not isinstance(host, ILoadHost):
             host_name = host.__name__
             self.log.warning(
-                f"Host {host_name} does not implement ILoadHost "
-                f"nor does it have ls() implemented. Skipping querying of "
-                f"loaded versions in scene.")
+                f"Host {host_name} does not implement ILoadHost. "
+                "Skipping querying of loaded versions in scene."
+            )
             return
 
+        containers = list(host.get_containers())
         if not containers:
             # Opt out early if there are no containers
             self.log.debug("No loaded containers found in scene.")
