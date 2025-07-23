@@ -1627,7 +1627,8 @@ class PlaceholderLoadMixin(object):
                 # self.builder: AbstractTemplateBuilder
                 folder_ids = [
                     linked_folder_entity["id"]
-                    for linked_folder_entity in self.builder.linked_folder_entities  # noqa: E501
+                    for linked_folder_entity in (
+                        self.builder.linked_folder_entities)
                 ]
 
         if not folder_ids:
