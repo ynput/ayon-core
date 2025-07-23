@@ -33,7 +33,7 @@ class CollectSceneLoadedVersions(pyblish.api.ContextPlugin):
             return
 
         if not isinstance(host, ILoadHost):
-            host_name = host.__name__
+            host_name = host.name
             self.log.warning(
                 f"Host {host_name} does not implement ILoadHost. "
                 "Skipping querying of loaded versions in scene."
