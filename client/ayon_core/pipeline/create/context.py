@@ -41,7 +41,12 @@ from .exceptions import (
     HostMissRequiredMethod,
 )
 from .changes import TrackChangesItem
-from .structures import PublishAttributes, ConvertorItem, InstanceContextInfo
+from .structures import (
+    PublishAttributes,
+    ConvertorItem,
+    InstanceContextInfo,
+    ParentFlags,
+)
 from .creator_plugins import (
     Creator,
     AutoCreator,
@@ -2069,63 +2074,96 @@ class CreateContext:
             sender (Optional[str]): Sender of the event.
 
         """
+        instance_ids_by_parent_id = collections.defaultdict(set)
+        for instance in self.instances:
+            instance_ids_by_parent_id[instance.parent_instance_id].add(
+                instance.id
+            )
+
+        instances_to_remove = list(instances)
+        ids_to_remove = {
+            instance.id
+            for instance in instances_to_remove
+        }
+        _queue = collections.deque()
+        _queue.extend(instances_to_remove)
+        while _queue:
+            instance = _queue.popleft()
+            ids_to_remove.add(instance.id)
+            children_ids = instance_ids_by_parent_id[instance.id]
+            for children_id in children_ids:
+                if children_id in ids_to_remove:
+                    continue
+                instance = self._instances_by_id[children_id]
+                if instance.parent_flags & ParentFlags.parent_lifetime:
+                    instances_to_remove.append(instance)
+                    ids_to_remove.add(instance.id)
+                    _queue.append(instance)
+
         instances_by_identifier = collections.defaultdict(list)
-        for instance in instances:
+        for instance in instances_to_remove:
             identifier = instance.creator_identifier
             instances_by_identifier[identifier].append(instance)
 
         # Just remove instances from context if creator is not available
         missing_creators = set(instances_by_identifier) - set(self.creators)
-        instances = []
+        miss_creator_instances = []
         for identifier in missing_creators:
-            instances.extend(
-                instance
-                for instance in instances_by_identifier[identifier]
-            )
+            miss_creator_instances.extend(instances_by_identifier[identifier])
 
-        self._remove_instances(instances, sender)
+        with self.bulk_remove_instances(sender):
+            self._remove_instances(miss_creator_instances, sender)
 
-        error_message = "Instances removement of creator \"{}\" failed. {}"
-        failed_info = []
-        # Remove instances by creator plugin order
-        for creator in self.get_sorted_creators(
-            instances_by_identifier.keys()
-        ):
-            identifier = creator.identifier
-            creator_instances = instances_by_identifier[identifier]
+            error_message = "Instances removement of creator \"{}\" failed. {}"
+            failed_info = []
+            # Remove instances by creator plugin order
+            for creator in self.get_sorted_creators(
+                instances_by_identifier.keys()
+            ):
+                identifier = creator.identifier
+                # Filter instances by current state of 'CreateContext'
+                # - in case instances were already removed as subroutine of
+                #   previous create plugin.
+                creator_instances = [
+                    instance
+                    for instance in instances_by_identifier[identifier]
+                    if instance.id in self._instances_by_id
+                ]
+                if not creator_instances:
+                    continue
 
-            label = creator.label
-            failed = False
-            add_traceback = False
-            exc_info = None
-            try:
-                creator.remove_instances(creator_instances)
+                label = creator.label
+                failed = False
+                add_traceback = False
+                exc_info = None
+                try:
+                    creator.remove_instances(creator_instances)
 
-            except CreatorError:
-                failed = True
-                exc_info = sys.exc_info()
-                self.log.warning(
-                    error_message.format(identifier, exc_info[1])
-                )
-
-            except (KeyboardInterrupt, SystemExit):
-                raise
-
-            except:  # noqa: E722
-                failed = True
-                add_traceback = True
-                exc_info = sys.exc_info()
-                self.log.warning(
-                    error_message.format(identifier, ""),
-                    exc_info=True
-                )
-
-            if failed:
-                failed_info.append(
-                    prepare_failed_creator_operation_info(
-                        identifier, label, exc_info, add_traceback
+                except CreatorError:
+                    failed = True
+                    exc_info = sys.exc_info()
+                    self.log.warning(
+                        error_message.format(identifier, exc_info[1])
                     )
-                )
+
+                except (KeyboardInterrupt, SystemExit):
+                    raise
+
+                except:  # noqa: E722
+                    failed = True
+                    add_traceback = True
+                    exc_info = sys.exc_info()
+                    self.log.warning(
+                        error_message.format(identifier, ""),
+                        exc_info=True
+                    )
+
+                if failed:
+                    failed_info.append(
+                        prepare_failed_creator_operation_info(
+                            identifier, label, exc_info, add_traceback
+                        )
+                    )
 
         if failed_info:
             raise CreatorsRemoveFailed(failed_info)
