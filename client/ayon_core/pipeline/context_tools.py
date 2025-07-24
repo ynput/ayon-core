@@ -360,6 +360,24 @@ def get_current_task_name():
     return get_global_context()["task_name"]
 
 
+def get_current_project_settings() -> dict[str, Any]:
+    """Project settings for the current context project.
+
+    Returns:
+        dict[str, Any]: Project settings for the current context project.
+
+    Raises:
+        ValueError: If current project is not set.
+
+    """
+    project_name = get_current_project_name()
+    if not project_name:
+        raise ValueError(
+            "Current project is not set. Can't get project settings."
+        )
+    return get_project_settings(project_name)
+
+
 def get_current_project_entity(fields=None):
     """Helper function to get project document based on global Session.
 
