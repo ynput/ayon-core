@@ -575,5 +575,5 @@ def get_process_id():
 
 def version_up_current_workfile():
     """Function to increment and save workfile"""
-    from ayon_core.pipeline.workfile.utils import save_next_version
+    from ayon_core.pipeline.workfile import save_next_version
     save_next_version()
