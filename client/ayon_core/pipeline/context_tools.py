@@ -1,5 +1,6 @@
 """Core pipeline functionality"""
 from __future__ import annotations
+
 import os
 import logging
 import platform
@@ -69,7 +70,7 @@ def _get_addons_manager():
 
 
 def register_root(path):
-    """Register currently active root"""
+    """DEPRECATED Register currently active root."""
     log.info("Registering root: %s" % path)
     _registered_root["_"] = path
 
@@ -88,18 +89,29 @@ def registered_root():
 
     Returns:
         dict[str, str]: Root paths.
-    """
 
+    """
+    warnings.warn(
+        "Used deprecated function 'registered_root'. Please use 'Anatomy'"
+        " to get roots.",
+        DeprecationWarning,
+        stacklevel=2,
+    )
     return _registered_root["_"]
 
 
-def install_host(host):
+def install_host(host: HostBase) -> None:
     """Install `host` into the running Python session.
 
     Args:
         host (HostBase): A host interface object.
 
     """
+    if not isinstance(host, HostBase):
+        log.error(
+            f"Host must be a subclass of 'HostBase', got '{type(host)}'."
+        )
+
     global _is_installed
 
     _is_installed = True
@@ -177,7 +189,7 @@ def install_ayon_plugins(project_name=None, host_name=None):
     register_inventory_action_path(INVENTORY_PATH)
 
     if host_name is None:
-        host_name = os.environ.get("AYON_HOST_NAME")
+        host_name = get_current_host_name()
 
     addons_manager = _get_addons_manager()
     publish_plugin_dirs = addons_manager.collect_publish_plugin_paths(
@@ -358,6 +370,24 @@ def get_current_task_name():
     if isinstance(host, HostBase):
         return host.get_current_task_name()
     return get_global_context()["task_name"]
+
+
+def get_current_project_settings() -> dict[str, Any]:
+    """Project settings for the current context project.
+
+    Returns:
+        dict[str, Any]: Project settings for the current context project.
+
+    Raises:
+        ValueError: If current project is not set.
+
+    """
+    project_name = get_current_project_name()
+    if not project_name:
+        raise ValueError(
+            "Current project is not set. Can't get project settings."
+        )
+    return get_project_settings(project_name)
 
 
 def get_current_project_entity(fields=None):
@@ -546,6 +576,7 @@ def change_current_context(
                 " It is not necessary to pass it in anymore."
             ),
             DeprecationWarning,
+            stacklevel=2,
         )
 
     host = registered_host()
@@ -574,6 +605,16 @@ def get_process_id():
 
 
 def version_up_current_workfile():
-    """Function to increment and save workfile"""
+    """DEPRECATED Function to increment and save workfile.
+
+    Please use 'save_next_version' from 'ayon_core.pipeline.workfile' instead.
+
+    """
+    warnings.warn(
+        "Used deprecated 'version_up_current_workfile' please use"
+        " 'save_next_version' from 'ayon_core.pipeline.workfile' instead.",
+        DeprecationWarning,
+        stacklevel=2,
+    )
     from ayon_core.pipeline.workfile import save_next_version
     save_next_version()
