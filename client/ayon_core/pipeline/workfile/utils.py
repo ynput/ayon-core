@@ -429,6 +429,11 @@ def save_next_version(
     from ayon_core.pipeline.context_tools import registered_host
 
     host = registered_host()
+    current_path = host.get_current_workfile()
+    if not current_path:
+        current_path = None
+    else:
+        current_path = os.path.normpath(current_path)
 
     context = host.get_current_context()
     project_name = context["project_name"]
@@ -483,6 +488,7 @@ def save_next_version(
     )
     rootless_dir = workdir.rootless
     last_workfile = None
+    current_workfile = None
     if version is None:
         workfiles = host.list_workfiles(
             project_name, folder_entity, task_entity,
@@ -496,6 +502,10 @@ def save_next_version(
         for workfile in workfiles:
             if workfile.version is None:
                 continue
+
+            if current_workfile is None and workfile.filepath == current_path:
+                current_workfile = workfile
+
             if (
                 last_workfile is None
                 or last_workfile.version < workfile.version
@@ -515,11 +525,18 @@ def save_next_version(
                 product_type="workfile"
             )
 
-    if comment is None and last_workfile is not None:
-        comment = last_workfile.comment
+    # Re-use comment if is not set
+    if comment is None:
+        if current_workfile is not None:
+            # Use 'comment' from the current workfile if is set
+            comment = current_workfile.comment
+        elif last_workfile is not None:
+            # Use 'comment' from the last workfile
+            comment = last_workfile.comment
 
     template_data["version"] = version
-    template_data["comment"] = comment
+    if comment:
+        template_data["comment"] = comment
 
     # Resolve extension
     # - Don't fill any if the host does not have defined any -> e.g. if host
@@ -530,7 +547,6 @@ def save_next_version(
     ext = None
     workfile_extensions = host.get_workfile_extensions()
     if workfile_extensions:
-        current_path = host.get_current_workfile()
         if current_path:
             ext = os.path.splitext(current_path)[1].lstrip(".")
         elif last_workfile is not None:
