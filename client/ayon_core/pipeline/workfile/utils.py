@@ -417,7 +417,9 @@ def save_next_version(
     Args:
         version (Optional[int]): Workfile version that will be used. Last
             version + 1 is used if is not passed in.
-        comment (optional[str]): Workfile comment.
+        comment (optional[str]): Workfile comment. Pass '""' to clear comment.
+            The last workfile comment is used if it is not passed in and
+            passed 'version' is 'None'.
         description (Optional[str]): Workfile description.
         prepared_data (Optional[SaveWorkfileOptionalData]): Prepared data
             for speed enhancements.
@@ -512,6 +514,9 @@ def save_next_version(
                 task_type=task_entity["taskType"],
                 product_type="workfile"
             )
+
+    if comment is None and last_workfile is not None:
+        comment = last_workfile.comment
 
     template_data["version"] = version
     template_data["comment"] = comment
