@@ -99,13 +99,18 @@ def registered_root():
     return _registered_root["_"]
 
 
-def install_host(host):
+def install_host(host: HostBase) -> None:
     """Install `host` into the running Python session.
 
     Args:
         host (HostBase): A host interface object.
 
     """
+    if not isinstance(host, HostBase):
+        log.error(
+            f"Host must be a subclass of 'HostBase', got '{type(host)}'."
+        )
+
     global _is_installed
 
     _is_installed = True
