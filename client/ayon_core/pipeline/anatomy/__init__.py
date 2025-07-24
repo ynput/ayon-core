@@ -6,6 +6,7 @@ from .exceptions import (
     AnatomyTemplateUnsolved,
 )
 from .anatomy import Anatomy
+from .templates import AnatomyTemplateResult, AnatomyStringTemplate
 
 
 __all__ = (
@@ -16,4 +17,7 @@ __all__ = (
     "AnatomyTemplateUnsolved",
 
     "Anatomy",
+
+    "AnatomyTemplateResult",
+    "AnatomyStringTemplate",
 )
