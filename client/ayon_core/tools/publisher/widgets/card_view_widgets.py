@@ -482,6 +482,9 @@ class InstanceCardWidget(CardWidget):
         if checkbox_value != new_value:
             self._active_checkbox.setChecked(new_value)
 
+    def _set_is_mandatory(self, is_mandatory: bool) -> None:
+        self._active_checkbox.setVisible(not is_mandatory)
+
     def update_instance(self, instance, context_info):
         """Update instance object and update UI."""
         self.instance = instance
@@ -525,6 +528,7 @@ class InstanceCardWidget(CardWidget):
         """Update instance data"""
         self._update_product_name()
         self._set_active(self.instance.is_active)
+        self._set_is_mandatory(self.instance.is_mandatory)
         self._validate_context(context_info)
 
     def _set_expanded(self, expanded=None):
