@@ -541,11 +541,12 @@ def save_next_version(
     workfile_extensions = host.get_workfile_extensions()
     if workfile_extensions:
         if current_path:
-            ext = os.path.splitext(current_path)[1].lstrip(".")
+            ext = os.path.splitext(current_path)[1]
         elif last_workfile is not None:
-            ext = os.path.splitext(last_workfile.filepath)[1].lstrip(".")
+            ext = os.path.splitext(last_workfile.filepath)[1]
         else:
             ext = next(iter(workfile_extensions), None)
+        ext = ext.lstrip(".")
 
     if ext:
         template_data["ext"] = ext
