@@ -418,8 +418,7 @@ def save_next_version(
         version (Optional[int]): Workfile version that will be used. Last
             version + 1 is used if is not passed in.
         comment (optional[str]): Workfile comment. Pass '""' to clear comment.
-            The last workfile comment is used if it is not passed in and
-            passed 'version' is 'None'.
+            The current workfile comment is used if it is not passed.
         description (Optional[str]): Workfile description.
         prepared_data (Optional[SaveWorkfileOptionalData]): Prepared data
             for speed enhancements.
@@ -489,7 +488,7 @@ def save_next_version(
     rootless_dir = workdir.rootless
     last_workfile = None
     current_workfile = None
-    if version is None:
+    if version is None or comment is None:
         workfiles = host.list_workfiles(
             project_name, folder_entity, task_entity,
             prepared_data=ListWorkfilesOptionalData(
@@ -500,11 +499,11 @@ def save_next_version(
             )
         )
         for workfile in workfiles:
-            if workfile.version is None:
-                continue
-
             if current_workfile is None and workfile.filepath == current_path:
                 current_workfile = workfile
+
+            if workfile.version is None:
+                continue
 
             if (
                 last_workfile is None
@@ -512,27 +511,21 @@ def save_next_version(
             ):
                 last_workfile = workfile
 
-        version = None
-        if last_workfile is not None:
-            version = last_workfile.version + 1
+    if version is None and last_workfile is not None:
+        version = last_workfile.version + 1
 
-        if version is None:
-            version = get_versioning_start(
-                project_name,
-                host.name,
-                task_name=task_entity["name"],
-                task_type=task_entity["taskType"],
-                product_type="workfile"
-            )
+    if version is None:
+        version = get_versioning_start(
+            project_name,
+            host.name,
+            task_name=task_entity["name"],
+            task_type=task_entity["taskType"],
+            product_type="workfile"
+        )
 
-    # Re-use comment if is not set
-    if comment is None:
-        if current_workfile is not None:
-            # Use 'comment' from the current workfile if is set
-            comment = current_workfile.comment
-        elif last_workfile is not None:
-            # Use 'comment' from the last workfile
-            comment = last_workfile.comment
+    # Re-use comment from the current workfile if is not passed in
+    if comment is None and current_workfile is not None:
+        comment = current_workfile.comment
 
     template_data["version"] = version
     if comment:
