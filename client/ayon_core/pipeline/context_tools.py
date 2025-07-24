@@ -16,7 +16,6 @@ from ayon_core.host import HostBase
 from ayon_core.lib import (
     is_in_tests,
     initialize_ayon_connection,
-    version_up
 )
 from ayon_core.addon import load_addons, AddonsManager
 from ayon_core.settings import get_project_settings
@@ -24,12 +23,7 @@ from ayon_core.settings import get_project_settings
 from .publish.lib import filter_pyblish_plugins
 from .anatomy import Anatomy
 from .template_data import get_template_data_with_names
-from .workfile import (
-    get_custom_workfile_template_by_string_context,
-    get_workfile_template_key_from_context,
-    get_last_workfile,
-    MissingWorkdirError,
-)
+from .workfile import get_custom_workfile_template_by_string_context
 from . import (
     register_loader_plugin_path,
     register_inventory_action_path,
