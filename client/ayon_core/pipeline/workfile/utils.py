@@ -545,7 +545,7 @@ def save_next_version(
         elif last_workfile is not None:
             ext = os.path.splitext(last_workfile.filepath)[1]
         else:
-            ext = next(iter(workfile_extensions), None)
+            ext = next(iter(workfile_extensions))
         ext = ext.lstrip(".")
 
     if ext:
