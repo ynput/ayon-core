@@ -417,7 +417,8 @@ def save_next_version(
     Args:
         version (Optional[int]): Workfile version that will be used. Last
             version + 1 is used if is not passed in.
-        comment (optional[str]): Workfile comment.
+        comment (optional[str]): Workfile comment. Pass '""' to clear comment.
+            The current workfile comment is used if it is not passed.
         description (Optional[str]): Workfile description.
         prepared_data (Optional[SaveWorkfileOptionalData]): Prepared data
             for speed enhancements.
@@ -427,6 +428,11 @@ def save_next_version(
     from ayon_core.pipeline.context_tools import registered_host
 
     host = registered_host()
+    current_path = host.get_current_workfile()
+    if not current_path:
+        current_path = None
+    else:
+        current_path = os.path.normpath(current_path)
 
     context = host.get_current_context()
     project_name = context["project_name"]
@@ -481,7 +487,8 @@ def save_next_version(
     )
     rootless_dir = workdir.rootless
     last_workfile = None
-    if version is None:
+    current_workfile = None
+    if version is None or comment is None:
         workfiles = host.list_workfiles(
             project_name, folder_entity, task_entity,
             prepared_data=ListWorkfilesOptionalData(
@@ -492,29 +499,37 @@ def save_next_version(
             )
         )
         for workfile in workfiles:
+            if current_workfile is None and workfile.filepath == current_path:
+                current_workfile = workfile
+
             if workfile.version is None:
                 continue
+
             if (
                 last_workfile is None
                 or last_workfile.version < workfile.version
             ):
                 last_workfile = workfile
 
-        version = None
-        if last_workfile is not None:
-            version = last_workfile.version + 1
+    if version is None and last_workfile is not None:
+        version = last_workfile.version + 1
 
-        if version is None:
-            version = get_versioning_start(
-                project_name,
-                host.name,
-                task_name=task_entity["name"],
-                task_type=task_entity["taskType"],
-                product_type="workfile"
-            )
+    if version is None:
+        version = get_versioning_start(
+            project_name,
+            host.name,
+            task_name=task_entity["name"],
+            task_type=task_entity["taskType"],
+            product_type="workfile"
+        )
+
+    # Re-use comment from the current workfile if is not passed in
+    if comment is None and current_workfile is not None:
+        comment = current_workfile.comment
 
     template_data["version"] = version
-    template_data["comment"] = comment
+    if comment:
+        template_data["comment"] = comment
 
     # Resolve extension
     # - Don't fill any if the host does not have defined any -> e.g. if host
@@ -525,13 +540,13 @@ def save_next_version(
     ext = None
     workfile_extensions = host.get_workfile_extensions()
     if workfile_extensions:
-        current_path = host.get_current_workfile()
         if current_path:
-            ext = os.path.splitext(current_path)[1].lstrip(".")
+            ext = os.path.splitext(current_path)[1]
         elif last_workfile is not None:
-            ext = os.path.splitext(last_workfile.filepath)[1].lstrip(".")
+            ext = os.path.splitext(last_workfile.filepath)[1]
         else:
-            ext = next(iter(workfile_extensions), None)
+            ext = next(iter(workfile_extensions))
+        ext = ext.lstrip(".")
 
     if ext:
         template_data["ext"] = ext
