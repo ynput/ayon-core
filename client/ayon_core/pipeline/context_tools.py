@@ -69,7 +69,7 @@ def _get_addons_manager():
 
 
 def register_root(path):
-    """Register currently active root"""
+    """DEPRECATED Register currently active root."""
     log.info("Registering root: %s" % path)
     _registered_root["_"] = path
 
@@ -88,8 +88,14 @@ def registered_root():
 
     Returns:
         dict[str, str]: Root paths.
-    """
 
+    """
+    warnings.warn(
+        "Used deprecated function 'registered_root'. Please use 'Anatomy'"
+        " to get roots.",
+        DeprecationWarning,
+        stacklevel=2,
+    )
     return _registered_root["_"]
 
 
