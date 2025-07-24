@@ -16,7 +16,6 @@ from ayon_core.host import HostBase
 from ayon_core.lib import (
     is_in_tests,
     initialize_ayon_connection,
-    version_up
 )
 from ayon_core.addon import load_addons, AddonsManager
 from ayon_core.settings import get_project_settings
@@ -24,12 +23,7 @@ from ayon_core.settings import get_project_settings
 from .publish.lib import filter_pyblish_plugins
 from .anatomy import Anatomy
 from .template_data import get_template_data_with_names
-from .workfile import (
-    get_custom_workfile_template_by_string_context,
-    get_workfile_template_key_from_context,
-    get_last_workfile,
-    MissingWorkdirError,
-)
+from .workfile import get_custom_workfile_template_by_string_context
 from . import (
     register_loader_plugin_path,
     register_inventory_action_path,
@@ -580,53 +574,6 @@ def get_process_id():
 
 
 def version_up_current_workfile():
-    """Function to increment and save workfile
-    """
-    host = registered_host()
-
-    project_name = get_current_project_name()
-    folder_path = get_current_folder_path()
-    task_name = get_current_task_name()
-    host_name = get_current_host_name()
-
-    template_key = get_workfile_template_key_from_context(
-        project_name,
-        folder_path,
-        task_name,
-        host_name,
-    )
-    anatomy = Anatomy(project_name)
-
-    data = get_template_data_with_names(
-        project_name, folder_path, task_name, host_name
-    )
-    data["root"] = anatomy.roots
-
-    work_template = anatomy.get_template_item("work", template_key)
-
-    # Define saving file extension
-    extensions = host.get_workfile_extensions()
-    current_file = host.get_current_workfile()
-    if current_file:
-        extensions = [os.path.splitext(current_file)[-1]]
-
-    work_root = work_template["directory"].format_strict(data)
-    file_template = work_template["file"].template
-    last_workfile_path = get_last_workfile(
-        work_root, file_template, data, extensions, True
-    )
-    # `get_last_workfile` will return the first expected file version
-    # if no files exist yet. In that case, if they do not exist we will
-    # want to save v001
-    new_workfile_path = last_workfile_path
-    if os.path.exists(new_workfile_path):
-        new_workfile_path = version_up(new_workfile_path)
-
-    # Raise an error if the parent folder doesn't exist as `host.save_workfile`
-    # is not supposed/able to create missing folders.
-    parent_folder = os.path.dirname(new_workfile_path)
-    if not os.path.exists(parent_folder):
-        raise MissingWorkdirError(
-            f"Work area directory '{parent_folder}' does not exist.")
-
-    host.save_workfile(new_workfile_path)
+    """Function to increment and save workfile"""
+    from ayon_core.pipeline.workfile import save_next_version
+    save_next_version()
