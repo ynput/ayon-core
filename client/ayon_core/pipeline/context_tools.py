@@ -1,5 +1,6 @@
 """Core pipeline functionality"""
 from __future__ import annotations
+
 import os
 import logging
 import platform
@@ -575,6 +576,7 @@ def change_current_context(
                 " It is not necessary to pass it in anymore."
             ),
             DeprecationWarning,
+            stacklevel=2,
         )
 
     host = registered_host()
@@ -603,6 +605,16 @@ def get_process_id():
 
 
 def version_up_current_workfile():
-    """Function to increment and save workfile"""
+    """DEPRECATED Function to increment and save workfile.
+
+    Please use 'save_next_version' from 'ayon_core.pipeline.workfile' instead.
+
+    """
+    warnings.warn(
+        "Used deprecated 'version_up_current_workfile' please use"
+        " 'save_next_version' from 'ayon_core.pipeline.workfile' instead.",
+        DeprecationWarning,
+        stacklevel=2,
+    )
     from ayon_core.pipeline.workfile import save_next_version
     save_next_version()
