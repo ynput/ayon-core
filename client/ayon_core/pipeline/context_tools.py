@@ -183,7 +183,7 @@ def install_ayon_plugins(project_name=None, host_name=None):
     register_inventory_action_path(INVENTORY_PATH)
 
     if host_name is None:
-        host_name = os.environ.get("AYON_HOST_NAME")
+        host_name = get_current_host_name()
 
     addons_manager = _get_addons_manager()
     publish_plugin_dirs = addons_manager.collect_publish_plugin_paths(
