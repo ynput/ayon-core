@@ -361,7 +361,8 @@ def get_plugin_settings(plugin, project_settings, log, category=None):
                 [plugin.__name__]
             )
             warnings.warn(
-                f"Please fill 'settings_category' for plugin '{plugin.__name__}'.",
+                "Please fill 'settings_category'"
+                f" for plugin '{plugin.__name__}'.",
                 DeprecationWarning
             )
             return output
@@ -396,7 +397,8 @@ def get_plugin_settings(plugin, project_settings, log, category=None):
             [plugin.__name__]
         )
         warnings.warn(
-            f"Please fill 'settings_category' for plugin '{plugin.__name__}'.",
+            "Please fill 'settings_category'"
+            f" for plugin '{plugin.__name__}'.",
             DeprecationWarning
         )
         return output
