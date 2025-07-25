@@ -165,6 +165,7 @@ class ExtractReview(pyblish.api.InstancePlugin):
         "photoshop"
     ]
 
+    settings_category = "core"
     # Supported extensions
     image_exts = {"exr", "jpg", "jpeg", "png", "dpx", "tga", "tiff", "tif"}
     video_exts = {"mov", "mp4"}

@@ -38,6 +38,8 @@ class CleanUp(pyblish.api.InstancePlugin):
         "webpublisher",
         "shell"
     ]
+    settings_category = "core"
+
     exclude_families = ["clip"]
     optional = True
     active = True

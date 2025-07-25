@@ -61,6 +61,8 @@ class IntegrateHeroVersion(
     # Must happen after IntegrateNew
     order = pyblish.api.IntegratorOrder + 0.1
 
+    settings_category = "core"
+
     optional = True
     active = True
 

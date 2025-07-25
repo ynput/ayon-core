@@ -17,6 +17,7 @@ class ValidateVersion(pyblish.api.InstancePlugin, OptionalPyblishPluginMixin):
     order = pyblish.api.ValidatorOrder
 
     label = "Validate Version"
+    settings_category = "core"
 
     optional = False
     active = True

@@ -354,12 +354,18 @@ def get_plugin_settings(plugin, project_settings, log, category=None):
     # Use project settings based on a category name
     if category:
         try:
-            return (
+            output = (
                 project_settings
                 [category]
                 ["publish"]
                 [plugin.__name__]
             )
+            warnings.warn(
+                "Please fill 'settings_category'"
+                f" for plugin '{plugin.__name__}'.",
+                DeprecationWarning
+            )
+            return output
         except KeyError:
             pass
 
@@ -384,12 +390,18 @@ def get_plugin_settings(plugin, project_settings, log, category=None):
         category_from_file = "core"
 
     try:
-        return (
+        output = (
             project_settings
             [category_from_file]
             [plugin_kind]
             [plugin.__name__]
         )
+        warnings.warn(
+            "Please fill 'settings_category'"
+            f" for plugin '{plugin.__name__}'.",
+            DeprecationWarning
+        )
+        return output
     except KeyError:
         pass
     return {}
