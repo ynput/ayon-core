@@ -255,7 +255,9 @@ class BaseQtModel(QtGui.QStandardItemModel):
             row = item.row()
             if row >= 0:
                 root_item.takeRow(row)
-        root_item.appendRows(items)
+
+        # Put items on top
+        root_item.insertRows(0, items)
 
     def _remove_items(self):
         root_item = self.invisibleRootItem()
