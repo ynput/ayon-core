@@ -5,6 +5,7 @@ import sys
 import inspect
 import copy
 import warnings
+import hashlib
 import xml.etree.ElementTree
 from typing import TYPE_CHECKING, Optional, Union, List
 
@@ -257,15 +258,18 @@ def publish_plugins_discover(
             filenames.append(os.path.basename(path))
             path = os.path.dirname(path)
 
+        dirpath_hash = hashlib.md5(path.encode("utf-8")).hexdigest()
         for filename in filenames:
             mod_name, mod_ext = os.path.splitext(filename)
             if mod_ext.lower() != ".py":
                 continue
 
             filepath = os.path.join(path, filename)
+            sys_module_name = f"{dirpath_hash}.{mod_name}"
             try:
                 module = import_filepath(
-                    filepath, mod_name, sys_module_name=mod_name
+                    filepath, mod_name, sys_module_name=sys_module_name
+                )
 
             except Exception as err:  # noqa: BLE001
                 # we need broad exception to catch all possible errors.
