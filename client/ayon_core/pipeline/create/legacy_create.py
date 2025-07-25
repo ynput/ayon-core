@@ -9,7 +9,7 @@ import os
 import logging
 import collections
 
-from ayon_core.pipeline.constants import AVALON_INSTANCE_ID
+from ayon_core.pipeline.constants import AYON_INSTANCE_ID
 
 from .product_name import get_product_name
 
@@ -34,7 +34,7 @@ class LegacyCreator:
         # Default data
         self.data = collections.OrderedDict()
         # TODO use 'AYON_INSTANCE_ID' when all hosts support it
-        self.data["id"] = AVALON_INSTANCE_ID
+        self.data["id"] = AYON_INSTANCE_ID
         self.data["productType"] = self.product_type
         self.data["folderPath"] = folder_path
         self.data["productName"] = name

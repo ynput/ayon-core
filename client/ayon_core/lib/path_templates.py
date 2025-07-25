@@ -3,6 +3,7 @@ import re
 import copy
 import numbers
 import warnings
+import platform
 from string import Formatter
 import typing
 from typing import List, Dict, Any, Set
@@ -12,6 +13,7 @@ if typing.TYPE_CHECKING:
 
 SUB_DICT_PATTERN = re.compile(r"([^\[\]]+)")
 OPTIONAL_PATTERN = re.compile(r"(<.*?[^{0]*>)[^0-9]*?")
+_IS_WINDOWS = platform.system().lower() == "windows"
 
 
 class TemplateUnsolved(Exception):
@@ -277,8 +279,11 @@ class TemplateResult(str):
         """Convert to normalized path."""
 
         cls = self.__class__
+        path = str(self)
+        if _IS_WINDOWS:
+            path = path.replace("\\", "/")
         return cls(
-            os.path.normpath(self.replace("\\", "/")),
+            os.path.normpath(path),
             self.template,
             self.solved,
             self.used_values,
@@ -561,9 +566,6 @@ class FormattingPart:
 
         """
         key = self._template_base
-        if key in result.really_used_values:
-            result.add_output(result.really_used_values[key])
-            return result
 
         # ensure key is properly formed [({})] properly closed.
         if not self.validate_key_is_matched(key):
@@ -590,8 +592,8 @@ class FormattingPart:
                 if sub_key < 0:
                     sub_key = len(value) + sub_key
 
-                invalid = 0 > sub_key < len(data)
-                if invalid:
+                valid = 0 <= sub_key < len(value)
+                if not valid:
                     used_keys.append(sub_key)
                     missing_key = True
                     break

@@ -113,6 +113,7 @@ class WorkfilesToolWindow(QtWidgets.QWidget):
 
         main_layout = QtWidgets.QHBoxLayout(self)
         main_layout.addWidget(pages_widget, 1)
+        main_layout.setContentsMargins(0, 0, 0, 0)
 
         overlay_messages_widget = MessageOverlayObject(self)
         overlay_invalid_host = InvalidHostOverlay(self)
