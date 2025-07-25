@@ -243,32 +243,35 @@ def publish_plugins_discover(
 
     for path in paths:
         path = os.path.normpath(path)
-        if not os.path.isdir(path):
-            continue
+        filenames = []
+        if os.path.isdir(path):
+            filenames.extend(
+                name
+                for name in os.listdir(path)
+                if (
+                    os.path.isfile(os.path.join(path, name))
+                    and not name.startswith("_")
+                )
+            )
+        else:
+            filenames.append(os.path.basename(path))
+            path = os.path.dirname(path)
 
-        for fname in os.listdir(path):
-            if fname.startswith("_"):
+        for filename in filenames:
+            mod_name, mod_ext = os.path.splitext(filename)
+            if mod_ext.lower() != ".py":
                 continue
 
-            abspath = os.path.join(path, fname)
-
-            if not os.path.isfile(abspath):
-                continue
-
-            mod_name, mod_ext = os.path.splitext(fname)
-
-            if mod_ext != ".py":
-                continue
-
+            filepath = os.path.join(path, filename)
             try:
                 module = import_filepath(
-                    abspath, mod_name, sys_module_name=mod_name)
+                    filepath, mod_name, sys_module_name=mod_name
 
             except Exception as err:  # noqa: BLE001
                 # we need broad exception to catch all possible errors.
-                result.crashed_file_paths[abspath] = sys.exc_info()
+                result.crashed_file_paths[filepath] = sys.exc_info()
 
-                log.debug('Skipped: "%s" (%s)', mod_name, err)
+                log.debug('Skipped: "%s" (%s)', filepath, err)
                 continue
 
             for plugin in pyblish.plugin.plugins_from_module(module):
