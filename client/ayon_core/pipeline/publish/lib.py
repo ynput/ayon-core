@@ -260,15 +260,15 @@ def publish_plugins_discover(
 
         dirpath_hash = hashlib.md5(path.encode("utf-8")).hexdigest()
         for filename in filenames:
-            mod_name, mod_ext = os.path.splitext(filename)
-            if mod_ext.lower() != ".py":
+            basename, ext = os.path.splitext(filename)
+            if ext.lower() != ".py":
                 continue
 
             filepath = os.path.join(path, filename)
-            sys_module_name = f"{dirpath_hash}.{mod_name}"
+            module_name = f"{dirpath_hash}.{basename}"
             try:
                 module = import_filepath(
-                    filepath, mod_name, sys_module_name=sys_module_name
+                    filepath, module_name, sys_module_name=module_name
                 )
 
             except Exception as err:  # noqa: BLE001
