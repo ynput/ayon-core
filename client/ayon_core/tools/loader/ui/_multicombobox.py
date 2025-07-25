@@ -257,8 +257,7 @@ class BaseQtModel(QtGui.QStandardItemModel):
                 root_item.takeRow(row)
 
         # Put items on top
-        for item in reversed(items):
-            root_item.insertRow(0, item)
+        root_item.insertRows(0, items)
 
     def _remove_items(self):
         root_item = self.invisibleRootItem()
