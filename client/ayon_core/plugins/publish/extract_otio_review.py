@@ -54,7 +54,7 @@ class ExtractOTIOReview(
     # plugin default attributes
     to_width = 1280
     to_height = 720
-    output_ext = ".jpg"
+    output_ext = ".png"
 
     def process(self, instance):
         # Not all hosts can import these modules.
@@ -147,7 +147,6 @@ class ExtractOTIOReview(
                 self.actual_fps = available_range.duration.rate
                 start = src_range.start_time.rescaled_to(self.actual_fps)
                 duration = src_range.duration.rescaled_to(self.actual_fps)
-                src_frame_start = src_range.start_time.to_frames()
 
                 # Temporary.
                 # Some AYON custom OTIO exporter were implemented with
@@ -157,7 +156,7 @@ class ExtractOTIOReview(
                 if (
                     is_clip_from_media_sequence(r_otio_cl)
                     and available_range_start_frame == media_ref.start_frame
-                    and src_frame_start < media_ref.start_frame
+                    and start.to_frames() < media_ref.start_frame
                 ):
                     available_range = otio.opentime.TimeRange(
                         otio.opentime.RationalTime(0, rate=self.actual_fps),
@@ -209,13 +208,9 @@ class ExtractOTIOReview(
                 # File sequence way
                 if is_sequence:
                     # Remap processing range to input file sequence.
-                    processing_range_as_frames = (
-                        processing_range.start_time.to_frames(),
-                        processing_range.end_time_inclusive().to_frames()
-                    )
                     first, last = remap_range_on_file_sequence(
                         r_otio_cl,
-                        processing_range_as_frames,
+                        processing_range,
                     )
                     input_fps = processing_range.start_time.rate
 
@@ -291,7 +286,7 @@ class ExtractOTIOReview(
             )
 
         instance.data["representations"].append(representation)
-        self.log.info("Adding representation: {}".format(representation))
+        self.log.debug("Adding representation: {}".format(representation))
 
     def _create_representation(self, start, duration):
         """
@@ -325,6 +320,9 @@ class ExtractOTIOReview(
         end = max(collection.indexes)
 
         files = [f for f in collection]
+        # single frame sequence
+        if len(files) == 1:
+            files = files[0]
         ext = collection.format("{tail}")
         representation_data.update({
             "name": ext[1:],
@@ -512,6 +510,12 @@ class ExtractOTIOReview(
                 "-tune", "stillimage"
             ])
 
+        if video or sequence:
+            command.extend([
+                "-vf", f"scale={self.to_width}:{self.to_height}:flags=lanczos",
+                "-compression_level", "5",
+            ])
+
         # add output attributes
         command.extend([
             "-start_number", str(out_frame_start)
@@ -522,9 +526,10 @@ class ExtractOTIOReview(
             input_extension
             and self.output_ext == input_extension
         ):
-            command.extend([
-                "-c", "copy"
-            ])
+            command.extend(["-c", "copy"])
+        else:
+            # For lossy formats, force re-encode
+            command.extend(["-pix_fmt", "rgba"])
 
         # add output path at the end
         command.append(output_path)
