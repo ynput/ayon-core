@@ -255,7 +255,7 @@ class CollectUSDLayerContributions(pyblish.api.InstancePlugin,
     order = pyblish.api.CollectorOrder + 0.35
     label = "Collect USD Layer Contributions (Asset/Shot)"
     families = ["usd"]
-    enabled = True
+    settings_category = "core"
 
     # A contribution defines a contribution into a (department) layer which
     # will get layered into the target product, usually the asset or shot.
@@ -633,6 +633,8 @@ class ExtractUSDLayerContribution(publish.Extractor):
     label = "Extract USD Layer Contributions (Asset/Shot)"
     order = pyblish.api.ExtractorOrder + 0.45
 
+    settings_category = "core"
+
     use_ayon_entity_uri = False
 
     def process(self, instance):
@@ -794,6 +796,8 @@ class ExtractUSDAssetContribution(publish.Extractor):
     families = ["usdAsset"]
     label = "Extract USD Asset/Shot Contributions"
     order = ExtractUSDLayerContribution.order + 0.01
+
+    settings_category = "core"
 
     use_ayon_entity_uri = False
 

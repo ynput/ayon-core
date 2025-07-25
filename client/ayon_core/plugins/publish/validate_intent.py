@@ -14,6 +14,8 @@ class ValidateIntent(pyblish.api.ContextPlugin):
     order = pyblish.api.ValidatorOrder
 
     label = "Validate Intent"
+    settings_category = "core"
+
     enabled = False
 
     # Can be modified by settings
