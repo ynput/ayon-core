@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import logging
 import uuid
 
@@ -13,6 +15,7 @@ from ayon_core.tools.common_models import (
     ProjectsModel,
     HierarchyModel,
     ThumbnailsModel,
+    TagItem,
 )
 
 from .abstract import (
@@ -223,6 +226,16 @@ class LoaderController(BackendLoaderController, FrontendLoaderController):
             output[folder_id] = label
         return output
 
+    def get_available_tags_by_entity_type(
+        self, project_name: str
+    ) -> dict[str, list[str]]:
+        return self._hierarchy_model.get_available_tags_by_entity_type(
+            project_name
+        )
+
+    def get_project_anatomy_tags(self, project_name: str) -> list[TagItem]:
+        return self._projects_model.get_project_anatomy_tags(project_name)
+
     def get_product_items(self, project_name, folder_ids, sender=None):
         return self._products_model.get_product_items(
             project_name, folder_ids, sender)
@@ -259,9 +272,14 @@ class LoaderController(BackendLoaderController, FrontendLoaderController):
             project_name, version_ids
         )
 
-    def get_thumbnail_path(self, project_name, thumbnail_id):
-        return self._thumbnails_model.get_thumbnail_path(
-            project_name, thumbnail_id
+    def get_thumbnail_paths(
+        self,
+        project_name,
+        entity_type,
+        entity_ids,
+    ):
+        return self._thumbnails_model.get_thumbnail_paths(
+            project_name, entity_type, entity_ids
         )
 
     def change_products_group(self, project_name, product_ids, group_name):

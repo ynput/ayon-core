@@ -462,8 +462,8 @@ class Anatomy(BaseAnatomy):
             Union[Dict[str, str], None]): Local root overrides.
         """
         if not project_name:
-            return
-        return ayon_api.get_project_roots_for_site(
+            return None
+        return ayon_api.get_project_root_overrides_by_site_id(
             project_name, get_local_site_id()
         )
 

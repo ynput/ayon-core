@@ -15,6 +15,10 @@ import ayon_api
 _PLACEHOLDER = object()
 
 
+class _Cache:
+    username = None
+
+
 def _get_ayon_appdirs(*args):
     return os.path.join(
         platformdirs.user_data_dir("AYON", "Ynput"),
@@ -94,6 +98,30 @@ def get_launcher_local_dir(*subdirs: str) -> str:
         storage_dir = _get_ayon_appdirs()
 
     return os.path.join(storage_dir, *subdirs)
+
+
+def get_addons_resources_dir(addon_name: str, *args) -> str:
+    """Get directory for storing resources for addons.
+
+    Some addons might need to store ad-hoc resources that are not part of
+        addon client package (e.g. because of size). Studio might define
+        dedicated directory to store them with 'AYON_ADDONS_RESOURCES_DIR'
+        environment variable. By default, is used 'addons_resources' in
+        launcher storage (might be shared across platforms).
+
+    Args:
+        addon_name (str): Addon name.
+        *args (str): Subfolders in resources directory.
+
+    Returns:
+        str: Path to resources directory.
+
+    """
+    addons_resources_dir = os.getenv("AYON_ADDONS_RESOURCES_DIR")
+    if not addons_resources_dir:
+        addons_resources_dir = get_launcher_storage_dir("addons_resources")
+
+    return os.path.join(addons_resources_dir, addon_name, *args)
 
 
 class AYONSecureRegistry:
@@ -567,10 +595,26 @@ def get_local_site_id():
 def get_ayon_username():
     """AYON username used for templates and publishing.
 
-    Uses curet ayon api username.
+    Uses current ayon api username.
 
     Returns:
         str: Username.
 
     """
-    return ayon_api.get_user()["name"]
+    # Look for username in the connection stack
+    # - this is used when service is working as other user
+    #   (e.g. in background sync)
+    # TODO @iLLiCiTiT - do not use private attribute of 'ServerAPI', rather
+    #      use public method to get username from connection stack.
+    con = ayon_api.get_server_api_connection()
+    user_stack = getattr(con, "_as_user_stack", None)
+    if user_stack is not None:
+        username = user_stack.username
+        if username is not None:
+            return username
+
+    # Cache the username to avoid multiple API calls
+    # - it is not expected that user would change
+    if _Cache.username is None:
+        _Cache.username = ayon_api.get_user()["name"]
+    return _Cache.username

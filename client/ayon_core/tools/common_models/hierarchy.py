@@ -100,12 +100,14 @@ class TaskItem:
         label: Union[str, None],
         task_type: str,
         parent_id: str,
+        tags: list[str],
     ):
         self.task_id = task_id
         self.name = name
         self.label = label
         self.task_type = task_type
         self.parent_id = parent_id
+        self.tags = tags
 
         self._full_label = None
 
@@ -145,6 +147,7 @@ class TaskItem:
             "label": self.label,
             "parent_id": self.parent_id,
             "task_type": self.task_type,
+            "tags": self.tags,
         }
 
     @classmethod
@@ -176,7 +179,8 @@ def _get_task_items_from_tasks(tasks):
             task["name"],
             task["label"],
             task["type"],
-            folder_id
+            folder_id,
+            task["tags"],
         ))
     return output
 
@@ -217,6 +221,8 @@ class HierarchyModel(object):
     lifetime = 60  # A minute
 
     def __init__(self, controller):
+        self._tags_by_entity_type = NestedCacheItem(
+            levels=1, default_factory=dict, lifetime=self.lifetime)
         self._folders_items = NestedCacheItem(
             levels=1, default_factory=dict, lifetime=self.lifetime)
         self._folders_by_id = NestedCacheItem(
@@ -227,16 +233,22 @@ class HierarchyModel(object):
         self._tasks_by_id = NestedCacheItem(
             levels=2, default_factory=dict, lifetime=self.lifetime)
 
+        self._entity_ids_by_assignee = NestedCacheItem(
+            levels=2, default_factory=dict, lifetime=self.lifetime)
+
         self._folders_refreshing = set()
         self._tasks_refreshing = set()
         self._controller = controller
 
     def reset(self):
+        self._tags_by_entity_type.reset()
         self._folders_items.reset()
         self._folders_by_id.reset()
 
         self._task_items.reset()
         self._tasks_by_id.reset()
+
+        self._entity_ids_by_assignee.reset()
 
     def refresh_project(self, project_name):
         """Force to refresh folder items for a project.
@@ -461,6 +473,79 @@ class HierarchyModel(object):
         output = self.get_task_entities(project_name, {task_id})
         return output[task_id]
 
+    def get_entity_ids_for_assignees(
+        self, project_name: str, assignees: list[str]
+    ):
+        folder_ids = set()
+        task_ids = set()
+        output = {
+            "folder_ids": folder_ids,
+            "task_ids": task_ids,
+        }
+        assignees = set(assignees)
+        for assignee in tuple(assignees):
+            cache = self._entity_ids_by_assignee[project_name][assignee]
+            if cache.is_valid:
+                assignees.discard(assignee)
+                assignee_data = cache.get_data()
+                folder_ids.update(assignee_data["folder_ids"])
+                task_ids.update(assignee_data["task_ids"])
+
+        if not assignees:
+            return output
+
+        tasks = ayon_api.get_tasks(
+            project_name,
+            assignees_all=assignees,
+            fields={"id", "folderId", "assignees"},
+        )
+        tasks_assignee = {}
+        for task in tasks:
+            folder_ids.add(task["folderId"])
+            task_ids.add(task["id"])
+            for assignee in task["assignees"]:
+                tasks_assignee.setdefault(assignee, []).append(task)
+
+        for assignee, tasks in tasks_assignee.items():
+            cache = self._entity_ids_by_assignee[project_name][assignee]
+            assignee_folder_ids = set()
+            assignee_task_ids = set()
+            assignee_data = {
+                "folder_ids": assignee_folder_ids,
+                "task_ids": assignee_task_ids,
+            }
+            for task in tasks:
+                assignee_folder_ids.add(task["folderId"])
+                assignee_task_ids.add(task["id"])
+            cache.update_data(assignee_data)
+
+        return output
+
+    def get_available_tags_by_entity_type(
+        self, project_name: str
+    ) -> dict[str, list[str]]:
+        """Get available tags for all entity types in a project."""
+        cache = self._tags_by_entity_type.get(project_name)
+        if not cache.is_valid:
+            tags = None
+            if project_name:
+                response = ayon_api.get(f"projects/{project_name}/tags")
+                if response.status_code == 200:
+                    tags = response.data
+
+            # Fake empty tags
+            if tags is None:
+                tags = {
+                    "folders": [],
+                    "tasks": [],
+                    "products": [],
+                    "versions": [],
+                    "representations": [],
+                    "workfiles": []
+                }
+            cache.update_data(tags)
+        return cache.get_data()
+
     @contextlib.contextmanager
     def _folder_refresh_event_manager(self, project_name, sender):
         self._folders_refreshing.add(project_name)
@@ -564,6 +649,6 @@ class HierarchyModel(object):
         tasks = list(ayon_api.get_tasks(
             project_name,
             folder_ids=[folder_id],
-            fields={"id", "name", "label", "folderId", "type"}
+            fields={"id", "name", "label", "folderId", "type", "tags"}
         ))
         return _get_task_items_from_tasks(tasks)

@@ -394,7 +394,6 @@ class CollectAnatomyInstanceData(pyblish.api.ContextPlugin):
             if aov:
                 anatomy_data["aov"] = aov
 
-
     def _fill_folder_data(self, instance, project_entity, anatomy_data):
         # QUESTION: should we make sure that all folder data are popped if
         #   folder data cannot be found?

@@ -479,6 +479,7 @@ class CollectUSDLayerContributions(pyblish.api.InstancePlugin,
             profile = {}
 
         # Define defaults
+        default_enabled = profile.get("contribution_enabled", True)
         default_contribution_layer = profile.get(
             "contribution_layer", None)
         default_apply_as_variant = profile.get(
@@ -513,7 +514,7 @@ class CollectUSDLayerContributions(pyblish.api.InstancePlugin,
                         "In both cases the USD data itself is free to have "
                         "references and sublayers of its own."
                     ),
-                    default=True),
+                    default=default_enabled),
             TextDef("contribution_target_product",
                     label="Target product",
                     tooltip=(

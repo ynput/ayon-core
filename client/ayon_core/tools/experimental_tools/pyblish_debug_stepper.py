@@ -32,7 +32,7 @@ from qtpy import QtWidgets, QtCore, QtGui
 import pyblish.api
 from ayon_core import style
 
-TAB = 4* "&nbsp;"
+TAB = 4 * "&nbsp;"
 HEADER_SIZE = "15px"
 
 KEY_COLOR = QtGui.QColor("#ffffff")
@@ -243,7 +243,7 @@ class DebugUI(QtWidgets.QDialog):
 
         self._set_window_title(plugin=result["plugin"])
 
-        print(10*"<", result["plugin"].__name__, 10*">")
+        print(10 * "<", result["plugin"].__name__, 10 * ">")
 
         plugin_order = result["plugin"].order
         plugin_name = result["plugin"].__name__

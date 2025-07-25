@@ -2,6 +2,7 @@
 """Package for handling AYON command line arguments."""
 import os
 import sys
+import logging
 import code
 import traceback
 from pathlib import Path
@@ -22,7 +23,6 @@ from ayon_core.lib.env_tools import (
     compute_env_variables_structure,
     merge_env_variables,
 )
-
 
 
 @click.group(invoke_without_command=True)
@@ -173,7 +173,6 @@ def contextselection(
     main(output_path, project, folder, strict)
 
 
-
 @main_cli.command(
     context_settings=dict(
         ignore_unknown_options=True,
@@ -237,6 +236,30 @@ def version(build):
     print(os.environ["AYON_VERSION"])
 
 
+@main_cli.command()
+@click.option(
+    "--project",
+    type=str,
+    help="Project name",
+    required=True)
+def create_project_structure(
+    project,
+):
+    """Create project folder structure as defined in setting
+    `ayon+settings://core/project_folder_structure`
+
+    Args:
+        project (str): The name of the project for which you
+            want to create its additional folder structure.
+
+    """
+
+    from ayon_core.pipeline.project_folders import create_project_folders
+
+    print(f">>> Creating project folder structure for project '{project}'.")
+    create_project_folders(project)
+
+
 def _set_global_environments() -> None:
     """Set global AYON environments."""
     # First resolve general environment
@@ -252,7 +275,6 @@ def _set_global_environments() -> None:
     os.environ.update(env)
 
     # Hardcoded default values
-    os.environ["PYBLISH_GUI"] = "pyblish_pype"
     # Change scale factor only if is not set
     if "QT_AUTO_SCREEN_SCALE_FACTOR" not in os.environ:
         os.environ["QT_AUTO_SCREEN_SCALE_FACTOR"] = "1"
@@ -285,13 +307,13 @@ def _add_addons(addons_manager):
 
 
 def main(*args, **kwargs):
+    logging.basicConfig()
+
     initialize_ayon_connection()
     python_path = os.getenv("PYTHONPATH", "")
     split_paths = python_path.split(os.pathsep)
 
     additional_paths = [
-        # add AYON tools for 'pyblish_pype'
-        os.path.join(AYON_CORE_ROOT, "tools"),
         # add common AYON vendor
         # (common for multiple Python interpreter versions)
         os.path.join(AYON_CORE_ROOT, "vendor", "python")

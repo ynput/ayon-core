@@ -245,6 +245,13 @@ class PublisherWindow(QtWidgets.QDialog):
         show_timer.setInterval(1)
         show_timer.timeout.connect(self._on_show_timer)
 
+        comment_invalid_timer = QtCore.QTimer()
+        comment_invalid_timer.setSingleShot(True)
+        comment_invalid_timer.setInterval(2500)
+        comment_invalid_timer.timeout.connect(
+            self._on_comment_invalid_timeout
+        )
+
         errors_dialog_message_timer = QtCore.QTimer()
         errors_dialog_message_timer.setInterval(100)
         errors_dialog_message_timer.timeout.connect(
@@ -395,6 +402,7 @@ class PublisherWindow(QtWidgets.QDialog):
         self._app_event_listener_installed = False
 
         self._show_timer = show_timer
+        self._comment_invalid_timer = comment_invalid_timer
         self._show_counter = 0
         self._window_is_visible = False
 
@@ -823,14 +831,44 @@ class PublisherWindow(QtWidgets.QDialog):
         self._controller.set_comment(self._comment_input.text())
 
     def _on_validate_clicked(self):
-        if self._save_changes(False):
+        if self._validate_comment() and self._save_changes(False):
             self._set_publish_comment()
             self._controller.validate()
 
     def _on_publish_clicked(self):
-        if self._save_changes(False):
+        if self._validate_comment() and self._save_changes(False):
             self._set_publish_comment()
             self._controller.publish()
+
+    def _validate_comment(self) -> bool:
+        # Validate comment length
+        comment_def = self._controller.get_comment_def()
+        char_count = len(self._comment_input.text().strip())
+        if (
+            comment_def.minimum_chars_required
+            and char_count < comment_def.minimum_chars_required
+        ):
+            self._overlay_object.add_message(
+                "Please enter a comment of at least "
+                f"{comment_def.minimum_chars_required} characters",
+                message_type="error"
+            )
+            self._invalidate_comment_field()
+            return False
+        return True
+
+    def _invalidate_comment_field(self):
+        self._comment_invalid_timer.start()
+        self._comment_input.setStyleSheet("border-color: #DD2020")
+        # Set focus so user can start typing and is pointed towards the field
+        self._comment_input.setFocus()
+        self._comment_input.setCursorPosition(
+            len(self._comment_input.text())
+        )
+
+    def _on_comment_invalid_timeout(self):
+        # Reset style
+        self._comment_input.setStyleSheet("")
 
     def _set_footer_enabled(self, enabled):
         self._save_btn.setEnabled(True)
