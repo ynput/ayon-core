@@ -399,7 +399,11 @@ class ActionsModel:
             return cache.get_data()
 
         try:
-            response = ayon_api.post("actions/list", **request_data)
+            # 'variant' query is supported since AYON backend 1.10.4
+            query = urlencode({"variant": self._variant})
+            response = ayon_api.post(
+                f"actions/list?{query}", **request_data
+            )
             response.raise_for_status()
         except Exception:
             self.log.warning("Failed to collect webactions.", exc_info=True)
