@@ -255,6 +255,7 @@ class CollectUSDLayerContributions(pyblish.api.InstancePlugin,
     order = pyblish.api.CollectorOrder + 0.35
     label = "Collect USD Layer Contributions (Asset/Shot)"
     families = ["usd"]
+    enabled = True
     settings_category = "core"
 
     # A contribution defines a contribution into a (department) layer which
