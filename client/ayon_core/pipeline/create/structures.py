@@ -33,6 +33,11 @@ class IntEnum(int, Enum):
 class ParentFlags(IntEnum):
     # Delete instance if parent is deleted
     parent_lifetime = 1
+    # Active state is propagated from parent to children
+    # - the active state is propagated in collection phase
+    # NOTE It might be helpful to have a function that would return "real"
+    #   active state for instances
+    share_active = 1 << 1
 
 
 class ConvertorItem:
