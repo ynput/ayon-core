@@ -998,6 +998,16 @@ class InstanceListView(AbstractInstanceView):
             widget.setVisible(False)
             widget.deleteLater()
         parent.takeRow(self._missing_parent_item.row())
+        _queue = collections.deque()
+        _queue.append(self._missing_parent_item)
+        while _queue:
+            item = _queue.popleft()
+            for _ in range(item.rowCount()):
+                child = item.child(0)
+                _queue.append(child)
+                item.takeRow(0)
+
+        self._missing_parent_item = None
 
     def refresh_instance_states(self, instance_ids=None):
         """Trigger update of all instances."""
