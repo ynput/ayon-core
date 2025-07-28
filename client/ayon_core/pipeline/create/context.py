@@ -2087,6 +2087,7 @@ class CreateContext:
         }
         _queue = collections.deque()
         _queue.extend(instances_to_remove)
+        # Add children with parent lifetime flag
         while _queue:
             instance = _queue.popleft()
             ids_to_remove.add(instance.id)

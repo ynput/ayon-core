@@ -8,7 +8,7 @@ import pyblish.api
 
 from ayon_core.host import IPublishHost
 from ayon_core.pipeline import registered_host
-from ayon_core.pipeline.create import CreateContext
+from ayon_core.pipeline.create import CreateContext, ParentFlags
 
 
 class CollectFromCreateContext(pyblish.api.ContextPlugin):
@@ -38,30 +38,39 @@ class CollectFromCreateContext(pyblish.api.ContextPlugin):
         if project_name:
             context.data["projectName"] = project_name
 
-        # Filter active instances and skip instances which have disabled
-        #   parent instance
+        # Separate root instances and parented instances
         instances_by_parent_id = collections.defaultdict(list)
-        filtered_instances = []
+        root_instances = []
         for created_instance in create_context.instances:
-            if not created_instance["active"]:
-                continue
             parent_id = created_instance.parent_instance_id
             if parent_id is None:
-                filtered_instances.append(created_instance)
+                root_instances.append(created_instance)
             else:
                 instances_by_parent_id[parent_id].append(created_instance)
 
-        parent_ids_queue = collections.deque()
-        parent_ids_queue.extend(
-            instance.id for instance in filtered_instances
-        )
-        while parent_ids_queue:
-            parent_id = parent_ids_queue.popleft()
-            children = instances_by_parent_id[parent_id]
-            if not children:
-                continue
-            filtered_instances.extend(children)
-            parent_ids_queue.extend(instance.id for instance in children)
+        # Traverse instances from top to bottom
+        # - All instances without an existing parent are automatically
+        #   eliminated
+        filtered_instances = []
+        _queue = collections.deque()
+        _queue.append((root_instances, True))
+        while _queue:
+            created_instances, parent_is_active = _queue.popleft()
+            for created_instance in created_instances:
+                is_active = created_instance["active"]
+                # Use a parent's active state if parent flags defines that
+                if (
+                    is_active
+                    and created_instance.parent_flags & ParentFlags.share_active
+                ):
+                    is_active = parent_is_active
+
+                if is_active:
+                    filtered_instances.append(created_instance)
+
+                children = instances_by_parent_id[created_instance.id]
+                if children:
+                    _queue.append((children, is_active))
 
         for created_instance in filtered_instances:
             instance_data = created_instance.data_to_store()
