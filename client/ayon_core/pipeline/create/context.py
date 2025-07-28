@@ -1091,6 +1091,35 @@ class CreateContext:
             INSTANCE_REQUIREMENT_CHANGED_TOPIC, callback
         )
 
+    def add_instance_parent_change_callback(
+        self, callback: Callable
+    ) -> "EventCallback":
+        """Register callback to listen to instance parent changes.
+
+        Instance changed parent or parent flags.
+
+        Data structure of event:
+
+            ```python
+            {
+                "instances": [CreatedInstance, ...],
+                "create_context": CreateContext
+            }
+            ```
+
+        Args:
+            callback (Callable): Callback function that will be called when
+                instance requirement changed.
+
+        Returns:
+            EventCallback: Created callback object which can be used to
+                stop listening.
+
+        """
+        return self._event_hub.add_callback(
+            INSTANCE_PARENT_CHANGED_TOPIC, callback
+        )
+
     def context_data_to_store(self) -> dict[str, Any]:
         """Data that should be stored by host function.
 
