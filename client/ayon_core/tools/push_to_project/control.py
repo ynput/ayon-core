@@ -130,14 +130,6 @@ class PushToContextController:
             self._src_label = self._prepare_source_label()
         return self._src_label
 
-    def get_library_only(self):
-        """Returns state of library filter"""
-        return self._library_only
-
-    def set_library_only(self, state: bool):
-        """Change state of library filter"""
-        self._library_only = state
-
     def get_project_items(self, sender=None):
         return self._projects_model.get_project_items(sender)
 
