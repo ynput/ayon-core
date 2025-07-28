@@ -35,6 +35,7 @@ from ayon_core.tools.utils.lib import html_escape, checkstate_int_to_enum
 
 from ayon_core.pipeline.create import (
     InstanceContextInfo,
+    ParentFlags,
 )
 
 from ayon_core.tools.publisher.abstract import AbstractPublisherFrontend
@@ -170,6 +171,7 @@ class InstanceListItemWidget(QtWidgets.QWidget):
         self._has_valid_context = context_info.is_valid
         self._is_mandatory = instance.is_mandatory
         self._instance_is_active = instance.is_active
+        self._parent_flags = instance.parent_flags
 
         # Parent active state is fluent and can change
         self._parent_is_active = parent_is_active
@@ -238,9 +240,19 @@ class InstanceListItemWidget(QtWidgets.QWidget):
         self._instance_is_active = instance.is_active
         self._has_valid_context = context_info.is_valid
         self._parent_is_active = parent_is_active
+        self._parent_flags = instance.parent_flags
 
         self._update_checkbox_state()
         self._update_style_state()
+
+    def is_parent_active(self) -> bool:
+        return self._parent_is_active
+
+    def _used_parent_active(self):
+        parent_enabled = True
+        if self._parent_flags & ParentFlags.share_active:
+            parent_enabled = self._parent_is_active
+        return parent_enabled
 
     def set_parent_is_active(self, active: bool) -> None:
         if self._parent_is_active is active:
@@ -259,7 +271,7 @@ class InstanceListItemWidget(QtWidgets.QWidget):
 
     def _update_style_state(self) -> None:
         state = ""
-        if not self._parent_is_active:
+        if not self._used_parent_active():
             state = "disabled"
         elif not self._has_valid_context:
             state = "invalid"
@@ -271,16 +283,18 @@ class InstanceListItemWidget(QtWidgets.QWidget):
         self._instance_label_widget.style().polish(self._instance_label_widget)
 
     def _update_checkbox_state(self) -> None:
+        parent_enabled = self._used_parent_active()
+
         self._active_checkbox.setEnabled(
             self._toggle_is_enabled
             and not self._is_mandatory
-            and self._parent_is_active
+            and parent_enabled
         )
         # Hide checkbox for mandatory instances
         self._active_checkbox.setVisible(not self._is_mandatory)
 
         # Visually disable instance if parent is disabled
-        checked = self._parent_is_active and self._instance_is_active
+        checked = parent_enabled and self._instance_is_active
         if checked is not self._active_checkbox.isChecked():
             self._active_checkbox.setChecked(checked)
 
