@@ -220,6 +220,7 @@ class InstanceItem:
         is_mandatory: bool,
         has_promised_context: bool,
         parent_instance_id: Optional[str],
+        parent_flags: int,
     ):
         self._instance_id: str = instance_id
         self._creator_identifier: str = creator_identifier
@@ -234,6 +235,7 @@ class InstanceItem:
         self._is_mandatory: bool = is_mandatory
         self._has_promised_context: bool = has_promised_context
         self._parent_instance_id: Optional[str] = parent_instance_id
+        self._parent_flags: int = parent_flags
 
     @property
     def id(self):
@@ -266,6 +268,10 @@ class InstanceItem:
     @property
     def parent_instance_id(self):
         return self._parent_instance_id
+
+    @property
+    def parent_flags(self) -> int:
+        return self._parent_flags
 
     def get_variant(self):
         return self._variant
@@ -319,6 +325,7 @@ class InstanceItem:
             instance.is_mandatory,
             instance.has_promised_context,
             instance.parent_instance_id,
+            instance.parent_flags,
         )
 
 
