@@ -1148,7 +1148,6 @@ class ProjectPushItemProcess:
                 repre_entity["id"],
                 {"active": False}
             )
-            )
 
     def _copy_version_thumbnail(self):
         version_thumbnail = ayon_api.get_version_thumbnail(
