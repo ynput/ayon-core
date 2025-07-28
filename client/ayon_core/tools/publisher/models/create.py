@@ -493,6 +493,9 @@ class CreateModel:
         self._create_context.add_instance_requirement_change_callback(
             self._cc_instance_requirement_changed
         )
+        self._create_context.add_instance_parent_change_callback(
+            self._cc_instance_parent_changed
+        )
 
         self._create_context.reset_finalization()
 
@@ -1195,6 +1198,16 @@ class CreateModel:
         }
         self._emit_event(
             "create.model.instance.requirement.changed",
+            {"instance_ids": instance_ids},
+        )
+
+    def _cc_instance_parent_changed(self, event):
+        instance_ids = {
+            instance.id
+            for instance in event.data["instances"]
+        }
+        self._emit_event(
+            "create.model.instance.parent.changed",
             {"instance_ids": instance_ids},
         )
 
