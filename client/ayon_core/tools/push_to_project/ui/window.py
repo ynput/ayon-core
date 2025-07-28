@@ -85,13 +85,12 @@ class PushToContextSelectWindow(QtWidgets.QWidget):
 
         header_widget = QtWidgets.QWidget(main_context_widget)
 
-        library_only = self._controller.get_library_only()
         library_only_label = QtWidgets.QLabel(
             "Show only libraries",
             header_widget
         )
         library_only_checkbox = NiceCheckbox(
-            library_only, parent=header_widget)
+            True, parent=header_widget)
 
         header_label = QtWidgets.QLabel(
             controller.get_source_label(),
@@ -113,7 +112,7 @@ class PushToContextSelectWindow(QtWidgets.QWidget):
 
         projects_combobox = ProjectsCombobox(controller, context_widget)
         projects_combobox.set_select_item_visible(True)
-        projects_combobox.set_standard_filter_enabled(library_only)
+        projects_combobox.set_standard_filter_enabled(True)
 
         context_splitter = QtWidgets.QSplitter(
             QtCore.Qt.Vertical, context_widget
@@ -409,7 +408,6 @@ class PushToContextSelectWindow(QtWidgets.QWidget):
     def _on_library_only_change(self, state: int) -> None:
         """Change toggle state, reset filter, recalculate dropdown"""
         state = bool(state)
-        self._controller.set_library_only(state)
         self._projects_combobox.set_standard_filter_enabled(state)
         self._projects_combobox.refresh()
 
