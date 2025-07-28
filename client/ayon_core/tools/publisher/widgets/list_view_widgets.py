@@ -659,7 +659,8 @@ class InstanceListView(AbstractInstanceView):
                         item.setData(instance_id, INSTANCE_ID_ROLE)
                         self._items_by_id[instance_id] = item
                         new_items[parent_id].append(item)
-                    elif parent_id != self._parent_id_by_id.get(instance_id):
+
+                    elif item.parent() is not parent_item:
                         new_items[parent_id].append(item)
 
                     self._parent_id_by_id[instance_id] = parent_id
@@ -1037,6 +1038,7 @@ class InstanceListView(AbstractInstanceView):
             ]
             _queue.append((children, True))
 
+        discarted_ids = set()
         while _queue:
             if not instance_ids:
                 break
@@ -1045,15 +1047,20 @@ class InstanceListView(AbstractInstanceView):
             for child in children:
                 instance_id = child.data(INSTANCE_ID_ROLE)
                 widget = self._widgets_by_id[instance_id]
+                # Add children ids to 'instance_ids' to traverse them too
+                add_children = False
                 if instance_id in instance_ids:
                     instance_ids.discard(instance_id)
+                    discarted_ids.add(instance_id)
+                    # Parent active state changed -> traverse children too
+                    add_children = (
+                        parent_active is not widget.is_parent_active()
+                    )
                     widget.update_instance(
                         instance_items_by_id[instance_id],
                         context_info_by_id[instance_id],
                         parent_active,
                     )
-                    if not instance_ids:
-                        break
 
                 if not child.hasChildren():
                     continue
@@ -1062,6 +1069,15 @@ class InstanceListView(AbstractInstanceView):
                     child.child(row)
                     for row in range(child.rowCount())
                 ]
+                if add_children:
+                    for new_child in children:
+                        instance_id = new_child.data(INSTANCE_ID_ROLE)
+                        if instance_id not in discarted_ids:
+                            instance_ids.add(instance_id)
+
+                if not instance_ids:
+                    break
+
                 _queue.append((children, widget.is_active()))
 
     def _on_active_changed(self, changed_instance_id, new_value):
