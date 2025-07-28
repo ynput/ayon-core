@@ -30,14 +30,14 @@ from typing import Optional
 from qtpy import QtWidgets, QtCore, QtGui
 
 from ayon_core.style import get_objected_colors
-from ayon_core.tools.utils import NiceCheckbox, BaseClickableFrame
-from ayon_core.tools.utils.lib import html_escape, checkstate_int_to_enum
 
 from ayon_core.pipeline.create import (
     InstanceContextInfo,
     ParentFlags,
 )
 
+from ayon_core.tools.utils import NiceCheckbox, BaseClickableFrame
+from ayon_core.tools.utils.lib import html_escape, checkstate_int_to_enum
 from ayon_core.tools.publisher.abstract import AbstractPublisherFrontend
 from ayon_core.tools.publisher.models.create import (
     InstanceItem,
