@@ -1144,7 +1144,7 @@ class InstanceListView(AbstractInstanceView):
                     instance_id = child.data(INSTANCE_ID_ROLE)
                     widget = self._widgets_by_id[instance_id]
                     widget.set_parent_is_active(parent_active)
-                    if parent_active and instance_id in instance_ids:
+                    if instance_id in instance_ids:
                         value = new_value
                         if value is None:
                             value = not widget.is_active()
