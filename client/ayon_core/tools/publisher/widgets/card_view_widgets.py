@@ -277,6 +277,7 @@ class InstanceCardWidget(CardWidget):
         super().__init__(parent)
 
         self.instance = instance
+        self._is_active = instance.is_active
 
         self._id = instance.id
         self._group_identifier = instance.group_label
@@ -366,6 +367,7 @@ class InstanceCardWidget(CardWidget):
     def update_instance(self, instance, context_info, is_parent_active):
         """Update instance object and update UI."""
         self.instance = instance
+        self._is_active = instance.is_active
         self._update_instance_values(context_info, is_parent_active)
 
     def _validate_context(self, context_info):
@@ -378,8 +380,6 @@ class InstanceCardWidget(CardWidget):
         product_name = self.instance.product_name
         label = self.instance.label
 
-        parent_is_enabled = self._used_parent_active()
-        self._label_widget.setEnabled(parent_is_enabled)
         if (
             variant == self._last_variant
             and product_name == self._last_product_name
@@ -414,6 +414,7 @@ class InstanceCardWidget(CardWidget):
 
     def _update_checkbox_state(self):
         parent_is_enabled = self._used_parent_active()
+        self._label_widget.setEnabled(parent_is_enabled)
         self._active_checkbox.setEnabled(
             self._toggle_is_enabled
             and not self.instance.is_mandatory
@@ -423,7 +424,7 @@ class InstanceCardWidget(CardWidget):
         self._active_checkbox.setVisible(not self.instance.is_mandatory)
 
         # Visually disable instance if parent is disabled
-        checked = parent_is_enabled and self.instance.is_active
+        checked = parent_is_enabled and self._is_active
         if checked is not self._active_checkbox.isChecked():
             self._active_checkbox.blockSignals(True)
             self._active_checkbox.setChecked(checked)
@@ -442,10 +443,10 @@ class InstanceCardWidget(CardWidget):
 
     def _on_active_change(self):
         new_value = self._active_checkbox.isChecked()
-        old_value = self.instance.is_active
-        if new_value == old_value:
+        old_value = self._is_active
+        if new_value is old_value:
             return
-
+        self._is_active = new_value
         self.active_changed.emit(self._id, new_value)
 
     def _on_expend_clicked(self):
@@ -742,7 +743,7 @@ class InstanceCardView(AbstractInstanceView):
         context_info_by_id: dict[str, InstanceContextInfo],
         parent_active_by_id: dict[str, bool],
         group_icons: dict[str, str],
-    ):
+    ) -> None:
         """Update instances for the group.
 
         Args:
@@ -800,8 +801,6 @@ class InstanceCardView(AbstractInstanceView):
                 widgets_by_id[instance.id] = widget
 
         group_widget.set_widgets(widgets_by_id, ordered_ids)
-
-        return ordered_ids
 
     def _make_sure_context_widget_exists(self):
         # Create context item if is not already existing
@@ -944,6 +943,32 @@ class InstanceCardView(AbstractInstanceView):
             for widget in self._get_selected_widgets():
                 if isinstance(widget, InstanceCardWidget):
                     active_state_by_id[widget.id] = value
+
+        if not active_state_by_id:
+            return
+
+        _queue = collections.deque()
+        _queue.append((set(self._instance_ids_by_parent_id[None]), True))
+        instance_ids = set(active_state_by_id)
+        discarted_ids = set()
+        while _queue:
+            children, parent_active = _queue.popleft()
+            for instance_id in children:
+                widget = self._widgets_by_id[instance_id]
+                old_active = widget.is_active()
+                widget.set_parent_active(parent_active)
+                is_active = widget.is_active()
+                if old_active is not is_active:
+                    active_state_by_id[instance_id] = is_active
+
+                if instance_id in instance_ids:
+                    instance_ids.discard(instance_id)
+                    discarted_ids.add(instance_id)
+
+                _queue.append((
+                    set(self._instance_ids_by_parent_id[instance_id]),
+                    is_active
+                ))
 
         self._controller.set_instances_active_state(active_state_by_id)
 
