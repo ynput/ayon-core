@@ -899,7 +899,6 @@ class ProjectPushItemProcess:
             "source",
             "comment",
             "description",
-            "intent",
         }:
             if key in src_attrib:
                 dst_attrib[key] = src_attrib[key]
