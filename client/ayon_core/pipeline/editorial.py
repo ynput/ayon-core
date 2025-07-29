@@ -7,6 +7,10 @@ import opentimelineio as otio
 from opentimelineio import opentime as _ot
 
 
+# https://github.com/AcademySoftwareFoundation/OpenTimelineIO/issues/1822
+OTIO_EPSILON = 1e-9
+
+
 def otio_range_to_frame_range(otio_range):
     start = _ot.to_frames(
         otio_range.start_time, otio_range.start_time.rate)
