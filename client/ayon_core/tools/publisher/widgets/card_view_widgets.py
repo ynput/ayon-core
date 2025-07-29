@@ -705,7 +705,7 @@ class InstanceCardView(AbstractInstanceView):
                 group_by_instance_id[instance.id] = group_name
                 instance_ids_by_group_name[group_name].append(instance.id)
 
-            self._update_instances(
+            self._update_instance_widgets(
                 group_name,
                 instances,
                 context_info_by_id,
@@ -735,7 +735,7 @@ class InstanceCardView(AbstractInstanceView):
             return True
         return False
 
-    def _update_instances(
+    def _update_instance_widgets(
         self,
         group_name: str,
         instances: list[InstanceItem],
@@ -905,7 +905,6 @@ class InstanceCardView(AbstractInstanceView):
                     add_children = (
                         is_parent_active is not widget.is_parent_active()
                     )
-
                     if instance_id in available_ids:
                         available_ids.discard(instance_id)
                         widget.update_instance(
@@ -914,14 +913,10 @@ class InstanceCardView(AbstractInstanceView):
                             is_parent_active,
                         )
                     else:
-                        # TODO implement 'set_parent_active'
                         widget.set_parent_active(is_parent_active)
 
                     instance_ids.discard(instance_id)
                     discarted_ids.add(instance_id)
-
-                if not instance_ids:
-                    break
 
                 if not add_children:
                     continue
@@ -934,7 +929,11 @@ class InstanceCardView(AbstractInstanceView):
                 }
 
                 if children:
+                    instance_ids |= children
                     _queue.append((children, widget.is_active()))
+
+                if not instance_ids:
+                    break
 
     def _on_active_changed(self, instance_id, value):
         instance_widget = self._widgets_by_id[instance_id]
