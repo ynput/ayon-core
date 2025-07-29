@@ -19,6 +19,7 @@ Only one item can be selected at a time.
 └──────────────────────┘
 ```
 """
+from __future__ import annotations
 
 import re
 import collections
@@ -26,11 +27,13 @@ from typing import Dict
 
 from qtpy import QtWidgets, QtCore
 
-from ayon_core.tools.utils import NiceCheckbox
+from ayon_core.pipeline.create import (
+    InstanceContextInfo,
+    ParentFlags,
+)
 
-from ayon_core.tools.utils import BaseClickableFrame
+from ayon_core.tools.utils import BaseClickableFrame, NiceCheckbox
 from ayon_core.tools.utils.lib import html_escape
-
 from ayon_core.tools.publisher.abstract import AbstractPublisherFrontend
 from ayon_core.tools.publisher.constants import (
     CONTEXT_ID,
@@ -38,7 +41,9 @@ from ayon_core.tools.publisher.constants import (
     CONTEXT_GROUP,
     CONVERTOR_ITEM_GROUP,
 )
-
+from ayon_core.tools.publisher.models.create import (
+    InstanceItem,
+)
 from .widgets import (
     AbstractInstanceView,
     ContextWarningLabel,
@@ -219,7 +224,11 @@ class InstanceGroupWidget(BaseGroupWidget):
         self._group_icons = group_icons
 
     def update_instance_values(
-        self, context_info_by_id, instance_items_by_id, instance_ids
+        self,
+        context_info_by_id,
+        instance_items_by_id,
+        instance_ids,
+        parent_is_active_by_id,
     ):
         """Trigger update on instance widgets."""
 
@@ -228,17 +237,24 @@ class InstanceGroupWidget(BaseGroupWidget):
                 continue
             widget.update_instance(
                 instance_items_by_id[instance_id],
-                context_info_by_id[instance_id]
+                context_info_by_id[instance_id],
+                parent_is_active_by_id[instance_id],
             )
 
-    def update_instances(self, instances, context_info_by_id):
+    def update_instances(
+        self,
+        instances: list[InstanceItem],
+        context_info_by_id: dict[str, InstanceContextInfo],
+        parent_active_by_id: dict[str, bool]
+    ):
         """Update instances for the group.
 
         Args:
             instances (list[InstanceItem]): List of instances in
                 CreateContext.
-            context_info_by_id (Dict[str, InstanceContextInfo]): Instance
+            context_info_by_id (dict[str, InstanceContextInfo]): Instance
                 context info by instance id.
+            parent_active_by_id (dict[str, bool]): Instance has active parent.
 
         """
         # Store instances by id and by product name
@@ -260,13 +276,20 @@ class InstanceGroupWidget(BaseGroupWidget):
         for product_names in sorted_product_names:
             for instance in instances_by_product_name[product_names]:
                 context_info = context_info_by_id[instance.id]
+                parent_is_active = parent_active_by_id[instance.id]
                 if instance.id in self._widgets_by_id:
                     widget = self._widgets_by_id[instance.id]
-                    widget.update_instance(instance, context_info)
+                    widget.update_instance(
+                        instance, context_info, parent_is_active
+                    )
                 else:
                     group_icon = self._group_icons[instance.creator_identifier]
                     widget = InstanceCardWidget(
-                        instance, context_info, group_icon, self
+                        instance,
+                        context_info,
+                        parent_is_active,
+                        group_icon,
+                        self
                     )
                     widget.selected.connect(self._on_widget_selection)
                     widget.active_changed.connect(self._on_active_changed)
@@ -406,14 +429,23 @@ class InstanceCardWidget(CardWidget):
 
     active_changed = QtCore.Signal(str, bool)
 
-    def __init__(self, instance, context_info, group_icon, parent):
+    def __init__(
+        self,
+        instance,
+        context_info,
+        parent_is_active: bool,
+        group_icon,
+        parent: BaseGroupWidget,
+    ):
         super().__init__(parent)
+
+        self.instance = instance
 
         self._id = instance.id
         self._group_identifier = instance.group_label
         self._group_icon = group_icon
-
-        self.instance = instance
+        self._parent_is_active = parent_is_active
+        self._toggle_is_enabled = True
 
         self._last_product_name = None
         self._last_variant = None
@@ -467,28 +499,29 @@ class InstanceCardWidget(CardWidget):
         self._active_checkbox = active_checkbox
         self._expand_btn = expand_btn
 
-        self._update_instance_values(context_info)
+        self._update_instance_values(context_info, parent_is_active)
 
     def set_active_toggle_enabled(self, enabled):
-        self._active_checkbox.setEnabled(enabled)
+        if self._toggle_is_enabled is enabled:
+            return
+        self._toggle_is_enabled = enabled
+        self._update_checkbox_state()
 
     @property
     def is_active(self):
         return self._active_checkbox.isChecked()
 
-    def _set_active(self, new_value):
-        """Set instance as active."""
-        checkbox_value = self._active_checkbox.isChecked()
-        if checkbox_value != new_value:
-            self._active_checkbox.setChecked(new_value)
+    def is_checkbox_enabled(self) -> bool:
+        """Checkbox can be changed by user."""
+        return (
+            self._used_parent_active()
+            and not self.instance.is_mandatory
+        )
 
-    def _set_is_mandatory(self, is_mandatory: bool) -> None:
-        self._active_checkbox.setVisible(not is_mandatory)
-
-    def update_instance(self, instance, context_info):
+    def update_instance(self, instance, context_info, parent_is_active):
         """Update instance object and update UI."""
         self.instance = instance
-        self._update_instance_values(context_info)
+        self._update_instance_values(context_info, parent_is_active)
 
     def _validate_context(self, context_info):
         valid = context_info.is_valid
@@ -499,6 +532,9 @@ class InstanceCardWidget(CardWidget):
         variant = self.instance.variant
         product_name = self.instance.product_name
         label = self.instance.label
+
+        parent_is_enabled = self._used_parent_active()
+        self._label_widget.setEnabled(parent_is_enabled)
         if (
             variant == self._last_variant
             and product_name == self._last_product_name
@@ -524,12 +560,35 @@ class InstanceCardWidget(CardWidget):
             QtCore.Qt.NoTextInteraction
         )
 
-    def _update_instance_values(self, context_info):
+    def _update_instance_values(self, context_info, parent_is_active):
         """Update instance data"""
+        self._parent_is_active = parent_is_active
         self._update_product_name()
-        self._set_active(self.instance.is_active)
-        self._set_is_mandatory(self.instance.is_mandatory)
+        self._update_checkbox_state()
         self._validate_context(context_info)
+
+    def _update_checkbox_state(self):
+        parent_is_enabled = self._used_parent_active()
+        self._active_checkbox.setEnabled(
+            self._toggle_is_enabled
+            and not self.instance.is_mandatory
+            and parent_is_enabled
+        )
+        # Hide checkbox for mandatory instances
+        self._active_checkbox.setVisible(not self.instance.is_mandatory)
+
+        # Visually disable instance if parent is disabled
+        checked = parent_is_enabled and self.instance.is_active
+        if checked is not self._active_checkbox.isChecked():
+            self._active_checkbox.blockSignals(True)
+            self._active_checkbox.setChecked(checked)
+            self._active_checkbox.blockSignals(False)
+
+    def _used_parent_active(self) -> bool:
+        parent_enabled = True
+        if self.instance.parent_flags & ParentFlags.share_active:
+            parent_enabled = self._parent_is_active
+        return parent_enabled
 
     def _set_expanded(self, expanded=None):
         if expanded is None:
@@ -600,6 +659,8 @@ class InstanceCardView(AbstractInstanceView):
         self._active_toggle_enabled = True
         self._widgets_by_group: Dict[str, InstanceGroupWidget] = {}
         self._ordered_groups = []
+
+        self._instance_ids_by_parent_id = collections.defaultdict(set)
 
         self._explicitly_selected_instance_ids = []
         self._explicitly_selected_groups = []
@@ -705,12 +766,43 @@ class InstanceCardView(AbstractInstanceView):
         # Prepare instances by group and identifiers by group
         instances_by_group = collections.defaultdict(list)
         identifiers_by_group = collections.defaultdict(set)
-        for instance in self._controller.get_instance_items():
+        instances_by_id = {}
+        instance_ids_by_parent_id = collections.defaultdict(set)
+        instance_items = self._controller.get_instance_items()
+        for instance in instance_items:
             group_name = instance.group_label
             instances_by_group[group_name].append(instance)
             identifiers_by_group[group_name].add(
                 instance.creator_identifier
             )
+            instances_by_id[instance.id] = instance
+            instance_ids_by_parent_id[instance.parent_instance_id].add(
+                instance.id
+            )
+
+        parent_active_by_id = {
+            instance_id: False
+            for instance_id in instances_by_id
+        }
+        _queue = collections.deque()
+        _queue.append((None, True))
+        while _queue:
+            parent_id, parent_is_active = _queue.popleft()
+            for instance_id in instance_ids_by_parent_id[parent_id]:
+                instance_item = instances_by_id[instance_id]
+                is_active = instance_item.is_active
+                if (
+                    not parent_is_active
+                    and instance_item.parent_flags & ParentFlags.share_active
+                ):
+                    is_active = False
+
+                parent_active_by_id[instance_id] = parent_is_active
+                _queue.append(
+                    (instance_id, is_active)
+                )
+
+        self._instance_ids_by_parent_id = instance_ids_by_parent_id
 
         # Remove groups that were not found in apassed instances
         for group_name in tuple(self._widgets_by_group.keys()):
@@ -755,7 +847,9 @@ class InstanceCardView(AbstractInstanceView):
 
             widget_idx += 1
             group_widget.update_instances(
-                instances_by_group[group_name], context_info_by_id
+                instances_by_group[group_name],
+                context_info_by_id,
+                parent_active_by_id
             )
             group_widget.set_active_toggle_enabled(
                 self._active_toggle_enabled
@@ -763,7 +857,7 @@ class InstanceCardView(AbstractInstanceView):
 
         self._update_ordered_group_names()
 
-    def has_items(self):
+    def has_items(self) -> bool:
         if self._convertor_items_group is not None:
             return True
         if self._widgets_by_group:
@@ -828,9 +922,31 @@ class InstanceCardView(AbstractInstanceView):
         instance_items_by_id = self._controller.get_instance_items_by_id(
             instance_ids
         )
+        instance_ids = set(instance_items_by_id)
+
+        parent_is_active_by_id = {
+            instance_id: False
+            for instance_id in instance_ids
+        }
+
+        discarted_ids = set()
+        _queue = collections.deque()
+        _queue.append((None, True))
+        while _queue:
+            parent_id, parent_is_active = _queue.pop()
+            for instance_id in self._instance_ids_by_parent_id[parent_id]:
+                if instance_id in instance_ids:
+                    instance_ids.discard(instance_id)
+                    discarted_ids.add(instance_id)
+                    # TODO there is no way how to get current state
+                    parent_is_active_by_id[instance_id] = parent_is_active
+
         for widget in self._widgets_by_group.values():
             widget.update_instance_values(
-                context_info_by_id, instance_items_by_id, instance_ids
+                context_info_by_id,
+                instance_items_by_id,
+                instance_ids,
+                parent_is_active_by_id,
             )
 
     def _on_active_changed(self, group_name, instance_id, value):
