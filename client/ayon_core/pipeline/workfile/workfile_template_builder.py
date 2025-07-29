@@ -204,7 +204,9 @@ class AbstractTemplateBuilder(ABC):
     @property
     def linked_folder_entities(self):
         if self._linked_folder_entities is _NOT_SET:
-            self._linked_folder_entities = self._get_linked_folder_entities()
+            self._linked_folder_entities = self._get_linked_folder_entities(
+                link_type="template"
+            )
         return self._linked_folder_entities
 
     @property
@@ -307,14 +309,14 @@ class AbstractTemplateBuilder(ABC):
             self._loaders_by_name = get_loaders_by_name()
         return self._loaders_by_name
 
-    def _get_linked_folder_entities(self):
+    def _get_linked_folder_entities(self, link_type: str = "template"):
         project_name = self.project_name
         folder_entity = self.current_folder_entity
         if not folder_entity:
             return []
         links = get_folder_links(
             project_name,
-            folder_entity["id"], link_types=["template"], link_direction="in"
+            folder_entity["id"], link_types=[link_type], link_direction="in"
         )
         linked_folder_ids = {
             link["entityId"]
@@ -1433,6 +1435,14 @@ class PlaceholderLoadMixin(object):
             {"label": "Linked folders", "value": "linked_folders"},
             {"label": "All folders", "value": "all_folders"},
         ]
+
+        link_types = ayon_api.get_link_types(self.builder.project_name)
+
+        link_types_enum_item = [
+            {"label": link_type["name"], "value": link_type["linkType"]}
+            for link_type in link_types
+
+        ]
         build_type_label = "Folder Builder Type"
         build_type_help = (
             "Folder Builder Type\n"
@@ -1460,6 +1470,17 @@ class PlaceholderLoadMixin(object):
                 default=options.get("builder_type"),
                 items=builder_type_enum_items,
                 tooltip=build_type_help
+            ),
+            attribute_definitions.EnumDef(
+                "link_type",
+                label="Link Type",
+                default="template",
+                items=link_types_enum_item,
+                tooltip=(
+                    "Link Type\n"
+                    "\nDefines what type of link will be used to"
+                    " link the asset to the current folder."
+                )
             ),
             attribute_definitions.EnumDef(
                 "product_type",
