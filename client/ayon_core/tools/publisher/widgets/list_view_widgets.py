@@ -196,7 +196,7 @@ class InstanceListItemWidget(QtWidgets.QWidget):
     def is_checkbox_enabled(self) -> bool:
         """Checkbox can be changed by user."""
         return (
-            self._parent_is_active
+            self._used_parent_active()
             and not self._is_mandatory
         )
 
@@ -248,7 +248,7 @@ class InstanceListItemWidget(QtWidgets.QWidget):
     def is_parent_active(self) -> bool:
         return self._parent_is_active
 
-    def _used_parent_active(self):
+    def _used_parent_active(self) -> bool:
         parent_enabled = True
         if self._parent_flags & ParentFlags.share_active:
             parent_enabled = self._parent_is_active
