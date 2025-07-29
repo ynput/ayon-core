@@ -295,8 +295,7 @@ class InstanceListItemWidget(QtWidgets.QWidget):
 
         # Visually disable instance if parent is disabled
         checked = parent_enabled and self._instance_is_active
-        if checked is not self._active_checkbox.isChecked():
-            self._active_checkbox.setChecked(checked)
+        self._set_checked(checked)
 
     def _on_active_change(self):
         self.active_changed.emit(
