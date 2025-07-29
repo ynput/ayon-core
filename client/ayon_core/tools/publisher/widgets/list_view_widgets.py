@@ -1022,6 +1022,7 @@ class InstanceListView(AbstractInstanceView):
             instance_ids
         )
         instance_ids = set(instance_items_by_id)
+        available_ids = set(instance_ids)
 
         group_items = list(self._group_items.values())
         if self._missing_parent_item is not None:
@@ -1050,17 +1051,22 @@ class InstanceListView(AbstractInstanceView):
                 # Add children ids to 'instance_ids' to traverse them too
                 add_children = False
                 if instance_id in instance_ids:
-                    instance_ids.discard(instance_id)
-                    discarted_ids.add(instance_id)
                     # Parent active state changed -> traverse children too
                     add_children = (
                         parent_active is not widget.is_parent_active()
                     )
-                    widget.update_instance(
-                        instance_items_by_id[instance_id],
-                        context_info_by_id[instance_id],
-                        parent_active,
-                    )
+                    if instance_id in available_ids:
+                        available_ids.discard(instance_id)
+                        widget.update_instance(
+                            instance_items_by_id[instance_id],
+                            context_info_by_id[instance_id],
+                            parent_active,
+                        )
+                    else:
+                        widget.set_active(parent_active)
+
+                    instance_ids.discard(instance_id)
+                    discarted_ids.add(instance_id)
 
                 if not child.hasChildren():
                     continue
