@@ -639,12 +639,7 @@ class InstanceCardView(AbstractInstanceView):
         ):
             output.append(self._context_widget)
 
-        output.extend(
-            widget
-            for widget in self._convertor_widgets_by_id.values()
-            if widget.is_selected
-        )
-
+        output.extend(self._get_selected_convertor_widgets())
         output.extend(self._get_selected_instance_widgets())
         return output
 
@@ -652,6 +647,13 @@ class InstanceCardView(AbstractInstanceView):
         return [
             widget
             for widget in self._widgets_by_id.values()
+            if widget.is_selected
+        ]
+
+    def _get_selected_convertor_widgets(self) -> list[ConvertorItemCardWidget]:
+        return [
+            widget
+            for widget in self._convertor_widgets_by_id.values()
             if widget.is_selected
         ]
 
@@ -730,6 +732,9 @@ class InstanceCardView(AbstractInstanceView):
         groups_to_remove = (
             set(self._widgets_by_group) - set(instances_by_group)
         )
+        ids_to_remove = (
+            set(self._widgets_by_id) - set(instances_by_id)
+        )
 
         # Sort groups
         sorted_group_names = list(sorted(instances_by_group.keys()))
@@ -779,6 +784,11 @@ class InstanceCardView(AbstractInstanceView):
 
             if group_name in self._explicitly_selected_groups:
                 self._explicitly_selected_groups.remove(group_name)
+
+        for instance_id in ids_to_remove:
+            widget = self._widgets_by_id.pop(instance_id)
+            widget.setVisible(False)
+            widget.deleteLater()
 
         self._instance_ids_by_parent_id = instance_ids_by_parent_id
         self._group_name_by_instance_id = group_by_instance_id
@@ -1298,21 +1308,18 @@ class InstanceCardView(AbstractInstanceView):
     def get_selected_items(self):
         """Get selected instance ids and context."""
 
-        convertor_identifiers = []
-        instances = []
-        selected_widgets = self._get_selected_widgets()
-
-        context_selected = False
-        for widget in selected_widgets:
-            if widget is self._context_widget:
-                context_selected = True
-
-            elif isinstance(widget, InstanceCardWidget):
-                instances.append(widget.id)
-
-            elif isinstance(widget, ConvertorItemCardWidget):
-                convertor_identifiers.append(widget.identifier)
-
+        context_selected = (
+            self._context_widget is not None
+            and self._context_widget.is_selected
+        )
+        instances = [
+            widget.id
+            for widget in self._get_selected_instance_widgets()
+        ]
+        convertor_identifiers = [
+            widget.identifier
+            for widget in self._get_selected_convertor_widgets()
+        ]
         return instances, context_selected, convertor_identifiers
 
     def set_selected_items(
