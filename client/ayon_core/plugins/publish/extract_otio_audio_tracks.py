@@ -7,6 +7,7 @@ from ayon_core.lib import (
     get_ffmpeg_tool_args,
     run_subprocess
 )
+from ayon_core.pipeline import editorial
 
 
 class ExtractOtioAudioTracks(pyblish.api.ContextPlugin):
@@ -172,6 +173,14 @@ class ExtractOtioAudioTracks(pyblish.api.ContextPlugin):
                     clip_start = otio_clip.source_range.start_time
                     fps = clip_start.rate
                     conformed_av_start = media_av_start.rescaled_to(fps)
+
+                    # Avoid rounding issue on media available range.
+                    if clip_start.almost_equal(
+                        conformed_av_start,
+                        editorial.OTIO_EPSILON
+                    ):
+                        conformed_av_start = clip_start
+
                     # ffmpeg ignores embedded tc
                     start = clip_start - conformed_av_start
                     duration = otio_clip.source_range.duration
