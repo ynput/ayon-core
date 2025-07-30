@@ -33,6 +33,7 @@ class AddLastWorkfileToLaunchArgs(PreLaunchHook):
         "cinema4d",
         "silhouette",
         "gaffer",
+        "loki",
     }
     launch_types = {LaunchTypes.local}
 
