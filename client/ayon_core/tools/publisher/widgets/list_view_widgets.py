@@ -506,14 +506,13 @@ class InstanceListView(AbstractInstanceView):
         if not self._active_toggle_enabled:
             return
 
-        selected_instance_ids = self._instance_view.get_selected_instance_ids()
         if toggle == -1:
             active = None
         elif toggle == 1:
             active = True
         else:
             active = False
-        self._toggle_active_state(selected_instance_ids, active)
+        self._toggle_active_state(active)
 
     def _update_group_checkstate(self, group_name):
         """Update checkstate of one group."""
@@ -1086,75 +1085,49 @@ class InstanceListView(AbstractInstanceView):
                 _queue.append((children, widget.is_active()))
 
     def _on_active_changed(self, changed_instance_id, new_value):
-        selected_instance_ids, _, _ = self.get_selected_items()
-        if changed_instance_id not in selected_instance_ids:
-            selected_instance_ids = {changed_instance_id}
-
-        self._toggle_active_state(
-            set(selected_instance_ids),
-            new_value,
-            changed_instance_id
-        )
+        self._toggle_active_state(new_value, changed_instance_id)
 
     def _toggle_active_state(
         self,
-        instance_ids: set[str],
         new_value: Optional[bool],
         active_id: Optional[str] = None,
     ) -> None:
-        active_widget = None
-        if active_id:
-            active_widget = self._widgets_by_id[active_id]
-        active_by_id = {}
+        instance_ids, _, _ = self.get_selected_items()
         if active_id and active_id not in instance_ids:
-            if not active_widget.is_checkbox_enabled():
-                return
-            if new_value is None:
-                new_value = not active_widget.is_active()
-            active_by_id[active_id] = new_value
-            active_widget.set_active(new_value)
-        else:
-            # First make sure that the item under mouse is changed if possible
-            if active_widget and active_widget.is_checkbox_enabled():
-                value = new_value
-                if value is None:
-                    value = not active_widget.is_active()
+            instance_ids = {active_id}
 
-                active_by_id[active_id] = value
-                active_widget.set_active(new_value)
-                instance_ids.discard(active_id)
+        active_by_id = {}
+        # Change the states from top to bottom
+        group_items = list(self._group_items.values())
+        if self._missing_parent_item is not None:
+            group_items.append(self._missing_parent_item)
 
-            # Change the states from top to bottom
-            group_items = list(self._group_items.values())
-            if self._missing_parent_item is not None:
-                group_items.append(self._missing_parent_item)
+        _queue = collections.deque()
+        for group_item in group_items:
+            children = [
+                group_item.child(row)
+                for row in range(group_item.rowCount())
+            ]
+            _queue.append((children, True))
 
-            _queue = collections.deque()
-            for group_item in group_items:
+        while _queue:
+            children, parent_active = _queue.popleft()
+            for child in children:
+                instance_id = child.data(INSTANCE_ID_ROLE)
+                widget = self._widgets_by_id[instance_id]
+                widget.set_parent_is_active(parent_active)
+                if instance_id in instance_ids:
+                    value = new_value
+                    if value is None:
+                        value = not widget.is_active()
+                    widget.set_active(value)
+                    active_by_id[instance_id] = value
+
                 children = [
-                    group_item.child(row)
-                    for row in range(group_item.rowCount())
+                    child.child(row)
+                    for row in range(child.rowCount())
                 ]
-                _queue.append((children, True))
-
-            while _queue:
-                children, parent_active = _queue.popleft()
-                for child in children:
-                    instance_id = child.data(INSTANCE_ID_ROLE)
-                    widget = self._widgets_by_id[instance_id]
-                    widget.set_parent_is_active(parent_active)
-                    if instance_id in instance_ids:
-                        value = new_value
-                        if value is None:
-                            value = not widget.is_active()
-                        widget.set_active(value)
-                        active_by_id[instance_id] = value
-
-                    children = [
-                        child.child(row)
-                        for row in range(child.rowCount())
-                    ]
-                    _queue.append((children, widget.is_active()))
+                _queue.append((children, widget.is_active()))
 
         self._controller.set_instances_active_state(active_by_id)
 
@@ -1195,7 +1168,7 @@ class InstanceListView(AbstractInstanceView):
             instance_id = child.data(INSTANCE_ID_ROLE)
             instance_ids.add(instance_id)
 
-        self._toggle_active_state(instance_ids, active)
+        self._toggle_active_state(active)
 
         proxy_index = self._proxy_model.mapFromSource(group_item.index())
         if not self._instance_view.isExpanded(proxy_index):
@@ -1339,7 +1312,7 @@ class InstanceListView(AbstractInstanceView):
             | QtCore.QItemSelectionModel.Rows
         )
 
-    def set_active_toggle_enabled(self, enabled: bool) -> bool:
+    def set_active_toggle_enabled(self, enabled: bool) -> None:
         if self._active_toggle_enabled is enabled:
             return
 
