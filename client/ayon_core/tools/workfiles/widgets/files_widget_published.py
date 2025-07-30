@@ -1,3 +1,5 @@
+import os
+
 import qtawesome
 from qtpy import QtWidgets, QtCore, QtGui
 
@@ -205,24 +207,25 @@ class PublishedFilesModel(QtGui.QStandardItemModel):
                 new_items.append(item)
                 item.setColumnCount(self.columnCount())
                 item.setData(self._file_icon, QtCore.Qt.DecorationRole)
-                item.setData(file_item.filename, QtCore.Qt.DisplayRole)
                 item.setData(repre_id, REPRE_ID_ROLE)
 
-            if file_item.exists:
+            if file_item.available:
                 flags = QtCore.Qt.ItemIsEnabled | QtCore.Qt.ItemIsSelectable
             else:
                 flags = QtCore.Qt.NoItemFlags
 
-            author = file_item.created_by
+            author = file_item.author
             user_item = user_items_by_name.get(author)
             if user_item is not None and user_item.full_name:
                 author = user_item.full_name
 
-            item.setFlags(flags)
+            filename = os.path.basename(file_item.filepath)
 
+            item.setFlags(flags)
+            item.setData(filename, QtCore.Qt.DisplayRole)
             item.setData(file_item.filepath, FILEPATH_ROLE)
             item.setData(author, AUTHOR_ROLE)
-            item.setData(file_item.modified, DATE_MODIFIED_ROLE)
+            item.setData(file_item.file_modified, DATE_MODIFIED_ROLE)
 
             self._items_by_id[repre_id] = item
 
