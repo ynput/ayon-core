@@ -38,10 +38,12 @@ class ExtractThumbnail(pyblish.api.InstancePlugin):
         "substancedesigner",
         "nuke",
         "aftereffects",
+        "photoshop",
         "unreal",
         "houdini",
         "circuit",
     ]
+    settings_category = "core"
     enabled = False
 
     integrate_thumbnail = False
