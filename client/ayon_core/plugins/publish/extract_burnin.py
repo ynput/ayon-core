@@ -57,6 +57,7 @@ class ExtractBurnin(publish.Extractor):
         "unreal",
         "circuit",
     ]
+    settings_category = "core"
 
     optional = True
 
