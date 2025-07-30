@@ -60,8 +60,8 @@ class CollectFromCreateContext(pyblish.api.ContextPlugin):
                 is_active = created_instance["active"]
                 # Use a parent's active state if parent flags defines that
                 if (
-                    is_active
-                    and created_instance.parent_flags & ParentFlags.share_active
+                    created_instance.parent_flags & ParentFlags.share_active
+                    and is_active
                 ):
                     is_active = parent_is_active
 
