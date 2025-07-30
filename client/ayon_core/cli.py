@@ -2,6 +2,7 @@
 """Package for handling AYON command line arguments."""
 import os
 import sys
+import logging
 import code
 import traceback
 from pathlib import Path
@@ -235,6 +236,30 @@ def version(build):
     print(os.environ["AYON_VERSION"])
 
 
+@main_cli.command()
+@click.option(
+    "--project",
+    type=str,
+    help="Project name",
+    required=True)
+def create_project_structure(
+    project,
+):
+    """Create project folder structure as defined in setting
+    `ayon+settings://core/project_folder_structure`
+
+    Args:
+        project (str): The name of the project for which you
+            want to create its additional folder structure.
+
+    """
+
+    from ayon_core.pipeline.project_folders import create_project_folders
+
+    print(f">>> Creating project folder structure for project '{project}'.")
+    create_project_folders(project)
+
+
 def _set_global_environments() -> None:
     """Set global AYON environments."""
     # First resolve general environment
@@ -282,6 +307,8 @@ def _add_addons(addons_manager):
 
 
 def main(*args, **kwargs):
+    logging.basicConfig()
+
     initialize_ayon_connection()
     python_path = os.getenv("PYTHONPATH", "")
     split_paths = python_path.split(os.pathsep)

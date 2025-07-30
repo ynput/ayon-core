@@ -51,7 +51,7 @@ class DiscoverResult:
                     "*** Discovered {} plugins".format(len(self.plugins))
                 )
                 for cls in self.plugins:
-                    lines.append("- {}".format(cls.__class__.__name__))
+                    lines.append("- {}".format(cls.__name__))
 
             # Plugin that were defined to be ignored
             if self.ignored_plugins or full_report:

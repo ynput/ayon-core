@@ -4,6 +4,7 @@ import logging
 import collections
 import copy
 import time
+import warnings
 
 import ayon_api
 
@@ -56,14 +57,9 @@ class _AyonSettingsCache:
     @classmethod
     def _get_variant(cls):
         if _AyonSettingsCache.variant is None:
-            from ayon_core.lib import is_staging_enabled, is_dev_mode_enabled
+            from ayon_core.lib import get_settings_variant
 
-            variant = "production"
-            if is_dev_mode_enabled():
-                variant = cls._get_bundle_name()
-            elif is_staging_enabled():
-                variant = "staging"
-
+            variant = get_settings_variant()
             # Cache variant
             _AyonSettingsCache.variant = variant
 
@@ -180,17 +176,22 @@ def get_project_environments(project_name, project_settings=None):
 
 
 def get_current_project_settings():
-    """Project settings for current context project.
+    """DEPRECATE Project settings for current context project.
 
-    Project name should be stored in environment variable `AYON_PROJECT_NAME`.
-    This function should be used only in host context where environment
-    variable must be set and should not happen that any part of process will
-    change the value of the environment variable.
+    Function requires access to pipeline context which is in
+        'ayon_core.pipeline'.
+
+    Returns:
+        dict[str, Any]: Project settings for current context project.
+
     """
-    project_name = os.environ.get("AYON_PROJECT_NAME")
-    if not project_name:
-        raise ValueError(
-            "Missing context project in environment"
-            " variable `AYON_PROJECT_NAME`."
-        )
-    return get_project_settings(project_name)
+    warnings.warn(
+        "Used deprecated function 'get_current_project_settings' in"
+        " 'ayon_core.settings'. The function was moved to"
+        " 'ayon_core.pipeline.context_tools'.",
+        DeprecationWarning,
+        stacklevel=2
+    )
+    from ayon_core.pipeline.context_tools import get_current_project_settings
+
+    return get_current_project_settings()
