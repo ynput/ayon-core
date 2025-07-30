@@ -14,6 +14,15 @@ from ayon_server.exceptions import BadRequestException
 from ayon_server.types import ColorRGBA_uint8
 
 
+def _handle_missing_frames_enum():
+    return [
+        {"value": "closest_existing", "label": "Use closest existing"},
+        {"value": "blank", "label": "Generate blank frame"},
+        {"value": "previous_version", "label": "Use previous version"},
+        {"value": "only_rendered", "label": "Use only rendered"},
+    ]
+
+
 class EnabledModel(BaseSettingsModel):
     enabled: bool = SettingsField(True)
 
@@ -331,7 +340,7 @@ class ResizeModel(BaseSettingsModel):
         title="Type",
         description="Type of resizing",
         enum_resolver=lambda: _resize_types_enum,
-        conditionalEnum=True,
+        conditional_enum=True,
         default="source"
     )
 
@@ -364,7 +373,7 @@ class ExtractThumbnailOIIODefaultsModel(BaseSettingsModel):
         title="Type",
         description="Transcoding type",
         enum_resolver=lambda: _thumbnail_oiio_transcoding_type,
-        conditionalEnum=True,
+        conditional_enum=True,
         default="colorspace"
     )
 
@@ -467,7 +476,7 @@ class ExtractOIIOTranscodeOutputModel(BaseSettingsModel):
         "colorspace",
         title="Transcoding type",
         enum_resolver=_extract_oiio_transcoding_type,
-        conditionalEnum=True,
+        conditional_enum=True,
         description=(
             "Select the transcoding type for your output, choosing either "
             "*Colorspace* or *Display&View* transform."
@@ -716,6 +725,12 @@ class ExtractReviewOutputDefModel(BaseSettingsModel):
         default_factory=ExtractReviewLetterBox,
         title="Letter Box"
     )
+    fill_missing_frames: str = SettingsField(
+        title="Handle missing frames",
+        default="closest_existing",
+        description="How to handle gaps in sequence frame ranges.",
+        enum_resolver=_handle_missing_frames_enum
+    )
 
     @validator("name")
     def validate_name(cls, value):
@@ -731,6 +746,11 @@ class ExtractReviewProfileModel(BaseSettingsModel):
     # TODO use hosts enum
     hosts: list[str] = SettingsField(
         default_factory=list, title="Host names"
+    )
+    task_types: list[str] = SettingsField(
+        default_factory=list,
+        title="Task Types",
+        enum_resolver=task_types_enum,
     )
     outputs: list[ExtractReviewOutputDefModel] = SettingsField(
         default_factory=list, title="Output Definitions"
@@ -1333,6 +1353,7 @@ DEFAULT_PUBLISH_VALUES = {
             {
                 "product_types": [],
                 "hosts": [],
+                "task_types": [],
                 "outputs": [
                     {
                         "name": "png",
@@ -1372,7 +1393,8 @@ DEFAULT_PUBLISH_VALUES = {
                             "fill_color": [0, 0, 0, 1.0],
                             "line_thickness": 0,
                             "line_color": [255, 0, 0, 1.0]
-                        }
+                        },
+                        "fill_missing_frames": "closest_existing"
                     },
                     {
                         "name": "h264",
@@ -1422,7 +1444,8 @@ DEFAULT_PUBLISH_VALUES = {
                             "fill_color": [0, 0, 0, 1.0],
                             "line_thickness": 0,
                             "line_color": [255, 0, 0, 1.0]
-                        }
+                        },
+                        "fill_missing_frames": "closest_existing"
                     }
                 ]
             }
