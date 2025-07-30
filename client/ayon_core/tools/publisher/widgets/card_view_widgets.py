@@ -792,7 +792,7 @@ class InstanceCardView(AbstractInstanceView):
 
         self._instance_ids_by_parent_id = instance_ids_by_parent_id
         self._group_name_by_instance_id = group_by_instance_id
-        self._instance_ids_by_group_name = instance_ids_by_group_name 
+        self._instance_ids_by_group_name = instance_ids_by_group_name
         self._ordered_groups = sorted_group_names
 
     def has_items(self) -> bool:
