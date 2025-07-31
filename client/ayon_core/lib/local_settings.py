@@ -484,21 +484,6 @@ class JSONSettingRegistry(ASettingRegistry):
                 )
         return value
 
-    def get_item(self, name: str) -> Any:
-        """Get item value from registry json.
-
-        Args:
-            name (str): Name of the item.
-
-        Returns:
-            value of the item
-
-        Raises:
-            RegistryItemNotFound: If the item is not found in registry file.
-
-        """
-        return self._get_item(name)
-
     def _set_item(self, name: str, value: str) -> None:
         """Set item value to the registry.
 
@@ -513,18 +498,7 @@ class JSONSettingRegistry(ASettingRegistry):
             cfg.seek(0)
             json.dump(data, cfg, indent=4)
 
-    def set_item(self, name: str, value: Any) -> None:
-        """Set item and its value into json registry file.
-
-        Args:
-            name (str): name of the item.
-            value (Any): value of the item.
-
-        """
-        self._set_item(name, value)
-
     def _delete_item(self, name: str) -> None:
-        self._get_item.cache_clear()
         with open(self._registry_file, "r+") as cfg:
             data = json.load(cfg)
             del data["registry"][name]
