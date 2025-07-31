@@ -8,6 +8,7 @@ import inspect
 import logging
 import threading
 import collections
+import warnings
 from uuid import uuid4
 from abc import ABC, abstractmethod
 from typing import Optional
@@ -815,10 +816,26 @@ class AddonsManager:
 
         Unknown keys are logged out.
 
+        Deprecated:
+            Use targeted methods 'collect_launcher_action_paths',
+                'collect_create_plugin_paths', 'collect_load_plugin_paths',
+                'collect_publish_plugin_paths' and
+                 'collect_inventory_action_paths' to collect plugin paths.
+
         Returns:
             dict: Output is dictionary with keys "publish", "create", "load",
                 "actions" and "inventory" each containing list of paths.
+
         """
+        warnings.warn(
+            "Used deprecated method 'collect_plugin_paths'. Please use"
+            " targeted methods 'collect_launcher_action_paths',"
+            " 'collect_create_plugin_paths', 'collect_load_plugin_paths'"
+            " 'collect_publish_plugin_paths' and"
+            " 'collect_inventory_action_paths'",
+            DeprecationWarning,
+            stacklevel=2
+        )
         # Output structure
         output = {
             "publish": [],
