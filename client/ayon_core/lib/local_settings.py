@@ -467,8 +467,8 @@ class JSONSettingRegistry(ASettingRegistry):
                 json.dump(header, cfg, indent=4)
 
     @lru_cache(maxsize=32)
-    def _get_item(self, name: str) -> Any:
-        """Get item value from registry json.
+    def _get_item(self, name: str) -> str:
+        """Get item value from the registry.
 
         Note:
             See :meth:`ayon_core.lib.JSONSettingRegistry.get_item`
@@ -499,8 +499,8 @@ class JSONSettingRegistry(ASettingRegistry):
         """
         return self._get_item(name)
 
-    def _set_item(self, name: str, value: Any) -> None:
-        """Set item value to registry json.
+    def _set_item(self, name: str, value: str) -> None:
+        """Set item value to the registry.
 
         Note:
             See :meth:`ayon_core.lib.JSONSettingRegistry.set_item`
