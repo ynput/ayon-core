@@ -43,6 +43,7 @@ class ExtractThumbnail(pyblish.api.InstancePlugin):
         "houdini",
         "circuit",
     ]
+    settings_category = "core"
     enabled = False
 
     integrate_thumbnail = False
