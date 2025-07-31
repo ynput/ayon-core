@@ -242,8 +242,6 @@ class ASettingRegistry(ABC):
 
     """
     def __init__(self, name: str) -> None:
-        super().__init__()
-
         self._name = name
 
     def set_item(self, name: str, value: str) -> None:
