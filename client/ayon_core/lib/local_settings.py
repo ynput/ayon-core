@@ -238,15 +238,11 @@ class ASettingRegistry(ABC):
     mechanism for storing common items must be implemented in abstract
     methods.
 
-    Attributes:
-        _name (str): Registry names.
-
     """
     def __init__(self, name: str) -> None:
         super().__init__()
 
         self._name = name
-        self._items = {}
 
     def set_item(self, name: str, value: str) -> None:
         """Set item to settings registry.
@@ -263,7 +259,6 @@ class ASettingRegistry(ABC):
         """Set item value to registry."""
 
     def __setitem__(self, name: str, value: str) -> None:
-        self._items[name] = value
         self._set_item(name, value)
 
     def get_item(self, name: str) -> str:
@@ -302,7 +297,6 @@ class ASettingRegistry(ABC):
         """Delete item from registry."""
 
     def __delitem__(self, name: str) -> None:
-        del self._items[name]
         self._delete_item(name)
 
 
