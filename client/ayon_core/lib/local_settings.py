@@ -158,7 +158,7 @@ class AYONSecureRegistry:
             keyring.set_keyring(Windows.WinVaultKeyring())
 
         # Force "AYON" prefix
-        self._name = "/".join(("AYON", name))
+        self._name = f"AYON/{name}"
 
     def set_item(self, name: str, value: str) -> None:
         """Set sensitive item into system's keyring.
@@ -315,12 +315,12 @@ class IniSettingRegistry(ASettingRegistry):
     def __init__(self, name: str, path: str) -> None:
         super().__init__(name)
         # get registry file
-        self._registry_file = os.path.join(path, "{}.ini".format(name))
+        self._registry_file = os.path.join(path, f"{name}.ini")
         if not os.path.exists(self._registry_file):
             with open(self._registry_file, mode="w") as cfg:
                 print("# Settings registry", cfg)
                 now = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
-                print("# {}".format(now), cfg)
+                print(f"# {now}", cfg)
 
     def set_item_section(self, section: str, name: str, value: str) -> None:
         """Set item to specific section of ini registry.
@@ -452,8 +452,7 @@ class JSONSettingRegistry(ASettingRegistry):
 
     def __init__(self, name: str, path: str) -> None:
         super().__init__(name)
-        #: str: name of registry file
-        self._registry_file = os.path.join(path, "{}.json".format(name))
+        self._registry_file = os.path.join(path, f"{name}.json")
         now = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
         header = {
             "__metadata__": {"generated": now},
