@@ -235,11 +235,7 @@ class AYONSecureRegistry:
 
 
 class ASettingRegistry(ABC):
-    """Abstract class defining structure of **SettingRegistry** class.
-
-    It is implementing methods to store secure items into keyring, otherwise
-    mechanism for storing common items must be implemented in abstract
-    methods.
+    """Abstract class to defining structure of registry class.
 
     """
     def __init__(self, name: str) -> None:
