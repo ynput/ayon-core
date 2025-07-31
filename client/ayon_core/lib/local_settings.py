@@ -454,8 +454,10 @@ class JSONSettingRegistry(ASettingRegistry):
             "registry": {}
         }
 
-        if not os.path.exists(os.path.dirname(self._registry_file)):
-            os.makedirs(os.path.dirname(self._registry_file), exist_ok=True)
+        # Use 'os.path.dirname' in case someone uses slashes in 'name'
+        dirpath = os.path.dirname(self._registry_file)
+        if not os.path.exists(dirpath):
+            os.makedirs(dirpath, exist_ok=True)
         if not os.path.exists(self._registry_file):
             with open(self._registry_file, mode="w") as cfg:
                 json.dump(header, cfg, indent=4)
