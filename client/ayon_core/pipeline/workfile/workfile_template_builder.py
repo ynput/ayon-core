@@ -202,14 +202,6 @@ class AbstractTemplateBuilder(ABC):
         return self._current_folder_entity
 
     @property
-    def linked_folder_entities(self):
-        if self._linked_folder_entities is _NOT_SET:
-            self._linked_folder_entities = self._get_linked_folder_entities(
-                link_type="template"
-            )
-        return self._linked_folder_entities
-
-    @property
     def current_task_entity(self):
         if self._current_task_entity is _NOT_SET:
             task_entity = None
@@ -309,7 +301,7 @@ class AbstractTemplateBuilder(ABC):
             self._loaders_by_name = get_loaders_by_name()
         return self._loaders_by_name
 
-    def _get_linked_folder_entities(self, link_type: str = "template"):
+    def get_linked_folder_entities(self, link_type: str = "template"):
         project_name = self.project_name
         folder_entity = self.current_folder_entity
         if not folder_entity:
@@ -1642,6 +1634,8 @@ class PlaceholderLoadMixin(object):
             folder_ids = [current_folder_entity["id"]]
 
         elif builder_type == "linked_folders":
+            # link type from placeholder data or default to "template"
+            link_type = placeholder.data.get("link_type", "template")
             # Get all linked folders for the current folder
             if hasattr(self, "builder") and isinstance(
                     self.builder, AbstractTemplateBuilder):
@@ -1649,7 +1643,8 @@ class PlaceholderLoadMixin(object):
                 folder_ids = [
                     linked_folder_entity["id"]
                     for linked_folder_entity in (
-                        self.builder.linked_folder_entities)
+                        self.builder.get_linked_folder_entities(
+                            link_type=link_type))
                 ]
 
         if not folder_ids:
