@@ -1,6 +1,7 @@
 """Addon interfaces for AYON."""
 from __future__ import annotations
 
+import warnings
 from abc import ABCMeta, abstractmethod
 from typing import TYPE_CHECKING, Callable, Optional, Type
 
@@ -39,14 +40,7 @@ class AYONInterface(metaclass=_AYONInterfaceMeta):
 
 
 class IPluginPaths(AYONInterface):
-    """Addon has plugin paths to return.
-
-    Expected result is dictionary with keys "publish", "create", "load",
-    "actions" or "inventory" and values as list or string.
-    {
-        "publish": ["path/to/publish_plugins"]
-    }
-    """
+    """Addon wants to register plugin paths."""
 
     def get_plugin_paths(self) -> dict[str, list[str]]:
         """Return plugin paths for addon.
@@ -87,6 +81,25 @@ class IPluginPaths(AYONInterface):
 
         if not isinstance(paths, (list, tuple, set)):
             paths = [paths]
+
+        new_function_name = "get_launcher_action_paths"
+        if plugin_type == "create":
+            new_function_name = "get_create_plugin_paths"
+        elif plugin_type == "load":
+            new_function_name = "get_load_plugin_paths"
+        elif plugin_type == "publish":
+            new_function_name = "get_publish_plugin_paths"
+        elif plugin_type == "inventory":
+            new_function_name = "get_inventory_action_paths"
+
+        warnings.warn(
+            f"Addon '{self.name}' returns '{plugin_type}' paths using"
+            " 'get_plugin_paths' method. Please implement"
+            f" '{new_function_name}' instead.",
+            DeprecationWarning,
+            stacklevel=2
+
+        )
         return paths
 
     def get_launcher_action_paths(self) -> list[str]:
