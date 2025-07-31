@@ -177,6 +177,7 @@ class AYONSecureRegistry:
         import keyring
 
         keyring.set_password(self._name, name, value)
+        self.get_item.cache_clear()
 
     @lru_cache(maxsize=32)
     def get_item(
