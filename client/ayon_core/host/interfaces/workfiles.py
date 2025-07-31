@@ -1155,9 +1155,7 @@ class IWorkfileHost:
                 comment = parsed_data.comment
 
             filepath = list_workfiles_context.anatomy.fill_root(rootless_path)
-            available = False
-            if filepath != rootless_path:
-                available = os.path.exists(filepath)
+            available = os.path.exists(filepath)
             items.append(WorkfileInfo.new(
                 filepath,
                 rootless_path,
