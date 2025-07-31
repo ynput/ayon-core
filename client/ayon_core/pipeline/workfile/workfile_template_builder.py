@@ -1430,11 +1430,21 @@ class PlaceholderLoadMixin(object):
 
         link_types = ayon_api.get_link_types(self.builder.project_name)
 
-        link_types_enum_item = [
+        # Filter link types for folder to folder links
+        link_types_enum_items = [
             {"label": link_type["name"], "value": link_type["linkType"]}
             for link_type in link_types
-
+            if (
+                    link_type["inputType"] == "folder"
+                    and link_type["outputType"] == "folder"
+            )
         ]
+
+        if not link_types_enum_items:
+            link_types_enum_items.append(
+                {"label": "<No link types>", "value": None}
+            )
+
         build_type_label = "Folder Builder Type"
         build_type_help = (
             "Folder Builder Type\n"
@@ -1466,7 +1476,7 @@ class PlaceholderLoadMixin(object):
             attribute_definitions.EnumDef(
                 "link_type",
                 label="Link Type",
-                items=link_types_enum_item,
+                items=link_types_enum_items,
                 tooltip=(
                     "Link Type\n"
                     "\nDefines what type of link will be used to"
