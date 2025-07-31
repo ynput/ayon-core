@@ -15,6 +15,11 @@ import ayon_api
 _PLACEHOLDER = object()
 
 
+# TODO should use 'KeyError' or 'Exception' as base
+class RegistryItemNotFound(ValueError):
+    """Raised when the item is not found in keyring."""
+
+
 class _Cache:
     username = None
 
@@ -187,7 +192,7 @@ class AYONSecureRegistry:
             value (str): Value of the item.
 
         Raises:
-            ValueError: If item doesn't exist and default is not defined.
+            RegistryItemNotFound: If item doesn't exist and default is not defined.
 
         .. _Keyring module:
             https://github.com/jaraco/keyring
@@ -202,9 +207,8 @@ class AYONSecureRegistry:
         if default is not _PLACEHOLDER:
             return default
 
-        # NOTE Should raise `KeyError`
-        raise ValueError(
-            "Item {}:{} does not exist in keyring.".format(self._name, name)
+        raise RegistryItemNotFound(
+            f"Item {self._name}:{name} not found in keyring."
         )
 
     def delete_item(self, name):
@@ -277,7 +281,7 @@ class ASettingRegistry(ABC):
             value (str): Value of the item.
 
         Raises:
-            ValueError: If item doesn't exist.
+            RegistryItemNotFound: If the item doesn't exist.
 
         """
         return self._get_item(name)
@@ -388,7 +392,7 @@ class IniSettingRegistry(ASettingRegistry):
             str: Value of item.
 
         Raises:
-            ValueError: If value doesn't exist.
+            RegistryItemNotFound: If value doesn't exist.
 
         """
         return super(IniSettingRegistry, self).get_item(name)
@@ -399,8 +403,8 @@ class IniSettingRegistry(ASettingRegistry):
         """Get item from section of ini file.
 
         This will read ini file and try to get item value from specified
-        section. If that section or item doesn't exist, :exc:`ValueError`
-        is risen.
+        section. If that section or item doesn't exist,
+        :exc:`RegistryItemNotFound` is risen.
 
         Args:
             section (str): Name of ini section.
@@ -410,7 +414,7 @@ class IniSettingRegistry(ASettingRegistry):
             str: Item value.
 
         Raises:
-            ValueError: If value doesn't exist.
+            RegistryItemNotFound: If value doesn't exist.
 
         """
         config = configparser.ConfigParser()
@@ -418,8 +422,9 @@ class IniSettingRegistry(ASettingRegistry):
         try:
             value = config[section][name]
         except KeyError:
-            raise ValueError(
-                "Registry doesn't contain value {}:{}".format(section, name))
+            raise RegistryItemNotFound(
+                f"Registry doesn't contain value {section}:{name}"
+            )
         return value
 
     def _get_item(self, name):
@@ -435,7 +440,7 @@ class IniSettingRegistry(ASettingRegistry):
             name (str): Name of the item.
 
         Raises:
-            ValueError: If item doesn't exist.
+            RegistryItemNotFound: If the item doesn't exist.
 
         """
         self.get_item_from_section.cache_clear()
@@ -444,8 +449,9 @@ class IniSettingRegistry(ASettingRegistry):
         try:
             _ = config[section][name]
         except KeyError:
-            raise ValueError(
-                "Registry doesn't contain value {}:{}".format(section, name))
+            raise RegistryItemNotFound(
+                f"Registry doesn't contain value {section}:{name}"
+            )
         config.remove_option(section, name)
 
         # if section is empty, delete it
@@ -494,8 +500,9 @@ class JSONSettingRegistry(ASettingRegistry):
             try:
                 value = data["registry"][name]
             except KeyError:
-                raise ValueError(
-                    "Registry doesn't contain value {}".format(name))
+                raise RegistryItemNotFound(
+                    f"Registry doesn't contain value {name}"
+                )
         return value
 
     def get_item(self, name):
@@ -509,7 +516,7 @@ class JSONSettingRegistry(ASettingRegistry):
             value of the item
 
         Raises:
-            ValueError: If item is not found in registry file.
+            RegistryItemNotFound: If the item is not found in registry file.
 
         """
         return self._get_item(name)
