@@ -61,7 +61,8 @@ class IPluginPaths(AYONInterface):
         return {}
 
     def _get_plugin_paths_by_type(
-            self, plugin_type: str) -> list[str]:
+        self, plugin_type: str
+    ) -> list[str]:
         """Get plugin paths by type.
 
         Args:
