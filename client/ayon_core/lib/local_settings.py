@@ -536,12 +536,21 @@ class AYONSettingsRegistry(JSONSettingRegistry):
     """Class handling AYON general settings registry.
 
     Args:
-        name (Optional[str]): Name of the registry.
+        name (Optional[str]): Name of the registry. Using 'None' or not
+            passing name is deprecated.
 
     """
     def __init__(self, name: Optional[str] = None) -> None:
         if not name:
             name = "AYON_settings"
+            warnings.warn(
+                (
+                    "Used 'AYONSettingsRegistry' without 'name' argument."
+                    " The argument will be required in future versions."
+                ),
+                DeprecationWarning,
+                stacklevel=2,
+            )
         path = get_launcher_storage_dir()
         super().__init__(name, path)
 
