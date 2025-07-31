@@ -301,7 +301,7 @@ class AbstractTemplateBuilder(ABC):
             self._loaders_by_name = get_loaders_by_name()
         return self._loaders_by_name
 
-    def get_linked_folder_entities(self, link_type: str = "template"):
+    def get_linked_folder_entities(self, link_type: str):
         project_name = self.project_name
         folder_entity = self.current_folder_entity
         if not folder_entity:
@@ -1466,7 +1466,6 @@ class PlaceholderLoadMixin(object):
             attribute_definitions.EnumDef(
                 "link_type",
                 label="Link Type",
-                default="template",
                 items=link_types_enum_item,
                 tooltip=(
                     "Link Type\n"
