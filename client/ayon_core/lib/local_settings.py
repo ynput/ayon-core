@@ -18,7 +18,7 @@ _PLACEHOLDER = object()
 
 # TODO should use 'KeyError' or 'Exception' as base
 class RegistryItemNotFound(ValueError):
-    """Raised when the item is not found in keyring."""
+    """Raised when the item is not found in the keyring."""
 
 
 class _Cache:
@@ -37,10 +37,10 @@ def get_ayon_appdirs(*args: str) -> str:
 
     Deprecated:
         Use 'get_launcher_local_dir' or 'get_launcher_storage_dir' based on
-            use-case. Deprecation added 24/08/09 (0.4.4-dev.1).
+            a use-case. Deprecation added 24/08/09 (0.4.4-dev.1).
 
     Args:
-        *args (Iterable[str]): Subdirectories/files in local app data dir.
+        *args (Iterable[str]): Subdirectories/files in the local app data dir.
 
     Returns:
         str: Path to directory/file in local app data dir.
@@ -58,7 +58,7 @@ def get_ayon_appdirs(*args: str) -> str:
 
 
 def get_launcher_storage_dir(*subdirs: str) -> str:
-    """Get storage directory for launcher.
+    """Get a storage directory for launcher.
 
     Storage directory is used for storing shims, addons, dependencies, etc.
 
@@ -83,14 +83,14 @@ def get_launcher_storage_dir(*subdirs: str) -> str:
 
 
 def get_launcher_local_dir(*subdirs: str) -> str:
-    """Get local directory for launcher.
+    """Get a local directory for launcher.
 
-    Local directory is used for storing machine or user specific data.
+    Local directory is used for storing machine or user-specific data.
 
-    The location is user specific.
+    The location is user-specific.
 
     Note:
-        This function should be called at least once on bootstrap.
+        This function should be called at least once on the bootstrap.
 
     Args:
         *subdirs (str): Subdirectories relative to local dir.
@@ -107,7 +107,7 @@ def get_launcher_local_dir(*subdirs: str) -> str:
 
 
 def get_addons_resources_dir(addon_name: str, *args) -> str:
-    """Get directory for storing resources for addons.
+    """Get a directory for storing resources for addons.
 
     Some addons might need to store ad-hoc resources that are not part of
         addon client package (e.g. because of size). Studio might define
@@ -117,7 +117,7 @@ def get_addons_resources_dir(addon_name: str, *args) -> str:
 
     Args:
         addon_name (str): Addon name.
-        *args (str): Subfolders in resources directory.
+        *args (str): Subfolders in the resources directory.
 
     Returns:
         str: Path to resources directory.
@@ -140,7 +140,7 @@ class AYONSecureRegistry:
     identify which data were created by AYON.
 
     Args:
-        name(str): Name of registry used as identifier for data.
+        name(str): Name of registry used as the identifier for data.
 
     """
     def __init__(self, name: str) -> None:
@@ -162,9 +162,9 @@ class AYONSecureRegistry:
         self._name = f"AYON/{name}"
 
     def set_item(self, name: str, value: str) -> None:
-        """Set sensitive item into system's keyring.
+        """Set sensitive item into the system's keyring.
 
-        This uses `Keyring module`_ to save sensitive stuff into system's
+        This uses `Keyring module`_ to save sensitive stuff into the system's
         keyring.
 
         Args:
@@ -184,19 +184,20 @@ class AYONSecureRegistry:
     def get_item(
         self, name: str, default: Any = _PLACEHOLDER
     ) -> Optional[str]:
-        """Get value of sensitive item from system's keyring.
+        """Get value of sensitive item from the system's keyring.
 
         See also `Keyring module`_
 
         Args:
             name (str): Name of the item.
-            default (Any): Default value if item is not available.
+            default (Any): Default value if the item is not available.
 
         Returns:
             value (str): Value of the item.
 
         Raises:
-            RegistryItemNotFound: If item doesn't exist and default is not defined.
+            RegistryItemNotFound: If the item doesn't exist and default
+                is not defined.
 
         .. _Keyring module:
             https://github.com/jaraco/keyring
@@ -216,7 +217,7 @@ class AYONSecureRegistry:
         )
 
     def delete_item(self, name: str) -> None:
-        """Delete value stored in system's keyring.
+        """Delete value stored in the system's keyring.
 
         See also `Keyring module`_
 
@@ -446,7 +447,7 @@ class IniSettingRegistry(ASettingRegistry):
 
 
 class JSONSettingRegistry(ASettingRegistry):
-    """Class using json file as storage."""
+    """Class using a json file as storage."""
 
     def __init__(self, name: str, path: str) -> None:
         super().__init__(name)
