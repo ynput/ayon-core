@@ -244,22 +244,30 @@ class ASettingRegistry(ABC):
     def __init__(self, name: str) -> None:
         self._name = name
 
-    def set_item(self, name: str, value: str) -> None:
-        """Set item to settings registry.
-
-        Args:
-            name (str): Name of the item.
-            value (str): Value of the item.
-
-        """
-        self._set_item(name, value)
+    @abstractmethod
+    def _get_item(self, name: str) -> Any:
+        """Get item value from registry."""
 
     @abstractmethod
     def _set_item(self, name: str, value: str) -> None:
         """Set item value to registry."""
 
+    @abstractmethod
+    def _delete_item(self, name: str) -> None:
+        """Delete item from registry."""
+
+    def __getitem__(self, name: str) -> Any:
+        return self._get_item(name)
+
     def __setitem__(self, name: str, value: str) -> None:
         self._set_item(name, value)
+
+    def __delitem__(self, name: str) -> None:
+        self._delete_item(name)
+
+    @property
+    def name(self) -> str:
+        return self._name
 
     def get_item(self, name: str) -> str:
         """Get item from settings registry.
@@ -276,12 +284,15 @@ class ASettingRegistry(ABC):
         """
         return self._get_item(name)
 
-    @abstractmethod
-    def _get_item(self, name: str) -> str:
-        """Get item value from registry."""
+    def set_item(self, name: str, value: str) -> None:
+        """Set item to settings registry.
 
-    def __getitem__(self, name: str) -> Any:
-        return self._get_item(name)
+        Args:
+            name (str): Name of the item.
+            value (str): Value of the item.
+
+        """
+        self._set_item(name, value)
 
     def delete_item(self, name: str) -> None:
         """Delete item from settings registry.
@@ -290,13 +301,6 @@ class ASettingRegistry(ABC):
             name (str): Name of the item.
 
         """
-        self._delete_item(name)
-
-    @abstractmethod
-    def _delete_item(self, name: str) -> None:
-        """Delete item from registry."""
-
-    def __delitem__(self, name: str) -> None:
         self._delete_item(name)
 
 
