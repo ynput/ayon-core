@@ -124,6 +124,10 @@ def get_addons_resources_dir(addon_name: str, *args) -> str:
     return os.path.join(addons_resources_dir, addon_name, *args)
 
 
+class _FakeException(Exception):
+    """Placeholder exception used if real exception is not available."""
+
+
 class AYONSecureRegistry:
     """Store information using keyring.
 
@@ -195,7 +199,17 @@ class AYONSecureRegistry:
         """
         import keyring
 
-        value = keyring.get_password(self._name, name)
+        # Capture 'ItemNotFoundException' exception (on linux)
+        try:
+            from secretstorage.exceptions import ItemNotFoundException
+        except ImportError:
+            ItemNotFoundException = _FakeException
+
+        try:
+            value = keyring.get_password(self._name, name)
+        except ItemNotFoundException:
+            value = None
+
         if value is not None:
             return value
 
