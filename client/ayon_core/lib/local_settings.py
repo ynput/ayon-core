@@ -141,6 +141,7 @@ class AYONSecureRegistry:
 
     Args:
         name(str): Name of registry used as identifier for data.
+
     """
     def __init__(self, name: str) -> None:
         try:
