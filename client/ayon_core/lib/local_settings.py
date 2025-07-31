@@ -243,7 +243,7 @@ class ASettingRegistry(ABC):
 
     """
     def __init__(self, name: str) -> None:
-        super(ASettingRegistry, self).__init__()
+        super().__init__()
 
         self._name = name
         self._items = {}
@@ -313,7 +313,7 @@ class IniSettingRegistry(ASettingRegistry):
 
     """
     def __init__(self, name: str, path: str) -> None:
-        super(IniSettingRegistry, self).__init__(name)
+        super().__init__(name)
         # get registry file
         self._registry_file = os.path.join(path, "{}.ini".format(name))
         if not os.path.exists(self._registry_file):
@@ -361,7 +361,7 @@ class IniSettingRegistry(ASettingRegistry):
         """
         # this does the some, overridden just for different docstring.
         # we cast value to str as ini options values must be strings.
-        super(IniSettingRegistry, self).set_item(name, str(value))
+        super().set_item(name, str(value))
 
     def get_item(self, name: str) -> str:
         """Gets item from settings ini file.
@@ -379,7 +379,7 @@ class IniSettingRegistry(ASettingRegistry):
             RegistryItemNotFound: If value doesn't exist.
 
         """
-        return super(IniSettingRegistry, self).get_item(name)
+        return super().get_item(name)
 
     @lru_cache(maxsize=32)
     def get_item_from_section(self, section: str, name: str) -> str:
@@ -451,7 +451,7 @@ class JSONSettingRegistry(ASettingRegistry):
     """Class using json file as storage."""
 
     def __init__(self, name: str, path: str) -> None:
-        super(JSONSettingRegistry, self).__init__(name)
+        super().__init__(name)
         #: str: name of registry file
         self._registry_file = os.path.join(path, "{}.json".format(name))
         now = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
@@ -544,7 +544,7 @@ class AYONSettingsRegistry(JSONSettingRegistry):
         if not name:
             name = "AYON_settings"
         path = get_launcher_storage_dir()
-        super(AYONSettingsRegistry, self).__init__(name, path)
+        super().__init__(name, path)
 
 
 def get_local_site_id():
