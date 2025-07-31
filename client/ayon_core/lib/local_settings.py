@@ -8,6 +8,7 @@ import warnings
 from datetime import datetime
 from abc import ABC, abstractmethod
 from functools import lru_cache
+from typing import Optional, Any
 
 import platformdirs
 import ayon_api
@@ -24,14 +25,14 @@ class _Cache:
     username = None
 
 
-def _get_ayon_appdirs(*args):
+def _get_ayon_appdirs(*args: str) -> str:
     return os.path.join(
         platformdirs.user_data_dir("AYON", "Ynput"),
         *args
     )
 
 
-def get_ayon_appdirs(*args):
+def get_ayon_appdirs(*args: str) -> str:
     """Local app data directory of AYON client.
 
     Deprecated:
@@ -141,7 +142,7 @@ class AYONSecureRegistry:
     Args:
         name(str): Name of registry used as identifier for data.
     """
-    def __init__(self, name):
+    def __init__(self, name: str) -> None:
         try:
             import keyring
 
@@ -159,8 +160,7 @@ class AYONSecureRegistry:
         # Force "AYON" prefix
         self._name = "/".join(("AYON", name))
 
-    def set_item(self, name, value):
-        # type: (str, str) -> None
+    def set_item(self, name: str, value: str) -> None:
         """Set sensitive item into system's keyring.
 
         This uses `Keyring module`_ to save sensitive stuff into system's
@@ -179,7 +179,9 @@ class AYONSecureRegistry:
         keyring.set_password(self._name, name, value)
 
     @lru_cache(maxsize=32)
-    def get_item(self, name, default=_PLACEHOLDER):
+    def get_item(
+        self, name: str, default: Any = _PLACEHOLDER
+    ) -> Optional[str]:
         """Get value of sensitive item from system's keyring.
 
         See also `Keyring module`_
@@ -211,8 +213,7 @@ class AYONSecureRegistry:
             f"Item {self._name}:{name} not found in keyring."
         )
 
-    def delete_item(self, name):
-        # type: (str) -> None
+    def delete_item(self, name: str) -> None:
         """Delete value stored in system's keyring.
 
         See also `Keyring module`_
@@ -241,16 +242,13 @@ class ASettingRegistry(ABC):
         _name (str): Registry names.
 
     """
-
-    def __init__(self, name):
-        # type: (str) -> ASettingRegistry
+    def __init__(self, name: str) -> None:
         super(ASettingRegistry, self).__init__()
 
         self._name = name
         self._items = {}
 
-    def set_item(self, name, value):
-        # type: (str, str) -> None
+    def set_item(self, name: str, value: str) -> None:
         """Set item to settings registry.
 
         Args:
@@ -261,17 +259,14 @@ class ASettingRegistry(ABC):
         self._set_item(name, value)
 
     @abstractmethod
-    def _set_item(self, name, value):
-        # type: (str, str) -> None
-        # Implement it
-        pass
+    def _set_item(self, name: str, value: str) -> None:
+        """Set item value to registry."""
 
-    def __setitem__(self, name, value):
+    def __setitem__(self, name: str, value: str) -> None:
         self._items[name] = value
         self._set_item(name, value)
 
-    def get_item(self, name):
-        # type: (str) -> str
+    def get_item(self, name: str) -> str:
         """Get item from settings registry.
 
         Args:
@@ -287,16 +282,13 @@ class ASettingRegistry(ABC):
         return self._get_item(name)
 
     @abstractmethod
-    def _get_item(self, name):
-        # type: (str) -> str
-        # Implement it
-        pass
+    def _get_item(self, name: str) -> str:
+        """Get item value from registry."""
 
-    def __getitem__(self, name):
+    def __getitem__(self, name: str) -> Any:
         return self._get_item(name)
 
-    def delete_item(self, name):
-        # type: (str) -> None
+    def delete_item(self, name: str) -> None:
         """Delete item from settings registry.
 
         Args:
@@ -306,12 +298,10 @@ class ASettingRegistry(ABC):
         self._delete_item(name)
 
     @abstractmethod
-    def _delete_item(self, name):
-        # type: (str) -> None
-        """Delete item from settings."""
-        pass
+    def _delete_item(self, name: str) -> None:
+        """Delete item from registry."""
 
-    def __delitem__(self, name):
+    def __delitem__(self, name: str) -> None:
         del self._items[name]
         self._delete_item(name)
 
@@ -322,9 +312,7 @@ class IniSettingRegistry(ASettingRegistry):
     This class is using :mod:`configparser` (ini) files to store items.
 
     """
-
-    def __init__(self, name, path):
-        # type: (str, str) -> IniSettingRegistry
+    def __init__(self, name: str, path: str) -> None:
         super(IniSettingRegistry, self).__init__(name)
         # get registry file
         self._registry_file = os.path.join(path, "{}.ini".format(name))
@@ -334,8 +322,7 @@ class IniSettingRegistry(ASettingRegistry):
                 now = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
                 print("# {}".format(now), cfg)
 
-    def set_item_section(self, section, name, value):
-        # type: (str, str, str) -> None
+    def set_item_section(self, section: str, name: str, value: str) -> None:
         """Set item to specific section of ini registry.
 
         If section doesn't exists, it is created.
@@ -358,12 +345,10 @@ class IniSettingRegistry(ASettingRegistry):
         with open(self._registry_file, mode="w") as cfg:
             config.write(cfg)
 
-    def _set_item(self, name, value):
-        # type: (str, str) -> None
+    def _set_item(self, name: str, value: str) -> None:
         self.set_item_section("MAIN", name, value)
 
-    def set_item(self, name, value):
-        # type: (str, str) -> None
+    def set_item(self, name: str, value: str) -> None:
         """Set item to settings ini file.
 
         This saves item to ``DEFAULT`` section of ini as each item there
@@ -378,8 +363,7 @@ class IniSettingRegistry(ASettingRegistry):
         # we cast value to str as ini options values must be strings.
         super(IniSettingRegistry, self).set_item(name, str(value))
 
-    def get_item(self, name):
-        # type: (str) -> str
+    def get_item(self, name: str) -> str:
         """Gets item from settings ini file.
 
         This gets settings from ``DEFAULT`` section of ini file as each item
@@ -398,8 +382,7 @@ class IniSettingRegistry(ASettingRegistry):
         return super(IniSettingRegistry, self).get_item(name)
 
     @lru_cache(maxsize=32)
-    def get_item_from_section(self, section, name):
-        # type: (str, str) -> str
+    def get_item_from_section(self, section: str, name: str) -> str:
         """Get item from section of ini file.
 
         This will read ini file and try to get item value from specified
@@ -427,12 +410,10 @@ class IniSettingRegistry(ASettingRegistry):
             )
         return value
 
-    def _get_item(self, name):
-        # type: (str) -> str
+    def _get_item(self, name: str) -> str:
         return self.get_item_from_section("MAIN", name)
 
-    def delete_item_from_section(self, section, name):
-        # type: (str, str) -> None
+    def delete_item_from_section(self, section: str, name: str) -> None:
         """Delete item from section in ini file.
 
         Args:
@@ -469,8 +450,7 @@ class IniSettingRegistry(ASettingRegistry):
 class JSONSettingRegistry(ASettingRegistry):
     """Class using json file as storage."""
 
-    def __init__(self, name, path):
-        # type: (str, str) -> JSONSettingRegistry
+    def __init__(self, name: str, path: str) -> None:
         super(JSONSettingRegistry, self).__init__(name)
         #: str: name of registry file
         self._registry_file = os.path.join(path, "{}.json".format(name))
@@ -487,8 +467,7 @@ class JSONSettingRegistry(ASettingRegistry):
                 json.dump(header, cfg, indent=4)
 
     @lru_cache(maxsize=32)
-    def _get_item(self, name):
-        # type: (str) -> object
+    def _get_item(self, name: str) -> Any:
         """Get item value from registry json.
 
         Note:
@@ -505,8 +484,7 @@ class JSONSettingRegistry(ASettingRegistry):
                 )
         return value
 
-    def get_item(self, name):
-        # type: (str) -> object
+    def get_item(self, name: str) -> Any:
         """Get item value from registry json.
 
         Args:
@@ -521,8 +499,7 @@ class JSONSettingRegistry(ASettingRegistry):
         """
         return self._get_item(name)
 
-    def _set_item(self, name, value):
-        # type: (str, object) -> None
+    def _set_item(self, name: str, value: Any) -> None:
         """Set item value to registry json.
 
         Note:
@@ -536,8 +513,7 @@ class JSONSettingRegistry(ASettingRegistry):
             cfg.seek(0)
             json.dump(data, cfg, indent=4)
 
-    def set_item(self, name, value):
-        # type: (str, object) -> None
+    def set_item(self, name: str, value: Any) -> None:
         """Set item and its value into json registry file.
 
         Args:
@@ -547,8 +523,7 @@ class JSONSettingRegistry(ASettingRegistry):
         """
         self._set_item(name, value)
 
-    def _delete_item(self, name):
-        # type: (str) -> None
+    def _delete_item(self, name: str) -> None:
         self._get_item.cache_clear()
         with open(self._registry_file, "r+") as cfg:
             data = json.load(cfg)
@@ -563,9 +538,9 @@ class AYONSettingsRegistry(JSONSettingRegistry):
 
     Args:
         name (Optional[str]): Name of the registry.
-    """
 
-    def __init__(self, name=None):
+    """
+    def __init__(self, name: Optional[str] = None) -> None:
         if not name:
             name = "AYON_settings"
         path = get_launcher_storage_dir()
