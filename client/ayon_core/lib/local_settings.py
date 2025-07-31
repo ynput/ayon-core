@@ -497,6 +497,7 @@ class JSONSettingRegistry(ASettingRegistry):
             cfg.truncate(0)
             cfg.seek(0)
             json.dump(data, cfg, indent=4)
+        self._get_item.cache_clear()
 
     def _delete_item(self, name: str) -> None:
         with open(self._registry_file, "r+") as cfg:
@@ -505,6 +506,7 @@ class JSONSettingRegistry(ASettingRegistry):
             cfg.truncate(0)
             cfg.seek(0)
             json.dump(data, cfg, indent=4)
+        self._get_item.cache_clear()
 
 
 class AYONSettingsRegistry(JSONSettingRegistry):
