@@ -48,14 +48,23 @@ class IPluginPaths(AYONInterface):
     }
     """
 
-    @abstractmethod
     def get_plugin_paths(self) -> dict[str, list[str]]:
         """Return plugin paths for addon.
+
+        This method was abstract (required) in the past, so raise the required
+            'core' addon version when 'get_plugin_paths' is removed from
+            addon.
+
+        Deprecated:
+            Please implement specific methods 'get_create_plugin_paths',
+                'get_load_plugin_paths', 'get_inventory_action_paths' and
+                'get_publish_plugin_paths' to return plugin paths.
 
         Returns:
             dict[str, list[str]]: Plugin paths for addon.
 
         """
+        return {}
 
     def _get_plugin_paths_by_type(
             self, plugin_type: str) -> list[str]:
