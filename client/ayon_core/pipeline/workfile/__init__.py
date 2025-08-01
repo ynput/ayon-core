@@ -22,9 +22,11 @@ from .utils import (
     should_open_workfiles_tool_on_launch,
     MissingWorkdirError,
 
+    save_workfile_info,
     save_current_workfile_to,
     save_workfile_with_current_context,
-    save_workfile_info,
+    save_next_version,
+    copy_workfile_to_context,
     find_workfile_rootless_path,
 )
 
@@ -63,9 +65,11 @@ __all__ = (
     "should_open_workfiles_tool_on_launch",
     "MissingWorkdirError",
 
+    "save_workfile_info",
     "save_current_workfile_to",
     "save_workfile_with_current_context",
-    "save_workfile_info",
+    "save_next_version",
+    "copy_workfile_to_context",
 
     "BuildWorkfile",
 
