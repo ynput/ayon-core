@@ -159,6 +159,10 @@ class OverviewWidget(QtWidgets.QFrame):
             "create.model.instance.requirement.changed",
             self._on_instance_requirement_changed
         )
+        controller.register_event_callback(
+            "create.model.instance.parent.changed",
+            self._on_instance_parent_changed
+        )
 
         self._product_content_widget = product_content_widget
         self._product_content_layout = product_content_layout
@@ -359,6 +363,9 @@ class OverviewWidget(QtWidgets.QFrame):
         self._refresh_instance_states(event["instance_ids"])
 
     def _on_instance_requirement_changed(self, event):
+        self._refresh_instance_states(event["instance_ids"])
+
+    def _on_instance_parent_changed(self, event):
         self._refresh_instance_states(event["instance_ids"])
 
     def _refresh_instance_states(self, instance_ids):

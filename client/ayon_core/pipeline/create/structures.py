@@ -1,6 +1,7 @@
 import copy
 import collections
 from uuid import uuid4
+from enum import Enum
 import typing
 from typing import Optional, Dict, List, Any
 
@@ -20,6 +21,23 @@ from .changes import TrackChangesItem
 
 if typing.TYPE_CHECKING:
     from .creator_plugins import BaseCreator
+
+
+class IntEnum(int, Enum):
+    """An int-based Enum class that allows for int comparison."""
+
+    def __int__(self) -> int:
+        return self.value
+
+
+class ParentFlags(IntEnum):
+    # Delete instance if parent is deleted
+    parent_lifetime = 1
+    # Active state is propagated from parent to children
+    # - the active state is propagated in collection phase
+    # NOTE It might be helpful to have a function that would return "real"
+    #   active state for instances
+    share_active = 1 << 1
 
 
 class ConvertorItem:
@@ -507,7 +525,9 @@ class CreatedInstance:
         if transient_data is None:
             transient_data = {}
         self._transient_data = transient_data
-        self._is_mandatory = False
+        self._is_mandatory: bool = False
+        self._parent_instance_id: Optional[str] = None
+        self._parent_flags: int = 0
 
         # Create a copy of passed data to avoid changing them on the fly
         data = copy.deepcopy(data or {})
@@ -751,6 +771,39 @@ class CreatedInstance:
         if value is True:
             self["active"] = True
         self._create_context.instance_requirement_changed(self.id)
+
+    @property
+    def parent_instance_id(self) -> Optional[str]:
+        return self._parent_instance_id
+
+    @property
+    def parent_flags(self) -> int:
+        return self._parent_flags
+
+    def set_parent(
+        self, instance_id: Optional[str], flags: int
+    ) -> None:
+        """Set parent instance id and parenting flags.
+
+        Args:
+            instance_id (Optional[str]): Parent instance id.
+            flags (int): Parenting flags.
+
+        """
+        changed = False
+        if instance_id != self._parent_instance_id:
+            changed = True
+            self._parent_instance_id = instance_id
+
+        if flags is None:
+            flags = 0
+
+        if self._parent_flags != flags:
+            self._parent_flags = flags
+            changed = True
+
+        if changed:
+            self._create_context.instance_parent_changed(self.id)
 
     def changes(self):
         """Calculate and return changes."""
