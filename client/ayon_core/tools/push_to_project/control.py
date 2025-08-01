@@ -40,6 +40,8 @@ class PushToContextController:
 
         self.set_source(project_name, version_id)
 
+        self._library_only = True
+
     # Events system
     def emit_event(self, topic, data=None, source=None):
         """Use implemented event system to trigger event."""
