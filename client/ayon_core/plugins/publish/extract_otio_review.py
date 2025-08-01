@@ -25,7 +25,6 @@ from ayon_core.lib import (
 )
 from ayon_core.pipeline import (
     KnownPublishError,
-    editorial,
     publish,
 )
 
@@ -359,6 +358,7 @@ class ExtractOTIOReview(
         import opentimelineio as otio
         from ayon_core.pipeline.editorial import (
             trim_media_range,
+            OTIO_EPSILON,
         )
 
         def _round_to_frame(rational_time):
@@ -380,7 +380,7 @@ class ExtractOTIOReview(
         # Avoid rounding issue on media available range.
         if start.almost_equal(
             avl_start,
-            editorial.OTIO_EPSILON
+            OTIO_EPSILON
         ):
             avl_start = start
 
