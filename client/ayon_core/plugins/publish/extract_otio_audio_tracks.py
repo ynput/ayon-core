@@ -7,7 +7,6 @@ from ayon_core.lib import (
     get_ffmpeg_tool_args,
     run_subprocess
 )
-from ayon_core.pipeline import editorial
 
 
 class ExtractOtioAudioTracks(pyblish.api.ContextPlugin):
@@ -159,6 +158,7 @@ class ExtractOtioAudioTracks(pyblish.api.ContextPlugin):
         """
         # Not all hosts can import this module.
         import opentimelineio as otio
+        from ayon_core.pipeline.editorial import OTIO_EPSILON
 
         output = []
         # go trough all audio tracks
