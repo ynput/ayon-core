@@ -406,7 +406,7 @@ class ExtractOTIOReview(
         # Avoid rounding issue on media available range.
         if end_point.almost_equal(
             avl_end_point,
-            editorial.OTIO_EPSILON
+            OTIO_EPSILON
         ):
             avl_end_point = end_point
 

@@ -177,7 +177,7 @@ class ExtractOtioAudioTracks(pyblish.api.ContextPlugin):
                     # Avoid rounding issue on media available range.
                     if clip_start.almost_equal(
                         conformed_av_start,
-                        editorial.OTIO_EPSILON
+                        OTIO_EPSILON
                     ):
                         conformed_av_start = clip_start
 
