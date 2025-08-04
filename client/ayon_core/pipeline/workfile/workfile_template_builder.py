@@ -301,7 +301,9 @@ class AbstractTemplateBuilder(ABC):
             self._loaders_by_name = get_loaders_by_name()
         return self._loaders_by_name
 
-    def get_linked_folder_entities(self, link_type: str):
+    def get_linked_folder_entities(self, link_type: Optional[str]):
+        if not link_type:
+            return []
         project_name = self.project_name
         folder_entity = self.current_folder_entity
         if not folder_entity:
