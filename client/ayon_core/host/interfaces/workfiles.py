@@ -944,6 +944,8 @@ class IWorkfileHost:
         self._emit_workfile_save_event(event_data, after_save=False)
 
         workdir = os.path.dirname(filepath)
+        if not os.path.exists(workdir):
+            os.makedirs(workdir, exist_ok=True)
 
         # Set 'AYON_WORKDIR' environment variable
         os.environ["AYON_WORKDIR"] = workdir
