@@ -99,7 +99,6 @@ class IPluginPaths(AYONInterface):
             f" '{new_function_name}' instead.",
             DeprecationWarning,
             stacklevel=2
-
         )
         return paths
 
