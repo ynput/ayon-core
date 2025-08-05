@@ -41,6 +41,7 @@ class CollectAudio(pyblish.api.ContextPlugin):
         "max",
         "batchdelivery",
     ]
+    settings_category = "core"
 
     audio_product_name = "audioMain"
 
