@@ -57,6 +57,7 @@ class ExtractBurnin(publish.Extractor):
         "unreal",
         "batchdelivery",
     ]
+    settings_category = "core"
 
     optional = True
 
