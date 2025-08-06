@@ -161,7 +161,7 @@ class BaseLauncherController(
         return self._actions_model.get_action_config_values(context)
 
     def set_action_config_values(self, context, values):
-        return self._actions_model.set_action_config_values(context, values)
+        self._actions_model.set_action_config_values(context, values)
 
     # General methods
     def refresh(self):
