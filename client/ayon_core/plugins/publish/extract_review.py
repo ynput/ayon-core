@@ -161,7 +161,7 @@ class ExtractReview(pyblish.api.InstancePlugin):
         "aftereffects",
         "flame",
         "unreal",
-        "circuit",
+        "batchdelivery",
         "photoshop"
     ]
 
