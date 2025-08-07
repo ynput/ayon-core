@@ -178,6 +178,7 @@ class OverviewWidget(QtWidgets.QFrame):
 
         self._create_btn = create_btn
         self._delete_btn = delete_btn
+        self._change_view_btn = change_view_btn
 
         self._product_attributes_widget = product_attributes_widget
         self._create_widget = create_widget
@@ -415,6 +416,7 @@ class OverviewWidget(QtWidgets.QFrame):
 
         old_view = self._get_current_view()
         new_view = self._get_view_by_idx(new_idx)
+        is_list_view = isinstance(new_view, InstanceListView)
 
         if not new_view.refreshed:
             new_view.refresh()
@@ -429,6 +431,9 @@ class OverviewWidget(QtWidgets.QFrame):
             instance_ids, context_selected, convertor_identifiers
         )
 
+        self._change_view_btn.set_view_type(
+            "card" if is_list_view else "list"
+        )
         self._product_views_layout.setCurrentIndex(new_idx)
 
         self._on_product_change()
