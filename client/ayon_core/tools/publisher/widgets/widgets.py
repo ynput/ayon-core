@@ -10,6 +10,7 @@ from ayon_core.tools.flickcharm import FlickCharm
 from ayon_core.tools.utils import (
     IconButton,
     PixmapLabel,
+    get_qt_icon,
 )
 from ayon_core.tools.publisher.constants import ResetKeySequence
 
@@ -287,12 +288,27 @@ class RemoveInstanceBtn(PublishIconBtn):
         self.setToolTip("Remove selected instances")
 
 
-class ChangeViewBtn(PublishIconBtn):
+class ChangeViewBtn(IconButton):
     """Create toggle view button."""
     def __init__(self, parent=None):
-        icon_path = get_icon_path("change_view")
-        super().__init__(icon_path, parent)
-        self.setToolTip("Swap between views")
+        super().__init__(parent)
+        self.set_view_type("list")
+
+    def set_view_type(self, view_type):
+        if view_type == "list":
+            # icon_name = "data_table"
+            icon_name = "view_agenda"
+            tooltip = "Change to list view"
+        else:
+            icon_name = "dehaze"
+            tooltip = "Change to card view"
+
+        icon = get_qt_icon({
+            "type": "material-symbols",
+            "name": icon_name,
+        })
+        self.setIcon(icon)
+        self.setToolTip(tooltip)
 
 
 class AbstractInstanceView(QtWidgets.QWidget):
