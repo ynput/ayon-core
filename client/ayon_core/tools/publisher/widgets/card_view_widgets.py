@@ -521,7 +521,6 @@ class InstanceCardView(AbstractInstanceView):
             collections.defaultdict(list)
         )
         self._ordered_groups = []
-        self._group_icons = {}
         self._context_widget: Optional[ContextCardWidget] = None
         self._widgets_by_id: dict[str, InstanceCardWidget] = {}
         self._widgets_by_group: dict[str, BaseGroupWidget] = {}
