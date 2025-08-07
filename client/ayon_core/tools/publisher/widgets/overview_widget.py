@@ -1,3 +1,7 @@
+from __future__ import annotations
+
+from typing import Generator
+
 from qtpy import QtWidgets, QtCore
 
 from ayon_core.tools.publisher.abstract import AbstractPublisherFrontend
@@ -250,7 +254,7 @@ class OverviewWidget(QtWidgets.QFrame):
         )
 
     def has_items(self):
-        view = self._product_views_layout.currentWidget()
+        view = self._get_current_view()
         return view.has_items()
 
     def _on_create_clicked(self):
@@ -369,16 +373,14 @@ class OverviewWidget(QtWidgets.QFrame):
         self._refresh_instance_states(event["instance_ids"])
 
     def _refresh_instance_states(self, instance_ids):
-        current_idx = self._product_views_layout.currentIndex()
-        for idx in range(self._product_views_layout.count()):
-            if idx == current_idx:
-                continue
-            widget = self._product_views_layout.widget(idx)
-            if widget.refreshed:
-                widget.set_refreshed(False)
+        current_view = self._get_current_view()
+        for view in self._iter_views():
+            if view is current_view:
+                current_view = view
+            elif view.refreshed:
+                view.set_refreshed(False)
 
-        current_widget = self._product_views_layout.widget(current_idx)
-        current_widget.refresh_instance_states(instance_ids)
+        current_view.refresh_instance_states(instance_ids)
 
     def _on_convert_requested(self):
         self.convert_requested.emit()
@@ -392,7 +394,7 @@ class OverviewWidget(QtWidgets.QFrame):
                 convertor plugins.
         """
 
-        view = self._product_views_layout.currentWidget()
+        view = self._get_current_view()
         return view.get_selected_items()
 
     def get_selected_legacy_convertors(self):
@@ -410,8 +412,8 @@ class OverviewWidget(QtWidgets.QFrame):
         idx = self._product_views_layout.currentIndex()
         new_idx = (idx + 1) % self._product_views_layout.count()
 
-        old_view = self._product_views_layout.currentWidget()
-        new_view = self._product_views_layout.widget(new_idx)
+        old_view = self._get_current_view()
+        new_view = self._get_view_by_idx(new_idx)
 
         if not new_view.refreshed:
             new_view.refresh()
@@ -430,17 +432,41 @@ class OverviewWidget(QtWidgets.QFrame):
 
         self._on_product_change()
 
+    def _iter_views(self) -> Generator[AbstractInstanceView, None, None]:
+        for idx in range(self._product_views_layout.count()):
+            widget = self._product_views_layout.widget(idx)
+            if not isinstance(widget, AbstractInstanceView):
+                raise TypeError(
+                    "Current widget is not instance of 'AbstractInstanceView'"
+                )
+            yield widget
+
+    def _get_current_view(self) -> AbstractInstanceView:
+        widget = self._product_views_layout.currentWidget()
+        if isinstance(widget, AbstractInstanceView):
+            return widget
+        raise TypeError(
+            "Current widget is not instance of 'AbstractInstanceView'"
+        )
+
+    def _get_view_by_idx(self, idx: int) -> AbstractInstanceView:
+        widget = self._product_views_layout.widget(idx)
+        if isinstance(widget, AbstractInstanceView):
+            return widget
+        raise TypeError(
+            "Current widget is not instance of 'AbstractInstanceView'"
+        )
+
     def _refresh_instances(self):
         if self._refreshing_instances:
             return
 
         self._refreshing_instances = True
 
-        for idx in range(self._product_views_layout.count()):
-            widget = self._product_views_layout.widget(idx)
-            widget.set_refreshed(False)
+        for view in self._iter_views():
+            view.set_refreshed(False)
 
-        view = self._product_views_layout.currentWidget()
+        view = self._get_current_view()
         view.refresh()
         view.set_refreshed(True)
 
@@ -451,25 +477,22 @@ class OverviewWidget(QtWidgets.QFrame):
 
         # Give a change to process Resize Request
         QtWidgets.QApplication.processEvents()
-        # Trigger update geometry of
-        widget = self._product_views_layout.currentWidget()
-        widget.updateGeometry()
+        # Trigger update geometry
+        view.updateGeometry()
 
     def _on_publish_start(self):
         """Publish started."""
 
         self._create_btn.setEnabled(False)
         self._product_attributes_wrap.setEnabled(False)
-        for idx in range(self._product_views_layout.count()):
-            widget = self._product_views_layout.widget(idx)
-            widget.set_active_toggle_enabled(False)
+        for view in self._iter_views():
+            view.set_active_toggle_enabled(False)
 
     def _on_controller_reset_start(self):
         """Controller reset started."""
 
-        for idx in range(self._product_views_layout.count()):
-            widget = self._product_views_layout.widget(idx)
-            widget.set_active_toggle_enabled(True)
+        for view in self._iter_views():
+            view.set_active_toggle_enabled(True)
 
     def _on_publish_reset(self):
         """Context in controller has been reseted."""
