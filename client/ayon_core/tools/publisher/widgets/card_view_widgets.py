@@ -309,16 +309,15 @@ class InstanceCardWidget(CardWidget):
         expand_btn.setMaximumWidth(14)
         expand_btn.setEnabled(False)
 
-        detail_widget = QtWidgets.QWidget(self)
-        detail_widget.setVisible(False)
-        self.detail_widget = detail_widget
-
         top_layout = QtWidgets.QHBoxLayout()
         top_layout.addLayout(icon_layout, 0)
         top_layout.addWidget(label_widget, 1)
         top_layout.addWidget(context_warning, 0)
         top_layout.addWidget(active_checkbox, 0)
         top_layout.addWidget(expand_btn, 0)
+
+        detail_widget = QtWidgets.QWidget(self)
+        detail_widget.setVisible(False)
 
         layout = QtWidgets.QHBoxLayout(self)
         layout.setContentsMargins(0, 2, 10, 2)
@@ -336,6 +335,8 @@ class InstanceCardWidget(CardWidget):
         self._context_warning = context_warning
         self._active_checkbox = active_checkbox
         self._expand_btn = expand_btn
+
+        self._detail_widget = detail_widget
 
         self._update_instance_values(context_info, is_parent_active)
 
@@ -448,8 +449,8 @@ class InstanceCardWidget(CardWidget):
 
     def _set_expanded(self, expanded=None):
         if expanded is None:
-            expanded = not self.detail_widget.isVisible()
-        self.detail_widget.setVisible(expanded)
+            expanded = not self._detail_widget.isVisible()
+        self._detail_widget.setVisible(expanded)
 
     def _on_active_change(self):
         new_value = self._active_checkbox.isChecked()
