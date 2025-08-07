@@ -10,6 +10,7 @@ from .border_label_widget import BorderedLabelWidget
 from .card_view_widgets import InstanceCardView
 from .list_view_widgets import InstanceListView
 from .widgets import (
+    AbstractInstanceView,
     CreateInstanceBtn,
     RemoveInstanceBtn,
     ChangeViewBtn,
