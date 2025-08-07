@@ -370,6 +370,21 @@ class AbstractInstanceView(QtWidgets.QWidget):
             "{} Method 'set_active_toggle_enabled' is not implemented."
         ).format(self.__class__.__name__))
 
+    def refresh_instance_states(self, instance_ids=None):
+        """Refresh instance states.
+
+        Args:
+            instance_ids: Optional[Iterable[str]]: Instance ids to refresh.
+                If not passed then all instances are refreshed.
+
+        """
+
+        raise NotImplementedError(
+            f"{self.__class__.__name__} Method 'refresh_instance_states'"
+            " is not implemented."
+        )
+
+
 
 class ClickableLineEdit(QtWidgets.QLineEdit):
     """QLineEdit capturing left mouse click.
