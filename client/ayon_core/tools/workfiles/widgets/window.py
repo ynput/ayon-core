@@ -157,8 +157,7 @@ class WorkfilesToolWindow(QtWidgets.QWidget):
         self._home_body_widget = home_body_widget
         self._split_widget = split_widget
 
-        host = self._controller._host
-        self._project_name = host.get_current_project_name()
+        self._project_name = self._controller.get_current_project_name()
 
         self._tasks_widget = tasks_widget
         self._side_panel = side_panel
