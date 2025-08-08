@@ -406,7 +406,6 @@ class AbstractInstanceView(QtWidgets.QWidget):
         )
 
 
-
 class ClickableLineEdit(QtWidgets.QLineEdit):
     """QLineEdit capturing left mouse click.
 
