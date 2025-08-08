@@ -513,7 +513,19 @@ class OverviewWidget(QtWidgets.QFrame):
         self._refresh_instances()
 
     def _on_instances_added(self):
+        view = self._get_current_view()
+        is_card_view = False
+        count = 0
+        if isinstance(view, InstanceCardView):
+            is_card_view = True
+            count = view.get_current_instance_count()
+
         self._refresh_instances()
+
+        if is_card_view and count < 10:
+            new_count = view.get_current_instance_count()
+            if new_count > count and new_count >= 10:
+                self._change_view_type()
 
     def _on_instances_removed(self):
         self._refresh_instances()

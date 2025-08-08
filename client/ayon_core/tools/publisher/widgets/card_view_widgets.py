@@ -548,6 +548,10 @@ class InstanceCardView(AbstractInstanceView):
         result.setWidth(width)
         return result
 
+    def get_current_instance_count(self) -> int:
+        """How many instances are currently in the view."""
+        return len(self._widgets_by_id)
+
     def _toggle_instances(
         self,
         new_value: Optional[bool],
