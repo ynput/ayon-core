@@ -1,3 +1,4 @@
+
 from qtpy import QtCore, QtGui, QtWidgets
 
 from ayon_core import resources, style
@@ -155,6 +156,9 @@ class WorkfilesToolWindow(QtWidgets.QWidget):
         self._pages_widget = pages_widget
         self._home_body_widget = home_body_widget
         self._split_widget = split_widget
+
+        host = self._controller._host
+        self._project_name = host.get_current_project_name()
 
         self._tasks_widget = tasks_widget
         self._side_panel = side_panel
