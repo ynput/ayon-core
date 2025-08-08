@@ -485,6 +485,7 @@ class InstanceListView(AbstractInstanceView):
         self._widgets_by_id: dict[str, InstanceListItemWidget] = {}
         self._items_by_id = {}
         self._parent_id_by_id = {}
+        self._instance_ids_by_parent_id = collections.defaultdict(set)
         # Group by instance id for handling of active state
         self._group_by_instance_id = {}
         self._context_item = None
@@ -565,10 +566,14 @@ class InstanceListView(AbstractInstanceView):
         # Prepare instances by their groups
         instances_by_group_name = collections.defaultdict(list)
         instances_by_parent_id = collections.defaultdict(list)
+        instance_ids_by_parent_id = collections.defaultdict(set)
         group_names = set()
         instance_ids = set()
         for instance in instance_items:
             instance_ids.add(instance.id)
+            instance_ids_by_parent_id[instance.parent_instance_id].add(
+                instance.id
+            )
             if instance.parent_instance_id:
                 instances_by_parent_id[instance.parent_instance_id].append(
                     instance
@@ -663,20 +668,19 @@ class InstanceListView(AbstractInstanceView):
 
                     self._parent_id_by_id[instance_id] = parent_id
 
-                    children = instances_by_parent_id.pop(instance_id, [])
                     items_with_instance.append(
                         (
                             item,
                             instance,
                             parent_id,
                             is_orpaned_item,
-                            bool(children)
                         )
                     )
 
                     item.setData(instance.product_name, SORT_VALUE_ROLE)
                     item.setData(instance.product_name, GROUP_ROLE)
 
+                    children = instances_by_parent_id.pop(instance_id, [])
                     for child in children:
                         _queue.append((child, item, instance_id))
 
@@ -705,7 +709,7 @@ class InstanceListView(AbstractInstanceView):
                     parent_item.appendRows(items)
 
             for (
-                item, instance, parent_id, is_orpaned_item, has_children
+                item, instance, parent_id, is_orpaned_item
             ) in items_with_instance:
                 context_info = context_info_by_id[instance.id]
                 # TODO expand all parents
@@ -752,6 +756,7 @@ class InstanceListView(AbstractInstanceView):
             widget.deleteLater()
 
         self._widgets_by_id = widgets_by_id
+        self._instance_ids_by_parent_id = instance_ids_by_parent_id
 
         # Expand items marked for expanding
         items_to_expand = []
@@ -1022,29 +1027,16 @@ class InstanceListView(AbstractInstanceView):
         instance_ids = set(instance_items_by_id)
         available_ids = set(instance_ids)
 
-        group_items = list(self._group_items.values())
-        if self._missing_parent_item is not None:
-            group_items.append(self._missing_parent_item)
-
         _queue = collections.deque()
-        for group_item in group_items:
-            if not group_item.hasChildren():
-                continue
-
-            children = [
-                group_item.child(row)
-                for row in range(group_item.rowCount())
-            ]
-            _queue.append((children, True))
+        _queue.append((set(self._instance_ids_by_parent_id[None]), True))
 
         discarted_ids = set()
         while _queue:
             if not instance_ids:
                 break
 
-            children, parent_active = _queue.popleft()
-            for child in children:
-                instance_id = child.data(INSTANCE_ID_ROLE)
+            children_ids, parent_active = _queue.popleft()
+            for instance_id in children_ids:
                 widget = self._widgets_by_id[instance_id]
                 # Add children ids to 'instance_ids' to traverse them too
                 add_children = False
@@ -1066,23 +1058,24 @@ class InstanceListView(AbstractInstanceView):
                     instance_ids.discard(instance_id)
                     discarted_ids.add(instance_id)
 
-                if not child.hasChildren():
+                if not add_children:
                     continue
 
-                children = [
-                    child.child(row)
-                    for row in range(child.rowCount())
-                ]
-                if add_children:
-                    for new_child in children:
-                        instance_id = new_child.data(INSTANCE_ID_ROLE)
-                        if instance_id not in discarted_ids:
-                            instance_ids.add(instance_id)
+                _children = {
+                    child_id
+                    for child_id in (
+                        self._instance_ids_by_parent_id[instance_id]
+                    )
+                    if child_id not in discarted_ids
+                }
+
+                if _children:
+                    instance_ids |= _children
+                    _queue.append((_children, widget.is_active()))
 
                 if not instance_ids:
                     break
 
-                _queue.append((children, widget.is_active()))
 
     def _on_active_changed(self, changed_instance_id, new_value):
         self._toggle_active_state(new_value, changed_instance_id)
@@ -1097,23 +1090,12 @@ class InstanceListView(AbstractInstanceView):
             instance_ids = {active_id}
 
         active_by_id = {}
-        # Change the states from top to bottom
-        group_items = list(self._group_items.values())
-        if self._missing_parent_item is not None:
-            group_items.append(self._missing_parent_item)
-
         _queue = collections.deque()
-        for group_item in group_items:
-            children = [
-                group_item.child(row)
-                for row in range(group_item.rowCount())
-            ]
-            _queue.append((children, True))
+        _queue.append((set(self._instance_ids_by_parent_id[None]), True))
 
         while _queue:
-            children, parent_active = _queue.popleft()
-            for child in children:
-                instance_id = child.data(INSTANCE_ID_ROLE)
+            children_ids, parent_active = _queue.popleft()
+            for instance_id in children_ids:
                 widget = self._widgets_by_id[instance_id]
                 widget.set_parent_is_active(parent_active)
                 if instance_id in instance_ids:
@@ -1123,11 +1105,11 @@ class InstanceListView(AbstractInstanceView):
                     widget.set_active(value)
                     active_by_id[instance_id] = value
 
-                children = [
-                    child.child(row)
-                    for row in range(child.rowCount())
-                ]
-                _queue.append((children, widget.is_active()))
+                children = set(
+                    self._instance_ids_by_parent_id[instance_id]
+                )
+                if children:
+                    _queue.append((children, widget.is_active()))
 
         self._controller.set_instances_active_state(active_by_id)
 
