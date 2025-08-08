@@ -107,7 +107,7 @@ class WorkfilesToolWindow(QtWidgets.QWidget):
         split_widget.addWidget(tasks_widget)
         split_widget.addWidget(col_3_widget)
         split_widget.addWidget(side_panel)
-        split_widget.setSizes([255, 175, 550, 190])
+        split_widget.setSizes([350, 175, 550, 190])
 
         body_layout.addWidget(split_widget)
 
