@@ -491,6 +491,7 @@ class InstanceListView(AbstractInstanceView):
         self._context_item = None
         self._context_widget = None
         self._missing_parent_item = None
+        self._parent_grouping = True
 
         self._convertor_group_item = None
         self._convertor_group_widget = None
@@ -578,7 +579,8 @@ class InstanceListView(AbstractInstanceView):
                 instances_by_parent_id[instance.parent_instance_id].append(
                     instance
                 )
-                continue
+                if self._parent_grouping:
+                    continue
 
             group_label = instance.group_label
             group_names.add(group_label)
@@ -664,6 +666,9 @@ class InstanceListView(AbstractInstanceView):
                         new_items[parent_id].append(item)
 
                     elif item.parent() is not parent_item:
+                        current_parent = item.parent()
+                        if current_parent is not None:
+                            current_parent.takeRow(item.row())
                         new_items[parent_id].append(item)
 
                     self._parent_id_by_id[instance_id] = parent_id
@@ -679,6 +684,9 @@ class InstanceListView(AbstractInstanceView):
 
                     item.setData(instance.product_name, SORT_VALUE_ROLE)
                     item.setData(instance.product_name, GROUP_ROLE)
+
+                    if not self._parent_grouping:
+                        continue
 
                     children = instances_by_parent_id.pop(instance_id, [])
                     for child in children:
@@ -701,7 +709,7 @@ class InstanceListView(AbstractInstanceView):
 
                 # Add items under group item
                 for parent_id, items in new_items.items():
-                    if parent_id is None:
+                    if parent_id is None or not self._parent_grouping:
                         parent_item = group_item
                     else:
                         parent_item = self._items_by_id[parent_id]
@@ -1076,6 +1084,11 @@ class InstanceListView(AbstractInstanceView):
                 if not instance_ids:
                     break
 
+    def parent_grouping_enabled(self) -> bool:
+        return self._parent_grouping
+
+    def set_parent_grouping(self, parent_grouping: bool) -> None:
+        self._parent_grouping = parent_grouping
 
     def _on_active_changed(self, changed_instance_id, new_value):
         self._toggle_active_state(new_value, changed_instance_id)

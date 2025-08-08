@@ -289,7 +289,7 @@ class RemoveInstanceBtn(PublishIconBtn):
 
 
 class ChangeViewBtn(IconButton):
-    """Create toggle view button."""
+    """Toggle views button."""
     def __init__(self, parent=None):
         super().__init__(parent)
         self.set_view_type("list")
@@ -297,12 +297,17 @@ class ChangeViewBtn(IconButton):
     def set_view_type(self, view_type):
         if view_type == "list":
             # icon_name = "data_table"
-            icon_name = "view_agenda"
-            tooltip = "Change to list view"
-        else:
             icon_name = "dehaze"
+            tooltip = "Change to list view"
+        elif view_type == "card":
+            icon_name = "view_agenda"
             tooltip = "Change to card view"
+        else:
+            icon_name = "segment"
+            tooltip = "Change to parent grouping view"
 
+        # "format_align_right"
+        # "segment"
         icon = get_qt_icon({
             "type": "material-symbols",
             "name": icon_name,
