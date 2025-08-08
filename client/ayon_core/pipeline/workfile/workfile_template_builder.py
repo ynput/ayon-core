@@ -16,6 +16,7 @@ import re
 import collections
 import copy
 from abc import ABC, abstractmethod
+from typing import Optional
 
 import ayon_api
 from ayon_api import (
