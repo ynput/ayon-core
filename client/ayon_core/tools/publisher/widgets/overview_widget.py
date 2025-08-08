@@ -1,3 +1,7 @@
+from __future__ import annotations
+
+from typing import Generator
+
 from qtpy import QtWidgets, QtCore
 
 from ayon_core.tools.publisher.abstract import AbstractPublisherFrontend
@@ -6,6 +10,7 @@ from .border_label_widget import BorderedLabelWidget
 from .card_view_widgets import InstanceCardView
 from .list_view_widgets import InstanceListView
 from .widgets import (
+    AbstractInstanceView,
     CreateInstanceBtn,
     RemoveInstanceBtn,
     ChangeViewBtn,
@@ -159,6 +164,10 @@ class OverviewWidget(QtWidgets.QFrame):
             "create.model.instance.requirement.changed",
             self._on_instance_requirement_changed
         )
+        controller.register_event_callback(
+            "create.model.instance.parent.changed",
+            self._on_instance_parent_changed
+        )
 
         self._product_content_widget = product_content_widget
         self._product_content_layout = product_content_layout
@@ -169,6 +178,7 @@ class OverviewWidget(QtWidgets.QFrame):
 
         self._create_btn = create_btn
         self._delete_btn = delete_btn
+        self._change_view_btn = change_view_btn
 
         self._product_attributes_widget = product_attributes_widget
         self._create_widget = create_widget
@@ -246,7 +256,7 @@ class OverviewWidget(QtWidgets.QFrame):
         )
 
     def has_items(self):
-        view = self._product_views_layout.currentWidget()
+        view = self._get_current_view()
         return view.has_items()
 
     def _on_create_clicked(self):
@@ -361,17 +371,18 @@ class OverviewWidget(QtWidgets.QFrame):
     def _on_instance_requirement_changed(self, event):
         self._refresh_instance_states(event["instance_ids"])
 
-    def _refresh_instance_states(self, instance_ids):
-        current_idx = self._product_views_layout.currentIndex()
-        for idx in range(self._product_views_layout.count()):
-            if idx == current_idx:
-                continue
-            widget = self._product_views_layout.widget(idx)
-            if widget.refreshed:
-                widget.set_refreshed(False)
+    def _on_instance_parent_changed(self, event):
+        self._refresh_instance_states(event["instance_ids"])
 
-        current_widget = self._product_views_layout.widget(current_idx)
-        current_widget.refresh_instance_states(instance_ids)
+    def _refresh_instance_states(self, instance_ids):
+        current_view = self._get_current_view()
+        for view in self._iter_views():
+            if view is current_view:
+                current_view = view
+            elif view.refreshed:
+                view.set_refreshed(False)
+
+        current_view.refresh_instance_states(instance_ids)
 
     def _on_convert_requested(self):
         self.convert_requested.emit()
@@ -385,7 +396,7 @@ class OverviewWidget(QtWidgets.QFrame):
                 convertor plugins.
         """
 
-        view = self._product_views_layout.currentWidget()
+        view = self._get_current_view()
         return view.get_selected_items()
 
     def get_selected_legacy_convertors(self):
@@ -400,13 +411,27 @@ class OverviewWidget(QtWidgets.QFrame):
         return convertor_identifiers
 
     def _change_view_type(self):
+        old_view = self._get_current_view()
+        if (
+            isinstance(old_view, InstanceListView)
+            and not old_view.parent_grouping_enabled()
+        ):
+            self._change_view_btn.set_view_type("card")
+            old_view.set_parent_grouping(True)
+            old_view.refresh()
+            old_view.set_refreshed(True)
+            return
+
         idx = self._product_views_layout.currentIndex()
         new_idx = (idx + 1) % self._product_views_layout.count()
 
-        old_view = self._product_views_layout.currentWidget()
-        new_view = self._product_views_layout.widget(new_idx)
+        new_view = self._get_view_by_idx(new_idx)
+        if isinstance(new_view, InstanceListView):
+            new_view.set_parent_grouping(False)
+            new_view.refresh()
+            new_view.set_refreshed(True)
 
-        if not new_view.refreshed:
+        elif not new_view.refreshed:
             new_view.refresh()
             new_view.set_refreshed(True)
         else:
@@ -419,9 +444,39 @@ class OverviewWidget(QtWidgets.QFrame):
             instance_ids, context_selected, convertor_identifiers
         )
 
+        self._change_view_btn.set_view_type(
+            "list"
+            if isinstance(new_view, InstanceCardView)
+            else "list-parent-grouping"
+        )
         self._product_views_layout.setCurrentIndex(new_idx)
 
         self._on_product_change()
+
+    def _iter_views(self) -> Generator[AbstractInstanceView, None, None]:
+        for idx in range(self._product_views_layout.count()):
+            widget = self._product_views_layout.widget(idx)
+            if not isinstance(widget, AbstractInstanceView):
+                raise TypeError(
+                    "Current widget is not instance of 'AbstractInstanceView'"
+                )
+            yield widget
+
+    def _get_current_view(self) -> AbstractInstanceView:
+        widget = self._product_views_layout.currentWidget()
+        if isinstance(widget, AbstractInstanceView):
+            return widget
+        raise TypeError(
+            "Current widget is not instance of 'AbstractInstanceView'"
+        )
+
+    def _get_view_by_idx(self, idx: int) -> AbstractInstanceView:
+        widget = self._product_views_layout.widget(idx)
+        if isinstance(widget, AbstractInstanceView):
+            return widget
+        raise TypeError(
+            "Current widget is not instance of 'AbstractInstanceView'"
+        )
 
     def _refresh_instances(self):
         if self._refreshing_instances:
@@ -429,11 +484,10 @@ class OverviewWidget(QtWidgets.QFrame):
 
         self._refreshing_instances = True
 
-        for idx in range(self._product_views_layout.count()):
-            widget = self._product_views_layout.widget(idx)
-            widget.set_refreshed(False)
+        for view in self._iter_views():
+            view.set_refreshed(False)
 
-        view = self._product_views_layout.currentWidget()
+        view = self._get_current_view()
         view.refresh()
         view.set_refreshed(True)
 
@@ -444,25 +498,22 @@ class OverviewWidget(QtWidgets.QFrame):
 
         # Give a change to process Resize Request
         QtWidgets.QApplication.processEvents()
-        # Trigger update geometry of
-        widget = self._product_views_layout.currentWidget()
-        widget.updateGeometry()
+        # Trigger update geometry
+        view.updateGeometry()
 
     def _on_publish_start(self):
         """Publish started."""
 
         self._create_btn.setEnabled(False)
         self._product_attributes_wrap.setEnabled(False)
-        for idx in range(self._product_views_layout.count()):
-            widget = self._product_views_layout.widget(idx)
-            widget.set_active_toggle_enabled(False)
+        for view in self._iter_views():
+            view.set_active_toggle_enabled(False)
 
     def _on_controller_reset_start(self):
         """Controller reset started."""
 
-        for idx in range(self._product_views_layout.count()):
-            widget = self._product_views_layout.widget(idx)
-            widget.set_active_toggle_enabled(True)
+        for view in self._iter_views():
+            view.set_active_toggle_enabled(True)
 
     def _on_publish_reset(self):
         """Context in controller has been reseted."""
@@ -477,7 +528,19 @@ class OverviewWidget(QtWidgets.QFrame):
         self._refresh_instances()
 
     def _on_instances_added(self):
+        view = self._get_current_view()
+        is_card_view = False
+        count = 0
+        if isinstance(view, InstanceCardView):
+            is_card_view = True
+            count = view.get_current_instance_count()
+
         self._refresh_instances()
+
+        if is_card_view and count < 10:
+            new_count = view.get_current_instance_count()
+            if new_count > count and new_count >= 10:
+                self._change_view_type()
 
     def _on_instances_removed(self):
         self._refresh_instances()
