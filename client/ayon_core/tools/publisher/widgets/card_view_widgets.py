@@ -353,7 +353,7 @@ class InstanceCardWidget(CardWidget):
         if not self.is_checkbox_enabled():
             return
         if active is None:
-            active = not self.is_active()
+            active = not self._is_active
         self._set_checked(active)
 
     def is_parent_active(self) -> bool:
@@ -453,6 +453,8 @@ class InstanceCardWidget(CardWidget):
         self._detail_widget.setVisible(expanded)
 
     def _on_active_change(self):
+        if not self.is_checkbox_enabled():
+            return
         new_value = self._active_checkbox.isChecked()
         old_value = self._is_active
         if new_value is old_value:
@@ -525,6 +527,7 @@ class InstanceCardView(AbstractInstanceView):
         self._widgets_by_id: dict[str, InstanceCardWidget] = {}
         self._widgets_by_group: dict[str, BaseGroupWidget] = {}
 
+        self._parent_id_by_id = {}
         self._instance_ids_by_parent_id = collections.defaultdict(set)
 
         self._explicitly_selected_instance_ids = []
@@ -552,6 +555,26 @@ class InstanceCardView(AbstractInstanceView):
         """How many instances are currently in the view."""
         return len(self._widgets_by_id)
 
+    def _get_affected_ids(self, instance_ids: set[str]) -> set[str]:
+        affected_ids = set()
+        affected_queue = collections.deque()
+        affected_queue.extend(instance_ids)
+        while affected_queue:
+            instance_id = affected_queue.popleft()
+            if instance_id in affected_ids:
+                continue
+            affected_ids.add(instance_id)
+            parent_id = instance_id
+            while True:
+                parent_id = self._parent_id_by_id[parent_id]
+                if parent_id is None:
+                    break
+                affected_ids.add(parent_id)
+
+            child_ids = set(self._instance_ids_by_parent_id[instance_id])
+            affected_queue.extend(child_ids - affected_ids)
+        return affected_ids
+
     def _toggle_instances(
         self,
         new_value: Optional[bool],
@@ -566,7 +589,10 @@ class InstanceCardView(AbstractInstanceView):
         if active_id and active_id not in instance_ids:
             instance_ids = {active_id}
 
-        affected_ids = set(instance_ids)
+        ids_to_toggle = set(instance_ids)
+
+        affected_ids = self._get_affected_ids(instance_ids)
+
         _queue = collections.deque()
         _queue.append((set(self._instance_ids_by_parent_id[None]), True))
         discarted_ids = set()
@@ -576,36 +602,24 @@ class InstanceCardView(AbstractInstanceView):
 
             chilren_ids, is_parent_active = _queue.pop()
             for instance_id in chilren_ids:
-                widget = self._widgets_by_id[instance_id]
-                add_children = False
-                if instance_id in affected_ids:
-                    affected_ids.discard(instance_id)
-                    instance_ids.discard(instance_id)
-                    discarted_ids.add(instance_id)
-                    add_children = True
-                    if is_parent_active is not widget.is_parent_active():
-                        add_children = True
-                        widget.set_parent_active(is_parent_active)
+                if instance_id not in affected_ids:
+                    continue
 
+                widget = self._widgets_by_id[instance_id]
+                if is_parent_active is not widget.is_parent_active():
+                    widget.set_parent_active(is_parent_active)
+
+                instance_ids.discard(instance_id)
+                if instance_id in ids_to_toggle:
+                    discarted_ids.add(instance_id)
                     old_value = widget.is_active()
                     value = new_value
                     if value is None:
                         value = not old_value
+
                     widget.set_active(value)
-                    active_by_id[instance_id] = widget.is_active()
-
-                if (
-                    instance_id in instance_ids
-                    and is_parent_active is not widget.is_parent_active()
-                ):
-                    add_children = True
-                    widget.set_parent_active(is_parent_active)
-
-                    instance_ids.discard(instance_id)
-                    discarted_ids.add(instance_id)
-
-                if not add_children:
-                    continue
+                    if widget.is_parent_active():
+                        active_by_id[instance_id] = widget.is_active()
 
                 children_ids = self._instance_ids_by_parent_id[instance_id]
                 children = {
@@ -621,7 +635,8 @@ class InstanceCardView(AbstractInstanceView):
                 if not instance_ids:
                     break
 
-        self._controller.set_instances_active_state(active_by_id)
+        if active_by_id:
+            self._controller.set_instances_active_state(active_by_id)
 
     def keyPressEvent(self, event):
         if event.key() == QtCore.Qt.Key_Space:
@@ -699,6 +714,7 @@ class InstanceCardView(AbstractInstanceView):
         identifiers_by_group = collections.defaultdict(set)
         identifiers: set[str] = set()
         instances_by_id = {}
+        parent_id_by_id = {}
         instance_ids_by_parent_id = collections.defaultdict(set)
         instance_items = self._controller.get_instance_items()
         for instance in instance_items:
@@ -712,6 +728,7 @@ class InstanceCardView(AbstractInstanceView):
             instance_ids_by_parent_id[instance.parent_instance_id].add(
                 instance.id
             )
+            parent_id_by_id[instance.id] = instance.parent_instance_id
 
         parent_active_by_id = {
             instance_id: False
@@ -797,6 +814,7 @@ class InstanceCardView(AbstractInstanceView):
             widget.setVisible(False)
             widget.deleteLater()
 
+        self._parent_id_by_id = parent_id_by_id
         self._instance_ids_by_parent_id = instance_ids_by_parent_id
         self._group_name_by_instance_id = group_by_instance_id
         self._instance_ids_by_group_name = instance_ids_by_group_name
@@ -961,22 +979,23 @@ class InstanceCardView(AbstractInstanceView):
         )
         instance_ids: set[str] = set(instance_items_by_id)
         available_ids: set[str] = set(instance_items_by_id)
-        discarted_ids: set[str] = set()
+
+        affected_ids = self._get_affected_ids(instance_ids)
 
         _queue = collections.deque()
         _queue.append((set(self._instance_ids_by_parent_id[None]), True))
         while _queue:
-            if not instance_ids:
+            if not affected_ids:
                 break
 
             chilren_ids, is_parent_active = _queue.pop()
             for instance_id in chilren_ids:
+                if instance_id not in affected_ids:
+                    continue
+                affected_ids.discard(instance_id)
                 widget = self._widgets_by_id[instance_id]
-                add_children = False
                 if instance_id in instance_ids:
-                    add_children = (
-                        is_parent_active is not widget.is_parent_active()
-                    )
+                    instance_ids.discard(instance_id)
                     if instance_id in available_ids:
                         available_ids.discard(instance_id)
                         widget.update_instance(
@@ -987,25 +1006,14 @@ class InstanceCardView(AbstractInstanceView):
                     else:
                         widget.set_parent_active(is_parent_active)
 
-                    instance_ids.discard(instance_id)
-                    discarted_ids.add(instance_id)
+                if not affected_ids:
+                    break
 
-                if not add_children:
-                    continue
-
-                children_ids = self._instance_ids_by_parent_id[instance_id]
-                children = {
-                    child_id
-                    for child_id in children_ids
-                    if child_id not in discarted_ids
-                }
-
+                children = set(self._instance_ids_by_parent_id[instance_id])
                 if children:
                     instance_ids |= children
                     _queue.append((children, widget.is_active()))
 
-                if not instance_ids:
-                    break
 
     def _on_active_changed(self, instance_id: str, value: bool) -> None:
         self._toggle_instances(value, instance_id)
