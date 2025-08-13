@@ -48,10 +48,16 @@ class OverviewWidget(QtWidgets.QFrame):
 
         product_view_cards = InstanceCardView(controller, product_views_widget)
         product_list_view = InstanceListView(controller, product_views_widget)
+        product_list_view.set_parent_grouping(False)
+        product_list_view_grouped = InstanceListView(
+            controller, product_views_widget
+        )
+        product_list_view_grouped.set_parent_grouping(True)
 
         product_views_layout = QtWidgets.QStackedLayout()
         product_views_layout.addWidget(product_view_cards)
         product_views_layout.addWidget(product_list_view)
+        product_views_layout.addWidget(product_list_view_grouped)
         product_views_layout.setCurrentWidget(product_view_cards)
 
         # Buttons at the bottom of product view
@@ -123,6 +129,12 @@ class OverviewWidget(QtWidgets.QFrame):
         product_list_view.double_clicked.connect(
             self.publish_tab_requested
         )
+        product_list_view_grouped.selection_changed.connect(
+            self._on_product_change
+        )
+        product_list_view_grouped.double_clicked.connect(
+            self.publish_tab_requested
+        )
         product_view_cards.selection_changed.connect(
             self._on_product_change
         )
@@ -174,6 +186,7 @@ class OverviewWidget(QtWidgets.QFrame):
 
         self._product_view_cards = product_view_cards
         self._product_list_view = product_list_view
+        self._product_list_view_grouped = product_list_view_grouped
         self._product_views_layout = product_views_layout
 
         self._create_btn = create_btn
@@ -412,26 +425,12 @@ class OverviewWidget(QtWidgets.QFrame):
 
     def _change_view_type(self):
         old_view = self._get_current_view()
-        if (
-            isinstance(old_view, InstanceListView)
-            and not old_view.parent_grouping_enabled()
-        ):
-            self._change_view_btn.set_view_type("card")
-            old_view.set_parent_grouping(True)
-            old_view.refresh()
-            old_view.set_refreshed(True)
-            return
 
         idx = self._product_views_layout.currentIndex()
         new_idx = (idx + 1) % self._product_views_layout.count()
 
         new_view = self._get_view_by_idx(new_idx)
-        if isinstance(new_view, InstanceListView):
-            new_view.set_parent_grouping(False)
-            new_view.refresh()
-            new_view.set_refreshed(True)
-
-        elif not new_view.refreshed:
+        if not new_view.refreshed:
             new_view.refresh()
             new_view.set_refreshed(True)
         else:
@@ -443,12 +442,13 @@ class OverviewWidget(QtWidgets.QFrame):
         new_view.set_selected_items(
             instance_ids, context_selected, convertor_identifiers
         )
+        view_type = "list"
+        if new_view is self._product_list_view_grouped:
+            view_type = "card"
+        elif new_view is self._product_list_view:
+            view_type = "list-parent-grouping"
 
-        self._change_view_btn.set_view_type(
-            "list"
-            if isinstance(new_view, InstanceCardView)
-            else "list-parent-grouping"
-        )
+        self._change_view_btn.set_view_type(view_type)
         self._product_views_layout.setCurrentIndex(new_idx)
 
         self._on_product_change()
