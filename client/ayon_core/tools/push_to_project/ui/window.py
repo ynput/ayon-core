@@ -551,7 +551,7 @@ class PushToContextSelectWindow(QtWidgets.QWidget):
         self._main_thread_timer_can_stop = False
         self._main_thread_timer.start()
         self._main_layout.setCurrentWidget(self._overlay_widget)
-        self._overlay_label.setText("Submittion started")
+        self._overlay_label.setText("Submission started")
 
     def _on_controller_submit_end(self):
         self._main_thread_timer_can_stop = True
