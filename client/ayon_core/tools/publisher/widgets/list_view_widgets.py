@@ -621,6 +621,7 @@ class InstanceListView(AbstractInstanceView):
                     orphans_item,
                 ))
 
+        items_with_instance = {}
         # Process changes in each group item
         # - create new instance, update existing and remove not existing
         for group_widget, group_instances, group_item in group_items:
@@ -633,26 +634,12 @@ class InstanceListView(AbstractInstanceView):
             # - 'None' is used if parent is group item
             new_items = collections.defaultdict(list)
             # Tuples of model item and instance itself
-            items_with_instance = []
-            # Group activity (should be {-1;0;1} at the end)
-            # - 0 when all instances are disabled
-            # - 1 when all instances are enabled
-            # - -1 when it's mixed
-            activity = None
             for instance in group_instances:
                 _queue = collections.deque()
                 _queue.append((instance, group_item, None))
                 while _queue:
                     instance, parent_item, parent_id = _queue.popleft()
                     instance_id = instance.id
-                    # Handle group activity
-                    if activity is None:
-                        activity = int(instance.is_active)
-                    elif activity == -1:
-                        pass
-                    elif activity != instance.is_active:
-                        activity = -1
-
                     # Remove group name from groups mapping
                     if parent_id is not None:
                         self._group_by_instance_id.pop(instance_id, None)
@@ -673,13 +660,10 @@ class InstanceListView(AbstractInstanceView):
 
                     self._parent_id_by_id[instance_id] = parent_id
 
-                    items_with_instance.append(
-                        (
-                            item,
-                            instance,
-                            parent_id,
-                            is_orpaned_item,
-                        )
+                    items_with_instance[instance.id] = (
+                        item,
+                        instance,
+                        is_orpaned_item,
                     )
 
                     item.setData(instance.product_name, SORT_VALUE_ROLE)
@@ -691,15 +675,6 @@ class InstanceListView(AbstractInstanceView):
                     children = instances_by_parent_id.pop(instance_id, [])
                     for child in children:
                         _queue.append((child, item, instance_id))
-
-            # Set checkstate of group checkbox
-            if group_widget is not None:
-                state = QtCore.Qt.PartiallyChecked
-                if activity == 0:
-                    state = QtCore.Qt.Unchecked
-                elif activity == 1:
-                    state = QtCore.Qt.Checked
-                group_widget.set_checkstate(state)
 
             # Process new instance items and add them to model and create
             #   their widgets
@@ -716,48 +691,57 @@ class InstanceListView(AbstractInstanceView):
 
                     parent_item.appendRows(items)
 
-            for (
-                item, instance, parent_id, is_orpaned_item
-            ) in items_with_instance:
-                context_info = context_info_by_id[instance.id]
-                # TODO expand all parents
-                if not context_info.is_valid:
-                    expand_to_items.append(item)
+        ids_order = []
+        ids_queue = collections.deque()
+        ids_queue.extend(instance_ids_by_parent_id[None])
+        while ids_queue:
+            parent_id = ids_queue.popleft()
+            ids_order.append(parent_id)
+            ids_queue.extend(instance_ids_by_parent_id[parent_id])
+        ids_order.extend(set(items_with_instance) - set(ids_order))
 
-                parent_active = True
-                if is_orpaned_item:
-                    parent_active = False
+        for instance_id in ids_order:
+            item, instance, is_orpaned_item = items_with_instance[instance_id]
+            context_info = context_info_by_id[instance.id]
+            # TODO expand all parents
+            if not context_info.is_valid:
+                expand_to_items.append(item)
 
-                if parent_id:
-                    parent_widget = widgets_by_id.get(parent_id)
-                    parent_active = False
-                    if parent_widget is not None:
-                        parent_active = parent_widget.is_active()
-                item_index = self._instance_model.indexFromItem(item)
-                proxy_index = self._proxy_model.mapFromSource(item_index)
-                widget = self._instance_view.indexWidget(proxy_index)
-                if isinstance(widget, InstanceListItemWidget):
-                    widget.update_instance(
-                        instance,
-                        context_info,
-                        parent_active,
-                    )
-                else:
-                    widget = InstanceListItemWidget(
-                        instance,
-                        context_info,
-                        parent_active,
-                        self._instance_view
-                    )
-                    widget.active_changed.connect(self._on_active_changed)
-                    widget.double_clicked.connect(self.double_clicked)
-                    self._instance_view.setIndexWidget(proxy_index, widget)
-                widget.set_active_toggle_enabled(
-                    self._active_toggle_enabled
+            parent_active = True
+            if is_orpaned_item:
+                parent_active = False
+
+            parent_id = instance.parent_instance_id
+            if parent_id:
+                parent_widget = widgets_by_id.get(parent_id)
+                parent_active = False
+                if parent_widget is not None:
+                    parent_active = parent_widget.is_active()
+            item_index = self._instance_model.indexFromItem(item)
+            proxy_index = self._proxy_model.mapFromSource(item_index)
+            widget = self._instance_view.indexWidget(proxy_index)
+            if isinstance(widget, InstanceListItemWidget):
+                widget.update_instance(
+                    instance,
+                    context_info,
+                    parent_active,
                 )
+            else:
+                widget = InstanceListItemWidget(
+                    instance,
+                    context_info,
+                    parent_active,
+                    self._instance_view
+                )
+                widget.active_changed.connect(self._on_active_changed)
+                widget.double_clicked.connect(self.double_clicked)
+                self._instance_view.setIndexWidget(proxy_index, widget)
+            widget.set_active_toggle_enabled(
+                self._active_toggle_enabled
+            )
 
-                widgets_by_id[instance.id] = widget
-                self._widgets_by_id.pop(instance.id, None)
+            widgets_by_id[instance.id] = widget
+            self._widgets_by_id.pop(instance.id, None)
 
         for widget in self._widgets_by_id.values():
             widget.setVisible(False)
@@ -765,6 +749,10 @@ class InstanceListView(AbstractInstanceView):
 
         self._widgets_by_id = widgets_by_id
         self._instance_ids_by_parent_id = instance_ids_by_parent_id
+
+        # Set checkstate of group checkbox
+        for group_name in self._group_items:
+            self._update_group_checkstate(group_name)
 
         # Expand items marked for expanding
         items_to_expand = []
