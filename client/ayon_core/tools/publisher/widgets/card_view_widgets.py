@@ -583,13 +583,16 @@ class InstanceCardView(AbstractInstanceView):
                     instance_ids.discard(instance_id)
                     discarted_ids.add(instance_id)
                     add_children = True
+                    if is_parent_active is not widget.is_parent_active():
+                        add_children = True
+                        widget.set_parent_active(is_parent_active)
+
+                    old_value = widget.is_active()
                     value = new_value
                     if value is None:
-                        value = not widget.is_active()
-                    old_value = widget.is_active()
+                        value = not old_value
                     widget.set_active(value)
-                    if old_value is not widget.is_active():
-                        active_by_id[instance_id] = value
+                    active_by_id[instance_id] = widget.is_active()
 
                 if (
                     instance_id in instance_ids
