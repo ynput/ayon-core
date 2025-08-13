@@ -1097,8 +1097,10 @@ class InstanceListView(AbstractInstanceView):
         self,
         new_value: Optional[bool],
         active_id: Optional[str] = None,
+        instance_ids: Optional[set[str]] = None,
     ) -> None:
-        instance_ids, _, _ = self.get_selected_items()
+        if instance_ids is None:
+            instance_ids, _, _ = self.get_selected_items()
         if active_id and active_id not in instance_ids:
             instance_ids = {active_id}
 
@@ -1163,7 +1165,7 @@ class InstanceListView(AbstractInstanceView):
             instance_id = child.data(INSTANCE_ID_ROLE)
             instance_ids.add(instance_id)
 
-        self._toggle_active_state(active)
+        self._toggle_active_state(active, instance_ids=instance_ids)
 
         proxy_index = self._proxy_model.mapFromSource(group_item.index())
         if not self._instance_view.isExpanded(proxy_index):
