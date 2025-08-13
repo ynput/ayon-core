@@ -583,15 +583,21 @@ class CreateModel:
     def set_instances_active_state(
         self, active_state_by_id: Dict[str, bool]
     ):
+        changed_ids = set()
         with self._create_context.bulk_value_changes(CREATE_EVENT_SOURCE):
             for instance_id, active in active_state_by_id.items():
                 instance = self._create_context.get_instance_by_id(instance_id)
-                instance["active"] = active
+                if instance["active"] is not active:
+                    instance["active"] = active
+                    changed_ids.add(instance_id)
+
+        if not changed_ids:
+            return
 
         self._emit_event(
             "create.model.instances.context.changed",
             {
-                "instance_ids": set(active_state_by_id.keys())
+                "instance_ids": changed_ids
             }
         )
 
