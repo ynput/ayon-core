@@ -1014,7 +1014,6 @@ class InstanceCardView(AbstractInstanceView):
                     instance_ids |= children
                     _queue.append((children, widget.is_active()))
 
-
     def _on_active_changed(self, instance_id: str, value: bool) -> None:
         self._toggle_instances(value, instance_id)
 
