@@ -1035,7 +1035,7 @@ class InstanceListView(AbstractInstanceView):
             for instance_id in children_ids:
                 widget = self._widgets_by_id[instance_id]
                 # Parent active state changed -> traverse children too
-                add_children = False                  
+                add_children = False
                 if instance_id in instance_ids:
                     add_children = (
                         parent_active is not widget.is_parent_active()
