@@ -1046,10 +1046,9 @@ class InstanceListView(AbstractInstanceView):
             children_ids, parent_active = _queue.popleft()
             for instance_id in children_ids:
                 widget = self._widgets_by_id[instance_id]
-                # Add children ids to 'instance_ids' to traverse them too
-                add_children = False
+                # Parent active state changed -> traverse children too
+                add_children = False                  
                 if instance_id in instance_ids:
-                    # Parent active state changed -> traverse children too
                     add_children = (
                         parent_active is not widget.is_parent_active()
                     )
@@ -1069,16 +1068,11 @@ class InstanceListView(AbstractInstanceView):
                     add_children = True
 
                 if not add_children:
+                    if not instance_ids:
+                        break
                     continue
 
-                _children = {
-                    child_id
-                    for child_id in (
-                        self._instance_ids_by_parent_id[instance_id]
-                    )
-                    if child_id not in discarted_ids
-                }
-
+                _children = set(self._instance_ids_by_parent_id[instance_id])
                 if _children:
                     instance_ids |= _children
                     _queue.append((_children, widget.is_active()))
