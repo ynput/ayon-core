@@ -1060,11 +1060,13 @@ class InstanceListView(AbstractInstanceView):
                             context_info_by_id[instance_id],
                             parent_active,
                         )
-                    else:
-                        widget.set_active(parent_active)
 
                     instance_ids.discard(instance_id)
                     discarted_ids.add(instance_id)
+
+                if parent_active is not widget.is_parent_active():
+                    widget.set_parent_is_active(parent_active)
+                    add_children = True
 
                 if not add_children:
                     continue
