@@ -358,7 +358,7 @@ class NiceCheckbox(QtWidgets.QFrame):
             slider_offset, slider_offset,
             -slider_offset, -slider_offset
         )
-        radius = floor(min(slider_rect.width(), slider_rect.height())  * 0.5)
+        radius = floor(min(slider_rect.width(), slider_rect.height()) * 0.5)
 
         painter.setBrush(bg_color)
         painter.drawRoundedRect(slider_rect, radius, radius)
