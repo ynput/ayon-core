@@ -54,7 +54,6 @@ from ayon_core.pipeline.plugin_discover import (
 )
 
 from ayon_core.pipeline.create import (
-    discover_legacy_creator_plugins,
     CreateContext,
     HiddenCreator,
 )
@@ -131,7 +130,6 @@ class AbstractTemplateBuilder(ABC):
     """
 
     _log = None
-    use_legacy_creators = False
 
     def __init__(self, host):
         # Get host name
@@ -321,19 +319,6 @@ class AbstractTemplateBuilder(ABC):
 
         return list(get_folders(project_name, folder_ids=linked_folder_ids))
 
-    def _collect_legacy_creators(self):
-        creators_by_name = {}
-        for creator in discover_legacy_creator_plugins():
-            if not creator.enabled:
-                continue
-            creator_name = creator.__name__
-            if creator_name in creators_by_name:
-                raise KeyError(
-                    "Duplicated creator name {} !".format(creator_name)
-                )
-            creators_by_name[creator_name] = creator
-        self._creators_by_name = creators_by_name
-
     def _collect_creators(self):
         self._creators_by_name = {
             identifier: creator
@@ -345,10 +330,7 @@ class AbstractTemplateBuilder(ABC):
 
     def get_creators_by_name(self):
         if self._creators_by_name is None:
-            if self.use_legacy_creators:
-                self._collect_legacy_creators()
-            else:
-                self._collect_creators()
+            self._collect_creators()
 
         return self._creators_by_name
 
@@ -1938,8 +1920,6 @@ class PlaceholderCreateMixin(object):
             pre_create_data (dict): dictionary of configuration from Creator
                 configuration in UI
         """
-
-        legacy_create = self.builder.use_legacy_creators
         creator_name = placeholder.data["creator"]
         create_variant = placeholder.data["create_variant"]
         active = placeholder.data.get("active")
@@ -1979,20 +1959,14 @@ class PlaceholderCreateMixin(object):
 
         # compile product name from variant
         try:
-            if legacy_create:
-                creator_instance = creator_plugin(
-                    product_name,
-                    folder_path
-                ).process()
-            else:
-                creator_instance = self.builder.create_context.create(
-                    creator_plugin.identifier,
-                    create_variant,
-                    folder_entity,
-                    task_entity,
-                    pre_create_data=pre_create_data,
-                    active=active
-                )
+            creator_instance = self.builder.create_context.create(
+                creator_plugin.identifier,
+                create_variant,
+                folder_entity,
+                task_entity,
+                pre_create_data=pre_create_data,
+                active=active
+            )
 
         except:  # noqa: E722
             failed = True
