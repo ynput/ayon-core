@@ -6,7 +6,6 @@ from typing import TYPE_CHECKING, Optional, Dict, Any
 
 from abc import ABC, abstractmethod
 
-from ayon_core.settings import get_project_settings
 from ayon_core.lib import Logger, get_version_from_path
 from ayon_core.pipeline.plugin_discover import (
     discover,
