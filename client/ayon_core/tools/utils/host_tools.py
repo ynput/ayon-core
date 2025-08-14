@@ -33,7 +33,6 @@ class HostToolsHelper:
         self._loader_tool = None
         self._creator_tool = None
         self._publisher_tool = None
-        self._subset_manager_tool = None
         self._scene_inventory_tool = None
         self._experimental_tools_dialog = None
 
@@ -116,28 +115,6 @@ class HostToolsHelper:
             # Pull window to the front.
             creator_tool.raise_()
             creator_tool.activateWindow()
-
-    def get_subset_manager_tool(self, parent):
-        """Create, cache and return subset manager tool window."""
-        if self._subset_manager_tool is None:
-            from ayon_core.tools.subsetmanager import SubsetManagerWindow
-
-            subset_manager_window = SubsetManagerWindow(
-                parent=parent or self._parent
-            )
-            self._subset_manager_tool = subset_manager_window
-
-        return self._subset_manager_tool
-
-    def show_subset_manager(self, parent=None):
-        """Show tool display/remove existing created instances."""
-        with qt_app_context():
-            subset_manager_tool = self.get_subset_manager_tool(parent)
-            subset_manager_tool.show()
-
-            # Pull window to the front.
-            subset_manager_tool.raise_()
-            subset_manager_tool.activateWindow()
 
     def get_scene_inventory_tool(self, parent):
         """Create, cache and return scene inventory tool window."""
@@ -270,9 +247,6 @@ class HostToolsHelper:
         elif tool_name == "creator":
             return self.get_creator_tool(parent, *args, **kwargs)
 
-        elif tool_name == "subsetmanager":
-            return self.get_subset_manager_tool(parent, *args, **kwargs)
-
         elif tool_name == "sceneinventory":
             return self.get_scene_inventory_tool(parent, *args, **kwargs)
 
@@ -307,9 +281,6 @@ class HostToolsHelper:
 
         elif tool_name == "creator":
             self.show_creator(parent, *args, **kwargs)
-
-        elif tool_name == "subsetmanager":
-            self.show_subset_manager(parent, *args, **kwargs)
 
         elif tool_name == "sceneinventory":
             self.show_scene_inventory(parent, *args, **kwargs)
@@ -381,10 +352,6 @@ def show_library_loader(parent=None):
 
 def show_creator(parent=None):
     _SingletonPoint.show_tool_by_name("creator", parent)
-
-
-def show_subset_manager(parent=None):
-    _SingletonPoint.show_tool_by_name("subsetmanager", parent)
 
 
 def show_scene_inventory(parent=None):
