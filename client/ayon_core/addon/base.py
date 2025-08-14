@@ -8,6 +8,7 @@ import inspect
 import logging
 import threading
 import collections
+import warnings
 from uuid import uuid4
 from abc import ABC, abstractmethod
 from typing import Optional
@@ -830,10 +831,26 @@ class AddonsManager:
 
         Unknown keys are logged out.
 
+        Deprecated:
+            Use targeted methods 'collect_launcher_action_paths',
+                'collect_create_plugin_paths', 'collect_load_plugin_paths',
+                'collect_publish_plugin_paths' and
+                 'collect_inventory_action_paths' to collect plugin paths.
+
         Returns:
             dict: Output is dictionary with keys "publish", "create", "load",
                 "actions" and "inventory" each containing list of paths.
+
         """
+        warnings.warn(
+            "Used deprecated method 'collect_plugin_paths'. Please use"
+            " targeted methods 'collect_launcher_action_paths',"
+            " 'collect_create_plugin_paths', 'collect_load_plugin_paths'"
+            " 'collect_publish_plugin_paths' and"
+            " 'collect_inventory_action_paths'",
+            DeprecationWarning,
+            stacklevel=2
+        )
         # Output structure
         output = {
             "publish": [],
@@ -889,24 +906,28 @@ class AddonsManager:
             if not isinstance(addon, IPluginPaths):
                 continue
 
+            paths = None
             method = getattr(addon, method_name)
             try:
                 paths = method(*args, **kwargs)
             except Exception:
                 self.log.warning(
-                    (
-                        "Failed to get plugin paths from addon"
-                        " '{}' using '{}'."
-                    ).format(addon.__class__.__name__, method_name),
+                    "Failed to get plugin paths from addon"
+                    f" '{addon.name}' using '{method_name}'.",
                     exc_info=True
                 )
+
+            if not paths:
                 continue
 
-            if paths:
-                # Convert to list if value is not list
-                if not isinstance(paths, (list, tuple, set)):
-                    paths = [paths]
-                output.extend(paths)
+            if isinstance(paths, str):
+                paths = [paths]
+                self.log.warning(
+                    f"Addon '{addon.name}' returned invalid output type"
+                    f" from '{method_name}'."
+                    f" Got 'str' expected 'list[str]'."
+                )
+            output.extend(paths)
         return output
 
     def collect_launcher_action_paths(self):

@@ -41,7 +41,7 @@ class ExtractThumbnail(pyblish.api.InstancePlugin):
         "photoshop",
         "unreal",
         "houdini",
-        "circuit",
+        "batchdelivery",
     ]
     settings_category = "core"
     enabled = False
