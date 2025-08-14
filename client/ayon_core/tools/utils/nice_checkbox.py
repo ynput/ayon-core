@@ -2,7 +2,7 @@ from math import floor, ceil
 
 from qtpy import QtWidgets, QtCore, QtGui
 
-from ayon_core.style import load_stylesheet, get_objected_colors
+from ayon_core.style import get_objected_colors
 
 
 class NiceCheckbox(QtWidgets.QFrame):
