@@ -16,6 +16,7 @@ import re
 import collections
 import copy
 from abc import ABC, abstractmethod
+from typing import Optional
 
 import ayon_api
 from ayon_api import (
@@ -202,12 +203,6 @@ class AbstractTemplateBuilder(ABC):
         return self._current_folder_entity
 
     @property
-    def linked_folder_entities(self):
-        if self._linked_folder_entities is _NOT_SET:
-            self._linked_folder_entities = self._get_linked_folder_entities()
-        return self._linked_folder_entities
-
-    @property
     def current_task_entity(self):
         if self._current_task_entity is _NOT_SET:
             task_entity = None
@@ -307,13 +302,16 @@ class AbstractTemplateBuilder(ABC):
             self._loaders_by_name = get_loaders_by_name()
         return self._loaders_by_name
 
-    def _get_linked_folder_entities(self):
+    def get_linked_folder_entities(self, link_type: Optional[str]):
+        if not link_type:
+            return []
         project_name = self.project_name
         folder_entity = self.current_folder_entity
         if not folder_entity:
             return []
         links = get_folder_links(
-            project_name, folder_entity["id"], link_direction="in"
+            project_name,
+            folder_entity["id"], link_types=[link_type], link_direction="in"
         )
         linked_folder_ids = {
             link["entityId"]
@@ -1429,10 +1427,27 @@ class PlaceholderLoadMixin(object):
 
         builder_type_enum_items = [
             {"label": "Current folder", "value": "context_folder"},
-            # TODO implement linked folders
-            # {"label": "Linked folders", "value": "linked_folders"},
+            {"label": "Linked folders", "value": "linked_folders"},
             {"label": "All folders", "value": "all_folders"},
         ]
+
+        link_types = ayon_api.get_link_types(self.builder.project_name)
+
+        # Filter link types for folder to folder links
+        link_types_enum_items = [
+            {"label": link_type["name"], "value": link_type["linkType"]}
+            for link_type in link_types
+            if (
+                    link_type["inputType"] == "folder"
+                    and link_type["outputType"] == "folder"
+            )
+        ]
+
+        if not link_types_enum_items:
+            link_types_enum_items.append(
+                {"label": "<No link types>", "value": None}
+            )
+
         build_type_label = "Folder Builder Type"
         build_type_help = (
             "Folder Builder Type\n"
@@ -1460,6 +1475,16 @@ class PlaceholderLoadMixin(object):
                 default=options.get("builder_type"),
                 items=builder_type_enum_items,
                 tooltip=build_type_help
+            ),
+            attribute_definitions.EnumDef(
+                "link_type",
+                label="Link Type",
+                items=link_types_enum_items,
+                tooltip=(
+                    "Link Type\n"
+                    "\nDefines what type of link will be used to"
+                    " link the asset to the current folder."
+                )
             ),
             attribute_definitions.EnumDef(
                 "product_type",
@@ -1607,10 +1632,7 @@ class PlaceholderLoadMixin(object):
 
         builder_type = placeholder.data["builder_type"]
         folder_ids = []
-        if builder_type == "context_folder":
-            folder_ids = [current_folder_entity["id"]]
-
-        elif builder_type == "all_folders":
+        if builder_type == "all_folders":
             folder_ids = {
                 folder_entity["id"]
                 for folder_entity in get_folders(
@@ -1619,6 +1641,23 @@ class PlaceholderLoadMixin(object):
                     fields={"id"}
                 )
             }
+
+        elif builder_type == "context_folder":
+            folder_ids = [current_folder_entity["id"]]
+
+        elif builder_type == "linked_folders":
+            # link type from placeholder data or default to "template"
+            link_type = placeholder.data.get("link_type", "template")
+            # Get all linked folders for the current folder
+            if hasattr(self, "builder") and isinstance(
+                    self.builder, AbstractTemplateBuilder):
+                # self.builder: AbstractTemplateBuilder
+                folder_ids = [
+                    linked_folder_entity["id"]
+                    for linked_folder_entity in (
+                        self.builder.get_linked_folder_entities(
+                            link_type=link_type))
+                ]
 
         if not folder_ids:
             return []
