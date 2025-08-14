@@ -1,8 +1,6 @@
 import uuid
 from qtpy import QtGui, QtCore
 
-from ayon_core.pipeline import discover_legacy_creator_plugins
-
 from . constants import (
     PRODUCT_TYPE_ROLE,
     ITEM_ID_ROLE

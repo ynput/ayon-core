@@ -15,7 +15,6 @@ from ayon_core.pipeline import (
 )
 from ayon_core.pipeline.create import (
     PRODUCT_NAME_ALLOWED_SYMBOLS,
-    legacy_create,
     CreatorError,
 )
 
