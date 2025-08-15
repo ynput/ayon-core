@@ -3,26 +3,21 @@ from __future__ import annotations
 import os
 import logging
 import contextlib
-from abc import ABC, abstractmethod
-from dataclasses import dataclass
 import typing
 from typing import Optional, Any
+from dataclasses import dataclass
 
 import ayon_api
 
 from ayon_core.lib import emit_event
 
 from .constants import ContextChangeReason
+from .abstract import AbstractHost
 
 if typing.TYPE_CHECKING:
     from ayon_core.pipeline import Anatomy
 
-    from typing import TypedDict
-
-    class HostContextData(TypedDict):
-        project_name: str
-        folder_path: Optional[str]
-        task_name: Optional[str]
+    from .typing import HostContextData
 
 
 @dataclass
@@ -34,7 +29,7 @@ class ContextChangeData:
     anatomy: Anatomy
 
 
-class HostBase(ABC):
+class HostBase(AbstractHost):
     """Base of host implementation class.
 
     Host is pipeline implementation of DCC application. This class should help

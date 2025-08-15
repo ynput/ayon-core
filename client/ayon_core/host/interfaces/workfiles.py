@@ -15,6 +15,7 @@ import arrow
 
 from ayon_core.lib import emit_event
 from ayon_core.settings import get_project_settings
+from ayon_core.host.abstract import AbstractHost
 from ayon_core.host.constants import ContextChangeReason
 
 if typing.TYPE_CHECKING:
@@ -821,7 +822,7 @@ class PublishedWorkfileInfo:
         return PublishedWorkfileInfo(**data)
 
 
-class IWorkfileHost:
+class IWorkfileHost(AbstractHost):
     """Implementation requirements to be able to use workfiles utils and tool.
 
     Some of the methods are pre-implemented as they generally do the same in
