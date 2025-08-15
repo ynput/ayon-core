@@ -2,7 +2,7 @@ from .constants import ContextChangeReason
 from .abstract import AbstractHost
 from .host import (
     HostBase,
-    HostContextData,
+    ContextChangeData,
 )
 
 from .interfaces import (
@@ -23,7 +23,7 @@ __all__ = (
     "AbstractHost",
 
     "HostBase",
-    "HostContextData",
+    "ContextChangeData",
 
     "IWorkfileHost",
     "WorkfileInfo",
