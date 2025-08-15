@@ -64,7 +64,6 @@ class CreateHeroVersion(load.ProductLoaderPlugin):
         )
         msgBox.exec_()
 
-
     def load(self, context, name=None, namespace=None, options=None) -> None:
         """Load hero version from context (dict as in context.py)."""
         success = True
@@ -168,7 +167,9 @@ class CreateHeroVersion(load.ProductLoaderPlugin):
         for repre_id in filtered_repre_ids:
             published_repres.pop(repre_id, None)
         if not published_repres:
-            raise RuntimeError("All published representations were filtered by name.")
+            raise RuntimeError(
+                "All published representations were filtered by name."
+            )
 
         if src_version_entity is None:
             src_version_entity = self.version_from_representations(
@@ -266,15 +267,18 @@ class CreateHeroVersion(load.ProductLoaderPlugin):
                     shutil.rmtree(_backup_hero_publish_dir)
                     backup_hero_publish_dir = _backup_hero_publish_dir
                     break
-                except Exception:
-                    _backup_hero_publish_dir = backup_hero_publish_dir + str(idx)
+                except Exception as exc:
+                    _backup_hero_publish_dir = (
+                        backup_hero_publish_dir + str(idx)
+                    )
                     if not os.path.exists(_backup_hero_publish_dir):
                         backup_hero_publish_dir = _backup_hero_publish_dir
                         break
                     if idx > max_idx:
                         raise AssertionError(
-                            f"Backup folders are fully occupied to max index {max_idx}"
-                        )
+                            "Backup folders are fully occupied to max index "
+                            f"{max_idx}"
+                        ) from exc
                     idx += 1
             try:
                 os.rename(hero_publish_dir, backup_hero_publish_dir)
@@ -324,13 +328,16 @@ class CreateHeroVersion(load.ProductLoaderPlugin):
                         f"Single published file: {mapped_published_file} -> "
                         f"{template_filled}"
                     )
-                    # src_to_dst_file_paths being wrong
                 else:
                     collections, remainders = clique.assemble(published_files)
                     if remainders or not collections or len(collections) > 1:
                         raise Exception(
-                            "Integrity error. Files of published representation is "
-                            "combination of frame collections and single files.")
+                            (
+                                "Integrity error. Files of published "
+                                "representation is combination of frame "
+                                "collections and single files."
+                            )
+                        )
                     src_col = collections[0]
                     frame_splitter = "_-_FRAME_SPLIT_-_"
                     anatomy_data["frame"] = frame_splitter
