@@ -114,13 +114,6 @@ class HostBase(AbstractHost):
             self._log = logging.getLogger(self.__class__.__name__)
         return self._log
 
-    @property
-    @abstractmethod
-    def name(self) -> str:
-        """Host name."""
-
-        pass
-
     def get_current_project_name(self):
         """
         Returns:
