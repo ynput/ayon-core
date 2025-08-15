@@ -1,7 +1,7 @@
 import ayon_api
 
 from ayon_core.lib.events import QueuedEventSystem
-from ayon_core.host import HostBase
+from ayon_core.host import ILoadHost
 from ayon_core.pipeline import (
     registered_host,
     get_current_context,
@@ -35,7 +35,7 @@ class SceneInventoryController:
         self._projects_model = ProjectsModel(self)
         self._event_system = self._create_event_system()
 
-    def get_host(self) -> HostBase:
+    def get_host(self) -> ILoadHost:
         return self._host
 
     def emit_event(self, topic, data=None, source=None):

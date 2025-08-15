@@ -49,15 +49,12 @@ from .creator_plugins import (
     discover_convertor_plugins,
 )
 if typing.TYPE_CHECKING:
-    from ayon_core.host import HostBase
     from ayon_core.lib import AbstractAttrDef
     from ayon_core.lib.events import EventCallback, Event
 
     from .structures import CreatedInstance
     from .creator_plugins import BaseCreator
 
-    class PublishHost(HostBase, IPublishHost):
-        pass
 
 # Import of functions and classes that were moved to different file
 # TODO Should be removed in future release - Added 24/08/28, 0.4.3-dev.1
@@ -163,7 +160,7 @@ class CreateContext:
             context which should be handled by host.
 
     Args:
-        host (PublishHost): Host implementation which handles implementation
+        host (IPublishHost): Host implementation which handles implementation
             and global metadata.
         headless (bool): Context is created out of UI (Current not used).
         reset (bool): Reset context on initialization.
@@ -173,7 +170,7 @@ class CreateContext:
 
     def __init__(
         self,
-        host: "PublishHost",
+        host: IPublishHost,
         headless: bool = False,
         reset: bool = True,
         discover_publish_plugins: bool = True,
