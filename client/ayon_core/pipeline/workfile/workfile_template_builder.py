@@ -30,7 +30,7 @@ from ayon_api import (
 )
 
 from ayon_core.settings import get_project_settings
-from ayon_core.host import IWorkfileHost, HostBase
+from ayon_core.host import IWorkfileHost, AbstractHost
 from ayon_core.lib import (
     Logger,
     StringTemplate,
@@ -127,7 +127,7 @@ class AbstractTemplateBuilder(ABC):
     placeholder population.
 
     Args:
-        host (Union[HostBase, ModuleType]): Implementation of host.
+        host (Union[AbstractHost, ModuleType]): Implementation of host.
     """
 
     _log = None
@@ -135,7 +135,7 @@ class AbstractTemplateBuilder(ABC):
 
     def __init__(self, host):
         # Get host name
-        if isinstance(host, HostBase):
+        if isinstance(host, AbstractHost):
             host_name = host.name
         else:
             host_name = os.environ.get("AYON_HOST_NAME")
@@ -163,24 +163,24 @@ class AbstractTemplateBuilder(ABC):
 
     @property
     def project_name(self):
-        if isinstance(self._host, HostBase):
+        if isinstance(self._host, AbstractHost):
             return self._host.get_current_project_name()
         return os.getenv("AYON_PROJECT_NAME")
 
     @property
     def current_folder_path(self):
-        if isinstance(self._host, HostBase):
+        if isinstance(self._host, AbstractHost):
             return self._host.get_current_folder_path()
         return os.getenv("AYON_FOLDER_PATH")
 
     @property
     def current_task_name(self):
-        if isinstance(self._host, HostBase):
+        if isinstance(self._host, AbstractHost):
             return self._host.get_current_task_name()
         return os.getenv("AYON_TASK_NAME")
 
     def get_current_context(self):
-        if isinstance(self._host, HostBase):
+        if isinstance(self._host, AbstractHost):
             return self._host.get_current_context()
         return {
             "project_name": self.project_name,
@@ -256,7 +256,7 @@ class AbstractTemplateBuilder(ABC):
         """Access to host implementation.
 
         Returns:
-            Union[HostBase, ModuleType]: Implementation of host.
+            Union[AbstractHost, ModuleType]: Implementation of host.
         """
 
         return self._host

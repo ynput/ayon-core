@@ -26,7 +26,7 @@ class ILoadHost(AbstractHost):
         loading. Checks only existence of methods.
 
         Args:
-            Union[ModuleType, HostBase]: Object of host where to look for
+            Union[ModuleType, AbstractHost]: Object of host where to look for
                 required methods.
 
         Returns:
@@ -48,7 +48,7 @@ class ILoadHost(AbstractHost):
         """Validate implemented methods of "old type" host for load workflow.
 
         Args:
-            Union[ModuleType, HostBase]: Object of host to validate.
+            Union[ModuleType, AbstractHost]: Object of host to validate.
 
         Raises:
             MissingMethodsError: If there are missing methods on host
@@ -101,7 +101,7 @@ class IPublishHost(AbstractHost):
         new publish creation. Checks only existence of methods.
 
         Args:
-            Union[ModuleType, HostBase]: Host module where to look for
+            Union[ModuleType, AbstractHost]: Host module where to look for
                 required methods.
 
         Returns:
@@ -129,7 +129,7 @@ class IPublishHost(AbstractHost):
         """Validate implemented methods of "old type" host.
 
         Args:
-            Union[ModuleType, HostBase]: Host module to validate.
+            Union[ModuleType, AbstractHost]: Host module to validate.
 
         Raises:
             MissingMethodsError: If there are missing methods on host
