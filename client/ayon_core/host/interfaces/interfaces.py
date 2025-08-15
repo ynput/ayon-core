@@ -1,9 +1,11 @@
 from abc import abstractmethod
 
+from ayon_core.host.abstract import AbstractHost
+
 from .exceptions import MissingMethodsError
 
 
-class ILoadHost:
+class ILoadHost(AbstractHost):
     """Implementation requirements to be able use reference of representations.
 
     The load plugins can do referencing even without implementation of methods
@@ -83,7 +85,7 @@ class ILoadHost:
         return self.get_containers()
 
 
-class IPublishHost:
+class IPublishHost(AbstractHost):
     """Functions related to new creation system in new publisher.
 
     New publisher is not storing information only about each created instance
