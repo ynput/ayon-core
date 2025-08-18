@@ -22,6 +22,7 @@ from ayon_core.lib import (
     source_hash,
 )
 from ayon_core.lib.file_transaction import FileTransaction
+from ayon_core.pipeline.thumbnails import get_thumbnail_path
 from ayon_core.settings import get_project_settings
 from ayon_core.pipeline import Anatomy
 from ayon_core.pipeline.version_start import get_versioning_start
@@ -1150,36 +1151,27 @@ class ProjectPushItemProcess:
             )
 
     def _copy_version_thumbnail(self):
-        version_thumbnail = ayon_api.get_version_thumbnail(
-            self._item.src_project_name, self._src_version_entity["id"])
-        if not version_thumbnail or not version_thumbnail.id:
+        thumbnail_id = self._src_version_entity["thumbnailId"]
+        if not thumbnail_id:
             return
-
-        temp_file_name = None
-        try:
-            with tempfile.NamedTemporaryFile(mode='w+b', delete=False) as fp:
-                fp.write(version_thumbnail.content)
-                temp_file_name = fp.name
-
-            new_thumbnail_id = ayon_api.create_thumbnail(
-                self._item.dst_project_name,
-                temp_file_name
-            )
-
-            task_id = None
-            if self._task_info:
-                task_id = self._task_info["id"]
-
-            self._operations.update_version(
-                project_name=self._item.dst_project_name,
-                version_id=self._version_entity["id"],
-                task_id=task_id,
-                thumbnail_id=new_thumbnail_id
-            )
-            self._operations.commit()
-        finally:
-            if temp_file_name and os.path.exists(temp_file_name):
-                os.remove(temp_file_name)
+        path = get_thumbnail_path(
+            self._item.src_project_name,
+            "version",
+            self._src_version_entity["id"],
+            thumbnail_id
+        )
+        if not path:
+            return
+        new_thumbnail_id = ayon_api.create_thumbnail(
+            self._item.dst_project_name,
+            path
+        )
+        self._operations.update_version(
+            project_name=self._item.dst_project_name,
+            version_id=self._version_entity["id"],
+            thumbnail_id=new_thumbnail_id
+        )
+        self._operations.commit()
 
 
 class IntegrateModel:
