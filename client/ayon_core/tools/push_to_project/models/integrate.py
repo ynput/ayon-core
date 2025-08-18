@@ -1153,7 +1153,7 @@ class ProjectPushItemProcess:
                 {"active": False}
             )
 
-    def _copy_version_thumbnail(self):
+    def _copy_version_thumbnail(self) -> Optional[str]:
         thumbnail_id = self._src_version_entity["thumbnailId"]
         if not thumbnail_id:
             return None
