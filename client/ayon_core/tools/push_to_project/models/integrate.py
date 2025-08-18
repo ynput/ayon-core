@@ -484,7 +484,6 @@ class ProjectPushItemProcess:
             self._make_sure_version_exists()
             self._log_info("Prerequirements were prepared")
             self._integrate_representations()
-            self._copy_version_thumbnail()
             self._log_info("Integration finished")
 
         except PushToProjectError as exc:
@@ -918,14 +917,19 @@ class ProjectPushItemProcess:
                     task_name=self._task_info["name"],
                     task_type=self._task_info["taskType"],
                     product_type=product_type,
-                    product_name=product_entity["name"]
+                    product_name=product_entity["name"],
                 )
 
         existing_version_entity = ayon_api.get_version_by_name(
             project_name, version, product_id
         )
+        thumbnail_id = self._copy_version_thumbnail()
+
         # Update existing version
         if existing_version_entity:
+            updata_data = {"attrib": dst_attrib}
+            if thumbnail_id:
+                updata_data["thumbnailId"] = thumbnail_id
             self._operations.update_entity(
                 project_name,
                 "version",
@@ -940,6 +944,7 @@ class ProjectPushItemProcess:
             version,
             product_id,
             attribs=dst_attrib,
+            thumbnail_id=thumbnail_id,
         )
         self._operations.create_entity(
             project_name, "version", version_entity
@@ -1160,17 +1165,10 @@ class ProjectPushItemProcess:
         )
         if not path:
             return
-        new_thumbnail_id = ayon_api.create_thumbnail(
+        return ayon_api.create_thumbnail(
             self._item.dst_project_name,
             path
         )
-        self._operations.update_version(
-            project_name=self._item.dst_project_name,
-            version_id=self._version_entity["id"],
-            task_id=self._version_entity.get("taskId"),
-            thumbnail_id=new_thumbnail_id
-        )
-        self._operations.commit()
 
 
 class IntegrateModel:
