@@ -99,8 +99,7 @@ class PushToContextSelectWindow(QtWidgets.QWidget):
 
         header_layout = QtWidgets.QHBoxLayout(header_widget)
         header_layout.setContentsMargins(0, 0, 0, 0)
-        header_layout.addWidget(header_label)
-        header_layout.addStretch(1)
+        header_layout.addWidget(header_label, 1)
         header_layout.addWidget(library_only_label, 0)
         header_layout.addWidget(library_only_checkbox, 0)
 
