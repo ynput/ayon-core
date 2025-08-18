@@ -44,7 +44,6 @@ class PushToLibraryProject(load.ProductLoaderPlugin):
         version_id = context["version"]["id"]
 
         args = get_ayon_launcher_args(
-            "run",
             push_tool_script_path,
             "--project", project_name,
             "--version", version_id
