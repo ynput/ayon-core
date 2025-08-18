@@ -331,7 +331,7 @@ class PushToContextSelectWindow(QtWidgets.QWidget):
         self._main_thread_timer = main_thread_timer
         self._main_thread_timer_can_stop = True
         self._last_submit_message = None
-        self._process_item_id = None
+        self._process_item_ids = []
 
         self._variant_is_valid = None
         self._folder_is_valid = None
@@ -342,17 +342,17 @@ class PushToContextSelectWindow(QtWidgets.QWidget):
         overlay_try_btn.setVisible(False)
 
     # Support of public api function of controller
-    def set_source(self, project_name, version_id):
+    def set_source(self, project_name, version_ids):
         """Set source project and version.
 
         Call the method on controller.
 
         Args:
             project_name (Union[str, None]): Name of project.
-            version_id (Union[str, None]): Version id.
+            version_id (Union[str, None]): Version ids.
         """
 
-        self._controller.set_source(project_name, version_id)
+        self._controller.set_source(project_name, version_ids)
 
     def showEvent(self, event):
         super(PushToContextSelectWindow, self).showEvent(event)
@@ -528,31 +528,45 @@ class PushToContextSelectWindow(QtWidgets.QWidget):
             self._overlay_label.setText(self._last_submit_message)
             self._last_submit_message = None
 
-        process_status = self._controller.get_process_item_status(
-            self._process_item_id
-        )
-        push_failed = process_status["failed"]
-        fail_traceback = process_status["full_traceback"]
+        failed_pushes = []
+        fail_tracebacks = []
+        for process_item_id in self._process_item_ids:
+            process_status = self._controller.get_process_item_status(
+                process_item_id
+            )
+            if process_status["failed"]:
+                failed_pushes.append(process_status)
+        # push_failed = process_status["failed"]
+        # fail_traceback = process_status["full_traceback"]
         if self._main_thread_timer_can_stop:
             self._main_thread_timer.stop()
             self._overlay_close_btn.setVisible(True)
-            if push_failed:
+            if failed_pushes:
                 self._overlay_try_btn.setVisible(True)
-                if fail_traceback:
+                fail_tracebacks = [
+                    process_status["full_traceback"]
+                    for process_status in failed_pushes
+                    if process_status["full_traceback"]
+                ]
+                if fail_tracebacks:
                     self._show_detail_btn.setVisible(True)
 
-        if push_failed:
-            reason = process_status["fail_reason"]
-            if fail_traceback:
+        if failed_pushes:
+            reasons = [
+                process_status["fail_reason"]
+                for process_status in failed_pushes
+            ]
+            if fail_tracebacks:
+                reason = "\n".join(reasons)
                 message = (
                     "Unhandled error happened."
                     " Check error detail for more information."
                 )
                 self._error_detail_dialog.set_detail(
-                    reason, fail_traceback
+                    reason, "\n".join(fail_tracebacks)
                 )
             else:
-                message = f"Push Failed:\n{reason}"
+                message = f"Push Failed:\n{reasons}"
 
             self._overlay_label.setText(message)
             set_style_property(self._overlay_close_btn, "state", "error")

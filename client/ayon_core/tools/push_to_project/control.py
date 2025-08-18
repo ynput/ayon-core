@@ -27,11 +27,11 @@ class PushToContextController:
         self._user_values = UserPublishValuesModel(self)
 
         self._src_project_name = None
-        self._src_version_id = None
+        self._src_version_ids = []
         self._src_folder_entity = None
         self._src_folder_task_entities = {}
-        self._src_product_entity = None
-        self._src_version_entity = None
+        self._src_product_entities = []
+        self._src_version_entities = []
         self._src_label = None
 
         self._submission_enabled = False
@@ -54,38 +54,43 @@ class PushToContextController:
     def register_event_callback(self, topic, callback):
         self._event_system.add_callback(topic, callback)
 
-    def set_source(self, project_name, version_id):
+    def set_source(self, project_name, version_ids):
         """Set source project and version.
 
         Args:
             project_name (Union[str, None]): Source project name.
-            version_id (Union[str, None]): Source version id.
+            version_id (Union[str, None]): Comma separated source version ids.
         """
 
         if (
             project_name == self._src_project_name
-            and version_id == self._src_version_id
+            and version_ids == self._src_version_ids
         ):
             return
 
         self._src_project_name = project_name
-        self._src_version_id = version_id
+        self._src_version_ids = version_ids.split(",")
         self._src_label = None
         folder_entity = None
         task_entities = {}
-        product_entity = None
-        version_entity = None
-        if project_name and version_id:
-            version_entity = ayon_api.get_version_by_id(
-                project_name, version_id
+        product_entities = None
+        version_entities = None
+        if project_name and self._src_version_ids:
+            version_entities = list(ayon_api.get_versions(
+                project_name, version_ids=self._src_version_ids))
+
+        if version_entities:
+            product_ids = [
+                version_entity["productId"]
+                for version_entity in version_entities
+            ]
+            product_entities = list(ayon_api.get_products(
+                project_name, product_ids=product_ids)
             )
 
-        if version_entity:
-            product_entity = ayon_api.get_product_by_id(
-                project_name, version_entity["productId"]
-            )
-
-        if product_entity:
+        if product_entities:
+            # all products for same folder
+            product_entity = product_entities[0]
             folder_entity = ayon_api.get_folder_by_id(
                 project_name, product_entity["folderId"]
             )
@@ -100,15 +105,15 @@ class PushToContextController:
 
         self._src_folder_entity = folder_entity
         self._src_folder_task_entities = task_entities
-        self._src_product_entity = product_entity
-        self._src_version_entity = version_entity
-        if folder_entity:
+        self._src_product_entities = product_entities
+        self._src_version_entities = version_entities
+        if folder_entity and len(list(version_entities)) == 1:
             self._user_values.set_new_folder_name(folder_entity["name"])
             variant = self._get_src_variant()
             if variant:
                 self._user_values.set_variant(variant)
 
-            comment = version_entity["attrib"].get("comment")
+            comment = version_entities[0]["attrib"].get("comment")
             if comment:
                 self._user_values.set_comment(comment)
 
@@ -116,7 +121,7 @@ class PushToContextController:
             "source.changed",
             {
                 "project_name": project_name,
-                "version_id": version_id
+                "version_ids": self._src_version_ids
             }
         )
 
@@ -179,29 +184,32 @@ class PushToContextController:
         if self._process_thread is not None:
             return
 
-        item_id = self._integrate_model.create_process_item(
-            self._src_project_name,
-            self._src_version_id,
-            self._selection_model.get_selected_project_name(),
-            self._selection_model.get_selected_folder_id(),
-            self._selection_model.get_selected_task_name(),
-            self._user_values.variant,
-            comment=self._user_values.comment,
-            new_folder_name=self._user_values.new_folder_name,
-            dst_version=1
-        )
+        item_ids = []
+        for src_version_entity in self._src_version_entities:
+            item_id = self._integrate_model.create_process_item(
+                self._src_project_name,
+                src_version_entity["id"],
+                self._selection_model.get_selected_project_name(),
+                self._selection_model.get_selected_folder_id(),
+                self._selection_model.get_selected_task_name(),
+                self._user_values.variant,
+                comment=self._user_values.comment,
+                new_folder_name=self._user_values.new_folder_name,
+                dst_version=1,
+            )
+            item_ids.append(item_id)
 
-        self._process_item_id = item_id
+        self._process_item_ids = item_ids
         self._emit_event("submit.started")
         if wait:
             self._submit_callback()
-            self._process_item_id = None
+            self._process_item_ids = []
             return item_id
 
         thread = threading.Thread(target=self._submit_callback)
         self._process_thread = thread
         thread.start()
-        return item_id
+        return item_ids
 
     def wait_for_process_thread(self):
         if self._process_thread is None:
@@ -210,22 +218,34 @@ class PushToContextController:
         self._process_thread = None
 
     def _prepare_source_label(self):
-        if not self._src_project_name or not self._src_version_id:
+        if not self._src_project_name or not self._src_version_ids:
             return "Source is not defined"
 
         folder_entity = self._src_folder_entity
         if not folder_entity:
             return "Source is invalid"
 
+        no_of_products = len(self._src_product_entities)
+        no_of_versions = len(self._src_version_entities)
+        if no_of_products != no_of_versions:
+            return (f"Not matching number of products {no_of_products} and "
+                    f"versions {no_of_versions}")
+
         folder_path = folder_entity["path"]
-        product_entity = self._src_product_entity
-        version_entity = self._src_version_entity
-        return "Source: {}{}/{}/v{:0>3}".format(
-            self._src_project_name,
-            folder_path,
-            product_entity["name"],
-            version_entity["version"]
-        )
+        src_labels = []
+        for idx in range(0, no_of_versions):
+            product_entity = self._src_product_entities[idx]
+            version_entity = self._src_version_entities[idx]
+            src_labels.append(
+                "Source: {}{}/{}/v{:0>3}".format(
+                    self._src_project_name,
+                    folder_path,
+                    product_entity["name"],
+                    version_entity["version"],
+                )
+            )
+
+        return "\n".join(src_labels)
 
     def _get_task_info_from_repre_entities(
         self, task_entities, repre_entities
@@ -258,8 +278,9 @@ class PushToContextController:
         return None, None
 
     def _get_src_variant(self):
+        """Could be triggered only if single version is moved."""
         project_name = self._src_project_name
-        version_entity = self._src_version_entity
+        version_entity = self._src_version_entities[0]
         task_entities = self._src_folder_task_entities
         repre_entities = ayon_api.get_representations(
             project_name, version_ids={version_entity["id"]}
@@ -269,7 +290,7 @@ class PushToContextController:
         )
 
         project_settings = get_project_settings(project_name)
-        product_type = self._src_product_entity["productType"]
+        product_type = self._src_product_entities[0]["productType"]
         template = get_product_name_template(
             self._src_project_name,
             product_type,
@@ -303,7 +324,7 @@ class PushToContextController:
             print("Failed format", exc)
             return ""
 
-        product_name = self._src_product_entity["name"]
+        product_name = self._src_product_entities[0]["name"]
         if (
             (product_s and not product_name.startswith(product_s))
             or (product_e and not product_name.endswith(product_e))
@@ -346,8 +367,6 @@ class PushToContextController:
         for process_item_id in self._process_item_ids:
             self._integrate_model.integrate_item(process_item_id)
         self._emit_event("submit.finished", {})
-        if process_item_id == self._process_item_id:
-            self._process_item_id = None
 
     def _emit_event(self, topic, data=None):
         if data is None:
