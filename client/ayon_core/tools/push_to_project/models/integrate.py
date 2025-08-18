@@ -90,6 +90,7 @@ class ProjectPushItem:
         new_folder_name,
         dst_version,
         item_id=None,
+        use_original_name=False
     ):
         if not item_id:
             item_id = uuid.uuid4().hex
@@ -104,6 +105,7 @@ class ProjectPushItem:
         self.comment = comment or ""
         self.item_id = item_id
         self._repr_value = None
+        self.use_original_name = use_original_name
 
     @property
     def _repr(self):
@@ -115,7 +117,8 @@ class ProjectPushItem:
                 str(self.dst_folder_id),
                 str(self.new_folder_name),
                 str(self.dst_task_name),
-                str(self.dst_version)
+                str(self.dst_version),
+                self.use_original_name
             ])
         return self._repr_value
 
@@ -134,6 +137,7 @@ class ProjectPushItem:
             "comment": self.comment,
             "new_folder_name": self.new_folder_name,
             "item_id": self.item_id,
+            "use_original_name": self.use_original_name
         }
 
     @classmethod
@@ -373,7 +377,7 @@ class ProjectPushRepreItem:
                 resource_files.append(ResourceFile(filepath, relative_path))
                 continue
 
-            filepath = os.path.join(src_dirpath, basename)
+            # filepath = os.path.join(src_dirpath, basename)
             frame = None
             udim = None
             for item in src_basename_regex.finditer(basename):
@@ -819,31 +823,34 @@ class ProjectPushItemProcess:
         self._template_name = template_name
 
     def _determine_product_name(self):
-        product_type = self._product_type
-        task_info = self._task_info
-        task_name = task_type = None
-        if task_info:
-            task_name = task_info["name"]
-            task_type = task_info["taskType"]
+        if self._item.use_original_name:
+            product_name = self._src_product_entity["name"]
+        else:
+            product_type = self._product_type
+            task_info = self._task_info
+            task_name = task_type = None
+            if task_info:
+                task_name = task_info["name"]
+                task_type = task_info["taskType"]
 
-        try:
-            product_name = get_product_name(
-                self._item.dst_project_name,
-                task_name,
-                task_type,
-                self.host_name,
-                product_type,
-                self._item.variant,
-                project_settings=self._project_settings
-            )
-        except TaskNotSetError:
-            self._status.set_failed(
-                "Target product name template requires task name. To continue"
-                " you have to select target task or change settings"
-                " <b>ayon+settings://core/tools/creator/product_name_profiles"
-                f"?project={self._item.dst_project_name}</b>."
-            )
-            raise PushToProjectError(self._status.fail_reason)
+            try:
+                product_name = get_product_name(
+                    self._item.dst_project_name,
+                    task_name,
+                    task_type,
+                    self.host_name,
+                    product_type,
+                    self._item.variant,
+                    project_settings=self._project_settings
+                )
+            except TaskNotSetError:
+                self._status.set_failed(
+                    "Target product name template requires task name. To "
+                    "continue you have to select target task or change settings "
+                    " <b>ayon+settings://core/tools/creator/product_name_profiles"
+                    f"?project={self._item.dst_project_name}</b>."
+                )
+                raise PushToProjectError(self._status.fail_reason)
 
         self._log_info(
             f"Push will be integrating to product with name '{product_name}'"
@@ -1137,7 +1144,7 @@ class ProjectPushItemProcess:
                         self._item.dst_project_name,
                         "representation",
                         entity_id,
-                        changes
+                        changes,
                     )
 
         existing_repre_names = set(existing_repres_by_low_name.keys())
@@ -1196,6 +1203,7 @@ class IntegrateModel:
         comment,
         new_folder_name,
         dst_version,
+        use_original_name
     ):
         """Create new item for integration.
 
@@ -1209,6 +1217,7 @@ class IntegrateModel:
             comment (Union[str, None]): Comment.
             new_folder_name (Union[str, None]): New folder name.
             dst_version (int): Destination version number.
+            use_original_name (bool): If original product names should be used
 
         Returns:
             str: Item id. The id can be used to trigger integration or get
@@ -1224,7 +1233,8 @@ class IntegrateModel:
             variant,
             comment=comment,
             new_folder_name=new_folder_name,
-            dst_version=dst_version
+            dst_version=dst_version,
+            use_original_name=use_original_name
         )
         process_item = ProjectPushItemProcess(self, item)
         self._process_items[item.item_id] = process_item
