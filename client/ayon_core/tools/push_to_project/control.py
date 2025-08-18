@@ -38,8 +38,6 @@ class PushToContextController:
         self._process_thread = None
         self._process_item_id = None
 
-        self.set_source(project_name, version_ids)
-
         self._use_original_name = False
 
     # Events system
