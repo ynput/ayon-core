@@ -373,7 +373,7 @@ def discover_loader_plugins(project_name=None):
     if not project_name:
         project_name = get_current_project_name()
     project_settings = get_project_settings(project_name)
-    plugins = discover(LoaderPlugin)
+    plugins = discover(LoaderPlugin, allow_duplicates=False)
     hooks = discover(LoaderHookPlugin)
     sorted_hooks = sorted(hooks, key=lambda hook: hook.order)
     for plugin in plugins:
