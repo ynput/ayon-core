@@ -372,7 +372,6 @@ class ProjectPushRepreItem:
                 resource_files.append(ResourceFile(filepath, relative_path))
                 continue
 
-            filepath = os.path.join(src_dirpath, basename)
             frame = None
             udim = None
             for item in src_basename_regex.finditer(basename):
