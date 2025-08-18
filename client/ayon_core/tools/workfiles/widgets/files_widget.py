@@ -287,10 +287,11 @@ class FilesWidget(QtWidgets.QWidget):
     def _update_published_btns_state(self):
         enabled = (
             self._valid_representation_id
-            and self._valid_selected_context
             and self._is_save_enabled
         )
-        self._published_btn_copy_n_open.setEnabled(enabled)
+        self._published_btn_copy_n_open.setEnabled(
+            enabled and self._valid_selected_context
+        )
         self._published_btn_change_context.setEnabled(enabled)
 
     def _update_workarea_btns_state(self):

@@ -3,24 +3,25 @@ import os
 import ayon_api
 
 from ayon_core.host import IWorkfileHost
-from ayon_core.lib import Logger
+from ayon_core.lib import Logger, get_ayon_username
 from ayon_core.lib.events import QueuedEventSystem
-from ayon_core.settings import get_project_settings
 from ayon_core.pipeline import Anatomy, registered_host
 from ayon_core.pipeline.context_tools import get_global_context
-
+from ayon_core.settings import get_project_settings
 from ayon_core.tools.common_models import (
-    HierarchyModel,
     HierarchyExpectedSelection,
+    HierarchyModel,
     ProjectsModel,
     UsersModel,
 )
 
 from .abstract import (
-    AbstractWorkfilesFrontend,
     AbstractWorkfilesBackend,
+    AbstractWorkfilesFrontend,
 )
 from .models import SelectionModel, WorkfilesModel
+
+NOT_SET = object()
 
 
 class WorkfilesToolExpectedSelection(HierarchyExpectedSelection):
@@ -143,6 +144,7 @@ class BaseWorkfileController(
         self._project_settings = None
         self._event_system = None
         self._log = None
+        self._username = NOT_SET
 
         self._current_project_name = None
         self._current_folder_path = None
@@ -587,6 +589,20 @@ class BaseWorkfileController(
             comment,
             description,
         )
+
+    def get_my_tasks_entity_ids(self, project_name: str):
+        username = self._get_my_username()
+        assignees = []
+        if username:
+            assignees.append(username)
+        return self._hierarchy_model.get_entity_ids_for_assignees(
+            project_name, assignees
+        )
+
+    def _get_my_username(self):
+        if self._username is NOT_SET:
+            self._username = get_ayon_username()
+        return self._username
 
     def _emit_event(self, topic, data=None):
         self.emit_event(topic, data, "controller")

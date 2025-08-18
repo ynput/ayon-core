@@ -42,7 +42,6 @@ class PushToContextController:
 
         self._use_original_name = False
 
-
     # Events system
     def emit_event(self, topic, data=None, source=None):
         """Use implemented event system to trigger event."""
