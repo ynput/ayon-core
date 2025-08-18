@@ -5,6 +5,7 @@ import itertools
 import sys
 import traceback
 import uuid
+from typing import Optional
 
 import ayon_api
 from ayon_api.utils import create_entity_id
