@@ -1164,7 +1164,7 @@ class ProjectPushItemProcess:
             thumbnail_id
         )
         if not path:
-            return
+            return None
         return ayon_api.create_thumbnail(
             self._item.dst_project_name,
             path
