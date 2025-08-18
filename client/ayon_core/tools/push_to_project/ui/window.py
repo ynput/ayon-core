@@ -349,7 +349,7 @@ class PushToContextSelectWindow(QtWidgets.QWidget):
 
         Args:
             project_name (Union[str, None]): Name of project.
-            version_id (Union[str, None]): Version ids.
+            version_ids (Union[str, None]): comma separated Version ids.
         """
 
         self._controller.set_source(project_name, version_ids)

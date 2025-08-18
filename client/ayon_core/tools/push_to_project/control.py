@@ -16,7 +16,7 @@ from .models import (
 
 
 class PushToContextController:
-    def __init__(self, project_name=None, version_id=None):
+    def __init__(self, project_name=None, version_ids=None):
         self._event_system = self._create_event_system()
 
         self._projects_model = ProjectsModel(self)
@@ -38,7 +38,7 @@ class PushToContextController:
         self._process_thread = None
         self._process_item_id = None
 
-        self.set_source(project_name, version_id)
+        self.set_source(project_name, version_ids)
 
         self._use_original_name = False
 
@@ -58,9 +58,10 @@ class PushToContextController:
 
         Args:
             project_name (Union[str, None]): Source project name.
-            version_id (Union[str, None]): Comma separated source version ids.
+            version_ids (Union[str, None]): Comma separated source version ids.
         """
-
+        if not project_name or not version_ids:
+            return
         if (
             project_name == self._src_project_name
             and version_ids == self._src_version_ids
