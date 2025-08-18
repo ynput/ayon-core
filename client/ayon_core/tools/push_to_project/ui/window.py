@@ -208,6 +208,10 @@ class PushToContextSelectWindow(QtWidgets.QWidget):
         show_detail_btn.setToolTip(
             "Show error detail dialog to copy full error."
         )
+        original_names_checkbox.setToolTip(
+            "Required for multi copy, doesn't allow changes in folder or "
+            "variant values."
+        )
 
         overlay_close_btn = QtWidgets.QPushButton(
             "Close", overlay_btns_widget
