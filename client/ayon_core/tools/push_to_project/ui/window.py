@@ -408,8 +408,6 @@ class PushToContextSelectWindow(QtWidgets.QWidget):
         """Change toggle state, reset filter, recalculate dropdown"""
         state = bool(state)
         self._projects_combobox.set_standard_filter_enabled(state)
-        self._projects_combobox.refresh()
-
 
     def _on_user_input_timer(self):
         folder_name_enabled = self._new_folder_name_enabled
