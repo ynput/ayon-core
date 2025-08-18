@@ -495,10 +495,26 @@ class InstanceCardWidget(CardWidget):
         self._icon_widget.setVisible(valid)
         self._context_warning.setVisible(not valid)
 
+    @staticmethod
+    def _get_card_widget_sub_label(folder_path, task_name):
+        parts = []
+        if folder_path:
+            folder_name = folder_path.split("/")[-1]
+            parts.append(f"<b>{folder_name}</b>")
+            if task_name:
+                parts.append(folder_name)
+        if not parts:
+            return None
+        sublabel = " - ".join(parts)
+        return f"<span style=\"font-size: 8pt;\">{sublabel}</span>"
+
     def _update_product_name(self):
         variant = self.instance.variant
         product_name = self.instance.product_name
         label = self.instance.label
+        folder_path = self.instance.get_folder_path()
+        task_name = self.instance.get_task_name()
+
         if (
             variant == self._last_variant
             and product_name == self._last_product_name
@@ -516,6 +532,9 @@ class InstanceCardWidget(CardWidget):
             for part in found_parts:
                 replacement = "<b>{}</b>".format(part)
                 label = label.replace(part, replacement)
+        sublabel = self._get_card_widget_sub_label(folder_path, task_name)
+        if sublabel:
+            label += f"<br/>{sublabel}"
 
         self._label_widget.setText(label)
         # HTML text will cause that label start catch mouse clicks
