@@ -40,6 +40,8 @@ class PushToContextController:
 
         self.set_source(project_name, version_id)
 
+        self._use_original_name = False
+
 
     # Events system
     def emit_event(self, topic, data=None, source=None):
@@ -315,6 +317,8 @@ class PushToContextController:
         return product_name
 
     def _check_submit_validations(self):
+        if self._use_original_name:
+            return True
         if not self._user_values.is_valid:
             return False
 
@@ -339,10 +343,8 @@ class PushToContextController:
         )
 
     def _submit_callback(self):
-        process_item_id = self._process_item_id
-        if process_item_id is None:
-            return
-        self._integrate_model.integrate_item(process_item_id)
+        for process_item_id in self._process_item_ids:
+            self._integrate_model.integrate_item(process_item_id)
         self._emit_event("submit.finished", {})
         if process_item_id == self._process_item_id:
             self._process_item_id = None

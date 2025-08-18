@@ -133,6 +133,7 @@ class PushToContextSelectWindow(QtWidgets.QWidget):
         inputs_widget = QtWidgets.QWidget(main_splitter)
 
         new_folder_checkbox = NiceCheckbox(True, parent=inputs_widget)
+        original_names_checkbox = NiceCheckbox(False, parent=inputs_widget)
 
         folder_name_input = PlaceholderLineEdit(inputs_widget)
         folder_name_input.setPlaceholderText("< Name of new folder >")
@@ -151,6 +152,8 @@ class PushToContextSelectWindow(QtWidgets.QWidget):
         inputs_layout.addRow("Create new folder", new_folder_checkbox)
         inputs_layout.addRow("New folder name", folder_name_input)
         inputs_layout.addRow("Variant", variant_input)
+        inputs_layout.addRow(
+            "Use original product names", original_names_checkbox)
         inputs_layout.addRow("Comment", comment_input)
 
         main_splitter.addWidget(context_widget)
@@ -250,6 +253,8 @@ class PushToContextSelectWindow(QtWidgets.QWidget):
         variant_input.textChanged.connect(self._on_variant_change)
         comment_input.textChanged.connect(self._on_comment_change)
         library_only_checkbox.stateChanged.connect(self._on_library_only_change)
+        original_names_checkbox.stateChanged.connect(
+            self._on_original_names_change)
 
         publish_btn.clicked.connect(self._on_select_click)
         cancel_btn.clicked.connect(self._on_close_click)
@@ -408,8 +413,15 @@ class PushToContextSelectWindow(QtWidgets.QWidget):
         """Change toggle state, reset filter, recalculate dropdown"""
         state = bool(state)
         self._projects_combobox.set_standard_filter_enabled(state)
-        self._projects_combobox.refresh()
 
+    def _on_original_names_change(self, state: int) -> None:
+        use_original_name = bool(state)
+        self._new_folder_name_enabled = not use_original_name
+        self._new_folder_checkbox.setEnabled(not use_original_name)
+        self._folder_name_input.setEnabled(not use_original_name)
+        self._variant_input.setEnabled(not use_original_name)
+        self._controller._use_original_name = use_original_name
+        self.refresh()
 
     def _on_user_input_timer(self):
         folder_name_enabled = self._new_folder_name_enabled
@@ -466,6 +478,8 @@ class PushToContextSelectWindow(QtWidgets.QWidget):
         self._header_label.setText(self._controller.get_source_label())
 
     def _invalidate_new_folder_name(self, folder_name, is_valid):
+        if self._controller._use_original_name:
+            is_valid = True
         self._tasks_widget.setVisible(folder_name is None)
         if self._folder_is_valid is is_valid:
             return
@@ -478,6 +492,8 @@ class PushToContextSelectWindow(QtWidgets.QWidget):
         )
 
     def _invalidate_variant(self, is_valid):
+        if self._controller._use_original_name:
+            is_valid = True
         if self._variant_is_valid is is_valid:
             return
         self._variant_is_valid = is_valid
