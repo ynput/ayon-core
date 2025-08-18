@@ -5,6 +5,7 @@ import itertools
 import sys
 import traceback
 import uuid
+from typing import Optional
 
 import ayon_api
 from ayon_api.utils import create_entity_id
@@ -1160,10 +1161,10 @@ class ProjectPushItemProcess:
                 {"active": False}
             )
 
-    def _copy_version_thumbnail(self):
+    def _copy_version_thumbnail(self) -> Optional[str]:
         thumbnail_id = self._src_version_entity["thumbnailId"]
         if not thumbnail_id:
-            return
+            return None
         path = get_thumbnail_path(
             self._item.src_project_name,
             "version",
@@ -1171,7 +1172,7 @@ class ProjectPushItemProcess:
             thumbnail_id
         )
         if not path:
-            return
+            return None
         return ayon_api.create_thumbnail(
             self._item.dst_project_name,
             path
