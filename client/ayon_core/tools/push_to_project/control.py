@@ -196,6 +196,7 @@ class PushToContextController:
                 comment=self._user_values.comment,
                 new_folder_name=self._user_values.new_folder_name,
                 dst_version=1,
+                use_original_name=self._use_original_name,
             )
             item_ids.append(item_id)
 
