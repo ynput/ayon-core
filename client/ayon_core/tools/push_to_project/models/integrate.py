@@ -3,7 +3,6 @@ import re
 import copy
 import itertools
 import sys
-import tempfile
 import traceback
 import uuid
 
