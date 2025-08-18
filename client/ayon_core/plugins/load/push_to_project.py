@@ -6,8 +6,8 @@ from ayon_core.pipeline import load
 from ayon_core.pipeline.load import LoadError
 
 
-class PushToLibraryProject(load.ProductLoaderPlugin):
-    """Export selected versions to folder structure from Template"""
+class PushToProject(load.ProductLoaderPlugin):
+    """Export selected versions to different project"""
 
     is_multiple_contexts_compatible = True
 
