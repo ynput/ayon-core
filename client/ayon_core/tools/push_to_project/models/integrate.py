@@ -1169,6 +1169,7 @@ class ProjectPushItemProcess:
         self._operations.update_version(
             project_name=self._item.dst_project_name,
             version_id=self._version_entity["id"],
+            task_id=self._version_entity.get("taskId"),
             thumbnail_id=new_thumbnail_id
         )
         self._operations.commit()
