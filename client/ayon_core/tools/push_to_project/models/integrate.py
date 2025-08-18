@@ -1156,7 +1156,7 @@ class ProjectPushItemProcess:
     def _copy_version_thumbnail(self):
         thumbnail_id = self._src_version_entity["thumbnailId"]
         if not thumbnail_id:
-            return
+            return None
         path = get_thumbnail_path(
             self._item.src_project_name,
             "version",
