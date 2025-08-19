@@ -399,7 +399,11 @@ class ActionsModel:
             return cache.get_data()
 
         try:
-            response = ayon_api.post("actions/list", **request_data)
+            # 'variant' query is supported since AYON backend 1.10.4
+            query = urlencode({"variant": self._variant})
+            response = ayon_api.post(
+                f"actions/list?{query}", **request_data
+            )
             response.raise_for_status()
         except Exception:
             self.log.warning("Failed to collect webactions.", exc_info=True)
@@ -513,7 +517,12 @@ class ActionsModel:
                 uri = payload["uri"]
             else:
                 uri = data["uri"]
-            run_detached_ayon_launcher_process(uri)
+
+            # Remove bundles from environment variables
+            env = os.environ.copy()
+            env.pop("AYON_BUNDLE_NAME", None)
+            env.pop("AYON_STUDIO_BUNDLE_NAME", None)
+            run_detached_ayon_launcher_process(uri, env=env)
 
         elif response_type in ("query", "navigate"):
             response.error_message = (
