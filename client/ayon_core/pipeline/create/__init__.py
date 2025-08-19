@@ -46,9 +46,6 @@ from .creator_plugins import (
     AutoCreator,
     HiddenCreator,
 
-    discover_legacy_creator_plugins,
-    get_legacy_creator_by_name,
-
     discover_creator_plugins,
     register_creator_plugin,
     deregister_creator_plugin,
@@ -59,11 +56,6 @@ from .creator_plugins import (
 )
 
 from .context import CreateContext
-
-from .legacy_create import (
-    LegacyCreator,
-    legacy_create,
-)
 
 
 __all__ = (
@@ -109,9 +101,6 @@ __all__ = (
     "AutoCreator",
     "HiddenCreator",
 
-    "discover_legacy_creator_plugins",
-    "get_legacy_creator_by_name",
-
     "discover_creator_plugins",
     "register_creator_plugin",
     "deregister_creator_plugin",
@@ -121,7 +110,4 @@ __all__ = (
     "cache_and_get_instances",
 
     "CreateContext",
-
-    "LegacyCreator",
-    "legacy_create",
 )
