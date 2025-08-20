@@ -69,7 +69,7 @@ class PushToContextController:
             return
 
         self._src_project_name = project_name
-        self._src_version_ids = version_ids.split(",")
+        self._src_version_ids = version_ids
         self._src_label = None
         folder_entity = None
         task_entities = {}
