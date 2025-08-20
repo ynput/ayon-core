@@ -105,7 +105,7 @@ class PushToContextController:
         self._src_folder_entity = folder_entity
         self._src_folder_task_entities = task_entities
         self._src_version_entities = version_entities
-        if folder_entity and len(list(version_entities)) == 1:
+        if folder_entity:
             self._user_values.set_new_folder_name(folder_entity["name"])
             variant = self._get_src_variant()
             if variant:
@@ -273,8 +273,8 @@ class PushToContextController:
         return None, None
 
     def _get_src_variant(self):
-        """Could be triggered only if single version is moved."""
         project_name = self._src_project_name
+        # parse variant only from first version
         version_entity = self._src_version_entities[0]
         task_entities = self._src_folder_task_entities
         repre_entities = ayon_api.get_representations(
