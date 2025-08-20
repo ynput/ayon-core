@@ -73,8 +73,8 @@ class PushToContextController:
         self._src_label = None
         folder_entity = None
         task_entities = {}
-        product_entities = None
-        version_entities = None
+        product_entities = []
+        version_entities = []
         if project_name and self._src_version_ids:
             version_entities = list(ayon_api.get_versions(
                 project_name, version_ids=self._src_version_ids))
