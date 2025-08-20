@@ -309,14 +309,14 @@ class LoaderController(BackendLoaderController, FrontendLoaderController):
         identifier,
         options,
         project_name,
-        version_ids,
-        representation_ids
+        entity_ids,
+        entity_type,
     ):
         if self._sitesync_model.is_sitesync_action(identifier):
             self._sitesync_model.trigger_action_item(
                 identifier,
                 project_name,
-                representation_ids
+                entity_ids,
             )
             return
 
@@ -324,8 +324,8 @@ class LoaderController(BackendLoaderController, FrontendLoaderController):
             identifier,
             options,
             project_name,
-            version_ids,
-            representation_ids
+            entity_ids,
+            entity_type,
         )
 
     # Selection model wrappers

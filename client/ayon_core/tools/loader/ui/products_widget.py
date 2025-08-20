@@ -439,9 +439,9 @@ class ProductsWidget(QtWidgets.QWidget):
         self._controller.trigger_action_item(
             action_item.identifier,
             options,
-            action_item.project_name,
-            version_ids=action_item.version_ids,
-            representation_ids=action_item.representation_ids,
+            project_name,
+            version_ids,
+            "version",
         )
 
     def _on_selection_change(self):
