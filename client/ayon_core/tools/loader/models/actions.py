@@ -145,15 +145,16 @@ class LoaderActionsModel:
             ACTIONS_MODEL_SENDER,
         )
         loader = self._get_loader_by_identifier(project_name, identifier)
-        if entity_type == "representation":
-            error_info = self._trigger_representation_loader(
+
+        if entity_type == "version":
+            error_info = self._trigger_version_loader(
                 loader,
                 options,
                 project_name,
                 entity_ids,
             )
-        elif entity_type == "version":
-            error_info = self._trigger_version_loader(
+        elif entity_type == "representation":
+            error_info = self._trigger_representation_loader(
                 loader,
                 options,
                 project_name,
@@ -277,6 +278,8 @@ class LoaderActionsModel:
         self,
         loader,
         contexts,
+        entity_ids,
+        entity_type,
         repre_name=None,
     ):
         label = self._get_action_label(loader)
@@ -284,6 +287,8 @@ class LoaderActionsModel:
             label = "{} ({})".format(label, repre_name)
         return ActionItem(
             get_loader_identifier(loader),
+            entity_ids=entity_ids,
+            entity_type=entity_type,
             label=label,
             icon=self._get_action_icon(loader),
             tooltip=self._get_action_tooltip(loader),
@@ -548,19 +553,16 @@ class LoaderActionsModel:
                 if not filtered_repre_contexts:
                     continue
 
-                repre_ids = set()
-                repre_version_ids = set()
-                repre_product_ids = set()
-                repre_folder_ids = set()
-                for repre_context in filtered_repre_contexts:
-                    repre_ids.add(repre_context["representation"]["id"])
-                    repre_product_ids.add(repre_context["product"]["id"])
-                    repre_version_ids.add(repre_context["version"]["id"])
-                    repre_folder_ids.add(repre_context["folder"]["id"])
+                repre_ids = {
+                    repre_context["representation"]["id"]
+                    for repre_context in filtered_repre_contexts
+                }
 
                 item = self._create_loader_action_item(
                     loader,
                     repre_contexts,
+                    repre_ids,
+                    "representation",
                     repre_name=repre_name,
                 )
                 action_items.append(item)
@@ -572,11 +574,14 @@ class LoaderActionsModel:
             product_ids.add(product_context["product"]["id"])
             product_folder_ids.add(product_context["folder"]["id"])
 
+        version_ids = set(version_context_by_id.keys())
         version_contexts = list(version_context_by_id.values())
         for loader in product_loaders:
             item = self._create_loader_action_item(
                 loader,
                 version_contexts,
+                version_ids,
+                "version",
             )
             action_items.append(item)
 

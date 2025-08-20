@@ -420,8 +420,9 @@ class ProductsWidget(QtWidgets.QWidget):
             if version_id is not None:
                 version_ids.add(version_id)
 
-        action_items = self._controller.get_versions_action_items(
-            project_name, version_ids)
+        action_items = self._controller.get_action_items(
+            project_name, version_ids, "version"
+        )
 
         # Prepare global point where to show the menu
         global_point = self._products_view.mapToGlobal(point)
@@ -440,8 +441,8 @@ class ProductsWidget(QtWidgets.QWidget):
             action_item.identifier,
             options,
             project_name,
-            version_ids,
-            "version",
+            action_item.entity_ids,
+            action_item.entity_type,
         )
 
     def _on_selection_change(self):

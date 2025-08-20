@@ -318,17 +318,21 @@ class ActionItem:
 
     Args:
         identifier (str): Action identifier.
+        entity_ids (set[str]): Entity ids.
+        entity_type (str): Entity type.
         label (str): Action label.
         icon (dict[str, Any]): Action icon definition.
         tooltip (str): Action tooltip.
         options (Union[list[AbstractAttrDef], list[qargparse.QArgument]]):
             Action options. Note: 'qargparse' is considered as deprecated.
         order (int): Action order.
-    """
 
+    """
     def __init__(
         self,
         identifier,
+        entity_ids,
+        entity_type,
         label,
         icon,
         tooltip,
@@ -336,6 +340,8 @@ class ActionItem:
         order,
     ):
         self.identifier = identifier
+        self.entity_ids = entity_ids
+        self.entity_type = entity_type
         self.label = label
         self.icon = icon
         self.tooltip = tooltip
@@ -362,6 +368,8 @@ class ActionItem:
         options = self._options_to_data()
         return {
             "identifier": self.identifier,
+            "entity_ids": list(self.entity_ids),
+            "entity_type": self.entity_type,
             "label": self.label,
             "icon": self.icon,
             "tooltip": self.tooltip,
@@ -375,6 +383,7 @@ class ActionItem:
         if options:
             options = deserialize_attr_defs(options)
         data["options"] = options
+        data["entity_ids"] = set(data["entity_ids"])
         return cls(**data)
 
 
