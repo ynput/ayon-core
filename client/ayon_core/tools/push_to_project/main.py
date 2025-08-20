@@ -25,7 +25,7 @@ def main(project, versions):
         versions (str): comma separated versions for same context
     """
 
-    main_show(project, versions)
+    main_show(project, versions.split(","))
 
 
 if __name__ == "__main__":
