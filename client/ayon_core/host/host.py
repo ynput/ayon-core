@@ -3,26 +3,21 @@ from __future__ import annotations
 import os
 import logging
 import contextlib
-from abc import ABC, abstractmethod
-from dataclasses import dataclass
 import typing
 from typing import Optional, Any
+from dataclasses import dataclass
 
 import ayon_api
 
 from ayon_core.lib import emit_event
 
 from .constants import ContextChangeReason
+from .abstract import AbstractHost
 
 if typing.TYPE_CHECKING:
     from ayon_core.pipeline import Anatomy
 
-    from typing import TypedDict
-
-    class HostContextData(TypedDict):
-        project_name: str
-        folder_path: Optional[str]
-        task_name: Optional[str]
+    from .typing import HostContextData
 
 
 @dataclass
@@ -34,7 +29,7 @@ class ContextChangeData:
     anatomy: Anatomy
 
 
-class HostBase(ABC):
+class HostBase(AbstractHost):
     """Base of host implementation class.
 
     Host is pipeline implementation of DCC application. This class should help
@@ -109,48 +104,41 @@ class HostBase(ABC):
 
         It is called automatically when 'ayon_core.pipeline.install_host' is
         triggered.
-        """
 
+        """
         pass
 
     @property
-    def log(self):
+    def log(self) -> logging.Logger:
         if self._log is None:
             self._log = logging.getLogger(self.__class__.__name__)
         return self._log
 
-    @property
-    @abstractmethod
-    def name(self) -> str:
-        """Host name."""
-
-        pass
-
-    def get_current_project_name(self):
+    def get_current_project_name(self) -> str:
         """
         Returns:
-            Union[str, None]: Current project name.
-        """
+            str: Current project name.
 
-        return os.environ.get("AYON_PROJECT_NAME")
+        """
+        return os.environ["AYON_PROJECT_NAME"]
 
     def get_current_folder_path(self) -> Optional[str]:
         """
         Returns:
-            Union[str, None]: Current asset name.
-        """
+            Optional[str]: Current asset name.
 
+        """
         return os.environ.get("AYON_FOLDER_PATH")
 
     def get_current_task_name(self) -> Optional[str]:
         """
         Returns:
-            Union[str, None]: Current task name.
-        """
+            Optional[str]: Current task name.
 
+        """
         return os.environ.get("AYON_TASK_NAME")
 
-    def get_current_context(self) -> "HostContextData":
+    def get_current_context(self) -> HostContextData:
         """Get current context information.
 
         This method should be used to get current context of host. Usage of
@@ -159,10 +147,10 @@ class HostBase(ABC):
         can't be caught properly.
 
         Returns:
-            Dict[str, Union[str, None]]: Context with 3 keys 'project_name',
-                'folder_path' and 'task_name'. All of them can be 'None'.
-        """
+            HostContextData: Current context with 'project_name',
+                'folder_path' and 'task_name'.
 
+        """
         return {
             "project_name": self.get_current_project_name(),
             "folder_path": self.get_current_folder_path(),
@@ -177,7 +165,7 @@ class HostBase(ABC):
         reason: ContextChangeReason = ContextChangeReason.undefined,
         project_entity: Optional[dict[str, Any]] = None,
         anatomy: Optional[Anatomy] = None,
-    ) -> "HostContextData":
+    ) -> HostContextData:
         """Set current context information.
 
         This method should be used to set current context of host. Usage of
@@ -290,7 +278,7 @@ class HostBase(ABC):
         project_name: str,
         folder_path: Optional[str],
         task_name: Optional[str],
-    ) -> "HostContextData":
+    ) -> HostContextData:
         """Emit context change event.
 
         Args:
@@ -302,7 +290,7 @@ class HostBase(ABC):
             HostContextData: Data send to context change event.
 
         """
-        data = {
+        data: HostContextData = {
             "project_name": project_name,
             "folder_path": folder_path,
             "task_name": task_name,
