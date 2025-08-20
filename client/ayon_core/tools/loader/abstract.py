@@ -970,33 +970,23 @@ class FrontendLoaderController(_BaseLoaderController):
 
     # Load action items
     @abstractmethod
-    def get_versions_action_items(self, project_name, version_ids):
+    def get_action_items(
+        self,
+        project_name: str,
+        entity_ids: set[str],
+        entity_type: str,
+    ) -> list[ActionItem]:
         """Action items for versions selection.
 
         Args:
             project_name (str): Project name.
-            version_ids (Iterable[str]): Version ids.
+            entity_ids (set[str]): Entity ids.
+            entity_type (str): Entity type.
 
         Returns:
             list[ActionItem]: List of action items.
+
         """
-
-        pass
-
-    @abstractmethod
-    def get_representations_action_items(
-        self, project_name, representation_ids
-    ):
-        """Action items for representations selection.
-
-        Args:
-            project_name (str): Project name.
-            representation_ids (Iterable[str]): Representation ids.
-
-        Returns:
-            list[ActionItem]: List of action items.
-        """
-
         pass
 
     @abstractmethod
