@@ -209,7 +209,7 @@ class PushToContextSelectWindow(QtWidgets.QWidget):
             "Show error detail dialog to copy full error."
         )
         original_names_checkbox.setToolTip(
-            "Required for multi copy, doesn't allow changes in folder or "
+            "Required for multi copy, doesn't allow changes "
             "variant values."
         )
 
@@ -420,9 +420,6 @@ class PushToContextSelectWindow(QtWidgets.QWidget):
 
     def _on_original_names_change(self, state: int) -> None:
         use_original_name = bool(state)
-        self._new_folder_name_enabled = not use_original_name
-        self._new_folder_checkbox.setEnabled(not use_original_name)
-        self._folder_name_input.setEnabled(not use_original_name)
         self._variant_input.setEnabled(not use_original_name)
         self._controller._use_original_name = use_original_name
         self.refresh()
@@ -482,8 +479,6 @@ class PushToContextSelectWindow(QtWidgets.QWidget):
         self._header_label.setText(self._controller.get_source_label())
 
     def _invalidate_new_folder_name(self, folder_name, is_valid):
-        if self._controller._use_original_name:
-            is_valid = True
         self._tasks_widget.setVisible(folder_name is None)
         if self._folder_is_valid is is_valid:
             return
