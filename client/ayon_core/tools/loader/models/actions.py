@@ -113,11 +113,11 @@ class LoaderActionsModel:
 
     def trigger_action_item(
         self,
-        identifier,
-        options,
-        project_name,
-        version_ids,
-        representation_ids
+        identifier: str,
+        options: dict[str, Any],
+        project_name: str,
+        entity_ids: set[str],
+        entity_type: str,
     ):
         """Trigger action by identifier.
 
@@ -131,10 +131,10 @@ class LoaderActionsModel:
             identifier (str): Loader identifier.
             options (dict[str, Any]): Loader option values.
             project_name (str): Project name.
-            version_ids (Iterable[str]): Version ids.
-            representation_ids (Iterable[str]): Representation ids.
-        """
+            entity_ids (set[str]): Entity ids.
+            entity_type (str): Entity type.
 
+        """
         event_data = {
             "identifier": identifier,
             "id": uuid.uuid4().hex,
@@ -145,23 +145,24 @@ class LoaderActionsModel:
             ACTIONS_MODEL_SENDER,
         )
         loader = self._get_loader_by_identifier(project_name, identifier)
-        if representation_ids is not None:
+        if entity_type == "representation":
             error_info = self._trigger_representation_loader(
                 loader,
                 options,
                 project_name,
-                representation_ids,
+                entity_ids,
             )
-        elif version_ids is not None:
+        elif entity_type == "version":
             error_info = self._trigger_version_loader(
                 loader,
                 options,
                 project_name,
-                version_ids,
+                entity_ids,
             )
         else:
             raise NotImplementedError(
-                "Invalid arguments to trigger action item")
+                f"Invalid entity type '{entity_type}' to trigger action item"
+            )
 
         event_data["error_info"] = error_info
         self._controller.emit_event(
@@ -276,11 +277,6 @@ class LoaderActionsModel:
         self,
         loader,
         contexts,
-        project_name,
-        folder_ids=None,
-        product_ids=None,
-        version_ids=None,
-        representation_ids=None,
         repre_name=None,
     ):
         label = self._get_action_label(loader)
@@ -293,11 +289,6 @@ class LoaderActionsModel:
             tooltip=self._get_action_tooltip(loader),
             options=loader.get_options(contexts),
             order=loader.order,
-            project_name=project_name,
-            folder_ids=folder_ids,
-            product_ids=product_ids,
-            version_ids=version_ids,
-            representation_ids=representation_ids,
         )
 
     def _get_loaders(self, project_name):
@@ -570,17 +561,11 @@ class LoaderActionsModel:
                 item = self._create_loader_action_item(
                     loader,
                     repre_contexts,
-                    project_name=project_name,
-                    folder_ids=repre_folder_ids,
-                    product_ids=repre_product_ids,
-                    version_ids=repre_version_ids,
-                    representation_ids=repre_ids,
                     repre_name=repre_name,
                 )
                 action_items.append(item)
 
         # Product Loaders.
-        version_ids = set(version_context_by_id.keys())
         product_folder_ids = set()
         product_ids = set()
         for product_context in version_context_by_id.values():
@@ -592,10 +577,6 @@ class LoaderActionsModel:
             item = self._create_loader_action_item(
                 loader,
                 version_contexts,
-                project_name=project_name,
-                folder_ids=product_folder_ids,
-                product_ids=product_ids,
-                version_ids=version_ids,
             )
             action_items.append(item)
 

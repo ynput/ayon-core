@@ -401,7 +401,7 @@ class RepresentationsWidget(QtWidgets.QWidget):
         self._controller.trigger_action_item(
             action_item.identifier,
             options,
-            action_item.project_name,
-            version_ids=action_item.version_ids,
-            representation_ids=action_item.representation_ids,
+            self._selected_project_name,
+            repre_ids,
+            "representation",
         )

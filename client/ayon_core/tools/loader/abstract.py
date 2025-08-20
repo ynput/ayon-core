@@ -324,11 +324,6 @@ class ActionItem:
         options (Union[list[AbstractAttrDef], list[qargparse.QArgument]]):
             Action options. Note: 'qargparse' is considered as deprecated.
         order (int): Action order.
-        project_name (str): Project name.
-        folder_ids (list[str]): Folder ids.
-        product_ids (list[str]): Product ids.
-        version_ids (list[str]): Version ids.
-        representation_ids (list[str]): Representation ids.
     """
 
     def __init__(
@@ -339,11 +334,6 @@ class ActionItem:
         tooltip,
         options,
         order,
-        project_name,
-        folder_ids,
-        product_ids,
-        version_ids,
-        representation_ids,
     ):
         self.identifier = identifier
         self.label = label
@@ -351,11 +341,6 @@ class ActionItem:
         self.tooltip = tooltip
         self.options = options
         self.order = order
-        self.project_name = project_name
-        self.folder_ids = folder_ids
-        self.product_ids = product_ids
-        self.version_ids = version_ids
-        self.representation_ids = representation_ids
 
     def _options_to_data(self):
         options = self.options
@@ -382,11 +367,6 @@ class ActionItem:
             "tooltip": self.tooltip,
             "options": options,
             "order": self.order,
-            "project_name": self.project_name,
-            "folder_ids": self.folder_ids,
-            "product_ids": self.product_ids,
-            "version_ids": self.version_ids,
-            "representation_ids": self.representation_ids,
         }
 
     @classmethod
@@ -1013,11 +993,11 @@ class FrontendLoaderController(_BaseLoaderController):
     @abstractmethod
     def trigger_action_item(
         self,
-        identifier,
-        options,
-        project_name,
-        version_ids,
-        representation_ids
+        identifier: str,
+        options: dict[str, Any],
+        project_name: str,
+        entity_ids: set[str],
+        entity_type: str,
     ):
         """Trigger action item.
 
@@ -1038,10 +1018,10 @@ class FrontendLoaderController(_BaseLoaderController):
             identifier (str): Action identifier.
             options (dict[str, Any]): Action option values from UI.
             project_name (str): Project name.
-            version_ids (Iterable[str]): Version ids.
-            representation_ids (Iterable[str]): Representation ids.
-        """
+            entity_ids (set[str]): Selected entity ids.
+            entity_type (str): Selected entity type.
 
+        """
         pass
 
     @abstractmethod
