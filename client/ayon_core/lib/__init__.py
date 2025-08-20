@@ -2,6 +2,7 @@
 # flake8: noqa E402
 """AYON lib functions."""
 
+from ._compatibility import StrEnum
 from .local_settings import (
     IniSettingRegistry,
     JSONSettingRegistry,
@@ -140,6 +141,8 @@ from .ayon_info import (
 terminal = Terminal
 
 __all__ = [
+    "StrEnum",
+
     "IniSettingRegistry",
     "JSONSettingRegistry",
     "AYONSecureRegistry",
