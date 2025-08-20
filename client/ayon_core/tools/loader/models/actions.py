@@ -434,10 +434,10 @@ class LoaderActionsModel:
                 representation contexts.
         """
 
-        product_context_by_id = {}
+        version_context_by_id = {}
         repre_context_by_id = {}
         if not project_name and not repre_ids:
-            return product_context_by_id, repre_context_by_id
+            return version_context_by_id, repre_context_by_id
 
         repre_entities = list(ayon_api.get_representations(
             project_name, representation_ids=repre_ids
@@ -468,13 +468,17 @@ class LoaderActionsModel:
 
         project_entity = ayon_api.get_project(project_name)
 
-        for product_id, product_entity in product_entities_by_id.items():
+        version_context_by_id = {}
+        for version_id, version_entity in version_entities_by_id.items():
+            product_id = version_entity["productId"]
+            product_entity = product_entities_by_id[product_id]
             folder_id = product_entity["folderId"]
             folder_entity = folder_entities_by_id[folder_id]
-            product_context_by_id[product_id] = {
+            version_context_by_id[version_id] = {
                 "project": project_entity,
                 "folder": folder_entity,
                 "product": product_entity,
+                "version": version_entity,
             }
 
         for repre_entity in repre_entities:
@@ -492,7 +496,7 @@ class LoaderActionsModel:
                 "version": version_entity,
                 "representation": repre_entity,
             }
-        return product_context_by_id, repre_context_by_id
+        return version_context_by_id, repre_context_by_id
 
     def _get_action_items_for_contexts(
         self,
