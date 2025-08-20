@@ -39,6 +39,8 @@ class PushToContextController:
         self._process_item_id = None
 
         self._use_original_name = False
+        
+        self.set_source(project_name, version_ids)
 
     # Events system
     def emit_event(self, topic, data=None, source=None):
