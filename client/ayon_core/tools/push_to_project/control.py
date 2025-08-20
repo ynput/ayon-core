@@ -58,7 +58,7 @@ class PushToContextController:
 
         Args:
             project_name (Union[str, None]): Source project name.
-            version_ids (Union[str, None]): Comma separated source version ids.
+            version_ids (Optional[list[str]]): Version ids.
         """
         if not project_name or not version_ids:
             return
