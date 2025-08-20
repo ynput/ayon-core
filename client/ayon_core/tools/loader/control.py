@@ -21,7 +21,8 @@ from ayon_core.tools.common_models import (
 from .abstract import (
     BackendLoaderController,
     FrontendLoaderController,
-    ProductTypesFilter
+    ProductTypesFilter,
+    ActionItem,
 )
 from .models import (
     SelectionModel,
@@ -287,21 +288,20 @@ class LoaderController(BackendLoaderController, FrontendLoaderController):
             project_name, product_ids, group_name
         )
 
-    def get_versions_action_items(self, project_name, version_ids):
-        return self._loader_actions_model.get_versions_action_items(
-            project_name, version_ids)
-
-    def get_representations_action_items(
-            self, project_name, representation_ids):
-        action_items = (
-            self._loader_actions_model.get_representations_action_items(
-                project_name, representation_ids)
+    def get_action_items(
+        self,
+        project_name: str,
+        entity_ids: set[str],
+        entity_type: str,
+    ) -> list[ActionItem]:
+        action_items = self._loader_actions_model.get_action_items(
+            project_name, entity_ids, entity_type
         )
-
-        action_items.extend(self._sitesync_model.get_sitesync_action_items(
-            project_name, representation_ids)
-        )
-
+        if entity_type == "representation":
+            site_sync_items = self._sitesync_model.get_sitesync_action_items(
+                project_name, entity_ids
+            )
+            action_items.extend(site_sync_items)
         return action_items
 
     def trigger_action_item(

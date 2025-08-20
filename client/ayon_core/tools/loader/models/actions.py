@@ -61,53 +61,30 @@ class LoaderActionsModel:
         self._product_loaders.reset()
         self._repre_loaders.reset()
 
-    def get_versions_action_items(self, project_name, version_ids):
-        """Get action items for given version ids.
 
-        Args:
-            project_name (str): Project name.
-            version_ids (Iterable[str]): Version ids.
+    def get_action_items(
+        self,
+        project_name: str,
+        entity_ids: set[str],
+        entity_type: str,
+    ) -> list[ActionItem]:
+        version_context_by_id = {}
+        repre_context_by_id = {}
+        if entity_type == "representation":
+            (
+                version_context_by_id,
+                repre_context_by_id
+            ) = self._contexts_for_representations(project_name, entity_ids)
 
-        Returns:
-            list[ActionItem]: List of action items.
-        """
+        if entity_type == "version":
+            (
+                version_context_by_id,
+                repre_context_by_id
+            ) = self._contexts_for_versions(project_name, entity_ids)
 
-        (
-            version_context_by_id,
-            repre_context_by_id
-        ) = self._contexts_for_versions(
-            project_name,
-            version_ids
-        )
         return self._get_action_items_for_contexts(
             project_name,
             version_context_by_id,
-            repre_context_by_id
-        )
-
-    def get_representations_action_items(
-        self, project_name, representation_ids
-    ):
-        """Get action items for given representation ids.
-
-        Args:
-            project_name (str): Project name.
-            representation_ids (Iterable[str]): Representation ids.
-
-        Returns:
-            list[ActionItem]: List of action items.
-        """
-
-        (
-            product_context_by_id,
-            repre_context_by_id
-        ) = self._contexts_for_representations(
-            project_name,
-            representation_ids
-        )
-        return self._get_action_items_for_contexts(
-            project_name,
-            product_context_by_id,
             repre_context_by_id
         )
 
