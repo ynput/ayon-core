@@ -30,7 +30,6 @@ class PushToContextController:
         self._src_version_ids = []
         self._src_folder_entity = None
         self._src_folder_task_entities = {}
-        self._src_product_entities = []
         self._src_version_entities = []
         self._src_label = None
 
@@ -105,7 +104,6 @@ class PushToContextController:
 
         self._src_folder_entity = folder_entity
         self._src_folder_task_entities = task_entities
-        self._src_product_entities = product_entities
         self._src_version_entities = version_entities
         if folder_entity and len(list(version_entities)) == 1:
             self._user_values.set_new_folder_name(folder_entity["name"])
@@ -226,17 +224,13 @@ class PushToContextController:
         if not folder_entity:
             return "Source is invalid"
 
-        no_of_products = len(self._src_product_entities)
-        no_of_versions = len(self._src_version_entities)
-        if no_of_products != no_of_versions:
-            return (f"Not matching number of products {no_of_products} and "
-                    f"versions {no_of_versions}")
-
         folder_path = folder_entity["path"]
         src_labels = []
-        for idx in range(0, no_of_versions):
-            product_entity = self._src_product_entities[idx]
-            version_entity = self._src_version_entities[idx]
+        for version_entity in self._src_version_entities:
+            product_entity = ayon_api.get_product_by_id(
+                self._src_project_name,
+                version_entity["productId"]
+            )
             src_labels.append(
                 "Source: {}{}/{}/v{:0>3}".format(
                     self._src_project_name,
@@ -289,9 +283,13 @@ class PushToContextController:
         task_name, task_type = self._get_task_info_from_repre_entities(
             task_entities, repre_entities
         )
+        product_entity = ayon_api.get_product_by_id(
+            project_name,
+            version_entity["productId"]
+        )
 
         project_settings = get_project_settings(project_name)
-        product_type = self._src_product_entities[0]["productType"]
+        product_type = product_entity["productType"]
         template = get_product_name_template(
             self._src_project_name,
             product_type,
@@ -325,7 +323,7 @@ class PushToContextController:
             print("Failed format", exc)
             return ""
 
-        product_name = self._src_product_entities[0]["name"]
+        product_name = product_entity["name"]
         if (
             (product_s and not product_name.startswith(product_s))
             or (product_e and not product_name.endswith(product_e))
