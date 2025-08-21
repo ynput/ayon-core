@@ -847,8 +847,8 @@ class ProjectPushItemProcess:
             except TaskNotSetError:
                 self._status.set_failed(
                     "Target product name template requires task name. To "
-                    "continue you have to select target task or change settings "
-                    " <b>ayon+settings://core/tools/creator/product_name_profiles"
+                    "continue you have to select target task or change settings "  # noqa: E501
+                    " <b>ayon+settings://core/tools/creator/product_name_profiles"  # noqa: E501
                     f"?project={self._item.dst_project_name}</b>."
                 )
                 raise PushToProjectError(self._status.fail_reason)
