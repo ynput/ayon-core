@@ -14,6 +14,7 @@ from ayon_core import AYON_CORE_ROOT
 from ayon_core.lib import StrEnum, Logger, AbstractAttrDef
 from ayon_core.addon import AddonsManager, IPluginPaths
 from ayon_core.settings import get_studio_settings, get_project_settings
+from ayon_core.pipeline import Anatomy
 from ayon_core.pipeline.plugin_discover import discover_plugins
 
 
@@ -293,7 +294,7 @@ class LoaderActionSelection:
         selected_ids: set[str],
         selected_type: EntityType,
         *,
-        project_anatomy: Optional["Anatomy"] = None,
+        project_anatomy: Optional[Anatomy] = None,
         project_settings: Optional[dict[str, Any]] = None,
         entities_cache: Optional[SelectionEntitiesCache] = None,
     ):
@@ -325,10 +326,8 @@ class LoaderActionSelection:
             self._project_settings = get_project_settings(self._project_name)
         return copy.deepcopy(self._project_settings)
 
-    def get_project_anatomy(self) -> dict[str, Any]:
+    def get_project_anatomy(self) -> Anatomy:
         if self._project_anatomy is None:
-            from ayon_core.pipeline import Anatomy
-
             self._project_anatomy = Anatomy(
                 self._project_name,
                 project_entity=self.get_entities_cache().get_project(),
