@@ -529,7 +529,7 @@ class PushToContextSelectWindow(QtWidgets.QWidget):
 
         failed_pushes = []
         fail_tracebacks = []
-        for process_item_id in self._process_item_ids:
+        for process_item_id in self._controller._process_item_ids:
             process_status = self._controller.get_process_item_status(
                 process_item_id
             )
