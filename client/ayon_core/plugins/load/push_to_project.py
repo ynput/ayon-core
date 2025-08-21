@@ -28,6 +28,10 @@ class PushToProject(load.ProductLoaderPlugin):
         if not filtered_contexts:
             raise LoadError("Nothing to push for your selection")
 
+        folder_ids = [context["folder"]["id"] for context in filtered_contexts]
+        if len(folder_ids) > 1:
+            raise LoadError("Please select products from single folder")
+
         push_tool_script_path = os.path.join(
             AYON_CORE_ROOT,
             "tools",
