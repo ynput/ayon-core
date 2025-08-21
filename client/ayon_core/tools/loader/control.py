@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import logging
 import uuid
+from typing import Any
 
 import ayon_api
 
@@ -297,22 +298,25 @@ class LoaderController(BackendLoaderController, FrontendLoaderController):
         action_items = self._loader_actions_model.get_action_items(
             project_name, entity_ids, entity_type
         )
-        if entity_type == "representation":
-            site_sync_items = self._sitesync_model.get_sitesync_action_items(
-                project_name, entity_ids
-            )
-            action_items.extend(site_sync_items)
+
+        site_sync_items = self._sitesync_model.get_sitesync_action_items(
+            project_name, entity_ids, entity_type
+        )
+        action_items.extend(site_sync_items)
         return action_items
 
     def trigger_action_item(
         self,
-        identifier,
-        options,
-        project_name,
-        entity_ids,
-        entity_type,
+        plugin_identifier: str,
+        identifier: str,
+        options: dict[str, Any],
+        project_name: str,
+        entity_ids: set[str],
+        entity_type: str,
+        selected_ids: set[str],
+        selected_entity_type: str,
     ):
-        if self._sitesync_model.is_sitesync_action(identifier):
+        if self._sitesync_model.is_sitesync_action(plugin_identifier):
             self._sitesync_model.trigger_action_item(
                 identifier,
                 project_name,
@@ -321,11 +325,14 @@ class LoaderController(BackendLoaderController, FrontendLoaderController):
             return
 
         self._loader_actions_model.trigger_action_item(
+            plugin_identifier,
             identifier,
             options,
             project_name,
             entity_ids,
             entity_type,
+            selected_ids,
+            selected_entity_type,
         )
 
     # Selection model wrappers
