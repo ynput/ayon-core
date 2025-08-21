@@ -97,11 +97,13 @@ class LoaderActionsModel:
                 repre_context_by_id
             ) = self._contexts_for_versions(project_name, entity_ids)
 
-        return self._get_action_items_for_contexts(
+        action_items = self._get_action_items_for_contexts(
             project_name,
             version_context_by_id,
             repre_context_by_id
         )
+        action_items.sort(key=self._actions_sorter)
+        return action_items
 
     def trigger_action_item(
         self,
@@ -706,8 +708,6 @@ class LoaderActionsModel:
                 "version",
             )
             action_items.append(item)
-
-        action_items.sort(key=self._actions_sorter)
         return action_items
 
     def _trigger_version_loader(
