@@ -349,7 +349,9 @@ class LoaderActionItem:
     entity_ids: set[str]
     entity_type: str
     label: str
+    order: int = 0
     group_label: Optional[str] = None
+    icon: Optional[dict[str, Any]] = None
     # Is filled automatically
     plugin_identifier: str = None
 
