@@ -503,10 +503,10 @@ class LoaderActionsContext:
         entity_type: EntityType,
         selection: LoaderActionSelection,
         attribute_values: dict[str, Any],
-    ) -> None:
+    ) -> Optional[LoaderActionResult]:
         plugins_by_id = self._get_plugins()
         plugin = plugins_by_id[plugin_identifier]
-        plugin.execute_action(
+        return plugin.execute_action(
             action_identifier,
             entity_ids,
             entity_type,
