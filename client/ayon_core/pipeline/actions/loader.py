@@ -480,11 +480,11 @@ class LoaderActionsContext:
         self, selection: LoaderActionSelection
     ) -> list[LoaderActionItem]:
         output = []
-        for plugin in self._get_plugins().values():
+        for plugin_id, plugin in self._get_plugins().items():
             try:
                 for action_item in plugin.get_action_items(selection):
                     if action_item.plugin_identifier is None:
-                        action_item.plugin_identifier = plugin.identifier
+                        action_item.plugin_identifier = plugin_id
                     output.append(action_item)
 
             except Exception:
