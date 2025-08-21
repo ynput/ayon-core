@@ -317,7 +317,7 @@ class ProjectPushRepreItem:
         if self._src_files is not None:
             return self._src_files, self._resource_files
 
-        repre_context = self._repre_entity["context"]
+        repre_context = self.repre_entity["context"]
         if "frame" in repre_context or "udim" in repre_context:
             src_files, resource_files = self._get_source_files_with_frames()
         else:
@@ -334,7 +334,7 @@ class ProjectPushRepreItem:
         udim_placeholder = "__udim__"
         src_files = []
         resource_files = []
-        template = self._repre_entity["attrib"]["template"]
+        template = self.repre_entity["attrib"]["template"]
         # Remove padding from 'udim' and 'frame' formatting keys
         # - "{frame:0>4}" -> "{frame}"
         for key in ("udim", "frame"):
@@ -342,7 +342,7 @@ class ProjectPushRepreItem:
             replacement = "{{{}}}".format(key)
             template = re.sub(sub_part, replacement, template)
 
-        repre_context = self._repre_entity["context"]
+        repre_context = self.repre_entity["context"]
         fill_repre_context = copy.deepcopy(repre_context)
         if "frame" in fill_repre_context:
             fill_repre_context["frame"] = frame_placeholder
@@ -363,7 +363,7 @@ class ProjectPushRepreItem:
             .replace(udim_placeholder, "(?P<udim>[0-9]+)")
         )
         src_basename_regex = re.compile("^{}$".format(src_basename))
-        for file_info in self._repre_entity["files"]:
+        for file_info in self.repre_entity["files"]:
             filepath_template = self._clean_path(file_info["path"])
             filepath = self._clean_path(
                 filepath_template.format(root=self._roots)
@@ -394,8 +394,8 @@ class ProjectPushRepreItem:
     def _get_source_files(self):
         src_files = []
         resource_files = []
-        template = self._repre_entity["attrib"]["template"]
-        repre_context = self._repre_entity["context"]
+        template = self.repre_entity["attrib"]["template"]
+        repre_context = self.repre_entity["context"]
         fill_repre_context = copy.deepcopy(repre_context)
         fill_roots = fill_repre_context["root"]
         for root_name in tuple(fill_roots.keys()):
@@ -404,7 +404,7 @@ class ProjectPushRepreItem:
                                                     fill_repre_context)
         repre_path = self._clean_path(repre_path)
         src_dirpath = os.path.dirname(repre_path)
-        for file_info in self._repre_entity["files"]:
+        for file_info in self.repre_entity["files"]:
             filepath_template = self._clean_path(file_info["path"])
             filepath = self._clean_path(
                 filepath_template.format(root=self._roots))
