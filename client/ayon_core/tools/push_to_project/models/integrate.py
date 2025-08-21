@@ -1030,7 +1030,7 @@ class ProjectPushItemProcess:
 
             if not repre_context:
                 repre_context = self._update_repre_context(
-                    repre_entity,
+                    copy.deepcopy(repre_entity),
                     formatting_data
                 )
 
