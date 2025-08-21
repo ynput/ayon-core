@@ -34,7 +34,7 @@ class PushToProject(load.ProductLoaderPlugin):
             "push_to_project",
             "main.py"
         )
-        project_name = tuple(filtered_contexts)[0]["project"]["name"]
+        project_name = filtered_contexts[0]["project"]["name"]
 
         version_ids = []
         for context in filtered_contexts:
