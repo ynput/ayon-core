@@ -380,6 +380,7 @@ class LoaderActionPlugin(ABC):
 
     """
     _log: Optional[logging.Logger] = None
+    enabled: bool = True
 
     def __init__(self, studio_settings: dict[str, Any]):
         self.apply_settings(studio_settings)
@@ -539,6 +540,9 @@ class LoaderActionsContext:
             for cls in result.plugins:
                 try:
                     plugin = cls(studio_settings)
+                    if not plugin.enabled:
+                        continue
+
                     plugin_id = plugin.identifier
                     if plugin_id not in plugins:
                         plugins[plugin_id] = plugin
