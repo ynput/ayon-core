@@ -3,6 +3,7 @@ from __future__ import annotations
 import os
 import collections
 import copy
+import logging
 from abc import ABC, abstractmethod
 from typing import Optional, Any, Callable
 from dataclasses import dataclass
@@ -377,6 +378,8 @@ class LoaderActionPlugin(ABC):
 
 
     """
+    _log: Optional[logging.Logger] = None
+
     def __init__(self, studio_settings: dict[str, Any]):
         self.apply_settings(studio_settings)
 
@@ -388,6 +391,12 @@ class LoaderActionPlugin(ABC):
 
         """
         pass
+
+    @property
+    def log(self) -> logging.Logger:
+        if self._log is None:
+            self._log = Logger.get_logger(self.__class__.__name__)
+        return self._log
 
     @property
     def identifier(self) -> str:
