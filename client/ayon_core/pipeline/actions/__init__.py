@@ -1,3 +1,13 @@
+from .loader import (
+    LoaderActionForm,
+    LoaderActionResult,
+    LoaderActionItem,
+    LoaderActionPlugin,
+    LoaderActionSelection,
+    LoaderActionsContext,
+    SelectionEntitiesCache,
+)
+
 from .launcher import (
     LauncherAction,
     LauncherActionSelection,
@@ -18,6 +28,14 @@ from .inventory import (
 
 
 __all__= (
+    "LoaderActionForm",
+    "LoaderActionResult",
+    "LoaderActionItem",
+    "LoaderActionPlugin",
+    "LoaderActionSelection",
+    "LoaderActionsContext",
+    "SelectionEntitiesCache",
+
     "LauncherAction",
     "LauncherActionSelection",
     "discover_launcher_actions",
