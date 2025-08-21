@@ -36,9 +36,10 @@ class PushToProject(load.ProductLoaderPlugin):
         )
         project_name = filtered_contexts[0]["project"]["name"]
 
-        version_ids = []
-        for context in filtered_contexts:
-            version_ids.append(context["version"]["id"])
+        version_ids = {
+            context["version"]["id"]
+            for context in filtered_contexts
+        }
 
         args = get_ayon_launcher_args(
             push_tool_script_path,
