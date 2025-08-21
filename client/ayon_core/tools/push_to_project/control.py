@@ -1,4 +1,5 @@
 import threading
+from typing import Dict
 
 import ayon_api
 
@@ -13,6 +14,7 @@ from .models import (
     UserPublishValuesModel,
     IntegrateModel,
 )
+from .models.integrate import ProjectPushItemProcess
 
 
 class PushToContextController:
@@ -171,8 +173,9 @@ class PushToContextController:
     def set_selected_task(self, task_id, task_name):
         self._selection_model.set_selected_task(task_id, task_name)
 
-    def get_process_item_status(self, item_id):
-        return self._integrate_model.get_item_status(item_id)
+    def get_process_items(self) -> Dict[str, ProjectPushItemProcess]:
+        """Returns dict of all ProjectPushItemProcess items """
+        return self._integrate_model.get_items()
 
     # Processing methods
     def submit(self, wait=True):

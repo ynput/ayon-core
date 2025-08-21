@@ -5,7 +5,7 @@ import itertools
 import sys
 import traceback
 import uuid
-from typing import Optional
+from typing import Optional, Dict
 
 import ayon_api
 from ayon_api.utils import create_entity_id
@@ -1281,17 +1281,6 @@ class IntegrateModel:
             return
         item.integrate()
 
-    def get_item_status(self, item_id):
-        """Status of an item.
-
-        Args:
-            item_id (str): Item id for which status should be returned.
-
-        Returns:
-            dict[str, Any]: Status data.
-        """
-
-        item = self._process_items.get(item_id)
-        if item is not None:
-            return item.get_status_data()
-        return None
+    def get_items(self) -> Dict[str, ProjectPushItemProcess]:
+        """Returns dict of all ProjectPushItemProcess items """
+        return self._process_items
