@@ -1,9 +1,11 @@
 from abc import abstractmethod
 
+from ayon_core.host.abstract import AbstractHost
+
 from .exceptions import MissingMethodsError
 
 
-class ILoadHost:
+class ILoadHost(AbstractHost):
     """Implementation requirements to be able use reference of representations.
 
     The load plugins can do referencing even without implementation of methods
@@ -24,7 +26,7 @@ class ILoadHost:
         loading. Checks only existence of methods.
 
         Args:
-            Union[ModuleType, HostBase]: Object of host where to look for
+            Union[ModuleType, AbstractHost]: Object of host where to look for
                 required methods.
 
         Returns:
@@ -46,7 +48,7 @@ class ILoadHost:
         """Validate implemented methods of "old type" host for load workflow.
 
         Args:
-            Union[ModuleType, HostBase]: Object of host to validate.
+            Union[ModuleType, AbstractHost]: Object of host to validate.
 
         Raises:
             MissingMethodsError: If there are missing methods on host
@@ -83,7 +85,7 @@ class ILoadHost:
         return self.get_containers()
 
 
-class IPublishHost:
+class IPublishHost(AbstractHost):
     """Functions related to new creation system in new publisher.
 
     New publisher is not storing information only about each created instance
@@ -99,7 +101,7 @@ class IPublishHost:
         new publish creation. Checks only existence of methods.
 
         Args:
-            Union[ModuleType, HostBase]: Host module where to look for
+            Union[ModuleType, AbstractHost]: Host module where to look for
                 required methods.
 
         Returns:
@@ -127,7 +129,7 @@ class IPublishHost:
         """Validate implemented methods of "old type" host.
 
         Args:
-            Union[ModuleType, HostBase]: Host module to validate.
+            Union[ModuleType, AbstractHost]: Host module to validate.
 
         Raises:
             MissingMethodsError: If there are missing methods on host
