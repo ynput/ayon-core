@@ -347,7 +347,7 @@ class LoaderActionSelection:
 class LoaderActionItem:
     identifier: str
     entity_ids: set[str]
-    entity_type: EntityType
+    entity_type: str
     label: str
     group_label: Optional[str] = None
     # Is filled automatically
