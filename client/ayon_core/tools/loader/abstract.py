@@ -317,6 +317,7 @@ class ActionItem:
     use 'identifier' and context, it necessary also use 'options'.
 
     Args:
+        plugin_identifier (str): Action identifier.
         identifier (str): Action identifier.
         entity_ids (set[str]): Entity ids.
         entity_type (str): Entity type.
@@ -330,6 +331,7 @@ class ActionItem:
     """
     def __init__(
         self,
+        plugin_identifier,
         identifier,
         entity_ids,
         entity_type,
@@ -339,6 +341,7 @@ class ActionItem:
         options,
         order,
     ):
+        self.plugin_identifier = plugin_identifier
         self.identifier = identifier
         self.entity_ids = entity_ids
         self.entity_type = entity_type
@@ -367,6 +370,7 @@ class ActionItem:
     def to_data(self):
         options = self._options_to_data()
         return {
+            "plugin_identifier": self.plugin_identifier,
             "identifier": self.identifier,
             "entity_ids": list(self.entity_ids),
             "entity_type": self.entity_type,
@@ -992,11 +996,14 @@ class FrontendLoaderController(_BaseLoaderController):
     @abstractmethod
     def trigger_action_item(
         self,
+        plugin_identifier: str,
         identifier: str,
         options: dict[str, Any],
         project_name: str,
         entity_ids: set[str],
         entity_type: str,
+        selected_ids: set[str],
+        selected_entity_type: str,
     ):
         """Trigger action item.
 
@@ -1014,11 +1021,14 @@ class FrontendLoaderController(_BaseLoaderController):
             }
 
         Args:
-            identifier (str): Action identifier.
+            plugin_identifier (sttr): Plugin identifier.
+            identifier (sttr): Action identifier.
             options (dict[str, Any]): Action option values from UI.
             project_name (str): Project name.
-            entity_ids (set[str]): Selected entity ids.
-            entity_type (str): Selected entity type.
+            entity_ids (set[str]): Entity ids stored on action item.
+            entity_type (str): Entity type stored on action item.
+            selected_ids (set[str]): Selected entity ids.
+            selected_entity_type (str): Selected entity type.
 
         """
         pass

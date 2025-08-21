@@ -9,7 +9,12 @@ from typing import Callable, Any
 
 import ayon_api
 
-from ayon_core.lib import NestedCacheItem
+from ayon_core.lib import NestedCacheItem, Logger
+from ayon_core.pipeline.actions import (
+    LoaderActionsContext,
+    LoaderActionSelection,
+    SelectionEntitiesCache,
+)
 from ayon_core.pipeline.load import (
     discover_loader_plugins,
     ProductLoaderPlugin,
@@ -24,6 +29,7 @@ from ayon_core.pipeline.load import (
 from ayon_core.tools.loader.abstract import ActionItem
 
 ACTIONS_MODEL_SENDER = "actions.model"
+LOADER_PLUGIN_ID = "__loader_plugin__"
 NOT_SET = object()
 
 
@@ -45,6 +51,7 @@ class LoaderActionsModel:
     loaders_cache_lifetime = 30
 
     def __init__(self, controller):
+        self._log = Logger.get_logger(self.__class__.__name__)
         self._controller = controller
         self._current_context_project = NOT_SET
         self._loaders_by_identifier = NestedCacheItem(
@@ -53,6 +60,7 @@ class LoaderActionsModel:
             levels=1, lifetime=self.loaders_cache_lifetime)
         self._repre_loaders = NestedCacheItem(
             levels=1, lifetime=self.loaders_cache_lifetime)
+        self._loader_actions = LoaderActionsContext()
 
         self._projects_cache = NestedCacheItem(levels=1, lifetime=60)
         self._folders_cache = NestedCacheItem(levels=2, lifetime=300)
@@ -69,6 +77,7 @@ class LoaderActionsModel:
         self._loaders_by_identifier.reset()
         self._product_loaders.reset()
         self._repre_loaders.reset()
+        self._loader_actions.reset()
 
         self._folders_cache.reset()
         self._tasks_cache.reset()
@@ -102,16 +111,25 @@ class LoaderActionsModel:
             version_context_by_id,
             repre_context_by_id
         )
+        action_items.extend(self._get_loader_action_items(
+            project_name,
+            entity_ids,
+            entity_type,
+        ))
+
         action_items.sort(key=self._actions_sorter)
         return action_items
 
     def trigger_action_item(
         self,
+        plugin_identifier: str,
         identifier: str,
         options: dict[str, Any],
         project_name: str,
         entity_ids: set[str],
         entity_type: str,
+        selected_ids: set[str],
+        selected_entity_type: str,
     ):
         """Trigger action by identifier.
 
@@ -122,14 +140,18 @@ class LoaderActionsModel:
             happened.
 
         Args:
-            identifier (str): Loader identifier.
+            plugin_identifier (str): Plugin identifier.
+            identifier (str): Action identifier.
             options (dict[str, Any]): Loader option values.
             project_name (str): Project name.
-            entity_ids (set[str]): Entity ids.
-            entity_type (str): Entity type.
+            entity_ids (set[str]): Entity ids on action item.
+            entity_type (str): Entity type on action item.
+            selected_ids (set[str]): Selected entity ids.
+            selected_entity_type (str): Selected entity type.
 
         """
         event_data = {
+            "plugin_identifier": plugin_identifier,
             "identifier": identifier,
             "id": uuid.uuid4().hex,
         }
@@ -138,26 +160,51 @@ class LoaderActionsModel:
             event_data,
             ACTIONS_MODEL_SENDER,
         )
-        loader = self._get_loader_by_identifier(project_name, identifier)
+        if plugin_identifier != LOADER_PLUGIN_ID:
+            # TODO fill error infor if any happens
+            error_info = []
+            try:
+                self._loader_actions.execute_action(
+                    plugin_identifier,
+                    identifier,
+                    entity_ids,
+                    entity_type,
+                    LoaderActionSelection(
+                        project_name,
+                        selected_ids,
+                        selected_entity_type,
+                    ),
+                    {},
+                )
 
-        if entity_type == "version":
-            error_info = self._trigger_version_loader(
-                loader,
-                options,
-                project_name,
-                entity_ids,
-            )
-        elif entity_type == "representation":
-            error_info = self._trigger_representation_loader(
-                loader,
-                options,
-                project_name,
-                entity_ids,
-            )
+            except Exception:
+                self._log.warning(
+                    f"Failed to execute action '{identifier}'",
+                    exc_info=True,
+                )
         else:
-            raise NotImplementedError(
-                f"Invalid entity type '{entity_type}' to trigger action item"
+            loader = self._get_loader_by_identifier(
+                project_name, identifier
             )
+
+            if entity_type == "version":
+                error_info = self._trigger_version_loader(
+                    loader,
+                    options,
+                    project_name,
+                    entity_ids,
+                )
+            elif entity_type == "representation":
+                error_info = self._trigger_representation_loader(
+                    loader,
+                    options,
+                    project_name,
+                    entity_ids,
+                )
+            else:
+                raise NotImplementedError(
+                    f"Invalid entity type '{entity_type}' to trigger action item"
+                )
 
         event_data["error_info"] = error_info
         self._controller.emit_event(
@@ -278,8 +325,9 @@ class LoaderActionsModel:
     ):
         label = self._get_action_label(loader)
         if repre_name:
-            label = "{} ({})".format(label, repre_name)
+            label = f"{label} ({repre_name})"
         return ActionItem(
+            LOADER_PLUGIN_ID,
             get_loader_identifier(loader),
             entity_ids=entity_ids,
             entity_type=entity_type,
@@ -456,8 +504,8 @@ class LoaderActionsModel:
         Returns:
             tuple[list[dict[str, Any]], list[dict[str, Any]]]: Version and
                 representation contexts.
-        """
 
+        """
         version_context_by_id = {}
         repre_context_by_id = {}
         if not project_name and not repre_ids:
@@ -709,6 +757,39 @@ class LoaderActionsModel:
             )
             action_items.append(item)
         return action_items
+
+
+    def _get_loader_action_items(
+        self,
+        project_name: str,
+        entity_ids: set[str],
+        entity_type: str,
+    ) -> list[ActionItem]:
+        # TODO prepare cached entities
+        # entities_cache = SelectionEntitiesCache(project_name)
+        selection = LoaderActionSelection(
+            project_name,
+            entity_ids,
+            entity_type,
+            # entities_cache=entities_cache
+        )
+        items = []
+        for action in self._loader_actions.get_action_items(selection):
+            label = action.label
+            if action.group_label:
+                label = f"{action.group_label} ({label})"
+            items.append(ActionItem(
+                action.plugin_identifier,
+                action.identifier,
+                action.entity_ids,
+                action.entity_type,
+                label,
+                action.icon,
+                None,  # action.tooltip,
+                None,  # action.options,
+                action.order,
+            ))
+        return items
 
     def _trigger_version_loader(
         self,
