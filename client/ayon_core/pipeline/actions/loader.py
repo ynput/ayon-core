@@ -484,7 +484,8 @@ class LoaderActionsContext:
         for plugin in self._get_plugins().values():
             try:
                 for action_item in plugin.get_action_items(selection):
-                    action_item.plugin_identifier = plugin.identifier
+                    if action_item.plugin_identifier is None:
+                        action_item.plugin_identifier = plugin.identifier
                     output.append(action_item)
 
             except Exception:
