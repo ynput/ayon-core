@@ -335,7 +335,6 @@ class PushToContextSelectWindow(QtWidgets.QWidget):
         self._main_thread_timer = main_thread_timer
         self._main_thread_timer_can_stop = True
         self._last_submit_message = None
-        self._process_item_ids = []
 
         self._variant_is_valid = None
         self._folder_is_valid = None
