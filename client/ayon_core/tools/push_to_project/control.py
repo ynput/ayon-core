@@ -368,7 +368,7 @@ class PushToContextController:
         process_item_ids = self._process_item_ids
         for process_item_id in process_item_ids:
             self._integrate_model.integrate_item(process_item_id)
-        
+
         self._emit_event("submit.finished", {})
 
         if process_item_ids is self._process_item_ids:
