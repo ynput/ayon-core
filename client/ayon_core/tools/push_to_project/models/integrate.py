@@ -1019,10 +1019,18 @@ class ProjectPushItemProcess:
         self, anatomy, template_name, formatting_data, file_template
     ):
         processed_repre_items = []
+        repre_context = None
         for repre_item in self._src_repre_items:
             repre_entity = repre_item.repre_entity
             repre_name = repre_entity["name"]
             repre_format_data = copy.deepcopy(formatting_data)
+
+            if not repre_context:
+                repre_context = self._update_repre_context(
+                    repre_entity,
+                    formatting_data
+                )
+
             repre_format_data["representation"] = repre_name
             for src_file in repre_item.src_files:
                 ext = os.path.splitext(src_file.path)[-1]
@@ -1038,7 +1046,6 @@ class ProjectPushItemProcess:
                 "publish", template_name, "directory"
             )
             folder_path = template_obj.format_strict(formatting_data)
-            repre_context = folder_path.used_values
             folder_path_rootless = folder_path.rootless
             repre_filepaths = []
             published_path = None
@@ -1061,7 +1068,6 @@ class ProjectPushItemProcess:
                 )
                 if published_path is None or frame == repre_item.frame:
                     published_path = dst_filepath
-                    repre_context.update(filename.used_values)
 
                 repre_filepaths.append((dst_filepath, dst_rootless_path))
                 self._file_transaction.add(src_file.path, dst_filepath)
@@ -1177,6 +1183,28 @@ class ProjectPushItemProcess:
             self._item.dst_project_name,
             path
         )
+
+    def _update_repre_context(self, repre_entity, formatting_data):
+        """Replace old context value with new ones.
+
+        Folder might change, project definitely changes etc.
+        """
+        repre_context = repre_entity["context"]
+        for context_key, context_value in repre_context.items():
+            if context_value and isinstance(context_value, dict):
+                for context_sub_key in context_value.keys():
+                    value_to_update = formatting_data.get(context_key, {}).get(
+                        context_sub_key)
+                    if value_to_update:
+                        repre_context[context_key][
+                            context_sub_key] = value_to_update
+            else:
+                value_to_update = formatting_data.get(context_key)
+                if value_to_update:
+                    repre_context[context_key] = value_to_update
+        if "task" not in formatting_data:
+            repre_context.pop("task")
+        return repre_context
 
 
 class IntegrateModel:
