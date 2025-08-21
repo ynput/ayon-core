@@ -485,8 +485,8 @@ class SiteSyncModel:
     ):
         return ActionItem(
             "sitesync.loader.action",
-            identifier,
-            label,
+            identifier=identifier,
+            label=label,
             icon={
                 "type": "awesome-font",
                 "name": icon_name,
