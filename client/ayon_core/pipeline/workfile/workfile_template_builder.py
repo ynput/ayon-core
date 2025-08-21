@@ -30,7 +30,7 @@ from ayon_api import (
 )
 
 from ayon_core.settings import get_project_settings
-from ayon_core.host import IWorkfileHost, HostBase
+from ayon_core.host import IWorkfileHost, AbstractHost
 from ayon_core.lib import (
     Logger,
     StringTemplate,
@@ -54,7 +54,6 @@ from ayon_core.pipeline.plugin_discover import (
 )
 
 from ayon_core.pipeline.create import (
-    discover_legacy_creator_plugins,
     CreateContext,
     HiddenCreator,
 )
@@ -127,15 +126,14 @@ class AbstractTemplateBuilder(ABC):
     placeholder population.
 
     Args:
-        host (Union[HostBase, ModuleType]): Implementation of host.
+        host (Union[AbstractHost, ModuleType]): Implementation of host.
     """
 
     _log = None
-    use_legacy_creators = False
 
     def __init__(self, host):
         # Get host name
-        if isinstance(host, HostBase):
+        if isinstance(host, AbstractHost):
             host_name = host.name
         else:
             host_name = os.environ.get("AYON_HOST_NAME")
@@ -163,24 +161,24 @@ class AbstractTemplateBuilder(ABC):
 
     @property
     def project_name(self):
-        if isinstance(self._host, HostBase):
+        if isinstance(self._host, AbstractHost):
             return self._host.get_current_project_name()
         return os.getenv("AYON_PROJECT_NAME")
 
     @property
     def current_folder_path(self):
-        if isinstance(self._host, HostBase):
+        if isinstance(self._host, AbstractHost):
             return self._host.get_current_folder_path()
         return os.getenv("AYON_FOLDER_PATH")
 
     @property
     def current_task_name(self):
-        if isinstance(self._host, HostBase):
+        if isinstance(self._host, AbstractHost):
             return self._host.get_current_task_name()
         return os.getenv("AYON_TASK_NAME")
 
     def get_current_context(self):
-        if isinstance(self._host, HostBase):
+        if isinstance(self._host, AbstractHost):
             return self._host.get_current_context()
         return {
             "project_name": self.project_name,
@@ -256,7 +254,7 @@ class AbstractTemplateBuilder(ABC):
         """Access to host implementation.
 
         Returns:
-            Union[HostBase, ModuleType]: Implementation of host.
+            Union[AbstractHost, ModuleType]: Implementation of host.
         """
 
         return self._host
@@ -321,19 +319,6 @@ class AbstractTemplateBuilder(ABC):
 
         return list(get_folders(project_name, folder_ids=linked_folder_ids))
 
-    def _collect_legacy_creators(self):
-        creators_by_name = {}
-        for creator in discover_legacy_creator_plugins():
-            if not creator.enabled:
-                continue
-            creator_name = creator.__name__
-            if creator_name in creators_by_name:
-                raise KeyError(
-                    "Duplicated creator name {} !".format(creator_name)
-                )
-            creators_by_name[creator_name] = creator
-        self._creators_by_name = creators_by_name
-
     def _collect_creators(self):
         self._creators_by_name = {
             identifier: creator
@@ -345,10 +330,7 @@ class AbstractTemplateBuilder(ABC):
 
     def get_creators_by_name(self):
         if self._creators_by_name is None:
-            if self.use_legacy_creators:
-                self._collect_legacy_creators()
-            else:
-                self._collect_creators()
+            self._collect_creators()
 
         return self._creators_by_name
 
@@ -1938,8 +1920,6 @@ class PlaceholderCreateMixin(object):
             pre_create_data (dict): dictionary of configuration from Creator
                 configuration in UI
         """
-
-        legacy_create = self.builder.use_legacy_creators
         creator_name = placeholder.data["creator"]
         create_variant = placeholder.data["create_variant"]
         active = placeholder.data.get("active")
@@ -1979,20 +1959,14 @@ class PlaceholderCreateMixin(object):
 
         # compile product name from variant
         try:
-            if legacy_create:
-                creator_instance = creator_plugin(
-                    product_name,
-                    folder_path
-                ).process()
-            else:
-                creator_instance = self.builder.create_context.create(
-                    creator_plugin.identifier,
-                    create_variant,
-                    folder_entity,
-                    task_entity,
-                    pre_create_data=pre_create_data,
-                    active=active
-                )
+            creator_instance = self.builder.create_context.create(
+                creator_plugin.identifier,
+                create_variant,
+                folder_entity,
+                task_entity,
+                pre_create_data=pre_create_data,
+                active=active
+            )
 
         except:  # noqa: E722
             failed = True
