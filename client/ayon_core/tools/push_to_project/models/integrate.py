@@ -497,8 +497,11 @@ class ProjectPushItemProcess:
 
         except Exception as exc:
             _exc, _value, _tb = sys.exc_info()
+            product_name = self._src_product_entity["name"]
             self._status.set_failed(
-                "Unhandled error happened: {}".format(str(exc)),
+                "Unhandled error happened for `{}`: {}".format(
+                    product_name, str(exc)
+                ),
                 (_exc, _value, _tb)
             )
 
