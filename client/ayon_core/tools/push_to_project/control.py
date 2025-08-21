@@ -337,11 +337,6 @@ class PushToContextController:
         return product_name
 
     def _check_submit_validations(self):
-        if self._use_original_name:
-            return True
-        if not self._user_values.is_valid:
-            return False
-
         if not self._selection_model.get_selected_project_name():
             return False
 
@@ -350,6 +345,13 @@ class PushToContextController:
             and not self._selection_model.get_selected_folder_id()
         ):
             return False
+
+        if self._use_original_name:
+            return True
+
+        if not self._user_values.is_valid:
+            return False
+
         return True
 
     def _invalidate(self):
