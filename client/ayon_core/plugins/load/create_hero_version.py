@@ -167,13 +167,13 @@ class CreateHeroVersion(load.ProductLoaderPlugin):
             raise RuntimeError("Project anatomy does not have hero "
                                f"template key: {template_key}")
 
-        print(f"Hero template: {hero_template.template}")
+        self.log.info(f"Hero template: {hero_template.template}")
 
         hero_publish_dir = self.get_publish_dir(
             instance_data, anatomy, template_key
         )
 
-        print(f"Hero publish dir: {hero_publish_dir}")
+        self.log.info(f"Hero publish dir: {hero_publish_dir}")
 
         src_version_entity = instance_data.get("versionEntity")
         filtered_repre_ids = []
@@ -280,28 +280,22 @@ class CreateHeroVersion(load.ProductLoaderPlugin):
 
         backup_hero_publish_dir = None
         if os.path.exists(hero_publish_dir):
-            backup_hero_publish_dir = hero_publish_dir + ".BACKUP"
+            base_backup_dir = hero_publish_dir + ".BACKUP"
             max_idx = 10
-            idx = 0
-            _backup_hero_publish_dir = backup_hero_publish_dir
-            while os.path.exists(_backup_hero_publish_dir):
-                try:
-                    shutil.rmtree(_backup_hero_publish_dir)
-                    backup_hero_publish_dir = _backup_hero_publish_dir
+            # Find the first available backup directory name
+            for idx in range(max_idx + 1):
+                if idx == 0:
+                    candidate_backup_dir = base_backup_dir
+                else:
+                    candidate_backup_dir = f"{base_backup_dir}{idx}"
+                if not os.path.exists(candidate_backup_dir):
+                    backup_hero_publish_dir = candidate_backup_dir
                     break
-                except Exception as exc:
-                    _backup_hero_publish_dir = (
-                        backup_hero_publish_dir + str(idx)
-                    )
-                    if not os.path.exists(_backup_hero_publish_dir):
-                        backup_hero_publish_dir = _backup_hero_publish_dir
-                        break
-                    if idx > max_idx:
-                        raise AssertionError(
-                            "Backup folders are fully occupied to max index "
-                            f"{max_idx}"
-                        ) from exc
-                    idx += 1
+            else:
+                raise AssertionError(
+                    f"Backup folders are fully occupied to max index {max_idx}"
+                )
+
             try:
                 os.rename(hero_publish_dir, backup_hero_publish_dir)
             except PermissionError:
@@ -346,7 +340,7 @@ class CreateHeroVersion(load.ProductLoaderPlugin):
                     src_to_dst_file_paths.append(
                         (mapped_published_file, template_filled)
                     )
-                    print(
+                    self.log.info(
                         f"Single published file: {mapped_published_file} -> "
                         f"{template_filled}"
                     )
@@ -379,7 +373,7 @@ class CreateHeroVersion(load.ProductLoaderPlugin):
                         )
                         src_to_dst_file_paths.append((src_file, dst_file))
                         dst_paths.append(dst_file)
-                        print(
+                        self.log.info(
                             f"Collection published file: {src_file} "
                             f"-> {dst_file}"
                         )
