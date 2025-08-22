@@ -382,8 +382,9 @@ class LoaderActionPlugin(ABC):
     _log: Optional[logging.Logger] = None
     enabled: bool = True
 
-    def __init__(self, studio_settings: dict[str, Any]):
-        self.apply_settings(studio_settings)
+    def __init__(self, context: "LoaderActionsContext") -> None:
+        self._context = context
+        self.apply_settings(context.get_studio_settings())
 
     def apply_settings(self, studio_settings: dict[str, Any]) -> None:
         """Apply studio settings to the plugin.
@@ -473,9 +474,14 @@ class LoaderActionsContext:
     def get_addons_manager(self) -> AddonsManager:
         if self._addons_manager is None:
             self._addons_manager = AddonsManager(
-                settings=self._get_studio_settings()
+                settings=self.get_studio_settings()
             )
         return self._addons_manager
+
+    def get_studio_settings(self) -> dict[str, Any]:
+        if self._studio_settings is None:
+            self._studio_settings = get_studio_settings()
+        return copy.deepcopy(self._studio_settings)
 
     def get_action_items(
         self, selection: LoaderActionSelection
@@ -515,11 +521,6 @@ class LoaderActionsContext:
             attribute_values,
         )
 
-    def _get_studio_settings(self) -> dict[str, Any]:
-        if self._studio_settings is None:
-            self._studio_settings = get_studio_settings()
-        return copy.deepcopy(self._studio_settings)
-
     def _get_plugins(self) -> dict[str, LoaderActionPlugin]:
         if self._plugins is None:
             addons_manager = self.get_addons_manager()
@@ -533,13 +534,12 @@ class LoaderActionsContext:
                 if paths:
                     all_paths.extend(paths)
 
-            studio_settings = self._get_studio_settings()
             result = discover_plugins(LoaderActionPlugin, all_paths)
             result.log_report()
             plugins = {}
             for cls in result.plugins:
                 try:
-                    plugin = cls(studio_settings)
+                    plugin = cls(self)
                     if not plugin.enabled:
                         continue
 
