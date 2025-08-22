@@ -107,6 +107,7 @@ class CreateHeroVersion(load.ProductLoaderPlugin):
                 "published_files": [f["path"] for f in repre.get("files", [])],
                 "anatomy_data": repre_anatomy
             }
+        # get the publish directory
         publish_template_key = get_publish_template_name(
                 project_name,
                 context.get("hostName"),
