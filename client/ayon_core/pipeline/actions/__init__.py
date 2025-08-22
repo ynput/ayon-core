@@ -1,4 +1,5 @@
 from .loader import (
+    LoaderSelectedType,
     LoaderActionForm,
     LoaderActionResult,
     LoaderActionItem,
@@ -27,7 +28,8 @@ from .inventory import (
 )
 
 
-__all__= (
+__all__ = (
+    "LoaderSelectedType",
     "LoaderActionForm",
     "LoaderActionResult",
     "LoaderActionItem",

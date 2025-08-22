@@ -20,7 +20,8 @@ from ayon_core.pipeline.plugin_discover import discover_plugins
 
 _PLACEHOLDER = object()
 
-class EntityType(StrEnum):
+
+class LoaderSelectedType(StrEnum):
     """Selected entity type."""
     # folder = "folder"
     # task = "task"
@@ -294,7 +295,7 @@ class LoaderActionSelection:
         self,
         project_name: str,
         selected_ids: set[str],
-        selected_type: EntityType,
+        selected_type: LoaderSelectedType,
         *,
         project_anatomy: Optional[Anatomy] = None,
         project_settings: Optional[dict[str, Any]] = None,
@@ -528,7 +529,7 @@ class LoaderActionsContext:
         plugin_identifier: str,
         action_identifier: str,
         entity_ids: set[str],
-        entity_type: EntityType,
+        entity_type: LoaderSelectedType,
         selection: LoaderActionSelection,
         attribute_values: dict[str, Any],
     ) -> Optional[LoaderActionResult]:
