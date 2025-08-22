@@ -75,7 +75,8 @@ class CreateHeroVersion(load.ProductLoaderPlugin):
         version = context.get("version")
         folder = context.get("folder")
         task_entity = ayon_api.get_task_by_id(
-            task_id=version.get("taskId"), project_name=project["name"])
+            task_id=version.get("taskId"), project_name=project["name"]
+        )
 
         anatomy = Anatomy(project["name"])
 
@@ -95,6 +96,7 @@ class CreateHeroVersion(load.ProductLoaderPlugin):
             "name": product["name"],
             "type": product["productType"],
         }
+        anatomy_data["version"] = version["version"]
         published_representations = {}
         for repre in repres:
             repre_anatomy = copy.deepcopy(anatomy_data)
@@ -105,12 +107,26 @@ class CreateHeroVersion(load.ProductLoaderPlugin):
                 "published_files": [f["path"] for f in repre.get("files", [])],
                 "anatomy_data": repre_anatomy
             }
-
+        publish_template_key = get_publish_template_name(
+                project_name,
+                context.get("hostName"),
+                product["productType"],
+                task_name=anatomy_data.get("task", {}).get("name"),
+                task_type=anatomy_data.get("task", {}).get("type"),
+                project_settings=context.get("project_settings", {}),
+                logger=self.log
+        )
+        published_template_obj = anatomy.get_template_item(
+            "publish", publish_template_key, "directory"
+        )
+        published_dir = os.path.normpath(
+            published_template_obj.format_strict(anatomy_data)
+        )
         instance_data = {
             "productName": product["name"],
             "productType": product["productType"],
             "anatomyData": anatomy_data,
-            "publishDir": "",  # TODO: Set to actual publish directory
+            "publishDir": published_dir,
             "published_representations": published_representations,
             "versionEntity": version,
         }
@@ -199,7 +215,12 @@ class CreateHeroVersion(load.ProductLoaderPlugin):
                 if file_path not in all_repre_file_paths:
                     all_repre_file_paths.append(file_path)
 
-        instance_publish_dir = os.path.normpath(instance_data["publishDir"])
+        publish_dir = instance_data.get("publishDir", "")
+        if not publish_dir:
+            raise RuntimeError(
+                "publishDir is empty in instance_data, cannot continue."
+            )
+        instance_publish_dir = os.path.normpath(publish_dir)
         other_file_paths_mapping = []
         for file_path in all_copied_files:
             if not file_path.startswith(instance_publish_dir):
@@ -331,7 +352,7 @@ class CreateHeroVersion(load.ProductLoaderPlugin):
                 else:
                     collections, remainders = clique.assemble(published_files)
                     if remainders or not collections or len(collections) > 1:
-                        raise Exception(
+                        raise RuntimeError(
                             (
                                 "Integrity error. Files of published "
                                 "representation is combination of frame "
