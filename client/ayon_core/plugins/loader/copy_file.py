@@ -20,12 +20,12 @@ class CopyFileActionPlugin(LoaderActionPlugin):
         self, selection: LoaderActionSelection
     ) -> list[LoaderActionItem]:
         repres = []
-        if selection.selected_type in "representations":
+        if selection.selected_type == "representations":
             repres = selection.entities.get_representations(
                 selection.selected_ids
             )
 
-        if selection.selected_type in "version":
+        if selection.selected_type == "version":
             repres = selection.entities.get_versions_representations(
                 selection.selected_ids
             )
