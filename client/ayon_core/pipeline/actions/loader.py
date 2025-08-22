@@ -373,6 +373,7 @@ class LoaderActionResult:
     message: Optional[str] = None
     success: bool = True
     form: Optional[LoaderActionForm] = None
+    form_values: Optional[dict[str, Any]] = None
 
 
 class LoaderActionPlugin(ABC):
