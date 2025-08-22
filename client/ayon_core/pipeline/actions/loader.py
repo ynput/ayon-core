@@ -11,12 +11,14 @@ from dataclasses import dataclass
 import ayon_api
 
 from ayon_core import AYON_CORE_ROOT
+from ayon_core.host import AbstractHost
 from ayon_core.lib import StrEnum, Logger, AbstractAttrDef
 from ayon_core.addon import AddonsManager, IPluginPaths
 from ayon_core.settings import get_studio_settings, get_project_settings
-from ayon_core.pipeline import Anatomy
+from ayon_core.pipeline import Anatomy, registered_host
 from ayon_core.pipeline.plugin_discover import discover_plugins
 
+_PLACEHOLDER = object()
 
 class EntityType(StrEnum):
     """Selected entity type."""
@@ -411,6 +413,11 @@ class LoaderActionPlugin(ABC):
         """
         return self.__class__.__name__
 
+    @property
+    def host_name(self) -> Optional[str]:
+        """Name of the current host."""
+        return self._context.get_host_name()
+
     @abstractmethod
     def get_action_items(
         self, selection: LoaderActionSelection
@@ -457,11 +464,14 @@ class LoaderActionsContext:
         self,
         studio_settings: Optional[dict[str, Any]] = None,
         addons_manager: Optional[AddonsManager] = None,
+        host: Optional[AbstractHost] = _PLACEHOLDER,
     ) -> None:
         self._log = Logger.get_logger(self.__class__.__name__)
 
         self._addons_manager = addons_manager
+        self._host = host
 
+        # Attributes that are re-cached on reset
         self._studio_settings = studio_settings
         self._plugins = None
 
@@ -477,6 +487,17 @@ class LoaderActionsContext:
                 settings=self.get_studio_settings()
             )
         return self._addons_manager
+
+    def get_host(self) -> Optional[AbstractHost]:
+        if self._host is _PLACEHOLDER:
+            self._host = registered_host()
+        return self._host
+
+    def get_host_name(self) -> Optional[str]:
+        host = self.get_host()
+        if host is None:
+            return None
+        return host.name
 
     def get_studio_settings(self) -> dict[str, Any]:
         if self._studio_settings is None:
