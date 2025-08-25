@@ -88,7 +88,7 @@ class CopyFileActionPlugin(LoaderActionPlugin):
         clipboard = QtWidgets.QApplication.clipboard()
         if not clipboard:
             return LoaderActionResult(
-                "Failed to copy file path to clipboard",
+                "Failed to copy file path to clipboard.",
                 success=False,
             )
 
@@ -97,7 +97,7 @@ class CopyFileActionPlugin(LoaderActionPlugin):
             clipboard.setText(os.path.normpath(path))
 
             return LoaderActionResult(
-                "Path stored to clipboard",
+                "Path stored to clipboard...",
                 success=True,
             )
 
@@ -110,6 +110,6 @@ class CopyFileActionPlugin(LoaderActionPlugin):
         clipboard.setMimeData(data)
 
         return LoaderActionResult(
-            "File added to clipboard",
+            "File added to clipboard...",
             success=True,
         )
