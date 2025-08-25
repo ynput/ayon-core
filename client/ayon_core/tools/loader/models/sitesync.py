@@ -487,6 +487,7 @@ class SiteSyncModel:
             "sitesync.loader.action",
             identifier=identifier,
             label=label,
+            group_label=None,
             icon={
                 "type": "awesome-font",
                 "name": icon_name,

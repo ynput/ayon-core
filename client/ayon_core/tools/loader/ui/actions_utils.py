@@ -1,6 +1,7 @@
 import uuid
+from typing import Optional, Any
 
-from qtpy import QtWidgets, QtGui
+from qtpy import QtWidgets, QtGui, QtCore
 import qtawesome
 
 from ayon_core.lib.attribute_definitions import AbstractAttrDef
@@ -11,9 +12,26 @@ from ayon_core.tools.utils.widgets import (
     OptionDialog,
 )
 from ayon_core.tools.utils import get_qt_icon
+from ayon_core.tools.loader.abstract import ActionItem
 
 
-def show_actions_menu(action_items, global_point, one_item_selected, parent):
+def _actions_sorter(item: tuple[str, ActionItem]):
+    """Sort the Loaders by their order and then their name.
+
+    Returns:
+        tuple[int, str]: Sort keys.
+
+    """
+    label, action_item = item
+    return action_item.order, label
+
+
+def show_actions_menu(
+    action_items: list[ActionItem],
+    global_point: QtCore.QPoint,
+    one_item_selected: bool,
+    parent: QtWidgets.QWidget,
+) -> tuple[Optional[ActionItem], Optional[dict[str, Any]]]:
     selected_action_item = None
     selected_options = None
 
@@ -26,15 +44,23 @@ def show_actions_menu(action_items, global_point, one_item_selected, parent):
 
     menu = OptionalMenu(parent)
 
-    action_items_by_id = {}
+    action_items_with_labels = []
     for action_item in action_items:
+        label = action_item.label
+        if action_item.group_label:
+            label = f"{action_item.group_label} ({label})"
+        action_items_with_labels.append((label, action_item))
+
+    action_items_by_id = {}
+    for item in sorted(action_items_with_labels, key=_actions_sorter):
+        label, action_item = item
         item_id = uuid.uuid4().hex
         action_items_by_id[item_id] = action_item
         item_options = action_item.options
         icon = get_qt_icon(action_item.icon)
         use_option = bool(item_options)
         action = OptionalAction(
-            action_item.label,
+            label,
             icon,
             use_option,
             menu
