@@ -255,6 +255,9 @@ class PublishErrorInstanceList(QtWidgets.QListView):
         self.setObjectName("PublishErrorInstanceList")
 
         self.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
+        # Disable vertical scrollbar to avoid nested scrollbars inside the
+        # main logs view. The view auto-sizes its height to the content.
+        self.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
         self.setSelectionMode(QtWidgets.QAbstractItemView.ExtendedSelection)
 
     def minimumSizeHint(self):
