@@ -6,11 +6,8 @@ import json
 import shutil
 from typing import Optional, Any
 
-import clique
 from ayon_api.operations import OperationsSession
-from qtpy import QtWidgets, QtCore
 
-from ayon_core import style
 from ayon_core.lib import (
     format_file_size,
     AbstractAttrDef,
