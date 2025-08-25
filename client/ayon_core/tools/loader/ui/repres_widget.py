@@ -401,10 +401,11 @@ class RepresentationsWidget(QtWidgets.QWidget):
         self._controller.trigger_action_item(
             action_item.plugin_identifier,
             action_item.identifier,
-            options,
             self._selected_project_name,
             action_item.entity_ids,
             action_item.entity_type,
             repre_ids,
             "representation",
+            options,
+            {},
         )
