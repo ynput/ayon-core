@@ -493,10 +493,10 @@ class SiteSyncModel:
                 "color": "#999999"
             },
             tooltip=tooltip,
-            options={},
             order=1,
             entity_ids=representation_ids,
             entity_type="representation",
+            options={},
         )
 
     def _add_site(self, project_name, repre_entity, site_name, product_type):

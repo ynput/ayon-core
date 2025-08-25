@@ -124,12 +124,13 @@ class LoaderActionsModel:
         self,
         plugin_identifier: str,
         identifier: str,
-        options: dict[str, Any],
         project_name: str,
         entity_ids: set[str],
         entity_type: str,
         selected_ids: set[str],
         selected_entity_type: str,
+        options: dict[str, Any],
+        form_values: dict[str, Any],
     ):
         """Trigger action by identifier.
 
@@ -142,17 +143,23 @@ class LoaderActionsModel:
         Args:
             plugin_identifier (str): Plugin identifier.
             identifier (str): Action identifier.
-            options (dict[str, Any]): Loader option values.
             project_name (str): Project name.
             entity_ids (set[str]): Entity ids on action item.
             entity_type (str): Entity type on action item.
             selected_ids (set[str]): Selected entity ids.
             selected_entity_type (str): Selected entity type.
+            options (dict[str, Any]): Loader option values.
+            form_values (dict[str, Any]): Form values.
 
         """
         event_data = {
             "plugin_identifier": plugin_identifier,
             "identifier": identifier,
+            "project_name": project_name,
+            "entity_ids": list(entity_ids),
+            "entity_type": entity_type,
+            "selected_ids": list(selected_ids),
+            "selected_entity_type": selected_entity_type,
             "id": uuid.uuid4().hex,
         }
         self._controller.emit_event(
@@ -162,9 +169,10 @@ class LoaderActionsModel:
         )
         if plugin_identifier != LOADER_PLUGIN_ID:
             # TODO fill error infor if any happens
-            error_info = []
+            result = None
+            crashed = False
             try:
-                self._loader_actions.execute_action(
+                result = self._loader_actions.execute_action(
                     plugin_identifier,
                     identifier,
                     entity_ids,
@@ -174,37 +182,47 @@ class LoaderActionsModel:
                         selected_ids,
                         selected_entity_type,
                     ),
-                    {},
+                    form_values,
                 )
 
             except Exception:
+                crashed = True
                 self._log.warning(
                     f"Failed to execute action '{identifier}'",
                     exc_info=True,
                 )
-        else:
-            loader = self._get_loader_by_identifier(
-                project_name, identifier
-            )
 
-            if entity_type == "version":
-                error_info = self._trigger_version_loader(
-                    loader,
-                    options,
-                    project_name,
-                    entity_ids,
-                )
-            elif entity_type == "representation":
-                error_info = self._trigger_representation_loader(
-                    loader,
-                    options,
-                    project_name,
-                    entity_ids,
-                )
-            else:
-                raise NotImplementedError(
-                    f"Invalid entity type '{entity_type}' to trigger action item"
-                )
+            event_data["result"] = result
+            event_data["crashed"] = crashed
+            self._controller.emit_event(
+                "loader.action.finished",
+                event_data,
+                ACTIONS_MODEL_SENDER,
+            )
+            return
+
+        loader = self._get_loader_by_identifier(
+            project_name, identifier
+        )
+
+        if entity_type == "version":
+            error_info = self._trigger_version_loader(
+                loader,
+                options,
+                project_name,
+                entity_ids,
+            )
+        elif entity_type == "representation":
+            error_info = self._trigger_representation_loader(
+                loader,
+                options,
+                project_name,
+                entity_ids,
+            )
+        else:
+            raise NotImplementedError(
+                f"Invalid entity type '{entity_type}' to trigger action item"
+            )
 
         event_data["error_info"] = error_info
         self._controller.emit_event(
@@ -334,8 +352,8 @@ class LoaderActionsModel:
             label=label,
             icon=self._get_action_icon(loader),
             tooltip=self._get_action_tooltip(loader),
-            options=loader.get_options(contexts),
             order=loader.order,
+            options=loader.get_options(contexts),
         )
 
     def _get_loaders(self, project_name):
@@ -783,11 +801,11 @@ class LoaderActionsModel:
                 action.identifier,
                 action.entity_ids,
                 action.entity_type,
-                label,
-                action.icon,
-                None,  # action.tooltip,
-                None,  # action.options,
-                action.order,
+                label=label,
+                icon=action.icon,
+                tooltip=None,  # action.tooltip,
+                order=action.order,
+                options=None,  # action.options,
             ))
         return items
 
