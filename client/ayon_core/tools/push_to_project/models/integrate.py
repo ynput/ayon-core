@@ -5,6 +5,7 @@ import itertools
 import sys
 import traceback
 import uuid
+from typing import Optional
 
 import ayon_api
 from ayon_api.utils import create_entity_id
@@ -21,6 +22,7 @@ from ayon_core.lib import (
     source_hash,
 )
 from ayon_core.lib.file_transaction import FileTransaction
+from ayon_core.pipeline.thumbnails import get_thumbnail_path
 from ayon_core.settings import get_project_settings
 from ayon_core.pipeline import Anatomy
 from ayon_core.pipeline.version_start import get_versioning_start
@@ -371,7 +373,6 @@ class ProjectPushRepreItem:
                 resource_files.append(ResourceFile(filepath, relative_path))
                 continue
 
-            filepath = os.path.join(src_dirpath, basename)
             frame = None
             udim = None
             for item in src_basename_regex.finditer(basename):
@@ -917,14 +918,19 @@ class ProjectPushItemProcess:
                     task_name=self._task_info["name"],
                     task_type=self._task_info["taskType"],
                     product_type=product_type,
-                    product_name=product_entity["name"]
+                    product_name=product_entity["name"],
                 )
 
         existing_version_entity = ayon_api.get_version_by_name(
             project_name, version, product_id
         )
+        thumbnail_id = self._copy_version_thumbnail()
+
         # Update existing version
         if existing_version_entity:
+            updata_data = {"attrib": dst_attrib}
+            if thumbnail_id:
+                updata_data["thumbnailId"] = thumbnail_id
             self._operations.update_entity(
                 project_name,
                 "version",
@@ -939,6 +945,7 @@ class ProjectPushItemProcess:
             version,
             product_id,
             attribs=dst_attrib,
+            thumbnail_id=thumbnail_id,
         )
         self._operations.create_entity(
             project_name, "version", version_entity
@@ -1146,6 +1153,23 @@ class ProjectPushItemProcess:
                 repre_entity["id"],
                 {"active": False}
             )
+
+    def _copy_version_thumbnail(self) -> Optional[str]:
+        thumbnail_id = self._src_version_entity["thumbnailId"]
+        if not thumbnail_id:
+            return None
+        path = get_thumbnail_path(
+            self._item.src_project_name,
+            "version",
+            self._src_version_entity["id"],
+            thumbnail_id
+        )
+        if not path:
+            return None
+        return ayon_api.create_thumbnail(
+            self._item.dst_project_name,
+            path
+        )
 
 
 class IntegrateModel:
