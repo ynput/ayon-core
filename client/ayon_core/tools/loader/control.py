@@ -309,12 +309,13 @@ class LoaderController(BackendLoaderController, FrontendLoaderController):
         self,
         plugin_identifier: str,
         identifier: str,
-        options: dict[str, Any],
         project_name: str,
         entity_ids: set[str],
         entity_type: str,
         selected_ids: set[str],
         selected_entity_type: str,
+        options: dict[str, Any],
+        form_values: dict[str, Any],
     ):
         if self._sitesync_model.is_sitesync_action(plugin_identifier):
             self._sitesync_model.trigger_action_item(
@@ -327,12 +328,13 @@ class LoaderController(BackendLoaderController, FrontendLoaderController):
         self._loader_actions_model.trigger_action_item(
             plugin_identifier,
             identifier,
-            options,
             project_name,
             entity_ids,
             entity_type,
             selected_ids,
             selected_entity_type,
+            options,
+            form_values,
         )
 
     # Selection model wrappers

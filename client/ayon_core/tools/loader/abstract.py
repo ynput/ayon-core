@@ -324,9 +324,9 @@ class ActionItem:
         label (str): Action label.
         icon (dict[str, Any]): Action icon definition.
         tooltip (str): Action tooltip.
+        order (int): Action order.
         options (Union[list[AbstractAttrDef], list[qargparse.QArgument]]):
             Action options. Note: 'qargparse' is considered as deprecated.
-        order (int): Action order.
 
     """
     def __init__(
@@ -338,8 +338,8 @@ class ActionItem:
         label,
         icon,
         tooltip,
-        options,
         order,
+        options,
     ):
         self.plugin_identifier = plugin_identifier
         self.identifier = identifier
@@ -348,8 +348,8 @@ class ActionItem:
         self.label = label
         self.icon = icon
         self.tooltip = tooltip
-        self.options = options
         self.order = order
+        self.options = options
 
     def _options_to_data(self):
         options = self.options
@@ -377,8 +377,8 @@ class ActionItem:
             "label": self.label,
             "icon": self.icon,
             "tooltip": self.tooltip,
-            "options": options,
             "order": self.order,
+            "options": options,
         }
 
     @classmethod
@@ -998,12 +998,13 @@ class FrontendLoaderController(_BaseLoaderController):
         self,
         plugin_identifier: str,
         identifier: str,
-        options: dict[str, Any],
         project_name: str,
         entity_ids: set[str],
         entity_type: str,
         selected_ids: set[str],
         selected_entity_type: str,
+        options: dict[str, Any],
+        form_values: dict[str, Any],
     ):
         """Trigger action item.
 
@@ -1023,12 +1024,13 @@ class FrontendLoaderController(_BaseLoaderController):
         Args:
             plugin_identifier (sttr): Plugin identifier.
             identifier (sttr): Action identifier.
-            options (dict[str, Any]): Action option values from UI.
             project_name (str): Project name.
             entity_ids (set[str]): Entity ids stored on action item.
             entity_type (str): Entity type stored on action item.
             selected_ids (set[str]): Selected entity ids.
             selected_entity_type (str): Selected entity type.
+            options (dict[str, Any]): Action option values from UI.
+            form_values (dict[str, Any]): Action form values from UI.
 
         """
         pass
