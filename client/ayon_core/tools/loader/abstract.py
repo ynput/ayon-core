@@ -322,9 +322,9 @@ class ActionItem:
         entity_ids (set[str]): Entity ids.
         entity_type (str): Entity type.
         label (str): Action label.
-        group_label (str): Group label.
-        icon (dict[str, Any]): Action icon definition.
-        tooltip (str): Action tooltip.
+        group_label (Optional[str]): Group label.
+        icon (Optional[dict[str, Any]]): Action icon definition.
+        tooltip (Optional[str]): Action tooltip.
         order (int): Action order.
         options (Union[list[AbstractAttrDef], list[qargparse.QArgument]]):
             Action options. Note: 'qargparse' is considered as deprecated.
@@ -332,16 +332,16 @@ class ActionItem:
     """
     def __init__(
         self,
-        plugin_identifier,
-        identifier,
-        entity_ids,
-        entity_type,
-        label,
-        group_label,
-        icon,
-        tooltip,
-        order,
-        options,
+        plugin_identifier: str,
+        identifier: str,
+        entity_ids: set[str],
+        entity_type: str,
+        label: str,
+        group_label: Optional[str],
+        icon: Optional[dict[str, Any]],
+        tooltip: Optional[str],
+        order: int,
+        options: Optional[list],
     ):
         self.plugin_identifier = plugin_identifier
         self.identifier = identifier
@@ -364,13 +364,12 @@ class ActionItem:
         #   future development of detached UI tools it would be better to be
         #   prepared for it.
         raise NotImplementedError(
-            "{}.to_data is not implemented. Use Attribute definitions"
-            " from 'ayon_core.lib' instead of 'qargparse'.".format(
-                self.__class__.__name__
-            )
+            f"{self.__class__.__name__}.to_data is not implemented."
+            " Use Attribute definitions from 'ayon_core.lib'"
+            " instead of 'qargparse'."
         )
 
-    def to_data(self):
+    def to_data(self) -> dict[str, Any]:
         options = self._options_to_data()
         return {
             "plugin_identifier": self.plugin_identifier,
@@ -386,7 +385,7 @@ class ActionItem:
         }
 
     @classmethod
-    def from_data(cls, data):
+    def from_data(cls, data) -> "ActionItem":
         options = data["options"]
         if options:
             options = deserialize_attr_defs(options)
