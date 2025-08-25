@@ -300,7 +300,9 @@ class DeleteOldVersions(LoaderActionPlugin):
                         publish_folder = os.path.dirname(filepath)
                         if remove_publish_folder:
                             if os.path.exists(publish_folder):
-                                shutil.rmtree(publish_folder, ignore_errors=True)
+                                shutil.rmtree(
+                                    publish_folder, ignore_errors=True
+                                )
                             continue
 
                         if os.path.exists(filepath):

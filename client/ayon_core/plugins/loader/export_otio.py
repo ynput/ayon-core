@@ -37,7 +37,6 @@ def _import_otio():
         OTIO = opentimelineio
 
 
-
 class ExportOTIO(LoaderActionPlugin):
     identifier = "core.export-otio"
 

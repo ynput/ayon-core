@@ -13,7 +13,6 @@ from ayon_core.lib import NestedCacheItem, Logger
 from ayon_core.pipeline.actions import (
     LoaderActionsContext,
     LoaderActionSelection,
-    SelectionEntitiesCache,
 )
 from ayon_core.pipeline.load import (
     discover_loader_plugins,
@@ -765,7 +764,6 @@ class LoaderActionsModel:
             )
             action_items.append(item)
         return action_items
-
 
     def _get_loader_action_items(
         self,
