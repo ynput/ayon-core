@@ -13,6 +13,8 @@ from ayon_core.pipeline.actions import (
 
 
 class PushToProject(LoaderActionPlugin):
+    identifier = "core.push-to-project"
+
     def get_action_items(
         self, selection: LoaderActionSelection
     ) -> list[LoaderActionItem]:
