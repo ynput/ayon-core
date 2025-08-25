@@ -322,6 +322,7 @@ class ActionItem:
         entity_ids (set[str]): Entity ids.
         entity_type (str): Entity type.
         label (str): Action label.
+        group_label (str): Group label.
         icon (dict[str, Any]): Action icon definition.
         tooltip (str): Action tooltip.
         order (int): Action order.
@@ -336,6 +337,7 @@ class ActionItem:
         entity_ids,
         entity_type,
         label,
+        group_label,
         icon,
         tooltip,
         order,
@@ -346,6 +348,7 @@ class ActionItem:
         self.entity_ids = entity_ids
         self.entity_type = entity_type
         self.label = label
+        self.group_label = group_label
         self.icon = icon
         self.tooltip = tooltip
         self.order = order
@@ -375,6 +378,7 @@ class ActionItem:
             "entity_ids": list(self.entity_ids),
             "entity_type": self.entity_type,
             "label": self.label,
+            "group_label": self.group_label,
             "icon": self.icon,
             "tooltip": self.tooltip,
             "order": self.order,

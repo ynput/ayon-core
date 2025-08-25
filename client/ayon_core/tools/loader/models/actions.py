@@ -116,8 +116,6 @@ class LoaderActionsModel:
             entity_ids,
             entity_type,
         ))
-
-        action_items.sort(key=self._actions_sorter)
         return action_items
 
     def trigger_action_item(
@@ -350,6 +348,7 @@ class LoaderActionsModel:
             entity_ids=entity_ids,
             entity_type=entity_type,
             label=label,
+            group_label=None,
             icon=self._get_action_icon(loader),
             tooltip=self._get_action_tooltip(loader),
             order=loader.order,
@@ -406,15 +405,6 @@ class LoaderActionsModel:
         loaders_by_identifier_c = self._loaders_by_identifier[project_name]
         loaders_by_identifier = loaders_by_identifier_c.get_data()
         return loaders_by_identifier.get(identifier)
-
-    def _actions_sorter(self, action_item):
-        """Sort the Loaders by their order and then their name.
-
-        Returns:
-            tuple[int, str]: Sort keys.
-        """
-
-        return action_item.order, action_item.label
 
     def _contexts_for_versions(self, project_name, version_ids):
         """Get contexts for given version ids.
@@ -793,15 +783,13 @@ class LoaderActionsModel:
         )
         items = []
         for action in self._loader_actions.get_action_items(selection):
-            label = action.label
-            if action.group_label:
-                label = f"{action.group_label} ({label})"
             items.append(ActionItem(
                 action.plugin_identifier,
                 action.identifier,
                 action.entity_ids,
                 action.entity_type,
-                label=label,
+                label=action.label,
+                group_label=action.group_label,
                 icon=action.icon,
                 tooltip=None,  # action.tooltip,
                 order=action.order,
