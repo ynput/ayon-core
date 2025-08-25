@@ -39,7 +39,6 @@ def _import_otio():
 
 
 class ExportOTIO(LoaderActionPlugin):
-    """Copy published file path to clipboard"""
     identifier = "core.export-otio"
 
     def get_action_items(
