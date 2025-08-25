@@ -11,11 +11,16 @@ from dataclasses import dataclass
 import ayon_api
 
 from ayon_core import AYON_CORE_ROOT
+from ayon_core.lib import StrEnum, Logger
+from ayon_core.lib.attribute_definitions import (
+    AbstractAttrDef,
+    serialize_attr_defs,
+    deserialize_attr_defs,
+)
 from ayon_core.host import AbstractHost
-from ayon_core.lib import StrEnum, Logger, AbstractAttrDef
 from ayon_core.addon import AddonsManager, IPluginPaths
 from ayon_core.settings import get_studio_settings, get_project_settings
-from ayon_core.pipeline import Anatomy, registered_host
+from ayon_core.pipeline import Anatomy
 from ayon_core.pipeline.plugin_discover import discover_plugins
 
 _PLACEHOLDER = object()
@@ -363,9 +368,29 @@ class LoaderActionForm:
     title: str
     fields: list[AbstractAttrDef]
     submit_label: Optional[str] = "Submit"
-    submit_icon: Optional[str] = None
+    submit_icon: Optional[dict[str, Any]] = None
     cancel_label: Optional[str] = "Cancel"
-    cancel_icon: Optional[str] = None
+    cancel_icon: Optional[dict[str, Any]] = None
+
+    def to_json_data(self) -> dict[str, Any]:
+        fields = self.fields
+        if fields is not None:
+            fields = serialize_attr_defs(fields)
+        return {
+            "title": self.title,
+            "fields": fields,
+            "submit_label": self.submit_label,
+            "submit_icon": self.submit_icon,
+            "cancel_label": self.cancel_label,
+            "cancel_icon": self.cancel_icon,
+        }
+
+    @classmethod
+    def from_json_data(cls, data: dict[str, Any]) -> "LoaderActionForm":
+        fields = data["fields"]
+        if fields is not None:
+            data["fields"] = deserialize_attr_defs(fields)
+        return cls(**data)
 
 
 @dataclass
@@ -374,6 +399,24 @@ class LoaderActionResult:
     success: bool = True
     form: Optional[LoaderActionForm] = None
     form_values: Optional[dict[str, Any]] = None
+
+    def to_json_data(self) -> dict[str, Any]:
+        form = self.form
+        if form is not None:
+            form = form.to_json_data()
+        return {
+            "message": self.message,
+            "success": self.success,
+            "form": form,
+            "form_values": self.form_values,
+        }
+
+    @classmethod
+    def from_json_data(cls, data: dict[str, Any]) -> "LoaderActionResult":
+        form = data["form"]
+        if form is not None:
+            data["form"] = LoaderActionForm.from_json_data(form)
+        return LoaderActionResult(**data)
 
 
 class LoaderActionPlugin(ABC):
@@ -492,6 +535,8 @@ class LoaderActionsContext:
 
     def get_host(self) -> Optional[AbstractHost]:
         if self._host is _PLACEHOLDER:
+            from ayon_core.pipeline import registered_host
+
             self._host = registered_host()
         return self._host
 
@@ -532,7 +577,7 @@ class LoaderActionsContext:
         entity_ids: set[str],
         entity_type: LoaderSelectedType,
         selection: LoaderActionSelection,
-        attribute_values: dict[str, Any],
+        form_values: dict[str, Any],
     ) -> Optional[LoaderActionResult]:
         plugins_by_id = self._get_plugins()
         plugin = plugins_by_id[plugin_identifier]
@@ -541,7 +586,7 @@ class LoaderActionsContext:
             entity_ids,
             entity_type,
             selection,
-            attribute_values,
+            form_values,
         )
 
     def _get_plugins(self) -> dict[str, LoaderActionPlugin]:
