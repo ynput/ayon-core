@@ -203,6 +203,19 @@ class AYONMenuModel(BaseSettingsModel):
     )
 
 
+class ToolsDisplayModel(BaseSettingsModel):
+    _layout = "expanded"
+    task_display_order: str = SettingsField(
+        "anatomy",
+        title="Task Display Order",
+        description="Order in which tasks are displayed in tools",
+        enum_resolver=lambda: [
+            {"value": "anatomy", "label": "Anatomy Order"},
+            {"value": "alphabetical", "label": "Alphabetical"},
+        ],
+    )
+
+
 class WorkfilesToolModel(BaseSettingsModel):
     workfile_template_profiles: list[WorkfileTemplateProfile] = SettingsField(
         default_factory=list,
@@ -446,6 +459,10 @@ class GlobalToolsModel(BaseSettingsModel):
         default_factory=AYONMenuModel,
         title="AYON Menu"
     )
+    display: ToolsDisplayModel = SettingsField(
+        default_factory=ToolsDisplayModel,
+        title="Tools Display"
+    )
     creator: CreatorToolModel = SettingsField(
         default_factory=CreatorToolModel,
         title="Creator"
@@ -467,6 +484,9 @@ class GlobalToolsModel(BaseSettingsModel):
 DEFAULT_TOOLS_VALUES = {
     "ayon_menu": {
         "version_up_current_workfile": False
+    },
+    "display": {
+        "task_display_order": "anatomy"
     },
     "creator": {
         "product_types_smart_select": [
