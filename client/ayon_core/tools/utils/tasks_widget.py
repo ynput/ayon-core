@@ -7,6 +7,7 @@ from ayon_core.style import (
     get_disabled_entity_icon_color,
     get_default_entity_icon_color,
 )
+from ayon_core.settings import get_project_settings
 
 from .views import DeselectableTreeView
 from .lib import RefreshThread, get_qt_icon
@@ -16,6 +17,7 @@ ITEM_ID_ROLE = QtCore.Qt.UserRole + 1
 PARENT_ID_ROLE = QtCore.Qt.UserRole + 2
 ITEM_NAME_ROLE = QtCore.Qt.UserRole + 3
 TASK_TYPE_ROLE = QtCore.Qt.UserRole + 4
+TASK_SORT_ROLE = QtCore.Qt.UserRole + 5
 
 
 class TasksQtModel(QtGui.QStandardItemModel):
@@ -51,6 +53,9 @@ class TasksQtModel(QtGui.QStandardItemModel):
         self._last_folder_id = None
 
         self._refresh_threads = {}
+
+        # Sorting configuration
+        self._task_display_order = "anatomy"  # "anatomy" | "alphabetical"
         self._current_refresh_thread = None
 
         # Initial state
@@ -176,6 +181,26 @@ class TasksQtModel(QtGui.QStandardItemModel):
         self._is_refreshing = True
         self._last_project_name = project_name
         self._last_folder_id = folder_id
+        # Load tools configuration for task display order
+        try:
+            if project_name:
+                settings = get_project_settings(project_name)
+                tools_settings = settings.get("core", {}).get("tools", {})
+                # Prefer new Tools Display section
+                display_settings = tools_settings.get("display", {})
+                if "task_display_order" in display_settings:
+                    self._task_display_order = display_settings.get(
+                        "task_display_order", "anatomy"
+                    )
+                else:
+                    # Fallback to legacy location if present
+                    menu_settings = tools_settings.get("ayon_menu", {})
+                    self._task_display_order = menu_settings.get(
+                        "task_display_order", "anatomy"
+                    )
+        except Exception:
+            # Keep default if settings are not available in this context
+            self._task_display_order = "anatomy"
         if not folder_id:
             self._add_invalid_selection_item()
             self._current_refresh_thread = None
@@ -261,6 +286,11 @@ class TasksQtModel(QtGui.QStandardItemModel):
             task_type_item.name: task_type_item
             for task_type_item in task_type_items
         }
+        # Build order mapping from project anatomy task type list order
+        task_type_order_by_name = {
+            task_type_item.name: index
+            for index, task_type_item in enumerate(task_type_items)
+        }
         task_type_icon_cache = {}
         new_items = []
         new_names = set()
@@ -283,6 +313,15 @@ class TasksQtModel(QtGui.QStandardItemModel):
             item.setData(name, ITEM_NAME_ROLE)
             item.setData(task_item.id, ITEM_ID_ROLE)
             item.setData(task_item.task_type, TASK_TYPE_ROLE)
+            # Store sorting order based on selected display order
+            sort_value = None
+            if self._task_display_order == "alphabetical":
+                # Use lowercased label for consistent alphabetical sorting
+                sort_value = task_item.full_label.lower()
+            else:
+                # Default: project anatomy task type order
+                sort_value = task_type_order_by_name.get(task_item.task_type)
+            item.setData(sort_value, TASK_SORT_ROLE)
             item.setData(task_item.parent_id, PARENT_ID_ROLE)
             item.setData(icon, QtCore.Qt.DecorationRole)
 
@@ -367,6 +406,30 @@ class TasksProxyModel(QtCore.QSortFilterProxyModel):
             if task_id is not None and task_id not in self._task_ids_filter:
                 return False
         return super().filterAcceptsRow(row, parent_index)
+
+    def lessThan(self, left, right):
+        # Sort by TASK_SORT_ROLE if present
+        left_value = left.data(TASK_SORT_ROLE)
+        right_value = right.data(TASK_SORT_ROLE)
+
+        if left_value == right_value:
+            return super().lessThan(left, right)
+
+        # If values are strings, compare lexicographically
+        if isinstance(left_value, str) or isinstance(right_value, str):
+            left_str = "" if left_value is None else str(left_value)
+            right_str = "" if right_value is None else str(right_value)
+            return left_str < right_str
+
+        # Otherwise treat as numeric order; None goes last
+        if right_value is None:
+            return True
+        if left_value is None:
+            return False
+        try:
+            return left_value < right_value
+        except Exception:
+            return super().lessThan(left, right)
 
 
 class TasksWidget(QtWidgets.QWidget):
