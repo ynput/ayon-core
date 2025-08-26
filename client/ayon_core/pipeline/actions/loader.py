@@ -44,11 +44,10 @@ class SelectionEntitiesCache:
         products_by_id: Optional[dict[str, dict[str, Any]]] = None,
         versions_by_id: Optional[dict[str, dict[str, Any]]] = None,
         representations_by_id: Optional[dict[str, dict[str, Any]]] = None,
-        task_ids_by_folder_id: Optional[dict[str, str]] = None,
-        product_ids_by_folder_id: Optional[dict[str, str]] = None,
-        version_ids_by_product_id: Optional[dict[str, str]] = None,
-        version_id_by_task_id: Optional[dict[str, str]] = None,
-        representation_id_by_version_id: Optional[dict[str, str]] = None,
+        task_ids_by_folder_id: Optional[dict[str, set[str]]] = None,
+        product_ids_by_folder_id: Optional[dict[str, set[str]]] = None,
+        version_ids_by_product_id: Optional[dict[str, set[str]]] = None,
+        representation_ids_by_version_id: Optional[dict[str, set[str]]] = None,
     ):
         self._project_name = project_name
         self._project_entity = project_entity
@@ -61,9 +60,8 @@ class SelectionEntitiesCache:
         self._task_ids_by_folder_id = task_ids_by_folder_id or {}
         self._product_ids_by_folder_id = product_ids_by_folder_id or {}
         self._version_ids_by_product_id = version_ids_by_product_id or {}
-        self._version_id_by_task_id = version_id_by_task_id or {}
-        self._representation_id_by_version_id = (
-            representation_id_by_version_id or {}
+        self._representation_ids_by_version_id = (
+            representation_ids_by_version_id or {}
         )
 
     def get_project(self) -> dict[str, Any]:
@@ -173,7 +171,7 @@ class SelectionEntitiesCache:
             version_ids,
             "versionId",
             "version_ids",
-            self._representation_id_by_version_id,
+            self._representation_ids_by_version_id,
             ayon_api.get_representations,
         )
         return self.get_representations(repre_ids)
