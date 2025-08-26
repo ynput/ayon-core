@@ -9,6 +9,10 @@ from ayon_core.pipeline.publish import (
     PublishXmlValidationError,
     get_publish_repre_path,
 )
+from requests import exceptions as req_exc
+
+# Narrow retryable failures to transient network issues
+RETRYABLE_EXCEPTIONS = (req_exc.Timeout, req_exc.ConnectionError)
 
 
 class IntegrateAYONReview(pyblish.api.InstancePlugin):
@@ -47,7 +51,7 @@ class IntegrateAYONReview(pyblish.api.InstancePlugin):
             if "webreview" not in repre_tags:
                 continue
 
-            # exclude representations with are going to be published on farm
+            # exclude representations going to be published on farm
             if "publish_on_farm" in repre_tags:
                 continue
 
@@ -120,7 +124,8 @@ class IntegrateAYONReview(pyblish.api.InstancePlugin):
         to guide the user to retry publish.
         """
         last_error = None
-        for attempt in range(1, max_retries + 1):
+        for attempt in range(max_retries):
+            attempt_num = attempt + 1
             try:
                 ayon_con.upload_file(
                     endpoint,
@@ -129,30 +134,36 @@ class IntegrateAYONReview(pyblish.api.InstancePlugin):
                     request_type=RequestTypes.post,
                 )
                 return
-            except Exception as exc:  # noqa: BLE001 - bubble after retries
+            except RETRYABLE_EXCEPTIONS as exc:
                 last_error = exc
                 # Log and retry with backoff if attempts remain
-                if attempt < max_retries:
-                    wait = backoff_seconds * (2 ** (attempt - 1))
+                if attempt_num < max_retries:
+                    wait = backoff_seconds * (2 ** attempt)
                     self.log.warning(
-                        f"Review upload failed (attempt {attempt}/{max_retries}): {exc}. "
-                        f"Retrying in {wait}s..."
+                        "Review upload failed (attempt %s/%s). Retrying in %ss...",
+                        attempt_num, max_retries, wait,
+                        exc_info=True,
                     )
                     try:
                         time.sleep(wait)
-                    except Exception:  # Sleep errors are highly unlikely; continue
+                    except Exception:
                         pass
                 else:
-                    # Exhausted retries - raise a user-friendly validation error with help
-                    raise PublishXmlValidationError(
-                        self,
-                        (
-                            "Upload of reviewable timed out or failed after multiple attempts. "
-                            "Please try publishing again."
-                        ),
-                        key="upload_timeout",
-                        formatting_data={
-                            "file": repre_path,
-                            "error": str(last_error),
-                        },
-                    )
+                    break
+            except Exception:
+                # Non retryable failures bubble immediately
+                raise
+
+        # Exhausted retries - raise a user-friendly validation error with help
+        raise PublishXmlValidationError(
+            self,
+            (
+                "Upload of reviewable timed out or failed after multiple attempts."
+                " Please try publishing again."
+            ),
+            key="upload_timeout",
+            formatting_data={
+                "file": repre_path,
+                "error": str(last_error),
+            },
+        )
