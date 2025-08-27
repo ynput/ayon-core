@@ -12,6 +12,7 @@ from ayon_api.operations import OperationsSession
 
 from ayon_core.lib import NestedCacheItem
 from ayon_core.style import get_default_entity_icon_color
+from ayon_core.settings import get_project_settings
 from ayon_core.tools.loader.abstract import (
     ProductTypeItem,
     ProductBaseTypeItem,
@@ -115,11 +116,8 @@ def product_item_from_entity(
 
     product_type_icon = product_type_item.icon
     product_base_type_icon = product_base_type_item.icon
-    product_icon = {
-        "type": "awesome-font",
-        "name": "fa.file-o",
-        "color": get_default_entity_icon_color(),
-    }
+    # Use the product type icon for the product name as well
+    product_icon = product_type_icon
     version_items = {
         version_entity["id"]: version_item_from_entity(version_entity)
         for version_entity in version_entities
@@ -263,10 +261,57 @@ class ProductsModel:
         cache = self._product_type_items_cache[project_name]
         if not cache.is_valid:
             product_types = ayon_api.get_project_product_types(project_name)
-            cache.update_data([
+            # Build items from server product types
+            items = [
                 product_type_item_from_data(product_type)
                 for product_type in product_types
-            ])
+            ]
+
+            # Apply custom icons from settings if configured
+            try:
+                settings = get_project_settings(project_name)
+                icon_overrides = (
+                    settings
+                    ["core"]["tools"]["loader"]
+                    .get("product_type_icons")
+                    or []
+                )
+            except Exception:
+                icon_overrides = []
+
+            overrides_by_type = {}
+            for entry in icon_overrides:
+                # Support both model objects and raw dicts
+                product_type_name = (
+                    entry.get("product_type")
+                    if isinstance(entry, dict)
+                    else getattr(entry, "product_type", "")
+                )
+                icon_name = (
+                    entry.get("icon")
+                    if isinstance(entry, dict)
+                    else getattr(entry, "icon", "")
+                )
+                color_value = (
+                    entry.get("color")
+                    if isinstance(entry, dict)
+                    else getattr(entry, "color", "#0091B2")
+                )
+                if not product_type_name or not icon_name:
+                    continue
+                overrides_by_type[product_type_name.lower()] = {
+                    "type": "awesome-font",
+                    "name": icon_name,
+                    "color": color_value or "#0091B2",
+                }
+
+            if overrides_by_type:
+                for item in items:
+                    override = overrides_by_type.get(item.name.lower())
+                    if override:
+                        item.icon = override
+
+            cache.update_data(items)
         return cache.get_data()
 
     def get_product_base_type_items(

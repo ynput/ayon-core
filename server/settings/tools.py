@@ -59,6 +59,35 @@ class FilterCreatorProfile(BaseSettingsModel):
     )
 
 
+class LoaderProductTypeIconModel(BaseSettingsModel):
+    _layout = "expanded"
+    product_type: str = SettingsField(
+        "",
+        title="Product Type",
+        description="Name of the product type to map (e.g. render, model).",
+    )
+    icon: str = SettingsField(
+        "",
+        title="Icon (Font Awesome 5)",
+        description=(
+            "Font Awesome 5 icon name, e.g. fa5s.folder, fa5s.cube, fa5s.image. "
+            "Supports any qtawesome FA5 identifier."
+        ),
+    )
+    color: str = SettingsField(
+        "#0091B2",
+        title="Color (hex)",
+        description="Optional hex color for the icon, e.g. #0091B2",
+    )
+
+    @validator("product_type")
+    def _normalize_product_type(cls, value):
+        # Preserve characters like '.'; only trim whitespace
+        if value is None:
+            return value
+        return value.strip()
+
+
 class CreatorToolModel(BaseSettingsModel):
     # TODO this was dynamic dictionary '{name: task_names}'
     product_types_smart_select: list[ProductTypeSmartSelectModel] = (
@@ -265,6 +294,12 @@ class LoaderProductTypeFilterProfile(BaseSettingsModel):
 class LoaderToolModel(BaseSettingsModel):
     product_type_filter_profiles: list[LoaderProductTypeFilterProfile] = (
         SettingsField(default_factory=list, title="Product type filtering")
+    )
+    # Map product types to custom icons
+    product_type_icons: list["LoaderProductTypeIconModel"] = SettingsField(
+        default_factory=list,
+        title="Product Icons",
+        section="Products",
     )
 
 
@@ -575,7 +610,46 @@ DEFAULT_TOOLS_VALUES = {
         "workfile_lock_profiles": []
     },
     "loader": {
-        "product_type_filter_profiles": []
+        "product_type_filter_profiles": [],
+        "product_type_icons": [
+            {"product_type": "action", "icon": "fa.bolt", "color": "#E67E22"},
+            {"product_type": "animation", "icon": "fa.play-circle", "color": "#F39C12"},
+            {"product_type": "assembly", "icon": "fa.cubes", "color": "#8E44AD"},
+            {"product_type": "audio", "icon": "fa.music", "color": "#D35400"},
+            {"product_type": "backgroundComp", "icon": "fa.files-o", "color": "#7F8C8D"},
+            {"product_type": "backgroundLayout", "icon": "fa.object-ungroup", "color": "#7F8C8D"},
+            {"product_type": "camera", "icon": "fa.video-camera", "color": "#16A085"},
+            {"product_type": "editorial", "icon": "fa.scissors", "color": "#34495E"},
+            {"product_type": "gizmo", "icon": "fa.puzzle-piece", "color": "#9B59B6"},
+            {"product_type": "harmony.template", "icon": "fa.object-group", "color": "#3498DB"},
+            {"product_type": "harmony.layeredtemplate", "icon": "fa.layer-group", "color": "#9B59B6"},
+            {"product_type": "harmony.palette", "icon": "fa.palette", "color": "#008000"},
+            {"product_type": "image", "icon": "fa.picture-o", "color": "#0091B2"},
+            {"product_type": "imagesequence", "icon": "fa.files-o", "color": "#0091B2"},
+            {"product_type": "layout", "icon": "fa.object-group", "color": "#2980B9"},
+            {"product_type": "look", "icon": "fa.paint-brush", "color": "#27AE60"},
+            {"product_type": "matchmove", "icon": "fa.crosshairs", "color": "#E67E22"},
+            {"product_type": "mayaScene", "icon": "fa.file-code-o", "color": "#3498DB"},
+            {"product_type": "model", "icon": "fa.cube", "color": "#2980B9"},
+            {"product_type": "nukenodes", "icon": "fa.sitemap", "color": "#9B59B6"},
+            {"product_type": "plate", "icon": "fa.film", "color": "#34495E"},
+            {"product_type": "pointcache", "icon": "fa.database", "color": "#2ECC71"},
+            {"product_type": "prerender", "icon": "fa.spinner", "color": "#F39C12"},
+            {"product_type": "redshiftproxy", "icon": "fa.file-archive-o", "color": "#E74C3C"},
+            {"product_type": "reference", "icon": "fa.link", "color": "#95A5A6"},
+            {"product_type": "render", "icon": "fa.cogs", "color": "#E67E22"},
+            {"product_type": "review", "icon": "fa.eye", "color": "#1ABC9C"},
+            {"product_type": "rig", "icon": "fa.wrench", "color": "#8E44AD"},
+            {"product_type": "setdress", "icon": "fa.tree", "color": "#27AE60"},
+            {"product_type": "take", "icon": "fa.film", "color": "#E67E22"},
+            {"product_type": "usd", "icon": "fa.code-fork", "color": "#34495E"},
+            {"product_type": "vdbcache", "icon": "fa.cloud", "color": "#95A5A6"},
+            {"product_type": "vrayproxy", "icon": "fa.file-archive-o", "color": "#2980B9"},
+            {"product_type": "workfile", "icon": "fa.file-text-o", "color": "#0091B2"},
+            {"product_type": "xgen", "icon": "fa.leaf", "color": "#2ECC71"},
+            {"product_type": "yetiRig", "icon": "fa.paw", "color": "#1ABC9C"},
+            {"product_type": "yeticache", "icon": "fa.snowflake-o", "color": "#00A8FF"}
+        ]
     },
     "publish": {
         "template_name_profiles": [
