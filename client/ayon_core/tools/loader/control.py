@@ -248,6 +248,13 @@ class LoaderController(BackendLoaderController, FrontendLoaderController):
     def get_product_type_items(self, project_name):
         return self._products_model.get_product_type_items(project_name)
 
+    def get_loader_product_type_icon_overrides(self, project_name):
+        settings = get_project_settings(project_name)
+        return (
+            settings["core"]["tools"]["loader"].get("product_type_icons")
+            or []
+        )
+
     def get_representation_items(
         self, project_name, version_ids, sender=None
     ):
