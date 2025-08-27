@@ -28,6 +28,9 @@ class LoaderPlugin(list):
     order = 0
     is_multiple_contexts_compatible = False
     enabled = True
+    # Controls whether this representation loader is listed in the Versions
+    # (products) context menu. Keep default as True for backwards compatibility.
+    show_in_versions_menu = True
 
     options = []
 

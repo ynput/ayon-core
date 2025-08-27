@@ -551,6 +551,20 @@ class LoaderActionsModel:
             repre_contexts_by_name[repre_name].append(repre_context)
 
         for loader in repre_loaders:
+            # Allow representation loaders to hide from Versions menu
+            # (when actions are invoked from versions/products selection).
+            # Detect a versions/products invocation by checking whether the
+            # first contexts dict contains a 'version' key in its values.
+            if not getattr(loader, "show_in_versions_menu", True):
+                is_versions_menu = False
+                if version_context_by_id:
+                    try:
+                        sample_ctx = next(iter(version_context_by_id.values()))
+                        is_versions_menu = "version" in sample_ctx
+                    except StopIteration:
+                        is_versions_menu = False
+                if is_versions_menu:
+                    continue
             for repre_name, repre_contexts in repre_contexts_by_name.items():
                 filtered_repre_contexts = filter_repre_contexts_by_loader(
                     repre_contexts, loader)

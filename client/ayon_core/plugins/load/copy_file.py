@@ -7,6 +7,7 @@ class CopyFile(load.LoaderPlugin):
 
     representations = {"*"}
     product_types = {"*"}
+    show_in_versions_menu = False
 
     label = "Copy File"
     order = 10
