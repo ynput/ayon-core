@@ -33,7 +33,7 @@ class DeliveryAction(LoaderActionPlugin):
     def get_action_items(
         self, selection: LoaderActionSelection
     ) -> list[LoaderActionItem]:
-        if self.host_name is None:
+        if self.host_name is not None:
             return []
 
         version_ids = set()
