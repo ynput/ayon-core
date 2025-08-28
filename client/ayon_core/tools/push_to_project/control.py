@@ -57,6 +57,9 @@ class PushToContextController:
     def set_source(self, project_name, version_ids):
         """Set source project and version.
 
+        There is currently assumption that tool is working on products of same
+        folder.
+
         Args:
             project_name (Union[str, None]): Source project name.
             version_ids (Optional[list[str]]): Version ids.
