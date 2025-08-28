@@ -37,7 +37,7 @@ class DeliveryAction(LoaderActionPlugin):
             return []
 
         version_ids = set()
-        if selection.selected_type == "representations":
+        if selection.selected_type == "representation":
             versions = selection.entities.get_representations_versions(
                 selection.selected_ids
             )
