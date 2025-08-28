@@ -44,7 +44,7 @@ class ExportOTIO(LoaderActionPlugin):
         self, selection: LoaderActionSelection
     ) -> list[LoaderActionItem]:
         # Don't show in hosts
-        if self.host_name is None:
+        if self.host_name is not None:
             return []
 
         version_ids = set()
