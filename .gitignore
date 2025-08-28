@@ -88,3 +88,9 @@ poetry.lock
 
 # ignore mkdocs build
 site/
+
+# vscode
+**/.vscode
+**/.history
+**/.env
+*.code-workspace
