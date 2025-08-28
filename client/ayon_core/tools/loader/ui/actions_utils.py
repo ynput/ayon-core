@@ -1,4 +1,5 @@
 import uuid
+import re
 
 from qtpy import QtWidgets, QtGui
 import qtawesome
@@ -26,31 +27,74 @@ def show_actions_menu(action_items, global_point, one_item_selected, parent):
 
     menu = OptionalMenu(parent)
 
+    # Group representation-based actions by their loader label so we can
+    # display a submenu with the representations instead of duplicating the
+    # loader entry for each representation.
+    # We rely on the current label convention "<Loader Label> (<repre>)" to
+    # extract the representation name from the label. Non-representation
+    # actions stay flat in the root menu.
+    label_re = re.compile(r"^(.+?)\s\(([^()]+)\)$")
+
+    grouped: dict[str, list[tuple[str, object]]] = {}
+    flat_items = []
+    for ai in action_items:
+        # Consider it representation-based when it has representation ids and
+        # the label contains a trailing " (name)".
+        if getattr(ai, "representation_ids", None):
+            m = label_re.match(ai.label)
+            if m:
+                base_label = m.group(1)
+                repre_label = m.group(2)
+                grouped.setdefault(base_label, []).append((repre_label, ai))
+                continue
+        flat_items.append(ai)
+
     action_items_by_id = {}
-    for action_item in action_items:
+
+    def _add_qaction_for_item(qmenu, item_label, ai):
         item_id = uuid.uuid4().hex
-        action_items_by_id[item_id] = action_item
-        item_options = action_item.options
-        icon = get_qt_icon(action_item.icon)
+        action_items_by_id[item_id] = ai
+        item_options = ai.options
+        icon = get_qt_icon(ai.icon)
         use_option = bool(item_options)
         action = OptionalAction(
-            action_item.label,
+            item_label,
             icon,
             use_option,
-            menu
+            qmenu
         )
         if use_option:
-            # Add option box tip
             action.set_option_tip(item_options)
-
-        tip = action_item.tooltip
+        tip = ai.tooltip
         if tip:
             action.setToolTip(tip)
             action.setStatusTip(tip)
-
         action.setData(item_id)
+        qmenu.addAction(action)
 
-        menu.addAction(action)
+    # Add flat actions first
+    for ai in flat_items:
+        _add_qaction_for_item(menu, ai.label, ai)
+
+    # Add grouped actions. If only a single representation exists for a
+    # loader, keep it flat for compactness; otherwise create submenu.
+    for base_label, items in grouped.items():
+        if len(items) == 1:
+            # Single representation - show as a single flat action with the
+            # existing label to avoid unnecessary submenu nesting.
+            repre_label, ai = items[0]
+            _add_qaction_for_item(menu, f"{base_label} ({repre_label})", ai)
+            continue
+
+        sub = OptionalMenu(menu)
+        sub.setTitle(base_label)
+        # Use the icon from the first item for the submenu title
+        sub_icon = get_qt_icon(items[0][1].icon)
+        if sub_icon is not None:
+            sub.setIcon(sub_icon)
+        for repre_label, ai in sorted(items, key=lambda t: t[0].lower()):
+            _add_qaction_for_item(sub, repre_label, ai)
+        menu.addMenu(sub)
 
     action = menu.exec_(global_point)
     if action is not None:
