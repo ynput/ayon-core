@@ -33,7 +33,7 @@ class OpenFileAction(LoaderActionPlugin):
         self, selection: LoaderActionSelection
     ) -> list[LoaderActionItem]:
         repres = []
-        if selection.selected_type == "representations":
+        if selection.selected_type == "representation":
             repres = selection.entities.get_representations(
                 selection.selected_ids
             )
