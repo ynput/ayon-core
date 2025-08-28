@@ -210,7 +210,21 @@ class ProductsWidget(QtWidgets.QWidget):
 
         products_view.setModel(products_proxy_model)
 
+        # Auto-size columns for Product name and Product type to their contents
+        header = products_view.header()
+        header.setSectionResizeMode(
+            ProductsModel.product_name_col,
+            QtWidgets.QHeaderView.ResizeToContents,
+        )
+        header.setSectionResizeMode(
+            ProductsModel.product_type_col,
+            QtWidgets.QHeaderView.ResizeToContents,
+        )
+
+        # Set fixed widths for the remaining columns
         for idx, width in enumerate(self.default_widths):
+            if idx in (ProductsModel.product_name_col, ProductsModel.product_type_col):
+                continue
             products_view.setColumnWidth(idx, width)
 
         version_delegate = VersionDelegate()
