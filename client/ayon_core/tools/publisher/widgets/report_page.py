@@ -904,7 +904,7 @@ class PublishInstancesViewWidget(QtWidgets.QWidget):
         scroll_area.setWidgetResizable(True)
         scroll_area.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
         # Force-enable main vertical scrollbar so it's always visible
-        scroll_area.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOn)
+        scroll_area.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarAsNeeded)
         scrollbar_bg = scroll_area.verticalScrollBar().parent()
         if scrollbar_bg:
             scrollbar_bg.setAttribute(QtCore.Qt.WA_TranslucentBackground)
