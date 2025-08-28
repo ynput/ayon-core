@@ -33,6 +33,7 @@ class PushToContextController:
         self._src_folder_entity = None
         self._src_folder_task_entities = {}
         self._src_version_entities = []
+        self._src_product_entities = {}
         self._src_label = None
 
         self._submission_enabled = False
@@ -110,6 +111,10 @@ class PushToContextController:
         self._src_folder_entity = folder_entity
         self._src_folder_task_entities = task_entities
         self._src_version_entities = version_entities
+        self._src_product_entities = {
+            product["id"]: product
+            for product in product_entities
+        }
         if folder_entity:
             self._user_values.set_new_folder_name(folder_entity["name"])
             variant = self._get_src_variant()
@@ -233,8 +238,7 @@ class PushToContextController:
         folder_path = folder_entity["path"]
         src_labels = []
         for version_entity in self._src_version_entities:
-            product_entity = ayon_api.get_product_by_id(
-                self._src_project_name,
+            product_entity = self._src_product_entities.get(
                 version_entity["productId"]
             )
             src_labels.append(
@@ -289,8 +293,7 @@ class PushToContextController:
         task_name, task_type = self._get_task_info_from_repre_entities(
             task_entities, repre_entities
         )
-        product_entity = ayon_api.get_product_by_id(
-            project_name,
+        product_entity = self._src_product_entities.get(
             version_entity["productId"]
         )
 
