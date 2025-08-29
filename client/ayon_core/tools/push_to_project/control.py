@@ -158,6 +158,14 @@ class PushToContextController:
     def get_user_values(self):
         return self._user_values.get_data()
 
+    def original_names_required(self):
+        """Checks if original product names must be used.
+
+        Currently simple check if multiple versions, but if multiple products
+        with different product_type were used, it wouldn't be necessary.
+        """
+        return len(self._src_version_entities) > 1
+
     def set_user_value_folder_name(self, folder_name):
         self._user_values.set_new_folder_name(folder_name)
         self._invalidate()
