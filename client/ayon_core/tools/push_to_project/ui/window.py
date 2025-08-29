@@ -368,6 +368,8 @@ class PushToContextSelectWindow(QtWidgets.QWidget):
         user_values = self._controller.get_user_values()
         new_folder_name = user_values["new_folder_name"]
         variant = user_values["variant"]
+        self._invalidate_use_original_names(
+            self._use_original_names_checkbox.isChecked())
         self._folder_name_input.setText(new_folder_name or "")
         self._variant_input.setText(variant or "")
         self._invalidate_variant(user_values["is_variant_valid"])
@@ -420,9 +422,7 @@ class PushToContextSelectWindow(QtWidgets.QWidget):
 
     def _on_original_names_change(self, state: int) -> None:
         use_original_name = bool(state)
-        self._variant_input.setEnabled(not use_original_name)
-        self._controller._use_original_name = use_original_name
-        self.refresh()
+        self._invalidate_use_original_names(use_original_name)
 
     def _on_user_input_timer(self):
         folder_name_enabled = self._new_folder_name_enabled
@@ -498,6 +498,16 @@ class PushToContextSelectWindow(QtWidgets.QWidget):
         self._variant_is_valid = is_valid
         state = "valid" if is_valid else "invalid"
         set_style_property(self._variant_input, "state", state)
+
+    def _invalidate_use_original_names(self, use_original_names):
+        variant_used = True
+        if self._controller.original_names_required():
+            variant_used = False
+            use_original_names = True
+
+        self._controller._use_original_name = use_original_names
+        self._use_original_names_checkbox.setChecked(use_original_names)
+        self._variant_input.setEnabled(variant_used)
 
     def _on_submission_change(self, event):
         self._publish_btn.setEnabled(event["enabled"])
