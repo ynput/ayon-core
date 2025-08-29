@@ -307,6 +307,7 @@ class PushToContextSelectWindow(QtWidgets.QWidget):
         self._new_folder_checkbox = new_folder_checkbox
         self._folder_name_input = folder_name_input
         self._comment_input = comment_input
+        self._use_original_names_checkbox = original_names_checkbox
 
         self._publish_btn = publish_btn
 
