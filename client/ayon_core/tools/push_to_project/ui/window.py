@@ -501,9 +501,8 @@ class PushToContextSelectWindow(QtWidgets.QWidget):
         if self._controller.original_names_required():
             use_original_names = True
 
-        if use_original_names:
-            self._variant_input.setEnabled(not use_original_names)
-            self._invalidate_variant(not use_original_names)
+        self._variant_input.setEnabled(not use_original_names)
+        self._invalidate_variant(not use_original_names)
 
         self._controller._use_original_name = use_original_names
         self._use_original_names_checkbox.setChecked(use_original_names)
