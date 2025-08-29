@@ -368,11 +368,11 @@ class PushToContextSelectWindow(QtWidgets.QWidget):
         user_values = self._controller.get_user_values()
         new_folder_name = user_values["new_folder_name"]
         variant = user_values["variant"]
-        self._invalidate_use_original_names(
-            self._use_original_names_checkbox.isChecked())
         self._folder_name_input.setText(new_folder_name or "")
         self._variant_input.setText(variant or "")
         self._invalidate_variant(user_values["is_variant_valid"])
+        self._invalidate_use_original_names(
+            self._use_original_names_checkbox.isChecked())
         self._invalidate_new_folder_name(
             new_folder_name, user_values["is_new_folder_name_valid"]
         )
@@ -486,28 +486,27 @@ class PushToContextSelectWindow(QtWidgets.QWidget):
         state = ""
         if folder_name is not None:
             state = "valid" if is_valid else "invalid"
-        set_style_property(
-            self._folder_name_input, "state", state
-        )
+        set_style_property(self._folder_name_input, "state", state)
 
     def _invalidate_variant(self, is_valid):
-        if self._controller._use_original_name:
-            is_valid = True
-        if self._variant_is_valid is is_valid:
-            return
         self._variant_is_valid = is_valid
         state = "valid" if is_valid else "invalid"
         set_style_property(self._variant_input, "state", state)
 
     def _invalidate_use_original_names(self, use_original_names):
-        variant_used = True
+        """Checks if original names must be used.
+
+        Invalidates Variant if necessary
+        """
         if self._controller.original_names_required():
-            variant_used = False
             use_original_names = True
+
+        if use_original_names:
+            self._variant_input.setEnabled(not use_original_names)
+            self._invalidate_variant(not use_original_names)
 
         self._controller._use_original_name = use_original_names
         self._use_original_names_checkbox.setChecked(use_original_names)
-        self._variant_input.setEnabled(variant_used)
 
     def _on_submission_change(self, event):
         self._publish_btn.setEnabled(event["enabled"])
