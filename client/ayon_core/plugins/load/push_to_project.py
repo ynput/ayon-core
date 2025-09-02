@@ -28,10 +28,12 @@ class PushToProject(load.ProductLoaderPlugin):
         if not filtered_contexts:
             raise LoadError("Nothing to push for your selection")
 
-        if len(filtered_contexts) > 1:
-            raise LoadError("Please select only one item")
-
-        context = tuple(filtered_contexts)[0]
+        folder_ids = set(
+            context["folder"]["id"]
+            for context in filtered_contexts
+        )
+        if len(folder_ids) > 1:
+            raise LoadError("Please select products from single folder")
 
         push_tool_script_path = os.path.join(
             AYON_CORE_ROOT,
@@ -39,13 +41,16 @@ class PushToProject(load.ProductLoaderPlugin):
             "push_to_project",
             "main.py"
         )
+        project_name = filtered_contexts[0]["project"]["name"]
 
-        project_name = context["project"]["name"]
-        version_id = context["version"]["id"]
+        version_ids = {
+            context["version"]["id"]
+            for context in filtered_contexts
+        }
 
         args = get_ayon_launcher_args(
             push_tool_script_path,
             "--project", project_name,
-            "--version", version_id
+            "--versions", ",".join(version_ids)
         )
         run_detached_process(args)
