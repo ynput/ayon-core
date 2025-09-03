@@ -977,52 +977,6 @@ def discover_convertor_plugins(*args, **kwargs):
     return discover(ProductConvertorPlugin, *args, **kwargs)
 
 
-def discover_legacy_creator_plugins():
-    from ayon_core.pipeline import get_current_project_name
-
-    log = Logger.get_logger("CreatorDiscover")
-
-    plugins = discover(LegacyCreator)
-    project_name = get_current_project_name()
-    project_settings = get_project_settings(project_name)
-    for plugin in plugins:
-        try:
-            plugin.apply_settings(project_settings)
-        except Exception:
-            log.warning(
-                "Failed to apply settings to creator %s", plugin.__name__,
-                exc_info=True
-            )
-    return plugins
-
-
-def get_legacy_creator_by_name(creator_name, case_sensitive=False):
-    """Find creator plugin by name.
-
-    Args:
-        creator_name (str): Name of creator class that should be returned.
-        case_sensitive (bool): Match of creator plugin name is case sensitive.
-            Set to `False` by default.
-
-    Returns:
-        Creator: Return first matching plugin or `None`.
-    """
-    # Lower input creator name if is not case sensitive
-    if not case_sensitive:
-        creator_name = creator_name.lower()
-
-    for creator_plugin in discover_legacy_creator_plugins():
-        _creator_name = creator_plugin.__name__
-
-        # Lower creator plugin name if is not case sensitive
-        if not case_sensitive:
-            _creator_name = _creator_name.lower()
-
-        if _creator_name == creator_name:
-            return creator_plugin
-    return None
-
-
 def register_creator_plugin(plugin):
     if issubclass(plugin, BaseCreator):
         register_plugin(BaseCreator, plugin)
