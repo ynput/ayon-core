@@ -3,9 +3,13 @@ from qtpy import QtWidgets, QtCore, QtGui
 from ayon_core import style, resources
 
 from ayon_core.tools.launcher.control import BaseLauncherController
-from ayon_core.tools.utils import MessageOverlayObject
+from ayon_core.tools.utils import (
+    MessageOverlayObject,
+    PlaceholderLineEdit,
+    RefreshButton,
+    ProjectsWidget,
+)
 
-from .projects_widget import ProjectsWidget
 from .hierarchy_page import HierarchyPage
 from .actions_widget import ActionsWidget
 
@@ -50,7 +54,25 @@ class LauncherWindow(QtWidgets.QWidget):
         pages_widget = QtWidgets.QWidget(content_body)
 
         # - First page - Projects
-        projects_page = ProjectsWidget(controller, pages_widget)
+        projects_page = QtWidgets.QWidget(pages_widget)
+        projects_header_widget = QtWidgets.QWidget(projects_page)
+
+        projects_filter_text = PlaceholderLineEdit(projects_header_widget)
+        projects_filter_text.setPlaceholderText("Filter projects...")
+
+        refresh_btn = RefreshButton(projects_header_widget)
+
+        projects_header_layout = QtWidgets.QHBoxLayout(projects_header_widget)
+        projects_header_layout.setContentsMargins(0, 0, 0, 0)
+        projects_header_layout.addWidget(projects_filter_text, 1)
+        projects_header_layout.addWidget(refresh_btn, 0)
+
+        projects_widget = ProjectsWidget(controller, pages_widget)
+
+        projects_layout = QtWidgets.QVBoxLayout(projects_page)
+        projects_layout.setContentsMargins(0, 0, 0, 0)
+        projects_layout.addWidget(projects_header_widget, 0)
+        projects_layout.addWidget(projects_widget, 1)
 
         # - Second page - Hierarchy (folders & tasks)
         hierarchy_page = HierarchyPage(controller, pages_widget)
@@ -102,12 +124,16 @@ class LauncherWindow(QtWidgets.QWidget):
         page_slide_anim.setEndValue(1.0)
         page_slide_anim.setEasingCurve(QtCore.QEasingCurve.OutQuad)
 
-        projects_page.refreshed.connect(self._on_projects_refresh)
+        refresh_btn.clicked.connect(self._on_refresh_request)
+        projects_widget.refreshed.connect(self._on_projects_refresh)
+
         actions_refresh_timer.timeout.connect(
             self._on_actions_refresh_timeout)
         page_slide_anim.valueChanged.connect(
             self._on_page_slide_value_changed)
         page_slide_anim.finished.connect(self._on_page_slide_finished)
+        projects_filter_text.textChanged.connect(
+            self._on_project_filter_change)
 
         controller.register_event_callback(
             "selection.project.changed",
@@ -142,6 +168,7 @@ class LauncherWindow(QtWidgets.QWidget):
         self._pages_widget = pages_widget
         self._pages_layout = pages_layout
         self._projects_page = projects_page
+        self._projects_widget = projects_widget
         self._hierarchy_page = hierarchy_page
         self._actions_widget = actions_widget
         # self._action_history = action_history
@@ -194,6 +221,12 @@ class LauncherWindow(QtWidgets.QWidget):
         elif self._is_on_projects_page:
             self._go_to_hierarchy_page(project_name)
 
+    def _on_project_filter_change(self, text):
+        self._projects_widget.set_name_filter(text)
+
+    def _on_refresh_request(self):
+        self._controller.refresh()
+
     def _on_projects_refresh(self):
         # Refresh only actions on projects page
         if self._is_on_projects_page:
@@ -201,7 +234,7 @@ class LauncherWindow(QtWidgets.QWidget):
             return
 
         # No projects were found -> go back to projects page
-        if not self._projects_page.has_content():
+        if not self._projects_widget.has_content():
             self._go_to_projects_page()
             return
 
@@ -280,6 +313,9 @@ class LauncherWindow(QtWidgets.QWidget):
     def _go_to_projects_page(self):
         if self._is_on_projects_page:
             return
+
+        # Deselect project in projects widget
+        self._projects_widget.set_selected_project(None)
         self._is_on_projects_page = True
         self._hierarchy_page.set_page_visible(False)
 

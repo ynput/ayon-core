@@ -332,10 +332,6 @@ class LoaderTasksWidget(QtWidgets.QWidget):
             "selection.folders.changed",
             self._on_folders_selection_changed,
         )
-        controller.register_event_callback(
-            "tasks.refresh.finished",
-            self._on_tasks_refresh_finished
-        )
 
         selection_model = tasks_view.selectionModel()
         selection_model.selectionChanged.connect(self._on_selection_change)
@@ -372,10 +368,6 @@ class LoaderTasksWidget(QtWidgets.QWidget):
 
     def _clear(self):
         self._tasks_model.clear()
-
-    def _on_tasks_refresh_finished(self, event):
-        if event["sender"] != TASKS_MODEL_SENDER_NAME:
-            self._set_project_name(event["project_name"])
 
     def _on_folders_selection_changed(self, event):
         project_name = event["project_name"]

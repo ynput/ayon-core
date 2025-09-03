@@ -19,10 +19,9 @@ from ayon_core.pipeline.staging_dir import StagingDir, get_staging_dir_info
 from ayon_core.settings import get_project_settings
 
 from .constants import DEFAULT_VARIANT_VALUE
-from .legacy_create import LegacyCreator
 from .product_name import get_product_name
-from .structures import CreatedInstance
 from .utils import get_next_versions_for_instances
+from .structures import CreatedInstance
 
 if TYPE_CHECKING:
     from ayon_core.lib import AbstractAttrDef
@@ -1028,9 +1027,6 @@ def register_creator_plugin(plugin):
     if issubclass(plugin, BaseCreator):
         register_plugin(BaseCreator, plugin)
 
-    elif issubclass(plugin, LegacyCreator):
-        register_plugin(LegacyCreator, plugin)
-
     elif issubclass(plugin, ProductConvertorPlugin):
         register_plugin(ProductConvertorPlugin, plugin)
 
@@ -1039,22 +1035,17 @@ def deregister_creator_plugin(plugin):
     if issubclass(plugin, BaseCreator):
         deregister_plugin(BaseCreator, plugin)
 
-    elif issubclass(plugin, LegacyCreator):
-        deregister_plugin(LegacyCreator, plugin)
-
     elif issubclass(plugin, ProductConvertorPlugin):
         deregister_plugin(ProductConvertorPlugin, plugin)
 
 
 def register_creator_plugin_path(path):
     register_plugin_path(BaseCreator, path)
-    register_plugin_path(LegacyCreator, path)
     register_plugin_path(ProductConvertorPlugin, path)
 
 
 def deregister_creator_plugin_path(path):
     deregister_plugin_path(BaseCreator, path)
-    deregister_plugin_path(LegacyCreator, path)
     deregister_plugin_path(ProductConvertorPlugin, path)
 
 

@@ -352,9 +352,6 @@ class ActionsModel:
         )
 
     def _get_webaction_request_data(self, selection: LauncherActionSelection):
-        if not selection.is_project_selected:
-            return None
-
         entity_type = None
         entity_id = None
         entity_subtypes = []
@@ -367,6 +364,13 @@ class ActionsModel:
             entity_type = "folder"
             entity_id = selection.folder_entity["id"]
             entity_subtypes = [selection.folder_entity["folderType"]]
+
+        elif selection.is_project_selected:
+            # Project actions are supported since AYON 1.9.1
+            ma, mi, pa, _, _ = ayon_api.get_server_version_tuple()
+            if (ma, mi, pa) < (1, 9, 1):
+                return None
+            entity_type = "project"
 
         entity_ids = []
         if entity_id:
@@ -381,10 +385,10 @@ class ActionsModel:
         }
 
     def _get_webactions(self, selection: LauncherActionSelection):
-        if not selection.is_project_selected:
+        request_data = self._get_webaction_request_data(selection)
+        if request_data is None:
             return []
 
-        request_data = self._get_webaction_request_data(selection)
         project_name = selection.project_name
         entity_id = None
         if request_data["entityIds"]:
@@ -395,7 +399,11 @@ class ActionsModel:
             return cache.get_data()
 
         try:
-            response = ayon_api.post("actions/list", **request_data)
+            # 'variant' query is supported since AYON backend 1.10.4
+            query = urlencode({"variant": self._variant})
+            response = ayon_api.post(
+                f"actions/list?{query}", **request_data
+            )
             response.raise_for_status()
         except Exception:
             self.log.warning("Failed to collect webactions.", exc_info=True)
@@ -509,7 +517,12 @@ class ActionsModel:
                 uri = payload["uri"]
             else:
                 uri = data["uri"]
-            run_detached_ayon_launcher_process(uri)
+
+            # Remove bundles from environment variables
+            env = os.environ.copy()
+            env.pop("AYON_BUNDLE_NAME", None)
+            env.pop("AYON_STUDIO_BUNDLE_NAME", None)
+            run_detached_ayon_launcher_process(uri, env=env)
 
         elif response_type in ("query", "navigate"):
             response.error_message = (

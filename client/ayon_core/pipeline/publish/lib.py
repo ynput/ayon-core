@@ -5,8 +5,9 @@ import sys
 import inspect
 import copy
 import warnings
+import hashlib
 import xml.etree.ElementTree
-from typing import Optional, Union, List
+from typing import TYPE_CHECKING, Optional, Union, List
 
 import ayon_api
 import pyblish.util
@@ -26,6 +27,12 @@ from .constants import (
     DEFAULT_PUBLISH_TEMPLATE,
     DEFAULT_HERO_PUBLISH_TEMPLATE,
 )
+
+if TYPE_CHECKING:
+    from ayon_core.pipeline.traits import Representation
+
+
+TRAIT_INSTANCE_KEY: str = "representations_with_traits"
 
 
 def get_template_name_profiles(
@@ -237,32 +244,38 @@ def publish_plugins_discover(
 
     for path in paths:
         path = os.path.normpath(path)
-        if not os.path.isdir(path):
-            continue
+        filenames = []
+        if os.path.isdir(path):
+            filenames.extend(
+                name
+                for name in os.listdir(path)
+                if (
+                    os.path.isfile(os.path.join(path, name))
+                    and not name.startswith("_")
+                )
+            )
+        else:
+            filenames.append(os.path.basename(path))
+            path = os.path.dirname(path)
 
-        for fname in os.listdir(path):
-            if fname.startswith("_"):
+        dirpath_hash = hashlib.md5(path.encode("utf-8")).hexdigest()
+        for filename in filenames:
+            basename, ext = os.path.splitext(filename)
+            if ext.lower() != ".py":
                 continue
 
-            abspath = os.path.join(path, fname)
-
-            if not os.path.isfile(abspath):
-                continue
-
-            mod_name, mod_ext = os.path.splitext(fname)
-
-            if mod_ext != ".py":
-                continue
-
+            filepath = os.path.join(path, filename)
+            module_name = f"{dirpath_hash}.{basename}"
             try:
                 module = import_filepath(
-                    abspath, mod_name, sys_module_name=mod_name)
+                    filepath, module_name, sys_module_name=module_name
+                )
 
             except Exception as err:  # noqa: BLE001
                 # we need broad exception to catch all possible errors.
-                result.crashed_file_paths[abspath] = sys.exc_info()
+                result.crashed_file_paths[filepath] = sys.exc_info()
 
-                log.debug('Skipped: "%s" (%s)', mod_name, err)
+                log.debug('Skipped: "%s" (%s)', filepath, err)
                 continue
 
             for plugin in pyblish.plugin.plugins_from_module(module):
@@ -348,12 +361,18 @@ def get_plugin_settings(plugin, project_settings, log, category=None):
     # Use project settings based on a category name
     if category:
         try:
-            return (
+            output = (
                 project_settings
                 [category]
                 ["publish"]
                 [plugin.__name__]
             )
+            warnings.warn(
+                "Please fill 'settings_category'"
+                f" for plugin '{plugin.__name__}'.",
+                DeprecationWarning
+            )
+            return output
         except KeyError:
             pass
 
@@ -378,12 +397,18 @@ def get_plugin_settings(plugin, project_settings, log, category=None):
         category_from_file = "core"
 
     try:
-        return (
+        output = (
             project_settings
             [category_from_file]
             [plugin_kind]
             [plugin.__name__]
         )
+        warnings.warn(
+            "Please fill 'settings_category'"
+            f" for plugin '{plugin.__name__}'.",
+            DeprecationWarning
+        )
+        return output
     except KeyError:
         pass
     return {}
@@ -1016,12 +1041,6 @@ def main_cli_publish(
     if addons_manager is None:
         addons_manager = AddonsManager()
 
-    # TODO validate if this has to happen
-    # - it should happen during 'install_ayon_plugins'
-    publish_paths = addons_manager.collect_plugin_paths()["publish"]
-    for plugin_path in publish_paths:
-        pyblish.api.register_plugin_path(plugin_path)
-
     applications_addon = addons_manager.get_enabled_addon("applications")
     if applications_addon is not None:
         context = get_global_context()
@@ -1046,19 +1065,81 @@ def main_cli_publish(
 
     log.info("Running publish ...")
 
-    plugins = pyblish.api.discover()
-    print("Using plugins:")
-    for plugin in plugins:
-        print(plugin)
+    discover_result = publish_plugins_discover()
+    publish_plugins = discover_result.plugins
+    print(discover_result.get_report(only_errors=False))
 
     # Error exit as soon as any error occurs.
     error_format = ("Failed {plugin.__name__}: "
                     "{error} -- {error.traceback}")
 
-    for result in pyblish.util.publish_iter():
+    for result in pyblish.util.publish_iter(plugins=publish_plugins):
         if result["error"]:
             log.error(error_format.format(**result))
             # uninstall()
             sys.exit(1)
 
     log.info("Publish finished.")
+
+
+def has_trait_representations(
+        instance: pyblish.api.Instance) -> bool:
+    """Check if instance has trait representation.
+
+    Args:
+        instance (pyblish.api.Instance): Instance to check.
+
+    Returns:
+        True: Instance has trait representation.
+        False: Instance does not have trait representation.
+
+    """
+    return TRAIT_INSTANCE_KEY in instance.data
+
+
+def add_trait_representations(
+        instance: pyblish.api.Instance,
+        representations: list[Representation]
+) -> None:
+    """Add trait representations to instance.
+
+    Args:
+        instance (pyblish.api.Instance): Instance to add trait
+            representations to.
+        representations (list[Representation]): List of representation
+            trait based representations to add.
+
+    """
+    repres = instance.data.setdefault(TRAIT_INSTANCE_KEY, [])
+    repres.extend(representations)
+
+
+def set_trait_representations(
+        instance: pyblish.api.Instance,
+        representations: list[Representation]
+) -> None:
+    """Set trait representations to instance.
+
+    Args:
+        instance (pyblish.api.Instance): Instance to set trait
+            representations to.
+        representations (list[Representation]): List of trait
+            based representations.
+
+    """
+    instance.data[TRAIT_INSTANCE_KEY] = representations
+
+
+def get_trait_representations(
+        instance: pyblish.api.Instance) -> list[Representation]:
+    """Get trait representations from instance.
+
+    Args:
+        instance (pyblish.api.Instance): Instance to get trait
+            representations from.
+
+    Returns:
+        list[Representation]: List of representation names.
+
+    """
+    return instance.data.get(TRAIT_INSTANCE_KEY, [])

@@ -29,6 +29,7 @@ from .widgets import (
 from .views import (
     DeselectableTreeView,
     TreeView,
+    ListView,
 )
 from .error_dialog import ErrorMessageBox
 from .lib import (
@@ -61,6 +62,7 @@ from .dialogs import (
 )
 from .projects_widget import (
     ProjectsCombobox,
+    ProjectsWidget,
     ProjectsQtModel,
     ProjectSortFilterProxy,
     PROJECT_NAME_ROLE,
@@ -114,6 +116,7 @@ __all__ = (
 
     "DeselectableTreeView",
     "TreeView",
+    "ListView",
 
     "ErrorMessageBox",
 
@@ -145,6 +148,7 @@ __all__ = (
     "PopupUpdateKeys",
 
     "ProjectsCombobox",
+    "ProjectsWidget",
     "ProjectsQtModel",
     "ProjectSortFilterProxy",
     "PROJECT_NAME_ROLE",

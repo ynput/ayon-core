@@ -288,7 +288,12 @@ def get_representation_context(project_name, representation):
 
 
 def load_with_repre_context(
-    Loader, repre_context, namespace=None, name=None, options=None, **kwargs
+    Loader,
+    repre_context,
+    namespace=None,
+    name=None,
+    options=None,
+    **kwargs
 ):
 
     # Ensure the Loader is compatible for the representation
@@ -320,7 +325,12 @@ def load_with_repre_context(
 
 
 def load_with_product_context(
-    Loader, product_context, namespace=None, name=None, options=None, **kwargs
+    Loader,
+    product_context,
+    namespace=None,
+    name=None,
+    options=None,
+    **kwargs
 ):
 
     # Ensure options is a dictionary when no explicit options provided
@@ -343,7 +353,12 @@ def load_with_product_context(
 
 
 def load_with_product_contexts(
-    Loader, product_contexts, namespace=None, name=None, options=None, **kwargs
+    Loader,
+    product_contexts,
+    namespace=None,
+    name=None,
+    options=None,
+    **kwargs
 ):
 
     # Ensure options is a dictionary when no explicit options provided
@@ -553,15 +568,20 @@ def update_container(container, version=-1):
     return Loader().update(container, context)
 
 
-def switch_container(container, representation, loader_plugin=None):
+def switch_container(
+    container,
+    representation,
+    loader_plugin=None,
+):
     """Switch a container to representation
 
     Args:
         container (dict): container information
         representation (dict): representation entity
+        loader_plugin (LoaderPlugin)
 
     Returns:
-        function call
+        return from function call
     """
     from ayon_core.pipeline import get_current_project_name
 
@@ -700,11 +720,13 @@ def get_representation_path(representation, root=None):
         str: fullpath of the representation
 
     """
-
     if root is None:
-        from ayon_core.pipeline import registered_root
+        from ayon_core.pipeline import get_current_project_name, Anatomy
 
-        root = registered_root()
+        anatomy = Anatomy(get_current_project_name())
+        return get_representation_path_with_anatomy(
+            representation, anatomy
+        )
 
     def path_from_representation():
         try:
@@ -752,7 +774,7 @@ def get_representation_path(representation, root=None):
 
         dir_path, file_name = os.path.split(path)
         if not os.path.exists(dir_path):
-            return
+            return None
 
         base_name, ext = os.path.splitext(file_name)
         file_name_items = None
@@ -762,7 +784,7 @@ def get_representation_path(representation, root=None):
             file_name_items = base_name.split("%")
 
         if not file_name_items:
-            return
+            return None
 
         filename_start = file_name_items[0]
 
