@@ -16,7 +16,6 @@ from ayon_core.pipeline.plugin_discover import (
     register_plugin_path,
 )
 from ayon_core.pipeline.staging_dir import StagingDir, get_staging_dir_info
-from ayon_core.settings import get_project_settings
 
 from .constants import DEFAULT_VARIANT_VALUE
 from .product_name import get_product_name
