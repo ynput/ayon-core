@@ -24,6 +24,8 @@ class IntegrateProductGroup(pyblish.api.InstancePlugin):
     order = pyblish.api.IntegratorOrder - 0.1
     label = "Product Group"
 
+    settings_category = "core"
+
     # Attributes set by settings
     product_grouping_profiles = None
 

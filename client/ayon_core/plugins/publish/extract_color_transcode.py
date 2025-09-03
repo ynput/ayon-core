@@ -55,10 +55,12 @@ class ExtractOIIOTranscode(publish.Extractor):
     label = "Transcode color spaces"
     order = pyblish.api.ExtractorOrder + 0.019
 
+    settings_category = "core"
+
     optional = True
 
     # Supported extensions
-    supported_exts = ["exr", "jpg", "jpeg", "png", "dpx"]
+    supported_exts = {"exr", "jpg", "jpeg", "png", "dpx"}
 
     # Configurable by Settings
     profiles = None
