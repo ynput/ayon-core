@@ -4,6 +4,7 @@ from uuid import uuid4
 from enum import Enum
 import typing
 from typing import Optional, Dict, List, Any
+from warnings import warn
 
 from ayon_core.lib.attribute_definitions import (
     AbstractAttrDef,
@@ -11,6 +12,9 @@ from ayon_core.lib.attribute_definitions import (
     serialize_attr_defs,
     deserialize_attr_defs,
 )
+
+from ayon_core.pipeline.compatibility import is_product_base_type_supported
+
 from ayon_core.pipeline import (
     AYON_INSTANCE_ID,
     AVALON_INSTANCE_ID,
@@ -479,6 +483,10 @@ class CreatedInstance:
         data (Dict[str, Any]): Data used for filling product name or override
             data from already existing instance.
         creator (BaseCreator): Creator responsible for instance.
+        product_base_type (Optional[str]): Product base type that will be
+            created. If not provided then product base type is taken from
+            creator plugin. If creator does not have product base type then
+            deprecation warning is raised.
     """
 
     # Keys that can't be changed or removed from data after loading using
@@ -489,6 +497,7 @@ class CreatedInstance:
         "id",
         "instance_id",
         "productType",
+        "productBaseType",
         "creator_identifier",
         "creator_attributes",
         "publish_attributes"
@@ -508,7 +517,21 @@ class CreatedInstance:
         data: Dict[str, Any],
         creator: "BaseCreator",
         transient_data: Optional[Dict[str, Any]] = None,
+        product_base_type: Optional[str] = None
     ):
+        """Initialize CreatedInstance."""
+        if is_product_base_type_supported():
+            if not hasattr(creator, "product_base_type"):
+                warn(
+                    f"Provided creator {creator!r} doesn't have "
+                    "product base type attribute defined. This will be "
+                    "required in future.",
+                    DeprecationWarning,
+                    stacklevel=2
+                )
+            elif not product_base_type:
+                product_base_type = creator.product_base_type
+
         self._creator = creator
         creator_identifier = creator.identifier
         group_label = creator.get_group_label()
@@ -561,6 +584,11 @@ class CreatedInstance:
         self._data["id"] = item_id
         self._data["productType"] = product_type
         self._data["productName"] = product_name
+
+        if is_product_base_type_supported():
+            data.pop("productBaseType", None)
+            self._data["productBaseType"] = product_base_type
+
         self._data["active"] = data.get("active", True)
         self._data["creator_identifier"] = creator_identifier
 
