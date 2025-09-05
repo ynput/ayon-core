@@ -1404,7 +1404,7 @@ def _get_display_view_colorspace_name(config_path, display, view):
     """
     config = _get_ocio_config(config_path)
     colorspace = config.getDisplayViewColorSpaceName(display, view)
-    # Special token. See https://opencolorio.readthedocs.io/en/latest/guides/authoring/authoring.html#shared-views # noqa
+    # Special token. See https://opencolorio.readthedocs.io/en/latest/guides/authoring/authoring.html#shared-views  # noqa
     if colorspace == "<USE_DISPLAY_NAME>":
         colorspace = display
 
