@@ -254,15 +254,23 @@ def run_detached_process(args, **kwargs):
         args = new_args
 
     elif low_platform == "windows":
-        flags = (
-            subprocess.CREATE_NEW_PROCESS_GROUP
-            | subprocess.DETACHED_PROCESS
-        )
-        kwargs["creationflags"] = flags
+        flags = kwargs.get("creationflags")
+        if flags is None:
+            # Create new console if executable is ayon_console,
+            #   otherwise create detached process.
+            executable_filename = os.path.basename(args[0]).lower()
+            if executable_filename == "ayon_console.exe":
+                flags = subprocess.CREATE_NEW_CONSOLE
+            else:
+                flags = subprocess.DETACHED_PROCESS
+                if not sys.stdout:
+                    kwargs["stdout"] = subprocess.DEVNULL
+                    kwargs["stderr"] = subprocess.DEVNULL
 
-        if not sys.stdout:
-            kwargs["stdout"] = subprocess.DEVNULL
-            kwargs["stderr"] = subprocess.DEVNULL
+        # New process will become new process group
+        flags |= subprocess.CREATE_NEW_PROCESS_GROUP
+
+        kwargs["creationflags"] = flags
 
     elif low_platform == "linux" and get_linux_launcher_args() is not None:
         json_data = {
@@ -270,7 +278,7 @@ def run_detached_process(args, **kwargs):
             "env": kwargs.pop("env")
         }
         json_temp = tempfile.NamedTemporaryFile(
-            mode="w", prefix="op_app_args", suffix=".json", delete=False
+            mode="w", prefix="ayon_app_args", suffix=".json", delete=False
         )
         json_temp.close()
         json_temp_filpath = json_temp.name
