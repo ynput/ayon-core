@@ -88,9 +88,12 @@ class ExtractOIIOTranscode(publish.Extractor):
         repres = instance.data["representations"]
         for idx, repre in enumerate(list(repres)):
             # target space, display and view might be defined upstream
-            target_colorspace = instance.data.get("targetOCIOColorspace")
-            target_display = instance.data.get("targetOCIODisplay")
-            target_view = instance.data.get("targetOCIOView")
+            # TODO: address https://github.com/ynput/ayon-core/pull/1268#discussion_r2156555474
+            #   Implement upstream logic to handle target_colorspace,
+            #   target_display, target_view in other DCCs
+            target_colorspace = False
+            target_display = instance.data.get("colorspaceDisplay")
+            target_view = instance.data.get("colorspaceView")
 
             self.log.debug("repre ({}): `{}`".format(idx + 1, repre["name"]))
             if not self._repre_is_valid(repre):
