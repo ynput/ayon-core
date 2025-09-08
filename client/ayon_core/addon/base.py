@@ -303,7 +303,9 @@ def _load_ayon_addons(log):
         if use_dev_path:
             addon_dir = dev_addon_info["path"]
             if addon_dir:
-                addon_dir = addon_dir.format(**os.environ)
+                addon_dir = os.path.expandvars(
+                    addon_dir.format_map(os.environ)
+                )
 
             if not addon_dir or not os.path.exists(addon_dir):
                 log.warning((
