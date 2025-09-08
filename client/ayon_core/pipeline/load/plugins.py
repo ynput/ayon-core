@@ -1,11 +1,12 @@
 """Plugins for loading representations and products into host applications."""
 from __future__ import annotations
 
-from abc import abstractmethod
+from abc import ABC, abstractmethod
 import logging
 import os
 from typing import Any, Optional, Type
 
+from ayon_core.lib import Logger
 from ayon_core.pipeline.plugin_discover import (
     deregister_plugin,
     deregister_plugin_path,
@@ -16,6 +17,11 @@ from ayon_core.pipeline.plugin_discover import (
 from ayon_core.settings import get_project_settings
 
 from .utils import get_representation_path_from_context
+from .context import (
+    LoadContext,
+    RepresentationContext,
+    ContainerItem,
+)
 
 
 class LoaderPlugin(list):
@@ -432,6 +438,158 @@ def add_hooks_to_loader(
     for method in ("load", "update", "remove"):
         if hasattr(loader_class, method):
             wrap_method(method)
+
+
+class LoadPlugin(ABC):
+    """Base class for load plugins.
+
+    Load plugin is responsible for loading representation into
+        a host application and storing metadata in workfile
+        to be able to manage them.
+
+    Attributes:
+        order (int): Order of plugins in which will be executed
+            collection and in which will be shown in the load menu.
+        settings_category (str): Settings category (addon name) used to
+            auto-apply settings.
+        settings_name (str): Key under 'load' used to auto-apply settings.
+        identifier (str): Plugin identifier. Must be unique.
+
+    """
+    order: int = 100
+    settings_category: str = None
+    settings_name: str = None
+
+    def __init__(
+        self,
+        load_context: LoadContext,
+        project_settings: dict[str, Any],
+    ) -> None:
+        self._log = None
+        self._load_context = load_context
+        self.apply_settings(project_settings)
+
+    @property
+    @abstractmethod
+    def identifier(self) -> str:
+        """Plugin identifier."""
+        pass
+
+    @property
+    def log(self) -> logging.Logger:
+        if self._log is None:
+            self._log = Logger.get_logger(self.__class__.__name__)
+        return self._log
+
+    def apply_settings(self, project_settings: dict[str, Any]) -> None:
+        """Apply project settings to the plugin.
+
+        Args:
+            project_settings (dict[str, Any]): Project settings.
+
+        """
+        cls_name = self.__class__.__name__
+        settings_name = self.settings_name or cls_name
+
+        settings = project_settings
+        for key in (
+            self.settings_category,
+            "load",
+            settings_name,
+        ):
+            settings = settings.get(key)
+            if settings is None:
+                self.log.debug(f"No settings found for {cls_name}")
+                return
+
+        for key, value in settings.items():
+            # Log out attributes that are not defined on plugin object
+            # - those may be potential dangerous typos in settings
+            if not hasattr(self, key):
+                self.log.debug(
+                    "Applying settings to unknown attribute"
+                    f" '{key}' on '{cls_name}'."
+                )
+            setattr(self, key, value)
+
+    @abstractmethod
+    def collect_containers(self) -> None:
+        """Collect containers from current workfile.
+
+        This method is called by LoadContext on initialization and on reset.
+        """
+        pass
+
+    @abstractmethod
+    def is_representation_compatible(
+        self,
+        representation_context: RepresentationContext,
+    ) -> bool:
+        """Check if representation is compatible with the plugin.
+
+        Args:
+            representation_context (RepresentationContext): Representation
+                context.
+
+        Returns:
+            bool: True if compatible, False otherwise.
+
+        """
+        pass
+
+    @abstractmethod
+    def load(
+        self,
+        representation_contexts: list[RepresentationContext],
+    ) -> list[ContainerItem]:
+        """Load representations.
+
+        Method still has to call 'add_containers' method on 'LoadContext'.
+
+        Args:
+            representation_contexts (list[RepresentationContext]): List of
+                representation contexts.
+
+        Returns:
+            list[ContainerItem]: List of loaded containers.
+
+        """
+        pass
+
+    @abstractmethod
+    def change_representations(
+        self,
+        items: list[tuple[ContainerItem, RepresentationContext]],
+    ) -> None:
+        """Change representations of loaded containers.
+
+        Can be used to switch between versions or different representations.
+
+        Args:
+            items (list[tuple[ContainerItem, RepresentationContext]]): List of
+                containers and their new representation contexts.
+
+        """
+        pass
+
+    @abstractmethod
+    def remove_containers(
+        self,
+        containers: list[ContainerItem]
+    ) -> None:
+        """Remove containers from the workfile.
+
+        Args:
+            containers (list[ContainerItem]): Containers to remove.
+
+        """
+
+    def _add_containers_to_context(
+        self,
+        containers: list[ContainerItem],
+    ) -> None:
+        """Helper method to add containers to load context."""
+        self._load_context.add_containers(containers)
 
 
 def register_loader_plugin(plugin):
