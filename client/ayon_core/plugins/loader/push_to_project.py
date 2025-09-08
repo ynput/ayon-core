@@ -18,12 +18,25 @@ class PushToProject(LoaderActionPlugin):
     def get_action_items(
         self, selection: LoaderActionSelection
     ) -> list[LoaderActionItem]:
+        folder_ids = set()
         version_ids = set()
         if selection.selected_type == "version":
             version_ids = set(selection.selected_ids)
+            product_ids = {
+                product["id"]
+                for product in selection.entities.get_versions_products(
+                    version_ids
+                )
+            }
+            folder_ids = {
+                folder["id"]
+                for folder in selection.entities.get_products_folders(
+                    product_ids
+                )
+            }
 
         output = []
-        if len(version_ids) == 1:
+        if version_ids and len(folder_ids) == 1:
             output.append(
                 LoaderActionItem(
                     identifier="core.push-to-project",
@@ -61,12 +74,10 @@ class PushToProject(LoaderActionPlugin):
             "main.py"
         )
 
-        version_id = next(iter(entity_ids))
-
         args = get_ayon_launcher_args(
             push_tool_script_path,
             "--project", selection.project_name,
-            "--version", version_id
+            "--versions", ",".join(entity_ids)
         )
         run_detached_process(args)
         return LoaderActionResult(
