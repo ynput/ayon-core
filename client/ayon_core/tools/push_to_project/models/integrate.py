@@ -5,6 +5,7 @@ import itertools
 import sys
 import traceback
 import uuid
+from typing import Optional, Dict
 
 import ayon_api
 from ayon_api.utils import create_entity_id
@@ -21,6 +22,7 @@ from ayon_core.lib import (
     source_hash,
 )
 from ayon_core.lib.file_transaction import FileTransaction
+from ayon_core.pipeline.thumbnails import get_thumbnail_path
 from ayon_core.settings import get_project_settings
 from ayon_core.pipeline import Anatomy
 from ayon_core.pipeline.version_start import get_versioning_start
@@ -88,6 +90,7 @@ class ProjectPushItem:
         new_folder_name,
         dst_version,
         item_id=None,
+        use_original_name=False
     ):
         if not item_id:
             item_id = uuid.uuid4().hex
@@ -102,6 +105,7 @@ class ProjectPushItem:
         self.comment = comment or ""
         self.item_id = item_id
         self._repr_value = None
+        self.use_original_name = use_original_name
 
     @property
     def _repr(self):
@@ -113,7 +117,8 @@ class ProjectPushItem:
                 str(self.dst_folder_id),
                 str(self.new_folder_name),
                 str(self.dst_task_name),
-                str(self.dst_version)
+                str(self.dst_version),
+                self.use_original_name
             ])
         return self._repr_value
 
@@ -132,6 +137,7 @@ class ProjectPushItem:
             "comment": self.comment,
             "new_folder_name": self.new_folder_name,
             "item_id": self.item_id,
+            "use_original_name": self.use_original_name
         }
 
     @classmethod
@@ -311,7 +317,7 @@ class ProjectPushRepreItem:
         if self._src_files is not None:
             return self._src_files, self._resource_files
 
-        repre_context = self._repre_entity["context"]
+        repre_context = self.repre_entity["context"]
         if "frame" in repre_context or "udim" in repre_context:
             src_files, resource_files = self._get_source_files_with_frames()
         else:
@@ -328,7 +334,7 @@ class ProjectPushRepreItem:
         udim_placeholder = "__udim__"
         src_files = []
         resource_files = []
-        template = self._repre_entity["attrib"]["template"]
+        template = self.repre_entity["attrib"]["template"]
         # Remove padding from 'udim' and 'frame' formatting keys
         # - "{frame:0>4}" -> "{frame}"
         for key in ("udim", "frame"):
@@ -336,7 +342,7 @@ class ProjectPushRepreItem:
             replacement = "{{{}}}".format(key)
             template = re.sub(sub_part, replacement, template)
 
-        repre_context = self._repre_entity["context"]
+        repre_context = self.repre_entity["context"]
         fill_repre_context = copy.deepcopy(repre_context)
         if "frame" in fill_repre_context:
             fill_repre_context["frame"] = frame_placeholder
@@ -357,7 +363,7 @@ class ProjectPushRepreItem:
             .replace(udim_placeholder, "(?P<udim>[0-9]+)")
         )
         src_basename_regex = re.compile("^{}$".format(src_basename))
-        for file_info in self._repre_entity["files"]:
+        for file_info in self.repre_entity["files"]:
             filepath_template = self._clean_path(file_info["path"])
             filepath = self._clean_path(
                 filepath_template.format(root=self._roots)
@@ -371,7 +377,6 @@ class ProjectPushRepreItem:
                 resource_files.append(ResourceFile(filepath, relative_path))
                 continue
 
-            filepath = os.path.join(src_dirpath, basename)
             frame = None
             udim = None
             for item in src_basename_regex.finditer(basename):
@@ -389,8 +394,8 @@ class ProjectPushRepreItem:
     def _get_source_files(self):
         src_files = []
         resource_files = []
-        template = self._repre_entity["attrib"]["template"]
-        repre_context = self._repre_entity["context"]
+        template = self.repre_entity["attrib"]["template"]
+        repre_context = self.repre_entity["context"]
         fill_repre_context = copy.deepcopy(repre_context)
         fill_roots = fill_repre_context["root"]
         for root_name in tuple(fill_roots.keys()):
@@ -399,7 +404,7 @@ class ProjectPushRepreItem:
                                                     fill_repre_context)
         repre_path = self._clean_path(repre_path)
         src_dirpath = os.path.dirname(repre_path)
-        for file_info in self._repre_entity["files"]:
+        for file_info in self.repre_entity["files"]:
             filepath_template = self._clean_path(file_info["path"])
             filepath = self._clean_path(
                 filepath_template.format(root=self._roots))
@@ -492,8 +497,11 @@ class ProjectPushItemProcess:
 
         except Exception as exc:
             _exc, _value, _tb = sys.exc_info()
+            product_name = self._src_product_entity["name"]
             self._status.set_failed(
-                "Unhandled error happened: {}".format(str(exc)),
+                "Unhandled error happened for `{}`: {}".format(
+                    product_name, str(exc)
+                ),
                 (_exc, _value, _tb)
             )
 
@@ -816,31 +824,34 @@ class ProjectPushItemProcess:
         self._template_name = template_name
 
     def _determine_product_name(self):
-        product_type = self._product_type
-        task_info = self._task_info
-        task_name = task_type = None
-        if task_info:
-            task_name = task_info["name"]
-            task_type = task_info["taskType"]
+        if self._item.use_original_name:
+            product_name = self._src_product_entity["name"]
+        else:
+            product_type = self._product_type
+            task_info = self._task_info
+            task_name = task_type = None
+            if task_info:
+                task_name = task_info["name"]
+                task_type = task_info["taskType"]
 
-        try:
-            product_name = get_product_name(
-                self._item.dst_project_name,
-                task_name,
-                task_type,
-                self.host_name,
-                product_type,
-                self._item.variant,
-                project_settings=self._project_settings
-            )
-        except TaskNotSetError:
-            self._status.set_failed(
-                "Target product name template requires task name. To continue"
-                " you have to select target task or change settings"
-                " <b>ayon+settings://core/tools/creator/product_name_profiles"
-                f"?project={self._item.dst_project_name}</b>."
-            )
-            raise PushToProjectError(self._status.fail_reason)
+            try:
+                product_name = get_product_name(
+                    self._item.dst_project_name,
+                    task_name,
+                    task_type,
+                    self.host_name,
+                    product_type,
+                    self._item.variant,
+                    project_settings=self._project_settings
+                )
+            except TaskNotSetError:
+                self._status.set_failed(
+                    "Target product name template requires task name. To "
+                    "continue you have to select target task or change settings "  # noqa: E501
+                    " <b>ayon+settings://core/tools/creator/product_name_profiles"  # noqa: E501
+                    f"?project={self._item.dst_project_name}</b>."
+                )
+                raise PushToProjectError(self._status.fail_reason)
 
         self._log_info(
             f"Push will be integrating to product with name '{product_name}'"
@@ -917,14 +928,19 @@ class ProjectPushItemProcess:
                     task_name=self._task_info["name"],
                     task_type=self._task_info["taskType"],
                     product_type=product_type,
-                    product_name=product_entity["name"]
+                    product_name=product_entity["name"],
                 )
 
         existing_version_entity = ayon_api.get_version_by_name(
             project_name, version, product_id
         )
+        thumbnail_id = self._copy_version_thumbnail()
+
         # Update existing version
         if existing_version_entity:
+            updata_data = {"attrib": dst_attrib}
+            if thumbnail_id:
+                updata_data["thumbnailId"] = thumbnail_id
             self._operations.update_entity(
                 project_name,
                 "version",
@@ -939,6 +955,7 @@ class ProjectPushItemProcess:
             version,
             product_id,
             attribs=dst_attrib,
+            thumbnail_id=thumbnail_id,
         )
         self._operations.create_entity(
             project_name, "version", version_entity
@@ -1005,10 +1022,18 @@ class ProjectPushItemProcess:
         self, anatomy, template_name, formatting_data, file_template
     ):
         processed_repre_items = []
+        repre_context = None
         for repre_item in self._src_repre_items:
             repre_entity = repre_item.repre_entity
             repre_name = repre_entity["name"]
             repre_format_data = copy.deepcopy(formatting_data)
+
+            if not repre_context:
+                repre_context = self._update_repre_context(
+                    copy.deepcopy(repre_entity),
+                    formatting_data
+                )
+
             repre_format_data["representation"] = repre_name
             for src_file in repre_item.src_files:
                 ext = os.path.splitext(src_file.path)[-1]
@@ -1024,7 +1049,6 @@ class ProjectPushItemProcess:
                 "publish", template_name, "directory"
             )
             folder_path = template_obj.format_strict(formatting_data)
-            repre_context = folder_path.used_values
             folder_path_rootless = folder_path.rootless
             repre_filepaths = []
             published_path = None
@@ -1047,7 +1071,6 @@ class ProjectPushItemProcess:
                 )
                 if published_path is None or frame == repre_item.frame:
                     published_path = dst_filepath
-                    repre_context.update(filename.used_values)
 
                 repre_filepaths.append((dst_filepath, dst_rootless_path))
                 self._file_transaction.add(src_file.path, dst_filepath)
@@ -1134,7 +1157,7 @@ class ProjectPushItemProcess:
                         self._item.dst_project_name,
                         "representation",
                         entity_id,
-                        changes
+                        changes,
                     )
 
         existing_repre_names = set(existing_repres_by_low_name.keys())
@@ -1146,6 +1169,45 @@ class ProjectPushItemProcess:
                 repre_entity["id"],
                 {"active": False}
             )
+
+    def _copy_version_thumbnail(self) -> Optional[str]:
+        thumbnail_id = self._src_version_entity["thumbnailId"]
+        if not thumbnail_id:
+            return None
+        path = get_thumbnail_path(
+            self._item.src_project_name,
+            "version",
+            self._src_version_entity["id"],
+            thumbnail_id
+        )
+        if not path:
+            return None
+        return ayon_api.create_thumbnail(
+            self._item.dst_project_name,
+            path
+        )
+
+    def _update_repre_context(self, repre_entity, formatting_data):
+        """Replace old context value with new ones.
+
+        Folder might change, project definitely changes etc.
+        """
+        repre_context = repre_entity["context"]
+        for context_key, context_value in repre_context.items():
+            if context_value and isinstance(context_value, dict):
+                for context_sub_key in context_value.keys():
+                    value_to_update = formatting_data.get(context_key, {}).get(
+                        context_sub_key)
+                    if value_to_update:
+                        repre_context[context_key][
+                            context_sub_key] = value_to_update
+            else:
+                value_to_update = formatting_data.get(context_key)
+                if value_to_update:
+                    repre_context[context_key] = value_to_update
+        if "task" not in formatting_data:
+            repre_context.pop("task")
+        return repre_context
 
 
 class IntegrateModel:
@@ -1170,6 +1232,7 @@ class IntegrateModel:
         comment,
         new_folder_name,
         dst_version,
+        use_original_name
     ):
         """Create new item for integration.
 
@@ -1183,6 +1246,7 @@ class IntegrateModel:
             comment (Union[str, None]): Comment.
             new_folder_name (Union[str, None]): New folder name.
             dst_version (int): Destination version number.
+            use_original_name (bool): If original product names should be used
 
         Returns:
             str: Item id. The id can be used to trigger integration or get
@@ -1198,7 +1262,8 @@ class IntegrateModel:
             variant,
             comment=comment,
             new_folder_name=new_folder_name,
-            dst_version=dst_version
+            dst_version=dst_version,
+            use_original_name=use_original_name
         )
         process_item = ProjectPushItemProcess(self, item)
         self._process_items[item.item_id] = process_item
@@ -1216,17 +1281,6 @@ class IntegrateModel:
             return
         item.integrate()
 
-    def get_item_status(self, item_id):
-        """Status of an item.
-
-        Args:
-            item_id (str): Item id for which status should be returned.
-
-        Returns:
-            dict[str, Any]: Status data.
-        """
-
-        item = self._process_items.get(item_id)
-        if item is not None:
-            return item.get_status_data()
-        return None
+    def get_items(self) -> Dict[str, ProjectPushItemProcess]:
+        """Returns dict of all ProjectPushItemProcess items """
+        return self._process_items
