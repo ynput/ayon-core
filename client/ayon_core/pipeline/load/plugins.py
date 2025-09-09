@@ -538,7 +538,7 @@ class LoadPlugin(ABC):
         pass
 
     @abstractmethod
-    def load(
+    def load_representations(
         self,
         representation_contexts: list[RepresentationContext],
     ) -> list[ContainerItem]:
