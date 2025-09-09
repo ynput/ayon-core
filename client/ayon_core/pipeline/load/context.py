@@ -18,7 +18,8 @@ class RepresentationContext:
 
 @dataclass
 class ContainerItem:
-    id: str
+    # Do we need 'id'?
+    # id: str
     project_name: str
     representation_id: str
     load_plugin: str
