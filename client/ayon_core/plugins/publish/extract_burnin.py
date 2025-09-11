@@ -68,7 +68,7 @@ class ExtractBurnin(publish.Extractor):
     ]
     # Default options for burnins for cases that are not set in presets.
     default_options = {
-        "font_size": 42,
+        "font_size": 24,
         "font_color": [255, 255, 255, 1.0],
         "bg_color": [0, 0, 0, 0.5],
         "bg_padding": 5,
