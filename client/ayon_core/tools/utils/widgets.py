@@ -418,7 +418,7 @@ class ExpandingTextEdit(QtWidgets.QTextEdit):
     """QTextEdit which does not have sroll area but expands height."""
 
     def __init__(self, parent=None):
-        super(ExpandingTextEdit, self).__init__(parent)
+        super().__init__(parent)
 
         size_policy = self.sizePolicy()
         size_policy.setHeightForWidth(True)
