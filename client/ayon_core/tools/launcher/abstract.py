@@ -4,6 +4,7 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import Optional, Any
 
+from ayon_core.addon import AddonsManager
 from ayon_core.tools.common_models import (
     ProjectItem,
     FolderItem,
@@ -83,6 +84,10 @@ class AbstractLauncherBackend(AbstractLauncherCommon):
             source (Optional[str]): Event source.
         """
 
+        pass
+
+    @abstractmethod
+    def get_addons_manager(self) -> AddonsManager:
         pass
 
     @abstractmethod
