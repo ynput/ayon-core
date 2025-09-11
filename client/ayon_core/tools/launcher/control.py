@@ -1,5 +1,6 @@
 from ayon_core.lib import Logger, get_ayon_username
 from ayon_core.lib.events import QueuedEventSystem
+from ayon_core.addon import AddonsManager
 from ayon_core.settings import get_project_settings, get_studio_settings
 from ayon_core.tools.common_models import ProjectsModel, HierarchyModel
 
@@ -16,6 +17,8 @@ class BaseLauncherController(
         self._project_settings = {}
         self._event_system = None
         self._log = None
+
+        self._addons_manager = None
 
         self._username = NOT_SET
 
@@ -58,6 +61,11 @@ class BaseLauncherController(
 
     def register_event_callback(self, topic, callback):
         self.event_system.add_callback(topic, callback)
+
+    def get_addons_manager(self) -> AddonsManager:
+        if self._addons_manager is None:
+            self._addons_manager = AddonsManager()
+        return self._addons_manager
 
     # Entity items for UI
     def get_project_items(self, sender=None):
