@@ -161,4 +161,4 @@ class WorkfilesPage(QtWidgets.QWidget):
         self._workfiles_model.refresh()
 
     def _on_refresh(self) -> None:
-        self._workfiles_proxy.sort(0, QtCore.Qt.DescendingOrder )
+        self._workfiles_proxy.sort(0, QtCore.Qt.DescendingOrder)

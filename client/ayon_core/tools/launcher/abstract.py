@@ -59,7 +59,7 @@ class ActionItem:
 
 @dataclass
 class WorkfileItem:
-    filename : str
+    filename: str
     exists: bool
     icon: Optional[str]
     version: Optional[int]
