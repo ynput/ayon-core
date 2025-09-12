@@ -125,20 +125,6 @@ class WorkfilesModel(QtGui.QStandardItemModel):
         return icon
 
 
-class WorkfilesProxyModel(QtCore.QSortFilterProxyModel):
-    def lessThan(self, left, right) -> bool:
-        # left_version = left.data(VERSION_ROLE)
-        # right_version = right.data(VERSION_ROLE)
-        # if left_version != right_version:
-        #     if left_version is None:
-        #         return False
-        #     if right_version is None:
-        #         return True
-        #
-        #     return left_version > right_version
-        return not super().lessThan(left, right)
-
-
 class WorkfilesView(QtWidgets.QTreeView):
     def drawBranches(self, painter, rect, index):
         return
@@ -155,7 +141,7 @@ class WorkfilesPage(QtWidgets.QWidget):
         workfiles_view = WorkfilesView(self)
         workfiles_view.setIndentation(0)
         workfiles_model = WorkfilesModel(controller)
-        workfiles_proxy = WorkfilesProxyModel()
+        workfiles_proxy = QtCore.QSortFilterProxyModel()
         workfiles_proxy.setSourceModel(workfiles_model)
 
         workfiles_view.setModel(workfiles_proxy)
@@ -175,4 +161,4 @@ class WorkfilesPage(QtWidgets.QWidget):
         self._workfiles_model.refresh()
 
     def _on_refresh(self) -> None:
-        self._workfiles_proxy.sort(0)
+        self._workfiles_proxy.sort(0, QtCore.Qt.DescendingOrder )
