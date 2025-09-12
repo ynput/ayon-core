@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import logging
 import uuid
+from typing import Optional, Any
 
 import ayon_api
 
@@ -187,6 +188,11 @@ class LoaderController(BackendLoaderController, FrontendLoaderController):
     # Entity model wrappers
     def get_project_items(self, sender=None):
         return self._projects_model.get_project_items(sender)
+
+    def get_project_entity(
+        self, project_name: Optional[str]
+    ) -> Optional[dict[str, Any]]:
+        return self._projects_model.get_project_entity(project_name)
 
     def get_folder_type_items(self, project_name, sender=None):
         return self._projects_model.get_folder_type_items(

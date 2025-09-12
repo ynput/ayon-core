@@ -513,6 +513,12 @@ class BackendLoaderController(_BaseLoaderController):
 
         pass
 
+    @abstractmethod
+    def get_project_entity(
+        self, project_name: Optional[str]
+    ) -> Optional[dict[str, Any]]:
+        pass
+
 
 class FrontendLoaderController(_BaseLoaderController):
     @abstractmethod
