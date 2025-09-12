@@ -57,6 +57,14 @@ class ActionItem:
     addon_version: Optional[str] = None
 
 
+@dataclass
+class WorkfileItem:
+    filename : str
+    exists: bool
+    icon: Optional[str]
+    version: Optional[int]
+
+
 class AbstractLauncherCommon(ABC):
     @abstractmethod
     def register_event_callback(self, topic, callback):
@@ -467,6 +475,24 @@ class AbstractLauncherFrontEnd(AbstractLauncherCommon):
 
         Returns:
             dict[str, list[str]]: Folder and task ids.
+
+        """
+        pass
+
+    @abstractmethod
+    def get_workfile_items(
+        self,
+        project_name: Optional[str],
+        task_id: Optional[str],
+    ) -> list[WorkfileItem]:
+        """Get workfile items for a given context.
+
+        Args:
+            project_name (Optional[str]): Project name.
+            task_id (Optional[str]): Task id.
+
+        Returns:
+            list[WorkfileItem]: List of workfile items.
 
         """
         pass

@@ -1,11 +1,21 @@
+from typing import Optional
+
 from ayon_core.lib import Logger, get_ayon_username
 from ayon_core.lib.events import QueuedEventSystem
 from ayon_core.addon import AddonsManager
 from ayon_core.settings import get_project_settings, get_studio_settings
 from ayon_core.tools.common_models import ProjectsModel, HierarchyModel
 
-from .abstract import AbstractLauncherFrontEnd, AbstractLauncherBackend
-from .models import LauncherSelectionModel, ActionsModel
+from .abstract import (
+    AbstractLauncherFrontEnd,
+    AbstractLauncherBackend,
+    WorkfileItem,
+)
+from .models import (
+    LauncherSelectionModel,
+    ActionsModel,
+    WorkfilesModel,
+)
 
 NOT_SET = object()
 
@@ -26,6 +36,7 @@ class BaseLauncherController(
         self._projects_model = ProjectsModel(self)
         self._hierarchy_model = HierarchyModel(self)
         self._actions_model = ActionsModel(self)
+        self._workfiles_model = WorkfilesModel(self)
 
     @property
     def log(self):
@@ -141,6 +152,17 @@ class BaseLauncherController(
             "task_name": self.get_selected_task_name(),
         }
 
+    # Workfiles
+    def get_workfile_items(
+        self,
+        project_name: Optional[str],
+        task_id: Optional[str],
+    ) -> list[WorkfileItem]:
+        return self._workfiles_model.get_workfile_items(
+            project_name,
+            task_id,
+        )
+
     # Actions
     def get_action_items(self, project_name, folder_id, task_id):
         return self._actions_model.get_action_items(
@@ -194,6 +216,8 @@ class BaseLauncherController(
         self._projects_model.reset()
         # Refresh actions
         self._actions_model.refresh()
+        # Reset workfiles model
+        self._workfiles_model.reset()
 
         self._emit_event("controller.refresh.actions.finished")
 
