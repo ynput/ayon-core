@@ -58,7 +58,7 @@ class ProductBaseTypeIconMapping:
         if self._default_def is None:
             self._default_def = {
                 "type": "material-symbols",
-                "name": self._default.get("icon", "inventory_2"),
+                "name": self._default.get("icon", "deployed_code"),
                 "color": self._default.get("color", "#cccccc"),
             }
 
@@ -69,7 +69,7 @@ class ProductBaseTypeIconMapping:
             self._definitions_by_name = {
                 product_base_type_def["name"]: {
                     "type": "material-symbols",
-                    "name": product_base_type_def.get("icon", "inventory_2"),
+                    "name": product_base_type_def.get("icon", "deployed_code"),
                     "color": product_base_type_def.get("color", "#cccccc"),
                 }
                 for product_base_type_def in self._definitions
