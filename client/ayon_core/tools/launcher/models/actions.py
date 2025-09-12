@@ -15,7 +15,6 @@ from ayon_core.lib import (
     get_settings_variant,
     run_detached_ayon_launcher_process,
 )
-from ayon_core.addon import AddonsManager
 from ayon_core.pipeline.actions import (
     discover_launcher_actions,
     LauncherActionSelection,
@@ -103,8 +102,6 @@ class ActionsModel:
         self._webaction_items = NestedCacheItem(
             levels=2, default_factory=list, lifetime=20,
         )
-
-        self._addons_manager = None
 
         self._variant = get_settings_variant()
 
@@ -333,11 +330,6 @@ class ActionsModel:
                 exc_info=True
             )
 
-    def _get_addons_manager(self):
-        if self._addons_manager is None:
-            self._addons_manager = AddonsManager()
-        return self._addons_manager
-
     def _prepare_selection(self, project_name, folder_id, task_id):
         project_entity = None
         if project_name:
@@ -542,7 +534,7 @@ class ActionsModel:
             # NOTE We don't need to register the paths, but that would
             #   require to change discovery logic and deprecate all functions
             #   related to registering and discovering launcher actions.
-            addons_manager = self._get_addons_manager()
+            addons_manager = self._controller.get_addons_manager()
             actions_paths = addons_manager.collect_launcher_action_paths()
             for path in actions_paths:
                 if path and os.path.exists(path):
