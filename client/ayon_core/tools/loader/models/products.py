@@ -9,7 +9,6 @@ import arrow
 import ayon_api
 from ayon_api.operations import OperationsSession
 
-
 from ayon_core.lib import NestedCacheItem
 from ayon_core.style import get_default_entity_icon_color
 from ayon_core.tools.loader.abstract import (
@@ -21,10 +20,61 @@ from ayon_core.tools.loader.abstract import (
 )
 
 if TYPE_CHECKING:
-    from ayon_api.typing import ProductBaseTypeDict, ProductDict, VersionDict
-
+    from ayon_api.typing import (
+        ProductBaseTypeDict,
+        ProductDict,
+        VersionDict,
+    )
 
 PRODUCTS_MODEL_SENDER = "products.model"
+
+
+class ProductBaseTypeIconMapping:
+    def __init__(
+        self,
+        default: Optional[dict[str, str]] = None,
+        definitions: Optional[list[dict[str, str]]] = None,
+    ):
+        self._default = default or {}
+        self._definitions = definitions or []
+
+        self._default_def = None
+        self._definitions_by_name = None
+
+    def get_icon(
+        self,
+        product_base_type: Optional[str] = None,
+        product_type: Optional[str] = None,
+    ) -> dict[str, str]:
+        defs = self._get_defs_by_name()
+        icon = defs.get(product_type)
+        if icon is None:
+            icon = defs.get(product_base_type)
+            if icon is None:
+                icon = self._get_default_def()
+        return icon.copy()
+
+    def _get_default_def(self) -> dict[str, str]:
+        if self._default_def is None:
+            self._default_def = {
+                "type": "material-symbols",
+                "name": self._default.get("icon", "inventory_2"),
+                "color": self._default.get("color", "#cccccc"),
+            }
+
+        return self._default_def
+
+    def _get_defs_by_name(self) -> dict[str, dict[str, str]]:
+        if self._definitions_by_name is None:
+            self._definitions_by_name = {
+                product_base_type_def["name"]: {
+                    "type": "material-symbols",
+                    "name": product_base_type_def.get("icon", "inventory_2"),
+                    "color": product_base_type_def.get("color", "#cccccc"),
+                }
+                for product_base_type_def in self._definitions
+            }
+        return self._definitions_by_name
 
 
 def version_item_from_entity(version):
@@ -84,42 +134,18 @@ def version_item_from_entity(version):
 def product_item_from_entity(
     product_entity: ProductDict,
     version_entities,
-    product_type_items_by_name: dict[str, ProductTypeItem],
-    product_base_type_items_by_name: dict[str, ProductBaseTypeItem],
     folder_label,
+    icons_mapping,
     product_in_scene,
 ):
     product_attribs = product_entity["attrib"]
     group = product_attribs.get("productGroup")
     product_type = product_entity["productType"]
-    product_type_item = product_type_items_by_name.get(product_type)
-    # NOTE This is needed for cases when products were not created on server
-    #   using api functions. In that case product type item may not be
-    #   available and we need to create a default.
-    if product_type_item is None:
-        product_type_item = create_default_product_type_item(product_type)
-        # Cache the item for future use
-        product_type_items_by_name[product_type] = product_type_item
-
     product_base_type = product_entity.get("productBaseType")
-    product_base_type_item = product_base_type_items_by_name.get(
-        product_base_type)
-    # Same as for product type item above. Not sure if this is still needed
-    # though.
-    if product_base_type_item is None:
-        product_base_type_item = create_default_product_base_type_item(
-            product_base_type)
-        # Cache the item for future use
-        product_base_type_items_by_name[product_base_type] = (
-            product_base_type_item)
 
-    product_type_icon = product_type_item.icon
-    product_base_type_icon = product_base_type_item.icon
-    product_icon = {
-        "type": "awesome-font",
-        "name": "fa.file-o",
-        "color": get_default_entity_icon_color(),
-    }
+    product_icon = icons_mapping.get_icon(
+        product_base_type, product_type
+    )
     version_items = {
         version_entity["id"]: version_item_from_entity(version_entity)
         for version_entity in version_entities
@@ -131,8 +157,6 @@ def product_item_from_entity(
         product_base_type=product_base_type,
         product_name=product_entity["name"],
         product_icon=product_icon,
-        product_type_icon=product_type_icon,
-        product_base_type_icon=product_base_type_icon,
         product_in_scene=product_in_scene,
         group_name=group,
         folder_id=product_entity["folderId"],
@@ -141,22 +165,8 @@ def product_item_from_entity(
     )
 
 
-def product_type_item_from_data(
-        product_type_data: ProductDict) -> ProductTypeItem:
-    # TODO implement icon implementation
-    # icon = product_type_data["icon"]
-    # color = product_type_data["color"]
-    icon = {
-        "type": "awesome-font",
-        "name": "fa.folder",
-        "color": "#0091B2",
-    }
-    # TODO implement checked logic
-    return ProductTypeItem(product_type_data["name"], icon)
-
-
 def product_base_type_item_from_data(
-        product_base_type_data: ProductBaseTypeDict
+    product_base_type_data: ProductBaseTypeDict
 ) -> ProductBaseTypeItem:
     """Create product base type item from data.
 
@@ -174,34 +184,8 @@ def product_base_type_item_from_data(
     }
     return ProductBaseTypeItem(
         name=product_base_type_data["name"],
-        icon=icon)
-
-
-def create_default_product_type_item(product_type: str) -> ProductTypeItem:
-    icon = {
-        "type": "awesome-font",
-        "name": "fa.folder",
-        "color": "#0091B2",
-    }
-    return ProductTypeItem(product_type, icon)
-
-
-def create_default_product_base_type_item(
-        product_base_type: str) -> ProductBaseTypeItem:
-    """Create default product base type item.
-
-    Args:
-        product_base_type (str): Product base type name.
-
-    Returns:
-        ProductBaseTypeItem: Default product base type item.
-    """
-    icon = {
-        "type": "awesome-font",
-        "name": "fa.folder",
-        "color": "#0091B2",
-    }
-    return ProductBaseTypeItem(product_base_type, icon)
+        icon=icon
+    )
 
 
 class ProductsModel:
@@ -227,6 +211,8 @@ class ProductsModel:
         self._product_folder_ids_mapping = collections.defaultdict(dict)
 
         # Cache helpers
+        self._product_type_icons_mapping = NestedCacheItem(
+            levels=1, default_factory=list, lifetime=self.lifetime)
         self._product_type_items_cache = NestedCacheItem(
             levels=1, default_factory=list, lifetime=self.lifetime)
         self._product_base_type_items_cache = NestedCacheItem(
@@ -243,11 +229,14 @@ class ProductsModel:
         self._version_item_by_id.clear()
         self._product_folder_ids_mapping.clear()
 
+        self._product_type_icons_mapping.reset()
         self._product_type_items_cache.reset()
         self._product_items_cache.reset()
         self._repre_items_cache.reset()
 
-    def get_product_type_items(self, project_name):
+    def get_product_type_items(
+        self, project_name: Optional[str]
+    ) -> list[ProductTypeItem]:
         """Product type items for project.
 
         Args:
@@ -255,23 +244,27 @@ class ProductsModel:
 
         Returns:
             list[ProductTypeItem]: Product type items.
-        """
 
+        """
         if not project_name:
             return []
 
         cache = self._product_type_items_cache[project_name]
         if not cache.is_valid:
+            icons_mapping = self._get_product_type_icons(project_name)
             product_types = ayon_api.get_project_product_types(project_name)
             cache.update_data([
-                product_type_item_from_data(product_type)
+                ProductTypeItem(
+                    product_type["name"],
+                    icons_mapping.get_icon(product_type=product_type["name"]),
+                )
                 for product_type in product_types
             ])
         return cache.get_data()
 
     def get_product_base_type_items(
-            self,
-            project_name: Optional[str]) -> list[ProductBaseTypeItem]:
+        self, project_name: Optional[str]
+    ) -> list[ProductBaseTypeItem]:
         """Product base type items for the project.
 
         Args:
@@ -286,6 +279,7 @@ class ProductsModel:
 
         cache = self._product_base_type_items_cache[project_name]
         if not cache.is_valid:
+            icons_mapping = self._get_product_type_icons(project_name)
             product_base_types = []
             # TODO add temp implementation here when it is actually
             #   implemented and available on server.
@@ -294,7 +288,10 @@ class ProductsModel:
                     project_name
                 )
             cache.update_data([
-                product_base_type_item_from_data(product_base_type)
+                ProductBaseTypeItem(
+                    product_base_type["name"],
+                    icons_mapping.get_icon(product_base_type["name"]),
+                )
                 for product_base_type in product_base_types
             ])
         return cache.get_data()
@@ -511,6 +508,27 @@ class ProductsModel:
             PRODUCTS_MODEL_SENDER
         )
 
+    def _get_product_type_icons(
+        self, project_name: Optional[str]
+    ) -> ProductBaseTypeIconMapping:
+        cache = self._product_type_icons_mapping[project_name]
+        if cache.is_valid:
+            return cache.get_data()
+
+        project_entity = self._controller.get_project_entity(project_name)
+        icons_mapping = ProductBaseTypeIconMapping()
+        if project_entity:
+            product_base_types = (
+                project_entity["config"].get("productBaseTypes", {})
+            )
+            icons_mapping = ProductBaseTypeIconMapping(
+                product_base_types.get("default"),
+                product_base_types.get("definitions")
+            )
+
+        cache.update_data(icons_mapping)
+        return icons_mapping
+
     def _get_product_items_by_id(self, project_name, product_ids):
         product_item_by_id = self._product_item_by_id[project_name]
         missing_product_ids = set()
@@ -553,36 +571,18 @@ class ProductsModel:
         products: Iterable[ProductDict],
         versions: Iterable[VersionDict],
         folder_items=None,
-        product_type_items=None,
-        product_base_type_items: Optional[Iterable[ProductBaseTypeItem]] = None
     ):
         if folder_items is None:
             folder_items = self._controller.get_folder_items(project_name)
-
-        if product_type_items is None:
-            product_type_items = self.get_product_type_items(project_name)
-
-        if product_base_type_items is None:
-            product_base_type_items = self.get_product_base_type_items(
-                project_name
-            )
 
         loaded_product_ids = self._controller.get_loaded_product_ids()
 
         versions_by_product_id = collections.defaultdict(list)
         for version in versions:
             versions_by_product_id[version["productId"]].append(version)
-        product_type_items_by_name = {
-            product_type_item.name: product_type_item
-            for product_type_item in product_type_items
-        }
-
-        product_base_type_items_by_name: dict[str, ProductBaseTypeItem] = {
-            product_base_type_item.name: product_base_type_item
-            for product_base_type_item in product_base_type_items
-        }
 
         output: dict[str, ProductItem] = {}
+        icons_mapping = self._get_product_type_icons(project_name)
         for product in products:
             product_id = product["id"]
             folder_id = product["folderId"]
@@ -595,9 +595,8 @@ class ProductsModel:
             product_item = product_item_from_entity(
                 product,
                 versions,
-                product_type_items_by_name,
-                product_base_type_items_by_name,
                 folder_item.label,
+                icons_mapping,
                 product_id in loaded_product_ids,
             )
             output[product_id] = product_item
