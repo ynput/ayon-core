@@ -214,9 +214,6 @@ class InventoryModel(QtGui.QStandardItemModel):
         group_icon = qtawesome.icon(
             "fa.object-group", color=self._default_icon_color
         )
-        product_type_icon = qtawesome.icon(
-            "fa.folder", color="#0091B2"
-        )
         group_item_font = QtGui.QFont()
         group_item_font.setBold(True)
 
@@ -303,7 +300,7 @@ class InventoryModel(QtGui.QStandardItemModel):
                 remote_site_progress = "{}%".format(
                     max(progress["remote_site"], 0) * 100
                 )
-
+                product_type_icon = get_qt_icon(repre_info.product_type_icon)
                 group_item = QtGui.QStandardItem()
                 group_item.setColumnCount(root_item.columnCount())
                 group_item.setData(group_name, QtCore.Qt.DisplayRole)
