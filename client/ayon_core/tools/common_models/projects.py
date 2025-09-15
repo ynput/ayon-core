@@ -125,16 +125,24 @@ class TaskTypeItem:
         icon (str): Icon name in MaterialIcons ("fiber_new").
 
     """
-    def __init__(self, name, short, icon):
+    def __init__(
+        self,
+        name: str,
+        short: str,
+        icon: str,
+        color: Optional[str],
+    ):
         self.name = name
         self.short = short
         self.icon = icon
+        self.color = color
 
     def to_data(self):
         return {
             "name": self.name,
             "short": self.short,
             "icon": self.icon,
+            "color": self.color,
         }
 
     @classmethod
@@ -147,6 +155,7 @@ class TaskTypeItem:
             name=task_type_data["name"],
             short=task_type_data["shortName"],
             icon=task_type_data["icon"],
+            color=task_type_data.get("color"),
         )
 
 
