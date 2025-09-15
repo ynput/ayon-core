@@ -15,6 +15,7 @@ import arrow
 
 from ayon_core.lib import emit_event
 from ayon_core.settings import get_project_settings
+from ayon_core.host.abstract import AbstractHost
 from ayon_core.host.constants import ContextChangeReason
 
 if typing.TYPE_CHECKING:
@@ -821,7 +822,7 @@ class PublishedWorkfileInfo:
         return PublishedWorkfileInfo(**data)
 
 
-class IWorkfileHost:
+class IWorkfileHost(AbstractHost):
     """Implementation requirements to be able to use workfiles utils and tool.
 
     Some of the methods are pre-implemented as they generally do the same in
@@ -944,6 +945,8 @@ class IWorkfileHost:
         self._emit_workfile_save_event(event_data, after_save=False)
 
         workdir = os.path.dirname(filepath)
+        if not os.path.exists(workdir):
+            os.makedirs(workdir, exist_ok=True)
 
         # Set 'AYON_WORKDIR' environment variable
         os.environ["AYON_WORKDIR"] = workdir
@@ -1072,10 +1075,13 @@ class IWorkfileHost:
             prepared_data=prepared_data,
         )
 
-        workfile_entities_by_path = {
-            workfile_entity["path"]: workfile_entity
-            for workfile_entity in list_workfiles_context.workfile_entities
-        }
+        workfile_entities_by_path = {}
+        for workfile_entity in list_workfiles_context.workfile_entities:
+            rootless_path = workfile_entity["path"]
+            path = os.path.normpath(
+                list_workfiles_context.anatomy.fill_root(rootless_path)
+            )
+            workfile_entities_by_path[path] = workfile_entity
 
         workdir_data = get_template_data(
             list_workfiles_context.project_entity,
@@ -1114,10 +1120,10 @@ class IWorkfileHost:
 
             rootless_path = f"{rootless_workdir}/{filename}"
             workfile_entity = workfile_entities_by_path.pop(
-                rootless_path, None
+                filepath, None
             )
             version = comment = None
-            if workfile_entity:
+            if workfile_entity is not None:
                 _data = workfile_entity["data"]
                 version = _data.get("version")
                 comment = _data.get("comment")
@@ -1137,7 +1143,7 @@ class IWorkfileHost:
             )
             items.append(item)
 
-        for workfile_entity in workfile_entities_by_path.values():
+        for filepath, workfile_entity in workfile_entities_by_path.items():
             # Workfile entity is not in the filesystem
             #   but it is in the database
             rootless_path = workfile_entity["path"]
@@ -1154,13 +1160,13 @@ class IWorkfileHost:
                 version = parsed_data.version
                 comment = parsed_data.comment
 
-            filepath = list_workfiles_context.anatomy.fill_root(rootless_path)
+            available = os.path.exists(filepath)
             items.append(WorkfileInfo.new(
                 filepath,
                 rootless_path,
                 version=version,
                 comment=comment,
-                available=False,
+                available=available,
                 workfile_entity=workfile_entity,
             ))
 
