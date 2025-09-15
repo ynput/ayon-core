@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import contextlib
 from abc import ABC, abstractmethod
-from typing import Dict, Any
+from typing import Any, Optional
 from dataclasses import dataclass
 
 import ayon_api
@@ -51,7 +51,7 @@ class StatusItem:
         self.icon: str = icon
         self.state: str = state
 
-    def to_data(self) -> Dict[str, Any]:
+    def to_data(self) -> dict[str, Any]:
         return {
             "name": self.name,
             "color": self.color,
@@ -125,16 +125,24 @@ class TaskTypeItem:
         icon (str): Icon name in MaterialIcons ("fiber_new").
 
     """
-    def __init__(self, name, short, icon):
+    def __init__(
+        self,
+        name: str,
+        short: str,
+        icon: str,
+        color: Optional[str],
+    ):
         self.name = name
         self.short = short
         self.icon = icon
+        self.color = color
 
     def to_data(self):
         return {
             "name": self.name,
             "short": self.short,
             "icon": self.icon,
+            "color": self.color,
         }
 
     @classmethod
@@ -147,6 +155,7 @@ class TaskTypeItem:
             name=task_type_data["name"],
             short=task_type_data["shortName"],
             icon=task_type_data["icon"],
+            color=task_type_data.get("color"),
         )
 
 
