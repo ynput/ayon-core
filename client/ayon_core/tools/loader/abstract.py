@@ -9,7 +9,11 @@ from ayon_core.lib.attribute_definitions import (
     deserialize_attr_defs,
     serialize_attr_defs,
 )
-from ayon_core.tools.common_models import TaskItem, TagItem
+from ayon_core.tools.common_models import (
+    TaskItem,
+    TagItem,
+    ProductTypeIconMapping,
+)
 
 
 class ProductTypeItem:
@@ -492,8 +496,8 @@ class BackendLoaderController(_BaseLoaderController):
             topic (str): Event topic name.
             data (Optional[dict[str, Any]]): Event data.
             source (Optional[str]): Event source.
-        """
 
+        """
         pass
 
     @abstractmethod
@@ -502,14 +506,20 @@ class BackendLoaderController(_BaseLoaderController):
 
         Returns:
             set[str]: Set of loaded product ids.
-        """
 
+        """
         pass
 
     @abstractmethod
-    def get_project_entity(
+    def get_product_type_icons_mapping(
         self, project_name: Optional[str]
-    ) -> Optional[dict[str, Any]]:
+    ) -> ProductTypeIconMapping:
+        """Product type icons mapping.
+
+        Returns:
+            ProductTypeIconMapping: Product type icons mapping.
+
+        """
         pass
 
 

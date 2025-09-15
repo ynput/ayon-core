@@ -11,6 +11,7 @@ from ayon_api.operations import OperationsSession
 
 from ayon_core.lib import NestedCacheItem
 from ayon_core.style import get_default_entity_icon_color
+from ayon_core.tools.common_models import ProductTypeIconMapping
 from ayon_core.tools.loader.abstract import (
     ProductTypeItem,
     ProductBaseTypeItem,
@@ -27,54 +28,6 @@ if TYPE_CHECKING:
     )
 
 PRODUCTS_MODEL_SENDER = "products.model"
-
-
-class ProductBaseTypeIconMapping:
-    def __init__(
-        self,
-        default: Optional[dict[str, str]] = None,
-        definitions: Optional[list[dict[str, str]]] = None,
-    ):
-        self._default = default or {}
-        self._definitions = definitions or []
-
-        self._default_def = None
-        self._definitions_by_name = None
-
-    def get_icon(
-        self,
-        product_base_type: Optional[str] = None,
-        product_type: Optional[str] = None,
-    ) -> dict[str, str]:
-        defs = self._get_defs_by_name()
-        icon = defs.get(product_type)
-        if icon is None:
-            icon = defs.get(product_base_type)
-            if icon is None:
-                icon = self._get_default_def()
-        return icon.copy()
-
-    def _get_default_def(self) -> dict[str, str]:
-        if self._default_def is None:
-            self._default_def = {
-                "type": "material-symbols",
-                "name": self._default.get("icon", "deployed_code"),
-                "color": self._default.get("color", "#cccccc"),
-            }
-
-        return self._default_def
-
-    def _get_defs_by_name(self) -> dict[str, dict[str, str]]:
-        if self._definitions_by_name is None:
-            self._definitions_by_name = {
-                product_base_type_def["name"]: {
-                    "type": "material-symbols",
-                    "name": product_base_type_def.get("icon", "deployed_code"),
-                    "color": product_base_type_def.get("color", "#cccccc"),
-                }
-                for product_base_type_def in self._definitions
-            }
-        return self._definitions_by_name
 
 
 def version_item_from_entity(version):
@@ -211,8 +164,6 @@ class ProductsModel:
         self._product_folder_ids_mapping = collections.defaultdict(dict)
 
         # Cache helpers
-        self._product_type_icons_mapping = NestedCacheItem(
-            levels=1, default_factory=list, lifetime=self.lifetime)
         self._product_type_items_cache = NestedCacheItem(
             levels=1, default_factory=list, lifetime=self.lifetime)
         self._product_base_type_items_cache = NestedCacheItem(
@@ -229,7 +180,6 @@ class ProductsModel:
         self._version_item_by_id.clear()
         self._product_folder_ids_mapping.clear()
 
-        self._product_type_icons_mapping.reset()
         self._product_type_items_cache.reset()
         self._product_items_cache.reset()
         self._repre_items_cache.reset()
@@ -266,6 +216,10 @@ class ProductsModel:
         self, project_name: Optional[str]
     ) -> list[ProductBaseTypeItem]:
         """Product base type items for the project.
+
+        Notes:
+            This will be used for filtering product types in UI when
+                product base types are fully implemented.
 
         Args:
             project_name (optional, str): Project name.
@@ -510,24 +464,8 @@ class ProductsModel:
 
     def _get_product_type_icons(
         self, project_name: Optional[str]
-    ) -> ProductBaseTypeIconMapping:
-        cache = self._product_type_icons_mapping[project_name]
-        if cache.is_valid:
-            return cache.get_data()
-
-        project_entity = self._controller.get_project_entity(project_name)
-        icons_mapping = ProductBaseTypeIconMapping()
-        if project_entity:
-            product_base_types = (
-                project_entity["config"].get("productBaseTypes", {})
-            )
-            icons_mapping = ProductBaseTypeIconMapping(
-                product_base_types.get("default"),
-                product_base_types.get("definitions")
-            )
-
-        cache.update_data(icons_mapping)
-        return icons_mapping
+    ) -> ProductTypeIconMapping:
+        return self._controller.get_product_type_icons_mapping(project_name)
 
     def _get_product_items_by_id(self, project_name, product_ids):
         product_item_by_id = self._product_item_by_id[project_name]
@@ -542,7 +480,7 @@ class ProductsModel:
 
         output.update(
             self._query_product_items_by_ids(
-                project_name, missing_product_ids
+                project_name, product_ids=missing_product_ids
             )
         )
         return output
