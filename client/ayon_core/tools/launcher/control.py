@@ -144,6 +144,9 @@ class BaseLauncherController(
     def set_selected_task(self, task_id, task_name):
         self._selection_model.set_selected_task(task_id, task_name)
 
+    def set_selected_workfile(self, workfile_id):
+        self._selection_model.set_selected_workfile(workfile_id)
+
     def get_selected_context(self):
         return {
             "project_name": self.get_selected_project_name(),
@@ -164,9 +167,12 @@ class BaseLauncherController(
         )
 
     # Actions
-    def get_action_items(self, project_name, folder_id, task_id):
+    def get_action_items(
+        self, project_name, folder_id, task_id, workfile_id
+    ):
         return self._actions_model.get_action_items(
-            project_name, folder_id, task_id)
+            project_name, folder_id, task_id, workfile_id
+        )
 
     def trigger_action(
         self,
@@ -174,12 +180,14 @@ class BaseLauncherController(
         project_name,
         folder_id,
         task_id,
+        workfile_id,
     ):
         self._actions_model.trigger_action(
             identifier,
             project_name,
             folder_id,
             task_id,
+            workfile_id,
         )
 
     def trigger_webaction(self, context, action_label, form_data=None):
