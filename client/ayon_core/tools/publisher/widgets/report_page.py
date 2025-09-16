@@ -1147,6 +1147,8 @@ class LogItemMessage(QtWidgets.QTextEdit):
             QtWidgets.QSizePolicy.Preferred,
             QtWidgets.QSizePolicy.Maximum
         )
+        self.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
+        self.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
         document = self.document()
         document.documentLayout().documentSizeChanged.connect(
             self._adjust_minimum_size
