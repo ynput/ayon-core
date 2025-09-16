@@ -8,7 +8,8 @@ on:
 
 jobs:
   build-mk-docs:
-    uses: ynput/ops-repo-automation/.github/workflows/deploy_mkdocs.yml@feature/34-add-mk-docs-reusable-workflow
+    # FIXME: Update @develop to @main after `ops-repo-automation` release.
+    uses: ynput/ops-repo-automation/.github/workflows/deploy_mkdocs.yml@develop
     with:
       repo: ${{ github.repository }}
     secrets:
