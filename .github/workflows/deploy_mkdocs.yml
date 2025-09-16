@@ -1,70 +1,17 @@
 name: Deploy MkDocs
 
 on:
-  pull_request:
+  push:
+    tags:
+      - "*"
   workflow_dispatch:
-  workflow_call:
-    inputs:
-      repo:
-        type: string
-        required: true
-      branch_name:
-        type: string
-        required: true
-        default: "main"
-    secrets:
-      token:
-        required: true
-      user:
-        required: true
-      email:
-        required: true
-
-env:
-  GH_TOKEN: ${{ secrets.token || secrets.YNPUT_BOT_TOKEN }}
-  GH_USER: ${{ secrets.user || secrets.CI_USER }}
-  GH_EMAIL: ${{ secrets.email || secrets.CI_EMAIL }}
 
 jobs:
-  verify-repo-secrets:
-    uses: ynput/ops-repo-automation/.github/workflows/verify_secrets.yml@main
+  build-mk-docs:
+    uses: ynput/ops-repo-automation/.github/workflows/deploy_mkdocs.yml@feature/34-add-mk-docs-reusable-workflow
     with:
       repo: ${{ github.repository }}
     secrets:
-      gh_token: ${{ secrets.token }}
-      gh_user: ${{ secrets.user }}
-      gh_email: ${{ secrets.email }}
-
-  deploy:
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout ${{ inputs.branch_name}}
-        uses: actions/checkout@v4
-        with:
-          ref: ${{ inputs.branch_name}}
-          fetch-depth: 0
-          submodules: true
-
-      - name: 🔑 Set Authentication
-        run: |
-          git config --global user.name "${{ secrets.user || secrets.CI_USER }}"
-          git config --global user.email "${{ secrets.email || secrets.CI_EMAIL }}"
-
-      - name: Get current tag
-        id: git_tag
-        uses: devops-actions/action-get-tag@v1.0.3
-        with:
-          default: 1.0.0
-
-      - name: Set up Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: "3.x"
-
-      - name: Install dependencies
-        run: |
-          python3 -m pip install -r ./docs/mkdocs_requirements.txt
-
-      - name: Mike deploy ${{ steps.git_tag.outputs.tag }}
-        run: mike deploy --update-aliases ${{ steps.git_tag.outputs.tag }} latest
+      YNPUT_BOT_TOKEN: ${{ secrets.YNPUT_BOT_TOKEN }}
+      CI_USER: ${{ secrets.CI_USER }}
+      CI_EMAIL: ${{ secrets.CI_EMAIL }}
