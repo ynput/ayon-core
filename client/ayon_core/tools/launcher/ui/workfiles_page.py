@@ -7,6 +7,7 @@ from ayon_core.tools.utils import get_qt_icon
 from ayon_core.tools.launcher.abstract import AbstractLauncherFrontEnd
 
 VERSION_ROLE = QtCore.Qt.UserRole + 1
+WORKFILE_ID_ROLE = QtCore.Qt.UserRole + 2
 
 
 class WorkfilesModel(QtGui.QStandardItemModel):
@@ -53,9 +54,10 @@ class WorkfilesModel(QtGui.QStandardItemModel):
             item = QtGui.QStandardItem(workfile_item.filename)
             item.setData(icon, QtCore.Qt.DecorationRole)
             item.setData(workfile_item.version, VERSION_ROLE)
+            item.setData(workfile_item.workfile_id, WORKFILE_ID_ROLE)
             flags = QtCore.Qt.NoItemFlags
             if workfile_item.exists:
-                flags = QtCore.Qt.ItemIsEnabled
+                flags = QtCore.Qt.ItemIsEnabled | QtCore.Qt.ItemIsSelectable
             item.setFlags(flags)
             new_items.append(item)
 
@@ -150,6 +152,9 @@ class WorkfilesPage(QtWidgets.QWidget):
         layout.setContentsMargins(0, 0, 0, 0)
         layout.addWidget(workfiles_view, 1)
 
+        workfiles_view.selectionModel().selectionChanged.connect(
+            self._on_selection_changed
+        )
         workfiles_model.refreshed.connect(self._on_refresh)
 
         self._controller = controller
@@ -162,3 +167,9 @@ class WorkfilesPage(QtWidgets.QWidget):
 
     def _on_refresh(self) -> None:
         self._workfiles_proxy.sort(0, QtCore.Qt.DescendingOrder)
+
+    def _on_selection_changed(self, selected, _deselected) -> None:
+        workfile_id = None
+        for index in selected.indexes():
+            workfile_id = index.data(WORKFILE_ID_ROLE)
+        self._controller.set_selected_workfile(workfile_id)

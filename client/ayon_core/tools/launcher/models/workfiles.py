@@ -44,7 +44,7 @@ class WorkfilesModel:
         anatomy = Anatomy(project_name, project_entity=project_entity)
         items = []
         for workfile_entity in ayon_api.get_workfiles_info(
-            project_name, task_ids={task_id}, fields={"path", "data"}
+            project_name, task_ids={task_id}, fields={"id", "path", "data"}
         ):
             rootless_path = workfile_entity["path"]
             exists = False
@@ -61,7 +61,8 @@ class WorkfilesModel:
             version = workfile_data.get("version")
 
             items.append(WorkfileItem(
-                os.path.basename(rootless_path),
+                workfile_id=workfile_entity["id"],
+                filename=os.path.basename(rootless_path),
                 exists=exists,
                 icon=self._get_host_icon(host_name),
                 version=version,
