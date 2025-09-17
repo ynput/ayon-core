@@ -10,7 +10,6 @@ from ayon_api.operations import OperationsSession
 
 from ayon_core.lib import filter_profiles, get_ayon_username
 from ayon_core.settings import get_project_settings
-from ayon_core.host import ApplicationInformation
 from ayon_core.host.interfaces import (
     SaveWorkfileOptionalData,
     ListWorkfilesOptionalData,
@@ -223,7 +222,6 @@ def save_workfile_info(
         description (Optional[str]): Workfile description.
         username (Optional[str]): Username of user who saves the workfile.
             If not provided, current user is used.
-        app_info (Optional[ApplicationInformation]): Application information.
         data (Optional[dict[str, Any]]): Additional workfile entity data.
         workfile_entities (Optional[list[dict[str, Any]]]): Pre-fetched
             workfile entities related to task.
