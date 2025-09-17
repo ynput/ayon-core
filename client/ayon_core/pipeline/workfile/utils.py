@@ -10,6 +10,7 @@ from ayon_api.operations import OperationsSession
 
 from ayon_core.lib import filter_profiles, get_ayon_username
 from ayon_core.settings import get_project_settings
+from ayon_core.host import ApplicationInformation
 from ayon_core.host.interfaces import (
     SaveWorkfileOptionalData,
     ListWorkfilesOptionalData,
@@ -207,6 +208,7 @@ def save_workfile_info(
     comment: Optional[str] = None,
     description: Optional[str] = None,
     username: Optional[str] = None,
+    data: Optional[dict[str, Any]] = None,
     workfile_entities: Optional[list[dict[str, Any]]] = None,
 ) -> dict[str, Any]:
     """Save workfile info entity for a workfile path.
@@ -221,6 +223,8 @@ def save_workfile_info(
         description (Optional[str]): Workfile description.
         username (Optional[str]): Username of user who saves the workfile.
             If not provided, current user is used.
+        app_info (Optional[ApplicationInformation]): Application information.
+        data (Optional[dict[str, Any]]): Additional workfile entity data.
         workfile_entities (Optional[list[dict[str, Any]]]): Pre-fetched
             workfile entities related to task.
 
@@ -246,6 +250,18 @@ def save_workfile_info(
     if username is None:
         username = get_ayon_username()
 
+    attrib = {}
+    extension = os.path.splitext(rootless_path)[1]
+    for key, value in (
+        ("extension", extension),
+        ("description", description),
+    ):
+        if value is not None:
+            attrib[key] = value
+
+    if data is None:
+        data = {}
+
     if not workfile_entity:
         return _create_workfile_info_entity(
             project_name,
@@ -255,34 +271,38 @@ def save_workfile_info(
             username,
             version,
             comment,
-            description,
+            attrib,
+            data,
         )
 
-    data = {
-        key: value
-        for key, value in (
-            ("host_name", host_name),
-            ("version", version),
-            ("comment", comment),
-        )
-        if value is not None
-    }
-
-    old_data = workfile_entity["data"]
+    for key, value in (
+        ("host_name", host_name),
+        ("version", version),
+        ("comment", comment),
+    ):
+        if value is not None:
+            data[key] = value
 
     changed_data = {}
+    old_data = workfile_entity["data"]
     for key, value in data.items():
         if key not in old_data or old_data[key] != value:
             changed_data[key] = value
+            workfile_entity["data"][key] = value
+
+    changed_attrib = {}
+    old_attrib = workfile_entity["attrib"]
+    for key, value in attrib.items():
+        if key not in old_attrib or old_attrib[key] != value:
+            changed_attrib[key] = value
+            workfile_entity["attrib"][key] = value
 
     update_data = {}
     if changed_data:
         update_data["data"] = changed_data
 
-    old_description = workfile_entity["attrib"].get("description")
-    if description is not None and old_description != description:
-        update_data["attrib"] = {"description": description}
-        workfile_entity["attrib"]["description"] = description
+    if changed_attrib:
+        update_data["attrib"] = changed_attrib
 
     # Automatically fix 'createdBy' and 'updatedBy' fields
     # NOTE both fields were not automatically filled by server
@@ -749,7 +769,8 @@ def _create_workfile_info_entity(
     username: str,
     version: Optional[int],
     comment: Optional[str],
-    description: Optional[str],
+    attrib: dict[str, Any],
+    data: dict[str, Any],
 ) -> dict[str, Any]:
     """Create workfile entity data.
 
@@ -761,27 +782,18 @@ def _create_workfile_info_entity(
         username (str): Username.
         version (Optional[int]): Workfile version.
         comment (Optional[str]): Workfile comment.
-        description (Optional[str]): Workfile description.
+        attrib (dict[str, Any]): Workfile entity attributes.
+        data (dict[str, Any]): Workfile entity data.
 
     Returns:
         dict[str, Any]: Created workfile entity data.
 
     """
-    extension = os.path.splitext(rootless_path)[1]
-
-    attrib = {}
-    for key, value in (
-        ("extension", extension),
-        ("description", description),
-    ):
-        if value is not None:
-            attrib[key] = value
-
-    data = {
+    data.update({
         "host_name": host_name,
         "version": version,
         "comment": comment,
-    }
+    })
 
     workfile_info = {
         "id": uuid.uuid4().hex,
