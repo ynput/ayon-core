@@ -512,8 +512,12 @@ class BaseCreator(ABC):
 
         These may be dynamically created based on current context of workfile.
         """
-
-        return {}
+        return {
+                "asset": folder_entity["name"],
+                "folder": {
+                            "name": folder_entity["name"]
+                }
+            }
 
     def get_product_name(
         self,
