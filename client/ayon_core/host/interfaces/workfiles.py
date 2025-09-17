@@ -1554,6 +1554,22 @@ class IWorkfileHost(AbstractHost):
         if platform.system().lower() == "windows":
             rootless_path = rootless_path.replace("\\", "/")
 
+        # Get application information
+        app_info = self.get_app_information()
+        data = {}
+        if app_info.app_name:
+            data["app_name"] = app_info.app_name
+        if app_info.app_version:
+            data["app_version"] = app_info.app_version
+
+        # Use app group and app variant from applications addon (if available)
+        app_addon_name = os.environ.get("AYON_APP_NAME") or ""
+        app_addon_name_parts = app_addon_name.split("/")
+        if len(app_addon_name_parts) == 2:
+            app_group, app_variant = app_addon_name_parts
+            data["app_group"] = app_group
+            data["app_variant"] = app_variant
+
         workfile_info = save_workfile_info(
             project_name,
             save_workfile_context.task_entity["id"],
@@ -1562,6 +1578,7 @@ class IWorkfileHost(AbstractHost):
             version,
             comment,
             description,
+            data=data,
             workfile_entities=save_workfile_context.workfile_entities,
         )
         return workfile_info
