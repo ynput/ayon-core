@@ -438,15 +438,14 @@ class ProductsWidget(QtWidgets.QWidget):
             return
 
         self._controller.trigger_action_item(
-            action_item.plugin_identifier,
-            action_item.identifier,
-            project_name,
-            action_item.entity_ids,
-            action_item.entity_type,
-            version_ids,
-            "version",
-            options,
-            {},
+            plugin_identifier=action_item.plugin_identifier,
+            identifier=action_item.identifier,
+            project_name=project_name,
+            selected_ids=version_ids,
+            selected_entity_type="version",
+            data=action_item.data,
+            options=options,
+            form_values={},
         )
 
     def _on_selection_change(self):

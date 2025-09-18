@@ -5,7 +5,7 @@ import traceback
 import inspect
 import collections
 import uuid
-from typing import Callable, Any
+from typing import Optional, Callable, Any
 
 import ayon_api
 
@@ -125,10 +125,9 @@ class LoaderActionsModel:
         plugin_identifier: str,
         identifier: str,
         project_name: str,
-        entity_ids: set[str],
-        entity_type: str,
         selected_ids: set[str],
         selected_entity_type: str,
+        data: Optional[dict[str, Any]],
         options: dict[str, Any],
         form_values: dict[str, Any],
     ):
@@ -144,10 +143,9 @@ class LoaderActionsModel:
             plugin_identifier (str): Plugin identifier.
             identifier (str): Action identifier.
             project_name (str): Project name.
-            entity_ids (set[str]): Entity ids on action item.
-            entity_type (str): Entity type on action item.
             selected_ids (set[str]): Selected entity ids.
             selected_entity_type (str): Selected entity type.
+            data (Optional[dict[str, Any]]): Additional action item data.
             options (dict[str, Any]): Loader option values.
             form_values (dict[str, Any]): Form values.
 
@@ -156,10 +154,9 @@ class LoaderActionsModel:
             "plugin_identifier": plugin_identifier,
             "identifier": identifier,
             "project_name": project_name,
-            "entity_ids": list(entity_ids),
-            "entity_type": entity_type,
             "selected_ids": list(selected_ids),
             "selected_entity_type": selected_entity_type,
+            "data": data,
             "id": uuid.uuid4().hex,
         }
         self._controller.emit_event(
@@ -172,16 +169,15 @@ class LoaderActionsModel:
             crashed = False
             try:
                 result = self._loader_actions.execute_action(
-                    plugin_identifier,
-                    identifier,
-                    entity_ids,
-                    entity_type,
-                    LoaderActionSelection(
+                    plugin_identifier=plugin_identifier,
+                    action_identifier=identifier,
+                    selection=LoaderActionSelection(
                         project_name,
                         selected_ids,
                         selected_entity_type,
                     ),
-                    form_values,
+                    data=data,
+                    form_values=form_values,
                 )
 
             except Exception:
@@ -203,7 +199,8 @@ class LoaderActionsModel:
         loader = self._get_loader_by_identifier(
             project_name, identifier
         )
-
+        entity_type = data["entity_type"]
+        entity_ids = data["entity_ids"]
         if entity_type == "version":
             error_info = self._trigger_version_loader(
                 loader,
@@ -346,8 +343,10 @@ class LoaderActionsModel:
         return ActionItem(
             LOADER_PLUGIN_ID,
             get_loader_identifier(loader),
-            entity_ids=entity_ids,
-            entity_type=entity_type,
+            data={
+                "entity_ids": entity_ids,
+                "entity_type": entity_type,
+            },
             label=label,
             group_label=None,
             icon=self._get_action_icon(loader),
@@ -807,13 +806,12 @@ class LoaderActionsModel:
             items.append(ActionItem(
                 action.plugin_identifier,
                 action.identifier,
-                action.entity_ids,
-                action.entity_type,
                 label=action.label,
                 group_label=action.group_label,
                 icon=action.icon,
                 tooltip=None,  # action.tooltip,
                 order=action.order,
+                data=action.data,
                 options=None,  # action.options,
             ))
         return items

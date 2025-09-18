@@ -316,13 +316,12 @@ class ActionItem:
     Args:
         plugin_identifier (str): Action identifier.
         identifier (str): Action identifier.
-        entity_ids (set[str]): Entity ids.
-        entity_type (str): Entity type.
         label (str): Action label.
         group_label (Optional[str]): Group label.
         icon (Optional[dict[str, Any]]): Action icon definition.
         tooltip (Optional[str]): Action tooltip.
         order (int): Action order.
+        data (Optional[dict[str, Any]]): Additional action data.
         options (Union[list[AbstractAttrDef], list[qargparse.QArgument]]):
             Action options. Note: 'qargparse' is considered as deprecated.
 
@@ -331,23 +330,21 @@ class ActionItem:
         self,
         plugin_identifier: str,
         identifier: str,
-        entity_ids: set[str],
-        entity_type: str,
         label: str,
         group_label: Optional[str],
         icon: Optional[dict[str, Any]],
         tooltip: Optional[str],
         order: int,
+        data: Optional[dict[str, Any]],
         options: Optional[list],
     ):
         self.plugin_identifier = plugin_identifier
         self.identifier = identifier
-        self.entity_ids = entity_ids
-        self.entity_type = entity_type
         self.label = label
         self.group_label = group_label
         self.icon = icon
         self.tooltip = tooltip
+        self.data = data
         self.order = order
         self.options = options
 
@@ -371,13 +368,12 @@ class ActionItem:
         return {
             "plugin_identifier": self.plugin_identifier,
             "identifier": self.identifier,
-            "entity_ids": list(self.entity_ids),
-            "entity_type": self.entity_type,
             "label": self.label,
             "group_label": self.group_label,
             "icon": self.icon,
             "tooltip": self.tooltip,
             "order": self.order,
+            "data": self.data,
             "options": options,
         }
 
@@ -387,7 +383,6 @@ class ActionItem:
         if options:
             options = deserialize_attr_defs(options)
         data["options"] = options
-        data["entity_ids"] = set(data["entity_ids"])
         return cls(**data)
 
 
@@ -1011,10 +1006,9 @@ class FrontendLoaderController(_BaseLoaderController):
         plugin_identifier: str,
         identifier: str,
         project_name: str,
-        entity_ids: set[str],
-        entity_type: str,
         selected_ids: set[str],
         selected_entity_type: str,
+        data: Optional[dict[str, Any]],
         options: dict[str, Any],
         form_values: dict[str, Any],
     ):
@@ -1037,10 +1031,9 @@ class FrontendLoaderController(_BaseLoaderController):
             plugin_identifier (sttr): Plugin identifier.
             identifier (sttr): Action identifier.
             project_name (str): Project name.
-            entity_ids (set[str]): Entity ids stored on action item.
-            entity_type (str): Entity type stored on action item.
             selected_ids (set[str]): Selected entity ids.
             selected_entity_type (str): Selected entity type.
+            data (Optional[dict[str, Any]]): Additional action item data.
             options (dict[str, Any]): Action option values from UI.
             form_values (dict[str, Any]): Action form values from UI.
 

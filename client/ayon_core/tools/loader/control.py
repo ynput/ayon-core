@@ -318,10 +318,9 @@ class LoaderController(BackendLoaderController, FrontendLoaderController):
         plugin_identifier: str,
         identifier: str,
         project_name: str,
-        entity_ids: set[str],
-        entity_type: str,
         selected_ids: set[str],
         selected_entity_type: str,
+        data: Optional[dict[str, Any]],
         options: dict[str, Any],
         form_values: dict[str, Any],
     ):
@@ -329,20 +328,19 @@ class LoaderController(BackendLoaderController, FrontendLoaderController):
             self._sitesync_model.trigger_action_item(
                 identifier,
                 project_name,
-                entity_ids,
+                data,
             )
             return
 
         self._loader_actions_model.trigger_action_item(
-            plugin_identifier,
-            identifier,
-            project_name,
-            entity_ids,
-            entity_type,
-            selected_ids,
-            selected_entity_type,
-            options,
-            form_values,
+            plugin_identifier=plugin_identifier,
+            identifier=identifier,
+            project_name=project_name,
+            selected_ids=selected_ids,
+            selected_entity_type=selected_entity_type,
+            data=data,
+            options=options,
+            form_values=form_values,
         )
 
     # Selection model wrappers
