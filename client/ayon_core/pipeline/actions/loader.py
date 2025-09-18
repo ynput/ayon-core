@@ -35,6 +35,17 @@ class LoaderSelectedType(StrEnum):
 
 
 class SelectionEntitiesCache:
+    """Cache of entities used as helper in the selection wrapper.
+
+    It is possible to get entities based on ids with helper methods to get
+        entities, their parents or their children's entities.
+
+    The goal is to avoid multiple API calls for the same entity in multiple
+        action plugins.
+
+    The cache is based on the selected project. Entities are fetched
+        if are not in cache yet.
+    """
     def __init__(
         self,
         project_name: str,
@@ -65,6 +76,7 @@ class SelectionEntitiesCache:
         )
 
     def get_project(self) -> dict[str, Any]:
+        """Get project entity"""
         if self._project_entity is None:
             self._project_entity = ayon_api.get_project(self._project_name)
         return copy.deepcopy(self._project_entity)
@@ -294,6 +306,15 @@ class SelectionEntitiesCache:
 
 
 class LoaderActionSelection:
+    """Selection of entities for loader actions.
+
+    Selection tells action plugins what exactly is selected in the tool and
+        which ids.
+
+    Contains entity cache which can be used to get entities by their ids. Or
+        to get project settings and anatomy.
+
+    """
     def __init__(
         self,
         project_name: str,
@@ -350,9 +371,33 @@ class LoaderActionSelection:
 
 @dataclass
 class LoaderActionItem:
+    """Item of loader action.
+
+    Action plugins return these items as possible actions to run for a given
+        context.
+
+    Because the action item can be related to a specific entity
+        and not the whole selection, they also have to define the entity type
+        and ids to be executed on.
+
+    Attributes:
+        identifier (str): Unique action identifier. What is sent to action
+            plugin when the action is executed.
+        entity_type (str): Entity type to which the action belongs.
+        entity_ids (set[str]): Entity ids to which the action belongs.
+        label (str): Text shown in UI.
+        order (int): Order of the action in UI.
+        group_label (Optional[str]): Label of the group to which the action
+            belongs.
+        icon (Optional[dict[str, Any]]): Icon definition.
+        plugin_identifier (Optional[str]): Identifier of the plugin which
+            created the action item. Is filled automatically. Is not changed
+            if is filled -> can lead to different plugin.
+
+    """
     identifier: str
-    entity_ids: set[str]
     entity_type: str
+    entity_ids: set[str]
     label: str
     order: int = 0
     group_label: Optional[str] = None
@@ -363,6 +408,25 @@ class LoaderActionItem:
 
 @dataclass
 class LoaderActionForm:
+    """Form for loader action.
+
+    If an action needs to collect information from a user before or during of
+        the action execution, it can return a response with a form. When the
+        form is confirmed, a new execution of the action is triggered.
+
+    Attributes:
+        title (str): Title of the form -> title of the window.
+        fields (list[AbstractAttrDef]): Fields of the form.
+        submit_label (Optional[str]): Label of the submit button. Is hidden
+            if is set to None.
+        submit_icon (Optional[dict[str, Any]]): Icon definition of the submit
+            button.
+        cancel_label (Optional[str]): Label of the cancel button. Is hidden
+            if is set to None. User can still close the window tho.
+        cancel_icon (Optional[dict[str, Any]]): Icon definition of the cancel
+            button.
+
+    """
     title: str
     fields: list[AbstractAttrDef]
     submit_label: Optional[str] = "Submit"
@@ -393,6 +457,18 @@ class LoaderActionForm:
 
 @dataclass
 class LoaderActionResult:
+    """Result of loader action execution.
+
+    Attributes:
+        message (Optional[str]): Message to show in UI.
+        success (bool): If the action was successful. Affects color of
+            the message.
+        form (Optional[LoaderActionForm]): Form to show in UI.
+        form_values (Optional[dict[str, Any]]): Values for the form. Can be
+            used if the same form is re-shown e.g. because a user forgot to
+            fill a required field.
+
+    """
     message: Optional[str] = None
     success: bool = True
     form: Optional[LoaderActionForm] = None
@@ -421,7 +497,6 @@ class LoaderActionPlugin(ABC):
     """Plugin for loader actions.
 
     Plugin is responsible for getting action items and executing actions.
-
 
     """
     _log: Optional[logging.Logger] = None
@@ -503,6 +578,12 @@ class LoaderActionPlugin(ABC):
 
 
 class LoaderActionsContext:
+    """Wrapper for loader actions and their logic.
+
+    Takes care about the public api of loader actions and internal logic like
+        discovery and initialization of plugins.
+
+    """
     def __init__(
         self,
         studio_settings: Optional[dict[str, Any]] = None,
@@ -521,6 +602,15 @@ class LoaderActionsContext:
     def reset(
         self, studio_settings: Optional[dict[str, Any]] = None
     ) -> None:
+        """Reset context cache.
+
+        Reset plugins and studio settings to reload them.
+
+        Notes:
+             Does not reset the cache of AddonsManger because there should not
+                be a reason to do so.
+
+        """
         self._studio_settings = studio_settings
         self._plugins = None
 
@@ -532,6 +622,14 @@ class LoaderActionsContext:
         return self._addons_manager
 
     def get_host(self) -> Optional[AbstractHost]:
+        """Get current host integration.
+
+        Returns:
+            Optional[AbstractHost]: Host integration. Can be None if host
+                integration is not registered -> probably not used in the
+                host integration process.
+
+        """
         if self._host is _PLACEHOLDER:
             from ayon_core.pipeline import registered_host
 
@@ -552,6 +650,12 @@ class LoaderActionsContext:
     def get_action_items(
         self, selection: LoaderActionSelection
     ) -> list[LoaderActionItem]:
+        """Collect action items from all plugins for given selection.
+
+        Args:
+            selection (LoaderActionSelection): Selection wrapper.
+
+        """
         output = []
         for plugin_id, plugin in self._get_plugins().items():
             try:
@@ -572,11 +676,25 @@ class LoaderActionsContext:
         self,
         plugin_identifier: str,
         action_identifier: str,
+        entity_type: str,
         entity_ids: set[str],
-        entity_type: LoaderSelectedType,
         selection: LoaderActionSelection,
         form_values: dict[str, Any],
     ) -> Optional[LoaderActionResult]:
+        """Trigger action execution.
+
+        Args:
+            plugin_identifier (str): Identifier of the plugin.
+            action_identifier (str): Identifier of the action.
+            entity_type (str): Entity type defined on the action item.
+            entity_ids (set[str]): Entity ids defined on the action item.
+            selection (LoaderActionSelection): Selection wrapper. Can be used
+                to get what is selected in UI and to get access to entity
+                cache.
+            form_values (dict[str, Any]): Form values related to action.
+                Usually filled if action returned response with form.
+
+        """
         plugins_by_id = self._get_plugins()
         plugin = plugins_by_id[plugin_identifier]
         return plugin.execute_action(
