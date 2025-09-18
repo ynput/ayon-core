@@ -9,7 +9,11 @@ from ayon_core.lib.attribute_definitions import (
     deserialize_attr_defs,
     serialize_attr_defs,
 )
-from ayon_core.tools.common_models import TaskItem, TagItem
+from ayon_core.tools.common_models import (
+    TaskItem,
+    TagItem,
+    ProductTypeIconMapping,
+)
 
 
 class ProductTypeItem:
@@ -78,7 +82,6 @@ class ProductItem:
         product_type (str): Product type.
         product_name (str): Product name.
         product_icon (dict[str, Any]): Product icon definition.
-        product_type_icon (dict[str, Any]): Product type icon definition.
         product_in_scene (bool): Is product in scene (only when used in DCC).
         group_name (str): Group name.
         folder_id (str): Folder id.
@@ -93,8 +96,6 @@ class ProductItem:
         product_base_type: str,
         product_name: str,
         product_icon: dict[str, Any],
-        product_type_icon: dict[str, Any],
-        product_base_type_icon: dict[str, Any],
         group_name: str,
         folder_id: str,
         folder_label: str,
@@ -106,8 +107,6 @@ class ProductItem:
         self.product_base_type = product_base_type
         self.product_name = product_name
         self.product_icon = product_icon
-        self.product_type_icon = product_type_icon
-        self.product_base_type_icon = product_base_type_icon
         self.product_in_scene = product_in_scene
         self.group_name = group_name
         self.folder_id = folder_id
@@ -121,8 +120,6 @@ class ProductItem:
             "product_base_type": self.product_base_type,
             "product_name": self.product_name,
             "product_icon": self.product_icon,
-            "product_type_icon": self.product_type_icon,
-            "product_base_type_icon": self.product_base_type_icon,
             "product_in_scene": self.product_in_scene,
             "group_name": self.group_name,
             "folder_id": self.folder_id,
@@ -495,8 +492,8 @@ class BackendLoaderController(_BaseLoaderController):
             topic (str): Event topic name.
             data (Optional[dict[str, Any]]): Event data.
             source (Optional[str]): Event source.
-        """
 
+        """
         pass
 
     @abstractmethod
@@ -505,8 +502,20 @@ class BackendLoaderController(_BaseLoaderController):
 
         Returns:
             set[str]: Set of loaded product ids.
-        """
 
+        """
+        pass
+
+    @abstractmethod
+    def get_product_type_icons_mapping(
+        self, project_name: Optional[str]
+    ) -> ProductTypeIconMapping:
+        """Product type icons mapping.
+
+        Returns:
+            ProductTypeIconMapping: Product type icons mapping.
+
+        """
         pass
 
 
