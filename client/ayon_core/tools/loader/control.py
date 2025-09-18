@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import logging
 import uuid
-from typing import Any
+from typing import Optional, Any
 
 import ayon_api
 
@@ -17,6 +17,7 @@ from ayon_core.tools.common_models import (
     HierarchyModel,
     ThumbnailsModel,
     TagItem,
+    ProductTypeIconMapping,
 )
 
 from .abstract import (
@@ -198,6 +199,13 @@ class LoaderController(BackendLoaderController, FrontendLoaderController):
     def get_project_status_items(self, project_name, sender=None):
         return self._projects_model.get_project_status_items(
             project_name, sender
+        )
+
+    def get_product_type_icons_mapping(
+        self, project_name: Optional[str]
+    ) -> ProductTypeIconMapping:
+        return self._projects_model.get_product_type_icons_mapping(
+            project_name
         )
 
     def get_folder_items(self, project_name, sender=None):
