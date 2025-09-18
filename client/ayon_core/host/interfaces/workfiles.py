@@ -55,7 +55,7 @@ class _WorkfileOptionalData:
     ):
         if kwargs:
             cls_name = self.__class__.__name__
-            keys = ", ".join(['"{}"'.format(k) for k in kwargs.keys()])
+            keys = ", ".join([f'"{k}"' for k in kwargs.keys()])
             warnings.warn(
                 f"Unknown keywords passed to {cls_name}: {keys}",
             )
