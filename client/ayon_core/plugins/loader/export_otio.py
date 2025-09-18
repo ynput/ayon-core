@@ -59,8 +59,7 @@ class ExportOTIO(LoaderActionPlugin):
                     label="Export OTIO",
                     group_label=None,
                     order=35,
-                    entity_ids=version_ids,
-                    entity_type="version",
+                    data={"version_ids": list(version_ids)},
                     icon={
                         "type": "material-symbols",
                         "name": "save",
@@ -73,16 +72,16 @@ class ExportOTIO(LoaderActionPlugin):
     def execute_action(
         self,
         identifier: str,
-        entity_ids: set[str],
-        entity_type: str,
         selection: LoaderActionSelection,
+        data: dict[str, Any],
         form_values: dict[str, Any],
     ) -> Optional[LoaderActionResult]:
         _import_otio()
+        version_ids = data["version_ids"]
 
         versions_by_id = {
             version["id"]: version
-            for version in selection.entities.get_versions(entity_ids)
+            for version in selection.entities.get_versions(version_ids)
         }
         product_ids = {
             version["productId"]
@@ -101,7 +100,7 @@ class ExportOTIO(LoaderActionPlugin):
             for folder in selection.entities.get_folders(folder_ids)
         }
         repre_entities = selection.entities.get_versions_representations(
-            entity_ids
+            version_ids
         )
 
         version_path_by_id = {}

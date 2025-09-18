@@ -5,6 +5,7 @@ import collections
 import copy
 import logging
 from abc import ABC, abstractmethod
+import typing
 from typing import Optional, Any, Callable
 from dataclasses import dataclass
 
@@ -22,6 +23,12 @@ from ayon_core.addon import AddonsManager, IPluginPaths
 from ayon_core.settings import get_studio_settings, get_project_settings
 from ayon_core.pipeline import Anatomy
 from ayon_core.pipeline.plugin_discover import discover_plugins
+
+if typing.TYPE_CHECKING:
+    from typing import Union
+
+    DataBaseType = Union[str, int, float, bool]
+    DataType = dict[str, Union[DataBaseType, list[DataBaseType]]]
 
 _PLACEHOLDER = object()
 
@@ -383,25 +390,23 @@ class LoaderActionItem:
     Attributes:
         identifier (str): Unique action identifier. What is sent to action
             plugin when the action is executed.
-        entity_type (str): Entity type to which the action belongs.
-        entity_ids (set[str]): Entity ids to which the action belongs.
         label (str): Text shown in UI.
         order (int): Order of the action in UI.
         group_label (Optional[str]): Label of the group to which the action
             belongs.
-        icon (Optional[dict[str, Any]]): Icon definition.
+        icon (Optional[dict[str, Any]): Icon definition.
+        data (Optional[DataType]): Action item data.
         plugin_identifier (Optional[str]): Identifier of the plugin which
             created the action item. Is filled automatically. Is not changed
             if is filled -> can lead to different plugin.
 
     """
     identifier: str
-    entity_type: str
-    entity_ids: set[str]
     label: str
     order: int = 0
     group_label: Optional[str] = None
     icon: Optional[dict[str, Any]] = None
+    data: Optional[DataType] = None
     # Is filled automatically
     plugin_identifier: str = None
 
@@ -555,19 +560,17 @@ class LoaderActionPlugin(ABC):
     def execute_action(
         self,
         identifier: str,
-        entity_ids: set[str],
-        entity_type: str,
         selection: LoaderActionSelection,
+        data: Optional[DataType],
         form_values: dict[str, Any],
     ) -> Optional[LoaderActionResult]:
         """Execute an action.
 
         Args:
             identifier (str): Action identifier.
-            entity_ids: (set[str]): Entity ids stored on action item.
-            entity_type: (str): Entity type stored on action item.
             selection (LoaderActionSelection): Selection wrapper. Can be used
                 to get entities or get context of original selection.
+            data (Optional[DataType]): Additional action item data.
             form_values (dict[str, Any]): Attribute values.
 
         Returns:
@@ -676,9 +679,8 @@ class LoaderActionsContext:
         self,
         plugin_identifier: str,
         action_identifier: str,
-        entity_type: str,
-        entity_ids: set[str],
         selection: LoaderActionSelection,
+        data: Optional[DataType],
         form_values: dict[str, Any],
     ) -> Optional[LoaderActionResult]:
         """Trigger action execution.
@@ -686,11 +688,10 @@ class LoaderActionsContext:
         Args:
             plugin_identifier (str): Identifier of the plugin.
             action_identifier (str): Identifier of the action.
-            entity_type (str): Entity type defined on the action item.
-            entity_ids (set[str]): Entity ids defined on the action item.
             selection (LoaderActionSelection): Selection wrapper. Can be used
                 to get what is selected in UI and to get access to entity
                 cache.
+            data (Optional[DataType]): Additional action item data.
             form_values (dict[str, Any]): Form values related to action.
                 Usually filled if action returned response with form.
 
@@ -699,9 +700,8 @@ class LoaderActionsContext:
         plugin = plugins_by_id[plugin_identifier]
         return plugin.execute_action(
             action_identifier,
-            entity_ids,
-            entity_type,
             selection,
+            data,
             form_values,
         )
 
