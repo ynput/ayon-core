@@ -582,17 +582,16 @@ class LoaderWindow(QtWidgets.QWidget):
         if result != QtWidgets.QDialog.Accepted:
             return
 
-        form_data = dialog.get_values()
+        form_values = dialog.get_values()
         self._controller.trigger_action_item(
-            event["plugin_identifier"],
-            event["identifier"],
-            event["project_name"],
-            event["entity_ids"],
-            event["entity_type"],
-            event["selected_ids"],
-            event["selected_entity_type"],
-            {},
-            form_data,
+            plugin_identifier=event["plugin_identifier"],
+            identifier=event["identifier"],
+            project_name=event["project_name"],
+            selected_ids=event["selected_ids"],
+            selected_entity_type=event["selected_entity_type"],
+            options={},
+            data=event["data"],
+            form_values=form_values,
         )
 
     def _on_project_selection_changed(self, event):

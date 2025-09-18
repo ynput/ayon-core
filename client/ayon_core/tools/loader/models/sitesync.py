@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import collections
+from typing import Any
 
 from ayon_api import (
     get_representations,
@@ -315,16 +316,17 @@ class SiteSyncModel:
         self,
         identifier: str,
         project_name: str,
-        representation_ids: set[str],
+        data: dict[str, Any],
     ):
         """Resets status for site_name or remove local files.
 
         Args:
             identifier (str): Action identifier.
             project_name (str): Project name.
-            representation_ids (Iterable[str]): Representation ids.
+            data (dict[str, Any]): Action item data.
 
         """
+        representation_ids = data["representation_ids"]
         active_site = self.get_active_site(project_name)
         remote_site = self.get_remote_site(project_name)
 
@@ -495,9 +497,10 @@ class SiteSyncModel:
             },
             tooltip=tooltip,
             order=1,
-            entity_ids=representation_ids,
-            entity_type="representation",
-            options={},
+            data={
+                "representation_ids": representation_ids,
+            },
+            options=None,
         )
 
     def _add_site(self, project_name, repre_entity, site_name, product_type):
