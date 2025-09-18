@@ -84,8 +84,7 @@ class OpenFileAction(LoaderActionPlugin):
                 label=repre_name,
                 group_label="Open file",
                 order=-10,
-                entity_ids=repre_ids,
-                entity_type="representation",
+                data={"representation_ids": list(repre_ids)},
                 icon={
                     "type": "material-symbols",
                     "name": "play_circle",
@@ -98,14 +97,14 @@ class OpenFileAction(LoaderActionPlugin):
     def execute_action(
         self,
         identifier: str,
-        entity_ids: set[str],
-        entity_type: str,
         selection: LoaderActionSelection,
+        data: dict[str, Any],
         form_values: dict[str, Any],
     ) -> Optional[LoaderActionResult]:
         path = None
         repre_path = None
-        for repre in selection.entities.get_representations(entity_ids):
+        repre_ids = data["representation_ids"]
+        for repre in selection.entities.get_representations(repre_ids):
             repre_path = get_representation_path_with_anatomy(
                 repre, selection.get_project_anatomy()
             )

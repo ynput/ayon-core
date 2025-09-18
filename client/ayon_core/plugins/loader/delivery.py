@@ -54,8 +54,7 @@ class DeliveryAction(LoaderActionPlugin):
                 identifier="deliver-versions",
                 label="Deliver Versions",
                 order=35,
-                entity_ids=version_ids,
-                entity_type="version",
+                data={"version_ids": list(version_ids)},
                 icon={
                     "type": "material-symbols",
                     "name": "upload",
@@ -67,15 +66,14 @@ class DeliveryAction(LoaderActionPlugin):
     def execute_action(
         self,
         identifier: str,
-        entity_ids: set[str],
-        entity_type: str,
         selection: LoaderActionSelection,
+        data: dict[str, Any],
         form_values: dict[str, Any],
     ) -> Optional[LoaderActionResult]:
         try:
             # TODO run the tool in subprocess
             dialog = DeliveryOptionsDialog(
-                selection.project_name, entity_ids, self.log
+                selection.project_name, data["version_ids"], self.log
             )
             dialog.exec_()
         except Exception:

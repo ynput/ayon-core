@@ -42,8 +42,7 @@ class PushToProject(LoaderActionPlugin):
                     identifier="core.push-to-project",
                     label="Push to project",
                     order=35,
-                    entity_ids=version_ids,
-                    entity_type="version",
+                    data={"version_ids": list(version_ids)},
                     icon={
                         "type": "material-symbols",
                         "name": "send",
@@ -56,12 +55,12 @@ class PushToProject(LoaderActionPlugin):
     def execute_action(
         self,
         identifier: str,
-        entity_ids: set[str],
-        entity_type: str,
         selection: LoaderActionSelection,
+        data: dict[str, Any],
         form_values: dict[str, Any],
     ) -> Optional[LoaderActionResult]:
-        if len(entity_ids) > 1:
+        version_ids = data["version_ids"]
+        if len(version_ids) > 1:
             return LoaderActionResult(
                 message="Please select only one version",
                 success=False,
@@ -77,7 +76,7 @@ class PushToProject(LoaderActionPlugin):
         args = get_ayon_launcher_args(
             push_tool_script_path,
             "--project", selection.project_name,
-            "--versions", ",".join(entity_ids)
+            "--versions", ",".join(version_ids)
         )
         run_detached_process(args)
         return LoaderActionResult(
