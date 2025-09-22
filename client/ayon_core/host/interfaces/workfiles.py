@@ -1565,11 +1565,11 @@ class IWorkfileHost(AbstractHost):
         # Use app group and app variant from applications addon (if available)
         app_addon_name = os.environ.get("AYON_APP_NAME")
         if app_addon_name:
-            data["app_addon_name"] = app_addon_name
+            data["ayon_app_name"] = app_addon_name
 
         app_addon_tools = os.environ.get("AYON_APP_TOOLS")
         if app_addon_tools:
-            data["app_addon_tools"] = app_addon_tools.split(";")
+            data["ayon_app_tools"] = app_addon_tools.split(";")
 
         workfile_info = save_workfile_info(
             project_name,
