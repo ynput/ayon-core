@@ -37,6 +37,7 @@ REMOTE_SITE_ICON_ROLE = QtCore.Qt.UserRole + 23
 #     containers inbetween refresh.
 ITEM_UNIQUE_NAME_ROLE = QtCore.Qt.UserRole + 24
 PROJECT_NAME_ROLE = QtCore.Qt.UserRole + 25
+CONTAINER_VERSION_LOCKED_ROLE = QtCore.Qt.UserRole + 26
 
 
 class InventoryModel(QtGui.QStandardItemModel):
@@ -291,6 +292,10 @@ class InventoryModel(QtGui.QStandardItemModel):
                     item.setData(container_item.object_name, OBJECT_NAME_ROLE)
                     item.setData(True, IS_CONTAINER_ITEM_ROLE)
                     item.setData(unique_name, ITEM_UNIQUE_NAME_ROLE)
+                    item.setData(
+                        container_item.version_locked,
+                        CONTAINER_VERSION_LOCKED_ROLE
+                    )
                     container_model_items.append(item)
 
                 progress = progress_by_id[repre_id]
