@@ -524,7 +524,15 @@ class SceneInventoryView(QtWidgets.QTreeView):
             submenu = QtWidgets.QMenu("Actions", self)
             for action in custom_actions:
                 color = action.color or DEFAULT_COLOR
-                icon = qtawesome.icon("fa.%s" % action.icon, color=color)
+                icon_def = action.icon
+                if not isinstance(action.icon, dict):
+                    icon_def = {
+                        "type": "awesome-font",
+                        "name": icon_def,
+                        "color": color,
+                    }
+                icon = get_qt_icon(icon_def)
+                # icon = qtawesome.icon("fa.%s" % action.icon, color=color)
                 action_item = QtWidgets.QAction(icon, action.label, submenu)
                 action_item.triggered.connect(
                     partial(
