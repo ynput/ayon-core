@@ -177,7 +177,7 @@ class LauncherWindow(QtWidgets.QWidget):
         self._page_slide_anim = page_slide_anim
 
         hierarchy_page.setVisible(not self._is_on_projects_page)
-        self.resize(520, 740)
+        self.resize(920, 740)
 
     def showEvent(self, event):
         super().showEvent(event)
