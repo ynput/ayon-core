@@ -1042,13 +1042,13 @@ def filter_containers(containers, project_name):
         hero=True,
         fields={"id", "productId", "version"}
     )
-    verisons_by_id = {}
+    versions_by_id = {}
     versions_by_product_id = collections.defaultdict(list)
     hero_version_ids = set()
     for version_entity in version_entities:
         version_id = version_entity["id"]
         # Store versions by their ids
-        verisons_by_id[version_id] = version_entity
+        versions_by_id[version_id] = version_entity
         # There's no need to query products for hero versions
         #   - they are considered as latest?
         if version_entity["version"] < 0:
@@ -1083,24 +1083,23 @@ def filter_containers(containers, project_name):
 
         repre_entity = repre_entities_by_id.get(repre_id)
         if not repre_entity:
-            log.debug((
-                "Container '{}' has an invalid representation."
+            log.debug(
+                f"Container '{container_name}' has an invalid representation."
                 " It is missing in the database."
-            ).format(container_name))
+            )
             not_found_containers.append(container)
             continue
 
         version_id = repre_entity["versionId"]
-        if version_id in outdated_version_ids:
-            outdated_containers.append(container)
-
-        elif version_id not in verisons_by_id:
-            log.debug((
-                "Representation on container '{}' has an invalid version."
-                " It is missing in the database."
-            ).format(container_name))
+        if version_id not in versions_by_id:
+            log.debug(
+                f"Representation on container '{container_name}' has an"
+                " invalid version. It is missing in the database."
+            )
             not_found_containers.append(container)
 
+        elif version_id in outdated_version_ids:
+            outdated_containers.append(container)
         else:
             uptodate_containers.append(container)
 
