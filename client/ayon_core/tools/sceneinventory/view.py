@@ -17,6 +17,7 @@ from ayon_core.tools.utils.lib import (
     format_version,
     preserve_expanded_rows,
     preserve_selection,
+    get_qt_icon,
 )
 from ayon_core.tools.utils.delegates import StatusDelegate
 
@@ -46,7 +47,7 @@ class SceneInventoryView(QtWidgets.QTreeView):
     hierarchy_view_changed = QtCore.Signal(bool)
 
     def __init__(self, controller, parent):
-        super(SceneInventoryView, self).__init__(parent=parent)
+        super().__init__(parent=parent)
 
         # view settings
         self.setIndentation(12)
@@ -623,17 +624,20 @@ class SceneInventoryView(QtWidgets.QTreeView):
         containers_by_id = self._controller.get_containers_by_item_ids(
             item_ids
         )
-        result = action.process(list(containers_by_id.values()))
-        if result:
-            self.data_changed.emit()
+        try:
+            result = action.process(list(containers_by_id.values()))
+            if not result:
+                pass
 
-            if isinstance(result, (list, set)):
+            elif isinstance(result, (list, set)):
                 self._select_items_by_action(result)
 
-            if isinstance(result, dict):
+            elif isinstance(result, dict):
                 self._select_items_by_action(
                     result["objectNames"], result["options"]
                 )
+        finally:
+            self.data_changed.emit()
 
     def _select_items_by_action(self, object_names, options=None):
         """Select view items by the result of action
