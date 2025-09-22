@@ -964,7 +964,12 @@ def get_outdated_containers(host=None, project_name=None):
         containers = host.get_containers()
     else:
         containers = host.ls()
-    return filter_containers(containers, project_name).outdated
+    outdated_containers = []
+    for container in filter_containers(containers, project_name).outdated:
+        if container.get("locked_version") is True:
+            continue
+        outdated_containers.append(container)
+    return outdated_containers
 
 
 def _is_valid_representation_id(repre_id: Any) -> bool:
