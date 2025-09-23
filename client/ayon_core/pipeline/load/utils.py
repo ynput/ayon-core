@@ -942,7 +942,11 @@ def any_outdated_containers(host=None, project_name=None):
     return False
 
 
-def get_outdated_containers(host=None, project_name=None):
+def get_outdated_containers(
+    host=None,
+    project_name=None,
+    ignore_locked_versions: bool = False,
+):
     """Collect outdated containers from host scene.
 
     Currently registered host and project in global session are used if
@@ -951,6 +955,8 @@ def get_outdated_containers(host=None, project_name=None):
     Args:
         host (ModuleType): Host implementation with 'ls' function available.
         project_name (str): Name of project in which context we are.
+        ignore_locked_versions (bool): Locked versions are ignored.
+
     """
     from ayon_core.pipeline import registered_host, get_current_project_name
 
@@ -964,9 +970,13 @@ def get_outdated_containers(host=None, project_name=None):
         containers = host.get_containers()
     else:
         containers = host.ls()
+
     outdated_containers = []
     for container in filter_containers(containers, project_name).outdated:
-        if container.get("locked_version") is True:
+        if (
+            not ignore_locked_versions
+            and container.get("locked_version") is True
+        ):
             continue
         outdated_containers.append(container)
     return outdated_containers
