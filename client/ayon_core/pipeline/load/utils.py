@@ -1000,6 +1000,9 @@ def filter_containers(containers, project_name):
     'invalid' are invalid containers (invalid content) and 'not_found' has
     some missing entity in database.
 
+    Todos:
+        Respect 'project_name' on containers if is available.
+
     Args:
         containers (Iterable[dict]): List of containers referenced into scene.
         project_name (str): Name of project in which context shoud look for
