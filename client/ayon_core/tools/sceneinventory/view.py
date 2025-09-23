@@ -533,7 +533,6 @@ class SceneInventoryView(QtWidgets.QTreeView):
                         "color": color,
                     }
                 icon = get_qt_icon(icon_def)
-                # icon = qtawesome.icon("fa.%s" % action.icon, color=color)
                 action_item = QtWidgets.QAction(icon, action.label, submenu)
                 action_item.triggered.connect(
                     partial(
