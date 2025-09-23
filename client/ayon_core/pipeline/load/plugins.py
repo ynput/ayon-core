@@ -37,8 +37,7 @@ class LoaderPlugin(list):
 
     options = []
 
-    log = logging.getLogger("ProductLoader")
-    log.propagate = True
+    log = Logger.get_logger("ProductLoader")
 
     @classmethod
     def apply_settings(cls, project_settings):
