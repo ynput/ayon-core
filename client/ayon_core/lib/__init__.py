@@ -18,6 +18,7 @@ from .cache import (
     CacheItem,
     NestedCacheItem,
 )
+from .track_changes import TrackDictChangesItem
 from .events import (
     emit_event,
     register_event_callback
@@ -154,6 +155,8 @@ __all__ = [
 
     "CacheItem",
     "NestedCacheItem",
+
+    "TrackDictChangesItem",
 
     "emit_event",
     "register_event_callback",
