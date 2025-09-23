@@ -12,6 +12,8 @@ from ayon_core.tools.utils import (
 )
 from ayon_core.tools.utils.lib import checkstate_int_to_enum
 
+from .workfiles_page import WorkfilesPage
+
 
 class HierarchyPage(QtWidgets.QWidget):
     def __init__(self, controller, parent):
@@ -73,10 +75,15 @@ class HierarchyPage(QtWidgets.QWidget):
         # - Tasks widget
         tasks_widget = TasksWidget(controller, content_body)
 
+        # - Third page - Workfiles
+        workfiles_page = WorkfilesPage(controller, content_body)
+
         content_body.addWidget(folders_widget)
         content_body.addWidget(tasks_widget)
-        content_body.setStretchFactor(0, 100)
-        content_body.setStretchFactor(1, 65)
+        content_body.addWidget(workfiles_page)
+        content_body.setStretchFactor(0, 120)
+        content_body.setStretchFactor(1, 85)
+        content_body.setStretchFactor(2, 220)
 
         main_layout = QtWidgets.QVBoxLayout(self)
         main_layout.setContentsMargins(0, 0, 0, 0)
@@ -99,6 +106,7 @@ class HierarchyPage(QtWidgets.QWidget):
         self._my_tasks_checkbox = my_tasks_checkbox
         self._folders_widget = folders_widget
         self._tasks_widget = tasks_widget
+        self._workfiles_page = workfiles_page
 
         self._project_name = None
 
@@ -117,6 +125,7 @@ class HierarchyPage(QtWidgets.QWidget):
     def refresh(self):
         self._folders_widget.refresh()
         self._tasks_widget.refresh()
+        self._workfiles_page.refresh()
         self._on_my_tasks_checkbox_state_changed(
             self._my_tasks_checkbox.checkState()
         )
