@@ -21,7 +21,7 @@ import pyblish.api
 import ayon_api
 
 from ayon_core.settings import get_project_settings
-from ayon_core.lib import is_func_signature_supported
+from ayon_core.lib import is_func_signature_supported, TrackDictChangesItem
 from ayon_core.lib.events import QueuedEventSystem
 from ayon_core.lib.attribute_definitions import get_default_values
 from ayon_core.host import IWorkfileHost, IPublishHost
@@ -40,7 +40,6 @@ from .exceptions import (
     UnavailableSharedData,
     HostMissRequiredMethod,
 )
-from .changes import TrackChangesItem
 from .structures import (
     PublishAttributes,
     ConvertorItem,
@@ -1126,10 +1125,10 @@ class CreateContext:
             "publish_attributes": self._publish_attributes.data_to_store()
         }
 
-    def context_data_changes(self) -> TrackChangesItem:
+    def context_data_changes(self) -> TrackDictChangesItem:
         """Changes of attributes."""
 
-        return TrackChangesItem(
+        return TrackDictChangesItem(
             self._original_context_data, self.context_data_to_store()
         )
 
