@@ -9,7 +9,7 @@ from typing import Optional, Union, Any
 
 import ayon_api
 
-from ayon_core.host import ILoadHost
+from ayon_core.host import ILoadHost, AbstractHost
 from ayon_core.lib import (
     StringTemplate,
     TemplateUnsolved,
@@ -943,8 +943,8 @@ def any_outdated_containers(host=None, project_name=None):
 
 
 def get_outdated_containers(
-    host=None,
-    project_name=None,
+    host: Optional[AbstractHost] = None,
+    project_name: Optional[str] = None,
     ignore_locked_versions: bool = False,
 ):
     """Collect outdated containers from host scene.
@@ -953,8 +953,8 @@ def get_outdated_containers(
     arguments are not passed.
 
     Args:
-        host (ModuleType): Host implementation with 'ls' function available.
-        project_name (str): Name of project in which context we are.
+        host (Optional[AbstractHost]): Host implementation.
+        project_name (Optional[str]): Name of project in which context we are.
         ignore_locked_versions (bool): Locked versions are ignored.
 
     """
@@ -1008,8 +1008,8 @@ def filter_containers(containers, project_name):
     Returns:
         ContainersFilterResult: Named tuple with 'latest', 'outdated',
             'invalid' and 'not_found' containers.
-    """
 
+    """
     # Make sure containers is list that won't change
     containers = list(containers)
 
