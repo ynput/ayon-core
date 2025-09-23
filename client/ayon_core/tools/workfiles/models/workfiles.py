@@ -14,7 +14,6 @@ from ayon_core.lib import (
     Logger,
 )
 from ayon_core.host import (
-    HostBase,
     IWorkfileHost,
     WorkfileInfo,
     PublishedWorkfileInfo,
@@ -49,19 +48,15 @@ if typing.TYPE_CHECKING:
 _NOT_SET = object()
 
 
-class HostType(HostBase, IWorkfileHost):
-    pass
-
-
 class WorkfilesModel:
     """Workfiles model."""
 
     def __init__(
         self,
-        host: HostType,
+        host: IWorkfileHost,
         controller: AbstractWorkfilesBackend
     ):
-        self._host: HostType = host
+        self._host: IWorkfileHost = host
         self._controller: AbstractWorkfilesBackend = controller
 
         self._log = Logger.get_logger("WorkfilesModel")

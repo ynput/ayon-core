@@ -33,16 +33,19 @@ class LauncherActionSelection:
         project_name,
         folder_id,
         task_id,
+        workfile_id,
         folder_path=None,
         task_name=None,
         project_entity=None,
         folder_entity=None,
         task_entity=None,
+        workfile_entity=None,
         project_settings=None,
     ):
         self._project_name = project_name
         self._folder_id = folder_id
         self._task_id = task_id
+        self._workfile_id = workfile_id
 
         self._folder_path = folder_path
         self._task_name = task_name
@@ -50,6 +53,7 @@ class LauncherActionSelection:
         self._project_entity = project_entity
         self._folder_entity = folder_entity
         self._task_entity = task_entity
+        self._workfile_entity = workfile_entity
 
         self._project_settings = project_settings
 
@@ -209,6 +213,15 @@ class LauncherActionSelection:
             self._task_name = self.task_entity["name"]
         return self._task_name
 
+    def get_workfile_id(self):
+        """Selected workfile id.
+
+        Returns:
+            Union[str, None]: Selected workfile id.
+
+        """
+        return self._workfile_id
+
     def get_project_entity(self):
         """Project entity for the selection.
 
@@ -254,6 +267,24 @@ class LauncherActionSelection:
                 self._project_name, self._task_id
             )
         return self._task_entity
+
+    def get_workfile_entity(self):
+        """Workfile entity for the selection.
+
+        Returns:
+            Union[dict[str, Any], None]: Workfile entity.
+
+        """
+        if (
+            self._project_name is None
+            or self._workfile_id is None
+        ):
+            return None
+        if self._workfile_entity is None:
+            self._workfile_entity = ayon_api.get_workfile_info_by_id(
+                self._project_name, self._workfile_id
+            )
+        return self._workfile_entity
 
     def get_project_settings(self):
         """Project settings for the selection.
@@ -301,15 +332,27 @@ class LauncherActionSelection:
         """
         return self._task_id is not None
 
+    @property
+    def is_workfile_selected(self):
+        """Return whether a task is selected.
+
+        Returns:
+            bool: Whether a task is selected.
+
+        """
+        return self._workfile_id is not None
+
     project_name = property(get_project_name)
     folder_id = property(get_folder_id)
     task_id = property(get_task_id)
+    workfile_id = property(get_workfile_id)
     folder_path = property(get_folder_path)
     task_name = property(get_task_name)
 
     project_entity = property(get_project_entity)
     folder_entity = property(get_folder_entity)
     task_entity = property(get_task_entity)
+    workfile_entity = property(get_workfile_entity)
 
 
 class LauncherAction(object):
