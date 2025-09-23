@@ -975,7 +975,7 @@ def get_outdated_containers(
     for container in filter_containers(containers, project_name).outdated:
         if (
             not ignore_locked_versions
-            and container.get("locked_version") is True
+            and container.get("version_locked") is True
         ):
             continue
         outdated_containers.append(container)
