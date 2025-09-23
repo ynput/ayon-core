@@ -95,7 +95,8 @@ class ContainerItem:
         namespace,
         object_name,
         item_id,
-        project_name
+        project_name,
+        version_locked,
     ):
         self.representation_id = representation_id
         self.loader_name = loader_name
@@ -103,6 +104,7 @@ class ContainerItem:
         self.namespace = namespace
         self.item_id = item_id
         self.project_name = project_name
+        self.version_locked = version_locked
 
     @classmethod
     def from_container_data(cls, current_project_name, container):
@@ -114,7 +116,8 @@ class ContainerItem:
             item_id=uuid.uuid4().hex,
             project_name=container.get(
                 "project_name", current_project_name
-            )
+            ),
+            version_locked=container.get("version_locked", False),
         )
 
 
