@@ -623,20 +623,17 @@ class SceneInventoryView(QtWidgets.QTreeView):
         containers_by_id = self._controller.get_containers_by_item_ids(
             item_ids
         )
-        try:
-            result = action.process(list(containers_by_id.values()))
-            if not result:
-                pass
+        result = action.process(list(containers_by_id.values()))
+        if result:
+            self.data_changed.emit()
 
-            elif isinstance(result, (list, set)):
+            if isinstance(result, (list, set)):
                 self._select_items_by_action(result)
 
             elif isinstance(result, dict):
                 self._select_items_by_action(
                     result["objectNames"], result["options"]
                 )
-        finally:
-            self.data_changed.emit()
 
     def _select_items_by_action(self, object_names, options=None):
         """Select view items by the result of action
