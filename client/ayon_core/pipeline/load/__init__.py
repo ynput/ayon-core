@@ -25,6 +25,7 @@ from .utils import (
     get_loader_identifier,
     get_loaders_by_name,
 
+    get_representation_path_v2,
     get_representation_path_from_context,
     get_representation_path,
     get_representation_path_with_anatomy,
@@ -85,6 +86,7 @@ __all__ = (
     "get_loader_identifier",
     "get_loaders_by_name",
 
+    "get_representation_path_v2",
     "get_representation_path_from_context",
     "get_representation_path",
     "get_representation_path_with_anatomy",
