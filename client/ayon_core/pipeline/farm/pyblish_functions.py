@@ -11,7 +11,7 @@ import clique
 from ayon_core.lib import Logger
 from ayon_core.pipeline import (
     get_current_project_name,
-    get_representation_path,
+    get_representation_path_v2,
 )
 from ayon_core.pipeline.create import get_product_name
 from ayon_core.pipeline.farm.patterning import match_aov_pattern
@@ -1044,7 +1044,9 @@ def get_resources(project_name, version_entity, extension=None):
             filtered.append(repre_entity)
 
     representation = filtered[0]
-    directory = get_representation_path(representation)
+    directory = get_representation_path_v2(
+        project_name, representation
+    )
     print("Source: ", directory)
     resources = sorted(
         [
