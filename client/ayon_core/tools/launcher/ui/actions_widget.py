@@ -990,7 +990,7 @@ class ActionsWidget(QtWidgets.QWidget):
                 event["addon_name"],
                 event["addon_version"],
             ),
-            event["action_label"],
+            event["full_label"],
             form_data,
         )
 
