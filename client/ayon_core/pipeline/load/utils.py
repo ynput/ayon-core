@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import os
 import uuid
 import platform
@@ -5,6 +7,7 @@ import logging
 import inspect
 import collections
 import numbers
+import copy
 from typing import Optional, Union, Any
 
 import ayon_api
@@ -694,15 +697,15 @@ def get_representation_path_from_context(context):
 
     representation = context["representation"]
     project_entity = context.get("project")
-    root = None
-    if (
-        project_entity
-        and project_entity["name"] != get_current_project_name()
-    ):
-        anatomy = Anatomy(project_entity["name"])
-        root = anatomy.roots
-
-    return get_representation_path(representation, root)
+    if project_entity:
+        project_name = project_entity["name"]
+    else:
+        project_name = get_current_project_name()
+    return get_representation_path_v2(
+        project_name,
+        representation,
+        project_entity=project_entity,
+    )
 
 
 def get_representation_path_with_anatomy(repre_entity, anatomy):
@@ -721,36 +724,18 @@ def get_representation_path_with_anatomy(repre_entity, anatomy):
         anatomy (Anatomy): Project anatomy object.
 
     Returns:
-        Union[None, TemplateResult]: None if path can't be received
+        TemplateResult: Resolved representation path.
 
     Raises:
         InvalidRepresentationContext: When representation data are probably
             invalid or not available.
+
     """
-
-    try:
-        template = repre_entity["attrib"]["template"]
-
-    except KeyError:
-        raise InvalidRepresentationContext((
-            "Representation document does not"
-            " contain template in data ('data.template')"
-        ))
-
-    try:
-        context = repre_entity["context"]
-        _fix_representation_context_compatibility(context)
-        context["root"] = anatomy.roots
-
-        path = StringTemplate.format_strict_template(template, context)
-
-    except TemplateUnsolved as exc:
-        raise InvalidRepresentationContext((
-            "Couldn't resolve representation template with available data."
-            " Reason: {}".format(str(exc))
-        ))
-
-    return path.normalized()
+    return get_representation_path_v2(
+        anatomy.project_name,
+        repre_entity,
+        anatomy=anatomy,
+    )
 
 
 def get_representation_path(representation, root=None):
@@ -771,11 +756,12 @@ def get_representation_path(representation, root=None):
 
     """
     if root is None:
-        from ayon_core.pipeline import get_current_project_name, Anatomy
+        from ayon_core.pipeline import get_current_project_name
 
-        anatomy = Anatomy(get_current_project_name())
-        return get_representation_path_with_anatomy(
-            representation, anatomy
+        project_name = get_current_project_name()
+        return get_representation_path_v2(
+            project_name,
+            representation,
         )
 
     def path_from_representation():
@@ -848,12 +834,13 @@ def get_representation_path(representation, root=None):
 
 
 def get_representation_path_by_names(
-        project_name: str,
-        folder_path: str,
-        product_name: str,
-        version_name: str,
-        representation_name: str,
-        anatomy: Optional[Anatomy] = None) -> Optional[str]:
+    project_name: str,
+    folder_path: str,
+    product_name: str,
+    version_name: str,
+    representation_name: str,
+    anatomy: Optional[Anatomy] = None
+) -> Optional[TemplateResult]:
     """Get (latest) filepath for representation for folder and product.
 
     See `get_representation_by_names` for more details.
@@ -870,22 +857,21 @@ def get_representation_path_by_names(
         representation_name
     )
     if not representation:
-        return
+        return None
 
-    if not anatomy:
-        anatomy = Anatomy(project_name)
-
-    if representation:
-        path = get_representation_path_with_anatomy(representation, anatomy)
-        return str(path).replace("\\", "/")
+    return get_representation_path_v2(
+        project_name,
+        representation,
+        anatomy=anatomy,
+    )
 
 
 def get_representation_by_names(
-        project_name: str,
-        folder_path: str,
-        product_name: str,
-        version_name: Union[int, str],
-        representation_name: str,
+    project_name: str,
+    folder_path: str,
+    product_name: str,
+    version_name: Union[int, str],
+    representation_name: str,
 ) -> Optional[dict]:
     """Get representation entity for asset and subset.
 
@@ -902,7 +888,7 @@ def get_representation_by_names(
         folder_entity = ayon_api.get_folder_by_path(
             project_name, folder_path, fields=["id"])
     if not folder_entity:
-        return
+        return None
 
     if isinstance(product_name, dict) and "name" in product_name:
         # Allow explicitly passing subset document
@@ -914,7 +900,7 @@ def get_representation_by_names(
             folder_id=folder_entity["id"],
             fields=["id"])
     if not product_entity:
-        return
+        return None
 
     if version_name == "hero":
         version_entity = ayon_api.get_hero_version_by_product_id(
@@ -926,7 +912,7 @@ def get_representation_by_names(
         version_entity = ayon_api.get_version_by_name(
             project_name, version_name, product_id=product_entity["id"])
     if not version_entity:
-        return
+        return None
 
     return ayon_api.get_representation_by_name(
         project_name, representation_name, version_id=version_entity["id"])
