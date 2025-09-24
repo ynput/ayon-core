@@ -14,9 +14,8 @@ from ayon_core.lib import (
     StringTemplate,
     TemplateUnsolved,
 )
-from ayon_core.pipeline import (
-    Anatomy,
-)
+from ayon_core.lib.path_templates import TemplateResult
+from ayon_core.pipeline import Anatomy
 
 log = logging.getLogger(__name__)
 
@@ -636,6 +635,57 @@ def _fix_representation_context_compatibility(repre_context):
     udim = repre_context.get("udim")
     if isinstance(udim, list):
         repre_context["udim"] = udim[0]
+
+
+def get_representation_path_v2(
+    project_name: str,
+    repre_entity: dict[str, Any],
+    *,
+    anatomy: Optional[Anatomy] = None,
+    project_entity: Optional[dict[str, Any]] = None,
+) -> TemplateResult:
+    """Get filled representation path.
+
+    Args:
+        project_name (str): Project name.
+        repre_entity (dict[str, Any]): Representation entity.
+        anatomy (Optional[Anatomy]): Project anatomy.
+        project_entity (Optional[dict[str, Any]): Project entity. Is used to
+            initialize Anatomy and is not needed if 'anatomy' is passed in.
+
+    Returns:
+        TemplateResult: Resolved path to representation.
+
+     Raises:
+        InvalidRepresentationContext: When representation data are probably
+            invalid or not available.
+
+    """
+    if anatomy is None:
+        anatomy = Anatomy(project_name, project_entity=project_entity)
+    try:
+        template = repre_entity["attrib"]["template"]
+
+    except KeyError:
+        raise InvalidRepresentationContext(
+            "Representation document does not"
+            " contain template in data ('data.template')"
+        )
+
+    try:
+        context = copy.deepcopy(repre_entity["context"])
+        _fix_representation_context_compatibility(context)
+        context["root"] = anatomy.roots
+
+        path = StringTemplate.format_strict_template(template, context)
+
+    except TemplateUnsolved as exc:
+        raise InvalidRepresentationContext(
+            "Couldn't resolve representation template with available data."
+            f" Reason: {str(exc)}"
+        )
+
+    return path.normalized()
 
 
 def get_representation_path_from_context(context):
