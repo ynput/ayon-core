@@ -850,6 +850,7 @@ def get_representation_path(project_name: str,
      Raises:
         InvalidRepresentationContext: When representation data are probably
             invalid or not available.
+
     """
     return _get_representation_path(
         project_name,
