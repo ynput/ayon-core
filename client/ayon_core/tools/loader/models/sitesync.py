@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import collections
+from typing import Any
 
 from ayon_api import (
     get_representations,
@@ -246,26 +247,32 @@ class SiteSyncModel:
                 output[repre_id] = repre_cache.get_data()
         return output
 
-    def get_sitesync_action_items(self, project_name, representation_ids):
+    def get_sitesync_action_items(
+        self, project_name, entity_ids, entity_type
+    ):
         """
 
         Args:
              project_name (str): Project name.
-             representation_ids (Iterable[str]): Representation ids.
+             entity_ids (set[str]): Selected entity ids.
+             entity_type (str): Selected entity type.
 
         Returns:
             list[ActionItem]: Actions that can be shown in loader.
+
         """
+        if entity_type != "representation":
+            return []
 
         if not self.is_sitesync_enabled(project_name):
             return []
 
         repres_status = self.get_representations_sync_status(
-            project_name, representation_ids
+            project_name, entity_ids
         )
 
         repre_ids_per_identifier = collections.defaultdict(set)
-        for repre_id in representation_ids:
+        for repre_id in entity_ids:
             repre_status = repres_status[repre_id]
             local_status, remote_status = repre_status
 
@@ -293,36 +300,33 @@ class SiteSyncModel:
 
         return action_items
 
-    def is_sitesync_action(self, identifier):
+    def is_sitesync_action(self, plugin_identifier: str) -> bool:
         """Should be `identifier` handled by SiteSync.
 
         Args:
-            identifier (str): Action identifier.
+            plugin_identifier (str): Plugin identifier.
 
         Returns:
             bool: Should action be handled by SiteSync.
-        """
 
-        return identifier in {
-            UPLOAD_IDENTIFIER,
-            DOWNLOAD_IDENTIFIER,
-            REMOVE_IDENTIFIER,
-        }
+        """
+        return plugin_identifier == "sitesync.loader.action"
 
     def trigger_action_item(
         self,
-        identifier,
-        project_name,
-        representation_ids
+        identifier: str,
+        project_name: str,
+        data: dict[str, Any],
     ):
         """Resets status for site_name or remove local files.
 
         Args:
             identifier (str): Action identifier.
             project_name (str): Project name.
-            representation_ids (Iterable[str]): Representation ids.
-        """
+            data (dict[str, Any]): Action item data.
 
+        """
+        representation_ids = data["representation_ids"]
         active_site = self.get_active_site(project_name)
         remote_site = self.get_remote_site(project_name)
 
@@ -482,21 +486,21 @@ class SiteSyncModel:
         icon_name
     ):
         return ActionItem(
-            identifier,
-            label,
+            "sitesync.loader.action",
+            identifier=identifier,
+            label=label,
+            group_label=None,
             icon={
                 "type": "awesome-font",
                 "name": icon_name,
                 "color": "#999999"
             },
             tooltip=tooltip,
-            options={},
             order=1,
-            project_name=project_name,
-            folder_ids=[],
-            product_ids=[],
-            version_ids=[],
-            representation_ids=representation_ids,
+            data={
+                "representation_ids": representation_ids,
+            },
+            options=None,
         )
 
     def _add_site(self, project_name, repre_entity, site_name, product_type):
