@@ -829,7 +829,8 @@ def _get_representation_path_decorator(func):
 
 
 @_get_representation_path_decorator
-def get_representation_path(project_name: str,
+def get_representation_path(
+    project_name: str,
     repre_entity: dict[str, Any],
     *,
     anatomy: Optional[Anatomy] = None,
