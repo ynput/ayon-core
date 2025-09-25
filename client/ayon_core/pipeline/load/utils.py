@@ -2,12 +2,13 @@ from __future__ import annotations
 
 import os
 import uuid
-import platform
+import warnings
 import logging
 import inspect
 import collections
 import numbers
 import copy
+from functools import wraps
 from typing import Optional, Union, Any
 
 import ayon_api
@@ -640,57 +641,6 @@ def _fix_representation_context_compatibility(repre_context):
         repre_context["udim"] = udim[0]
 
 
-def get_representation_path_v2(
-    project_name: str,
-    repre_entity: dict[str, Any],
-    *,
-    anatomy: Optional[Anatomy] = None,
-    project_entity: Optional[dict[str, Any]] = None,
-) -> TemplateResult:
-    """Get filled representation path.
-
-    Args:
-        project_name (str): Project name.
-        repre_entity (dict[str, Any]): Representation entity.
-        anatomy (Optional[Anatomy]): Project anatomy.
-        project_entity (Optional[dict[str, Any]): Project entity. Is used to
-            initialize Anatomy and is not needed if 'anatomy' is passed in.
-
-    Returns:
-        TemplateResult: Resolved path to representation.
-
-     Raises:
-        InvalidRepresentationContext: When representation data are probably
-            invalid or not available.
-
-    """
-    if anatomy is None:
-        anatomy = Anatomy(project_name, project_entity=project_entity)
-    try:
-        template = repre_entity["attrib"]["template"]
-
-    except KeyError:
-        raise InvalidRepresentationContext(
-            "Representation document does not"
-            " contain template in data ('data.template')"
-        )
-
-    try:
-        context = copy.deepcopy(repre_entity["context"])
-        _fix_representation_context_compatibility(context)
-        context["root"] = anatomy.roots
-
-        path = StringTemplate.format_strict_template(template, context)
-
-    except TemplateUnsolved as exc:
-        raise InvalidRepresentationContext(
-            "Couldn't resolve representation template with available data."
-            f" Reason: {str(exc)}"
-        )
-
-    return path.normalized()
-
-
 def get_representation_path_from_context(context):
     """Preparation wrapper using only context as a argument"""
     from ayon_core.pipeline import get_current_project_name
@@ -701,7 +651,7 @@ def get_representation_path_from_context(context):
         project_name = project_entity["name"]
     else:
         project_name = get_current_project_name()
-    return get_representation_path_v2(
+    return _get_representation_path(
         project_name,
         representation,
         project_entity=project_entity,
@@ -731,106 +681,138 @@ def get_representation_path_with_anatomy(repre_entity, anatomy):
             invalid or not available.
 
     """
-    return get_representation_path_v2(
+    return get_representation_path(
         anatomy.project_name,
         repre_entity,
         anatomy=anatomy,
     )
 
 
-def get_representation_path(representation, root=None):
-    """Get filename from representation document
-
-    There are three ways of getting the path from representation which are
-    tried in following sequence until successful.
-    1. Get template from representation['data']['template'] and data from
-       representation['context']. Then format template with the data.
-    2. Get template from project['config'] and format it with default data set
-    3. Get representation['data']['path'] and use it directly
+def get_representation_path_with_roots(
+    representation: dict[str, Any],
+    roots: dict[str, str],
+) -> Optional[TemplateResult]:
+    """Get filename from representation with custom root.
 
     Args:
-        representation(dict): representation document from the database
+        representation(dict): Representation entity.
+        roots (dict[str, str]): Roots to use.
+
 
     Returns:
-        str: fullpath of the representation
+        Optional[TemplateResult]: Resolved representation path.
 
     """
-    if root is None:
-        from ayon_core.pipeline import get_current_project_name
+    try:
+        template = representation["attrib"]["template"]
+    except KeyError:
+        return None
 
-        project_name = get_current_project_name()
-        return get_representation_path_v2(
-            project_name,
-            representation,
+    try:
+        context = representation["context"]
+
+        _fix_representation_context_compatibility(context)
+
+        context["root"] = roots
+        path = StringTemplate.format_strict_template(
+            template, context
+        )
+    except (TemplateUnsolved, KeyError):
+        # Template references unavailable data
+        return None
+
+    return path.normalized()
+
+
+def _get_representation_path(
+    project_name: str,
+    repre_entity: dict[str, Any],
+    *,
+    anatomy: Optional[Anatomy] = None,
+    project_entity: Optional[dict[str, Any]] = None,
+) -> TemplateResult:
+    """Get filled representation path.
+
+    Args:
+        project_name (str): Project name.
+        repre_entity (dict[str, Any]): Representation entity.
+        anatomy (Optional[Anatomy]): Project anatomy.
+        project_entity (Optional[dict[str, Any]): Project entity. Is used to
+            initialize Anatomy and is not needed if 'anatomy' is passed in.
+
+    Returns:
+        TemplateResult: Resolved path to representation.
+
+     Raises:
+        InvalidRepresentationContext: When representation data are probably
+            invalid or not available.
+
+    """
+    if anatomy is None:
+        anatomy = Anatomy(project_name, project_entity=project_entity)
+
+    try:
+        template = repre_entity["attrib"]["template"]
+
+    except KeyError:
+        raise InvalidRepresentationContext(
+            "Representation document does not"
+            " contain template in data ('data.template')"
         )
 
-    def path_from_representation():
-        try:
-            template = representation["attrib"]["template"]
-        except KeyError:
-            return None
+    try:
+        context = copy.deepcopy(repre_entity["context"])
+        _fix_representation_context_compatibility(context)
+        context["root"] = anatomy.roots
 
-        try:
-            context = representation["context"]
+        path = StringTemplate.format_strict_template(template, context)
 
-            _fix_representation_context_compatibility(context)
+    except TemplateUnsolved as exc:
+        raise InvalidRepresentationContext(
+            "Couldn't resolve representation template with available data."
+            f" Reason: {str(exc)}"
+        )
 
-            context["root"] = root
-            path = StringTemplate.format_strict_template(
-                template, context
-            )
-            # Force replacing backslashes with forward slashed if not on
-            #   windows
-            if platform.system().lower() != "windows":
-                path = path.replace("\\", "/")
-        except (TemplateUnsolved, KeyError):
-            # Template references unavailable data
-            return None
+    return path.normalized()
 
-        if not path:
-            return path
 
-        normalized_path = os.path.normpath(path)
-        if os.path.exists(normalized_path):
-            return normalized_path
-        return path
+def _get_representation_path_decorator(func):
+    @wraps(_get_representation_path)
+    def inner(arg_1, *args, **kwargs):
+        if isinstance(arg_1, str):
+            return _get_representation_path(arg_1, *args, **kwargs)
+        warnings.warn(
+            (
+                "Used deprecated variant of 'get_representation_path'."
+                " Please change used arguments signature to follow"
+                " new definiton."
+            ),
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        return get_representation_path_with_roots(arg_1, *args, **kwargs)
+    return inner
 
-    def path_from_data():
-        if "path" not in representation["attrib"]:
-            return None
 
-        path = representation["attrib"]["path"]
-        # Force replacing backslashes with forward slashed if not on
-        #   windows
-        if platform.system().lower() != "windows":
-            path = path.replace("\\", "/")
+@_get_representation_path_decorator
+def get_representation_path(*args, **kwargs) -> TemplateResult:
+    """Get filled representation path.
 
-        if os.path.exists(path):
-            return os.path.normpath(path)
+    Args:
+        project_name (str): Project name.
+        repre_entity (dict[str, Any]): Representation entity.
+        anatomy (Optional[Anatomy]): Project anatomy.
+        project_entity (Optional[dict[str, Any]): Project entity. Is used to
+            initialize Anatomy and is not needed if 'anatomy' is passed in.
 
-        dir_path, file_name = os.path.split(path)
-        if not os.path.exists(dir_path):
-            return None
+    Returns:
+        TemplateResult: Resolved path to representation.
 
-        base_name, ext = os.path.splitext(file_name)
-        file_name_items = None
-        if "#" in base_name:
-            file_name_items = [part for part in base_name.split("#") if part]
-        elif "%" in base_name:
-            file_name_items = base_name.split("%")
-
-        if not file_name_items:
-            return None
-
-        filename_start = file_name_items[0]
-
-        for _file in os.listdir(dir_path):
-            if _file.startswith(filename_start) and _file.endswith(ext):
-                return os.path.normpath(path)
-
-    return (
-        path_from_representation() or path_from_data()
-    )
+     Raises:
+        InvalidRepresentationContext: When representation data are probably
+            invalid or not available.
+    """
+    pass
 
 
 def get_representation_path_by_names(
@@ -859,7 +841,7 @@ def get_representation_path_by_names(
     if not representation:
         return None
 
-    return get_representation_path_v2(
+    return _get_representation_path(
         project_name,
         representation,
         anatomy=anatomy,
