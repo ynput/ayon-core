@@ -829,7 +829,12 @@ def _get_representation_path_decorator(func):
 
 
 @_get_representation_path_decorator
-def get_representation_path(*args, **kwargs) -> TemplateResult:
+def get_representation_path(project_name: str,
+    repre_entity: dict[str, Any],
+    *,
+    anatomy: Optional[Anatomy] = None,
+    project_entity: Optional[dict[str, Any]] = None,
+) -> TemplateResult:
     """Get filled representation path.
 
     Args:
@@ -846,7 +851,12 @@ def get_representation_path(*args, **kwargs) -> TemplateResult:
         InvalidRepresentationContext: When representation data are probably
             invalid or not available.
     """
-    pass
+    return _get_representation_path(
+        project_name,
+        repre_entity,
+        anatomy=anatomy,
+        project_entity=project_entity,
+    )
 
 
 def get_representation_path_by_names(
