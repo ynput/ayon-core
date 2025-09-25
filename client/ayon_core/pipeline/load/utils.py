@@ -9,7 +9,7 @@ from typing import Optional, Union, Any
 
 import ayon_api
 
-from ayon_core.host import ILoadHost
+from ayon_core.host import ILoadHost, AbstractHost
 from ayon_core.lib import (
     StringTemplate,
     TemplateUnsolved,
@@ -942,15 +942,21 @@ def any_outdated_containers(host=None, project_name=None):
     return False
 
 
-def get_outdated_containers(host=None, project_name=None):
+def get_outdated_containers(
+    host: Optional[AbstractHost] = None,
+    project_name: Optional[str] = None,
+    ignore_locked_versions: bool = False,
+):
     """Collect outdated containers from host scene.
 
     Currently registered host and project in global session are used if
     arguments are not passed.
 
     Args:
-        host (ModuleType): Host implementation with 'ls' function available.
-        project_name (str): Name of project in which context we are.
+        host (Optional[AbstractHost]): Host implementation.
+        project_name (Optional[str]): Name of project in which context we are.
+        ignore_locked_versions (bool): Locked versions are ignored.
+
     """
     from ayon_core.pipeline import registered_host, get_current_project_name
 
@@ -964,7 +970,16 @@ def get_outdated_containers(host=None, project_name=None):
         containers = host.get_containers()
     else:
         containers = host.ls()
-    return filter_containers(containers, project_name).outdated
+
+    outdated_containers = []
+    for container in filter_containers(containers, project_name).outdated:
+        if (
+            not ignore_locked_versions
+            and container.get("version_locked") is True
+        ):
+            continue
+        outdated_containers.append(container)
+    return outdated_containers
 
 
 def _is_valid_representation_id(repre_id: Any) -> bool:
@@ -985,6 +1000,9 @@ def filter_containers(containers, project_name):
     'invalid' are invalid containers (invalid content) and 'not_found' has
     some missing entity in database.
 
+    Todos:
+        Respect 'project_name' on containers if is available.
+
     Args:
         containers (Iterable[dict]): List of containers referenced into scene.
         project_name (str): Name of project in which context shoud look for
@@ -993,8 +1011,8 @@ def filter_containers(containers, project_name):
     Returns:
         ContainersFilterResult: Named tuple with 'latest', 'outdated',
             'invalid' and 'not_found' containers.
-    """
 
+    """
     # Make sure containers is list that won't change
     containers = list(containers)
 
@@ -1042,13 +1060,13 @@ def filter_containers(containers, project_name):
         hero=True,
         fields={"id", "productId", "version"}
     )
-    verisons_by_id = {}
+    versions_by_id = {}
     versions_by_product_id = collections.defaultdict(list)
     hero_version_ids = set()
     for version_entity in version_entities:
         version_id = version_entity["id"]
         # Store versions by their ids
-        verisons_by_id[version_id] = version_entity
+        versions_by_id[version_id] = version_entity
         # There's no need to query products for hero versions
         #   - they are considered as latest?
         if version_entity["version"] < 0:
@@ -1083,24 +1101,23 @@ def filter_containers(containers, project_name):
 
         repre_entity = repre_entities_by_id.get(repre_id)
         if not repre_entity:
-            log.debug((
-                "Container '{}' has an invalid representation."
+            log.debug(
+                f"Container '{container_name}' has an invalid representation."
                 " It is missing in the database."
-            ).format(container_name))
+            )
             not_found_containers.append(container)
             continue
 
         version_id = repre_entity["versionId"]
-        if version_id in outdated_version_ids:
-            outdated_containers.append(container)
-
-        elif version_id not in verisons_by_id:
-            log.debug((
-                "Representation on container '{}' has an invalid version."
-                " It is missing in the database."
-            ).format(container_name))
+        if version_id not in versions_by_id:
+            log.debug(
+                f"Representation on container '{container_name}' has an"
+                " invalid version. It is missing in the database."
+            )
             not_found_containers.append(container)
 
+        elif version_id in outdated_version_ids:
+            outdated_containers.append(container)
         else:
             uptodate_containers.append(container)
 
