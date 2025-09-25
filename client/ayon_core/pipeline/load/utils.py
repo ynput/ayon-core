@@ -778,9 +778,19 @@ def _get_representation_path(
 
 def _get_representation_path_decorator(func):
     @wraps(_get_representation_path)
-    def inner(arg_1, *args, **kwargs):
-        if isinstance(arg_1, str):
-            return _get_representation_path(arg_1, *args, **kwargs)
+    def inner(*args, **kwargs):
+        from ayon_core.pipeline import get_current_project_name
+
+        # Decide which variant of the function based on passed arguments
+        #   will be used.
+        if args:
+            arg_1 = args[0]
+            if isinstance(arg_1, str):
+                return _get_representation_path(*args, **kwargs)
+
+        elif "project_name" in kwargs:
+            return _get_representation_path(*args, **kwargs)
+
         warnings.warn(
             (
                 "Used deprecated variant of 'get_representation_path'."
@@ -790,7 +800,31 @@ def _get_representation_path_decorator(func):
             DeprecationWarning,
             stacklevel=2,
         )
-        return get_representation_path_with_roots(arg_1, *args, **kwargs)
+
+        # Find out which arguments were passed
+        if args:
+            representation = args[0]
+        else:
+            representation = kwargs.get("representation")
+
+        if len(args) > 1:
+            roots = args[1]
+        else:
+            roots = kwargs.get("root")
+
+        if roots is not None:
+            return get_representation_path_with_roots(
+                representation, roots
+            )
+
+        project_name = (
+            representation["context"].get("project", {}).get("name")
+        )
+        if project_name is None:
+            project_name = get_current_project_name()
+
+        return _get_representation_path(project_name, representation)
+
     return inner
 
 
