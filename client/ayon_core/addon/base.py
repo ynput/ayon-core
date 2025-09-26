@@ -39,33 +39,6 @@ IGNORED_DEFAULT_FILENAMES = {
     "__init__.py",
 }
 
-# When addon was moved from ayon-core codebase
-# - this is used to log the missing addon
-MOVED_ADDON_MILESTONE_VERSIONS = {
-    "aftereffects": VersionInfo(0, 2, 0),
-    "applications": VersionInfo(0, 2, 0),
-    "blender": VersionInfo(0, 2, 0),
-    "celaction": VersionInfo(0, 2, 0),
-    "clockify": VersionInfo(0, 2, 0),
-    "deadline": VersionInfo(0, 2, 0),
-    "flame": VersionInfo(0, 2, 0),
-    "fusion": VersionInfo(0, 2, 0),
-    "harmony": VersionInfo(0, 2, 0),
-    "hiero": VersionInfo(0, 2, 0),
-    "max": VersionInfo(0, 2, 0),
-    "photoshop": VersionInfo(0, 2, 0),
-    "timers_manager": VersionInfo(0, 2, 0),
-    "traypublisher": VersionInfo(0, 2, 0),
-    "tvpaint": VersionInfo(0, 2, 0),
-    "maya": VersionInfo(0, 2, 0),
-    "nuke": VersionInfo(0, 2, 0),
-    "resolve": VersionInfo(0, 2, 0),
-    "royalrender": VersionInfo(0, 2, 0),
-    "substancepainter": VersionInfo(0, 2, 0),
-    "houdini": VersionInfo(0, 3, 0),
-    "unreal": VersionInfo(0, 2, 0),
-}
-
 
 class ProcessPreparationError(Exception):
     """Exception that can be used when process preparation failed.
@@ -215,45 +188,6 @@ def _get_ayon_addons_information(bundle_info):
     return output
 
 
-def _handle_moved_addons(addon_name, milestone_version, log):
-    """Log message that addon version is not compatible with current core.
-
-    The function can return path to addon client code, but that can happen
-        only if ayon-core is used from code (for development), but still
-        logs a warning.
-
-    Args:
-        addon_name (str): Addon name.
-        milestone_version (str): Milestone addon version.
-        log (logging.Logger): Logger object.
-
-    Returns:
-        Union[str, None]: Addon dir or None.
-    """
-    # Handle addons which were moved out of ayon-core
-    # - Try to fix it by loading it directly from server addons dir in
-    #   ayon-core repository. But that will work only if ayon-core is
-    #   used from code.
-    addon_dir = os.path.join(
-        os.path.dirname(os.path.dirname(AYON_CORE_ROOT)),
-        "server_addon",
-        addon_name,
-        "client",
-    )
-    if not os.path.exists(addon_dir):
-        log.error(
-            f"Addon '{addon_name}' is not available. Please update "
-            f"{addon_name} addon to '{milestone_version}' or higher."
-        )
-        return None
-
-    log.warning((
-        "Please update '{}' addon to '{}' or higher."
-        " Using client code from ayon-core repository."
-    ).format(addon_name, milestone_version))
-    return addon_dir
-
-
 def _load_ayon_addons(log):
     """Load AYON addons based on information from server.
 
@@ -299,7 +233,6 @@ def _load_ayon_addons(log):
         use_dev_path = dev_addon_info.get("enabled", False)
 
         addon_dir = None
-        milestone_version = MOVED_ADDON_MILESTONE_VERSIONS.get(addon_name)
         if use_dev_path:
             addon_dir = dev_addon_info["path"]
             if addon_dir:
@@ -308,19 +241,10 @@ def _load_ayon_addons(log):
                 )
 
             if not addon_dir or not os.path.exists(addon_dir):
-                log.warning((
-                    "Dev addon {} {} path does not exists. Path \"{}\""
-                ).format(addon_name, addon_version, addon_dir))
-                continue
-
-        elif (
-            milestone_version is not None
-            and VersionInfo.parse(addon_version) < milestone_version
-        ):
-            addon_dir = _handle_moved_addons(
-                addon_name, milestone_version, log
-            )
-            if not addon_dir:
+                log.warning(
+                    f"Dev addon {addon_name} {addon_version} path"
+                    f" does not exists. Path \"{addon_dir}\""
+                )
                 continue
 
         elif addons_dir_exists:
