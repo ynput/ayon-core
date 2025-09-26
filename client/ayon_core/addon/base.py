@@ -217,9 +217,8 @@ def _load_ayon_addons(log):
 
     addons_dir_exists = os.path.exists(addons_dir)
     if not addons_dir_exists:
-        log.warning("Addons directory does not exists. Path \"{}\"".format(
-            addons_dir
-        ))
+        log.warning(
+            f"Addons directory does not exists. Path \"{addons_dir}\"")
 
     for addon_info in addons_info:
         addon_name = addon_info["name"]
@@ -248,12 +247,13 @@ def _load_ayon_addons(log):
                 continue
 
         elif addons_dir_exists:
-            folder_name = "{}_{}".format(addon_name, addon_version)
+            folder_name = f"{addon_name}_{addon_version}"
             addon_dir = os.path.join(addons_dir, folder_name)
             if not os.path.exists(addon_dir):
-                log.debug((
-                    "No localized client code found for addon {} {}."
-                ).format(addon_name, addon_version))
+                log.debug(
+                    "No localized client code found"
+                    f" for addon {addon_name} {addon_version}."
+                )
                 continue
 
         if not addon_dir:
@@ -292,24 +292,22 @@ def _load_ayon_addons(log):
 
             except BaseException:
                 log.warning(
-                    "Failed to import \"{}\"".format(basename),
+                    f"Failed to import \"{basename}\"",
                     exc_info=True
                 )
 
         if not addon_modules:
-            log.warning("Addon {} {} has no content to import".format(
-                addon_name, addon_version
-            ))
+            log.warning(
+                f"Addon {addon_name} {addon_version} has no content to import"
+            )
             continue
 
         if len(addon_modules) > 1:
-            log.warning((
-                "Multiple modules ({}) were found in addon '{}' in dir {}."
-            ).format(
-                ", ".join([m.__name__ for m in addon_modules]),
-                addon_name,
-                addon_dir,
-            ))
+            joined_modules = ", ".join([m.__name__ for m in addon_modules])
+            log.warning(
+                f"Multiple modules ({joined_modules}) were found in"
+                f" addon '{addon_name}' in dir {addon_dir}."
+            )
         all_addon_modules.extend(addon_modules)
 
     return all_addon_modules
@@ -713,7 +711,7 @@ class AddonsManager:
         time_start = time.time()
         prev_start_time = time_start
         enabled_addons = self.get_enabled_addons()
-        self.log.debug("Has {} enabled addons.".format(len(enabled_addons)))
+        self.log.debug(f"Has {len(enabled_addons)} enabled addons.")
         for addon in enabled_addons:
             try:
                 addon.connect_with_addons(enabled_addons)
@@ -814,7 +812,7 @@ class AddonsManager:
         # Report unknown keys (Developing purposes)
         if unknown_keys_by_addon:
             expected_keys = ", ".join([
-                "\"{}\"".format(key) for key in output.keys()
+                f'"{key}"' for key in output.keys()
             ])
             msg_template = "Addon: \"{}\" - got key {}"
             msg_items = []
@@ -823,9 +821,11 @@ class AddonsManager:
                     "\"{}\"".format(key) for key in keys
                 ])
                 msg_items.append(msg_template.format(addon_name, joined_keys))
-            self.log.warning((
-                "Expected keys from `get_plugin_paths` are {}. {}"
-            ).format(expected_keys, " | ".join(msg_items)))
+            joined_items = " | ".join(msg_items)
+            self.log.warning(
+                f"Expected keys from `get_plugin_paths` are {expected_keys}."
+                f" {joined_items}"
+            )
         return output
 
     def _collect_plugin_paths(self, method_name, *args, **kwargs):
