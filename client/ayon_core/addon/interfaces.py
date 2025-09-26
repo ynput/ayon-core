@@ -1,6 +1,7 @@
 """Addon interfaces for AYON."""
 from __future__ import annotations
 
+import warnings
 from abc import ABCMeta, abstractmethod
 from typing import TYPE_CHECKING, Callable, Optional, Type
 
@@ -39,26 +40,29 @@ class AYONInterface(metaclass=_AYONInterfaceMeta):
 
 
 class IPluginPaths(AYONInterface):
-    """Addon has plugin paths to return.
+    """Addon wants to register plugin paths."""
 
-    Expected result is dictionary with keys "publish", "create", "load",
-    "actions" or "inventory" and values as list or string.
-    {
-        "publish": ["path/to/publish_plugins"]
-    }
-    """
-
-    @abstractmethod
     def get_plugin_paths(self) -> dict[str, list[str]]:
         """Return plugin paths for addon.
+
+        This method was abstract (required) in the past, so raise the required
+            'core' addon version when 'get_plugin_paths' is removed from
+            addon.
+
+        Deprecated:
+            Please implement specific methods 'get_create_plugin_paths',
+                'get_load_plugin_paths', 'get_inventory_action_paths' and
+                'get_publish_plugin_paths' to return plugin paths.
 
         Returns:
             dict[str, list[str]]: Plugin paths for addon.
 
         """
+        return {}
 
     def _get_plugin_paths_by_type(
-            self, plugin_type: str) -> list[str]:
+        self, plugin_type: str
+    ) -> list[str]:
         """Get plugin paths by type.
 
         Args:
@@ -78,6 +82,24 @@ class IPluginPaths(AYONInterface):
 
         if not isinstance(paths, (list, tuple, set)):
             paths = [paths]
+
+        new_function_name = "get_launcher_action_paths"
+        if plugin_type == "create":
+            new_function_name = "get_create_plugin_paths"
+        elif plugin_type == "load":
+            new_function_name = "get_load_plugin_paths"
+        elif plugin_type == "publish":
+            new_function_name = "get_publish_plugin_paths"
+        elif plugin_type == "inventory":
+            new_function_name = "get_inventory_action_paths"
+
+        warnings.warn(
+            f"Addon '{self.name}' returns '{plugin_type}' paths using"
+            " 'get_plugin_paths' method. Please implement"
+            f" '{new_function_name}' instead.",
+            DeprecationWarning,
+            stacklevel=2
+        )
         return paths
 
     def get_launcher_action_paths(self) -> list[str]:
