@@ -1,5 +1,7 @@
 # -*- coding: utf-8 -*-
 """Base class for AYON addons."""
+from __future__ import annotations
+
 import copy
 import os
 import sys
@@ -11,10 +13,11 @@ import collections
 import warnings
 from uuid import uuid4
 from abc import ABC, abstractmethod
-from typing import Optional
+from types import ModuleType
+import typing
+from typing import Optional, Any, Union
 
 import ayon_api
-from semver import VersionInfo
 
 from ayon_core import AYON_CORE_ROOT
 from ayon_core.lib import (
@@ -29,6 +32,11 @@ from .interfaces import (
     IPluginPaths,
     IHostAddon,
 )
+
+if typing.TYPE_CHECKING:
+    import click
+
+    from ayon_core.host import HostBase
 
 # Files that will be always ignored on addons import
 IGNORED_FILENAMES = {
@@ -101,7 +109,7 @@ class _LoadCache:
     addon_modules = []
 
 
-def load_addons(force=False):
+def load_addons(force: bool = False) -> None:
     """Load AYON addons as python modules.
 
     Modules does not load only classes (like in Interfaces) because there must
@@ -128,7 +136,7 @@ def load_addons(force=False):
             time.sleep(0.1)
 
 
-def _get_ayon_bundle_data():
+def _get_ayon_bundle_data() -> Optional[dict[str, Any]]:
     studio_bundle_name = os.environ.get("AYON_STUDIO_BUNDLE_NAME")
     project_bundle_name = os.getenv("AYON_BUNDLE_NAME")
     bundles = ayon_api.get_bundles()["bundles"]
@@ -158,18 +166,21 @@ def _get_ayon_bundle_data():
     return project_bundle
 
 
-def _get_ayon_addons_information(bundle_info):
+def _get_ayon_addons_information(
+    bundle_info: dict[str, Any]
+) -> list[dict[str, Any]]:
     """Receive information about addons to use from server.
 
     Todos:
         Actually ask server for the information.
         Allow project name as optional argument to be able to query information
             about used addons for specific project.
+        Wrap versions into an object.
 
     Returns:
-        List[Dict[str, Any]]: List of addon information to use.
-    """
+        list[dict[str, Any]]: List of addon information to use.
 
+    """
     output = []
     bundle_addons = bundle_info["addons"]
     addons = ayon_api.get_addons_info()["addons"]
@@ -188,7 +199,7 @@ def _get_ayon_addons_information(bundle_info):
     return output
 
 
-def _load_ayon_addons(log):
+def _load_ayon_addons(log: logging.Logger) -> list[ModuleType]:
     """Load AYON addons based on information from server.
 
     This function should not trigger downloading of any addons but only use
@@ -197,6 +208,9 @@ def _load_ayon_addons(log):
 
     Args:
         log (logging.Logger): Logger object.
+
+    Returns:
+        list[ModuleType]: Loaded addon modules.
 
     """
     all_addon_modules = []
@@ -325,20 +339,21 @@ class AYONAddon(ABC):
 
     Attributes:
         enabled (bool): Is addon enabled.
-        name (str): Addon name.
 
     Args:
         manager (AddonsManager): Manager object who discovered addon.
         settings (dict[str, Any]): AYON settings.
 
     """
-    enabled = True
+    enabled: bool = True
     _id = None
 
     # Temporary variable for 'version' property
     _missing_version_warned = False
 
-    def __init__(self, manager, settings):
+    def __init__(
+        self, manager: AddonsManager, settings: dict[str, Any]
+    ) -> None:
         self.manager = manager
 
         self.log = Logger.get_logger(self.name)
@@ -346,7 +361,7 @@ class AYONAddon(ABC):
         self.initialize(settings)
 
     @property
-    def id(self):
+    def id(self) -> str:
         """Random id of addon object.
 
         Returns:
@@ -359,7 +374,7 @@ class AYONAddon(ABC):
 
     @property
     @abstractmethod
-    def name(self):
+    def name(self) -> str:
         """Addon name.
 
         Returns:
@@ -369,7 +384,7 @@ class AYONAddon(ABC):
         pass
 
     @property
-    def version(self):
+    def version(self) -> str:
         """Addon version.
 
         Todo:
@@ -388,7 +403,7 @@ class AYONAddon(ABC):
             )
         return "0.0.0"
 
-    def initialize(self, settings):
+    def initialize(self, settings: dict[str, Any]) -> None:
         """Initialization of addon attributes.
 
         It is not recommended to override __init__ that's why specific method
@@ -400,7 +415,7 @@ class AYONAddon(ABC):
         """
         pass
 
-    def connect_with_addons(self, enabled_addons):
+    def connect_with_addons(self, enabled_addons: list[AYONAddon]) -> None:
         """Connect with other enabled addons.
 
         Args:
@@ -411,7 +426,7 @@ class AYONAddon(ABC):
 
     def ensure_is_process_ready(
         self, process_context: ProcessContext
-    ):
+    ) -> None:
         """Make sure addon is prepared for a process.
 
         This method is called when some action makes sure that addon has set
@@ -432,7 +447,7 @@ class AYONAddon(ABC):
         """
         pass
 
-    def get_global_environments(self):
+    def get_global_environments(self) -> dict[str, str]:
         """Get global environments values of addon.
 
         Environment variables that can be get only from system settings.
@@ -443,20 +458,12 @@ class AYONAddon(ABC):
         """
         return {}
 
-    def modify_application_launch_arguments(self, application, env):
-        """Give option to modify launch environments before application launch.
-
-        Implementation is optional. To change environments modify passed
-        dictionary of environments.
-
-        Args:
-            application (Application): Application that is launched.
-            env (dict[str, str]): Current environment variables.
-
-        """
-        pass
-
-    def on_host_install(self, host, host_name, project_name):
+    def on_host_install(
+        self,
+        host: HostBase,
+        host_name: str,
+        project_name: str,
+    ) -> None:
         """Host was installed which gives option to handle in-host logic.
 
         It is a good option to register in-host event callbacks which are
@@ -467,7 +474,7 @@ class AYONAddon(ABC):
         to receive from 'host' object.
 
         Args:
-            host (Union[ModuleType, HostBase]): Access to installed/registered
+            host (HostBase): Access to installed/registered
                 host object.
             host_name (str): Name of host.
             project_name (str): Project name which is main part of host
@@ -476,7 +483,7 @@ class AYONAddon(ABC):
         """
         pass
 
-    def cli(self, addon_click_group):
+    def cli(self, addon_click_group: click.Group) -> None:
         """Add commands to click group.
 
         The best practise is to create click group for whole addon which is
@@ -507,15 +514,21 @@ class AYONAddon(ABC):
 
 class _AddonReportInfo:
     def __init__(
-        self, class_name, name, version, report_value_by_label
-    ):
+        self,
+        class_name: str,
+        name: str,
+        version: str,
+        report_value_by_label: dict[str, Optional[str]],
+    ) -> None:
         self.class_name = class_name
         self.name = name
         self.version = version
         self.report_value_by_label = report_value_by_label
 
     @classmethod
-    def from_addon(cls, addon, report):
+    def from_addon(
+        cls, addon: AYONAddon, report: dict[str, dict[str, int]]
+    ) -> "_AddonReportInfo":
         class_name = addon.__class__.__name__
         report_value_by_label = {
             label: reported.get(class_name)
@@ -542,29 +555,35 @@ class AddonsManager:
     _report_total_key = "Total"
     _log = None
 
-    def __init__(self, settings=None, initialize=True):
+    def __init__(
+        self,
+        settings: Optional[dict[str, Any]] = None,
+        initialize: bool = True,
+    ) -> None:
         self._settings = settings
 
-        self._addons = []
-        self._addons_by_id = {}
-        self._addons_by_name = {}
+        self._addons: list[AYONAddon] = []
+        self._addons_by_id: dict[str, AYONAddon] = {}
+        self._addons_by_name: dict[str, AYONAddon] = {}
         # For report of time consumption
-        self._report = {}
+        self._report: dict[str, dict[str, int]] = {}
 
         if initialize:
             self.initialize_addons()
             self.connect_addons()
 
-    def __getitem__(self, addon_name):
+    def __getitem__(self, addon_name: str) -> AYONAddon:
         return self._addons_by_name[addon_name]
 
     @property
-    def log(self):
+    def log(self) -> logging.Logger:
         if self._log is None:
-            self._log = logging.getLogger(self.__class__.__name__)
+            self._log = Logger.get_logger(self.__class__.__name__)
         return self._log
 
-    def get(self, addon_name, default=None):
+    def get(
+        self, addon_name: str, default: Optional[Any] = None
+    ) -> Union[AYONAddon, Any]:
         """Access addon by name.
 
         Args:
@@ -578,18 +597,20 @@ class AddonsManager:
         return self._addons_by_name.get(addon_name, default)
 
     @property
-    def addons(self):
+    def addons(self) -> list[AYONAddon]:
         return list(self._addons)
 
     @property
-    def addons_by_id(self):
+    def addons_by_id(self) -> dict[str, AYONAddon]:
         return dict(self._addons_by_id)
 
     @property
-    def addons_by_name(self):
+    def addons_by_name(self) -> dict[str, AYONAddon]:
         return dict(self._addons_by_name)
 
-    def get_enabled_addon(self, addon_name, default=None):
+    def get_enabled_addon(
+        self, addon_name: str, default: Optional[Any] = None
+    ) -> Union[AYONAddon, Any]:
         """Fast access to enabled addon.
 
         If addon is available but is not enabled default value is returned.
@@ -600,7 +621,7 @@ class AddonsManager:
                 not enabled.
 
         Returns:
-            Union[AYONAddon, None]: Enabled addon found by name or None.
+            Union[AYONAddon, Any]: Enabled addon found by name or None.
 
         """
         addon = self.get(addon_name)
@@ -608,7 +629,7 @@ class AddonsManager:
             return addon
         return default
 
-    def get_enabled_addons(self):
+    def get_enabled_addons(self) -> list[AYONAddon]:
         """Enabled addons initialized by the manager.
 
         Returns:
@@ -621,7 +642,7 @@ class AddonsManager:
             if addon.enabled
         ]
 
-    def initialize_addons(self):
+    def initialize_addons(self) -> None:
         """Import and initialize addons."""
         # Make sure modules are loaded
         load_addons()
@@ -702,7 +723,7 @@ class AddonsManager:
             report[self._report_total_key] = time.time() - time_start
             self._report["Initialization"] = report
 
-    def connect_addons(self):
+    def connect_addons(self) -> None:
         """Trigger connection with other enabled addons.
 
         Addons should handle their interfaces in `connect_with_addons`.
@@ -730,7 +751,7 @@ class AddonsManager:
             report[self._report_total_key] = time.time() - time_start
             self._report["Connect modules"] = report
 
-    def collect_global_environments(self):
+    def collect_global_environments(self) -> dict[str, str]:
         """Helper to collect global environment variabled from modules.
 
         Returns:
@@ -753,7 +774,7 @@ class AddonsManager:
                 module_envs[key] = value
         return module_envs
 
-    def collect_plugin_paths(self):
+    def collect_plugin_paths(self) -> dict[str, list[str]]:
         """Helper to collect all plugins from modules inherited IPluginPaths.
 
         Unknown keys are logged out.
@@ -828,7 +849,7 @@ class AddonsManager:
             )
         return output
 
-    def _collect_plugin_paths(self, method_name, *args, **kwargs):
+    def _collect_plugin_paths(self, method_name: str, *args, **kwargs):
         output = []
         for addon in self.get_enabled_addons():
             # Skip addon that do not inherit from `IPluginPaths`
@@ -859,7 +880,7 @@ class AddonsManager:
             output.extend(paths)
         return output
 
-    def collect_launcher_action_paths(self):
+    def collect_launcher_action_paths(self) -> list[str]:
         """Helper to collect launcher action paths from addons.
 
         Returns:
@@ -874,16 +895,16 @@ class AddonsManager:
         output.insert(0, actions_dir)
         return output
 
-    def collect_create_plugin_paths(self, host_name):
+    def collect_create_plugin_paths(self, host_name: str) -> list[str]:
         """Helper to collect creator plugin paths from addons.
 
         Args:
             host_name (str): For which host are creators meant.
 
         Returns:
-            list: List of creator plugin paths.
-        """
+            list[str]: List of creator plugin paths.
 
+        """
         return self._collect_plugin_paths(
             "get_create_plugin_paths",
             host_name
@@ -891,37 +912,37 @@ class AddonsManager:
 
     collect_creator_plugin_paths = collect_create_plugin_paths
 
-    def collect_load_plugin_paths(self, host_name):
+    def collect_load_plugin_paths(self, host_name: str) -> list[str]:
         """Helper to collect load plugin paths from addons.
 
         Args:
             host_name (str): For which host are load plugins meant.
 
         Returns:
-            list: List of load plugin paths.
-        """
+            list[str]: List of load plugin paths.
 
+        """
         return self._collect_plugin_paths(
             "get_load_plugin_paths",
             host_name
         )
 
-    def collect_publish_plugin_paths(self, host_name):
+    def collect_publish_plugin_paths(self, host_name: str) -> list[str]:
         """Helper to collect load plugin paths from addons.
 
         Args:
             host_name (str): For which host are load plugins meant.
 
         Returns:
-            list: List of pyblish plugin paths.
-        """
+            list[str]: List of pyblish plugin paths.
 
+        """
         return self._collect_plugin_paths(
             "get_publish_plugin_paths",
             host_name
         )
 
-    def collect_inventory_action_paths(self, host_name):
+    def collect_inventory_action_paths(self, host_name: str) -> list[str]:
         """Helper to collect load plugin paths from addons.
 
         Args:
@@ -929,21 +950,21 @@ class AddonsManager:
 
         Returns:
             list: List of pyblish plugin paths.
-        """
 
+        """
         return self._collect_plugin_paths(
             "get_inventory_action_paths",
             host_name
         )
 
-    def get_host_addon(self, host_name):
+    def get_host_addon(self, host_name: str) -> Optional[AYONAddon]:
         """Find host addon by host name.
 
         Args:
             host_name (str): Host name for which is found host addon.
 
         Returns:
-            Union[AYONAddon, None]: Found host addon by name or `None`.
+            Optional[AYONAddon]: Found host addon by name or `None`.
         """
 
         for addon in self.get_enabled_addons():
@@ -954,21 +975,21 @@ class AddonsManager:
                 return addon
         return None
 
-    def get_host_names(self):
+    def get_host_names(self) -> set[str]:
         """List of available host names based on host addons.
 
         Returns:
-            Iterable[str]: All available host names based on enabled addons
+            set[str]: All available host names based on enabled addons
                 inheriting 'IHostAddon'.
-        """
 
+        """
         return {
             addon.host_name
             for addon in self.get_enabled_addons()
             if isinstance(addon, IHostAddon)
         }
 
-    def print_report(self):
+    def print_report(self) -> None:
         """Print out report of time spent on addons initialization parts.
 
         Reporting is not automated must be implemented for each initialization
