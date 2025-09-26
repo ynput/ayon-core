@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import contextlib
 from abc import ABC, abstractmethod
-from typing import Dict, Any
+from typing import Any, Optional
 from dataclasses import dataclass
 
 import ayon_api
@@ -51,7 +51,7 @@ class StatusItem:
         self.icon: str = icon
         self.state: str = state
 
-    def to_data(self) -> Dict[str, Any]:
+    def to_data(self) -> dict[str, Any]:
         return {
             "name": self.name,
             "color": self.color,
@@ -125,16 +125,24 @@ class TaskTypeItem:
         icon (str): Icon name in MaterialIcons ("fiber_new").
 
     """
-    def __init__(self, name, short, icon):
+    def __init__(
+        self,
+        name: str,
+        short: str,
+        icon: str,
+        color: Optional[str],
+    ):
         self.name = name
         self.short = short
         self.icon = icon
+        self.color = color
 
     def to_data(self):
         return {
             "name": self.name,
             "short": self.short,
             "icon": self.icon,
+            "color": self.color,
         }
 
     @classmethod
@@ -147,6 +155,7 @@ class TaskTypeItem:
             name=task_type_data["name"],
             short=task_type_data["shortName"],
             icon=task_type_data["icon"],
+            color=task_type_data.get("color"),
         )
 
 
@@ -218,6 +227,54 @@ class ProjectItem:
         return cls(**data)
 
 
+class ProductTypeIconMapping:
+    def __init__(
+        self,
+        default: Optional[dict[str, str]] = None,
+        definitions: Optional[list[dict[str, str]]] = None,
+    ):
+        self._default = default or {}
+        self._definitions = definitions or []
+
+        self._default_def = None
+        self._definitions_by_name = None
+
+    def get_icon(
+        self,
+        product_base_type: Optional[str] = None,
+        product_type: Optional[str] = None,
+    ) -> dict[str, str]:
+        defs = self._get_defs_by_name()
+        icon = defs.get(product_type)
+        if icon is None:
+            icon = defs.get(product_base_type)
+            if icon is None:
+                icon = self._get_default_def()
+        return icon.copy()
+
+    def _get_default_def(self) -> dict[str, str]:
+        if self._default_def is None:
+            self._default_def = {
+                "type": "material-symbols",
+                "name": self._default.get("icon", "deployed_code"),
+                "color": self._default.get("color", "#cccccc"),
+            }
+
+        return self._default_def
+
+    def _get_defs_by_name(self) -> dict[str, dict[str, str]]:
+        if self._definitions_by_name is None:
+            self._definitions_by_name = {
+                product_base_type_def["name"]: {
+                    "type": "material-symbols",
+                    "name": product_base_type_def.get("icon", "deployed_code"),
+                    "color": product_base_type_def.get("color", "#cccccc"),
+                }
+                for product_base_type_def in self._definitions
+            }
+        return self._definitions_by_name
+
+
 def _get_project_items_from_entitiy(
     projects: list[dict[str, Any]]
 ) -> list[ProjectItem]:
@@ -242,6 +299,9 @@ class ProjectsModel(object):
         self._projects_by_name = NestedCacheItem(
             levels=1, default_factory=list
         )
+        self._product_type_icons_mapping = NestedCacheItem(
+            levels=1, default_factory=ProductTypeIconMapping
+        )
         self._project_statuses_cache = {}
         self._folder_types_cache = {}
         self._task_types_cache = {}
@@ -255,6 +315,7 @@ class ProjectsModel(object):
         self._task_types_cache = {}
         self._projects_cache.reset()
         self._projects_by_name.reset()
+        self._product_type_icons_mapping.reset()
 
     def refresh(self):
         """Refresh project items.
@@ -389,6 +450,27 @@ class ProjectsModel(object):
             self._task_types_cache,
             self._task_type_items_getter,
         )
+
+    def get_product_type_icons_mapping(
+        self, project_name: Optional[str]
+    ) -> ProductTypeIconMapping:
+        cache = self._product_type_icons_mapping[project_name]
+        if cache.is_valid:
+            return cache.get_data()
+
+        project_entity = self.get_project_entity(project_name)
+        icons_mapping = ProductTypeIconMapping()
+        if project_entity:
+            product_base_types = (
+                project_entity["config"].get("productBaseTypes", {})
+            )
+            icons_mapping = ProductTypeIconMapping(
+                product_base_types.get("default"),
+                product_base_types.get("definitions")
+            )
+
+        cache.update_data(icons_mapping)
+        return icons_mapping
 
     def _get_project_items(
         self, project_name, sender, item_type, cache_obj, getter
