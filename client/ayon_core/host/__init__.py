@@ -1,5 +1,5 @@
 from .constants import ContextChangeReason
-from .abstract import AbstractHost
+from .abstract import AbstractHost, ApplicationInformation
 from .host import (
     HostBase,
     ContextChangeData,
@@ -21,6 +21,7 @@ __all__ = (
     "ContextChangeReason",
 
     "AbstractHost",
+    "ApplicationInformation",
 
     "HostBase",
     "ContextChangeData",
