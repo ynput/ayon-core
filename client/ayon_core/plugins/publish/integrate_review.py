@@ -1,11 +1,18 @@
 import os
+import time
 
-import pyblish.api
 import ayon_api
+import pyblish.api
 from ayon_api.server_api import RequestTypes
-
 from ayon_core.lib import get_media_mime_type
-from ayon_core.pipeline.publish import get_publish_repre_path
+from ayon_core.pipeline.publish import (
+    PublishXmlValidationError,
+    get_publish_repre_path,
+)
+from requests import exceptions as req_exc
+
+# Narrow retryable failures to transient network issues
+RETRYABLE_EXCEPTIONS = (req_exc.Timeout, req_exc.ConnectionError)
 
 
 class IntegrateAYONReview(pyblish.api.InstancePlugin):
@@ -44,7 +51,7 @@ class IntegrateAYONReview(pyblish.api.InstancePlugin):
             if "webreview" not in repre_tags:
                 continue
 
-            # exclude representations with are going to be published on farm
+            # exclude representations going to be published on farm
             if "publish_on_farm" in repre_tags:
                 continue
 
@@ -82,11 +89,12 @@ class IntegrateAYONReview(pyblish.api.InstancePlugin):
             headers = ayon_con.get_headers(content_type)
             headers["x-file-name"] = filename
             self.log.info(f"Uploading reviewable {repre_path}")
-            ayon_con.upload_file(
+            # Upload with retries and clear help if it keeps failing
+            self._upload_with_retries(
+                ayon_con,
                 endpoint,
                 repre_path,
-                headers=headers,
-                request_type=RequestTypes.post,
+                headers,
             )
 
     def _get_review_label(self, repre, uploaded_labels):
@@ -100,3 +108,62 @@ class IntegrateAYONReview(pyblish.api.InstancePlugin):
             idx += 1
             label = f"{orig_label}_{idx}"
         return label
+
+    def _upload_with_retries(
+        self,
+        ayon_con,
+        endpoint,
+        repre_path,
+        headers,
+        max_retries: int = 3,
+        backoff_seconds: int = 2,
+    ):
+        """Upload file with simple exponential backoff retries.
+
+        If all retries fail we raise a PublishXmlValidationError with a help key
+        to guide the user to retry publish.
+        """
+        last_error = None
+        for attempt in range(max_retries):
+            attempt_num = attempt + 1
+            try:
+                ayon_con.upload_file(
+                    endpoint,
+                    repre_path,
+                    headers=headers,
+                    request_type=RequestTypes.post,
+                )
+                return
+            except RETRYABLE_EXCEPTIONS as exc:
+                last_error = exc
+                # Log and retry with backoff if attempts remain
+                if attempt_num < max_retries:
+                    wait = backoff_seconds * (2 ** attempt)
+                    self.log.warning(
+                        "Review upload failed (attempt %s/%s). Retrying in %ss...",
+                        attempt_num, max_retries, wait,
+                        exc_info=True,
+                    )
+                    try:
+                        time.sleep(wait)
+                    except Exception:
+                        pass
+                else:
+                    break
+            except Exception:
+                # Non retryable failures bubble immediately
+                raise
+
+        # Exhausted retries - raise a user-friendly validation error with help
+        raise PublishXmlValidationError(
+            self,
+            (
+                "Upload of reviewable timed out or failed after multiple attempts."
+                " Please try publishing again."
+            ),
+            key="upload_timeout",
+            formatting_data={
+                "file": repre_path,
+                "error": str(last_error),
+            },
+        )
