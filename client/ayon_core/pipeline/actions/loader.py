@@ -1,3 +1,61 @@
+"""API for actions for loader tool.
+
+Even though the api is meant for the loader tool, the api should be possible
+    to use in a standalone way out of the loader tool.
+
+To use add actions, make sure your addon does inherit from
+    'IPluginPaths' and implements 'get_loader_action_plugin_paths' which
+    returns paths to python files with loader actions.
+
+The plugin is used to collect available actions for the given context and to
+    execute them. Selection is defined with 'LoaderActionSelection' object
+    that also contains a cache of entities and project anatomy.
+
+Implementing 'get_action_items' allows the plugin to define what actions
+    are shown and available for the selection. Because for a single selection
+    can be shown multiple actions with the same action identifier, the action
+    items also have 'data' attribute which can be used to store additional
+    data for the action (they have to be json-serializable).
+
+The action is triggered by calling the 'execute_action' method. Which takes
+    the action identifier, the selection, the additional data from the action
+    item and form values from the form if any.
+
+Using 'LoaderActionResult' as the output of 'execute_action' can trigger to
+    show a message in UI or to show an additional form ('LoaderActionForm')
+    which would retrigger the action with the values from the form on
+    submitting. That allows handling of multistep actions.
+
+It is also recommended that the plugin does override the 'identifier'
+    attribute. The identifier has to be unique across all plugins.
+    Class name is used by default.
+
+The selection wrapper currently supports the following types of entity types:
+    - version
+    - representation
+It is planned to add 'folder' and 'task' selection in the future.
+
+NOTE: It is possible to trigger 'execute_action' without ever calling
+    'get_action_items', that can be handy in automations.
+
+The whole logic is wrapped into 'LoaderActionsContext'. It takes care of
+    the discovery of plugins and wraps the collection and execution of
+    action items. Method 'execute_action' on context also requires plugin
+    identifier.
+
+The flow of the logic is (in the loader tool):
+    1. User selects entities in the UI.
+    2. Right-click the selected entities.
+    3. Use 'LoaderActionsContext' to collect items using 'get_action_items'.
+    4. Show a menu (with submenus) in the UI.
+    5. If a user selects an action, the action is triggered using
+        'execute_action'.
+    5a. If the action returns 'LoaderActionResult', show a 'message' if it is
+        filled and show a form dialog if 'form' is filled.
+    5b. If the user submitted the form, trigger the action again with the
+        values from the form and repeat from 5a.
+
+"""
 from __future__ import annotations
 
 import os
@@ -388,7 +446,7 @@ class LoaderActionItem:
         and ids to be executed on.
 
     Attributes:
-        identifier (str): Unique action identifier. What is sent to action
+        identifier (str): Unique action identifier. What is sent to the action
             plugin when the action is executed.
         label (str): Text shown in UI.
         order (int): Order of the action in UI.
@@ -417,7 +475,10 @@ class LoaderActionForm:
 
     If an action needs to collect information from a user before or during of
         the action execution, it can return a response with a form. When the
-        form is confirmed, a new execution of the action is triggered.
+        form is submitted, a new execution of the action is triggered.
+
+    It is also possible to just show a label message without the submit
+        button to make sure the user has seen the message.
 
     Attributes:
         title (str): Title of the form -> title of the window.
