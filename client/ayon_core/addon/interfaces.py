@@ -186,7 +186,12 @@ class IPluginPaths(AYONInterface):
         return self._get_plugin_paths_by_type("inventory")
 
     def get_loader_action_plugin_paths(self) -> list[str]:
-        """Receive loader action plugin paths."""
+        """Receive loader action plugin paths.
+
+        Returns:
+            list[str]: Paths to loader action plugins.
+
+        """
         return []
 
 
