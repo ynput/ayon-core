@@ -493,27 +493,24 @@ class LoaderActionItem:
         and ids to be executed on.
 
     Attributes:
-        identifier (str): Unique action identifier. What is sent to the action
-            plugin when the action is executed.
         label (str): Text shown in UI.
         order (int): Order of the action in UI.
         group_label (Optional[str]): Label of the group to which the action
             belongs.
         icon (Optional[dict[str, Any]): Icon definition.
         data (Optional[DataType]): Action item data.
-        plugin_identifier (Optional[str]): Identifier of the plugin which
+        identifier (Optional[str]): Identifier of the plugin which
             created the action item. Is filled automatically. Is not changed
             if is filled -> can lead to different plugin.
 
     """
-    identifier: str
     label: str
     order: int = 0
     group_label: Optional[str] = None
     icon: Optional[dict[str, Any]] = None
     data: Optional[DataType] = None
     # Is filled automatically
-    plugin_identifier: str = None
+    identifier: str = None
 
 
 @dataclass
@@ -667,7 +664,6 @@ class LoaderActionPlugin(ABC):
     @abstractmethod
     def execute_action(
         self,
-        identifier: str,
         selection: LoaderActionSelection,
         data: Optional[DataType],
         form_values: dict[str, Any],
@@ -675,7 +671,6 @@ class LoaderActionPlugin(ABC):
         """Execute an action.
 
         Args:
-            identifier (str): Action identifier.
             selection (LoaderActionSelection): Selection wrapper. Can be used
                 to get entities or get context of original selection.
             data (Optional[DataType]): Additional action item data.
@@ -771,8 +766,8 @@ class LoaderActionsContext:
         for plugin_id, plugin in self._get_plugins().items():
             try:
                 for action_item in plugin.get_action_items(selection):
-                    if action_item.plugin_identifier is None:
-                        action_item.plugin_identifier = plugin_id
+                    if action_item.identifier is None:
+                        action_item.identifier = plugin_id
                     output.append(action_item)
 
             except Exception:
@@ -785,8 +780,7 @@ class LoaderActionsContext:
 
     def execute_action(
         self,
-        plugin_identifier: str,
-        action_identifier: str,
+        identifier: str,
         selection: LoaderActionSelection,
         data: Optional[DataType],
         form_values: dict[str, Any],
@@ -794,8 +788,7 @@ class LoaderActionsContext:
         """Trigger action execution.
 
         Args:
-            plugin_identifier (str): Identifier of the plugin.
-            action_identifier (str): Identifier of the action.
+            identifier (str): Identifier of the plugin.
             selection (LoaderActionSelection): Selection wrapper. Can be used
                 to get what is selected in UI and to get access to entity
                 cache.
@@ -805,9 +798,8 @@ class LoaderActionsContext:
 
         """
         plugins_by_id = self._get_plugins()
-        plugin = plugins_by_id[plugin_identifier]
+        plugin = plugins_by_id[identifier]
         return plugin.execute_action(
-            action_identifier,
             selection,
             data,
             form_values,
@@ -910,7 +902,6 @@ class LoaderSimpleActionPlugin(LoaderActionPlugin):
             label = self.label or self.__class__.__name__
             return [
                 LoaderActionItem(
-                    identifier=self.identifier,
                     label=label,
                     order=self.order,
                     group_label=self.group_label,

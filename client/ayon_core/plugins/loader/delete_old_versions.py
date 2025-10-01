@@ -58,10 +58,12 @@ class DeleteOldVersions(LoaderActionPlugin):
 
         return [
             LoaderActionItem(
-                identifier="delete-versions",
                 label="Delete Versions",
                 order=35,
-                data={"product_ids": list(product_ids)},
+                data={
+                    "product_ids": list(product_ids),
+                    "action": "delete-versions",
+                },
                 icon={
                     "type": "material-symbols",
                     "name": "delete",
@@ -69,10 +71,12 @@ class DeleteOldVersions(LoaderActionPlugin):
                 }
             ),
             LoaderActionItem(
-                identifier="calculate-versions-size",
                 label="Calculate Versions size",
                 order=30,
-                data={"product_ids": list(product_ids)},
+                data={
+                    "product_ids": list(product_ids),
+                    "action": "calculate-versions-size",
+                },
                 icon={
                     "type": "material-symbols",
                     "name": "auto_delete",
@@ -83,17 +87,17 @@ class DeleteOldVersions(LoaderActionPlugin):
 
     def execute_action(
         self,
-        identifier: str,
         selection: LoaderActionSelection,
         data: dict[str, Any],
         form_values: dict[str, Any],
     ) -> Optional[LoaderActionResult]:
         step = form_values.get("step")
+        action = data["action"]
         versions_to_keep = form_values.get("versions_to_keep")
         remove_publish_folder = form_values.get("remove_publish_folder")
         if step is None:
             return self._first_step(
-                identifier,
+                action,
                 versions_to_keep,
                 remove_publish_folder,
             )
@@ -106,7 +110,7 @@ class DeleteOldVersions(LoaderActionPlugin):
         product_ids = data["product_ids"]
         if step == "prepare-data":
             return self._prepare_data_step(
-                identifier,
+                action,
                 versions_to_keep,
                 remove_publish_folder,
                 product_ids,
@@ -121,7 +125,7 @@ class DeleteOldVersions(LoaderActionPlugin):
 
     def _first_step(
         self,
-        identifier: str,
+        action: str,
         versions_to_keep: Optional[int],
         remove_publish_folder: Optional[bool],
     ) -> LoaderActionResult:
@@ -137,7 +141,7 @@ class DeleteOldVersions(LoaderActionPlugin):
                 default=2,
             ),
         ]
-        if identifier == "delete-versions":
+        if action == "delete-versions":
             fields.append(
                 BoolDef(
                     "remove_publish_folder",
@@ -165,7 +169,7 @@ class DeleteOldVersions(LoaderActionPlugin):
 
     def _prepare_data_step(
         self,
-        identifier: str,
+        action: str,
         versions_to_keep: int,
         remove_publish_folder: bool,
         entity_ids: set[str],
@@ -235,7 +239,7 @@ class DeleteOldVersions(LoaderActionPlugin):
                 if os.path.exists(filepath):
                     size += os.path.getsize(filepath)
 
-        if identifier == "calculate-versions-size":
+        if action == "calculate-versions-size":
             return LoaderActionResult(
                 message="Calculated size",
                 success=True,

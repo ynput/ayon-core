@@ -51,7 +51,6 @@ class DeliveryAction(LoaderActionPlugin):
 
         return [
             LoaderActionItem(
-                identifier="deliver-versions",
                 label="Deliver Versions",
                 order=35,
                 data={"version_ids": list(version_ids)},
@@ -65,7 +64,6 @@ class DeliveryAction(LoaderActionPlugin):
 
     def execute_action(
         self,
-        identifier: str,
         selection: LoaderActionSelection,
         data: dict[str, Any],
         form_values: dict[str, Any],

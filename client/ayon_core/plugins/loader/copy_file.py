@@ -41,10 +41,12 @@ class CopyFileActionPlugin(LoaderActionPlugin):
         for repre_name, repre_ids in repre_ids_by_name.items():
             output.append(
                 LoaderActionItem(
-                    identifier="copy-path",
                     label=repre_name,
                     group_label="Copy file path",
-                    data={"representation_ids": list(repre_ids)},
+                    data={
+                        "representation_ids": list(repre_ids),
+                        "action": "copy-path",
+                    },
                     icon={
                         "type": "material-symbols",
                         "name": "content_copy",
@@ -54,10 +56,12 @@ class CopyFileActionPlugin(LoaderActionPlugin):
             )
             output.append(
                 LoaderActionItem(
-                    identifier="copy-file",
                     label=repre_name,
                     group_label="Copy file",
-                    data={"representation_ids": list(repre_ids)},
+                    data={
+                        "representation_ids": list(repre_ids),
+                        "action": "copy-file",
+                    },
                     icon={
                         "type": "material-symbols",
                         "name": "file_copy",
@@ -69,13 +73,13 @@ class CopyFileActionPlugin(LoaderActionPlugin):
 
     def execute_action(
         self,
-        identifier: str,
         selection: LoaderActionSelection,
         data: dict,
         form_values: dict[str, Any],
     ) -> Optional[LoaderActionResult]:
         from qtpy import QtWidgets, QtCore
 
+        action = data["action"]
         repre_id = next(iter(data["representation_ids"]))
         repre = next(iter(selection.entities.get_representations({repre_id})))
         path = get_representation_path_with_anatomy(
@@ -90,7 +94,7 @@ class CopyFileActionPlugin(LoaderActionPlugin):
                 success=False,
             )
 
-        if identifier == "copy-path":
+        if action == "copy-path":
             # Set to Clipboard
             clipboard.setText(os.path.normpath(path))
 

@@ -39,7 +39,6 @@ class PushToProject(LoaderActionPlugin):
         if version_ids and len(folder_ids) == 1:
             output.append(
                 LoaderActionItem(
-                    identifier="core.push-to-project",
                     label="Push to project",
                     order=35,
                     data={"version_ids": list(version_ids)},
@@ -54,7 +53,6 @@ class PushToProject(LoaderActionPlugin):
 
     def execute_action(
         self,
-        identifier: str,
         selection: LoaderActionSelection,
         data: dict[str, Any],
         form_values: dict[str, Any],

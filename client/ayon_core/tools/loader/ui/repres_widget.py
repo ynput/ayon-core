@@ -399,7 +399,6 @@ class RepresentationsWidget(QtWidgets.QWidget):
             return
 
         self._controller.trigger_action_item(
-            plugin_identifier=action_item.plugin_identifier,
             identifier=action_item.identifier,
             project_name=self._selected_project_name,
             selected_ids=repre_ids,

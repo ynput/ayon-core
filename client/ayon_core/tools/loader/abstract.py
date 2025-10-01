@@ -314,7 +314,6 @@ class ActionItem:
     use 'identifier' and context, it necessary also use 'options'.
 
     Args:
-        plugin_identifier (str): Action identifier.
         identifier (str): Action identifier.
         label (str): Action label.
         group_label (Optional[str]): Group label.
@@ -328,7 +327,6 @@ class ActionItem:
     """
     def __init__(
         self,
-        plugin_identifier: str,
         identifier: str,
         label: str,
         group_label: Optional[str],
@@ -338,7 +336,6 @@ class ActionItem:
         data: Optional[dict[str, Any]],
         options: Optional[list],
     ):
-        self.plugin_identifier = plugin_identifier
         self.identifier = identifier
         self.label = label
         self.group_label = group_label
@@ -366,7 +363,6 @@ class ActionItem:
     def to_data(self) -> dict[str, Any]:
         options = self._options_to_data()
         return {
-            "plugin_identifier": self.plugin_identifier,
             "identifier": self.identifier,
             "label": self.label,
             "group_label": self.group_label,
@@ -1003,7 +999,6 @@ class FrontendLoaderController(_BaseLoaderController):
     @abstractmethod
     def trigger_action_item(
         self,
-        plugin_identifier: str,
         identifier: str,
         project_name: str,
         selected_ids: set[str],
@@ -1028,8 +1023,7 @@ class FrontendLoaderController(_BaseLoaderController):
             }
 
         Args:
-            plugin_identifier (sttr): Plugin identifier.
-            identifier (sttr): Action identifier.
+            identifier (sttr): Plugin identifier.
             project_name (str): Project name.
             selected_ids (set[str]): Selected entity ids.
             selected_entity_type (str): Selected entity type.

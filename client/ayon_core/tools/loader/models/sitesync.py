@@ -300,33 +300,32 @@ class SiteSyncModel:
 
         return action_items
 
-    def is_sitesync_action(self, plugin_identifier: str) -> bool:
+    def is_sitesync_action(self, identifier: str) -> bool:
         """Should be `identifier` handled by SiteSync.
 
         Args:
-            plugin_identifier (str): Plugin identifier.
+            identifier (str): Plugin identifier.
 
         Returns:
             bool: Should action be handled by SiteSync.
 
         """
-        return plugin_identifier == "sitesync.loader.action"
+        return identifier == "sitesync.loader.action"
 
     def trigger_action_item(
         self,
-        identifier: str,
         project_name: str,
         data: dict[str, Any],
     ):
         """Resets status for site_name or remove local files.
 
         Args:
-            identifier (str): Action identifier.
             project_name (str): Project name.
             data (dict[str, Any]): Action item data.
 
         """
         representation_ids = data["representation_ids"]
+        action_identifier = data["action_identifier"]
         active_site = self.get_active_site(project_name)
         remote_site = self.get_remote_site(project_name)
 
@@ -350,17 +349,17 @@ class SiteSyncModel:
         for repre_id in representation_ids:
             repre_entity = repre_entities_by_id.get(repre_id)
             product_type = product_type_by_repre_id[repre_id]
-            if identifier == DOWNLOAD_IDENTIFIER:
+            if action_identifier == DOWNLOAD_IDENTIFIER:
                 self._add_site(
                     project_name, repre_entity, active_site, product_type
                 )
 
-            elif identifier == UPLOAD_IDENTIFIER:
+            elif action_identifier == UPLOAD_IDENTIFIER:
                 self._add_site(
                     project_name, repre_entity, remote_site, product_type
                 )
 
-            elif identifier == REMOVE_IDENTIFIER:
+            elif action_identifier == REMOVE_IDENTIFIER:
                 self._sitesync_addon.remove_site(
                     project_name,
                     repre_id,
@@ -480,14 +479,13 @@ class SiteSyncModel:
         self,
         project_name,
         representation_ids,
-        identifier,
+        action_identifier,
         label,
         tooltip,
         icon_name
     ):
         return ActionItem(
             "sitesync.loader.action",
-            identifier=identifier,
             label=label,
             group_label=None,
             icon={
@@ -499,6 +497,7 @@ class SiteSyncModel:
             order=1,
             data={
                 "representation_ids": representation_ids,
+                "action_identifier": action_identifier,
             },
             options=None,
         )

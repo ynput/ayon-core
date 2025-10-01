@@ -315,7 +315,6 @@ class LoaderController(BackendLoaderController, FrontendLoaderController):
 
     def trigger_action_item(
         self,
-        plugin_identifier: str,
         identifier: str,
         project_name: str,
         selected_ids: set[str],
@@ -324,16 +323,14 @@ class LoaderController(BackendLoaderController, FrontendLoaderController):
         options: dict[str, Any],
         form_values: dict[str, Any],
     ):
-        if self._sitesync_model.is_sitesync_action(plugin_identifier):
+        if self._sitesync_model.is_sitesync_action(identifier):
             self._sitesync_model.trigger_action_item(
-                identifier,
                 project_name,
                 data,
             )
             return
 
         self._loader_actions_model.trigger_action_item(
-            plugin_identifier=plugin_identifier,
             identifier=identifier,
             project_name=project_name,
             selected_ids=selected_ids,
