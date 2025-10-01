@@ -433,6 +433,53 @@ class LoaderActionSelection:
     project_anatomy = property(get_project_anatomy)
     entities = property(get_entities_cache)
 
+    # --- Helper methods ---
+    def versions_selected(self) -> bool:
+        """Selected entity type is version.
+
+        Returns:
+            bool: True if selected entity type is version.
+
+        """
+        return self._selected_type == LoaderSelectedType.version
+
+    def representations_selected(self) -> bool:
+        """Selected entity type is representation.
+
+        Returns:
+            bool: True if selected entity type is representation.
+
+        """
+        return self._selected_type == LoaderSelectedType.representation
+
+    def get_selected_version_entities(self) -> list[dict[str, Any]]:
+        """Retrieve selected version entities.
+
+        An empty list is returned if 'version' is not the selected
+            entity type.
+
+        Returns:
+            list[dict[str, Any]]: List of selected version entities.
+
+        """
+        if self.versions_selected():
+            return self.entities.get_versions(self.selected_ids)
+        return []
+
+    def get_selected_representation_entities(self) -> list[dict[str, Any]]:
+        """Retrieve selected representation entities.
+
+        An empty list is returned if 'representation' is not the selected
+            entity type.
+
+        Returns:
+            list[dict[str, Any]]: List of selected representation entities.
+
+        """
+        if self.representations_selected():
+            return self.entities.get_representations(self.selected_ids)
+        return []
+
 
 @dataclass
 class LoaderActionItem:
