@@ -804,3 +804,79 @@ class LoaderActionsContext:
                     )
             self._plugins = plugins
         return self._plugins
+
+
+class LoaderSimpleActionPlugin(LoaderActionPlugin):
+    """Simple action plugin.
+
+    This action will show exactly one action item defined by attributes
+        on the class.
+
+    Attributes:
+        label: Label of the action item.
+        order: Order of the action item.
+        group_label: Label of the group to which the action belongs.
+        icon: Icon definition shown next to label.
+
+    """
+
+    label: Optional[str] = None
+    order: int = 0
+    group_label: Optional[str] = None
+    icon: Optional[dict[str, Any]] = None
+
+    @abstractmethod
+    def is_compatible(self, selection: LoaderActionSelection) -> bool:
+        """Check if plugin is compatible with selection.
+
+        Args:
+            selection (LoaderActionSelection): Selection information.
+
+        Returns:
+            bool: True if plugin is compatible with selection.
+
+        """
+        pass
+
+    @abstractmethod
+    def process(
+        self,
+        selection: LoaderActionSelection,
+        form_values: dict[str, Any],
+    ) -> Optional[LoaderActionResult]:
+        """Process action based on selection.
+
+        Args:
+            selection (LoaderActionSelection): Selection information.
+            form_values (dict[str, Any]): Values from a form if there are any.
+
+        Returns:
+            Optional[LoaderActionResult]: Result of the action.
+
+        """
+        pass
+
+    def get_action_items(
+        self, selection: LoaderActionSelection
+    ) -> list[LoaderActionItem]:
+        if self.is_compatible(selection):
+            label = self.label or self.__class__.__name__
+            return [
+                LoaderActionItem(
+                    identifier=self.identifier,
+                    label=label,
+                    order=self.order,
+                    group_label=self.group_label,
+                    icon=self.icon,
+                )
+            ]
+        return []
+
+    def execute_action(
+        self,
+        identifier: str,
+        selection: LoaderActionSelection,
+        data: Optional[DataType],
+        form_values: dict[str, Any],
+    ) -> Optional[LoaderActionResult]:
+        return self.process(selection, form_values)

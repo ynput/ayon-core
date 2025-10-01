@@ -7,6 +7,7 @@ from .loader import (
     LoaderActionSelection,
     LoaderActionsContext,
     SelectionEntitiesCache,
+    LoaderSimpleActionPlugin,
 )
 
 from .launcher import (
@@ -37,6 +38,7 @@ __all__ = (
     "LoaderActionSelection",
     "LoaderActionsContext",
     "SelectionEntitiesCache",
+    "LoaderSimpleActionPlugin",
 
     "LauncherAction",
     "LauncherActionSelection",
