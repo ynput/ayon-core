@@ -76,8 +76,8 @@ class CopyFileActionPlugin(LoaderActionPlugin):
     ) -> Optional[LoaderActionResult]:
         from qtpy import QtWidgets, QtCore
 
-        repre_ids = data["representation_ids"]
-        repre = next(iter(selection.entities.get_representations(repre_ids)))
+        repre_id = next(iter(data["representation_ids"]))
+        repre = next(iter(selection.entities.get_representations({repre_id})))
         path = get_representation_path_with_anatomy(
             repre, selection.get_project_anatomy()
         )
