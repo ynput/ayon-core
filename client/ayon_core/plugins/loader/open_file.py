@@ -52,12 +52,12 @@ class OpenFileAction(LoaderActionPlugin):
         )
         product_ids = {version["productId"] for version in versions}
         products = selection.entities.get_products(product_ids)
-        fitlered_product_ids = {
+        filtered_product_ids = {
             product["id"]
             for product in products
             if product["productType"] in self.product_types
         }
-        if not fitlered_product_ids:
+        if not filtered_product_ids:
             return []
 
         versions_by_product_id = collections.defaultdict(list)
@@ -69,7 +69,7 @@ class OpenFileAction(LoaderActionPlugin):
             repres_by_version_ids[repre["versionId"]].append(repre)
 
         filtered_repres = []
-        for product_id in fitlered_product_ids:
+        for product_id in filtered_product_ids:
             for version in versions_by_product_id[product_id]:
                 for repre in repres_by_version_ids[version["id"]]:
                     filtered_repres.append(repre)
