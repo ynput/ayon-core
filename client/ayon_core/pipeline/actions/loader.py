@@ -912,7 +912,6 @@ class LoaderSimpleActionPlugin(LoaderActionPlugin):
 
     def execute_action(
         self,
-        identifier: str,
         selection: LoaderActionSelection,
         data: Optional[DataType],
         form_values: dict[str, Any],
