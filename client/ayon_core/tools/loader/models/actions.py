@@ -122,7 +122,6 @@ class LoaderActionsModel:
 
     def trigger_action_item(
         self,
-        plugin_identifier: str,
         identifier: str,
         project_name: str,
         selected_ids: set[str],
@@ -140,8 +139,7 @@ class LoaderActionsModel:
             happened.
 
         Args:
-            plugin_identifier (str): Plugin identifier.
-            identifier (str): Action identifier.
+            identifier (str): Plugin identifier.
             project_name (str): Project name.
             selected_ids (set[str]): Selected entity ids.
             selected_entity_type (str): Selected entity type.
@@ -151,7 +149,6 @@ class LoaderActionsModel:
 
         """
         event_data = {
-            "plugin_identifier": plugin_identifier,
             "identifier": identifier,
             "project_name": project_name,
             "selected_ids": list(selected_ids),
@@ -164,13 +161,12 @@ class LoaderActionsModel:
             event_data,
             ACTIONS_MODEL_SENDER,
         )
-        if plugin_identifier != LOADER_PLUGIN_ID:
+        if identifier != LOADER_PLUGIN_ID:
             result = None
             crashed = False
             try:
                 result = self._loader_actions.execute_action(
-                    plugin_identifier=plugin_identifier,
-                    action_identifier=identifier,
+                    identifier=identifier,
                     selection=LoaderActionSelection(
                         project_name,
                         selected_ids,
@@ -197,7 +193,7 @@ class LoaderActionsModel:
             return
 
         loader = self._get_loader_by_identifier(
-            project_name, identifier
+            project_name, data["loader"]
         )
         entity_type = data["entity_type"]
         entity_ids = data["entity_ids"]
@@ -342,10 +338,10 @@ class LoaderActionsModel:
             label = f"{label} ({repre_name})"
         return ActionItem(
             LOADER_PLUGIN_ID,
-            get_loader_identifier(loader),
             data={
                 "entity_ids": entity_ids,
                 "entity_type": entity_type,
+                "loader": get_loader_identifier(loader),
             },
             label=label,
             group_label=None,
@@ -804,7 +800,6 @@ class LoaderActionsModel:
         items = []
         for action in self._loader_actions.get_action_items(selection):
             items.append(ActionItem(
-                action.plugin_identifier,
                 action.identifier,
                 label=action.label,
                 group_label=action.group_label,

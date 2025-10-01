@@ -438,7 +438,6 @@ class ProductsWidget(QtWidgets.QWidget):
             return
 
         self._controller.trigger_action_item(
-            plugin_identifier=action_item.plugin_identifier,
             identifier=action_item.identifier,
             project_name=project_name,
             selected_ids=version_ids,

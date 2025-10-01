@@ -80,7 +80,6 @@ class OpenFileAction(LoaderActionPlugin):
 
         return [
             LoaderActionItem(
-                identifier="open-file",
                 label=repre_name,
                 group_label="Open file",
                 order=-10,
@@ -96,7 +95,6 @@ class OpenFileAction(LoaderActionPlugin):
 
     def execute_action(
         self,
-        identifier: str,
         selection: LoaderActionSelection,
         data: dict[str, Any],
         form_values: dict[str, Any],

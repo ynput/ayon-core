@@ -584,7 +584,6 @@ class LoaderWindow(QtWidgets.QWidget):
 
         form_values = dialog.get_values()
         self._controller.trigger_action_item(
-            plugin_identifier=event["plugin_identifier"],
             identifier=event["identifier"],
             project_name=event["project_name"],
             selected_ids=event["selected_ids"],
