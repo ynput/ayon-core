@@ -20,8 +20,7 @@ from ayon_core.pipeline.load import get_representation_path_with_anatomy
 from ayon_core.tools.utils import show_message_dialog
 
 from ayon_core.pipeline.actions import (
-    LoaderActionPlugin,
-    LoaderActionItem,
+    LoaderSimpleActionPlugin,
     LoaderActionSelection,
     LoaderActionResult,
 )
@@ -37,47 +36,33 @@ def _import_otio():
         OTIO = opentimelineio
 
 
-class ExportOTIO(LoaderActionPlugin):
+class ExportOTIO(LoaderSimpleActionPlugin):
     identifier = "core.export-otio"
+    label = "Export OTIO"
+    group_label = None
+    order = 35
+    icon = {
+        "type": "material-symbols",
+        "name": "save",
+        "color": "#d8d8d8",
+    }
 
-    def get_action_items(
+    def is_compatible(
         self, selection: LoaderActionSelection
-    ) -> list[LoaderActionItem]:
+    ) -> bool:
         # Don't show in hosts
         if self.host_name is not None:
-            return []
+            return False
 
-        version_ids = set()
-        if selection.selected_type == "version":
-            version_ids = set(selection.selected_ids)
+        return selection.versions_selected()
 
-        output = []
-        if version_ids:
-            output.append(
-                LoaderActionItem(
-                    identifier="copy-path",
-                    label="Export OTIO",
-                    group_label=None,
-                    order=35,
-                    data={"version_ids": list(version_ids)},
-                    icon={
-                        "type": "material-symbols",
-                        "name": "save",
-                        "color": "#d8d8d8",
-                    }
-                )
-            )
-        return output
-
-    def execute_action(
+    def process(
         self,
-        identifier: str,
         selection: LoaderActionSelection,
-        data: dict[str, Any],
         form_values: dict[str, Any],
     ) -> Optional[LoaderActionResult]:
         _import_otio()
-        version_ids = data["version_ids"]
+        version_ids = set(selection.selected_ids)
 
         versions_by_id = {
             version["id"]: version
