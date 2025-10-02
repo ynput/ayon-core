@@ -752,12 +752,18 @@ def get_representation_path(representation, root=None):
 
     """
     if root is None:
-        from ayon_core.pipeline import get_current_project_name, Anatomy
+        try:
+            from ayon_core.pipeline import get_current_project_name, Anatomy
 
-        anatomy = Anatomy(get_current_project_name())
-        return get_representation_path_with_anatomy(
-            representation, anatomy
-        )
+            anatomy = Anatomy(get_current_project_name())
+            return get_representation_path_with_anatomy(
+                representation, anatomy
+            )
+        except Exception:
+            # fall back to registered_root if anatomy path fails
+            # for OpenPype compatibility
+            from ayon_core.pipeline import registered_root
+            root = registered_root()
 
     def path_from_representation():
         try:
