@@ -636,6 +636,37 @@ def _fix_representation_context_compatibility(repre_context):
     udim = repre_context.get("udim")
     if isinstance(udim, list):
         repre_context["udim"] = udim[0]
+        
+    # convert OpenPype subset to Ayon product
+    old_product = repre_context.get("subset")
+    new_product = repre_context.get("product")
+    if old_product is not None and new_product is None:
+        repre_context["product"] = {
+            "name": repre_context.get("subset"),
+            "type": repre_context.get("family"),
+        }
+
+    # convert OpenPype asset to Ayon folder
+    old_folder = repre_context.get("asset")
+    new_folder = repre_context.get("folder")
+    if old_folder is not None and new_folder is None:
+        hierarchy = repre_context.get("hierarchy")
+        asset = repre_context.get("asset")
+        parents = []
+        path = ""
+        type = "Shot"
+        if hierarchy is not None:
+            hierarchy = hierarchy.strip("/")
+            parents = hierarchy.split("/")
+            path = f"/{hierarchy}/{asset}"
+            if "asset" in hierarchy.lower():
+                type = "Asset"
+        repre_context["folder"] = {
+            "name": asset,
+            "parents": parents,
+            "path": path,
+            "type": type
+        }
 
 
 def get_representation_path_from_context(context):
