@@ -1,6 +1,8 @@
+from .structures import (
+    ActionForm,
+)
 from .loader import (
     LoaderSelectedType,
-    LoaderActionForm,
     LoaderActionResult,
     LoaderActionItem,
     LoaderActionPlugin,
@@ -30,8 +32,9 @@ from .inventory import (
 
 
 __all__ = (
+    "ActionForm",
+
     "LoaderSelectedType",
-    "LoaderActionForm",
     "LoaderActionResult",
     "LoaderActionItem",
     "LoaderActionPlugin",

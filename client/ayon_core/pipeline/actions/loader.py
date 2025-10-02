@@ -22,7 +22,7 @@ The action is triggered by calling the 'execute_action' method. Which takes
     item and form values from the form if any.
 
 Using 'LoaderActionResult' as the output of 'execute_action' can trigger to
-    show a message in UI or to show an additional form ('LoaderActionForm')
+    show a message in UI or to show an additional form ('ActionForm')
     which would retrigger the action with the values from the form on
     submitting. That allows handling of multistep actions.
 
@@ -71,16 +71,13 @@ import ayon_api
 
 from ayon_core import AYON_CORE_ROOT
 from ayon_core.lib import StrEnum, Logger
-from ayon_core.lib.attribute_definitions import (
-    AbstractAttrDef,
-    serialize_attr_defs,
-    deserialize_attr_defs,
-)
 from ayon_core.host import AbstractHost
 from ayon_core.addon import AddonsManager, IPluginPaths
 from ayon_core.settings import get_studio_settings, get_project_settings
 from ayon_core.pipeline import Anatomy
 from ayon_core.pipeline.plugin_discover import discover_plugins
+
+from .structures import ActionForm
 
 if typing.TYPE_CHECKING:
     from typing import Union
@@ -514,58 +511,6 @@ class LoaderActionItem:
 
 
 @dataclass
-class LoaderActionForm:
-    """Form for loader action.
-
-    If an action needs to collect information from a user before or during of
-        the action execution, it can return a response with a form. When the
-        form is submitted, a new execution of the action is triggered.
-
-    It is also possible to just show a label message without the submit
-        button to make sure the user has seen the message.
-
-    Attributes:
-        title (str): Title of the form -> title of the window.
-        fields (list[AbstractAttrDef]): Fields of the form.
-        submit_label (Optional[str]): Label of the submit button. Is hidden
-            if is set to None.
-        submit_icon (Optional[dict[str, Any]]): Icon definition of the submit
-            button.
-        cancel_label (Optional[str]): Label of the cancel button. Is hidden
-            if is set to None. User can still close the window tho.
-        cancel_icon (Optional[dict[str, Any]]): Icon definition of the cancel
-            button.
-
-    """
-    title: str
-    fields: list[AbstractAttrDef]
-    submit_label: Optional[str] = "Submit"
-    submit_icon: Optional[dict[str, Any]] = None
-    cancel_label: Optional[str] = "Cancel"
-    cancel_icon: Optional[dict[str, Any]] = None
-
-    def to_json_data(self) -> dict[str, Any]:
-        fields = self.fields
-        if fields is not None:
-            fields = serialize_attr_defs(fields)
-        return {
-            "title": self.title,
-            "fields": fields,
-            "submit_label": self.submit_label,
-            "submit_icon": self.submit_icon,
-            "cancel_label": self.cancel_label,
-            "cancel_icon": self.cancel_icon,
-        }
-
-    @classmethod
-    def from_json_data(cls, data: dict[str, Any]) -> "LoaderActionForm":
-        fields = data["fields"]
-        if fields is not None:
-            data["fields"] = deserialize_attr_defs(fields)
-        return cls(**data)
-
-
-@dataclass
 class LoaderActionResult:
     """Result of loader action execution.
 
@@ -573,7 +518,7 @@ class LoaderActionResult:
         message (Optional[str]): Message to show in UI.
         success (bool): If the action was successful. Affects color of
             the message.
-        form (Optional[LoaderActionForm]): Form to show in UI.
+        form (Optional[ActionForm]): Form to show in UI.
         form_values (Optional[dict[str, Any]]): Values for the form. Can be
             used if the same form is re-shown e.g. because a user forgot to
             fill a required field.
@@ -581,7 +526,7 @@ class LoaderActionResult:
     """
     message: Optional[str] = None
     success: bool = True
-    form: Optional[LoaderActionForm] = None
+    form: Optional[ActionForm] = None
     form_values: Optional[dict[str, Any]] = None
 
     def to_json_data(self) -> dict[str, Any]:
@@ -599,7 +544,7 @@ class LoaderActionResult:
     def from_json_data(cls, data: dict[str, Any]) -> "LoaderActionResult":
         form = data["form"]
         if form is not None:
-            data["form"] = LoaderActionForm.from_json_data(form)
+            data["form"] = ActionForm.from_json_data(form)
         return LoaderActionResult(**data)
 
 
