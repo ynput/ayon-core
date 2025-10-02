@@ -1563,11 +1563,13 @@ def get_media_mime_type(filepath: str) -> Optional[str]:
     if b'xmlns="http://www.w3.org/2000/svg"' in content:
         return "image/svg+xml"
 
-    # JPEG, JFIF or Exif
-    if (
-        content[0:4] == b"\xff\xd8\xff\xdb"
-        or content[6:10] in (b"JFIF", b"Exif")
-    ):
+    # JPEG
+    # - [0:2] is constant b"\xff\xd8"
+    #   (ref. https://www.file-recovery.com/jpg-signature-format.htm)
+    # - [2:4] Marker identifier b"\xff{?}"
+    #   (ref. https://www.disktuna.com/list-of-jpeg-markers/)
+    # NOTE: File ends with b"\xff\xd9"
+    if content[0:3] == b"\xff\xd8\xff":
         return "image/jpeg"
 
     # Webp
