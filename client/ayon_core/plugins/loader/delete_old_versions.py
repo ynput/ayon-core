@@ -18,12 +18,12 @@ from ayon_core.lib import (
 )
 from ayon_core.pipeline import Anatomy
 from ayon_core.pipeline.actions import (
+    ActionForm,
     LoaderSelectedType,
     LoaderActionPlugin,
     LoaderActionItem,
     LoaderActionSelection,
     LoaderActionResult,
-    LoaderActionForm,
 )
 
 
@@ -160,7 +160,7 @@ class DeleteOldVersions(LoaderActionPlugin):
         }
         form_values["step"] = "prepare-data"
         return LoaderActionResult(
-            form=LoaderActionForm(
+            form=ActionForm(
                 title="Delete Old Versions",
                 fields=fields,
             ),
@@ -243,7 +243,7 @@ class DeleteOldVersions(LoaderActionPlugin):
             return LoaderActionResult(
                 message="Calculated size",
                 success=True,
-                form=LoaderActionForm(
+                form=ActionForm(
                     title="Calculated versions size",
                     fields=[
                         UILabelDef(
@@ -341,7 +341,7 @@ class DeleteOldVersions(LoaderActionPlugin):
         repre_ids_by_version_id: dict[str, list[str]],
         filepaths_by_repre_id: dict[str, list[str]],
         repeated: bool = False,
-    ) -> tuple[LoaderActionForm, dict[str, Any]]:
+    ) -> tuple[ActionForm, dict[str, Any]]:
         versions_len = len(repre_ids_by_version_id)
         fields = [
             UILabelDef(
@@ -375,7 +375,7 @@ class DeleteOldVersions(LoaderActionPlugin):
             )
         ])
 
-        form = LoaderActionForm(
+        form = ActionForm(
             title="Delete versions",
             submit_label="Delete",
             cancel_label="Close",
