@@ -1519,11 +1519,23 @@ def get_media_mime_type(filepath: str) -> Optional[str]:
         Optional[str]: Mime type or None if is unknown mime type.
 
     """
+    try:
+        from ayon_api.utils import (
+            get_media_mime_type_for_content as _ayon_api_func
+        )
+    except ImportError:
+        _ayon_api_func = None
+
     if not filepath or not os.path.exists(filepath):
         return None
 
     with open(filepath, "rb") as stream:
         content = stream.read()
+
+    if _ayon_api_func is not None:
+        mime_type = _ayon_api_func(content)
+        if mime_type is not None:
+            return mime_type
 
     content_len = len(content)
     # Pre-validation (largest definition check)
