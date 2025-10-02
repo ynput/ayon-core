@@ -1519,6 +1519,9 @@ def get_media_mime_type(filepath: str) -> Optional[str]:
         Optional[str]: Mime type or None if is unknown mime type.
 
     """
+    # The implementation is identical or better with ayon_api >=1.1.0,
+    #   which is used in AYON launcher >=1.3.0.
+    # NOTE Remove safe import when AYON launcher >=1.2.0.
     try:
         from ayon_api.utils import (
             get_media_mime_type_for_content as _ayon_api_func
