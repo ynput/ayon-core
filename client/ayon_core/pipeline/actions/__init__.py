@@ -1,6 +1,9 @@
 from .structures import (
     ActionForm,
 )
+from .utils import (
+    webaction_fields_to_attribute_defs,
+)
 from .loader import (
     LoaderSelectedType,
     LoaderActionResult,
@@ -33,6 +36,7 @@ from .inventory import (
 
 __all__ = (
     "ActionForm",
+    "webaction_fields_to_attribute_defs",
 
     "LoaderSelectedType",
     "LoaderActionResult",
