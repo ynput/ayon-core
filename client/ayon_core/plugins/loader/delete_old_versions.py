@@ -42,12 +42,7 @@ class DeleteOldVersions(LoaderActionPlugin):
         if self.host_name is not None:
             return []
 
-        versions = None
-        if selection.selected_type == LoaderSelectedType.version:
-            versions = selection.entities.get_versions(
-                selection.selected_ids
-            )
-
+        versions = selection.get_selected_version_entities()
         if not versions:
             return []
 
