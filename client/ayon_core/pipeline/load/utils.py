@@ -651,7 +651,7 @@ def get_representation_path_from_context(context):
         project_name = project_entity["name"]
     else:
         project_name = get_current_project_name()
-    return _get_representation_path(
+    return get_representation_path(
         project_name,
         representation,
         project_entity=project_entity,
@@ -724,7 +724,60 @@ def get_representation_path_with_roots(
     return path.normalized()
 
 
-def _get_representation_path(
+def _get_representation_path_decorator(func):
+    @wraps(func)
+    def inner(*args, **kwargs):
+        from ayon_core.pipeline import get_current_project_name
+
+        # Decide which variant of the function based on passed arguments
+        #   will be used.
+        if args:
+            arg_1 = args[0]
+            if isinstance(arg_1, str):
+                return func(*args, **kwargs)
+
+        elif "project_name" in kwargs:
+            return func(*args, **kwargs)
+
+        warnings.warn(
+            (
+                "Used deprecated variant of 'get_representation_path'."
+                " Please change used arguments signature to follow"
+                " new definition."
+            ),
+            DeprecationWarning,
+            stacklevel=2,
+        )
+
+        # Find out which arguments were passed
+        if args:
+            representation = args[0]
+        else:
+            representation = kwargs.get("representation")
+
+        if len(args) > 1:
+            roots = args[1]
+        else:
+            roots = kwargs.get("root")
+
+        if roots is not None:
+            return get_representation_path_with_roots(
+                representation, roots
+            )
+
+        project_name = (
+            representation["context"].get("project", {}).get("name")
+        )
+        if project_name is None:
+            project_name = get_current_project_name()
+
+        return func(project_name, representation)
+
+    return inner
+
+
+@_get_representation_path_decorator
+def get_representation_path(
     project_name: str,
     repre_entity: dict[str, Any],
     *,
@@ -743,7 +796,7 @@ def _get_representation_path(
     Returns:
         TemplateResult: Resolved path to representation.
 
-     Raises:
+    Raises:
         InvalidRepresentationContext: When representation data are probably
             invalid or not available.
 
@@ -776,91 +829,6 @@ def _get_representation_path(
     return path.normalized()
 
 
-def _get_representation_path_decorator(func):
-    @wraps(_get_representation_path)
-    def inner(*args, **kwargs):
-        from ayon_core.pipeline import get_current_project_name
-
-        # Decide which variant of the function based on passed arguments
-        #   will be used.
-        if args:
-            arg_1 = args[0]
-            if isinstance(arg_1, str):
-                return _get_representation_path(*args, **kwargs)
-
-        elif "project_name" in kwargs:
-            return _get_representation_path(*args, **kwargs)
-
-        warnings.warn(
-            (
-                "Used deprecated variant of 'get_representation_path'."
-                " Please change used arguments signature to follow"
-                " new definiton."
-            ),
-            DeprecationWarning,
-            stacklevel=2,
-        )
-
-        # Find out which arguments were passed
-        if args:
-            representation = args[0]
-        else:
-            representation = kwargs.get("representation")
-
-        if len(args) > 1:
-            roots = args[1]
-        else:
-            roots = kwargs.get("root")
-
-        if roots is not None:
-            return get_representation_path_with_roots(
-                representation, roots
-            )
-
-        project_name = (
-            representation["context"].get("project", {}).get("name")
-        )
-        if project_name is None:
-            project_name = get_current_project_name()
-
-        return _get_representation_path(project_name, representation)
-
-    return inner
-
-
-@_get_representation_path_decorator
-def get_representation_path(
-    project_name: str,
-    repre_entity: dict[str, Any],
-    *,
-    anatomy: Optional[Anatomy] = None,
-    project_entity: Optional[dict[str, Any]] = None,
-) -> TemplateResult:
-    """Get filled representation path.
-
-    Args:
-        project_name (str): Project name.
-        repre_entity (dict[str, Any]): Representation entity.
-        anatomy (Optional[Anatomy]): Project anatomy.
-        project_entity (Optional[dict[str, Any]): Project entity. Is used to
-            initialize Anatomy and is not needed if 'anatomy' is passed in.
-
-    Returns:
-        TemplateResult: Resolved path to representation.
-
-     Raises:
-        InvalidRepresentationContext: When representation data are probably
-            invalid or not available.
-
-    """
-    return _get_representation_path(
-        project_name,
-        repre_entity,
-        anatomy=anatomy,
-        project_entity=project_entity,
-    )
-
-
 def get_representation_path_by_names(
     project_name: str,
     folder_path: str,
@@ -887,7 +855,7 @@ def get_representation_path_by_names(
     if not representation:
         return None
 
-    return _get_representation_path(
+    return get_representation_path(
         project_name,
         representation,
         anatomy=anatomy,
