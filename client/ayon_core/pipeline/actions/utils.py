@@ -1,4 +1,7 @@
+from __future__ import annotations
+
 import uuid
+from typing import Any
 
 from ayon_core.lib.attribute_definitions import (
     AbstractAttrDef,
@@ -11,7 +14,21 @@ from ayon_core.lib.attribute_definitions import (
 )
 
 
-def webaction_fields_to_attribute_defs(fields) -> list[AbstractAttrDef]:
+def webaction_fields_to_attribute_defs(
+    fields: list[dict[str, Any]]
+) -> list[AbstractAttrDef]:
+    """Helper function to convert fields definition from webactions form.
+
+    Convert form fields to attribute definitions to be able to display them
+        using attribute definitions.
+
+    Args:
+        fields (list[dict[str, Any]]): Fields from webaction form.
+
+    Returns:
+        list[AbstractAttrDef]: Converted attribute definitions.
+
+    """
     attr_defs = []
     for field in fields:
         field_type = field["type"]
