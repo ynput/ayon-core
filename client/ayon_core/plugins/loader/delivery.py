@@ -15,7 +15,6 @@ from ayon_core.pipeline import Anatomy
 from ayon_core.pipeline.actions import (
     LoaderSimpleActionPlugin,
     LoaderActionSelection,
-    LoaderActionItem,
     LoaderActionResult,
 )
 from ayon_core.pipeline.load import get_representation_path_with_anatomy
