@@ -146,8 +146,6 @@ def get_product_name(
         default_template=default_template,
         project_settings=project_settings
     )
-    # Simple check of task name existence for template with {task} in
-    #   - missing task should be possible only in Standalone publisher
     if task_name and not task_entity:
         warnings.warn(
             "Used deprecated 'task' argument. Please use"
@@ -161,6 +159,7 @@ def get_product_name(
         task_type = task_entity["taskType"]
 
     template_low = template.lower()
+    # Simple check of task name existence for template with {task[name]} in
     if not task_name and "{task" in template_low:
         raise TaskNotSetError()
 
