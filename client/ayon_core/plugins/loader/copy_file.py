@@ -39,12 +39,15 @@ class CopyFileActionPlugin(LoaderActionPlugin):
             repre_ids_by_name[repre["name"]].add(repre["id"])
 
         for repre_name, repre_ids in repre_ids_by_name.items():
+            repre_id = next(iter(repre_ids), None)
+            if not repre_id:
+                continue
             output.append(
                 LoaderActionItem(
                     label=repre_name,
                     group_label="Copy file path",
                     data={
-                        "representation_ids": list(repre_ids),
+                        "representation_id": repre_id,
                         "action": "copy-path",
                     },
                     icon={
@@ -59,7 +62,7 @@ class CopyFileActionPlugin(LoaderActionPlugin):
                     label=repre_name,
                     group_label="Copy file",
                     data={
-                        "representation_ids": list(repre_ids),
+                        "representation_id": repre_id,
                         "action": "copy-file",
                     },
                     icon={
@@ -80,7 +83,7 @@ class CopyFileActionPlugin(LoaderActionPlugin):
         from qtpy import QtWidgets, QtCore
 
         action = data["action"]
-        repre_id = next(iter(data["representation_ids"]))
+        repre_id = data["representation_id"]
         repre = next(iter(selection.entities.get_representations({repre_id})))
         path = get_representation_path_with_anatomy(
             repre, selection.get_project_anatomy()
