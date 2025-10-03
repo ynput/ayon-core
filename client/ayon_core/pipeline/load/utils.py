@@ -833,7 +833,7 @@ def get_representation_path_by_names(
     project_name: str,
     folder_path: str,
     product_name: str,
-    version_name: str,
+    version_name: Union[int, str],
     representation_name: str,
     anatomy: Optional[Anatomy] = None
 ) -> Optional[TemplateResult]:
