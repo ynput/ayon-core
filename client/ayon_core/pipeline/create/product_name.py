@@ -39,10 +39,10 @@ def get_product_name_template(
         host_name (str): Name of host in which the product name is calculated.
         task_name (str): Name of task in which context the product is created.
         task_type (str): Type of task in which context the product is created.
-        default_template (Union[str, None]): Default template which is used if
+        default_template (Optional[str]): Default template which is used if
             settings won't find any matching possibility. Constant
             'DEFAULT_PRODUCT_TEMPLATE' is used if not defined.
-        project_settings (Union[Dict[str, Any], None]): Prepared settings for
+        project_settings (Optional[dict[str, Any]]): Prepared settings for
             project. Settings are queried if not passed.
     """
 
@@ -237,22 +237,22 @@ def get_product_name(
 
     Args:
         project_name (str): Project name.
-        folder_entity (Optional[Dict[str, Any]]): Folder entity.
-        task_entity (Optional[Dict[str, Any]]): Task entity.
+        folder_entity (Optional[dict[str, Any]]): Folder entity.
+        task_entity (Optional[dict[str, Any]]): Task entity.
         host_name (str): Host name.
         product_type (str): Product type.
         variant (str): In most of the cases it is user input during creation.
         default_template (Optional[str]): Default template if any profile does
             not match passed context. Constant 'DEFAULT_PRODUCT_TEMPLATE'
             is used if is not passed.
-        dynamic_data (Optional[Dict[str, Any]]): Dynamic data specific for
+        dynamic_data (Optional[dict[str, Any]]): Dynamic data specific for
             a creator which creates instance.
-        project_settings (Optional[Union[Dict[str, Any]]]): Prepared settings
+        project_settings (Optional[dict[str, Any]]): Prepared settings
             for project. Settings are queried if not passed.
         product_type_filter (Optional[str]): Use different product type for
             product template filtering. Value of `product_type` is used when
             not passed.
-        project_entity (Optional[Dict[str, Any]]): Project entity used when
+        project_entity (Optional[dict[str, Any]]): Project entity used when
             task short name is required by template.
 
     Returns:
