@@ -166,7 +166,48 @@ def _get_product_name_old(
         )
 
 
-def _get_product_name(
+def _get_product_name_decorator(func):
+    """Helper to decide which variant of 'get_product_name' to use.
+
+    The old version expected 'task_name' and 'task_type' arguments. The new
+        version expects 'folder_entity' and 'task_entity' arguments instead.
+    """
+    # Add attribute to function to identify it as the new function
+    #   so other addons can easily identify it.
+    # >>> geattr(get_product_name, "use_entities", False)
+    func.use_entities = True
+
+    @wraps(func)
+    def inner(*args, **kwargs):
+        # ---
+        # Decide which variant of the function is used based on
+        #   passed arguments.
+        # ---
+
+        # Entities in key-word arguments mean that the new function is used
+        if "folder_entity" in kwargs or "task_entity" in kwargs:
+            return func(*args, **kwargs)
+
+        # Using more than 6 positional arguments is not allowed
+        #   in the new function
+        if len(args) > 6:
+            return _get_product_name_old(*args, **kwargs)
+
+        if len(args) > 1:
+            arg_2 = args[1]
+            # The second argument is a string -> task name
+            if isinstance(arg_2, str):
+                return _get_product_name_old(*args, **kwargs)
+
+        if is_func_signature_supported(func, *args, **kwargs):
+            return func(*args, **kwargs)
+        return _get_product_name_old(*args, **kwargs)
+
+    return inner
+
+
+@_get_product_name_decorator
+def get_product_name(
     project_name: str,
     folder_entity: dict[str, Any],
     task_entity: Optional[dict[str, Any]],
@@ -179,20 +220,50 @@ def _get_product_name(
     project_settings: Optional[dict[str, Any]] = None,
     product_type_filter: Optional[str] = None,
     project_entity: Optional[dict[str, Any]] = None,
-    # Ignore unused kwargs passed to 'get_product_name'
-    task_name: Optional[str] = None,
-    task_type: Optional[str] = None,
 ) -> TemplateResult:
-    """Future replacement of 'get_product_name' function."""
-    # Future warning when 'task_name' and 'task_type' are deprecated
-    # if task_name is None:
-    #     warnings.warn(
-    #         "Still using deprecated 'task_name' argument. Please use"
-    #         " 'task_entity' only.",
-    #         DeprecationWarning,
-    #         stacklevel=2
-    #     )
+    """Calculate product name based on passed context and AYON settings.
 
+    Subst name templates are defined in `project_settings/global/tools/creator
+    /product_name_profiles` where are profiles with host name, product type,
+    task name and task type filters. If context does not match any profile
+    then `DEFAULT_PRODUCT_TEMPLATE` is used as default template.
+
+    That's main reason why so many arguments are required to calculate product
+    name.
+
+    Todos:
+        Find better filtering options to avoid requirement of
+            argument 'family_filter'.
+
+    Args:
+        project_name (str): Project name.
+        folder_entity (Optional[Dict[str, Any]]): Folder entity.
+        task_entity (Optional[Dict[str, Any]]): Task entity.
+        host_name (str): Host name.
+        product_type (str): Product type.
+        variant (str): In most of the cases it is user input during creation.
+        default_template (Optional[str]): Default template if any profile does
+            not match passed context. Constant 'DEFAULT_PRODUCT_TEMPLATE'
+            is used if is not passed.
+        dynamic_data (Optional[Dict[str, Any]]): Dynamic data specific for
+            a creator which creates instance.
+        project_settings (Optional[Union[Dict[str, Any]]]): Prepared settings
+            for project. Settings are queried if not passed.
+        product_type_filter (Optional[str]): Use different product type for
+            product template filtering. Value of `product_type` is used when
+            not passed.
+        project_entity (Optional[Dict[str, Any]]): Project entity used when
+            task short name is required by template.
+
+    Returns:
+        TemplateResult: Product name.
+
+    Raises:
+        TaskNotSetError: If template requires task which is not provided.
+        TemplateFillError: If filled template contains placeholder key which
+            is not collected.
+
+    """
     if not product_type:
         return StringTemplate("").format({})
 
@@ -269,115 +340,3 @@ def _get_product_name(
             f"Value for {exp} key is missing in template '{template}'."
             f" Available values are {fill_pairs}"
         )
-
-
-def _get_product_name_decorator(func):
-    """Helper to decide which variant of 'get_product_name' to use.
-
-    The old version expected 'task_name' and 'task_type' arguments. The new
-        version expects 'folder_entity' and 'task_entity' arguments instead.
-    """
-    # Add attribute to function to identify it as the new function
-    #   so other addons can easily identify it.
-    # >>> geattr(get_product_name, "use_entities", False)
-    func.use_entities = True
-
-    @wraps(_get_product_name)
-    def inner(*args, **kwargs):
-        # ---
-        # Decide which variant of the function is used based on
-        #   passed arguments.
-        # ---
-
-        # Entities in key-word arguments mean that the new function is used
-        if "folder_entity" in kwargs or "task_entity" in kwargs:
-            return func(*args, **kwargs)
-
-        # Using more than 6 positional arguments is not allowed
-        #   in the new function
-        if len(args) > 6:
-            return func(*args, **kwargs)
-
-        if len(args) > 1:
-            arg_2 = args[1]
-            # Second argument is dictionary -> folder entity
-            if isinstance(arg_2, dict):
-                return func(*args, **kwargs)
-
-        if is_func_signature_supported(func, *args, **kwargs):
-            return func(*args, **kwargs)
-        return _get_product_name_old(*args, **kwargs)
-
-    return inner
-
-
-def get_product_name(
-    project_name: str,
-    folder_entity: dict[str, Any],
-    task_entity: Optional[dict[str, Any]],
-    host_name: str,
-    product_type: str,
-    variant: str,
-    *,
-    default_template: Optional[str] = None,
-    dynamic_data: Optional[dict[str, Any]] = None,
-    project_settings: Optional[dict[str, Any]] = None,
-    product_type_filter: Optional[str] = None,
-    project_entity: Optional[dict[str, Any]] = None,
-) -> TemplateResult:
-    """Calculate product name based on passed context and AYON settings.
-
-    Subst name templates are defined in `project_settings/global/tools/creator
-    /product_name_profiles` where are profiles with host name, product type,
-    task name and task type filters. If context does not match any profile
-    then `DEFAULT_PRODUCT_TEMPLATE` is used as default template.
-
-    That's main reason why so many arguments are required to calculate product
-    name.
-
-    Todos:
-        Find better filtering options to avoid requirement of
-            argument 'family_filter'.
-
-    Args:
-        project_name (str): Project name.
-        folder_entity (Optional[Dict[str, Any]]): Folder entity.
-        task_entity (Optional[Dict[str, Any]]): Task entity.
-        host_name (str): Host name.
-        product_type (str): Product type.
-        variant (str): In most of the cases it is user input during creation.
-        default_template (Optional[str]): Default template if any profile does
-            not match passed context. Constant 'DEFAULT_PRODUCT_TEMPLATE'
-            is used if is not passed.
-        dynamic_data (Optional[Dict[str, Any]]): Dynamic data specific for
-            a creator which creates instance.
-        project_settings (Optional[Union[Dict[str, Any]]]): Prepared settings
-            for project. Settings are queried if not passed.
-        product_type_filter (Optional[str]): Use different product type for
-            product template filtering. Value of `product_type` is used when
-            not passed.
-        project_entity (Optional[Dict[str, Any]]): Project entity used when
-            task short name is required by template.
-
-    Returns:
-        TemplateResult: Product name.
-
-    Raises:
-        TaskNotSetError: If template requires task which is not provided.
-        TemplateFillError: If filled template contains placeholder key which
-            is not collected.
-
-    """
-    return _get_product_name(
-        project_name,
-        folder_entity,
-        task_entity,
-        host_name,
-        product_type,
-        variant,
-        default_template=default_template,
-        dynamic_data=dynamic_data,
-        project_settings=project_settings,
-        product_type_filter=product_type_filter,
-        project_entity=project_entity,
-    )
