@@ -1,13 +1,18 @@
+import warnings
+
 import ayon_api
 from ayon_core.lib import (
     StringTemplate,
     filter_profiles,
     prepare_template_data,
+    Logger,
 )
 from ayon_core.settings import get_project_settings
 
 from .constants import DEFAULT_PRODUCT_TEMPLATE
 from .exceptions import TaskNotSetError, TemplateFillError
+
+log = Logger.get_logger(__name__)
 
 
 def get_product_name_template(
@@ -81,6 +86,8 @@ def get_product_name(
     project_settings=None,
     product_type_filter=None,
     project_entity=None,
+    folder_entity=None,
+    task_entity=None,
 ):
     """Calculate product name based on passed context and AYON settings.
 
@@ -98,8 +105,8 @@ def get_product_name(
 
     Args:
         project_name (str): Project name.
-        task_name (Union[str, None]): Task name.
-        task_type (Union[str, None]): Task type.
+        task_name (Union[str, None]): Task name. Deprecated use 'task_entity'.
+        task_type (Union[str, None]): Task type. Deprecated use 'task_entity'.
         host_name (str): Host name.
         product_type (str): Product type.
         variant (str): In most of the cases it is user input during creation.
@@ -115,6 +122,8 @@ def get_product_name(
             not passed.
         project_entity (Optional[Dict[str, Any]]): Project entity used when
             task short name is required by template.
+        folder_entity (Optional[Dict[str, Any]]): Folder entity.
+        task_entity (Optional[Dict[str, Any]]): Task entity.
 
     Returns:
         str: Product name.
@@ -139,17 +148,36 @@ def get_product_name(
     )
     # Simple check of task name existence for template with {task} in
     #   - missing task should be possible only in Standalone publisher
-    if not task_name and "{task" in template.lower():
+    if task_name and not task_entity:
+        warnings.warn(
+            "Used deprecated 'task' argument. Please use"
+            " 'task_entity' instead.",
+            DeprecationWarning,
+            stacklevel=2
+        )
+
+    if task_entity:
+        task_name = task_entity["name"]
+        task_type = task_entity["taskType"]
+
+    template_low = template.lower()
+    if not task_name and "{task" in template_low:
         raise TaskNotSetError()
 
     task_value = {
         "name": task_name,
         "type": task_type,
     }
-    if "{task}" in template.lower():
+    if "{task}" in template_low:
         task_value = task_name
+        # NOTE this is message for TDs and Admins -> not really for users
+        # TODO validate this in settings and not allow it
+        log.warning(
+            "Found deprecated task key '{task}' in product name template."
+            " Please use '{task[name]}' instead."
+        )
 
-    elif "{task[short]}" in template.lower():
+    elif "{task[short]}" in template_low:
         if project_entity is None:
             project_entity = ayon_api.get_project(project_name)
         task_types_by_name = {
@@ -167,6 +195,12 @@ def get_product_name(
             "type": product_type
         }
     }
+    if folder_entity:
+        fill_pairs["folder"] = {
+            "name": folder_entity["name"],
+            "type": folder_entity["folderType"],
+        }
+
     if dynamic_data:
         # Dynamic data may override default values
         for key, value in dynamic_data.items():
