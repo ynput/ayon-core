@@ -277,6 +277,11 @@ def _get_product_name_decorator(func):
     The old version expected 'task_name' and 'task_type' arguments. The new
         version expects 'folder_entity' and 'task_entity' arguments instead.
     """
+    # Add attribute to function to identify it as the new function
+    #   so other addons can easily identify it.
+    # >>> geattr(get_product_name, "use_entities", False)
+    func.use_entities = True
+
     @wraps(_get_product_name)
     def inner(*args, **kwargs):
         # ---
