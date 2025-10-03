@@ -13,7 +13,7 @@ from ayon_core.lib import (
 )
 from ayon_core.pipeline import Anatomy
 from ayon_core.pipeline.actions import (
-    LoaderActionPlugin,
+    LoaderSimpleActionPlugin,
     LoaderActionSelection,
     LoaderActionItem,
     LoaderActionResult,
@@ -27,15 +27,33 @@ from ayon_core.pipeline.delivery import (
 )
 
 
-class DeliveryAction(LoaderActionPlugin):
+class DeliveryAction(LoaderSimpleActionPlugin):
     identifier = "core.delivery"
+    label = "Deliver Versions"
+    order = 35
+    icon = {
+        "type": "material-symbols",
+        "name": "upload",
+        "color": "#d8d8d8",
+    }
 
-    def get_action_items(
-        self, selection: LoaderActionSelection
-    ) -> list[LoaderActionItem]:
+    def is_compatible(self, selection: LoaderActionSelection) -> bool:
         if self.host_name is not None:
-            return []
+            return False
 
+        if not selection.selected_ids:
+            return False
+
+        return (
+            selection.versions_selected()
+            or selection.representations_selected()
+        )
+
+    def execute_simple_action(
+        self,
+        selection: LoaderActionSelection,
+        form_values: dict[str, Any],
+    ) -> Optional[LoaderActionResult]:
         version_ids = set()
         if selection.selected_type == "representation":
             versions = selection.entities.get_representations_versions(
@@ -47,31 +65,15 @@ class DeliveryAction(LoaderActionPlugin):
             version_ids = set(selection.selected_ids)
 
         if not version_ids:
-            return []
-
-        return [
-            LoaderActionItem(
-                label="Deliver Versions",
-                order=35,
-                data={"version_ids": list(version_ids)},
-                icon={
-                    "type": "material-symbols",
-                    "name": "upload",
-                    "color": "#d8d8d8",
-                }
+            return LoaderActionResult(
+                message="No versions found in your selection",
+                success=False,
             )
-        ]
 
-    def execute_action(
-        self,
-        selection: LoaderActionSelection,
-        data: dict[str, Any],
-        form_values: dict[str, Any],
-    ) -> Optional[LoaderActionResult]:
         try:
             # TODO run the tool in subprocess
             dialog = DeliveryOptionsDialog(
-                selection.project_name, data["version_ids"], self.log
+                selection.project_name, version_ids, self.log
             )
             dialog.exec_()
         except Exception:
