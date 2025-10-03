@@ -19,7 +19,6 @@ from ayon_core.lib import (
 from ayon_core.pipeline import Anatomy
 from ayon_core.pipeline.actions import (
     ActionForm,
-    LoaderSelectedType,
     LoaderActionPlugin,
     LoaderActionItem,
     LoaderActionSelection,
