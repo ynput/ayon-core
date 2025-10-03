@@ -823,7 +823,7 @@ class LoaderSimpleActionPlugin(LoaderActionPlugin):
         pass
 
     @abstractmethod
-    def process(
+    def execute_simple_action(
         self,
         selection: LoaderActionSelection,
         form_values: dict[str, Any],
@@ -861,4 +861,4 @@ class LoaderSimpleActionPlugin(LoaderActionPlugin):
         data: Optional[DataType],
         form_values: dict[str, Any],
     ) -> Optional[LoaderActionResult]:
-        return self.process(selection, form_values)
+        return self.execute_simple_action(selection, form_values)

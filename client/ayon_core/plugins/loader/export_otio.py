@@ -56,7 +56,7 @@ class ExportOTIO(LoaderSimpleActionPlugin):
 
         return selection.versions_selected()
 
-    def process(
+    def execute_simple_action(
         self,
         selection: LoaderActionSelection,
         form_values: dict[str, Any],
