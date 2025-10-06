@@ -68,6 +68,17 @@ class ContainerItem:
         if scene_data is None:
             scene_data = {}
 
+        self._orig_generic_data = {
+            "container_id": self._container_id,
+            "project_name": self._project_name,
+            "representation_id": self._representation_id,
+            "label": self._label,
+            "namespace": self._namespace,
+            "load_plugin_identifier": self._load_plugin_identifier,
+            "version_locked": self._version_locked,
+            "is_dirty": self._is_dirty,
+            "parent_container_id": self._parent_container_id,
+        }
         self._scene_data = scene_data
         self._origin_scene_data = copy.deepcopy(scene_data)
         self._transient_data = transient_data
@@ -142,11 +153,25 @@ class ContainerItem:
         return self._transient_data
 
     def get_changes(self) -> TrackDictChangesItem:
-        """Calculate and return changes."""
-        return TrackDictChangesItem(
-            self.get_origin_scene_data(),
-            self.get_scene_data()
-        )
+        """Calculate and return changes.
+
+
+        """
+        new_data = {
+            "container_id": self._container_id,
+            "project_name": self._project_name,
+            "representation_id": self._representation_id,
+            "label": self._label,
+            "namespace": self._namespace,
+            "load_plugin_identifier": self._load_plugin_identifier,
+            "version_locked": self._version_locked,
+            "is_dirty": self._is_dirty,
+            "parent_container_id": self._parent_container_id,
+            "scene_data": self.get_scene_data(),
+        }
+        orig_data = copy.deepcopy(self._orig_generic_data)
+        orig_data["scene_data"] = self.get_origin_scene_data()
+        return TrackDictChangesItem(orig_data, new_data)
 
     id: str = property(get_container_id)
     container_id: str = property(get_container_id)
