@@ -9,7 +9,7 @@ import collections
 import numbers
 import copy
 from functools import wraps
-from typing import Optional, Union, Any
+from typing import Optional, Union, Any, overload
 
 import ayon_api
 
@@ -730,6 +730,7 @@ def _get_representation_path_decorator(func):
     # >>> getattr(get_representation_path, "version", None) == 2
     # >>> True
     setattr(func, "version", 2)
+
     @wraps(func)
     def inner(*args, **kwargs):
         from ayon_core.pipeline import get_current_project_name
@@ -779,6 +780,58 @@ def _get_representation_path_decorator(func):
         return func(project_name, representation)
 
     return inner
+
+
+@overload
+def get_representation_path(
+    representation: dict[str, Any],
+    root: Optional[dict[str, Any]] = None,
+) -> TemplateResult:
+    """DEPRECATED Get filled representation path.
+
+    Use 'get_representation_path' using the new function signature.
+
+    Args:
+        representation (dict[str, Any]): Representation entity.
+        root (Optional[dict[str, Any]): Roots to fill the path.
+
+    Returns:
+        TemplateResult: Resolved path to representation.
+
+    Raises:
+        InvalidRepresentationContext: When representation data are probably
+            invalid or not available.
+
+    """
+    pass
+
+
+@overload
+def get_representation_path(
+    project_name: str,
+    repre_entity: dict[str, Any],
+    *,
+    anatomy: Optional[Anatomy] = None,
+    project_entity: Optional[dict[str, Any]] = None,
+) -> TemplateResult:
+    """Get filled representation path.
+
+    Args:
+        project_name (str): Project name.
+        repre_entity (dict[str, Any]): Representation entity.
+        anatomy (Optional[Anatomy]): Project anatomy.
+        project_entity (Optional[dict[str, Any]): Project entity. Is used to
+            initialize Anatomy and is not needed if 'anatomy' is passed in.
+
+    Returns:
+        TemplateResult: Resolved path to representation.
+
+    Raises:
+        InvalidRepresentationContext: When representation data are probably
+            invalid or not available.
+
+    """
+    pass
 
 
 @_get_representation_path_decorator
