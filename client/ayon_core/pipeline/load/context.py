@@ -153,17 +153,20 @@ class LoadContext:
     def __init__(self) -> None:
         self._shared_data = {}
         self._plugins = None
-        self._containers = []
+        self._containers = {}
         self._collect_containers()
 
     def reset(self) -> None:
         self._shared_data = {}
-        self._plugins = {}
-        self._containers = []
+        self._plugins = None
+        self._containers = {}
+
         self._collect_plugins()
         self._collect_containers()
 
     def get_plugins(self) -> dict[str, LoadPlugin]:
+        if self._plugins is None:
+            self._collect_plugins()
         return self._plugins
 
     def get_plugin(self, identifier: str) -> Optional[LoadPlugin]:
@@ -185,7 +188,19 @@ class LoadContext:
             containers (list[ContainerItem]): Containers to add.
 
         """
-        self._containers.extend(containers)
+        for container in containers:
+            if container.id in self._containers:
+                self._log.warning()
+                continue
+            self._containers[container.id] = container
+
+    def get_container_by_id(
+        self, container_id: str
+    ) -> Optional[ContainerItem]:
+        return self._containers.get(container_id)
+
+    def get_containers(self) -> dict[str, ContainerItem]:
+        return self._containers
 
     @property
     def shared_data(self) -> dict[str, Any]:
