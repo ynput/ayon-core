@@ -161,7 +161,16 @@ class LoadContext:
         return self._plugins
 
     def get_plugin(self, identifier: str) -> Optional[LoadPlugin]:
-        return self._plugins.get(identifier)
+        """Get plugin by identifier.
+
+        Args:
+            identifier (str): Plugin identifier.
+
+        Returns:
+            Optional[LoadPlugin]: Load plugin or None if not found.
+
+        """
+        return self._get_plugin_by_identifier(identifier, validate=False)
 
     def add_containers(self, containers: list[ContainerItem]) -> None:
         """Called by load plugins.
@@ -185,9 +194,46 @@ class LoadContext:
         """
         return self._shared_data
 
+    def load_representations(
+        self,
+        identifier: str,
+        representation_contexts: list[RepresentationContext],
+    ) -> list[ContainerItem]:
+        plugin = self._get_plugin_by_identifier(identifier, validate=True)
+        return plugin.load_representations(representation_contexts)
+
+    def change_representations(
+        self,
+        identifier: str,
+        items: list[tuple[ContainerItem, RepresentationContext]],
+    ) -> None:
+        plugin = self._get_plugin_by_identifier(identifier, validate=True)
+        return plugin.change_representations(items)
+
+    def remove_containers(
+        self,
+        identifier: str,
+        containers: list[ContainerItem],
+    ) -> None:
+        plugin = self._get_plugin_by_identifier(identifier, validate=True)
+        return plugin.remove_containers(containers)
+
     def _collect_plugins(self) -> None:
         # TODO implement
         self._plugins = {}
+
+    def _get_plugin_by_identifier(
+        self, identifier: str, validate: bool,
+    ) -> Optional[LoadPlugin]:
+        if self._plugins is None:
+            self._collect_plugins()
+        plugin = self._plugins.get(identifier)
+        if validate and plugin is None:
+            # QUESTION: Use custom exception?
+            raise ValueError(
+                f"Plugin with identifier '{identifier}' not found."
+            )
+        return plugin
 
     def _collect_containers(self) -> None:
         for plugin in sorted(
