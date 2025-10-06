@@ -4,9 +4,7 @@ import copy
 import typing
 from typing import Any, Optional
 
-from ayon_core.lib import TrackDictChangesItem
-
-from .exceptions import ImmutableKeyError
+from ayon_core.lib import TrackDictChangesItem, Logger
 
 if typing.TYPE_CHECKING:
     from .plugins import LoadPlugin
@@ -150,6 +148,16 @@ class ContainerItem:
 
 
 class LoadContext:
+    """Context of logic related to loading.
+
+    To be able to load anything in a DCC using AYON is to have load plugins.
+    Load plugin is responsible for loading representation. To maintain the
+    loaded content it is usually necessary to store some metadata in workfile.
+
+    Loaded content is refered to as a 'container' which is a helper wrapper
+    to manage loaded the content, to be able to switch versions or switch to
+    different representation (png -> exr), or to remove them from the scene.
+    """
     def __init__(self) -> None:
         self._shared_data = {}
         self._plugins = None
@@ -238,6 +246,45 @@ class LoadContext:
     ) -> None:
         plugin = self._get_plugin_by_identifier(identifier, validate=True)
         return plugin.remove_containers(containers)
+
+    def can_switch_container(
+        self,
+        identifier: str,
+        container: ContainerItem,
+    ) -> bool:
+        """Check if container can be switched.
+
+        Args:
+            identifier: Load plugin identifier.
+            container (ContainerItem): Container to check.
+
+        Returns:
+            bool: True if container can be switched, False otherwise.
+
+        """
+        plugin = self._get_plugin_by_identifier(identifier, validate=True)
+        return plugin.can_switch_container(container)
+
+    def switch_containers(
+        self,
+        identifier: str,
+        containers: list[ContainerItem],
+    ) -> list[ContainerItem]:
+        """Switch containers of other load plugins.
+
+        Args:
+            identifier: Load plugin identifier.
+            containers (list[ContainerItem]): Containers to switch.
+
+        Raises:
+            UnsupportedSwitchError: If switching is not supported.
+
+        Returns:
+            list[ContainerItem]: New containers after switching.
+
+        """
+        plugin = self._get_plugin_by_identifier(identifier, validate=True)
+        raise plugin.switch_containers(containers)
 
     def _collect_plugins(self) -> None:
         # TODO implement
