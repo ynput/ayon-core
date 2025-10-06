@@ -725,6 +725,11 @@ def get_representation_path_with_roots(
 
 
 def _get_representation_path_decorator(func):
+    # Add an attribute to the function so addons can check if the new variant
+    #   of the function is available.
+    # >>> getattr(get_representation_path, "version", None) == 2
+    # >>> True
+    setattr(func, "version", 2)
     @wraps(func)
     def inner(*args, **kwargs):
         from ayon_core.pipeline import get_current_project_name
