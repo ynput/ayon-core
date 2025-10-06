@@ -21,124 +21,130 @@ class RepresentationContext:
 
 
 class ContainerItem:
-    __immutable_keys = (
-        "container_id",
-        "project_name",
-        "representation_id",
-        "load_plugin_identifier",
-        "version_locked",
-    )
+    """Container item of loaded content.
 
+    Args:
+        container_id (str): Unique container id.
+        project_name (str): Project name.
+        representation_id (str): Representation id.
+        label (str): Label of container for UI purposes.
+        namespace (str): Group label of container for UI purposes.
+        version_locked (bool): Version is locked to ignore
+            the last version checks.
+        parent_container_id (Optional[str]): Parent container id. For visual
+            purposes.
+        scene_data (Optional[dict[str, Any]]): Additional data stored to the
+            scene.
+        transient_data (Optional[dict[str, Any]]): Internal load plugin data
+            related to the container. Could be any object e.g. node.
+
+    """
     def __init__(
         self,
         container_id: str,
         project_name: str,
         representation_id: str,
+        label: str,
+        namespace: str,
         load_plugin: LoadPlugin,
+        *,
         version_locked: bool = False,
-        # UI specific data
-        # TODO we should look at these with "fresh eye"
-        # - What is their meaning and usage? Does it actually fit?
-        # - Should we allow to define "hierarchy" of the items?
-        # namespace: str,
-        # label: str,
-        data: Optional[dict[str, Any]] = None,
+        parent_container_id: Optional[str] = None,
+        scene_data: Optional[dict[str, Any]] = None,
         transient_data: Optional[dict[str, Any]] = None,
-    ):
-        if data is None:
-            data = {}
-        origin_data = copy.deepcopy(data)
-        data.update({
-            "container_id": container_id,
-            "project_name": project_name,
-            "representation_id": representation_id,
-            "load_plugin_identifier": load_plugin.identifier,
-            "version_locked": version_locked,
-        })
+    ) -> None:
+        self._container_id = container_id
+        self._project_name = project_name
+        self._representation_id = representation_id
+        self._label = label
+        self._namespace = namespace
+        self._load_plugin_identifier = load_plugin.identifier
+        self._version_locked = version_locked
+        self._parent_container_id = parent_container_id
 
         if transient_data is None:
             transient_data = {}
 
-        self._data = data
-        self._origin_data = origin_data
+        if scene_data is None:
+            scene_data = {}
+
+        self._scene_data = scene_data
+        self._origin_scene_data = copy.deepcopy(scene_data)
         self._transient_data = transient_data
         self._load_plugin = load_plugin
 
     # --- Dictionary like methods ---
     def __getitem__(self, key):
-        return self._data[key]
+        return self._scene_data[key]
 
     def __contains__(self, key):
-        return key in self._data
+        return key in self._scene_data
 
     def __setitem__(self, key, value):
-        # Validate immutable keys
-        if key in self.__immutable_keys:
-            if value == self._data.get(key):
-                return
-            # Raise exception if key is immutable and value has changed
-            raise ImmutableKeyError(key)
-
-        if key in self._data and self._data[key] == value:
+        if key in self._scene_data and self._scene_data[key] == value:
             return
 
-        self._data[key] = value
+        self._scene_data[key] = value
 
     def get(self, key, default=None):
-        return self._data.get(key, default)
+        return self._scene_data.get(key, default)
 
     def pop(self, key, *args, **kwargs):
-        # Raise exception if is trying to pop key which is immutable
-        if key in self.__immutable_keys:
-            raise ImmutableKeyError(key)
-
-        return self._data.pop(key, *args, **kwargs)
+        return self._scene_data.pop(key, *args, **kwargs)
 
     def keys(self):
-        return self._data.keys()
+        return self._scene_data.keys()
 
     def values(self):
-        return self._data.values()
+        return self._scene_data.values()
 
     def items(self):
-        return self._data.items()
+        return self._scene_data.items()
     # ------
 
     def get_container_id(self) -> str:
-        return self._data["container_id"]
+        return self._container_id
 
     def get_project_name(self) -> str:
-        return self._data["project_name"]
+        return self._project_name
 
     def get_representation_id(self) -> str:
-        return self._data["representation_id"]
-
-    def get_load_plugin_identifier(self) -> str:
-        return self._data["load_plugin_identifier"]
+        return self._representation_id
 
     def get_version_locked(self) -> bool:
-        return self._data["version_locked"]
+        return self._version_locked
 
-    def get_data(self) -> dict[str, Any]:
-        return copy.deepcopy(self._data)
+    def set_version_locked(self, version_locked: bool) -> None:
+        if self._version_locked == version_locked:
+            return
+        self._version_locked = version_locked
 
-    def get_origin_data(self) -> dict[str, Any]:
-        return copy.deepcopy(self._origin_data)
+    def get_load_plugin_identifier(self) -> str:
+        return self._load_plugin_identifier
+
+    def get_scene_data(self) -> dict[str, Any]:
+        return copy.deepcopy(self._scene_data)
+
+    def get_origin_scene_data(self) -> dict[str, Any]:
+        return copy.deepcopy(self._origin_scene_data)
 
     def get_transient_data(self) -> dict[str, Any]:
         return self._transient_data
 
     def get_changes(self) -> TrackDictChangesItem:
         """Calculate and return changes."""
-        return TrackDictChangesItem(self.origin_data, self.get_data())
+        return TrackDictChangesItem(
+            self.get_origin_scene_data(),
+            self.get_scene_data()
+        )
 
     id: str = property(get_container_id)
     container_id: str = property(get_container_id)
     project_name: str = property(get_project_name)
     load_plugin_identifier: str = property(get_load_plugin_identifier)
     representation_id: str = property(get_representation_id)
-    data: dict[str, Any] = property(get_data)
-    origin_data: dict[str, Any] = property(get_origin_data)
+    scene_data: dict[str, Any] = property(get_scene_data)
+    origin_scene_data: dict[str, Any] = property(get_origin_scene_data)
     transient_data: dict[str, Any] = property(get_transient_data)
     changes: TrackDictChangesItem = property(get_changes)
 
