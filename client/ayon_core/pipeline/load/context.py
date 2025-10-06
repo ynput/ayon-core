@@ -163,6 +163,7 @@ class LoadContext:
         self._plugins = None
         self._containers = {}
         self._collect_containers()
+        self._log = Logger.get_logger(self.__class__.__name__)
 
     def reset(self) -> None:
         self._shared_data = {}
