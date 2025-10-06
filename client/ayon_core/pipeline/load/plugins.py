@@ -16,6 +16,7 @@ from ayon_core.pipeline.plugin_discover import (
 )
 from ayon_core.settings import get_project_settings
 
+from .exceptions import UnsupportedSwitchError
 from .utils import get_representation_path_from_context
 from .context import (
     LoadContext,
@@ -513,7 +514,7 @@ class LoadPlugin(ABC):
 
     @abstractmethod
     def collect_containers(self) -> None:
-        """Collect containers from current workfile.
+        """Collect containers from the current workfile.
 
         This method is called by LoadContext on initialization and on reset.
         """
@@ -582,6 +583,35 @@ class LoadPlugin(ABC):
             containers (list[ContainerItem]): Containers to remove.
 
         """
+
+    def can_switch_container(self, container: ContainerItem) -> bool:
+        """Check if container can be switched.
+
+        Args:
+            container (ContainerItem): Container to check.
+
+        Returns:
+            bool: True if container can be switched, False otherwise.
+
+        """
+        return False
+
+    def switch_containers(
+        self, containers: list[ContainerItem]
+    ) -> list[ContainerItem]:
+        """Switch containers of other load plugins.
+
+        Args:
+            containers (list[ContainerItem]): Containers to switch.
+
+        Raises:
+            UnsupportedSwitchError: If switching is not supported.
+
+        Returns:
+            list[ContainerItem]: New containers after switching.
+
+        """
+        raise UnsupportedSwitchError()
 
     def _add_containers_to_context(
         self,
