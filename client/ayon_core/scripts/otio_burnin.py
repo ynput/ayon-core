@@ -6,7 +6,10 @@ import json
 import tempfile
 from string import Formatter
 
-import opentimelineio_contrib.adapters.ffmpeg_burnins as ffmpeg_burnins
+try:
+    from otio_burnins_adapter import ffmpeg_burnins
+except ImportError:
+    import opentimelineio_contrib.adapters.ffmpeg_burnins as ffmpeg_burnins
 from ayon_core.lib import (
     get_ffmpeg_tool_args,
     get_ffmpeg_codec_args,
