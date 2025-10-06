@@ -47,6 +47,7 @@ class ContainerItem:
         load_plugin: LoadPlugin,
         *,
         version_locked: bool = False,
+        is_dirty: bool = False,
         parent_container_id: Optional[str] = None,
         scene_data: Optional[dict[str, Any]] = None,
         transient_data: Optional[dict[str, Any]] = None,
@@ -58,6 +59,7 @@ class ContainerItem:
         self._namespace = namespace
         self._load_plugin_identifier = load_plugin.identifier
         self._version_locked = version_locked
+        self._is_dirty = is_dirty
         self._parent_container_id = parent_container_id
 
         if transient_data is None:
@@ -109,6 +111,15 @@ class ContainerItem:
     def get_representation_id(self) -> str:
         return self._representation_id
 
+    def get_is_dirty(self) -> bool:
+        return self._is_dirty
+
+    def set_is_dirty(self, dirty: bool) -> None:
+        if dirty is self._is_dirty:
+            return
+        self._is_dirty = dirty
+        # TODO trigger event
+
     def get_version_locked(self) -> bool:
         return self._version_locked
 
@@ -116,6 +127,7 @@ class ContainerItem:
         if self._version_locked == version_locked:
             return
         self._version_locked = version_locked
+        # TODO trigger event
 
     def get_load_plugin_identifier(self) -> str:
         return self._load_plugin_identifier
