@@ -1167,6 +1167,8 @@ def oiio_color_convert(
     # Handle the different conversion cases
     # Source view and display are known
     if source_view and source_display:
+        color_convert_args = None
+        ocio_display_args = None
         oiio_cmd.extend([
                 "--ociodisplay:inverse=1:subimages=0",
                 source_display,
