@@ -1,8 +1,10 @@
+import os
 from qtpy import QtWidgets, QtCore, QtGui
 import qtawesome
 
 from ayon_core import style, resources
-from ayon_core.tools.utils import PlaceholderLineEdit
+from ayon_core.pipeline import get_current_host_name
+from ayon_core.tools.utils import PlaceholderLineEdit, MessageOverlayObject
 
 from ayon_core.tools.sceneinventory import SceneInventoryController
 
@@ -27,6 +29,17 @@ class SceneInventoryWindow(QtWidgets.QDialog):
         icon = QtGui.QIcon(resources.get_ayon_icon_filepath())
         self.setWindowIcon(icon)
 
+        # Set window title with application name and project name
+        base_title = "AYON Scene Inventory"
+        app_name = (
+            os.environ.get("AYON_APP_NAME")
+            or get_current_host_name()
+        )
+        if app_name:
+            window_title = f"{base_title} - {app_name} - {project_name}"
+        else:
+            window_title = f"{base_title} - {project_name}"
+        self.setWindowTitle(window_title)
         self.setObjectName("SceneInventory")
 
         self.resize(1100, 480)
@@ -141,3 +154,29 @@ class SceneInventoryWindow(QtWidgets.QDialog):
 
     def _on_update_all(self):
         self._view.update_all()
+
+    def _on_load_started(self, event):
+        """Handle load.started event and show toast notification."""
+        message = event.get("message")
+        if message:
+            self._overlay_object.add_message(message, message_id=event["id"])
+        else:
+            # Fallback message if loader doesn't provide one
+            self._overlay_object.add_message("Loading...", message_id=event["id"])
+
+    def _on_load_finished(self, event):
+        """Handle load.finished event and show completion/error notification."""
+        error_info = event["error_info"]
+        if not error_info:
+            # Show completion message if load was successful
+            self._overlay_object.add_message(
+                "Loading completed successfully",
+                message_id=event["id"]
+            )
+        else:
+            # Show error message if load failed
+            self._overlay_object.add_message(
+                "Loading failed",
+                "error",
+                message_id=event["id"]
+            )

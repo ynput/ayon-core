@@ -1,4 +1,5 @@
 from __future__ import annotations
+import os
 
 from typing import Optional
 
@@ -6,7 +7,7 @@ from qtpy import QtWidgets, QtCore, QtGui
 
 from ayon_core.resources import get_ayon_icon_filepath
 from ayon_core.style import load_stylesheet
-from ayon_core.pipeline.actions import LoaderActionResult
+from ayon_core.pipeline import get_current_host_name
 from ayon_core.tools.utils import (
     MessageOverlayObject,
     ErrorMessageBox,
@@ -135,7 +136,25 @@ class RefreshHandler:
 
 class LoaderWindow(QtWidgets.QWidget):
     def __init__(self, controller=None, parent=None):
-        super().__init__(parent)
+        super(LoaderWindow, self).__init__(parent)
+
+        icon = QtGui.QIcon(get_ayon_icon_filepath())
+        self.setWindowIcon(icon)
+
+        # Set window title with application name
+        base_title = "AYON Loader"
+        app_name = (
+            os.environ.get("AYON_APP_NAME")
+            or get_current_host_name()
+        )
+        if app_name:
+            window_title = f"{base_title} - {app_name}"
+        else:
+            window_title = base_title
+        self.setWindowTitle(window_title)
+        self.setFocusPolicy(QtCore.Qt.StrongFocus)
+        self.setAttribute(QtCore.Qt.WA_DeleteOnClose, False)
+        self.setWindowFlags(self.windowFlags() | QtCore.Qt.Window)
 
         if controller is None:
             controller = LoaderController()

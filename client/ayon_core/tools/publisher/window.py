@@ -13,6 +13,7 @@ from ayon_core import (
     resources,
     style
 )
+from ayon_core.pipeline import get_current_host_name
 from ayon_core.tools.utils import (
     ErrorMessageBox,
     PlaceholderLineEdit,
@@ -70,7 +71,18 @@ class PublisherWindow(QtWidgets.QDialog):
 
         self.setObjectName("PublishWindow")
 
-        self.setWindowTitle(title)
+        # Set window title with application name
+        base_title = "AYON Publisher"
+        app_name = (
+            os.environ.get("AYON_APP_NAME")
+            or get_current_host_name()
+        )
+        if app_name:
+            window_title = f"{base_title} - {app_name}"
+        else:
+            window_title = base_title
+        self.setWindowTitle(window_title)
+
         icon = QtGui.QIcon(resources.get_ayon_icon_filepath())
         self.setWindowIcon(icon)
 
