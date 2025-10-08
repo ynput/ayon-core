@@ -1,0 +1,523 @@
+<!doctype html><html lang=en class=no-js> <head><meta charset=utf-8><meta name=viewport content="width=device-width,initial-scale=1"><link rel=prev href=trait.html><link rel=next href=utils.html><link rel=icon href=../../../../../img/favicon.ico><meta name=generator content="mkdocs-1.6.1, mkdocs-material-9.6.21"><title>two_dimensional - ayon-core</title><link rel=stylesheet href=../../../../../assets/stylesheets/main.2a3383ac.min.css><link rel=stylesheet href=../../../../../assets/stylesheets/palette.06af60db.min.css><script src=https://unpkg.com/iframe-worker/shim></script><link rel=preconnect href=https://fonts.gstatic.com crossorigin><link rel=stylesheet href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback"><style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style><link rel=stylesheet href=../../../../../assets/_mkdocstrings.css><link rel=stylesheet href=../../../../../css/custom.css><script>__md_scope=new URL("../../../../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script></head> <body dir=ltr data-md-color-scheme=slate data-md-color-primary=indigo data-md-color-accent=indigo> <input class=md-toggle data-md-toggle=drawer type=checkbox id=__drawer autocomplete=off> <input class=md-toggle data-md-toggle=search type=checkbox id=__search autocomplete=off> <label class=md-overlay for=__drawer></label> <div data-md-component=skip> <a href=#client.ayon_core.pipeline.traits.two_dimensional class=md-skip> Skip to content </a> </div> <div data-md-component=announce> </div> <div data-md-color-scheme=default data-md-component=outdated hidden> </div> <header class="md-header md-header--shadow" data-md-component=header> <nav class="md-header__inner md-grid" aria-label=Header> <a href=../../../../../index.html title=ayon-core class="md-header__button md-logo" aria-label=ayon-core data-md-component=logo> <img src=../../../../../img/ay-symbol-blackw-full.png alt=logo> </a> <label class="md-header__button md-icon" for=__drawer> <svg xmlns=http://www.w3.org/2000/svg viewbox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg> </label> <div class=md-header__title data-md-component=header-title> <div class=md-header__ellipsis> <div class=md-header__topic> <span class=md-ellipsis> ayon-core </span> </div> <div class=md-header__topic data-md-component=header-topic> <span class=md-ellipsis> two_dimensional </span> </div> </div> </div> <form class=md-header__option data-md-component=palette> <input class=md-option data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme=slate data-md-color-primary=indigo data-md-color-accent=indigo aria-label="Switch to light mode" type=radio name=__palette id=__palette_0> <label class="md-header__button md-icon" title="Switch to light mode" for=__palette_1 hidden> <svg xmlns=http://www.w3.org/2000/svg viewbox="0 0 24 24"><path d="M12 7a5 5 0 0 1 5 5 5 5 0 0 1-5 5 5 5 0 0 1-5-5 5 5 0 0 1 5-5m0 2a3 3 0 0 0-3 3 3 3 0 0 0 3 3 3 3 0 0 0 3-3 3 3 0 0 0-3-3m0-7 2.39 3.42C13.65 5.15 12.84 5 12 5s-1.65.15-2.39.42zM3.34 7l4.16-.35A7.2 7.2 0 0 0 5.94 8.5c-.44.74-.69 1.5-.83 2.29zm.02 10 1.76-3.77a7.131 7.131 0 0 0 2.38 4.14zM20.65 7l-1.77 3.79a7.02 7.02 0 0 0-2.38-4.15zm-.01 10-4.14.36c.59-.51 1.12-1.14 1.54-1.86.42-.73.69-1.5.83-2.29zM12 22l-2.41-3.44c.74.27 1.55.44 2.41.44.82 0 1.63-.17 2.37-.44z"/></svg> </label> <input class=md-option data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme=default data-md-color-primary=indigo data-md-color-accent=indigo aria-label="Switch to dark mode" type=radio name=__palette id=__palette_1> <label class="md-header__button md-icon" title="Switch to dark mode" for=__palette_0 hidden> <svg xmlns=http://www.w3.org/2000/svg viewbox="0 0 24 24"><path d="m17.75 4.09-2.53 1.94.91 3.06-2.63-1.81-2.63 1.81.91-3.06-2.53-1.94L12.44 4l1.06-3 1.06 3zm3.5 6.91-1.64 1.25.59 1.98-1.7-1.17-1.7 1.17.59-1.98L15.75 11l2.06-.05L18.5 9l.69 1.95zm-2.28 4.95c.83-.08 1.72 1.1 1.19 1.85-.32.45-.66.87-1.08 1.27C15.17 23 8.84 23 4.94 19.07c-3.91-3.9-3.91-10.24 0-14.14.4-.4.82-.76 1.27-1.08.75-.53 1.93.36 1.85 1.19-.27 2.86.69 5.83 2.89 8.02a9.96 9.96 0 0 0 8.02 2.89m-1.64 2.02a12.08 12.08 0 0 1-7.8-3.47c-2.17-2.19-3.33-5-3.49-7.82-2.81 3.14-2.7 7.96.31 10.98 3.02 3.01 7.84 3.12 10.98.31"/></svg> </label> </form> <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script> <label class="md-header__button md-icon" for=__search> <svg xmlns=http://www.w3.org/2000/svg viewbox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg> </label> <div class=md-search data-md-component=search role=dialog> <label class=md-search__overlay for=__search></label> <div class=md-search__inner role=search> <form class=md-search__form name=search> <input type=text class=md-search__input name=query aria-label=Search placeholder=Search autocapitalize=off autocorrect=off autocomplete=off spellcheck=false data-md-component=search-query required> <label class="md-search__icon md-icon" for=__search> <svg xmlns=http://www.w3.org/2000/svg viewbox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg> <svg xmlns=http://www.w3.org/2000/svg viewbox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg> </label> <nav class=md-search__options aria-label=Search> <button type=reset class="md-search__icon md-icon" title=Clear aria-label=Clear tabindex=-1> <svg xmlns=http://www.w3.org/2000/svg viewbox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg> </button> </nav> </form> <div class=md-search__output> <div class=md-search__scrollwrap tabindex=0 data-md-scrollfix> <div class=md-search-result data-md-component=search-result> <div class=md-search-result__meta> Initializing search </div> <ol class=md-search-result__list role=presentation></ol> </div> </div> </div> </div> </div> <div class=md-header__source> <a href=https://github.com/ynput/ayon-core title="Go to repository" class=md-source data-md-component=source> <div class="md-source__icon md-icon"> <svg xmlns=http://www.w3.org/2000/svg viewbox="0 0 448 512"><!-- Font Awesome Free 7.0.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg> </div> <div class=md-source__repository> GitHub </div> </a> </div> </nav> </header> <div class=md-container data-md-component=container> <main class=md-main data-md-component=main> <div class="md-main__inner md-grid"> <div class="md-sidebar md-sidebar--primary" data-md-component=sidebar data-md-type=navigation> <div class=md-sidebar__scrollwrap> <div class=md-sidebar__inner> <nav class="md-nav md-nav--primary" aria-label=Navigation data-md-level=0> <label class=md-nav__title for=__drawer> <a href=../../../../../index.html title=ayon-core class="md-nav__button md-logo" aria-label=ayon-core data-md-component=logo> <img src=../../../../../img/ay-symbol-blackw-full.png alt=logo> </a> ayon-core </label> <div class=md-nav__source> <a href=https://github.com/ynput/ayon-core title="Go to repository" class=md-source data-md-component=source> <div class="md-source__icon md-icon"> <svg xmlns=http://www.w3.org/2000/svg viewbox="0 0 448 512"><!-- Font Awesome Free 7.0.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg> </div> <div class=md-source__repository> GitHub </div> </a> </div> <ul class=md-nav__list data-md-scrollfix> <li class=md-nav__item> <a href=../../../../../index.html class=md-nav__link> <span class=md-ellipsis> Home </span> </a> </li> <li class=md-nav__item> <a href=../../../../../license.html class=md-nav__link> <span class=md-ellipsis> License </span> </a> </li> <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested"> <input class="md-nav__toggle md-toggle " type=checkbox id=__nav_3 checked> <label class=md-nav__link for=__nav_3 id=__nav_3_label tabindex> <span class=md-ellipsis> Reference </span> <span class="md-nav__icon md-icon"></span> </label> <nav class=md-nav data-md-level=1 aria-labelledby=__nav_3_label aria-expanded=true> <label class=md-nav__title for=__nav_3> <span class="md-nav__icon md-icon"></span> Reference </label> <ul class=md-nav__list data-md-scrollfix> <li class="md-nav__item md-nav__item--active md-nav__item--nested"> <input class="md-nav__toggle md-toggle " type=checkbox id=__nav_3_1 checked> <label class=md-nav__link for=__nav_3_1 id=__nav_3_1_label tabindex=0> <span class=md-ellipsis> client </span> <span class="md-nav__icon md-icon"></span> </label> <nav class=md-nav data-md-level=2 aria-labelledby=__nav_3_1_label aria-expanded=true> <label class=md-nav__title for=__nav_3_1> <span class="md-nav__icon md-icon"></span> client </label> <ul class=md-nav__list data-md-scrollfix> <li class="md-nav__item md-nav__item--active md-nav__item--nested"> <input class="md-nav__toggle md-toggle " type=checkbox id=__nav_3_1_1 checked> <label class=md-nav__link for=__nav_3_1_1 id=__nav_3_1_1_label tabindex=0> <span class=md-ellipsis> ayon_core </span> <span class="md-nav__icon md-icon"></span> </label> <nav class=md-nav data-md-level=3 aria-labelledby=__nav_3_1_1_label aria-expanded=true> <label class=md-nav__title for=__nav_3_1_1> <span class="md-nav__icon md-icon"></span> ayon_core </label> <ul class=md-nav__list data-md-scrollfix> <li class=md-nav__item> <a href=../../__main__.html class=md-nav__link> <span class=md-ellipsis> __main__ </span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../../addon/base.html class=md-nav__link> <span class=md-ellipsis> addon </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class=md-nav__item> <a href=../../cli.html class=md-nav__link> <span class=md-ellipsis> cli </span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../../hooks/pre_add_last_workfile_arg.html class=md-nav__link> <span class=md-ellipsis> hooks </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../../host/abstract.html class=md-nav__link> <span class=md-ellipsis> host </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../../lib/attribute_definitions.html class=md-nav__link> <span class=md-ellipsis> lib </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class="md-nav__item md-nav__item--active md-nav__item--nested"> <input class="md-nav__toggle md-toggle " type=checkbox id=__nav_3_1_1_7 checked> <label class=md-nav__link for=__nav_3_1_1_7 id=__nav_3_1_1_7_label tabindex=0> <span class=md-ellipsis> pipeline </span> <span class="md-nav__icon md-icon"></span> </label> <nav class=md-nav data-md-level=4 aria-labelledby=__nav_3_1_1_7_label aria-expanded=true> <label class=md-nav__title for=__nav_3_1_1_7> <span class="md-nav__icon md-icon"></span> pipeline </label> <ul class=md-nav__list data-md-scrollfix> <li class=md-nav__item> <a href=../actions.html class=md-nav__link> <span class=md-ellipsis> actions </span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../anatomy/anatomy.html class=md-nav__link> <span class=md-ellipsis> anatomy </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class=md-nav__item> <a href=../colorspace.html class=md-nav__link> <span class=md-ellipsis> colorspace </span> </a> </li> <li class=md-nav__item> <a href=../compatibility.html class=md-nav__link> <span class=md-ellipsis> compatibility </span> </a> </li> <li class=md-nav__item> <a href=../constants.html class=md-nav__link> <span class=md-ellipsis> constants </span> </a> </li> <li class=md-nav__item> <a href=../context_tools.html class=md-nav__link> <span class=md-ellipsis> context_tools </span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../create/changes.html class=md-nav__link> <span class=md-ellipsis> create </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class=md-nav__item> <a href=../delivery.html class=md-nav__link> <span class=md-ellipsis> delivery </span> </a> </li> <li class=md-nav__item> <a href=../editorial.html class=md-nav__link> <span class=md-ellipsis> editorial </span> </a> </li> <li class=md-nav__item> <a href=../entity_uri.html class=md-nav__link> <span class=md-ellipsis> entity_uri </span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../farm/patterning.html class=md-nav__link> <span class=md-ellipsis> farm </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../load/plugins.html class=md-nav__link> <span class=md-ellipsis> load </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class=md-nav__item> <a href=../plugin_discover.html class=md-nav__link> <span class=md-ellipsis> plugin_discover </span> </a> </li> <li class=md-nav__item> <a href=../project_folders.html class=md-nav__link> <span class=md-ellipsis> project_folders </span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../publish/abstract_collect_render.html class=md-nav__link> <span class=md-ellipsis> publish </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class=md-nav__item> <a href=../schema/index.html class=md-nav__link> <span class=md-ellipsis> schema </span> </a> </li> <li class=md-nav__item> <a href=../staging_dir.html class=md-nav__link> <span class=md-ellipsis> staging_dir </span> </a> </li> <li class=md-nav__item> <a href=../tempdir.html class=md-nav__link> <span class=md-ellipsis> tempdir </span> </a> </li> <li class=md-nav__item> <a href=../template_data.html class=md-nav__link> <span class=md-ellipsis> template_data </span> </a> </li> <li class=md-nav__item> <a href=../thumbnails.html class=md-nav__link> <span class=md-ellipsis> thumbnails </span> </a> </li> <li class="md-nav__item md-nav__item--active md-nav__item--nested"> <input class="md-nav__toggle md-toggle " type=checkbox id=__nav_3_1_1_7_21 checked> <label class=md-nav__link for=__nav_3_1_1_7_21 id=__nav_3_1_1_7_21_label tabindex=0> <span class=md-ellipsis> traits </span> <span class="md-nav__icon md-icon"></span> </label> <nav class=md-nav data-md-level=5 aria-labelledby=__nav_3_1_1_7_21_label aria-expanded=true> <label class=md-nav__title for=__nav_3_1_1_7_21> <span class="md-nav__icon md-icon"></span> traits </label> <ul class=md-nav__list data-md-scrollfix> <li class=md-nav__item> <a href=color.html class=md-nav__link> <span class=md-ellipsis> color </span> </a> </li> <li class=md-nav__item> <a href=content.html class=md-nav__link> <span class=md-ellipsis> content </span> </a> </li> <li class=md-nav__item> <a href=cryptography.html class=md-nav__link> <span class=md-ellipsis> cryptography </span> </a> </li> <li class=md-nav__item> <a href=lifecycle.html class=md-nav__link> <span class=md-ellipsis> lifecycle </span> </a> </li> <li class=md-nav__item> <a href=meta.html class=md-nav__link> <span class=md-ellipsis> meta </span> </a> </li> <li class=md-nav__item> <a href=representation.html class=md-nav__link> <span class=md-ellipsis> representation </span> </a> </li> <li class=md-nav__item> <a href=temporal.html class=md-nav__link> <span class=md-ellipsis> temporal </span> </a> </li> <li class=md-nav__item> <a href=three_dimensional.html class=md-nav__link> <span class=md-ellipsis> three_dimensional </span> </a> </li> <li class=md-nav__item> <a href=trait.html class=md-nav__link> <span class=md-ellipsis> trait </span> </a> </li> <li class="md-nav__item md-nav__item--active"> <input class="md-nav__toggle md-toggle" type=checkbox id=__toc> <label class="md-nav__link md-nav__link--active" for=__toc> <span class=md-ellipsis> two_dimensional </span> <span class="md-nav__icon md-icon"></span> </label> <a href=two_dimensional.html class="md-nav__link md-nav__link--active"> <span class=md-ellipsis> two_dimensional </span> </a> <nav class="md-nav md-nav--secondary" aria-label="Table of contents"> <label class=md-nav__title for=__toc> <span class="md-nav__icon md-icon"></span> Table of contents </label> <ul class=md-nav__list data-md-component=toc data-md-scrollfix> <li class=md-nav__item> <a href=#client.ayon_core.pipeline.traits.two_dimensional class=md-nav__link> <span class=md-ellipsis> two_dimensional </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.pipeline.traits.two_dimensional.Deep class=md-nav__link> <span class=md-ellipsis> Deep </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.pipeline.traits.two_dimensional.Image class=md-nav__link> <span class=md-ellipsis> Image </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.pipeline.traits.two_dimensional.Overscan class=md-nav__link> <span class=md-ellipsis> Overscan </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.pipeline.traits.two_dimensional.PixelBased class=md-nav__link> <span class=md-ellipsis> PixelBased </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.pipeline.traits.two_dimensional.Planar class=md-nav__link> <span class=md-ellipsis> Planar </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.pipeline.traits.two_dimensional.UDIM class=md-nav__link> <span class=md-ellipsis> UDIM </span> </a> <nav class=md-nav aria-label=UDIM> <ul class=md-nav__list> <li class=md-nav__item> <a href=#client.ayon_core.pipeline.traits.two_dimensional.UDIM.get_file_location_for_udim class=md-nav__link> <span class=md-ellipsis> get_file_location_for_udim </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.pipeline.traits.two_dimensional.UDIM.get_udim_from_file_location class=md-nav__link> <span class=md-ellipsis> get_udim_from_file_location </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.pipeline.traits.two_dimensional.UDIM.validate_frame_regex class=md-nav__link> <span class=md-ellipsis> validate_frame_regex </span> </a> </li> </ul> </nav> </li> </ul> </nav> </li> <li class=md-nav__item> <a href=utils.html class=md-nav__link> <span class=md-ellipsis> utils </span> </a> </li> </ul> </nav> </li> <li class=md-nav__item> <a href=../usdlib.html class=md-nav__link> <span class=md-ellipsis> usdlib </span> </a> </li> <li class=md-nav__item> <a href=../version_start.html class=md-nav__link> <span class=md-ellipsis> version_start </span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../workfile/build_workfile.html class=md-nav__link> <span class=md-ellipsis> workfile </span> <span class="md-nav__icon md-icon"></span> </a> </li> </ul> </nav> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../../plugins/actions/open_file_explorer.html class=md-nav__link> <span class=md-ellipsis> plugins </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class=md-nav__item> <a href=../../resources/index.html class=md-nav__link> <span class=md-ellipsis> resources </span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../../scripts/ocio_wrapper.html class=md-nav__link> <span class=md-ellipsis> scripts </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../../settings/lib.html class=md-nav__link> <span class=md-ellipsis> settings </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../../style/color_defs.html class=md-nav__link> <span class=md-ellipsis> style </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../../tests/conftest.html class=md-nav__link> <span class=md-ellipsis> tests </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../../tools/attribute_defs/_constants.html class=md-nav__link> <span class=md-ellipsis> tools </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../../vendor/python/qargparse.html class=md-nav__link> <span class=md-ellipsis> vendor </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class=md-nav__item> <a href=../../version.html class=md-nav__link> <span class=md-ellipsis> version </span> </a> </li> </ul> </nav> </li> </ul> </nav> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../../../../server/settings/conversion.html class=md-nav__link> <span class=md-ellipsis> server </span> <span class="md-nav__icon md-icon"></span> </a> </li> </ul> </nav> </li> </ul> </nav> </div> </div> </div> <div class="md-sidebar md-sidebar--secondary" data-md-component=sidebar data-md-type=toc> <div class=md-sidebar__scrollwrap> <div class=md-sidebar__inner> <nav class="md-nav md-nav--secondary" aria-label="Table of contents"> <label class=md-nav__title for=__toc> <span class="md-nav__icon md-icon"></span> Table of contents </label> <ul class=md-nav__list data-md-component=toc data-md-scrollfix> <li class=md-nav__item> <a href=#client.ayon_core.pipeline.traits.two_dimensional class=md-nav__link> <span class=md-ellipsis> two_dimensional </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.pipeline.traits.two_dimensional.Deep class=md-nav__link> <span class=md-ellipsis> Deep </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.pipeline.traits.two_dimensional.Image class=md-nav__link> <span class=md-ellipsis> Image </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.pipeline.traits.two_dimensional.Overscan class=md-nav__link> <span class=md-ellipsis> Overscan </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.pipeline.traits.two_dimensional.PixelBased class=md-nav__link> <span class=md-ellipsis> PixelBased </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.pipeline.traits.two_dimensional.Planar class=md-nav__link> <span class=md-ellipsis> Planar </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.pipeline.traits.two_dimensional.UDIM class=md-nav__link> <span class=md-ellipsis> UDIM </span> </a> <nav class=md-nav aria-label=UDIM> <ul class=md-nav__list> <li class=md-nav__item> <a href=#client.ayon_core.pipeline.traits.two_dimensional.UDIM.get_file_location_for_udim class=md-nav__link> <span class=md-ellipsis> get_file_location_for_udim </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.pipeline.traits.two_dimensional.UDIM.get_udim_from_file_location class=md-nav__link> <span class=md-ellipsis> get_udim_from_file_location </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.pipeline.traits.two_dimensional.UDIM.validate_frame_regex class=md-nav__link> <span class=md-ellipsis> validate_frame_regex </span> </a> </li> </ul> </nav> </li> </ul> </nav> </div> </div> </div> <div class=md-content data-md-component=content> <article class="md-content__inner md-typeset"> <h1>two_dimensional</h1> <div class="doc doc-object doc-module"> <a id=client.ayon_core.pipeline.traits.two_dimensional></a> <div class="doc doc-contents first"> <p>Two-dimensional image traits.</p> <div class="doc doc-children"> <div class="doc doc-object doc-class"> <h2 id=client.ayon_core.pipeline.traits.two_dimensional.Deep class="doc doc-heading"> <code>Deep</code> <span class="doc doc-labels"> <small class="doc doc-label doc-label-dataclass"><code>dataclass</code></small> </span> </h2> <div class="doc doc-contents "> <p class="doc doc-class-bases"> Bases: <code><a class="autorefs autorefs-internal" title="TraitBase
+
+
+  
+      dataclass
+   (client.ayon_core.pipeline.traits.trait.TraitBase)" href=trait.html#client.ayon_core.pipeline.traits.trait.TraitBase>TraitBase</a></code></p> <p>Deep trait model.</p> <p>Type trait model for deep EXR images.</p> <p><span class=doc-section-title>Attributes:</span></p> <table> <thead> <tr> <th>Name</th> <th>Type</th> <th>Description</th> </tr> </thead> <tbody> <tr class=doc-section-item> <td><code><span title=client.ayon_core.pipeline.traits.two_dimensional.Deep.name>name</span></code></td> <td> <code><span title=str>str</span></code> </td> <td> <div class=doc-md-description> <p>Trait name.</p> </div> </td> </tr> <tr class=doc-section-item> <td><code><span title=client.ayon_core.pipeline.traits.two_dimensional.Deep.description>description</span></code></td> <td> <code><span title=str>str</span></code> </td> <td> <div class=doc-md-description> <p>Trait description.</p> </div> </td> </tr> <tr class=doc-section-item> <td><code><span title=client.ayon_core.pipeline.traits.two_dimensional.Deep.id>id</span></code></td> <td> <code><span title=str>str</span></code> </td> <td> <div class=doc-md-description> <p>id should be a namespaced trait name with a version</p> </div> </td> </tr> </tbody> </table> <details class=quote> <summary>Source code in <code>client/ayon_core/pipeline/traits/two_dimensional.py</code></summary> <div class=highlight><table class=highlighttable><tr><td class=linenos><div class=linenodiv><pre><span></span><span class=normal>81</span>
+<span class=normal>82</span>
+<span class=normal>83</span>
+<span class=normal>84</span>
+<span class=normal>85</span>
+<span class=normal>86</span>
+<span class=normal>87</span>
+<span class=normal>88</span>
+<span class=normal>89</span>
+<span class=normal>90</span>
+<span class=normal>91</span>
+<span class=normal>92</span>
+<span class=normal>93</span>
+<span class=normal>94</span>
+<span class=normal>95</span>
+<span class=normal>96</span></pre></div></td><td class=code><div><pre><span></span><code><span class=nd>@dataclass</span>
+<span class=k>class</span><span class=w> </span><span class=nc>Deep</span><span class=p>(</span><span class=n>TraitBase</span><span class=p>):</span>
+<span class=w>    </span><span class=sd>&quot;&quot;&quot;Deep trait model.</span>
+
+<span class=sd>    Type trait model for deep EXR images.</span>
+
+<span class=sd>    Attributes:</span>
+<span class=sd>        name (str): Trait name.</span>
+<span class=sd>        description (str): Trait description.</span>
+<span class=sd>        id (str): id should be a namespaced trait name with a version</span>
+<span class=sd>    &quot;&quot;&quot;</span>
+
+    <span class=n>name</span><span class=p>:</span> <span class=n>ClassVar</span><span class=p>[</span><span class=nb>str</span><span class=p>]</span> <span class=o>=</span> <span class=s2>&quot;Deep&quot;</span>
+    <span class=n>description</span><span class=p>:</span> <span class=n>ClassVar</span><span class=p>[</span><span class=nb>str</span><span class=p>]</span> <span class=o>=</span> <span class=s2>&quot;Deep Trait Model&quot;</span>
+    <span class=nb>id</span><span class=p>:</span> <span class=n>ClassVar</span><span class=p>[</span><span class=nb>str</span><span class=p>]</span> <span class=o>=</span> <span class=s2>&quot;ayon.2d.Deep.v1&quot;</span>
+    <span class=n>persistent</span><span class=p>:</span> <span class=n>ClassVar</span><span class=p>[</span><span class=nb>bool</span><span class=p>]</span> <span class=o>=</span> <span class=kc>True</span>
+</code></pre></div></td></tr></table></div> </details> <div class="doc doc-children"> </div> </div> </div> <div class="doc doc-object doc-class"> <h2 id=client.ayon_core.pipeline.traits.two_dimensional.Image class="doc doc-heading"> <code>Image</code> <span class="doc doc-labels"> <small class="doc doc-label doc-label-dataclass"><code>dataclass</code></small> </span> </h2> <div class="doc doc-contents "> <p class="doc doc-class-bases"> Bases: <code><a class="autorefs autorefs-internal" title="TraitBase
+
+
+  
+      dataclass
+   (client.ayon_core.pipeline.traits.trait.TraitBase)" href=trait.html#client.ayon_core.pipeline.traits.trait.TraitBase>TraitBase</a></code></p> <p>Image trait model.</p> <p>Type trait model for image.</p> <p><span class=doc-section-title>Attributes:</span></p> <table> <thead> <tr> <th>Name</th> <th>Type</th> <th>Description</th> </tr> </thead> <tbody> <tr class=doc-section-item> <td><code><span title=client.ayon_core.pipeline.traits.two_dimensional.Image.name>name</span></code></td> <td> <code><span title=str>str</span></code> </td> <td> <div class=doc-md-description> <p>Trait name.</p> </div> </td> </tr> <tr class=doc-section-item> <td><code><span title=client.ayon_core.pipeline.traits.two_dimensional.Image.description>description</span></code></td> <td> <code><span title=str>str</span></code> </td> <td> <div class=doc-md-description> <p>Trait description.</p> </div> </td> </tr> <tr class=doc-section-item> <td><code><span title=client.ayon_core.pipeline.traits.two_dimensional.Image.id>id</span></code></td> <td> <code><span title=str>str</span></code> </td> <td> <div class=doc-md-description> <p>id should be a namespaced trait name with version</p> </div> </td> </tr> </tbody> </table> <details class=quote> <summary>Source code in <code>client/ayon_core/pipeline/traits/two_dimensional.py</code></summary> <div class=highlight><table class=highlighttable><tr><td class=linenos><div class=linenodiv><pre><span></span><span class=normal>14</span>
+<span class=normal>15</span>
+<span class=normal>16</span>
+<span class=normal>17</span>
+<span class=normal>18</span>
+<span class=normal>19</span>
+<span class=normal>20</span>
+<span class=normal>21</span>
+<span class=normal>22</span>
+<span class=normal>23</span>
+<span class=normal>24</span>
+<span class=normal>25</span>
+<span class=normal>26</span>
+<span class=normal>27</span>
+<span class=normal>28</span>
+<span class=normal>29</span></pre></div></td><td class=code><div><pre><span></span><code><span class=nd>@dataclass</span>
+<span class=k>class</span><span class=w> </span><span class=nc>Image</span><span class=p>(</span><span class=n>TraitBase</span><span class=p>):</span>
+<span class=w>    </span><span class=sd>&quot;&quot;&quot;Image trait model.</span>
+
+<span class=sd>    Type trait model for image.</span>
+
+<span class=sd>    Attributes:</span>
+<span class=sd>        name (str): Trait name.</span>
+<span class=sd>        description (str): Trait description.</span>
+<span class=sd>        id (str): id should be a namespaced trait name with version</span>
+<span class=sd>    &quot;&quot;&quot;</span>
+
+    <span class=n>name</span><span class=p>:</span> <span class=n>ClassVar</span><span class=p>[</span><span class=nb>str</span><span class=p>]</span> <span class=o>=</span> <span class=s2>&quot;Image&quot;</span>
+    <span class=n>description</span><span class=p>:</span> <span class=n>ClassVar</span><span class=p>[</span><span class=nb>str</span><span class=p>]</span> <span class=o>=</span> <span class=s2>&quot;Image Trait&quot;</span>
+    <span class=nb>id</span><span class=p>:</span> <span class=n>ClassVar</span><span class=p>[</span><span class=nb>str</span><span class=p>]</span> <span class=o>=</span> <span class=s2>&quot;ayon.2d.Image.v1&quot;</span>
+    <span class=n>persistent</span><span class=p>:</span> <span class=n>ClassVar</span><span class=p>[</span><span class=nb>bool</span><span class=p>]</span> <span class=o>=</span> <span class=kc>True</span>
+</code></pre></div></td></tr></table></div> </details> <div class="doc doc-children"> </div> </div> </div> <div class="doc doc-object doc-class"> <h2 id=client.ayon_core.pipeline.traits.two_dimensional.Overscan class="doc doc-heading"> <code>Overscan</code> <span class="doc doc-labels"> <small class="doc doc-label doc-label-dataclass"><code>dataclass</code></small> </span> </h2> <div class="doc doc-contents "> <p class="doc doc-class-bases"> Bases: <code><a class="autorefs autorefs-internal" title="TraitBase
+
+
+  
+      dataclass
+   (client.ayon_core.pipeline.traits.trait.TraitBase)" href=trait.html#client.ayon_core.pipeline.traits.trait.TraitBase>TraitBase</a></code></p> <p>Overscan trait model.</p> <p>This model represents an overscan (or underscan) trait. Defines the extra pixels around the image.</p> <p><span class=doc-section-title>Attributes:</span></p> <table> <thead> <tr> <th>Name</th> <th>Type</th> <th>Description</th> </tr> </thead> <tbody> <tr class=doc-section-item> <td><code><span title=client.ayon_core.pipeline.traits.two_dimensional.Overscan.name>name</span></code></td> <td> <code><span title=str>str</span></code> </td> <td> <div class=doc-md-description> <p>Trait name.</p> </div> </td> </tr> <tr class=doc-section-item> <td><code><span title=client.ayon_core.pipeline.traits.two_dimensional.Overscan.description>description</span></code></td> <td> <code><span title=str>str</span></code> </td> <td> <div class=doc-md-description> <p>Trait description.</p> </div> </td> </tr> <tr class=doc-section-item> <td><code><span title=client.ayon_core.pipeline.traits.two_dimensional.Overscan.id>id</span></code></td> <td> <code><span title=str>str</span></code> </td> <td> <div class=doc-md-description> <p>id should be a namespaced trait name with a version</p> </div> </td> </tr> <tr class=doc-section-item> <td><code><span title=client.ayon_core.pipeline.traits.two_dimensional.Overscan.left>left</span></code></td> <td> <code><span title=int>int</span></code> </td> <td> <div class=doc-md-description> <p>Left overscan/underscan.</p> </div> </td> </tr> <tr class=doc-section-item> <td><code><span title=client.ayon_core.pipeline.traits.two_dimensional.Overscan.right>right</span></code></td> <td> <code><span title=int>int</span></code> </td> <td> <div class=doc-md-description> <p>Right overscan/underscan.</p> </div> </td> </tr> <tr class=doc-section-item> <td><code><span title=client.ayon_core.pipeline.traits.two_dimensional.Overscan.top>top</span></code></td> <td> <code><span title=int>int</span></code> </td> <td> <div class=doc-md-description> <p>Top overscan/underscan.</p> </div> </td> </tr> <tr class=doc-section-item> <td><code><span title=client.ayon_core.pipeline.traits.two_dimensional.Overscan.bottom>bottom</span></code></td> <td> <code><span title=int>int</span></code> </td> <td> <div class=doc-md-description> <p>Bottom overscan/underscan.</p> </div> </td> </tr> </tbody> </table> <details class=quote> <summary>Source code in <code>client/ayon_core/pipeline/traits/two_dimensional.py</code></summary> <div class=highlight><table class=highlighttable><tr><td class=linenos><div class=linenodiv><pre><span></span><span class=normal> 99</span>
+<span class=normal>100</span>
+<span class=normal>101</span>
+<span class=normal>102</span>
+<span class=normal>103</span>
+<span class=normal>104</span>
+<span class=normal>105</span>
+<span class=normal>106</span>
+<span class=normal>107</span>
+<span class=normal>108</span>
+<span class=normal>109</span>
+<span class=normal>110</span>
+<span class=normal>111</span>
+<span class=normal>112</span>
+<span class=normal>113</span>
+<span class=normal>114</span>
+<span class=normal>115</span>
+<span class=normal>116</span>
+<span class=normal>117</span>
+<span class=normal>118</span>
+<span class=normal>119</span>
+<span class=normal>120</span>
+<span class=normal>121</span>
+<span class=normal>122</span>
+<span class=normal>123</span></pre></div></td><td class=code><div><pre><span></span><code><span class=nd>@dataclass</span>
+<span class=k>class</span><span class=w> </span><span class=nc>Overscan</span><span class=p>(</span><span class=n>TraitBase</span><span class=p>):</span>
+<span class=w>    </span><span class=sd>&quot;&quot;&quot;Overscan trait model.</span>
+
+<span class=sd>    This model represents an overscan (or underscan) trait. Defines the</span>
+<span class=sd>    extra pixels around the image.</span>
+
+<span class=sd>    Attributes:</span>
+<span class=sd>        name (str): Trait name.</span>
+<span class=sd>        description (str): Trait description.</span>
+<span class=sd>        id (str): id should be a namespaced trait name with a version</span>
+<span class=sd>        left (int): Left overscan/underscan.</span>
+<span class=sd>        right (int): Right overscan/underscan.</span>
+<span class=sd>        top (int): Top overscan/underscan.</span>
+<span class=sd>        bottom (int): Bottom overscan/underscan.</span>
+<span class=sd>    &quot;&quot;&quot;</span>
+
+    <span class=n>name</span><span class=p>:</span> <span class=n>ClassVar</span><span class=p>[</span><span class=nb>str</span><span class=p>]</span> <span class=o>=</span> <span class=s2>&quot;Overscan&quot;</span>
+    <span class=n>description</span><span class=p>:</span> <span class=n>ClassVar</span><span class=p>[</span><span class=nb>str</span><span class=p>]</span> <span class=o>=</span> <span class=s2>&quot;Overscan Trait&quot;</span>
+    <span class=nb>id</span><span class=p>:</span> <span class=n>ClassVar</span><span class=p>[</span><span class=nb>str</span><span class=p>]</span> <span class=o>=</span> <span class=s2>&quot;ayon.2d.Overscan.v1&quot;</span>
+    <span class=n>persistent</span><span class=p>:</span> <span class=n>ClassVar</span><span class=p>[</span><span class=nb>bool</span><span class=p>]</span> <span class=o>=</span> <span class=kc>True</span>
+    <span class=n>left</span><span class=p>:</span> <span class=nb>int</span>
+    <span class=n>right</span><span class=p>:</span> <span class=nb>int</span>
+    <span class=n>top</span><span class=p>:</span> <span class=nb>int</span>
+    <span class=n>bottom</span><span class=p>:</span> <span class=nb>int</span>
+</code></pre></div></td></tr></table></div> </details> <div class="doc doc-children"> </div> </div> </div> <div class="doc doc-object doc-class"> <h2 id=client.ayon_core.pipeline.traits.two_dimensional.PixelBased class="doc doc-heading"> <code>PixelBased</code> <span class="doc doc-labels"> <small class="doc doc-label doc-label-dataclass"><code>dataclass</code></small> </span> </h2> <div class="doc doc-contents "> <p class="doc doc-class-bases"> Bases: <code><a class="autorefs autorefs-internal" title="TraitBase
+
+
+  
+      dataclass
+   (client.ayon_core.pipeline.traits.trait.TraitBase)" href=trait.html#client.ayon_core.pipeline.traits.trait.TraitBase>TraitBase</a></code></p> <p>PixelBased trait model.</p> <p>The pixel-related trait for image data.</p> <p><span class=doc-section-title>Attributes:</span></p> <table> <thead> <tr> <th>Name</th> <th>Type</th> <th>Description</th> </tr> </thead> <tbody> <tr class=doc-section-item> <td><code><span title=client.ayon_core.pipeline.traits.two_dimensional.PixelBased.name>name</span></code></td> <td> <code><span title=str>str</span></code> </td> <td> <div class=doc-md-description> <p>Trait name.</p> </div> </td> </tr> <tr class=doc-section-item> <td><code><span title=client.ayon_core.pipeline.traits.two_dimensional.PixelBased.description>description</span></code></td> <td> <code><span title=str>str</span></code> </td> <td> <div class=doc-md-description> <p>Trait description.</p> </div> </td> </tr> <tr class=doc-section-item> <td><code><span title=client.ayon_core.pipeline.traits.two_dimensional.PixelBased.id>id</span></code></td> <td> <code><span title=str>str</span></code> </td> <td> <div class=doc-md-description> <p>id should be a namespaced trait name with a version</p> </div> </td> </tr> <tr class=doc-section-item> <td><code><span title=client.ayon_core.pipeline.traits.two_dimensional.PixelBased.display_window_width>display_window_width</span></code></td> <td> <code><span title=int>int</span></code> </td> <td> <div class=doc-md-description> <p>Width of the image display window.</p> </div> </td> </tr> <tr class=doc-section-item> <td><code><span title=client.ayon_core.pipeline.traits.two_dimensional.PixelBased.display_window_height>display_window_height</span></code></td> <td> <code><span title=int>int</span></code> </td> <td> <div class=doc-md-description> <p>Height of the image display window.</p> </div> </td> </tr> <tr class=doc-section-item> <td><code><span title=client.ayon_core.pipeline.traits.two_dimensional.PixelBased.pixel_aspect_ratio>pixel_aspect_ratio</span></code></td> <td> <code><span title=float>float</span></code> </td> <td> <div class=doc-md-description> <p>Pixel aspect ratio.</p> </div> </td> </tr> </tbody> </table> <details class=quote> <summary>Source code in <code>client/ayon_core/pipeline/traits/two_dimensional.py</code></summary> <div class=highlight><table class=highlighttable><tr><td class=linenos><div class=linenodiv><pre><span></span><span class=normal>32</span>
+<span class=normal>33</span>
+<span class=normal>34</span>
+<span class=normal>35</span>
+<span class=normal>36</span>
+<span class=normal>37</span>
+<span class=normal>38</span>
+<span class=normal>39</span>
+<span class=normal>40</span>
+<span class=normal>41</span>
+<span class=normal>42</span>
+<span class=normal>43</span>
+<span class=normal>44</span>
+<span class=normal>45</span>
+<span class=normal>46</span>
+<span class=normal>47</span>
+<span class=normal>48</span>
+<span class=normal>49</span>
+<span class=normal>50</span>
+<span class=normal>51</span>
+<span class=normal>52</span>
+<span class=normal>53</span></pre></div></td><td class=code><div><pre><span></span><code><span class=nd>@dataclass</span>
+<span class=k>class</span><span class=w> </span><span class=nc>PixelBased</span><span class=p>(</span><span class=n>TraitBase</span><span class=p>):</span>
+<span class=w>    </span><span class=sd>&quot;&quot;&quot;PixelBased trait model.</span>
+
+<span class=sd>    The pixel-related trait for image data.</span>
+
+<span class=sd>    Attributes:</span>
+<span class=sd>        name (str): Trait name.</span>
+<span class=sd>        description (str): Trait description.</span>
+<span class=sd>        id (str): id should be a namespaced trait name with a version</span>
+<span class=sd>        display_window_width (int): Width of the image display window.</span>
+<span class=sd>        display_window_height (int): Height of the image display window.</span>
+<span class=sd>        pixel_aspect_ratio (float): Pixel aspect ratio.</span>
+<span class=sd>    &quot;&quot;&quot;</span>
+
+    <span class=n>name</span><span class=p>:</span> <span class=n>ClassVar</span><span class=p>[</span><span class=nb>str</span><span class=p>]</span> <span class=o>=</span> <span class=s2>&quot;PixelBased&quot;</span>
+    <span class=n>description</span><span class=p>:</span> <span class=n>ClassVar</span><span class=p>[</span><span class=nb>str</span><span class=p>]</span> <span class=o>=</span> <span class=s2>&quot;PixelBased Trait Model&quot;</span>
+    <span class=nb>id</span><span class=p>:</span> <span class=n>ClassVar</span><span class=p>[</span><span class=nb>str</span><span class=p>]</span> <span class=o>=</span> <span class=s2>&quot;ayon.2d.PixelBased.v1&quot;</span>
+    <span class=n>persistent</span><span class=p>:</span> <span class=n>ClassVar</span><span class=p>[</span><span class=nb>bool</span><span class=p>]</span> <span class=o>=</span> <span class=kc>True</span>
+    <span class=n>display_window_width</span><span class=p>:</span> <span class=nb>int</span>
+    <span class=n>display_window_height</span><span class=p>:</span> <span class=nb>int</span>
+    <span class=n>pixel_aspect_ratio</span><span class=p>:</span> <span class=nb>float</span>
+</code></pre></div></td></tr></table></div> </details> <div class="doc doc-children"> </div> </div> </div> <div class="doc doc-object doc-class"> <h2 id=client.ayon_core.pipeline.traits.two_dimensional.Planar class="doc doc-heading"> <code>Planar</code> <span class="doc doc-labels"> <small class="doc doc-label doc-label-dataclass"><code>dataclass</code></small> </span> </h2> <div class="doc doc-contents "> <p class="doc doc-class-bases"> Bases: <code><a class="autorefs autorefs-internal" title="TraitBase
+
+
+  
+      dataclass
+   (client.ayon_core.pipeline.traits.trait.TraitBase)" href=trait.html#client.ayon_core.pipeline.traits.trait.TraitBase>TraitBase</a></code></p> <p>Planar trait model.</p> <p>This model represents an Image with planar configuration.</p> <details class=todo open> <summary>Todo</summary> <ul> <li>(antirotor): Is this really a planar configuration? As with bit planes and everything? If it serves as differentiator for Deep images, should it be named differently? Like Raster?</li> </ul> </details> <p><span class=doc-section-title>Attributes:</span></p> <table> <thead> <tr> <th>Name</th> <th>Type</th> <th>Description</th> </tr> </thead> <tbody> <tr class=doc-section-item> <td><code><span title=client.ayon_core.pipeline.traits.two_dimensional.Planar.name>name</span></code></td> <td> <code><span title=str>str</span></code> </td> <td> <div class=doc-md-description> <p>Trait name.</p> </div> </td> </tr> <tr class=doc-section-item> <td><code><span title=client.ayon_core.pipeline.traits.two_dimensional.Planar.description>description</span></code></td> <td> <code><span title=str>str</span></code> </td> <td> <div class=doc-md-description> <p>Trait description.</p> </div> </td> </tr> <tr class=doc-section-item> <td><code><span title=client.ayon_core.pipeline.traits.two_dimensional.Planar.id>id</span></code></td> <td> <code><span title=str>str</span></code> </td> <td> <div class=doc-md-description> <p>id should be namespaced trait name with version</p> </div> </td> </tr> <tr class=doc-section-item> <td><code><span title=client.ayon_core.pipeline.traits.two_dimensional.Planar.planar_configuration>planar_configuration</span></code></td> <td> <code><span title=str>str</span></code> </td> <td> <div class=doc-md-description> <p>Planar configuration.</p> </div> </td> </tr> </tbody> </table> <details class=quote> <summary>Source code in <code>client/ayon_core/pipeline/traits/two_dimensional.py</code></summary> <div class=highlight><table class=highlighttable><tr><td class=linenos><div class=linenodiv><pre><span></span><span class=normal>56</span>
+<span class=normal>57</span>
+<span class=normal>58</span>
+<span class=normal>59</span>
+<span class=normal>60</span>
+<span class=normal>61</span>
+<span class=normal>62</span>
+<span class=normal>63</span>
+<span class=normal>64</span>
+<span class=normal>65</span>
+<span class=normal>66</span>
+<span class=normal>67</span>
+<span class=normal>68</span>
+<span class=normal>69</span>
+<span class=normal>70</span>
+<span class=normal>71</span>
+<span class=normal>72</span>
+<span class=normal>73</span>
+<span class=normal>74</span>
+<span class=normal>75</span>
+<span class=normal>76</span>
+<span class=normal>77</span>
+<span class=normal>78</span></pre></div></td><td class=code><div><pre><span></span><code><span class=nd>@dataclass</span>
+<span class=k>class</span><span class=w> </span><span class=nc>Planar</span><span class=p>(</span><span class=n>TraitBase</span><span class=p>):</span>
+<span class=w>    </span><span class=sd>&quot;&quot;&quot;Planar trait model.</span>
+
+<span class=sd>    This model represents an Image with planar configuration.</span>
+
+<span class=sd>    Todo:</span>
+<span class=sd>        * (antirotor): Is this really a planar configuration? As with</span>
+<span class=sd>            bit planes and everything? If it serves as differentiator for</span>
+<span class=sd>            Deep images, should it be named differently? Like Raster?</span>
+
+<span class=sd>    Attributes:</span>
+<span class=sd>        name (str): Trait name.</span>
+<span class=sd>        description (str): Trait description.</span>
+<span class=sd>        id (str): id should be namespaced trait name with version</span>
+<span class=sd>        planar_configuration (str): Planar configuration.</span>
+<span class=sd>    &quot;&quot;&quot;</span>
+
+    <span class=n>name</span><span class=p>:</span> <span class=n>ClassVar</span><span class=p>[</span><span class=nb>str</span><span class=p>]</span> <span class=o>=</span> <span class=s2>&quot;Planar&quot;</span>
+    <span class=n>description</span><span class=p>:</span> <span class=n>ClassVar</span><span class=p>[</span><span class=nb>str</span><span class=p>]</span> <span class=o>=</span> <span class=s2>&quot;Planar Trait Model&quot;</span>
+    <span class=nb>id</span><span class=p>:</span> <span class=n>ClassVar</span><span class=p>[</span><span class=nb>str</span><span class=p>]</span> <span class=o>=</span> <span class=s2>&quot;ayon.2d.Planar.v1&quot;</span>
+    <span class=n>persistent</span><span class=p>:</span> <span class=n>ClassVar</span><span class=p>[</span><span class=nb>bool</span><span class=p>]</span> <span class=o>=</span> <span class=kc>True</span>
+    <span class=n>planar_configuration</span><span class=p>:</span> <span class=nb>str</span>
+</code></pre></div></td></tr></table></div> </details> <div class="doc doc-children"> </div> </div> </div> <div class="doc doc-object doc-class"> <h2 id=client.ayon_core.pipeline.traits.two_dimensional.UDIM class="doc doc-heading"> <code>UDIM</code> <span class="doc doc-labels"> <small class="doc doc-label doc-label-dataclass"><code>dataclass</code></small> </span> </h2> <div class="doc doc-contents "> <p class="doc doc-class-bases"> Bases: <code><a class="autorefs autorefs-internal" title="TraitBase
+
+
+  
+      dataclass
+   (client.ayon_core.pipeline.traits.trait.TraitBase)" href=trait.html#client.ayon_core.pipeline.traits.trait.TraitBase>TraitBase</a></code></p> <p>UDIM trait model.</p> <p>This model represents a UDIM trait.</p> <p><span class=doc-section-title>Attributes:</span></p> <table> <thead> <tr> <th>Name</th> <th>Type</th> <th>Description</th> </tr> </thead> <tbody> <tr class=doc-section-item> <td><code><span title=client.ayon_core.pipeline.traits.two_dimensional.UDIM.name>name</span></code></td> <td> <code><span title=str>str</span></code> </td> <td> <div class=doc-md-description> <p>Trait name.</p> </div> </td> </tr> <tr class=doc-section-item> <td><code><span title=client.ayon_core.pipeline.traits.two_dimensional.UDIM.description>description</span></code></td> <td> <code><span title=str>str</span></code> </td> <td> <div class=doc-md-description> <p>Trait description.</p> </div> </td> </tr> <tr class=doc-section-item> <td><code><span title=client.ayon_core.pipeline.traits.two_dimensional.UDIM.id>id</span></code></td> <td> <code><span title=str>str</span></code> </td> <td> <div class=doc-md-description> <p>id should be namespaced trait name with version</p> </div> </td> </tr> <tr class=doc-section-item> <td><code><span title=client.ayon_core.pipeline.traits.two_dimensional.UDIM.udim>udim</span></code></td> <td> <code><span title=int>int</span></code> </td> <td> <div class=doc-md-description> <p>UDIM value.</p> </div> </td> </tr> <tr class=doc-section-item> <td><code><span title=client.ayon_core.pipeline.traits.two_dimensional.UDIM.udim_regex>udim_regex</span></code></td> <td> <code><span title=str>str</span></code> </td> <td> <div class=doc-md-description> <p>UDIM regex.</p> </div> </td> </tr> </tbody> </table> <details class=quote> <summary>Source code in <code>client/ayon_core/pipeline/traits/two_dimensional.py</code></summary> <div class=highlight><table class=highlighttable><tr><td class=linenos><div class=linenodiv><pre><span></span><span class=normal>126</span>
+<span class=normal>127</span>
+<span class=normal>128</span>
+<span class=normal>129</span>
+<span class=normal>130</span>
+<span class=normal>131</span>
+<span class=normal>132</span>
+<span class=normal>133</span>
+<span class=normal>134</span>
+<span class=normal>135</span>
+<span class=normal>136</span>
+<span class=normal>137</span>
+<span class=normal>138</span>
+<span class=normal>139</span>
+<span class=normal>140</span>
+<span class=normal>141</span>
+<span class=normal>142</span>
+<span class=normal>143</span>
+<span class=normal>144</span>
+<span class=normal>145</span>
+<span class=normal>146</span>
+<span class=normal>147</span>
+<span class=normal>148</span>
+<span class=normal>149</span>
+<span class=normal>150</span>
+<span class=normal>151</span>
+<span class=normal>152</span>
+<span class=normal>153</span>
+<span class=normal>154</span>
+<span class=normal>155</span>
+<span class=normal>156</span>
+<span class=normal>157</span>
+<span class=normal>158</span>
+<span class=normal>159</span>
+<span class=normal>160</span>
+<span class=normal>161</span>
+<span class=normal>162</span>
+<span class=normal>163</span>
+<span class=normal>164</span>
+<span class=normal>165</span>
+<span class=normal>166</span>
+<span class=normal>167</span>
+<span class=normal>168</span>
+<span class=normal>169</span>
+<span class=normal>170</span>
+<span class=normal>171</span>
+<span class=normal>172</span>
+<span class=normal>173</span>
+<span class=normal>174</span>
+<span class=normal>175</span>
+<span class=normal>176</span>
+<span class=normal>177</span>
+<span class=normal>178</span>
+<span class=normal>179</span>
+<span class=normal>180</span>
+<span class=normal>181</span>
+<span class=normal>182</span>
+<span class=normal>183</span>
+<span class=normal>184</span>
+<span class=normal>185</span>
+<span class=normal>186</span>
+<span class=normal>187</span>
+<span class=normal>188</span>
+<span class=normal>189</span>
+<span class=normal>190</span>
+<span class=normal>191</span>
+<span class=normal>192</span>
+<span class=normal>193</span>
+<span class=normal>194</span>
+<span class=normal>195</span>
+<span class=normal>196</span>
+<span class=normal>197</span>
+<span class=normal>198</span>
+<span class=normal>199</span>
+<span class=normal>200</span>
+<span class=normal>201</span>
+<span class=normal>202</span>
+<span class=normal>203</span>
+<span class=normal>204</span>
+<span class=normal>205</span>
+<span class=normal>206</span>
+<span class=normal>207</span>
+<span class=normal>208</span></pre></div></td><td class=code><div><pre><span></span><code><span class=nd>@dataclass</span>
+<span class=k>class</span><span class=w> </span><span class=nc>UDIM</span><span class=p>(</span><span class=n>TraitBase</span><span class=p>):</span>
+<span class=w>    </span><span class=sd>&quot;&quot;&quot;UDIM trait model.</span>
+
+<span class=sd>    This model represents a UDIM trait.</span>
+
+<span class=sd>    Attributes:</span>
+<span class=sd>        name (str): Trait name.</span>
+<span class=sd>        description (str): Trait description.</span>
+<span class=sd>        id (str): id should be namespaced trait name with version</span>
+<span class=sd>        udim (int): UDIM value.</span>
+<span class=sd>        udim_regex (str): UDIM regex.</span>
+<span class=sd>    &quot;&quot;&quot;</span>
+
+    <span class=n>name</span><span class=p>:</span> <span class=n>ClassVar</span><span class=p>[</span><span class=nb>str</span><span class=p>]</span> <span class=o>=</span> <span class=s2>&quot;UDIM&quot;</span>
+    <span class=n>description</span><span class=p>:</span> <span class=n>ClassVar</span><span class=p>[</span><span class=nb>str</span><span class=p>]</span> <span class=o>=</span> <span class=s2>&quot;UDIM Trait&quot;</span>
+    <span class=nb>id</span><span class=p>:</span> <span class=n>ClassVar</span><span class=p>[</span><span class=nb>str</span><span class=p>]</span> <span class=o>=</span> <span class=s2>&quot;ayon.2d.UDIM.v1&quot;</span>
+    <span class=n>persistent</span><span class=p>:</span> <span class=n>ClassVar</span><span class=p>[</span><span class=nb>bool</span><span class=p>]</span> <span class=o>=</span> <span class=kc>True</span>
+    <span class=n>udim</span><span class=p>:</span> <span class=nb>list</span><span class=p>[</span><span class=nb>int</span><span class=p>]</span>
+    <span class=n>udim_regex</span><span class=p>:</span> <span class=n>Optional</span><span class=p>[</span><span class=nb>str</span><span class=p>]</span> <span class=o>=</span> <span class=sa>r</span><span class=s2>&quot;(?:\.|_)(?P&lt;udim&gt;\d+)\.\D+\d?$&quot;</span>
+
+    <span class=c1># Field validator for udim_regex - this works in the pydantic model v2</span>
+    <span class=c1># but not with the pure data classes.</span>
+    <span class=nd>@classmethod</span>
+    <span class=k>def</span><span class=w> </span><span class=nf>validate_frame_regex</span><span class=p>(</span><span class=bp>cls</span><span class=p>,</span> <span class=n>v</span><span class=p>:</span> <span class=n>Optional</span><span class=p>[</span><span class=nb>str</span><span class=p>])</span> <span class=o>-&gt;</span> <span class=n>Optional</span><span class=p>[</span><span class=nb>str</span><span class=p>]:</span>
+<span class=w>        </span><span class=sd>&quot;&quot;&quot;Validate udim regex.</span>
+
+<span class=sd>        Returns:</span>
+<span class=sd>            Optional[str]: UDIM regex.</span>
+
+<span class=sd>        Raises:</span>
+<span class=sd>            ValueError: UDIM regex must include &#39;udim&#39; named group.</span>
+
+<span class=sd>        &quot;&quot;&quot;</span>
+        <span class=k>if</span> <span class=n>v</span> <span class=ow>is</span> <span class=ow>not</span> <span class=kc>None</span> <span class=ow>and</span> <span class=s2>&quot;?P&lt;udim&gt;&quot;</span> <span class=ow>not</span> <span class=ow>in</span> <span class=n>v</span><span class=p>:</span>
+            <span class=n>msg</span> <span class=o>=</span> <span class=s2>&quot;UDIM regex must include &#39;udim&#39; named group&quot;</span>
+            <span class=k>raise</span> <span class=ne>ValueError</span><span class=p>(</span><span class=n>msg</span><span class=p>)</span>
+        <span class=k>return</span> <span class=n>v</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>get_file_location_for_udim</span><span class=p>(</span>
+            <span class=bp>self</span><span class=p>,</span>
+            <span class=n>file_locations</span><span class=p>:</span> <span class=n>FileLocations</span><span class=p>,</span>
+            <span class=n>udim</span><span class=p>:</span> <span class=nb>int</span><span class=p>,</span>
+        <span class=p>)</span> <span class=o>-&gt;</span> <span class=n>Optional</span><span class=p>[</span><span class=n>FileLocation</span><span class=p>]:</span>
+<span class=w>        </span><span class=sd>&quot;&quot;&quot;Get file location for UDIM.</span>
+
+<span class=sd>        Args:</span>
+<span class=sd>            file_locations (FileLocations): File locations.</span>
+<span class=sd>            udim (int): UDIM value.</span>
+
+<span class=sd>        Returns:</span>
+<span class=sd>            Optional[FileLocation]: File location.</span>
+
+<span class=sd>        &quot;&quot;&quot;</span>
+        <span class=k>if</span> <span class=ow>not</span> <span class=bp>self</span><span class=o>.</span><span class=n>udim_regex</span><span class=p>:</span>
+            <span class=k>return</span> <span class=kc>None</span>
+        <span class=n>pattern</span> <span class=o>=</span> <span class=n>re</span><span class=o>.</span><span class=n>compile</span><span class=p>(</span><span class=bp>self</span><span class=o>.</span><span class=n>udim_regex</span><span class=p>)</span>
+        <span class=k>for</span> <span class=n>location</span> <span class=ow>in</span> <span class=n>file_locations</span><span class=o>.</span><span class=n>file_paths</span><span class=p>:</span>
+            <span class=n>result</span> <span class=o>=</span> <span class=n>re</span><span class=o>.</span><span class=n>search</span><span class=p>(</span><span class=n>pattern</span><span class=p>,</span> <span class=n>location</span><span class=o>.</span><span class=n>file_path</span><span class=o>.</span><span class=n>name</span><span class=p>)</span>
+            <span class=k>if</span> <span class=n>result</span><span class=p>:</span>
+                <span class=n>udim_index</span> <span class=o>=</span> <span class=nb>int</span><span class=p>(</span><span class=n>result</span><span class=o>.</span><span class=n>group</span><span class=p>(</span><span class=s2>&quot;udim&quot;</span><span class=p>))</span>
+                <span class=k>if</span> <span class=n>udim_index</span> <span class=o>==</span> <span class=n>udim</span><span class=p>:</span>
+                    <span class=k>return</span> <span class=n>location</span>
+        <span class=k>return</span> <span class=kc>None</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>get_udim_from_file_location</span><span class=p>(</span>
+            <span class=bp>self</span><span class=p>,</span> <span class=n>file_location</span><span class=p>:</span> <span class=n>FileLocation</span><span class=p>)</span> <span class=o>-&gt;</span> <span class=n>Optional</span><span class=p>[</span><span class=nb>int</span><span class=p>]:</span>
+<span class=w>        </span><span class=sd>&quot;&quot;&quot;Get UDIM from the file location.</span>
+
+<span class=sd>        Args:</span>
+<span class=sd>            file_location (FileLocation): File location.</span>
+
+<span class=sd>        Returns:</span>
+<span class=sd>            Optional[int]: UDIM value.</span>
+
+<span class=sd>        &quot;&quot;&quot;</span>
+        <span class=k>if</span> <span class=ow>not</span> <span class=bp>self</span><span class=o>.</span><span class=n>udim_regex</span><span class=p>:</span>
+            <span class=k>return</span> <span class=kc>None</span>
+        <span class=n>pattern</span> <span class=o>=</span> <span class=n>re</span><span class=o>.</span><span class=n>compile</span><span class=p>(</span><span class=bp>self</span><span class=o>.</span><span class=n>udim_regex</span><span class=p>)</span>
+        <span class=n>result</span> <span class=o>=</span> <span class=n>re</span><span class=o>.</span><span class=n>search</span><span class=p>(</span><span class=n>pattern</span><span class=p>,</span> <span class=n>file_location</span><span class=o>.</span><span class=n>file_path</span><span class=o>.</span><span class=n>name</span><span class=p>)</span>
+        <span class=k>if</span> <span class=n>result</span><span class=p>:</span>
+            <span class=k>return</span> <span class=nb>int</span><span class=p>(</span><span class=n>result</span><span class=o>.</span><span class=n>group</span><span class=p>(</span><span class=s2>&quot;udim&quot;</span><span class=p>))</span>
+        <span class=k>return</span> <span class=kc>None</span>
+</code></pre></div></td></tr></table></div> </details> <div class="doc doc-children"> <div class="doc doc-object doc-function"> <h3 id=client.ayon_core.pipeline.traits.two_dimensional.UDIM.get_file_location_for_udim class="doc doc-heading"> <code class="highlight language-python"><span class=n>get_file_location_for_udim</span><span class=p>(</span><span class=n>file_locations</span><span class=p>,</span> <span class=n>udim</span><span class=p>)</span></code> </h3> <div class="doc doc-contents "> <p>Get file location for UDIM.</p> <p><span class=doc-section-title>Parameters:</span></p> <table> <thead> <tr> <th>Name</th> <th>Type</th> <th>Description</th> <th>Default</th> </tr> </thead> <tbody> <tr class=doc-section-item> <td> <code>file_locations</code> </td> <td> <code><a class="autorefs autorefs-internal" title="FileLocations
+
+
+  
+      dataclass
+   (client.ayon_core.pipeline.traits.content.FileLocations)" href=content.html#client.ayon_core.pipeline.traits.content.FileLocations>FileLocations</a></code> </td> <td> <div class=doc-md-description> <p>File locations.</p> </div> </td> <td> <em>required</em> </td> </tr> <tr class=doc-section-item> <td> <code>udim</code> </td> <td> <code><span title=int>int</span></code> </td> <td> <div class=doc-md-description> <p>UDIM value.</p> </div> </td> <td> <em>required</em> </td> </tr> </tbody> </table> <p><span class=doc-section-title>Returns:</span></p> <table> <thead> <tr> <th>Type</th> <th>Description</th> </tr> </thead> <tbody> <tr class=doc-section-item> <td> <code><span title=typing.Optional>Optional</span>[<a class="autorefs autorefs-internal" title="FileLocation
+
+
+  
+      dataclass
+   (client.ayon_core.pipeline.traits.content.FileLocation)" href=content.html#client.ayon_core.pipeline.traits.content.FileLocation>FileLocation</a>]</code> </td> <td> <div class=doc-md-description> <p>Optional[FileLocation]: File location.</p> </div> </td> </tr> </tbody> </table> <details class=quote> <summary>Source code in <code>client/ayon_core/pipeline/traits/two_dimensional.py</code></summary> <div class=highlight><table class=highlighttable><tr><td class=linenos><div class=linenodiv><pre><span></span><span class=normal>165</span>
+<span class=normal>166</span>
+<span class=normal>167</span>
+<span class=normal>168</span>
+<span class=normal>169</span>
+<span class=normal>170</span>
+<span class=normal>171</span>
+<span class=normal>172</span>
+<span class=normal>173</span>
+<span class=normal>174</span>
+<span class=normal>175</span>
+<span class=normal>176</span>
+<span class=normal>177</span>
+<span class=normal>178</span>
+<span class=normal>179</span>
+<span class=normal>180</span>
+<span class=normal>181</span>
+<span class=normal>182</span>
+<span class=normal>183</span>
+<span class=normal>184</span>
+<span class=normal>185</span>
+<span class=normal>186</span>
+<span class=normal>187</span>
+<span class=normal>188</span>
+<span class=normal>189</span></pre></div></td><td class=code><div><pre><span></span><code><span class=k>def</span><span class=w> </span><span class=nf>get_file_location_for_udim</span><span class=p>(</span>
+        <span class=bp>self</span><span class=p>,</span>
+        <span class=n>file_locations</span><span class=p>:</span> <span class=n>FileLocations</span><span class=p>,</span>
+        <span class=n>udim</span><span class=p>:</span> <span class=nb>int</span><span class=p>,</span>
+    <span class=p>)</span> <span class=o>-&gt;</span> <span class=n>Optional</span><span class=p>[</span><span class=n>FileLocation</span><span class=p>]:</span>
+<span class=w>    </span><span class=sd>&quot;&quot;&quot;Get file location for UDIM.</span>
+
+<span class=sd>    Args:</span>
+<span class=sd>        file_locations (FileLocations): File locations.</span>
+<span class=sd>        udim (int): UDIM value.</span>
+
+<span class=sd>    Returns:</span>
+<span class=sd>        Optional[FileLocation]: File location.</span>
+
+<span class=sd>    &quot;&quot;&quot;</span>
+    <span class=k>if</span> <span class=ow>not</span> <span class=bp>self</span><span class=o>.</span><span class=n>udim_regex</span><span class=p>:</span>
+        <span class=k>return</span> <span class=kc>None</span>
+    <span class=n>pattern</span> <span class=o>=</span> <span class=n>re</span><span class=o>.</span><span class=n>compile</span><span class=p>(</span><span class=bp>self</span><span class=o>.</span><span class=n>udim_regex</span><span class=p>)</span>
+    <span class=k>for</span> <span class=n>location</span> <span class=ow>in</span> <span class=n>file_locations</span><span class=o>.</span><span class=n>file_paths</span><span class=p>:</span>
+        <span class=n>result</span> <span class=o>=</span> <span class=n>re</span><span class=o>.</span><span class=n>search</span><span class=p>(</span><span class=n>pattern</span><span class=p>,</span> <span class=n>location</span><span class=o>.</span><span class=n>file_path</span><span class=o>.</span><span class=n>name</span><span class=p>)</span>
+        <span class=k>if</span> <span class=n>result</span><span class=p>:</span>
+            <span class=n>udim_index</span> <span class=o>=</span> <span class=nb>int</span><span class=p>(</span><span class=n>result</span><span class=o>.</span><span class=n>group</span><span class=p>(</span><span class=s2>&quot;udim&quot;</span><span class=p>))</span>
+            <span class=k>if</span> <span class=n>udim_index</span> <span class=o>==</span> <span class=n>udim</span><span class=p>:</span>
+                <span class=k>return</span> <span class=n>location</span>
+    <span class=k>return</span> <span class=kc>None</span>
+</code></pre></div></td></tr></table></div> </details> </div> </div> <div class="doc doc-object doc-function"> <h3 id=client.ayon_core.pipeline.traits.two_dimensional.UDIM.get_udim_from_file_location class="doc doc-heading"> <code class="highlight language-python"><span class=n>get_udim_from_file_location</span><span class=p>(</span><span class=n>file_location</span><span class=p>)</span></code> </h3> <div class="doc doc-contents "> <p>Get UDIM from the file location.</p> <p><span class=doc-section-title>Parameters:</span></p> <table> <thead> <tr> <th>Name</th> <th>Type</th> <th>Description</th> <th>Default</th> </tr> </thead> <tbody> <tr class=doc-section-item> <td> <code>file_location</code> </td> <td> <code><a class="autorefs autorefs-internal" title="FileLocation
+
+
+  
+      dataclass
+   (client.ayon_core.pipeline.traits.content.FileLocation)" href=content.html#client.ayon_core.pipeline.traits.content.FileLocation>FileLocation</a></code> </td> <td> <div class=doc-md-description> <p>File location.</p> </div> </td> <td> <em>required</em> </td> </tr> </tbody> </table> <p><span class=doc-section-title>Returns:</span></p> <table> <thead> <tr> <th>Type</th> <th>Description</th> </tr> </thead> <tbody> <tr class=doc-section-item> <td> <code><span title=typing.Optional>Optional</span>[<span title=int>int</span>]</code> </td> <td> <div class=doc-md-description> <p>Optional[int]: UDIM value.</p> </div> </td> </tr> </tbody> </table> <details class=quote> <summary>Source code in <code>client/ayon_core/pipeline/traits/two_dimensional.py</code></summary> <div class=highlight><table class=highlighttable><tr><td class=linenos><div class=linenodiv><pre><span></span><span class=normal>191</span>
+<span class=normal>192</span>
+<span class=normal>193</span>
+<span class=normal>194</span>
+<span class=normal>195</span>
+<span class=normal>196</span>
+<span class=normal>197</span>
+<span class=normal>198</span>
+<span class=normal>199</span>
+<span class=normal>200</span>
+<span class=normal>201</span>
+<span class=normal>202</span>
+<span class=normal>203</span>
+<span class=normal>204</span>
+<span class=normal>205</span>
+<span class=normal>206</span>
+<span class=normal>207</span>
+<span class=normal>208</span></pre></div></td><td class=code><div><pre><span></span><code><span class=k>def</span><span class=w> </span><span class=nf>get_udim_from_file_location</span><span class=p>(</span>
+        <span class=bp>self</span><span class=p>,</span> <span class=n>file_location</span><span class=p>:</span> <span class=n>FileLocation</span><span class=p>)</span> <span class=o>-&gt;</span> <span class=n>Optional</span><span class=p>[</span><span class=nb>int</span><span class=p>]:</span>
+<span class=w>    </span><span class=sd>&quot;&quot;&quot;Get UDIM from the file location.</span>
+
+<span class=sd>    Args:</span>
+<span class=sd>        file_location (FileLocation): File location.</span>
+
+<span class=sd>    Returns:</span>
+<span class=sd>        Optional[int]: UDIM value.</span>
+
+<span class=sd>    &quot;&quot;&quot;</span>
+    <span class=k>if</span> <span class=ow>not</span> <span class=bp>self</span><span class=o>.</span><span class=n>udim_regex</span><span class=p>:</span>
+        <span class=k>return</span> <span class=kc>None</span>
+    <span class=n>pattern</span> <span class=o>=</span> <span class=n>re</span><span class=o>.</span><span class=n>compile</span><span class=p>(</span><span class=bp>self</span><span class=o>.</span><span class=n>udim_regex</span><span class=p>)</span>
+    <span class=n>result</span> <span class=o>=</span> <span class=n>re</span><span class=o>.</span><span class=n>search</span><span class=p>(</span><span class=n>pattern</span><span class=p>,</span> <span class=n>file_location</span><span class=o>.</span><span class=n>file_path</span><span class=o>.</span><span class=n>name</span><span class=p>)</span>
+    <span class=k>if</span> <span class=n>result</span><span class=p>:</span>
+        <span class=k>return</span> <span class=nb>int</span><span class=p>(</span><span class=n>result</span><span class=o>.</span><span class=n>group</span><span class=p>(</span><span class=s2>&quot;udim&quot;</span><span class=p>))</span>
+    <span class=k>return</span> <span class=kc>None</span>
+</code></pre></div></td></tr></table></div> </details> </div> </div> <div class="doc doc-object doc-function"> <h3 id=client.ayon_core.pipeline.traits.two_dimensional.UDIM.validate_frame_regex class="doc doc-heading"> <code class="highlight language-python"><span class=n>validate_frame_regex</span><span class=p>(</span><span class=n>v</span><span class=p>)</span></code> <span class="doc doc-labels"> <small class="doc doc-label doc-label-classmethod"><code>classmethod</code></small> </span> </h3> <div class="doc doc-contents "> <p>Validate udim regex.</p> <p><span class=doc-section-title>Returns:</span></p> <table> <thead> <tr> <th>Type</th> <th>Description</th> </tr> </thead> <tbody> <tr class=doc-section-item> <td> <code><span title=typing.Optional>Optional</span>[<span title=str>str</span>]</code> </td> <td> <div class=doc-md-description> <p>Optional[str]: UDIM regex.</p> </div> </td> </tr> </tbody> </table> <p><span class=doc-section-title>Raises:</span></p> <table> <thead> <tr> <th>Type</th> <th>Description</th> </tr> </thead> <tbody> <tr class=doc-section-item> <td> <code><span title=ValueError>ValueError</span></code> </td> <td> <div class=doc-md-description> <p>UDIM regex must include 'udim' named group.</p> </div> </td> </tr> </tbody> </table> <details class=quote> <summary>Source code in <code>client/ayon_core/pipeline/traits/two_dimensional.py</code></summary> <div class=highlight><table class=highlighttable><tr><td class=linenos><div class=linenodiv><pre><span></span><span class=normal>149</span>
+<span class=normal>150</span>
+<span class=normal>151</span>
+<span class=normal>152</span>
+<span class=normal>153</span>
+<span class=normal>154</span>
+<span class=normal>155</span>
+<span class=normal>156</span>
+<span class=normal>157</span>
+<span class=normal>158</span>
+<span class=normal>159</span>
+<span class=normal>160</span>
+<span class=normal>161</span>
+<span class=normal>162</span>
+<span class=normal>163</span></pre></div></td><td class=code><div><pre><span></span><code><span class=nd>@classmethod</span>
+<span class=k>def</span><span class=w> </span><span class=nf>validate_frame_regex</span><span class=p>(</span><span class=bp>cls</span><span class=p>,</span> <span class=n>v</span><span class=p>:</span> <span class=n>Optional</span><span class=p>[</span><span class=nb>str</span><span class=p>])</span> <span class=o>-&gt;</span> <span class=n>Optional</span><span class=p>[</span><span class=nb>str</span><span class=p>]:</span>
+<span class=w>    </span><span class=sd>&quot;&quot;&quot;Validate udim regex.</span>
+
+<span class=sd>    Returns:</span>
+<span class=sd>        Optional[str]: UDIM regex.</span>
+
+<span class=sd>    Raises:</span>
+<span class=sd>        ValueError: UDIM regex must include &#39;udim&#39; named group.</span>
+
+<span class=sd>    &quot;&quot;&quot;</span>
+    <span class=k>if</span> <span class=n>v</span> <span class=ow>is</span> <span class=ow>not</span> <span class=kc>None</span> <span class=ow>and</span> <span class=s2>&quot;?P&lt;udim&gt;&quot;</span> <span class=ow>not</span> <span class=ow>in</span> <span class=n>v</span><span class=p>:</span>
+        <span class=n>msg</span> <span class=o>=</span> <span class=s2>&quot;UDIM regex must include &#39;udim&#39; named group&quot;</span>
+        <span class=k>raise</span> <span class=ne>ValueError</span><span class=p>(</span><span class=n>msg</span><span class=p>)</span>
+    <span class=k>return</span> <span class=n>v</span>
+</code></pre></div></td></tr></table></div> </details> </div> </div> </div> </div> </div> </div> </div> </div> </article> </div> <script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script> </div> </main> <footer class=md-footer> <div class="md-footer-meta md-typeset"> <div class="md-footer-meta__inner md-grid"> <div class=md-copyright> Made with <a href=https://squidfunk.github.io/mkdocs-material/ target=_blank rel=noopener> Material for MkDocs </a> </div> </div> </div> </footer> </div> <div class=md-dialog data-md-component=dialog> <div class="md-dialog__inner md-typeset"></div> </div> <script id=__config type=application/json>{"base": "../../../../..", "features": ["navigation.sections", "navigation.path", "navigation.prune"], "search": "../../../../../assets/javascripts/workers/search.973d3a69.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script> <script src=../../../../../assets/javascripts/bundle.f55a23d4.min.js></script> </body> </html>
