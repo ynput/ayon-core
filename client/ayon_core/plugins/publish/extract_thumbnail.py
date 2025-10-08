@@ -6,6 +6,7 @@ import re
 
 import pyblish.api
 from ayon_core.lib import (
+    get_oiio_tool_args,
     get_ffmpeg_tool_args,
     get_ffprobe_data,
 
@@ -210,6 +211,12 @@ class ExtractThumbnail(pyblish.api.InstancePlugin):
             full_output_path = os.path.join(dst_staging, jpeg_file)
             colorspace_data = repre.get("colorspaceData")
 
+            # NOTE We should find out what is happening here. Why don't we
+            #   use oiiotool all the time if it is available? Only possible
+            #   reason might be that video files should be converted using
+            #   ffmpeg, but other then that, we should use oiio all the time.
+            #   - We should also probably get rid of the ffmpeg settings...
+
             # only use OIIO if it is supported and representation has
             # colorspace data
             if oiio_supported and colorspace_data:
@@ -234,6 +241,11 @@ class ExtractThumbnail(pyblish.api.InstancePlugin):
                 )
 
             # Skip representation and try next one if  wasn't created
+            if not repre_thumb_created and oiio_supported:
+                repre_thumb_created = self._create_thumbnail_oiio(
+                    full_input_path, full_output_path
+                )
+
             if not repre_thumb_created:
                 continue
 
@@ -449,9 +461,38 @@ class ExtractThumbnail(pyblish.api.InstancePlugin):
 
         return True
 
+    def _create_thumbnail_oiio(self, src_path, dst_path):
+        self.log.debug(f"Extracting thumbnail with OIIO: {dst_path}")
+
+        try:
+            resolution_arg = self._get_resolution_arg("oiiotool", src_path)
+        except RuntimeError:
+            return False
+
+        oiio_cmd = get_oiio_tool_args(
+            "oiiotool",
+            "-a", src_path,
+            "--ch", "R,G,B",
+        )
+        oiio_cmd.extend(resolution_arg)
+        oiio_cmd.extend(("-o", dst_path))
+        self.log.debug("Running: {}".format(" ".join(oiio_cmd)))
+        try:
+            run_subprocess(oiio_cmd, logger=self.log)
+            return True
+        except Exception:
+            self.log.warning(
+                "Failed to create thumbnail using oiiotool",
+                exc_info=True
+            )
+            return False
+
     def _create_thumbnail_ffmpeg(self, src_path, dst_path):
-        self.log.debug("Extracting thumbnail with FFMPEG: {}".format(dst_path))
-        resolution_arg = self._get_resolution_arg("ffmpeg", src_path)
+        try:
+            resolution_arg = self._get_resolution_arg("ffmpeg", src_path)
+        except RuntimeError:
+            return False
+
         ffmpeg_path_args = get_ffmpeg_tool_args("ffmpeg")
         ffmpeg_args = self.ffmpeg_args or {}
 
