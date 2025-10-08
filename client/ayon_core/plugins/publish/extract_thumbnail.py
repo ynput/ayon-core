@@ -244,7 +244,7 @@ class ExtractThumbnail(pyblish.api.InstancePlugin):
                     full_input_path, full_output_path
                 )
 
-            # Skip representation and try next one if  wasn't created
+            # Skip representation and try next one if wasn't created
             if not repre_thumb_created and oiio_supported:
                 repre_thumb_created = self._create_thumbnail_oiio(
                     full_input_path, full_output_path
