@@ -10,6 +10,8 @@ try:
     from otio_burnins_adapter import ffmpeg_burnins
 except ImportError:
     import opentimelineio_contrib.adapters.ffmpeg_burnins as ffmpeg_burnins
+from PIL import ImageFont
+
 from ayon_core.lib import (
     get_ffmpeg_tool_args,
     get_ffmpeg_codec_args,
@@ -37,6 +39,39 @@ CURRENT_FRAME_KEY = "{current_frame}"
 CURRENT_FRAME_SPLITTER = "_-_CURRENT_FRAME_-_"
 TIMECODE_KEY = "{timecode}"
 SOURCE_TIMECODE_KEY = "{source_timecode}"
+
+
+def _drawtext(align, resolution, text, options):
+    """
+    :rtype: {'x': int, 'y': int}
+    """
+    x_pos = "0"
+    if align in (ffmpeg_burnins.TOP_CENTERED, ffmpeg_burnins.BOTTOM_CENTERED):
+        x_pos = "w/2-tw/2"
+
+    elif align in (ffmpeg_burnins.TOP_RIGHT, ffmpeg_burnins.BOTTOM_RIGHT):
+        ifont = ImageFont.truetype(options["font"], options["font_size"])
+        if hasattr(ifont, "getbox"):
+            left, top, right, bottom = ifont.getbbox(text)
+            box_size = right - left, bottom - top
+        else:
+            box_size = ifont.getsize(text)
+        x_pos = resolution[0] - (box_size[0] + options["x_offset"])
+    elif align in (ffmpeg_burnins.TOP_LEFT, ffmpeg_burnins.BOTTOM_LEFT):
+        x_pos = options["x_offset"]
+
+    if align in (
+        ffmpeg_burnins.TOP_CENTERED,
+        ffmpeg_burnins.TOP_RIGHT,
+        ffmpeg_burnins.TOP_LEFT
+    ):
+        y_pos = "%d" % options["y_offset"]
+    else:
+        y_pos = "h-text_h-%d" % (options["y_offset"])
+    return {"x": x_pos, "y": y_pos}
+
+
+ffmpeg_burnins._drawtext = _drawtext
 
 
 def _get_ffprobe_data(source):
