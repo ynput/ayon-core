@@ -16,7 +16,11 @@ from ayon_core.lib import (
     path_to_subprocess_arg,
     run_subprocess,
 )
-from ayon_core.lib.transcoding import oiio_color_convert
+from ayon_core.lib.transcoding import (
+    oiio_color_convert,
+    get_oiio_input_and_channel_args,
+    get_oiio_info_for_input,
+)
 
 from ayon_core.lib.transcoding import VIDEO_EXTENSIONS, IMAGE_EXTENSIONS
 
@@ -469,10 +473,16 @@ class ExtractThumbnail(pyblish.api.InstancePlugin):
         except RuntimeError:
             return False
 
+        input_info = get_oiio_info_for_input(src_path, logger=self.log)
+        input_arg, channels_arg = get_oiio_input_and_channel_args(input_info)
         oiio_cmd = get_oiio_tool_args(
             "oiiotool",
-            "-a", src_path,
-            "--ch", "R,G,B",
+            input_arg, src_path,
+            # Tell oiiotool which channels should be put to top stack
+            #   (and output)
+            "--ch", channels_arg,
+            # Use first subimage
+            "--subimage", "0"
         )
         oiio_cmd.extend(resolution_arg)
         oiio_cmd.extend(("-o", dst_path))
