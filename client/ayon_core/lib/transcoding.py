@@ -422,13 +422,12 @@ def get_review_info_by_layer_name(channel_names):
 
     # Put empty layer or 'rgba' to the beginning of the list
     # - if input has R, G, B, A channels they should be used for review
-    if "" in layer_names_order:
-        layer_names_order.remove("")
-        layer_names_order.insert(0, "")
-
-    elif "rgba" in layer_names_order:
-        layer_names_order.remove("rgba")
-        layer_names_order.insert(0, "rgba")
+    # NOTE They are iterated in reversed order because they're inserted to
+    #   the beginning of 'layer_names_order' -> last added will be first.
+    for name in reversed(["", "rgba"]):
+        if name in layer_names_order:
+            layer_names_order.remove(name)
+            layer_names_order.insert(0, name)
 
     output = []
     for layer_name in layer_names_order:
