@@ -229,12 +229,6 @@ class ExtractThumbnail(pyblish.api.InstancePlugin):
             #   oiiotool isn't available or representation is not having
             #   colorspace data
             if not repre_thumb_created:
-                if oiio_supported:
-                    self.log.debug(
-                        "Converting with FFMPEG because input"
-                        " can't be read by OIIO."
-                    )
-
                 repre_thumb_created = self._create_thumbnail_ffmpeg(
                     full_input_path, full_output_path
                 )
