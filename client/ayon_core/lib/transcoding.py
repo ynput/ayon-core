@@ -420,11 +420,15 @@ def get_review_info_by_layer_name(channel_names):
         channel = last_part[0].upper()
         rgba_by_layer_name[layer_name][channel] = channel_name
 
-    # Put empty layer to the beginning of the list
+    # Put empty layer or 'rgba' to the beginning of the list
     # - if input has R, G, B, A channels they should be used for review
     if "" in layer_names_order:
         layer_names_order.remove("")
         layer_names_order.insert(0, "")
+
+    elif "rgba" in layer_names_order:
+        layer_names_order.remove("rgba")
+        layer_names_order.insert(0, "rgba")
 
     output = []
     for layer_name in layer_names_order:
