@@ -471,6 +471,9 @@ class ExtractThumbnail(pyblish.api.InstancePlugin):
         try:
             resolution_arg = self._get_resolution_arg("oiiotool", src_path)
         except RuntimeError:
+            self.log.warning(
+                "Failed to create thumbnail using oiio", exc_info=True
+            )
             return False
 
         input_info = get_oiio_info_for_input(src_path, logger=self.log)
@@ -501,6 +504,9 @@ class ExtractThumbnail(pyblish.api.InstancePlugin):
         try:
             resolution_arg = self._get_resolution_arg("ffmpeg", src_path)
         except RuntimeError:
+            self.log.warning(
+                "Failed to create thumbnail using ffmpeg", exc_info=True
+            )
             return False
 
         ffmpeg_path_args = get_ffmpeg_tool_args("ffmpeg")
