@@ -219,7 +219,7 @@ class ExtractThumbnail(pyblish.api.InstancePlugin):
                 )
                 # If the input can read by OIIO then use OIIO method for
                 # conversion otherwise use ffmpeg
-                repre_thumb_created = self._create_thumbnail_oiio(
+                repre_thumb_created = self._create_colorspace_thumbnail(
                     full_input_path,
                     full_output_path,
                     colorspace_data
@@ -382,7 +382,7 @@ class ExtractThumbnail(pyblish.api.InstancePlugin):
 
         return ext in IMAGE_EXTENSIONS or ext in VIDEO_EXTENSIONS
 
-    def _create_thumbnail_oiio(
+    def _create_colorspace_thumbnail(
         self,
         src_path,
         dst_path,
