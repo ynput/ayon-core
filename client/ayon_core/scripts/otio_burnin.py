@@ -51,7 +51,7 @@ def _drawtext(align, resolution, text, options):
 
     elif align in (ffmpeg_burnins.TOP_RIGHT, ffmpeg_burnins.BOTTOM_RIGHT):
         ifont = ImageFont.truetype(options["font"], options["font_size"])
-        if hasattr(ifont, "getbox"):
+        if hasattr(ifont, "getbbox"):
             left, top, right, bottom = ifont.getbbox(text)
             box_size = right - left, bottom - top
         else:
