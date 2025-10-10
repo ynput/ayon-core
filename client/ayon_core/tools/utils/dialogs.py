@@ -41,7 +41,7 @@ class ScrollMessageBox(QtWidgets.QDialog):
 
     """
     def __init__(self, icon, title, messages, cancelable=False):
-        super(ScrollMessageBox, self).__init__()
+        super().__init__()
         self.setWindowTitle(title)
         self.icon = icon
 
@@ -98,7 +98,7 @@ class SimplePopup(QtWidgets.QDialog):
     on_clicked = QtCore.Signal()
 
     def __init__(self, parent=None, *args, **kwargs):
-        super(SimplePopup, self).__init__(parent=parent, *args, **kwargs)
+        super().__init__(parent=parent, *args, **kwargs)
 
         # Set default title
         self.setWindowTitle("Popup")
@@ -155,7 +155,7 @@ class SimplePopup(QtWidgets.QDialog):
         geo = self._calculate_window_geometry()
         self.setGeometry(geo)
 
-        return super(SimplePopup, self).showEvent(event)
+        return super().showEvent(event)
 
     def _on_clicked(self):
         """Callback for when the 'show' button is clicked.
@@ -222,9 +222,7 @@ class PopupUpdateKeys(SimplePopup):
     on_clicked_state = QtCore.Signal(bool)
 
     def __init__(self, parent=None, *args, **kwargs):
-        super(PopupUpdateKeys, self).__init__(
-            parent=parent, *args, **kwargs
-        )
+        super().__init__(parent=parent, *args, **kwargs)
 
         layout = self.layout()
 
