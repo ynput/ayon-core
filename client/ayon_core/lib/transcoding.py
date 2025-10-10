@@ -1229,6 +1229,7 @@ def oiio_color_convert(
     logger.debug("Conversion command: {}".format(" ".join(oiio_cmd)))
     run_subprocess(oiio_cmd, logger=logger)
 
+
 def split_cmd_args(in_args):
     """Makes sure all entered arguments are separated in individual items.
 
