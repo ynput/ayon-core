@@ -225,7 +225,7 @@ def _get_last_version_files(
         project_name,
         product_name,
         folder_entity["id"],
-        fields={"id"}
+        fields={"id", "attrib"}
     )
 
     if not version_entity:
