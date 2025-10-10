@@ -49,8 +49,6 @@ class ScrollMessageBox(QtWidgets.QDialog):
 
         self.setWindowFlags(QtCore.Qt.WindowTitleHint)
 
-        layout = QtWidgets.QVBoxLayout(self)
-
         scroll_widget = QtWidgets.QScrollArea(self)
         scroll_widget.setWidgetResizable(True)
         content_widget = QtWidgets.QWidget(self)
@@ -63,14 +61,8 @@ class ScrollMessageBox(QtWidgets.QDialog):
             content_layout.addWidget(label_widget)
             message_len = max(message_len, len(message))
 
-        # guess size of scrollable area
-        # WARNING: 'desktop' method probably won't work in PySide6
-        desktop = QtWidgets.QApplication.desktop()
-        max_width = desktop.availableGeometry().width()
-        scroll_widget.setMinimumWidth(
-            min(max_width, message_len * 6)
-        )
-        layout.addWidget(scroll_widget)
+        # Set minimum width
+        scroll_widget.setMinimumWidth(360)
 
         buttons = QtWidgets.QDialogButtonBox.Ok
         if cancelable:
@@ -86,7 +78,9 @@ class ScrollMessageBox(QtWidgets.QDialog):
         btn.clicked.connect(self._on_copy_click)
         btn_box.addButton(btn, QtWidgets.QDialogButtonBox.NoRole)
 
-        layout.addWidget(btn_box)
+        main_layout = QtWidgets.QVBoxLayout(self)
+        main_layout.addWidget(scroll_widget, 1)
+        main_layout.addWidget(btn_box, 0)
 
     def _on_copy_click(self):
         clipboard = QtWidgets.QApplication.clipboard()
