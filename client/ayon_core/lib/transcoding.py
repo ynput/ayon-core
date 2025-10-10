@@ -1189,8 +1189,6 @@ def oiio_color_convert(
             # - go through a reference space
             ocio_display_args = (target_display, target_view)
         else:
-            color_convert_args = None
-            ocio_display_args = None
             logger.debug(
                 "Source and target display/view pairs are identical."
                 " No color conversion needed."
