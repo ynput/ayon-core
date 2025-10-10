@@ -4,6 +4,15 @@ import os
 import logging
 import re
 import collections
+from typing import Optional, Any, Tuple
+import clique
+import speedcopy
+
+import ayon_api
+import pyblish.api
+
+from ayon_api import get_last_version_by_product_name, get_representations
+
 
 log = logging.getLogger(__name__)
 
@@ -151,3 +160,91 @@ def source_hash(filepath, *args):
     time = str(os.path.getmtime(filepath))
     size = str(os.path.getsize(filepath))
     return "|".join([file_name, time, size] + list(args)).replace(".", ",")
+
+
+def fill_sequence_gaps_with_previous(
+    collection: str,
+    staging_dir: str,
+    instance: pyblish.plugin.Instance,
+    current_repre_name: str,
+    start_frame: int,
+    end_frame: int
+) -> Tuple[dict[str, Any], Optional[dict[int, str]]]:
+    """Tries to replace missing frames from ones from last version"""
+    used_version_entity, repre_file_paths = _get_last_version_files(
+        instance, current_repre_name
+    )
+    if repre_file_paths is None:
+        # issues in getting last version files
+        return (None, None)
+
+    prev_collection = clique.assemble(
+        repre_file_paths,
+        patterns=[clique.PATTERNS["frames"]],
+        minimum_items=1
+    )[0][0]
+    prev_col_format = prev_collection.format("{head}{padding}{tail}")
+
+    added_files = {}
+    anatomy = instance.context.data["anatomy"]
+    col_format = collection.format("{head}{padding}{tail}")
+    for frame in range(start_frame, end_frame + 1):
+        if frame in collection.indexes:
+            continue
+        hole_fpath = os.path.join(staging_dir, col_format % frame)
+
+        previous_version_path = prev_col_format % frame
+        previous_version_path = anatomy.fill_root(previous_version_path)
+        if not os.path.exists(previous_version_path):
+            log.warning(
+                "Missing frame should be replaced from "
+                f"'{previous_version_path}' but that doesn't exist. "
+                "Falling back to filling from currently last rendered."
+            )
+            return (None, None)
+
+        log.warning(
+            f"Replacing missing '{hole_fpath}' with "
+            f"'{previous_version_path}'"
+        )
+        speedcopy.copyfile(previous_version_path, hole_fpath)
+        added_files[frame] = hole_fpath
+
+    return (used_version_entity, added_files)
+
+
+def _get_last_version_files(
+    instance: pyblish.plugin.Instance,
+    current_repre_name: str,
+):
+    product_name = instance.data["productName"]
+    project_name = instance.data["projectEntity"]["name"]
+    folder_entity = instance.data["folderEntity"]
+
+    version_entity = get_last_version_by_product_name(
+        project_name,
+        product_name,
+        folder_entity["id"],
+        fields={"id"}
+    )
+
+    if not version_entity:
+        return (None, None)
+
+    matching_repres = get_representations(
+        project_name,
+        version_ids=[version_entity["id"]],
+        representation_names=[current_repre_name],
+        fields={"files"}
+    )
+
+    if not matching_repres:
+        return None
+    matching_repre = list(matching_repres)[0]
+
+    repre_file_paths = [
+        file_info["path"]
+        for file_info in matching_repre["files"]
+    ]
+
+    return (version_entity, repre_file_paths)
