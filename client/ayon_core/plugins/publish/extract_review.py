@@ -520,6 +520,10 @@ class ExtractReview(pyblish.api.InstancePlugin):
                     )
                     # fallback to original workflow
                     if new_frame_files is None:
+                        self.log.warning(
+                            "Falling back to filling from currently "
+                            "last rendered."
+                        )
                         new_frame_files = (
                             self.fill_sequence_gaps_from_existing(
                             collection=collection,
