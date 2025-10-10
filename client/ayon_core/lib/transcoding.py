@@ -1196,7 +1196,6 @@ def oiio_color_convert(
                 " No color conversion needed."
             )
 
-
         if color_convert_args:
             # Use colorconvert for colorspace target
             oiio_cmd.extend([
@@ -1231,7 +1230,6 @@ def oiio_color_convert(
 
     logger.debug("Conversion command: {}".format(" ".join(oiio_cmd)))
     run_subprocess(oiio_cmd, logger=logger)
-
 
 def split_cmd_args(in_args):
     """Makes sure all entered arguments are separated in individual items.
