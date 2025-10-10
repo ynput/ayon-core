@@ -1173,10 +1173,10 @@ def oiio_color_convert(
         color_convert_args = None
         ocio_display_args = None
         oiio_cmd.extend([
-                "--ociodisplay:inverse=1:subimages=0",
-                source_display,
-                source_view
-            ])
+            "--ociodisplay:inverse=1:subimages=0",
+            source_display,
+            source_view,
+        ])
 
         if target_colorspace:
             # This is a two-step conversion process since there's no direct
