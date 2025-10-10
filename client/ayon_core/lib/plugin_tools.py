@@ -199,7 +199,6 @@ def fill_sequence_gaps_with_previous(
             log.warning(
                 "Missing frame should be replaced from "
                 f"'{previous_version_path}' but that doesn't exist. "
-                "Falling back to filling from currently last rendered."
             )
             return (None, None)
 
