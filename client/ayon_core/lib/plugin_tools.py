@@ -4,7 +4,7 @@ import os
 import logging
 import re
 import collections
-from typing import Optional, Any, Tuple
+from typing import Optional, Any
 import clique
 import speedcopy
 
