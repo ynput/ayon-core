@@ -249,8 +249,8 @@ def create_skeleton_instance(
         # map inputVersions `ObjectId` -> `str` so json supports it
         "inputVersions": list(map(str, data.get("inputVersions", []))),
         "colorspace": data.get("colorspace"),
-        "hasExplicitFrames": data.get("hasExplicitFrames") or False,
-        "reuseLastVersion": data.get("reuseLastVersion") or False
+        "hasExplicitFrames": data.get("hasExplicitFrames", False),
+        "reuseLastVersion": data.get("reuseLastVersion", False),
     }
 
     if data.get("renderlayer"):
