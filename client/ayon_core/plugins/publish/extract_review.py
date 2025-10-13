@@ -19,7 +19,7 @@ from ayon_core.lib import (
     path_to_subprocess_arg,
     run_subprocess,
 )
-from ayon_core.lib.plugin_tools import fill_sequence_gaps_with_previous
+from ayon_core.pipeline.publish.lib import fill_sequence_gaps_with_previous_version
 from ayon_core.lib.transcoding import (
     IMAGE_EXTENSIONS,
     get_ffprobe_streams,
@@ -510,7 +510,7 @@ class ExtractReview(pyblish.api.InstancePlugin):
                         temp_data=temp_data
                     )
                 elif fill_missing_frames == "previous_version":
-                    _, new_frame_files = fill_sequence_gaps_with_previous(
+                    _, new_frame_files = fill_sequence_gaps_with_previous_version(
                         collection=collection,
                         staging_dir=new_repre["stagingDir"],
                         instance=instance,
