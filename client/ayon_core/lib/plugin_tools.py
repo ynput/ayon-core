@@ -227,7 +227,7 @@ def _get_last_version_files(
     )
 
     if not version_entity:
-        return (None, None)
+        return None, None
 
     matching_repres = get_representations(
         project_name,
