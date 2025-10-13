@@ -234,9 +234,10 @@ def _get_last_version_files(
         fields={"files"}
     )
 
-    if not matching_repres:
-        return None
-    matching_repre = list(matching_repres)[0]
+    matching_repre = next(matching_repres, None)
+    if not matching_repre:
+        return None, None
+    
 
     repre_file_paths = [
         file_info["path"]
