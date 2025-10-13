@@ -8,8 +8,6 @@ from typing import Optional, Any
 import clique
 import speedcopy
 
-import pyblish.api
-
 from ayon_api import get_last_version_by_product_name, get_representations
 
 
