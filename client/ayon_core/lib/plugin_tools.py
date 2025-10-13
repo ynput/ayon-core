@@ -212,7 +212,7 @@ def fill_sequence_gaps_with_previous(
 def _get_last_version_files(
     instance: pyblish.plugin.Instance,
     current_repre_name: str,
-):
+) -> tuple[Optional[dict[str, Any], Optional[list[str]]]:
     product_name = instance.data["productName"]
     project_name = instance.data["projectEntity"]["name"]
     folder_entity = instance.data["folderEntity"]
