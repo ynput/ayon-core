@@ -168,7 +168,7 @@ def fill_sequence_gaps_with_previous(
     current_repre_name: str,
     start_frame: int,
     end_frame: int
-) -> Tuple[dict[str, Any], Optional[dict[int, str]]]:
+) -> tuple[Optional[dict[str, Any]], Optional[dict[int, str]]]:
     """Tries to replace missing frames from ones from last version"""
     used_version_entity, repre_file_paths = _get_last_version_files(
         instance, current_repre_name
