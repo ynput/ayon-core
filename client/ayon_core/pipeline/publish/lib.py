@@ -1151,7 +1151,7 @@ def get_trait_representations(
     return instance.data.get(TRAIT_INSTANCE_KEY, [])
 
 
-def fill_sequence_gaps_with_previous(
+def fill_sequence_gaps_with_previous_version(
     collection: str,
     staging_dir: str,
     instance: pyblish.plugin.Instance,
