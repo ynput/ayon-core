@@ -7,12 +7,13 @@ import copy
 import warnings
 import hashlib
 import xml.etree.ElementTree
+import logging
 from typing import TYPE_CHECKING, Optional, Union, List, Any
+
 import clique
 import speedcopy
-import logging
-
 import ayon_api
+from ayon_api import get_last_version_by_product_name, get_representations
 import pyblish.util
 import pyblish.plugin
 import pyblish.api
