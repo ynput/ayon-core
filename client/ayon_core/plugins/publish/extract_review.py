@@ -507,10 +507,10 @@ class ExtractReview(pyblish.api.InstancePlugin):
                         resolution_width=temp_data.resolution_width,
                         resolution_height=temp_data.resolution_height,
                         extension=temp_data.input_ext,
-                        temp_data=temp_data
+                        temp_data=temp_data,
                     )
                 elif fill_missing_frames == "previous_version":
-                    _, new_frame_files = fill_sequence_gaps_with_previous_version(
+                    fill_output = fill_sequence_gaps_with_previous_version(
                         collection=collection,
                         staging_dir=new_repre["stagingDir"],
                         instance=instance,
@@ -518,6 +518,7 @@ class ExtractReview(pyblish.api.InstancePlugin):
                         start_frame=temp_data.frame_start,
                         end_frame=temp_data.frame_end,
                     )
+                    _, new_frame_files = fill_output
                     # fallback to original workflow
                     if new_frame_files is None:
                         self.log.warning(
