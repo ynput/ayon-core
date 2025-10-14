@@ -12,11 +12,15 @@ import clique
 import speedcopy
 import logging
 
-import ayon_api
 import pyblish.util
 import pyblish.plugin
 import pyblish.api
 
+from ayon_api import (
+    get_server_api_connection,
+    get_representations,
+    get_last_version_by_product_name
+)
 from ayon_core.lib import (
     import_filepath,
     Logger,
@@ -30,7 +34,6 @@ from .constants import (
     DEFAULT_PUBLISH_TEMPLATE,
     DEFAULT_HERO_PUBLISH_TEMPLATE,
 )
-from ayon_api import get_last_version_by_product_name, get_representations
 
 if TYPE_CHECKING:
     from ayon_core.pipeline.traits import Representation
@@ -1036,7 +1039,7 @@ def main_cli_publish(
         # NOTE: ayon-python-api does not have public api function to find
         #   out if is used service user. So we need to have try > except
         #   block.
-        con = ayon_api.get_server_api_connection()
+        con = get_server_api_connection()
         try:
             con.set_default_service_username(username)
         except ValueError:
