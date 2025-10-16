@@ -125,6 +125,31 @@ class ExtractOtioAudioTracks(pyblish.api.ContextPlugin):
                 })
                 inst.data["audio"] = audio_attr
 
+            # Make sure if the audio instance is having siblink instances
+            # which needs audio for reviewable media so it is also added
+            # to its instance data
+            # Retrieve instance data from parent instance shot instance.
+            parent_instance_id = inst.data["parent_instance_id"]
+            for sibl_instance in inst.context:
+                sibl_parent_instance_id = sibl_instance.data.get(
+                    "parent_instance_id")
+                # make sure the instance is not the same instance
+                # and the parent instance id is the same
+                if (
+                    sibl_instance.id is not inst.id and
+                    sibl_parent_instance_id == parent_instance_id
+                ):
+                    self.log.info(
+                        "Adding audio to Sibling instance: "
+                        f"{sibl_instance.data['label']}"
+                    )
+                    audio_attr = sibl_instance.data.get("audio") or []
+                    audio_attr.append({
+                        "filename": audio_fpath,
+                        "offset": 0
+                    })
+                    sibl_instance.data["audio"] = audio_attr
+
             # add generated audio file to created files for recycling
             if audio_fpath not in created_files:
                 created_files.append(audio_fpath)
