@@ -82,7 +82,6 @@ class CollectResourcesPath(pyblish.api.InstancePlugin):
         # TODO remove when all clients have solved this issue
         template_data.update({"frame": "FRAME_TEMP", "representation": "TEMP"})
 
-
         template_name = get_publish_template_name(
             project_name=template_data["project"]["name"],
             host_name=get_current_host_name(),
