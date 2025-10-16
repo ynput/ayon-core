@@ -13,6 +13,9 @@ import copy
 
 import pyblish.api
 
+from ayon_core.pipeline.publish import get_publish_template_name
+from ayon_core.pipeline.context_tools import get_current_host_name
+
 
 class CollectResourcesPath(pyblish.api.InstancePlugin):
     """Generate directory path where the files and resources will be stored.
@@ -77,16 +80,24 @@ class CollectResourcesPath(pyblish.api.InstancePlugin):
 
         # This is for cases of Deprecated anatomy without `folder`
         # TODO remove when all clients have solved this issue
-        template_data.update({
-            "frame": "FRAME_TEMP",
-            "representation": "TEMP"
-        })
+        template_data.update({"frame": "FRAME_TEMP", "representation": "TEMP"})
 
-        publish_templates = anatomy.get_template_item(
-            "publish", "default", "directory"
+
+        template_name = get_publish_template_name(
+            project_name=template_data["project"]["name"],
+            host_name=get_current_host_name(),
+            product_type=template_data["product"]["type"],
+            task_name=template_data["product"]["name"],
+            task_type=template_data["product"]["type"],
+            project_settings=instance.context.data["project_settings"],
+            logger=self.log,
         )
+
+        publish_template = anatomy.get_template_item(
+            "publish", template_name, "directory")
+
         publish_folder = os.path.normpath(
-            publish_templates.format_strict(template_data)
+            publish_template.format_strict(template_data)
         )
         resources_folder = os.path.join(publish_folder, "resources")
 
