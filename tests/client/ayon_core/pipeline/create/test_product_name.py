@@ -219,7 +219,9 @@ class TestGetProductName:
     def test_product_name_with_base_type(
         self, mock_prepare, mock_format, mock_get_tmpl
     ):
-        mock_get_tmpl.return_value = "{task[name]}_{product[basetype]}_{variant}"
+        mock_get_tmpl.return_value = (
+            "{task[name]}_{product[basetype]}_{variant}"
+        )
         mock_prepare.return_value = {
             "task": {"name": "modeling"},
             "product": {"type": "model"},
@@ -267,7 +269,12 @@ class TestGetProductName:
         mock_get_project.return_value = {
             "taskTypes": [{"name": "Modeling", "shortName": "mdl"}]
         }
-        mock_prepare.return_value = {"task": {"short": "mdl"}, "variant": "Main"}
+        mock_prepare.return_value = {
+            "task": {
+                "short": "mdl"
+            },
+            "variant": "Main"
+        }
         mock_format.return_value = "mdl_Main"
 
         result = get_product_name(
