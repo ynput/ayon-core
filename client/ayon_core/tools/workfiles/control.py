@@ -606,6 +606,19 @@ class BaseWorkfileController(
             description,
         )
 
+    def delete_workfile(self, folder_id, task_id, filepath, workfile_entity_id):
+        """Delete a workfile and its database entry.
+
+        Args:
+            folder_id (str): Folder id.
+            task_id (str): Task id.
+            filepath (str): Path to the workfile to delete.
+            workfile_entity_id (str): ID of the workfile entity in database.
+        """
+        self._workfiles_model.delete_workfile(
+            folder_id, task_id, filepath, workfile_entity_id
+        )
+
     def get_my_tasks_entity_ids(self, project_name: str):
         username = self._get_my_username()
         assignees = []

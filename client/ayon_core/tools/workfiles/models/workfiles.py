@@ -304,6 +304,43 @@ class WorkfilesModel:
             {"failed": failed},
         )
 
+    def delete_workfile(self, folder_id, task_id, filepath, workfile_entity_id):
+        """Delete a workfile and its database entry.
+
+        Args:
+            folder_id (str): Folder id.
+            task_id (str): Task id.
+            filepath (str): Path to the workfile to delete.
+            workfile_entity_id (str): ID of the workfile entity in database.
+        """
+        self._emit_event("workfile_delete.started")
+
+        failed = False
+        try:
+            # Delete the physical file if it exists
+            if os.path.exists(filepath):
+                os.remove(filepath)
+                self._log.info(f"Deleted workfile: {filepath}")
+
+            # Delete the workfile entity from database
+            if workfile_entity_id:
+                project_name = self._controller.get_current_project_name()
+                # Use the correct API method to delete workfile
+                ayon_api.delete_workfile(project_name, workfile_entity_id)
+                self._log.info(f"Deleted workfile entity: {workfile_entity_id}")
+
+            # Reset cache for this task to refresh the file list
+            self._reset_workarea_file_items(task_id)
+
+        except Exception:
+            failed = True
+            self._log.warning("Deletion of workfile failed", exc_info=True)
+
+        self._emit_event(
+            "workfile_delete.finished",
+            {"failed": failed},
+        )
+
     def get_workfile_entities(self, task_id: str):
         if not task_id:
             return []

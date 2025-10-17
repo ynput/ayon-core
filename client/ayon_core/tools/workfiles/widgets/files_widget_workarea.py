@@ -291,6 +291,7 @@ class WorkAreaFilesWidget(QtWidgets.QWidget):
     selection_changed = QtCore.Signal()
     open_current_requested = QtCore.Signal()
     duplicate_requested = QtCore.Signal()
+    delete_requested = QtCore.Signal()
 
     def __init__(self, controller, parent):
         super(WorkAreaFilesWidget, self).__init__(parent)
@@ -416,12 +417,23 @@ class WorkAreaFilesWidget(QtWidgets.QWidget):
         action.triggered.connect(self._on_duplicate_pressed)
         menu.addAction(action)
 
+        # Delete
+        action = QtWidgets.QAction("Delete", menu)
+        tip = "Delete selected file."
+        action.setToolTip(tip)
+        action.setStatusTip(tip)
+        action.triggered.connect(self._on_delete_pressed)
+        menu.addAction(action)
+
         # Show the context action menu
         global_point = self._view.mapToGlobal(point)
         _ = menu.exec_(global_point)
 
     def _on_duplicate_pressed(self):
         self.duplicate_requested.emit()
+
+    def _on_delete_pressed(self):
+        self.delete_requested.emit()
 
     def _on_expected_selection_change(self, event):
         workfile_info = event["workfile"]

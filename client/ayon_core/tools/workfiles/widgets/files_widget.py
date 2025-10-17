@@ -4,6 +4,7 @@ import qtpy
 from qtpy import QtWidgets, QtCore
 
 from .save_as_dialog import SaveAsDialog
+from .delete_workfile_dialog import DeleteWorkfileDialog
 from .files_widget_workarea import WorkAreaFilesWidget
 from .files_widget_published import PublishedFilesWidget
 
@@ -88,11 +89,17 @@ class FilesWidget(QtWidgets.QWidget):
             "workfile_save_enable.changed",
             self._on_workfile_save_enabled_change,
         )
+        controller.register_event_callback(
+            "workfile_delete.finished",
+            self._on_delete_finished,
+        )
 
         workarea_widget.open_current_requested.connect(
             self._on_current_open_requests)
         workarea_widget.duplicate_requested.connect(
             self._on_duplicate_request)
+        workarea_widget.delete_requested.connect(
+            self._on_delete_request)
         workarea_btn_open.clicked.connect(self._on_workarea_open_clicked)
         workarea_btn_browse.clicked.connect(self._on_workarea_browse_clicked)
         workarea_btn_save.clicked.connect(self._on_workarea_save_clicked)
@@ -225,6 +232,28 @@ class FilesWidget(QtWidgets.QWidget):
             version=result["version"],
             comment=result["comment"],
             description=result["description"]
+        )
+
+    def _on_delete_request(self):
+        filepath = self._workarea_widget.get_selected_path()
+        if filepath is None:
+            return
+
+        # Get workfile entity ID from the selected item
+        workfile_entity_id = self._workarea_widget._get_selected_info().get("workfile_entity_id")
+        
+        # Show confirmation dialog
+        dialog = DeleteWorkfileDialog(filepath, self)
+        if dialog.exec_() != QtWidgets.QDialog.Accepted:
+            return
+
+        folder_id = self._selected_folder_id
+        task_id = self._selected_task_id
+        self._controller.delete_workfile(
+            folder_id,
+            task_id,
+            filepath,
+            workfile_entity_id
         )
 
     def _on_workarea_browse_clicked(self):
@@ -392,6 +421,16 @@ class FilesWidget(QtWidgets.QWidget):
 
         if not event["failed"]:
             self._set_select_contex_mode(False)
+
+    def _on_delete_finished(self, event):
+        """Callback for when workfile deletion is finished.
+
+        Args:
+            event (Event): Event object.
+        """
+        # The workarea widget will automatically refresh due to the cache reset
+        # in the delete_workfile method, so we don't need to do anything here
+        pass
 
     def _on_workfile_save_enabled_change(self, event):
         enabled = event["enabled"]

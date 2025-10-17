@@ -136,6 +136,10 @@ class WorkfilesToolWindow(QtWidgets.QWidget):
             self._on_duplicate_finished
         )
         controller.register_event_callback(
+            "workfile_delete.finished",
+            self._on_delete_finished
+        )
+        controller.register_event_callback(
             "open_workfile.finished",
             self._on_open_finished
         )
@@ -381,6 +385,17 @@ class WorkfilesToolWindow(QtWidgets.QWidget):
         else:
             self._overlay_messages_widget.add_message(
                 "Workfile duplicated"
+            )
+
+    def _on_delete_finished(self, event):
+        if event["failed"]:
+            self._overlay_messages_widget.add_message(
+                "Failed to delete workfile",
+                "error",
+            )
+        else:
+            self._overlay_messages_widget.add_message(
+                "Workfile deleted"
             )
 
     def _on_open_finished(self, event):
