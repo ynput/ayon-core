@@ -88,7 +88,7 @@ class CollectResourcesPath(pyblish.api.InstancePlugin):
             task_type = task_entity["taskType"]
 
         template_name = get_publish_template_name(
-            project_name=template_data["project"]["name"],
+            project_name=instance.context.data["projectName"],
             host_name=instance.context.data["hostName"],
             product_type=instance.data["productType"],
             task_name=task_name,
