@@ -81,12 +81,18 @@ class CollectResourcesPath(pyblish.api.InstancePlugin):
         # TODO remove when all clients have solved this issue
         template_data.update({"frame": "FRAME_TEMP", "representation": "TEMP"})
 
+        task_name = task_type = None
+        task_entity = instance.data.get("taskEntity")
+        if task_entity:
+            task_name = task_entity.name
+            task_type = task_entity.type
+
         template_name = get_publish_template_name(
             project_name=template_data["project"]["name"],
             host_name=instance.context.data["hostName"],
-            product_type=template_data["product"]["type"],
-            task_name=template_data["product"]["name"],
-            task_type=template_data["product"]["type"],
+            product_type=instance.data["productType"],
+            task_name=task_name,
+            task_type=task_type,
             project_settings=instance.context.data["project_settings"],
             logger=self.log,
         )
