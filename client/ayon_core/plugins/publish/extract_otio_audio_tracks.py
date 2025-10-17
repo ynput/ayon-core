@@ -65,9 +65,9 @@ class ExtractOtioAudioTracks(pyblish.api.ContextPlugin):
         # remove full mixed audio file
         os.remove(audio_temp_fpath)
 
-    def add_audio_to_instances(self, audio_file, instances):
+    def add_audio_to_instances(self, audio_file, audio_instances):
         created_files = []
-        for inst in instances:
+        for inst in audio_instances:
             name = inst.data["folderPath"]
 
             recycling_file = [f for f in created_files if name in f]
@@ -134,11 +134,10 @@ class ExtractOtioAudioTracks(pyblish.api.ContextPlugin):
                 sibl_parent_instance_id = sibl_instance.data.get(
                     "parent_instance_id")
                 # make sure the instance is not the same instance
+                if sibl_instance.id == inst.id:
+                    continue
                 # and the parent instance id is the same
-                if (
-                    sibl_instance.id is not inst.id and
-                    sibl_parent_instance_id == parent_instance_id
-                ):
+                if sibl_parent_instance_id == parent_instance_id:
                     self.log.info(
                         "Adding audio to Sibling instance: "
                         f"{sibl_instance.data['label']}"
