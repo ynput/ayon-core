@@ -14,7 +14,6 @@ import copy
 import pyblish.api
 
 from ayon_core.pipeline.publish import get_publish_template_name
-from ayon_core.pipeline.context_tools import get_current_host_name
 
 
 class CollectResourcesPath(pyblish.api.InstancePlugin):
