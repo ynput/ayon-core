@@ -813,16 +813,20 @@ def replace_with_published_scene_path(instance, replace_in_path=True):
 
     anatomy = instance.context.data["anatomy"]
     project_name = anatomy.project_name
-    task_entity = instance.data.get("taskEntity", {})
-    project_settings = get_project_settings(project_name)
+    task_name = task_type = None
+    task_entity = instance.data.get("taskEntity")
+    if task_entity:
+        task_name = task_entity["name"]
+        task_type = task_entity["taskType"]
+    project_settings = instance.context.data["project_settings"]
     template_name = get_publish_template_name(
         project_name=project_name,
-        host_name=instance.context.data.get("hostName", os.environ["AYON_HOST_NAME"]),
+        host_name=instance.context.data["hostName"],
         # publish template has to match productType "workfile",
         # otherwise default template will be used:
         product_type="workfile",
-        task_name=task_entity.get("name", os.environ["AYON_TASK_NAME"]),
-        task_type=task_entity.get("taskType"),
+        task_name=task_name,
+        task_type=task_type,
         project_settings=project_settings,
     )
     template = anatomy.get_template_item("publish", template_name, "path")
