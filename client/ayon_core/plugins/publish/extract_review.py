@@ -13,13 +13,14 @@ import clique
 import speedcopy
 import pyblish.api
 
-from ayon_api import get_last_version_by_product_name, get_representations
-
 from ayon_core.lib import (
     get_ffmpeg_tool_args,
     filter_profiles,
     path_to_subprocess_arg,
     run_subprocess,
+)
+from ayon_core.pipeline.publish.lib import (
+    fill_sequence_gaps_with_previous_version
 )
 from ayon_core.lib.transcoding import (
     IMAGE_EXTENSIONS,
@@ -508,10 +509,10 @@ class ExtractReview(pyblish.api.InstancePlugin):
                         resolution_width=temp_data.resolution_width,
                         resolution_height=temp_data.resolution_height,
                         extension=temp_data.input_ext,
-                        temp_data=temp_data
+                        temp_data=temp_data,
                     )
                 elif fill_missing_frames == "previous_version":
-                    new_frame_files = self.fill_sequence_gaps_with_previous(
+                    fill_output = fill_sequence_gaps_with_previous_version(
                         collection=collection,
                         staging_dir=new_repre["stagingDir"],
                         instance=instance,
@@ -519,8 +520,13 @@ class ExtractReview(pyblish.api.InstancePlugin):
                         start_frame=temp_data.frame_start,
                         end_frame=temp_data.frame_end,
                     )
+                    _, new_frame_files = fill_output
                     # fallback to original workflow
                     if new_frame_files is None:
+                        self.log.warning(
+                            "Falling back to filling from currently "
+                            "last rendered."
+                        )
                         new_frame_files = (
                             self.fill_sequence_gaps_from_existing(
                             collection=collection,
@@ -1047,92 +1053,6 @@ class ExtractReview(pyblish.api.InstancePlugin):
         all_args.extend(output_args)
 
         return all_args
-
-    def fill_sequence_gaps_with_previous(
-        self,
-        collection: str,
-        staging_dir: str,
-        instance: pyblish.plugin.Instance,
-        current_repre_name: str,
-        start_frame: int,
-        end_frame: int
-    ) -> Optional[dict[int, str]]:
-        """Tries to replace missing frames from ones from last version"""
-        repre_file_paths = self._get_last_version_files(
-            instance, current_repre_name)
-        if repre_file_paths is None:
-            # issues in getting last version files, falling back
-            return None
-
-        prev_collection = clique.assemble(
-            repre_file_paths,
-            patterns=[clique.PATTERNS["frames"]],
-            minimum_items=1
-        )[0][0]
-        prev_col_format = prev_collection.format("{head}{padding}{tail}")
-
-        added_files = {}
-        anatomy = instance.context.data["anatomy"]
-        col_format = collection.format("{head}{padding}{tail}")
-        for frame in range(start_frame, end_frame + 1):
-            if frame in collection.indexes:
-                continue
-            hole_fpath = os.path.join(staging_dir, col_format % frame)
-
-            previous_version_path = prev_col_format % frame
-            previous_version_path = anatomy.fill_root(previous_version_path)
-            if not os.path.exists(previous_version_path):
-                self.log.warning(
-                    "Missing frame should be replaced from "
-                    f"'{previous_version_path}' but that doesn't exist. "
-                    "Falling back to filling from currently last rendered."
-                )
-                return None
-
-            self.log.warning(
-                f"Replacing missing '{hole_fpath}' with "
-                f"'{previous_version_path}'"
-            )
-            speedcopy.copyfile(previous_version_path, hole_fpath)
-            added_files[frame] = hole_fpath
-
-        return added_files
-
-    def _get_last_version_files(
-        self,
-        instance: pyblish.plugin.Instance,
-        current_repre_name: str,
-    ):
-        product_name = instance.data["productName"]
-        project_name = instance.data["projectEntity"]["name"]
-        folder_entity = instance.data["folderEntity"]
-
-        version_entity = get_last_version_by_product_name(
-            project_name,
-            product_name,
-            folder_entity["id"],
-            fields={"id"}
-        )
-        if not version_entity:
-            return None
-
-        matching_repres = get_representations(
-            project_name,
-            version_ids=[version_entity["id"]],
-            representation_names=[current_repre_name],
-            fields={"files"}
-        )
-
-        if not matching_repres:
-            return None
-        matching_repre = list(matching_repres)[0]
-
-        repre_file_paths = [
-            file_info["path"]
-            for file_info in matching_repre["files"]
-        ]
-
-        return repre_file_paths
 
     def fill_sequence_gaps_with_blanks(
         self,
