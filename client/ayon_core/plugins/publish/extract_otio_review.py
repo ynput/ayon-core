@@ -23,7 +23,10 @@ from ayon_core.lib import (
     get_ffmpeg_tool_args,
     run_subprocess,
 )
-from ayon_core.pipeline import publish
+from ayon_core.pipeline import (
+    KnownPublishError,
+    publish,
+)
 
 
 class ExtractOTIOReview(
@@ -97,8 +100,11 @@ class ExtractOTIOReview(
 
         # skip instance if no reviewable data available
         if (
-            not isinstance(otio_review_clips[0], otio.schema.Clip)
-            and len(otio_review_clips) == 1
+            len(otio_review_clips) == 1
+            and (
+                not isinstance(otio_review_clips[0], otio.schema.Clip)
+                or otio_review_clips[0].media_reference.is_missing_reference
+            )
         ):
             self.log.warning(
                 "Instance `{}` has nothing to process".format(instance))
@@ -248,7 +254,7 @@ class ExtractOTIOReview(
 
                 # Single video way.
                 # Extraction via FFmpeg.
-                else:
+                elif hasattr(media_ref, "target_url"):
                     path = media_ref.target_url
                     # Set extract range from 0 (FFmpeg ignores
                     #   embedded timecode).
@@ -352,6 +358,7 @@ class ExtractOTIOReview(
         import opentimelineio as otio
         from ayon_core.pipeline.editorial import (
             trim_media_range,
+            OTIO_EPSILON,
         )
 
         def _round_to_frame(rational_time):
@@ -369,6 +376,13 @@ class ExtractOTIOReview(
                 ).to_frames()
 
         avl_start = avl_range.start_time
+
+        # Avoid rounding issue on media available range.
+        if start.almost_equal(
+            avl_start,
+            OTIO_EPSILON
+        ):
+            avl_start = start
 
         # An additional gap is required before the available
         # range to conform source start point and head handles.
@@ -388,6 +402,14 @@ class ExtractOTIOReview(
         # (media duration is shorter then clip requirement).
         end_point = start + duration
         avl_end_point = avl_range.end_time_exclusive()
+
+        # Avoid rounding issue on media available range.
+        if end_point.almost_equal(
+            avl_end_point,
+            OTIO_EPSILON
+        ):
+            avl_end_point = end_point
+
         if end_point > avl_end_point:
             gap_duration = end_point - avl_end_point
             duration -= gap_duration
@@ -444,7 +466,7 @@ class ExtractOTIOReview(
         command = get_ffmpeg_tool_args("ffmpeg")
 
         input_extension = None
-        if sequence:
+        if sequence is not None:
             input_dir, collection, sequence_fps = sequence
             in_frame_start = min(collection.indexes)
 
@@ -478,7 +500,7 @@ class ExtractOTIOReview(
                 "-i", input_path
             ])
 
-        elif video:
+        elif video is not None:
             video_path, otio_range = video
             frame_start = otio_range.start_time.value
             input_fps = otio_range.start_time.rate
@@ -496,7 +518,7 @@ class ExtractOTIOReview(
                 "-i", video_path
             ])
 
-        elif gap:
+        elif gap is not None:
             sec_duration = frames_to_seconds(gap, self.actual_fps)
 
             # form command for rendering gap files
@@ -509,6 +531,9 @@ class ExtractOTIOReview(
                 ),
                 "-tune", "stillimage"
             ])
+
+        else:
+            raise KnownPublishError("Sequence, video or gap is required.")
 
         if video or sequence:
             command.extend([
