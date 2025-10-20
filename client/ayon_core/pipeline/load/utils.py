@@ -745,6 +745,8 @@ def _backwards_compatibility_repre_path(func):
         >>> else:
         >>>     path = get_representation_path(repre_entity)
 
+    The plan to remove backwards compatibility is 1.1.2026.
+
     """
     # Add an attribute to the function so addons can check if the new variant
     #   of the function is available.
@@ -770,7 +772,7 @@ def _backwards_compatibility_repre_path(func):
             (
                 "Used deprecated variant of 'get_representation_path'."
                 " Please change used arguments signature to follow"
-                " new definition."
+                " new definition. Will be removed 1.1.2026."
             ),
             DeprecationWarning,
             stacklevel=2,
