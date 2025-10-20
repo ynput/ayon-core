@@ -73,6 +73,7 @@ from .log import (
 )
 
 from .path_templates import (
+    DefaultKeysDict,
     TemplateUnsolved,
     StringTemplate,
     FormatObject,
@@ -228,6 +229,7 @@ __all__ = [
     "get_version_from_path",
     "get_last_version_from_path",
 
+    "DefaultKeysDict",
     "TemplateUnsolved",
     "StringTemplate",
     "FormatObject",
