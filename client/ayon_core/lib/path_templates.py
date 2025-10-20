@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import os
 import re
 import copy
@@ -5,11 +7,7 @@ import numbers
 import warnings
 import platform
 from string import Formatter
-import typing
-from typing import List, Dict, Any, Set
-
-if typing.TYPE_CHECKING:
-    from typing import Union
+from typing import Any, Union
 
 SUB_DICT_PATTERN = re.compile(r"([^\[\]]+)")
 OPTIONAL_PATTERN = re.compile(r"(<.*?[^{0]*>)[^0-9]*?")
@@ -84,7 +82,7 @@ class StringTemplate:
             if substr:
                 new_parts.append(substr)
 
-        self._parts: List["Union[str, OptionalPart, FormattingPart]"] = (
+        self._parts: list[Union[str, OptionalPart, FormattingPart]] = (
             self.find_optional_parts(new_parts)
         )
 
@@ -105,7 +103,7 @@ class StringTemplate:
     def template(self) -> str:
         return self._template
 
-    def format(self, data: Dict[str, Any]) -> "TemplateResult":
+    def format(self, data: dict[str, Any]) -> "TemplateResult":
         """ Figure out with whole formatting.
 
         Separate advanced keys (*Like '{project[name]}') from string which must
@@ -145,29 +143,29 @@ class StringTemplate:
             invalid_types
         )
 
-    def format_strict(self, data: Dict[str, Any]) -> "TemplateResult":
+    def format_strict(self, data: dict[str, Any]) -> "TemplateResult":
         result = self.format(data)
         result.validate()
         return result
 
     @classmethod
     def format_template(
-        cls, template: str, data: Dict[str, Any]
+        cls, template: str, data: dict[str, Any]
     ) -> "TemplateResult":
         objected_template = cls(template)
         return objected_template.format(data)
 
     @classmethod
     def format_strict_template(
-        cls, template: str, data: Dict[str, Any]
+        cls, template: str, data: dict[str, Any]
     ) -> "TemplateResult":
         objected_template = cls(template)
         return objected_template.format_strict(data)
 
     @staticmethod
     def find_optional_parts(
-        parts: List["Union[str, FormattingPart]"]
-    ) -> List["Union[str, OptionalPart, FormattingPart]"]:
+        parts: list[Union[str, FormattingPart]]
+    ) -> list[Union[str, OptionalPart, FormattingPart]]:
         new_parts = []
         tmp_parts = {}
         counted_symb = -1
@@ -192,7 +190,7 @@ class StringTemplate:
                         len(parts) == 1
                         and isinstance(parts[0], str)
                     ):
-                        value = "<{}>".format(parts[0])
+                        value = f"<{parts[0]}>"
                     else:
                         value = OptionalPart(parts)
 
@@ -223,7 +221,7 @@ class TemplateResult(str):
             only used keys.
         solved (bool): For check if all required keys were filled.
         template (str): Original template.
-        missing_keys (Iterable[str]): Missing keys that were not in the data.
+        missing_keys (list[str]): Missing keys that were not in the data.
             Include missing optional keys.
         invalid_types (dict): When key was found in data, but value had not
             allowed DataType. Allowed data types are `numbers`,
@@ -232,11 +230,11 @@ class TemplateResult(str):
             of number.
     """
 
-    used_values: Dict[str, Any] = None
+    used_values: dict[str, Any] = None
     solved: bool = None
     template: str = None
-    missing_keys: List[str] = None
-    invalid_types: Dict[str, Any] = None
+    missing_keys: list[str] = None
+    invalid_types: dict[str, Any] = None
 
     def __new__(
         cls, filled_template, template, solved,
@@ -296,21 +294,21 @@ class TemplatePartResult:
     """Result to store result of template parts."""
     def __init__(self, optional: bool = False):
         # Missing keys or invalid value types of required keys
-        self._missing_keys: Set[str] = set()
-        self._invalid_types: Dict[str, Any] = {}
+        self._missing_keys: set[str] = set()
+        self._invalid_types: dict[str, Any] = {}
         # Missing keys or invalid value types of optional keys
-        self._missing_optional_keys: Set[str] = set()
-        self._invalid_optional_types: Dict[str, Any] = {}
+        self._missing_optional_keys: set[str] = set()
+        self._invalid_optional_types: dict[str, Any] = {}
 
         # Used values stored by key with origin type
         #   - key without any padding or key modifiers
         #   - value from filling data
         #   Example: {"version": 1}
-        self._used_values: Dict[str, Any] = {}
+        self._used_values: dict[str, Any] = {}
         # Used values stored by key with all modifirs
         #   - value is already formatted string
         #   Example: {"version:0>3": "001"}
-        self._really_used_values: Dict[str, Any] = {}
+        self._really_used_values: dict[str, Any] = {}
         # Concatenated string output after formatting
         self._output: str = ""
         # Is this result from optional part
@@ -336,8 +334,9 @@ class TemplatePartResult:
             self._really_used_values.update(other.really_used_values)
 
         else:
-            raise TypeError("Cannot add data from \"{}\" to \"{}\"".format(
-                str(type(other)), self.__class__.__name__)
+            raise TypeError(
+                f"Cannot add data from \"{type(other)}\""
+                f" to \"{self.__class__.__name__}\""
             )
 
     @property
@@ -362,40 +361,41 @@ class TemplatePartResult:
         return self._output
 
     @property
-    def missing_keys(self) -> Set[str]:
+    def missing_keys(self) -> set[str]:
         return self._missing_keys
 
     @property
-    def missing_optional_keys(self) -> Set[str]:
+    def missing_optional_keys(self) -> set[str]:
         return self._missing_optional_keys
 
     @property
-    def invalid_types(self) -> Dict[str, Any]:
+    def invalid_types(self) -> dict[str, Any]:
         return self._invalid_types
 
     @property
-    def invalid_optional_types(self) -> Dict[str, Any]:
+    def invalid_optional_types(self) -> dict[str, Any]:
         return self._invalid_optional_types
 
     @property
-    def really_used_values(self) -> Dict[str, Any]:
+    def really_used_values(self) -> dict[str, Any]:
         return self._really_used_values
 
     @property
-    def realy_used_values(self) -> Dict[str, Any]:
+    def realy_used_values(self) -> dict[str, Any]:
         warnings.warn(
             "Property 'realy_used_values' is deprecated."
             " Use 'really_used_values' instead.",
-            DeprecationWarning
+            DeprecationWarning,
+            stacklevel=2,
         )
         return self._really_used_values
 
     @property
-    def used_values(self) -> Dict[str, Any]:
+    def used_values(self) -> dict[str, Any]:
         return self._used_values
 
     @staticmethod
-    def split_keys_to_subdicts(values: Dict[str, Any]) -> Dict[str, Any]:
+    def split_keys_to_subdicts(values: dict[str, Any]) -> dict[str, Any]:
         output = {}
         formatter = Formatter()
         for key, value in values.items():
@@ -410,7 +410,7 @@ class TemplatePartResult:
             data[last_key] = value
         return output
 
-    def get_clean_used_values(self) -> Dict[str, Any]:
+    def get_clean_used_values(self) -> dict[str, Any]:
         new_used_values = {}
         for key, value in self.used_values.items():
             if isinstance(value, FormatObject):
@@ -426,7 +426,8 @@ class TemplatePartResult:
         warnings.warn(
             "Method 'add_realy_used_value' is deprecated."
             " Use 'add_really_used_value' instead.",
-            DeprecationWarning
+            DeprecationWarning,
+            stacklevel=2,
         )
         self.add_really_used_value(key, value)
 
@@ -479,7 +480,7 @@ class FormattingPart:
         self,
         field_name: str,
         format_spec: str,
-        conversion: "Union[str, None]",
+        conversion: Union[str, None],
     ):
         format_spec_v = ""
         if format_spec:
@@ -546,7 +547,7 @@ class FormattingPart:
         return not queue
 
     @staticmethod
-    def keys_to_template_base(keys: List[str]):
+    def keys_to_template_base(keys: list[str]):
         if not keys:
             return None
         # Create copy of keys
@@ -556,7 +557,7 @@ class FormattingPart:
         return f"{template_base}{joined_keys}"
 
     def format(
-        self, data: Dict[str, Any], result: TemplatePartResult
+        self, data: dict[str, Any], result: TemplatePartResult
     ) -> TemplatePartResult:
         """Format the formattings string.
 
@@ -687,23 +688,25 @@ class OptionalPart:
 
     def __init__(
         self,
-        parts: List["Union[str, OptionalPart, FormattingPart]"]
+        parts: list[Union[str, OptionalPart, FormattingPart]]
     ):
-        self._parts: List["Union[str, OptionalPart, FormattingPart]"] = parts
+        self._parts: list[Union[str, OptionalPart, FormattingPart]] = parts
 
     @property
-    def parts(self) -> List["Union[str, OptionalPart, FormattingPart]"]:
+    def parts(self) -> list[Union[str, OptionalPart, FormattingPart]]:
         return self._parts
 
     def __str__(self) -> str:
-        return "<{}>".format("".join([str(p) for p in self._parts]))
+        joined_parts = "".join([str(p) for p in self._parts])
+        return f"<{joined_parts}>"
 
     def __repr__(self) -> str:
-        return "<Optional:{}>".format("".join([str(p) for p in self._parts]))
+        joined_parts = "".join([str(p) for p in self._parts])
+        return f"<Optional:{joined_parts}>"
 
     def format(
         self,
-        data: Dict[str, Any],
+        data: dict[str, Any],
         result: TemplatePartResult,
     ) -> TemplatePartResult:
         new_result = TemplatePartResult(True)
