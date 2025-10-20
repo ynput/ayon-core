@@ -185,7 +185,7 @@ def _backwards_compatibility_product_name(func):
     # Add attribute to function to identify it as the new function
     #   so other addons can easily identify it.
     # >>> geattr(get_product_name, "use_entities", False)
-    func.use_entities = True
+    setattr(func, "use_entities", True)
 
     @wraps(func)
     def inner(*args, **kwargs):
