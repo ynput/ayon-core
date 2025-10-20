@@ -11,6 +11,7 @@ from .local_settings import (
     get_launcher_storage_dir,
     get_addons_resources_dir,
     get_local_site_id,
+    get_ayon_user_entity,
     get_ayon_username,
 )
 from .ayon_connection import initialize_ayon_connection
@@ -149,6 +150,7 @@ __all__ = [
     "get_launcher_storage_dir",
     "get_addons_resources_dir",
     "get_local_site_id",
+    "get_ayon_user_entity",
     "get_ayon_username",
 
     "initialize_ayon_connection",
