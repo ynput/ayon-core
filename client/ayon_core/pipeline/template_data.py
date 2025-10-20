@@ -1,27 +1,50 @@
+from __future__ import annotations
+
+from typing import Optional, Any
+
 import ayon_api
 
 from ayon_core.settings import get_studio_settings
-from ayon_core.lib.local_settings import get_ayon_username
+from ayon_core.lib import DefaultKeysDict
+from ayon_core.lib.local_settings import get_ayon_user_entity
 
 
-def get_general_template_data(settings=None, username=None):
+def get_general_template_data(
+    settings: Optional[dict[str, Any]] = None,
+    username: Optional[str] = None,
+    user_entity: Optional[dict[str, Any]] = None,
+):
     """General template data based on system settings or machine.
 
     Output contains formatting keys:
-    - 'studio[name]'    - Studio name filled from system settings
-    - 'studio[code]'    - Studio code filled from system settings
-    - 'user'            - User's name using 'get_ayon_username'
+    - 'studio[name]'      - Studio name filled from system settings
+    - 'studio[code]'      - Studio code filled from system settings
+    - 'user[name]'        - User's name
+    - 'user[attrib][...]' - User's attributes
+    - 'user[data][...]'   - User's data
 
     Args:
         settings (Dict[str, Any]): Studio or project settings.
         username (Optional[str]): AYON Username.
-    """
+        user_entity (Optional[dict[str, Any]]): User entity.
 
+    """
     if not settings:
         settings = get_studio_settings()
 
-    if username is None:
-        username = get_ayon_username()
+    if user_entity is None:
+        user_entity = get_ayon_user_entity(username)
+
+    # Use dictionary with default value for backwards compatibility
+    # - we did support '{user}' now it should be '{user[name]}'
+    user_data = DefaultKeysDict(
+        "name",
+        {
+            "name": user_entity["name"],
+            "attrib": user_entity["attrib"],
+            "data": user_entity["data"],
+        }
+    )
 
     core_settings = settings["core"]
     return {
@@ -29,7 +52,7 @@ def get_general_template_data(settings=None, username=None):
             "name": core_settings["studio_name"],
             "code": core_settings["studio_code"]
         },
-        "user": username
+        "user": user_data,
     }
 
 
