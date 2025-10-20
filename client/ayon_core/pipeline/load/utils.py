@@ -724,7 +724,7 @@ def get_representation_path_with_roots(
     return path.normalized()
 
 
-def _get_representation_path_decorator(func):
+def _backwards_compatibility_repre_path(func):
     # Add an attribute to the function so addons can check if the new variant
     #   of the function is available.
     # >>> getattr(get_representation_path, "version", None) == 2
@@ -834,7 +834,7 @@ def get_representation_path(
     pass
 
 
-@_get_representation_path_decorator
+@_backwards_compatibility_repre_path
 def get_representation_path(
     project_name: str,
     repre_entity: dict[str, Any],
