@@ -42,12 +42,12 @@ class TemplateUnsolved(Exception):
         )
 
 
-class DefaultValueDict(dict):
+class DefaultKeysDict(dict):
     """Dictionary that supports the default key to use for str conversion.
 
     Is helpful for changes of a key in a template from string to dictionary
         for example '{folder}' -> '{folder[name]}'.
-        >>> data = DefaultValueDict(
+        >>> data = DefaultKeysDict(
         >>>     "name",
         >>>     {"folder": {"name": "FolderName"}}
         >>> )
@@ -80,17 +80,17 @@ class DefaultValueDict(dict):
     def __str__(self) -> str:
         return str(self.get_default_value())
 
-    def __copy__(self) -> "DefaultValueDict":
-        return DefaultValueDict(
+    def __copy__(self) -> "DefaultKeysDict":
+        return DefaultKeysDict(
             self.get_default_keys(), dict(self.items())
         )
 
-    def __deepcopy__(self) -> "DefaultValueDict":
+    def __deepcopy__(self) -> "DefaultKeysDict":
         data_copy = {
             key: copy.deepcopy(value)
             for key, value in self.items()
         }
-        return DefaultValueDict(self.get_default_keys(), data_copy)
+        return DefaultKeysDict(self.get_default_keys(), data_copy)
 
     def get_default_keys(self) -> list[str]:
         return list(self._default_keys)
@@ -696,7 +696,7 @@ class FormattingPart:
             result.add_output(self.template)
             return result
 
-        if isinstance(value, DefaultValueDict):
+        if isinstance(value, DefaultKeysDict):
             try:
                 value = value.get_default_value()
             except KeyError:
