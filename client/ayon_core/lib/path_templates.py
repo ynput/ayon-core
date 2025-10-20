@@ -7,7 +7,7 @@ import numbers
 import warnings
 import platform
 from string import Formatter
-from typing import Any, Union
+from typing import Any, Union, Iterable
 
 SUB_DICT_PATTERN = re.compile(r"([^\[\]]+)")
 OPTIONAL_PATTERN = re.compile(r"(<.*?[^{0]*>)[^0-9]*?")
@@ -40,6 +40,66 @@ class TemplateUnsolved(Exception):
         super().__init__(
             self.msg.format(template, missing_keys_msg, invalid_types_msg)
         )
+
+
+class DefaultValueDict(dict):
+    """Dictionary that supports the default key to use for str conversion.
+
+    Is helpful for changes of a key in a template from string to dictionary
+        for example '{folder}' -> '{folder[name]}'.
+        >>> data = DefaultValueDict(
+        >>>     "name",
+        >>>     {"folder": {"name": "FolderName"}}
+        >>> )
+        >>> print("{folder[name]}".format_map(data))
+        FolderName
+        >>> print("{folder}".format_map(data))
+        FolderName
+
+    Args:
+        default_key (Union[str, Iterable[str]]): Default key to use for str
+            conversion. Can also expect multiple keys for more nested
+            dictionary.
+
+    """
+    def __init__(
+        self, default_keys: Union[str, Iterable[str]], *args, **kwargs
+    ) -> None:
+        if isinstance(default_keys, str):
+            default_keys = [default_keys]
+        else:
+            default_keys = list(default_keys)
+        if not default_keys:
+            raise ValueError(
+                "Default key must be set. Got empty default keys."
+            )
+
+        self._default_keys = default_keys
+        super().__init__(*args, **kwargs)
+
+    def __str__(self) -> str:
+        return str(self.get_default_value())
+
+    def __copy__(self) -> "DefaultValueDict":
+        return DefaultValueDict(
+            self.get_default_keys(), dict(self.items())
+        )
+
+    def __deepcopy__(self) -> "DefaultValueDict":
+        data_copy = {
+            key: copy.deepcopy(value)
+            for key, value in self.items()
+        }
+        return DefaultValueDict(self.get_default_keys(), data_copy)
+
+    def get_default_keys(self) -> list[str]:
+        return list(self._default_keys)
+
+    def get_default_value(self) -> Any:
+        value = self
+        for key in self._default_keys:
+            value = value[key]
+        return value
 
 
 class StringTemplate:
@@ -635,6 +695,12 @@ class FormattingPart:
 
             result.add_output(self.template)
             return result
+
+        if isinstance(value, DefaultValueDict):
+            try:
+                value = value.get_default_value()
+            except KeyError:
+                pass
 
         if not self.validate_value_type(value):
             result.add_invalid_type(key, value)
