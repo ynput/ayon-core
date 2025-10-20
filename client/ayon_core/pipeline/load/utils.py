@@ -886,11 +886,10 @@ def get_representation_path(
     try:
         template = repre_entity["attrib"]["template"]
 
-    except KeyError:
+    except KeyError as exc:
         raise InvalidRepresentationContext(
-            "Representation document does not"
-            " contain template in data ('data.template')"
-        )
+            "Failed to receive template from representation entity."
+        ) from exc
 
     try:
         context = copy.deepcopy(repre_entity["context"])
@@ -901,9 +900,8 @@ def get_representation_path(
 
     except TemplateUnsolved as exc:
         raise InvalidRepresentationContext(
-            "Couldn't resolve representation template with available data."
-            f" Reason: {str(exc)}"
-        )
+            "Failed to resolve representation template with available data."
+        ) from exc
 
     return path.normalized()
 
