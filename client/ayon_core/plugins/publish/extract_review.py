@@ -19,7 +19,9 @@ from ayon_core.lib import (
     path_to_subprocess_arg,
     run_subprocess,
 )
-from ayon_core.pipeline.publish.lib import fill_sequence_gaps_with_previous_version
+from ayon_core.pipeline.publish.lib import (
+    fill_sequence_gaps_with_previous_version
+)
 from ayon_core.lib.transcoding import (
     IMAGE_EXTENSIONS,
     get_ffprobe_streams,
