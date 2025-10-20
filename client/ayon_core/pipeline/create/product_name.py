@@ -166,11 +166,21 @@ def _get_product_name_old(
         )
 
 
-def _get_product_name_decorator(func):
+def _backwards_compatibility_product_name(func):
     """Helper to decide which variant of 'get_product_name' to use.
 
     The old version expected 'task_name' and 'task_type' arguments. The new
         version expects 'folder_entity' and 'task_entity' arguments instead.
+
+    The function is also marked with an attribute 'version' so other addons
+        can check if the function is using the new signature or is using
+        the old signature. That should allow addons to adapt to new signature.
+        >>> if getattr(get_product_name, "use_entities", None):
+        >>>     # New signature is used
+        >>>     path = get_product_name(project_name, folder_entity, ...)
+        >>> else:
+        >>>     # Old signature is used
+        >>>     path = get_product_name(project_name, taks_name, ...)
     """
     # Add attribute to function to identify it as the new function
     #   so other addons can easily identify it.
@@ -206,7 +216,7 @@ def _get_product_name_decorator(func):
     return inner
 
 
-@_get_product_name_decorator
+@_backwards_compatibility_product_name
 def get_product_name(
     project_name: str,
     folder_entity: dict[str, Any],
