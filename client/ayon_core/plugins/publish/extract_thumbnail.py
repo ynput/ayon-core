@@ -6,6 +6,7 @@ import re
 
 import pyblish.api
 from ayon_core.lib import (
+    get_oiio_tool_args,
     get_ffmpeg_tool_args,
     get_ffprobe_data,
 
@@ -15,7 +16,11 @@ from ayon_core.lib import (
     path_to_subprocess_arg,
     run_subprocess,
 )
-from ayon_core.lib.transcoding import convert_colorspace
+from ayon_core.lib.transcoding import (
+    oiio_color_convert,
+    get_oiio_input_and_channel_args,
+    get_oiio_info_for_input,
+)
 
 from ayon_core.lib.transcoding import VIDEO_EXTENSIONS, IMAGE_EXTENSIONS
 
@@ -38,10 +43,12 @@ class ExtractThumbnail(pyblish.api.InstancePlugin):
         "substancedesigner",
         "nuke",
         "aftereffects",
+        "photoshop",
         "unreal",
         "houdini",
-        "circuit",
+        "batchdelivery",
     ]
+    settings_category = "core"
     enabled = False
 
     integrate_thumbnail = False
@@ -208,6 +215,12 @@ class ExtractThumbnail(pyblish.api.InstancePlugin):
             full_output_path = os.path.join(dst_staging, jpeg_file)
             colorspace_data = repre.get("colorspaceData")
 
+            # NOTE We should find out what is happening here. Why don't we
+            #   use oiiotool all the time if it is available? Only possible
+            #   reason might be that video files should be converted using
+            #   ffmpeg, but other then that, we should use oiio all the time.
+            #   - We should also probably get rid of the ffmpeg settings...
+
             # only use OIIO if it is supported and representation has
             # colorspace data
             if oiio_supported and colorspace_data:
@@ -217,7 +230,7 @@ class ExtractThumbnail(pyblish.api.InstancePlugin):
                 )
                 # If the input can read by OIIO then use OIIO method for
                 # conversion otherwise use ffmpeg
-                repre_thumb_created = self._create_thumbnail_oiio(
+                repre_thumb_created = self._create_colorspace_thumbnail(
                     full_input_path,
                     full_output_path,
                     colorspace_data
@@ -227,17 +240,16 @@ class ExtractThumbnail(pyblish.api.InstancePlugin):
             #   oiiotool isn't available or representation is not having
             #   colorspace data
             if not repre_thumb_created:
-                if oiio_supported:
-                    self.log.debug(
-                        "Converting with FFMPEG because input"
-                        " can't be read by OIIO."
-                    )
-
                 repre_thumb_created = self._create_thumbnail_ffmpeg(
                     full_input_path, full_output_path
                 )
 
-            # Skip representation and try next one if  wasn't created
+            # Skip representation and try next one if wasn't created
+            if not repre_thumb_created and oiio_supported:
+                repre_thumb_created = self._create_thumbnail_oiio(
+                    full_input_path, full_output_path
+                )
+
             if not repre_thumb_created:
                 continue
 
@@ -380,7 +392,7 @@ class ExtractThumbnail(pyblish.api.InstancePlugin):
 
         return ext in IMAGE_EXTENSIONS or ext in VIDEO_EXTENSIONS
 
-    def _create_thumbnail_oiio(
+    def _create_colorspace_thumbnail(
         self,
         src_path,
         dst_path,
@@ -431,13 +443,15 @@ class ExtractThumbnail(pyblish.api.InstancePlugin):
                 oiio_default_view = display_and_view["view"]
 
         try:
-            convert_colorspace(
+            oiio_color_convert(
                 src_path,
                 dst_path,
                 colorspace_data["config"]["path"],
                 colorspace_data["colorspace"],
-                display=repre_display or oiio_default_display,
-                view=repre_view or oiio_default_view,
+                source_display=colorspace_data.get("display"),
+                source_view=colorspace_data.get("view"),
+                target_display=repre_display or oiio_default_display,
+                target_view=repre_view or oiio_default_view,
                 target_colorspace=oiio_default_colorspace,
                 additional_command_args=resolution_arg,
                 logger=self.log,
@@ -451,9 +465,50 @@ class ExtractThumbnail(pyblish.api.InstancePlugin):
 
         return True
 
+    def _create_thumbnail_oiio(self, src_path, dst_path):
+        self.log.debug(f"Extracting thumbnail with OIIO: {dst_path}")
+
+        try:
+            resolution_arg = self._get_resolution_arg("oiiotool", src_path)
+        except RuntimeError:
+            self.log.warning(
+                "Failed to create thumbnail using oiio", exc_info=True
+            )
+            return False
+
+        input_info = get_oiio_info_for_input(src_path, logger=self.log)
+        input_arg, channels_arg = get_oiio_input_and_channel_args(input_info)
+        oiio_cmd = get_oiio_tool_args(
+            "oiiotool",
+            input_arg, src_path,
+            # Tell oiiotool which channels should be put to top stack
+            #   (and output)
+            "--ch", channels_arg,
+            # Use first subimage
+            "--subimage", "0"
+        )
+        oiio_cmd.extend(resolution_arg)
+        oiio_cmd.extend(("-o", dst_path))
+        self.log.debug("Running: {}".format(" ".join(oiio_cmd)))
+        try:
+            run_subprocess(oiio_cmd, logger=self.log)
+            return True
+        except Exception:
+            self.log.warning(
+                "Failed to create thumbnail using oiiotool",
+                exc_info=True
+            )
+            return False
+
     def _create_thumbnail_ffmpeg(self, src_path, dst_path):
-        self.log.debug("Extracting thumbnail with FFMPEG: {}".format(dst_path))
-        resolution_arg = self._get_resolution_arg("ffmpeg", src_path)
+        try:
+            resolution_arg = self._get_resolution_arg("ffmpeg", src_path)
+        except RuntimeError:
+            self.log.warning(
+                "Failed to create thumbnail using ffmpeg", exc_info=True
+            )
+            return False
+
         ffmpeg_path_args = get_ffmpeg_tool_args("ffmpeg")
         ffmpeg_args = self.ffmpeg_args or {}
 
