@@ -725,6 +725,27 @@ def get_representation_path_with_roots(
 
 
 def _backwards_compatibility_repre_path(func):
+    """Wrapper handling backwards compatibility of 'get_representation_path'.
+
+    Allows 'get_representation_path' to support old and new signatures of the
+        function. The old signature supported passing in representation entity
+        and optional roots. The new signature requires the project name
+        to be passed. In case custom roots should be used, a dedicated function
+        'get_representation_path_with_roots' is available.
+
+    The wrapper handles passed arguments, and based on kwargs and types
+        of the arguments will call the function which relates to
+        the arguments.
+
+    The function is also marked with an attribute 'version' so other addons
+        can check if the function is using the new signature or is using
+        the old signature. That should allow addons to adapt to new signature.
+        >>> if getattr(get_representation_path, "version", None) == 2:
+        >>>     path = get_representation_path(project_name, repre_entity)
+        >>> else:
+        >>>     path = get_representation_path(repre_entity)
+
+    """
     # Add an attribute to the function so addons can check if the new variant
     #   of the function is available.
     # >>> getattr(get_representation_path, "version", None) == 2
