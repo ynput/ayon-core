@@ -131,7 +131,7 @@ def frame_to_timecode(frame: int, fps: float) -> str:
 
 
 class ExtractReview(pyblish.api.InstancePlugin):
-    """Extracting Review mov file for Ftrack
+    """Extracting Reviewable medias
 
     Compulsory attribute of representation is tags list with "review",
     otherwise the representation is ignored.
@@ -618,8 +618,6 @@ class ExtractReview(pyblish.api.InstancePlugin):
                 "name": "{}_{}".format(output_name, output_ext),
                 "outputName": output_name,
                 "outputDef": output_def,
-                "frameStartFtrack": temp_data.output_frame_start,
-                "frameEndFtrack": temp_data.output_frame_end,
                 "ffmpeg_cmd": subprcs_cmd
             })
 
@@ -1304,15 +1302,7 @@ class ExtractReview(pyblish.api.InstancePlugin):
             return audio_in_args, audio_filters, audio_out_args
 
         for audio in audio_inputs:
-            # NOTE modified, always was expected "frameStartFtrack" which is
-            # STRANGE?!!! There should be different key, right?
-            # TODO use different frame start!
             offset_seconds = 0
-            frame_start_ftrack = instance.data.get("frameStartFtrack")
-            if frame_start_ftrack is not None:
-                offset_frames = frame_start_ftrack - audio["offset"]
-                offset_seconds = offset_frames / temp_data.fps
-
             if offset_seconds > 0:
                 audio_in_args.append(
                     "-ss {}".format(offset_seconds)
