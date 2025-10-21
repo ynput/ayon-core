@@ -8,7 +8,6 @@ from ayon_core.lib import (
     run_subprocess
 )
 
-# pridat collector
 
 class CollectParentAudioInstanceAttribute(pyblish.api.ContextPlugin):
     """Collect audio instance attribute"""
@@ -58,6 +57,7 @@ class CollectParentAudioInstanceAttribute(pyblish.api.ContextPlugin):
                 _i.data.get("families", []) + [_i.data["productType"]])
             ) or _i.data.get("reviewAudio")
         ]
+
 
 class ExtractOtioAudioTracks(pyblish.api.ContextPlugin):
     """Extract Audio tracks from OTIO timeline.
