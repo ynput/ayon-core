@@ -637,32 +637,28 @@ class WorkfilesModel:
         return items
 
     def get_published_workfile_info(
-        self,
-        folder_id: Optional[str],
-        representation_id: Optional[str],
-    ) -> PublishedWorkfileWrap:
+        self, representation_id: str
+    ) -> Optional[PublishedWorkfileInfo]:
         """Get published workfile info by representation ID.
 
         Args:
-            folder_id (Optional[str]): Folder id.
-            representation_id (Optional[str]): Representation id.
+            representation_id (str): Representation id.
 
         Returns:
-            PublishedWorkfileWrap: Published workfile info or None
+            Optional[PublishedWorkfileInfo]: Published workfile info or None
                 if not found.
 
         """
         if not representation_id:
-            return PublishedWorkfileWrap()
+            return None
 
         # Search through all cached published workfile items
-        for item in self.get_published_file_items(folder_id, None):
-            if item.representation_id == representation_id:
-                comment = self._get_published_workfile_version_comment(
-                    representation_id
-                )
-                return PublishedWorkfileWrap(item, comment)
-        return PublishedWorkfileWrap()
+        for folder_cache in self._published_workfile_items_cache._cache.values():
+            if folder_cache.is_valid:
+                for item in folder_cache.get_data():
+                    if item.representation_id == representation_id:
+                        return item
+        return None
 
     @property
     def _project_name(self) -> str:

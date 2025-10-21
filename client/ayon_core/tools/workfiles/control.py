@@ -439,13 +439,9 @@ class BaseWorkfileController(
             folder_id, task_id
         )
 
-    def get_published_workfile_info(
-        self,
-        folder_id: Optional[str],
-        representation_id: Optional[str],
-    ) -> PublishedWorkfileWrap:
+    def get_published_workfile_info(self, representation_id):
         return self._workfiles_model.get_published_workfile_info(
-            folder_id, representation_id
+            representation_id
         )
 
     def get_workfile_info(self, folder_id, task_id, rootless_path):

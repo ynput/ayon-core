@@ -815,19 +815,14 @@ class AbstractWorkfilesFrontend(AbstractWorkfilesCommon):
         pass
 
     @abstractmethod
-    def get_published_workfile_info(
-        self,
-        folder_id: Optional[str],
-        representation_id: Optional[str],
-    ) -> PublishedWorkfileWrap:
+    def get_published_workfile_info(self, representation_id: str):
         """Get published workfile info by representation ID.
 
         Args:
-            folder_id (Optional[str]): Folder id.
-            representation_id (Optional[str]): Representation id.
+            representation_id (str): Representation id.
 
         Returns:
-            PublishedWorkfileWrap: Published workfile info or None
+            Optional[PublishedWorkfileInfo]: Published workfile info or None
                 if not found.
 
         """
