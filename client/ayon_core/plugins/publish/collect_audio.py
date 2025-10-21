@@ -46,19 +46,6 @@ class CollectAudio(pyblish.api.ContextPlugin):
     audio_product_name = "audioMain"
 
     def process(self, context):
-        # Make sure Editorial related products are excluded
-        # since those are maintained by ExtractOtioAudioTracks
-        audio_instances = self.get_audio_instances(context)
-        self.log.debug("Audio instances: {}".format(len(audio_instances)))
-
-        # QUESTION: perhaps there is a better way to do this?
-        #   This is having limitation for cases where no audio instance
-        #   is found but still in editorial context. We should perhaps rather
-        #   check if the instance is in particular editorial context.
-        if len(audio_instances) >= 1:
-            self.log.info("Audio provided from related instances")
-            return
-
         # Fake filtering by family inside context plugin
         filtered_instances = []
         for instance in pyblish.api.instances_by_plugin(
@@ -114,24 +101,6 @@ class CollectAudio(pyblish.api.ContextPlugin):
                     "filename": repre_path
                 }]
                 self.log.debug("Audio Data added to instance ...")
-
-    def get_audio_instances(self, context):
-        """Return only instances which are having audio in families
-
-        Args:
-            context (pyblish.context): context of publisher
-
-        Returns:
-            list: list of selected instances
-        """
-        return [
-            _i for _i in context
-            # filter only those with audio product type or family
-            # and also with reviewAudio data key
-            if bool("audio" in (
-                _i.data.get("families", []) + [_i.data["productType"]])
-            ) or _i.data.get("reviewAudio")
-        ]
 
     def query_representations(self, project_name, folder_paths):
         """Query representations related to audio products for passed folders.
