@@ -15,6 +15,7 @@ from typing import (
     Any,
     Callable,
 )
+from warnings import warn
 
 import pyblish.logic
 import pyblish.api
@@ -28,6 +29,7 @@ from ayon_core.host import IWorkfileHost, IPublishHost
 from ayon_core.pipeline import Anatomy
 from ayon_core.pipeline.template_data import get_template_data
 from ayon_core.pipeline.plugin_discover import DiscoverResult
+from ayon_core.pipeline.compatibility import is_product_base_type_supported
 
 from .exceptions import (
     CreatorError,
@@ -752,13 +754,12 @@ class CreateContext:
         manual_creators = {}
         report = discover_creator_plugins(return_report=True)
         self.creator_discover_result = report
-        for creator_class in report.plugins:
-            if inspect.isabstract(creator_class):
-                self.log.debug(
-                    "Skipping abstract Creator {}".format(str(creator_class))
-                )
-                continue
+        for creator_class in report.abstract_plugins:
+            self.log.debug(
+                "Skipping abstract Creator '%s'", str(creator_class)
+            )
 
+        for creator_class in report.plugins:
             creator_identifier = creator_class.identifier
             if creator_identifier in creators:
                 self.log.warning(
@@ -1291,6 +1292,21 @@ class CreateContext:
             "productType": creator.product_type,
             "variant": variant
         }
+
+        # Add product base type if supported.
+        # TODO (antirotor): Once all creators support product base type
+        #   remove this check.
+        if is_product_base_type_supported():
+
+            instance_data["productBaseType"] = creator.product_base_type
+            if creator.product_base_type is None:
+                msg = (
+                        f"Creator {creator_identifier} does not set "
+                        "product base type. This will be required in future."
+                )
+                warn(msg, DeprecationWarning, stacklevel=2)
+                self.log.warning(msg)
+
         if active is not None:
             if not isinstance(active, bool):
                 self.log.warning(

@@ -1,20 +1,21 @@
-# -*- coding: utf-8 -*-
-import os
-import copy
+"""Creator plugins for the create process."""
 import collections
-from typing import TYPE_CHECKING, Optional, Dict, Any
-
+import copy
+import os
 from abc import ABC, abstractmethod
+from typing import TYPE_CHECKING, Any, Dict, Optional
+from warnings import warn
 
 from ayon_core.lib import Logger, get_version_from_path
+from ayon_core.pipeline.compatibility import is_product_base_type_supported
 from ayon_core.pipeline.plugin_discover import (
+    deregister_plugin,
+    deregister_plugin_path,
     discover,
     register_plugin,
     register_plugin_path,
-    deregister_plugin,
-    deregister_plugin_path
 )
-from ayon_core.pipeline.staging_dir import get_staging_dir_info, StagingDir
+from ayon_core.pipeline.staging_dir import StagingDir, get_staging_dir_info
 
 from .constants import DEFAULT_VARIANT_VALUE
 from .product_name import get_product_name
@@ -23,6 +24,7 @@ from .structures import CreatedInstance
 
 if TYPE_CHECKING:
     from ayon_core.lib import AbstractAttrDef
+
     # Avoid cyclic imports
     from .context import CreateContext, UpdateData  # noqa: F401
 
@@ -66,7 +68,6 @@ class ProductConvertorPlugin(ABC):
         Returns:
             logging.Logger: Logger with name of the plugin.
         """
-
         if self._log is None:
             self._log = Logger.get_logger(self.__class__.__name__)
         return self._log
@@ -82,9 +83,8 @@ class ProductConvertorPlugin(ABC):
 
         Returns:
             str: Converted identifier unique for all converters in host.
-        """
 
-        pass
+        """
 
     @abstractmethod
     def find_instances(self):
@@ -94,13 +94,9 @@ class ProductConvertorPlugin(ABC):
         convert.
         """
 
-        pass
-
     @abstractmethod
     def convert(self):
         """Conversion code."""
-
-        pass
 
     @property
     def create_context(self):
@@ -109,7 +105,6 @@ class ProductConvertorPlugin(ABC):
         Returns:
             CreateContext: Context which initialized the plugin.
         """
-
         return self._create_context
 
     @property
@@ -122,7 +117,6 @@ class ProductConvertorPlugin(ABC):
         Raises:
             UnavailableSharedData: When called out of collection phase.
         """
-
         return self._create_context.collection_shared_data
 
     def add_convertor_item(self, label):
@@ -131,12 +125,10 @@ class ProductConvertorPlugin(ABC):
         Args:
             label (str): Label of item which will show in UI.
         """
-
         self._create_context.add_convertor_item(self.identifier, label)
 
     def remove_convertor_item(self):
         """Remove legacy item from create context when conversion finished."""
-
         self._create_context.remove_convertor_item(self.identifier)
 
 
@@ -155,7 +147,6 @@ class BaseCreator(ABC):
         create_context (CreateContext): Context which initialized creator.
         headless (bool): Running in headless mode.
     """
-
     # Label shown in UI
     label = None
     group_label = None
@@ -219,7 +210,6 @@ class BaseCreator(ABC):
         Returns:
             Optional[dict[str, Any]]: Settings values or None.
         """
-
         settings = project_settings.get(category_name)
         if not settings:
             return None
@@ -265,7 +255,6 @@ class BaseCreator(ABC):
         Args:
             project_settings (dict[str, Any]): Project settings.
         """
-
         settings_category = self.settings_category
         if not settings_category:
             return
@@ -277,18 +266,17 @@ class BaseCreator(ABC):
             project_settings, settings_category, settings_name
         )
         if settings is None:
-            self.log.debug("No settings found for {}".format(cls_name))
+            self.log.debug(f"No settings found for {cls_name}")
             return
 
         for key, value in settings.items():
             # Log out attributes that are not defined on plugin object
             # - those may be potential dangerous typos in settings
             if not hasattr(self, key):
-                self.log.debug((
-                    "Applying settings to unknown attribute '{}' on '{}'."
-                ).format(
+                self.log.debug(
+                    "Applying settings to unknown attribute '%' on '%'.",
                     key, cls_name
-                ))
+                )
             setattr(self, key, value)
 
     def register_callbacks(self):
@@ -297,23 +285,40 @@ class BaseCreator(ABC):
         Default implementation does nothing. It can be overridden to register
         callbacks for creator.
         """
-        pass
 
     @property
     def identifier(self):
         """Identifier of creator (must be unique).
 
         Default implementation returns plugin's product type.
-        """
 
-        return self.product_type
+        """
+        identifier = self.product_type
+        if is_product_base_type_supported():
+            identifier = self.product_base_type
+            if self.product_type:
+                identifier = f"{identifier}.{self.product_type}"
+        return identifier
 
     @property
     @abstractmethod
     def product_type(self):
         """Family that plugin represents."""
 
-        pass
+    @property
+    def product_base_type(self) -> Optional[str]:
+        """Base product type that plugin represents.
+
+        Todo (antirotor): This should be required in future - it
+            should be made abstract then.
+
+        Returns:
+            Optional[str]: Base product type that plugin represents.
+                If not set, it is assumed that the creator plugin is obsolete
+                and does not support product base type.
+
+        """
+        return None
 
     @property
     def project_name(self):
@@ -322,7 +327,6 @@ class BaseCreator(ABC):
         Returns:
             str: Name of a project.
         """
-
         return self.create_context.project_name
 
     @property
@@ -332,7 +336,6 @@ class BaseCreator(ABC):
         Returns:
             Anatomy: Project anatomy object.
         """
-
         return self.create_context.project_anatomy
 
     @property
@@ -344,13 +347,14 @@ class BaseCreator(ABC):
 
         Default implementation use attributes in this order:
             - 'group_label' -> 'label' -> 'identifier'
-                Keep in mind that 'identifier' use 'product_type' by default.
+
+        Keep in mind that 'identifier' uses 'product_base_type' by default.
 
         Returns:
             str: Group label that can be used for grouping of instances in UI.
-                Group label can be overridden by instance itself.
-        """
+                Group label can be overridden by the instance itself.
 
+        """
         if self._cached_group_label is None:
             label = self.identifier
             if self.group_label:
@@ -367,7 +371,6 @@ class BaseCreator(ABC):
         Returns:
             logging.Logger: Logger with name of the plugin.
         """
-
         if self._log is None:
             self._log = Logger.get_logger(self.__class__.__name__)
         return self._log
@@ -376,7 +379,8 @@ class BaseCreator(ABC):
         self,
         product_name: str,
         data: Dict[str, Any],
-        product_type: Optional[str] = None
+        product_type: Optional[str] = None,
+        product_base_type: Optional[str] = None
     ) -> CreatedInstance:
         """Create instance and add instance to context.
 
@@ -385,6 +389,8 @@ class BaseCreator(ABC):
             data (Dict[str, Any]): Instance data.
             product_type (Optional[str]): Product type, object attribute
                 'product_type' is used if not passed.
+            product_base_type (Optional[str]): Product base type, object
+                attribute 'product_type' is used if not passed.
 
         Returns:
             CreatedInstance: Created instance.
@@ -392,11 +398,27 @@ class BaseCreator(ABC):
         """
         if product_type is None:
             product_type = self.product_type
+
+        if (
+                is_product_base_type_supported()
+                and not product_base_type
+                and not self.product_base_type
+        ):
+            warn(
+                f"Creator {self.identifier} does not support "
+                "product base type. This will be required in future.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+        else:
+            product_base_type = self.product_base_type
+
         instance = CreatedInstance(
-            product_type,
-            product_name,
-            data,
+            product_type=product_type,
+            product_name=product_name,
+            data=data,
             creator=self,
+            product_base_type=product_base_type
         )
         self._add_instance_to_context(instance)
         return instance
@@ -412,7 +434,6 @@ class BaseCreator(ABC):
         Args:
             instance (CreatedInstance): New created instance.
         """
-
         self.create_context.creator_adds_instance(instance)
 
     def _remove_instance_from_context(self, instance):
@@ -425,7 +446,6 @@ class BaseCreator(ABC):
         Args:
             instance (CreatedInstance): Instance which should be removed.
         """
-
         self.create_context.creator_removed_instance(instance)
 
     @abstractmethod
@@ -436,8 +456,6 @@ class BaseCreator(ABC):
         - must expect all data that were passed to init in previous
             implementation
         """
-
-        pass
 
     @abstractmethod
     def collect_instances(self):
@@ -464,8 +482,6 @@ class BaseCreator(ABC):
         ```
         """
 
-        pass
-
     @abstractmethod
     def update_instances(self, update_list):
         """Store changes of existing instances so they can be recollected.
@@ -474,8 +490,6 @@ class BaseCreator(ABC):
             update_list (list[UpdateData]): Gets list of tuples. Each item
                 contain changed instance and it's changes.
         """
-
-        pass
 
     @abstractmethod
     def remove_instances(self, instances):
@@ -489,14 +503,11 @@ class BaseCreator(ABC):
                 removed.
         """
 
-        pass
-
     def get_icon(self):
         """Icon of creator (product type).
 
         Can return path to image file or awesome icon name.
         """
-
         return self.icon
 
     def get_dynamic_data(
@@ -512,19 +523,19 @@ class BaseCreator(ABC):
 
         These may be dynamically created based on current context of workfile.
         """
-
         return {}
 
     def get_product_name(
         self,
-        project_name,
-        folder_entity,
-        task_entity,
-        variant,
-        host_name=None,
-        instance=None,
-        project_entity=None,
-    ):
+        project_name: str,
+        folder_entity: dict[str, Any],
+        task_entity: dict[str, Any],
+        variant: str,
+        host_name: Optional[str] = None,
+        instance: Optional[CreatedInstance] = None,
+        project_entity: Optional[dict[str, Any]] = None,
+        product_base_type: Optional[str] = None,
+    ) -> str:
         """Return product name for passed context.
 
         Method is also called on product name update. In that case origin
@@ -541,8 +552,12 @@ class BaseCreator(ABC):
                 for which is product name updated. Passed only on product name
                 update.
             project_entity (Optional[dict[str, Any]]): Project entity.
+            product_base_type (Optional[str]): Product base type.
 
         """
+        if is_product_base_type_supported() and (instance and hasattr(instance, "product_base_type")):  # noqa: E501
+            product_base_type = instance.product_base_type
+
         if host_name is None:
             host_name = self.create_context.host_name
 
@@ -574,6 +589,7 @@ class BaseCreator(ABC):
             dynamic_data=dynamic_data,
             project_settings=self.project_settings,
             project_entity=project_entity,
+            product_base_type=product_base_type
         )
 
     def get_instance_attr_defs(self):
@@ -583,15 +599,15 @@ class BaseCreator(ABC):
         and values are stored to metadata for future usage and for publishing
         purposes.
 
-        NOTE:
-        Convert method should be implemented which should care about updating
-        keys/values when plugin attributes change.
+        Note:
+            Convert method should be implemented which should care about
+            updating keys/values when plugin attributes change.
 
         Returns:
             list[AbstractAttrDef]: Attribute definitions that can be tweaked
                 for created instance.
-        """
 
+        """
         return self.instance_attr_defs
 
     def get_attr_defs_for_instance(self, instance):
@@ -614,12 +630,10 @@ class BaseCreator(ABC):
         Raises:
             UnavailableSharedData: When called out of collection phase.
         """
-
         return self.create_context.collection_shared_data
 
     def set_instance_thumbnail_path(self, instance_id, thumbnail_path=None):
         """Set path to thumbnail for instance."""
-
         self.create_context.thumbnail_paths_by_instance_id[instance_id] = (
             thumbnail_path
         )
@@ -640,7 +654,6 @@ class BaseCreator(ABC):
         Returns:
             dict[str, int]: Next versions by instance id.
         """
-
         return get_next_versions_for_instances(
             self.create_context.project_name, instances
         )
@@ -707,7 +720,6 @@ class Creator(BaseCreator):
             int: Order in which is creator shown (less == earlier). By default
                 is using Creator's 'order' or processing.
         """
-
         return self.order
 
     @abstractmethod
@@ -722,11 +734,9 @@ class Creator(BaseCreator):
             pre_create_data(dict): Data based on pre creation attributes.
                 Those may affect how creator works.
         """
-
         # instance = CreatedInstance(
         #     self.product_type, product_name, instance_data
         # )
-        pass
 
     def get_description(self):
         """Short description of product type and plugin.
@@ -734,7 +744,6 @@ class Creator(BaseCreator):
         Returns:
             str: Short description of product type.
         """
-
         return self.description
 
     def get_detail_description(self):
@@ -745,7 +754,6 @@ class Creator(BaseCreator):
         Returns:
             str: Detailed description of product type for artist.
         """
-
         return self.detailed_description
 
     def get_default_variants(self):
@@ -759,7 +767,6 @@ class Creator(BaseCreator):
         Returns:
             list[str]: Whisper variants for user input.
         """
-
         return copy.deepcopy(self.default_variants)
 
     def get_default_variant(self, only_explicit=False):
@@ -779,7 +786,6 @@ class Creator(BaseCreator):
         Returns:
             str: Variant value.
         """
-
         if only_explicit or self._default_variant:
             return self._default_variant
 
@@ -800,7 +806,6 @@ class Creator(BaseCreator):
         Returns:
             str: Variant value.
         """
-
         return self.get_default_variant()
 
     def _set_default_variant_wrap(self, variant):
@@ -812,7 +817,6 @@ class Creator(BaseCreator):
         Args:
             variant (str): New default variant value.
         """
-
         self._default_variant = variant
 
     default_variant = property(
@@ -962,7 +966,6 @@ class AutoCreator(BaseCreator):
 
     def remove_instances(self, instances):
         """Skip removal."""
-        pass
 
 
 def discover_creator_plugins(*args, **kwargs):
@@ -1020,7 +1023,6 @@ def cache_and_get_instances(creator, shared_key, list_instances_func):
         dict[str, dict[str, Any]]: Cached instances by creator identifier from
             result of passed function.
     """
-
     if shared_key not in creator.collection_shared_data:
         value = collections.defaultdict(list)
         for instance in list_instances_func():
