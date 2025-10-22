@@ -7,13 +7,20 @@ import copy
 import warnings
 import hashlib
 import xml.etree.ElementTree
-from typing import TYPE_CHECKING, Optional, Union, List
+from typing import TYPE_CHECKING, Optional, Union, List, Any
+import clique
+import speedcopy
+import logging
 
-import ayon_api
 import pyblish.util
 import pyblish.plugin
 import pyblish.api
 
+from ayon_api import (
+    get_server_api_connection,
+    get_representations,
+    get_last_version_by_product_name
+)
 from ayon_core.lib import (
     import_filepath,
     Logger,
@@ -33,6 +40,8 @@ if TYPE_CHECKING:
 
 
 TRAIT_INSTANCE_KEY: str = "representations_with_traits"
+
+log = logging.getLogger(__name__)
 
 
 def get_template_name_profiles(
@@ -1030,7 +1039,7 @@ def main_cli_publish(
         # NOTE: ayon-python-api does not have public api function to find
         #   out if is used service user. So we need to have try > except
         #   block.
-        con = ayon_api.get_server_api_connection()
+        con = get_server_api_connection()
         try:
             con.set_default_service_username(username)
         except ValueError:
@@ -1143,3 +1152,90 @@ def get_trait_representations(
 
     """
     return instance.data.get(TRAIT_INSTANCE_KEY, [])
+
+
+def fill_sequence_gaps_with_previous_version(
+    collection: str,
+    staging_dir: str,
+    instance: pyblish.plugin.Instance,
+    current_repre_name: str,
+    start_frame: int,
+    end_frame: int
+) -> tuple[Optional[dict[str, Any]], Optional[dict[int, str]]]:
+    """Tries to replace missing frames from ones from last version"""
+    used_version_entity, repre_file_paths = _get_last_version_files(
+        instance, current_repre_name
+    )
+    if repre_file_paths is None:
+        # issues in getting last version files
+        return (None, None)
+
+    prev_collection = clique.assemble(
+        repre_file_paths,
+        patterns=[clique.PATTERNS["frames"]],
+        minimum_items=1
+    )[0][0]
+    prev_col_format = prev_collection.format("{head}{padding}{tail}")
+
+    added_files = {}
+    anatomy = instance.context.data["anatomy"]
+    col_format = collection.format("{head}{padding}{tail}")
+    for frame in range(start_frame, end_frame + 1):
+        if frame in collection.indexes:
+            continue
+        hole_fpath = os.path.join(staging_dir, col_format % frame)
+
+        previous_version_path = prev_col_format % frame
+        previous_version_path = anatomy.fill_root(previous_version_path)
+        if not os.path.exists(previous_version_path):
+            log.warning(
+                "Missing frame should be replaced from "
+                f"'{previous_version_path}' but that doesn't exist. "
+            )
+            return (None, None)
+
+        log.warning(
+            f"Replacing missing '{hole_fpath}' with "
+            f"'{previous_version_path}'"
+        )
+        speedcopy.copyfile(previous_version_path, hole_fpath)
+        added_files[frame] = hole_fpath
+
+    return (used_version_entity, added_files)
+
+
+def _get_last_version_files(
+    instance: pyblish.plugin.Instance,
+    current_repre_name: str,
+) -> tuple[Optional[dict[str, Any]], Optional[list[str]]]:
+    product_name = instance.data["productName"]
+    project_name = instance.data["projectEntity"]["name"]
+    folder_entity = instance.data["folderEntity"]
+
+    version_entity = get_last_version_by_product_name(
+        project_name,
+        product_name,
+        folder_entity["id"],
+        fields={"id", "attrib"}
+    )
+
+    if not version_entity:
+        return None, None
+
+    matching_repres = get_representations(
+        project_name,
+        version_ids=[version_entity["id"]],
+        representation_names=[current_repre_name],
+        fields={"files"}
+    )
+
+    matching_repre = next(matching_repres, None)
+    if not matching_repre:
+        return None, None
+
+    repre_file_paths = [
+        file_info["path"]
+        for file_info in matching_repre["files"]
+    ]
+
+    return (version_entity, repre_file_paths)
