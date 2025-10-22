@@ -709,7 +709,7 @@ class ProjectPushItemProcess:
         )
         folder_entity = new_folder_entity(
             folder_name,
-            "Folder",
+            src_folder_type,
             parent_id=parent_id,
             attribs=new_folder_attrib
         )
