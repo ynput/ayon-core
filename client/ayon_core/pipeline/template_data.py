@@ -173,7 +173,8 @@ def get_template_data(
     task_entity=None,
     host_name=None,
     settings=None,
-    username=None
+    username=None,
+    user_entity=None,
 ):
     """Prepare data for templates filling from entered documents and info.
 
@@ -196,13 +197,18 @@ def get_template_data(
         host_name (Optional[str]): Used to fill '{app}' key.
         settings (Union[Dict, None]): Prepared studio or project settings.
             They're queried if not passed (may be slower).
-        username (Optional[str]): AYON Username.
+        username (Optional[str]): DEPRECATED AYON Username.
+        user_entity (Optional[dict[str, Any]): AYON user entity.
 
     Returns:
         Dict[str, Any]: Data prepared for filling workdir template.
     """
 
-    template_data = get_general_template_data(settings, username=username)
+    template_data = get_general_template_data(
+        settings,
+        username=username,
+        user_entity=user_entity,
+    )
     template_data.update(get_project_template_data(project_entity))
     if folder_entity:
         template_data.update(get_folder_template_data(
