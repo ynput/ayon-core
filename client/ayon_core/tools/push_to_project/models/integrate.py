@@ -762,8 +762,11 @@ class ProjectPushItemProcess:
             )
         self._folder_entity = folder_entity
         if not dst_task_name:
-            self._task_info = {}
-            return
+            dst_task_name = self._make_sure_task_exists(folder_entity)
+
+            if not dst_task_name:  # really no task selected nor on source
+                self._task_info = {}
+                return
 
         folder_path = folder_entity["path"]
         folder_tasks = {
@@ -961,6 +964,28 @@ class ProjectPushItemProcess:
             project_name, "version", version_entity
         )
         self._version_entity = version_entity
+
+    def _make_sure_task_exists(self, folder_entity: Dict[str, Any]) -> str:
+        """Creates destination task from source task information"""
+        project_name = self._item.dst_project_name
+        src_version_entity = self._src_version_entity
+        src_task = ayon_api.get_task_by_id(
+            self._item.src_project_name, src_version_entity["taskId"]
+        )
+        if not src_task:
+            self._status.set_failed(
+                f"No task selected and couldn't find source task"
+            )
+            raise PushToProjectError(self._status.fail_reason)
+        _task_id = ayon_api.create_task(
+            project_name,
+            src_task["name"],
+            folder_id=folder_entity["id"],
+            task_type=src_task["taskType"],
+            attrib=src_task["attrib"],
+        )
+
+        return src_task["name"]
 
     def _integrate_representations(self):
         try:
