@@ -5,7 +5,7 @@ import itertools
 import sys
 import traceback
 import uuid
-from typing import Optional, Dict
+from typing import Optional, Dict, Any
 
 import ayon_api
 from ayon_api.utils import create_entity_id
@@ -650,10 +650,10 @@ class ProjectPushItemProcess:
 
     def _create_folder(
         self,
-        src_folder_entity,
-        project_entity,
-        parent_folder_entity,
-        folder_name
+        src_folder_entity: Dict[str, Any],
+        project_entity: Dict[str, Any],
+        parent_folder_entity: Dict[str, Any],
+        folder_name: str
     ):
         parent_id = None
         if parent_folder_entity:
