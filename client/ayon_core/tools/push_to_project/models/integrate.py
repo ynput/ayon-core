@@ -702,7 +702,11 @@ class ProjectPushItemProcess:
         if new_folder_name != folder_name:
             folder_label = folder_name
 
-        # TODO find out how to define folder type
+        src_folder_type = src_folder_entity["folderType"]
+        self._check_src_folder_type(
+            project_entity,
+            src_folder_type
+        )
         folder_entity = new_folder_entity(
             folder_name,
             "Folder",
@@ -726,6 +730,24 @@ class ProjectPushItemProcess:
             parent_path = parent_folder_entity["path"]
         folder_entity["path"] = "/".join([parent_path, folder_name])
         return folder_entity
+
+    def _check_src_folder_type(
+        self,
+        project_entity: Dict[str, Any],
+        src_folder_type: str
+    ):
+        """Confirm that folder type exists in destination project"""
+        folder_types = [
+            folder_type["name"].lower()
+            for folder_type in project_entity["folderTypes"]
+        ]
+
+        if src_folder_type.lower() not in folder_types:
+            self._status.set_failed(
+                f"'{src_folder_type}' folder type is not configured in "
+                f"project Anatomy."
+            )
+            raise PushToProjectError(self._status.fail_reason)
 
     def _fill_or_create_destination_folder(self):
         dst_project_name = self._item.dst_project_name
@@ -1205,7 +1227,7 @@ class ProjectPushItemProcess:
                 value_to_update = formatting_data.get(context_key)
                 if value_to_update:
                     repre_context[context_key] = value_to_update
-        if "task" not in formatting_data:
+        if "task" not in formatting_data and "task" in repre_context:
             repre_context.pop("task")
         return repre_context
 
