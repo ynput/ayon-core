@@ -584,7 +584,19 @@ def _get_ayon_service_username() -> Optional[str]:
 
 
 def get_ayon_user_entity(username: Optional[str] = None) -> dict[str, Any]:
-    """AYON user entity used for templates and publishing."""
+    """AYON user entity used for templates and publishing.
+
+    Note:
+        Usually only service and admin users can receive the full user entity.
+
+    Args:
+        username (Optional[str]): Username of the user. If not passed, then
+            the current user in 'ayon_api' is used.
+
+    Returns:
+        dict[str, Any]: User entity.
+
+    """
     service_username = _get_ayon_service_username()
     # Handle service user handling first
     if service_username:
