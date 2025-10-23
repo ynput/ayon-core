@@ -80,18 +80,6 @@ class DefaultKeysDict(dict):
     def __str__(self) -> str:
         return str(self.get_default_value())
 
-    def __copy__(self) -> "DefaultKeysDict":
-        return DefaultKeysDict(
-            self.get_default_keys(), dict(self.items())
-        )
-
-    def __deepcopy__(self) -> "DefaultKeysDict":
-        data_copy = {
-            key: copy.deepcopy(value)
-            for key, value in self.items()
-        }
-        return DefaultKeysDict(self.get_default_keys(), data_copy)
-
     def get_default_keys(self) -> list[str]:
         return list(self._default_keys)
 
