@@ -1020,11 +1020,7 @@ class ProjectPushItemProcess:
         src_task = ayon_api.get_task_by_id(
             self._item.src_project_name, src_version_entity["taskId"]
         )
-        if not src_task:
-            self._status.set_failed(
-                f"No task selected and couldn't find source task"
-            )
-            raise PushToProjectError(self._status.fail_reason)
+
         return src_task
 
     def _integrate_representations(self):
