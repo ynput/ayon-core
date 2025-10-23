@@ -1225,8 +1225,8 @@ class ProjectPushItemProcess:
                 value_to_update = formatting_data.get(context_key)
                 if value_to_update:
                     repre_context[context_key] = value_to_update
-        if "task" not in formatting_data and "task" in repre_context:
-            repre_context.pop("task")
+        if "task" not in formatting_data:
+            repre_context.pop("task", None)
         return repre_context
 
 
