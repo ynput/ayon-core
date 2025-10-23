@@ -987,7 +987,7 @@ class ProjectPushItemProcess:
     ):
         """Creates destination task from source task information"""
         project_name = self._item.dst_project_name
-        _task_id = ayon_api.create_task(
+        _task_id = self._operations.create_task(
             project_name,
             task_info["name"],
             folder_id=folder_entity["id"],
