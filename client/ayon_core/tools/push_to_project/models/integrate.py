@@ -1007,11 +1007,26 @@ class ProjectPushItemProcess:
     ):
         """Creates destination task from source task information"""
         project_name = self._item.dst_project_name
+        found_task_type = False
+        src_task_type = task_info["taskType"]
+        for task_type in self._project_entity["taskTypes"]:
+            if task_type["name"].lower() == src_task_type.lower():
+                found_task_type = True
+                break
+
+        if not found_task_type:
+            self._status.set_failed(
+                f"'{src_task_type}' task type is not configured in "
+                 "project Anatomy."
+            )
+
+            raise PushToProjectError(self._status.fail_reason)
+
         _task_id = self._operations.create_task(
             project_name,
             task_info["name"],
             folder_id=folder_entity["id"],
-            task_type=task_info["taskType"],
+            task_type=src_task_type,
             attrib=task_info["attrib"],
         )
 
