@@ -782,8 +782,8 @@ class ProjectPushItemProcess:
                 self._task_info = {}
                 return
 
-            dst_task_name = src_task_info["name"].lower()
-            if dst_task_name not in folder_tasks:
+            dst_task_name = src_task_info["name"]
+            if dst_task_name.lower() not in folder_tasks:
                 self._make_sure_task_exists(
                     folder_entity, src_task_info
                 )
