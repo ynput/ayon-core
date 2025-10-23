@@ -5,7 +5,7 @@ import itertools
 import sys
 import traceback
 import uuid
-from typing import Optional, Dict, Any
+from typing import Optional, Any
 
 import ayon_api
 from ayon_api.utils import create_entity_id
@@ -225,8 +225,8 @@ class ProjectPushRepreItem:
         but filenames are not template based.
 
     Args:
-        repre_entity (Dict[str, Ant]): Representation entity.
-        roots (Dict[str, str]): Project roots (based on project anatomy).
+        repre_entity (dict[str, Ant]): Representation entity.
+        roots (dict[str, str]): Project roots (based on project anatomy).
     """
 
     def __init__(self, repre_entity, roots):
@@ -982,8 +982,8 @@ class ProjectPushItemProcess:
 
     def _make_sure_task_exists(
         self,
-        folder_entity: Dict[str, Any],
-        task_info: Dict[str, Any],
+        folder_entity: dict[str, Any],
+        task_info: dict[str, Any],
     ):
         """Creates destination task from source task information"""
         project_name = self._item.dst_project_name
@@ -1326,6 +1326,6 @@ class IntegrateModel:
             return
         item.integrate()
 
-    def get_items(self) -> Dict[str, ProjectPushItemProcess]:
+    def get_items(self) -> dict[str, ProjectPushItemProcess]:
         """Returns dict of all ProjectPushItemProcess items """
         return self._process_items
