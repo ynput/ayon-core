@@ -802,8 +802,8 @@ class ProjectPushItemProcess:
                 self._task_info = {}
                 return
 
-            dst_task_name = src_task_info["name"].lower()
-            if dst_task_name not in folder_tasks:
+            dst_task_name = src_task_info["name"]
+            if dst_task_name.lower() not in folder_tasks:
                 self._make_sure_task_exists(
                     folder_entity, src_task_info
                 )
@@ -1022,7 +1022,7 @@ class ProjectPushItemProcess:
 
             raise PushToProjectError(self._status.fail_reason)
 
-        _task_id = self._operations.create_task(
+        self._operations.create_task(
             project_name,
             task_info["name"],
             folder_id=folder_entity["id"],
@@ -1035,7 +1035,6 @@ class ProjectPushItemProcess:
         src_task = ayon_api.get_task_by_id(
             self._item.src_project_name, src_version_entity["taskId"]
         )
-
         return src_task
 
     def _integrate_representations(self):
