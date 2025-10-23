@@ -650,9 +650,9 @@ class ProjectPushItemProcess:
 
     def _create_folder(
         self,
-        src_folder_entity: Dict[str, Any],
-        project_entity: Dict[str, Any],
-        parent_folder_entity: Dict[str, Any],
+        src_folder_entity: dict[str, Any],
+        project_entity: dict[str, Any],
+        parent_folder_entity: dict[str, Any],
         folder_name: str
     ):
         parent_id = None
