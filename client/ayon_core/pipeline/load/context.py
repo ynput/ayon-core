@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import copy
 import typing
-from typing import Any, Optional
+from typing import Any, Optional, Iterable
 
 from ayon_core.lib import TrackDictChangesItem, Logger
 
@@ -95,31 +95,31 @@ class ContainerItem:
         self._load_plugin = load_plugin
 
     # --- Dictionary like methods ---
-    def __getitem__(self, key):
+    def __getitem__(self, key: str) -> Any:
         return self._scene_data[key]
 
-    def __contains__(self, key):
+    def __contains__(self, key: str) -> bool:
         return key in self._scene_data
 
-    def __setitem__(self, key, value):
+    def __setitem__(self, key: str, value: Any) -> None:
         if key in self._scene_data and self._scene_data[key] == value:
             return
 
         self._scene_data[key] = value
 
-    def get(self, key, default=None):
+    def get(self, key: str, default: Any = None) -> Any:
         return self._scene_data.get(key, default)
 
-    def pop(self, key, *args, **kwargs):
+    def pop(self, key: str, *args, **kwargs) -> Any:
         return self._scene_data.pop(key, *args, **kwargs)
 
-    def keys(self):
+    def keys(self) -> Iterable[str]:
         return self._scene_data.keys()
 
-    def values(self):
+    def values(self) -> Iterable[Any]:
         return self._scene_data.values()
 
-    def items(self):
+    def items(self) -> Iterable[tuple[str, Any]]:
         return self._scene_data.items()
     # ------
 
