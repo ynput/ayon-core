@@ -703,13 +703,13 @@ class ProjectPushItemProcess:
             folder_label = folder_name
 
         src_folder_type = src_folder_entity["folderType"]
-        self._check_src_folder_type(
+        dst_folder_type = self._get_dst_folder_type(
             project_entity,
             src_folder_type
         )
         folder_entity = new_folder_entity(
             folder_name,
-            src_folder_type,
+            dst_folder_type,
             parent_id=parent_id,
             attribs=new_folder_attrib
         )
