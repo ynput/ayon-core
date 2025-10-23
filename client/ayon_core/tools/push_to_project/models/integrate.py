@@ -731,23 +731,21 @@ class ProjectPushItemProcess:
         folder_entity["path"] = "/".join([parent_path, folder_name])
         return folder_entity
 
-    def _check_src_folder_type(
+    def _get_dst_folder_type(
         self,
-        project_entity: Dict[str, Any],
+        project_entity: dict[str, Any],
         src_folder_type: str
-    ):
-        """Confirm that folder type exists in destination project"""
-        folder_types = [
-            folder_type["name"].lower()
-            for folder_type in project_entity["folderTypes"]
-        ]
+    ) -> str:
+        """Get new folder type."""
+        for folder_type in project_entity["folderTypes"]:
+            if folder_type["name"].lower() == src_folder_type.lower():
+                return folder_type["name"]
 
-        if src_folder_type.lower() not in folder_types:
-            self._status.set_failed(
-                f"'{src_folder_type}' folder type is not configured in "
-                f"project Anatomy."
-            )
-            raise PushToProjectError(self._status.fail_reason)
+        self._status.set_failed(
+            f"'{src_folder_type}' folder type is not configured in "
+            f"project Anatomy."
+        )
+        raise PushToProjectError(self._status.fail_reason)
 
     def _fill_or_create_destination_folder(self):
         dst_project_name = self._item.dst_project_name
