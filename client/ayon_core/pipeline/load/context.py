@@ -11,6 +11,16 @@ if typing.TYPE_CHECKING:
 
 
 class RepresentationContext:
+    """Representation context used for loading.
+
+    Attributes:
+        project_entity (dict[str, Any]): Project entity.
+        folder_entity (dict[str, Any]): Folder entity.
+        product_entity (dict[str, Any]): Product entity.
+        version_entity (dict[str, Any]): Version entity.
+        representation_entity (dict[str, Any]): Representation entity.
+
+    """
     project_entity: dict[str, Any]
     folder_entity: dict[str, Any]
     product_entity: dict[str, Any]
@@ -150,11 +160,19 @@ class ContainerItem:
         return copy.deepcopy(self._origin_scene_data)
 
     def get_transient_data(self) -> dict[str, Any]:
+        """Transient data are manager by load plugin.
+
+        Should be used for any arbitrary data needed for a container
+            management.
+
+        """
         return self._transient_data
 
     def get_changes(self) -> TrackDictChangesItem:
         """Calculate and return changes.
 
+        Returns:
+            TrackDictChangesItem: Calculated changes on container.
 
         """
         new_data = {
@@ -266,6 +284,17 @@ class LoadContext:
         identifier: str,
         representation_contexts: list[RepresentationContext],
     ) -> list[ContainerItem]:
+        """Load representations.
+
+        Args:
+            identifier (str): Load plugin identifier.
+            representation_contexts (list[RepresentationContext]): List of
+                representation contexts.
+
+        Returns:
+            list[ContainerItem]: List of loaded containers.
+
+        """
         plugin = self._get_plugin_by_identifier(identifier, validate=True)
         return plugin.load_representations(representation_contexts)
 
@@ -274,6 +303,14 @@ class LoadContext:
         identifier: str,
         items: list[tuple[ContainerItem, RepresentationContext]],
     ) -> None:
+        """Change representations of loaded containers.
+
+        Args:
+            identifier (str): Load plugin identifier.
+            items (list[tuple[ContainerItem, RepresentationContext]]): List
+                of containers and their new representation contexts.
+
+        """
         plugin = self._get_plugin_by_identifier(identifier, validate=True)
         return plugin.change_representations(items)
 
@@ -282,6 +319,13 @@ class LoadContext:
         identifier: str,
         containers: list[ContainerItem],
     ) -> None:
+        """Remove containers content with metadata from scene.
+
+        Args:
+            identifier (str): Load plugin identifier.
+            containers (list[ContainerItem]): Containers to remove.
+
+        """
         plugin = self._get_plugin_by_identifier(identifier, validate=True)
         return plugin.remove_containers(containers)
 
