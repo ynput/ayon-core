@@ -1037,6 +1037,8 @@ class ProjectPushItemProcess:
 
     def _get_src_task_info(self):
         src_version_entity = self._src_version_entity
+        if not src_version_entity["taskId"]:
+            return None
         src_task = ayon_api.get_task_by_id(
             self._item.src_project_name, src_version_entity["taskId"]
         )
