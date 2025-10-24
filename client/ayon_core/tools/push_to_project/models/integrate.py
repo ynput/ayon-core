@@ -804,10 +804,9 @@ class ProjectPushItemProcess:
 
             dst_task_name = src_task_info["name"]
             if dst_task_name.lower() not in folder_tasks:
-                self._make_sure_task_exists(
+                task_info = self._make_sure_task_exists(
                     folder_entity, src_task_info
                 )
-                task_info = copy.deepcopy(src_task_info)
                 folder_tasks[dst_task_name.lower()] = task_info
 
         task_info = folder_tasks.get(dst_task_name.lower())
@@ -1007,7 +1006,7 @@ class ProjectPushItemProcess:
         self,
         folder_entity: dict[str, Any],
         task_info: dict[str, Any],
-    ):
+    ) -> dict[str, Any]:
         """Creates destination task from source task information"""
         project_name = self._item.dst_project_name
         found_task_type = False
@@ -1025,13 +1024,15 @@ class ProjectPushItemProcess:
 
             raise PushToProjectError(self._status.fail_reason)
 
-        self._operations.create_task(
+        task_info = self._operations.create_task(
             project_name,
             task_info["name"],
             folder_id=folder_entity["id"],
             task_type=src_task_type,
             attrib=task_info["attrib"],
         )
+        self._task_info = task_info.data
+        return self._task_info
 
     def _get_src_task_info(self):
         src_version_entity = self._src_version_entity
