@@ -1313,8 +1313,13 @@ class ProjectPushItemProcess:
             status["name"]: status
             for status in self._project_entity["statuses"]
         }
-        copied_status = dst_project_statuses.get(src_version_entity["status"])
+        source_status = src_version_entity["status"]
+        copied_status = dst_project_statuses.get(source_status)
         if not copied_status:
+            self._log_warning(
+                f"'{source_status}' not found in destination project. "
+                "Used first configured status from there."
+            )
             copied_status = dst_project_statuses[
                 next(iter(dst_project_statuses))
             ]
