@@ -990,10 +990,15 @@ class ProjectPushItemProcess:
             existing_version_entity["attrib"].update(dst_attrib)
             self._version_entity = existing_version_entity
             return
+        copied_tags = self._get_transferable_tags(src_version_entity)
+        copied_status = self._get_transferable_status(src_version_entity)
 
         version_entity = new_version_entity(
             version,
             product_id,
+            author=src_version_entity["author"],
+            status=copied_status,
+            tags=copied_tags,
             task_id=self._task_info.get("id"),
             attribs=dst_attrib,
             thumbnail_id=thumbnail_id,
@@ -1290,6 +1295,30 @@ class ProjectPushItemProcess:
         if "task" not in formatting_data:
             repre_context.pop("task", None)
         return repre_context
+
+    def _get_transferable_tags(self, src_version_entity):
+        """Copy over only tags present in destination project"""
+        dst_project_tags = [
+            tag["name"] for tag in self._project_entity["tags"]
+        ]
+        copied_tags = []
+        for src_tag in src_version_entity["tags"]:
+            if src_tag in dst_project_tags:
+                copied_tags.append(src_tag)
+        return copied_tags
+
+    def _get_transferable_status(self, src_version_entity):
+        """Copy over status, first status if not matching found"""
+        dst_project_statuses = {
+            status["name"]: status
+            for status in self._project_entity["statuses"]
+        }
+        copied_status = dst_project_statuses.get(src_version_entity["status"])
+        if not copied_status:
+            copied_status = dst_project_statuses[
+                dst_project_statuses.keys()[0]
+            ]
+        return copied_status["name"]
 
 
 class IntegrateModel:
