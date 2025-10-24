@@ -808,7 +808,7 @@ class ProjectPushItemProcess:
                     folder_entity, src_task_info
                 )
                 task_info = copy.deepcopy(src_task_info)
-                folder_tasks[dst_task_name] = task_info
+                folder_tasks[dst_task_name.lower()] = task_info
 
         task_info = folder_tasks.get(dst_task_name.lower())
         if not task_info:
