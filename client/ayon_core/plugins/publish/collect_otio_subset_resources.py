@@ -60,6 +60,13 @@ class CollectOtioSubsetResources(
 
         # get basic variables
         otio_clip = instance.data["otioClip"]
+        if isinstance(
+            otio_clip.media_reference,
+            otio.schema.MissingReference
+        ):
+            self.log.info("Clip has no media reference")
+            return
+
         otio_available_range = otio_clip.available_range()
         media_fps = otio_available_range.start_time.rate
         available_duration = otio_available_range.duration.value
