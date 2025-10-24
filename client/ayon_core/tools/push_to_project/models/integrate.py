@@ -965,8 +965,8 @@ class ProjectPushItemProcess:
                 version = get_versioning_start(
                     project_name,
                     self.host_name,
-                    task_name=self._task_info["name"],
-                    task_type=self._task_info["taskType"],
+                    task_name=self._task_info.get("name"),
+                    task_type=self._task_info.get("taskType"),
                     product_type=product_type,
                     product_name=product_entity["name"],
                 )
