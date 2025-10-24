@@ -5,7 +5,7 @@ import itertools
 import sys
 import traceback
 import uuid
-from typing import Optional, Dict
+from typing import Optional, Dict, Any
 
 import ayon_api
 from ayon_api.utils import create_entity_id
@@ -650,10 +650,10 @@ class ProjectPushItemProcess:
 
     def _create_folder(
         self,
-        src_folder_entity,
-        project_entity,
-        parent_folder_entity,
-        folder_name
+        src_folder_entity: dict[str, Any],
+        project_entity: dict[str, Any],
+        parent_folder_entity: dict[str, Any],
+        folder_name: str
     ):
         parent_id = None
         if parent_folder_entity:
@@ -702,10 +702,14 @@ class ProjectPushItemProcess:
         if new_folder_name != folder_name:
             folder_label = folder_name
 
-        # TODO find out how to define folder type
+        src_folder_type = src_folder_entity["folderType"]
+        dst_folder_type = self._get_dst_folder_type(
+            project_entity,
+            src_folder_type
+        )
         folder_entity = new_folder_entity(
             folder_name,
-            "Folder",
+            dst_folder_type,
             parent_id=parent_id,
             attribs=new_folder_attrib
         )
@@ -726,6 +730,22 @@ class ProjectPushItemProcess:
             parent_path = parent_folder_entity["path"]
         folder_entity["path"] = "/".join([parent_path, folder_name])
         return folder_entity
+
+    def _get_dst_folder_type(
+        self,
+        project_entity: dict[str, Any],
+        src_folder_type: str
+    ) -> str:
+        """Get new folder type."""
+        for folder_type in project_entity["folderTypes"]:
+            if folder_type["name"].lower() == src_folder_type.lower():
+                return folder_type["name"]
+
+        self._status.set_failed(
+            f"'{src_folder_type}' folder type is not configured in "
+            f"project Anatomy."
+        )
+        raise PushToProjectError(self._status.fail_reason)
 
     def _fill_or_create_destination_folder(self):
         dst_project_name = self._item.dst_project_name
@@ -1206,7 +1226,7 @@ class ProjectPushItemProcess:
                 if value_to_update:
                     repre_context[context_key] = value_to_update
         if "task" not in formatting_data:
-            repre_context.pop("task")
+            repre_context.pop("task", None)
         return repre_context
 
 
