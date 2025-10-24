@@ -71,6 +71,12 @@ class CollectOtioRanges(pyblish.api.InstancePlugin):
         import opentimelineio as otio
 
         otio_clip = instance.data["otioClip"]
+        if isinstance(
+            otio_clip.media_reference,
+            otio.schema.MissingReference
+        ):
+            self.log.info("Clip has no media reference")
+            return
 
         # Collect timeline ranges if workfile start frame is available
         if "workfileFrameStart" in instance.data:
