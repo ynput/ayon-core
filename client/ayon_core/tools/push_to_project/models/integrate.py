@@ -994,6 +994,7 @@ class ProjectPushItemProcess:
         version_entity = new_version_entity(
             version,
             product_id,
+            task_id=self._task_info.get("id"),
             attribs=dst_attrib,
             thumbnail_id=thumbnail_id,
         )
