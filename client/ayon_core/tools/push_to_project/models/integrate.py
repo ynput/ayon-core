@@ -1316,7 +1316,7 @@ class ProjectPushItemProcess:
         copied_status = dst_project_statuses.get(src_version_entity["status"])
         if not copied_status:
             copied_status = dst_project_statuses[
-                dst_project_statuses.keys()[0]
+                next(iter(dst_project_statuses))
             ]
         return copied_status["name"]
 
