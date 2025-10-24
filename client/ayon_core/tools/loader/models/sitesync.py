@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import collections
+from typing import Any
 
 from ayon_api import (
     get_representations,
@@ -246,26 +247,32 @@ class SiteSyncModel:
                 output[repre_id] = repre_cache.get_data()
         return output
 
-    def get_sitesync_action_items(self, project_name, representation_ids):
+    def get_sitesync_action_items(
+        self, project_name, entity_ids, entity_type
+    ):
         """
 
         Args:
              project_name (str): Project name.
-             representation_ids (Iterable[str]): Representation ids.
+             entity_ids (set[str]): Selected entity ids.
+             entity_type (str): Selected entity type.
 
         Returns:
             list[ActionItem]: Actions that can be shown in loader.
+
         """
+        if entity_type != "representation":
+            return []
 
         if not self.is_sitesync_enabled(project_name):
             return []
 
         repres_status = self.get_representations_sync_status(
-            project_name, representation_ids
+            project_name, entity_ids
         )
 
         repre_ids_per_identifier = collections.defaultdict(set)
-        for repre_id in representation_ids:
+        for repre_id in entity_ids:
             repre_status = repres_status[repre_id]
             local_status, remote_status = repre_status
 
@@ -293,36 +300,32 @@ class SiteSyncModel:
 
         return action_items
 
-    def is_sitesync_action(self, identifier):
+    def is_sitesync_action(self, identifier: str) -> bool:
         """Should be `identifier` handled by SiteSync.
 
         Args:
-            identifier (str): Action identifier.
+            identifier (str): Plugin identifier.
 
         Returns:
             bool: Should action be handled by SiteSync.
-        """
 
-        return identifier in {
-            UPLOAD_IDENTIFIER,
-            DOWNLOAD_IDENTIFIER,
-            REMOVE_IDENTIFIER,
-        }
+        """
+        return identifier == "sitesync.loader.action"
 
     def trigger_action_item(
         self,
-        identifier,
-        project_name,
-        representation_ids
+        project_name: str,
+        data: dict[str, Any],
     ):
         """Resets status for site_name or remove local files.
 
         Args:
-            identifier (str): Action identifier.
             project_name (str): Project name.
-            representation_ids (Iterable[str]): Representation ids.
-        """
+            data (dict[str, Any]): Action item data.
 
+        """
+        representation_ids = data["representation_ids"]
+        action_identifier = data["action_identifier"]
         active_site = self.get_active_site(project_name)
         remote_site = self.get_remote_site(project_name)
 
@@ -346,17 +349,17 @@ class SiteSyncModel:
         for repre_id in representation_ids:
             repre_entity = repre_entities_by_id.get(repre_id)
             product_type = product_type_by_repre_id[repre_id]
-            if identifier == DOWNLOAD_IDENTIFIER:
+            if action_identifier == DOWNLOAD_IDENTIFIER:
                 self._add_site(
                     project_name, repre_entity, active_site, product_type
                 )
 
-            elif identifier == UPLOAD_IDENTIFIER:
+            elif action_identifier == UPLOAD_IDENTIFIER:
                 self._add_site(
                     project_name, repre_entity, remote_site, product_type
                 )
 
-            elif identifier == REMOVE_IDENTIFIER:
+            elif action_identifier == REMOVE_IDENTIFIER:
                 self._sitesync_addon.remove_site(
                     project_name,
                     repre_id,
@@ -476,27 +479,27 @@ class SiteSyncModel:
         self,
         project_name,
         representation_ids,
-        identifier,
+        action_identifier,
         label,
         tooltip,
         icon_name
     ):
         return ActionItem(
-            identifier,
-            label,
+            "sitesync.loader.action",
+            label=label,
+            group_label=None,
             icon={
                 "type": "awesome-font",
                 "name": icon_name,
                 "color": "#999999"
             },
             tooltip=tooltip,
-            options={},
             order=1,
-            project_name=project_name,
-            folder_ids=[],
-            product_ids=[],
-            version_ids=[],
-            representation_ids=representation_ids,
+            data={
+                "representation_ids": representation_ids,
+                "action_identifier": action_identifier,
+            },
+            options=None,
         )
 
     def _add_site(self, project_name, repre_entity, site_name, product_type):
