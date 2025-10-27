@@ -411,7 +411,6 @@ class WorkfilesToolWindow(QtWidgets.QWidget):
             entity_ids = self._controller.get_my_tasks_entity_ids(
                 self._project_name
             )
-            print(entity_ids)
             folder_ids = entity_ids["folder_ids"]
             task_ids = entity_ids["task_ids"]
         self._folders_widget.set_folder_ids_filter(folder_ids)
