@@ -358,9 +358,8 @@ class WorkfilesToolWindow(QtWidgets.QWidget):
         if not self._host_is_valid:
             return
 
-        self._folders_widget.set_project_name(
-            self._controller.get_current_project_name()
-        )
+        self._project_name = self._controller.get_current_project_name()
+        self._folders_widget.set_project_name(self._project_name)
 
     def _on_save_as_finished(self, event):
         if event["failed"]:
@@ -412,6 +411,7 @@ class WorkfilesToolWindow(QtWidgets.QWidget):
             entity_ids = self._controller.get_my_tasks_entity_ids(
                 self._project_name
             )
+            print(entity_ids)
             folder_ids = entity_ids["folder_ids"]
             task_ids = entity_ids["task_ids"]
         self._folders_widget.set_folder_ids_filter(folder_ids)
