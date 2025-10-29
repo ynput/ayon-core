@@ -250,21 +250,17 @@ def remap_range_on_file_sequence(otio_clip, otio_range):
     if (
         is_clip_from_media_sequence(otio_clip)
         and available_range_start_frame == media_ref.start_frame
-        and conformed_src_in.to_frames() < media_ref.start_frame
+        and round(conformed_src_in.value) < media_ref.start_frame
     ):
         media_in = otio.opentime.RationalTime(
             0, rate=available_range_rate
         )
 
     src_offset_in = otio_range.start_time - media_in
-    # make sure that only if any offset is present
-    if media_ref.start_frame == src_offset_in.to_frames():
-        frame_in = src_offset_in.to_frames()
-    else:
-        frame_in = otio.opentime.RationalTime.from_frames(
-            media_ref.start_frame + src_offset_in.to_frames(),
+    frame_in = otio.opentime.RationalTime.from_frames(
+        media_ref.start_frame + src_offset_in.to_frames(),
         rate=available_range_rate,
-        ).to_frames()
+    ).to_frames()
 
     # e.g.:
     # duration = 10 frames at 24fps
