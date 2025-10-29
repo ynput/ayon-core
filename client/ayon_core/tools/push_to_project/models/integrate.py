@@ -737,7 +737,7 @@ class ProjectPushItemProcess:
         folder_entity["path"] = "/".join([parent_path, folder_name])
         return folder_entity
 
-    def _get_new_folder_thumbnail_id(
+    def _create_new_folder_thumbnail(
         self,
         project_entity: dict[str, Any],
         src_folder_entity: dict[str, Any]
