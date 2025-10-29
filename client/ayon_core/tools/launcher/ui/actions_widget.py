@@ -136,6 +136,10 @@ class ActionsQtModel(QtGui.QStandardItemModel):
             "selection.task.changed",
             self._on_selection_task_changed,
         )
+        controller.register_event_callback(
+            "selection.workfile.changed",
+            self._on_selection_workfile_changed,
+        )
 
         self._controller = controller
 
@@ -146,6 +150,7 @@ class ActionsQtModel(QtGui.QStandardItemModel):
         self._selected_project_name = None
         self._selected_folder_id = None
         self._selected_task_id = None
+        self._selected_workfile_id = None
 
     def get_selected_project_name(self):
         return self._selected_project_name
@@ -155,6 +160,9 @@ class ActionsQtModel(QtGui.QStandardItemModel):
 
     def get_selected_task_id(self):
         return self._selected_task_id
+
+    def get_selected_workfile_id(self):
+        return self._selected_workfile_id
 
     def get_group_items(self, action_id):
         return self._groups_by_id[action_id]
@@ -194,6 +202,7 @@ class ActionsQtModel(QtGui.QStandardItemModel):
             self._selected_project_name,
             self._selected_folder_id,
             self._selected_task_id,
+            self._selected_workfile_id,
         )
         if not items:
             self._clear_items()
@@ -286,18 +295,28 @@ class ActionsQtModel(QtGui.QStandardItemModel):
         self._selected_project_name = event["project_name"]
         self._selected_folder_id = None
         self._selected_task_id = None
+        self._selected_workfile_id = None
         self.refresh()
 
     def _on_selection_folder_changed(self, event):
         self._selected_project_name = event["project_name"]
         self._selected_folder_id = event["folder_id"]
         self._selected_task_id = None
+        self._selected_workfile_id = None
         self.refresh()
 
     def _on_selection_task_changed(self, event):
         self._selected_project_name = event["project_name"]
         self._selected_folder_id = event["folder_id"]
         self._selected_task_id = event["task_id"]
+        self._selected_workfile_id = None
+        self.refresh()
+
+    def _on_selection_workfile_changed(self, event):
+        self._selected_project_name = event["project_name"]
+        self._selected_folder_id = event["folder_id"]
+        self._selected_task_id = event["task_id"]
+        self._selected_workfile_id = event["workfile_id"]
         self.refresh()
 
 
@@ -576,9 +595,6 @@ class ActionMenuPopup(QtWidgets.QWidget):
 
     def _on_clicked(self, index):
         if not index or not index.isValid():
-            return
-
-        if not index.data(ACTION_HAS_CONFIGS_ROLE):
             return
 
         action_id = index.data(ACTION_ID_ROLE)
@@ -970,10 +986,11 @@ class ActionsWidget(QtWidgets.QWidget):
                 event["project_name"],
                 event["folder_id"],
                 event["task_id"],
+                event["workfile_id"],
                 event["addon_name"],
                 event["addon_version"],
             ),
-            event["action_label"],
+            event["full_label"],
             form_data,
         )
 
@@ -1050,24 +1067,26 @@ class ActionsWidget(QtWidgets.QWidget):
         project_name = self._model.get_selected_project_name()
         folder_id = self._model.get_selected_folder_id()
         task_id = self._model.get_selected_task_id()
+        workfile_id = self._model.get_selected_workfile_id()
         action_item = self._model.get_action_item_by_id(action_id)
 
         if action_item.action_type == "webaction":
             action_item = self._model.get_action_item_by_id(action_id)
             context = WebactionContext(
-                action_id,
-                project_name,
-                folder_id,
-                task_id,
-                action_item.addon_name,
-                action_item.addon_version
+                identifier=action_id,
+                project_name=project_name,
+                folder_id=folder_id,
+                task_id=task_id,
+                workfile_id=workfile_id,
+                addon_name=action_item.addon_name,
+                addon_version=action_item.addon_version,
             )
             self._controller.trigger_webaction(
                 context, action_item.full_label
             )
         else:
             self._controller.trigger_action(
-                action_id, project_name, folder_id, task_id
+                action_id, project_name, folder_id, task_id, workfile_id
             )
 
         if index is None:
@@ -1087,11 +1106,13 @@ class ActionsWidget(QtWidgets.QWidget):
         project_name = self._model.get_selected_project_name()
         folder_id = self._model.get_selected_folder_id()
         task_id = self._model.get_selected_task_id()
+        workfile_id = self._model.get_selected_workfile_id()
         context = WebactionContext(
-            action_id,
+            identifier=action_id,
             project_name=project_name,
             folder_id=folder_id,
             task_id=task_id,
+            workfile_id=workfile_id,
             addon_name=action_item.addon_name,
             addon_version=action_item.addon_version,
         )

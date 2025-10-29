@@ -259,10 +259,11 @@ class TasksQtModel(QtGui.QStandardItemModel):
         )
         icon = None
         if task_type_item is not None:
+            color = task_type_item.color or get_default_entity_icon_color()
             icon = get_qt_icon({
                 "type": "material-symbols",
                 "name": task_type_item.icon,
-                "color": get_default_entity_icon_color()
+                "color": color,
             })
 
         if icon is None:
