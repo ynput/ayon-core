@@ -710,7 +710,7 @@ class ProjectPushItemProcess:
             project_entity,
             src_folder_type
         )
-        new_thumbnail_id = self._get_new_folder_thumbnail_id(
+        new_thumbnail_id = self._create_new_folder_thumbnail(
             project_entity, src_folder_entity)
         folder_entity = new_folder_entity(
             folder_name,
