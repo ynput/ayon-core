@@ -358,9 +358,8 @@ class WorkfilesToolWindow(QtWidgets.QWidget):
         if not self._host_is_valid:
             return
 
-        self._folders_widget.set_project_name(
-            self._controller.get_current_project_name()
-        )
+        self._project_name = self._controller.get_current_project_name()
+        self._folders_widget.set_project_name(self._project_name)
 
     def _on_save_as_finished(self, event):
         if event["failed"]:
