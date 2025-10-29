@@ -5,7 +5,7 @@ import itertools
 import sys
 import traceback
 import uuid
-from typing import Optional
+from typing import Optional, Any
 
 import ayon_api
 from ayon_api.utils import create_entity_id
@@ -90,6 +90,7 @@ class ProjectPushItem:
         new_folder_name,
         dst_version,
         item_id=None,
+        use_original_name=False
     ):
         if not item_id:
             item_id = uuid.uuid4().hex
@@ -104,6 +105,7 @@ class ProjectPushItem:
         self.comment = comment or ""
         self.item_id = item_id
         self._repr_value = None
+        self.use_original_name = use_original_name
 
     @property
     def _repr(self):
@@ -115,7 +117,8 @@ class ProjectPushItem:
                 str(self.dst_folder_id),
                 str(self.new_folder_name),
                 str(self.dst_task_name),
-                str(self.dst_version)
+                str(self.dst_version),
+                self.use_original_name
             ])
         return self._repr_value
 
@@ -134,6 +137,7 @@ class ProjectPushItem:
             "comment": self.comment,
             "new_folder_name": self.new_folder_name,
             "item_id": self.item_id,
+            "use_original_name": self.use_original_name
         }
 
     @classmethod
@@ -221,8 +225,8 @@ class ProjectPushRepreItem:
         but filenames are not template based.
 
     Args:
-        repre_entity (Dict[str, Ant]): Representation entity.
-        roots (Dict[str, str]): Project roots (based on project anatomy).
+        repre_entity (dict[str, Ant]): Representation entity.
+        roots (dict[str, str]): Project roots (based on project anatomy).
     """
 
     def __init__(self, repre_entity, roots):
@@ -313,7 +317,7 @@ class ProjectPushRepreItem:
         if self._src_files is not None:
             return self._src_files, self._resource_files
 
-        repre_context = self._repre_entity["context"]
+        repre_context = self.repre_entity["context"]
         if "frame" in repre_context or "udim" in repre_context:
             src_files, resource_files = self._get_source_files_with_frames()
         else:
@@ -330,7 +334,7 @@ class ProjectPushRepreItem:
         udim_placeholder = "__udim__"
         src_files = []
         resource_files = []
-        template = self._repre_entity["attrib"]["template"]
+        template = self.repre_entity["attrib"]["template"]
         # Remove padding from 'udim' and 'frame' formatting keys
         # - "{frame:0>4}" -> "{frame}"
         for key in ("udim", "frame"):
@@ -338,7 +342,7 @@ class ProjectPushRepreItem:
             replacement = "{{{}}}".format(key)
             template = re.sub(sub_part, replacement, template)
 
-        repre_context = self._repre_entity["context"]
+        repre_context = self.repre_entity["context"]
         fill_repre_context = copy.deepcopy(repre_context)
         if "frame" in fill_repre_context:
             fill_repre_context["frame"] = frame_placeholder
@@ -359,7 +363,7 @@ class ProjectPushRepreItem:
             .replace(udim_placeholder, "(?P<udim>[0-9]+)")
         )
         src_basename_regex = re.compile("^{}$".format(src_basename))
-        for file_info in self._repre_entity["files"]:
+        for file_info in self.repre_entity["files"]:
             filepath_template = self._clean_path(file_info["path"])
             filepath = self._clean_path(
                 filepath_template.format(root=self._roots)
@@ -390,8 +394,8 @@ class ProjectPushRepreItem:
     def _get_source_files(self):
         src_files = []
         resource_files = []
-        template = self._repre_entity["attrib"]["template"]
-        repre_context = self._repre_entity["context"]
+        template = self.repre_entity["attrib"]["template"]
+        repre_context = self.repre_entity["context"]
         fill_repre_context = copy.deepcopy(repre_context)
         fill_roots = fill_repre_context["root"]
         for root_name in tuple(fill_roots.keys()):
@@ -400,7 +404,7 @@ class ProjectPushRepreItem:
                                                     fill_repre_context)
         repre_path = self._clean_path(repre_path)
         src_dirpath = os.path.dirname(repre_path)
-        for file_info in self._repre_entity["files"]:
+        for file_info in self.repre_entity["files"]:
             filepath_template = self._clean_path(file_info["path"])
             filepath = self._clean_path(
                 filepath_template.format(root=self._roots))
@@ -478,6 +482,8 @@ class ProjectPushItemProcess:
             self._log_info("Destination project was found")
             self._fill_or_create_destination_folder()
             self._log_info("Destination folder was determined")
+            self._fill_or_create_destination_task()
+            self._log_info("Destination task was determined")
             self._determine_product_type()
             self._determine_publish_template_name()
             self._determine_product_name()
@@ -493,8 +499,11 @@ class ProjectPushItemProcess:
 
         except Exception as exc:
             _exc, _value, _tb = sys.exc_info()
+            product_name = self._src_product_entity["name"]
             self._status.set_failed(
-                "Unhandled error happened: {}".format(str(exc)),
+                "Unhandled error happened for `{}`: {}".format(
+                    product_name, str(exc)
+                ),
                 (_exc, _value, _tb)
             )
 
@@ -643,10 +652,10 @@ class ProjectPushItemProcess:
 
     def _create_folder(
         self,
-        src_folder_entity,
-        project_entity,
-        parent_folder_entity,
-        folder_name
+        src_folder_entity: dict[str, Any],
+        project_entity: dict[str, Any],
+        parent_folder_entity: dict[str, Any],
+        folder_name: str
     ):
         parent_id = None
         if parent_folder_entity:
@@ -695,10 +704,14 @@ class ProjectPushItemProcess:
         if new_folder_name != folder_name:
             folder_label = folder_name
 
-        # TODO find out how to define folder type
+        src_folder_type = src_folder_entity["folderType"]
+        dst_folder_type = self._get_dst_folder_type(
+            project_entity,
+            src_folder_type
+        )
         folder_entity = new_folder_entity(
             folder_name,
-            "Folder",
+            dst_folder_type,
             parent_id=parent_id,
             attribs=new_folder_attrib
         )
@@ -720,10 +733,25 @@ class ProjectPushItemProcess:
         folder_entity["path"] = "/".join([parent_path, folder_name])
         return folder_entity
 
+    def _get_dst_folder_type(
+        self,
+        project_entity: dict[str, Any],
+        src_folder_type: str
+    ) -> str:
+        """Get new folder type."""
+        for folder_type in project_entity["folderTypes"]:
+            if folder_type["name"].lower() == src_folder_type.lower():
+                return folder_type["name"]
+
+        self._status.set_failed(
+            f"'{src_folder_type}' folder type is not configured in "
+            f"project Anatomy."
+        )
+        raise PushToProjectError(self._status.fail_reason)
+
     def _fill_or_create_destination_folder(self):
         dst_project_name = self._item.dst_project_name
         dst_folder_id = self._item.dst_folder_id
-        dst_task_name = self._item.dst_task_name
         new_folder_name = self._item.new_folder_name
         if not dst_folder_id and not new_folder_name:
             self._status.set_failed(
@@ -754,9 +782,11 @@ class ProjectPushItemProcess:
                 new_folder_name
             )
         self._folder_entity = folder_entity
-        if not dst_task_name:
-            self._task_info = {}
-            return
+
+    def _fill_or_create_destination_task(self):
+        folder_entity = self._folder_entity
+        dst_task_name = self._item.dst_task_name
+        dst_project_name = self._item.dst_project_name
 
         folder_path = folder_entity["path"]
         folder_tasks = {
@@ -765,6 +795,20 @@ class ProjectPushItemProcess:
                 dst_project_name, folder_ids=[folder_entity["id"]]
             )
         }
+
+        if not dst_task_name:
+            src_task_info = self._get_src_task_info()
+            if not src_task_info:  # really no task selected nor on source
+                self._task_info = {}
+                return
+
+            dst_task_name = src_task_info["name"]
+            if dst_task_name.lower() not in folder_tasks:
+                task_info = self._make_sure_task_exists(
+                    folder_entity, src_task_info
+                )
+                folder_tasks[dst_task_name.lower()] = task_info
+
         task_info = folder_tasks.get(dst_task_name.lower())
         if not task_info:
             self._status.set_failed(
@@ -783,7 +827,10 @@ class ProjectPushItemProcess:
             task_type["name"]: task_type
             for task_type in self._project_entity["taskTypes"]
         }
-        task_type_info = task_types_by_name.get(task_type_name, {})
+        task_type_info = copy.deepcopy(
+            task_types_by_name.get(task_type_name, {})
+        )
+        task_type_info.pop("name")  # do not overwrite real task name
         task_info.update(task_type_info)
         self._task_info = task_info
 
@@ -817,31 +864,34 @@ class ProjectPushItemProcess:
         self._template_name = template_name
 
     def _determine_product_name(self):
-        product_type = self._product_type
-        task_info = self._task_info
-        task_name = task_type = None
-        if task_info:
-            task_name = task_info["name"]
-            task_type = task_info["taskType"]
+        if self._item.use_original_name:
+            product_name = self._src_product_entity["name"]
+        else:
+            product_type = self._product_type
+            task_info = self._task_info
+            task_name = task_type = None
+            if task_info:
+                task_name = task_info["name"]
+                task_type = task_info["taskType"]
 
-        try:
-            product_name = get_product_name(
-                self._item.dst_project_name,
-                task_name,
-                task_type,
-                self.host_name,
-                product_type,
-                self._item.variant,
-                project_settings=self._project_settings
-            )
-        except TaskNotSetError:
-            self._status.set_failed(
-                "Target product name template requires task name. To continue"
-                " you have to select target task or change settings"
-                " <b>ayon+settings://core/tools/creator/product_name_profiles"
-                f"?project={self._item.dst_project_name}</b>."
-            )
-            raise PushToProjectError(self._status.fail_reason)
+            try:
+                product_name = get_product_name(
+                    self._item.dst_project_name,
+                    task_name,
+                    task_type,
+                    self.host_name,
+                    product_type,
+                    self._item.variant,
+                    project_settings=self._project_settings
+                )
+            except TaskNotSetError:
+                self._status.set_failed(
+                    "Target product name template requires task name. To "
+                    "continue you have to select target task or change settings "  # noqa: E501
+                    " <b>ayon+settings://core/tools/creator/product_name_profiles"  # noqa: E501
+                    f"?project={self._item.dst_project_name}</b>."
+                )
+                raise PushToProjectError(self._status.fail_reason)
 
         self._log_info(
             f"Push will be integrating to product with name '{product_name}'"
@@ -915,8 +965,8 @@ class ProjectPushItemProcess:
                 version = get_versioning_start(
                     project_name,
                     self.host_name,
-                    task_name=self._task_info["name"],
-                    task_type=self._task_info["taskType"],
+                    task_name=self._task_info.get("name"),
+                    task_type=self._task_info.get("taskType"),
                     product_type=product_type,
                     product_name=product_entity["name"],
                 )
@@ -940,10 +990,16 @@ class ProjectPushItemProcess:
             existing_version_entity["attrib"].update(dst_attrib)
             self._version_entity = existing_version_entity
             return
+        copied_tags = self._get_transferable_tags(src_version_entity)
+        copied_status = self._get_transferable_status(src_version_entity)
 
         version_entity = new_version_entity(
             version,
             product_id,
+            author=src_version_entity["author"],
+            status=copied_status,
+            tags=copied_tags,
+            task_id=self._task_info.get("id"),
             attribs=dst_attrib,
             thumbnail_id=thumbnail_id,
         )
@@ -951,6 +1007,47 @@ class ProjectPushItemProcess:
             project_name, "version", version_entity
         )
         self._version_entity = version_entity
+
+    def _make_sure_task_exists(
+        self,
+        folder_entity: dict[str, Any],
+        task_info: dict[str, Any],
+    ) -> dict[str, Any]:
+        """Creates destination task from source task information"""
+        project_name = self._item.dst_project_name
+        found_task_type = False
+        src_task_type = task_info["taskType"]
+        for task_type in self._project_entity["taskTypes"]:
+            if task_type["name"].lower() == src_task_type.lower():
+                found_task_type = True
+                break
+
+        if not found_task_type:
+            self._status.set_failed(
+                f"'{src_task_type}' task type is not configured in "
+                 "project Anatomy."
+            )
+
+            raise PushToProjectError(self._status.fail_reason)
+
+        task_info = self._operations.create_task(
+            project_name,
+            task_info["name"],
+            folder_id=folder_entity["id"],
+            task_type=src_task_type,
+            attrib=task_info["attrib"],
+        )
+        self._task_info = task_info.data
+        return self._task_info
+
+    def _get_src_task_info(self):
+        src_version_entity = self._src_version_entity
+        if not src_version_entity["taskId"]:
+            return None
+        src_task = ayon_api.get_task_by_id(
+            self._item.src_project_name, src_version_entity["taskId"]
+        )
+        return src_task
 
     def _integrate_representations(self):
         try:
@@ -1012,10 +1109,18 @@ class ProjectPushItemProcess:
         self, anatomy, template_name, formatting_data, file_template
     ):
         processed_repre_items = []
+        repre_context = None
         for repre_item in self._src_repre_items:
             repre_entity = repre_item.repre_entity
             repre_name = repre_entity["name"]
             repre_format_data = copy.deepcopy(formatting_data)
+
+            if not repre_context:
+                repre_context = self._update_repre_context(
+                    copy.deepcopy(repre_entity),
+                    formatting_data
+                )
+
             repre_format_data["representation"] = repre_name
             for src_file in repre_item.src_files:
                 ext = os.path.splitext(src_file.path)[-1]
@@ -1031,7 +1136,6 @@ class ProjectPushItemProcess:
                 "publish", template_name, "directory"
             )
             folder_path = template_obj.format_strict(formatting_data)
-            repre_context = folder_path.used_values
             folder_path_rootless = folder_path.rootless
             repre_filepaths = []
             published_path = None
@@ -1054,7 +1158,6 @@ class ProjectPushItemProcess:
                 )
                 if published_path is None or frame == repre_item.frame:
                     published_path = dst_filepath
-                    repre_context.update(filename.used_values)
 
                 repre_filepaths.append((dst_filepath, dst_rootless_path))
                 self._file_transaction.add(src_file.path, dst_filepath)
@@ -1141,7 +1244,7 @@ class ProjectPushItemProcess:
                         self._item.dst_project_name,
                         "representation",
                         entity_id,
-                        changes
+                        changes,
                     )
 
         existing_repre_names = set(existing_repres_by_low_name.keys())
@@ -1171,6 +1274,52 @@ class ProjectPushItemProcess:
             path
         )
 
+    def _update_repre_context(self, repre_entity, formatting_data):
+        """Replace old context value with new ones.
+
+        Folder might change, project definitely changes etc.
+        """
+        repre_context = repre_entity["context"]
+        for context_key, context_value in repre_context.items():
+            if context_value and isinstance(context_value, dict):
+                for context_sub_key in context_value.keys():
+                    value_to_update = formatting_data.get(context_key, {}).get(
+                        context_sub_key
+                    )
+                    if value_to_update:
+                        repre_context[context_key][context_sub_key] = (
+                            value_to_update
+                        )
+            else:
+                value_to_update = formatting_data.get(context_key)
+                if value_to_update:
+                    repre_context[context_key] = value_to_update
+        if "task" not in formatting_data:
+            repre_context.pop("task", None)
+        return repre_context
+
+    def _get_transferable_tags(self, src_version_entity):
+        """Copy over only tags present in destination project"""
+        dst_project_tags = [
+            tag["name"] for tag in self._project_entity["tags"]
+        ]
+        copied_tags = []
+        for src_tag in src_version_entity["tags"]:
+            if src_tag in dst_project_tags:
+                copied_tags.append(src_tag)
+        return copied_tags
+
+    def _get_transferable_status(self, src_version_entity):
+        """Copy over status, first status if not matching found"""
+        dst_project_statuses = {
+            status["name"]: status
+            for status in self._project_entity["statuses"]
+        }
+        copied_status = dst_project_statuses.get(src_version_entity["status"])
+        if copied_status:
+            return copied_status["name"]
+        return None
+
 
 class IntegrateModel:
     def __init__(self, controller):
@@ -1194,6 +1343,7 @@ class IntegrateModel:
         comment,
         new_folder_name,
         dst_version,
+        use_original_name
     ):
         """Create new item for integration.
 
@@ -1207,6 +1357,7 @@ class IntegrateModel:
             comment (Union[str, None]): Comment.
             new_folder_name (Union[str, None]): New folder name.
             dst_version (int): Destination version number.
+            use_original_name (bool): If original product names should be used
 
         Returns:
             str: Item id. The id can be used to trigger integration or get
@@ -1222,7 +1373,8 @@ class IntegrateModel:
             variant,
             comment=comment,
             new_folder_name=new_folder_name,
-            dst_version=dst_version
+            dst_version=dst_version,
+            use_original_name=use_original_name
         )
         process_item = ProjectPushItemProcess(self, item)
         self._process_items[item.item_id] = process_item
@@ -1240,17 +1392,6 @@ class IntegrateModel:
             return
         item.integrate()
 
-    def get_item_status(self, item_id):
-        """Status of an item.
-
-        Args:
-            item_id (str): Item id for which status should be returned.
-
-        Returns:
-            dict[str, Any]: Status data.
-        """
-
-        item = self._process_items.get(item_id)
-        if item is not None:
-            return item.get_status_data()
-        return None
+    def get_items(self) -> dict[str, ProjectPushItemProcess]:
+        """Returns dict of all ProjectPushItemProcess items """
+        return self._process_items

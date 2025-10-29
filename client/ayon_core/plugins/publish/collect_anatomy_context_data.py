@@ -16,6 +16,7 @@ Provides:
 import json
 import pyblish.api
 
+from ayon_core.lib import get_ayon_user_entity
 from ayon_core.pipeline.template_data import get_template_data
 
 
@@ -55,17 +56,18 @@ class CollectAnatomyContextData(pyblish.api.ContextPlugin):
         if folder_entity:
             task_entity = context.data["taskEntity"]
 
+        username = context.data["user"]
+        user_entity = get_ayon_user_entity(username)
         anatomy_data = get_template_data(
             project_entity,
             folder_entity,
             task_entity,
-            host_name,
-            project_settings
+            host_name=host_name,
+            settings=project_settings,
+            user_entity=user_entity,
         )
         anatomy_data.update(context.data.get("datetimeData") or {})
 
-        username = context.data["user"]
-        anatomy_data["user"] = username
         # Backwards compatibility for 'username' key
         anatomy_data["username"] = username
 
