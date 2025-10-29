@@ -3,6 +3,7 @@ import re
 import copy
 import itertools
 import sys
+import tempfile
 import traceback
 import uuid
 from typing import Optional, Any
@@ -709,11 +710,14 @@ class ProjectPushItemProcess:
             project_entity,
             src_folder_type
         )
+        new_thumbnail_id = self._create_new_folder_thumbnail(
+            project_entity, src_folder_entity)
         folder_entity = new_folder_entity(
             folder_name,
             dst_folder_type,
             parent_id=parent_id,
-            attribs=new_folder_attrib
+            attribs=new_folder_attrib,
+            thumbnail_id=new_thumbnail_id
         )
         if folder_label:
             folder_entity["label"] = folder_label
@@ -732,6 +736,40 @@ class ProjectPushItemProcess:
             parent_path = parent_folder_entity["path"]
         folder_entity["path"] = "/".join([parent_path, folder_name])
         return folder_entity
+
+    def _create_new_folder_thumbnail(
+        self,
+        project_entity: dict[str, Any],
+        src_folder_entity: dict[str, Any]
+    ) -> Optional[str]:
+        """Copy thumbnail possibly set on folder.
+
+        Could be different from representation thumbnails, and it is only shown
+        when folder is selected.
+        """
+        if not src_folder_entity["thumbnailId"]:
+            return None
+
+        thumbnail = ayon_api.get_folder_thumbnail(
+            self._item.src_project_name,
+            src_folder_entity["id"],
+            src_folder_entity["thumbnailId"]
+        )
+        if not thumbnail.id:
+            return None
+
+        with tempfile.NamedTemporaryFile(delete=False) as tmp_file:
+            tmp_file.write(thumbnail.content)
+            temp_file_path = tmp_file.name
+
+        new_thumbnail_id = None
+        try:
+            new_thumbnail_id = ayon_api.create_thumbnail(
+                project_entity["name"], temp_file_path)
+        finally:
+            if os.path.exists(temp_file_path):
+                os.remove(temp_file_path)
+        return new_thumbnail_id
 
     def _get_dst_folder_type(
         self,
