@@ -141,6 +141,9 @@ def _get_ayon_bundle_data() -> tuple[
 ]:
     studio_bundle_name = os.environ.get("AYON_STUDIO_BUNDLE_NAME")
     project_bundle_name = os.getenv("AYON_BUNDLE_NAME")
+    # If AYON launcher <1.4.0 was used
+    if not studio_bundle_name:
+        studio_bundle_name = project_bundle_name
     bundles = ayon_api.get_bundles()["bundles"]
     studio_bundle = next(
         (
