@@ -15,7 +15,6 @@ from ayon_core.lib import (
     get_settings_variant,
     run_detached_ayon_launcher_process,
 )
-from ayon_core.addon import AddonsManager
 from ayon_core.pipeline.actions import (
     discover_launcher_actions,
     LauncherActionSelection,
@@ -104,8 +103,6 @@ class ActionsModel:
             levels=2, default_factory=list, lifetime=20,
         )
 
-        self._addons_manager = None
-
         self._variant = get_settings_variant()
 
     @staticmethod
@@ -131,19 +128,28 @@ class ActionsModel:
         self._get_action_objects()
         self._controller.emit_event("actions.refresh.finished")
 
-    def get_action_items(self, project_name, folder_id, task_id):
+    def get_action_items(
+        self,
+        project_name: Optional[str],
+        folder_id: Optional[str],
+        task_id: Optional[str],
+        workfile_id: Optional[str],
+    ) -> list[ActionItem]:
         """Get actions for project.
 
         Args:
-            project_name (Union[str, None]): Project name.
-            folder_id (Union[str, None]): Folder id.
-            task_id (Union[str, None]): Task id.
+            project_name (Optional[str]): Project name.
+            folder_id (Optional[str]): Folder id.
+            task_id (Optional[str]): Task id.
+            workfile_id (Optional[str]): Workfile id.
 
         Returns:
             list[ActionItem]: List of actions.
 
         """
-        selection = self._prepare_selection(project_name, folder_id, task_id)
+        selection = self._prepare_selection(
+            project_name, folder_id, task_id, workfile_id
+        )
         output = []
         action_items = self._get_action_items(project_name)
         for identifier, action in self._get_action_objects().items():
@@ -159,8 +165,11 @@ class ActionsModel:
         project_name,
         folder_id,
         task_id,
+        workfile_id,
     ):
-        selection = self._prepare_selection(project_name, folder_id, task_id)
+        selection = self._prepare_selection(
+            project_name, folder_id, task_id, workfile_id
+        )
         failed = False
         error_message = None
         action_label = identifier
@@ -202,11 +211,15 @@ class ActionsModel:
         identifier = context.identifier
         folder_id = context.folder_id
         task_id = context.task_id
+        workfile_id = context.workfile_id
         project_name = context.project_name
         addon_name = context.addon_name
         addon_version = context.addon_version
 
-        if task_id:
+        if workfile_id:
+            entity_type = "workfile"
+            entity_ids.append(workfile_id)
+        elif task_id:
             entity_type = "task"
             entity_ids.append(task_id)
         elif folder_id:
@@ -272,6 +285,7 @@ class ActionsModel:
             "project_name": project_name,
             "folder_id": folder_id,
             "task_id": task_id,
+            "workfile_id": workfile_id,
             "addon_name": addon_name,
             "addon_version": addon_version,
         })
@@ -282,7 +296,10 @@ class ActionsModel:
 
     def get_action_config_values(self, context: WebactionContext):
         selection = self._prepare_selection(
-            context.project_name, context.folder_id, context.task_id
+            context.project_name,
+            context.folder_id,
+            context.task_id,
+            context.workfile_id,
         )
         if not selection.is_project_selected:
             return {}
@@ -309,7 +326,10 @@ class ActionsModel:
 
     def set_action_config_values(self, context, values):
         selection = self._prepare_selection(
-            context.project_name, context.folder_id, context.task_id
+            context.project_name,
+            context.folder_id,
+            context.task_id,
+            context.workfile_id,
         )
         if not selection.is_project_selected:
             return {}
@@ -333,12 +353,9 @@ class ActionsModel:
                 exc_info=True
             )
 
-    def _get_addons_manager(self):
-        if self._addons_manager is None:
-            self._addons_manager = AddonsManager()
-        return self._addons_manager
-
-    def _prepare_selection(self, project_name, folder_id, task_id):
+    def _prepare_selection(
+        self, project_name, folder_id, task_id, workfile_id
+    ):
         project_entity = None
         if project_name:
             project_entity = self._controller.get_project_entity(project_name)
@@ -347,6 +364,7 @@ class ActionsModel:
             project_name,
             folder_id,
             task_id,
+            workfile_id,
             project_entity=project_entity,
             project_settings=project_settings,
         )
@@ -355,7 +373,12 @@ class ActionsModel:
         entity_type = None
         entity_id = None
         entity_subtypes = []
-        if selection.is_task_selected:
+        if selection.is_workfile_selected:
+            entity_type = "workfile"
+            entity_id = selection.workfile_id
+            entity_subtypes = []
+
+        elif selection.is_task_selected:
             entity_type = "task"
             entity_id = selection.task_entity["id"]
             entity_subtypes = [selection.task_entity["taskType"]]
@@ -399,7 +422,11 @@ class ActionsModel:
             return cache.get_data()
 
         try:
-            response = ayon_api.post("actions/list", **request_data)
+            # 'variant' query is supported since AYON backend 1.10.4
+            query = urlencode({"variant": self._variant, "mode": "all"})
+            response = ayon_api.post(
+                f"actions/list?{query}", **request_data
+            )
             response.raise_for_status()
         except Exception:
             self.log.warning("Failed to collect webactions.", exc_info=True)
@@ -513,7 +540,12 @@ class ActionsModel:
                 uri = payload["uri"]
             else:
                 uri = data["uri"]
-            run_detached_ayon_launcher_process(uri)
+
+            # Remove bundles from environment variables
+            env = os.environ.copy()
+            env.pop("AYON_BUNDLE_NAME", None)
+            env.pop("AYON_STUDIO_BUNDLE_NAME", None)
+            run_detached_ayon_launcher_process(uri, env=env)
 
         elif response_type in ("query", "navigate"):
             response.error_message = (
@@ -533,7 +565,7 @@ class ActionsModel:
             # NOTE We don't need to register the paths, but that would
             #   require to change discovery logic and deprecate all functions
             #   related to registering and discovering launcher actions.
-            addons_manager = self._get_addons_manager()
+            addons_manager = self._controller.get_addons_manager()
             actions_paths = addons_manager.collect_launcher_action_paths()
             for path in actions_paths:
                 if path and os.path.exists(path):

@@ -8,13 +8,7 @@ This module contains a unified plugin that handles:
 
 from pprint import pformat
 
-import opentimelineio as otio
 import pyblish.api
-from ayon_core.pipeline.editorial import (
-    get_media_range_with_retimes,
-    otio_range_to_frame_range,
-    otio_range_with_handles,
-)
 
 
 def validate_otio_clip(instance, logger):
@@ -74,7 +68,15 @@ class CollectOtioRanges(pyblish.api.InstancePlugin):
         if not validate_otio_clip(instance, self.log):
             return
 
+        import opentimelineio as otio
+
         otio_clip = instance.data["otioClip"]
+        if isinstance(
+            otio_clip.media_reference,
+            otio.schema.MissingReference
+        ):
+            self.log.info("Clip has no media reference")
+            return
 
         # Collect timeline ranges if workfile start frame is available
         if "workfileFrameStart" in instance.data:
@@ -100,6 +102,11 @@ class CollectOtioRanges(pyblish.api.InstancePlugin):
 
     def _collect_timeline_ranges(self, instance, otio_clip):
         """Collect basic timeline frame ranges."""
+        from ayon_core.pipeline.editorial import (
+            otio_range_to_frame_range,
+            otio_range_with_handles,
+        )
+
         workfile_start = instance.data["workfileFrameStart"]
 
         # Get timeline ranges
@@ -129,6 +136,8 @@ class CollectOtioRanges(pyblish.api.InstancePlugin):
 
     def _collect_source_ranges(self, instance, otio_clip):
         """Collect source media frame ranges."""
+        import opentimelineio as otio
+
         # Get source ranges
         otio_src_range = otio_clip.source_range
         otio_available_range = otio_clip.available_range()
@@ -178,6 +187,8 @@ class CollectOtioRanges(pyblish.api.InstancePlugin):
 
     def _collect_retimed_ranges(self, instance, otio_clip):
         """Handle retimed clip frame ranges."""
+        from ayon_core.pipeline.editorial import get_media_range_with_retimes
+
         retimed_attributes = get_media_range_with_retimes(otio_clip, 0, 0)
         self.log.debug(f"Retimed attributes: {retimed_attributes}")
 
