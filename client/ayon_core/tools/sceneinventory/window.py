@@ -1,7 +1,9 @@
+import os
 from qtpy import QtWidgets, QtCore, QtGui
 import qtawesome
 
 from ayon_core import style, resources
+from ayon_core.pipeline import get_current_host_name
 from ayon_core.tools.utils import PlaceholderLineEdit
 
 from ayon_core.tools.sceneinventory import SceneInventoryController
@@ -12,16 +14,28 @@ from .view import SceneInventoryView
 class SceneInventoryWindow(QtWidgets.QDialog):
     """Scene Inventory window"""
 
+    @property
+    def title(self):
+        """Get window title with application name."""
+        base_title = "AYON Scene Inventory"
+        app_name = (
+            os.environ.get("AYON_APP_NAME")
+            or get_current_host_name()
+        )
+        if app_name:
+            return f"{base_title} - {app_name}"
+        return base_title
+
     def __init__(self, controller=None, parent=None):
         super().__init__(parent)
 
         if controller is None:
             controller = SceneInventoryController()
 
-        project_name = controller.get_current_project_name()
+        self.setWindowTitle(self.title)
         icon = QtGui.QIcon(resources.get_ayon_icon_filepath())
         self.setWindowIcon(icon)
-        self.setWindowTitle("Scene Inventory - {}".format(project_name))
+
         self.setObjectName("SceneInventory")
 
         self.resize(1100, 480)

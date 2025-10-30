@@ -1,9 +1,11 @@
 from __future__ import annotations
+import os
 
 from qtpy import QtWidgets, QtCore, QtGui
 
 from ayon_core.resources import get_ayon_icon_filepath
 from ayon_core.style import load_stylesheet
+from ayon_core.pipeline import get_current_host_name
 from ayon_core.tools.utils import (
     PlaceholderLineEdit,
     ErrorMessageBox,
@@ -128,12 +130,25 @@ class RefreshHandler:
 
 
 class LoaderWindow(QtWidgets.QWidget):
+
+    @property
+    def title(self):
+        """Get window title with application name."""
+        base_title = "AYON Loader"
+        app_name = (
+            os.environ.get("AYON_APP_NAME")
+            or get_current_host_name()
+        )
+        if app_name:
+            return f"{base_title} - {app_name}"
+        return base_title
+
     def __init__(self, controller=None, parent=None):
         super(LoaderWindow, self).__init__(parent)
 
+        self.setWindowTitle(self.title)
         icon = QtGui.QIcon(get_ayon_icon_filepath())
         self.setWindowIcon(icon)
-        self.setWindowTitle("AYON Loader")
         self.setFocusPolicy(QtCore.Qt.StrongFocus)
         self.setAttribute(QtCore.Qt.WA_DeleteOnClose, False)
         self.setWindowFlags(self.windowFlags() | QtCore.Qt.Window)
