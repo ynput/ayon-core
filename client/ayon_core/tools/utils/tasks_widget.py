@@ -413,24 +413,14 @@ class TasksProxyModel(QtCore.QSortFilterProxyModel):
         left_value = left.data(TASK_SORT_ROLE)
         right_value = right.data(TASK_SORT_ROLE)
 
-        if left_value == right_value:
-            return super().lessThan(left, right)
-
-        # If values are strings, compare lexicographically
-        if isinstance(left_value, str) or isinstance(right_value, str):
-            left_str = "" if left_value is None else str(left_value)
-            right_str = "" if right_value is None else str(right_value)
-            return left_str < right_str
-
-        # Otherwise treat as numeric order; None goes last
-        if right_value is None:
-            return True
-        if left_value is None:
-            return False
-        try:
+        if left_value != right_value:
+            if left_value is None:
+                return False
+            if right_value is None:
+                return True
             return left_value < right_value
-        except Exception:
-            return super().lessThan(left, right)
+
+        return super().lessThan(left, right)
 
 
 class TasksWidget(QtWidgets.QWidget):
