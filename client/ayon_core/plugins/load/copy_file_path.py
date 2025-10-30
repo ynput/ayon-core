@@ -7,6 +7,7 @@ class CopyFilePath(load.LoaderPlugin):
     """Copy published file path to clipboard"""
     representations = {"*"}
     product_types = {"*"}
+    show_in_versions_menu = False
 
     label = "Copy File Path"
     order = 20
