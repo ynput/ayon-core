@@ -487,6 +487,11 @@ def get_review_info_by_layer_name(channel_names):
         elif "Z" in channel_info:
             rgb = "Z", "Z", "Z"
 
+        # Has only A channel (Alpha layer)
+        elif "A" in channel_info:
+            rgb = "A", "A", "A"
+            alpha = None
+
         else:
             # No reviewable channels found
             continue
