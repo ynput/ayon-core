@@ -1,9 +1,13 @@
-from qtpy import QtWidgets, QtCore, QtGui
+import os
+import subprocess
+import sys
+
+from qtpy import QtCore, QtGui, QtWidgets
 
 from ayon_core.style import get_objected_colors
 
-from .lib import paint_image_with_color
 from .images import get_image
+from .lib import paint_image_with_color
 
 
 class ThumbnailPainterWidget(QtWidgets.QWidget):
@@ -16,6 +20,9 @@ class ThumbnailPainterWidget(QtWidgets.QWidget):
     paint and set them using 'set_current_thumbnails' or
     'set_current_thumbnail_paths'.
     """
+
+    # Signal emitted when thumbnail is double-clicked
+    thumbnail_double_clicked = QtCore.Signal(str)  # Emits the thumbnail path
 
     width_ratio = 3.0
     height_ratio = 2.0
@@ -40,11 +47,19 @@ class ThumbnailPainterWidget(QtWidgets.QWidget):
         self._cached_pix = None
         self._current_pixes = None
         self._has_pixes = False
+        self._current_thumbnail_paths = None
 
         self._bg_color = QtCore.Qt.transparent
         self._use_checker = True
         self._checker_color_1 = QtGui.QColor(89, 89, 89)
         self._checker_color_2 = QtGui.QColor(188, 187, 187)
+
+        # Enable mouse tracking and set focus policy to receive mouse events
+        self.setMouseTracking(True)
+        self.setFocusPolicy(QtCore.Qt.ClickFocus)
+        # Ensure the widget can receive mouse events
+        self.setAttribute(QtCore.Qt.WA_MouseTracking, True)
+        self.setAttribute(QtCore.Qt.WA_AcceptTouchEvents, False)
 
     def set_background_color(self, color):
         self._bg_color = color
@@ -118,7 +133,7 @@ class ThumbnailPainterWidget(QtWidgets.QWidget):
             thumbnail_paths (Optional[List[str]]): List of paths to thumbnail
                 sources.
         """
-
+        self._current_thumbnail_paths = thumbnail_paths
         pixes = []
         if thumbnail_paths:
             for thumbnail_path in thumbnail_paths:
@@ -358,3 +373,36 @@ class ThumbnailPainterWidget(QtWidgets.QWidget):
         part_width = width / self.offset_sep
         part_height = height / self.offset_sep
         return part_width, part_height
+
+    def mouseDoubleClickEvent(self, event):
+        """Handle double-click events to open thumbnail images."""
+        if (
+            event.button() == QtCore.Qt.LeftButton
+            and self._current_thumbnail_paths
+        ):
+            # Emit signal with the first thumbnail path
+            thumbnail_path = self._current_thumbnail_paths[0]
+            if thumbnail_path and os.path.exists(thumbnail_path):
+                self.thumbnail_double_clicked.emit(thumbnail_path)
+                event.accept()  # Accept the event to prevent propagation
+                return
+
+        # Always call the parent method
+        super().mouseDoubleClickEvent(event)
+
+    def _open_file_with_system_default(self, filepath):
+        """Open file with system default executable (OS-agnostic).
+
+        Args:
+            filepath (str): Path to the file to open.
+        """
+        try:
+            if sys.platform.startswith("darwin"):
+                subprocess.call(("open", filepath))
+            elif os.name == "nt":
+                os.startfile(filepath)
+            elif os.name == "posix":
+                subprocess.call(("xdg-open", filepath))
+        except Exception as e:
+            # Log error but don't crash the application
+            print(f"Failed to open file {filepath}: {e}")

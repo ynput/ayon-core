@@ -215,6 +215,10 @@ class LoaderWindow(QtWidgets.QWidget):
 
         thumbnails_widget = ThumbnailPainterWidget(right_panel_splitter)
         thumbnails_widget.set_use_checkboard(False)
+        # Connect double-click signal to open thumbnail
+        thumbnails_widget.thumbnail_double_clicked.connect(
+            self._on_thumbnail_double_clicked
+        )
 
         info_widget = InfoWidget(controller, right_panel_splitter)
 
@@ -643,7 +647,7 @@ class LoaderWindow(QtWidgets.QWidget):
 
         if thumbnail_paths:
             self._thumbnails_widget.set_current_thumbnail_paths(
-                thumbnail_paths
+                list(thumbnail_paths)
             )
         else:
             self._thumbnails_widget.set_current_thumbnails(None)
@@ -660,3 +664,19 @@ class LoaderWindow(QtWidgets.QWidget):
 
     def _on_products_refresh(self):
         self._refresh_handler.set_products_refreshed()
+
+    def _on_thumbnail_double_clicked(self, thumbnail_path):
+        """Handle thumbnail double-click to open image with system default."""
+        import os
+        import subprocess
+        import sys
+
+        try:
+            if sys.platform.startswith("darwin"):
+                subprocess.call(("open", thumbnail_path))
+            elif os.name == "nt":
+                os.startfile(thumbnail_path)
+            elif os.name == "posix":
+                subprocess.call(("xdg-open", thumbnail_path))
+        except Exception as e:
+            print(f"Failed to open thumbnail {thumbnail_path}: {e}")
