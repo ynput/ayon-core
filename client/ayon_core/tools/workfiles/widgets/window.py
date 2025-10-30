@@ -1,21 +1,21 @@
-from qtpy import QtCore, QtWidgets, QtGui
 
-from ayon_core import style, resources
-from ayon_core.tools.utils import (
-    PlaceholderLineEdit,
-    MessageOverlayObject,
-)
+from qtpy import QtCore, QtGui, QtWidgets
 
-from ayon_core.tools.workfiles.control import BaseWorkfileController
+from ayon_core import resources, style
 from ayon_core.tools.utils import (
-    GoToCurrentButton,
-    RefreshButton,
     FoldersWidget,
+    GoToCurrentButton,
+    MessageOverlayObject,
+    NiceCheckbox,
+    PlaceholderLineEdit,
+    RefreshButton,
     TasksWidget,
 )
+from ayon_core.tools.utils.lib import checkstate_int_to_enum
+from ayon_core.tools.workfiles.control import BaseWorkfileController
 
-from .side_panel import SidePanelWidget
 from .files_widget import FilesWidget
+from .side_panel import SidePanelWidget
 from .utils import BaseOverlayFrame
 
 
@@ -107,7 +107,7 @@ class WorkfilesToolWindow(QtWidgets.QWidget):
         split_widget.addWidget(tasks_widget)
         split_widget.addWidget(col_3_widget)
         split_widget.addWidget(side_panel)
-        split_widget.setSizes([255, 175, 550, 190])
+        split_widget.setSizes([350, 175, 550, 190])
 
         body_layout.addWidget(split_widget)
 
@@ -157,6 +157,8 @@ class WorkfilesToolWindow(QtWidgets.QWidget):
         self._home_body_widget = home_body_widget
         self._split_widget = split_widget
 
+        self._project_name = self._controller.get_current_project_name()
+
         self._tasks_widget = tasks_widget
         self._side_panel = side_panel
 
@@ -186,11 +188,24 @@ class WorkfilesToolWindow(QtWidgets.QWidget):
             controller, col_widget, handle_expected_selection=True
         )
 
+        my_tasks_tooltip = (
+            "Filter folders and task to only those you are assigned to."
+        )
+
+        my_tasks_label = QtWidgets.QLabel("My tasks")
+        my_tasks_label.setToolTip(my_tasks_tooltip)
+
+        my_tasks_checkbox = NiceCheckbox(folder_widget)
+        my_tasks_checkbox.setChecked(False)
+        my_tasks_checkbox.setToolTip(my_tasks_tooltip)
+
         header_layout = QtWidgets.QHBoxLayout(header_widget)
         header_layout.setContentsMargins(0, 0, 0, 0)
         header_layout.addWidget(folder_filter_input, 1)
         header_layout.addWidget(go_to_current_btn, 0)
         header_layout.addWidget(refresh_btn, 0)
+        header_layout.addWidget(my_tasks_label, 0)
+        header_layout.addWidget(my_tasks_checkbox, 0)
 
         col_layout = QtWidgets.QVBoxLayout(col_widget)
         col_layout.setContentsMargins(0, 0, 0, 0)
@@ -200,6 +215,9 @@ class WorkfilesToolWindow(QtWidgets.QWidget):
         folder_filter_input.textChanged.connect(self._on_folder_filter_change)
         go_to_current_btn.clicked.connect(self._on_go_to_current_clicked)
         refresh_btn.clicked.connect(self._on_refresh_clicked)
+        my_tasks_checkbox.stateChanged.connect(
+            self._on_my_tasks_checkbox_state_changed
+        )
 
         self._folder_filter_input = folder_filter_input
         self._folders_widget = folder_widget
@@ -340,9 +358,8 @@ class WorkfilesToolWindow(QtWidgets.QWidget):
         if not self._host_is_valid:
             return
 
-        self._folders_widget.set_project_name(
-            self._controller.get_current_project_name()
-        )
+        self._project_name = self._controller.get_current_project_name()
+        self._folders_widget.set_project_name(self._project_name)
 
     def _on_save_as_finished(self, event):
         if event["failed"]:
@@ -385,3 +402,16 @@ class WorkfilesToolWindow(QtWidgets.QWidget):
             )
         else:
             self.close()
+
+    def _on_my_tasks_checkbox_state_changed(self, state):
+        folder_ids = None
+        task_ids = None
+        state = checkstate_int_to_enum(state)
+        if state == QtCore.Qt.Checked:
+            entity_ids = self._controller.get_my_tasks_entity_ids(
+                self._project_name
+            )
+            folder_ids = entity_ids["folder_ids"]
+            task_ids = entity_ids["task_ids"]
+        self._folders_widget.set_folder_ids_filter(folder_ids)
+        self._tasks_widget.set_task_ids_filter(task_ids)
