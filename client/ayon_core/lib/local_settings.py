@@ -5,6 +5,7 @@ import json
 import platform
 import configparser
 import warnings
+import copy
 from datetime import datetime
 from abc import ABC, abstractmethod
 from functools import lru_cache
@@ -12,6 +13,8 @@ from typing import Optional, Any
 
 import platformdirs
 import ayon_api
+
+from .cache import NestedCacheItem, CacheItem
 
 _PLACEHOLDER = object()
 
@@ -23,6 +26,7 @@ class RegistryItemNotFound(ValueError):
 
 class _Cache:
     username = None
+    user_entities_by_name = NestedCacheItem()
 
 
 def _get_ayon_appdirs(*args: str) -> str:
@@ -569,6 +573,68 @@ def get_local_site_id():
     return site_id
 
 
+def _get_ayon_service_username() -> Optional[str]:
+    # TODO @iLLiCiTiT - do not use private attribute of 'ServerAPI', rather
+    #      use public method to get username from connection stack.
+    con = ayon_api.get_server_api_connection()
+    user_stack = getattr(con, "_as_user_stack", None)
+    if user_stack is None:
+        return None
+    return user_stack.username
+
+
+def get_ayon_user_entity(username: Optional[str] = None) -> dict[str, Any]:
+    """AYON user entity used for templates and publishing.
+
+    Note:
+        Usually only service and admin users can receive the full user entity.
+
+    Args:
+        username (Optional[str]): Username of the user. If not passed, then
+            the current user in 'ayon_api' is used.
+
+    Returns:
+        dict[str, Any]: User entity.
+
+    """
+    service_username = _get_ayon_service_username()
+    # Handle service user handling first
+    if service_username:
+        if username is None:
+            username = service_username
+        cache: CacheItem = _Cache.user_entities_by_name[username]
+        if not cache.is_valid:
+            if username == service_username:
+                user = ayon_api.get_user()
+            else:
+                user = ayon_api.get_user(username)
+            cache.update_data(user)
+        return copy.deepcopy(cache.get_data())
+
+    # Cache current user
+    current_user = None
+    if _Cache.username is None:
+        current_user = ayon_api.get_user()
+        _Cache.username = current_user["name"]
+
+    if username is None:
+        username = _Cache.username
+
+    cache: CacheItem = _Cache.user_entities_by_name[username]
+    if not cache.is_valid:
+        user = None
+        if username == _Cache.username:
+            if current_user is None:
+                current_user = ayon_api.get_user()
+            user = current_user
+
+        if user is None:
+            user = ayon_api.get_user(username)
+        cache.update_data(user)
+
+    return copy.deepcopy(cache.get_data())
+
+
 def get_ayon_username():
     """AYON username used for templates and publishing.
 
@@ -578,20 +644,5 @@ def get_ayon_username():
         str: Username.
 
     """
-    # Look for username in the connection stack
-    # - this is used when service is working as other user
-    #   (e.g. in background sync)
-    # TODO @iLLiCiTiT - do not use private attribute of 'ServerAPI', rather
-    #      use public method to get username from connection stack.
-    con = ayon_api.get_server_api_connection()
-    user_stack = getattr(con, "_as_user_stack", None)
-    if user_stack is not None:
-        username = user_stack.username
-        if username is not None:
-            return username
-
-    # Cache the username to avoid multiple API calls
-    # - it is not expected that user would change
-    if _Cache.username is None:
-        _Cache.username = ayon_api.get_user()["name"]
-    return _Cache.username
+    user = get_ayon_user_entity()
+    return user["name"]

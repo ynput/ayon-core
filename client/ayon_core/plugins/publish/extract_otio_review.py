@@ -130,7 +130,7 @@ class ExtractOTIOReview(
                 # NOTE it looks like it is set only in hiero integration
                 res_data = {"width": self.to_width, "height": self.to_height}
                 for key in res_data:
-                    for meta_prefix in ("ayon.source.", "openpype.source."):
+                    for meta_prefix in ("ayon.source", "openpype.source"):
                         meta_key = f"{meta_prefix}.{key}"
                         value = media_metadata.get(meta_key)
                         if value is not None:
