@@ -125,6 +125,9 @@ class SceneInventoryView(QtWidgets.QTreeView):
     def set_filter_outdated(self, enabled):
         self._proxy_model.set_filter_outdated(enabled)
 
+    def set_enable_grouping(self, enabled):
+        self._model.set_enable_grouping(enabled)
+
     def get_selected_indexes(self):
         """Get the selected rows"""
         indexes, _ = self._get_selected_indexes()
