@@ -453,21 +453,10 @@ class InventoryModel(QtGui.QStandardItemModel):
                     collect_outdated_from_item(item)
 
         root_item = self.invisibleRootItem()
-        for row in range(root_item.rowCount()):
-            group_item = root_item.child(row)
-            if group_item.data(VERSION_IS_LATEST_ROLE):
-                continue
-
-            if ignore_hero and group_item.data(VERSION_IS_HERO_ROLE):
-                continue
-
-            for idx in range(group_item.rowCount()):
-                item = group_item.child(idx)
-                outdated_item_ids.append(item.data(ITEM_ID_ROLE))
-
-        # Now collect outdated from the flat structure
+        # Collect outdated container ids from the full hierarchy
         collect_outdated_from_item(root_item)
-        return outdated_item_ids
+        # Filter out any None values (e.g. from non-container rows)
+        return [item_id for item_id in outdated_item_ids if item_id]
 
     def _clear_items(self):
         root_item = self.invisibleRootItem()
