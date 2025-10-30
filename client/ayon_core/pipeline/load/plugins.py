@@ -2,10 +2,10 @@
 from __future__ import annotations
 
 from abc import abstractmethod
-import logging
 import os
 from typing import Any, Optional, Type
 
+from ayon_core.lib import Logger
 from ayon_core.pipeline.plugin_discover import (
     deregister_plugin,
     deregister_plugin_path,
@@ -31,8 +31,7 @@ class LoaderPlugin(list):
 
     options = []
 
-    log = logging.getLogger("ProductLoader")
-    log.propagate = True
+    log = Logger.get_logger("ProductLoader")
 
     @classmethod
     def apply_settings(cls, project_settings):

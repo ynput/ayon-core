@@ -89,7 +89,6 @@ class IntegrateHeroVersion(
         "family",
         "representation",
         "username",
-        "user",
         "output"
     ]
     # QUESTION/TODO this process should happen on server if crashed due to
@@ -363,6 +362,14 @@ class IntegrateHeroVersion(
                     value = anatomy_data.get(key)
                     if value is not None:
                         repre_context[key] = value
+
+                # Keep only username
+                # NOTE This is to avoid storing all user attributes and data
+                #   to representation
+                if "user" not in repre_context:
+                    repre_context["user"] = {
+                        "name": anatomy_data["user"]["name"]
+                    }
 
                 # Prepare new repre
                 repre_entity = copy.deepcopy(repre_info["representation"])

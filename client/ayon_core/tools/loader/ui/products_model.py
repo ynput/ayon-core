@@ -17,7 +17,6 @@ PRODUCT_ID_ROLE = QtCore.Qt.UserRole + 6
 PRODUCT_NAME_ROLE = QtCore.Qt.UserRole + 7
 PRODUCT_TYPE_ROLE = QtCore.Qt.UserRole + 8
 PRODUCT_BASE_TYPE_ROLE = QtCore.Qt.UserRole + 9
-PRODUCT_TYPE_ICON_ROLE = QtCore.Qt.UserRole + 10
 PRODUCT_IN_SCENE_ROLE = QtCore.Qt.UserRole + 11
 VERSION_ID_ROLE = QtCore.Qt.UserRole + 12
 VERSION_HERO_ROLE = QtCore.Qt.UserRole + 13
@@ -228,10 +227,7 @@ class ProductsModel(QtGui.QStandardItemModel):
             return super().data(index, role)
 
         if role == QtCore.Qt.DecorationRole:
-            if col == 1:
-                role = PRODUCT_TYPE_ICON_ROLE
-            else:
-                return None
+            return None
 
         if (
             role == VERSION_NAME_EDIT_ROLE
@@ -455,7 +451,6 @@ class ProductsModel(QtGui.QStandardItemModel):
             model_item = QtGui.QStandardItem(product_item.product_name)
             model_item.setEditable(False)
             icon = get_qt_icon(product_item.product_icon)
-            product_type_icon = get_qt_icon(product_item.product_type_icon)
             model_item.setColumnCount(self.columnCount())
             model_item.setData(icon, QtCore.Qt.DecorationRole)
             model_item.setData(product_id, PRODUCT_ID_ROLE)
@@ -464,7 +459,6 @@ class ProductsModel(QtGui.QStandardItemModel):
                 product_item.product_base_type, PRODUCT_BASE_TYPE_ROLE
             )
             model_item.setData(product_item.product_type, PRODUCT_TYPE_ROLE)
-            model_item.setData(product_type_icon, PRODUCT_TYPE_ICON_ROLE)
             model_item.setData(product_item.folder_id, FOLDER_ID_ROLE)
 
             self._product_items_by_id[product_id] = product_item

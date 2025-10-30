@@ -55,7 +55,7 @@ class _WorkfileOptionalData:
     ):
         if kwargs:
             cls_name = self.__class__.__name__
-            keys = ", ".join(['"{}"'.format(k) for k in kwargs.keys()])
+            keys = ", ".join([f'"{k}"' for k in kwargs.keys()])
             warnings.warn(
                 f"Unknown keywords passed to {cls_name}: {keys}",
             )
@@ -1560,6 +1560,27 @@ class IWorkfileHost(AbstractHost):
         if platform.system().lower() == "windows":
             rootless_path = rootless_path.replace("\\", "/")
 
+        # Get application information
+        app_info = self.get_app_information()
+        data = {}
+        if app_info.app_name:
+            data["app_name"] = app_info.app_name
+        if app_info.app_version:
+            data["app_version"] = app_info.app_version
+
+        # Use app group and app variant from applications addon (if available)
+        app_addon_name = os.environ.get("AYON_APP_NAME")
+        if not app_addon_name:
+            app_addon_name = None
+
+        app_addon_tools_s = os.environ.get("AYON_APP_TOOLS")
+        app_addon_tools = []
+        if app_addon_tools_s:
+            app_addon_tools = app_addon_tools_s.split(";")
+
+        data["ayon_app_name"] = app_addon_name
+        data["ayon_app_tools"] = app_addon_tools
+
         workfile_info = save_workfile_info(
             project_name,
             save_workfile_context.task_entity["id"],
@@ -1568,6 +1589,7 @@ class IWorkfileHost(AbstractHost):
             version,
             comment,
             description,
+            data=data,
             workfile_entities=save_workfile_context.workfile_entities,
         )
         return workfile_info
