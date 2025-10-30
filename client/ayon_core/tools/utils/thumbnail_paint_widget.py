@@ -1,8 +1,15 @@
 import os
 import subprocess
 import sys
+import tempfile
 
 from qtpy import QtCore, QtGui, QtWidgets
+
+try:
+    from qtpy import QtMultimedia, QtMultimediaWidgets
+    HAS_QTMULTIMEDIA = True
+except ImportError:
+    HAS_QTMULTIMEDIA = False
 
 from ayon_core.style import get_objected_colors
 
@@ -40,6 +47,14 @@ class ThumbnailPainterWidget(QtWidgets.QWidget):
         default_image = get_image("thumbnail.png")
         default_pix = paint_image_with_color(default_image, border_color)
 
+        # Video player components
+        self._media_player = None
+        self._video_widget = None
+        self._play_overlay_visible = True
+        self._is_video_content = False
+        self._current_video_path = None
+        self._is_playing = False
+
         self._border_color = border_color
         self._thumbnail_bg_color = thumbnail_bg_color
         self._default_pix = default_pix
@@ -60,6 +75,107 @@ class ThumbnailPainterWidget(QtWidgets.QWidget):
         # Ensure the widget can receive mouse events
         self.setAttribute(QtCore.Qt.WA_MouseTracking, True)
         self.setAttribute(QtCore.Qt.WA_AcceptTouchEvents, False)
+
+        self._setup_video_player()
+
+    def _setup_video_player(self):
+        """Setup video player components."""
+        if not HAS_QTMULTIMEDIA:
+            return
+
+        try:
+            # Qt6 API
+            self._media_player = QtMultimedia.QMediaPlayer(self)
+            self._video_widget = QtMultimediaWidgets.QVideoWidget(self)
+            self._video_widget.hide()
+            self._media_player.setVideoOutput(self._video_widget)
+
+            # Loop video playback - Qt6 uses different signal
+            self._media_player.mediaStatusChanged.connect(
+                self._on_media_status_changed
+            )
+        except (AttributeError, TypeError):
+            # Qt5 fallback
+            try:
+                self._media_player = QtMultimedia.QMediaPlayer(
+                    self, QtMultimedia.QMediaPlayer.VideoSurface
+                )
+                self._video_widget = QtMultimediaWidgets.QVideoWidget(self)
+                self._video_widget.hide()
+                self._media_player.setVideoOutput(self._video_widget)
+
+                # Loop video playback
+                self._media_player.mediaStatusChanged.connect(
+                    self._on_media_status_changed
+                )
+            except Exception as e:
+                print(f"Failed to setup video player: {e}")
+                self._media_player = None
+                self._video_widget = None
+
+    def _on_media_status_changed(self, status):
+        """Handle media status changes for looping."""
+        if not self._media_player:
+            return
+
+        # Qt6 uses QMediaPlayer.MediaStatus enum
+        try:
+            end_of_media = QtMultimedia.QMediaPlayer.MediaStatus.EndOfMedia
+        except AttributeError:
+            # Qt5 uses QMediaPlayer.EndOfMedia
+            end_of_media = QtMultimedia.QMediaPlayer.EndOfMedia
+
+        if status == end_of_media:
+            self._media_player.setPosition(0)
+            self._media_player.play()
+
+    def _is_video_file(self, filepath):
+        """Check if file is a video file (h264_*, mp4, mov, etc.)."""
+        if not filepath:
+            return False
+        basename = os.path.basename(filepath).lower()
+        # Check for h264_* naming convention
+        if 'h264_' in basename or 'h264' in basename:
+            return True
+        # Check for common video extensions
+        video_exts = ('.mp4', '.mov', '.avi', '.mkv', '.webm', '.m4v')
+        return any(filepath.lower().endswith(ext) for ext in video_exts)
+
+    def _extract_first_frame(self, video_path):
+        """Extract first frame from video for preview."""
+        try:
+            from ayon_core.lib import get_ffmpeg_tool_args, run_subprocess
+
+            # Create temp file for frame
+            temp_fd, frame_path = tempfile.mkstemp(
+                suffix='.jpg', prefix='video_preview_'
+            )
+            os.close(temp_fd)
+
+            # Extract first frame with ffmpeg
+            cmd = get_ffmpeg_tool_args(
+                "ffmpeg",
+                "-i", video_path,
+                "-vframes", "1",
+                "-y",
+                frame_path
+            )
+
+            run_subprocess(cmd)
+
+            if os.path.exists(frame_path) and os.path.getsize(frame_path) > 0:
+                pix = QtGui.QPixmap(frame_path)
+                # Cleanup temp file
+                try:
+                    os.remove(frame_path)
+                except Exception:
+                    pass
+                return pix
+
+        except Exception as e:
+            print(f"Failed to extract first frame: {e}")
+
+        return None
 
     def set_background_color(self, color):
         self._bg_color = color
@@ -125,15 +241,59 @@ class ThumbnailPainterWidget(QtWidgets.QWidget):
         self.clear_cache()
 
     def set_current_thumbnail_paths(self, thumbnail_paths=None):
-        """Set current thumbnails.
+        """Set current thumbnails with video detection.
 
-        Set current thumbnails using paths to a files.
+        Set current thumbnails using paths to files. Detects video files
+        and sets up video playback mode.
 
         Args:
             thumbnail_paths (Optional[List[str]]): List of paths to thumbnail
                 sources.
         """
         self._current_thumbnail_paths = thumbnail_paths
+
+        # Check if this is video content
+        is_video = False
+        video_path = None
+        if thumbnail_paths and len(thumbnail_paths) > 0:
+            first_path = thumbnail_paths[0]
+            if self._is_video_file(first_path):
+                is_video = True
+                video_path = first_path
+
+        self._is_video_content = is_video
+        self._current_video_path = video_path
+
+        if is_video and HAS_QTMULTIMEDIA:
+            self._setup_video_display(video_path)
+        else:
+            self._setup_image_display(thumbnail_paths)
+
+    def _setup_video_display(self, video_path):
+        """Setup video display with first frame and play overlay."""
+        if self._video_widget:
+            self._video_widget.hide()
+        self._is_playing = False
+        self._play_overlay_visible = True
+
+        # Extract first frame for preview
+        first_frame_pix = self._extract_first_frame(video_path)
+        if first_frame_pix:
+            self._current_pixes = [first_frame_pix]
+            self._has_pixes = True
+        else:
+            self._current_pixes = None
+            self._has_pixes = False
+
+        self.clear_cache()
+
+    def _setup_image_display(self, thumbnail_paths):
+        """Setup regular image display."""
+        if self._video_widget:
+            self._video_widget.hide()
+        self._is_playing = False
+        self._play_overlay_visible = False
+
         pixes = []
         if thumbnail_paths:
             for thumbnail_path in thumbnail_paths:
@@ -142,6 +302,14 @@ class ThumbnailPainterWidget(QtWidgets.QWidget):
         self.set_current_thumbnails(pixes)
 
     def paintEvent(self, event):
+        if (
+            self._is_playing
+            and self._video_widget
+            and self._video_widget.isVisible()
+        ):
+            # Video is playing, don't paint over it
+            return
+
         if self._cached_pix is None:
             self._cache_pix()
 
@@ -149,17 +317,67 @@ class ThumbnailPainterWidget(QtWidgets.QWidget):
         painter.begin(self)
         painter.setRenderHint(QtGui.QPainter.Antialiasing)
         painter.drawPixmap(0, 0, self._cached_pix)
+
+        # Draw play overlay if video content and not playing
+        if (
+            self._is_video_content
+            and self._play_overlay_visible
+            and HAS_QTMULTIMEDIA
+        ):
+            self._draw_play_overlay(painter)
+
         painter.end()
+
+    def _draw_play_overlay(self, painter):
+        """Draw play button overlay."""
+        rect = self.rect()
+
+        # Semi-transparent background circle
+        center_x = rect.width() // 2
+        center_y = rect.height() // 2
+        radius = min(rect.width(), rect.height()) // 8
+
+        # Draw circle background
+        painter.setBrush(QtGui.QBrush(QtGui.QColor(0, 0, 0, 128)))
+        painter.setPen(QtCore.Qt.NoPen)
+        painter.drawEllipse(
+            QtCore.QPoint(center_x, center_y),
+            radius,
+            radius
+        )
+
+        # Draw play triangle
+        triangle_size = radius // 2
+        painter.setBrush(QtGui.QBrush(QtGui.QColor(255, 255, 255, 230)))
+
+        triangle = QtGui.QPolygon([
+            QtCore.QPoint(
+                center_x - triangle_size // 3,
+                center_y - triangle_size
+            ),
+            QtCore.QPoint(
+                center_x - triangle_size // 3,
+                center_y + triangle_size
+            ),
+            QtCore.QPoint(
+                center_x + triangle_size,
+                center_y
+            ),
+        ])
+        painter.drawPolygon(triangle)
 
     def resizeEvent(self, event):
         self._cached_pix = None
+        if self._video_widget:
+            self._video_widget.setGeometry(self.rect())
         super(ThumbnailPainterWidget, self).resizeEvent(event)
 
     def _get_default_pix(self):
         if self._default_pix is None:
             default_image = get_image("thumbnail")
             default_pix = paint_image_with_color(
-                default_image, self._border_color)
+                default_image, self._border_color
+            )
             self._default_pix = default_pix
         return self._default_pix
 
@@ -183,9 +401,7 @@ class ThumbnailPainterWidget(QtWidgets.QWidget):
             0, 0, checker_pix.width(), checker_pix.height()
         )
         checker_painter.setBrush(self._checker_color_2)
-        checker_painter.drawRect(
-            0, 0, checker_size, checker_size
-        )
+        checker_painter.drawRect(0, 0, checker_size, checker_size)
         checker_painter.drawRect(
             checker_size, checker_size, checker_size, checker_size
         )
@@ -204,21 +420,16 @@ class ThumbnailPainterWidget(QtWidgets.QWidget):
             width,
             height,
             QtCore.Qt.KeepAspectRatio,
-            QtCore.Qt.SmoothTransformation
+            QtCore.Qt.SmoothTransformation,
         )
-        pos_x = int(
-            (pix_width - scaled_pix.width()) / 2
-        )
-        pos_y = int(
-            (pix_height - scaled_pix.height()) / 2
-        )
+        pos_x = int((pix_width - scaled_pix.width()) / 2)
+        pos_y = int((pix_height - scaled_pix.height()) / 2)
         new_pix = QtGui.QPixmap(pix_width, pix_height)
         new_pix.fill(QtCore.Qt.transparent)
         pix_painter = QtGui.QPainter()
         pix_painter.begin(new_pix)
         render_hints = (
-            QtGui.QPainter.Antialiasing
-            | QtGui.QPainter.SmoothPixmapTransform
+            QtGui.QPainter.Antialiasing | QtGui.QPainter.SmoothPixmapTransform
         )
 
         pix_painter.setRenderHints(render_hints)
@@ -237,14 +448,10 @@ class ThumbnailPainterWidget(QtWidgets.QWidget):
                 pix_width - full_border_width,
                 pix_height - full_border_width,
                 QtCore.Qt.KeepAspectRatio,
-                QtCore.Qt.SmoothTransformation
+                QtCore.Qt.SmoothTransformation,
             )
-            pos_x = int(
-                (pix_width - scaled_pix.width()) / 2
-            )
-            pos_y = int(
-                (pix_height - scaled_pix.height()) / 2
-            )
+            pos_x = int((pix_width - scaled_pix.width()) / 2)
+            pos_y = int((pix_height - scaled_pix.height()) / 2)
 
             new_pix = QtGui.QPixmap(pix_width, pix_height)
             new_pix.fill(QtCore.Qt.transparent)
@@ -260,9 +467,7 @@ class ThumbnailPainterWidget(QtWidgets.QWidget):
                 pos_x, pos_y, scaled_pix.width(), scaled_pix.height()
             )
             pix_painter.drawTiledPixmap(
-                tiled_rect,
-                checker_pix,
-                QtCore.QPointF(0.0, 0.0)
+                tiled_rect, checker_pix, QtCore.QPointF(0.0, 0.0)
             )
             pix_painter.drawPixmap(pos_x, pos_y, scaled_pix)
             pix_painter.end()
@@ -309,7 +514,7 @@ class ThumbnailPainterWidget(QtWidgets.QWidget):
             used_default_pix = False
             pixes_to_draw = self._current_pixes
             if len(pixes_to_draw) > self.max_thumbnails:
-                pixes_to_draw = pixes_to_draw[:-self.max_thumbnails]
+                pixes_to_draw = pixes_to_draw[: -self.max_thumbnails]
             pixes_len = len(pixes_to_draw)
 
         width_offset, height_offset = self._get_pix_offset_size(
@@ -343,8 +548,7 @@ class ThumbnailPainterWidget(QtWidgets.QWidget):
         final_painter = QtGui.QPainter()
         final_painter.begin(final_pix)
         render_hints = (
-            QtGui.QPainter.Antialiasing
-            | QtGui.QPainter.SmoothPixmapTransform
+            QtGui.QPainter.Antialiasing | QtGui.QPainter.SmoothPixmapTransform
         )
 
         final_painter.setRenderHints(render_hints)
@@ -374,21 +578,69 @@ class ThumbnailPainterWidget(QtWidgets.QWidget):
         part_height = height / self.offset_sep
         return part_width, part_height
 
-    def mouseDoubleClickEvent(self, event):
-        """Handle double-click events to open thumbnail images."""
-        if (
-            event.button() == QtCore.Qt.LeftButton
-            and self._current_thumbnail_paths
-        ):
-            # Emit signal with the first thumbnail path
-            thumbnail_path = self._current_thumbnail_paths[0]
-            if thumbnail_path and os.path.exists(thumbnail_path):
-                self.thumbnail_double_clicked.emit(thumbnail_path)
-                event.accept()  # Accept the event to prevent propagation
+    def mousePressEvent(self, event):
+        """Handle single-click to toggle video playback."""
+        if event.button() == QtCore.Qt.LeftButton:
+            if (
+                self._is_video_content
+                and self._current_video_path
+                and HAS_QTMULTIMEDIA
+            ):
+                self._toggle_video_playback()
+                event.accept()
                 return
+
+        super().mousePressEvent(event)
+
+    def mouseDoubleClickEvent(self, event):
+        """Handle double-click to open file in default viewer."""
+        if event.button() == QtCore.Qt.LeftButton:
+            if self._current_thumbnail_paths:
+                thumbnail_path = self._current_thumbnail_paths[0]
+                if thumbnail_path and os.path.exists(thumbnail_path):
+                    self.thumbnail_double_clicked.emit(thumbnail_path)
+                    event.accept()
+                    return
 
         # Always call the parent method
         super().mouseDoubleClickEvent(event)
+
+    def _toggle_video_playback(self):
+        """Toggle video playback on/off."""
+        if not self._current_video_path or not self._media_player:
+            return
+
+        if self._is_playing:
+            # Stop playback
+            self._media_player.stop()
+            if self._video_widget:
+                self._video_widget.hide()
+            self._is_playing = False
+            self._play_overlay_visible = True
+            self.repaint()
+        else:
+            # Start playback
+            if self._video_widget:
+                self._video_widget.setGeometry(self.rect())
+                self._video_widget.show()
+                self._video_widget.raise_()
+
+            # Qt6 vs Qt5 API difference
+            try:
+                # Qt6 API - use setSource with QUrl
+                self._media_player.setSource(
+                    QtCore.QUrl.fromLocalFile(self._current_video_path)
+                )
+            except AttributeError:
+                # Qt5 API - use setMedia with QMediaContent
+                media_content = QtMultimedia.QMediaContent(
+                    QtCore.QUrl.fromLocalFile(self._current_video_path)
+                )
+                self._media_player.setMedia(media_content)
+
+            self._media_player.play()
+            self._is_playing = True
+            self._play_overlay_visible = False
 
     def _open_file_with_system_default(self, filepath):
         """Open file with system default executable (OS-agnostic).
