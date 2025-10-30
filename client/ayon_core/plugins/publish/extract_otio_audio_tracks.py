@@ -9,6 +9,56 @@ from ayon_core.lib import (
 )
 
 
+class CollectParentAudioInstanceAttribute(pyblish.api.ContextPlugin):
+    """Collect audio instance attribute"""
+
+    order = pyblish.api.CollectorOrder
+    label = "Collect Audio Instance Attribute"
+    hosts = ["hiero", "resolve", "flame"]
+
+    def process(self, context):
+
+        audio_instances = self.get_audio_instances(context)
+
+        for inst in audio_instances:
+            # Make sure if the audio instance is having siblink instances
+            # which needs audio for reviewable media so it is also added
+            # to its instance data
+            # Retrieve instance data from parent instance shot instance.
+            parent_instance_id = inst.data["parent_instance_id"]
+            for sibl_instance in inst.context:
+                sibl_parent_instance_id = sibl_instance.data.get(
+                    "parent_instance_id")
+                # make sure the instance is not the same instance
+                if sibl_instance.id == inst.id:
+                    continue
+                # and the parent instance id is the same
+                if sibl_parent_instance_id == parent_instance_id:
+                    self.log.info(
+                        "Adding audio to Sibling instance: "
+                        f"{sibl_instance.data['label']}"
+                    )
+                    sibl_instance.data["audio"] = None
+
+    def get_audio_instances(self, context):
+        """Return only instances which are having audio in families
+
+        Args:
+            context (pyblish.context): context of publisher
+
+        Returns:
+            list: list of selected instances
+        """
+        return [
+            _i for _i in context
+            # filter only those with audio product type or family
+            # and also with reviewAudio data key
+            if bool("audio" in (
+                _i.data.get("families", []) + [_i.data["productType"]])
+            ) or _i.data.get("reviewAudio")
+        ]
+
+
 class ExtractOtioAudioTracks(pyblish.api.ContextPlugin):
     """Extract Audio tracks from OTIO timeline.
 
@@ -65,9 +115,9 @@ class ExtractOtioAudioTracks(pyblish.api.ContextPlugin):
         # remove full mixed audio file
         os.remove(audio_temp_fpath)
 
-    def add_audio_to_instances(self, audio_file, instances):
+    def add_audio_to_instances(self, audio_file, audio_instances):
         created_files = []
-        for inst in instances:
+        for inst in audio_instances:
             name = inst.data["folderPath"]
 
             recycling_file = [f for f in created_files if name in f]
@@ -124,6 +174,30 @@ class ExtractOtioAudioTracks(pyblish.api.ContextPlugin):
                     "offset": 0
                 })
                 inst.data["audio"] = audio_attr
+
+            # Make sure if the audio instance is having siblink instances
+            # which needs audio for reviewable media so it is also added
+            # to its instance data
+            # Retrieve instance data from parent instance shot instance.
+            parent_instance_id = inst.data["parent_instance_id"]
+            for sibl_instance in inst.context:
+                sibl_parent_instance_id = sibl_instance.data.get(
+                    "parent_instance_id")
+                # make sure the instance is not the same instance
+                if sibl_instance.id == inst.id:
+                    continue
+                # and the parent instance id is the same
+                if sibl_parent_instance_id == parent_instance_id:
+                    self.log.info(
+                        "Adding audio to Sibling instance: "
+                        f"{sibl_instance.data['label']}"
+                    )
+                    audio_attr = sibl_instance.data.get("audio") or []
+                    audio_attr.append({
+                        "filename": audio_fpath,
+                        "offset": 0
+                    })
+                    sibl_instance.data["audio"] = audio_attr
 
             # add generated audio file to created files for recycling
             if audio_fpath not in created_files:
