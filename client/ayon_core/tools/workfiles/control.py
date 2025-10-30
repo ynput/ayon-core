@@ -432,6 +432,16 @@ class BaseWorkfileController(
             folder_id, task_id
         )
 
+    def get_published_workfile_info(self, representation_id):
+        return self._workfiles_model.get_published_workfile_info(
+            representation_id
+        )
+
+    def get_published_workfile_version_comment(self, representation_id):
+        return self._workfiles_model.get_published_workfile_version_comment(
+            representation_id
+        )
+
     def get_workfile_info(self, folder_id, task_id, rootless_path):
         return self._workfiles_model.get_workfile_info(
             folder_id, task_id, rootless_path

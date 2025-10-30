@@ -1,17 +1,13 @@
 import datetime
 
-from qtpy import QtWidgets, QtCore
+from qtpy import QtCore, QtWidgets
 
 
 def file_size_to_string(file_size):
     if not file_size:
         return "N/A"
     size = 0
-    size_ending_mapping = {
-        "KB": 1024 ** 1,
-        "MB": 1024 ** 2,
-        "GB": 1024 ** 3
-    }
+    size_ending_mapping = {"KB": 1024**1, "MB": 1024**2, "GB": 1024**3}
     ending = "B"
     for _ending, _size in size_ending_mapping.items():
         if file_size < _size:
@@ -70,7 +66,11 @@ class SidePanelWidget(QtWidgets.QWidget):
         btn_description_save.clicked.connect(self._on_save_click)
 
         controller.register_event_callback(
-            "selection.workarea.changed", self._on_selection_change
+            "selection.workarea.changed", self._on_workarea_selection_change
+        )
+        controller.register_event_callback(
+            "selection.representation.changed",
+            self._on_representation_selection_change,
         )
 
         self._details_input = details_input
@@ -82,10 +82,11 @@ class SidePanelWidget(QtWidgets.QWidget):
         self._task_id = None
         self._filepath = None
         self._rootless_path = None
+        self._representation_id = None
         self._orig_description = ""
         self._controller = controller
 
-        self._set_context(None, None, None, None)
+        self._set_context(None, None, None, None, None)
 
     def set_published_mode(self, published_mode):
         """Change published mode.
@@ -95,14 +96,21 @@ class SidePanelWidget(QtWidgets.QWidget):
         """
 
         self._description_widget.setVisible(not published_mode)
+        # Clear the context when switching modes to avoid showing stale data
+        self._set_context(None, None, None, None, None)
 
-    def _on_selection_change(self, event):
+    def _on_workarea_selection_change(self, event):
         folder_id = event["folder_id"]
         task_id = event["task_id"]
         filepath = event["path"]
         rootless_path = event["rootless_path"]
 
-        self._set_context(folder_id, task_id, rootless_path, filepath)
+        self._set_context(folder_id, task_id, rootless_path, filepath, None)
+
+    def _on_representation_selection_change(self, event):
+        representation_id = event["representation_id"]
+
+        self._set_context(None, None, None, None, representation_id)
 
     def _on_description_change(self):
         text = self._description_input.toPlainText()
@@ -118,23 +126,45 @@ class SidePanelWidget(QtWidgets.QWidget):
         self._orig_description = description
         self._btn_description_save.setEnabled(False)
 
-    def _set_context(self, folder_id, task_id, rootless_path, filepath):
+    def _set_context(
+        self, folder_id, task_id, rootless_path, filepath, representation_id
+    ):
         workfile_info = None
-        # Check if folder, task and file are selected
+        published_workfile_info = None
+
+        # Check if folder, task and file are selected (workarea mode)
         if folder_id and task_id and rootless_path:
             workfile_info = self._controller.get_workfile_info(
                 folder_id, task_id, rootless_path
             )
-        enabled = workfile_info is not None
+        # Check if representation is selected (published mode)
+        elif representation_id:
+            published_workfile_info = (
+                self._controller.get_published_workfile_info(representation_id)
+            )
+
+        # Get version comment for published workfiles
+        version_comment = None
+        if representation_id and published_workfile_info:
+            version_comment = (
+                self._controller.get_published_workfile_version_comment(
+                    representation_id
+                )
+            )
+
+        enabled = (
+            workfile_info is not None or published_workfile_info is not None
+        )
 
         self._details_input.setEnabled(enabled)
-        self._description_input.setEnabled(enabled)
-        self._btn_description_save.setEnabled(enabled)
+        self._description_input.setEnabled(workfile_info is not None)
+        self._btn_description_save.setEnabled(workfile_info is not None)
 
         self._folder_id = folder_id
         self._task_id = task_id
         self._filepath = filepath
         self._rootless_path = rootless_path
+        self._representation_id = representation_id
 
         # Disable inputs and remove texts if any required arguments are
         #   missing
@@ -144,19 +174,28 @@ class SidePanelWidget(QtWidgets.QWidget):
             self._description_input.setPlainText("")
             return
 
-        description = workfile_info.description
-        size_value = file_size_to_string(workfile_info.file_size)
+        # Use published workfile info if available, otherwise use workarea
+        # info
+        info = (
+            published_workfile_info
+            if published_workfile_info
+            else workfile_info
+        )
+
+        description = info.description if hasattr(info, "description") else ""
+        size_value = file_size_to_string(info.file_size)
 
         # Append html string
         datetime_format = "%b %d %Y %H:%M:%S"
-        file_created = workfile_info.file_created
-        modification_time = workfile_info.file_modified
+        file_created = info.file_created
+        modification_time = info.file_modified
         if file_created:
             file_created = datetime.datetime.fromtimestamp(file_created)
 
         if modification_time:
             modification_time = datetime.datetime.fromtimestamp(
-                modification_time)
+                modification_time
+            )
 
         user_items_by_name = self._controller.get_user_items_by_name()
 
@@ -167,34 +206,47 @@ class SidePanelWidget(QtWidgets.QWidget):
             return username
 
         created_lines = []
-        if workfile_info.created_by:
-            created_lines.append(
-                convert_username(workfile_info.created_by)
-            )
-        if file_created:
-            created_lines.append(file_created.strftime(datetime_format))
+        # For published workfiles, use 'author' field
+        if published_workfile_info:
+            if published_workfile_info.author:
+                created_lines.append(
+                    convert_username(published_workfile_info.author)
+                )
+            if file_created:
+                created_lines.append(file_created.strftime(datetime_format))
+        else:
+            # For workarea workfiles, use 'created_by' field
+            if workfile_info.created_by:
+                created_lines.append(
+                    convert_username(workfile_info.created_by)
+                )
+            if file_created:
+                created_lines.append(file_created.strftime(datetime_format))
 
         if created_lines:
             created_lines.insert(0, "<b>Created:</b>")
 
         modified_lines = []
-        if workfile_info.updated_by:
-            modified_lines.append(
-                convert_username(workfile_info.updated_by)
-            )
+        # For workarea workfiles, show 'updated_by'
+        if workfile_info and workfile_info.updated_by:
+            modified_lines.append(convert_username(workfile_info.updated_by))
         if modification_time:
-            modified_lines.append(
-                modification_time.strftime(datetime_format)
-            )
+            modified_lines.append(modification_time.strftime(datetime_format))
         if modified_lines:
             modified_lines.insert(0, "<b>Modified:</b>")
 
-        lines = (
+        lines = [
             "<b>Size:</b>",
             size_value,
-            "<br/>".join(created_lines),
-            "<br/>".join(modified_lines),
-        )
+        ]
+        # Add version comment for published workfiles
+        if version_comment:
+            lines.append(f"<b>Comment:</b><br/>{version_comment}")
+        if created_lines:
+            lines.append("<br/>".join(created_lines))
+        if modified_lines:
+            lines.append("<br/>".join(modified_lines))
+
         self._orig_description = description
         self._description_input.setPlainText(description)
 
