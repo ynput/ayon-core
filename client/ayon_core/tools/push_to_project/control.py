@@ -233,6 +233,9 @@ class PushToContextController:
         thread.start()
         return item_ids
 
+    def set_version_up(self, state):
+        self._version_up = state
+
     def wait_for_process_thread(self):
         if self._process_thread is None:
             return

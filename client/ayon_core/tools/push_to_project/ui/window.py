@@ -438,7 +438,7 @@ class PushToContextSelectWindow(QtWidgets.QWidget):
         self._invalidate_use_original_names(use_original_name)
 
     def _on_version_up_checkbox_change(self, state: int) -> None:
-        self._controller._version_up = bool(state)
+        self._controller.set_version_up(bool(state))
 
     def _on_user_input_timer(self):
         folder_name_enabled = self._new_folder_name_enabled
