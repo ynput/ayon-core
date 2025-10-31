@@ -2,11 +2,10 @@ import logging
 import os
 from pathlib import Path
 from collections import defaultdict
+from typing import Any, Optional
 
 from qtpy import QtWidgets, QtCore, QtGui
-from ayon_api import get_representations
 
-from ayon_core.pipeline import load, Anatomy
 from ayon_core import resources, style
 from ayon_core.lib.transcoding import (
     IMAGE_EXTENSIONS,
@@ -16,8 +15,15 @@ from ayon_core.lib import (
     get_ffprobe_data,
     is_oiio_supported,
 )
+from ayon_core.pipeline import Anatomy
 from ayon_core.pipeline.load import get_representation_path_with_anatomy
 from ayon_core.tools.utils import show_message_dialog
+
+from ayon_core.pipeline.actions import (
+    LoaderSimpleActionPlugin,
+    LoaderActionSelection,
+    LoaderActionResult,
+)
 
 OTIO = None
 FRAME_SPLITTER = "__frame_splitter__"
@@ -30,34 +36,99 @@ def _import_otio():
         OTIO = opentimelineio
 
 
-class ExportOTIO(load.ProductLoaderPlugin):
-    """Export selected versions to OpenTimelineIO."""
-
-    is_multiple_contexts_compatible = True
-    sequence_splitter = "__sequence_splitter__"
-
-    representations = {"*"}
-    product_types = {"*"}
-    tool_names = ["library_loader"]
-
+class ExportOTIO(LoaderSimpleActionPlugin):
+    identifier = "core.export-otio"
     label = "Export OTIO"
+    group_label = None
     order = 35
-    icon = "save"
-    color = "#d8d8d8"
+    icon = {
+        "type": "material-symbols",
+        "name": "save",
+        "color": "#d8d8d8",
+    }
 
-    def load(self, contexts, name=None, namespace=None, options=None):
+    def is_compatible(
+        self, selection: LoaderActionSelection
+    ) -> bool:
+        # Don't show in hosts
+        if self.host_name is not None:
+            return False
+
+        return selection.versions_selected()
+
+    def execute_simple_action(
+        self,
+        selection: LoaderActionSelection,
+        form_values: dict[str, Any],
+    ) -> Optional[LoaderActionResult]:
         _import_otio()
+        version_ids = set(selection.selected_ids)
+
+        versions_by_id = {
+            version["id"]: version
+            for version in selection.entities.get_versions(version_ids)
+        }
+        product_ids = {
+            version["productId"]
+            for version in versions_by_id.values()
+        }
+        products_by_id = {
+            product["id"]: product
+            for product in selection.entities.get_products(product_ids)
+        }
+        folder_ids = {
+            product["folderId"]
+            for product in products_by_id.values()
+        }
+        folder_by_id = {
+            folder["id"]: folder
+            for folder in selection.entities.get_folders(folder_ids)
+        }
+        repre_entities = selection.entities.get_versions_representations(
+            version_ids
+        )
+
+        version_path_by_id = {}
+        for version in versions_by_id.values():
+            version_id = version["id"]
+            product_id = version["productId"]
+            product = products_by_id[product_id]
+            folder_id = product["folderId"]
+            folder = folder_by_id[folder_id]
+
+            version_path_by_id[version_id] = "/".join([
+                folder["path"],
+                product["name"],
+                version["name"]
+            ])
+
         try:
-            dialog = ExportOTIOOptionsDialog(contexts, self.log)
+            # TODO this should probably trigger a subprocess?
+            dialog = ExportOTIOOptionsDialog(
+                selection.project_name,
+                versions_by_id,
+                repre_entities,
+                version_path_by_id,
+                self.log
+            )
             dialog.exec_()
         except Exception:
             self.log.error("Failed to export OTIO.", exc_info=True)
+        return LoaderActionResult()
 
 
 class ExportOTIOOptionsDialog(QtWidgets.QDialog):
     """Dialog to select template where to deliver selected representations."""
 
-    def __init__(self, contexts, log=None, parent=None):
+    def __init__(
+        self,
+        project_name,
+        versions_by_id,
+        repre_entities,
+        version_path_by_id,
+        log=None,
+        parent=None
+    ):
         # Not all hosts have OpenTimelineIO available.
         self.log = log
 
@@ -73,30 +144,14 @@ class ExportOTIOOptionsDialog(QtWidgets.QDialog):
             | QtCore.Qt.WindowMinimizeButtonHint
         )
 
-        project_name = contexts[0]["project"]["name"]
-        versions_by_id = {
-            context["version"]["id"]: context["version"]
-            for context in contexts
-        }
-        repre_entities = list(get_representations(
-            project_name, version_ids=set(versions_by_id)
-        ))
         version_by_representation_id = {
             repre_entity["id"]: versions_by_id[repre_entity["versionId"]]
             for repre_entity in repre_entities
         }
-        version_path_by_id = {}
-        representations_by_version_id = {}
-        for context in contexts:
-            version_id = context["version"]["id"]
-            if version_id in version_path_by_id:
-                continue
-            representations_by_version_id[version_id] = []
-            version_path_by_id[version_id] = "/".join([
-                context["folder"]["path"],
-                context["product"]["name"],
-                context["version"]["name"]
-            ])
+        representations_by_version_id = {
+            version_id: []
+            for version_id in versions_by_id
+        }
 
         for repre_entity in repre_entities:
             representations_by_version_id[repre_entity["versionId"]].append(
