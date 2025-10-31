@@ -336,6 +336,7 @@ class LoaderWindow(QtWidgets.QWidget):
         self._selected_version_ids = set()
 
         self._set_product_type_filters = True
+        self._auto_select_first_item = True
 
         self._products_widget.set_enable_grouping(
             self._product_group_checkbox.isChecked()
@@ -682,7 +683,7 @@ class LoaderWindow(QtWidgets.QWidget):
                             repre_entity, anatomy
                         )
                         if video_path:
-                            if hasattr(video_path, 'normalized'):
+                            if hasattr(video_path, "normalized"):
                                 video_path_str = str(video_path.normalized())
                             else:
                                 video_path_str = str(video_path)
@@ -703,6 +704,12 @@ class LoaderWindow(QtWidgets.QWidget):
     def _update_thumbnails(self):
         # TODO make this threaded and show loading animation while running
         project_name = self._selected_project_name
+
+        # If nothing is selected, clear thumbnails immediately
+        if not self._selected_version_ids and not self._selected_folder_ids:
+            self._thumbnails_widget.set_current_thumbnails(None)
+            return
+
         entity_type = None
         entity_ids = set()
 
@@ -724,6 +731,11 @@ class LoaderWindow(QtWidgets.QWidget):
         # If we have a video path, use it directly
         if video_path:
             self._thumbnails_widget.set_current_thumbnail_paths([video_path])
+            return
+
+        # If we don't have any entity_ids to query, clear thumbnails
+        if not entity_ids:
+            self._thumbnails_widget.set_current_thumbnails(None)
             return
 
         # Otherwise use standard thumbnail system
@@ -752,6 +764,13 @@ class LoaderWindow(QtWidgets.QWidget):
 
     def _on_products_refresh(self):
         self._refresh_handler.set_products_refreshed()
+        if (
+            self._auto_select_first_item
+            and not self._selected_version_ids
+            and not self._selected_folder_ids
+        ):
+            self._auto_select_first_item = False
+            self._products_widget.select_latest_item()
 
     def _on_thumbnail_double_clicked(self, thumbnail_path):
         """Handle thumbnail double-click to open image with system default."""

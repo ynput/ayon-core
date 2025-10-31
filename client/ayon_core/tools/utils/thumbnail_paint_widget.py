@@ -135,10 +135,10 @@ class ThumbnailPainterWidget(QtWidgets.QWidget):
             return False
         basename = os.path.basename(filepath).lower()
         # Check for h264_* naming convention
-        if 'h264_' in basename or 'h264' in basename:
+        if "h264_" in basename or "h264" in basename:
             return True
         # Check for common video extensions
-        video_exts = ('.mp4', '.mov', '.avi', '.mkv', '.webm', '.m4v')
+        video_exts = (".mp4", ".mov", ".avi", ".mkv", ".webm", ".m4v")
         return any(filepath.lower().endswith(ext) for ext in video_exts)
 
     def _extract_first_frame(self, video_path):
@@ -148,7 +148,7 @@ class ThumbnailPainterWidget(QtWidgets.QWidget):
 
             # Create temp file for frame
             temp_fd, frame_path = tempfile.mkstemp(
-                suffix='.jpg', prefix='video_preview_'
+                suffix=".jpg", prefix="video_preview_"
             )
             os.close(temp_fd)
 
@@ -238,6 +238,19 @@ class ThumbnailPainterWidget(QtWidgets.QWidget):
 
         self._current_pixes = pixmaps or None
         self._has_pixes = self._current_pixes is not None
+
+        # Reset video state when clearing thumbnails
+        if not self._has_pixes:
+            self._is_video_content = False
+            self._current_video_path = None
+            self._play_overlay_visible = False
+            self._is_playing = False
+            if self._video_widget:
+                self._video_widget.hide()
+            if self._media_player:
+                self._media_player.stop()
+            self._current_thumbnail_paths = None
+
         self.clear_cache()
 
     def set_current_thumbnail_paths(self, thumbnail_paths=None):
@@ -252,14 +265,28 @@ class ThumbnailPainterWidget(QtWidgets.QWidget):
         """
         self._current_thumbnail_paths = thumbnail_paths
 
+        # Reset video state if no paths provided
+        if not thumbnail_paths or len(thumbnail_paths) == 0:
+            self._is_video_content = False
+            self._current_video_path = None
+            self._play_overlay_visible = False
+            self._is_playing = False
+            if self._video_widget:
+                self._video_widget.hide()
+            if self._media_player:
+                self._media_player.stop()
+            self._current_pixes = None
+            self._has_pixes = False
+            self.clear_cache()
+            return
+
         # Check if this is video content
         is_video = False
         video_path = None
-        if thumbnail_paths and len(thumbnail_paths) > 0:
-            first_path = thumbnail_paths[0]
-            if self._is_video_file(first_path):
-                is_video = True
-                video_path = first_path
+        first_path = thumbnail_paths[0]
+        if first_path and self._is_video_file(first_path):
+            is_video = True
+            video_path = first_path
 
         self._is_video_content = is_video
         self._current_video_path = video_path
@@ -293,13 +320,16 @@ class ThumbnailPainterWidget(QtWidgets.QWidget):
             self._video_widget.hide()
         self._is_playing = False
         self._play_overlay_visible = False
+        self._is_video_content = False
+        self._current_video_path = None
 
         pixes = []
         if thumbnail_paths:
             for thumbnail_path in thumbnail_paths:
-                pixes.append(QtGui.QPixmap(thumbnail_path))
+                if thumbnail_path and os.path.exists(thumbnail_path):
+                    pixes.append(QtGui.QPixmap(thumbnail_path))
 
-        self.set_current_thumbnails(pixes)
+        self.set_current_thumbnails(pixes if pixes else None)
 
     def paintEvent(self, event):
         if (

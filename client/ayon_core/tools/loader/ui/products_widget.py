@@ -355,6 +355,24 @@ class ProductsWidget(QtWidgets.QWidget):
     def get_selected_version_info(self):
         return self._selected_versions_info
 
+    def select_latest_item(self):
+        """Select the latest (most recently published) item in the products view."""
+        proxy_model = self._products_proxy_model
+        view = self._products_view
+        model = self._products_model
+
+        # Sort by published time column in descending order to get latest first
+        view.sortByColumn(model.published_time_col, QtCore.Qt.DescendingOrder)
+
+        # Get the first visible index from the proxy model (now sorted by latest)
+        root_index = proxy_model.index(0, 0)
+        if root_index.isValid():
+            selection_model = view.selectionModel()
+            selection_model.select(
+                root_index, QtCore.QItemSelectionModel.ClearAndSelect
+            )
+            view.setCurrentIndex(root_index)
+
     def refresh(self):
         self._refresh_model()
 
