@@ -376,7 +376,6 @@ class PushToContextSelectWindow(QtWidgets.QWidget):
         self._invalidate_new_folder_name(
             new_folder_name, user_values["is_new_folder_name_valid"]
         )
-        self._controller._invalidate()
         self._projects_combobox.refresh()
 
     def _on_first_show(self):
