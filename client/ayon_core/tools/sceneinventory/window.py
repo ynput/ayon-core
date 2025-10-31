@@ -36,6 +36,12 @@ class SceneInventoryWindow(QtWidgets.QDialog):
         outdated_only_checkbox.setToolTip("Show outdated files only")
         outdated_only_checkbox.setChecked(False)
 
+        grouping_checkbox = QtWidgets.QCheckBox(
+            "Enable grouping", self
+        )
+        grouping_checkbox.setToolTip("Group items by product group")
+        grouping_checkbox.setChecked(True)
+
         update_all_icon = qtawesome.icon("fa.arrow-up", color="white")
         update_all_button = QtWidgets.QPushButton(self)
         update_all_button.setToolTip("Update all outdated to latest version")
@@ -52,6 +58,7 @@ class SceneInventoryWindow(QtWidgets.QDialog):
         headers_layout.addWidget(filter_label, 0)
         headers_layout.addWidget(text_filter, 1)
         headers_layout.addWidget(outdated_only_checkbox, 0)
+        headers_layout.addWidget(grouping_checkbox, 0)
         headers_layout.addWidget(update_all_button, 0)
         headers_layout.addWidget(refresh_button, 0)
 
@@ -71,6 +78,9 @@ class SceneInventoryWindow(QtWidgets.QDialog):
         outdated_only_checkbox.stateChanged.connect(
             self._on_outdated_state_change
         )
+        grouping_checkbox.stateChanged.connect(
+            self._on_grouping_state_change
+        )
         view.hierarchy_view_changed.connect(
             self._on_hierarchy_view_change
         )
@@ -83,6 +93,7 @@ class SceneInventoryWindow(QtWidgets.QDialog):
         self._controller = controller
         self._update_all_button = update_all_button
         self._outdated_only_checkbox = outdated_only_checkbox
+        self._grouping_checkbox = grouping_checkbox
         self._view = view
 
         self._first_show = True
@@ -132,6 +143,11 @@ class SceneInventoryWindow(QtWidgets.QDialog):
     def _on_outdated_state_change(self):
         self._view.set_filter_outdated(
             self._outdated_only_checkbox.isChecked()
+        )
+
+    def _on_grouping_state_change(self):
+        self._view.set_enable_grouping(
+            self._grouping_checkbox.isChecked()
         )
 
     def _on_update_all(self):
