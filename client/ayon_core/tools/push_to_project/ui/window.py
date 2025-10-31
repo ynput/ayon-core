@@ -153,7 +153,12 @@ class PushToContextSelectWindow(QtWidgets.QWidget):
         inputs_layout.addRow("New folder name", folder_name_input)
         inputs_layout.addRow("Variant", variant_input)
         inputs_layout.addRow(
-            "Use original product names", original_names_checkbox)
+            "Use original product names", original_names_checkbox
+        )
+        version_up_checkbox = NiceCheckbox(True, parent=inputs_widget)
+        inputs_layout.addRow(
+            "Version up existing Product", version_up_checkbox
+        )
         inputs_layout.addRow("Comment", comment_input)
 
         main_splitter.addWidget(context_widget)
@@ -209,8 +214,11 @@ class PushToContextSelectWindow(QtWidgets.QWidget):
             "Show error detail dialog to copy full error."
         )
         original_names_checkbox.setToolTip(
-            "Required for multi copy, doesn't allow changes "
-            "variant values."
+            "Required for multi copy, doesn't allow changes variant values."
+        )
+        version_up_checkbox.setToolTip(
+            "Version up existing product. If not selected version will be "
+            "updated."
         )
 
         overlay_close_btn = QtWidgets.QPushButton(
@@ -259,6 +267,8 @@ class PushToContextSelectWindow(QtWidgets.QWidget):
         library_only_checkbox.stateChanged.connect(self._on_library_only_change)
         original_names_checkbox.stateChanged.connect(
             self._on_original_names_change)
+        version_up_checkbox.stateChanged.connect(
+            self._on_version_up_checkbox_change)
 
         publish_btn.clicked.connect(self._on_select_click)
         cancel_btn.clicked.connect(self._on_close_click)
@@ -328,6 +338,7 @@ class PushToContextSelectWindow(QtWidgets.QWidget):
         self._new_folder_name_input_text = None
         self._variant_input_text = None
         self._comment_input_text = None
+        self._version_up_checkbox = version_up_checkbox
 
         self._first_show = True
         self._show_timer = show_timer
@@ -344,6 +355,7 @@ class PushToContextSelectWindow(QtWidgets.QWidget):
         show_detail_btn.setVisible(False)
         overlay_close_btn.setVisible(False)
         overlay_try_btn.setVisible(False)
+        version_up_checkbox.setChecked(False)
 
     # Support of public api function of controller
     def set_source(self, project_name, version_ids):
@@ -423,6 +435,10 @@ class PushToContextSelectWindow(QtWidgets.QWidget):
     def _on_original_names_change(self, state: int) -> None:
         use_original_name = bool(state)
         self._invalidate_use_original_names(use_original_name)
+
+    def _on_version_up_checkbox_change(self, state: int) -> None:
+        self._controller._version_up = bool(state)
+        self._version_up_checkbox.setChecked(bool(state))
 
     def _on_user_input_timer(self):
         folder_name_enabled = self._new_folder_name_enabled

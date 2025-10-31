@@ -41,6 +41,7 @@ class PushToContextController:
         self._process_item_id = None
 
         self._use_original_name = False
+        self._version_up = False
 
         self.set_source(project_name, version_ids)
 
