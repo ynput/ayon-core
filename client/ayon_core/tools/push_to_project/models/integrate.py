@@ -89,7 +89,7 @@ class ProjectPushItem:
         variant,
         comment,
         new_folder_name,
-        dst_version,
+        version_up,
         item_id=None,
         use_original_name=False
     ):
@@ -100,7 +100,7 @@ class ProjectPushItem:
         self.dst_project_name = dst_project_name
         self.dst_folder_id = dst_folder_id
         self.dst_task_name = dst_task_name
-        self.dst_version = dst_version
+        self.version_up = version_up
         self.variant = variant
         self.new_folder_name = new_folder_name
         self.comment = comment or ""
@@ -118,7 +118,7 @@ class ProjectPushItem:
                 str(self.dst_folder_id),
                 str(self.new_folder_name),
                 str(self.dst_task_name),
-                str(self.dst_version),
+                str(self.version_up),
                 self.use_original_name
             ])
         return self._repr_value
@@ -133,7 +133,7 @@ class ProjectPushItem:
             "dst_project_name": self.dst_project_name,
             "dst_folder_id": self.dst_folder_id,
             "dst_task_name": self.dst_task_name,
-            "dst_version": self.dst_version,
+            "version_up": self.version_up,
             "variant": self.variant,
             "comment": self.comment,
             "new_folder_name": self.new_folder_name,
@@ -962,7 +962,7 @@ class ProjectPushItemProcess:
         """Make sure version document exits in database."""
 
         project_name = self._item.dst_project_name
-        version = self._item.dst_version
+        version_up = self._item.version_up
         src_version_entity = self._src_version_entity
         product_entity = self._product_entity
         product_id = product_entity["id"]
@@ -993,24 +993,25 @@ class ProjectPushItemProcess:
             if key in src_attrib:
                 dst_attrib[key] = src_attrib[key]
 
-        if version is None:
-            last_version_entity = ayon_api.get_last_version_by_product_id(
-                project_name, product_id
+        last_version_entity = ayon_api.get_last_version_by_product_id(
+            project_name, product_id
+        )
+        if last_version_entity is None:
+            dst_version = get_versioning_start(
+                project_name,
+                self.host_name,
+                task_name=self._task_info.get("name"),
+                task_type=self._task_info.get("taskType"),
+                product_type=product_type,
+                product_name=product_entity["name"],
             )
-            if last_version_entity:
-                version = int(last_version_entity["version"]) + 1
-            else:
-                version = get_versioning_start(
-                    project_name,
-                    self.host_name,
-                    task_name=self._task_info.get("name"),
-                    task_type=self._task_info.get("taskType"),
-                    product_type=product_type,
-                    product_name=product_entity["name"],
-                )
+        else:
+            dst_version = int(last_version_entity["version"])
+            if version_up:
+                dst_version += 1
 
         existing_version_entity = ayon_api.get_version_by_name(
-            project_name, version, product_id
+            project_name, dst_version, product_id
         )
         thumbnail_id = self._copy_version_thumbnail()
 
@@ -1032,7 +1033,7 @@ class ProjectPushItemProcess:
         copied_status = self._get_transferable_status(src_version_entity)
 
         version_entity = new_version_entity(
-            version,
+            dst_version,
             product_id,
             author=src_version_entity["author"],
             status=copied_status,
@@ -1380,7 +1381,7 @@ class IntegrateModel:
         variant,
         comment,
         new_folder_name,
-        dst_version,
+        version_up,
         use_original_name
     ):
         """Create new item for integration.
@@ -1394,7 +1395,7 @@ class IntegrateModel:
             variant (str): Variant name.
             comment (Union[str, None]): Comment.
             new_folder_name (Union[str, None]): New folder name.
-            dst_version (int): Destination version number.
+            version_up (bool): Should destination product be versioned up
             use_original_name (bool): If original product names should be used
 
         Returns:
@@ -1411,7 +1412,7 @@ class IntegrateModel:
             variant,
             comment=comment,
             new_folder_name=new_folder_name,
-            dst_version=dst_version,
+            version_up=version_up,
             use_original_name=use_original_name
         )
         process_item = ProjectPushItemProcess(self, item)
