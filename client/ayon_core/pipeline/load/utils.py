@@ -920,7 +920,6 @@ def get_last_versions_with_status(
     _versions = ayon_api.get_versions(
         project_name,
         product_ids=product_ids,
-        # latest=True,
         hero=False,
         active=active,
         fields=fields,
