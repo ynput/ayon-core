@@ -955,8 +955,9 @@ class ProjectPushItemProcess:
             "description",
             "productGroup",
         }:
-            if key in src_attrib:
-                dst_attrib[key] = src_attrib[key]
+            value = src_attrib.get(key)
+            if value:
+                dst_attrib[key] = value
 
         product_entity = new_product_entity(
             product_name,
@@ -1001,8 +1002,9 @@ class ProjectPushItemProcess:
             "description",
             "intent",
         }:
-            if key in src_attrib:
-                dst_attrib[key] = src_attrib[key]
+            value = src_attrib.get(key)
+            if value:
+                dst_attrib[key] = value
 
         if version is None:
             last_version_entity = ayon_api.get_last_version_by_product_id(
