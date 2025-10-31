@@ -32,6 +32,7 @@ class CollectCoreJobEnvVars(pyblish.api.ContextPlugin):
 
         for key in [
             "AYON_BUNDLE_NAME",
+            "AYON_STUDIO_BUNDLE_NAME",
             "AYON_USE_STAGING",
             "AYON_IN_TESTS",
             # NOTE Not sure why workdir is needed?
@@ -43,4 +44,3 @@ class CollectCoreJobEnvVars(pyblish.api.ContextPlugin):
             if value:
                 self.log.debug(f"Setting job env: {key}: {value}")
                 env[key] = value
-

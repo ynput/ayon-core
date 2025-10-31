@@ -6,6 +6,7 @@ import re
 
 import pyblish.api
 from ayon_core.lib import (
+    get_oiio_tool_args,
     get_ffmpeg_tool_args,
     get_ffprobe_data,
 
@@ -15,9 +16,13 @@ from ayon_core.lib import (
     path_to_subprocess_arg,
     run_subprocess,
 )
-from ayon_core.lib.transcoding import convert_colorspace
+from ayon_core.lib.transcoding import (
+    oiio_color_convert,
+    get_oiio_input_and_channel_args,
+    get_oiio_info_for_input,
+)
 
-from ayon_core.lib.transcoding import VIDEO_EXTENSIONS
+from ayon_core.lib.transcoding import VIDEO_EXTENSIONS, IMAGE_EXTENSIONS
 
 
 class ExtractThumbnail(pyblish.api.InstancePlugin):
@@ -38,10 +43,12 @@ class ExtractThumbnail(pyblish.api.InstancePlugin):
         "substancedesigner",
         "nuke",
         "aftereffects",
+        "photoshop",
         "unreal",
         "houdini",
-        "circuit",
+        "batchdelivery",
     ]
+    settings_category = "core"
     enabled = False
 
     integrate_thumbnail = False
@@ -163,9 +170,12 @@ class ExtractThumbnail(pyblish.api.InstancePlugin):
         # Store new staging to cleanup paths
         instance.context.data["cleanupFullPaths"].append(dst_staging)
 
-        thumbnail_created = False
         oiio_supported = is_oiio_supported()
+        thumbnail_created = False
         for repre in filtered_repres:
+            # Reset for each iteration to handle cases where multiple
+            # reviewable thumbnails are needed
+            repre_thumb_created = False
             repre_files = repre["files"]
             src_staging = os.path.normpath(repre["stagingDir"])
             if not isinstance(repre_files, (list, tuple)):
@@ -205,6 +215,12 @@ class ExtractThumbnail(pyblish.api.InstancePlugin):
             full_output_path = os.path.join(dst_staging, jpeg_file)
             colorspace_data = repre.get("colorspaceData")
 
+            # NOTE We should find out what is happening here. Why don't we
+            #   use oiiotool all the time if it is available? Only possible
+            #   reason might be that video files should be converted using
+            #   ffmpeg, but other then that, we should use oiio all the time.
+            #   - We should also probably get rid of the ffmpeg settings...
+
             # only use OIIO if it is supported and representation has
             # colorspace data
             if oiio_supported and colorspace_data:
@@ -214,7 +230,7 @@ class ExtractThumbnail(pyblish.api.InstancePlugin):
                 )
                 # If the input can read by OIIO then use OIIO method for
                 # conversion otherwise use ffmpeg
-                thumbnail_created = self._create_thumbnail_oiio(
+                repre_thumb_created = self._create_colorspace_thumbnail(
                     full_input_path,
                     full_output_path,
                     colorspace_data
@@ -223,21 +239,21 @@ class ExtractThumbnail(pyblish.api.InstancePlugin):
             # Try to use FFMPEG if OIIO is not supported or for cases when
             #   oiiotool isn't available or representation is not having
             #   colorspace data
-            if not thumbnail_created:
-                if oiio_supported:
-                    self.log.debug(
-                        "Converting with FFMPEG because input"
-                        " can't be read by OIIO."
-                    )
-
-                thumbnail_created = self._create_thumbnail_ffmpeg(
+            if not repre_thumb_created:
+                repre_thumb_created = self._create_thumbnail_ffmpeg(
                     full_input_path, full_output_path
                 )
 
-            # Skip representation and try next one if  wasn't created
-            if not thumbnail_created:
+            # Skip representation and try next one if wasn't created
+            if not repre_thumb_created and oiio_supported:
+                repre_thumb_created = self._create_thumbnail_oiio(
+                    full_input_path, full_output_path
+                )
+
+            if not repre_thumb_created:
                 continue
 
+            thumbnail_created = True
             if len(explicit_repres) > 1:
                 repre_name = "thumbnail_{}".format(repre["outputName"])
             else:
@@ -332,7 +348,8 @@ class ExtractThumbnail(pyblish.api.InstancePlugin):
         return need_thumb_repres
 
     def _get_filtered_repres(self, instance):
-        filtered_repres = []
+        review_repres = []
+        other_repres = []
         src_repres = instance.data.get("representations") or []
 
         for repre in src_repres:
@@ -344,19 +361,38 @@ class ExtractThumbnail(pyblish.api.InstancePlugin):
                 # to be published locally
                 continue
 
-            if "review" not in tags:
-                continue
-
             if not repre.get("files"):
                 self.log.debug((
                     "Representation \"{}\" doesn't have files. Skipping"
                 ).format(repre["name"]))
                 continue
 
-            filtered_repres.append(repre)
-        return filtered_repres
+            if "review" in tags:
+                review_repres.append(repre)
+            elif self._is_valid_images_repre(repre):
+                other_repres.append(repre)
 
-    def _create_thumbnail_oiio(
+        return review_repres + other_repres
+
+    def _is_valid_images_repre(self, repre):
+        """Check if representation contains valid image files
+
+        Args:
+            repre (dict): representation
+
+        Returns:
+            bool: whether the representation has the valid image content
+        """
+        # Get first file's extension
+        first_file = repre["files"]
+        if isinstance(first_file, (list, tuple)):
+            first_file = first_file[0]
+
+        ext = os.path.splitext(first_file)[1].lower()
+
+        return ext in IMAGE_EXTENSIONS or ext in VIDEO_EXTENSIONS
+
+    def _create_colorspace_thumbnail(
         self,
         src_path,
         dst_path,
@@ -407,13 +443,15 @@ class ExtractThumbnail(pyblish.api.InstancePlugin):
                 oiio_default_view = display_and_view["view"]
 
         try:
-            convert_colorspace(
+            oiio_color_convert(
                 src_path,
                 dst_path,
                 colorspace_data["config"]["path"],
                 colorspace_data["colorspace"],
-                display=repre_display or oiio_default_display,
-                view=repre_view or oiio_default_view,
+                source_display=colorspace_data.get("display"),
+                source_view=colorspace_data.get("view"),
+                target_display=repre_display or oiio_default_display,
+                target_view=repre_view or oiio_default_view,
                 target_colorspace=oiio_default_colorspace,
                 additional_command_args=resolution_arg,
                 logger=self.log,
@@ -427,9 +465,50 @@ class ExtractThumbnail(pyblish.api.InstancePlugin):
 
         return True
 
+    def _create_thumbnail_oiio(self, src_path, dst_path):
+        self.log.debug(f"Extracting thumbnail with OIIO: {dst_path}")
+
+        try:
+            resolution_arg = self._get_resolution_arg("oiiotool", src_path)
+        except RuntimeError:
+            self.log.warning(
+                "Failed to create thumbnail using oiio", exc_info=True
+            )
+            return False
+
+        input_info = get_oiio_info_for_input(src_path, logger=self.log)
+        input_arg, channels_arg = get_oiio_input_and_channel_args(input_info)
+        oiio_cmd = get_oiio_tool_args(
+            "oiiotool",
+            input_arg, src_path,
+            # Tell oiiotool which channels should be put to top stack
+            #   (and output)
+            "--ch", channels_arg,
+            # Use first subimage
+            "--subimage", "0"
+        )
+        oiio_cmd.extend(resolution_arg)
+        oiio_cmd.extend(("-o", dst_path))
+        self.log.debug("Running: {}".format(" ".join(oiio_cmd)))
+        try:
+            run_subprocess(oiio_cmd, logger=self.log)
+            return True
+        except Exception:
+            self.log.warning(
+                "Failed to create thumbnail using oiiotool",
+                exc_info=True
+            )
+            return False
+
     def _create_thumbnail_ffmpeg(self, src_path, dst_path):
-        self.log.debug("Extracting thumbnail with FFMPEG: {}".format(dst_path))
-        resolution_arg = self._get_resolution_arg("ffmpeg", src_path)
+        try:
+            resolution_arg = self._get_resolution_arg("ffmpeg", src_path)
+        except RuntimeError:
+            self.log.warning(
+                "Failed to create thumbnail using ffmpeg", exc_info=True
+            )
+            return False
+
         ffmpeg_path_args = get_ffmpeg_tool_args("ffmpeg")
         ffmpeg_args = self.ffmpeg_args or {}
 
@@ -450,7 +529,7 @@ class ExtractThumbnail(pyblish.api.InstancePlugin):
         # output arguments from presets
         jpeg_items.extend(ffmpeg_args.get("output") or [])
         # we just want one frame from movie files
-        jpeg_items.extend(["-vframes", "1"])
+        jpeg_items.extend(["-frames:v", "1"])
 
         if resolution_arg:
             jpeg_items.extend(resolution_arg)
@@ -482,27 +561,36 @@ class ExtractThumbnail(pyblish.api.InstancePlugin):
         # Set video input attributes
         max_int = str(2147483647)
         video_data = get_ffprobe_data(video_file_path, logger=self.log)
-        # Use duration of the individual streams since it is returned with
-        # higher decimal precision than 'format.duration'. We need this
-        # more precise value for calculating the correct amount of frames
-        # for higher FPS ranges or decimal ranges, e.g. 29.97 FPS
-        duration = max(
-            float(stream.get("duration", 0))
-            for stream in video_data["streams"]
-            if stream.get("codec_type") == "video"
-        )
 
-        cmd_args = [
-            "-y",
-            "-ss", str(duration * self.duration_split),
+        # Get duration or use a safe default (single frame)
+        duration = 0
+        for stream in video_data["streams"]:
+            if stream.get("codec_type") == "video":
+                stream_duration = float(stream.get("duration", 0))
+                if stream_duration > duration:
+                    duration = stream_duration
+
+        # For very short videos, just use the first frame
+        # Calculate seek position safely
+        seek_position = 0.0
+        # Only use timestamp calculation for videos longer than 0.1 seconds
+        if duration > 0.1:
+            seek_position = duration * self.duration_split
+
+        # Build command args
+        cmd_args = []
+        if seek_position > 0.0:
+            cmd_args.extend(["-ss", str(seek_position)])
+
+        # Add generic ffmpeg commands
+        cmd_args.extend([
             "-i", video_file_path,
             "-analyzeduration", max_int,
             "-probesize", max_int,
-            "-vframes", "1"
-        ]
-
-        # add output file path
-        cmd_args.append(output_thumb_file_path)
+            "-y",
+            "-frames:v", "1",
+            output_thumb_file_path
+        ])
 
         # create ffmpeg command
         cmd = get_ffmpeg_tool_args(
@@ -513,15 +601,53 @@ class ExtractThumbnail(pyblish.api.InstancePlugin):
             # run subprocess
             self.log.debug("Executing: {}".format(" ".join(cmd)))
             run_subprocess(cmd, logger=self.log)
-            self.log.debug(
-                "Thumbnail created: {}".format(output_thumb_file_path))
-            return output_thumb_file_path
+
+            # Verify the output file was created
+            if (
+                os.path.exists(output_thumb_file_path)
+                and os.path.getsize(output_thumb_file_path) > 0
+            ):
+                self.log.debug(
+                    "Thumbnail created: {}".format(output_thumb_file_path))
+                return output_thumb_file_path
+            self.log.warning("Output file was not created or is empty")
+
+            # Try to create thumbnail without offset
+            # - skip if offset did not happen
+            if "-ss" not in cmd_args:
+                return None
+
+            self.log.debug("Trying fallback without offset")
+            # Remove -ss and its value
+            ss_index = cmd_args.index("-ss")
+            cmd_args.pop(ss_index)  # Remove -ss
+            cmd_args.pop(ss_index)  # Remove the timestamp value
+
+            # Create new command and try again
+            cmd = get_ffmpeg_tool_args("ffmpeg", *cmd_args)
+            self.log.debug("Fallback command: {}".format(" ".join(cmd)))
+            run_subprocess(cmd, logger=self.log)
+
+            if (
+                os.path.exists(output_thumb_file_path)
+                and os.path.getsize(output_thumb_file_path) > 0
+            ):
+                self.log.debug("Fallback thumbnail created")
+                return output_thumb_file_path
+            return None
         except RuntimeError as error:
             self.log.warning(
                 "Failed intermediate thumb source using ffmpeg: {}".format(
                     error)
             )
             return None
+        finally:
+            # Remove output file if is empty
+            if (
+                os.path.exists(output_thumb_file_path)
+                and os.path.getsize(output_thumb_file_path) == 0
+            ):
+                os.remove(output_thumb_file_path)
 
     def _get_resolution_arg(
         self,

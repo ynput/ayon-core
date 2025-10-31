@@ -358,7 +358,7 @@ class PublishReportMaker:
 
         exception = result.get("error")
         if exception:
-            fname, line_no, func, exc = exception.traceback
+            fname, line_no, func, _ = exception.traceback
 
             # Conversion of exception into string may crash
             try:

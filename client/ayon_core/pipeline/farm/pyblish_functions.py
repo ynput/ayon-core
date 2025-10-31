@@ -1,4 +1,4 @@
-from __future__  import annotations
+from __future__ import annotations
 import copy
 import os
 import re
@@ -249,7 +249,8 @@ def create_skeleton_instance(
         # map inputVersions `ObjectId` -> `str` so json supports it
         "inputVersions": list(map(str, data.get("inputVersions", []))),
         "colorspace": data.get("colorspace"),
-        "hasExplicitFrames": data.get("hasExplicitFrames")
+        "hasExplicitFrames": data.get("hasExplicitFrames", False),
+        "reuseLastVersion": data.get("reuseLastVersion", False),
     }
 
     if data.get("renderlayer"):
@@ -659,14 +660,6 @@ def _get_legacy_product_name_and_group(
     """
     warnings.warn("Using legacy product name for renders",
                   DeprecationWarning)
-
-    if not source_product_name.startswith(product_type):
-        resulting_group_name = '{}{}{}{}{}'.format(
-            product_type,
-            task_name[0].upper(), task_name[1:],
-            source_product_name[0].upper(), source_product_name[1:])
-    else:
-        resulting_group_name = source_product_name
 
     # create product name `<product type><Task><Product name>`
     if not source_product_name.startswith(product_type):
@@ -1168,7 +1161,7 @@ def prepare_cache_representations(skeleton_data, exp_files, anatomy):
 
     """
     representations = []
-    collections, remainders = clique.assemble(exp_files)
+    collections, _remainders = clique.assemble(exp_files)
 
     log = Logger.get_logger("farm_publishing")
 

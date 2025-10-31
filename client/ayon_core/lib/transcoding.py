@@ -6,6 +6,8 @@ import collections
 import tempfile
 import subprocess
 import platform
+import warnings
+import functools
 from typing import Optional
 
 import xml.etree.ElementTree
@@ -65,6 +67,47 @@ VIDEO_EXTENSIONS = {
     ".mpv", ".mxf", ".nsv", ".ogg", ".ogv", ".qt", ".rm", ".rmvb",
     ".roq", ".svi", ".vob", ".webm", ".wmv", ".yuv"
 }
+
+
+def deprecated(new_destination):
+    """Mark functions as deprecated.
+
+    It will result in a warning being emitted when the function is used.
+    """
+
+    func = None
+    if callable(new_destination):
+        func = new_destination
+        new_destination = None
+
+    def _decorator(decorated_func):
+        if new_destination is None:
+            warning_message = (
+                " Please check content of deprecated function to figure out"
+                " possible replacement."
+            )
+        else:
+            warning_message = " Please replace your usage with '{}'.".format(
+                new_destination
+            )
+
+        @functools.wraps(decorated_func)
+        def wrapper(*args, **kwargs):
+            warnings.simplefilter("always", DeprecationWarning)
+            warnings.warn(
+                (
+                    "Call to deprecated function '{}'"
+                    "\nFunction was moved or removed.{}"
+                ).format(decorated_func.__name__, warning_message),
+                category=DeprecationWarning,
+                stacklevel=4
+            )
+            return decorated_func(*args, **kwargs)
+        return wrapper
+
+    if func is None:
+        return _decorator
+    return _decorator(func)
 
 
 def get_transcode_temp_directory():
@@ -377,11 +420,14 @@ def get_review_info_by_layer_name(channel_names):
         channel = last_part[0].upper()
         rgba_by_layer_name[layer_name][channel] = channel_name
 
-    # Put empty layer to the beginning of the list
+    # Put empty layer or 'rgba' to the beginning of the list
     # - if input has R, G, B, A channels they should be used for review
-    if "" in layer_names_order:
-        layer_names_order.remove("")
-        layer_names_order.insert(0, "")
+    # NOTE They are iterated in reversed order because they're inserted to
+    #   the beginning of 'layer_names_order' -> last added will be first.
+    for name in reversed(["", "rgba"]):
+        if name in layer_names_order:
+            layer_names_order.remove(name)
+            layer_names_order.insert(0, name)
 
     output = []
     for layer_name in layer_names_order:
@@ -526,137 +572,6 @@ def should_convert_for_ffmpeg(src_filepath):
     return False
 
 
-# Deprecated since 2022 4 20
-# - Reason - Doesn't convert sequences right way: Can't handle gaps, reuse
-#       first frame for all frames and changes filenames when input
-#       is sequence.
-# - use 'convert_input_paths_for_ffmpeg' instead
-def convert_for_ffmpeg(
-    first_input_path,
-    output_dir,
-    input_frame_start=None,
-    input_frame_end=None,
-    logger=None
-):
-    """Convert source file to format supported in ffmpeg.
-
-    Currently can convert only exrs.
-
-    Args:
-        first_input_path (str): Path to first file of a sequence or a single
-            file path for non-sequential input.
-        output_dir (str): Path to directory where output will be rendered.
-            Must not be same as input's directory.
-        input_frame_start (int): Frame start of input.
-        input_frame_end (int): Frame end of input.
-        logger (logging.Logger): Logger used for logging.
-
-    Raises:
-        ValueError: If input filepath has extension not supported by function.
-            Currently is supported only ".exr" extension.
-    """
-    if logger is None:
-        logger = logging.getLogger(__name__)
-
-    logger.warning((
-        "DEPRECATED: 'ayon_core.lib.transcoding.convert_for_ffmpeg' is"
-        " deprecated function of conversion for FFMpeg. Please replace usage"
-        " with 'ayon_core.lib.transcoding.convert_input_paths_for_ffmpeg'"
-    ))
-
-    ext = os.path.splitext(first_input_path)[1].lower()
-    if ext != ".exr":
-        raise ValueError((
-            "Function 'convert_for_ffmpeg' currently support only"
-            " \".exr\" extension. Got \"{}\"."
-        ).format(ext))
-
-    is_sequence = False
-    if input_frame_start is not None and input_frame_end is not None:
-        is_sequence = int(input_frame_end) != int(input_frame_start)
-
-    input_info = get_oiio_info_for_input(first_input_path, logger=logger)
-
-    # Change compression only if source compression is "dwaa" or "dwab"
-    #   - they're not supported in ffmpeg
-    compression = input_info["attribs"].get("compression")
-    if compression in ("dwaa", "dwab"):
-        compression = "none"
-
-    # Prepare subprocess arguments
-    oiio_cmd = get_oiio_tool_args(
-        "oiiotool",
-        # Don't add any additional attributes
-        "--nosoftwareattrib",
-    )
-    # Add input compression if available
-    if compression:
-        oiio_cmd.extend(["--compression", compression])
-
-    # Collect channels to export
-    input_arg, channels_arg = get_oiio_input_and_channel_args(input_info)
-
-    oiio_cmd.extend([
-        input_arg, first_input_path,
-        # Tell oiiotool which channels should be put to top stack (and output)
-        "--ch", channels_arg,
-        # Use first subimage
-        "--subimage", "0"
-    ])
-
-    # Add frame definitions to arguments
-    if is_sequence:
-        oiio_cmd.extend([
-            "--frames", "{}-{}".format(input_frame_start, input_frame_end)
-        ])
-
-    for attr_name, attr_value in input_info["attribs"].items():
-        if not isinstance(attr_value, str):
-            continue
-
-        # Remove attributes that have string value longer than allowed length
-        #   for ffmpeg or when contain prohibited symbols
-        erase_reason = "Missing reason"
-        erase_attribute = False
-        if len(attr_value) > MAX_FFMPEG_STRING_LEN:
-            erase_reason = "has too long value ({} chars).".format(
-                len(attr_value)
-            )
-            erase_attribute = True
-
-        if not erase_attribute:
-            for char in NOT_ALLOWED_FFMPEG_CHARS:
-                if char in attr_value:
-                    erase_attribute = True
-                    erase_reason = (
-                        "contains unsupported character \"{}\"."
-                    ).format(char)
-                    break
-
-        if erase_attribute:
-            # Set attribute to empty string
-            logger.info((
-                "Removed attribute \"{}\" from metadata because {}."
-            ).format(attr_name, erase_reason))
-            oiio_cmd.extend(["--eraseattrib", attr_name])
-
-    # Add last argument - path to output
-    if is_sequence:
-        ext = os.path.splitext(first_input_path)[1]
-        base_filename = "tmp.%{:0>2}d{}".format(
-            len(str(input_frame_end)), ext
-        )
-    else:
-        base_filename = os.path.basename(first_input_path)
-    output_path = os.path.join(output_dir, base_filename)
-    oiio_cmd.extend([
-        "-o", output_path
-    ])
-
-    logger.debug("Conversion command: {}".format(" ".join(oiio_cmd)))
-    run_subprocess(oiio_cmd, logger=logger)
-
-
 def convert_input_paths_for_ffmpeg(
     input_paths,
     output_dir,
@@ -664,7 +579,7 @@ def convert_input_paths_for_ffmpeg(
 ):
     """Convert source file to format supported in ffmpeg.
 
-    Currently can convert only exrs. The input filepaths should be files
+    Can currently convert only EXRs. The input filepaths should be files
     with same type. Information about input is loaded only from first found
     file.
 
@@ -691,10 +606,10 @@ def convert_input_paths_for_ffmpeg(
     ext = os.path.splitext(first_input_path)[1].lower()
 
     if ext != ".exr":
-        raise ValueError((
-            "Function 'convert_for_ffmpeg' currently support only"
-            " \".exr\" extension. Got \"{}\"."
-        ).format(ext))
+        raise ValueError(
+            "Function 'convert_input_paths_for_ffmpeg' currently supports"
+            f" only \".exr\" extension. Got \"{ext}\"."
+        )
 
     input_info = get_oiio_info_for_input(first_input_path, logger=logger)
 
@@ -1097,6 +1012,8 @@ def convert_ffprobe_fps_to_float(value):
     return dividend / divisor
 
 
+# --- Deprecated functions ---
+@deprecated("oiio_color_convert")
 def convert_colorspace(
     input_path,
     output_path,
@@ -1108,7 +1025,62 @@ def convert_colorspace(
     additional_command_args=None,
     logger=None,
 ):
-    """Convert source file from one color space to another.
+    """DEPRECATED function use `oiio_color_convert` instead
+
+    Args:
+        input_path (str): Path to input file that should be converted.
+        output_path (str): Path to output file where result will be stored.
+        config_path (str): Path to OCIO config file.
+        source_colorspace (str): OCIO valid color space of source files.
+        target_colorspace (str, optional): OCIO valid target color space.
+            If filled, 'view' and 'display' must be empty.
+        view (str, optional): Name for target viewer space (OCIO valid).
+            Both 'view' and 'display' must be filled
+            (if not 'target_colorspace').
+        display (str, optional): Name for target display-referred
+            reference space. Both 'view' and 'display' must be filled
+            (if not 'target_colorspace').
+        additional_command_args (list, optional): Additional arguments
+            for oiiotool (like binary depth for .dpx).
+        logger (logging.Logger, optional): Logger used for logging.
+
+    Returns:
+        None: Function returns None.
+
+    Raises:
+        ValueError: If parameters are misconfigured.
+    """
+    return oiio_color_convert(
+        input_path,
+        output_path,
+        config_path,
+        source_colorspace,
+        target_colorspace=target_colorspace,
+        target_display=display,
+        target_view=view,
+        additional_command_args=additional_command_args,
+        logger=logger,
+    )
+
+
+def oiio_color_convert(
+    input_path,
+    output_path,
+    config_path,
+    source_colorspace,
+    source_display=None,
+    source_view=None,
+    target_colorspace=None,
+    target_display=None,
+    target_view=None,
+    additional_command_args=None,
+    logger=None,
+):
+    """Transcode source file to other with colormanagement.
+
+    Oiiotool also support additional arguments for transcoding.
+    For more information, see the official documentation:
+    https://openimageio.readthedocs.io/en/latest/oiiotool.html
 
     Args:
         input_path (str): Path that should be converted. It is expected that
@@ -1120,17 +1092,26 @@ def convert_colorspace(
              sequence in 'file.FRAMESTART-FRAMEEND#.ext', `output.1-3#.tif`)
         config_path (str): path to OCIO config file
         source_colorspace (str): ocio valid color space of source files
+        source_display (str, optional): name for source display-referred
+            reference space (ocio valid). If provided, source_view must also be
+            provided, and source_colorspace will be ignored
+        source_view (str, optional): name for source viewer space (ocio valid)
+            If provided, source_display must also be provided, and
+            source_colorspace will be ignored
         target_colorspace (str): ocio valid target color space
                     if filled, 'view' and 'display' must be empty
-        view (str): name for viewer space (ocio valid)
-            both 'view' and 'display' must be filled (if 'target_colorspace')
-        display (str): name for display-referred reference space (ocio valid)
+        target_display (str): name for target display-referred reference space
+            (ocio valid) both 'view' and 'display' must be filled (if
+            'target_colorspace')
+        target_view (str): name for target viewer space (ocio valid)
             both 'view' and 'display' must be filled (if 'target_colorspace')
         additional_command_args (list): arguments for oiiotool (like binary
             depth for .dpx)
         logger (logging.Logger): Logger used for logging.
+
     Raises:
         ValueError: if misconfigured
+
     """
     if logger is None:
         logger = logging.getLogger(__name__)
@@ -1155,23 +1136,82 @@ def convert_colorspace(
         "--ch", channels_arg
     ])
 
-    if all([target_colorspace, view, display]):
-        raise ValueError("Colorspace and both screen and display"
-                         " cannot be set together."
-                         "Choose colorspace or screen and display")
-    if not target_colorspace and not all([view, display]):
-        raise ValueError("Both screen and display must be set.")
+    # Validate input parameters
+    if target_colorspace and target_view and target_display:
+        raise ValueError(
+            "Colorspace and both view and display cannot be set together."
+            "Choose colorspace or screen and display"
+        )
+
+    if not target_colorspace and not target_view and not target_display:
+        raise ValueError(
+            "Both view and display must be set if target_colorspace is not "
+            "provided."
+        )
+
+    if (
+        (source_view and not source_display)
+        or (source_display and not source_view)
+    ):
+        raise ValueError(
+            "Both source_view and source_display must be provided if using "
+            "display/view inputs."
+        )
+
+    if source_view and source_display and source_colorspace:
+        logger.warning(
+            "Both source display/view and source_colorspace provided. "
+            "Using source display/view pair and ignoring source_colorspace."
+        )
 
     if additional_command_args:
         oiio_cmd.extend(additional_command_args)
 
-    if target_colorspace:
-        oiio_cmd.extend(["--colorconvert:subimages=0",
-                         source_colorspace,
-                         target_colorspace])
-    if view and display:
-        oiio_cmd.extend(["--iscolorspace", source_colorspace])
-        oiio_cmd.extend(["--ociodisplay:subimages=0", display, view])
+    # Handle the different conversion cases
+    # Source view and display are known
+    if source_view and source_display:
+        if target_colorspace:
+            # This is a two-step conversion process since there's no direct
+            # display/view to colorspace command
+            # This could be a config parameter or determined from OCIO config
+            # Use temporarty role space 'scene_linear'
+            color_convert_args = ("scene_linear", target_colorspace)
+        elif source_display != target_display or source_view != target_view:
+            # Complete display/view pair conversion
+            # - go through a reference space
+            color_convert_args = (target_display, target_view)
+        else:
+            color_convert_args = None
+            logger.debug(
+                "Source and target display/view pairs are identical."
+                " No color conversion needed."
+            )
+
+        if color_convert_args:
+            oiio_cmd.extend([
+                "--ociodisplay:inverse=1:subimages=0",
+                source_display,
+                source_view,
+                "--colorconvert:subimages=0",
+                *color_convert_args
+            ])
+
+    elif target_colorspace:
+        # Standard color space to color space conversion
+        oiio_cmd.extend([
+            "--colorconvert:subimages=0",
+            source_colorspace,
+            target_colorspace,
+        ])
+    else:
+        # Standard conversion from colorspace to display/view
+        oiio_cmd.extend([
+            "--iscolorspace",
+            source_colorspace,
+            "--ociodisplay:subimages=0",
+            target_display,
+            target_view,
+        ])
 
     oiio_cmd.extend(["-o", output_path])
 
@@ -1482,11 +1522,26 @@ def get_media_mime_type(filepath: str) -> Optional[str]:
         Optional[str]: Mime type or None if is unknown mime type.
 
     """
+    # The implementation is identical or better with ayon_api >=1.1.0,
+    #   which is used in AYON launcher >=1.3.0.
+    # NOTE Remove safe import when AYON launcher >=1.2.0.
+    try:
+        from ayon_api.utils import (
+            get_media_mime_type_for_content as _ayon_api_func
+        )
+    except ImportError:
+        _ayon_api_func = None
+
     if not filepath or not os.path.exists(filepath):
         return None
 
     with open(filepath, "rb") as stream:
         content = stream.read()
+
+    if _ayon_api_func is not None:
+        mime_type = _ayon_api_func(content)
+        if mime_type is not None:
+            return mime_type
 
     content_len = len(content)
     # Pre-validation (largest definition check)
@@ -1514,11 +1569,13 @@ def get_media_mime_type(filepath: str) -> Optional[str]:
     if b'xmlns="http://www.w3.org/2000/svg"' in content:
         return "image/svg+xml"
 
-    # JPEG, JFIF or Exif
-    if (
-        content[0:4] == b"\xff\xd8\xff\xdb"
-        or content[6:10] in (b"JFIF", b"Exif")
-    ):
+    # JPEG
+    # - [0:2] is constant b"\xff\xd8"
+    #   (ref. https://www.file-recovery.com/jpg-signature-format.htm)
+    # - [2:4] Marker identifier b"\xff{?}"
+    #   (ref. https://www.disktuna.com/list-of-jpeg-markers/)
+    # NOTE: File ends with b"\xff\xd9"
+    if content[0:3] == b"\xff\xd8\xff":
         return "image/jpeg"
 
     # Webp

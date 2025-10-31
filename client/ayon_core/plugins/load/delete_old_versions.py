@@ -211,7 +211,7 @@ class DeleteOldVersions(load.ProductLoaderPlugin):
             f"This will keep only the last {versions_to_keep} "
             f"versions for the {num_contexts} selected product{s}."
         )
-        informative_text="Warning: This will delete files from disk"
+        informative_text = "Warning: This will delete files from disk"
         detailed_text = (
             f"Keep only {versions_to_keep} versions for:\n{contexts_list}"
         )

@@ -1,6 +1,7 @@
 import copy
 import collections
 from uuid import uuid4
+from enum import Enum
 import typing
 from typing import Optional, Dict, List, Any
 
@@ -20,6 +21,23 @@ from .changes import TrackChangesItem
 
 if typing.TYPE_CHECKING:
     from .creator_plugins import BaseCreator
+
+
+class IntEnum(int, Enum):
+    """An int-based Enum class that allows for int comparison."""
+
+    def __int__(self) -> int:
+        return self.value
+
+
+class ParentFlags(IntEnum):
+    # Delete instance if parent is deleted
+    parent_lifetime = 1
+    # Active state is propagated from parent to children
+    # - the active state is propagated in collection phase
+    # NOTE It might be helpful to have a function that would return "real"
+    #   active state for instances
+    share_active = 1 << 1
 
 
 class ConvertorItem:
@@ -160,28 +178,25 @@ class AttributeValues:
         return self._attr_defs_by_key.get(key, default)
 
     def update(self, value):
-        changes = {}
-        for _key, _value in dict(value).items():
-            if _key in self._data and self._data.get(_key) == _value:
-                continue
-            self._data[_key] = _value
-            changes[_key] = _value
-
+        changes = self._update(value)
         if changes:
             self._parent.attribute_value_changed(self._key, changes)
 
     def pop(self, key, default=None):
-        has_key = key in self._data
-        value = self._data.pop(key, default)
-        # Remove attribute definition if is 'UnknownDef'
-        # - gives option to get rid of unknown values
-        attr_def = self._attr_defs_by_key.get(key)
-        if isinstance(attr_def, UnknownDef):
-            self._attr_defs_by_key.pop(key)
-            self._attr_defs.remove(attr_def)
-        elif has_key:
-            self._parent.attribute_value_changed(self._key, {key: None})
+        value, changes = self._pop(key, default)
+        if changes:
+            self._parent.attribute_value_changed(self._key, changes)
         return value
+
+    def set_value(self, value):
+        pop_keys = set(value.keys()) - set(self._data.keys())
+        changes = self._update(value)
+        for key in pop_keys:
+            _, key_changes = self._pop(key, None)
+            changes.update(key_changes)
+
+        if changes:
+            self._parent.attribute_value_changed(self._key, changes)
 
     def reset_values(self):
         self._data = {}
@@ -228,6 +243,29 @@ class AttributeValues:
 
         return serialize_attr_defs(self._attr_defs)
 
+    def _update(self, value):
+        changes = {}
+        for key, value in dict(value).items():
+            if key in self._data and self._data.get(key) == value:
+                continue
+            self._data[key] = value
+            changes[key] = value
+        return changes
+
+    def _pop(self, key, default):
+        has_key = key in self._data
+        value = self._data.pop(key, default)
+        # Remove attribute definition if is 'UnknownDef'
+        # - gives option to get rid of unknown values
+        attr_def = self._attr_defs_by_key.get(key)
+        changes = {}
+        if isinstance(attr_def, UnknownDef):
+            self._attr_defs_by_key.pop(key)
+            self._attr_defs.remove(attr_def)
+        elif has_key:
+            changes[key] = None
+        return value, changes
+
 
 class CreatorAttributeValues(AttributeValues):
     """Creator specific attribute values of an instance."""
@@ -269,6 +307,23 @@ class PublishAttributes:
 
     def __getitem__(self, key):
         return self._data[key]
+
+    def __setitem__(self, key, value):
+        """Set value for plugin.
+
+        Args:
+            key (str): Plugin name.
+            value (dict[str, Any]): Value to set.
+
+        """
+        current_value = self._data.get(key)
+        if isinstance(current_value, PublishAttributeValues):
+            current_value.set_value(value)
+        else:
+            self._data[key] = value
+
+    def __delitem__(self, key):
+        self.pop(key)
 
     def __contains__(self, key):
         return key in self._data
@@ -332,7 +387,7 @@ class PublishAttributes:
         return copy.deepcopy(self._origin_data)
 
     def attribute_value_changed(self, key, changes):
-        self._parent.publish_attribute_value_changed(key,  changes)
+        self._parent.publish_attribute_value_changed(key, changes)
 
     def set_publish_plugin_attr_defs(
         self,
@@ -470,6 +525,9 @@ class CreatedInstance:
         if transient_data is None:
             transient_data = {}
         self._transient_data = transient_data
+        self._is_mandatory: bool = False
+        self._parent_instance_id: Optional[str] = None
+        self._parent_flags: int = 0
 
         # Create a copy of passed data to avoid changing them on the fly
         data = copy.deepcopy(data or {})
@@ -567,6 +625,12 @@ class CreatedInstance:
 
         if key in self._data and self._data[key] == value:
             return
+
+        if self.is_mandatory and key == "active" and value is not True:
+            raise ImmutableKeyError(
+                key,
+                "Instance is mandatory and can't be disabled."
+            )
 
         self._data[key] = value
         self._create_context.instance_values_changed(
@@ -680,6 +744,66 @@ class CreatedInstance:
         """
 
         return self._transient_data
+
+    @property
+    def is_mandatory(self) -> bool:
+        """Check if instance is mandatory.
+
+        Returns:
+            bool: True if instance is mandatory, False otherwise.
+
+        """
+        return self._is_mandatory
+
+    def set_mandatory(self, value: bool) -> None:
+        """Set instance as mandatory or not.
+
+        Mandatory instance can't be disabled in UI.
+
+        Args:
+            value (bool): True if instance should be mandatory, False
+                otherwise.
+
+        """
+        if value is self._is_mandatory:
+            return
+        self._is_mandatory = value
+        if value is True:
+            self["active"] = True
+        self._create_context.instance_requirement_changed(self.id)
+
+    @property
+    def parent_instance_id(self) -> Optional[str]:
+        return self._parent_instance_id
+
+    @property
+    def parent_flags(self) -> int:
+        return self._parent_flags
+
+    def set_parent(
+        self, instance_id: Optional[str], flags: int
+    ) -> None:
+        """Set parent instance id and parenting flags.
+
+        Args:
+            instance_id (Optional[str]): Parent instance id.
+            flags (int): Parenting flags.
+
+        """
+        changed = False
+        if instance_id != self._parent_instance_id:
+            changed = True
+            self._parent_instance_id = instance_id
+
+        if flags is None:
+            flags = 0
+
+        if self._parent_flags != flags:
+            self._parent_flags = flags
+            changed = True
+
+        if changed:
+            self._create_context.instance_parent_changed(self.id)
 
     def changes(self):
         """Calculate and return changes."""

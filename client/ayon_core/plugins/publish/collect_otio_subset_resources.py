@@ -60,6 +60,13 @@ class CollectOtioSubsetResources(
 
         # get basic variables
         otio_clip = instance.data["otioClip"]
+        if isinstance(
+            otio_clip.media_reference,
+            otio.schema.MissingReference
+        ):
+            self.log.info("Clip has no media reference")
+            return
+
         otio_available_range = otio_clip.available_range()
         media_fps = otio_available_range.start_time.rate
         available_duration = otio_available_range.duration.value
@@ -194,7 +201,6 @@ class CollectOtioSubsetResources(
                 repre = self._create_representation(
                     frame_start, frame_end, file=filename)
 
-
         else:
             _trim = False
             dirname, filename = os.path.split(media_ref.target_url)
@@ -209,7 +215,6 @@ class CollectOtioSubsetResources(
             repre = self._create_representation(
                 frame_start, frame_end, file=filename, trim=_trim)
 
-
         instance.data["originalDirname"] = self.staging_dir
 
         # add representation to instance data
@@ -220,7 +225,6 @@ class CollectOtioSubsetResources(
                 repre, instance.context, colorspace)
 
             instance.data["representations"].append(repre)
-
 
         self.log.debug(instance.data)
 

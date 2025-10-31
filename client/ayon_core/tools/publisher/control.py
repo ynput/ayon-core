@@ -20,7 +20,8 @@ from .models import (
 from .abstract import (
     AbstractPublisherBackend,
     AbstractPublisherFrontend,
-    CardMessageTypes
+    CardMessageTypes,
+    CommentDef,
 )
 
 
@@ -52,6 +53,8 @@ class PublisherController(
             changed.
         "create.context.create.attrs.changed" - Create attributes changed.
         "create.context.publish.attrs.changed" - Publish attributes changed.
+        "create.context.instance.requirement.changed" - Instance requirement
+            changed.
         "create.context.removed.instance" - Instance removed from context.
         "create.model.instances.context.changed" - Instances changed context.
             like folder, task or variant.
@@ -601,3 +604,17 @@ class PublisherController(
     def _start_publish(self, up_validation):
         self._publish_model.set_publish_up_validation(up_validation)
         self._publish_model.start_publish(wait=True)
+
+    def get_comment_def(self) -> CommentDef:
+        # Take the cached settings from the Create Context
+        settings = self.get_create_context().get_current_project_settings()
+        comment_minimum_required_chars: int = (
+            settings
+            .get("core", {})
+            .get("tools", {})
+            .get("publish", {})
+            .get("comment_minimum_required_chars", 0)
+        )
+        return CommentDef(
+            minimum_chars_required=comment_minimum_required_chars
+        )

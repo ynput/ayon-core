@@ -158,6 +158,7 @@ class ExtractOtioAudioTracks(pyblish.api.ContextPlugin):
         """
         # Not all hosts can import this module.
         import opentimelineio as otio
+        from ayon_core.pipeline.editorial import OTIO_EPSILON
 
         output = []
         # go trough all audio tracks
@@ -172,6 +173,14 @@ class ExtractOtioAudioTracks(pyblish.api.ContextPlugin):
                     clip_start = otio_clip.source_range.start_time
                     fps = clip_start.rate
                     conformed_av_start = media_av_start.rescaled_to(fps)
+
+                    # Avoid rounding issue on media available range.
+                    if clip_start.almost_equal(
+                        conformed_av_start,
+                        OTIO_EPSILON
+                    ):
+                        conformed_av_start = clip_start
+
                     # ffmpeg ignores embedded tc
                     start = clip_start - conformed_av_start
                     duration = otio_clip.source_range.duration

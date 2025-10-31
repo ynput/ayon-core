@@ -11,6 +11,7 @@ from .local_settings import (
     get_launcher_storage_dir,
     get_addons_resources_dir,
     get_local_site_id,
+    get_ayon_user_entity,
     get_ayon_username,
 )
 from .ayon_connection import initialize_ayon_connection
@@ -50,8 +51,10 @@ from .attribute_definitions import (
 )
 
 from .env_tools import (
+    compute_env_variables_structure,
     env_value_to_bool,
     get_paths_from_environ,
+    merge_env_variables,
 )
 
 from .terminal import Terminal
@@ -62,6 +65,7 @@ from .execute import (
     run_subprocess,
     run_detached_process,
     run_ayon_launcher_process,
+    run_detached_ayon_launcher_process,
     path_to_subprocess_arg,
     CREATE_NO_WINDOW
 )
@@ -70,6 +74,7 @@ from .log import (
 )
 
 from .path_templates import (
+    DefaultKeysDict,
     TemplateUnsolved,
     StringTemplate,
     FormatObject,
@@ -98,7 +103,6 @@ from .profiles_filtering import (
 from .transcoding import (
     get_transcode_temp_directory,
     should_convert_for_ffmpeg,
-    convert_for_ffmpeg,
     convert_input_paths_for_ffmpeg,
     get_ffprobe_data,
     get_ffprobe_streams,
@@ -132,6 +136,7 @@ from .ayon_info import (
     is_staging_enabled,
     is_dev_mode_enabled,
     is_in_tests,
+    get_settings_variant,
 )
 
 terminal = Terminal
@@ -145,6 +150,7 @@ __all__ = [
     "get_launcher_storage_dir",
     "get_addons_resources_dir",
     "get_local_site_id",
+    "get_ayon_user_entity",
     "get_ayon_username",
 
     "initialize_ayon_connection",
@@ -161,11 +167,14 @@ __all__ = [
     "run_subprocess",
     "run_detached_process",
     "run_ayon_launcher_process",
+    "run_detached_ayon_launcher_process",
     "path_to_subprocess_arg",
     "CREATE_NO_WINDOW",
 
+    "compute_env_variables_structure",
     "env_value_to_bool",
     "get_paths_from_environ",
+    "merge_env_variables",
 
     "ToolNotFoundError",
     "find_executable",
@@ -198,7 +207,6 @@ __all__ = [
 
     "get_transcode_temp_directory",
     "should_convert_for_ffmpeg",
-    "convert_for_ffmpeg",
     "convert_input_paths_for_ffmpeg",
     "get_ffprobe_data",
     "get_ffprobe_streams",
@@ -223,6 +231,7 @@ __all__ = [
     "get_version_from_path",
     "get_last_version_from_path",
 
+    "DefaultKeysDict",
     "TemplateUnsolved",
     "StringTemplate",
     "FormatObject",
@@ -242,4 +251,5 @@ __all__ = [
     "is_staging_enabled",
     "is_dev_mode_enabled",
     "is_in_tests",
+    "get_settings_variant",
 ]

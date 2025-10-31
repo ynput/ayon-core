@@ -257,7 +257,6 @@ def test_movie_timewarp():
     )
 
 
-
 def test_img_sequence_no_handles():
     """
     Img sequence clip (no embedded timecode)
@@ -334,6 +333,7 @@ def test_img_sequence_relative_source_range():
         expected_data
     )
 
+
 def test_img_sequence_conform_to_23_976fps():
     """
     Img sequence clip
@@ -408,6 +408,7 @@ def test_img_sequence_reverse_speed_no_tc():
         handle_start=0,
         handle_end=0,
     )
+
 
 def test_img_sequence_reverse_speed_from_24_to_23_976fps():
     """
