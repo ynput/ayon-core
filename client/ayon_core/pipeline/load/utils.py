@@ -995,8 +995,17 @@ def loaders_from_representation(loaders, representation):
 
 
 def any_outdated_containers(host=None, project_name=None, statuses=None):
-    """Check if there are any outdated containers in scene."""
+    """Check if there are any outdated containers in the scene.
 
+    Args:
+        host (Optional[AbstractHost]): Host implementation.
+        project_name (Optional[str]): Name of project in which context we are.
+        statuses (Optional[Iterable[str]]): Iterable of status strings to filter containers.
+            If None, all statuses are included.
+
+    Returns:
+        bool: True if there are any outdated containers matching the criteria, False otherwise.
+    """
     if get_outdated_containers(host, project_name, statuses):
         return True
     return False
