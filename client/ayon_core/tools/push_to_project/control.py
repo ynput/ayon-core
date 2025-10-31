@@ -41,6 +41,7 @@ class PushToContextController:
         self._process_item_id = None
 
         self._use_original_name = False
+        self._version_up = False
 
         self.set_source(project_name, version_ids)
 
@@ -212,7 +213,7 @@ class PushToContextController:
                 self._user_values.variant,
                 comment=self._user_values.comment,
                 new_folder_name=self._user_values.new_folder_name,
-                dst_version=1,
+                version_up=self._version_up,
                 use_original_name=self._use_original_name,
             )
             item_ids.append(item_id)
@@ -228,6 +229,9 @@ class PushToContextController:
         self._process_thread = thread
         thread.start()
         return item_ids
+
+    def set_version_up(self, state):
+        self._version_up = state
 
     def wait_for_process_thread(self):
         if self._process_thread is None:
