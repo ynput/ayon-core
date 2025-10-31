@@ -949,15 +949,20 @@ class ProjectPushItemProcess:
             return product_entity
 
         src_attrib = self._src_product_entity["attrib"]
-        copied_attrib = {
-            "description": src_attrib.get("description"),
-            "productGroup": src_attrib.get("productGroup")
-        }
+
+        dst_attrib = {}
+        for key in {
+            "description",
+            "productGroup",
+        }:
+            if key in src_attrib:
+                dst_attrib[key] = src_attrib[key]
+
         product_entity = new_product_entity(
             product_name,
             product_type,
             folder_id,
-            attribs=copied_attrib
+            attribs=dst_attrib
         )
         self._operations.create_entity(
             project_name, "product", product_entity
