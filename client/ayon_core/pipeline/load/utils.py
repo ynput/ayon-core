@@ -916,7 +916,7 @@ def get_last_versions_with_status(
         fields = set(fields)
         fields.add("productId")
     product_ids = set(product_ids)
-    _versions = ayon_api.get_versions(
+    versions = ayon_api.get_versions(
         project_name,
         product_ids=product_ids,
         hero=False,
@@ -925,20 +925,24 @@ def get_last_versions_with_status(
         statuses=statuses,
         own_attributes=own_attributes,
     )
-    # remove all not latest versions
-    version_by_product_ids = {
-        pid: [v for v in _versions if v["productId"] == pid] for pid in product_ids
+    versions_by_product_id = {
+        product_id: []
+        for product_id in product_ids
     }
-    versions = list()
-    for pid in product_ids:
-        sorted_versions = sorted(
-            version_by_product_ids[pid], key=lambda x: x["version"]
-        )
-        if sorted_versions:
-            versions.append(sorted_versions[-1])
-    output = {version["productId"]: version for version in versions}
-    for product_id in product_ids:
-        output.setdefault(product_id, None)
+    for version in versions:
+        product_id = version["productId"]
+        versions_by_product_id[product_id].append(version)
+
+    output = {
+        product_id: None
+        for product_id in product_ids
+    }
+    for product_id, product_versions in versions_by_product_id.items():
+        if not product_versions:
+            continue
+        product_versions.sort(key=lambda v: v["version"])
+        output[product_id] = product_versions[-1]
+
     return output
 
 
