@@ -912,7 +912,6 @@ def get_last_versions_with_status(
         - If no versions match the status filter for a product ID, the value for that product ID
           in the output dictionary will be None.
     """
-    # project_name, versions_by_product_id.keys(), fields={"id"}
     if fields:
         fields = set(fields)
         fields.add("productId")
