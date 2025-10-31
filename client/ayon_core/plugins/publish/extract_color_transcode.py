@@ -11,7 +11,7 @@ from ayon_core.lib import (
     is_oiio_supported,
 )
 from ayon_core.lib.transcoding import (
-    convert_colorspace,
+    oiio_color_convert,
 )
 
 from ayon_core.lib.profiles_filtering import filter_profiles
@@ -55,10 +55,12 @@ class ExtractOIIOTranscode(publish.Extractor):
     label = "Transcode color spaces"
     order = pyblish.api.ExtractorOrder + 0.019
 
+    settings_category = "core"
+
     optional = True
 
     # Supported extensions
-    supported_exts = ["exr", "jpg", "jpeg", "png", "dpx"]
+    supported_exts = {"exr", "jpg", "jpeg", "png", "dpx"}
 
     # Configurable by Settings
     profiles = None
@@ -85,6 +87,14 @@ class ExtractOIIOTranscode(publish.Extractor):
         new_representations = []
         repres = instance.data["representations"]
         for idx, repre in enumerate(list(repres)):
+            # target space, display and view might be defined upstream
+            # TODO: address https://github.com/ynput/ayon-core/pull/1268#discussion_r2156555474
+            #   Implement upstream logic to handle target_colorspace,
+            #   target_display, target_view in other DCCs
+            target_colorspace = False
+            target_display = instance.data.get("colorspaceDisplay")
+            target_view = instance.data.get("colorspaceView")
+
             self.log.debug("repre ({}): `{}`".format(idx + 1, repre["name"]))
             if not self._repre_is_valid(repre):
                 continue
@@ -94,6 +104,8 @@ class ExtractOIIOTranscode(publish.Extractor):
 
             colorspace_data = repre["colorspaceData"]
             source_colorspace = colorspace_data["colorspace"]
+            source_display = colorspace_data.get("display")
+            source_view = colorspace_data.get("view")
             config_path = colorspace_data.get("config", {}).get("path")
             if not config_path or not os.path.exists(config_path):
                 self.log.warning("Config file doesn't exist, skipping")
@@ -124,7 +136,6 @@ class ExtractOIIOTranscode(publish.Extractor):
 
                 transcoding_type = output_def["transcoding_type"]
 
-                target_colorspace = view = display = None
                 # NOTE: we use colorspace_data as the fallback values for
                 #     the target colorspace.
                 if transcoding_type == "colorspace":
@@ -136,18 +147,20 @@ class ExtractOIIOTranscode(publish.Extractor):
                                          colorspace_data.get("colorspace"))
                 elif transcoding_type == "display_view":
                     display_view = output_def["display_view"]
-                    view = display_view["view"] or colorspace_data.get("view")
-                    display = (
+                    target_view = (
+                        display_view["view"]
+                        or colorspace_data.get("view"))
+                    target_display = (
                         display_view["display"]
                         or colorspace_data.get("display")
                     )
 
                 # both could be already collected by DCC,
                 # but could be overwritten when transcoding
-                if view:
-                    new_repre["colorspaceData"]["view"] = view
-                if display:
-                    new_repre["colorspaceData"]["display"] = display
+                if target_view:
+                    new_repre["colorspaceData"]["view"] = target_view
+                if target_display:
+                    new_repre["colorspaceData"]["display"] = target_display
                 if target_colorspace:
                     new_repre["colorspaceData"]["colorspace"] = \
                         target_colorspace
@@ -166,16 +179,18 @@ class ExtractOIIOTranscode(publish.Extractor):
                                                              new_staging_dir,
                                                              output_extension)
 
-                    convert_colorspace(
-                        input_path,
-                        output_path,
-                        config_path,
-                        source_colorspace,
-                        target_colorspace,
-                        view,
-                        display,
-                        additional_command_args,
-                        self.log
+                    oiio_color_convert(
+                        input_path=input_path,
+                        output_path=output_path,
+                        config_path=config_path,
+                        source_colorspace=source_colorspace,
+                        target_colorspace=target_colorspace,
+                        target_display=target_display,
+                        target_view=target_view,
+                        source_display=source_display,
+                        source_view=source_view,
+                        additional_command_args=additional_command_args,
+                        logger=self.log
                     )
 
                 # cleanup temporary transcoded files
@@ -280,10 +295,14 @@ class ExtractOIIOTranscode(publish.Extractor):
 
             collection = collections[0]
             frames = list(collection.indexes)
-            if collection.holes():
+            if collection.holes().indexes:
                 return files_to_convert
 
-            frame_str = "{}-{}#".format(frames[0], frames[-1])
+            # Get the padding from the collection
+            # This is the number of digits used in the frame numbers
+            padding = collection.padding
+
+            frame_str = "{}-{}%0{}d".format(frames[0], frames[-1], padding)
             file_name = "{}{}{}".format(collection.head, frame_str,
                                         collection.tail)
 

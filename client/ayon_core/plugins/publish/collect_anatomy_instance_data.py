@@ -46,6 +46,8 @@ class CollectAnatomyInstanceData(pyblish.api.ContextPlugin):
     order = pyblish.api.CollectorOrder + 0.49
     label = "Collect Anatomy Instance data"
 
+    settings_category = "core"
+
     follow_workfile_version = False
 
     def process(self, context):
@@ -393,7 +395,6 @@ class CollectAnatomyInstanceData(pyblish.api.ContextPlugin):
             aov = instance.data.get("aov")
             if aov:
                 anatomy_data["aov"] = aov
-
 
     def _fill_folder_data(self, instance, project_entity, anatomy_data):
         # QUESTION: should we make sure that all folder data are popped if

@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+from dataclasses import dataclass, asdict
 from typing import (
     Optional,
     Dict,
@@ -12,7 +13,7 @@ from typing import (
 )
 
 from ayon_core.lib import AbstractAttrDef
-from ayon_core.host import HostBase
+from ayon_core.host import AbstractHost
 from ayon_core.pipeline.create import (
     CreateContext,
     ConvertorItem,
@@ -26,6 +27,19 @@ from ayon_core.tools.common_models import (
 
 if TYPE_CHECKING:
     from .models import CreatorItem, PublishErrorInfo, InstanceItem
+
+
+@dataclass
+class CommentDef:
+    """Comment attribute definition."""
+    minimum_chars_required: int
+
+    def to_data(self):
+        return asdict(self)
+
+    @classmethod
+    def from_data(cls, data):
+        return cls(**data)
 
 
 class CardMessageTypes:
@@ -135,6 +149,17 @@ class AbstractPublisherCommon(ABC):
 
         pass
 
+    @abstractmethod
+    def get_comment_def(self) -> CommentDef:
+        """Get comment attribute definition.
+
+        This can define how the Comment field should behave, like having
+        a minimum amount of required characters before being allowed to
+        publish.
+
+        """
+        pass
+
 
 class AbstractPublisherBackend(AbstractPublisherCommon):
     @abstractmethod
@@ -151,7 +176,7 @@ class AbstractPublisherBackend(AbstractPublisherCommon):
         pass
 
     @abstractmethod
-    def get_host(self) -> HostBase:
+    def get_host(self) -> AbstractHost:
         pass
 
     @abstractmethod

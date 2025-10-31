@@ -4,6 +4,8 @@ from .path_resolving import (
     get_workdir_with_workdir_data,
     get_workdir,
 
+    get_last_workfile_with_version_from_paths,
+    get_last_workfile_from_paths,
     get_last_workfile_with_version,
     get_last_workfile,
 
@@ -11,11 +13,21 @@ from .path_resolving import (
     get_custom_workfile_template_by_string_context,
 
     create_workdir_extra_folders,
+
+    get_comments_from_workfile_paths,
 )
 
 from .utils import (
     should_use_last_workfile_on_launch,
     should_open_workfiles_tool_on_launch,
+    MissingWorkdirError,
+
+    save_workfile_info,
+    save_current_workfile_to,
+    save_workfile_with_current_context,
+    save_next_version,
+    copy_workfile_to_context,
+    find_workfile_rootless_path,
 )
 
 from .build_workfile import BuildWorkfile
@@ -36,16 +48,28 @@ __all__ = (
     "get_workdir_with_workdir_data",
     "get_workdir",
 
+    "get_last_workfile_with_version_from_paths",
+    "get_last_workfile_from_paths",
     "get_last_workfile_with_version",
     "get_last_workfile",
+    "find_workfile_rootless_path",
 
     "get_custom_workfile_template",
     "get_custom_workfile_template_by_string_context",
 
     "create_workdir_extra_folders",
 
+    "get_comments_from_workfile_paths",
+
     "should_use_last_workfile_on_launch",
     "should_open_workfiles_tool_on_launch",
+    "MissingWorkdirError",
+
+    "save_workfile_info",
+    "save_current_workfile_to",
+    "save_workfile_with_current_context",
+    "save_next_version",
+    "copy_workfile_to_context",
 
     "BuildWorkfile",
 
