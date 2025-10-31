@@ -934,7 +934,8 @@ def get_last_versions_with_status(
         sorted_versions = sorted(
             version_by_product_ids[pid], key=lambda x: x["version"]
         )
-        versions.append(sorted_versions[-1])
+        if sorted_versions:
+            versions.append(sorted_versions[-1])
     output = {version["productId"]: version for version in versions}
     for product_id in product_ids:
         output.setdefault(product_id, None)
