@@ -1,6 +1,7 @@
 from operator import attrgetter
 import dataclasses
 import os
+import platform
 from typing import Any, Dict, List
 
 import pyblish.api
@@ -179,6 +180,8 @@ def get_instance_uri_path(
 
         # Ensure `None` for now is also a string
         path = str(path)
+        if platform.system().lower() == "windows":
+            path = path.replace("\\", "/")
 
     return path
 
