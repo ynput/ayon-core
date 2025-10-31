@@ -890,6 +890,28 @@ def get_last_versions_with_status(
     fields: Optional[Iterable[str]] = None,
     own_attributes=ayon_api.server_api._PLACEHOLDER,
 ):
+    """
+    Retrieve the latest version for each product ID that matches the given status filter.
+
+    Args:
+        project_name (str): Name of the project.
+        product_ids (Iterable[str]): Iterable of product IDs to query.
+        statuses (Iterable[str]): Iterable of status names to filter versions.
+        active (bool or None, optional): If True, only active versions are returned.
+            If False, only inactive versions are returned. If None, both are returned.
+        fields (Optional[Iterable[str]], optional): Additional fields to include in the result.
+        own_attributes: Custom attributes to include in the query (default is ayon_api.server_api._PLACEHOLDER).
+
+    Returns:
+        Dict[str, Optional[dict]]: A dictionary mapping each product ID to its latest version
+            entity (as a dict) that matches the status filter. If no version matches for a
+            product ID, its value will be None.
+
+    Behavior:
+        - Only the latest version (by version number) for each product ID is returned.
+        - If no versions match the status filter for a product ID, the value for that product ID
+          in the output dictionary will be None.
+    """
     # project_name, versions_by_product_id.keys(), fields={"id"}
     if fields:
         fields = set(fields)
