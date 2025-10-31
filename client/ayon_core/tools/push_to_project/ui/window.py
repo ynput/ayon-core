@@ -144,6 +144,8 @@ class PushToContextSelectWindow(QtWidgets.QWidget):
         variant_input.setPlaceholderText("< Variant >")
         variant_input.setObjectName("ValidatedLineEdit")
 
+        version_up_checkbox = NiceCheckbox(True, parent=inputs_widget)
+
         comment_input = PlaceholderLineEdit(inputs_widget)
         comment_input.setPlaceholderText("< Publish comment >")
 
@@ -155,7 +157,6 @@ class PushToContextSelectWindow(QtWidgets.QWidget):
         inputs_layout.addRow(
             "Use original product names", original_names_checkbox
         )
-        version_up_checkbox = NiceCheckbox(True, parent=inputs_widget)
         inputs_layout.addRow(
             "Version up existing Product", version_up_checkbox
         )
