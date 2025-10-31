@@ -952,6 +952,7 @@ class ProjectPushItemProcess:
             product_name,
             product_type,
             folder_id,
+            attribs=self._src_product_entity["attrib"]
         )
         self._operations.create_entity(
             project_name, "product", product_entity
