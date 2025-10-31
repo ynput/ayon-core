@@ -203,6 +203,9 @@ class PushToContextController:
             return
 
         item_ids = []
+        dst_version = 1
+        if self._version_up:
+            dst_version = None
         for src_version_entity in self._src_version_entities:
             item_id = self._integrate_model.create_process_item(
                 self._src_project_name,
@@ -213,7 +216,7 @@ class PushToContextController:
                 self._user_values.variant,
                 comment=self._user_values.comment,
                 new_folder_name=self._user_values.new_folder_name,
-                dst_version=1,
+                dst_version=dst_version,
                 use_original_name=self._use_original_name,
             )
             item_ids.append(item_id)
