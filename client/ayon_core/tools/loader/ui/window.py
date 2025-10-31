@@ -1,29 +1,33 @@
 from __future__ import annotations
 
-from qtpy import QtWidgets, QtCore, QtGui
+import ayon_api
+import os
+from qtpy import QtCore, QtGui, QtWidgets
 
+from ayon_core.pipeline import Anatomy
+from ayon_core.pipeline.load import get_representation_path_with_anatomy
 from ayon_core.resources import get_ayon_icon_filepath
 from ayon_core.style import load_stylesheet
-from ayon_core.tools.utils import (
-    PlaceholderLineEdit,
-    ErrorMessageBox,
-    ThumbnailPainterWidget,
-    RefreshButton,
-    GoToCurrentButton,
-)
-from ayon_core.tools.utils.lib import center_window
-from ayon_core.tools.utils import ProjectsCombobox
 from ayon_core.tools.common_models import StatusItem
 from ayon_core.tools.loader.abstract import ProductTypeItem
 from ayon_core.tools.loader.control import LoaderController
+from ayon_core.tools.utils import (
+    ErrorMessageBox,
+    GoToCurrentButton,
+    PlaceholderLineEdit,
+    ProjectsCombobox,
+    RefreshButton,
+    ThumbnailPainterWidget,
+)
+from ayon_core.tools.utils.lib import center_window
 
 from .folders_widget import LoaderFoldersWidget
-from .tasks_widget import LoaderTasksWidget
-from .products_widget import ProductsWidget
-from .product_group_dialog import ProductGroupDialog
 from .info_widget import InfoWidget
+from .product_group_dialog import ProductGroupDialog
+from .products_widget import ProductsWidget
 from .repres_widget import RepresentationsWidget
-from .search_bar import FiltersBar, FilterDefinition
+from .search_bar import FilterDefinition, FiltersBar
+from .tasks_widget import LoaderTasksWidget
 
 FIND_KEY_SEQUENCE = QtGui.QKeySequence(
     QtCore.Qt.Modifier.CTRL | QtCore.Qt.Key_F
@@ -215,6 +219,10 @@ class LoaderWindow(QtWidgets.QWidget):
 
         thumbnails_widget = ThumbnailPainterWidget(right_panel_splitter)
         thumbnails_widget.set_use_checkboard(False)
+        # Connect double-click signal to open thumbnail
+        thumbnails_widget.thumbnail_double_clicked.connect(
+            self._on_thumbnail_double_clicked
+        )
 
         info_widget = InfoWidget(controller, right_panel_splitter)
 
@@ -328,6 +336,7 @@ class LoaderWindow(QtWidgets.QWidget):
         self._selected_version_ids = set()
 
         self._set_product_type_filters = True
+        self._auto_select_first_item = True
 
         self._products_widget.set_enable_grouping(
             self._product_group_checkbox.isChecked()
@@ -623,18 +632,113 @@ class LoaderWindow(QtWidgets.QWidget):
         self._selected_version_ids = set(event["version_ids"])
         self._update_thumbnails()
 
+    def _get_video_representation_path(self, project_name, version_ids):
+        """Get h264_* video representation path for versions.
+
+        Returns path to h264_* representation if available, otherwise None.
+
+        Args:
+            project_name (str): Project name.
+            version_ids (set[str]): Version ids.
+
+        Returns:
+            Union[str, None]: Path to video representation or None.
+        """
+        if not version_ids or not project_name:
+            return None
+
+        try:
+
+            # Get representations for versions
+            repre_items = self._controller.get_representation_items(
+                project_name, version_ids
+            )
+
+            # Look for h264_* representations first (prioritize them)
+            h264_repres = []
+            other_video_repres = []
+
+            for repre_item in repre_items:
+                repre_name = repre_item.representation_name.lower()
+                if 'h264' in repre_name:
+                    h264_repres.append(repre_item)
+                elif any(
+                    ext in repre_name
+                    for ext in ['mp4', 'mov', 'avi', 'mkv', 'webm']
+                ):
+                    other_video_repres.append(repre_item)
+
+            # Prioritize h264_* representations
+            target_repres = h264_repres if h264_repres else other_video_repres
+
+            for repre_item in target_repres:
+                representation_id = repre_item.representation_id
+                try:
+                    repre_entity = ayon_api.get_representation_by_id(
+                        project_name, representation_id
+                    )
+                    if repre_entity:
+                        anatomy = Anatomy(project_name)
+                        video_path = get_representation_path_with_anatomy(
+                            repre_entity, anatomy
+                        )
+                        if video_path:
+                            if hasattr(video_path, "normalized"):
+                                video_path_str = str(video_path.normalized())
+                            else:
+                                video_path_str = str(video_path)
+                            if os.path.exists(video_path_str):
+                                return video_path_str
+                except Exception as e:
+                    print(
+                        f"Failed to get representation path "
+                        f"for {representation_id}: {e}"
+                    )
+                    continue
+
+        except Exception as e:
+            print(f"Failed to get h264 representation path: {e}")
+
+        return None
+
     def _update_thumbnails(self):
         # TODO make this threaded and show loading animation while running
         project_name = self._selected_project_name
+
+        # If nothing is selected, clear thumbnails immediately
+        if not self._selected_version_ids and not self._selected_folder_ids:
+            self._thumbnails_widget.set_current_thumbnails(None)
+            return
+
         entity_type = None
         entity_ids = set()
+
+        # First check for video representations in selected versions
+        video_path = None
         if self._selected_version_ids:
             entity_ids = set(self._selected_version_ids)
             entity_type = "version"
+
+            # Try to get h264_* video representation
+            video_path = self._get_video_representation_path(
+                project_name, entity_ids
+            )
+
         elif self._selected_folder_ids:
             entity_ids = set(self._selected_folder_ids)
             entity_type = "folder"
 
+        # If we have a video path, use it directly
+        if video_path:
+            self._thumbnails_widget.set_current_thumbnail_paths([video_path])
+            return
+
+        # If we don't have any entity_ids to query, clear thumbnails
+        if not entity_ids:
+            self._thumbnails_widget.set_current_thumbnails(None)
+            return
+
+        # Otherwise use standard thumbnail system
         thumbnail_path_by_entity_id = self._controller.get_thumbnail_paths(
             project_name, entity_type, entity_ids
         )
@@ -643,7 +747,7 @@ class LoaderWindow(QtWidgets.QWidget):
 
         if thumbnail_paths:
             self._thumbnails_widget.set_current_thumbnail_paths(
-                thumbnail_paths
+                list(thumbnail_paths)
             )
         else:
             self._thumbnails_widget.set_current_thumbnails(None)
@@ -660,3 +764,26 @@ class LoaderWindow(QtWidgets.QWidget):
 
     def _on_products_refresh(self):
         self._refresh_handler.set_products_refreshed()
+        if (
+            self._auto_select_first_item
+            and not self._selected_version_ids
+            and not self._selected_folder_ids
+        ):
+            self._auto_select_first_item = False
+            self._products_widget.select_latest_item()
+
+    def _on_thumbnail_double_clicked(self, thumbnail_path):
+        """Handle thumbnail double-click to open image with system default."""
+        import os
+        import subprocess
+        import sys
+
+        try:
+            if sys.platform.startswith("darwin"):
+                subprocess.call(("open", thumbnail_path))
+            elif os.name == "nt":
+                os.startfile(thumbnail_path)
+            elif os.name == "posix":
+                subprocess.call(("xdg-open", thumbnail_path))
+        except Exception as e:
+            print(f"Failed to open thumbnail {thumbnail_path}: {e}")
