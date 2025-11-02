@@ -4,6 +4,7 @@ import inspect
 import logging
 import traceback
 import collections
+import time
 from contextlib import contextmanager
 from functools import partial
 from typing import Optional, Dict, List, Union, Any, Iterable
@@ -21,7 +22,6 @@ from ayon_core.pipeline.plugin_discover import DiscoverResult
 from ayon_core.pipeline.publish import (
     get_publish_instance_label,
     PublishError,
-    filter_crashed_publish_paths,
 )
 from ayon_core.tools.publisher.abstract import AbstractPublisherBackend
 
@@ -108,23 +108,20 @@ class PublishReportMaker:
         creator_discover_result: Optional[DiscoverResult] = None,
         convertor_discover_result: Optional[DiscoverResult] = None,
         publish_discover_result: Optional[DiscoverResult] = None,
-        blocking_crashed_paths: Optional[list[str]] = None,
     ):
         self._create_discover_result: Union[DiscoverResult, None] = None
         self._convert_discover_result: Union[DiscoverResult, None] = None
         self._publish_discover_result: Union[DiscoverResult, None] = None
 
-        self._blocking_crashed_paths: list[str] = []
-
         self._all_instances_by_id: Dict[str, pyblish.api.Instance] = {}
         self._plugin_data_by_id: Dict[str, Any] = {}
         self._current_plugin_id: Optional[str] = None
+        self._start_time: Optional[float] = None
 
         self.reset(
             creator_discover_result,
             convertor_discover_result,
             publish_discover_result,
-            blocking_crashed_paths,
         )
 
     def reset(
@@ -132,18 +129,17 @@ class PublishReportMaker:
         creator_discover_result: Union[DiscoverResult, None],
         convertor_discover_result: Union[DiscoverResult, None],
         publish_discover_result: Union[DiscoverResult, None],
-        blocking_crashed_paths: list[str],
     ):
         """Reset report and clear all data."""
 
         self._create_discover_result = creator_discover_result
         self._convert_discover_result = convertor_discover_result
         self._publish_discover_result = publish_discover_result
-        self._blocking_crashed_paths = blocking_crashed_paths
 
         self._all_instances_by_id = {}
         self._plugin_data_by_id = {}
         self._current_plugin_id = None
+        self._start_time = None
 
         publish_plugins = []
         if publish_discover_result is not None:
@@ -151,6 +147,11 @@ class PublishReportMaker:
 
         for plugin in publish_plugins:
             self._add_plugin_data_item(plugin)
+
+    def start_time_tracking(self):
+        """Start tracking publish time."""
+        if self._start_time is None:
+            self._start_time = time.time()
 
     def add_plugin_iter(self, plugin_id: str, context: pyblish.api.Context):
         """Add report about single iteration of plugin."""
@@ -244,15 +245,78 @@ class PublishReportMaker:
                     traceback.format_exception(*exc_info)
                 )
 
+        timing_data = self.get_timing_data()
+
         return {
             "plugins_data": list(plugins_data_by_id.values()),
             "instances": instances_details,
             "context": self._extract_context_data(publish_context),
             "crashed_file_paths": crashed_file_paths,
-            "blocking_crashed_paths": list(self._blocking_crashed_paths),
+            "timing": timing_data,
             "id": uuid.uuid4().hex,
             "created_at": now.isoformat(),
-            "report_version": "1.1.1",
+            "report_version": "1.1.0",
+        }
+
+    def get_timing_data(self) -> Dict[str, Any]:
+        """Get timing data for the publish process.
+
+        Returns:
+            dict: Timing data including total time and per-plugin breakdown
+        """
+        end_time = time.time()
+        total_time = 0
+        if self._start_time is not None:
+            total_time = end_time - self._start_time
+
+        plugins_timing = []
+        for plugin_data in self._plugin_data_by_id.values():
+            if plugin_data.get("skipped"):
+                continue
+
+            instances_data = plugin_data.get("instances_data", [])
+            plugin_total_time = sum(
+                inst.get("process_time", 0) for inst in instances_data
+            )
+
+            if plugin_total_time > 0 or instances_data:
+                instances_timing = []
+                for inst_data in instances_data:
+                    instance_id = inst_data.get("id")
+                    instance_label = "Context"
+                    if (
+                        instance_id
+                        and instance_id in self._all_instances_by_id
+                    ):
+                        instance = self._all_instances_by_id[instance_id]
+                        instance_label = (
+                            instance.data.get("label")
+                            or instance.data.get("name")
+                            or "Unknown"
+                        )
+
+                    instances_timing.append(
+                        {
+                            "instance_label": instance_label,
+                            "time": inst_data.get("process_time", 0),
+                        }
+                    )
+
+                plugins_timing.append(
+                    {
+                        "plugin_name": plugin_data.get("name"),
+                        "plugin_label": plugin_data.get("label")
+                        or plugin_data.get("name"),
+                        "total_time": plugin_total_time,
+                        "instances": instances_timing,
+                    }
+                )
+
+        return {
+            "start_time": self._start_time,
+            "end_time": end_time,
+            "total_time": total_time,
+            "plugins_timing": plugins_timing,
         }
 
     def _add_plugin_data_item(self, plugin: pyblish.api.Plugin):
@@ -315,7 +379,6 @@ class PublishReportMaker:
             "name": instance.data.get("name"),
             "label": get_publish_instance_label(instance),
             "product_type": instance.data.get("productType"),
-            "product_base_type": instance.data.get("productBaseType"),
             "family": instance.data.get("family"),
             "families": instance.data.get("families") or [],
             "exists": exists,
@@ -665,6 +728,7 @@ class PublishErrorsReport:
             items by plugin id.
 
     """
+
     def __init__(self, error_items, plugin_action_items):
         self._error_items = error_items
         self._plugin_action_items = plugin_action_items
@@ -968,16 +1032,11 @@ class PublishModel:
         self._publish_plugins_proxy = PublishPluginsProxy(
             publish_plugins
         )
-        blocking_crashed_paths = filter_crashed_publish_paths(
-            create_context.get_current_project_name(),
-            set(create_context.publish_discover_result.crashed_file_paths),
-            project_settings=create_context.get_current_project_settings(),
-        )
+
         self._publish_report.reset(
             create_context.creator_discover_result,
             create_context.convertor_discover_result,
             create_context.publish_discover_result,
-            blocking_crashed_paths,
         )
         for plugin in create_context.publish_plugins_mismatch_targets:
             self._publish_report.set_plugin_skipped(plugin.id)
@@ -1073,6 +1132,9 @@ class PublishModel:
         return self._publish_report.get_report(
             self._publish_context
         )
+
+    def get_publish_timing_data(self) -> Dict[str, Any]:
+        return self._publish_report.get_timing_data()
 
     def get_publish_errors_report(self) -> PublishErrorsReport:
         return self._publish_errors.create_report()
@@ -1224,6 +1286,8 @@ class PublishModel:
 
         Also stops publishing, if should stop on validation.
         """
+
+        self._publish_report.start_time_tracking()
 
         for idx, plugin in enumerate(self._publish_plugins):
             self._publish_progress = idx
