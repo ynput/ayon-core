@@ -12,16 +12,13 @@ from ayon_core.resources import get_image_path
 from ayon_core.style import get_objected_colors
 
 # from ayon_core.tools.utils import DeselectableTreeView
-from .constants import (
-    ITEM_ID_ROLE,
-    ITEM_IS_GROUP_ROLE
-)
+from .constants import ITEM_ID_ROLE, ITEM_IS_GROUP_ROLE
 from .delegates import GroupItemDelegate
 from .model import (
     InstancesModel,
     InstanceProxyModel,
     PluginsModel,
-    PluginProxyModel
+    PluginProxyModel,
 )
 from .report_items import PublishReport
 
@@ -45,6 +42,32 @@ def get_pretty_milliseconds(value):
     minutes = int(value % 60)
     value /= 60
     return f"{value:.2f}h {minutes:.2f}m"
+
+
+def format_publish_time_seconds(seconds):
+    """Format time in seconds to clean human-readable string.
+
+    Args:
+        seconds (float): Time in seconds
+
+    Returns:
+        str: Formatted time string (e.g., "2m 48s", "45s", "1.2s")
+    """
+    if seconds < 1:
+        return f"{seconds:.1f}s"
+
+    if seconds < 60:
+        return f"{seconds:.2f}s"
+
+    minutes = int(seconds // 60)
+    remaining_seconds = int(seconds % 60)
+
+    if minutes < 60:
+        return f"{minutes}m {remaining_seconds}s"
+
+    hours = int(minutes // 60)
+    remaining_minutes = int(minutes % 60)
+    return f"{hours}h {remaining_minutes}m"
 
 
 class PluginLoadReportModel(QtGui.QStandardItemModel):
@@ -89,8 +112,8 @@ class PluginLoadReportModel(QtGui.QStandardItemModel):
 
         new_items = []
         new_items_by_filepath = {}
-        to_remove = (
-            set(self._items_by_filepath) - set(self._traceback_by_filepath)
+        to_remove = set(self._items_by_filepath) - set(
+            self._traceback_by_filepath
         )
         for filepath in self._traceback_by_filepath:
             if filepath in self._items_by_filepath:
@@ -123,14 +146,11 @@ class DetailWidget(QtWidgets.QTextEdit):
         self.setReadOnly(True)
         self.setHtml(text)
         self.setTextInteractionFlags(QtCore.Qt.TextBrowserInteraction)
-        self.setWordWrapMode(
-            QtGui.QTextOption.WrapAtWordBoundaryOrAnywhere
-        )
+        self.setWordWrapMode(QtGui.QTextOption.WrapAtWordBoundaryOrAnywhere)
 
     def sizeHint(self):
         content_margins = (
-            self.contentsMargins().top()
-            + self.contentsMargins().bottom()
+            self.contentsMargins().top() + self.contentsMargins().bottom()
         )
         size = self.document().documentLayout().documentSize().toSize()
         size.setHeight(size.height() + content_margins)
@@ -200,10 +220,7 @@ class PluginLoadReportWidget(QtWidgets.QWidget):
 
         traceback_txt = index.data(TRACEBACK_ROLE)
         detail_text = (
-            "<b>Filepath:</b><br/>"
-            "{}<br/><br/>"
-            "<b>Traceback:</b><br/>"
-            "{}"
+            "<b>Filepath:</b><br/>{}<br/><br/><b>Traceback:</b><br/>{}"
         ).format(filepath, traceback_txt.replace("\n", "<br/>"))
         widget = DetailWidget(detail_text, self)
         self._view.setIndexWidget(index, widget)
@@ -239,7 +256,7 @@ class ZoomPlainText(QtWidgets.QPlainTextEdit):
         degrees = float(delta) / 8
         steps = int(ceil(degrees / 5))
         self._scheduled_scalings += steps
-        if (self._scheduled_scalings * steps < 0):
+        if self._scheduled_scalings * steps < 0:
             self._scheduled_scalings = steps
 
         self._anim_timer.start()
@@ -274,9 +291,8 @@ class ZoomPlainText(QtWidgets.QPlainTextEdit):
         #   are applied on this widget
         self.setStyleSheet("font-size: {}pt".format(font.pointSize()))
 
-        if (
-            (max_hit and self._scheduled_scalings > 0)
-            or (min_hit and self._scheduled_scalings < 0)
+        if (max_hit and self._scheduled_scalings > 0) or (
+            min_hit and self._scheduled_scalings < 0
         ):
             self._scheduled_scalings = 0
 
@@ -509,7 +525,7 @@ class PluginsDetailsWidget(QtWidgets.QWidget):
 
         empty_label = QtWidgets.QLabel(
             "<br/><br/>Select plugins to view more information...",
-            scroll_content_widget
+            scroll_content_widget,
         )
         empty_label.setAlignment(QtCore.Qt.AlignCenter)
 
@@ -660,10 +676,7 @@ class DetailsPopup(QtWidgets.QDialog):
         layout.insertWidget(0, self._center_widget)
         if self._first_show:
             self._first_show = False
-            self.resize(
-                max(cw_size.width(), 700),
-                max(cw_size.height(), 400)
-            )
+            self.resize(max(cw_size.width(), 700), max(cw_size.height(), 400))
         super().showEvent(event)
 
     def closeEvent(self, event):
@@ -817,7 +830,7 @@ class TimingOverviewWidget(QtWidgets.QWidget):
         plugins_timing = timing.get("plugins_timing", [])
 
         self._total_time_value.setText(
-            get_pretty_milliseconds(total_time_seconds * 1000)
+            format_publish_time_seconds(total_time_seconds)
         )
         self._plugin_count_value.setText(str(len(plugins_timing)))
 
@@ -830,7 +843,7 @@ class TimingOverviewWidget(QtWidgets.QWidget):
         for order, plugin_info in sorted_plugins:
             plugin_label = plugin_info.get("plugin_label", "Unknown")
             plugin_time_ms = plugin_info.get("total_time", 0)
-            time_str = get_pretty_milliseconds(plugin_time_ms)
+            time_str = format_publish_time_seconds(plugin_time_ms / 1000)
 
             item = SortableTimingTreeItem()
             item.setText(0, str(order))
@@ -897,7 +910,7 @@ class TimingWidget(QtWidgets.QWidget):
             plugin_time_ms = plugin_info.get("total_time", 0)
             instances = plugin_info.get("instances", [])
 
-            time_str = get_pretty_milliseconds(plugin_time_ms)
+            time_str = format_publish_time_seconds(plugin_time_ms / 1000)
 
             plugin_item = SortableTimingTreeItem()
             plugin_item.setText(0, str(idx))
@@ -913,8 +926,8 @@ class TimingWidget(QtWidgets.QWidget):
                 instance_label = instance_info.get("instance_label", "Unknown")
                 instance_time_ms = instance_info.get("time", 0)
                 if instance_time_ms > 0:
-                    instance_time_str = get_pretty_milliseconds(
-                        instance_time_ms
+                    instance_time_str = format_publish_time_seconds(
+                        instance_time_ms / 1000
                     )
                     instance_item = SortableTimingTreeItem()
                     instance_item.setText(0, "")
@@ -962,9 +975,11 @@ class PublishReportViewerWidget(QtWidgets.QFrame):
         instances_view.setIndentation(0)
         instances_view.setHeaderHidden(True)
         instances_view.setEditTriggers(
-            QtWidgets.QAbstractItemView.NoEditTriggers)
+            QtWidgets.QAbstractItemView.NoEditTriggers
+        )
         instances_view.setSelectionMode(
-            QtWidgets.QAbstractItemView.ExtendedSelection)
+            QtWidgets.QAbstractItemView.ExtendedSelection
+        )
         instances_view.setExpandsOnDoubleClick(False)
 
         instances_delegate = GroupItemDelegate(instances_view)
@@ -985,9 +1000,11 @@ class PublishReportViewerWidget(QtWidgets.QFrame):
         plugins_view.setIndentation(0)
         plugins_view.setHeaderHidden(True)
         plugins_view.setSelectionMode(
-            QtWidgets.QAbstractItemView.ExtendedSelection)
+            QtWidgets.QAbstractItemView.ExtendedSelection
+        )
         plugins_view.setEditTriggers(
-            QtWidgets.QAbstractItemView.NoEditTriggers)
+            QtWidgets.QAbstractItemView.NoEditTriggers
+        )
         plugins_view.setExpandsOnDoubleClick(False)
 
         plugins_delegate = GroupItemDelegate(plugins_view)
