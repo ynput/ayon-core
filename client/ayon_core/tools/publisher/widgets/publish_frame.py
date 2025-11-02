@@ -9,6 +9,7 @@ from .widgets import (
     PublishBtn,
     PublishReportBtn,
 )
+from .publish_time_widget import PublishTimeWidget
 
 
 class PublishFrame(QtWidgets.QWidget):
@@ -50,9 +51,21 @@ class PublishFrame(QtWidgets.QWidget):
         top_content_widget = QtWidgets.QWidget(content_frame)
 
         # Center widget displaying current state (without any specific info)
-        main_label = QtWidgets.QLabel(top_content_widget)
+        main_label_widget = QtWidgets.QWidget(top_content_widget)
+        main_label = QtWidgets.QLabel(main_label_widget)
         main_label.setObjectName("PublishInfoMainLabel")
         main_label.setAlignment(QtCore.Qt.AlignCenter)
+
+        # Timing widget next to the main label
+        publish_time_widget = PublishTimeWidget(main_label_widget)
+
+        main_label_layout = QtWidgets.QHBoxLayout(main_label_widget)
+        main_label_layout.setContentsMargins(0, 0, 0, 0)
+        main_label_layout.setSpacing(0)
+        main_label_layout.addStretch(1)
+        main_label_layout.addWidget(main_label, 0)
+        main_label_layout.addWidget(publish_time_widget, 0)
+        main_label_layout.addStretch(1)
 
         # Supporting labels for main label
         # Top label is displayed just under main label
@@ -94,7 +107,7 @@ class PublishFrame(QtWidgets.QWidget):
         top_content_layout.setContentsMargins(0, 0, 0, 0)
         top_content_layout.setSpacing(5)
         top_content_layout.setAlignment(QtCore.Qt.AlignCenter)
-        top_content_layout.addWidget(main_label)
+        top_content_layout.addWidget(main_label_widget)
         # TODO stretches should be probably replaced by spacing...
         # - stretch in floating frame doesn't make sense
         top_content_layout.addWidget(message_label_top)
@@ -111,6 +124,8 @@ class PublishFrame(QtWidgets.QWidget):
             QtCore.Qt.AlignVCenter | QtCore.Qt.AlignLeft
         )
 
+        shrunk_publish_time_widget = PublishTimeWidget(footer_widget)
+
         reset_btn = ResetBtn(footer_widget)
         stop_btn = StopBtn(footer_widget)
         validate_btn = ValidateBtn(footer_widget)
@@ -124,7 +139,9 @@ class PublishFrame(QtWidgets.QWidget):
         footer_layout = QtWidgets.QHBoxLayout(footer_widget)
         footer_layout.setContentsMargins(0, 0, 0, 0)
         footer_layout.addWidget(report_btn, 0)
-        footer_layout.addWidget(shrunk_main_label, 1)
+        footer_layout.addWidget(shrunk_main_label, 0)
+        footer_layout.addWidget(shrunk_publish_time_widget, 0)
+        footer_layout.addStretch(1)
         footer_layout.addWidget(reset_btn, 0)
         footer_layout.addWidget(stop_btn, 0)
         footer_layout.addWidget(validate_btn, 0)
@@ -152,6 +169,7 @@ class PublishFrame(QtWidgets.QWidget):
             footer_widget,
             progress_widget,
             instance_plugin_widget,
+            main_label_widget,
         ):
             widget.setAttribute(QtCore.Qt.WA_TranslucentBackground)
 
@@ -195,6 +213,7 @@ class PublishFrame(QtWidgets.QWidget):
 
         self._main_label = main_label
         self._message_label_top = message_label_top
+        self._publish_time_widget = publish_time_widget
 
         self._instance_label = instance_label
         self._plugin_label = plugin_label
@@ -203,6 +222,7 @@ class PublishFrame(QtWidgets.QWidget):
         self._progress_widget = progress_widget
 
         self._shrunk_main_label = shrunk_main_label
+        self._shrunk_publish_time_widget = shrunk_publish_time_widget
         self._reset_btn = reset_btn
         self._stop_btn = stop_btn
         self._validate_btn = validate_btn
@@ -315,6 +335,8 @@ class PublishFrame(QtWidgets.QWidget):
 
         self._main_label.setText("")
         self._message_label_top.setText("")
+        self._publish_time_widget.clear()
+        self._shrunk_publish_time_widget.clear()
 
         self._reset_btn.setEnabled(True)
         self._stop_btn.setEnabled(False)
@@ -430,6 +452,10 @@ class PublishFrame(QtWidgets.QWidget):
         self._set_main_label("Finished")
         self._message_label_top.setText("")
         self._set_success_property(0)
+
+        timing_data = self._controller.get_publish_timing_data()
+        self._publish_time_widget.set_timing_data(timing_data)
+        self._shrunk_publish_time_widget.set_timing_data(timing_data)
 
     def _set_progress_visibility(self, visible):
         window_height = self.height()
