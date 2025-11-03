@@ -719,8 +719,13 @@ class SortableTimingTreeItem(QtWidgets.QTreeWidgetItem):
             try:
                 self_time = self.data(2, TIME_MS_ROLE)
                 other_time = other.data(2, TIME_MS_ROLE)
-                if self_time is not None and other_time is not None:
-                    return self_time < other_time
+
+                if self_time is None:
+                    self_time = 0
+                if other_time is None:
+                    other_time = 0
+
+                return self_time < other_time
             except (RuntimeError, AttributeError, TypeError):
                 pass
             return False
@@ -873,6 +878,8 @@ class TimingWidget(QtWidgets.QWidget):
         timing_tree.setAlternatingRowColors(True)
         timing_tree.setIndentation(15)
         timing_tree.setSortingEnabled(False)
+        timing_tree.header().setSortIndicatorShown(True)
+        timing_tree.header().setSectionsClickable(True)
 
         layout = QtWidgets.QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
@@ -914,14 +921,14 @@ class TimingWidget(QtWidgets.QWidget):
             time_str = format_publish_time(plugin_time_ms / 1000)
 
             plugin_item = SortableTimingTreeItem()
+            plugin_item.setData(0, ORDER_ROLE, idx)
+            plugin_item.setData(2, TIME_MS_ROLE, plugin_time_ms)
+            plugin_item.setData(3, ORDER_ROLE, len(instances))
+
             plugin_item.setText(0, str(idx))
             plugin_item.setText(1, plugin_label)
             plugin_item.setText(2, time_str)
             plugin_item.setText(3, f"{len(instances)} instance(s)")
-
-            plugin_item.setData(0, ORDER_ROLE, idx)
-            plugin_item.setData(2, TIME_MS_ROLE, plugin_time_ms)
-            plugin_item.setData(3, ORDER_ROLE, len(instances))
 
             for instance_info in instances:
                 instance_label = instance_info.get("instance_label", "Unknown")
@@ -931,11 +938,11 @@ class TimingWidget(QtWidgets.QWidget):
                         instance_time_ms / 1000
                     )
                     instance_item = SortableTimingTreeItem()
+                    instance_item.setData(2, TIME_MS_ROLE, instance_time_ms)
                     instance_item.setText(0, "")
                     instance_item.setText(1, f"  {instance_label}")
                     instance_item.setText(2, instance_time_str)
                     instance_item.setText(3, "")
-                    instance_item.setData(2, TIME_MS_ROLE, instance_time_ms)
                     plugin_item.addChild(instance_item)
 
             self._timing_tree.addTopLevelItem(plugin_item)
