@@ -117,6 +117,7 @@ class PublishReportMaker:
         self._plugin_data_by_id: Dict[str, Any] = {}
         self._current_plugin_id: Optional[str] = None
         self._start_time: Optional[float] = None
+        self._end_time: Optional[float] = None
 
         self.reset(
             creator_discover_result,
@@ -140,6 +141,7 @@ class PublishReportMaker:
         self._plugin_data_by_id = {}
         self._current_plugin_id = None
         self._start_time = None
+        self._end_time = None
 
         publish_plugins = []
         if publish_discover_result is not None:
@@ -152,6 +154,11 @@ class PublishReportMaker:
         """Start tracking publish time."""
         if self._start_time is None:
             self._start_time = time.time()
+
+    def stop_time_tracking(self):
+        """Stop tracking publish time."""
+        if self._end_time is None:
+            self._end_time = time.time()
 
     def add_plugin_iter(self, plugin_id: str, context: pyblish.api.Context):
         """Add report about single iteration of plugin."""
@@ -264,7 +271,7 @@ class PublishReportMaker:
         Returns:
             dict: Timing data including total time and per-plugin breakdown
         """
-        end_time = time.time()
+        end_time = self._end_time if self._end_time is not None else time.time()
         total_time = 0
         if self._start_time is not None:
             total_time = end_time - self._start_time
@@ -1272,6 +1279,7 @@ class PublishModel:
 
     def _stop_publish(self):
         """Stop or pause publishing."""
+        self._publish_report.stop_time_tracking()
         self._set_is_running(False)
 
         self._emit_event("publish.process.stopped")

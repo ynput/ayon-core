@@ -1,5 +1,6 @@
 """Widget displaying publish timing information with detailed breakdown."""
 
+import qtawesome
 from qtpy import QtCore, QtWidgets
 
 
@@ -14,7 +15,8 @@ class PublishTimeWidget(QtWidgets.QWidget):
         super().__init__(parent)
 
         time_icon_label = QtWidgets.QLabel(self)
-        time_icon_label.setText("⏱")
+        clock_icon = qtawesome.icon("fa.clock-o")
+        time_icon_label.setPixmap(clock_icon.pixmap(16, 16))
         time_icon_label.setObjectName("PublishTimeIcon")
 
         time_label = QtWidgets.QLabel(self)
