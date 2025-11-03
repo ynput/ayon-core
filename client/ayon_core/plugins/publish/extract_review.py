@@ -163,7 +163,8 @@ class ExtractReview(pyblish.api.InstancePlugin):
         "flame",
         "unreal",
         "batchdelivery",
-        "photoshop"
+        "photoshop",
+        "substancepainter",
     ]
 
     settings_category = "core"
@@ -571,7 +572,7 @@ class ExtractReview(pyblish.api.InstancePlugin):
                 # review output files
                 "timecode": frame_to_timecode(
                     frame=temp_data.frame_start_handle,
-                    fps=float(instance.data["fps"])
+                    fps=float(instance.data.get("fps", 25.0))
                 )
             })
 
@@ -664,8 +665,8 @@ class ExtractReview(pyblish.api.InstancePlugin):
                 with values may be added.
         """
 
-        frame_start = instance.data["frameStart"]
-        frame_end = instance.data["frameEnd"]
+        frame_start = instance.data.get("frameStart", 1)
+        frame_end = instance.data.get("frameEnd", 1)
 
         # Try to get handles from instance
         handle_start = instance.data.get("handleStart")
@@ -725,7 +726,7 @@ class ExtractReview(pyblish.api.InstancePlugin):
             ext = os.path.splitext(repre["files"])[1].replace(".", "")
 
         return TempData(
-            fps=float(instance.data["fps"]),
+            fps=float(instance.data.get("fps", 25.0)),
             frame_start=frame_start,
             frame_end=frame_end,
             handle_start=handle_start,
