@@ -44,17 +44,20 @@ def get_pretty_milliseconds(value):
     return f"{value:.2f}h {minutes:.2f}m"
 
 
-def format_publish_time_seconds(seconds):
+def format_publish_time(seconds):
     """Format time in seconds to clean human-readable string.
 
     Args:
         seconds (float): Time in seconds
 
     Returns:
-        str: Formatted time string (e.g., "2m 48s", "45s", "1.2s")
+        str: Formatted time string (e.g., "2m 48s", "45s", "250ms", "0.5ms")
     """
     if seconds < 1:
-        return f"{seconds:.1f}s"
+        milliseconds = seconds * 1000
+        if milliseconds < 1:
+            return f"{milliseconds:.2f}ms"
+        return f"{milliseconds:.0f}ms"
 
     if seconds < 60:
         return f"{seconds:.2f}s"
@@ -829,9 +832,7 @@ class TimingOverviewWidget(QtWidgets.QWidget):
         total_time_seconds = timing.get("total_time", 0)
         plugins_timing = timing.get("plugins_timing", [])
 
-        self._total_time_value.setText(
-            format_publish_time_seconds(total_time_seconds)
-        )
+        self._total_time_value.setText(format_publish_time(total_time_seconds))
         self._plugin_count_value.setText(str(len(plugins_timing)))
 
         sorted_plugins = sorted(
@@ -843,7 +844,7 @@ class TimingOverviewWidget(QtWidgets.QWidget):
         for order, plugin_info in sorted_plugins:
             plugin_label = plugin_info.get("plugin_label", "Unknown")
             plugin_time_ms = plugin_info.get("total_time", 0)
-            time_str = format_publish_time_seconds(plugin_time_ms / 1000)
+            time_str = format_publish_time(plugin_time_ms / 1000)
 
             item = SortableTimingTreeItem()
             item.setText(0, str(order))
@@ -910,7 +911,7 @@ class TimingWidget(QtWidgets.QWidget):
             plugin_time_ms = plugin_info.get("total_time", 0)
             instances = plugin_info.get("instances", [])
 
-            time_str = format_publish_time_seconds(plugin_time_ms / 1000)
+            time_str = format_publish_time(plugin_time_ms / 1000)
 
             plugin_item = SortableTimingTreeItem()
             plugin_item.setText(0, str(idx))
@@ -926,7 +927,7 @@ class TimingWidget(QtWidgets.QWidget):
                 instance_label = instance_info.get("instance_label", "Unknown")
                 instance_time_ms = instance_info.get("time", 0)
                 if instance_time_ms > 0:
-                    instance_time_str = format_publish_time_seconds(
+                    instance_time_str = format_publish_time(
                         instance_time_ms / 1000
                     )
                     instance_item = SortableTimingTreeItem()
