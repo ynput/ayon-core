@@ -1069,6 +1069,20 @@ PixmapButton:disabled {
     background: {color:bg-buttons-disabled};
 }
 
+ValueItemButton {
+    border-radius: 0px;
+    background: transparent;
+}
+ValueItemButton:hover {
+    background: {color:bg-view-selection-hover};
+}
+ValueItemButton[selected="1"] {
+    background: {color:bg-view-selection};
+}
+ValueItemButton[selected="1"]:hover {
+    background: {color:bg-view-selection-hover};
+}
+
 #ThumbnailPixmapHoverButton {
     font-size: 11pt;
     background: {color:bg-view};
@@ -1225,6 +1239,14 @@ PixmapButton:disabled {
 #PublisherVerticalScrollArea QScrollBar::handle:vertical {
     min-height: 20px;
     min-width: 8px;
+}
+
+#FloatingHintLabel {
+    background: #16191D;
+    color: #8b9198;
+    padding: 5px;
+    border-top-left-radius: 5px;
+    border-top-right-radius: 5px;
 }
 
 ValidationArtistMessage QLabel {
