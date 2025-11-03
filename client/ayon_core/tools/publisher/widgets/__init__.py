@@ -11,6 +11,7 @@ from .widgets import (
     PublishBtn,
     CreateNextPageOverlay,
 )
+from .comment_input import CommentInput
 from .help_widget import (
     HelpButton,
     HelpDialog,
@@ -32,6 +33,8 @@ __all__ = (
     "ValidateBtn",
     "PublishBtn",
     "CreateNextPageOverlay",
+
+    "CommentInput",
 
     "HelpButton",
     "HelpDialog",

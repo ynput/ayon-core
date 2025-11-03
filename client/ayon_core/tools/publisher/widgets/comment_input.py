@@ -6,6 +6,7 @@ from qtpy import QtCore, QtWidgets
 from ayon_core.style import load_stylesheet
 from ayon_core.tools.utils import (
     BaseClickableFrame,
+    PlaceholderLineEdit,
     get_qt_icon,
     get_qt_app,
     PixmapLabel,
@@ -367,7 +368,9 @@ class CommentInput(QtWidgets.QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
 
-        text_input = QtWidgets.QLineEdit(self)
+        text_input = PlaceholderLineEdit(self)
+        text_input.setObjectName("PublishCommentInput")
+        text_input.setPlaceholderText("Attach a comment to your publish")
 
         floating_hints_widget = FloatingHintWidget(self)
 
