@@ -572,9 +572,7 @@ class ExtractReview(pyblish.api.InstancePlugin):
                 # review output files
                 "timecode": frame_to_timecode(
                     frame=temp_data.frame_start_handle,
-                    fps=float(instance.data.get(
-                        "fps", instance.context.data["fps"]
-                    ))
+                    fps=float(instance.data["fps"])
                 )
             })
 
@@ -667,12 +665,8 @@ class ExtractReview(pyblish.api.InstancePlugin):
                 with values may be added.
         """
 
-        frame_start = instance.data.get(
-            "frameStart", instance.context.data["frameStart"]
-        )
-        frame_end = instance.data.get(
-            "frameEnd", instance.context.data["frameEnd"]
-        )
+        frame_start = instance.data["frameStart"]
+        frame_end = instance.data["frameEnd"]
 
         # Try to get handles from instance
         handle_start = instance.data.get("handleStart")
@@ -732,7 +726,7 @@ class ExtractReview(pyblish.api.InstancePlugin):
             ext = os.path.splitext(repre["files"])[1].replace(".", "")
 
         return TempData(
-            fps=float(instance.data.get("fps", instance.context.data["fps"])),
+            fps=float(instance.data["fps"]),
             frame_start=frame_start,
             frame_end=frame_end,
             handle_start=handle_start,
