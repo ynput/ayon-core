@@ -948,10 +948,22 @@ class ProjectPushItemProcess:
             self._product_entity = product_entity
             return product_entity
 
+        src_attrib = self._src_product_entity["attrib"]
+
+        dst_attrib = {}
+        for key in {
+            "description",
+            "productGroup",
+        }:
+            value = src_attrib.get(key)
+            if value:
+                dst_attrib[key] = value
+
         product_entity = new_product_entity(
             product_name,
             product_type,
             folder_id,
+            attribs=dst_attrib
         )
         self._operations.create_entity(
             project_name, "product", product_entity
@@ -990,8 +1002,9 @@ class ProjectPushItemProcess:
             "description",
             "intent",
         }:
-            if key in src_attrib:
-                dst_attrib[key] = src_attrib[key]
+            value = src_attrib.get(key)
+            if value:
+                dst_attrib[key] = value
 
         last_version_entity = ayon_api.get_last_version_by_product_id(
             project_name, product_id
