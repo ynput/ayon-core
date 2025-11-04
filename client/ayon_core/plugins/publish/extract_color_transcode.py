@@ -298,9 +298,8 @@ class ExtractOIIOTranscode(publish.Extractor):
     def _translate_to_sequence(self, files_to_convert):
         """Returns original list or a clique.Collection of a sequence.
 
-        Uses clique to find frame sequence, in this case it merges all frames
-        into sequence format (FRAMESTART-FRAMEEND#) and returns it.
-        If sequence not found, it returns original list
+        Uses clique to find frame sequence Collection.
+        If sequence not found, it returns original list.
 
         Args:
             files_to_convert (list): list of file names
