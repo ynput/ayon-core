@@ -594,6 +594,10 @@ class InventoryModel(QtGui.QStandardItemModel):
                     item.setData(container_item.object_name, OBJECT_NAME_ROLE)
                     item.setData(True, IS_CONTAINER_ITEM_ROLE)
                     item.setData(unique_name, ITEM_UNIQUE_NAME_ROLE)
+                    item.setData(
+                        container_item.version_locked,
+                        CONTAINER_VERSION_LOCKED_ROLE,
+                    )
                     container_model_items.append(item)
 
                 progress = progress_by_id[repre_id]
@@ -603,6 +607,7 @@ class InventoryModel(QtGui.QStandardItemModel):
                 remote_site_progress = "{}%".format(
                     max(progress["remote_site"], 0) * 100
                 )
+                product_type_icon = get_qt_icon(repre_info.product_type_icon)
 
                 # Create representation item
                 repre_item = QtGui.QStandardItem()
@@ -613,6 +618,7 @@ class InventoryModel(QtGui.QStandardItemModel):
                 repre_item.setData(group_item_font, QtCore.Qt.FontRole)
                 repre_item.setData(repre_info.product_id, PRODUCT_ID_ROLE)
                 repre_item.setData(repre_info.product_type, PRODUCT_TYPE_ROLE)
+                repre_item.setData(product_type_icon, PRODUCT_TYPE_ICON_ROLE)
                 repre_item.setData(is_latest, VERSION_IS_LATEST_ROLE)
                 repre_item.setData(is_hero, VERSION_IS_HERO_ROLE)
                 repre_item.setData(version_label, VERSION_LABEL_ROLE)
@@ -634,6 +640,9 @@ class InventoryModel(QtGui.QStandardItemModel):
 
                 if version_color is not None:
                     repre_item.setData(version_color, VERSION_COLOR_ROLE)
+
+                repre_item.setData(product_group, PRODUCT_GROUP_NAME_ROLE)
+                repre_item.setData(group_icon, PRODUCT_GROUP_ICON_ROLE)
 
                 repre_item.appendRows(container_model_items)
 
