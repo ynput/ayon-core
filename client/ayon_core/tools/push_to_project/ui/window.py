@@ -319,6 +319,7 @@ class PushToContextSelectWindow(QtWidgets.QWidget):
         self._folder_name_input = folder_name_input
         self._comment_input = comment_input
         self._use_original_names_checkbox = original_names_checkbox
+        self._library_only_checkbox = library_only_checkbox
 
         self._publish_btn = publish_btn
 
@@ -427,17 +428,18 @@ class PushToContextSelectWindow(QtWidgets.QWidget):
         self._comment_input_text = text
         self._user_input_changed_timer.start()
 
-    def _on_library_only_change(self, state: int) -> None:
+    def _on_library_only_change(self) -> None:
         """Change toggle state, reset filter, recalculate dropdown"""
-        state = bool(state)
-        self._projects_combobox.set_standard_filter_enabled(state)
+        is_checked = self._library_only_checkbox.isChecked()
+        self._projects_combobox.set_standard_filter_enabled(is_checked)
 
-    def _on_original_names_change(self, state: int) -> None:
-        use_original_name = bool(state)
-        self._invalidate_use_original_names(use_original_name)
+    def _on_original_names_change(self) -> None:
+        is_checked = self._use_original_names_checkbox.isChecked()
+        self._invalidate_use_original_names(is_checked)
 
-    def _on_version_up_checkbox_change(self, state: int) -> None:
-        self._controller.set_version_up(bool(state))
+    def _on_version_up_checkbox_change(self) -> None:
+        is_checked = self._version_up_checkbox.isChecked()
+        self._controller.set_version_up(is_checked)
 
     def _on_user_input_timer(self):
         folder_name_enabled = self._new_folder_name_enabled
