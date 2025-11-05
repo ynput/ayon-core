@@ -246,75 +246,75 @@ def test_multiple_review_clips_no_gap():
     expected = [
         # 10 head black frames generated from gap (991-1000)
         '/path/to/ffmpeg -t 0.4 -r 25.0 -f lavfi'
-        ' -i color=c=black:s=1280x720 -tune '
+        ' -i color=c=black:s=1920x1080 -tune '
         'stillimage -start_number 991 -pix_fmt rgba C:/result/output.%04d.png',
 
         # Alternance 25fps tiff sequence and 24fps exr sequence
         #   for 100 frames each
         '/path/to/ffmpeg -start_number 1000 -framerate 25.0 -i '
         f'C:\\no_tc{os.sep}output.%04d.tif '
-        '-vf scale=1280:720:flags=lanczos -compression_level 5 '
+        '-vf scale=1920:1080:flags=lanczos -compression_level 5 '
         '-start_number 1001 -pix_fmt rgba C:/result/output.%04d.png',
 
         '/path/to/ffmpeg -start_number 1000 -framerate 24.0 -i '
         f'C:\\with_tc{os.sep}output.%04d.exr '
-        '-vf scale=1280:720:flags=lanczos -compression_level 5 '
+        '-vf scale=1920:1080:flags=lanczos -compression_level 5 '
         '-start_number 1102 -pix_fmt rgba C:/result/output.%04d.png',
 
         '/path/to/ffmpeg -start_number 1000 -framerate 25.0 -i '
         f'C:\\no_tc{os.sep}output.%04d.tif '
-        '-vf scale=1280:720:flags=lanczos -compression_level 5 '
+        '-vf scale=1920:1080:flags=lanczos -compression_level 5 '
         '-start_number 1198 -pix_fmt rgba C:/result/output.%04d.png',
 
         '/path/to/ffmpeg -start_number 1000 -framerate 24.0 -i '
         f'C:\\with_tc{os.sep}output.%04d.exr '
-        '-vf scale=1280:720:flags=lanczos -compression_level 5 '
+        '-vf scale=1920:1080:flags=lanczos -compression_level 5 '
         '-start_number 1299 -pix_fmt rgba C:/result/output.%04d.png',
 
         # Repeated 25fps tiff sequence multiple times till the end
         '/path/to/ffmpeg -start_number 1000 -framerate 25.0 -i '
         f'C:\\no_tc{os.sep}output.%04d.tif '
-        '-vf scale=1280:720:flags=lanczos -compression_level 5 '
+        '-vf scale=1920:1080:flags=lanczos -compression_level 5 '
         '-start_number 1395 -pix_fmt rgba C:/result/output.%04d.png',
 
         '/path/to/ffmpeg -start_number 1000 -framerate 25.0 -i '
         f'C:\\no_tc{os.sep}output.%04d.tif '
-        '-vf scale=1280:720:flags=lanczos -compression_level 5 '
+        '-vf scale=1920:1080:flags=lanczos -compression_level 5 '
         '-start_number 1496 -pix_fmt rgba C:/result/output.%04d.png',
 
         '/path/to/ffmpeg -start_number 1000 -framerate 25.0 -i '
         f'C:\\no_tc{os.sep}output.%04d.tif '
-        '-vf scale=1280:720:flags=lanczos -compression_level 5 '
+        '-vf scale=1920:1080:flags=lanczos -compression_level 5 '
         '-start_number 1597 -pix_fmt rgba C:/result/output.%04d.png',
 
         '/path/to/ffmpeg -start_number 1000 -framerate 25.0 -i '
         f'C:\\no_tc{os.sep}output.%04d.tif '
-        '-vf scale=1280:720:flags=lanczos -compression_level 5 '
+        '-vf scale=1920:1080:flags=lanczos -compression_level 5 '
         '-start_number 1698 -pix_fmt rgba C:/result/output.%04d.png',
 
         '/path/to/ffmpeg -start_number 1000 -framerate 25.0 -i '
         f'C:\\no_tc{os.sep}output.%04d.tif '
-        '-vf scale=1280:720:flags=lanczos -compression_level 5 '
+        '-vf scale=1920:1080:flags=lanczos -compression_level 5 '
         '-start_number 1799 -pix_fmt rgba C:/result/output.%04d.png',
 
         '/path/to/ffmpeg -start_number 1000 -framerate 25.0 -i '
         f'C:\\no_tc{os.sep}output.%04d.tif '
-        '-vf scale=1280:720:flags=lanczos -compression_level 5 '
+        '-vf scale=1920:1080:flags=lanczos -compression_level 5 '
         '-start_number 1900 -pix_fmt rgba C:/result/output.%04d.png',
 
         '/path/to/ffmpeg -start_number 1000 -framerate 25.0 -i '
         f'C:\\no_tc{os.sep}output.%04d.tif '
-        '-vf scale=1280:720:flags=lanczos -compression_level 5 '
+        '-vf scale=1920:1080:flags=lanczos -compression_level 5 '
         '-start_number 2001 -pix_fmt rgba C:/result/output.%04d.png',
 
         '/path/to/ffmpeg -start_number 1000 -framerate 25.0 -i '
         f'C:\\no_tc{os.sep}output.%04d.tif '
-        '-vf scale=1280:720:flags=lanczos -compression_level 5 '
+        '-vf scale=1920:1080:flags=lanczos -compression_level 5 '
         '-start_number 2102 -pix_fmt rgba C:/result/output.%04d.png',
 
         '/path/to/ffmpeg -start_number 1000 -framerate 25.0 -i '
         f'C:\\no_tc{os.sep}output.%04d.tif '
-        '-vf scale=1280:720:flags=lanczos -compression_level 5 '
+        '-vf scale=1920:1080:flags=lanczos -compression_level 5 '
         '-start_number 2203 -pix_fmt rgba C:/result/output.%04d.png'
     ]
 
@@ -348,12 +348,12 @@ def test_multiple_review_clips_with_gap():
 
     '/path/to/ffmpeg -start_number 1000 -framerate 24.0 -i '
     f'C:\\with_tc{os.sep}output.%04d.exr '
-    '-vf scale=1280:720:flags=lanczos -compression_level 5 '
+    '-vf scale=1920:1080:flags=lanczos -compression_level 5 '
     '-start_number 1003 -pix_fmt rgba C:/result/output.%04d.png',
 
     '/path/to/ffmpeg -start_number 1000 -framerate 24.0 -i '
     f'C:\\with_tc{os.sep}output.%04d.exr '
-    '-vf scale=1280:720:flags=lanczos -compression_level 5 '
+    '-vf scale=1920:1080:flags=lanczos -compression_level 5 '
     '-start_number 1091 -pix_fmt rgba C:/result/output.%04d.png'
     ]
 
