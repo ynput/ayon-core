@@ -983,7 +983,26 @@ def get_instance_expected_output_path(
         "version": version
     })
 
-    path_template_obj = anatomy.get_template_item("publish", "default")["path"]
+    # Get instance publish template name
+    task_name = task_type = None
+    task_entity = instance.data.get("taskEntity")
+    if task_entity:
+        task_name = task_entity["name"]
+        task_type = task_entity["taskType"]
+
+    template_name = get_publish_template_name(
+        project_name=instance.context.data["projectName"],
+        host_name=instance.context.data["hostName"],
+        product_type=instance.data["productType"],
+        task_name=task_name,
+        task_type=task_type,
+        project_settings=instance.context.data["project_settings"],
+    )
+
+    path_template_obj = anatomy.get_template_item(
+        "publish",
+        template_name
+    )["path"]
     template_filled = path_template_obj.format_strict(template_data)
     return os.path.normpath(template_filled)
 
