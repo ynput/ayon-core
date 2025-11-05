@@ -377,12 +377,31 @@ class CommentInput(QtWidgets.QWidget):
         text_input.cursorPositionChanged.connect(self._pos_changed)
 
         layout = QtWidgets.QHBoxLayout(self)
+        layout.setContentsMargins(0, 0, 0, 0)
         layout.addWidget(text_input, 1)
 
         floating_hints_widget.confirmed_value.connect(self._on_confirm_value)
 
         self._text_input = text_input
         self._floating_hints_widget = floating_hints_widget
+
+    def get_comment(self) -> str:
+        return self._text_input.text()
+
+    def set_comment(self, comment: str) -> None:
+        self._text_input.setText(comment)
+
+    def set_valid(self, valid: bool) -> None:
+        # Reset style
+        if valid:
+            self._text_input.setStyleSheet("")
+            return
+        self._text_input.setStyleSheet("border-color: #DD2020")
+        # Set focus so user can start typing and is pointed towards the field
+        self._text_input.setFocus()
+        self._text_input.setCursorPosition(
+            len(self.get_comment())
+        )
 
     def set_user_items(self, items):
         self._floating_hints_widget.set_items(items)

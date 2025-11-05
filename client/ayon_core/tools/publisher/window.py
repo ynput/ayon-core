@@ -13,7 +13,6 @@ from ayon_core import (
 )
 from ayon_core.tools.utils import (
     ErrorMessageBox,
-    PlaceholderLineEdit,
     MessageOverlayObject,
     PixmapLabel,
 )
@@ -35,6 +34,8 @@ from .widgets import (
     StopBtn,
     ValidateBtn,
     PublishBtn,
+
+    CommentInput,
 
     HelpButton,
     HelpDialog,
@@ -125,11 +126,7 @@ class PublisherWindow(QtWidgets.QDialog):
         footer_widget = QtWidgets.QWidget(under_publish_widget)
         footer_bottom_widget = QtWidgets.QWidget(footer_widget)
 
-        comment_input = PlaceholderLineEdit(footer_widget)
-        comment_input.setObjectName("PublishCommentInput")
-        comment_input.setPlaceholderText(
-            "Attach a comment to your publish"
-        )
+        comment_input = CommentInput(footer_widget)
 
         save_btn = SaveBtn(footer_widget)
         reset_btn = ResetBtn(footer_widget)
@@ -448,7 +445,7 @@ class PublisherWindow(QtWidgets.QDialog):
             comment (str): Comment text.
         """
 
-        self._comment_input.setText(comment)
+        self._comment_input.set_comment(comment)
 
     def make_sure_is_visible(self):
         if self._window_is_visible:
@@ -480,7 +477,7 @@ class PublisherWindow(QtWidgets.QDialog):
         # TODO capture changes and ask user if wants to save changes on close
         if not self._controller.host_context_has_changed():
             self._save_changes(False)
-        self._comment_input.setText("")  # clear comment
+        self._comment_input.set_comment("")  # clear comment
         self._reset_on_show = True
         self._controller.clear_thumbnail_temp_dir_path()
         # Trigger custom event that should be captured only in UI
@@ -828,7 +825,7 @@ class PublisherWindow(QtWidgets.QDialog):
         self._controller.stop_publish()
 
     def _set_publish_comment(self):
-        self._controller.set_comment(self._comment_input.text())
+        self._controller.set_comment(self._comment_input.get_comment())
 
     def _on_validate_clicked(self):
         if self._validate_comment() and self._save_changes(False):
@@ -843,7 +840,7 @@ class PublisherWindow(QtWidgets.QDialog):
     def _validate_comment(self) -> bool:
         # Validate comment length
         comment_def = self._controller.get_comment_def()
-        char_count = len(self._comment_input.text().strip())
+        char_count = len(self._comment_input.get_comment().strip())
         if (
             comment_def.minimum_chars_required
             and char_count < comment_def.minimum_chars_required
@@ -859,16 +856,10 @@ class PublisherWindow(QtWidgets.QDialog):
 
     def _invalidate_comment_field(self):
         self._comment_invalid_timer.start()
-        self._comment_input.setStyleSheet("border-color: #DD2020")
-        # Set focus so user can start typing and is pointed towards the field
-        self._comment_input.setFocus()
-        self._comment_input.setCursorPosition(
-            len(self._comment_input.text())
-        )
+        self._comment_input.set_valid(False)
 
     def _on_comment_invalid_timeout(self):
-        # Reset style
-        self._comment_input.setStyleSheet("")
+        self._comment_input.set_valid(True)
 
     def _set_footer_enabled(self, enabled):
         self._save_btn.setEnabled(True)
