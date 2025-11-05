@@ -245,11 +245,11 @@ class AttributeValues:
 
     def _update(self, value):
         changes = {}
-        for key, value in dict(value).items():
-            if key in self._data and self._data.get(key) == value:
+        for key, key_value in dict(value).items():
+            if key in self._data and self._data.get(key) == key_value:
                 continue
-            self._data[key] = value
-            changes[key] = value
+            self._data[key] = key_value
+            changes[key] = key_value
         return changes
 
     def _pop(self, key, default):
