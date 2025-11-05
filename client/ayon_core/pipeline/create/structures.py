@@ -137,6 +137,7 @@ class AttributeValues:
             if value is None:
                 continue
             converted_value = attr_def.convert_value(value)
+            # QUESTION Could we just use converted value all the time?
             if converted_value == value:
                 self._data[attr_def.key] = value
 
