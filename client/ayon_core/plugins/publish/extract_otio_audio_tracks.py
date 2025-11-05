@@ -49,14 +49,14 @@ class CollectParentAudioInstanceAttribute(pyblish.api.ContextPlugin):
         Returns:
             list: list of selected instances
         """
-        return [
-            _i for _i in context
-            # filter only those with audio product type or family
-            # and also with reviewAudio data key
-            if bool("audio" in (
-                _i.data.get("families", []) + [_i.data["productType"]])
-            ) or _i.data.get("reviewAudio")
-        ]
+        audio_instances = []
+        for instance in context:
+            if (
+                instace.data["productType"] == "audio"
+                or instace.data.get("reviewAudio")
+            ):
+                audio_instances.append(instance)
+        return audio_instances
 
 
 class ExtractOtioAudioTracks(pyblish.api.ContextPlugin):
