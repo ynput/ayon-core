@@ -1,11 +1,9 @@
 # -*- coding: utf-8 -*-
 """AYON plugin tools."""
 import os
-import logging
 import re
 import collections
 
-log = logging.getLogger(__name__)
 
 CAPITALIZE_REGEX = re.compile(r"[a-zA-Z0-9]")
 
