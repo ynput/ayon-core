@@ -1,5 +1,6 @@
 import os
 import tempfile
+import collections
 
 import pyblish
 
@@ -9,54 +10,58 @@ from ayon_core.lib import (
 )
 
 
+def get_audio_instances(context):
+    """Return only instances which are having audio in families
+
+    Args:
+        context (pyblish.context): context of publisher
+
+    Returns:
+        list: list of selected instances
+    """
+    audio_instances = []
+    for instance in context:
+        if not instance.data.get("parent_instance_id"):
+            continue
+        if (
+            instance.data["productType"] == "audio"
+            or instance.data.get("reviewAudio")
+        ):
+            audio_instances.append(instance)
+    return audio_instances
+
+
 class CollectParentAudioInstanceAttribute(pyblish.api.ContextPlugin):
     """Collect audio instance attribute"""
 
     order = pyblish.api.CollectorOrder
     label = "Collect Audio Instance Attribute"
-    hosts = ["hiero", "resolve", "flame"]
 
     def process(self, context):
 
-        audio_instances = self.get_audio_instances(context)
+        audio_instances = get_audio_instances(context)
 
-        for inst in audio_instances:
-            # Make sure if the audio instance is having siblink instances
-            # which needs audio for reviewable media so it is also added
-            # to its instance data
-            # Retrieve instance data from parent instance shot instance.
-            parent_instance_id = inst.data["parent_instance_id"]
-            for sibl_instance in inst.context:
-                sibl_parent_instance_id = sibl_instance.data.get(
-                    "parent_instance_id")
-                # make sure the instance is not the same instance
-                if sibl_instance.id == inst.id:
-                    continue
-                # and the parent instance id is the same
-                if sibl_parent_instance_id == parent_instance_id:
-                    self.log.info(
-                        "Adding audio to Sibling instance: "
-                        f"{sibl_instance.data['label']}"
-                    )
-                    sibl_instance.data["audio"] = None
-
-    def get_audio_instances(self, context):
-        """Return only instances which are having audio in families
-
-        Args:
-            context (pyblish.context): context of publisher
-
-        Returns:
-            list: list of selected instances
-        """
-        audio_instances = []
+        # create mapped instances by parent id
+        instances_by_parent_id = collections.defaultdict(list)
         for instance in context:
-            if (
-                instace.data["productType"] == "audio"
-                or instace.data.get("reviewAudio")
-            ):
-                audio_instances.append(instance)
-        return audio_instances
+            parent_instance_id = instance.data.get("parent_instance_id")
+            if not parent_instance_id:
+                continue
+            instances_by_parent_id[parent_instance_id].append(instance)
+
+        # distribute audio related attribute
+        for audio_instance in audio_instances:
+            parent_instance_id = audio_instance.data["parent_instance_id"]
+
+            for sibl_instance in instances_by_parent_id[parent_instance_id]:
+                # exclude the same audio instance
+                if sibl_instance.id == audio_instance.id:
+                    continue
+                self.log.info(
+                    "Adding audio to Sibling instance: "
+                    f"{sibl_instance.data['label']}"
+                )
+                sibl_instance.data["audio"] = None
 
 
 class ExtractOtioAudioTracks(pyblish.api.ContextPlugin):
@@ -69,7 +74,6 @@ class ExtractOtioAudioTracks(pyblish.api.ContextPlugin):
 
     order = pyblish.api.ExtractorOrder - 0.44
     label = "Extract OTIO Audio Tracks"
-    hosts = ["hiero", "resolve", "flame"]
 
     def process(self, context):
         """Convert otio audio track's content to audio representations
@@ -78,12 +82,13 @@ class ExtractOtioAudioTracks(pyblish.api.ContextPlugin):
             context (pyblish.Context): context of publisher
         """
         # split the long audio file to peces devided by isntances
-        audio_instances = self.get_audio_instances(context)
-        self.log.debug("Audio instances: {}".format(len(audio_instances)))
+        audio_instances = get_audio_instances(context)
 
         if len(audio_instances) < 1:
             self.log.info("No audio instances available")
             return
+
+        self.log.debug("Audio instances: {}".format(len(audio_instances)))
 
         # get sequence
         otio_timeline = context.data["otioTimeline"]
@@ -202,24 +207,6 @@ class ExtractOtioAudioTracks(pyblish.api.ContextPlugin):
             # add generated audio file to created files for recycling
             if audio_fpath not in created_files:
                 created_files.append(audio_fpath)
-
-    def get_audio_instances(self, context):
-        """Return only instances which are having audio in families
-
-        Args:
-            context (pyblish.context): context of publisher
-
-        Returns:
-            list: list of selected instances
-        """
-        return [
-            _i for _i in context
-            # filter only those with audio product type or family
-            # and also with reviewAudio data key
-            if bool("audio" in (
-                _i.data.get("families", []) + [_i.data["productType"]])
-            ) or _i.data.get("reviewAudio")
-        ]
 
     def get_audio_track_items(self, otio_timeline):
         """Get all audio clips form OTIO audio tracks
