@@ -441,16 +441,16 @@ def get_review_info_by_layer_name(channel_names):
     def _sort(_layer_name: str) -> int:
         # Prioritize "" layer name
         # Prioritize layers with RGB channels
-        order = 0
         if _layer_name == "rgba":
-            order -= 11
+            return 0
+
         if _layer_name == "":
-            order -= 10
+            return 1
 
         channels = channels_by_layer_name[_layer_name]
         if all(channel in channels for channel in "RGB"):
-            order -= 1
-        return order
+            return 2
+        return 10
     layer_names_order.sort(key=_sort)
 
     output = []
