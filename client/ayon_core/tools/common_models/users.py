@@ -1,6 +1,8 @@
 import json
 import collections
 
+from typing import Optional, Generator, Any
+
 import ayon_api
 from ayon_api.graphql import FIELD_VALUE, GraphQlQuery, fields_to_dict
 
@@ -36,7 +38,11 @@ def users_graphql_query(fields):
     return query
 
 
-def get_users(project_name=None, usernames=None, fields=None):
+def get_users(
+    project_name: Optional[str] = None,
+    usernames: Optional[set[str]] = None,
+    fields: Optional[set[str]] = None,
+) -> Generator[dict, None, None]:
     """Get Users.
 
     Only administrators and managers can fetch all users. For other users
@@ -80,25 +86,26 @@ def get_users(project_name=None, usernames=None, fields=None):
 class UserItem:
     def __init__(
         self,
-        username,
-        full_name,
-        email,
-        avatar_url,
-        active,
+        username: str,
+        full_name: Optional[str],
+        email: Optional[str],
+        active: bool,
+        icon_content_type: Optional[str] = None,
+        icon_content: Optional[bytes] = None,
     ):
         self.username = username
         self.full_name = full_name
         self.email = email
-        self.avatar_url = avatar_url
         self.active = active
+        self.icon_content_type = icon_content_type
+        self.icon_content = icon_content
 
     @classmethod
-    def from_entity_data(cls, user_data):
+    def from_entity_data(cls, user_data: dict[str, Any]) -> "UserItem":
         return cls(
             user_data["name"],
             user_data["attrib"]["fullName"],
             user_data["attrib"]["email"],
-            user_data["attrib"]["avatarUrl"],
             user_data["active"],
         )
 
@@ -108,7 +115,7 @@ class UsersModel:
         self._controller = controller
         self._users_cache = NestedCacheItem(default_factory=list)
 
-    def get_user_items(self, project_name):
+    def get_user_items(self, project_name: str) -> list[UserItem]:
         """Get user items.
 
         Returns:
@@ -118,7 +125,7 @@ class UsersModel:
         self._invalidate_cache(project_name)
         return self._users_cache[project_name].get_data()
 
-    def get_user_items_by_name(self, project_name):
+    def get_user_items_by_name(self, project_name: str) -> dict[str, UserItem]:
         """Get user items by name.
 
         Implemented as most of cases using this model will need to find
@@ -133,14 +140,19 @@ class UsersModel:
             for user_item in self.get_user_items(project_name)
         }
 
-    def get_user_item_by_username(self, project_name, username):
+    def get_user_item_by_username(
+        self,
+        project_name: str,
+        username: str,
+    ) -> Optional[UserItem]:
         """Get user item by username.
 
         Args:
             username (str): Username.
+            project_name (Optional[str]): Project name where to look for user.
 
         Returns:
-            Union[UserItem, None]: User item or None if not found.
+            Optional[UserItem]: User item or None if not found.
 
         """
         self._invalidate_cache(project_name)
@@ -149,7 +161,7 @@ class UsersModel:
                 return user_item
         return None
 
-    def _invalidate_cache(self, project_name):
+    def _invalidate_cache(self, project_name: str) -> None:
         cache = self._users_cache[project_name]
         if cache.is_valid:
             return
@@ -158,7 +170,13 @@ class UsersModel:
             cache.update_data([])
             return
 
-        self._users_cache[project_name].update_data([
-            UserItem.from_entity_data(user)
-            for user in get_users(project_name)
-        ])
+        user_items = []
+        for user in get_users(project_name):
+            user_item = UserItem.from_entity_data(user)
+            avatar_r = ayon_api.get(f"users/{user_item.username}/avatar")
+            if avatar_r.status_code == 200:
+                user_item.icon_content = avatar_r.content
+                user_item.icon_content_type = avatar_r.content_type
+            user_items.append(user_item)
+
+        self._users_cache[project_name].update_data(user_items)

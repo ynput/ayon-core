@@ -20,7 +20,7 @@ from .hierarchy import (
 )
 from .thumbnails import ThumbnailsModel
 from .selection import HierarchyExpectedSelection
-from .users import UsersModel
+from .users import UsersModel, UserItem
 
 
 __all__ = (
