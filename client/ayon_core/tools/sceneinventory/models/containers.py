@@ -41,6 +41,7 @@ def representations_parent_ids_qraphql_query():
     folder_field = product_field.add_field("folder")
     folder_field.add_field("id")
     folder_field.add_field("path")
+    folder_field.add_field("folderType")
     return query
 
 
@@ -126,6 +127,8 @@ class RepresentationInfo:
         self,
         folder_id,
         folder_path,
+        folder_name,
+        folder_type,
         product_id,
         product_name,
         product_type,
@@ -136,6 +139,8 @@ class RepresentationInfo:
     ):
         self.folder_id = folder_id
         self.folder_path = folder_path
+        self.folder_name = folder_name
+        self.folder_type = folder_type
         self.product_id = product_id
         self.product_name = product_name
         self.product_type = product_type
@@ -268,6 +273,8 @@ class ContainersModel:
             kwargs = {
                 "folder_id": None,
                 "folder_path": None,
+                "folder_name": None,
+                "folder_type": None,
                 "product_id": None,
                 "product_name": None,
                 "product_type": None,
@@ -283,6 +290,8 @@ class ContainersModel:
             if folder:
                 kwargs["folder_id"] = folder["id"]
                 kwargs["folder_path"] = folder["path"]
+                kwargs["folder_name"] = folder["path"].split("/")[-1]
+                kwargs["folder_type"] = folder["folderType"]
             if product:
                 product_type = product["productType"]
                 product_base_type = product.get("productBaseType")
