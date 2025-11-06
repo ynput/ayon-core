@@ -3,15 +3,14 @@ from typing import Optional
 
 from qtpy import QtCore, QtWidgets
 
-from ayon_core.style import load_stylesheet
 from ayon_core.tools.common_models import UserItem
-from ayon_core.tools.utils.lib import generate_user_avatar
 from ayon_core.tools.utils import (
     BaseClickableFrame,
     PlaceholderLineEdit,
-    get_qt_app,
     PixmapLabel,
 )
+from ayon_core.tools.utils.lib import generate_user_avatar
+from ayon_core.tools.publisher.abstract import AbstractPublisherFrontend
 
 
 class FilterType(Enum):
@@ -292,7 +291,11 @@ class ValueItemsView(QtWidgets.QWidget):
 class FloatingHintWidget(QtWidgets.QWidget):
     confirmed_value = QtCore.Signal(str)
 
-    def __init__(self, parent):
+    def __init__(
+        self,
+        controller: AbstractPublisherFrontend,
+        parent: QtWidgets.QWidget,
+    ):
         super().__init__(parent)
         self.setWindowFlags(QtCore.Qt.Tool | QtCore.Qt.FramelessWindowHint)
         self.setAttribute(QtCore.Qt.WA_ShowWithoutActivating, True)
@@ -325,6 +328,8 @@ class FloatingHintWidget(QtWidgets.QWidget):
 
         self._top_label = top_label
         self._view = view
+        self._loaded_users = False
+        self._controller = controller
 
     def confirm_value(self):
         self._confirm_value(self._view.get_value())
@@ -335,9 +340,6 @@ class FloatingHintWidget(QtWidgets.QWidget):
     def go_down(self):
         self._view.go_down()
 
-    def set_items(self, items):
-        self._view.set_items(items)
-
     def set_pos(self, pos):
         self._global_pos = pos
         self._update_pos()
@@ -347,7 +349,8 @@ class FloatingHintWidget(QtWidgets.QWidget):
         self.setVisible(False)
         self._update_size()
 
-    def set_filter(self, text):
+    def set_filter(self, text: str) -> None:
+        self._load_users()
         self._view.set_filter(text)
         visible_items = self._view.get_visible_items_count()
         if visible_items == 0:
@@ -356,6 +359,11 @@ class FloatingHintWidget(QtWidgets.QWidget):
             self.setVisible(True)
             self._update_size()
 
+    def reset(self) -> None:
+        self._loaded_users = False
+        if self.isVisible():
+            self._load_users()
+
     def showEvent(self, event):
         super().showEvent(event)
         self._update_size()
@@ -363,6 +371,14 @@ class FloatingHintWidget(QtWidgets.QWidget):
     def resizeEvent(self, event):
         super().resizeEvent(event)
         self._update_size()
+
+    def _load_users(self):
+        if self._loaded_users:
+            return
+        self._loaded_users = True
+        self._view.set_items(
+            self._controller.get_user_items()
+        )
 
     def _update_pos(self):
         if not self.isVisible():
@@ -397,14 +413,18 @@ class FloatingHintWidget(QtWidgets.QWidget):
 
 
 class CommentInput(QtWidgets.QWidget):
-    def __init__(self, parent=None):
+    def __init__(
+        self,
+        controller: AbstractPublisherFrontend,
+        parent: QtWidgets.QWidget,
+    ) -> None:
         super().__init__(parent)
 
         text_input = PlaceholderLineEdit(self)
         text_input.setObjectName("PublishCommentInput")
         text_input.setPlaceholderText("Attach a comment to your publish")
 
-        floating_hints_widget = FloatingHintWidget(self)
+        floating_hints_widget = FloatingHintWidget(controller, self)
 
         text_input.cursorPositionChanged.connect(self._pos_changed)
 
@@ -437,10 +457,8 @@ class CommentInput(QtWidgets.QWidget):
             len(self.get_comment())
         )
 
-    def set_user_items(self, items: list[UserItem]) -> None:
-        # TODO change this behavior to get user items from controller when
-        #   needed
-        self._floating_hints_widget.set_items(items)
+    def reset(self):
+        self._floating_hints_widget.reset()
 
     def eventFilter(self, obj, event):
         if obj is self._window_obj and event.type() == QtCore.QEvent.Move:

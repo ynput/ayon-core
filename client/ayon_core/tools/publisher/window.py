@@ -126,7 +126,7 @@ class PublisherWindow(QtWidgets.QDialog):
         footer_widget = QtWidgets.QWidget(under_publish_widget)
         footer_bottom_widget = QtWidgets.QWidget(footer_widget)
 
-        comment_input = CommentInput(footer_widget)
+        comment_input = CommentInput(controller, footer_widget)
 
         save_btn = SaveBtn(footer_widget)
         reset_btn = ResetBtn(footer_widget)
@@ -881,8 +881,7 @@ class PublisherWindow(QtWidgets.QDialog):
         self._update_publish_details_widget()
 
     def _on_controller_reset(self):
-        user_items = self._controller.get_user_items()
-        self._comment_input.set_user_items(user_items)
+        self._comment_input.reset()
         self._first_reset, first_reset = False, self._first_reset
         if self._tab_on_reset is not None:
             self._tab_on_reset, new_tab = None, self._tab_on_reset
