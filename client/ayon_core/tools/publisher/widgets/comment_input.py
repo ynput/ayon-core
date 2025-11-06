@@ -1,5 +1,5 @@
-import uuid
-from typing import Any, Optional
+from enum import Enum
+from typing import Optional
 
 from qtpy import QtCore, QtWidgets
 
