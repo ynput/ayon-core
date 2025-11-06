@@ -5,7 +5,10 @@ import contextlib
 import collections
 import traceback
 import urllib.request
+import hashlib
+import colorsys
 from functools import partial
+import typing
 from typing import Union, Any
 
 import ayon_api
@@ -26,6 +29,9 @@ from .constants import (
     PARTIALLY_CHECKED_INT,
     DEFAULT_WEB_ICON_COLOR,
 )
+
+if typing.TYPE_CHECKING:
+    from ayon_core.tools.common_models import UserItem
 
 log = Logger.get_logger(__name__)
 
@@ -641,3 +647,104 @@ def get_qta_icon_by_name_and_color(icon_name, icon_color):
 
     """
     return _IconsCache.get_qta_icon_by_name_and_color(icon_name, icon_color)
+
+
+def _generate_color(
+    name: str,
+    saturation: float = 0.25,
+    lightness: float = 0.38,
+) -> str:
+    """Generates a deterministic color based on string.
+
+    Color is derived from hashing the input string.
+    Keeps saturation and lightness constant.
+
+    Parameters:
+    - name: The input string to hash for color generation.
+    - saturation: The saturation level of the color (0 to 1).
+    - lightness: The lightness level of the color (0 to 1).
+
+    Returns:
+    - A hex color code as a string.
+    """
+
+    hash_bytes = hashlib.sha256(name.encode("utf-8")).digest()
+    hue = int(hash_bytes[0]) * 360 // 256
+    r, g, b = colorsys.hls_to_rgb(hue / 360.0, lightness, saturation)
+    color_code = f"#{int(r * 255):02x}{int(g * 255):02x}{int(b * 255):02x}"
+    return color_code
+
+
+def _generate_user_avatar(user_item: "UserItem") -> QtGui.QPixmap:
+    """Generate icon using initials.
+
+    This logic is copied from ayon backend. It uses hashing or user name
+        and full name to generate background color. Then detects user initials
+        for the icon text.
+
+    Args:
+        UserItem: Item from users model.
+
+    Returns:
+        QPixmap: User icon.
+
+    """
+    color = _generate_color(f"{user_item.username}{user_item.full_name}")
+    name = user_item.full_name or user_item.username
+    name = (
+        name
+        .replace("_", " ")
+        .replace("-", " ")
+        .replace(".", " ")
+    )
+    initials = "".join([n[0] for n in name.split()])
+    initials = initials.upper()
+
+    half_pix_size = 50
+    pix_size = half_pix_size * 2
+    pix = QtGui.QPixmap(pix_size, pix_size)
+    pix.fill(QtCore.Qt.transparent)
+
+    painter = QtGui.QPainter(pix)
+    painter.setPen(QtCore.Qt.NoPen)
+    painter.setBrush(QtGui.QBrush(color))
+    painter.drawEllipse(
+        QtCore.QPoint(half_pix_size, half_pix_size),
+        half_pix_size,
+        half_pix_size
+    )
+
+    painter.setPen(QtGui.Qt.white)
+    font = QtGui.QFont("Arial")
+    font.setPixelSize(half_pix_size)
+    painter.setFont(font)
+    painter.drawText(
+        QtCore.QRect(0, 0, pix_size, pix_size),
+        QtCore.Qt.AlignCenter,
+        initials,
+    )
+
+    painter.end()
+    return pix
+
+
+def generate_user_avatar(user_item: "UserItem") -> QtGui.QPixmap:
+    """Create user icon using user avatar using avatar data from server.
+
+    Args:
+        UserItem: Item from users model.
+
+    Returns:
+        QPixmap: User icon.
+
+    """
+    # User has set up
+    if user_item.icon_content_type in (
+        "image/png",
+        "image/jpeg",
+        "image/webp",
+    ):
+        pix = QtGui.QPixmap()
+        pix.loadFromData(user_item.icon_content)
+        return pix
+    return _generate_user_avatar(user_item)
