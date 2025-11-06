@@ -122,15 +122,14 @@ class ValueItemsView(QtWidgets.QWidget):
         self._filtered_ids = set()
 
     def get_ideal_size_hint(self) -> QtCore.QSize:
-        # TODO limit showed items to 5
         size_hint = self._content_widget.sizeHint()
         height = 0
         rows = min(5, self._content_layout.count())
         for row in range(rows):
             item = self._content_layout.itemAt(row)
             height += item.sizeHint().height()
-        size_hint.setHeight(height)
-        return size_hint
+
+        return QtCore.QSize(size_hint.width() + 10, height)
 
     def get_value(self) -> Optional[str]:
         """Get the value from the items view."""
@@ -154,6 +153,8 @@ class ValueItemsView(QtWidgets.QWidget):
         self._last_selected_widget.set_selected(False)
         prev_widget.set_selected(True)
         self._last_selected_widget = prev_widget
+        pos = prev_widget.pos()
+        self._scroll_area.ensureVisible(pos.x(), pos.y())
 
     def go_down(self):
         next_widget = None
@@ -176,6 +177,8 @@ class ValueItemsView(QtWidgets.QWidget):
         self._last_selected_widget.set_selected(False)
         next_widget.set_selected(True)
         self._last_selected_widget = next_widget
+        pos = next_widget.pos()
+        self._scroll_area.ensureVisible(pos.x(), pos.y())
 
     def set_items(self, items: list[dict[str, Any]]):
         while self._content_layout.count() > 0:
@@ -276,13 +279,20 @@ class FloatingHintWidget(QtWidgets.QWidget):
         top_label.setAlignment(QtCore.Qt.AlignCenter)
         top_label.setObjectName("FloatingHintLabel")
 
+        border_frame = QtWidgets.QFrame(self)
+        border_frame.setObjectName("BorderFrame")
+
         view = ValueItemsView(self)
+
+        border_layout = QtWidgets.QVBoxLayout(border_frame)
+        border_layout.setContentsMargins(2, 0, 2, 2)
+        border_layout.addWidget(view, 1)
 
         layout = QtWidgets.QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(0)
         layout.addWidget(top_label, 0)
-        layout.addWidget(view, 0)
+        layout.addWidget(border_frame, 0)
 
         view.count_changed.connect(self._on_count_change)
         view.value_confirmed.connect(self._on_value_confirm)
@@ -292,18 +302,6 @@ class FloatingHintWidget(QtWidgets.QWidget):
 
         self._top_label = top_label
         self._view = view
-
-    def showEvent(self, event):
-        super().showEvent(event)
-        self._update_size()
-
-    def resizeEvent(self, event):
-        super().resizeEvent(event)
-        self._update_size()
-
-    def moveEvent(self, event):
-        super().moveEvent(event)
-        self._update_size()
 
     def confirm_value(self):
         self._confirm_value(self._view.get_value())
@@ -324,6 +322,7 @@ class FloatingHintWidget(QtWidgets.QWidget):
     def clear_filter(self):
         self._view.set_filter("")
         self.setVisible(False)
+        self._update_size()
 
     def set_filter(self, text):
         self._view.set_filter(text)
@@ -334,21 +333,31 @@ class FloatingHintWidget(QtWidgets.QWidget):
             self.setVisible(True)
             self._update_size()
 
+    def showEvent(self, event):
+        super().showEvent(event)
+        self._update_size()
+
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        self._update_size()
+
     def _update_pos(self):
         if not self.isVisible():
             return
         pos = QtCore.QPoint(self._global_pos)
         geo = self.geometry()
-        pos.setY(pos.y() - geo.height())
+        pos.setY(pos.y() - (geo.height() + 2))
         self.move(pos)
 
     def _update_size(self):
         label_size = self._top_label.sizeHint()
         view_size = self._view.get_ideal_size_hint()
-        size = self.size()
         # TODO how to get width?
-        width = max(view_size.width(), label_size.width(), size.width())
+        m = self.layout().contentsMargins()
+        width = max(view_size.width(), label_size.width())
+        width += m.left() + m.right()
         height = view_size.height() + label_size.height()
+        height += m.top() + m.bottom()
         self.resize(width, height)
         self._update_pos()
 
@@ -385,6 +394,8 @@ class CommentInput(QtWidgets.QWidget):
         self._text_input = text_input
         self._floating_hints_widget = floating_hints_widget
 
+        self._window_obj = None
+
     def get_comment(self) -> str:
         return self._text_input.text()
 
@@ -406,16 +417,18 @@ class CommentInput(QtWidgets.QWidget):
     def set_user_items(self, items):
         self._floating_hints_widget.set_items(items)
 
+    def eventFilter(self, obj, event):
+        if obj is self._window_obj and event.type() == QtCore.QEvent.Move:
+            self._update_floating_pos()
+        return False
+
     def showEvent(self, event):
         super().showEvent(event)
+        self._register_window_event_filter()
         self._update_floating_pos()
 
     def resizeEvent(self, event):
         super().resizeEvent(event)
-        self._update_floating_pos()
-
-    def moveEvent(self, event):
-        super().moveEvent(event)
         self._update_floating_pos()
 
     def keyPressEvent(self, event):
@@ -441,6 +454,17 @@ class CommentInput(QtWidgets.QWidget):
                 return
 
         super().keyPressEvent(event)
+
+    def _register_window_event_filter(self):
+        window = self.window()
+        if window is None or window is self._window_obj:
+            return
+
+        if self._window_obj is not None:
+            self.removeEventFilter(self._window_obj)
+
+        self._window_obj = window
+        self._window_obj.installEventFilter(self)
 
     def _update_floating_pos(self):
         self._floating_hints_widget.set_pos(

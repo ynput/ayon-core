@@ -1030,6 +1030,7 @@ SearchItemDisplayWidget #ValueWidget {
 #PublishWindow QComboBox {
     padding: 1px 1px 1px 0.2em;
 }
+
 PublisherTabsWidget {
     background: {color:publisher:tab-bg};
 }
@@ -1241,12 +1242,16 @@ ValueItemButton[selected="1"]:hover {
     min-width: 8px;
 }
 
-#FloatingHintLabel {
+CommentInput #FloatingHintLabel {
     background: #16191D;
     color: #8b9198;
     padding: 5px;
     border-top-left-radius: 5px;
     border-top-right-radius: 5px;
+}
+
+CommentInput #BorderFrame {
+    background: #16191D;
 }
 
 ValidationArtistMessage QLabel {
