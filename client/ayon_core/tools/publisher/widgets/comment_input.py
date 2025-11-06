@@ -15,7 +15,13 @@ from ayon_core.tools.utils import (
 )
 
 
-class ValueItemButton(BaseClickableFrame):
+class FilterType(Enum):
+    NO_MATCH = 0
+    MATCH = 1
+    FULL_MATCH = 2
+
+
+class UserValueItemButton(BaseClickableFrame):
     confirmed = QtCore.Signal(str)
 
     def __init__(
@@ -52,6 +58,18 @@ class ValueItemButton(BaseClickableFrame):
             return
         self._filtered = filtered
         self.setVisible(not filtered)
+
+    def check_filter(self, filter_text) -> FilterType:
+        if not filter_text:
+            return FilterType.MATCH
+        if filter_text == self._item.username:
+            return FilterType.FULL_MATCH
+        if (
+            filter_text in self._item.username
+            or filter_text in self._item.full_name
+        ):
+            return FilterType.MATCH
+        return FilterType.NO_MATCH
 
     def get_value(self) -> str:
         return self._item.username
@@ -216,17 +234,18 @@ class ValueItemsView(QtWidgets.QWidget):
         use_first_widget = True
         first_visible_widget = None
         for widget_id, widget in self._widgets_by_id.items():
-            w_value = widget.get_value()
+            filter_output = widget.check_filter(text)
+            if filter_output == FilterType.FULL_MATCH:
+                exact_match = True
 
-            filtered = text_l and text_l not in w_value.lower()
-            if not filtered:
-                if not exact_match:
-                    exact_match = w_value == text
+            filter_matches = filter_output != FilterType.NO_MATCH
+            if filter_matches:
                 if first_visible_widget is None:
                     first_visible_widget = widget
                 filtered_ids.add(widget_id)
-            widget.set_filtered(filtered)
-            if widget is self._last_selected_widget and not filtered:
+
+            widget.set_filtered(filter_output == FilterType.NO_MATCH)
+            if widget is self._last_selected_widget and filter_matches:
                 use_first_widget = False
 
         # There is one exact match, can stay hidden
