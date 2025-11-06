@@ -1,13 +1,12 @@
+import collections
+import hashlib
 import os
 import tempfile
-import collections
+import uuid
+from pathlib import Path
 
 import pyblish
-
-from ayon_core.lib import (
-    get_ffmpeg_tool_args,
-    run_subprocess
-)
+from ayon_core.lib import get_ffmpeg_tool_args, run_subprocess
 
 
 def get_audio_instances(context):
@@ -31,6 +30,24 @@ def get_audio_instances(context):
     return audio_instances
 
 
+def map_instances_by_parent_id(context):
+    """Create a mapping of instances by their parent id
+
+    Args:
+        context (pyblish.context): context of publisher
+
+    Returns:
+        dict: mapping of instances by their parent id
+    """
+    instances_by_parent_id = collections.defaultdict(list)
+    for instance in context:
+        parent_instance_id = instance.data.get("parent_instance_id")
+        if not parent_instance_id:
+            continue
+        instances_by_parent_id[parent_instance_id].append(instance)
+    return instances_by_parent_id
+
+
 class CollectParentAudioInstanceAttribute(pyblish.api.ContextPlugin):
     """Collect audio instance attribute"""
 
@@ -42,12 +59,7 @@ class CollectParentAudioInstanceAttribute(pyblish.api.ContextPlugin):
         audio_instances = get_audio_instances(context)
 
         # create mapped instances by parent id
-        instances_by_parent_id = collections.defaultdict(list)
-        for instance in context:
-            parent_instance_id = instance.data.get("parent_instance_id")
-            if not parent_instance_id:
-                continue
-            instances_by_parent_id[parent_instance_id].append(instance)
+        instances_by_parent_id = map_instances_by_parent_id(context)
 
         # distribute audio related attribute
         for audio_instance in audio_instances:
@@ -75,6 +87,8 @@ class ExtractOtioAudioTracks(pyblish.api.ContextPlugin):
     order = pyblish.api.ExtractorOrder - 0.44
     label = "Extract OTIO Audio Tracks"
 
+    temp_dir = None
+
     def process(self, context):
         """Convert otio audio track's content to audio representations
 
@@ -99,8 +113,8 @@ class ExtractOtioAudioTracks(pyblish.api.ContextPlugin):
         if not audio_inputs:
             return
 
-        # temp file
-        audio_temp_fpath = self.create_temp_file("audio")
+        # Convert all available audio into single file for trimming
+        audio_temp_fpath = self.create_temp_file("timeline_audio_track")
 
         # create empty audio with longest duration
         empty = self.create_empty(audio_inputs)
@@ -114,19 +128,25 @@ class ExtractOtioAudioTracks(pyblish.api.ContextPlugin):
         # remove empty
         os.remove(empty["mediaPath"])
 
+        # create mapped instances by parent id
+        instances_by_parent_id = map_instances_by_parent_id(context)
+
         # cut instance framerange and add to representations
-        self.add_audio_to_instances(audio_temp_fpath, audio_instances)
+        self.add_audio_to_instances(
+            audio_temp_fpath, audio_instances, instances_by_parent_id)
 
         # remove full mixed audio file
         os.remove(audio_temp_fpath)
 
-    def add_audio_to_instances(self, audio_file, audio_instances):
+    def add_audio_to_instances(
+        self, audio_file, audio_instances, instances_by_parent_id):
         created_files = []
-        for inst in audio_instances:
-            name = inst.data["folderPath"]
+        for audio_instance in audio_instances:
+            folder_path = audio_instance.data["folderPath"]
+            file_suffix = folder_path.replace("/", "-")
 
-            recycling_file = [f for f in created_files if name in f]
-            audio_clip = inst.data["otioClip"]
+            recycling_file = [f for f in created_files if file_suffix in f]
+            audio_clip = audio_instance.data["otioClip"]
             audio_range = audio_clip.range_in_parent()
             duration = audio_range.duration.to_frames()
 
@@ -139,74 +159,70 @@ class ExtractOtioAudioTracks(pyblish.api.ContextPlugin):
                 start_sec = relative_start_time.to_seconds()
                 duration_sec = audio_range.duration.to_seconds()
 
-                # temp audio file
-                audio_fpath = self.create_temp_file(name)
+                # shot related audio file
+                shot_audio_fpath = self.create_temp_file(file_suffix)
 
                 cmd = get_ffmpeg_tool_args(
                     "ffmpeg",
                     "-ss", str(start_sec),
                     "-t", str(duration_sec),
                     "-i", audio_file,
-                    audio_fpath
+                    shot_audio_fpath
                 )
 
                 # run subprocess
                 self.log.debug("Executing: {}".format(" ".join(cmd)))
                 run_subprocess(cmd, logger=self.log)
-            else:
-                audio_fpath = recycling_file.pop()
 
-            if "audio" in (
-                inst.data["families"] + [inst.data["productType"]]
-            ):
+                # add generated audio file to created files for recycling
+                if shot_audio_fpath not in created_files:
+                    created_files.append(shot_audio_fpath)
+            else:
+                shot_audio_fpath = recycling_file.pop()
+
+            # audio file needs to be published as representation
+            if audio_instance.data["productType"] == "audio":
                 # create empty representation attr
-                if "representations" not in inst.data:
-                    inst.data["representations"] = []
+                if "representations" not in audio_instance.data:
+                    audio_instance.data["representations"] = []
                 # add to representations
-                inst.data["representations"].append({
-                    "files": os.path.basename(audio_fpath),
+                audio_instance.data["representations"].append({
+                    "files": os.path.basename(shot_audio_fpath),
                     "name": "wav",
                     "ext": "wav",
-                    "stagingDir": os.path.dirname(audio_fpath),
+                    "stagingDir": os.path.dirname(shot_audio_fpath),
                     "frameStart": 0,
                     "frameEnd": duration
                 })
 
-            elif "reviewAudio" in inst.data.keys():
-                audio_attr = inst.data.get("audio") or []
+            # audio file needs to be reviewable too
+            elif "reviewAudio" in audio_instance.data.keys():
+                audio_attr = audio_instance.data.get("audio") or []
                 audio_attr.append({
-                    "filename": audio_fpath,
+                    "filename": shot_audio_fpath,
                     "offset": 0
                 })
-                inst.data["audio"] = audio_attr
+                audio_instance.data["audio"] = audio_attr
 
             # Make sure if the audio instance is having siblink instances
             # which needs audio for reviewable media so it is also added
             # to its instance data
             # Retrieve instance data from parent instance shot instance.
-            parent_instance_id = inst.data["parent_instance_id"]
-            for sibl_instance in inst.context:
-                sibl_parent_instance_id = sibl_instance.data.get(
-                    "parent_instance_id")
-                # make sure the instance is not the same instance
-                if sibl_instance.id == inst.id:
+            parent_instance_id = audio_instance.data["parent_instance_id"]
+            for sibl_instance in instances_by_parent_id[parent_instance_id]:
+                # exclude the same audio instance
+                if sibl_instance.id == audio_instance.id:
                     continue
-                # and the parent instance id is the same
-                if sibl_parent_instance_id == parent_instance_id:
-                    self.log.info(
-                        "Adding audio to Sibling instance: "
-                        f"{sibl_instance.data['label']}"
-                    )
-                    audio_attr = sibl_instance.data.get("audio") or []
-                    audio_attr.append({
-                        "filename": audio_fpath,
-                        "offset": 0
-                    })
-                    sibl_instance.data["audio"] = audio_attr
-
-            # add generated audio file to created files for recycling
-            if audio_fpath not in created_files:
-                created_files.append(audio_fpath)
+                self.log.info(
+                    "Adding audio to Sibling instance: "
+                    f"{sibl_instance.data['label']}"
+                )
+                audio_attr = sibl_instance.data.get("audio") or []
+                audio_attr.append({
+                    "filename": shot_audio_fpath,
+                    "offset": 0
+                })
+                sibl_instance.data["audio"] = audio_attr
 
     def get_audio_track_items(self, otio_timeline):
         """Get all audio clips form OTIO audio tracks
@@ -382,19 +398,23 @@ class ExtractOtioAudioTracks(pyblish.api.ContextPlugin):
 
         os.remove(filters_tmp_filepath)
 
-    def create_temp_file(self, name):
+    def create_temp_file(self, file_suffix):
         """Create temp wav file
 
         Args:
-            name (str): name to be used in file name
+            file_suffix (str): name to be used in file name
 
         Returns:
             str: temp fpath
         """
-        name = name.replace("/", "_")
-        return os.path.normpath(
-            tempfile.mktemp(
-                prefix="pyblish_tmp_{}_".format(name),
-                suffix=".wav"
-            )
-        )
+        extension = ".wav"
+        # get 8 characters
+        hash = hashlib.md5(str(uuid.uuid4()).encode()).hexdigest()[:8]
+        file_name = f"{hash}_{file_suffix}{extension}"
+
+        if not self.temp_dir:
+            audio_temp_dir = tempfile.mkdtemp(prefix="AYON_audio_")
+            self.temp_dir = Path(audio_temp_dir)
+            self.temp_dir.mkdir(parents=True, exist_ok=True)
+
+        return (self.temp_dir / file_name).as_posix()
