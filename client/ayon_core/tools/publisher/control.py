@@ -11,7 +11,12 @@ from ayon_core.pipeline import (
     registered_host,
     get_process_id,
 )
-from ayon_core.tools.common_models import ProjectsModel, HierarchyModel
+from ayon_core.tools.common_models import (
+    ProjectsModel,
+    HierarchyModel,
+    UsersModel,
+    UserItem,
+)
 
 from .models import (
     PublishModel,
@@ -98,7 +103,7 @@ class PublisherController(
         self._create_model = CreateModel(self)
         self._publish_model = PublishModel(self)
 
-        # Cacher of avalon documents
+        self._users_model = UsersModel(self)
         self._projects_model = ProjectsModel(self)
         self._hierarchy_model = HierarchyModel(self)
 
@@ -561,6 +566,11 @@ class PublisherController(
 
     def get_publish_errors_report(self):
         return self._publish_model.get_publish_errors_report()
+
+    def get_user_items(self) -> list[UserItem]:
+        return self._users_model.get_user_items(
+            self.get_current_project_name()
+        )
 
     def set_comment(self, comment):
         """Set comment from ui to pyblish context.

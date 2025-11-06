@@ -23,6 +23,7 @@ from ayon_core.tools.common_models import (
     TaskItem,
     FolderTypeItem,
     TaskTypeItem,
+    UserItem,
 )
 
 if TYPE_CHECKING:
@@ -293,6 +294,11 @@ class AbstractPublisherFrontend(AbstractPublisherCommon):
     @abstractmethod
     def get_folder_id_from_path(self, folder_path: str) -> Optional[str]:
         """Get folder id from folder path."""
+        pass
+
+    @abstractmethod
+    def get_user_items(self) -> list[UserItem]:
+        """"Get user items for current project."""
         pass
 
     # --- Create ---

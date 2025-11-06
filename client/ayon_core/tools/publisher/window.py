@@ -881,6 +881,8 @@ class PublisherWindow(QtWidgets.QDialog):
         self._update_publish_details_widget()
 
     def _on_controller_reset(self):
+        user_items = self._controller.get_user_items()
+        self._comment_input.set_user_items(user_items)
         self._first_reset, first_reset = False, self._first_reset
         if self._tab_on_reset is not None:
             self._tab_on_reset, new_tab = None, self._tab_on_reset

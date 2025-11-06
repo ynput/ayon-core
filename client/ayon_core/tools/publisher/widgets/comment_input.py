@@ -4,6 +4,8 @@ from typing import Any, Optional
 from qtpy import QtCore, QtWidgets
 
 from ayon_core.style import load_stylesheet
+from ayon_core.tools.common_models import UserItem
+from ayon_core.tools.utils.lib import generate_user_avatar
 from ayon_core.tools.utils import (
     BaseClickableFrame,
     PlaceholderLineEdit,
@@ -19,38 +21,28 @@ class ValueItemButton(BaseClickableFrame):
     def __init__(
         self,
         widget_id: str,
-        value: str,
-        icon: Optional[dict[str, Any]],
+        item: UserItem,
         parent: QtWidgets.QWidget,
     ):
         super().__init__(parent)
 
-        title_widget = QtWidgets.QLabel(str(value), self)
+        icon = generate_user_avatar(item)
+        icon_widget = PixmapLabel(icon, self)
+
+        title_widget = QtWidgets.QLabel(item.full_name, self)
 
         main_layout = QtWidgets.QHBoxLayout(self)
         main_layout.setContentsMargins(5, 5, 5, 5)
+        main_layout.addWidget(icon_widget, 0)
         main_layout.addWidget(title_widget, 1)
 
-        self._icon_widget = None
+        self._icon_widget = icon_widget
         self._title_widget = title_widget
         self._main_layout = main_layout
         self._selected = False
         self._filtered = False
-        self._value = value
+        self._item = item
         self._widget_id = widget_id
-
-        if icon:
-            self.set_icon(icon)
-
-    def set_icon(self, icon: dict[str, Any]) -> None:
-        """Set the icon for the widget."""
-        icon = get_qt_icon(icon)
-        pixmap = icon.pixmap(64, 64)
-        if self._icon_widget is None:
-            self._icon_widget = PixmapLabel(pixmap, self)
-            self._main_layout.insertWidget(0, self._icon_widget, 0)
-        else:
-            self._icon_widget.setPixmap(pixmap)
 
     def is_filtered(self) -> bool:
         return self._filtered
@@ -62,7 +54,7 @@ class ValueItemButton(BaseClickableFrame):
         self.setVisible(not filtered)
 
     def get_value(self) -> str:
-        return self._value
+        return self._item.username
 
     def set_selected(self, selected: bool) -> None:
         """Set the selection state of the widget."""
@@ -180,7 +172,7 @@ class ValueItemsView(QtWidgets.QWidget):
         pos = next_widget.pos()
         self._scroll_area.ensureVisible(pos.x(), pos.y())
 
-    def set_items(self, items: list[dict[str, Any]]):
+    def set_items(self, items: list[UserItem]) -> None:
         while self._content_layout.count() > 0:
             item = self._content_layout.takeAt(0)
             widget = item.widget()
@@ -191,11 +183,11 @@ class ValueItemsView(QtWidgets.QWidget):
         self._widgets_by_id = {}
         self._last_selected_widget = None
         for item in items:
-            widget_id = uuid.uuid4().hex
-            widget = ValueItemButton(
+            widget_id = item.username
+
+            widget = UserValueItemButton(
                 widget_id,
-                item["value"],
-                item.get("icon"),
+                item,
                 self,
             )
             widget.confirmed.connect(self._on_item_clicked)
@@ -414,7 +406,7 @@ class CommentInput(QtWidgets.QWidget):
             len(self.get_comment())
         )
 
-    def set_user_items(self, items):
+    def set_user_items(self, items: list[UserItem]):
         self._floating_hints_widget.set_items(items)
 
     def eventFilter(self, obj, event):
