@@ -9,7 +9,6 @@ from ayon_core.tools.utils.lib import generate_user_avatar
 from ayon_core.tools.utils import (
     BaseClickableFrame,
     PlaceholderLineEdit,
-    get_qt_icon,
     get_qt_app,
     PixmapLabel,
 )
@@ -147,7 +146,7 @@ class ValueItemsView(QtWidgets.QWidget):
             return self._last_selected_widget.get_value()
         return None
 
-    def go_up(self):
+    def go_up(self) -> None:
         prev_widget = None
         for idx in range(self._content_layout.count()):
             item = self._content_layout.itemAt(idx)
@@ -166,7 +165,7 @@ class ValueItemsView(QtWidgets.QWidget):
         pos = prev_widget.pos()
         self._scroll_area.ensureVisible(pos.x(), pos.y())
 
-    def go_down(self):
+    def go_down(self) -> None:
         next_widget = None
         current_found = False
         for idx in range(self._content_layout.count()):
