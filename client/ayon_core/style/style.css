@@ -1070,17 +1070,17 @@ PixmapButton:disabled {
     background: {color:bg-buttons-disabled};
 }
 
-ValueItemButton {
+UserValueItemButton {
     border-radius: 0px;
     background: transparent;
 }
-ValueItemButton:hover {
+UserValueItemButton:hover {
     background: {color:bg-view-selection-hover};
 }
-ValueItemButton[selected="1"] {
+UserValueItemButton[selected="1"] {
     background: {color:bg-view-selection};
 }
-ValueItemButton[selected="1"]:hover {
+UserValueItemButton[selected="1"]:hover {
     background: {color:bg-view-selection-hover};
 }
 
