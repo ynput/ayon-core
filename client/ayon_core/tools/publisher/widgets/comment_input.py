@@ -47,6 +47,8 @@ class UserValueItemButton(BaseClickableFrame):
         self._selected = False
         self._filtered = False
         self._item = item
+        self._low_username = self._item.username.lower()
+        self._low_full_name = self._item.full_name.lower()
         self._widget_id = widget_id
 
     def is_filtered(self) -> bool:
@@ -61,11 +63,12 @@ class UserValueItemButton(BaseClickableFrame):
     def check_filter(self, filter_text) -> FilterType:
         if not filter_text:
             return FilterType.MATCH
+
         if filter_text == self._item.username:
             return FilterType.FULL_MATCH
         if (
-            filter_text in self._item.username
-            or filter_text in self._item.full_name
+            filter_text in self._low_username
+            or filter_text in self._low_full_name
         ):
             return FilterType.MATCH
         return FilterType.NO_MATCH
@@ -133,10 +136,20 @@ class ValueItemsView(QtWidgets.QWidget):
     def get_ideal_size_hint(self) -> QtCore.QSize:
         size_hint = self._content_widget.sizeHint()
         height = 0
-        rows = min(5, self._content_layout.count())
-        for row in range(rows):
+        row = 0
+        rows = self._content_layout.count()
+        added_items = 0
+        while row < rows:
             item = self._content_layout.itemAt(row)
+            row += 1
+            widget = item.widget()
+            if not widget.isVisible():
+                continue
+
             height += item.sizeHint().height()
+            added_items += 1
+            if added_items == 5:
+                break
 
         return QtCore.QSize(size_hint.width() + 10, height)
 
@@ -424,7 +437,9 @@ class CommentInput(QtWidgets.QWidget):
             len(self.get_comment())
         )
 
-    def set_user_items(self, items: list[UserItem]):
+    def set_user_items(self, items: list[UserItem]) -> None:
+        # TODO change this behavior to get user items from controller when
+        #   needed
         self._floating_hints_widget.set_items(items)
 
     def eventFilter(self, obj, event):
@@ -519,5 +534,3 @@ class CommentInput(QtWidgets.QWidget):
         self._text_input.setText(full_text)
         self._text_input.setCursorPosition(len(beginning))
         self._floating_hints_widget.setVisible(False)
-
-
