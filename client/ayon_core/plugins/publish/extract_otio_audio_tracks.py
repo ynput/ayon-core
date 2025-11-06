@@ -58,6 +58,10 @@ class CollectParentAudioInstanceAttribute(pyblish.api.ContextPlugin):
 
         audio_instances = get_audio_instances(context)
 
+        # no need to continue if no audio instances found
+        if not audio_instances:
+            return
+
         # create mapped instances by parent id
         instances_by_parent_id = map_instances_by_parent_id(context)
 
@@ -87,7 +91,7 @@ class ExtractOtioAudioTracks(pyblish.api.ContextPlugin):
     order = pyblish.api.ExtractorOrder - 0.44
     label = "Extract OTIO Audio Tracks"
 
-    temp_dir = None
+    temp_dir_path = None
 
     def process(self, context):
         """Convert otio audio track's content to audio representations
@@ -98,8 +102,8 @@ class ExtractOtioAudioTracks(pyblish.api.ContextPlugin):
         # split the long audio file to peces devided by isntances
         audio_instances = get_audio_instances(context)
 
-        if len(audio_instances) < 1:
-            self.log.info("No audio instances available")
+        # no need to continue if no audio instances found
+        if not audio_instances:
             return
 
         self.log.debug("Audio instances: {}".format(len(audio_instances)))
@@ -412,9 +416,9 @@ class ExtractOtioAudioTracks(pyblish.api.ContextPlugin):
         hash = hashlib.md5(str(uuid.uuid4()).encode()).hexdigest()[:8]
         file_name = f"{hash}_{file_suffix}{extension}"
 
-        if not self.temp_dir:
-            audio_temp_dir = tempfile.mkdtemp(prefix="AYON_audio_")
-            self.temp_dir = Path(audio_temp_dir)
-            self.temp_dir.mkdir(parents=True, exist_ok=True)
+        if not self.temp_dir_path:
+            audio_temp_dir_path = tempfile.mkdtemp(prefix="AYON_audio_")
+            self.temp_dir_path = Path(audio_temp_dir_path)
+            self.temp_dir_path.mkdir(parents=True, exist_ok=True)
 
-        return (self.temp_dir / file_name).as_posix()
+        return (self.temp_dir_path / file_name).as_posix()
