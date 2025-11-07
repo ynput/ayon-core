@@ -261,7 +261,7 @@ class QtColorTriangle(QtWidgets.QWidget):
         pix = self.bg_image.copy()
         pix_painter = QtGui.QPainter(pix)
 
-        pix_painter.setRenderHint(QtGui.QPainter.HighQualityAntialiasing)
+        pix_painter.setRenderHint(QtGui.QPainter.Antialiasing)
 
         trigon_path = QtGui.QPainterPath()
         trigon_path.moveTo(self.point_a)

@@ -1,5 +1,8 @@
+from __future__ import annotations
+
 import logging
 import uuid
+from typing import Optional
 
 import ayon_api
 
@@ -13,6 +16,8 @@ from ayon_core.tools.common_models import (
     ProjectsModel,
     HierarchyModel,
     ThumbnailsModel,
+    TagItem,
+    ProductTypeIconMapping,
 )
 
 from .abstract import (
@@ -195,6 +200,13 @@ class LoaderController(BackendLoaderController, FrontendLoaderController):
             project_name, sender
         )
 
+    def get_product_type_icons_mapping(
+        self, project_name: Optional[str]
+    ) -> ProductTypeIconMapping:
+        return self._projects_model.get_product_type_icons_mapping(
+            project_name
+        )
+
     def get_folder_items(self, project_name, sender=None):
         return self._hierarchy_model.get_folder_items(project_name, sender)
 
@@ -222,6 +234,16 @@ class LoaderController(BackendLoaderController, FrontendLoaderController):
                 label = folder_item.label
             output[folder_id] = label
         return output
+
+    def get_available_tags_by_entity_type(
+        self, project_name: str
+    ) -> dict[str, list[str]]:
+        return self._hierarchy_model.get_available_tags_by_entity_type(
+            project_name
+        )
+
+    def get_project_anatomy_tags(self, project_name: str) -> list[TagItem]:
+        return self._projects_model.get_project_anatomy_tags(project_name)
 
     def get_product_items(self, project_name, folder_ids, sender=None):
         return self._products_model.get_product_items(
