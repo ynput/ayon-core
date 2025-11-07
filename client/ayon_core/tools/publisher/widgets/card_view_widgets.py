@@ -390,15 +390,14 @@ class InstanceCardWidget(CardWidget):
         folder_path: Optional[str],
         task_name: Optional[str],
     ) -> str:
-        parts = []
+        sublabel = ""
         if folder_path:
             folder_name = folder_path.split("/")[-1]
-            parts.append(f"<b>{folder_name}</b>")
+            sublabel = f"- <b>{folder_name}</b>"
             if task_name:
-                parts.append(task_name)
-        if not parts:
-            return ""
-        sublabel = " - ".join(parts)
+                sublabel += f" - {task_name}"
+        if not sublabel:
+            return sublabel
         return f"<span style=\"font-size: 8pt;\">{sublabel}</span>"
 
     def _update_product_name(self):
