@@ -1045,7 +1045,9 @@ def get_resources(project_name, version_entity, extension=None):
             filtered.append(repre_entity)
 
     representation = filtered[0]
-    directory = get_representation_path(representation)
+    directory = get_representation_path(
+        project_name, representation
+    )
     print("Source: ", directory)
     resources = sorted(
         [
