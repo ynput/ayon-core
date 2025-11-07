@@ -1,5 +1,5 @@
 import qtawesome
-from qtpy import QtWidgets, QtCore, QtGui
+from qtpy import QtWidgets, QtCore
 
 from ayon_core.tools.utils import (
     PlaceholderLineEdit,
