@@ -6,7 +6,7 @@ class PickScreenColorWidget(QtWidgets.QWidget):
     color_selected = QtCore.Signal(QtGui.QColor)
 
     def __init__(self, parent=None):
-        super(PickScreenColorWidget, self).__init__(parent)
+        super().__init__(parent)
         self.labels = []
         self.magnification = 2
 
@@ -53,7 +53,7 @@ class PickLabel(QtWidgets.QLabel):
     close_session = QtCore.Signal()
 
     def __init__(self, pick_widget):
-        super(PickLabel, self).__init__()
+        super().__init__()
         self.setMouseTracking(True)
 
         self.pick_widget = pick_widget
@@ -74,14 +74,10 @@ class PickLabel(QtWidgets.QLabel):
         self.show()
         self.windowHandle().setScreen(screen_obj)
         geo = screen_obj.geometry()
-        args = (
-            QtWidgets.QApplication.desktop().winId(),
+        pix = screen_obj.grabWindow(
+            self.winId(),
             geo.x(), geo.y(), geo.width(), geo.height()
         )
-        if qtpy.API in ("pyqt4", "pyside"):
-            pix = QtGui.QPixmap.grabWindow(*args)
-        else:
-            pix = screen_obj.grabWindow(*args)
 
         if pix.width() > pix.height():
             size = pix.height()
