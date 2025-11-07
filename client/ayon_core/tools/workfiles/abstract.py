@@ -1,7 +1,17 @@
+from __future__ import annotations
+
 import os
 from abc import ABC, abstractmethod
+import typing
+from typing import Optional
 
 from ayon_core.style import get_default_entity_icon_color
+
+if typing.TYPE_CHECKING:
+    from ayon_core.host import (
+        WorkfileInfo,
+        PublishedWorkfileInfo,
+    )
 
 
 class FolderItem:
@@ -157,6 +167,17 @@ class WorkareaFilepathResult:
         self.filename = filename
         self.exists = exists
         self.filepath = filepath
+
+
+class PublishedWorkfileWrap:
+    """Wrapper for workfile info that also contains version comment."""
+    def __init__(
+        self,
+        info: Optional[PublishedWorkfileInfo] = None,
+        comment: Optional[str] = None,
+    ) -> None:
+        self.info = info
+        self.comment = comment
 
 
 class AbstractWorkfilesCommon(ABC):
@@ -788,28 +809,20 @@ class AbstractWorkfilesFrontend(AbstractWorkfilesCommon):
         pass
 
     @abstractmethod
-    def get_published_workfile_info(self, representation_id: str):
+    def get_published_workfile_info(
+        self,
+        folder_id: Optional[str],
+        representation_id: Optional[str],
+    ) -> PublishedWorkfileWrap:
         """Get published workfile info by representation ID.
 
         Args:
-            representation_id (str): Representation id.
+            folder_id (Optional[str]): Folder id.
+            representation_id (Optional[str]): Representation id.
 
         Returns:
-            Optional[PublishedWorkfileInfo]: Published workfile info or None
+            PublishedWorkfileWrap: Published workfile info or None
                 if not found.
-
-        """
-        pass
-
-    @abstractmethod
-    def get_published_workfile_version_comment(self, representation_id: str):
-        """Get version comment for published workfile.
-
-        Args:
-            representation_id (str): Representation id.
-
-        Returns:
-            Optional[str]: Version comment or None.
 
         """
         pass

@@ -1,4 +1,7 @@
+from __future__ import annotations
+
 import os
+from typing import Optional
 
 import ayon_api
 
@@ -18,6 +21,7 @@ from ayon_core.tools.common_models import (
 from .abstract import (
     AbstractWorkfilesBackend,
     AbstractWorkfilesFrontend,
+    PublishedWorkfileWrap,
 )
 from .models import SelectionModel, WorkfilesModel
 
@@ -432,14 +436,13 @@ class BaseWorkfileController(
             folder_id, task_id
         )
 
-    def get_published_workfile_info(self, representation_id):
+    def get_published_workfile_info(
+        self,
+        folder_id: Optional[str],
+        representation_id: Optional[str],
+    ) -> PublishedWorkfileWrap:
         return self._workfiles_model.get_published_workfile_info(
-            representation_id
-        )
-
-    def get_published_workfile_version_comment(self, representation_id):
-        return self._workfiles_model.get_published_workfile_version_comment(
-            representation_id
+            folder_id, representation_id
         )
 
     def get_workfile_info(self, folder_id, task_id, rootless_path):
