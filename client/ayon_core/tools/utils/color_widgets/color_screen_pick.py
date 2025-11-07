@@ -1,4 +1,3 @@
-import qtpy
 from qtpy import QtWidgets, QtCore, QtGui
 
 
