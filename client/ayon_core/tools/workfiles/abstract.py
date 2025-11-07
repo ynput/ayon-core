@@ -8,10 +8,7 @@ from typing import Optional
 from ayon_core.style import get_default_entity_icon_color
 
 if typing.TYPE_CHECKING:
-    from ayon_core.host import (
-        WorkfileInfo,
-        PublishedWorkfileInfo,
-    )
+    from ayon_core.host import PublishedWorkfileInfo
 
 
 class FolderItem:
