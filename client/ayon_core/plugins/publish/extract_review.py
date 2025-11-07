@@ -361,14 +361,14 @@ class ExtractReview(pyblish.api.InstancePlugin):
             if not filtered_output_defs:
                 self.log.debug((
                     "Repre: {} - All output definitions were filtered"
-                    " out by single frame filter. Skipping"
+                    " out by single frame filter. Skipped."
                 ).format(repre["name"]))
                 continue
 
             # Skip if file is not set
             if first_input_path is None:
                 self.log.warning((
-                    "Representation \"{}\" have empty files. Skipped."
+                    "Representation \"{}\" has empty files. Skipped."
                 ).format(repre["name"]))
                 continue
 
