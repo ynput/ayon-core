@@ -395,7 +395,7 @@ class InstanceCardWidget(CardWidget):
             folder_name = folder_path.split("/")[-1]
             sublabel = f"- <b>{folder_name}</b>"
             if task_name:
-                sublabel += f" - {task_name}"
+                sublabel += f" - <i>{task_name}</i>"
         if not sublabel:
             return sublabel
         return f"<span style=\"font-size: 8pt;\">{sublabel}</span>"
