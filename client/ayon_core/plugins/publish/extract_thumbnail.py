@@ -17,6 +17,7 @@ from ayon_core.lib import (
     run_subprocess,
 )
 from ayon_core.lib.transcoding import (
+    MissingRGBAChannelsError,
     oiio_color_convert,
     get_oiio_input_and_channel_args,
     get_oiio_info_for_input,
@@ -477,7 +478,16 @@ class ExtractThumbnail(pyblish.api.InstancePlugin):
             return False
 
         input_info = get_oiio_info_for_input(src_path, logger=self.log)
-        input_arg, channels_arg = get_oiio_input_and_channel_args(input_info)
+        try:
+            input_arg, channels_arg = get_oiio_input_and_channel_args(
+                input_info
+            )
+        except MissingRGBAChannelsError:
+            self.log.debug(
+                "Unable to find relevant reviewable channel for thumbnail "
+                "creation"
+            )
+            return False
         oiio_cmd = get_oiio_tool_args(
             "oiiotool",
             input_arg, src_path,
