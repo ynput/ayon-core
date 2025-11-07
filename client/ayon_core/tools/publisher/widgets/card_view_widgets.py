@@ -392,7 +392,7 @@ class InstanceCardWidget(CardWidget):
     ) -> str:
         sublabel = ""
         if folder_path:
-            folder_name = folder_path.split("/")[-1]
+            folder_name = folder_path.rsplit("/", 1)[-1]
             sublabel = f"- <b>{folder_name}</b>"
             if task_name:
                 sublabel += f" - <i>{task_name}</i>"
