@@ -1,6 +1,6 @@
 import logging
 import re
-import copy
+import uuid
 from typing import (
     Union,
     List,
@@ -29,14 +29,12 @@ from ayon_core.pipeline.create import (
     CreateContext,
     CreatedInstance,
     AttributeValues,
-    ProductTypeItem,
 )
 from ayon_core.pipeline.create import (
     CreatorsOperationFailed,
     ConvertorsOperationFailed,
     ConvertorItem,
 )
-
 from ayon_core.tools.publisher.abstract import (
     AbstractPublisherBackend,
     CardMessageTypes,
@@ -69,42 +67,10 @@ class CreatorTypes:
 
     @classmethod
     def from_str(cls, value: str) -> CreatorType:
-        for creator_type in (
-            cls.base,
-            cls.auto,
-            cls.hidden,
-            cls.artist
-        ):
+        for creator_type in (cls.base, cls.auto, cls.hidden, cls.artist):
             if value == creator_type:
                 return creator_type
-        raise ValueError("Unknown type \"{}\"".format(str(value)))
-
-
-class CreatorUIItem:
-    def __init__(
-        self,
-        product_type: str,
-        label: str,
-        filtered: bool = False
-    ) -> None:
-        self.product_type = product_type
-        self.label = label
-        self.filtered = filtered
-
-    @classmethod
-    def from_data(cls, data) -> "CreatorUIItem":
-        return CreatorUIItem(
-            data["product_type"],
-            data["label"],
-            data["filtered"],
-        )
-
-    def to_data(self) -> dict[str, Any]:
-        return {
-            "product_type": self.product_type,
-            "label": self.label,
-            "filtered": self.filtered,
-        }
+        raise ValueError('Unknown type "{}"'.format(str(value)))
 
 
 class CreatorItem:
@@ -117,7 +83,7 @@ class CreatorItem:
         self,
         identifier: str,
         creator_type: CreatorType,
-        product_base_type: str,
+        product_type: str,
         label: str,
         group_label: str,
         icon: Union[str, Dict[str, Any], None],
@@ -129,11 +95,10 @@ class CreatorItem:
         create_allow_thumbnail: Union[bool, None],
         show_order: int,
         pre_create_attributes_defs: List[AbstractAttrDef],
-        ui_items: list[CreatorUIItem],
     ):
         self.identifier: str = identifier
         self.creator_type: CreatorType = creator_type
-        self.product_base_type: str = product_base_type
+        self.product_type: str = product_type
         self.label: str = label
         self.group_label: str = group_label
         self.icon: Union[str, Dict[str, Any], None] = icon
@@ -149,13 +114,12 @@ class CreatorItem:
         self.pre_create_attributes_defs: List[AbstractAttrDef] = (
             pre_create_attributes_defs
         )
-        self.ui_items: list[CreatorUIItem] = ui_items
 
     def get_group_label(self) -> str:
         return self.group_label
 
     @classmethod
-    def from_creator(cls, creator: BaseCreator) -> "CreatorItem":
+    def from_creator(cls, creator: BaseCreator):
         creator_type: CreatorType = CreatorTypes.base
         if isinstance(creator, AutoCreator):
             creator_type = CreatorTypes.auto
@@ -182,28 +146,11 @@ class CreatorItem:
             create_allow_thumbnail = creator.create_allow_thumbnail
             show_order = creator.show_order
 
-        ui_items = []
-        product_type_items: list[ProductTypeItem] = (
-            creator.get_product_type_items() or []
-        )
-        for item in product_type_items:
-            ui_item = CreatorUIItem(
-                item.product_type,
-                item.label or creator.label,
-            )
-            ui_items.append(ui_item)
-
-        if not ui_items:
-            ui_items.append(CreatorUIItem(
-                creator.product_base_type,
-                creator.label,
-            ))
-
         identifier = creator.identifier
         return cls(
             identifier,
             creator_type,
-            creator.product_base_type,
+            creator.product_type,
             creator.label or identifier,
             creator.get_group_label(),
             creator.get_icon(),
@@ -215,7 +162,6 @@ class CreatorItem:
             create_allow_thumbnail,
             show_order,
             pre_create_attr_defs,
-            ui_items,
         )
 
     def to_data(self) -> Dict[str, Any]:
@@ -228,7 +174,7 @@ class CreatorItem:
         return {
             "identifier": self.identifier,
             "creator_type": str(self.creator_type),
-            "product_base_type": self.product_base_type,
+            "product_type": self.product_type,
             "label": self.label,
             "group_label": self.group_label,
             "icon": self.icon,
@@ -240,7 +186,6 @@ class CreatorItem:
             "create_allow_thumbnail": self.create_allow_thumbnail,
             "show_order": self.show_order,
             "pre_create_attributes_defs": pre_create_attributes_defs,
-            "ui_items": [item.to_data() for item in self.ui_items],
         }
 
     @classmethod
@@ -252,10 +197,6 @@ class CreatorItem:
             )
 
         data["creator_type"] = CreatorTypes.from_str(data["creator_type"])
-        data["ui_items"] = [
-            CreatorUIItem.from_data(item)
-            for item in data["ui_items"]
-        ]
         return cls(**data)
 
 
@@ -266,7 +207,6 @@ class InstanceItem:
         creator_identifier: str,
         label: str,
         group_label: str,
-        product_base_type: str,
         product_type: str,
         product_name: str,
         variant: str,
@@ -282,7 +222,6 @@ class InstanceItem:
         self._creator_identifier: str = creator_identifier
         self._label: str = label
         self._group_label: str = group_label
-        self._product_base_type: str = product_base_type
         self._product_type: str = product_type
         self._product_name: str = product_name
         self._variant: str = variant
@@ -309,10 +248,6 @@ class InstanceItem:
     @property
     def group_label(self):
         return self._group_label
-
-    @property
-    def product_base_type(self):
-        return self._product_base_type
 
     @property
     def product_type(self):
@@ -377,7 +312,6 @@ class InstanceItem:
             instance.creator_identifier,
             instance.label or "N/A",
             instance.group_label,
-            instance.product_base_type,
             instance.product_type,
             instance.product_name,
             instance["variant"],
@@ -404,10 +338,7 @@ def _merge_attr_defs(
     if attr_def_src.items == attr_def_new.items:
         return None
 
-    src_item_values = {
-        item["value"]
-        for item in attr_def_src.items
-    }
+    src_item_values = {item["value"] for item in attr_def_src.items}
     for item in attr_def_new.items:
         if item["value"] not in src_item_values:
             attr_def_src.items.append(item)
@@ -421,8 +352,7 @@ def merge_attr_defs(attr_defs: List[List[AbstractAttrDef]]):
 
     # Pop first and create clone of attribute definitions
     defs_union: List[AbstractAttrDef] = [
-        attr_def.clone()
-        for attr_def in attr_defs.pop(0)
+        attr_def.clone() for attr_def in attr_defs.pop(0)
     ]
     for instance_attr_defs in attr_defs:
         idx = 0
@@ -439,14 +369,12 @@ def merge_attr_defs(attr_defs: List[List[AbstractAttrDef]]):
                 ):
                     continue
 
-                if (
-                    attr_def.compare_to_def(
-                        union_def,
-                        ignore_default=True,
-                        ignore_enabled=True,
-                        ignore_visible=True,
-                        ignore_def_type_compare=is_enum
-                    )
+                if attr_def.compare_to_def(
+                    union_def,
+                    ignore_default=True,
+                    ignore_enabled=True,
+                    ignore_visible=True,
+                    ignore_def_type_compare=is_enum,
                 ):
                     match_idx = union_idx
                     match_attr = union_def
@@ -480,7 +408,7 @@ class CreateModel:
         self._create_context = CreateContext(
             controller.get_host(),
             headless=controller.is_headless(),
-            reset=False
+            reset=False,
         )
         # State flags to prevent executing method which is already in progress
         self._creator_items = None
@@ -547,9 +475,7 @@ class CreateModel:
         self._create_context.add_instances_removed_callback(
             self._cc_removed_instance
         )
-        self._create_context.add_value_changed_callback(
-            self._cc_value_changed
-        )
+        self._create_context.add_value_changed_callback(self._cc_value_changed)
         self._create_context.add_pre_create_attr_defs_change_callback(
             self._cc_pre_create_attr_changed
         )
@@ -568,7 +494,7 @@ class CreateModel:
 
         self._create_context.reset_finalization()
 
-    def get_creator_items(self) -> dict[str, CreatorItem]:
+    def get_creator_items(self) -> Dict[str, CreatorItem]:
         """Creators that can be shown in create dialog."""
         if self._creator_items is None:
             self._refresh_creator_items()
@@ -625,9 +551,7 @@ class CreateModel:
         self, instance_ids: Optional[Iterable[str]] = None
     ):
         instances = self._get_instances_by_id(instance_ids).values()
-        return self._create_context.get_instances_context_info(
-            instances
-        )
+        return self._create_context.get_instances_context_info(instances)
 
     def set_instances_context_info(self, changes_by_instance_id):
         with self._create_context.bulk_value_changes(CREATE_EVENT_SOURCE):
@@ -637,14 +561,10 @@ class CreateModel:
                     instance[key] = value
         self._emit_event(
             "create.model.instances.context.changed",
-            {
-                "instance_ids": list(changes_by_instance_id.keys())
-            }
+            {"instance_ids": list(changes_by_instance_id.keys())},
         )
 
-    def set_instances_active_state(
-        self, active_state_by_id: Dict[str, bool]
-    ):
+    def set_instances_active_state(self, active_state_by_id: Dict[str, bool]):
         changed_ids = set()
         with self._create_context.bulk_value_changes(CREATE_EVENT_SOURCE):
             for instance_id, active in active_state_by_id.items():
@@ -658,9 +578,7 @@ class CreateModel:
 
         self._emit_event(
             "create.model.instances.context.changed",
-            {
-                "instance_ids": changed_ids
-            }
+            {"instance_ids": changed_ids},
         )
 
     def get_convertor_items(self) -> Dict[str, ConvertorItem]:
@@ -669,11 +587,10 @@ class CreateModel:
     def get_product_name(
         self,
         creator_identifier: str,
-        product_type: str,
         variant: str,
-        folder_path: Union[str, None],
         task_name: Union[str, None],
-        instance_id: Optional[str] = None
+        folder_path: Union[str, None],
+        instance_id: Optional[str] = None,
     ) -> str:
         """Get product name based on passed data.
 
@@ -681,8 +598,8 @@ class CreateModel:
             creator_identifier (str): Identifier of creator which should be
                 responsible for product name creation.
             variant (str): Variant value from user's input.
-            folder_path (str): Folder path for which is instance created.
             task_name (str): Name of task for which is instance created.
+            folder_path (str): Folder path for which is instance created.
             instance_id (Union[str, None]): Existing instance id when product
                 name is updated.
         """
@@ -708,7 +625,7 @@ class CreateModel:
                 project_name,
                 folder_item.entity_id,
                 task_name,
-                CREATE_EVENT_SOURCE
+                CREATE_EVENT_SOURCE,
             )
 
         if task_item is not None:
@@ -717,28 +634,17 @@ class CreateModel:
             )
 
         project_entity = self._controller.get_project_entity(project_name)
-        args = (
-            project_name,
-            folder_entity,
-            task_entity,
-            variant
-        )
+        args = (project_name, folder_entity, task_entity, variant)
         kwargs = {
             "instance": instance,
-            # Backwards compatibility for 'project_entity' argument (24/07/08)
             "project_entity": project_entity,
-            "product_type": product_type,
         }
-        # Backwards compatibility for 'project_entity' argument (24/07/08)
-        # Backwards compatibility for 'product_type' argument (26/01/19)
-        for kwarg in (
-            "product_type",
-            "project_entity",
+        # Backwards compatibility for 'project_entity' argument
+        # - 'get_product_name' signature changed 24/07/08
+        if not is_func_signature_supported(
+            creator.get_product_name, *args, **kwargs
         ):
-            if not is_func_signature_supported(
-                creator.get_product_name, *args, **kwargs
-            ):
-                kwargs.pop(kwarg)
+            kwargs.pop("project_entity")
         return creator.get_product_name(*args, **kwargs)
 
     def create(
@@ -749,26 +655,77 @@ class CreateModel:
         options: Dict[str, Any],
     ):
         """Trigger creation and refresh of instances in UI."""
+        from qtpy import QtWidgets
+
+        event_id = uuid.uuid4().hex
+
+        # Store event_id and controller in create_context for plugin access
+        self._create_context._current_event_id = event_id
+        self._create_context._current_controller = self._controller
+
+        self._emit_event(
+            "create.started",
+            {
+                "id": event_id,
+                "creator_identifier": creator_identifier,
+                "message": f"Creating {product_name}...",
+            },
+        )
+
+        # Process Qt events to show the toast immediately
+        app = QtWidgets.QApplication.instance()
+        if app:
+            app.processEvents()
 
         success = True
         try:
+            # Emit progress at 50% before creation
+            self._emit_event(
+                "create.progress",
+                {
+                    "id": event_id,
+                    "progress": 50,
+                },
+            )
+
+            # Process events to update progress bar
+            if app:
+                app.processEvents()
+
             with self._create_context.bulk_add_instances():
                 self._create_context.create_with_unified_error(
-                    creator_identifier,
-                    product_name,
-                    instance_data,
-                    options,
+                    creator_identifier, product_name, instance_data, options
                 )
+
+            # Emit completion progress
+            self._emit_event(
+                "create.progress",
+                {
+                    "id": event_id,
+                    "progress": 100,
+                },
+            )
 
         except CreatorsOperationFailed as exc:
             success = False
             self._emit_event(
                 "instances.create.failed",
-                {
-                    "title": "Creation failed",
-                    "failed_info": exc.failed_info
-                }
+                {"title": "Creation failed", "failed_info": exc.failed_info},
             )
+
+        self._emit_event(
+            "create.finished",
+            {
+                "id": event_id,
+                "success": success,
+            },
+        )
+
+        # Clean up temporary attributes
+        if hasattr(self._create_context, "_current_event_id"):
+            delattr(self._create_context, "_current_event_id")
+        if hasattr(self._create_context, "_current_controller"):
+            delattr(self._create_context, "_current_controller")
 
         return success
 
@@ -791,20 +748,14 @@ class CreateModel:
             success = False
             self._emit_event(
                 "convertors.convert.failed",
-                {
-                    "title": "Conversion failed",
-                    "failed_info": exc.failed_info
-                }
+                {"title": "Conversion failed", "failed_info": exc.failed_info},
             )
 
         if success:
-            self._controller.emit_card_message(
-                "Conversion finished"
-            )
+            self._controller.emit_card_message("Conversion finished")
         else:
             self._controller.emit_card_message(
-                "Conversion failed",
-                CardMessageTypes.error
+                "Conversion failed", CardMessageTypes.error
             )
 
     def save_changes(self, show_message: Optional[bool] = True) -> bool:
@@ -840,8 +791,8 @@ class CreateModel:
                 "instances.save.failed",
                 {
                     "title": "Instances save failed",
-                    "failed_info": exc.failed_info
-                }
+                    "failed_info": exc.failed_info,
+                },
             )
 
         return False
@@ -856,6 +807,40 @@ class CreateModel:
         # QUESTION Expect that instances are really removed? In that case reset
         #    is not required.
         self._remove_instances_from_context(instance_ids)
+
+    def select_instances_in_host(self, instance_ids: List[str]):
+        """Ask host/creator to select and focus instances in DCC.
+
+        Calls creator-specific hook 'select_in_host' when available.
+
+        Args:
+            instance_ids (List[str]): Instance identifiers to select.
+        """
+        if not instance_ids:
+            return
+        for instance_id in instance_ids:
+            instance = self._get_instance_by_id(instance_id)
+            if instance is None:
+                continue
+            try:
+                creator_identifier = instance.creator_identifier
+                creator = self._creators.get(creator_identifier)
+                if creator is None:
+                    continue
+                # Call optional hook if present on the creator
+                select_hook = getattr(creator, "select_in_host", None)
+                if callable(select_hook):
+                    select_hook(instance)
+            except Exception as e:
+                # Never raise from a UX helper
+                self.log.debug(
+                    "Selection hook failed for instance %s",
+                    instance_id,
+                    exc_info=True,
+                )
+                self.log.error(
+                    f"Selection hook failed for instance {instance_id}: {e}"
+                )
 
     def set_instances_create_attr_values(self, instance_ids, key, value):
         self._set_instances_create_attr_values(instance_ids, key, value)
@@ -894,21 +879,23 @@ class CreateModel:
 
                 if found_idx is None:
                     idx = len(output)
-                    output.append((
-                        attr_def,
-                        {
-                            instance_id: {
-                                "value": value,
-                                "default": attr_def.default
-                            }
-                        }
-                    ))
+                    output.append(
+                        (
+                            attr_def,
+                            {
+                                instance_id: {
+                                    "value": value,
+                                    "default": attr_def.default,
+                                }
+                            },
+                        )
+                    )
                     _attr_defs[idx] = attr_def
                 else:
                     _, info_by_id = output[found_idx]
                     info_by_id[instance_id] = {
                         "value": value,
-                        "default": attr_def.default
+                        "default": attr_def.default,
                     }
 
         return output
@@ -928,14 +915,12 @@ class CreateModel:
         )
 
     def get_publish_attribute_definitions(
-        self,
-        instance_ids: List[str],
-        include_context: bool
-    ) -> List[Tuple[
-        str,
-        List[AbstractAttrDef],
-        Dict[str, List[Tuple[str, Any, Any]]]
-    ]]:
+        self, instance_ids: List[str], include_context: bool
+    ) -> List[
+        Tuple[
+            str, List[AbstractAttrDef], Dict[str, List[Tuple[str, Any, Any]]]
+        ]
+    ]:
         """Collect publish attribute definitions for passed instances.
 
         Args:
@@ -989,11 +974,13 @@ class CreateModel:
             plugin_name = plugin.__name__
             if plugin_name not in all_defs_by_plugin_name:
                 continue
-            output.append((
-                plugin_name,
-                attr_defs_by_plugin_name[plugin_name],
-                all_plugin_values[plugin_name],
-            ))
+            output.append(
+                (
+                    plugin_name,
+                    attr_defs_by_plugin_name[plugin_name],
+                    all_plugin_values[plugin_name],
+                )
+            )
         return output
 
     def get_thumbnail_paths_for_instances(
@@ -1017,17 +1004,10 @@ class CreateModel:
             thumbnail_paths_by_instance_id[instance_id] = thumbnail_path
 
         self._emit_event(
-            "instance.thumbnail.changed",
-            {
-                "mapping": thumbnail_path_mapping
-            }
+            "instance.thumbnail.changed", {"mapping": thumbnail_path_mapping}
         )
 
-    def _emit_event(
-        self,
-        topic: str,
-        data: Optional[Dict[str, Any]] = None
-    ):
+    def _emit_event(self, topic: str, data: Optional[Dict[str, Any]] = None):
         self._controller.emit_event(topic, data, CREATE_EVENT_SOURCE)
 
     def _get_current_project_settings(self) -> Dict[str, Any]:
@@ -1072,8 +1052,8 @@ class CreateModel:
                     "instances.collection.failed",
                     {
                         "title": "Instance collection failed",
-                        "failed_info": exc.failed_info
-                    }
+                        "failed_info": exc.failed_info,
+                    },
                 )
 
             try:
@@ -1083,8 +1063,8 @@ class CreateModel:
                     "convertors.find.failed",
                     {
                         "title": "Collection of unsupported product failed",
-                        "failed_info": exc.failed_info
-                    }
+                        "failed_info": exc.failed_info,
+                    },
                 )
 
             try:
@@ -1095,15 +1075,14 @@ class CreateModel:
                     "instances.create.failed",
                     {
                         "title": "AutoCreation failed",
-                        "failed_info": exc.failed_info
-                    }
+                        "failed_info": exc.failed_info,
+                    },
                 )
 
     def _remove_instances_from_context(self, instance_ids: List[str]):
         instances_by_id = self._create_context.instances_by_id
         instances = [
-            instances_by_id[instance_id]
-            for instance_id in instance_ids
+            instances_by_id[instance_id] for instance_id in instance_ids
         ]
         try:
             self._create_context.remove_instances(instances)
@@ -1112,42 +1091,43 @@ class CreateModel:
                 "instances.remove.failed",
                 {
                     "title": "Instance removement failed",
-                    "failed_info": exc.failed_info
-                }
+                    "failed_info": exc.failed_info,
+                },
             )
 
-    def _refresh_creator_items(self, identifiers=None):
-        if identifiers is None or self._creator_items is None:
-            identifiers = set(self._create_context.creators.keys())
-
-        if self._creator_items is None:
-            self._creator_items = {}
-
+    def _collect_creator_items(self) -> Dict[str, CreatorItem]:
+        # TODO add crashed initialization of create plugins to report
+        output = {}
         allowed_creator_pattern = self._get_allowed_creators_pattern()
-
-        for identifier in identifiers:
-            creator = self._create_context.creators.get(identifier)
-            if creator is None:
-                continue
-
+        for identifier, creator in self._create_context.creators.items():
             try:
-                creator_item = CreatorItem.from_creator(creator)
+                if self._is_label_allowed(
+                    creator.label, allowed_creator_pattern
+                ):
+                    output[identifier] = CreatorItem.from_creator(creator)
+                    continue
+                self.log.debug(f"{creator.label} not allowed for context")
             except Exception:
                 self.log.error(
                     "Failed to create creator item for '%s'",
                     identifier,
-                    exc_info=True
+                    exc_info=True,
                 )
-                self._creator_items.pop(identifier, None)
-                continue
 
-            self._creator_items[identifier] = creator_item
-            for ui_item in creator_item.ui_items:
-                ui_item.filtered = self._is_label_allowed(
-                    ui_item.label, allowed_creator_pattern
-                )
-                if ui_item.filtered:
-                    self.log.debug(f"{ui_item.label} not allowed for context")
+        return output
+
+    def _refresh_creator_items(self, identifiers=None):
+        if identifiers is None:
+            self._creator_items = self._collect_creator_items()
+            return
+
+        for identifier in identifiers:
+            if identifier not in self._creator_items:
+                continue
+            creator = self._create_context.creators.get(identifier)
+            if creator is None:
+                continue
+            self._creator_items[identifier] = CreatorItem.from_creator(creator)
 
     def _set_instances_create_attr_values(self, instance_ids, key, value):
         with self._create_context.bulk_value_changes(CREATE_EVENT_SOURCE):
@@ -1167,7 +1147,7 @@ class CreateModel:
                     creator_attributes[key] = attr_def.default
 
                 elif attr_def.is_value_valid(value):
-                    creator_attributes[key] = copy.deepcopy(value)
+                    creator_attributes[key] = value
 
     def _set_instances_publish_attr_values(
         self, instance_ids, plugin_name, key, value
@@ -1197,20 +1177,14 @@ class CreateModel:
                     plugin_val[key] = value
 
     def _cc_added_instance(self, event):
-        instance_ids = {
-            instance.id
-            for instance in event.data["instances"]
-        }
+        instance_ids = {instance.id for instance in event.data["instances"]}
         self._emit_event(
             "create.context.added.instance",
             {"instance_ids": instance_ids},
         )
 
     def _cc_removed_instance(self, event):
-        instance_ids = {
-            instance.id
-            for instance in event.data["instances"]
-        }
+        instance_ids = {instance.id for instance in event.data["instances"]}
         self._emit_event(
             "create.context.removed.instance",
             {"instance_ids": instance_ids},
@@ -1253,10 +1227,7 @@ class CreateModel:
         )
 
     def _cc_create_attr_changed(self, event):
-        instance_ids = {
-            instance.id
-            for instance in event.data["instances"]
-        }
+        instance_ids = {instance.id for instance in event.data["instances"]}
         self._emit_event(
             "create.context.create.attrs.changed",
             {"instance_ids": instance_ids},
@@ -1274,20 +1245,14 @@ class CreateModel:
         )
 
     def _cc_instance_requirement_changed(self, event):
-        instance_ids = {
-            instance.id
-            for instance in event.data["instances"]
-        }
+        instance_ids = {instance.id for instance in event.data["instances"]}
         self._emit_event(
             "create.model.instance.requirement.changed",
             {"instance_ids": instance_ids},
         )
 
     def _cc_instance_parent_changed(self, event):
-        instance_ids = {
-            instance.id
-            for instance in event.data["instances"]
-        }
+        instance_ids = {instance.id for instance in event.data["instances"]}
         self._emit_event(
             "create.model.instance.parent.changed",
             {"instance_ids": instance_ids},
@@ -1306,40 +1271,31 @@ class CreateModel:
         task_type = self._create_context.get_current_task_type()
         project_settings = self._get_current_project_settings()
 
-        filter_creator_profiles = (
-            project_settings
-            ["core"]
-            ["tools"]
-            ["creator"]
-            ["filter_creator_profiles"]
-        )
+        filter_creator_profiles = project_settings["core"]["tools"]["creator"][
+            "filter_creator_profiles"
+        ]
         filtering_criteria = {
             "task_names": self.get_current_task_name(),
             "task_types": task_type,
-            "host_names": self._create_context.host_name
+            "host_names": self._create_context.host_name,
         }
         profile = filter_profiles(
-            filter_creator_profiles,
-            filtering_criteria,
-            logger=self.log
+            filter_creator_profiles, filtering_criteria, logger=self.log
         )
 
         allowed_creator_pattern = None
         if profile:
             allowed_creator_labels = {
-                label
-                for label in profile["creator_labels"]
-                if label
+                label for label in profile["creator_labels"] if label
             }
             self.log.debug(f"Only allowed `{allowed_creator_labels}` creators")
-            allowed_creator_pattern = (
-                re.compile("|".join(allowed_creator_labels)))
+            allowed_creator_pattern = re.compile(
+                "|".join(allowed_creator_labels)
+            )
         return allowed_creator_pattern
 
     def _is_label_allowed(
-        self,
-        label: str,
-        allowed_labels_regex: Union[Pattern, None]
+        self, label: str, allowed_labels_regex: Union[Pattern, None]
     ) -> bool:
         """Implement regex support for allowed labels.
 
