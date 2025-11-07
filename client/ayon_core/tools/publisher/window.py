@@ -1,18 +1,14 @@
-from __future__ import annotations
-
 import os
 import json
 import time
 import collections
 import copy
-from typing import Optional, Any
+from typing import Optional
 
 from qtpy import QtWidgets, QtCore, QtGui
 
-from ayon_core import (
-    resources,
-    style
-)
+from ayon_core import resources, style
+from ayon_core.pipeline import get_current_host_name
 from ayon_core.tools.utils import (
     ErrorMessageBox,
     PlaceholderLineEdit,
@@ -29,24 +25,21 @@ from .widgets import (
     OverviewWidget,
     ReportPageWidget,
     PublishFrame,
-
     PublisherTabsWidget,
-
     SaveBtn,
     ResetBtn,
     StopBtn,
     ValidateBtn,
     PublishBtn,
-
     HelpButton,
     HelpDialog,
-
     CreateNextPageOverlay,
 )
 
 
 class PublisherWindow(QtWidgets.QDialog):
     """Main window of publisher."""
+
     default_width = 1300
     default_height = 800
     footer_border = 8
@@ -56,21 +49,21 @@ class PublisherWindow(QtWidgets.QDialog):
         self,
         parent: Optional[QtWidgets.QWidget] = None,
         controller: Optional[AbstractPublisherFrontend] = None,
-        reset_on_show: Optional[bool] = None
+        reset_on_show: Optional[bool] = None,
     ):
-        if controller is None:
-            controller = QtPublisherController()
-
-        title = "AYON Publisher"
-        subtitle = controller.get_window_subtitle()
-        if subtitle:
-            title += f" - {subtitle}"
-
         super().__init__(parent)
 
         self.setObjectName("PublishWindow")
 
-        self.setWindowTitle(title)
+        # Set window title with application name
+        base_title = "AYON Publisher"
+        app_name = os.environ.get("AYON_APP_NAME") or get_current_host_name()
+        if app_name:
+            window_title = f"{base_title} - {app_name}"
+        else:
+            window_title = base_title
+        self.setWindowTitle(window_title)
+
         icon = QtGui.QIcon(resources.get_ayon_icon_filepath())
         self.setWindowIcon(icon)
 
@@ -84,6 +77,9 @@ class PublisherWindow(QtWidgets.QDialog):
             | QtCore.Qt.WindowMinimizeButtonHint
             | QtCore.Qt.WindowCloseButtonHint
         )
+
+        if controller is None:
+            controller = QtPublisherController()
 
         help_dialog = HelpDialog(controller, self)
 
@@ -133,9 +129,7 @@ class PublisherWindow(QtWidgets.QDialog):
 
         comment_input = PlaceholderLineEdit(footer_widget)
         comment_input.setObjectName("PublishCommentInput")
-        comment_input.setPlaceholderText(
-            "Attach a comment to your publish"
-        )
+        comment_input.setPlaceholderText("Attach a comment to your publish")
 
         save_btn = SaveBtn(footer_widget)
         reset_btn = ResetBtn(footer_widget)
@@ -166,7 +160,7 @@ class PublisherWindow(QtWidgets.QDialog):
             footer_margins.left() + self.footer_border,
             footer_margins.top(),
             footer_margins.right() + self.footer_border,
-            footer_margins.bottom() + self.footer_border
+            footer_margins.bottom() + self.footer_border,
         )
 
         footer_layout.addWidget(comment_input, 0)
@@ -190,9 +184,7 @@ class PublisherWindow(QtWidgets.QDialog):
         content_layout.addWidget(content_stacked_widget, 1)
 
         # Overview - create and attributes part
-        overview_widget = OverviewWidget(
-            controller, content_stacked_widget
-        )
+        overview_widget = OverviewWidget(controller, content_stacked_widget)
 
         report_widget = ReportPageWidget(controller, content_stacked_widget)
 
@@ -254,9 +246,7 @@ class PublisherWindow(QtWidgets.QDialog):
         comment_invalid_timer = QtCore.QTimer()
         comment_invalid_timer.setSingleShot(True)
         comment_invalid_timer.setInterval(2500)
-        comment_invalid_timer.timeout.connect(
-            self._on_comment_invalid_timeout
-        )
+        comment_invalid_timer.timeout.connect(self._on_comment_invalid_timeout)
 
         errors_dialog_message_timer = QtCore.QTimer()
         errors_dialog_message_timer.setInterval(100)
@@ -266,15 +256,9 @@ class PublisherWindow(QtWidgets.QDialog):
 
         help_btn.clicked.connect(self._on_help_click)
         tabs_widget.tab_changed.connect(self._on_tab_change)
-        overview_widget.create_requested.connect(
-            self._on_create_request
-        )
-        overview_widget.convert_requested.connect(
-            self._on_convert_requested
-        )
-        overview_widget.publish_tab_requested.connect(
-            self._go_to_publish_tab
-        )
+        overview_widget.create_requested.connect(self._on_create_request)
+        overview_widget.convert_requested.connect(self._on_convert_requested)
+        overview_widget.publish_tab_requested.connect(self._go_to_publish_tab)
 
         save_btn.clicked.connect(self._on_save_clicked)
         reset_btn.clicked.connect(self._on_reset_clicked)
@@ -291,16 +275,25 @@ class PublisherWindow(QtWidgets.QDialog):
             "create.model.reset", self._on_create_model_reset
         )
         controller.register_event_callback(
+            "create.started", self._on_create_started
+        )
+        controller.register_event_callback(
+            "create.progress", self._on_create_progress
+        )
+        controller.register_event_callback(
+            "create.finished", self._on_create_finished
+        )
+        controller.register_event_callback(
             "create.context.added.instance",
-            self._event_callback_validate_instances
+            self._event_callback_validate_instances,
         )
         controller.register_event_callback(
             "create.context.removed.instance",
-            self._event_callback_validate_instances
+            self._event_callback_validate_instances,
         )
         controller.register_event_callback(
             "create.model.instances.context.changed",
-            self._event_callback_validate_instances
+            self._event_callback_validate_instances,
         )
         controller.register_event_callback(
             "publish.reset.finished", self._on_publish_reset
@@ -399,9 +392,6 @@ class PublisherWindow(QtWidgets.QDialog):
         self._publish_frame_visible = None
         self._tab_on_reset = None
 
-        self._create_context_valid: bool = True
-        self._blocked_by_crashed_paths: bool = False
-
         self._error_messages_to_show = collections.deque()
         self._errors_dialog_message_timer = errors_dialog_message_timer
 
@@ -414,8 +404,6 @@ class PublisherWindow(QtWidgets.QDialog):
         self._comment_invalid_timer = comment_invalid_timer
         self._show_counter = 0
         self._window_is_visible = False
-
-        self._update_footer_state()
 
     @property
     def controller(self) -> AbstractPublisherFrontend:
@@ -565,8 +553,7 @@ class PublisherWindow(QtWidgets.QDialog):
 
     def _on_overlay_message(self, event):
         self._overlay_object.add_message(
-            event["message"],
-            event.get("message_type")
+            event["message"], event.get("message_type")
         )
 
     def _on_first_show(self):
@@ -630,7 +617,7 @@ class PublisherWindow(QtWidgets.QDialog):
             self,
             title,
             message,
-            QtWidgets.QMessageBox.Save | QtWidgets.QMessageBox.Cancel
+            QtWidgets.QMessageBox.Save | QtWidgets.QMessageBox.Cancel,
         )
         return result == QtWidgets.QMessageBox.Save
 
@@ -675,33 +662,11 @@ class PublisherWindow(QtWidgets.QDialog):
 
         self._tab_on_reset = tab
 
-    def set_current_tab(self, tab):
-        if tab == "create":
-            self._go_to_create_tab()
-        elif tab == "publish":
-            self._go_to_publish_tab()
-        elif tab == "report":
-            self._go_to_report_tab()
-        elif tab == "details":
-            self._go_to_details_tab()
-
-        if not self._window_is_visible:
-            self.set_tab_on_reset(tab)
-
-    def _update_publish_details_widget(
-        self,
-        force: bool = False,
-        report_data: Optional[dict[str, Any]] = None,
-    ) -> None:
-        if (
-            report_data is None
-            and not force
-            and not self._is_on_details_tab()
-        ):
+    def _update_publish_details_widget(self, force=False):
+        if not force and not self._is_on_details_tab():
             return
 
-        if report_data is None:
-            report_data = self._controller.get_publish_report()
+        report_data = self._controller.get_publish_report()
         self._publish_details_widget.set_report_data(report_data)
 
     def _on_help_click(self):
@@ -711,8 +676,13 @@ class PublisherWindow(QtWidgets.QDialog):
         self._help_dialog.show()
 
         window = self.window()
-        screen = window.screen()
-        screen_geo = screen.geometry()
+        if hasattr(QtWidgets.QApplication, "desktop"):
+            desktop = QtWidgets.QApplication.desktop()
+            screen_idx = desktop.screenNumber(window)
+            screen_geo = desktop.screenGeometry(screen_idx)
+        else:
+            screen = window.screen()
+            screen_geo = screen.geometry()
 
         window_geo = window.geometry()
         dialog_x = window_geo.x() + window_geo.width()
@@ -722,8 +692,10 @@ class PublisherWindow(QtWidgets.QDialog):
             dialog_x -= diff
 
         self._help_dialog.setGeometry(
-            dialog_x, window_geo.y(),
-            self._help_dialog.width(), self._help_dialog.height()
+            dialog_x,
+            window_geo.y(),
+            self._help_dialog.width(),
+            self._help_dialog.height(),
         )
 
     def _on_create_overlay_button_click(self):
@@ -742,9 +714,7 @@ class PublisherWindow(QtWidgets.QDialog):
             self._publish_details_widget.set_active(True)
 
         elif new_tab == "report":
-            self._content_stacked_layout.setCurrentWidget(
-                self._report_widget
-            )
+            self._content_stacked_layout.setCurrentWidget(self._report_widget)
 
         old_on_overview = old_tab in ("create", "publish")
         if new_tab in ("create", "publish"):
@@ -785,6 +755,19 @@ class PublisherWindow(QtWidgets.QDialog):
     def _set_current_tab(self, identifier):
         self._tabs_widget.set_current_tab(identifier)
 
+    def set_current_tab(self, tab):
+        if tab == "create":
+            self._go_to_create_tab()
+        elif tab == "publish":
+            self._go_to_publish_tab()
+        elif tab == "report":
+            self._go_to_report_tab()
+        elif tab == "details":
+            self._go_to_details_tab()
+
+        if not self._window_is_visible:
+            self.set_tab_on_reset(tab)
+
     def _is_current_tab(self, identifier):
         return self._tabs_widget.is_current_tab(identifier)
 
@@ -795,7 +778,7 @@ class PublisherWindow(QtWidgets.QDialog):
 
         self._overlay_object.add_message(
             "Can't switch to Create tab because publishing is paused.",
-            message_type="info"
+            message_type="info",
         )
 
     def _go_to_publish_tab(self):
@@ -866,7 +849,7 @@ class PublisherWindow(QtWidgets.QDialog):
             self._overlay_object.add_message(
                 "Please enter a comment of at least "
                 f"{comment_def.minimum_chars_required} characters",
-                message_type="error"
+                message_type="error",
             )
             self._invalidate_comment_field()
             return False
@@ -877,64 +860,32 @@ class PublisherWindow(QtWidgets.QDialog):
         self._comment_input.setStyleSheet("border-color: #DD2020")
         # Set focus so user can start typing and is pointed towards the field
         self._comment_input.setFocus()
-        self._comment_input.setCursorPosition(
-            len(self._comment_input.text())
-        )
+        self._comment_input.setCursorPosition(len(self._comment_input.text()))
 
     def _on_comment_invalid_timeout(self):
         # Reset style
         self._comment_input.setStyleSheet("")
 
-    def _set_create_context_valid(self, valid: bool) -> None:
-        self._create_context_valid = valid
-        self._update_footer_state()
-
-    def _set_blocked(self, blocked: bool) -> None:
-        self._blocked_by_crashed_paths = blocked
-        self._overview_widget.setEnabled(not blocked)
-        self._update_footer_state()
-        if not blocked:
-            return
-
-        self.set_tab_on_reset("details")
-        self._go_to_details_tab()
-
-        QtWidgets.QMessageBox.critical(
-            self,
-            "Failed to load plugins",
-            (
-                "Failed to load plugins that do prevent you from"
-                " using publish tool.\n"
-                "Please contact your TD or administrator."
-            )
-        )
-
-    def _update_footer_state(self) -> None:
-        enabled = (
-            not self._blocked_by_crashed_paths
-            and self._create_context_valid
-        )
-        save_enabled = not self._blocked_by_crashed_paths
-
-        self._save_btn.setEnabled(save_enabled)
+    def _set_footer_enabled(self, enabled):
+        self._save_btn.setEnabled(True)
         self._reset_btn.setEnabled(True)
-        self._stop_btn.setEnabled(False)
-        self._validate_btn.setEnabled(enabled)
-        self._publish_btn.setEnabled(enabled)
+        if enabled:
+            self._stop_btn.setEnabled(False)
+            self._validate_btn.setEnabled(True)
+            self._publish_btn.setEnabled(True)
+        else:
+            self._stop_btn.setEnabled(enabled)
+            self._validate_btn.setEnabled(enabled)
+            self._publish_btn.setEnabled(enabled)
 
     def _on_publish_reset(self):
         self._create_tab.setEnabled(True)
         self._set_comment_input_visiblity(True)
         self._set_publish_overlay_visibility(False)
         self._set_publish_visibility(False)
-
-        report_data = self._controller.get_publish_report()
-        blocked = bool(report_data["blocking_crashed_paths"])
-        self._set_blocked(blocked)
-        self._update_publish_details_widget(report_data=report_data)
+        self._update_publish_details_widget()
 
     def _on_controller_reset(self):
-        self._update_publish_details_widget(force=True)
         self._first_reset, first_reset = False, self._first_reset
         if self._tab_on_reset is not None:
             self._tab_on_reset, new_tab = None, self._tab_on_reset
@@ -1002,7 +953,7 @@ class PublisherWindow(QtWidgets.QDialog):
 
     def _validate_create_instances(self):
         if not self._controller.is_host_valid():
-            self._set_create_context_valid(True)
+            self._set_footer_enabled(True)
             return
 
         active_instances_by_id = {
@@ -1023,7 +974,7 @@ class PublisherWindow(QtWidgets.QDialog):
             if all_valid is None:
                 all_valid = True
 
-        self._set_create_context_valid(bool(all_valid))
+        self._set_footer_enabled(bool(all_valid))
 
     def _on_create_model_reset(self):
         self._validate_create_instances()
@@ -1031,6 +982,49 @@ class PublisherWindow(QtWidgets.QDialog):
         context_title = self._controller.get_context_title()
         self.set_context_label(context_title)
         self._update_publish_details_widget()
+
+    def _on_create_started(self, event):
+        """Show toast with progress for create action."""
+        message = event.get("message", "Creating...")
+        message_id = event["id"]
+
+        self._overlay_object.add_message(message, message_id=message_id)
+        self._overlay_object.set_progress_visible(message_id, True)
+
+    def _on_create_progress(self, event):
+        """Update progress bar for create action."""
+        message_id = event.get("id")
+        progress = event.get("progress", 0)
+        message = event.get("message")
+
+        if message_id:
+            # If there's a message, include it; otherwise just show percentage
+            if message:
+                display_message = f"{message} ({progress}%)"
+            else:
+                display_message = f"Progress: {progress}%"
+            self._overlay_object.update_progress(
+                message_id, progress, display_message
+            )
+
+    def _on_create_finished(self, event):
+        """Update toast on create completion."""
+        message_id = event["id"]
+        success = event.get("success", True)
+
+        # Hide the progress bar when finished
+        self._overlay_object.set_progress_visible(message_id, False)
+
+        if success:
+            self._overlay_object.add_message(
+                "Creation completed successfully",
+                message_id=message_id,
+                message_type="success",
+            )
+        else:
+            self._overlay_object.add_message(
+                "Creation failed", message_id=message_id, message_type="error"
+            )
 
     def _event_callback_validate_instances(self, _event):
         self._validate_create_instances()
@@ -1051,9 +1045,7 @@ class PublisherWindow(QtWidgets.QDialog):
 
         self._publish_frame.resize(width, height)
 
-        self._publish_frame.move(
-            0, window_size.height() - height
-        )
+        self._publish_frame.move(0, window_size.height() - height)
 
     def add_error_message_dialog(self, title, failed_info, message_start=None):
         self._error_messages_to_show.append(
@@ -1068,9 +1060,7 @@ class PublisherWindow(QtWidgets.QDialog):
 
         item = self._error_messages_to_show.popleft()
         title, failed_info, message_start = item
-        dialog = ErrorsMessageBox(
-            title, failed_info, message_start, self
-        )
+        dialog = ErrorsMessageBox(title, failed_info, message_start, self)
         dialog.exec_()
         dialog.deleteLater()
 
@@ -1082,9 +1072,7 @@ class PublisherWindow(QtWidgets.QDialog):
             new_item["identifier"] = new_item.pop("creator_identifier")
             new_failed_info.append(new_item)
         self.add_error_message_dialog(
-            event["title"],
-             new_failed_info,
-             "Creator:"
+            event["title"], new_failed_info, "Creator:"
         )
 
     def _on_convertor_error(self, event):
@@ -1100,13 +1088,15 @@ class PublisherWindow(QtWidgets.QDialog):
     def _on_action_error(self, event):
         self.add_error_message_dialog(
             event["title"],
-            [{
-                "message": event["message"],
-                "traceback": event["traceback"],
-                "label": event["label"],
-                "identifier": event["identifier"]
-            }],
-            "Action:"
+            [
+                {
+                    "message": event["message"],
+                    "traceback": event["traceback"],
+                    "label": event["label"],
+                    "identifier": event["identifier"],
+                }
+            ],
+            "Action:",
         )
 
     def _update_create_overlay_size(self):
@@ -1117,14 +1107,12 @@ class PublisherWindow(QtWidgets.QDialog):
         start_pos_x = end_pos_x - width
 
         center = self._content_widget.parent().mapTo(
-            self,
-            self._content_widget.rect().center()
+            self, self._content_widget.rect().center()
         )
         pos_y = center.y() - (height * 0.5)
 
         self._create_overlay_button.setGeometry(
-            start_pos_x, pos_y,
-            width, height
+            start_pos_x, pos_y, width, height
         )
 
     def _update_create_overlay_visibility(self, global_pos=None):
@@ -1145,20 +1133,17 @@ class PublisherWindow(QtWidgets.QDialog):
 
         mime_data = QtCore.QMimeData()
         mime_data.setText(logs_string)
-        QtWidgets.QApplication.instance().clipboard().setMimeData(
-            mime_data
-        )
+        QtWidgets.QApplication.instance().clipboard().setMimeData(mime_data)
         self._controller.emit_card_message(
-            "Report added to clipboard",
-            CardMessageTypes.info)
+            "Report added to clipboard", CardMessageTypes.info
+        )
 
     def _export_report(self):
         default_filename = "publish-report-{}".format(
             time.strftime("%y%m%d-%H-%M")
         )
         default_filepath = os.path.join(
-            os.path.expanduser("~"),
-            default_filename
+            os.path.expanduser("~"), default_filename
         )
         new_filepath, ext = QtWidgets.QFileDialog.getSaveFileName(
             self, "Save report", default_filepath, ".json"
@@ -1176,8 +1161,8 @@ class PublisherWindow(QtWidgets.QDialog):
             json.dump(logs, file_stream)
 
         self._controller.emit_card_message(
-            "Report saved",
-            CardMessageTypes.info)
+            "Report saved", CardMessageTypes.info
+        )
 
 
 class ErrorsMessageBox(ErrorMessageBox):
@@ -1211,8 +1196,7 @@ class ErrorsMessageBox(ErrorMessageBox):
             item_label = info.get("label")
             item_identifier = info["identifier"]
             if item_label:
-                report_message = "{} ({})".format(
-                    item_label, item_identifier)
+                report_message = "{} ({})".format(item_label, item_identifier)
             else:
                 report_message = "{}".format(item_identifier)
 

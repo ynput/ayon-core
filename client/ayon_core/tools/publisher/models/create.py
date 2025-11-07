@@ -1,6 +1,7 @@
 import logging
 import re
 import copy
+import uuid
 from typing import (
     Union,
     List,
@@ -749,9 +750,43 @@ class CreateModel:
         options: Dict[str, Any],
     ):
         """Trigger creation and refresh of instances in UI."""
+        from qtpy import QtWidgets
+
+        event_id = uuid.uuid4().hex
+
+        # Store event_id and controller in create_context for plugin access
+        self._create_context._current_event_id = event_id
+        self._create_context._current_controller = self._controller
+
+        self._emit_event(
+            "create.started",
+            {
+                "id": event_id,
+                "creator_identifier": creator_identifier,
+                "message": f"Creating {product_name}...",
+            },
+        )
+
+        # Process Qt events to show the toast immediately
+        app = QtWidgets.QApplication.instance()
+        if app:
+            app.processEvents()
 
         success = True
         try:
+            # Emit progress at 50% before creation
+            self._emit_event(
+                "create.progress",
+                {
+                    "id": event_id,
+                    "progress": 50,
+                },
+            )
+
+            # Process events to update progress bar
+            if app:
+                app.processEvents()
+
             with self._create_context.bulk_add_instances():
                 self._create_context.create_with_unified_error(
                     creator_identifier,
@@ -760,15 +795,38 @@ class CreateModel:
                     options,
                 )
 
+            # Emit completion progress
+            self._emit_event(
+                "create.progress",
+                {
+                    "id": event_id,
+                    "progress": 100,
+                },
+            )
+
         except CreatorsOperationFailed as exc:
             success = False
             self._emit_event(
                 "instances.create.failed",
                 {
                     "title": "Creation failed",
-                    "failed_info": exc.failed_info
-                }
+                    "failed_info": exc.failed_info,
+                },
             )
+
+        self._emit_event(
+            "create.finished",
+            {
+                "id": event_id,
+                "success": success,
+            },
+        )
+
+        # Clean up temporary attributes
+        if hasattr(self._create_context, "_current_event_id"):
+            delattr(self._create_context, "_current_event_id")
+        if hasattr(self._create_context, "_current_controller"):
+            delattr(self._create_context, "_current_controller")
 
         return success
 
