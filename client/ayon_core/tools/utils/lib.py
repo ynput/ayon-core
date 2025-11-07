@@ -53,14 +53,8 @@ def checkstate_enum_to_int(state):
 
 def center_window(window):
     """Move window to center of it's screen."""
-
-    if hasattr(QtWidgets.QApplication, "desktop"):
-        desktop = QtWidgets.QApplication.desktop()
-        screen_idx = desktop.screenNumber(window)
-        screen_geo = desktop.screenGeometry(screen_idx)
-    else:
-        screen = window.screen()
-        screen_geo = screen.geometry()
+    screen = window.screen()
+    screen_geo = screen.geometry()
 
     geo = window.frameGeometry()
     geo.moveCenter(screen_geo.center())
