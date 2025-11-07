@@ -175,7 +175,7 @@ class SidePanelWidget(QtWidgets.QWidget):
             True,
             folder_id,
             task_id,
-            file_created = workfile_info.file_created,
+            file_created=workfile_info.file_created,
             file_modified=workfile_info.file_modified,
             size_value=workfile_info.file_size,
             created_by=workfile_info.created_by,
