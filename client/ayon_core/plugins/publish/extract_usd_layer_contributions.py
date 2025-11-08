@@ -641,6 +641,7 @@ class ExtractUSDLayerContribution(publish.Extractor):
     settings_category = "core"
 
     use_ayon_entity_uri = False
+    enforce_default_prim = False
 
     def process(self, instance):
 
@@ -651,6 +652,15 @@ class ExtractUSDLayerContribution(publish.Extractor):
         path = get_last_publish(instance)
         if path and BUILD_INTO_LAST_VERSIONS:
             sdf_layer = Sdf.Layer.OpenAsAnonymous(path)
+
+            # If enabled in settings, ignore any default prim specified on
+            # older publish versions and always publish with the AYON
+            # standard default prim
+            if self.enforce_default_prim:
+                sdf_layer.defaultPrim = get_standard_default_prim_name(
+                    folder_path
+                )
+
             default_prim = sdf_layer.defaultPrim
         else:
             default_prim = get_standard_default_prim_name(folder_path)

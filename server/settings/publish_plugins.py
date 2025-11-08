@@ -251,6 +251,19 @@ class AyonEntityURIModel(BaseSettingsModel):
     )
 
 
+class ExtractUSDLayerContributionModel(AyonEntityURIModel):
+    enforce_default_prim: bool = SettingsField(
+        title="Always set default prim to folder name.",
+        description=(
+            "When enabled ignore any default prim specified on older "
+            "published versions of a layer and always override it to the  "
+            "AYON standard default prim. When disabled, preserve default prim "
+            "on the layer and then only the initial version would be setting "
+            "the AYON standard default prim."
+        )
+    )
+
+
 class PluginStateByHostModelProfile(BaseSettingsModel):
     _layout = "expanded"
     # Filtering
@@ -1134,9 +1147,11 @@ class PublishPuginsModel(BaseSettingsModel):
         default_factory=AyonEntityURIModel,
         title="Extract USD Asset Contribution",
     )
-    ExtractUSDLayerContribution: AyonEntityURIModel = SettingsField(
-        default_factory=AyonEntityURIModel,
-        title="Extract USD Layer Contribution",
+    ExtractUSDLayerContribution: ExtractUSDLayerContributionModel = (
+        SettingsField(
+            default_factory=ExtractUSDLayerContributionModel,
+            title="Extract USD Layer Contribution",
+        )
     )
     PreIntegrateThumbnails: PreIntegrateThumbnailsModel = SettingsField(
         default_factory=PreIntegrateThumbnailsModel,
@@ -1526,6 +1541,7 @@ DEFAULT_PUBLISH_VALUES = {
     },
     "ExtractUSDLayerContribution": {
         "use_ayon_entity_uri": False,
+        "enforce_default_prim": False,
     },
     "PreIntegrateThumbnails": {
         "enabled": True,
