@@ -25,7 +25,8 @@ try:
         variant_nested_prim_path,
         setup_asset_layer,
         add_ordered_sublayer,
-        set_layer_defaults
+        set_layer_defaults,
+        get_standard_default_prim_name
     )
 except ImportError:
     pass
@@ -652,7 +653,7 @@ class ExtractUSDLayerContribution(publish.Extractor):
             sdf_layer = Sdf.Layer.OpenAsAnonymous(path)
             default_prim = sdf_layer.defaultPrim
         else:
-            default_prim = folder_path.rsplit("/", 1)[-1]  # use folder name
+            default_prim = get_standard_default_prim_name(folder_path)
             sdf_layer = Sdf.Layer.CreateAnonymous()
             set_layer_defaults(sdf_layer, default_prim=default_prim)
 
