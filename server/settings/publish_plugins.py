@@ -256,7 +256,7 @@ class ExtractUSDLayerContributionModel(AyonEntityURIModel):
         title="Always set default prim to folder name.",
         description=(
             "When enabled ignore any default prim specified on older "
-            "published versions of a layer and always override it to the  "
+            "published versions of a layer and always override it to the "
             "AYON standard default prim. When disabled, preserve default prim "
             "on the layer and then only the initial version would be setting "
             "the AYON standard default prim."
