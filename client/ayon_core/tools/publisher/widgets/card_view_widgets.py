@@ -202,7 +202,7 @@ class ContextCardWidget(CardWidget):
     Is not visually under group widget and is always at the top of card view.
     """
 
-    def __init__(self, parent):
+    def __init__(self, parent: QtWidgets.QWidget):
         super().__init__(parent)
 
         self._id = CONTEXT_ID
@@ -211,7 +211,7 @@ class ContextCardWidget(CardWidget):
         icon_widget = PublishPixmapLabel(None, self)
         icon_widget.setObjectName("ProductTypeIconLabel")
 
-        label_widget = QtWidgets.QLabel(CONTEXT_LABEL, self)
+        label_widget = QtWidgets.QLabel(f"<span>{CONTEXT_LABEL}</span>", self)
 
         icon_layout = QtWidgets.QHBoxLayout()
         icon_layout.setContentsMargins(5, 5, 5, 5)
@@ -288,6 +288,8 @@ class InstanceCardWidget(CardWidget):
         self._last_product_name = None
         self._last_variant = None
         self._last_label = None
+        self._last_folder_path = None
+        self._last_task_name = None
 
         icon_widget = IconValuePixmapLabel(group_icon, self)
         icon_widget.setObjectName("ProductTypeIconLabel")
@@ -383,28 +385,53 @@ class InstanceCardWidget(CardWidget):
         self._icon_widget.setVisible(valid)
         self._context_warning.setVisible(not valid)
 
+    @staticmethod
+    def _get_card_widget_sub_label(
+        folder_path: Optional[str],
+        task_name: Optional[str],
+    ) -> str:
+        sublabel = ""
+        if folder_path:
+            folder_name = folder_path.rsplit("/", 1)[-1]
+            sublabel = f"<b>{folder_name}</b>"
+            if task_name:
+                sublabel += f" - <i>{task_name}</i>"
+        return sublabel
+
     def _update_product_name(self):
         variant = self.instance.variant
         product_name = self.instance.product_name
         label = self.instance.label
+        folder_path = self.instance.folder_path
+        task_name = self.instance.task_name
 
         if (
             variant == self._last_variant
             and product_name == self._last_product_name
             and label == self._last_label
+            and folder_path == self._last_folder_path
+            and task_name == self._last_task_name
         ):
             return
 
         self._last_variant = variant
         self._last_product_name = product_name
         self._last_label = label
+        self._last_folder_path = folder_path
+        self._last_task_name = task_name
+
         # Make `variant` bold
         label = html_escape(self.instance.label)
         found_parts = set(re.findall(variant, label, re.IGNORECASE))
         if found_parts:
             for part in found_parts:
-                replacement = "<b>{}</b>".format(part)
+                replacement = f"<b>{part}</b>"
                 label = label.replace(part, replacement)
+
+        label = f"<span>{label}</span>"
+        sublabel = self._get_card_widget_sub_label(folder_path, task_name)
+        if sublabel:
+            label += f"<br/><span style=\"font-size: 8pt;\">{sublabel}</span>"
 
         self._label_widget.setText(label)
         # HTML text will cause that label start catch mouse clicks
@@ -702,11 +729,9 @@ class InstanceCardView(AbstractInstanceView):
 
     def refresh(self):
         """Refresh instances in view based on CreatedContext."""
-
         self._make_sure_context_widget_exists()
 
         self._update_convertors_group()
-
         context_info_by_id = self._controller.get_instances_context_info()
 
         # Prepare instances by group and identifiers by group
@@ -814,6 +839,8 @@ class InstanceCardView(AbstractInstanceView):
             widget.setVisible(False)
             widget.deleteLater()
 
+        sorted_group_names.insert(0, CONTEXT_GROUP)
+
         self._parent_id_by_id = parent_id_by_id
         self._instance_ids_by_parent_id = instance_ids_by_parent_id
         self._group_name_by_instance_id = group_by_instance_id
@@ -881,7 +908,7 @@ class InstanceCardView(AbstractInstanceView):
                         context_info,
                         is_parent_active,
                         group_icon,
-                        group_widget
+                        group_widget,
                     )
                     widget.selected.connect(self._on_widget_selection)
                     widget.active_changed.connect(self._on_active_changed)

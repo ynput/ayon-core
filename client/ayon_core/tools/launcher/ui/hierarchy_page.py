@@ -15,6 +15,36 @@ from ayon_core.tools.utils.lib import checkstate_int_to_enum
 from .workfiles_page import WorkfilesPage
 
 
+class LauncherFoldersWidget(FoldersWidget):
+    focused_in = QtCore.Signal()
+
+    def __init__(self, *args, **kwargs) -> None:
+        super().__init__(*args, **kwargs)
+        self._folders_view.installEventFilter(self)
+
+    def eventFilter(self, obj, event):
+        if event.type() == QtCore.QEvent.FocusIn:
+            self.focused_in.emit()
+        return False
+
+
+class LauncherTasksWidget(TasksWidget):
+    focused_in = QtCore.Signal()
+
+    def __init__(self, *args, **kwargs) -> None:
+        super().__init__(*args, **kwargs)
+        self._tasks_view.installEventFilter(self)
+
+    def deselect(self):
+        sel_model = self._tasks_view.selectionModel()
+        sel_model.clearSelection()
+
+    def eventFilter(self, obj, event):
+        if event.type() == QtCore.QEvent.FocusIn:
+            self.focused_in.emit()
+        return False
+
+
 class HierarchyPage(QtWidgets.QWidget):
     def __init__(self, controller, parent):
         super().__init__(parent)
@@ -68,12 +98,12 @@ class HierarchyPage(QtWidgets.QWidget):
         filters_layout.addWidget(my_tasks_checkbox, 0)
 
         # - Folders widget
-        folders_widget = FoldersWidget(controller, content_body)
+        folders_widget = LauncherFoldersWidget(controller, content_body)
         folders_widget.set_header_visible(True)
         folders_widget.set_deselectable(True)
 
         # - Tasks widget
-        tasks_widget = TasksWidget(controller, content_body)
+        tasks_widget = LauncherTasksWidget(controller, content_body)
 
         # - Third page - Workfiles
         workfiles_page = WorkfilesPage(controller, content_body)
@@ -97,6 +127,8 @@ class HierarchyPage(QtWidgets.QWidget):
         my_tasks_checkbox.stateChanged.connect(
             self._on_my_tasks_checkbox_state_changed
         )
+        folders_widget.focused_in.connect(self._on_folders_focus)
+        tasks_widget.focused_in.connect(self._on_tasks_focus)
 
         self._is_visible = False
         self._controller = controller
@@ -151,3 +183,9 @@ class HierarchyPage(QtWidgets.QWidget):
             task_ids = entity_ids["task_ids"]
         self._folders_widget.set_folder_ids_filter(folder_ids)
         self._tasks_widget.set_task_ids_filter(task_ids)
+
+    def _on_folders_focus(self):
+        self._workfiles_page.deselect()
+
+    def _on_tasks_focus(self):
+        self._workfiles_page.deselect()
