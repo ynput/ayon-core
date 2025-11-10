@@ -244,7 +244,9 @@ class LoaderController(BackendLoaderController, FrontendLoaderController):
             output[folder_id] = label
         return output
 
-    def get_my_tasks_entity_ids(self, project_name: str):
+    def get_my_tasks_entity_ids(
+        self, project_name: str
+    ) -> dict[str, list[str]]:
         username = self._users_model.get_current_username()
         assignees = []
         if username:
