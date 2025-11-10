@@ -427,7 +427,6 @@ class LoaderWindow(QtWidgets.QWidget):
         self._folders_widget.set_name_filter(text)
 
     def _on_my_tasks_checkbox_state_changed(self, enabled: bool) -> None:
-        # self._folders_widget
         folder_ids = None
         task_ids = None
         if enabled:
@@ -438,7 +437,6 @@ class LoaderWindow(QtWidgets.QWidget):
             task_ids = entity_ids["task_ids"]
         self._folders_widget.set_folder_ids_filter(folder_ids)
         self._tasks_widget.set_task_ids_filter(task_ids)
-
 
     def _on_product_group_change(self):
         self._products_widget.set_enable_grouping(
