@@ -59,9 +59,9 @@ def main_cli(ctx, *_args, **_kwargs):
         if os.getenv("AYON_HEADLESS_MODE") == "1":
             print(ctx.get_help())
             sys.exit(0)
-        else:
-            ctx.params.pop("project")
-            ctx.forward(tray)
+
+        ctx.params.pop("project")
+        ctx.forward(tray)
 
 
 @main_cli.command()
@@ -385,6 +385,53 @@ def main(*args, **kwargs):
     _add_addons(addons_manager)
 
     _cleanup_project_args()
+
+    app_addon = addons_manager.get_enabled_addon("applications")
+
+    import semver
+
+    app_addon_version = semver.Version.parse(app_addon.version).to_tuple()
+    # Process Manager API is available since 1.2.4
+    if app_addon is not None and app_addon_version >= (1, 2, 4):
+        from ayon_applications.process import ProcessManager, ProcessInfo
+        import tempfile
+
+        process_info = ProcessInfo(
+            name="ayon-cli",
+            executable=Path(sys.executable),
+            args=list(sys.argv),
+            env=dict(os.environ),
+            pid=os.getpid(),
+            cwd=os.getcwd(),
+        )
+
+        output_file = None
+        with tempfile.NamedTemporaryFile(
+                mode="w", prefix="ayon_ayon-cli_output_",
+                suffix=".txt",
+                delete=False,
+                encoding="utf-8") as temp_file:
+            output_file = temp_file.name
+
+        process_info.output = Path(output_file)
+
+        process_manager = ProcessManager()
+        process_manager.store_process_info(process_info)
+
+        with open(output_file, "a", encoding="utf-8") as f:
+            sys.stdout = sys.stderr = f
+
+            try:
+                main_cli(
+                    prog_name="ayon",
+                    obj={"addons_manager": addons_manager},
+                    args=(sys.argv[1:]),
+                )
+            except Exception:  # noqa
+                exc_info = sys.exc_info()
+                print("!!! AYON crashed:")
+                traceback.print_exception(*exc_info)
+                sys.exit(1)
 
     try:
         main_cli(
