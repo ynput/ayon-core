@@ -185,7 +185,7 @@ class HierarchyPage(QtWidgets.QWidget):
         self._tasks_widget.set_task_ids_filter(task_ids)
 
     def _on_folders_focus(self):
-        self._tasks_widget.deselect()
+        self._workfiles_page.deselect()
 
     def _on_tasks_focus(self):
         self._workfiles_page.deselect()
