@@ -1,7 +1,10 @@
 from qtpy import QtWidgets
 
 from ayon_core.lib.events import QueuedEventSystem
-from ayon_core.tools.utils import PlaceholderLineEdit, FoldersWidget
+from ayon_core.tools.utils import (
+    FoldersWidget,
+    FoldersFiltersWidget,
+)
 from ayon_core.tools.publisher.abstract import AbstractPublisherFrontend
 
 
@@ -43,8 +46,7 @@ class FoldersDialog(QtWidgets.QDialog):
         super().__init__(parent)
         self.setWindowTitle("Select folder")
 
-        filter_input = PlaceholderLineEdit(self)
-        filter_input.setPlaceholderText("Filter folders..")
+        filters_widget = FoldersFiltersWidget(self)
 
         folders_controller = FoldersDialogController(controller)
         folders_widget = FoldersWidget(folders_controller, self)
@@ -59,7 +61,8 @@ class FoldersDialog(QtWidgets.QDialog):
         btns_layout.addWidget(cancel_btn)
 
         layout = QtWidgets.QVBoxLayout(self)
-        layout.addWidget(filter_input, 0)
+        layout.setSpacing(5)
+        layout.addWidget(filters_widget, 0)
         layout.addWidget(folders_widget, 1)
         layout.addLayout(btns_layout, 0)
 
@@ -68,12 +71,13 @@ class FoldersDialog(QtWidgets.QDialog):
         )
 
         folders_widget.double_clicked.connect(self._on_ok_clicked)
-        filter_input.textChanged.connect(self._on_filter_change)
+        filters_widget.text_changed.connect(self._on_filter_change)
+        filters_widget.my_tasks_changed.connect(self._on_my_tasks_change)
         ok_btn.clicked.connect(self._on_ok_clicked)
         cancel_btn.clicked.connect(self._on_cancel_clicked)
 
         self._controller = controller
-        self._filter_input = filter_input
+        self._filters_widget = filters_widget
         self._ok_btn = ok_btn
         self._cancel_btn = cancel_btn
 
@@ -87,6 +91,49 @@ class FoldersDialog(QtWidgets.QDialog):
 
         self._first_show = True
         self._default_height = 500
+
+        self._project_name = None
+
+    def showEvent(self, event):
+        """Refresh folders widget on show."""
+        super().showEvent(event)
+        if self._first_show:
+            self._first_show = False
+            self._on_first_show()
+        # Refresh on show
+        self.reset(False)
+
+    def reset(self, force=True):
+        """Reset widget."""
+        if not force and not self._soft_reset_enabled:
+            return
+
+        self._project_name = self._controller.get_current_project_name()
+        if self._soft_reset_enabled:
+            self._soft_reset_enabled = False
+
+        self._folders_widget.set_project_name(self._project_name)
+
+    def get_selected_folder_path(self):
+        """Get selected folder path."""
+        return self._selected_folder_path
+
+    def set_selected_folders(self, folder_paths: list[str]) -> None:
+        """Change preselected folder before showing the dialog.
+
+        This also resets model and clean filter.
+        """
+        self.reset(False)
+        self._filters_widget.set_text("")
+        self._filters_widget.set_my_tasks_checked(False)
+
+        folder_id = None
+        for folder_path in folder_paths:
+            folder_id = self._controller.get_folder_id_from_path(folder_path)
+            if folder_id:
+                break
+        if folder_id:
+            self._folders_widget.set_selected_folder(folder_id)
 
     def _on_first_show(self):
         center = self.rect().center()
@@ -103,27 +150,6 @@ class FoldersDialog(QtWidgets.QDialog):
         # Change reset enabled so model is reset on show event
         self._soft_reset_enabled = True
 
-    def showEvent(self, event):
-        """Refresh folders widget on show."""
-        super().showEvent(event)
-        if self._first_show:
-            self._first_show = False
-            self._on_first_show()
-        # Refresh on show
-        self.reset(False)
-
-    def reset(self, force=True):
-        """Reset widget."""
-        if not force and not self._soft_reset_enabled:
-            return
-
-        if self._soft_reset_enabled:
-            self._soft_reset_enabled = False
-
-        self._folders_widget.set_project_name(
-            self._controller.get_current_project_name()
-        )
-
     def _on_filter_change(self, text):
         """Trigger change of filter of folders."""
         self._folders_widget.set_name_filter(text)
@@ -137,22 +163,11 @@ class FoldersDialog(QtWidgets.QDialog):
         )
         self.done(1)
 
-    def set_selected_folders(self, folder_paths):
-        """Change preselected folder before showing the dialog.
-
-        This also resets model and clean filter.
-        """
-        self.reset(False)
-        self._filter_input.setText("")
-
-        folder_id = None
-        for folder_path in folder_paths:
-            folder_id = self._controller.get_folder_id_from_path(folder_path)
-            if folder_id:
-                break
-        if folder_id:
-            self._folders_widget.set_selected_folder(folder_id)
-
-    def get_selected_folder_path(self):
-        """Get selected folder path."""
-        return self._selected_folder_path
+    def _on_my_tasks_change(self, enabled: bool) -> None:
+        folder_ids = None
+        if enabled:
+            entity_ids = self._controller.get_my_tasks_entity_ids(
+                self._project_name
+            )
+            folder_ids = entity_ids["folder_ids"]
+        self._folders_widget.set_folder_ids_filter(folder_ids)
