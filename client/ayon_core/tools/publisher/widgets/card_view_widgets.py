@@ -211,7 +211,7 @@ class ContextCardWidget(CardWidget):
         icon_widget = PublishPixmapLabel(None, self)
         icon_widget.setObjectName("ProductTypeIconLabel")
 
-        label_widget = QtWidgets.QLabel(CONTEXT_LABEL, self)
+        label_widget = QtWidgets.QLabel(f"<span>{CONTEXT_LABEL}</span>", self)
 
         icon_layout = QtWidgets.QHBoxLayout()
         icon_layout.setContentsMargins(5, 5, 5, 5)
