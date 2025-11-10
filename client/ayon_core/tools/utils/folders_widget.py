@@ -345,6 +345,8 @@ class FoldersProxyModel(RecursiveSortFilterProxyModel):
     def __init__(self):
         super().__init__()
 
+        self.setFilterCaseSensitivity(QtCore.Qt.CaseInsensitive)
+
         self._folder_ids_filter = None
 
     def set_folder_ids_filter(self, folder_ids: Optional[list[str]]):
