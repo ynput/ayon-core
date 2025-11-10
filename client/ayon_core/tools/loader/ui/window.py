@@ -12,7 +12,7 @@ from ayon_core.tools.utils import (
     FoldersFiltersWidget,
 )
 from ayon_core.tools.utils.lib import center_window
-from ayon_core.tools.utils import ProjectsCombobox, NiceCheckbox
+from ayon_core.tools.utils import ProjectsCombobox
 from ayon_core.tools.common_models import StatusItem
 from ayon_core.tools.loader.abstract import ProductTypeItem
 from ayon_core.tools.loader.control import LoaderController

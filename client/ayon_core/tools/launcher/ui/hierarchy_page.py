@@ -9,7 +9,6 @@ from ayon_core.tools.utils import (
     TasksWidget,
 )
 from ayon_core.tools.utils.folders_widget import FoldersFiltersWidget
-from ayon_core.tools.utils.lib import checkstate_int_to_enum
 
 from .workfiles_page import WorkfilesPage
 
