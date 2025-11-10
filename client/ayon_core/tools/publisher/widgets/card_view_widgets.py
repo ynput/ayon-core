@@ -23,7 +23,6 @@ from __future__ import annotations
 
 import re
 import collections
-from dataclasses import dataclass
 from typing import Optional
 
 from qtpy import QtWidgets, QtCore
