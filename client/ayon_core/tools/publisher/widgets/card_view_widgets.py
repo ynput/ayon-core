@@ -59,13 +59,6 @@ class SelectionTypes:
     extend_to = "extend_to"
 
 
-@dataclass
-class _SharedInfo:
-    """Shared information for multiple widgets."""
-    current_folder_path: Optional[str] = None
-    current_task_name: Optional[str] = None
-
-
 class BaseGroupWidget(QtWidgets.QWidget):
     selected = QtCore.Signal(str, str, str)
     removed_selected = QtCore.Signal()
@@ -210,12 +203,11 @@ class ContextCardWidget(CardWidget):
     Is not visually under group widget and is always at the top of card view.
     """
 
-    def __init__(self, shared_info: _SharedInfo, parent: QtWidgets.QWidget):
+    def __init__(self, parent: QtWidgets.QWidget):
         super().__init__(parent)
 
         self._id = CONTEXT_ID
         self._group_identifier = CONTEXT_GROUP
-        self._shared_info = shared_info
 
         icon_widget = PublishPixmapLabel(None, self)
         icon_widget.setObjectName("ProductTypeIconLabel")
@@ -282,11 +274,8 @@ class InstanceCardWidget(CardWidget):
         is_parent_active: bool,
         group_icon,
         parent: BaseGroupWidget,
-        shared_info: _SharedInfo,
     ):
         super().__init__(parent)
-
-        self._shared_info = shared_info
 
         self.instance = instance
         self._is_active = instance.is_active
@@ -401,23 +390,14 @@ class InstanceCardWidget(CardWidget):
     def _get_card_widget_sub_label(
         folder_path: Optional[str],
         task_name: Optional[str],
-        shared_info: _SharedInfo,
     ) -> str:
         sublabel = ""
-        if (
-            shared_info.current_folder_path == folder_path
-            and shared_info.current_task_name == task_name
-        ):
-            return sublabel
-
         if folder_path:
             folder_name = folder_path.rsplit("/", 1)[-1]
-            sublabel = f"&nbsp;&nbsp;<b>{folder_name}</b>"
+            sublabel = f"<b>{folder_name}</b>"
             if task_name:
-                sublabel += f" <i>{task_name}</i>"
-        if not sublabel:
-            return sublabel
-        return f"<span style=\"font-size: 8pt;\">{sublabel}</span>"
+                sublabel += f" - <i>{task_name}</i>"
+        return sublabel
 
     def _update_product_name(self):
         variant = self.instance.variant
@@ -448,11 +428,11 @@ class InstanceCardWidget(CardWidget):
             for part in found_parts:
                 replacement = f"<b>{part}</b>"
                 label = label.replace(part, replacement)
-        sublabel = self._get_card_widget_sub_label(
-            folder_path, task_name, self._shared_info
-        )
+
+        label = f"<span>{label}</span>"
+        sublabel = self._get_card_widget_sub_label(folder_path, task_name)
         if sublabel:
-            label += f"<br/>{sublabel}"
+            label += f"<br/><span style=\"font-size: 8pt;\">{sublabel}</span>"
 
         self._label_widget.setText(label)
         # HTML text will cause that label start catch mouse clicks
@@ -535,7 +515,6 @@ class InstanceCardView(AbstractInstanceView):
         super().__init__(parent)
 
         self._controller: AbstractPublisherFrontend = controller
-        self._shared_info: _SharedInfo = _SharedInfo()
 
         scroll_area = QtWidgets.QScrollArea(self)
         scroll_area.setWidgetResizable(True)
@@ -751,13 +730,6 @@ class InstanceCardView(AbstractInstanceView):
 
     def refresh(self):
         """Refresh instances in view based on CreatedContext."""
-        self._shared_info.current_folder_path = (
-            self._controller.get_current_folder_path()
-        )
-        self._shared_info.current_task_name = (
-            self._controller.get_current_task_name()
-        )
-
         self._make_sure_context_widget_exists()
 
         self._update_convertors_group()
@@ -938,7 +910,6 @@ class InstanceCardView(AbstractInstanceView):
                         is_parent_active,
                         group_icon,
                         group_widget,
-                        self._shared_info,
                     )
                     widget.selected.connect(self._on_widget_selection)
                     widget.active_changed.connect(self._on_active_changed)
@@ -957,7 +928,7 @@ class InstanceCardView(AbstractInstanceView):
         if self._context_widget is not None:
             return
 
-        widget = ContextCardWidget(self._shared_info, self._content_widget)
+        widget = ContextCardWidget(self._content_widget)
         widget.selected.connect(self._on_widget_selection)
         widget.double_clicked.connect(self.double_clicked)
 
