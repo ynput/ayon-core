@@ -476,20 +476,6 @@ class LoaderController(BackendLoaderController, FrontendLoaderController):
     def is_standard_projects_filter_enabled(self):
         return self._host is not None
 
-    def _get_project_anatomy(self, project_name):
-        if not project_name:
-            return None
-        cache = self._project_anatomy_cache[project_name]
-        if not cache.is_valid:
-            cache.update_data(Anatomy(project_name))
-        return cache.get_data()
-
-    def _create_event_system(self):
-        return QueuedEventSystem()
-
-    def _emit_event(self, topic, data=None):
-        self._event_system.emit(topic, data or {}, "controller")
-
     def get_product_types_filter(self):
         output = ProductTypesFilter(
             is_allow_list=False,
@@ -545,3 +531,17 @@ class LoaderController(BackendLoaderController, FrontendLoaderController):
                 product_types=profile["filter_product_types"]
             )
         return output
+
+    def _create_event_system(self):
+        return QueuedEventSystem()
+
+    def _emit_event(self, topic, data=None):
+        self._event_system.emit(topic, data or {}, "controller")
+
+    def _get_project_anatomy(self, project_name):
+        if not project_name:
+            return None
+        cache = self._project_anatomy_cache[project_name]
+        if not cache.is_valid:
+            cache.update_data(Anatomy(project_name))
+        return cache.get_data()
