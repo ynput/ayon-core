@@ -834,5 +834,11 @@ class FoldersFiltersWidget(QtWidgets.QWidget):
         self._folders_filter_input = folders_filter_input
         self._my_tasks_checkbox = my_tasks_checkbox
 
+    def set_text(self, text: str) -> None:
+        self._folders_filter_input.setText(text)
+
+    def set_my_tasks_checked(self, checked: bool) -> None:
+        self._my_tasks_checkbox.setChecked(checked)
+
     def _on_my_tasks_change(self, _state: int) -> None:
         self.my_tasks_changed.emit(self._my_tasks_checkbox.isChecked())
