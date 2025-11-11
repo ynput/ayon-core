@@ -151,6 +151,13 @@ class LoaderActionsModel:
             event_data,
             ACTIONS_MODEL_SENDER,
         )
+        # Process Qt events to show the toast immediately
+        from qtpy import QtWidgets
+
+        app = QtWidgets.QApplication.instance()
+        if app:
+            app.processEvents()
+
         if representation_ids is not None:
             error_info = self._trigger_representation_loader(
                 loader,
@@ -783,19 +790,16 @@ class LoaderActionsModel:
                     },
                     ACTIONS_MODEL_SENDER,
                 )
-                # Process Qt events to update UI
-                app = QtWidgets.QApplication.instance()
-                if app:
-                    app.processEvents()
             version_entity = repre_context["version"]
             version = version_entity["version"]
             if version < 0:
                 version = "Hero"
             try:
+                # Pass event_id in options so loaders can emit progress events
+                loader_options = dict(options) if options else {}
+                loader_options["event_id"] = event_id
                 load_with_repre_context(
-                    loader,
-                    repre_context,
-                    options=options
+                    loader, repre_context, options=loader_options
                 )
 
             except IncompatibleLoaderError as exc:
@@ -868,16 +872,15 @@ class LoaderActionsModel:
                     },
                     ACTIONS_MODEL_SENDER,
                 )
-                # Process Qt events to update UI
-                app = QtWidgets.QApplication.instance()
-                if app:
-                    app.processEvents()
 
             try:
+                # Pass event_id in options so loaders can emit progress events
+                loader_options = dict(options) if options else {}
+                loader_options["event_id"] = event_id
                 load_with_product_contexts(
                     loader,
                     version_contexts,
-                    options=options
+                    options=loader_options
                 )
 
                 # Emit completion progress
@@ -892,7 +895,7 @@ class LoaderActionsModel:
                         },
                         ACTIONS_MODEL_SENDER,
                     )
-                    # Process Qt events to update UI
+                    # Process Qt events to update UI for final progress
                     app = QtWidgets.QApplication.instance()
                     if app:
                         app.processEvents()
@@ -925,19 +928,18 @@ class LoaderActionsModel:
                         },
                         ACTIONS_MODEL_SENDER,
                     )
-                    # Process Qt events to update UI
-                    app = QtWidgets.QApplication.instance()
-                    if app:
-                        app.processEvents()
 
                 product_name = (
                     version_context.get("product", {}).get("name") or "N/A"
                 )
                 try:
+                    # Pass event_id in options so loaders can emit progress events
+                    loader_options = dict(options) if options else {}
+                    loader_options["event_id"] = event_id
                     load_with_product_context(
                         loader,
                         version_context,
-                        options=options
+                        options=loader_options
                     )
 
                 except Exception as exc:

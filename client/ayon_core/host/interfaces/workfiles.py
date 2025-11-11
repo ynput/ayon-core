@@ -64,6 +64,10 @@ class _WorkfileOptionalData:
         self.anatomy = anatomy
         self.project_settings = project_settings
 
+        # Store any additional kwargs as attributes (e.g. progress_callback)
+        for key, value in kwargs.items():
+            setattr(self, key, value)
+
     def get_project_data(
         self, project_name: str
     ) -> tuple[dict[str, Any], "Anatomy", dict[str, Any]]:

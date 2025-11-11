@@ -1,15 +1,19 @@
+
+import os
 from qtpy import QtCore, QtGui, QtWidgets
 
 from ayon_core import resources, style
+from ayon_core.pipeline import get_current_host_name
 from ayon_core.tools.utils import (
     FoldersWidget,
     GoToCurrentButton,
     MessageOverlayObject,
+    NiceCheckbox,
     PlaceholderLineEdit,
     RefreshButton,
     TasksWidget,
-    FoldersFiltersWidget,
 )
+from ayon_core.tools.utils.lib import checkstate_int_to_enum
 from ayon_core.tools.workfiles.control import BaseWorkfileController
 
 from .files_widget import FilesWidget
@@ -19,7 +23,7 @@ from .utils import BaseOverlayFrame
 
 class InvalidHostOverlay(BaseOverlayFrame):
     def __init__(self, parent):
-        super().__init__(parent)
+        super(InvalidHostOverlay, self).__init__(parent)
 
         label_widget = QtWidgets.QLabel(
             (
@@ -49,17 +53,26 @@ class WorkfilesToolWindow(QtWidgets.QWidget):
         controller (AbstractWorkfilesFrontend): Frontend controller.
         parent (Optional[QtWidgets.QWidget]): Parent widget.
     """
+
+    @property
+    def title(self):
+        """Get window title with application name."""
+        base_title = "AYON Workfiles"
+        app_name = (
+            os.environ.get("AYON_APP_NAME")
+            or get_current_host_name()
+        )
+        if app_name:
+            return f"{base_title} - {app_name}"
+        return base_title
+
     def __init__(self, controller=None, parent=None):
+        super(WorkfilesToolWindow, self).__init__(parent=parent)
+
         if controller is None:
             controller = BaseWorkfileController()
 
-        title = "AYON Workfiles"
-        subtitle = controller.get_window_subtitle()
-        if subtitle:
-            title += f" - {subtitle}"
-
-        super().__init__(parent=parent)
-        self.setWindowTitle(title)
+        self.setWindowTitle(self.title)
         icon = QtGui.QIcon(resources.get_ayon_icon_filepath())
         self.setWindowIcon(icon)
         flags = self.windowFlags() | QtCore.Qt.Window
@@ -68,6 +81,7 @@ class WorkfilesToolWindow(QtWidgets.QWidget):
         self._default_window_flags = flags
 
         self._folders_widget = None
+        self._folder_filter_input = None
 
         self._files_widget = None
 
@@ -124,6 +138,14 @@ class WorkfilesToolWindow(QtWidgets.QWidget):
         show_timer.timeout.connect(self._on_show)
 
         controller.register_event_callback(
+            "save_as.started",
+            self._on_save_as_started,
+        )
+        controller.register_event_callback(
+            "save_as.progress",
+            self._on_save_as_progress,
+        )
+        controller.register_event_callback(
             "save_as.finished",
             self._on_save_as_finished,
         )
@@ -134,6 +156,18 @@ class WorkfilesToolWindow(QtWidgets.QWidget):
         controller.register_event_callback(
             "workfile_duplicate.finished",
             self._on_duplicate_finished
+        )
+        controller.register_event_callback(
+            "workfile_delete.finished",
+            self._on_delete_finished
+        )
+        controller.register_event_callback(
+            "open_workfile.started",
+            self._on_open_workfile_started,
+        )
+        controller.register_event_callback(
+            "open_workfile.progress",
+            self._on_open_workfile_progress,
         )
         controller.register_event_callback(
             "open_workfile.finished",
@@ -176,36 +210,49 @@ class WorkfilesToolWindow(QtWidgets.QWidget):
         col_widget = QtWidgets.QWidget(parent)
         header_widget = QtWidgets.QWidget(col_widget)
 
-        filters_widget = FoldersFiltersWidget(header_widget)
+        folder_filter_input = PlaceholderLineEdit(header_widget)
+        folder_filter_input.setPlaceholderText("Filter folders..")
 
         go_to_current_btn = GoToCurrentButton(header_widget)
         refresh_btn = RefreshButton(header_widget)
 
-        header_layout = QtWidgets.QHBoxLayout(header_widget)
-        header_layout.setContentsMargins(0, 0, 0, 0)
-        header_layout.addWidget(filters_widget, 1)
-        header_layout.addWidget(go_to_current_btn, 0)
-        header_layout.addWidget(refresh_btn, 0)
-
         folder_widget = FoldersWidget(
             controller, col_widget, handle_expected_selection=True
         )
+
+        my_tasks_tooltip = (
+            "Filter folders and task to only those you are assigned to."
+        )
+
+        my_tasks_label = QtWidgets.QLabel("My tasks")
+        my_tasks_label.setToolTip(my_tasks_tooltip)
+
+        my_tasks_checkbox = NiceCheckbox(folder_widget)
+        my_tasks_checkbox.setChecked(False)
+        my_tasks_checkbox.setToolTip(my_tasks_tooltip)
+
+        header_layout = QtWidgets.QHBoxLayout(header_widget)
+        header_layout.setContentsMargins(0, 0, 0, 0)
+        header_layout.addWidget(folder_filter_input, 1)
+        header_layout.addWidget(go_to_current_btn, 0)
+        header_layout.addWidget(refresh_btn, 0)
+        header_layout.addWidget(my_tasks_label, 0)
+        header_layout.addWidget(my_tasks_checkbox, 0)
 
         col_layout = QtWidgets.QVBoxLayout(col_widget)
         col_layout.setContentsMargins(0, 0, 0, 0)
         col_layout.addWidget(header_widget, 0)
         col_layout.addWidget(folder_widget, 1)
 
-        filters_widget.text_changed.connect(self._on_folder_filter_change)
-        filters_widget.my_tasks_changed.connect(
-            self._on_my_tasks_checkbox_state_changed
-        )
+        folder_filter_input.textChanged.connect(self._on_folder_filter_change)
         go_to_current_btn.clicked.connect(self._on_go_to_current_clicked)
         refresh_btn.clicked.connect(self._on_refresh_clicked)
+        my_tasks_checkbox.stateChanged.connect(
+            self._on_my_tasks_checkbox_state_changed
+        )
 
+        self._folder_filter_input = folder_filter_input
         self._folders_widget = folder_widget
-
-        self._filters_widget = filters_widget
 
         return col_widget
 
@@ -345,20 +392,50 @@ class WorkfilesToolWindow(QtWidgets.QWidget):
 
         self._project_name = self._controller.get_current_project_name()
         self._folders_widget.set_project_name(self._project_name)
-        # Update my tasks
-        self._on_my_tasks_checkbox_state_changed(
-            self._filters_widget.is_my_tasks_checked()
-        )
+
+    def _on_save_as_started(self, event):
+        """Handle save_as.started event."""
+        message_id = event.get("id")
+        message = event.get("message", "Saving workfile...")
+
+        if message_id:
+            self._overlay_messages_widget.add_message(
+                message, message_id=message_id
+            )
+            self._overlay_messages_widget.set_progress_visible(
+                message_id, True
+            )
+
+    def _on_save_as_progress(self, event):
+        """Handle save_as.progress event."""
+        message_id = event.get("id")
+        progress = event.get("progress", 0)
+        message = event.get("message", "")
+
+        if message_id:
+            display_message = (
+                f"{message} ({progress}%)"
+                if message
+                else f"Progress: {progress}%"
+            )
+            self._overlay_messages_widget.update_progress(
+                message_id, progress, display_message
+            )
 
     def _on_save_as_finished(self, event):
+        message_id = event.get("id")
+        if message_id:
+            self._overlay_messages_widget.set_progress_visible(
+                message_id, False
+            )
+
         if event["failed"]:
             self._overlay_messages_widget.add_message(
-                "Failed to save workfile",
-                "error",
+                "Failed to save workfile", "error", message_id=message_id
             )
         else:
             self._overlay_messages_widget.add_message(
-                "Workfile saved"
+                "Workfile saved", message_id=message_id
             )
 
     def _on_copy_representation_finished(self, event):
@@ -383,19 +460,65 @@ class WorkfilesToolWindow(QtWidgets.QWidget):
                 "Workfile duplicated"
             )
 
-    def _on_open_finished(self, event):
+    def _on_delete_finished(self, event):
         if event["failed"]:
             self._overlay_messages_widget.add_message(
-                "Failed to open workfile",
+                "Failed to delete workfile",
                 "error",
+            )
+        else:
+            self._overlay_messages_widget.add_message(
+                "Workfile deleted"
+            )
+
+    def _on_open_workfile_started(self, event):
+        """Handle open_workfile.started event."""
+        message_id = event.get("id")
+        message = event.get("message", "Opening workfile...")
+
+        if message_id:
+            self._overlay_messages_widget.add_message(
+                message, message_id=message_id
+            )
+            self._overlay_messages_widget.set_progress_visible(
+                message_id, True
+            )
+
+    def _on_open_workfile_progress(self, event):
+        """Handle open_workfile.progress event."""
+        message_id = event.get("id")
+        progress = event.get("progress", 0)
+        message = event.get("message", "")
+
+        if message_id:
+            display_message = (
+                f"{message} ({progress}%)"
+                if message
+                else f"Progress: {progress}%"
+            )
+            self._overlay_messages_widget.update_progress(
+                message_id, progress, display_message
+            )
+
+    def _on_open_finished(self, event):
+        message_id = event.get("id")
+        if message_id:
+            self._overlay_messages_widget.set_progress_visible(
+                message_id, False
+            )
+
+        if event["failed"]:
+            self._overlay_messages_widget.add_message(
+                "Failed to open workfile", "error", message_id=message_id
             )
         else:
             self.close()
 
-    def _on_my_tasks_checkbox_state_changed(self, enabled: bool) -> None:
+    def _on_my_tasks_checkbox_state_changed(self, state):
         folder_ids = None
         task_ids = None
-        if enabled:
+        state = checkstate_int_to_enum(state)
+        if state == QtCore.Qt.Checked:
             entity_ids = self._controller.get_my_tasks_entity_ids(
                 self._project_name
             )
