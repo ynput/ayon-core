@@ -521,11 +521,18 @@ class LoaderWindow(QtWidgets.QWidget):
         progress = event.get("progress", 0)
         current = event.get("current", 0)
         total = event.get("total", 0)
+        message = event.get("message")
 
-        if message_id and total > 0:
-            progress_message = f"Loading {current}/{total}... ({progress}%)"
+        if message_id:
+            # If there's a message from the plugin, use it; otherwise show current/total
+            if message:
+                display_message = f"{message} ({progress}%)"
+            elif total > 0:
+                display_message = f"Loading {current}/{total}... ({progress}%)"
+            else:
+                display_message = f"Progress: {progress}%"
             self._overlay_object.update_progress(
-                message_id, progress, progress_message
+                message_id, progress, display_message
             )
 
     def _on_load_finished(self, event):
@@ -537,7 +544,9 @@ class LoaderWindow(QtWidgets.QWidget):
         if not error_info:
             # Show completion message if load was successful
             self._overlay_object.add_message(
-                "Loading completed successfully", message_id=message_id
+                "Loading completed successfully",
+                message_id=message_id,
+                message_type="success",
             )
             return
 

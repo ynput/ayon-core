@@ -2,8 +2,10 @@ from __future__ import annotations
 import os
 import copy
 import platform
+import time
 import typing
 from typing import Optional, Any
+import uuid
 
 import ayon_api
 
@@ -101,26 +103,133 @@ class WorkfilesModel:
         self._published_workfile_items_cache.reset()
 
         self._workfile_entities_by_task_id = {}
+        self._operation_heartbeat = None
+
+    def _emit_event_and_process(
+        self, event_name, event_data, ensure_visible=False
+    ):
+        """Emit event and process Qt events to update UI immediately.
+
+        Args:
+            event_name (str): Name of the event to emit.
+            event_data (dict): Event data to emit.
+            ensure_visible (bool): If True, process events multiple times with delay
+                to ensure UI widgets are fully visible before returning.
+        """
+        self._emit_event(event_name, event_data)
+        # Process Qt events to update UI immediately
+        try:
+            from qtpy import QtWidgets
+
+            app = QtWidgets.QApplication.instance()
+            if app:
+                if ensure_visible:
+                    # Process events multiple times to ensure widget is visible
+                    import time
+
+                    for _ in range(5):
+                        app.processEvents()
+                    time.sleep(0.05)  # 50ms delay
+                else:
+                    app.processEvents()
+        except Exception:
+            pass
+
+    def _start_operation_heartbeat(self):
+        """Start Qt heartbeat for long-running operations.
+
+        Uses 16ms interval (~60fps) for smooth toast animations.
+        """
+        if not self._operation_heartbeat:
+            try:
+                from qtpy import QtCore, QtWidgets
+
+                app = QtWidgets.QApplication.instance()
+                if app:
+                    timer = QtCore.QTimer()
+                    timer.timeout.connect(lambda: app.processEvents())
+                    timer.start(16)  # Process events every 16ms (~60fps)
+                    self._operation_heartbeat = timer
+            except Exception:
+                pass
+
+    def _stop_operation_heartbeat(self):
+        """Stop Qt heartbeat."""
+        if self._operation_heartbeat:
+            try:
+                self._operation_heartbeat.stop()
+            except Exception:
+                pass
+            finally:
+                self._operation_heartbeat = None
 
     # Host functionality
     def get_current_workfile(self):
         return self._host.get_current_workfile()
 
     def open_workfile(self, folder_id, task_id, filepath):
-        self._emit_event("open_workfile.started")
+        import uuid
+        import time
+
+        message_id = str(uuid.uuid4())
+
+        # Start heartbeat BEFORE emitting started event for smooth animation
+        self._start_operation_heartbeat()
+
+        self._emit_event_and_process(
+            "open_workfile.started",
+            {"id": message_id, "message": "Opening workfile..."},
+            ensure_visible=True,
+        )
+
+        # Allow toast animation to complete before blocking operation
+        time.sleep(0.35)  # 350ms for smooth slide-in
 
         failed = False
         try:
-            self._open_workfile(folder_id, task_id, filepath)
+            # Create progress callback for host to report progress
+            def progress_callback(progress, message=None):
+                self._emit_event(
+                    "open_workfile.progress",
+                    {
+                        "id": message_id,
+                        "progress": progress,
+                        "message": message or "",
+                    },
+                )
+                # Force immediate UI update
+                try:
+                    from qtpy import QtWidgets
+
+                    app = QtWidgets.QApplication.instance()
+                    if app:
+                        app.processEvents()
+                except Exception:
+                    pass
+
+            self._open_workfile(
+                folder_id, task_id, filepath, progress_callback
+            )
 
         except Exception:
             failed = True
             self._log.warning("Open of workfile failed", exc_info=True)
 
+        self._stop_operation_heartbeat()
         self._emit_event(
             "open_workfile.finished",
-            {"failed": failed},
+            {"id": message_id, "failed": failed},
         )
+
+        # Process events one final time to ensure finished event is handled
+        try:
+            from qtpy import QtWidgets
+
+            app = QtWidgets.QApplication.instance()
+            if app:
+                app.processEvents()
+        except Exception:
+            pass
 
     def save_current_workfile(self):
         current_file = self.get_current_workfile()
@@ -137,7 +246,20 @@ class WorkfilesModel:
         comment,
         description,
     ):
-        self._emit_event("save_as.started")
+
+        message_id = str(uuid.uuid4())
+
+        # Start heartbeat BEFORE emitting started event for smooth animation
+        self._start_operation_heartbeat()
+
+        self._emit_event_and_process(
+            "save_as.started",
+            {"id": message_id, "message": "Saving workfile..."},
+            ensure_visible=True,
+        )
+
+        # Allow toast animation to complete before blocking operation
+        time.sleep(0.35)  # 350ms for smooth slide-in
 
         filepath = os.path.join(workdir, filename)
         rootless_path = f"{rootless_workdir}/{filename}"
@@ -146,9 +268,27 @@ class WorkfilesModel:
         folder_entity = self._controller.get_folder_entity(
             project_name, folder_id
         )
-        task_entity = self._controller.get_task_entity(
-            project_name, task_id
-        )
+        task_entity = self._controller.get_task_entity(project_name, task_id)
+
+        # Create progress callback for host to report progress
+        def progress_callback(progress, message=None):
+            self._emit_event(
+                "save_as.progress",
+                {
+                    "id": message_id,
+                    "progress": progress,
+                    "message": message or "",
+                },
+            )
+            # Force immediate UI update
+            try:
+                from qtpy import QtWidgets
+
+                app = QtWidgets.QApplication.instance()
+                if app:
+                    app.processEvents()
+            except Exception:
+                pass
 
         prepared_data = SaveWorkfileOptionalData(
             project_entity=project_entity,
@@ -156,6 +296,7 @@ class WorkfilesModel:
             project_settings=self._controller.project_settings,
             rootless_path=rootless_path,
             workfile_entities=self.get_workfile_entities(task_id),
+            progress_callback=progress_callback,
         )
         failed = False
         try:
@@ -168,9 +309,7 @@ class WorkfilesModel:
                 description=description,
                 prepared_data=prepared_data,
             )
-            self._update_workfile_info(
-                task_id, rootless_path, description
-            )
+            self._update_workfile_info(task_id, rootless_path, description)
             self._update_current_context(
                 folder_id, folder_entity["path"], task_entity["name"]
             )
@@ -179,10 +318,21 @@ class WorkfilesModel:
             failed = True
             self._log.warning("Save as failed", exc_info=True)
 
+        self._stop_operation_heartbeat()
         self._emit_event(
             "save_as.finished",
-            {"failed": failed},
+            {"id": message_id, "failed": failed},
         )
+
+        # Process events one final time to ensure finished event is handled
+        try:
+            from qtpy import QtWidgets
+
+            app = QtWidgets.QApplication.instance()
+            if app:
+                app.processEvents()
+        except Exception:
+            pass
 
     def copy_workfile_representation(
         self,
@@ -700,7 +850,13 @@ class WorkfilesModel:
         return self._version_comment_by_id.get(repre["versionId"])
 
     # --- Host ---
-    def _open_workfile(self, folder_id: str, task_id: str, filepath: str):
+    def _open_workfile(
+        self,
+        folder_id: str,
+        task_id: str,
+        filepath: str,
+        progress_callback=None,
+    ):
         # TODO move to workfiles pipeline
         project_name = self._project_name
         project_entity = self._controller.get_project_entity(project_name)
@@ -714,6 +870,7 @@ class WorkfilesModel:
             project_entity=project_entity,
             anatomy=self._controller.project_anatomy,
             project_settings=self._controller.project_settings,
+            progress_callback=progress_callback,
         )
         self._host.open_workfile_with_context(
             filepath, folder_entity, task_entity, prepared_data=prepared_data
