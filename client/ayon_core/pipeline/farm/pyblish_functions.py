@@ -594,8 +594,8 @@ def create_instances_for_aov(
     additional_color_data = {
         "renderProducts": instance.data["renderProducts"],
         "colorspaceConfig": instance.data["colorspaceConfig"],
-        "display": instance.data["colorspaceDisplay"],
-        "view": instance.data["colorspaceView"]
+        "display": instance.data.get("sourceDisplay"),
+        "view": instance.data.get("sourceView")
     }
 
     # Get templated path from absolute config path.

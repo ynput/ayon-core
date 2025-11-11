@@ -443,7 +443,7 @@ class UseDisplayViewModel(BaseSettingsModel):
         title="Target Display",
         description=(
             "Display of the target transform. If left empty, the"
-            " source Display value will be used."
+            " scene Display value will be used."
         )
     )
     view: str = SettingsField(
@@ -451,7 +451,7 @@ class UseDisplayViewModel(BaseSettingsModel):
         title="Target View",
         description=(
             "View of the target transform. If left empty, the"
-            " source View value will be used."
+            " scene View value will be used."
         )
     )
 
