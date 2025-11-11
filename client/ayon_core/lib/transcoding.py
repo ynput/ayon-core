@@ -1545,7 +1545,7 @@ def get_oiio_input_and_channel_args(oiio_input_info, alpha_default=None):
         channels_arg += ",A={}".format(float(alpha_default))
         input_channels.append("A")
 
-    input_channels_str = ",".join(input_channels)
+    input_channels_str = ",".join(set(input_channels))
 
     subimages = oiio_input_info.get("subimages")
     input_arg = "-i"
