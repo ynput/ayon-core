@@ -295,6 +295,21 @@ class AbstractPublisherFrontend(AbstractPublisherCommon):
         """Get folder id from folder path."""
         pass
 
+    @abstractmethod
+    def get_my_tasks_entity_ids(
+        self, project_name: str
+    ) -> dict[str, list[str]]:
+        """Get entity ids for my tasks.
+
+        Args:
+            project_name (str): Project name.
+
+        Returns:
+            dict[str, list[str]]: Folder and task ids.
+
+        """
+        pass
+
     # --- Create ---
     @abstractmethod
     def get_creator_items(self) -> Dict[str, "CreatorItem"]:

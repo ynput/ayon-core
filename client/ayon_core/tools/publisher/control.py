@@ -11,7 +11,11 @@ from ayon_core.pipeline import (
     registered_host,
     get_process_id,
 )
-from ayon_core.tools.common_models import ProjectsModel, HierarchyModel
+from ayon_core.tools.common_models import (
+    ProjectsModel,
+    HierarchyModel,
+    UsersModel,
+)
 
 from .models import (
     PublishModel,
@@ -101,6 +105,7 @@ class PublisherController(
         # Cacher of avalon documents
         self._projects_model = ProjectsModel(self)
         self._hierarchy_model = HierarchyModel(self)
+        self._users_model = UsersModel(self)
 
     @property
     def log(self):
@@ -317,6 +322,17 @@ class PublisherController(
                 return False
         return True
 
+    def get_my_tasks_entity_ids(
+        self, project_name: str
+    ) -> dict[str, list[str]]:
+        username = self._users_model.get_current_username()
+        assignees = []
+        if username:
+            assignees.append(username)
+        return self._hierarchy_model.get_entity_ids_for_assignees(
+            project_name, assignees
+        )
+
     # --- Publish specific callbacks ---
     def get_context_title(self):
         """Get context title for artist shown at the top of main window."""
@@ -359,6 +375,7 @@ class PublisherController(
         self._emit_event("controller.reset.started")
 
         self._hierarchy_model.reset()
+        self._users_model.reset()
 
         # Publish part must be reset after plugins
         self._create_model.reset()

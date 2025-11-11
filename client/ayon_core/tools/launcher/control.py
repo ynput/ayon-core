@@ -1,10 +1,14 @@
 from typing import Optional
 
-from ayon_core.lib import Logger, get_ayon_username
+from ayon_core.lib import Logger
 from ayon_core.lib.events import QueuedEventSystem
 from ayon_core.addon import AddonsManager
 from ayon_core.settings import get_project_settings, get_studio_settings
-from ayon_core.tools.common_models import ProjectsModel, HierarchyModel
+from ayon_core.tools.common_models import (
+    ProjectsModel,
+    HierarchyModel,
+    UsersModel,
+)
 
 from .abstract import (
     AbstractLauncherFrontEnd,
@@ -30,13 +34,12 @@ class BaseLauncherController(
 
         self._addons_manager = None
 
-        self._username = NOT_SET
-
         self._selection_model = LauncherSelectionModel(self)
         self._projects_model = ProjectsModel(self)
         self._hierarchy_model = HierarchyModel(self)
         self._actions_model = ActionsModel(self)
         self._workfiles_model = WorkfilesModel(self)
+        self._users_model = UsersModel(self)
 
     @property
     def log(self):
@@ -209,6 +212,7 @@ class BaseLauncherController(
 
         self._projects_model.reset()
         self._hierarchy_model.reset()
+        self._users_model.reset()
 
         self._actions_model.refresh()
         self._projects_model.refresh()
@@ -229,19 +233,16 @@ class BaseLauncherController(
 
         self._emit_event("controller.refresh.actions.finished")
 
-    def get_my_tasks_entity_ids(self, project_name: str):
-        username = self._get_my_username()
+    def get_my_tasks_entity_ids(
+        self, project_name: str
+    ) -> dict[str, list[str]]:
+        username = self._users_model.get_current_username()
         assignees = []
         if username:
             assignees.append(username)
         return self._hierarchy_model.get_entity_ids_for_assignees(
             project_name, assignees
         )
-
-    def _get_my_username(self):
-        if self._username is NOT_SET:
-            self._username = get_ayon_username()
-        return self._username
 
     def _emit_event(self, topic, data=None):
         self.emit_event(topic, data, "controller")
