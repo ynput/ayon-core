@@ -300,7 +300,11 @@ class AbstractTemplateBuilder(ABC):
             self._loaders_by_name = get_loaders_by_name()
         return self._loaders_by_name
 
-    def get_linked_folder_entities(self, link_type: Optional[str]):
+    def get_linked_folder_entities(
+        self,
+        link_type: Optional[str],
+        folder_path_regex: Optional[str],
+    ):
         if not link_type:
             return []
         project_name = self.project_name
@@ -317,7 +321,11 @@ class AbstractTemplateBuilder(ABC):
             if link["entityType"] == "folder"
         }
 
-        return list(get_folders(project_name, folder_ids=linked_folder_ids))
+        return list(get_folders(
+            project_name,
+            folder_path_regex=folder_path_regex,
+            folder_ids=linked_folder_ids,
+        ))
 
     def _collect_creators(self):
         self._creators_by_name = {
@@ -1638,7 +1646,10 @@ class PlaceholderLoadMixin(object):
                     linked_folder_entity["id"]
                     for linked_folder_entity in (
                         self.builder.get_linked_folder_entities(
-                            link_type=link_type))
+                            link_type=link_type,
+                            folder_path_regex=folder_path_regex
+                        )
+                    )
                 ]
 
         if not folder_ids:
