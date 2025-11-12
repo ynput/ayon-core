@@ -34,7 +34,7 @@ class ProductNameProfile(BaseSettingsModel):
         enum_resolver=task_types_enum
     )
     tasks: list[str] = SettingsField(default_factory=list, title="Task names")
-    template: str = SettingsField("", title="Template")
+    template: str = SettingsField("", title="Template", regex=r"^[<>{}\[\]a-zA-Z0-9_.]+$")
 
 
 class FilterCreatorProfile(BaseSettingsModel):
