@@ -75,6 +75,7 @@ class CreateHeroVersion(load.ProductLoaderPlugin):
         msgBox.setStyleSheet(style.load_stylesheet())
         msgBox.setWindowFlags(
             msgBox.windowFlags() | QtCore.Qt.WindowType.FramelessWindowHint
+            | QtCore.Qt.WindowType.WindowStaysOnTopHint
         )
         msgBox.exec_()
 
