@@ -591,22 +591,6 @@ def create_instances_for_aov(
     # AOV product of its own.
 
     log = Logger.get_logger("farm_publishing")
-    additional_color_data = {
-        "renderProducts": instance.data["renderProducts"],
-        "colorspaceConfig": instance.data["colorspaceConfig"],
-        "display": instance.data["colorspaceDisplay"],
-        "view": instance.data["colorspaceView"]
-    }
-
-    # Get templated path from absolute config path.
-    anatomy = instance.context.data["anatomy"]
-    colorspace_template = instance.data["colorspaceConfig"]
-    try:
-        additional_color_data["colorspaceTemplate"] = remap_source(
-            colorspace_template, anatomy)
-    except ValueError as e:
-        log.warning(e)
-        additional_color_data["colorspaceTemplate"] = colorspace_template
 
     # if there are product to attach to and more than one AOV,
     # we cannot proceed.
@@ -618,6 +602,29 @@ def create_instances_for_aov(
             "attaching multiple AOVs or renderable cameras to "
             "product is not supported yet.")
 
+    additional_data = {
+        "renderProducts": instance.data["renderProducts"],
+    }
+
+    # Collect color management data if present
+    if "colorspaceConfig" in instance.data:
+        additional_data.update({
+            "colorspaceConfig": instance.data["colorspaceConfig"],
+            # Display/View are optional
+            "display": instance.data.get("colorspaceDisplay"),
+            "view": instance.data.get("colorspaceView")
+        })
+
+        # Get templated path from absolute config path.
+        anatomy = instance.context.data["anatomy"]
+        colorspace_template = instance.data["colorspaceConfig"]
+        try:
+            additional_data["colorspaceTemplate"] = remap_source(
+                colorspace_template, anatomy)
+        except ValueError as e:
+            log.warning(e)
+            additional_data["colorspaceTemplate"] = colorspace_template
+
     # create instances for every AOV we found in expected files.
     # NOTE: this is done for every AOV and every render camera (if
     #       there are multiple renderable cameras in scene)
@@ -625,7 +632,7 @@ def create_instances_for_aov(
         instance,
         skeleton,
         aov_filter,
-        additional_color_data,
+        additional_data,
         skip_integration_repre_list,
         do_not_add_review,
         frames_to_render
@@ -936,16 +943,28 @@ def _create_instances_for_aov(
             "stagingDir": staging_dir,
             "fps": new_instance.get("fps"),
             "tags": ["review"] if preview else [],
-            "colorspaceData": {
+        }
+
+        if colorspace and additional_data["colorspaceConfig"]:
+            # Only apply colorspace data if the image has a colorspace
+            colorspace_data: dict = {
                 "colorspace": colorspace,
                 "config": {
                     "path": additional_data["colorspaceConfig"],
                     "template": additional_data["colorspaceTemplate"]
                 },
-                "display": additional_data["display"],
-                "view": additional_data["view"]
             }
-        }
+            # Display/View are optional
+            display = additional_data.get("display")
+            if display:
+                additional_data["display"] = display
+            view = additional_data.get("view")
+            if view:
+                additional_data["view"] = view
+
+            rep["colorspaceData"] = colorspace_data
+        else:
+            log.debug("No colorspace data for representation: {}".format(rep))
 
         # support conversion from tiled to scanline
         if instance.data.get("convertToScanline"):
