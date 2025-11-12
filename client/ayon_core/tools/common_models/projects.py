@@ -541,7 +541,7 @@ class ProjectsModel(object):
             self._projects_cache.update_data(project_items)
         return self._projects_cache.get_data()
 
-    def _fetch_projects_bc(self) -> list[dict[str, Any]]:
+    def _fetch_graphql_projects(self) -> list[dict[str, Any]]:
         """Fetch projects using GraphQl.
 
         This method was added because ayon_api had a bug in 'get_projects'.
@@ -565,7 +565,7 @@ class ProjectsModel(object):
         return projects
 
     def _query_projects(self) -> list[ProjectItem]:
-        projects = self._fetch_projects_bc()
+        projects = self._fetch_graphql_projects()
 
         user = ayon_api.get_user()
         pinned_projects = (
