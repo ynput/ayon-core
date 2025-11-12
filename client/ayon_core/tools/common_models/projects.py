@@ -277,7 +277,7 @@ class ProductTypeIconMapping:
         return self._definitions_by_name
 
 
-def _get_project_items_from_entitiy(
+def _get_project_items_from_entity(
     projects: list[dict[str, Any]]
 ) -> list[ProjectItem]:
     """
@@ -575,7 +575,7 @@ class ProjectsModel(object):
             .get("pinnedProjects")
         ) or []
         pinned_projects = set(pinned_projects)
-        project_items = _get_project_items_from_entitiy(list(projects))
+        project_items = _get_project_items_from_entity(list(projects))
         for project in project_items:
             project.is_pinned = project.name in pinned_projects
         return project_items
