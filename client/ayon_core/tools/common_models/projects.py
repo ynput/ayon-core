@@ -1,11 +1,13 @@
 from __future__ import annotations
 
+import json
 import contextlib
 from abc import ABC, abstractmethod
 from typing import Any, Optional
 from dataclasses import dataclass
 
 import ayon_api
+from ayon_api.graphql_queries import projects_graphql_query
 
 from ayon_core.style import get_default_entity_icon_color
 from ayon_core.lib import CacheItem, NestedCacheItem
@@ -290,6 +292,7 @@ def _get_project_items_from_entitiy(
     return [
         ProjectItem.from_entity(project)
         for project in projects
+        if project["active"]
     ]
 
 
@@ -538,8 +541,32 @@ class ProjectsModel(object):
             self._projects_cache.update_data(project_items)
         return self._projects_cache.get_data()
 
+    def _fetch_projects_bc(self) -> list[dict[str, Any]]:
+        """Fetch projects using GraphQl.
+
+        This method was added because ayon_api had a bug in 'get_projects'.
+
+        Returns:
+            list[dict[str, Any]]: List of projects.
+
+        """
+        api = ayon_api.get_server_api_connection()
+        query = projects_graphql_query({"name", "active", "library", "data"})
+
+        projects = []
+        for parsed_data in query.continuous_query(api):
+            for project in parsed_data["projects"]:
+                project_data = project["data"]
+                if project_data is None:
+                    project["data"] = {}
+                elif isinstance(project_data, str):
+                    project["data"] = json.loads(project_data)
+                projects.append(project)
+        return projects
+
     def _query_projects(self) -> list[ProjectItem]:
-        projects = ayon_api.get_projects(fields=["name", "active", "library"])
+        projects = self._fetch_projects_bc()
+
         user = ayon_api.get_user()
         pinned_projects = (
             user
