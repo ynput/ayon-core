@@ -21,6 +21,13 @@ def _convert_imageio_configs_1_6_5(overrides):
             if isinstance(template, str):
                 item["template"] = PRODUCT_NAME_REPL_REGEX.sub("", template)
 
+            for new_key, old_key in (
+                ("host_names", "hosts"),
+                ("task_names", "tasks"),
+            ):
+                if old_key in item:
+                    item[new_key] = item.get(old_key)
+
 
 def _convert_imageio_configs_0_4_5(overrides):
     """Imageio config settings did change to profiles since 0.4.5."""
