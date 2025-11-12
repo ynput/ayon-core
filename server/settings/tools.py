@@ -25,16 +25,27 @@ class ProductNameProfile(BaseSettingsModel):
     _layout = "expanded"
 
     product_types: list[str] = SettingsField(
-        default_factory=list, title="Product types"
+        default_factory=list,
+        title="Product types",
     )
-    host_names: list[str] = SettingsField(default_factory=list, title="Host names")
+    host_names: list[str] = SettingsField(
+        default_factory=list,
+        title="Host names",
+    )
     task_types: list[str] = SettingsField(
         default_factory=list,
         title="Task types",
-        enum_resolver=task_types_enum
+        enum_resolver=task_types_enum,
     )
-    task_names: list[str] = SettingsField(default_factory=list, title="Task names")
-    template: str = SettingsField("", title="Template", regex=r"^[<>{}\[\]a-zA-Z0-9_.]+$")
+    task_names: list[str] = SettingsField(
+        default_factory=list,
+        title="Task names",
+    )
+    template: str = SettingsField(
+        "",
+        title="Template",
+        regex=r"^[<>{}\[\]a-zA-Z0-9_.]+$",
+    )
 
 
 class FilterCreatorProfile(BaseSettingsModel):
