@@ -654,6 +654,21 @@ class FrontendLoaderController(_BaseLoaderController):
         pass
 
     @abstractmethod
+    def get_my_tasks_entity_ids(
+        self, project_name: str
+    ) -> dict[str, list[str]]:
+        """Get entity ids for my tasks.
+
+        Args:
+            project_name (str): Project name.
+
+        Returns:
+            dict[str, list[str]]: Folder and task ids.
+
+        """
+        pass
+
+    @abstractmethod
     def get_available_tags_by_entity_type(
         self, project_name: str
     ) -> dict[str, list[str]]:

@@ -8,7 +8,11 @@ import ayon_api
 
 from ayon_core.settings import get_project_settings
 from ayon_core.pipeline import get_current_host_name
-from ayon_core.lib import NestedCacheItem, CacheItem, filter_profiles
+from ayon_core.lib import (
+    NestedCacheItem,
+    CacheItem,
+    filter_profiles,
+)
 from ayon_core.lib.events import QueuedEventSystem
 from ayon_core.pipeline import Anatomy, get_current_context
 from ayon_core.host import ILoadHost
@@ -18,6 +22,7 @@ from ayon_core.tools.common_models import (
     ThumbnailsModel,
     TagItem,
     ProductTypeIconMapping,
+    UsersModel,
 )
 
 from .abstract import (
@@ -32,6 +37,8 @@ from .models import (
     LoaderActionsModel,
     SiteSyncModel
 )
+
+NOT_SET = object()
 
 
 class ExpectedSelection:
@@ -125,6 +132,7 @@ class LoaderController(BackendLoaderController, FrontendLoaderController):
         self._loader_actions_model = LoaderActionsModel(self)
         self._thumbnails_model = ThumbnailsModel()
         self._sitesync_model = SiteSyncModel(self)
+        self._users_model = UsersModel(self)
 
     @property
     def log(self):
@@ -161,6 +169,7 @@ class LoaderController(BackendLoaderController, FrontendLoaderController):
         self._projects_model.reset()
         self._thumbnails_model.reset()
         self._sitesync_model.reset()
+        self._users_model.reset()
 
         self._projects_model.refresh()
 
@@ -235,6 +244,17 @@ class LoaderController(BackendLoaderController, FrontendLoaderController):
                 label = folder_item.label
             output[folder_id] = label
         return output
+
+    def get_my_tasks_entity_ids(
+        self, project_name: str
+    ) -> dict[str, list[str]]:
+        username = self._users_model.get_current_username()
+        assignees = []
+        if username:
+            assignees.append(username)
+        return self._hierarchy_model.get_entity_ids_for_assignees(
+            project_name, assignees
+        )
 
     def get_available_tags_by_entity_type(
         self, project_name: str
@@ -479,20 +499,6 @@ class LoaderController(BackendLoaderController, FrontendLoaderController):
     def is_standard_projects_filter_enabled(self):
         return self._host is not None
 
-    def _get_project_anatomy(self, project_name):
-        if not project_name:
-            return None
-        cache = self._project_anatomy_cache[project_name]
-        if not cache.is_valid:
-            cache.update_data(Anatomy(project_name))
-        return cache.get_data()
-
-    def _create_event_system(self):
-        return QueuedEventSystem()
-
-    def _emit_event(self, topic, data=None):
-        self._event_system.emit(topic, data or {}, "controller")
-
     def get_product_types_filter(self):
         output = ProductTypesFilter(
             is_allow_list=False,
@@ -548,3 +554,17 @@ class LoaderController(BackendLoaderController, FrontendLoaderController):
                 product_types=profile["filter_product_types"]
             )
         return output
+
+    def _create_event_system(self):
+        return QueuedEventSystem()
+
+    def _emit_event(self, topic, data=None):
+        self._event_system.emit(topic, data or {}, "controller")
+
+    def _get_project_anatomy(self, project_name):
+        if not project_name:
+            return None
+        cache = self._project_anatomy_cache[project_name]
+        if not cache.is_valid:
+            cache.update_data(Anatomy(project_name))
+        return cache.get_data()
