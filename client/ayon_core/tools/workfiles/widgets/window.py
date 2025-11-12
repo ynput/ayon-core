@@ -1,7 +1,9 @@
 
+import os
 from qtpy import QtCore, QtGui, QtWidgets
 
 from ayon_core import resources, style
+from ayon_core.pipeline import get_current_host_name
 from ayon_core.tools.utils import (
     FoldersWidget,
     GoToCurrentButton,
@@ -51,7 +53,17 @@ class WorkfilesToolWindow(QtWidgets.QWidget):
         parent (Optional[QtWidgets.QWidget]): Parent widget.
     """
 
-    title = "Work Files"
+    @property
+    def title(self):
+        """Get window title with application name."""
+        base_title = "AYON Workfiles"
+        app_name = (
+            os.environ.get("AYON_APP_NAME")
+            or get_current_host_name()
+        )
+        if app_name:
+            return f"{base_title} - {app_name}"
+        return base_title
 
     def __init__(self, controller=None, parent=None):
         super(WorkfilesToolWindow, self).__init__(parent=parent)
