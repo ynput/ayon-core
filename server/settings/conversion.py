@@ -1,7 +1,32 @@
+import re
 import copy
 from typing import Any
 
 from .publish_plugins import DEFAULT_PUBLISH_VALUES
+
+PRODUCT_NAME_REPL_REGEX = re.compile(r"[^<>{}\[\]a-zA-Z0-9_.]")
+
+
+def _convert_imageio_configs_1_6_5(overrides):
+    product_name_profiles = (
+        overrides
+        .get("tools", {})
+        .get("creator", {})
+        .get("product_name_profiles")
+    )
+    if isinstance(product_name_profiles, list):
+        for item in product_name_profiles:
+            # Remove unsupported product name characters
+            template = item.get("template")
+            if isinstance(template, str):
+                item["template"] = PRODUCT_NAME_REPL_REGEX.sub("", template)
+
+            for new_key, old_key in (
+                ("host_names", "hosts"),
+                ("task_names", "tasks"),
+            ):
+                if old_key in item:
+                    item[new_key] = item.get(old_key)
 
 
 def _convert_imageio_configs_0_4_5(overrides):
