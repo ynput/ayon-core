@@ -304,7 +304,7 @@ class OpenFileAction(LoaderActionPlugin):
             LoaderActionItem(
                 label=repre_name,
                 group_label="Open file",
-                order=-10,
+                order=30,
                 data={"representation_ids": list(repre_ids)},
                 icon={
                     "type": "material-symbols",
