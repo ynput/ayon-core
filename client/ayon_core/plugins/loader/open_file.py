@@ -26,7 +26,7 @@ class _Cache:
 
     Notes:
         The cache is cleared when loader tool is refreshed so it might be
-            moved to other place which is not cleared of refresh.
+            moved to other place which is not cleared on refresh.
 
     """
     supported_exts: set[str] = set()
