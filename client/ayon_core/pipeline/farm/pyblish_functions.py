@@ -253,6 +253,19 @@ def create_skeleton_instance(
         "reuseLastVersion": data.get("reuseLastVersion", False),
     }
 
+    # Pass on the OCIO metadata of what the source display and view are
+    # so that the farm can correctly set up color management.
+    if "sceneDisplay" in data and "sceneView" in data:
+        instance_skeleton_data["sceneDisplay"] = data["sceneDisplay"]
+        instance_skeleton_data["sceneView"] = data["sceneView"]
+    elif "colorspaceDisplay" in data and "colorspaceView" in data:
+        # Backwards compatibility for sceneDisplay and sceneView
+        instance_skeleton_data["colorspaceDisplay"] = data["colorspaceDisplay"]
+        instance_skeleton_data["colorspaceView"] = data["colorspaceView"]
+    if "sourceDisplay" in data and "sourceView" in data:
+        instance_skeleton_data["sourceDisplay"] = data["sourceDisplay"]
+        instance_skeleton_data["sourceView"] = data["sourceView"]
+
     if data.get("renderlayer"):
         instance_skeleton_data["renderlayer"] = data["renderlayer"]
 
