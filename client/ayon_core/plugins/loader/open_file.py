@@ -217,8 +217,7 @@ def _filter_supported_exts(
     filtered_exs: set[str] = set()
     for ext in extensions:
         if not _Cache.already_checked(ext):
-            r = test_func(ext)
-            _Cache.set_ext_support(ext, r)
+            _Cache.set_ext_support(ext, test_func(ext))
         if _Cache.is_supported(ext):
             filtered_exs.add(ext)
     return filtered_exs
