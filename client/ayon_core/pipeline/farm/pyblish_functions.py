@@ -957,10 +957,10 @@ def _create_instances_for_aov(
             # Display/View are optional
             display = additional_data.get("display")
             if display:
-                additional_data["display"] = display
+                colorspace_data["display"] = display
             view = additional_data.get("view")
             if view:
-                additional_data["view"] = view
+                colorspace_data["view"] = view
 
             rep["colorspaceData"] = colorspace_data
         else:
