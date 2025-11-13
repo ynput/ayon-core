@@ -66,7 +66,7 @@ class DeleteOldVersions(LoaderActionPlugin):
             ),
             LoaderActionItem(
                 label="Calculate Versions size",
-                order=30,
+                order=34,
                 data={
                     "product_ids": list(product_ids),
                     "action": "calculate-versions-size",
