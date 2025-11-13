@@ -45,6 +45,7 @@ class CopyFileActionPlugin(LoaderActionPlugin):
             output.append(
                 LoaderActionItem(
                     label=repre_name,
+                    order=32,
                     group_label="Copy file path",
                     data={
                         "representation_id": repre_id,
@@ -60,6 +61,7 @@ class CopyFileActionPlugin(LoaderActionPlugin):
             output.append(
                 LoaderActionItem(
                     label=repre_name,
+                    order=33,
                     group_label="Copy file",
                     data={
                         "representation_id": repre_id,
