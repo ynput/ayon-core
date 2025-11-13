@@ -22,6 +22,13 @@ WINDOWS_USER_REG_PATH = (
 
 
 class _Cache:
+    """Cache extensions information.
+
+    Notes:
+        The cache is cleared when loader tool is refreshed so it might be
+            moved to other place which is not cleared of refresh.
+
+    """
     supported_exts: set[str] = set()
     unsupported_exts: set[str] = set()
 
