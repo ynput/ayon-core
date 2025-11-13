@@ -106,7 +106,7 @@ def _extension_has_assigned_app_linux(ext: str) -> bool:
     return False
 
 
-def _extension_has_assigned_app_macos(ext: str):
+def _extension_has_assigned_app_macos(ext: str) -> bool:
     # Uses CoreServices/LaunchServices and Uniform Type Identifiers via
     #   ctypes.
     # Steps: ext -> UTI -> default handler bundle id for role 'all'.
@@ -120,10 +120,8 @@ def _extension_has_assigned_app_macos(ext: str):
 
     # CFType/CFString helpers
     CFStringRef = ctypes.c_void_p
-    CFURLRef = ctypes.c_void_p
     CFAllocatorRef = ctypes.c_void_p
     CFIndex = ctypes.c_long
-    UniChar = ctypes.c_ushort
 
     kCFStringEncodingUTF8 = 0x08000100
 
@@ -194,7 +192,6 @@ def _extension_has_assigned_app_macos(ext: str):
     uti_ref = UTTypeCreatePreferredIdentifierForTag(
         tag_class, tag_value, None
     )
-    uti = to_pystr(uti_ref)
 
     # Clean up temporary CFStrings
     for ref in (tag_class, tag_value):
