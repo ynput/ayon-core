@@ -68,13 +68,14 @@ def _extension_has_assigned_app_windows(ext: str) -> bool:
 
 
 def _linux_find_desktop_file(desktop: str) -> Optional[str]:
-    for p in (
-        os.path.join(os.path.expanduser("~/.local/share/applications"), desktop),
-        os.path.join("/usr/share/applications", desktop),
-        os.path.join("/usr/local/share/applications", desktop),
+    for dirpath in (
+        os.path.expanduser("~/.local/share/applications"),
+        "/usr/share/applications",
+        "/usr/local/share/applications",
     ):
-        if os.path.isfile(p):
-            return p
+        path = os.path.join(dirpath, desktop)
+        if os.path.isfile(path):
+            return path
     return None
 
 
@@ -106,7 +107,8 @@ def _extension_has_assigned_app_linux(ext: str) -> bool:
 
 
 def _extension_has_assigned_app_macos(ext: str):
-    # Uses CoreServices/LaunchServices and Uniform Type Identifiers via ctypes.
+    # Uses CoreServices/LaunchServices and Uniform Type Identifiers via
+    #   ctypes.
     # Steps: ext -> UTI -> default handler bundle id for role 'all'.
     cf = ctypes.cdll.LoadLibrary(
         "/System/Library/Frameworks/CoreFoundation.framework/CoreFoundation"
@@ -125,13 +127,17 @@ def _extension_has_assigned_app_macos(ext: str):
 
     kCFStringEncodingUTF8 = 0x08000100
 
-    cf.CFStringCreateWithCString.argtypes = [CFAllocatorRef, ctypes.c_char_p, ctypes.c_uint32]
+    cf.CFStringCreateWithCString.argtypes = [
+        CFAllocatorRef, ctypes.c_char_p, ctypes.c_uint32
+    ]
     cf.CFStringCreateWithCString.restype = CFStringRef
 
     cf.CFStringGetCStringPtr.argtypes = [CFStringRef, ctypes.c_uint32]
     cf.CFStringGetCStringPtr.restype = ctypes.c_char_p
 
-    cf.CFStringGetCString.argtypes = [CFStringRef, ctypes.c_char_p, CFIndex, ctypes.c_uint32]
+    cf.CFStringGetCString.argtypes = [
+        CFStringRef, ctypes.c_char_p, CFIndex, ctypes.c_uint32
+    ]
     cf.CFStringGetCString.restype = ctypes.c_bool
 
     cf.CFRelease.argtypes = [ctypes.c_void_p]
