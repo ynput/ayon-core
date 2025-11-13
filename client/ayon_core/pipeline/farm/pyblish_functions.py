@@ -607,9 +607,10 @@ def create_instances_for_aov(
     }
 
     # Collect color management data if present
-    if "colorspaceConfig" in instance.data:
+    colorspace_config = instance.data.get("colorspaceConfig")
+    if colorspace_config:
         additional_data.update({
-            "colorspaceConfig": instance.data["colorspaceConfig"],
+            "colorspaceConfig": colorspace_config,
             # Display/View are optional
             "display": instance.data.get("colorspaceDisplay"),
             "view": instance.data.get("colorspaceView")
@@ -617,13 +618,12 @@ def create_instances_for_aov(
 
         # Get templated path from absolute config path.
         anatomy = instance.context.data["anatomy"]
-        colorspace_template = instance.data["colorspaceConfig"]
         try:
             additional_data["colorspaceTemplate"] = remap_source(
-                colorspace_template, anatomy)
+                colorspace_config, anatomy)
         except ValueError as e:
             log.warning(e)
-            additional_data["colorspaceTemplate"] = colorspace_template
+            additional_data["colorspaceTemplate"] = colorspace_config
 
     # create instances for every AOV we found in expected files.
     # NOTE: this is done for every AOV and every render camera (if
