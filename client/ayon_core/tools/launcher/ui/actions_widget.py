@@ -1,22 +1,12 @@
 import time
-import uuid
 import collections
 
 from qtpy import QtWidgets, QtCore, QtGui
 
 from ayon_core.lib import Logger
-from ayon_core.lib.attribute_definitions import (
-    UILabelDef,
-    EnumDef,
-    TextDef,
-    BoolDef,
-    NumberDef,
-    HiddenDef,
-)
+from ayon_core.pipeline.actions import webaction_fields_to_attribute_defs
 from ayon_core.tools.flickcharm import FlickCharm
-from ayon_core.tools.utils import (
-    get_qt_icon,
-)
+from ayon_core.tools.utils import get_qt_icon
 from ayon_core.tools.attribute_defs import AttributeDefinitionsDialog
 from ayon_core.tools.launcher.abstract import WebactionContext
 
@@ -1173,74 +1163,7 @@ class ActionsWidget(QtWidgets.QWidget):
             float - 'label', 'value', 'placeholder', 'min', 'max'
 
         """
-        attr_defs = []
-        for config_field in config_fields:
-            field_type = config_field["type"]
-            attr_def = None
-            if field_type == "label":
-                label = config_field.get("value")
-                if label is None:
-                    label = config_field.get("text")
-                attr_def = UILabelDef(
-                    label, key=uuid.uuid4().hex
-                )
-            elif field_type == "boolean":
-                value = config_field["value"]
-                if isinstance(value, str):
-                    value = value.lower() == "true"
-
-                attr_def = BoolDef(
-                    config_field["name"],
-                    default=value,
-                    label=config_field.get("label"),
-                )
-            elif field_type == "text":
-                attr_def = TextDef(
-                    config_field["name"],
-                    default=config_field.get("value"),
-                    label=config_field.get("label"),
-                    placeholder=config_field.get("placeholder"),
-                    multiline=config_field.get("multiline", False),
-                    regex=config_field.get("regex"),
-                    # syntax=config_field["syntax"],
-                )
-            elif field_type in ("integer", "float"):
-                value = config_field.get("value")
-                if isinstance(value, str):
-                    if field_type == "integer":
-                        value = int(value)
-                    else:
-                        value = float(value)
-                attr_def = NumberDef(
-                    config_field["name"],
-                    default=value,
-                    label=config_field.get("label"),
-                    decimals=0 if field_type == "integer" else 5,
-                    # placeholder=config_field.get("placeholder"),
-                    minimum=config_field.get("min"),
-                    maximum=config_field.get("max"),
-                )
-            elif field_type in ("select", "multiselect"):
-                attr_def = EnumDef(
-                    config_field["name"],
-                    items=config_field["options"],
-                    default=config_field.get("value"),
-                    label=config_field.get("label"),
-                    multiselection=field_type == "multiselect",
-                )
-            elif field_type == "hidden":
-                attr_def = HiddenDef(
-                    config_field["name"],
-                    default=config_field.get("value"),
-                )
-
-            if attr_def is None:
-                print(f"Unknown config field type: {field_type}")
-                attr_def = UILabelDef(
-                    f"Unknown field type '{field_type}",
-                    key=uuid.uuid4().hex
-                )
-            attr_defs.append(attr_def)
+        attr_defs = webaction_fields_to_attribute_defs(config_fields)
 
         dialog = AttributeDefinitionsDialog(
             attr_defs,
