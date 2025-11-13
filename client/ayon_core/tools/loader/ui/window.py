@@ -1,18 +1,24 @@
 from __future__ import annotations
 
+from typing import Optional
+
 from qtpy import QtWidgets, QtCore, QtGui
 
 from ayon_core.resources import get_ayon_icon_filepath
 from ayon_core.style import load_stylesheet
+from ayon_core.pipeline.actions import LoaderActionResult
 from ayon_core.tools.utils import (
+    MessageOverlayObject,
     ErrorMessageBox,
     ThumbnailPainterWidget,
     RefreshButton,
     GoToCurrentButton,
+    ProjectsCombobox,
+    get_qt_icon,
     FoldersFiltersWidget,
 )
+from ayon_core.tools.attribute_defs import AttributeDefinitionsDialog
 from ayon_core.tools.utils.lib import center_window
-from ayon_core.tools.utils import ProjectsCombobox
 from ayon_core.tools.common_models import StatusItem
 from ayon_core.tools.loader.abstract import ProductTypeItem
 from ayon_core.tools.loader.control import LoaderController
@@ -140,6 +146,8 @@ class LoaderWindow(QtWidgets.QWidget):
 
         if controller is None:
             controller = LoaderController()
+
+        overlay_object = MessageOverlayObject(self)
 
         main_splitter = QtWidgets.QSplitter(self)
 
@@ -296,6 +304,12 @@ class LoaderWindow(QtWidgets.QWidget):
             "controller.reset.finished",
             self._on_controller_reset_finish,
         )
+        controller.register_event_callback(
+            "loader.action.finished",
+            self._on_loader_action_finished,
+        )
+
+        self._overlay_object = overlay_object
 
         self._group_dialog = ProductGroupDialog(controller, self)
 
@@ -408,6 +422,20 @@ class LoaderWindow(QtWidgets.QWidget):
         if self._reset_on_show:
             self.refresh()
 
+    def _show_toast_message(
+        self,
+        message: str,
+        success: bool = True,
+        message_id: Optional[str] = None,
+    ):
+        message_type = None
+        if not success:
+            message_type = "error"
+
+        self._overlay_object.add_message(
+            message, message_type, message_id=message_id
+        )
+
     def _show_group_dialog(self):
         project_name = self._projects_combobox.get_selected_project_name()
         if not project_name:
@@ -507,6 +535,77 @@ class LoaderWindow(QtWidgets.QWidget):
 
         box = LoadErrorMessageBox(error_info, self)
         box.show()
+
+    def _on_loader_action_finished(self, event):
+        crashed = event["crashed"]
+        if crashed:
+            self._show_toast_message(
+                "Action failed",
+                success=False,
+            )
+            return
+
+        result: Optional[LoaderActionResult] = event["result"]
+        if result is None:
+            return
+
+        if result.message:
+            self._show_toast_message(
+                result.message, result.success
+            )
+
+        if result.form is None:
+            return
+
+        form = result.form
+        dialog = AttributeDefinitionsDialog(
+            form.fields,
+            title=form.title,
+            parent=self,
+        )
+        if result.form_values:
+            dialog.set_values(result.form_values)
+        submit_label = form.submit_label
+        submit_icon = form.submit_icon
+        cancel_label = form.cancel_label
+        cancel_icon = form.cancel_icon
+
+        if submit_icon:
+            submit_icon = get_qt_icon(submit_icon)
+        if cancel_icon:
+            cancel_icon = get_qt_icon(cancel_icon)
+
+        if submit_label:
+            dialog.set_submit_label(submit_label)
+        else:
+            dialog.set_submit_visible(False)
+
+        if submit_icon:
+            dialog.set_submit_icon(submit_icon)
+
+        if cancel_label:
+            dialog.set_cancel_label(cancel_label)
+        else:
+            dialog.set_cancel_visible(False)
+
+        if cancel_icon:
+            dialog.set_cancel_icon(cancel_icon)
+
+        dialog.setMinimumSize(300, 140)
+        result = dialog.exec_()
+        if result != QtWidgets.QDialog.Accepted:
+            return
+
+        form_values = dialog.get_values()
+        self._controller.trigger_action_item(
+            identifier=event["identifier"],
+            project_name=event["project_name"],
+            selected_ids=event["selected_ids"],
+            selected_entity_type=event["selected_entity_type"],
+            options={},
+            data=event["data"],
+            form_values=form_values,
+        )
 
     def _on_project_selection_changed(self, event):
         self._selected_project_name = event["project_name"]
