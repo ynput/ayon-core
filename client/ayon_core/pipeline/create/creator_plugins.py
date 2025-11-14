@@ -546,11 +546,6 @@ class BaseCreator(ABC):
         if host_name is None:
             host_name = self.create_context.host_name
 
-        task_name = task_type = None
-        if task_entity:
-            task_name = task_entity["name"]
-            task_type = task_entity["taskType"]
-
         dynamic_data = self.get_dynamic_data(
             project_name,
             folder_entity,
@@ -566,11 +561,11 @@ class BaseCreator(ABC):
 
         return get_product_name(
             project_name,
-            task_name,
-            task_type,
-            host_name,
-            self.product_type,
-            variant,
+            folder_entity=folder_entity,
+            task_entity=task_entity,
+            host_name=host_name,
+            product_type=self.product_type,
+            variant=variant,
             dynamic_data=dynamic_data,
             project_settings=self.project_settings,
             project_entity=project_entity,
