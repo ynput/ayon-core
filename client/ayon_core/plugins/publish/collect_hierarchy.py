@@ -1,7 +1,13 @@
 import pyblish.api
+from ayon_core.lib import BoolDef
+
+from ayon_core.pipeline import publish
 
 
-class CollectHierarchy(pyblish.api.ContextPlugin):
+class CollectHierarchy(
+    pyblish.api.ContextPlugin,
+    publish.AYONPyblishPluginMixin,
+):
     """Collecting hierarchy from `parents`.
 
     present in `clip` family instances coming from the request json data file
@@ -13,8 +19,35 @@ class CollectHierarchy(pyblish.api.ContextPlugin):
 
     label = "Collect Hierarchy"
     order = pyblish.api.CollectorOrder - 0.076
+    settings_category = "core"
+
+    ignore_shot_attributes_on_update = False
+
+    @classmethod
+    def get_attr_defs_for_context(cls, create_context):
+        return [
+            BoolDef(
+                "ignore_shot_attributes_on_update",
+                label="Ignore shot attributes on update",
+                default=cls.ignore_shot_attributes_on_update
+            )
+        ]
+
+    @classmethod
+    def apply_settings(cls, project_settings):
+        cls.ignore_shot_attributes_on_update = (
+            project_settings
+                ["core"]
+                ["CollectHierarchy"]
+                ["ignore_shot_attributes_on_update"]
+        )
+
 
     def process(self, context):
+        values = self.get_attr_values_from_data(context.data)
+        ignore_shot_attributes_on_update = values.get(
+            "ignore_shot_attributes_on_update", None)
+
         project_name = context.data["projectName"]
         final_context = {
             project_name: {
@@ -50,29 +83,30 @@ class CollectHierarchy(pyblish.api.ContextPlugin):
             }
 
             shot_data["attributes"] = {}
-            SHOT_ATTRS = (
-                "handleStart",
-                "handleEnd",
-                "frameStart",
-                "frameEnd",
-                "clipIn",
-                "clipOut",
-                "fps",
-                "resolutionWidth",
-                "resolutionHeight",
-                "pixelAspect",
-            )
-            for shot_attr in SHOT_ATTRS:
-                attr_value = instance.data.get(shot_attr)
-                if attr_value is None:
-                    # Shot attribute might not be defined (e.g. CSV ingest)
-                    self.log.debug(
-                        "%s shot attribute is not defined for instance.",
-                        shot_attr
-                    )
-                    continue
+            if not ignore_shot_attributes_on_update:
+                SHOT_ATTRS = (
+                    "handleStart",
+                    "handleEnd",
+                    "frameStart",
+                    "frameEnd",
+                    "clipIn",
+                    "clipOut",
+                    "fps",
+                    "resolutionWidth",
+                    "resolutionHeight",
+                    "pixelAspect",
+                )
+                for shot_attr in SHOT_ATTRS:
+                    attr_value = instance.data.get(shot_attr)
+                    if attr_value is None:
+                        # Shot attribute might not be defined (e.g. CSV ingest)
+                        self.log.debug(
+                            "%s shot attribute is not defined for instance.",
+                            shot_attr
+                        )
+                        continue
 
-                shot_data["attributes"][shot_attr] = attr_value
+                    shot_data["attributes"][shot_attr] = attr_value
 
             # Split by '/' for AYON where asset is a path
             name = instance.data["folderPath"].split("/")[-1]
