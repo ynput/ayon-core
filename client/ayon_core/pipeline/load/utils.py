@@ -1001,34 +1001,59 @@ def get_last_versions_with_status(
     fields: Optional[Iterable[str]] = None,
     own_attributes=ayon_api.server_api._PLACEHOLDER,
 ):
-    # project_name, versions_by_product_id.keys(), fields={"id"}
+    """
+    Retrieve the latest version for each product ID that matches the given status filter.
+
+    Args:
+        project_name (str): Name of the project.
+        product_ids (Iterable[str]): Iterable of product IDs to query.
+        statuses (Iterable[str]): Iterable of status names to filter versions.
+        active (bool or None, optional): If True, only active versions are returned.
+            If False, only inactive versions are returned. If None, both are returned.
+        fields (Optional[Iterable[str]], optional): Additional fields to include in the result.
+        own_attributes: Custom attributes to include in the query (default is ayon_api.server_api._PLACEHOLDER).
+
+    Returns:
+        Dict[str, Optional[dict]]: A dictionary mapping each product ID to its latest version
+            entity (as a dict) that matches the status filter. If no version matches for a
+            product ID, its value will be None.
+
+    Behavior:
+        - Only the latest version (by version number) for each product ID is returned.
+        - If no versions match the status filter for a product ID, the value for that product ID
+          in the output dictionary will be None.
+    """
     if fields:
         fields = set(fields)
         fields.add("productId")
     product_ids = set(product_ids)
-    _versions = ayon_api.get_versions(
+    versions = ayon_api.get_versions(
         project_name,
         product_ids=product_ids,
-        # latest=True,
         hero=False,
         active=active,
         fields=fields,
         statuses=statuses,
         own_attributes=own_attributes,
     )
-    # remove all not latest versions
-    version_by_product_ids = {
-        pid: [v for v in _versions if v["productId"] == pid] for pid in product_ids
+    versions_by_product_id = {
+        product_id: []
+        for product_id in product_ids
     }
-    versions = list()
-    for pid in product_ids:
-        sorted_versions = sorted(
-            version_by_product_ids[pid], key=lambda x: x["version"]
-        )
-        versions.append(sorted_versions[-1])
-    output = {version["productId"]: version for version in versions}
-    for product_id in product_ids:
-        output.setdefault(product_id, None)
+    for version in versions:
+        product_id = version["productId"]
+        versions_by_product_id[product_id].append(version)
+
+    output = {
+        product_id: None
+        for product_id in product_ids
+    }
+    for product_id, product_versions in versions_by_product_id.items():
+        if not product_versions:
+            continue
+        product_versions.sort(key=lambda v: v["version"])
+        output[product_id] = product_versions[-1]
+
     return output
 
 
@@ -1085,8 +1110,17 @@ def loaders_from_representation(loaders, representation):
 
 
 def any_outdated_containers(host=None, project_name=None, statuses=None):
-    """Check if there are any outdated containers in scene."""
+    """Check if there are any outdated containers in the scene.
 
+    Args:
+        host (Optional[AbstractHost]): Host implementation.
+        project_name (Optional[str]): Name of project in which context we are.
+        statuses (Optional[Iterable[str]]): Iterable of status strings to filter containers.
+            If None, all statuses are included.
+
+    Returns:
+        bool: True if there are any outdated containers matching the criteria, False otherwise.
+    """
     if get_outdated_containers(host, project_name, statuses):
         return True
     return False
