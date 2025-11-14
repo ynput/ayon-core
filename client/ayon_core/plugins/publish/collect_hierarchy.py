@@ -1,6 +1,6 @@
 import pyblish.api
 from ayon_core.lib import BoolDef
-
+import ayon_api
 from ayon_core.pipeline import publish
 
 
@@ -42,23 +42,17 @@ class CollectHierarchy(
                 ["ignore_shot_attributes_on_update"]
         )
 
+    def _get_shot_instances(self, context):
+        """Get shot instances from context.
 
-    def process(self, context):
-        values = self.get_attr_values_from_data(context.data)
-        ignore_shot_attributes_on_update = values.get(
-            "ignore_shot_attributes_on_update", None)
+        Args:
+            context (pyblish.api.Context): Context is a list of instances.
 
-        project_name = context.data["projectName"]
-        final_context = {
-            project_name: {
-                "entity_type": "project",
-                "children": {}
-            },
-        }
-        temp_context = {}
+        Returns:
+            list[pyblish.api.Instance]: A list of shot instances.
+        """
+        shot_instances = []
         for instance in context:
-            self.log.debug("Processing instance: `{}` ...".format(instance))
-
             # shot data dict
             product_type = instance.data["productType"]
             families = instance.data["families"]
@@ -73,6 +67,65 @@ class CollectHierarchy(
                 self.log.debug("Skipping not a shot from hero track")
                 continue
 
+            shot_instances.append(instance)
+
+        return shot_instances
+
+    def get_existing_folder_entities(self, project_name, shot_instances):
+        """Get existing folder entities for given shot instances.
+
+        Args:
+            project_name (str): The name of the project.
+            shot_instances (list[pyblish.api.Instance]): A list of shot
+                instances.
+
+        Returns:
+            dict[str, dict]: A dictionary mapping folder paths to existing
+                folder entities.
+        """
+        # first we need to get all folder paths from shot instances
+        folder_paths = []
+        for instance in shot_instances:
+            folder_path = instance.data["folderPath"]
+            folder_paths.append(folder_path)
+
+        # then we get all existing folder entities with one request
+        existing_entities = ayon_api.get_folders(
+            project_name, folder_paths=folder_paths)
+
+        # then we loop by all folder paths and try to find existing entity
+        existing_entities = {}
+        for folder_path in folder_paths:
+            found_entity = None
+            for entity in existing_entities:
+                if entity["path"] == folder_path:
+                    found_entity = entity
+                    break
+            existing_entities[folder_path] = found_entity
+
+        return existing_entities
+
+    def process(self, context):
+        values = self.get_attr_values_from_data(context.data)
+        ignore_shot_attributes_on_update = values.get(
+            "ignore_shot_attributes_on_update", None)
+
+        project_name = context.data["projectName"]
+        final_context = {
+            project_name: {
+                "entity_type": "project",
+                "children": {}
+            },
+        }
+        temp_context = {}
+        shot_instances = self._get_shot_instances(context)
+        existing_entities = self.get_existing_folder_entities(
+            project_name, shot_instances)
+
+        for instance in shot_instances:
+            self.log.debug("Processing instance: `{}` ...".format(instance))
+            folder_path = instance.data["folderPath"]
+
             shot_data = {
                 "entity_type": "folder",
                 # WARNING unless overwritten, default folder type is hardcoded
@@ -83,10 +136,13 @@ class CollectHierarchy(
             }
 
             shot_data["attributes"] = {}
-            # TODO(jakubjezek001): we need to check if the shot already exists
-            #   and if not the attributes needs to be added in case the option
-            #   is disabled by settings
-            if not ignore_shot_attributes_on_update:
+            # we need to check if the shot entity already exists
+            # and if not the attributes needs to be added in case the option
+            # is disabled by settings
+            if (
+                existing_entities.get(folder_path)
+                and not ignore_shot_attributes_on_update
+            ):
                 SHOT_ATTRS = (
                     "handleStart",
                     "handleEnd",
@@ -112,7 +168,7 @@ class CollectHierarchy(
                     shot_data["attributes"][shot_attr] = attr_value
 
             # Split by '/' for AYON where asset is a path
-            name = instance.data["folderPath"].split("/")[-1]
+            name = folder_path.split("/")[-1]
             actual = {name: shot_data}
 
             for parent in reversed(instance.data["parents"]):
