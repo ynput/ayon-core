@@ -83,6 +83,9 @@ class CollectHierarchy(
             }
 
             shot_data["attributes"] = {}
+            # TODO(jakubjezek001): we need to check if the shot already exists
+            #   and if not the attributes needs to be added in case the option
+            #   is disabled by settings
             if not ignore_shot_attributes_on_update:
                 SHOT_ATTRS = (
                     "handleStart",
