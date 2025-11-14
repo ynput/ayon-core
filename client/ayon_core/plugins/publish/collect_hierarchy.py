@@ -13,7 +13,6 @@ class CollectHierarchy(pyblish.api.ContextPlugin):
 
     label = "Collect Hierarchy"
     order = pyblish.api.CollectorOrder - 0.076
-    hosts = ["resolve", "hiero", "flame", "traypublisher"]
 
     def process(self, context):
         project_name = context.data["projectName"]
