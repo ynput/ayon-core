@@ -48,6 +48,7 @@ class CollectAudioModel(BaseSettingsModel):
         "", title="Name of audio variant"
     )
 
+
 class CollectHierarchyModel(BaseSettingsModel):
     _isGroup = True
     ignore_shot_attributes_on_update: bool = SettingsField(
