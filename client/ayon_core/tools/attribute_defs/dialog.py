@@ -56,6 +56,7 @@ class AttributeDefinitionsDialog(QtWidgets.QDialog):
         btns_layout.addWidget(cancel_btn, 0)
 
         main_layout = QtWidgets.QVBoxLayout(self)
+        main_layout.setContentsMargins(10, 10, 10, 10)
         main_layout.addWidget(attrs_widget, 0)
         main_layout.addStretch(1)
         main_layout.addWidget(btns_widget, 0)
