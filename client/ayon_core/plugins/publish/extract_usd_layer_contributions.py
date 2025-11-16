@@ -821,7 +821,7 @@ class ExtractUSDAssetContribution(publish.Extractor):
         folder_path = instance.data["folderPath"]
         product_name = instance.data["productName"]
         self.log.debug(f"Building asset: {folder_path} > {product_name}")
-        folder_name = folder_path.rsplit("/", 1)[-1]
+        asset_name = get_standard_default_prim_name(folder_path)
 
         # Contribute layers to asset
         # Use existing asset and add to it, or initialize a new asset layer
@@ -840,7 +840,7 @@ class ExtractUSDAssetContribution(publish.Extractor):
             # the layer as either a default asset or shot structure.
             init_type = instance.data["contribution_target_product_init"]
             asset_layer, payload_layer = self.init_layer(
-                asset_name=folder_name, init_type=init_type
+                asset_name=asset_name, init_type=init_type
             )
 
         # Author timeCodesPerSecond and framesPerSecond if the asset layer
