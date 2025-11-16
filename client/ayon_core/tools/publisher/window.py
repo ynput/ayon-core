@@ -678,13 +678,8 @@ class PublisherWindow(QtWidgets.QDialog):
         self._help_dialog.show()
 
         window = self.window()
-        if hasattr(QtWidgets.QApplication, "desktop"):
-            desktop = QtWidgets.QApplication.desktop()
-            screen_idx = desktop.screenNumber(window)
-            screen_geo = desktop.screenGeometry(screen_idx)
-        else:
-            screen = window.screen()
-            screen_geo = screen.geometry()
+        screen = window.screen()
+        screen_geo = screen.geometry()
 
         window_geo = window.geometry()
         dialog_x = window_geo.x() + window_geo.width()

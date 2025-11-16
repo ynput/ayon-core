@@ -137,6 +137,7 @@ class AttributeValues:
             if value is None:
                 continue
             converted_value = attr_def.convert_value(value)
+            # QUESTION Could we just use converted value all the time?
             if converted_value == value:
                 self._data[attr_def.key] = value
 
@@ -245,11 +246,11 @@ class AttributeValues:
 
     def _update(self, value):
         changes = {}
-        for key, value in dict(value).items():
-            if key in self._data and self._data.get(key) == value:
+        for key, key_value in dict(value).items():
+            if key in self._data and self._data.get(key) == key_value:
                 continue
-            self._data[key] = value
-            changes[key] = value
+            self._data[key] = key_value
+            changes[key] = key_value
         return changes
 
     def _pop(self, key, default):
