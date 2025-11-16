@@ -865,24 +865,26 @@ class OptionalMenu(QtWidgets.QMenu):
     def mouseReleaseEvent(self, event):
         """Emit option clicked signal if mouse released on it"""
         active = self.actionAt(event.pos())
-        if active and active.use_option:
+        if isinstance(active, OptionalAction) and active.use_option:
             option = active.widget.option
             if option.is_hovered(event.globalPos()):
                 option.clicked.emit()
-        super(OptionalMenu, self).mouseReleaseEvent(event)
+        super().mouseReleaseEvent(event)
 
     def mouseMoveEvent(self, event):
         """Add highlight to active action"""
         active = self.actionAt(event.pos())
         for action in self.actions():
-            action.set_highlight(action is active, event.globalPos())
-        super(OptionalMenu, self).mouseMoveEvent(event)
+            if isinstance(action, OptionalAction):
+                action.set_highlight(action is active, event.globalPos())
+        super().mouseMoveEvent(event)
 
     def leaveEvent(self, event):
         """Remove highlight from all actions"""
         for action in self.actions():
-            action.set_highlight(False)
-        super(OptionalMenu, self).leaveEvent(event)
+            if isinstance(action, OptionalAction):
+                action.set_highlight(False)
+        super().leaveEvent(event)
 
 
 class OptionalAction(QtWidgets.QWidgetAction):
@@ -894,7 +896,7 @@ class OptionalAction(QtWidgets.QWidgetAction):
     """
 
     def __init__(self, label, icon, use_option, parent):
-        super(OptionalAction, self).__init__(parent)
+        super().__init__(parent)
         self.label = label
         self.icon = icon
         self.use_option = use_option
@@ -955,7 +957,7 @@ class OptionalActionWidget(QtWidgets.QWidget):
     """Main widget class for `OptionalAction`"""
 
     def __init__(self, label, parent=None):
-        super(OptionalActionWidget, self).__init__(parent)
+        super().__init__(parent)
 
         body_widget = QtWidgets.QWidget(self)
         body_widget.setObjectName("OptionalActionBody")
