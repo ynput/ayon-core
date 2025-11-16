@@ -249,7 +249,8 @@ def create_skeleton_instance(
         # map inputVersions `ObjectId` -> `str` so json supports it
         "inputVersions": list(map(str, data.get("inputVersions", []))),
         "colorspace": data.get("colorspace"),
-        "hasExplicitFrames": data.get("hasExplicitFrames")
+        "hasExplicitFrames": data.get("hasExplicitFrames", False),
+        "reuseLastVersion": data.get("reuseLastVersion", False),
     }
 
     if data.get("renderlayer"):
@@ -1044,7 +1045,9 @@ def get_resources(project_name, version_entity, extension=None):
             filtered.append(repre_entity)
 
     representation = filtered[0]
-    directory = get_representation_path(representation)
+    directory = get_representation_path(
+        project_name, representation
+    )
     print("Source: ", directory)
     resources = sorted(
         [
