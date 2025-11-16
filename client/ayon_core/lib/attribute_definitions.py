@@ -604,7 +604,11 @@ class EnumDef(AbstractAttrDef):
 
         if value is None:
             return copy.deepcopy(self.default)
-        return list(self._item_values.intersection(value))
+        return [
+            v
+            for v in value
+            if v in self._item_values
+        ]
 
     def is_value_valid(self, value: Any) -> bool:
         """Check if item is available in possible values."""

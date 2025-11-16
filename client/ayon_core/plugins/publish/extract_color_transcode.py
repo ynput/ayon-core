@@ -11,6 +11,7 @@ from ayon_core.lib import (
     is_oiio_supported,
 )
 from ayon_core.lib.transcoding import (
+    MissingRGBAChannelsError,
     oiio_color_convert,
 )
 
@@ -111,7 +112,17 @@ class ExtractOIIOTranscode(publish.Extractor):
                 self.log.warning("Config file doesn't exist, skipping")
                 continue
 
+            # Get representation files to convert
+            if isinstance(repre["files"], list):
+                repre_files_to_convert = copy.deepcopy(repre["files"])
+            else:
+                repre_files_to_convert = [repre["files"]]
+
+            # Process each output definition
             for output_def in profile_output_defs:
+                # Local copy to avoid accidental mutable changes
+                files_to_convert = list(repre_files_to_convert)
+
                 output_name = output_def["name"]
                 new_repre = copy.deepcopy(repre)
 
@@ -121,11 +132,6 @@ class ExtractOIIOTranscode(publish.Extractor):
                     use_local_temp=True,
                 )
                 new_repre["stagingDir"] = new_staging_dir
-
-                if isinstance(new_repre["files"], list):
-                    files_to_convert = copy.deepcopy(new_repre["files"])
-                else:
-                    files_to_convert = [new_repre["files"]]
 
                 output_extension = output_def["extension"]
                 output_extension = output_extension.replace('.', '')
@@ -168,30 +174,49 @@ class ExtractOIIOTranscode(publish.Extractor):
                 additional_command_args = (output_def["oiiotool_args"]
                                            ["additional_command_args"])
 
-                files_to_convert = self._translate_to_sequence(
-                    files_to_convert)
-                self.log.debug("Files to convert: {}".format(files_to_convert))
-                for file_name in files_to_convert:
+                sequence_files = self._translate_to_sequence(files_to_convert)
+                self.log.debug("Files to convert: {}".format(sequence_files))
+                missing_rgba_review_channels = False
+                for file_name in sequence_files:
+                    if isinstance(file_name, clique.Collection):
+                        # Convert to filepath that can be directly converted
+                        # by oiio like `frame.1001-1025%04d.exr`
+                        file_name: str = file_name.format(
+                            "{head}{range}{padding}{tail}"
+                        )
+
                     self.log.debug("Transcoding file: `{}`".format(file_name))
                     input_path = os.path.join(original_staging_dir,
                                               file_name)
                     output_path = self._get_output_file_path(input_path,
                                                              new_staging_dir,
                                                              output_extension)
+                    try:
+                        oiio_color_convert(
+                            input_path=input_path,
+                            output_path=output_path,
+                            config_path=config_path,
+                            source_colorspace=source_colorspace,
+                            target_colorspace=target_colorspace,
+                            target_display=target_display,
+                            target_view=target_view,
+                            source_display=source_display,
+                            source_view=source_view,
+                            additional_command_args=additional_command_args,
+                            logger=self.log
+                        )
+                    except MissingRGBAChannelsError as exc:
+                        missing_rgba_review_channels = True
+                        self.log.error(exc)
+                        self.log.error(
+                            "Skipping OIIO Transcode. Unknown RGBA channels"
+                            f" for colorspace conversion in file: {input_path}"
+                        )
+                        break
 
-                    oiio_color_convert(
-                        input_path=input_path,
-                        output_path=output_path,
-                        config_path=config_path,
-                        source_colorspace=source_colorspace,
-                        target_colorspace=target_colorspace,
-                        target_display=target_display,
-                        target_view=target_view,
-                        source_display=source_display,
-                        source_view=source_view,
-                        additional_command_args=additional_command_args,
-                        logger=self.log
-                    )
+                if missing_rgba_review_channels:
+                    # Stop processing this representation
+                    break
 
                 # cleanup temporary transcoded files
                 for file_name in new_repre["files"]:
@@ -217,11 +242,11 @@ class ExtractOIIOTranscode(publish.Extractor):
                         added_review = True
 
                 # If there is only 1 file outputted then convert list to
-                # string, cause that'll indicate that its not a sequence.
+                # string, because that'll indicate that it is not a sequence.
                 if len(new_repre["files"]) == 1:
                     new_repre["files"] = new_repre["files"][0]
 
-                # If the source representation has "review" tag, but its not
+                # If the source representation has "review" tag, but it's not
                 # part of the output definition tags, then both the
                 # representations will be transcoded in ExtractReview and
                 # their outputs will clash in integration.
@@ -271,42 +296,34 @@ class ExtractOIIOTranscode(publish.Extractor):
         new_repre["files"] = renamed_files
 
     def _translate_to_sequence(self, files_to_convert):
-        """Returns original list or list with filename formatted in single
-        sequence format.
+        """Returns original list or a clique.Collection of a sequence.
 
-        Uses clique to find frame sequence, in this case it merges all frames
-        into sequence format (FRAMESTART-FRAMEEND#) and returns it.
-        If sequence not found, it returns original list
+        Uses clique to find frame sequence Collection.
+        If sequence not found, it returns original list.
 
         Args:
             files_to_convert (list): list of file names
         Returns:
-            (list) of [file.1001-1010#.exr] or [fileA.exr, fileB.exr]
+            list[str | clique.Collection]: List of filepaths or a list
+                of Collections (usually one, unless there are holes)
         """
         pattern = [clique.PATTERNS["frames"]]
         collections, _ = clique.assemble(
             files_to_convert, patterns=pattern,
             assume_padded_when_ambiguous=True)
-
         if collections:
             if len(collections) > 1:
                 raise ValueError(
                     "Too many collections {}".format(collections))
 
             collection = collections[0]
-            frames = list(collection.indexes)
-            if collection.holes().indexes:
-                return files_to_convert
-
-            # Get the padding from the collection
-            # This is the number of digits used in the frame numbers
-            padding = collection.padding
-
-            frame_str = "{}-{}%0{}d".format(frames[0], frames[-1], padding)
-            file_name = "{}{}{}".format(collection.head, frame_str,
-                                        collection.tail)
-
-            files_to_convert = [file_name]
+            # TODO: Technically oiiotool supports holes in the sequence as well
+            #  using the dedicated --frames argument to specify the frames.
+            #  We may want to use that too so conversions of sequences with
+            #  holes will perform faster as well.
+            # Separate the collection so that we have no holes/gaps per
+            # collection.
+            return collection.separate()
 
         return files_to_convert
 
