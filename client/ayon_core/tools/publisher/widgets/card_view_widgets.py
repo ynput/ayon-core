@@ -19,18 +19,21 @@ Only one item can be selected at a time.
 └──────────────────────┘
 ```
 """
+from __future__ import annotations
 
 import re
 import collections
-from typing import Dict
+from typing import Optional
 
 from qtpy import QtWidgets, QtCore
 
-from ayon_core.tools.utils import NiceCheckbox
+from ayon_core.pipeline.create import (
+    InstanceContextInfo,
+    ParentFlags,
+)
 
-from ayon_core.tools.utils import BaseClickableFrame
+from ayon_core.tools.utils import BaseClickableFrame, NiceCheckbox
 from ayon_core.tools.utils.lib import html_escape
-
 from ayon_core.tools.publisher.abstract import AbstractPublisherFrontend
 from ayon_core.tools.publisher.constants import (
     CONTEXT_ID,
@@ -38,7 +41,9 @@ from ayon_core.tools.publisher.constants import (
     CONTEXT_GROUP,
     CONVERTOR_ITEM_GROUP,
 )
-
+from ayon_core.tools.publisher.models.create import (
+    InstanceItem,
+)
 from .widgets import (
     AbstractInstanceView,
     ContextWarningLabel,
@@ -82,7 +87,6 @@ class BaseGroupWidget(QtWidgets.QWidget):
         self._group = group_name
 
         self._widgets_by_id = {}
-        self._ordered_item_ids = []
 
         self._label_widget = label_widget
         self._content_layout = layout
@@ -97,48 +101,25 @@ class BaseGroupWidget(QtWidgets.QWidget):
 
         return self._group
 
-    def get_widget_by_item_id(self, item_id):
-        """Get instance widget by its id."""
+    def set_widgets(
+        self,
+        widgets_by_id: dict[str, QtWidgets.QWidget],
+        ordered_ids: list[str],
+    ) -> None:
+        self._remove_all_except(set(self._widgets_by_id))
+        idx = 1
+        for item_id in ordered_ids:
+            widget = widgets_by_id[item_id]
+            self._content_layout.insertWidget(idx, widget)
+            self._widgets_by_id[item_id] = widget
+            idx += 1
 
-        return self._widgets_by_id.get(item_id)
-
-    def get_selected_item_ids(self):
-        """Selected instance ids.
-
-        Returns:
-            Set[str]: Instance ids that are selected.
-        """
-
-        return {
-            instance_id
-            for instance_id, widget in self._widgets_by_id.items()
-            if widget.is_selected
-        }
-
-    def get_selected_widgets(self):
-        """Access to widgets marked as selected.
-
-        Returns:
-            List[InstanceCardWidget]: Instance widgets that are selected.
-        """
-
-        return [
-            widget
-            for instance_id, widget in self._widgets_by_id.items()
-            if widget.is_selected
-        ]
-
-    def get_ordered_widgets(self):
-        """Get instance ids in order as are shown in ui.
-
-        Returns:
-            List[str]: Instance ids.
-        """
-
-        return [
-            self._widgets_by_id[instance_id]
-            for instance_id in self._ordered_item_ids
-        ]
+    def take_widgets(self, widget_ids: set[str]):
+        for widget_id in widget_ids:
+            widget = self._widgets_by_id.pop(widget_id)
+            index = self._content_layout.indexOf(widget)
+            if index >= 0:
+                self._content_layout.takeAt(index)
 
     def _remove_all_except(self, item_ids):
         item_ids = set(item_ids)
@@ -154,131 +135,6 @@ class BaseGroupWidget(QtWidgets.QWidget):
             widget.setVisible(False)
             self._content_layout.removeWidget(widget)
             widget.deleteLater()
-
-    def _update_ordered_item_ids(self):
-        ordered_item_ids = []
-        for idx in range(self._content_layout.count()):
-            if idx > 0:
-                item = self._content_layout.itemAt(idx)
-                widget = item.widget()
-                if widget is not None:
-                    ordered_item_ids.append(widget.id)
-
-        self._ordered_item_ids = ordered_item_ids
-
-    def _on_widget_selection(self, instance_id, group_id, selection_type):
-        self.selected.emit(instance_id, group_id, selection_type)
-
-    def set_active_toggle_enabled(self, enabled):
-        for widget in self._widgets_by_id.values():
-            if isinstance(widget, InstanceCardWidget):
-                widget.set_active_toggle_enabled(enabled)
-
-
-class ConvertorItemsGroupWidget(BaseGroupWidget):
-    def update_items(self, items_by_id):
-        items_by_label = collections.defaultdict(list)
-        for item in items_by_id.values():
-            items_by_label[item.label].append(item)
-
-        # Remove instance widgets that are not in passed instances
-        self._remove_all_except(items_by_id.keys())
-
-        # Sort instances by product name
-        sorted_labels = list(sorted(items_by_label.keys()))
-
-        # Add new instances to widget
-        widget_idx = 1
-        for label in sorted_labels:
-            for item in items_by_label[label]:
-                if item.id in self._widgets_by_id:
-                    widget = self._widgets_by_id[item.id]
-                    widget.update_item(item)
-                else:
-                    widget = ConvertorItemCardWidget(item, self)
-                    widget.selected.connect(self._on_widget_selection)
-                    widget.double_clicked.connect(self.double_clicked)
-                    self._widgets_by_id[item.id] = widget
-                    self._content_layout.insertWidget(widget_idx, widget)
-                widget_idx += 1
-
-        self._update_ordered_item_ids()
-
-
-class InstanceGroupWidget(BaseGroupWidget):
-    """Widget wrapping instances under group."""
-
-    active_changed = QtCore.Signal(str, str, bool)
-
-    def __init__(self, group_icons, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-
-        self._group_icons = group_icons
-
-    def update_icons(self, group_icons):
-        self._group_icons = group_icons
-
-    def update_instance_values(
-        self, context_info_by_id, instance_items_by_id, instance_ids
-    ):
-        """Trigger update on instance widgets."""
-
-        for instance_id, widget in self._widgets_by_id.items():
-            if instance_ids is not None and instance_id not in instance_ids:
-                continue
-            widget.update_instance(
-                instance_items_by_id[instance_id],
-                context_info_by_id[instance_id]
-            )
-
-    def update_instances(self, instances, context_info_by_id):
-        """Update instances for the group.
-
-        Args:
-            instances (list[InstanceItem]): List of instances in
-                CreateContext.
-            context_info_by_id (Dict[str, InstanceContextInfo]): Instance
-                context info by instance id.
-
-        """
-        # Store instances by id and by product name
-        instances_by_id = {}
-        instances_by_product_name = collections.defaultdict(list)
-        for instance in instances:
-            instances_by_id[instance.id] = instance
-            product_name = instance.product_name
-            instances_by_product_name[product_name].append(instance)
-
-        # Remove instance widgets that are not in passed instances
-        self._remove_all_except(instances_by_id.keys())
-
-        # Sort instances by product name
-        sorted_product_names = list(sorted(instances_by_product_name.keys()))
-
-        # Add new instances to widget
-        widget_idx = 1
-        for product_names in sorted_product_names:
-            for instance in instances_by_product_name[product_names]:
-                context_info = context_info_by_id[instance.id]
-                if instance.id in self._widgets_by_id:
-                    widget = self._widgets_by_id[instance.id]
-                    widget.update_instance(instance, context_info)
-                else:
-                    group_icon = self._group_icons[instance.creator_identifier]
-                    widget = InstanceCardWidget(
-                        instance, context_info, group_icon, self
-                    )
-                    widget.selected.connect(self._on_widget_selection)
-                    widget.active_changed.connect(self._on_active_changed)
-                    widget.double_clicked.connect(self.double_clicked)
-                    self._widgets_by_id[instance.id] = widget
-                    self._content_layout.insertWidget(widget_idx, widget)
-                widget_idx += 1
-
-        self._update_ordered_item_ids()
-
-    def _on_active_changed(self, instance_id, value):
-        self.active_changed.emit(self.group_name, instance_id, value)
 
 
 class CardWidget(BaseClickableFrame):
@@ -400,20 +256,34 @@ class ConvertorItemCardWidget(CardWidget):
         self._icon_widget = icon_widget
         self._label_widget = label_widget
 
+    def update_item(self, item):
+        self._id = item.id
+        self.identifier = item.identifier
+
 
 class InstanceCardWidget(CardWidget):
     """Card widget representing instance."""
 
     active_changed = QtCore.Signal(str, bool)
 
-    def __init__(self, instance, context_info, group_icon, parent):
+    def __init__(
+        self,
+        instance,
+        context_info,
+        is_parent_active: bool,
+        group_icon,
+        parent: BaseGroupWidget,
+    ):
         super().__init__(parent)
+
+        self.instance = instance
+        self._is_active = instance.is_active
 
         self._id = instance.id
         self._group_identifier = instance.group_label
         self._group_icon = group_icon
-
-        self.instance = instance
+        self._is_parent_active = is_parent_active
+        self._toggle_is_enabled = True
 
         self._last_product_name = None
         self._last_variant = None
@@ -439,16 +309,15 @@ class InstanceCardWidget(CardWidget):
         expand_btn.setMaximumWidth(14)
         expand_btn.setEnabled(False)
 
-        detail_widget = QtWidgets.QWidget(self)
-        detail_widget.setVisible(False)
-        self.detail_widget = detail_widget
-
         top_layout = QtWidgets.QHBoxLayout()
         top_layout.addLayout(icon_layout, 0)
         top_layout.addWidget(label_widget, 1)
         top_layout.addWidget(context_warning, 0)
         top_layout.addWidget(active_checkbox, 0)
         top_layout.addWidget(expand_btn, 0)
+
+        detail_widget = QtWidgets.QWidget(self)
+        detail_widget.setVisible(False)
 
         layout = QtWidgets.QHBoxLayout(self)
         layout.setContentsMargins(0, 2, 10, 2)
@@ -467,28 +336,47 @@ class InstanceCardWidget(CardWidget):
         self._active_checkbox = active_checkbox
         self._expand_btn = expand_btn
 
-        self._update_instance_values(context_info)
+        self._detail_widget = detail_widget
 
-    def set_active_toggle_enabled(self, enabled):
-        self._active_checkbox.setEnabled(enabled)
+        self._update_instance_values(context_info, is_parent_active)
 
-    @property
-    def is_active(self):
+    def set_active_toggle_enabled(self, enabled: bool) -> None:
+        if self._toggle_is_enabled is enabled:
+            return
+        self._toggle_is_enabled = enabled
+        self._update_checkbox_state()
+
+    def is_active(self) -> bool:
         return self._active_checkbox.isChecked()
 
-    def _set_active(self, new_value):
-        """Set instance as active."""
-        checkbox_value = self._active_checkbox.isChecked()
-        if checkbox_value != new_value:
-            self._active_checkbox.setChecked(new_value)
+    def set_active(self, active: Optional[bool]) -> None:
+        if not self.is_checkbox_enabled():
+            return
+        if active is None:
+            active = not self._is_active
+        self._set_checked(active)
 
-    def _set_is_mandatory(self, is_mandatory: bool) -> None:
-        self._active_checkbox.setVisible(not is_mandatory)
+    def is_parent_active(self) -> bool:
+        return self._is_parent_active
 
-    def update_instance(self, instance, context_info):
+    def set_parent_active(self, is_active: bool) -> None:
+        if self._is_parent_active is is_active:
+            return
+        self._is_parent_active = is_active
+        self._update_checkbox_state()
+
+    def is_checkbox_enabled(self) -> bool:
+        """Checkbox can be changed by user."""
+        return (
+            self._used_parent_active()
+            and not self.instance.is_mandatory
+        )
+
+    def update_instance(self, instance, context_info, is_parent_active):
         """Update instance object and update UI."""
         self.instance = instance
-        self._update_instance_values(context_info)
+        self._is_active = instance.is_active
+        self._update_instance_values(context_info, is_parent_active)
 
     def _validate_context(self, context_info):
         valid = context_info.is_valid
@@ -499,6 +387,7 @@ class InstanceCardWidget(CardWidget):
         variant = self.instance.variant
         product_name = self.instance.product_name
         label = self.instance.label
+
         if (
             variant == self._last_variant
             and product_name == self._last_product_name
@@ -524,24 +413,53 @@ class InstanceCardWidget(CardWidget):
             QtCore.Qt.NoTextInteraction
         )
 
-    def _update_instance_values(self, context_info):
+    def _update_instance_values(self, context_info, is_parent_active):
         """Update instance data"""
+        self._is_parent_active = is_parent_active
         self._update_product_name()
-        self._set_active(self.instance.is_active)
-        self._set_is_mandatory(self.instance.is_mandatory)
+        self._update_checkbox_state()
         self._validate_context(context_info)
+
+    def _update_checkbox_state(self):
+        parent_is_enabled = self._used_parent_active()
+        self._label_widget.setEnabled(parent_is_enabled)
+        self._active_checkbox.setEnabled(
+            self._toggle_is_enabled
+            and not self.instance.is_mandatory
+            and parent_is_enabled
+        )
+        # Hide checkbox for mandatory instances
+        self._active_checkbox.setVisible(not self.instance.is_mandatory)
+
+        # Visually disable instance if parent is disabled
+        checked = parent_is_enabled and self._is_active
+        self._set_checked(checked)
+
+    def _set_checked(self, checked: bool) -> None:
+        if checked is not self._active_checkbox.isChecked():
+            self._active_checkbox.blockSignals(True)
+            self._active_checkbox.setChecked(checked)
+            self._active_checkbox.blockSignals(False)
+
+    def _used_parent_active(self) -> bool:
+        parent_enabled = True
+        if self.instance.parent_flags & ParentFlags.share_active:
+            parent_enabled = self._is_parent_active
+        return parent_enabled
 
     def _set_expanded(self, expanded=None):
         if expanded is None:
-            expanded = not self.detail_widget.isVisible()
-        self.detail_widget.setVisible(expanded)
+            expanded = not self._detail_widget.isVisible()
+        self._detail_widget.setVisible(expanded)
 
     def _on_active_change(self):
-        new_value = self._active_checkbox.isChecked()
-        old_value = self.instance.is_active
-        if new_value == old_value:
+        if not self.is_checkbox_enabled():
             return
-
+        new_value = self._active_checkbox.isChecked()
+        old_value = self._is_active
+        if new_value is old_value:
+            return
+        self._is_active = new_value
         self.active_changed.emit(self._id, new_value)
 
     def _on_expend_clicked(self):
@@ -595,11 +513,22 @@ class InstanceCardView(AbstractInstanceView):
         self._content_layout = content_layout
         self._content_widget = content_widget
 
-        self._context_widget = None
-        self._convertor_items_group = None
-        self._active_toggle_enabled = True
-        self._widgets_by_group: Dict[str, InstanceGroupWidget] = {}
+        self._active_toggle_enabled: bool = True
+        self._convertors_group: Optional[BaseGroupWidget] = None
+        self._convertor_widgets_by_id: dict[str, ConvertorItemCardWidget] = {}
+        self._convertor_ids: list[str] = []
+
+        self._group_name_by_instance_id: dict[str, str] = {}
+        self._instance_ids_by_group_name: dict[str, list[str]] = (
+            collections.defaultdict(list)
+        )
         self._ordered_groups = []
+        self._context_widget: Optional[ContextCardWidget] = None
+        self._widgets_by_id: dict[str, InstanceCardWidget] = {}
+        self._widgets_by_group: dict[str, BaseGroupWidget] = {}
+
+        self._parent_id_by_id = {}
+        self._instance_ids_by_parent_id = collections.defaultdict(set)
 
         self._explicitly_selected_instance_ids = []
         self._explicitly_selected_groups = []
@@ -622,42 +551,104 @@ class InstanceCardView(AbstractInstanceView):
         result.setWidth(width)
         return result
 
-    def _toggle_instances(self, value):
-        if not self._active_toggle_enabled:
-            return
+    def get_current_instance_count(self) -> int:
+        """How many instances are currently in the view."""
+        return len(self._widgets_by_id)
 
-        widgets = self._get_selected_widgets()
-        active_state_by_id = {}
-        for widget in widgets:
-            if not isinstance(widget, InstanceCardWidget):
+    def _get_affected_ids(self, instance_ids: set[str]) -> set[str]:
+        affected_ids = set()
+        affected_queue = collections.deque()
+        affected_queue.extend(instance_ids)
+        while affected_queue:
+            instance_id = affected_queue.popleft()
+            if instance_id in affected_ids:
                 continue
+            affected_ids.add(instance_id)
+            parent_id = instance_id
+            while True:
+                parent_id = self._parent_id_by_id[parent_id]
+                if parent_id is None:
+                    break
+                affected_ids.add(parent_id)
 
-            instance_id = widget.id
-            is_active = widget.is_active
-            if value == -1:
-                active_state_by_id[instance_id] = not is_active
-                continue
+            child_ids = set(self._instance_ids_by_parent_id[instance_id])
+            affected_queue.extend(child_ids - affected_ids)
+        return affected_ids
 
-            _value = bool(value)
-            if is_active is not _value:
-                active_state_by_id[instance_id] = _value
+    def _toggle_instances(
+        self,
+        new_value: Optional[bool],
+        active_id: Optional[str] = None,
+    ) -> None:
+        instance_ids = {
+            widget.id
+            for widget in self._get_selected_instance_widgets()
+            if widget.is_selected
+        }
+        active_by_id = {}
+        if active_id and active_id not in instance_ids:
+            instance_ids = {active_id}
 
-        if not active_state_by_id:
-            return
+        ids_to_toggle = set(instance_ids)
 
-        self._controller.set_instances_active_state(active_state_by_id)
+        affected_ids = self._get_affected_ids(instance_ids)
+
+        _queue = collections.deque()
+        _queue.append((set(self._instance_ids_by_parent_id[None]), True))
+        discarted_ids = set()
+        while _queue:
+            if not instance_ids:
+                break
+
+            chilren_ids, is_parent_active = _queue.pop()
+            for instance_id in chilren_ids:
+                if instance_id not in affected_ids:
+                    continue
+
+                widget = self._widgets_by_id[instance_id]
+                if is_parent_active is not widget.is_parent_active():
+                    widget.set_parent_active(is_parent_active)
+
+                instance_ids.discard(instance_id)
+                if instance_id in ids_to_toggle:
+                    discarted_ids.add(instance_id)
+                    old_value = widget.is_active()
+                    value = new_value
+                    if value is None:
+                        value = not old_value
+
+                    widget.set_active(value)
+                    if widget.is_parent_active():
+                        active_by_id[instance_id] = widget.is_active()
+
+                children_ids = self._instance_ids_by_parent_id[instance_id]
+                children = {
+                    child_id
+                    for child_id in children_ids
+                    if child_id not in discarted_ids
+                }
+
+                if children:
+                    instance_ids |= children
+                    _queue.append((children, widget.is_active()))
+
+                if not instance_ids:
+                    break
+
+        if active_by_id:
+            self._controller.set_instances_active_state(active_by_id)
 
     def keyPressEvent(self, event):
         if event.key() == QtCore.Qt.Key_Space:
-            self._toggle_instances(-1)
+            self._toggle_instances(None)
             return True
 
         elif event.key() == QtCore.Qt.Key_Backspace:
-            self._toggle_instances(0)
+            self._toggle_instances(False)
             return True
 
         elif event.key() == QtCore.Qt.Key_Return:
-            self._toggle_instances(1)
+            self._toggle_instances(True)
             return True
 
         return super().keyPressEvent(event)
@@ -670,15 +661,25 @@ class InstanceCardView(AbstractInstanceView):
         ):
             output.append(self._context_widget)
 
-        if self._convertor_items_group is not None:
-            output.extend(self._convertor_items_group.get_selected_widgets())
-
-        for group_widget in self._widgets_by_group.values():
-            for widget in group_widget.get_selected_widgets():
-                output.append(widget)
+        output.extend(self._get_selected_convertor_widgets())
+        output.extend(self._get_selected_instance_widgets())
         return output
 
-    def _get_selected_instance_ids(self):
+    def _get_selected_instance_widgets(self) -> list[InstanceCardWidget]:
+        return [
+            widget
+            for widget in self._widgets_by_id.values()
+            if widget.is_selected
+        ]
+
+    def _get_selected_convertor_widgets(self) -> list[ConvertorItemCardWidget]:
+        return [
+            widget
+            for widget in self._convertor_widgets_by_id.values()
+            if widget.is_selected
+        ]
+
+    def _get_selected_item_ids(self):
         output = []
         if (
             self._context_widget is not None
@@ -686,11 +687,17 @@ class InstanceCardView(AbstractInstanceView):
         ):
             output.append(CONTEXT_ID)
 
-        if self._convertor_items_group is not None:
-            output.extend(self._convertor_items_group.get_selected_item_ids())
+        output.extend(
+            conv_id
+            for conv_id, widget in self._widgets_by_id.items()
+            if widget.is_selected
+        )
 
-        for group_widget in self._widgets_by_group.values():
-            output.extend(group_widget.get_selected_item_ids())
+        output.extend(
+            widget.id
+            for instance_id, widget in self._widgets_by_id.items()
+            if widget.is_selected
+        )
         return output
 
     def refresh(self):
@@ -698,25 +705,102 @@ class InstanceCardView(AbstractInstanceView):
 
         self._make_sure_context_widget_exists()
 
-        self._update_convertor_items_group()
+        self._update_convertors_group()
 
         context_info_by_id = self._controller.get_instances_context_info()
 
         # Prepare instances by group and identifiers by group
         instances_by_group = collections.defaultdict(list)
         identifiers_by_group = collections.defaultdict(set)
-        for instance in self._controller.get_instance_items():
+        identifiers: set[str] = set()
+        instances_by_id = {}
+        parent_id_by_id = {}
+        instance_ids_by_parent_id = collections.defaultdict(set)
+        instance_items = self._controller.get_instance_items()
+        for instance in instance_items:
             group_name = instance.group_label
             instances_by_group[group_name].append(instance)
             identifiers_by_group[group_name].add(
                 instance.creator_identifier
             )
+            identifiers.add(instance.creator_identifier)
+            instances_by_id[instance.id] = instance
+            instance_ids_by_parent_id[instance.parent_instance_id].add(
+                instance.id
+            )
+            parent_id_by_id[instance.id] = instance.parent_instance_id
 
-        # Remove groups that were not found in apassed instances
-        for group_name in tuple(self._widgets_by_group.keys()):
-            if group_name in instances_by_group:
-                continue
+        parent_active_by_id = {
+            instance_id: False
+            for instance_id in instances_by_id
+        }
+        _queue = collections.deque()
+        _queue.append((None, True))
+        while _queue:
+            parent_id, is_parent_active = _queue.popleft()
+            for instance_id in instance_ids_by_parent_id[parent_id]:
+                instance_item = instances_by_id[instance_id]
+                is_active = instance_item.is_active
+                if (
+                    not is_parent_active
+                    and instance_item.parent_flags & ParentFlags.share_active
+                ):
+                    is_active = False
 
+                parent_active_by_id[instance_id] = is_parent_active
+                _queue.append(
+                    (instance_id, is_active)
+                )
+
+        # Remove groups that were not found in passed instances
+        groups_to_remove = (
+            set(self._widgets_by_group) - set(instances_by_group)
+        )
+        ids_to_remove = (
+            set(self._widgets_by_id) - set(instances_by_id)
+        )
+
+        # Sort groups
+        sorted_group_names = list(sorted(instances_by_group.keys()))
+
+        # Keep track of widget indexes
+        # - we start with 1 because Context item as at the top
+        widget_idx = 1
+        if self._convertors_group is not None:
+            widget_idx += 1
+
+        group_by_instance_id = {}
+        instance_ids_by_group_name = collections.defaultdict(list)
+        group_icons = {
+            identifier: self._controller.get_creator_icon(identifier)
+            for identifier in identifiers
+        }
+        for group_name in sorted_group_names:
+            if group_name not in self._widgets_by_group:
+                group_widget = BaseGroupWidget(
+                    group_name, self._content_widget
+                )
+                group_widget.double_clicked.connect(self.double_clicked)
+                self._content_layout.insertWidget(widget_idx, group_widget)
+                self._widgets_by_group[group_name] = group_widget
+
+            widget_idx += 1
+
+            instances = instances_by_group[group_name]
+            for instance in instances:
+                group_by_instance_id[instance.id] = group_name
+                instance_ids_by_group_name[group_name].append(instance.id)
+
+            self._update_instance_widgets(
+                group_name,
+                instances,
+                context_info_by_id,
+                parent_active_by_id,
+                group_icons,
+            )
+
+        # Remove empty groups
+        for group_name in groups_to_remove:
             widget = self._widgets_by_group.pop(group_name)
             widget.setVisible(False)
             self._content_layout.removeWidget(widget)
@@ -725,61 +809,89 @@ class InstanceCardView(AbstractInstanceView):
             if group_name in self._explicitly_selected_groups:
                 self._explicitly_selected_groups.remove(group_name)
 
-        # Sort groups
-        sorted_group_names = list(sorted(instances_by_group.keys()))
+        for instance_id in ids_to_remove:
+            widget = self._widgets_by_id.pop(instance_id)
+            widget.setVisible(False)
+            widget.deleteLater()
 
-        # Keep track of widget indexes
-        # - we start with 1 because Context item as at the top
-        widget_idx = 1
-        if self._convertor_items_group is not None:
-            widget_idx += 1
+        self._parent_id_by_id = parent_id_by_id
+        self._instance_ids_by_parent_id = instance_ids_by_parent_id
+        self._group_name_by_instance_id = group_by_instance_id
+        self._instance_ids_by_group_name = instance_ids_by_group_name
+        self._ordered_groups = sorted_group_names
 
-        for group_name in sorted_group_names:
-            group_icons = {
-                identifier: self._controller.get_creator_icon(identifier)
-                for identifier in identifiers_by_group[group_name]
-            }
-            if group_name in self._widgets_by_group:
-                group_widget = self._widgets_by_group[group_name]
-                group_widget.update_icons(group_icons)
-
-            else:
-                group_widget = InstanceGroupWidget(
-                    group_icons, group_name, self._content_widget
-                )
-                group_widget.active_changed.connect(self._on_active_changed)
-                group_widget.selected.connect(self._on_widget_selection)
-                group_widget.double_clicked.connect(self.double_clicked)
-                self._content_layout.insertWidget(widget_idx, group_widget)
-                self._widgets_by_group[group_name] = group_widget
-
-            widget_idx += 1
-            group_widget.update_instances(
-                instances_by_group[group_name], context_info_by_id
-            )
-            group_widget.set_active_toggle_enabled(
-                self._active_toggle_enabled
-            )
-
-        self._update_ordered_group_names()
-
-    def has_items(self):
-        if self._convertor_items_group is not None:
+    def has_items(self) -> bool:
+        if self._convertors_group is not None:
             return True
-        if self._widgets_by_group:
+        if self._widgets_by_id:
             return True
         return False
 
-    def _update_ordered_group_names(self):
-        ordered_group_names = [CONTEXT_GROUP]
-        for idx in range(self._content_layout.count()):
-            if idx > 0:
-                item = self._content_layout.itemAt(idx)
-                group_widget = item.widget()
-                if group_widget is not None:
-                    ordered_group_names.append(group_widget.group_name)
+    def _update_instance_widgets(
+        self,
+        group_name: str,
+        instances: list[InstanceItem],
+        context_info_by_id: dict[str, InstanceContextInfo],
+        parent_active_by_id: dict[str, bool],
+        group_icons: dict[str, str],
+    ) -> None:
+        """Update instances for the group.
 
-        self._ordered_groups = ordered_group_names
+        Args:
+            instances (list[InstanceItem]): List of instances in
+                CreateContext.
+            context_info_by_id (dict[str, InstanceContextInfo]): Instance
+                context info by instance id.
+            parent_active_by_id (dict[str, bool]): Instance has active parent.
+
+        """
+        # Store instances by id and by product name
+        group_widget: BaseGroupWidget = self._widgets_by_group[group_name]
+        instances_by_id = {}
+        instances_by_product_name = collections.defaultdict(list)
+        for instance in instances:
+            instances_by_id[instance.id] = instance
+            product_name = instance.product_name
+            instances_by_product_name[product_name].append(instance)
+
+        to_remove_ids = set(
+            self._instance_ids_by_group_name[group_name]
+        ) - set(instances_by_id)
+        group_widget.take_widgets(to_remove_ids)
+
+        # Sort instances by product name
+        sorted_product_names = list(sorted(instances_by_product_name.keys()))
+
+        # Add new instances to widget
+        ordered_ids = []
+        widgets_by_id = {}
+        for product_names in sorted_product_names:
+            for instance in instances_by_product_name[product_names]:
+                context_info = context_info_by_id[instance.id]
+                is_parent_active = parent_active_by_id[instance.id]
+                if instance.id in self._widgets_by_id:
+                    widget = self._widgets_by_id[instance.id]
+                    widget.update_instance(
+                        instance, context_info, is_parent_active
+                    )
+                else:
+                    group_icon = group_icons[instance.creator_identifier]
+                    widget = InstanceCardWidget(
+                        instance,
+                        context_info,
+                        is_parent_active,
+                        group_icon,
+                        group_widget
+                    )
+                    widget.selected.connect(self._on_widget_selection)
+                    widget.active_changed.connect(self._on_active_changed)
+                    widget.double_clicked.connect(self.double_clicked)
+                    self._widgets_by_id[instance.id] = widget
+
+                ordered_ids.append(instance.id)
+                widgets_by_id[instance.id] = widget
+
+        group_widget.set_widgets(widgets_by_id, ordered_ids)
 
     def _make_sure_context_widget_exists(self):
         # Create context item if is not already existing
@@ -797,28 +909,65 @@ class InstanceCardView(AbstractInstanceView):
         self.selection_changed.emit()
         self._content_layout.insertWidget(0, widget)
 
-    def _update_convertor_items_group(self):
+    def _update_convertors_group(self):
         convertor_items = self._controller.get_convertor_items()
-        if not convertor_items and self._convertor_items_group is None:
+        if not convertor_items and self._convertors_group is None:
             return
+
+        ids_to_remove = set(self._convertor_widgets_by_id) - set(
+            convertor_items
+        )
+        if ids_to_remove:
+            self._convertors_group.take_widgets(ids_to_remove)
+
+        for conv_id in ids_to_remove:
+            widget = self._convertor_widgets_by_id.pop(conv_id)
+            widget.setVisible(False)
+            widget.deleteLater()
 
         if not convertor_items:
-            self._convertor_items_group.setVisible(False)
-            self._content_layout.removeWidget(self._convertor_items_group)
-            self._convertor_items_group.deleteLater()
-            self._convertor_items_group = None
+            self._convertors_group.setVisible(False)
+            self._content_layout.removeWidget(self._convertors_group)
+            self._convertors_group.deleteLater()
+            self._convertors_group = None
+            self._convertor_ids = []
+            self._convertor_widgets_by_id = {}
             return
 
-        if self._convertor_items_group is None:
-            group_widget = ConvertorItemsGroupWidget(
+        if self._convertors_group is None:
+            group_widget = BaseGroupWidget(
                 CONVERTOR_ITEM_GROUP, self._content_widget
             )
-            group_widget.selected.connect(self._on_widget_selection)
-            group_widget.double_clicked.connect(self.double_clicked)
             self._content_layout.insertWidget(1, group_widget)
-            self._convertor_items_group = group_widget
+            self._convertors_group = group_widget
 
-        self._convertor_items_group.update_items(convertor_items)
+        # TODO create convertor widgets
+        items_by_label = collections.defaultdict(list)
+        for item in convertor_items.values():
+            items_by_label[item.label].append(item)
+
+        # Sort instances by product name
+        sorted_labels = list(sorted(items_by_label.keys()))
+
+        # Add new instances to widget
+        convertor_ids: list[str] = []
+        widgets_by_id: dict[str, ConvertorItemCardWidget] = {}
+        for label in sorted_labels:
+            for item in items_by_label[label]:
+                convertor_ids.append(item.id)
+                if item.id in self._convertor_widgets_by_id:
+                    widget = self._convertor_widgets_by_id[item.id]
+                    widget.update_item(item)
+                else:
+                    widget = ConvertorItemCardWidget(item, self)
+                    widget.selected.connect(self._on_widget_selection)
+                    widget.double_clicked.connect(self.double_clicked)
+                    self._convertor_widgets_by_id[item.id] = widget
+                widgets_by_id[item.id] = widget
+
+        self._convertors_group.set_widgets(widgets_by_id, convertor_ids)
+        self._convertor_ids = convertor_ids
+        self._convertor_widgets_by_id = widgets_by_id
 
     def refresh_instance_states(self, instance_ids=None):
         """Trigger update of instances on group widgets."""
@@ -828,23 +977,45 @@ class InstanceCardView(AbstractInstanceView):
         instance_items_by_id = self._controller.get_instance_items_by_id(
             instance_ids
         )
-        for widget in self._widgets_by_group.values():
-            widget.update_instance_values(
-                context_info_by_id, instance_items_by_id, instance_ids
-            )
+        instance_ids: set[str] = set(instance_items_by_id)
+        available_ids: set[str] = set(instance_items_by_id)
 
-    def _on_active_changed(self, group_name, instance_id, value):
-        group_widget = self._widgets_by_group[group_name]
-        instance_widget = group_widget.get_widget_by_item_id(instance_id)
-        active_state_by_id = {}
-        if not instance_widget.is_selected:
-            active_state_by_id[instance_id] = value
-        else:
-            for widget in self._get_selected_widgets():
-                if isinstance(widget, InstanceCardWidget):
-                    active_state_by_id[widget.id] = value
+        affected_ids = self._get_affected_ids(instance_ids)
 
-        self._controller.set_instances_active_state(active_state_by_id)
+        _queue = collections.deque()
+        _queue.append((set(self._instance_ids_by_parent_id[None]), True))
+        while _queue:
+            if not affected_ids:
+                break
+
+            chilren_ids, is_parent_active = _queue.pop()
+            for instance_id in chilren_ids:
+                if instance_id not in affected_ids:
+                    continue
+                affected_ids.discard(instance_id)
+                widget = self._widgets_by_id[instance_id]
+                if instance_id in instance_ids:
+                    instance_ids.discard(instance_id)
+                    if instance_id in available_ids:
+                        available_ids.discard(instance_id)
+                        widget.update_instance(
+                            instance_items_by_id[instance_id],
+                            context_info_by_id[instance_id],
+                            is_parent_active,
+                        )
+                    else:
+                        widget.set_parent_active(is_parent_active)
+
+                if not affected_ids:
+                    break
+
+                children = set(self._instance_ids_by_parent_id[instance_id])
+                if children:
+                    instance_ids |= children
+                    _queue.append((children, widget.is_active()))
+
+    def _on_active_changed(self, instance_id: str, value: bool) -> None:
+        self._toggle_instances(value, instance_id)
 
     def _on_widget_selection(self, instance_id, group_name, selection_type):
         """Select specific item by instance id.
@@ -857,10 +1028,9 @@ class InstanceCardView(AbstractInstanceView):
 
         else:
             if group_name == CONVERTOR_ITEM_GROUP:
-                group_widget = self._convertor_items_group
+                new_widget = self._convertor_widgets_by_id[instance_id]
             else:
-                group_widget = self._widgets_by_group[group_name]
-            new_widget = group_widget.get_widget_by_item_id(instance_id)
+                new_widget = self._widgets_by_id[instance_id]
 
         if selection_type == SelectionTypes.clear:
             self._select_item_clear(instance_id, group_name, new_widget)
@@ -896,7 +1066,7 @@ class InstanceCardView(AbstractInstanceView):
         """
 
         self._explicitly_selected_instance_ids = (
-            self._get_selected_instance_ids()
+            self._get_selected_item_ids()
         )
         if new_widget.is_selected:
             self._explicitly_selected_instance_ids.remove(instance_id)
@@ -905,11 +1075,21 @@ class InstanceCardView(AbstractInstanceView):
             if instance_id == CONTEXT_ID:
                 remove_group = True
             else:
+                has_selected_items = False
                 if group_name == CONVERTOR_ITEM_GROUP:
-                    group_widget = self._convertor_items_group
+                    for widget in self._convertor_widgets_by_id.values():
+                        if widget.is_selected:
+                            has_selected_items = True
+                            break
                 else:
-                    group_widget = self._widgets_by_group[group_name]
-                if not group_widget.get_selected_widgets():
+                    group_ids = self._instance_ids_by_group_name[group_name]
+                    for instance_id in group_ids:
+                        widget = self._widgets_by_id[instance_id]
+                        if widget.is_selected:
+                            has_selected_items = True
+                            break
+
+                if not has_selected_items:
                     remove_group = True
 
             if remove_group:
@@ -1021,10 +1201,16 @@ class InstanceCardView(AbstractInstanceView):
                 sorted_widgets = [self._context_widget]
             else:
                 if name == CONVERTOR_ITEM_GROUP:
-                    group_widget = self._convertor_items_group
+                    sorted_widgets = [
+                        self._convertor_widgets_by_id[conv_id]
+                        for conv_id in self._convertor_ids
+                    ]
                 else:
-                    group_widget = self._widgets_by_group[name]
-                sorted_widgets = group_widget.get_ordered_widgets()
+                    instance_ids = self._instance_ids_by_group_name[name]
+                    sorted_widgets = [
+                        self._widgets_by_id[instance_id]
+                        for instance_id in instance_ids
+                    ]
 
             # Change selection based on explicit selection if start group
             #   was not passed yet
@@ -1136,21 +1322,18 @@ class InstanceCardView(AbstractInstanceView):
     def get_selected_items(self):
         """Get selected instance ids and context."""
 
-        convertor_identifiers = []
-        instances = []
-        selected_widgets = self._get_selected_widgets()
-
-        context_selected = False
-        for widget in selected_widgets:
-            if widget is self._context_widget:
-                context_selected = True
-
-            elif isinstance(widget, InstanceCardWidget):
-                instances.append(widget.id)
-
-            elif isinstance(widget, ConvertorItemCardWidget):
-                convertor_identifiers.append(widget.identifier)
-
+        context_selected = (
+            self._context_widget is not None
+            and self._context_widget.is_selected
+        )
+        instances = [
+            widget.id
+            for widget in self._get_selected_instance_widgets()
+        ]
+        convertor_identifiers = [
+            widget.identifier
+            for widget in self._get_selected_convertor_widgets()
+        ]
         return instances, context_selected, convertor_identifiers
 
     def set_selected_items(
@@ -1182,12 +1365,19 @@ class InstanceCardView(AbstractInstanceView):
 
             is_convertor_group = group_name == CONVERTOR_ITEM_GROUP
             if is_convertor_group:
-                group_widget = self._convertor_items_group
+                sorted_widgets = [
+                    self._convertor_widgets_by_id[conv_id]
+                    for conv_id in self._convertor_ids
+                ]
             else:
-                group_widget = self._widgets_by_group[group_name]
+                instance_ids = self._instance_ids_by_group_name[group_name]
+                sorted_widgets = [
+                    self._widgets_by_id[instance_id]
+                    for instance_id in instance_ids
+                ]
 
             group_selected = False
-            for widget in group_widget.get_ordered_widgets():
+            for widget in sorted_widgets:
                 select = False
                 if is_convertor_group:
                     is_in = widget.identifier in s_convertor_identifiers
@@ -1209,5 +1399,5 @@ class InstanceCardView(AbstractInstanceView):
         if self._active_toggle_enabled is enabled:
             return
         self._active_toggle_enabled = enabled
-        for group_widget in self._widgets_by_group.values():
-            group_widget.set_active_toggle_enabled(enabled)
+        for widget in self._widgets_by_id.values():
+            widget.set_active_toggle_enabled(enabled)

@@ -13,7 +13,7 @@ from typing import (
 )
 
 from ayon_core.lib import AbstractAttrDef
-from ayon_core.host import HostBase
+from ayon_core.host import AbstractHost
 from ayon_core.pipeline.create import (
     CreateContext,
     ConvertorItem,
@@ -176,7 +176,7 @@ class AbstractPublisherBackend(AbstractPublisherCommon):
         pass
 
     @abstractmethod
-    def get_host(self) -> HostBase:
+    def get_host(self) -> AbstractHost:
         pass
 
     @abstractmethod

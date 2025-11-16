@@ -219,6 +219,8 @@ class InstanceItem:
         is_active: bool,
         is_mandatory: bool,
         has_promised_context: bool,
+        parent_instance_id: Optional[str],
+        parent_flags: int,
     ):
         self._instance_id: str = instance_id
         self._creator_identifier: str = creator_identifier
@@ -232,6 +234,8 @@ class InstanceItem:
         self._is_active: bool = is_active
         self._is_mandatory: bool = is_mandatory
         self._has_promised_context: bool = has_promised_context
+        self._parent_instance_id: Optional[str] = parent_instance_id
+        self._parent_flags: int = parent_flags
 
     @property
     def id(self):
@@ -260,6 +264,14 @@ class InstanceItem:
     @property
     def has_promised_context(self):
         return self._has_promised_context
+
+    @property
+    def parent_instance_id(self):
+        return self._parent_instance_id
+
+    @property
+    def parent_flags(self) -> int:
+        return self._parent_flags
 
     def get_variant(self):
         return self._variant
@@ -312,6 +324,8 @@ class InstanceItem:
             instance["active"],
             instance.is_mandatory,
             instance.has_promised_context,
+            instance.parent_instance_id,
+            instance.parent_flags,
         )
 
 
@@ -486,6 +500,9 @@ class CreateModel:
         self._create_context.add_instance_requirement_change_callback(
             self._cc_instance_requirement_changed
         )
+        self._create_context.add_instance_parent_change_callback(
+            self._cc_instance_parent_changed
+        )
 
         self._create_context.reset_finalization()
 
@@ -566,15 +583,21 @@ class CreateModel:
     def set_instances_active_state(
         self, active_state_by_id: Dict[str, bool]
     ):
+        changed_ids = set()
         with self._create_context.bulk_value_changes(CREATE_EVENT_SOURCE):
             for instance_id, active in active_state_by_id.items():
                 instance = self._create_context.get_instance_by_id(instance_id)
-                instance["active"] = active
+                if instance["active"] is not active:
+                    instance["active"] = active
+                    changed_ids.add(instance_id)
+
+        if not changed_ids:
+            return
 
         self._emit_event(
             "create.model.instances.context.changed",
             {
-                "instance_ids": set(active_state_by_id.keys())
+                "instance_ids": changed_ids
             }
         )
 
@@ -1188,6 +1211,16 @@ class CreateModel:
         }
         self._emit_event(
             "create.model.instance.requirement.changed",
+            {"instance_ids": instance_ids},
+        )
+
+    def _cc_instance_parent_changed(self, event):
+        instance_ids = {
+            instance.id
+            for instance in event.data["instances"]
+        }
+        self._emit_event(
+            "create.model.instance.parent.changed",
             {"instance_ids": instance_ids},
         )
 

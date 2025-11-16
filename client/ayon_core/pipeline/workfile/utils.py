@@ -207,6 +207,7 @@ def save_workfile_info(
     comment: Optional[str] = None,
     description: Optional[str] = None,
     username: Optional[str] = None,
+    data: Optional[dict[str, Any]] = None,
     workfile_entities: Optional[list[dict[str, Any]]] = None,
 ) -> dict[str, Any]:
     """Save workfile info entity for a workfile path.
@@ -221,6 +222,7 @@ def save_workfile_info(
         description (Optional[str]): Workfile description.
         username (Optional[str]): Username of user who saves the workfile.
             If not provided, current user is used.
+        data (Optional[dict[str, Any]]): Additional workfile entity data.
         workfile_entities (Optional[list[dict[str, Any]]]): Pre-fetched
             workfile entities related to task.
 
@@ -246,6 +248,18 @@ def save_workfile_info(
     if username is None:
         username = get_ayon_username()
 
+    attrib = {}
+    extension = os.path.splitext(rootless_path)[1]
+    for key, value in (
+        ("extension", extension),
+        ("description", description),
+    ):
+        if value is not None:
+            attrib[key] = value
+
+    if data is None:
+        data = {}
+
     if not workfile_entity:
         return _create_workfile_info_entity(
             project_name,
@@ -255,34 +269,38 @@ def save_workfile_info(
             username,
             version,
             comment,
-            description,
+            attrib,
+            data,
         )
 
-    data = {
-        key: value
-        for key, value in (
-            ("host_name", host_name),
-            ("version", version),
-            ("comment", comment),
-        )
-        if value is not None
-    }
-
-    old_data = workfile_entity["data"]
+    for key, value in (
+        ("host_name", host_name),
+        ("version", version),
+        ("comment", comment),
+    ):
+        if value is not None:
+            data[key] = value
 
     changed_data = {}
+    old_data = workfile_entity["data"]
     for key, value in data.items():
         if key not in old_data or old_data[key] != value:
             changed_data[key] = value
+            workfile_entity["data"][key] = value
+
+    changed_attrib = {}
+    old_attrib = workfile_entity["attrib"]
+    for key, value in attrib.items():
+        if key not in old_attrib or old_attrib[key] != value:
+            changed_attrib[key] = value
+            workfile_entity["attrib"][key] = value
 
     update_data = {}
     if changed_data:
         update_data["data"] = changed_data
 
-    old_description = workfile_entity["attrib"].get("description")
-    if description is not None and old_description != description:
-        update_data["attrib"] = {"description": description}
-        workfile_entity["attrib"]["description"] = description
+    if changed_attrib:
+        update_data["attrib"] = changed_attrib
 
     # Automatically fix 'createdBy' and 'updatedBy' fields
     # NOTE both fields were not automatically filled by server
@@ -411,13 +429,14 @@ def save_next_version(
 ) -> None:
     """Save workfile using current context, version and comment.
 
-    Helper function to save workfile using current context. Last workfile
-        version + 1 is used if is not passed in.
+    Helper function to save a workfile using the current context. Last
+        workfile version + 1 is used if is not passed in.
 
     Args:
         version (Optional[int]): Workfile version that will be used. Last
             version + 1 is used if is not passed in.
-        comment (optional[str]): Workfile comment.
+        comment (optional[str]): Workfile comment. Pass '""' to clear comment.
+            The current workfile comment is used if it is not passed.
         description (Optional[str]): Workfile description.
         prepared_data (Optional[SaveWorkfileOptionalData]): Prepared data
             for speed enhancements.
@@ -427,6 +446,11 @@ def save_next_version(
     from ayon_core.pipeline.context_tools import registered_host
 
     host = registered_host()
+    current_path = host.get_current_workfile()
+    if not current_path:
+        current_path = None
+    else:
+        current_path = os.path.normpath(current_path)
 
     context = host.get_current_context()
     project_name = context["project_name"]
@@ -480,10 +504,9 @@ def save_next_version(
         project_settings=project_settings,
     )
     rootless_dir = workdir.rootless
-    if version is None:
-        workfile_extensions = host.get_workfile_extensions()
-        if not workfile_extensions:
-            raise ValueError("Host does not have defined file extensions")
+    last_workfile = None
+    current_workfile = None
+    if version is None or comment is None:
         workfiles = host.list_workfiles(
             project_name, folder_entity, task_entity,
             prepared_data=ListWorkfilesOptionalData(
@@ -493,26 +516,58 @@ def save_next_version(
                 template_key=template_key,
             )
         )
-        versions = {
-            workfile.version
-            for workfile in workfiles
-            if workfile.version is not None
-        }
-        version = None
-        if versions:
-            version = max(versions) + 1
+        for workfile in workfiles:
+            if current_workfile is None and workfile.filepath == current_path:
+                current_workfile = workfile
 
-        if version is None:
-            version = get_versioning_start(
-                project_name,
-                host.name,
-                task_name=task_entity["name"],
-                task_type=task_entity["taskType"],
-                product_type="workfile"
-            )
+            if workfile.version is None:
+                continue
+
+            if (
+                last_workfile is None
+                or last_workfile.version < workfile.version
+            ):
+                last_workfile = workfile
+
+    if version is None and last_workfile is not None:
+        version = last_workfile.version + 1
+
+    if version is None:
+        version = get_versioning_start(
+            project_name,
+            host.name,
+            task_name=task_entity["name"],
+            task_type=task_entity["taskType"],
+            product_type="workfile"
+        )
+
+    # Re-use comment from the current workfile if is not passed in
+    if comment is None and current_workfile is not None:
+        comment = current_workfile.comment
 
     template_data["version"] = version
-    template_data["comment"] = comment
+    if comment:
+        template_data["comment"] = comment
+
+    # Resolve extension
+    # - Don't fill any if the host does not have defined any -> e.g. if host
+    #   uses directory instead of a file.
+    # 1. Use the current file extension.
+    # 2. Use the last known workfile extension.
+    # 3. Use the first extensions from 'get_workfile_extensions'.
+    ext = None
+    workfile_extensions = host.get_workfile_extensions()
+    if workfile_extensions:
+        if current_path:
+            ext = os.path.splitext(current_path)[1]
+        elif last_workfile is not None:
+            ext = os.path.splitext(last_workfile.filepath)[1]
+        else:
+            ext = next(iter(workfile_extensions))
+        ext = ext.lstrip(".")
+
+    if ext:
+        template_data["ext"] = ext
 
     filename = file_template.format_strict(template_data)
     workfile_path = os.path.join(workdir, filename)
@@ -632,6 +687,11 @@ def copy_workfile_to_context(
     if comment:
         template_data["comment"] = comment
 
+    workfile_extensions = host.get_workfile_extensions()
+    if workfile_extensions:
+        ext = os.path.splitext(src_workfile_path)[1].lstrip(".")
+        template_data["ext"] = ext
+
     workfile_template = anatomy.get_template_item(
         "work", template_key, "path"
     )
@@ -707,7 +767,8 @@ def _create_workfile_info_entity(
     username: str,
     version: Optional[int],
     comment: Optional[str],
-    description: Optional[str],
+    attrib: dict[str, Any],
+    data: dict[str, Any],
 ) -> dict[str, Any]:
     """Create workfile entity data.
 
@@ -719,27 +780,18 @@ def _create_workfile_info_entity(
         username (str): Username.
         version (Optional[int]): Workfile version.
         comment (Optional[str]): Workfile comment.
-        description (Optional[str]): Workfile description.
+        attrib (dict[str, Any]): Workfile entity attributes.
+        data (dict[str, Any]): Workfile entity data.
 
     Returns:
         dict[str, Any]: Created workfile entity data.
 
     """
-    extension = os.path.splitext(rootless_path)[1]
-
-    attrib = {}
-    for key, value in (
-        ("extension", extension),
-        ("description", description),
-    ):
-        if value is not None:
-            attrib[key] = value
-
-    data = {
+    data.update({
         "host_name": host_name,
         "version": version,
         "comment": comment,
-    }
+    })
 
     workfile_info = {
         "id": uuid.uuid4().hex,

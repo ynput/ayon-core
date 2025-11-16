@@ -2,10 +2,10 @@
 from __future__ import annotations
 
 from abc import abstractmethod
-import logging
 import os
 from typing import Any, Optional, Type
 
+from ayon_core.lib import Logger
 from ayon_core.pipeline.plugin_discover import (
     deregister_plugin,
     deregister_plugin_path,
@@ -31,8 +31,7 @@ class LoaderPlugin(list):
 
     options = []
 
-    log = logging.getLogger("ProductLoader")
-    log.propagate = True
+    log = Logger.get_logger("ProductLoader")
 
     @classmethod
     def apply_settings(cls, project_settings):
@@ -373,7 +372,7 @@ def discover_loader_plugins(project_name=None):
     if not project_name:
         project_name = get_current_project_name()
     project_settings = get_project_settings(project_name)
-    plugins = discover(LoaderPlugin)
+    plugins = discover(LoaderPlugin, allow_duplicates=False)
     hooks = discover(LoaderHookPlugin)
     sorted_hooks = sorted(hooks, key=lambda hook: hook.order)
     for plugin in plugins:

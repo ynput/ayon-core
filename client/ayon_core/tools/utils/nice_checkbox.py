@@ -1,4 +1,5 @@
-from math import floor, sqrt, ceil
+from math import floor, ceil
+
 from qtpy import QtWidgets, QtCore, QtGui
 
 from ayon_core.style import get_objected_colors
@@ -9,12 +10,15 @@ class NiceCheckbox(QtWidgets.QFrame):
     clicked = QtCore.Signal()
 
     _checked_bg_color = None
+    _checked_bg_color_disabled = None
     _unchecked_bg_color = None
+    _unchecked_bg_color_disabled = None
     _checker_color = None
+    _checker_color_disabled = None
     _checker_hover_color = None
 
     def __init__(self, checked=False, draw_icons=False, parent=None):
-        super(NiceCheckbox, self).__init__(parent)
+        super().__init__(parent)
 
         self.setObjectName("NiceCheckbox")
         self.setAttribute(QtCore.Qt.WA_TranslucentBackground)
@@ -48,8 +52,6 @@ class NiceCheckbox(QtWidgets.QFrame):
         self._pressed = False
         self._under_mouse = False
 
-        self.icon_scale_factor = sqrt(2) / 2
-
         icon_path_stroker = QtGui.QPainterPathStroker()
         icon_path_stroker.setCapStyle(QtCore.Qt.RoundCap)
         icon_path_stroker.setJoinStyle(QtCore.Qt.RoundJoin)
@@ -60,35 +62,6 @@ class NiceCheckbox(QtWidgets.QFrame):
 
         self._base_size = QtCore.QSize(90, 50)
         self._load_colors()
-
-    @classmethod
-    def _load_colors(cls):
-        if cls._checked_bg_color is not None:
-            return
-
-        colors_info = get_objected_colors("nice-checkbox")
-
-        cls._checked_bg_color = colors_info["bg-checked"].get_qcolor()
-        cls._unchecked_bg_color = colors_info["bg-unchecked"].get_qcolor()
-
-        cls._checker_color = colors_info["bg-checker"].get_qcolor()
-        cls._checker_hover_color = colors_info["bg-checker-hover"].get_qcolor()
-
-    @property
-    def checked_bg_color(self):
-        return self._checked_bg_color
-
-    @property
-    def unchecked_bg_color(self):
-        return self._unchecked_bg_color
-
-    @property
-    def checker_color(self):
-        return self._checker_color
-
-    @property
-    def checker_hover_color(self):
-        return self._checker_hover_color
 
     def setTristate(self, tristate=True):
         if self._is_tristate != tristate:
@@ -121,14 +94,14 @@ class NiceCheckbox(QtWidgets.QFrame):
 
     def setFixedHeight(self, *args, **kwargs):
         self._fixed_height_set = True
-        super(NiceCheckbox, self).setFixedHeight(*args, **kwargs)
+        super().setFixedHeight(*args, **kwargs)
         if not self._fixed_width_set:
             width = self.get_width_hint_by_height(self.height())
             self.setFixedWidth(width)
 
     def setFixedWidth(self, *args, **kwargs):
         self._fixed_width_set = True
-        super(NiceCheckbox, self).setFixedWidth(*args, **kwargs)
+        super().setFixedWidth(*args, **kwargs)
         if not self._fixed_height_set:
             height = self.get_height_hint_by_width(self.width())
             self.setFixedHeight(height)
@@ -136,7 +109,7 @@ class NiceCheckbox(QtWidgets.QFrame):
     def setFixedSize(self, *args, **kwargs):
         self._fixed_height_set = True
         self._fixed_width_set = True
-        super(NiceCheckbox, self).setFixedSize(*args, **kwargs)
+        super().setFixedSize(*args, **kwargs)
 
     def steps(self):
         return self._steps
@@ -242,7 +215,7 @@ class NiceCheckbox(QtWidgets.QFrame):
         if event.buttons() & QtCore.Qt.LeftButton:
             self._pressed = True
             self.repaint()
-        super(NiceCheckbox, self).mousePressEvent(event)
+        super().mousePressEvent(event)
 
     def mouseReleaseEvent(self, event):
         if self._pressed and not event.buttons() & QtCore.Qt.LeftButton:
@@ -252,7 +225,7 @@ class NiceCheckbox(QtWidgets.QFrame):
                 self.clicked.emit()
                 event.accept()
                 return
-        super(NiceCheckbox, self).mouseReleaseEvent(event)
+        super().mouseReleaseEvent(event)
 
     def mouseMoveEvent(self, event):
         if self._pressed:
@@ -261,19 +234,19 @@ class NiceCheckbox(QtWidgets.QFrame):
                 self._under_mouse = under_mouse
                 self.repaint()
 
-        super(NiceCheckbox, self).mouseMoveEvent(event)
+        super().mouseMoveEvent(event)
 
     def enterEvent(self, event):
         self._under_mouse = True
         if self.isEnabled():
             self.repaint()
-        super(NiceCheckbox, self).enterEvent(event)
+        super().enterEvent(event)
 
     def leaveEvent(self, event):
         self._under_mouse = False
         if self.isEnabled():
             self.repaint()
-        super(NiceCheckbox, self).leaveEvent(event)
+        super().leaveEvent(event)
 
     def _on_animation_timeout(self):
         if self._checkstate == QtCore.Qt.Checked:
@@ -302,24 +275,13 @@ class NiceCheckbox(QtWidgets.QFrame):
 
     @staticmethod
     def steped_color(color1, color2, offset_ratio):
-        red_dif = (
-            color1.red() - color2.red()
-        )
-        green_dif = (
-            color1.green() - color2.green()
-        )
-        blue_dif = (
-            color1.blue() - color2.blue()
-        )
-        red = int(color2.red() + (
-            red_dif * offset_ratio
-        ))
-        green = int(color2.green() + (
-            green_dif * offset_ratio
-        ))
-        blue = int(color2.blue() + (
-            blue_dif * offset_ratio
-        ))
+        red_dif = color1.red() - color2.red()
+        green_dif = color1.green() - color2.green()
+        blue_dif = color1.blue() - color2.blue()
+
+        red = int(color2.red() + (red_dif * offset_ratio))
+        green = int(color2.green() + (green_dif * offset_ratio))
+        blue = int(color2.blue() + (blue_dif * offset_ratio))
 
         return QtGui.QColor(red, green, blue)
 
@@ -334,20 +296,28 @@ class NiceCheckbox(QtWidgets.QFrame):
         painter = QtGui.QPainter(self)
 
         painter.setRenderHint(QtGui.QPainter.Antialiasing)
+        painter.setPen(QtCore.Qt.NoPen)
 
         # Draw inner background
-        if self._current_step == self._steps:
-            bg_color = self.checked_bg_color
+        if not self.isEnabled():
+            bg_color = (
+                self._checked_bg_color_disabled
+                if self._current_step == self._steps
+                else self._unchecked_bg_color_disabled
+            )
+
+        elif self._current_step == self._steps:
+            bg_color = self._checked_bg_color
 
         elif self._current_step == 0:
-            bg_color = self.unchecked_bg_color
+            bg_color = self._unchecked_bg_color
 
         else:
             offset_ratio = float(self._current_step) / self._steps
             # Animation bg
             bg_color = self.steped_color(
-                self.checked_bg_color,
-                self.unchecked_bg_color,
+                self._checked_bg_color,
+                self._unchecked_bg_color,
                 offset_ratio
             )
 
@@ -378,14 +348,20 @@ class NiceCheckbox(QtWidgets.QFrame):
                 -margin_size_c, -margin_size_c
             )
 
-        if checkbox_rect.width() > checkbox_rect.height():
-            radius = floor(checkbox_rect.height() * 0.5)
-        else:
-            radius = floor(checkbox_rect.width() * 0.5)
+        slider_rect = QtCore.QRect(checkbox_rect)
+        slider_offset = int(
+            ceil(min(slider_rect.width(), slider_rect.height())) * 0.08
+        )
+        if slider_offset < 1:
+            slider_offset = 1
+        slider_rect.adjust(
+            slider_offset, slider_offset,
+            -slider_offset, -slider_offset
+        )
+        radius = floor(min(slider_rect.width(), slider_rect.height()) * 0.5)
 
-        painter.setPen(QtCore.Qt.NoPen)
         painter.setBrush(bg_color)
-        painter.drawRoundedRect(checkbox_rect, radius, radius)
+        painter.drawRoundedRect(slider_rect, radius, radius)
 
         # Draw checker
         checker_size = size_without_margins - (margin_size_c * 2)
@@ -394,9 +370,8 @@ class NiceCheckbox(QtWidgets.QFrame):
             - (margin_size_c * 2)
             - checker_size
         )
-        if self._current_step == 0:
-            x_offset = 0
-        else:
+        x_offset = 0
+        if self._current_step != 0:
             x_offset = (float(area_width) / self._steps) * self._current_step
 
         pos_x = checkbox_rect.x() + x_offset + margin_size_c
@@ -404,55 +379,80 @@ class NiceCheckbox(QtWidgets.QFrame):
 
         checker_rect = QtCore.QRect(pos_x, pos_y, checker_size, checker_size)
 
-        under_mouse = self.isEnabled() and self._under_mouse
-        if under_mouse:
-            checker_color = self.checker_hover_color
-        else:
-            checker_color = self.checker_color
+        checker_color = self._checker_color
+        if not self.isEnabled():
+            checker_color = self._checker_color_disabled
+        elif self._under_mouse:
+            checker_color = self._checker_hover_color
 
         painter.setBrush(checker_color)
         painter.drawEllipse(checker_rect)
 
         if self._draw_icons:
             painter.setBrush(bg_color)
-            icon_path = self._get_icon_path(painter, checker_rect)
+            icon_path = self._get_icon_path(checker_rect)
             painter.drawPath(icon_path)
-
-        # Draw shadow overlay
-        if not self.isEnabled():
-            level = 33
-            alpha = 127
-            painter.setPen(QtCore.Qt.transparent)
-            painter.setBrush(QtGui.QColor(level, level, level, alpha))
-            painter.drawRoundedRect(checkbox_rect, radius, radius)
 
         painter.end()
 
-    def _get_icon_path(self, painter, checker_rect):
+    @classmethod
+    def _load_colors(cls):
+        if cls._checked_bg_color is not None:
+            return
+
+        colors_info = get_objected_colors("nice-checkbox")
+
+        disabled_color = QtGui.QColor(33, 33, 33, 127)
+
+        cls._checked_bg_color = colors_info["bg-checked"].get_qcolor()
+        cls._checked_bg_color_disabled = cls._merge_colors(
+            cls._checked_bg_color, disabled_color
+        )
+        cls._unchecked_bg_color = colors_info["bg-unchecked"].get_qcolor()
+        cls._unchecked_bg_color_disabled = cls._merge_colors(
+            cls._unchecked_bg_color, disabled_color
+        )
+
+        cls._checker_color = colors_info["bg-checker"].get_qcolor()
+        cls._checker_color_disabled = cls._merge_colors(
+            cls._checker_color, disabled_color
+        )
+        cls._checker_hover_color = colors_info["bg-checker-hover"].get_qcolor()
+
+    @staticmethod
+    def _merge_colors(color_1, color_2):
+        a = color_2.alphaF()
+        return QtGui.QColor(
+            floor((color_1.red() + (color_2.red() * a)) * 0.5),
+            floor((color_1.green() + (color_2.green() * a)) * 0.5),
+            floor((color_1.blue() + (color_2.blue() * a)) * 0.5),
+            color_1.alpha()
+        )
+
+    def _get_icon_path(self, checker_rect):
         self.icon_path_stroker.setWidth(checker_rect.height() / 5)
 
         if self._current_step == self._steps:
-            return self._get_enabled_icon_path(painter, checker_rect)
+            return self._get_enabled_icon_path(checker_rect)
 
         if self._current_step == 0:
-            return self._get_disabled_icon_path(painter, checker_rect)
+            return self._get_disabled_icon_path(checker_rect)
 
         if self._current_step == self._middle_step:
-            return self._get_middle_circle_path(painter, checker_rect)
+            return self._get_middle_circle_path(checker_rect)
 
         disabled_step = self._steps - self._current_step
         enabled_step = self._steps - disabled_step
         half_steps = self._steps + 1 - ((self._steps + 1) % 2)
         if enabled_step > disabled_step:
             return self._get_enabled_icon_path(
-                painter, checker_rect, enabled_step, half_steps
+                checker_rect, enabled_step, half_steps
             )
-        else:
-            return self._get_disabled_icon_path(
-                painter, checker_rect, disabled_step, half_steps
-            )
+        return self._get_disabled_icon_path(
+            checker_rect, disabled_step, half_steps
+        )
 
-    def _get_middle_circle_path(self, painter, checker_rect):
+    def _get_middle_circle_path(self, checker_rect):
         width = self.icon_path_stroker.width()
         path = QtGui.QPainterPath()
         path.addEllipse(checker_rect.center(), width, width)
@@ -460,7 +460,7 @@ class NiceCheckbox(QtWidgets.QFrame):
         return path
 
     def _get_enabled_icon_path(
-        self, painter, checker_rect, step=None, half_steps=None
+        self, checker_rect, step=None, half_steps=None
     ):
         fifteenth = float(checker_rect.height()) / 15
         # Left point
@@ -509,7 +509,7 @@ class NiceCheckbox(QtWidgets.QFrame):
         return self.icon_path_stroker.createStroke(path)
 
     def _get_disabled_icon_path(
-        self, painter, checker_rect, step=None, half_steps=None
+        self, checker_rect, step=None, half_steps=None
     ):
         center_point = QtCore.QPointF(
             float(checker_rect.width()) / 2,

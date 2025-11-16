@@ -161,10 +161,11 @@ class ExtractReview(pyblish.api.InstancePlugin):
         "aftereffects",
         "flame",
         "unreal",
-        "circuit",
+        "batchdelivery",
         "photoshop"
     ]
 
+    settings_category = "core"
     # Supported extensions
     image_exts = {"exr", "jpg", "jpeg", "png", "dpx", "tga", "tiff", "tif"}
     video_exts = {"mov", "mp4"}
