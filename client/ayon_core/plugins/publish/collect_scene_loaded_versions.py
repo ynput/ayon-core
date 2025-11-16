@@ -9,28 +9,6 @@ class CollectSceneLoadedVersions(pyblish.api.ContextPlugin):
 
     order = pyblish.api.CollectorOrder + 0.0001
     label = "Collect Versions Loaded in Scene"
-    hosts = [
-        "aftereffects",
-        "blender",
-        "celaction",
-        "cinema4d",
-        "flame",
-        "fusion",
-        "harmony",
-        "hiero",
-        "houdini",
-        "max",
-        "maya",
-        "motionbuilder",
-        "nuke",
-        "photoshop",
-        "silhouette",
-        "substancepainter",
-        "substancedesigner",
-        "resolve",
-        "tvpaint",
-        "zbrush",
-    ]
 
     def process(self, context):
         host = registered_host()
