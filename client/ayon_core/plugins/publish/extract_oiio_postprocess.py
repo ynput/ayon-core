@@ -49,7 +49,7 @@ class ExtractOIIOPostProcess(publish.Extractor):
             self.log.warning("OIIO not supported, no transcoding possible.")
             return
 
-        profile, representations = self._get_profile(
+        profile = self._get_profile(
             instance
         )
         if not profile:
@@ -59,7 +59,7 @@ class ExtractOIIOPostProcess(publish.Extractor):
         new_representations = []
         for idx, repre in enumerate(list(instance.data["representations"])):
             self.log.debug("repre ({}): `{}`".format(idx + 1, repre["name"]))
-            if not self._repre_is_valid(repre, profile):
+            if not self._repre_is_valid(repre):
                 continue
 
             # Get representation files to convert
