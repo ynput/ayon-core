@@ -212,6 +212,11 @@ class ContextCardWidget(CardWidget):
         icon_widget.setObjectName("ProductTypeIconLabel")
 
         label_widget = QtWidgets.QLabel(f"<span>{CONTEXT_LABEL}</span>", self)
+        # HTML text will cause that label start catch mouse clicks
+        # - disabling with changing interaction flag
+        label_widget.setTextInteractionFlags(
+            QtCore.Qt.NoTextInteraction
+        )
 
         icon_layout = QtWidgets.QHBoxLayout()
         icon_layout.setContentsMargins(5, 5, 5, 5)
