@@ -124,8 +124,9 @@ class CollectHierarchy(
             project_name, shot_instances)
 
         for instance in shot_instances:
-            self.log.debug("Processing instance: `{}` ...".format(instance))
             folder_path = instance.data["folderPath"]
+            self.log.debug(
+                f"Processing instance: `{folder_path} {instance}` ...")
 
             shot_data = {
                 "entity_type": "folder",
@@ -167,6 +168,10 @@ class CollectHierarchy(
                         continue
 
                     shot_data["attributes"][shot_attr] = attr_value
+                else:
+                    self.log.debug(
+                        "Shot attributes will not be updated."
+                    )
 
             # Split by '/' for AYON where asset is a path
             name = folder_path.split("/")[-1]
