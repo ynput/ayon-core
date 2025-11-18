@@ -457,6 +457,9 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
             else:
                 version_data[key] = value
 
+        host_name = instance.context.data["hostName"]
+        version_data["host_name"] = host_name
+
         version_entity = new_version_entity(
             version_number,
             product_entity["id"],
