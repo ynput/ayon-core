@@ -92,7 +92,7 @@ class CollectHierarchy(
         existing_entities = {
             folder_entity["path"]: folder_entity
             for folder_entity in ayon_api.get_folders(
-                project_name, folder_paths=folder_paths)
+                project_name, folder_paths=folder_paths, fields={"path"})
         }
         for folder_path in folder_paths:
             # add None value to non-existing folder entities
