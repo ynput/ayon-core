@@ -84,28 +84,30 @@ class CollectHierarchy(
                 folder entities.
         """
         # first we need to get all folder paths from shot instances
-        folder_paths = []
-        for instance in shot_instances:
-            folder_path = instance.data["folderPath"]
-            folder_paths.append(folder_path)
-
+        folder_paths = {
+            instance.data["folderPath"]
+            for instance in shot_instances
+        }
         # then we get all existing folder entities with one request
-        existing_entities = ayon_api.get_folders(
-            project_name, folder_paths=folder_paths)
-
-        # then we loop by all folder paths and try to find existing entity
-        existing_entities = {}
+        existing_entities = {
+            folder_entity["path"]: folder_entity
+            for folder_entity in ayon_api.get_folders(
+                project_name, folder_paths=folder_paths)
+        }
         for folder_path in folder_paths:
-            found_entity = None
-            for entity in existing_entities:
-                if entity["path"] == folder_path:
-                    found_entity = entity
-                    break
-            existing_entities[folder_path] = found_entity
+            # add None value to non-existing folder entities
+            existing_entities.setdefault(folder_path, None)
 
         return existing_entities
 
     def process(self, context):
+        # get only shot instances from context
+        shot_instances = self._get_shot_instances(context)
+
+        if not shot_instances:
+            return
+
+        # get user input
         values = self.get_attr_values_from_data(context.data)
         ignore_shot_attributes_on_update = values.get(
             "ignore_shot_attributes_on_update", None)
@@ -118,7 +120,6 @@ class CollectHierarchy(
             },
         }
         temp_context = {}
-        shot_instances = self._get_shot_instances(context)
         existing_entities = self.get_existing_folder_entities(
             project_name, shot_instances)
 
