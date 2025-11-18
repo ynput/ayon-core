@@ -832,14 +832,18 @@ class AbstractTemplateBuilder(ABC):
         host_name = self.host_name
         task_name = self.current_task_name
         task_type = self.current_task_type
+        folder_path = self.current_folder_path
 
         build_profiles = self._get_build_profiles()
+        filter_data = {
+            "task_types": task_type,
+            "task_names": task_name,
+            "folder_paths": folder_path
+        }
         profile = filter_profiles(
             build_profiles,
-            {
-                "task_types": task_type,
-                "task_names": task_name
-            }
+            filter_data,
+            logger=self.log
         )
         if not profile:
             raise TemplateProfileNotFound((
