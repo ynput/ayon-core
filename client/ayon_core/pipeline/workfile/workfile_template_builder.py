@@ -1687,6 +1687,8 @@ class PlaceholderLoadMixin(object):
             for version in get_last_versions(
                 project_name, filtered_product_ids, fields={"id"}
             ).values()
+            # Version may be none if a product has no versions
+            if version is not None
         )
         return list(get_representations(
             project_name,
