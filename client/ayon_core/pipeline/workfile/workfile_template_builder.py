@@ -853,7 +853,6 @@ class AbstractTemplateBuilder(ABC):
             "folder_paths": folder_path,
         }
 
-
         build_profiles = self._get_build_profiles()
         profile = filter_profiles(
             build_profiles,
