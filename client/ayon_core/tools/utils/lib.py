@@ -548,11 +548,17 @@ class _IconsCache:
         elif icon_type == "ayon_url":
             url = icon_def["url"].lstrip("/")
             url = f"{ayon_api.get_base_url()}/{url}"
-            stream = io.BytesIO()
-            ayon_api.download_file_to_stream(url, stream)
-            pix = QtGui.QPixmap()
-            pix.loadFromData(stream.getvalue())
-            icon = QtGui.QIcon(pix)
+            try:
+                stream = io.BytesIO()
+                ayon_api.download_file_to_stream(url, stream)
+                pix = QtGui.QPixmap()
+                pix.loadFromData(stream.getvalue())
+                icon = QtGui.QIcon(pix)
+            except Exception:
+                log.warning(
+                    "Failed to download image '%s'", url, exc_info=True
+                )
+                icon = None
 
         elif icon_type == "transparent":
             size = icon_def.get("size")
