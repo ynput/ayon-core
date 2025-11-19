@@ -841,16 +841,18 @@ class AbstractTemplateBuilder(ABC):
         task_name = self.current_task_name
         task_type = self.current_task_type
         folder_path = self.current_folder_path
+        folder_type = None
+        folder_entity = self.current_folder_entity
+        if folder_entity:
+            folder_type = folder_entity["folderType"]
 
         filter_data = {
             "task_types": task_type,
             "task_names": task_name,
-            "folder_paths": folder_path
+            "folder_types": folder_type,
+            "folder_paths": folder_path,
         }
 
-        folder_entity = self.current_folder_entity
-        if folder_entity:
-            filter_data.update({"folder_types": folder_entity["folderType"]})
 
         build_profiles = self._get_build_profiles()
         profile = filter_profiles(
