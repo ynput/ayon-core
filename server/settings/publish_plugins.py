@@ -565,8 +565,111 @@ class ExtractOIIOTranscodeProfileModel(BaseSettingsModel):
 
 
 class ExtractOIIOTranscodeModel(BaseSettingsModel):
+    """Color conversion transcoding using OIIO for images mostly aimed at
+    transcoding for reviewables (it'll process and output only RGBA channels).
+    """
     enabled: bool = SettingsField(True)
     profiles: list[ExtractOIIOTranscodeProfileModel] = SettingsField(
+        default_factory=list, title="Profiles"
+    )
+
+
+class ExtractOIIOPostProcessOutputModel(BaseSettingsModel):
+    _layout = "expanded"
+    name: str = SettingsField(
+        "",
+        title="Name",
+        description="Output name (no space)",
+        regex=r"[a-zA-Z0-9_]([a-zA-Z0-9_\.\-]*[a-zA-Z0-9_])?$",
+    )
+    extension: str = SettingsField(
+        "",
+        title="Extension",
+        description=(
+            "Target extension. If left empty, original"
+            " extension is used."
+        ),
+    )
+    input_arguments: list[str] = SettingsField(
+        default_factory=list,
+        title="Input arguments",
+        description="Arguments passed prior to the input file argument.",
+    )
+    output_arguments: list[str] = SettingsField(
+        default_factory=list,
+        title="Output arguments",
+        description="Arguments passed prior to the -o argument.",
+    )
+    tags: list[str] = SettingsField(
+        default_factory=list,
+        title="Tags",
+        description=(
+            "Additional tags that will be added to the created representation."
+            "\nAdd *review* tag to create review from the transcoded"
+            " representation instead of the original."
+        )
+    )
+    custom_tags: list[str] = SettingsField(
+        default_factory=list,
+        title="Custom Tags",
+        description=(
+            "Additional custom tags that will be added"
+            " to the created representation."
+        )
+    )
+
+
+class ExtractOIIOPostProcessProfileModel(BaseSettingsModel):
+    product_types: list[str] = SettingsField(
+        default_factory=list,
+        title="Product types"
+    )
+    hosts: list[str] = SettingsField(
+        default_factory=list,
+        title="Host names"
+    )
+    task_types: list[str] = SettingsField(
+        default_factory=list,
+        title="Task types",
+        enum_resolver=task_types_enum
+    )
+    task_names: list[str] = SettingsField(
+        default_factory=list,
+        title="Task names"
+    )
+    product_names: list[str] = SettingsField(
+        default_factory=list,
+        title="Product names"
+    )
+    delete_original: bool = SettingsField(
+        True,
+        title="Delete Original Representation",
+        description=(
+            "Choose to preserve or remove the original representation.\n"
+            "Keep in mind that if the transcoded representation includes"
+            " a `review` tag, it will take precedence over"
+            " the original for creating reviews."
+        ),
+    )
+    outputs: list[ExtractOIIOPostProcessOutputModel] = SettingsField(
+        default_factory=list,
+        title="Output Definitions",
+    )
+
+    @validator("outputs")
+    def validate_unique_outputs(cls, value):
+        ensure_unique_names(value)
+        return value
+
+
+class ExtractOIIOPostProcessModel(BaseSettingsModel):
+    """Process representation images with `oiiotool` on publish.
+
+    This could be used to convert images to different formats, convert to
+    scanline images or flatten deep images.
+    """
+    enabled: bool = SettingsField(True)
+    profiles: list[ExtractOIIOPostProcessProfileModel] = SettingsField(
         default_factory=list, title="Profiles"
     )
 
@@ -1122,6 +1225,10 @@ class PublishPuginsModel(BaseSettingsModel):
         default_factory=ExtractOIIOTranscodeModel,
         title="Extract OIIO Transcode"
     )
+    ExtractOIIOPostProcess: ExtractOIIOPostProcessModel = SettingsField(
+        default_factory=ExtractOIIOPostProcessModel,
+        title="Extract OIIO Post Process"
+    )
     ExtractReview: ExtractReviewModel = SettingsField(
         default_factory=ExtractReviewModel,
         title="Extract Review"
@@ -1344,6 +1451,10 @@ DEFAULT_PUBLISH_VALUES = {
         }
     },
     "ExtractOIIOTranscode": {
+        "enabled": True,
+        "profiles": []
+    },
+    "ExtractOIIOPostProcess": {
         "enabled": True,
         "profiles": []
     },
