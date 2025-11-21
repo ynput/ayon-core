@@ -53,14 +53,8 @@ def checkstate_enum_to_int(state):
 
 def center_window(window):
     """Move window to center of it's screen."""
-
-    if hasattr(QtWidgets.QApplication, "desktop"):
-        desktop = QtWidgets.QApplication.desktop()
-        screen_idx = desktop.screenNumber(window)
-        screen_geo = desktop.screenGeometry(screen_idx)
-    else:
-        screen = window.screen()
-        screen_geo = screen.geometry()
+    screen = window.screen()
+    screen_geo = screen.geometry()
 
     geo = window.frameGeometry()
     geo.moveCenter(screen_geo.center())
@@ -554,11 +548,17 @@ class _IconsCache:
         elif icon_type == "ayon_url":
             url = icon_def["url"].lstrip("/")
             url = f"{ayon_api.get_base_url()}/{url}"
-            stream = io.BytesIO()
-            ayon_api.download_file_to_stream(url, stream)
-            pix = QtGui.QPixmap()
-            pix.loadFromData(stream.getvalue())
-            icon = QtGui.QIcon(pix)
+            try:
+                stream = io.BytesIO()
+                ayon_api.download_file_to_stream(url, stream)
+                pix = QtGui.QPixmap()
+                pix.loadFromData(stream.getvalue())
+                icon = QtGui.QIcon(pix)
+            except Exception:
+                log.warning(
+                    "Failed to download image '%s'", url, exc_info=True
+                )
+                icon = None
 
         elif icon_type == "transparent":
             size = icon_def.get("size")
