@@ -2,7 +2,6 @@
 """Base class for AYON addons."""
 from __future__ import annotations
 
-import copy
 import os
 import sys
 import time
@@ -13,6 +12,7 @@ import collections
 import warnings
 from uuid import uuid4
 from abc import ABC, abstractmethod
+from urllib.parse import urlencode
 from types import ModuleType
 import typing
 from typing import Optional, Any, Union
@@ -136,39 +136,50 @@ def load_addons(force: bool = False) -> None:
             time.sleep(0.1)
 
 
-def _get_ayon_bundle_data() -> Optional[dict[str, Any]]:
+def _get_ayon_bundle_data() -> tuple[
+    dict[str, Any], Optional[dict[str, Any]]
+]:
     studio_bundle_name = os.environ.get("AYON_STUDIO_BUNDLE_NAME")
     project_bundle_name = os.getenv("AYON_BUNDLE_NAME")
+    # If AYON launcher <1.4.0 was used
+    if not studio_bundle_name:
+        studio_bundle_name = project_bundle_name
     bundles = ayon_api.get_bundles()["bundles"]
-    project_bundle = next(
+    studio_bundle = next(
         (
             bundle
             for bundle in bundles
-            if bundle["name"] == project_bundle_name
+            if bundle["name"] == studio_bundle_name
         ),
         None
     )
-    studio_bundle = None
-    if studio_bundle_name and project_bundle_name != studio_bundle_name:
-        studio_bundle = next(
+
+    if studio_bundle is None:
+        raise RuntimeError(f"Failed to find bundle '{studio_bundle_name}'.")
+
+    project_bundle = None
+    if project_bundle_name and project_bundle_name != studio_bundle_name:
+        project_bundle = next(
             (
                 bundle
                 for bundle in bundles
-                if bundle["name"] == studio_bundle_name
+                if bundle["name"] == project_bundle_name
             ),
             None
         )
 
-    if project_bundle and studio_bundle:
-        addons = copy.deepcopy(studio_bundle["addons"])
-        addons.update(project_bundle["addons"])
-        project_bundle["addons"] = addons
-    return project_bundle
+        if project_bundle is None:
+            raise RuntimeError(
+                f"Failed to find project bundle '{project_bundle_name}'."
+            )
+
+    return studio_bundle, project_bundle
 
 
 def _get_ayon_addons_information(
-    bundle_info: dict[str, Any]
-) -> list[dict[str, Any]]:
+    studio_bundle: dict[str, Any],
+    project_bundle: Optional[dict[str, Any]],
+) -> dict[str, str]:
     """Receive information about addons to use from server.
 
     Todos:
@@ -181,22 +192,20 @@ def _get_ayon_addons_information(
         list[dict[str, Any]]: List of addon information to use.
 
     """
-    output = []
-    bundle_addons = bundle_info["addons"]
-    addons = ayon_api.get_addons_info()["addons"]
-    for addon in addons:
-        name = addon["name"]
-        versions = addon.get("versions")
-        addon_version = bundle_addons.get(name)
-        if addon_version is None or not versions:
-            continue
-        version = versions.get(addon_version)
-        if version:
-            version = copy.deepcopy(version)
-            version["name"] = name
-            version["version"] = addon_version
-            output.append(version)
-    return output
+    key_values = {
+        "summary": "true",
+        "bundle_name": studio_bundle["name"],
+    }
+    if project_bundle:
+        key_values["project_bundle_name"] = project_bundle["name"]
+
+    query = urlencode(key_values)
+
+    response = ayon_api.get(f"settings?{query}")
+    return {
+        addon["name"]: addon["version"]
+        for addon in response.data["addons"]
+    }
 
 
 def _load_ayon_addons(log: logging.Logger) -> list[ModuleType]:
@@ -214,8 +223,8 @@ def _load_ayon_addons(log: logging.Logger) -> list[ModuleType]:
 
     """
     all_addon_modules = []
-    bundle_info = _get_ayon_bundle_data()
-    addons_info = _get_ayon_addons_information(bundle_info)
+    studio_bundle, project_bundle = _get_ayon_bundle_data()
+    addons_info = _get_ayon_addons_information(studio_bundle, project_bundle)
     if not addons_info:
         return all_addon_modules
 
@@ -227,17 +236,16 @@ def _load_ayon_addons(log: logging.Logger) -> list[ModuleType]:
     dev_addons_info = {}
     if dev_mode_enabled:
         # Get dev addons info only when dev mode is enabled
-        dev_addons_info = bundle_info.get("addonDevelopment", dev_addons_info)
+        dev_addons_info = studio_bundle.get(
+            "addonDevelopment", dev_addons_info
+        )
 
     addons_dir_exists = os.path.exists(addons_dir)
     if not addons_dir_exists:
         log.warning(
             f"Addons directory does not exists. Path \"{addons_dir}\"")
 
-    for addon_info in addons_info:
-        addon_name = addon_info["name"]
-        addon_version = addon_info["version"]
-
+    for addon_name, addon_version in addons_info.items():
         # core addon does not have any addon object
         if addon_name == "core":
             continue
