@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING, Iterable, Optional
 
 import arrow
 import ayon_api
+from ayon_api.graphql_queries import project_graphql_query
 from ayon_api.operations import OperationsSession
 
 from ayon_core.lib import NestedCacheItem
@@ -202,7 +203,7 @@ class ProductsModel:
         cache = self._product_type_items_cache[project_name]
         if not cache.is_valid:
             icons_mapping = self._get_product_type_icons(project_name)
-            product_types = ayon_api.get_project_product_types(project_name)
+            product_types = self._get_project_product_types(project_name)
             cache.update_data([
                 ProductTypeItem(
                     product_type["name"],
@@ -461,6 +462,24 @@ class ProductsModel:
             },
             PRODUCTS_MODEL_SENDER
         )
+
+    def _get_project_product_types(self, project_name: str) -> list[dict]:
+        """This is a temporary solution for product types fetching.
+
+        There was a bug in ayon_api.get_project(...) which did not use GraphQl
+            but REST instead. That is fixed in ayon-python-api 1.2.6 that will
+            be as part of ayon launcher 1.4.3 release.
+
+        """
+        if not project_name:
+            return []
+        query = project_graphql_query({"productTypes.name"})
+        query.set_variable_value("projectName", project_name)
+        parsed_data = query.query(ayon_api.get_server_api_connection())
+        project = parsed_data["project"]
+        if project is None:
+            return []
+        return project["productTypes"]
 
     def _get_product_type_icons(
         self, project_name: Optional[str]
