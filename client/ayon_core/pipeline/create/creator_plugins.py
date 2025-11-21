@@ -1,4 +1,6 @@
 """Creator plugins for the create process."""
+from __future__ import annotations
+
 import collections
 import copy
 import os
@@ -7,7 +9,6 @@ from typing import TYPE_CHECKING, Any, Dict, Optional
 from warnings import warn
 
 from ayon_core.lib import Logger, get_version_from_path
-from ayon_core.pipeline.compatibility import is_product_base_type_supported
 from ayon_core.pipeline.plugin_discover import (
     deregister_plugin,
     deregister_plugin_path,
@@ -274,7 +275,7 @@ class BaseCreator(ABC):
             # - those may be potential dangerous typos in settings
             if not hasattr(self, key):
                 self.log.debug(
-                    "Applying settings to unknown attribute '%' on '%'.",
+                    "Applying settings to unknown attribute '%s' on '%s'.",
                     key, cls_name
                 )
             setattr(self, key, value)
@@ -293,11 +294,9 @@ class BaseCreator(ABC):
         Default implementation returns plugin's product type.
 
         """
-        identifier = self.product_type
-        if is_product_base_type_supported():
-            identifier = self.product_base_type
-            if self.product_type:
-                identifier = f"{identifier}.{self.product_type}"
+        identifier = self.product_base_type
+        if not identifier:
+            identifier = self.product_type
         return identifier
 
     @property
@@ -399,19 +398,14 @@ class BaseCreator(ABC):
         if product_type is None:
             product_type = self.product_type
 
-        if (
-                is_product_base_type_supported()
-                and not product_base_type
-                and not self.product_base_type
-        ):
+        if not product_base_type and not self.product_base_type:
             warn(
                 f"Creator {self.identifier} does not support "
                 "product base type. This will be required in future.",
                 DeprecationWarning,
                 stacklevel=2,
             )
-        else:
-            product_base_type = self.product_base_type
+            product_base_type = product_type
 
         instance = CreatedInstance(
             product_type=product_type,
@@ -534,7 +528,6 @@ class BaseCreator(ABC):
         host_name: Optional[str] = None,
         instance: Optional[CreatedInstance] = None,
         project_entity: Optional[dict[str, Any]] = None,
-        product_base_type: Optional[str] = None,
     ) -> str:
         """Return product name for passed context.
 
@@ -552,11 +545,11 @@ class BaseCreator(ABC):
                 for which is product name updated. Passed only on product name
                 update.
             project_entity (Optional[dict[str, Any]]): Project entity.
-            product_base_type (Optional[str]): Product base type.
 
         """
-        if is_product_base_type_supported() and (instance and hasattr(instance, "product_base_type")):  # noqa: E501
-            product_base_type = instance.product_base_type
+        product_base_type = None
+        if hasattr(self, "product_base_type"):  # noqa: E501
+            product_base_type = self.product_base_type
 
         if host_name is None:
             host_name = self.create_context.host_name
@@ -589,7 +582,8 @@ class BaseCreator(ABC):
             dynamic_data=dynamic_data,
             project_settings=self.project_settings,
             project_entity=project_entity,
-            product_base_type=product_base_type
+            # until we make product_base_type mandatory
+            product_base_type=self.product_base_type
         )
 
     def get_instance_attr_defs(self):
