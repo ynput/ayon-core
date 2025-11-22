@@ -177,7 +177,10 @@ def get_instance_uri_path(
 
         # If for whatever reason we were unable to retrieve from the context
         # then get the path from an existing database entry
-        path = get_representation_path_by_names(**query)
+        path = get_representation_path_by_names(
+            anatomy=context.data["anatomy"],
+            **names
+        )
 
         # Ensure `None` for now is also a string
         path = str(path)
