@@ -181,6 +181,8 @@ def get_instance_uri_path(
             anatomy=context.data["anatomy"],
             **names
         )
+        if not path:
+            raise RuntimeError(f"Unable to resolve publish path for: {names}")
 
         # Ensure `None` for now is also a string
         path = str(path)
