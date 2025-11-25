@@ -822,9 +822,7 @@ def replace_with_published_scene_path(instance, replace_in_path=True):
     template_name = get_publish_template_name(
         project_name=project_name,
         host_name=instance.context.data["hostName"],
-        # publish template has to match productType "workfile",
-        # otherwise default template will be used:
-        product_type="workfile",
+        product_type=workfile_instance.data["productType"],
         task_name=task_name,
         task_type=task_type,
         project_settings=project_settings,
