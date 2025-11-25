@@ -910,7 +910,7 @@ class ExtractUSDAssetContribution(publish.Extractor):
             payload_layer.Export(payload_path, args={"format": "usda"})
             self.add_relative_file(instance, payload_path)
 
-    def init_layer(self, asset_name, init_type):
+    def init_layer(self, asset_name: str, init_type: str):
         """Initialize layer if no previous version exists"""
 
         if init_type == "asset":
