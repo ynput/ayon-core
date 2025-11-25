@@ -1,3 +1,5 @@
+from __future__ import annotations
+from typing import Any, Optional
 import os
 import copy
 import clique
@@ -49,17 +51,19 @@ class ExtractOIIOPostProcess(publish.Extractor):
             self.log.warning("OIIO not supported, no transcoding possible.")
             return
 
-        profile = self._get_profile(
-            instance
-        )
-        if not profile:
-            return
-
-        profile_output_defs = profile["outputs"]
         new_representations = []
         for idx, repre in enumerate(list(instance.data["representations"])):
             self.log.debug("repre ({}): `{}`".format(idx + 1, repre["name"]))
             if not self._repre_is_valid(repre):
+                continue
+
+            # We check profile per representation name and extension because
+            # it's included in the profile check. As such, an instance may have
+            # a different profile applied per representation.
+            profile = self._get_profile(
+                instance
+            )
+            if not profile:
                 continue
 
             # Get representation files to convert
@@ -72,7 +76,7 @@ class ExtractOIIOPostProcess(publish.Extractor):
             added_review = False
 
             # Process each output definition
-            for output_def in profile_output_defs:
+            for output_def in profile["outputs"]:
 
                 # Local copy to avoid accidental mutable changes
                 files_to_convert = list(repre_files_to_convert)
@@ -255,7 +259,7 @@ class ExtractOIIOPostProcess(publish.Extractor):
                                        output_extension)
         return os.path.join(output_dir, new_file_name)
 
-    def _get_profile(self, instance):
+    def _get_profile(self, instance: pyblish.api.Instance, repre: dict) -> Optional[dict[str, Any]]:
         """Returns profile if it should process this instance."""
         host_name = instance.context.data["hostName"]
         product_type = instance.data["productType"]
@@ -263,24 +267,30 @@ class ExtractOIIOPostProcess(publish.Extractor):
         task_data = instance.data["anatomyData"].get("task", {})
         task_name = task_data.get("name")
         task_type = task_data.get("type")
+        repre_name: str = repre["name"]
+        repre_ext: str = repre["ext"]
         filtering_criteria = {
             "hosts": host_name,
             "product_types": product_type,
             "product_names": product_name,
             "task_names": task_name,
             "task_types": task_type,
+            "representation_names": repre_name,
+            "representation_exts": repre_ext,
         }
         profile = filter_profiles(self.profiles, filtering_criteria,
                                   logger=self.log)
 
         if not profile:
-            self.log.debug((
+            self.log.debug(
               "Skipped instance. None of profiles in presets are for"
-              " Host: \"{}\" | Product types: \"{}\" | Product names: \"{}\""
-              " | Task name \"{}\" | Task type \"{}\""
-            ).format(
-                host_name, product_type, product_name, task_name, task_type
-            ))
+              f" Host: \"{host_name}\" |"
+              f" Product types: \"{product_type}\" |"
+              f" Product names: \"{product_name}\" |"
+              f" Task name \"{task_name}\" |"
+              f" Task type \"{task_type}\" |"
+              f" Representation: \"{repre_name}\" (.{repre_ext})"
+            )
 
         return profile
 
@@ -302,6 +312,12 @@ class ExtractOIIOPostProcess(publish.Extractor):
         if not repre.get("files"):
             self.log.debug((
                 "Representation '{}' has empty files. Skipped."
+            ).format(repre["name"]))
+            return False
+
+        if "delete" in repre.get("tags", []):
+            self.log.debug((
+                "Representation '{}' has 'delete' tag. Skipped."
             ).format(repre["name"]))
             return False
 
