@@ -494,7 +494,7 @@ class CollectUSDLayerContributions(pyblish.api.InstancePlugin,
             "asset"
             if profile.get("contribution_target_product") == "usdAsset"
             else "shot")
-        init_as_visible = False
+        init_as_visible = True
 
         # Attributes logic
         publish_attributes = instance["publish_attributes"].get(
@@ -828,6 +828,7 @@ class ExtractUSDAssetContribution(publish.Extractor):
             # If no existing publish of this product exists then we initialize
             # the layer as either a default asset or shot structure.
             init_type = instance.data["contribution_target_product_init"]
+            self.log.debug("Initializing layer as type: %s", init_type)
             asset_layer, payload_layer = self.init_layer(
                 asset_name=folder_name, init_type=init_type
             )
