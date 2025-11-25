@@ -621,6 +621,7 @@ class ExtractOIIOPostProcessOutputModel(BaseSettingsModel):
 
 class ExtractOIIOPostProcessProfileModel(BaseSettingsModel):
     product_types: list[str] = SettingsField(
+        section="Profile",
         default_factory=list,
         title="Product types"
     )
@@ -641,6 +642,14 @@ class ExtractOIIOPostProcessProfileModel(BaseSettingsModel):
         default_factory=list,
         title="Product names"
     )
+    representation_names: list[str] = SettingsField(
+        default_factory=list,
+        title="Representation names",
+    )
+    representation_exts: list[str] = SettingsField(
+        default_factory=list,
+        title="Representation extensions",
+    )
     delete_original: bool = SettingsField(
         True,
         title="Delete Original Representation",
@@ -650,6 +659,7 @@ class ExtractOIIOPostProcessProfileModel(BaseSettingsModel):
             " a `review` tag, it will take precedence over"
             " the original for creating reviews."
         ),
+        section="Conversion Outputs",
     )
     outputs: list[ExtractOIIOPostProcessOutputModel] = SettingsField(
         default_factory=list,
