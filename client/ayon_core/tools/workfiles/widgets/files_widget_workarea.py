@@ -57,6 +57,10 @@ class WorkAreaFilesModel(QtGui.QStandardItemModel):
             "save_as.finished",
             self._on_save_as_finished
         )
+        controller.register_event_callback(
+            "workfile_delete.finished",
+            self._on_delete_finished
+        )
 
         self._file_icon = qtawesome.icon(
             "fa.file-o",
@@ -169,6 +173,13 @@ class WorkAreaFilesModel(QtGui.QStandardItemModel):
             self._fill_items()
 
     def _on_save_as_finished(self, event):
+        if event["failed"]:
+            return
+
+        if not self._published_mode:
+            self._fill_items()
+
+    def _on_delete_finished(self, event):
         if event["failed"]:
             return
 

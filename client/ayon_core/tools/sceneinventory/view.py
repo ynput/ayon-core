@@ -98,13 +98,10 @@ class SceneInventoryView(QtWidgets.QTreeView):
 
     def refresh(self):
         with preserve_expanded_rows(
-            tree_view=self,
-            role=ITEM_UNIQUE_NAME_ROLE
+            tree_view=self, role=ITEM_UNIQUE_NAME_ROLE
         ):
             with preserve_selection(
-                tree_view=self,
-                role=ITEM_UNIQUE_NAME_ROLE,
-                current_index=False
+                tree_view=self, role=ITEM_UNIQUE_NAME_ROLE, current_index=False
             ):
                 kwargs = {}
                 # TODO do not touch view's inner attribute
@@ -131,14 +128,10 @@ class SceneInventoryView(QtWidgets.QTreeView):
         return indexes
 
     def get_selected_item_ids(self):
-        return self._get_item_ids_from_indexes(
-            self.get_selected_indexes()
-        )
+        return self._get_item_ids_from_indexes(self.get_selected_indexes())
 
     def get_selected_container_indexes(self):
-        return self._get_container_indexes(
-            self.get_selected_indexes()
-        )
+        return self._get_container_indexes(self.get_selected_indexes())
 
     def _get_selected_indexes(self):
         selection_model = self.selectionModel()
@@ -174,10 +167,7 @@ class SceneInventoryView(QtWidgets.QTreeView):
         self.setStyleSheet("")
 
     def _build_item_menu_for_selection(self, menu, indexes, active_index):
-        item_ids = {
-            index.data(ITEM_ID_ROLE)
-            for index in indexes
-        }
+        item_ids = {index.data(ITEM_ID_ROLE) for index in indexes}
         item_ids.discard(None)
         if not item_ids:
             return
@@ -238,7 +228,8 @@ class SceneInventoryView(QtWidgets.QTreeView):
         remove_icon = qtawesome.icon("fa.remove", color=DEFAULT_COLOR)
         remove_action = QtWidgets.QAction(remove_icon, "Remove items", menu)
         remove_action.triggered.connect(
-            lambda: self._show_remove_warning_dialog(item_ids))
+            lambda: self._show_remove_warning_dialog(item_ids)
+        )
 
         if not filtered_items:
             # Keep remove action for invalid items
@@ -257,13 +248,15 @@ class SceneInventoryView(QtWidgets.QTreeView):
         has_available_hero_version = False
         has_outdated_approved = False
         last_version_by_product_id = {}
-        for project_name, version_items_by_product_id in (
-            version_items_by_project.items()
-        ):
+        for (
+            project_name,
+            version_items_by_product_id,
+        ) in version_items_by_project.items():
             version_ids = version_ids_by_project[project_name]
-            for product_id, version_items_by_id in (
-                version_items_by_product_id.items()
-            ):
+            for (
+                product_id,
+                version_items_by_id,
+            ) in version_items_by_product_id.items():
                 _has_outdated_approved = False
                 _last_approved_version_item = None
                 for version_item in version_items_by_id.values():
@@ -293,14 +286,9 @@ class SceneInventoryView(QtWidgets.QTreeView):
 
         switch_to_versioned = None
         if has_loaded_hero_versions:
-            update_icon = qtawesome.icon(
-                "fa.asterisk",
-                color=DEFAULT_COLOR
-            )
+            update_icon = qtawesome.icon("fa.asterisk", color=DEFAULT_COLOR)
             switch_to_versioned = QtWidgets.QAction(
-                update_icon,
-                "Switch to versioned",
-                menu
+                update_icon, "Switch to versioned", menu
             )
             switch_to_versioned.triggered.connect(
                 lambda: self._on_switch_to_versioned(item_ids)
@@ -328,14 +316,9 @@ class SceneInventoryView(QtWidgets.QTreeView):
                 )
 
         if approved_version_by_item_id:
-            update_icon = qtawesome.icon(
-                "fa.angle-double-up",
-                color="#00f0b4"
-            )
+            update_icon = qtawesome.icon("fa.angle-double-up", color="#00f0b4")
             update_to_last_approved_action = QtWidgets.QAction(
-                update_icon,
-                "Update to last approved",
-                menu
+                update_icon, "Update to last approved", menu
             )
             update_to_last_approved_action.triggered.connect(
                 lambda: self._update_containers_to_approved_versions(
@@ -346,13 +329,10 @@ class SceneInventoryView(QtWidgets.QTreeView):
         update_to_latest_action = None
         if has_outdated or has_loaded_hero_versions:
             update_icon = qtawesome.icon(
-                "fa.angle-double-up",
-                color=DEFAULT_COLOR
+                "fa.angle-double-up", color=DEFAULT_COLOR
             )
             update_to_latest_action = QtWidgets.QAction(
-                update_icon,
-                "Update to latest",
-                menu
+                update_icon, "Update to latest", menu
             )
             update_to_latest_action.triggered.connect(
                 lambda: self._update_containers_to_version(
@@ -363,14 +343,9 @@ class SceneInventoryView(QtWidgets.QTreeView):
         change_to_hero = None
         if has_available_hero_version:
             # TODO change icon
-            change_icon = qtawesome.icon(
-                "fa.asterisk",
-                color="#00b359"
-            )
+            change_icon = qtawesome.icon("fa.asterisk", color="#00b359")
             change_to_hero = QtWidgets.QAction(
-                change_icon,
-                "Change to hero",
-                menu
+                change_icon, "Change to hero", menu
             )
             change_to_hero.triggered.connect(
                 lambda: self._update_containers_to_version(
@@ -385,9 +360,7 @@ class SceneInventoryView(QtWidgets.QTreeView):
                 "fa.hashtag", color=DEFAULT_COLOR
             )
             set_version_action = QtWidgets.QAction(
-                set_version_icon,
-                "Set version",
-                menu
+                set_version_icon, "Set version", menu
             )
             set_version_action.triggered.connect(
                 lambda: self._show_version_dialog(item_ids, active_repre_id)
@@ -396,12 +369,11 @@ class SceneInventoryView(QtWidgets.QTreeView):
         # switch folder
         switch_folder_icon = qtawesome.icon("fa.sitemap", color=DEFAULT_COLOR)
         switch_folder_action = QtWidgets.QAction(
-            switch_folder_icon,
-            "Switch Folder",
-            menu
+            switch_folder_icon, "Switch Folder", menu
         )
         switch_folder_action.triggered.connect(
-            lambda: self._show_switch_dialog(item_ids))
+            lambda: self._show_switch_dialog(item_ids)
+        )
 
         # add the actions
         if switch_to_versioned:
@@ -448,26 +420,16 @@ class SceneInventoryView(QtWidgets.QTreeView):
 
         download_icon = qtawesome.icon("fa.download", color=DEFAULT_COLOR)
         download_active_action = QtWidgets.QAction(
-            download_icon,
-            "Download",
-            menu
+            download_icon, "Download", menu
         )
         download_active_action.triggered.connect(
-            lambda: self._add_sites(
-                repre_ids_by_project_name, "active_site"
-            )
+            lambda: self._add_sites(repre_ids_by_project_name, "active_site")
         )
 
         upload_icon = qtawesome.icon("fa.upload", color=DEFAULT_COLOR)
-        upload_remote_action = QtWidgets.QAction(
-            upload_icon,
-            "Upload",
-            menu
-        )
+        upload_remote_action = QtWidgets.QAction(upload_icon, "Upload", menu)
         upload_remote_action.triggered.connect(
-            lambda: self._add_sites(
-                repre_ids_by_project_name, "remote_site"
-            )
+            lambda: self._add_sites(repre_ids_by_project_name, "remote_site")
         )
 
         menu.addAction(download_active_action)
@@ -508,10 +470,7 @@ class SceneInventoryView(QtWidgets.QTreeView):
         if not indexes:
             indexes = []
 
-        item_ids = {
-            index.data(ITEM_ID_ROLE)
-            for index in indexes
-        }
+        item_ids = {index.data(ITEM_ID_ROLE) for index in indexes}
         item_ids.discard(None)
 
         # add the actions
@@ -535,9 +494,7 @@ class SceneInventoryView(QtWidgets.QTreeView):
                 icon = get_qt_icon(icon_def)
                 action_item = QtWidgets.QAction(icon, action.label, submenu)
                 action_item.triggered.connect(
-                    partial(
-                        self._process_custom_action, action, item_ids
-                    )
+                    partial(self._process_custom_action, action, item_ids)
                 )
 
                 submenu.addAction(action_item)
@@ -549,21 +506,18 @@ class SceneInventoryView(QtWidgets.QTreeView):
         if self._hierarchy_view:
             back_to_flat_icon = qtawesome.icon("fa.list", color=DEFAULT_COLOR)
             back_to_flat_action = QtWidgets.QAction(
-                back_to_flat_icon,
-                "Back to Full-View",
-                menu
+                back_to_flat_icon, "Back to Full-View", menu
             )
             back_to_flat_action.triggered.connect(self._leave_hierarchy)
 
         # send items to hierarchy view
         enter_hierarchy_icon = qtawesome.icon("fa.indent", color="#d8d8d8")
         enter_hierarchy_action = QtWidgets.QAction(
-            enter_hierarchy_icon,
-            "Cherry-Pick (Hierarchy)",
-            menu
+            enter_hierarchy_icon, "Cherry-Pick (Hierarchy)", menu
         )
         enter_hierarchy_action.triggered.connect(
-            lambda: self._enter_hierarchy(item_ids))
+            lambda: self._enter_hierarchy(item_ids)
+        )
 
         if indexes:
             menu.addAction(enter_hierarchy_action)
@@ -600,11 +554,16 @@ class SceneInventoryView(QtWidgets.QTreeView):
 
         # Check which action will be available in the menu
         Plugins = discover_inventory_actions()
-        compatible = [
-            p()
-            for p in Plugins
-            if any(p.is_compatible(c) for c in containers)
-        ]
+        compatible = []
+        for p in Plugins:
+            try:
+                plugin_instance = p()
+                if any(plugin_instance.is_compatible(c) for c in containers):
+                    compatible.append(plugin_instance)
+            except Exception:
+                # Skip actions that fail during instantiation or compatibility check
+                # This prevents a single broken action from breaking the entire menu
+                continue
 
         return sorted(compatible, key=sorter)
 
@@ -744,6 +703,7 @@ class SceneInventoryView(QtWidgets.QTreeView):
             list: The children indices
 
         """
+
         def get_children(index):
             model = index.model()
             for row in range(model.rowCount(index)):
@@ -821,9 +781,10 @@ class SceneInventoryView(QtWidgets.QTreeView):
         product_ids = set()
         version_items = []
         product_ids_by_version_by_project = {}
-        for project_name, version_items_by_product_id in (
-            version_items_by_project.items()
-        ):
+        for (
+            project_name,
+            version_items_by_product_id,
+        ) in version_items_by_project.items():
             product_ids_by_version = collections.defaultdict(set)
             product_ids_by_version_by_project[project_name] = (
                 product_ids_by_version
@@ -892,7 +853,7 @@ class SceneInventoryView(QtWidgets.QTreeView):
             version_options,
             active_version_idx,
             show_statuses=show_statuses,
-            parent=self
+            parent=self,
         )
         if version_option is None:
             return
@@ -905,18 +866,16 @@ class SceneInventoryView(QtWidgets.QTreeView):
         filtered_item_ids = set()
         for container_item in container_items_by_id.values():
             project_name = container_item.project_name
-            product_ids_by_version = (
-                product_ids_by_version_by_project[project_name]
-            )
+            product_ids_by_version = product_ids_by_version_by_project[
+                project_name
+            ]
             product_ids = product_ids_by_version[product_version]
             repre_id = container_item.representation_id
             repre_info = repre_info_by_project[project_name][repre_id]
             if repre_info.product_id in product_ids:
                 filtered_item_ids.add(container_item.item_id)
 
-        self._update_containers_to_version(
-            filtered_item_ids, version
-        )
+        self._update_containers_to_version(filtered_item_ids, version)
 
     def _show_switch_dialog(self, item_ids):
         """Display Switch dialog"""
@@ -928,9 +887,10 @@ class SceneInventoryView(QtWidgets.QTreeView):
             project_name = container_item.project_name
             container_ids_by_project_name[project_name].add(container_id)
 
-        for project_name, container_ids in (
-            container_ids_by_project_name.items()
-        ):
+        for (
+            project_name,
+            container_ids,
+        ) in container_ids_by_project_name.items():
             containers_by_id = self._controller.get_containers_by_item_ids(
                 container_ids
             )
@@ -938,7 +898,7 @@ class SceneInventoryView(QtWidgets.QTreeView):
                 self._controller,
                 project_name,
                 list(containers_by_id.values()),
-                self
+                self,
             )
             dialog.switched.connect(self.data_changed.emit)
             dialog.show()
@@ -957,7 +917,7 @@ class SceneInventoryView(QtWidgets.QTreeView):
             "Are you sure?",
             f"Are you sure you want to remove {len(containers)} item(s)",
             buttons=buttons,
-            defaultButton=accept
+            defaultButton=accept,
         )
 
         if state != accept:
@@ -990,8 +950,7 @@ class SceneInventoryView(QtWidgets.QTreeView):
         dialog.setWindowTitle("Update failed")
 
         switch_btn = dialog.addButton(
-            "Switch Folder",
-            QtWidgets.QMessageBox.ActionRole
+            "Switch Folder", QtWidgets.QMessageBox.ActionRole
         )
         switch_btn.clicked.connect(lambda: self._show_switch_dialog(item_ids))
 
@@ -1020,7 +979,8 @@ class SceneInventoryView(QtWidgets.QTreeView):
     def _on_switch_to_versioned(self, item_ids):
         # Get container items by ID
         containers_items_by_id = self._controller.get_container_items_by_id(
-            item_ids)
+            item_ids
+        )
         # Extract project names and their corresponding representation IDs
         repre_ids_by_project = collections.defaultdict(set)
         for container_item in containers_items_by_id.values():
@@ -1058,9 +1018,9 @@ class SceneInventoryView(QtWidgets.QTreeView):
             repre_info_by_id = repres_info_by_project[project_name]
             repre_info = repre_info_by_id[repre_id]
 
-            version_items_by_product_id = (
-                version_items_by_project[project_name]
-            )
+            version_items_by_product_id = version_items_by_project[
+                project_name
+            ]
             product_id = repre_info.product_id
             version_items_by_id = version_items_by_product_id[product_id]
             version_item = version_items_by_id.get(repre_info.version_id, {})

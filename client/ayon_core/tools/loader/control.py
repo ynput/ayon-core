@@ -1,44 +1,39 @@
 from __future__ import annotations
 
 import logging
+import os
+import tempfile
 import uuid
-from typing import Optional, Any
+from typing import Optional
 
 import ayon_api
 
 from ayon_core.settings import get_project_settings
 from ayon_core.pipeline import get_current_host_name
-from ayon_core.lib import (
-    NestedCacheItem,
-    CacheItem,
-    filter_profiles,
-)
+from ayon_core.lib import NestedCacheItem, CacheItem, filter_profiles
 from ayon_core.lib.events import QueuedEventSystem
+from ayon_core.lib.transcoding import VIDEO_EXTENSIONS
 from ayon_core.pipeline import Anatomy, get_current_context
-from ayon_core.host import ILoadHost, AbstractHost
+from ayon_core.host import ILoadHost
 from ayon_core.tools.common_models import (
     ProjectsModel,
     HierarchyModel,
     ThumbnailsModel,
     TagItem,
     ProductTypeIconMapping,
-    UsersModel,
 )
 
 from .abstract import (
     BackendLoaderController,
     FrontendLoaderController,
     ProductTypesFilter,
-    ActionItem,
 )
 from .models import (
     SelectionModel,
     ProductsModel,
     LoaderActionsModel,
-    SiteSyncModel
+    SiteSyncModel,
 )
-
-NOT_SET = object()
 
 
 class ExpectedSelection:
@@ -113,16 +108,16 @@ class LoaderController(BackendLoaderController, FrontendLoaderController):
         host (Optional[AbstractHost]): Host object. Defaults to None.
     """
 
-    def __init__(self, host: Optional[AbstractHost] = None) -> None:
+    def __init__(self, host=None):
         self._log = None
         self._host = host
 
         self._event_system = self._create_event_system()
 
-        self._project_anatomy_cache = NestedCacheItem(
-            levels=1, lifetime=60)
+        self._project_anatomy_cache = NestedCacheItem(levels=1, lifetime=60)
         self._loaded_products_cache = CacheItem(
-            default_factory=set, lifetime=60)
+            default_factory=set, lifetime=60
+        )
 
         self._selection_model = SelectionModel(self)
         self._expected_selection = ExpectedSelection(self)
@@ -132,7 +127,6 @@ class LoaderController(BackendLoaderController, FrontendLoaderController):
         self._loader_actions_model = LoaderActionsModel(self)
         self._thumbnails_model = ThumbnailsModel()
         self._sitesync_model = SiteSyncModel(self)
-        self._users_model = UsersModel(self)
 
     @property
     def log(self):
@@ -143,11 +137,6 @@ class LoaderController(BackendLoaderController, FrontendLoaderController):
     # ---------------------------------
     # Implementation of abstract methods
     # ---------------------------------
-    def get_window_subtitle(self) -> Optional[str]:
-        if self._host is None:
-            return None
-        return self._host.name
-
     # Events system
     def emit_event(self, topic, data=None, source=None):
         """Use implemented event system to trigger event."""
@@ -174,7 +163,6 @@ class LoaderController(BackendLoaderController, FrontendLoaderController):
         self._projects_model.reset()
         self._thumbnails_model.reset()
         self._sitesync_model.reset()
-        self._users_model.reset()
 
         self._projects_model.refresh()
 
@@ -206,9 +194,7 @@ class LoaderController(BackendLoaderController, FrontendLoaderController):
         return self._projects_model.get_project_items(sender)
 
     def get_folder_type_items(self, project_name, sender=None):
-        return self._projects_model.get_folder_type_items(
-            project_name, sender
-        )
+        return self._projects_model.get_folder_type_items(project_name, sender)
 
     def get_project_status_items(self, project_name, sender=None):
         return self._projects_model.get_project_status_items(
@@ -228,15 +214,15 @@ class LoaderController(BackendLoaderController, FrontendLoaderController):
     def get_task_items(self, project_name, folder_ids, sender=None):
         output = []
         for folder_id in folder_ids:
-            output.extend(self._hierarchy_model.get_task_items(
-                project_name, folder_id, sender
-            ))
+            output.extend(
+                self._hierarchy_model.get_task_items(
+                    project_name, folder_id, sender
+                )
+            )
         return output
 
     def get_task_type_items(self, project_name, sender=None):
-        return self._projects_model.get_task_type_items(
-            project_name, sender
-        )
+        return self._projects_model.get_task_type_items(project_name, sender)
 
     def get_folder_labels(self, project_name, folder_ids):
         folder_items_by_id = self._hierarchy_model.get_folder_items_by_id(
@@ -250,17 +236,6 @@ class LoaderController(BackendLoaderController, FrontendLoaderController):
             output[folder_id] = label
         return output
 
-    def get_my_tasks_entity_ids(
-        self, project_name: str
-    ) -> dict[str, list[str]]:
-        username = self._users_model.get_current_username()
-        assignees = []
-        if username:
-            assignees.append(username)
-        return self._hierarchy_model.get_entity_ids_for_assignees(
-            project_name, assignees
-        )
-
     def get_available_tags_by_entity_type(
         self, project_name: str
     ) -> dict[str, list[str]]:
@@ -273,19 +248,16 @@ class LoaderController(BackendLoaderController, FrontendLoaderController):
 
     def get_product_items(self, project_name, folder_ids, sender=None):
         return self._products_model.get_product_items(
-            project_name, folder_ids, sender)
+            project_name, folder_ids, sender
+        )
 
     def get_product_item(self, project_name, product_id):
-        return self._products_model.get_product_item(
-            project_name, product_id
-        )
+        return self._products_model.get_product_item(project_name, product_id)
 
     def get_product_type_items(self, project_name):
         return self._products_model.get_product_type_items(project_name)
 
-    def get_representation_items(
-        self, project_name, version_ids, sender=None
-    ):
+    def get_representation_items(self, project_name, version_ids, sender=None):
         return self._products_model.get_repre_items(
             project_name, version_ids, sender
         )
@@ -322,47 +294,44 @@ class LoaderController(BackendLoaderController, FrontendLoaderController):
             project_name, product_ids, group_name
         )
 
-    def get_action_items(
-        self,
-        project_name: str,
-        entity_ids: set[str],
-        entity_type: str,
-    ) -> list[ActionItem]:
-        action_items = self._loader_actions_model.get_action_items(
-            project_name, entity_ids, entity_type
+    def get_versions_action_items(self, project_name, version_ids):
+        return self._loader_actions_model.get_versions_action_items(
+            project_name, version_ids
         )
 
-        site_sync_items = self._sitesync_model.get_sitesync_action_items(
-            project_name, entity_ids, entity_type
+    def get_representations_action_items(
+        self, project_name, representation_ids
+    ):
+        action_items = (
+            self._loader_actions_model.get_representations_action_items(
+                project_name, representation_ids
+            )
         )
-        action_items.extend(site_sync_items)
+
+        action_items.extend(
+            self._sitesync_model.get_sitesync_action_items(
+                project_name, representation_ids
+            )
+        )
+
         return action_items
 
     def trigger_action_item(
         self,
-        identifier: str,
-        project_name: str,
-        selected_ids: set[str],
-        selected_entity_type: str,
-        data: Optional[dict[str, Any]],
-        options: dict[str, Any],
-        form_values: dict[str, Any],
+        identifier,
+        options,
+        project_name,
+        version_ids,
+        representation_ids,
     ):
         if self._sitesync_model.is_sitesync_action(identifier):
             self._sitesync_model.trigger_action_item(
-                project_name,
-                data,
+                identifier, project_name, representation_ids
             )
             return
 
         self._loader_actions_model.trigger_action_item(
-            identifier=identifier,
-            project_name=project_name,
-            selected_ids=selected_ids,
-            selected_entity_type=selected_entity_type,
-            data=data,
-            options=options,
-            form_values=form_values,
+            identifier, options, project_name, version_ids, representation_ids
         )
 
     # Selection model wrappers
@@ -504,11 +473,135 @@ class LoaderController(BackendLoaderController, FrontendLoaderController):
     def is_standard_projects_filter_enabled(self):
         return self._host is not None
 
-    def get_product_types_filter(self):
-        output = ProductTypesFilter(
-            is_allow_list=False,
-            product_types=[]
+    def is_video_file(self, filepath):
+        """Check if file is a video file based on extension.
+
+        Args:
+            filepath (str): Path to file to check.
+
+        Returns:
+            bool: True if file is a video file.
+        """
+        if not filepath:
+            return False
+        ext = os.path.splitext(filepath)[1].lower()
+        return ext in VIDEO_EXTENSIONS
+
+    def get_reviewable_path(self, project_name, version_ids):
+        """Get reviewable video path using provider chain.
+
+        Tries providers in priority order until one returns a path.
+        This allows different sources (representations, activities,
+        external trackers) to provide reviewable videos.
+
+        Args:
+            project_name (str): Project name
+            version_ids (set[str]): Version IDs
+
+        Returns:
+            Optional[str]: Path to video or None
+        """
+        from ayon_core.tools.loader.providers import (
+            discover_reviewable_providers,
         )
+
+        if not version_ids or not project_name:
+            return None
+
+        providers = discover_reviewable_providers()
+
+        for provider_cls in providers:
+            provider = provider_cls()
+
+            # Check if provider is available for this project
+            try:
+                if not provider.is_available(project_name, self):
+                    self.log.debug(
+                        f"Provider '{provider.label}' not available "
+                        f"for {project_name}"
+                    )
+                    continue
+            except Exception as e:
+                self.log.warning(
+                    f"Provider '{provider.label}' availability check failed: {e}"
+                )
+                continue
+
+            # Try to get reviewable from this provider
+            try:
+                video_path = provider.get_reviewable_path(
+                    project_name, version_ids, self
+                )
+                if video_path:
+                    self.log.debug(
+                        f"Found reviewable via '{provider.label}': {video_path}"
+                    )
+                    return video_path
+            except Exception as e:
+                self.log.warning(
+                    f"Provider '{provider.label}' failed: {e}", exc_info=True
+                )
+                continue
+
+        self.log.debug("No reviewable found via any provider")
+        return None
+
+    def extract_video_first_frame(self, video_path):
+        """Extract first frame from video for preview.
+
+        Args:
+            video_path (str): Path to video file.
+
+        Returns:
+            Optional[QtGui.QPixmap]: First frame as pixmap or None if failed.
+        """
+        try:
+            from qtpy import QtGui
+            from ayon_core.lib import get_ffmpeg_tool_args, run_subprocess
+
+            # Create temp file for frame
+            temp_fd, frame_path = tempfile.mkstemp(
+                suffix=".jpg", prefix="video_preview_"
+            )
+            os.close(temp_fd)
+
+            # Extract first frame with ffmpeg
+            cmd = get_ffmpeg_tool_args(
+                "ffmpeg", "-i", video_path, "-vframes", "1", "-y", frame_path
+            )
+
+            run_subprocess(cmd)
+
+            if os.path.exists(frame_path) and os.path.getsize(frame_path) > 0:
+                pix = QtGui.QPixmap(frame_path)
+                # Cleanup temp file
+                try:
+                    os.remove(frame_path)
+                except Exception:
+                    pass
+                return pix
+
+        except Exception as e:
+            self.log.warning(f"Failed to extract first frame: {e}")
+
+        return None
+
+    def _get_project_anatomy(self, project_name):
+        if not project_name:
+            return None
+        cache = self._project_anatomy_cache[project_name]
+        if not cache.is_valid:
+            cache.update_data(Anatomy(project_name))
+        return cache.get_data()
+
+    def _create_event_system(self):
+        return QueuedEventSystem()
+
+    def _emit_event(self, topic, data=None):
+        self._event_system.emit(topic, data or {}, "controller")
+
+    def get_product_types_filter(self):
+        output = ProductTypesFilter(is_allow_list=False, product_types=[])
         # Without host is not determined context
         if self._host is None:
             return output
@@ -518,13 +611,9 @@ class LoaderController(BackendLoaderController, FrontendLoaderController):
         if not project_name:
             return output
         settings = get_project_settings(project_name)
-        profiles = (
-            settings
-            ["core"]
-            ["tools"]
-            ["loader"]
-            ["product_type_filter_profiles"]
-        )
+        profiles = settings["core"]["tools"]["loader"][
+            "product_type_filter_profiles"
+        ]
         if not profiles:
             return output
 
@@ -533,10 +622,7 @@ class LoaderController(BackendLoaderController, FrontendLoaderController):
         task_type = None
         if folder_id and task_name:
             task_entity = ayon_api.get_task_by_name(
-                project_name,
-                folder_id,
-                task_name,
-                fields={"taskType"}
+                project_name, folder_id, task_name, fields={"taskType"}
             )
             if task_entity:
                 task_type = task_entity.get("taskType")
@@ -545,9 +631,9 @@ class LoaderController(BackendLoaderController, FrontendLoaderController):
         profile = filter_profiles(
             profiles,
             {
-                "host_names": host_name,
+                "hosts": host_name,
                 "task_types": task_type,
-            }
+            },
         )
         if profile:
             # TODO remove 'is_include' after release '0.4.3'
@@ -556,20 +642,6 @@ class LoaderController(BackendLoaderController, FrontendLoaderController):
                 is_allow_list = profile["filter_type"] == "is_allow_list"
             output = ProductTypesFilter(
                 is_allow_list=is_allow_list,
-                product_types=profile["filter_product_types"]
+                product_types=profile["filter_product_types"],
             )
         return output
-
-    def _create_event_system(self):
-        return QueuedEventSystem()
-
-    def _emit_event(self, topic, data=None):
-        self._event_system.emit(topic, data or {}, "controller")
-
-    def _get_project_anatomy(self, project_name):
-        if not project_name:
-            return None
-        cache = self._project_anatomy_cache[project_name]
-        if not cache.is_valid:
-            cache.update_data(Anatomy(project_name))
-        return cache.get_data()

@@ -123,7 +123,7 @@ class ProductsProxyModel(RecursiveSortFilterProxyModel):
         self,
         index: QtCore.QModelIndex,
         filter_value: Optional[set[str]],
-        role: int
+        role: int,
     ):
         if filter_value is None:
             return True
@@ -170,19 +170,19 @@ class ProductsWidget(QtWidgets.QWidget):
     selection_changed = QtCore.Signal()
     default_widths = (
         200,  # Product name
-        90,   # Product type
-        90,   # Product base type
+        90,  # Product type
+        90,  # Product base type
         130,  # Folder label
-        60,   # Version
+        60,  # Version
         100,  # Status
         125,  # Time
-        75,   # Author
-        75,   # Frames
-        60,   # Duration
-        55,   # Handles
-        10,   # Step
-        25,   # Loaded in scene
-        65,   # Site sync info
+        75,  # Author
+        75,  # Frames
+        60,  # Duration
+        55,  # Handles
+        10,  # Step
+        25,  # Loaded in scene
+        65,  # Site sync info
     )
 
     def __init__(self, controller, parent):
@@ -210,7 +210,24 @@ class ProductsWidget(QtWidgets.QWidget):
 
         products_view.setModel(products_proxy_model)
 
+        # Auto-size columns for Product name and Product type to their contents
+        header = products_view.header()
+        header.setSectionResizeMode(
+            ProductsModel.product_name_col,
+            QtWidgets.QHeaderView.ResizeToContents,
+        )
+        header.setSectionResizeMode(
+            ProductsModel.product_type_col,
+            QtWidgets.QHeaderView.ResizeToContents,
+        )
+
+        # Set fixed widths for the remaining columns
         for idx, width in enumerate(self.default_widths):
+            if idx in (
+                ProductsModel.product_name_col,
+                ProductsModel.product_type_col,
+            ):
+                continue
             products_view.setColumnWidth(idx, width)
 
         version_delegate = VersionDelegate()
@@ -241,11 +258,11 @@ class ProductsWidget(QtWidgets.QWidget):
         products_proxy_model.rowsMoved.connect(self._on_rows_moved)
         products_model.refreshed.connect(self._on_refresh)
         products_model.version_changed.connect(self._on_version_change)
-        products_view.customContextMenuRequested.connect(
-            self._on_context_menu)
+        products_view.customContextMenuRequested.connect(self._on_context_menu)
         products_view_sel_model = products_view.selectionModel()
         products_view_sel_model.selectionChanged.connect(
-            self._on_selection_change)
+            self._on_selection_change
+        )
         version_delegate.version_changed.connect(
             self._on_version_delegate_change
         )
@@ -255,12 +272,10 @@ class ProductsWidget(QtWidgets.QWidget):
             self._on_folders_selection_change,
         )
         controller.register_event_callback(
-            "products.refresh.finished",
-            self._on_products_refresh_finished
+            "products.refresh.finished", self._on_products_refresh_finished
         )
         controller.register_event_callback(
-            "products.group.changed",
-            self._on_group_changed
+            "products.group.changed", self._on_group_changed
         )
 
         self._products_view = products_view
@@ -285,11 +300,9 @@ class ProductsWidget(QtWidgets.QWidget):
         # - Hide in scene column if is not supported (this won't change)
         products_view.setColumnHidden(
             products_model.in_scene_col,
-            not controller.is_loaded_products_supported()
+            not controller.is_loaded_products_supported(),
         )
-        self._set_sitesync_visibility(
-            self._controller.is_sitesync_enabled()
-        )
+        self._set_sitesync_visibility(self._controller.is_sitesync_enabled())
 
         if not is_product_base_type_supported():
             # Hide product base type column
@@ -360,8 +373,7 @@ class ProductsWidget(QtWidgets.QWidget):
 
     def _set_sitesync_visibility(self, sitesync_enabled):
         self._products_view.setColumnHidden(
-            self._products_model.sitesync_avail_col,
-            not sitesync_enabled
+            self._products_model.sitesync_avail_col, not sitesync_enabled
         )
 
     def _fill_version_editor(self):
@@ -399,8 +411,7 @@ class ProductsWidget(QtWidgets.QWidget):
 
     def _refresh_model(self):
         self._products_model.refresh(
-            self._selected_project_name,
-            self._selected_folder_ids
+            self._selected_project_name, self._selected_folder_ids
         )
 
     def _on_context_menu(self, point):
@@ -420,31 +431,26 @@ class ProductsWidget(QtWidgets.QWidget):
             if version_id is not None:
                 version_ids.add(version_id)
 
-        action_items = self._controller.get_action_items(
-            project_name, version_ids, "version"
+        action_items = self._controller.get_versions_action_items(
+            project_name, version_ids
         )
 
         # Prepare global point where to show the menu
         global_point = self._products_view.mapToGlobal(point)
 
         result = show_actions_menu(
-            action_items,
-            global_point,
-            len(version_ids) == 1,
-            self
+            action_items, global_point, len(version_ids) == 1, self
         )
         action_item, options = result
         if action_item is None or options is None:
             return
 
         self._controller.trigger_action_item(
-            identifier=action_item.identifier,
-            project_name=project_name,
-            selected_ids=version_ids,
-            selected_entity_type="version",
-            data=action_item.data,
-            options=options,
-            form_values={},
+            action_item.identifier,
+            options,
+            action_item.project_name,
+            version_ids=action_item.version_ids,
+            representation_ids=action_item.representation_ids,
         )
 
     def _on_selection_change(self):
@@ -478,12 +484,14 @@ class ProductsWidget(QtWidgets.QWidget):
                 selected_version_ids.add(version_id)
 
                 thumbnail_id = model.data(index, VERSION_THUMBNAIL_ID_ROLE)
-                selected_versions_info.append({
-                    "folder_id": model.data(index, FOLDER_ID_ROLE),
-                    "product_id": product_id,
-                    "version_id": version_id,
-                    "thumbnail_id": thumbnail_id,
-                })
+                selected_versions_info.append(
+                    {
+                        "folder_id": model.data(index, FOLDER_ID_ROLE),
+                        "product_id": product_id,
+                        "version_id": version_id,
+                        "thumbnail_id": thumbnail_id,
+                    }
+                )
                 continue
 
             if group_type == 0:
@@ -507,10 +515,7 @@ class ProductsWidget(QtWidgets.QWidget):
                 continue
 
             hex_color = model.data(index, MERGED_COLOR_ROLE)
-            item_data = {
-                "color": hex_color,
-                "folder_ids": item_folder_ids
-            }
+            item_data = {"color": hex_color, "folder_ids": item_folder_ids}
             selected_merged_products.append(item_data)
 
         prev_selected_merged_products = self._selected_merged_products
@@ -530,9 +535,7 @@ class ProductsWidget(QtWidgets.QWidget):
 
     def _on_folders_selection_change(self, event):
         project_name = event["project_name"]
-        sitesync_enabled = self._controller.is_sitesync_enabled(
-            project_name
-        )
+        sitesync_enabled = self._controller.is_sitesync_enabled(project_name)
         self._set_sitesync_visibility(sitesync_enabled)
         self._selected_project_name = project_name
         self._selected_folder_ids = event["folder_ids"]
@@ -542,8 +545,7 @@ class ProductsWidget(QtWidgets.QWidget):
     def _update_folders_label_visible(self):
         folders_label_hidden = len(self._selected_folder_ids) <= 1
         self._products_view.setColumnHidden(
-            self._products_model.folders_label_col,
-            folders_label_hidden
+            self._products_model.folders_label_col, folders_label_hidden
         )
 
     def _on_products_refresh_finished(self, event):
