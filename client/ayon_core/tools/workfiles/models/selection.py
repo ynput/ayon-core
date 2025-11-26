@@ -17,6 +17,8 @@ class SelectionModel(object):
         self._task_name = None
         self._task_id = None
         self._workfile_path = None
+        self._rootless_workfile_path = None
+        self._workfile_entity_id = None
         self._representation_id = None
 
     def get_selected_folder_id(self):
@@ -62,29 +64,42 @@ class SelectionModel(object):
     def get_selected_workfile_path(self):
         return self._workfile_path
 
+    def get_selected_workfile_data(self):
+        return {
+            "project_name": self._controller.get_current_project_name(),
+            "path": self._workfile_path,
+            "rootless_path": self._rootless_workfile_path,
+            "folder_id": self._folder_id,
+            "task_name": self._task_name,
+            "task_id": self._task_id,
+            "workfile_entity_id": self._workfile_entity_id,
+        }
+
     def set_selected_workfile_path(
         self, rootless_path, path, workfile_entity_id
     ):
         if path == self._workfile_path:
             return
 
+        self._rootless_workfile_path = rootless_path
         self._workfile_path = path
+        self._workfile_entity_id = workfile_entity_id
         self._controller.emit_event(
             "selection.workarea.changed",
-            {
-                "project_name": self._controller.get_current_project_name(),
-                "path": path,
-                "rootless_path": rootless_path,
-                "folder_id": self._folder_id,
-                "task_name": self._task_name,
-                "task_id": self._task_id,
-                "workfile_entity_id": workfile_entity_id,
-            },
+            self.get_selected_workfile_data(),
             self.event_source
         )
 
     def get_selected_representation_id(self):
         return self._representation_id
+
+    def get_selected_representation_data(self):
+        return {
+            "project_name": self._controller.get_current_project_name(),
+            "folder_id": self._folder_id,
+            "task_id": self._task_id,
+            "representation_id": self._representation_id,
+        }
 
     def set_selected_representation_id(self, representation_id):
         if representation_id == self._representation_id:
@@ -92,9 +107,6 @@ class SelectionModel(object):
         self._representation_id = representation_id
         self._controller.emit_event(
             "selection.representation.changed",
-            {
-                "project_name": self._controller.get_current_project_name(),
-                "representation_id": representation_id,
-            },
+            self.get_selected_representation_data(),
             self.event_source
         )

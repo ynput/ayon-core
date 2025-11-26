@@ -1,5 +1,6 @@
 import logging
 import re
+import copy
 from typing import (
     Union,
     List,
@@ -1098,7 +1099,7 @@ class CreateModel:
                     creator_attributes[key] = attr_def.default
 
                 elif attr_def.is_value_valid(value):
-                    creator_attributes[key] = value
+                    creator_attributes[key] = copy.deepcopy(value)
 
     def _set_instances_publish_attr_values(
         self, instance_ids, plugin_name, key, value

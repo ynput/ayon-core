@@ -121,7 +121,6 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
         "version",
         "representation",
         "username",
-        "user",
         "output",
         # OpenPype keys - should be removed
         "asset",  # folder[name]
@@ -457,6 +456,9 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
                 version_attributes[key] = value
             else:
                 version_data[key] = value
+
+        host_name = instance.context.data["hostName"]
+        version_data["host_name"] = host_name
 
         version_entity = new_version_entity(
             version_number,
@@ -795,6 +797,14 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
             value = template_data.get(key)
             if value is not None:
                 repre_context[key] = value
+
+        # Keep only username
+        # NOTE This is to avoid storing all user attributes and data
+        #   to representation
+        if "user" not in repre_context:
+            repre_context["user"] = {
+                "name": template_data["user"]["name"]
+            }
 
         # Use previous representation's id if there is a name match
         existing = existing_repres_by_name.get(repre["name"].lower())
