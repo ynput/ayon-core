@@ -769,7 +769,6 @@ class CreateContext:
                     stacklevel=2
                 )
                 self.log.warning(message)
-                continue
 
             creator_identifier = creator_class.identifier
             if creator_identifier in creators:
