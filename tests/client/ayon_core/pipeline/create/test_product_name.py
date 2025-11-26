@@ -20,7 +20,6 @@ class TestGetProductNameTemplate:
            "is_product_base_type_supported")
     def test_matching_profile_with_replacements(
         self,
-        mock_is_supported,
         mock_filter_profiles,
         mock_get_settings,
     ):
@@ -33,7 +32,6 @@ class TestGetProductNameTemplate:
             "template": ("{task}-{Task}-{TASK}-{family}-{Family}"
                         "-{FAMILY}-{asset}-{Asset}-{ASSET}")
         }
-        mock_is_supported.return_value = False
 
         result = get_product_name_template(
             project_name="proj",
@@ -54,7 +52,6 @@ class TestGetProductNameTemplate:
            "is_product_base_type_supported")
     def test_no_matching_profile_uses_default(
         self,
-        mock_is_supported,
         mock_filter_profiles,
         mock_get_settings,
     ):
@@ -62,7 +59,6 @@ class TestGetProductNameTemplate:
             "core": {"tools": {"creator": {"product_name_profiles": []}}}
         }
         mock_filter_profiles.return_value = None
-        mock_is_supported.return_value = False
 
         assert (
             get_product_name_template(
@@ -81,7 +77,6 @@ class TestGetProductNameTemplate:
            "is_product_base_type_supported")
     def test_custom_default_template_used(
         self,
-        mock_is_supported,
         mock_filter_profiles,
         mock_get_settings,
     ):
@@ -89,7 +84,6 @@ class TestGetProductNameTemplate:
             "core": {"tools": {"creator": {"product_name_profiles": []}}}
         }
         mock_filter_profiles.return_value = None
-        mock_is_supported.return_value = False
 
         custom_default = "{variant}_{family}"
         assert (
@@ -111,7 +105,6 @@ class TestGetProductNameTemplate:
            "is_product_base_type_supported")
     def test_product_base_type_warns_when_supported_and_missing(
         self,
-        mock_is_supported,
         mock_filter_profiles,
         mock_get_settings,
         mock_warn,
@@ -120,7 +113,6 @@ class TestGetProductNameTemplate:
             "core": {"tools": {"creator": {"product_name_profiles": []}}}
         }
         mock_filter_profiles.return_value = None
-        mock_is_supported.return_value = True
 
         get_product_name_template(
             project_name="proj",
@@ -137,7 +129,6 @@ class TestGetProductNameTemplate:
            "is_product_base_type_supported")
     def test_product_base_type_added_to_filtering_when_provided(
         self,
-        mock_is_supported,
         mock_filter_profiles,
         mock_get_settings,
     ):
@@ -145,7 +136,6 @@ class TestGetProductNameTemplate:
             "core": {"tools": {"creator": {"product_name_profiles": []}}}
         }
         mock_filter_profiles.return_value = None
-        mock_is_supported.return_value = True
 
         get_product_name_template(
             project_name="proj",
@@ -308,8 +298,6 @@ class TestGetProductName:
             )
 
     @patch("ayon_core.pipeline.create.product_name.warn")
-    @patch("ayon_core.pipeline.create.product_name."
-           "is_product_base_type_supported")
     @patch("ayon_core.pipeline.create.product_name.get_product_name_template")
     @patch("ayon_core.pipeline.create.product_name."
            "StringTemplate.format_strict_template")
@@ -319,11 +307,10 @@ class TestGetProductName:
         mock_prepare,
         mock_format,
         mock_get_tmpl,
-        mock_is_supported,
         mock_warn,
     ):
         mock_get_tmpl.return_value = "{product[basetype]}_{variant}"
-        mock_is_supported.return_value = True
+
         mock_prepare.return_value = {
             "product": {"type": "model"},
             "variant": "Main",
