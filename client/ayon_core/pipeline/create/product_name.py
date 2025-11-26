@@ -54,11 +54,9 @@ def get_product_name_template(
         "product_types": product_type,
         "hosts": host_name,
         "tasks": task_name,
-        "task_types": task_type
+        "task_types": task_type,
+        "product_base_types": product_base_type,
     }
-
-    filtering_criteria["product_base_types"] = product_base_type
-
     matching_profile = filter_profiles(profiles, filtering_criteria)
     template = None
     if matching_profile:
