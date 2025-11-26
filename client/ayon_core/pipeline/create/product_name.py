@@ -83,8 +83,8 @@ def get_product_name_template(
 def get_product_name(
     project_name: str,
     task_name: str,
-    task_type: str,
-    host_name: str,
+    task_type: Optional[str],
+    host_name: Optional[str],
     product_type: str,
     variant: str,
     default_template: Optional[str] = None,
