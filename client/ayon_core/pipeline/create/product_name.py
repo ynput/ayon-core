@@ -170,7 +170,7 @@ def get_product_name(
         "type": task_type,
     }
     if "{task}" in template.lower():
-        task_value["name"] = task_name
+        task_value = task_name
 
     elif "{task[short]}" in template.lower():
         if project_entity is None:
