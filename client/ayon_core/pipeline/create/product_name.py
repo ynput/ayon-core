@@ -57,16 +57,7 @@ def get_product_name_template(
         "task_types": task_type
     }
 
-    if not product_base_type:
-        warn(
-            "Product base type is not provided, please update your"
-            "creation code to include it. It will be required in "
-            "the future.",
-            DeprecationWarning,
-            stacklevel=2
-        )
     filtering_criteria["product_base_types"] = product_base_type
-       
 
     matching_profile = filter_profiles(profiles, filtering_criteria)
     template = None
@@ -127,8 +118,8 @@ def get_product_name(
 
     Args:
         project_name (str): Project name.
-        task_name (str): Task name.
-        task_type (str): Task type.
+        task_name (Optional[str]): Task name.
+        task_type (Optional[str]): Task type.
         host_name (str): Host name.
         product_type (str): Product type.
         variant (str): In most of the cases it is user input during creation.

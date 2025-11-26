@@ -29,7 +29,6 @@ from ayon_core.host import IWorkfileHost, IPublishHost
 from ayon_core.pipeline import Anatomy
 from ayon_core.pipeline.template_data import get_template_data
 from ayon_core.pipeline.plugin_discover import DiscoverResult
-from ayon_core.pipeline.compatibility import is_product_base_type_supported
 
 from .exceptions import (
     CreatorError,
@@ -1237,6 +1236,15 @@ class CreateContext:
         """
         creator = self._get_creator_in_create(creator_identifier)
 
+        if not hasattr(creator, "product_base_type"):
+            warn(
+                f"Provided creator {creator!r} doesn't have "
+                "product base type attribute defined. This will be "
+                "required in future.",
+                DeprecationWarning,
+                stacklevel=2
+            )
+
         project_name = self.project_name
         if folder_entity is None:
             folder_path = self.get_current_folder_path()
@@ -1290,22 +1298,11 @@ class CreateContext:
             "folderPath": folder_entity["path"],
             "task": task_entity["name"] if task_entity else None,
             "productType": creator.product_type,
+            # Add product base type if supported. Fallback to product type
+            "productBaseType": (
+                creator.product_base_type or creator.product_type),
             "variant": variant
         }
-
-        # Add product base type if supported.
-        # TODO (antirotor): Once all creators support product base type
-        #   remove this check.
-        if is_product_base_type_supported():
-
-            instance_data["productBaseType"] = creator.product_base_type
-            if creator.product_base_type is None:
-                msg = (
-                        f"Creator {creator_identifier} does not set "
-                        "product base type. This will be required in future."
-                )
-                warn(msg, DeprecationWarning, stacklevel=2)
-                self.log.warning(msg)
 
         if active is not None:
             if not isinstance(active, bool):
