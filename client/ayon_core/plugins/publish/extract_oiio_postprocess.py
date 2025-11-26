@@ -14,6 +14,7 @@ from ayon_core.lib import (
     get_oiio_tool_args,
     run_subprocess
 )
+from ayon_core.lib.transcoding import IMAGE_EXTENSIONS
 from ayon_core.lib.profiles_filtering import filter_profiles
 
 
@@ -32,7 +33,7 @@ class ExtractOIIOPostProcess(publish.Extractor):
     optional = True
 
     # Supported extensions
-    supported_exts = {"exr", "jpg", "jpeg", "png", "dpx"}
+    supported_exts = {ext.lstrip(".") for ext in IMAGE_EXTENSIONS}
 
     # Configurable by Settings
     profiles = None
