@@ -33,8 +33,10 @@ def get_product_name_template(
         product_type (str): Product type for which the product name is
             calculated.
         host_name (str): Name of host in which the product name is calculated.
-        task_name (Optional[str]): Name of task in which context the product is created.
-        task_type (Optional[str]): Type of task in which context the product is created.
+        task_name (Optional[str]): Name of task in which context the
+            product is created.
+        task_type (Optional[str]): Type of task in which context the
+            product is created.
         default_template (Optional[str]): Default template which is used if
             settings won't find any matching possibility. Constant
             'DEFAULT_PRODUCT_TEMPLATE' is used if not defined.

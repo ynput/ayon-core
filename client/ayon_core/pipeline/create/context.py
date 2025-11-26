@@ -777,7 +777,6 @@ class CreateContext:
                 )
                 continue
 
-
             # Filter by host name
             if (
                 creator_class.host_name
