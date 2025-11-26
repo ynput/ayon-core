@@ -759,13 +759,6 @@ class CreateContext:
             )
 
         for creator_class in report.plugins:
-            creator_identifier = creator_class.identifier
-            if creator_identifier in creators:
-                self.log.warning(
-                    "Duplicate Creator identifier: '%s'. Using first Creator "
-                    "and skipping: %s", creator_identifier, creator_class
-                )
-                continue
             if not creator_class.product_base_type:
                 warn(
                     f"Provided creator {creator_class!r} doesn't have "
@@ -775,6 +768,15 @@ class CreateContext:
                     stacklevel=2
                 )
                 continue
+
+            creator_identifier = creator_class.identifier
+            if creator_identifier in creators:
+                self.log.warning(
+                    "Duplicate Creator identifier: '%s'. Using first Creator "
+                    "and skipping: %s", creator_identifier, creator_class
+                )
+                continue
+
 
             # Filter by host name
             if (
