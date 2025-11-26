@@ -12,7 +12,6 @@ from ayon_core.lib.attribute_definitions import (
     deserialize_attr_defs,
 )
 
-from ayon_core.pipeline.compatibility import is_product_base_type_supported
 
 from ayon_core.pipeline import (
     AYON_INSTANCE_ID,
@@ -577,8 +576,7 @@ class CreatedInstance:
         self._data["productType"] = product_type
         self._data["productName"] = product_name
 
-        if is_product_base_type_supported():
-            self._data["productBaseType"] = product_base_type
+        self._data["productBaseType"] = product_base_type
 
         self._data["active"] = data.get("active", True)
         self._data["creator_identifier"] = creator_identifier

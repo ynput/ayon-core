@@ -82,9 +82,9 @@ def get_product_name_template(
 
 def get_product_name(
     project_name: str,
-    task_name: str,
+    task_name: Optional[str],
     task_type: Optional[str],
-    host_name: Optional[str],
+    host_name: str,
     product_type: str,
     variant: str,
     default_template: Optional[str] = None,
@@ -180,14 +180,7 @@ def get_product_name(
         task_short = task_types_by_name.get(task_type, {}).get("shortName")
         task_value["short"] = task_short
 
-    # look what we have to do to make mypy happy. We should stop using
-    # those undefined dict based types.
-    product: dict[str, str] = {
-        "type": product_type,
-        "baseType": product_base_type
-    }
     if not product_base_type and "{product[basetype]}" in template.lower():
-        product["baseType"] = product_type
         warn(
             "You have Product base type in product name template, "
             "but it is not provided by the creator, please update your "
@@ -200,7 +193,10 @@ def get_product_name(
         "variant": variant,
         "family": product_type,
         "task": task_value,
-        "product": product,
+        "product": {
+            "type": product_type,
+            "baseType": product_base_type or product_type,
+        }
     }
 
     if dynamic_data:
