@@ -760,13 +760,15 @@ class CreateContext:
 
         for creator_class in report.plugins:
             if not creator_class.product_base_type:
-                warn(
-                    f"Provided creator {creator_class!r} doesn't have "
+                message = (f"Provided creator {creator_class!r} doesn't have "
                     "product base type attribute defined. This will be "
-                    "required in future.",
+                    "required in future.")
+                warn(
+                    message,
                     DeprecationWarning,
                     stacklevel=2
                 )
+                self.log.warning(message)
                 continue
 
             creator_identifier = creator_class.identifier
