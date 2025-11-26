@@ -16,8 +16,6 @@ from ayon_core.pipeline.create.exceptions import (
 class TestGetProductNameTemplate:
     @patch("ayon_core.pipeline.create.product_name.get_project_settings")
     @patch("ayon_core.pipeline.create.product_name.filter_profiles")
-    @patch("ayon_core.pipeline.create.product_name."
-           "is_product_base_type_supported")
     def test_matching_profile_with_replacements(
         self,
         mock_filter_profiles,
@@ -48,8 +46,6 @@ class TestGetProductNameTemplate:
 
     @patch("ayon_core.pipeline.create.product_name.get_project_settings")
     @patch("ayon_core.pipeline.create.product_name.filter_profiles")
-    @patch("ayon_core.pipeline.create.product_name."
-           "is_product_base_type_supported")
     def test_no_matching_profile_uses_default(
         self,
         mock_filter_profiles,
@@ -73,8 +69,6 @@ class TestGetProductNameTemplate:
 
     @patch("ayon_core.pipeline.create.product_name.get_project_settings")
     @patch("ayon_core.pipeline.create.product_name.filter_profiles")
-    @patch("ayon_core.pipeline.create.product_name."
-           "is_product_base_type_supported")
     def test_custom_default_template_used(
         self,
         mock_filter_profiles,
@@ -98,35 +92,8 @@ class TestGetProductNameTemplate:
             == custom_default
         )
 
-    @patch("ayon_core.pipeline.create.product_name.warn")
     @patch("ayon_core.pipeline.create.product_name.get_project_settings")
     @patch("ayon_core.pipeline.create.product_name.filter_profiles")
-    @patch("ayon_core.pipeline.create.product_name."
-           "is_product_base_type_supported")
-    def test_product_base_type_warns_when_supported_and_missing(
-        self,
-        mock_filter_profiles,
-        mock_get_settings,
-        mock_warn,
-    ):
-        mock_get_settings.return_value = {
-            "core": {"tools": {"creator": {"product_name_profiles": []}}}
-        }
-        mock_filter_profiles.return_value = None
-
-        get_product_name_template(
-            project_name="proj",
-            product_type="model",
-            task_name="modeling",
-            task_type="Modeling",
-            host_name="maya",
-        )
-        mock_warn.assert_called_once()
-
-    @patch("ayon_core.pipeline.create.product_name.get_project_settings")
-    @patch("ayon_core.pipeline.create.product_name.filter_profiles")
-    @patch("ayon_core.pipeline.create.product_name."
-           "is_product_base_type_supported")
     def test_product_base_type_added_to_filtering_when_provided(
         self,
         mock_filter_profiles,
