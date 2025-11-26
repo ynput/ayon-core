@@ -282,7 +282,7 @@ class ItemTable(BaseItem):
             value.draw(image, drawer)
 
     def value_width(self):
-        row_heights, col_widths = self.size_values
+        _row_heights, col_widths = self.size_values
         width = 0
         for _width in col_widths:
             width += _width
@@ -292,7 +292,7 @@ class ItemTable(BaseItem):
         return width
 
     def value_height(self):
-        row_heights, col_widths = self.size_values
+        row_heights, _col_widths = self.size_values
         height = 0
         for _height in row_heights:
             height += _height
@@ -569,21 +569,21 @@ class TableField(BaseItem):
 
     @property
     def item_pos_x(self):
-        pos_x, pos_y, width, height = (
+        pos_x, _pos_y, _width, _height = (
             self.parent.content_pos_info_by_cord(self.row_idx, self.col_idx)
         )
         return pos_x
 
     @property
     def item_pos_y(self):
-        pos_x, pos_y, width, height = (
+        _pos_x, pos_y, _width, _height = (
             self.parent.content_pos_info_by_cord(self.row_idx, self.col_idx)
         )
         return pos_y
 
     @property
     def value_pos_x(self):
-        pos_x, pos_y, width, height = (
+        pos_x, _pos_y, width, _height = (
             self.parent.content_pos_info_by_cord(self.row_idx, self.col_idx)
         )
         alignment_hor = self.style["alignment-horizontal"].lower()
@@ -605,7 +605,7 @@ class TableField(BaseItem):
 
     @property
     def value_pos_y(self):
-        pos_x, pos_y, width, height = (
+        _pos_x, pos_y, _width, height = (
             self.parent.content_pos_info_by_cord(self.row_idx, self.col_idx)
         )
 

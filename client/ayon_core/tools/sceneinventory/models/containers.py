@@ -95,7 +95,8 @@ class ContainerItem:
         namespace,
         object_name,
         item_id,
-        project_name
+        project_name,
+        version_locked,
     ):
         self.representation_id = representation_id
         self.loader_name = loader_name
@@ -103,6 +104,7 @@ class ContainerItem:
         self.namespace = namespace
         self.item_id = item_id
         self.project_name = project_name
+        self.version_locked = version_locked
 
     @classmethod
     def from_container_data(cls, current_project_name, container):
@@ -114,7 +116,8 @@ class ContainerItem:
             item_id=uuid.uuid4().hex,
             project_name=container.get(
                 "project_name", current_project_name
-            )
+            ),
+            version_locked=container.get("version_locked", False),
         )
 
 
@@ -126,6 +129,7 @@ class RepresentationInfo:
         product_id,
         product_name,
         product_type,
+        product_type_icon,
         product_group,
         version_id,
         representation_name,
@@ -135,6 +139,7 @@ class RepresentationInfo:
         self.product_id = product_id
         self.product_name = product_name
         self.product_type = product_type
+        self.product_type_icon = product_type_icon
         self.product_group = product_group
         self.version_id = version_id
         self.representation_name = representation_name
@@ -153,7 +158,17 @@ class RepresentationInfo:
 
     @classmethod
     def new_invalid(cls):
-        return cls(None, None, None, None, None, None, None, None)
+        return cls(
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+        )
 
 
 class VersionItem:
@@ -229,6 +244,9 @@ class ContainersModel:
     def get_representation_info_items(self, project_name, representation_ids):
         output = {}
         missing_repre_ids = set()
+        icons_mapping = self._controller.get_product_type_icons_mapping(
+            project_name
+        )
         for repre_id in representation_ids:
             try:
                 uuid.UUID(repre_id)
@@ -253,6 +271,7 @@ class ContainersModel:
                 "product_id": None,
                 "product_name": None,
                 "product_type": None,
+                "product_type_icon": None,
                 "product_group": None,
                 "version_id": None,
                 "representation_name": None,
@@ -265,10 +284,17 @@ class ContainersModel:
                 kwargs["folder_id"] = folder["id"]
                 kwargs["folder_path"] = folder["path"]
             if product:
+                product_type = product["productType"]
+                product_base_type = product.get("productBaseType")
+                icon = icons_mapping.get_icon(
+                    product_base_type=product_base_type,
+                    product_type=product_type,
+                )
                 group = product["attrib"]["productGroup"]
                 kwargs["product_id"] = product["id"]
                 kwargs["product_name"] = product["name"]
                 kwargs["product_type"] = product["productType"]
+                kwargs["product_type_icon"] = icon
                 kwargs["product_group"] = group
             if version:
                 kwargs["version_id"] = version["id"]

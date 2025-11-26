@@ -162,7 +162,7 @@ def find_tool_in_custom_paths(paths, tool, validation_func=None):
         # Handle cases when path is just an executable
         #   - it allows to use executable from PATH
         #   - basename must match 'tool' value (without extension)
-        extless_path, ext = os.path.splitext(path)
+        extless_path, _ext = os.path.splitext(path)
         if extless_path == tool:
             executable_path = find_executable(tool)
             if executable_path and (
@@ -181,7 +181,7 @@ def find_tool_in_custom_paths(paths, tool, validation_func=None):
 
         # If path is a file validate it
         if os.path.isfile(normalized):
-            basename, ext = os.path.splitext(os.path.basename(path))
+            basename, _ext = os.path.splitext(os.path.basename(path))
             # Check if the filename has actually the sane bane as 'tool'
             if basename == tool:
                 executable_path = find_executable(normalized)

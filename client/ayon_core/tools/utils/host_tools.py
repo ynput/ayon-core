@@ -7,7 +7,7 @@ import os
 
 import pyblish.api
 
-from ayon_core.host import ILoadHost
+from ayon_core.host import ILoadHost, IPublishHost
 from ayon_core.lib import Logger
 from ayon_core.pipeline import registered_host
 
@@ -31,9 +31,7 @@ class HostToolsHelper:
         # Prepare attributes for all tools
         self._workfiles_tool = None
         self._loader_tool = None
-        self._creator_tool = None
         self._publisher_tool = None
-        self._subset_manager_tool = None
         self._scene_inventory_tool = None
         self._experimental_tools_dialog = None
 
@@ -95,49 +93,6 @@ class HostToolsHelper:
                 use_context = False
 
             loader_tool.refresh()
-
-    def get_creator_tool(self, parent):
-        """Create, cache and return creator tool window."""
-        if self._creator_tool is None:
-            from ayon_core.tools.creator import CreatorWindow
-
-            creator_window = CreatorWindow(parent=parent or self._parent)
-            self._creator_tool = creator_window
-
-        return self._creator_tool
-
-    def show_creator(self, parent=None):
-        """Show tool to create new instantes for publishing."""
-        with qt_app_context():
-            creator_tool = self.get_creator_tool(parent)
-            creator_tool.refresh()
-            creator_tool.show()
-
-            # Pull window to the front.
-            creator_tool.raise_()
-            creator_tool.activateWindow()
-
-    def get_subset_manager_tool(self, parent):
-        """Create, cache and return subset manager tool window."""
-        if self._subset_manager_tool is None:
-            from ayon_core.tools.subsetmanager import SubsetManagerWindow
-
-            subset_manager_window = SubsetManagerWindow(
-                parent=parent or self._parent
-            )
-            self._subset_manager_tool = subset_manager_window
-
-        return self._subset_manager_tool
-
-    def show_subset_manager(self, parent=None):
-        """Show tool display/remove existing created instances."""
-        with qt_app_context():
-            subset_manager_tool = self.get_subset_manager_tool(parent)
-            subset_manager_tool.show()
-
-            # Pull window to the front.
-            subset_manager_tool.raise_()
-            subset_manager_tool.activateWindow()
 
     def get_scene_inventory_tool(self, parent):
         """Create, cache and return scene inventory tool window."""
@@ -236,7 +191,7 @@ class HostToolsHelper:
             from ayon_core.tools.publisher.window import PublisherWindow
 
             host = registered_host()
-            ILoadHost.validate_load_methods(host)
+            IPublishHost.validate_publish_methods(host)
 
             publisher_window = PublisherWindow(
                 controller=controller,
@@ -261,35 +216,29 @@ class HostToolsHelper:
         if tool_name == "workfiles":
             return self.get_workfiles_tool(parent, *args, **kwargs)
 
-        elif tool_name == "loader":
+        if tool_name == "loader":
             return self.get_loader_tool(parent, *args, **kwargs)
 
-        elif tool_name == "libraryloader":
+        if tool_name == "libraryloader":
             return self.get_library_loader_tool(parent, *args, **kwargs)
 
-        elif tool_name == "creator":
-            return self.get_creator_tool(parent, *args, **kwargs)
-
-        elif tool_name == "subsetmanager":
-            return self.get_subset_manager_tool(parent, *args, **kwargs)
-
-        elif tool_name == "sceneinventory":
+        if tool_name == "sceneinventory":
             return self.get_scene_inventory_tool(parent, *args, **kwargs)
 
-        elif tool_name == "publish":
-            self.log.info("Can't return publish tool window.")
-
-        # "new" publisher
-        elif tool_name == "publisher":
+        if tool_name == "publisher":
             return self.get_publisher_tool(parent, *args, **kwargs)
 
-        elif tool_name == "experimental_tools":
+        if tool_name == "experimental_tools":
             return self.get_experimental_tools_dialog(parent, *args, **kwargs)
 
-        else:
-            self.log.warning(
-                "Can't show unknown tool name: \"{}\"".format(tool_name)
-            )
+        if tool_name == "publish":
+            self.log.info("Can't return publish tool window.")
+            return None
+
+        self.log.warning(
+            "Can't show unknown tool name: \"{}\"".format(tool_name)
+        )
+        return None
 
     def show_tool_by_name(self, tool_name, parent=None, *args, **kwargs):
         """Show tool by it's name.
@@ -304,12 +253,6 @@ class HostToolsHelper:
 
         elif tool_name == "libraryloader":
             self.show_library_loader(parent, *args, **kwargs)
-
-        elif tool_name == "creator":
-            self.show_creator(parent, *args, **kwargs)
-
-        elif tool_name == "subsetmanager":
-            self.show_subset_manager(parent, *args, **kwargs)
 
         elif tool_name == "sceneinventory":
             self.show_scene_inventory(parent, *args, **kwargs)
@@ -377,14 +320,6 @@ def show_loader(parent=None, use_context=None):
 
 def show_library_loader(parent=None):
     _SingletonPoint.show_tool_by_name("libraryloader", parent)
-
-
-def show_creator(parent=None):
-    _SingletonPoint.show_tool_by_name("creator", parent)
-
-
-def show_subset_manager(parent=None):
-    _SingletonPoint.show_tool_by_name("subsetmanager", parent)
 
 
 def show_scene_inventory(parent=None):

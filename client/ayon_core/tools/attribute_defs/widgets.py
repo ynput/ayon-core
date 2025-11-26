@@ -2,7 +2,7 @@ import copy
 import typing
 from typing import Optional
 
-from qtpy import QtWidgets, QtCore
+from qtpy import QtWidgets, QtCore, QtGui
 
 from ayon_core.lib.attribute_definitions import (
     AbstractAttrDef,
@@ -22,6 +22,9 @@ from ayon_core.tools.utils import (
     FocusSpinBox,
     FocusDoubleSpinBox,
     MultiSelectionComboBox,
+    MarkdownLabel,
+    PlaceholderLineEdit,
+    PlaceholderPlainTextEdit,
     set_style_property,
 )
 from ayon_core.tools.utils import NiceCheckbox
@@ -179,6 +182,7 @@ class AttributeDefinitionsWidget(QtWidgets.QWidget):
             layout.deleteLater()
 
         new_layout = QtWidgets.QGridLayout()
+        new_layout.setContentsMargins(0, 0, 0, 0)
         new_layout.setColumnStretch(0, 0)
         new_layout.setColumnStretch(1, 1)
         self.setLayout(new_layout)
@@ -207,12 +211,8 @@ class AttributeDefinitionsWidget(QtWidgets.QWidget):
             if not attr_def.visible:
                 continue
 
+            col_num = 0
             expand_cols = 2
-            if attr_def.is_value_def and attr_def.is_label_horizontal:
-                expand_cols = 1
-
-            col_num = 2 - expand_cols
-
             if attr_def.is_value_def and attr_def.label:
                 label_widget = AttributeDefinitionsLabel(
                     attr_def.id, attr_def.label, self
@@ -230,9 +230,12 @@ class AttributeDefinitionsWidget(QtWidgets.QWidget):
                         | QtCore.Qt.AlignVCenter
                     )
                 layout.addWidget(
-                    label_widget, row, 0, 1, expand_cols
+                    label_widget, row, col_num, 1, 1
                 )
-                if not attr_def.is_label_horizontal:
+                if attr_def.is_label_horizontal:
+                    col_num += 1
+                    expand_cols = 1
+                else:
                     row += 1
 
             if attr_def.is_value_def:
@@ -245,12 +248,10 @@ class AttributeDefinitionsWidget(QtWidgets.QWidget):
 
     def set_value(self, value):
         new_value = copy.deepcopy(value)
-        unused_keys = set(new_value.keys())
         for widget in self._widgets_by_id.values():
             attr_def = widget.attr_def
             if attr_def.key not in new_value:
                 continue
-            unused_keys.remove(attr_def.key)
 
             widget_value = new_value[attr_def.key]
             if widget_value is None:
@@ -348,7 +349,7 @@ class SeparatorAttrWidget(_BaseAttrDefWidget):
 
 class LabelAttrWidget(_BaseAttrDefWidget):
     def _ui_init(self):
-        input_widget = QtWidgets.QLabel(self)
+        input_widget = MarkdownLabel(self)
         label = self.attr_def.label
         if label:
             input_widget.setText(str(label))
@@ -502,9 +503,9 @@ class TextAttrWidget(_BaseAttrDefWidget):
 
         self.multiline = self.attr_def.multiline
         if self.multiline:
-            input_widget = QtWidgets.QPlainTextEdit(self)
+            input_widget = PlaceholderPlainTextEdit(self)
         else:
-            input_widget = QtWidgets.QLineEdit(self)
+            input_widget = PlaceholderLineEdit(self)
 
         # Override context menu event to add revert to default action
         input_widget.contextMenuEvent = self._input_widget_context_event
@@ -641,7 +642,9 @@ class EnumAttrWidget(_BaseAttrDefWidget):
 
     def _ui_init(self):
         if self.multiselection:
-            input_widget = MultiSelectionComboBox(self)
+            input_widget = MultiSelectionComboBox(
+                self, placeholder=self.attr_def.placeholder
+            )
 
         else:
             input_widget = CustomTextComboBox(self)
@@ -654,6 +657,9 @@ class EnumAttrWidget(_BaseAttrDefWidget):
 
         for item in self.attr_def.items:
             input_widget.addItem(item["label"], item["value"])
+
+        if not self.attr_def.items:
+            self._add_empty_item(input_widget)
 
         idx = input_widget.findData(self.attr_def.default)
         if idx >= 0:
@@ -670,6 +676,20 @@ class EnumAttrWidget(_BaseAttrDefWidget):
 
         input_widget.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
         input_widget.customContextMenuRequested.connect(self._on_context_menu)
+
+    def _add_empty_item(self, input_widget):
+        model = input_widget.model()
+        if not isinstance(model, QtGui.QStandardItemModel):
+            return
+
+        root_item = model.invisibleRootItem()
+
+        empty_item = QtGui.QStandardItem()
+        empty_item.setData("< No items to select >", QtCore.Qt.DisplayRole)
+        empty_item.setData("", QtCore.Qt.UserRole)
+        empty_item.setFlags(QtCore.Qt.NoItemFlags)
+
+        root_item.appendRow(empty_item)
 
     def _on_context_menu(self, pos):
         menu = QtWidgets.QMenu(self)

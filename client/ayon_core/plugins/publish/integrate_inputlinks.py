@@ -105,7 +105,7 @@ class IntegrateInputLinksAYON(pyblish.api.ContextPlugin):
                 created links by its type
         """
         if workfile_instance is None:
-            self.log.warn("No workfile in this publish session.")
+            self.log.warning("No workfile in this publish session.")
             return
 
         workfile_version_id = workfile_instance.data["versionEntity"]["id"]
