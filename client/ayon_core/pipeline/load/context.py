@@ -32,14 +32,14 @@ class ContainerItem:
     """Container item of loaded content.
 
     Args:
-        container_id (str): Unique container id.
+        scene_identifier (str): Unique container id.
         project_name (str): Project name.
         representation_id (str): Representation id.
         label (str): Label of container for UI purposes.
         namespace (str): Group label of container for UI purposes.
         version_locked (bool): Version is locked to ignore
             the last version checks.
-        parent_container_id (Optional[str]): Parent container id. For visual
+        parent_scene_identifier (Optional[str]): Parent container id. For visual
             purposes.
         scene_data (Optional[dict[str, Any]]): Additional data stored to the
             scene.
@@ -49,7 +49,7 @@ class ContainerItem:
     """
     def __init__(
         self,
-        container_id: str,
+        scene_identifier: str,
         project_name: str,
         representation_id: str,
         label: str,
@@ -58,11 +58,11 @@ class ContainerItem:
         *,
         version_locked: bool = False,
         is_dirty: bool = False,
-        parent_container_id: Optional[str] = None,
+        parent_scene_identifier: Optional[str] = None,
         scene_data: Optional[dict[str, Any]] = None,
         transient_data: Optional[dict[str, Any]] = None,
     ) -> None:
-        self._container_id = container_id
+        self._scene_identifier = scene_identifier
         self._project_name = project_name
         self._representation_id = representation_id
         self._label = label
@@ -70,7 +70,7 @@ class ContainerItem:
         self._load_plugin_identifier = load_plugin.identifier
         self._version_locked = version_locked
         self._is_dirty = is_dirty
-        self._parent_container_id = parent_container_id
+        self._parent_scene_identifier = parent_scene_identifier
 
         if transient_data is None:
             transient_data = {}
@@ -79,7 +79,7 @@ class ContainerItem:
             scene_data = {}
 
         self._orig_generic_data = {
-            "container_id": self._container_id,
+            "scene_identifier": self._scene_identifier,
             "project_name": self._project_name,
             "representation_id": self._representation_id,
             "label": self._label,
@@ -87,7 +87,7 @@ class ContainerItem:
             "load_plugin_identifier": self._load_plugin_identifier,
             "version_locked": self._version_locked,
             "is_dirty": self._is_dirty,
-            "parent_container_id": self._parent_container_id,
+            "parent_scene_identifier": self._parent_scene_identifier,
         }
         self._scene_data = scene_data
         self._origin_scene_data = copy.deepcopy(scene_data)
@@ -123,8 +123,8 @@ class ContainerItem:
         return self._scene_data.items()
     # ------
 
-    def get_container_id(self) -> str:
-        return self._container_id
+    def get_scene_identifier(self) -> str:
+        return self._scene_identifier
 
     def get_project_name(self) -> str:
         return self._project_name
@@ -176,7 +176,7 @@ class ContainerItem:
 
         """
         new_data = {
-            "container_id": self._container_id,
+            "scene_identifier": self._scene_identifier,
             "project_name": self._project_name,
             "representation_id": self._representation_id,
             "label": self._label,
@@ -184,15 +184,15 @@ class ContainerItem:
             "load_plugin_identifier": self._load_plugin_identifier,
             "version_locked": self._version_locked,
             "is_dirty": self._is_dirty,
-            "parent_container_id": self._parent_container_id,
+            "parent_scene_identifier": self._parent_scene_identifier,
             "scene_data": self.get_scene_data(),
         }
         orig_data = copy.deepcopy(self._orig_generic_data)
         orig_data["scene_data"] = self.get_origin_scene_data()
         return TrackDictChangesItem(orig_data, new_data)
 
-    id: str = property(get_container_id)
-    container_id: str = property(get_container_id)
+    id: str = property(get_scene_identifier)
+    scene_identifier: str = property(get_scene_identifier)
     project_name: str = property(get_project_name)
     load_plugin_identifier: str = property(get_load_plugin_identifier)
     representation_id: str = property(get_representation_id)
@@ -259,9 +259,9 @@ class LoadContext:
             self._containers[container.id] = container
 
     def get_container_by_id(
-        self, container_id: str
+        self, scene_identifier: str
     ) -> Optional[ContainerItem]:
-        return self._containers.get(container_id)
+        return self._containers.get(scene_identifier)
 
     def get_containers(self) -> dict[str, ContainerItem]:
         return self._containers
