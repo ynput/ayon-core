@@ -1,5 +1,6 @@
 import platform
 from collections import defaultdict
+from typing import Optional, Any
 
 import ayon_api
 from qtpy import QtWidgets, QtCore, QtGui
@@ -10,7 +11,12 @@ from ayon_core.lib import (
     collect_frames,
     get_datetime_data,
 )
-from ayon_core.pipeline import load, Anatomy
+from ayon_core.pipeline import Anatomy
+from ayon_core.pipeline.actions import (
+    LoaderSimpleActionPlugin,
+    LoaderActionSelection,
+    LoaderActionResult,
+)
 from ayon_core.pipeline.load import get_representation_path_with_anatomy
 from ayon_core.pipeline.delivery import (
     get_format_dict,
@@ -20,43 +26,72 @@ from ayon_core.pipeline.delivery import (
 )
 
 
-class Delivery(load.ProductLoaderPlugin):
-    """Export selected versions to folder structure from Template"""
-
-    is_multiple_contexts_compatible = True
-    sequence_splitter = "__sequence_splitter__"
-
-    representations = {"*"}
-    product_types = {"*"}
-    tool_names = ["library_loader"]
-
+class DeliveryAction(LoaderSimpleActionPlugin):
+    identifier = "core.delivery"
     label = "Deliver Versions"
     order = 35
-    icon = "upload"
-    color = "#d8d8d8"
+    icon = {
+        "type": "material-symbols",
+        "name": "upload",
+        "color": "#d8d8d8",
+    }
 
-    def message(self, text):
-        msgBox = QtWidgets.QMessageBox()
-        msgBox.setText(text)
-        msgBox.setStyleSheet(style.load_stylesheet())
-        msgBox.setWindowFlags(
-            msgBox.windowFlags() | QtCore.Qt.FramelessWindowHint
+    def is_compatible(self, selection: LoaderActionSelection) -> bool:
+        if self.host_name is not None:
+            return False
+
+        if not selection.selected_ids:
+            return False
+
+        return (
+            selection.versions_selected()
+            or selection.representations_selected()
         )
-        msgBox.exec_()
 
-    def load(self, contexts, name=None, namespace=None, options=None):
+    def execute_simple_action(
+        self,
+        selection: LoaderActionSelection,
+        form_values: dict[str, Any],
+    ) -> Optional[LoaderActionResult]:
+        version_ids = set()
+        if selection.selected_type == "representation":
+            versions = selection.entities.get_representations_versions(
+                selection.selected_ids
+            )
+            version_ids = {version["id"] for version in versions}
+
+        if selection.selected_type == "version":
+            version_ids = set(selection.selected_ids)
+
+        if not version_ids:
+            return LoaderActionResult(
+                message="No versions found in your selection",
+                success=False,
+            )
+
         try:
-            dialog = DeliveryOptionsDialog(contexts, self.log)
+            # TODO run the tool in subprocess
+            dialog = DeliveryOptionsDialog(
+                selection.project_name, version_ids, self.log
+            )
             dialog.exec_()
         except Exception:
             self.log.error("Failed to deliver versions.", exc_info=True)
+
+        return LoaderActionResult()
 
 
 class DeliveryOptionsDialog(QtWidgets.QDialog):
     """Dialog to select template where to deliver selected representations."""
 
-    def __init__(self, contexts, log=None, parent=None):
-        super(DeliveryOptionsDialog, self).__init__(parent=parent)
+    def __init__(
+        self,
+        project_name,
+        version_ids,
+        log=None,
+        parent=None,
+    ):
+        super().__init__(parent=parent)
 
         self.setWindowTitle("AYON - Deliver versions")
         icon = QtGui.QIcon(resources.get_ayon_icon_filepath())
@@ -70,13 +105,12 @@ class DeliveryOptionsDialog(QtWidgets.QDialog):
 
         self.setStyleSheet(style.load_stylesheet())
 
-        project_name = contexts[0]["project"]["name"]
         self.anatomy = Anatomy(project_name)
         self._representations = None
         self.log = log
         self.currently_uploaded = 0
 
-        self._set_representations(project_name, contexts)
+        self._set_representations(project_name, version_ids)
 
         dropdown = QtWidgets.QComboBox()
         self.templates = self._get_templates(self.anatomy)
@@ -316,9 +350,7 @@ class DeliveryOptionsDialog(QtWidgets.QDialog):
 
         return templates
 
-    def _set_representations(self, project_name, contexts):
-        version_ids = {context["version"]["id"] for context in contexts}
-
+    def _set_representations(self, project_name, version_ids):
         repres = list(ayon_api.get_representations(
             project_name, version_ids=version_ids
         ))
