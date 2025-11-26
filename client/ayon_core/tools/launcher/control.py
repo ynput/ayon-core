@@ -1,10 +1,25 @@
-from ayon_core.lib import Logger, get_ayon_username
-from ayon_core.lib.events import QueuedEventSystem
-from ayon_core.settings import get_project_settings
-from ayon_core.tools.common_models import ProjectsModel, HierarchyModel
+from typing import Optional
 
-from .abstract import AbstractLauncherFrontEnd, AbstractLauncherBackend
-from .models import LauncherSelectionModel, ActionsModel
+from ayon_core.lib import Logger
+from ayon_core.lib.events import QueuedEventSystem
+from ayon_core.addon import AddonsManager
+from ayon_core.settings import get_project_settings, get_studio_settings
+from ayon_core.tools.common_models import (
+    ProjectsModel,
+    HierarchyModel,
+    UsersModel,
+)
+
+from .abstract import (
+    AbstractLauncherFrontEnd,
+    AbstractLauncherBackend,
+    WorkfileItem,
+)
+from .models import (
+    LauncherSelectionModel,
+    ActionsModel,
+    WorkfilesModel,
+)
 
 NOT_SET = object()
 
@@ -17,12 +32,14 @@ class BaseLauncherController(
         self._event_system = None
         self._log = None
 
-        self._username = NOT_SET
+        self._addons_manager = None
 
         self._selection_model = LauncherSelectionModel(self)
         self._projects_model = ProjectsModel(self)
         self._hierarchy_model = HierarchyModel(self)
         self._actions_model = ActionsModel(self)
+        self._workfiles_model = WorkfilesModel(self)
+        self._users_model = UsersModel(self)
 
     @property
     def log(self):
@@ -32,7 +49,7 @@ class BaseLauncherController(
 
     @property
     def event_system(self):
-        """Inner event system for workfiles tool controller.
+        """Inner event system for launcher tool controller.
 
         Is used for communication with UI. Event system is created on demand.
 
@@ -58,6 +75,11 @@ class BaseLauncherController(
 
     def register_event_callback(self, topic, callback):
         self.event_system.add_callback(topic, callback)
+
+    def get_addons_manager(self) -> AddonsManager:
+        if self._addons_manager is None:
+            self._addons_manager = AddonsManager()
+        return self._addons_manager
 
     # Entity items for UI
     def get_project_items(self, sender=None):
@@ -85,7 +107,10 @@ class BaseLauncherController(
     def get_project_settings(self, project_name):
         if project_name in self._project_settings:
             return self._project_settings[project_name]
-        settings = get_project_settings(project_name)
+        if project_name:
+            settings = get_project_settings(project_name)
+        else:
+            settings = get_studio_settings()
         self._project_settings[project_name] = settings
         return settings
 
@@ -122,6 +147,9 @@ class BaseLauncherController(
     def set_selected_task(self, task_id, task_name):
         self._selection_model.set_selected_task(task_id, task_name)
 
+    def set_selected_workfile(self, workfile_id):
+        self._selection_model.set_selected_workfile(workfile_id)
+
     def get_selected_context(self):
         return {
             "project_name": self.get_selected_project_name(),
@@ -130,21 +158,51 @@ class BaseLauncherController(
             "task_name": self.get_selected_task_name(),
         }
 
-    # Actions
-    def get_action_items(self, project_name, folder_id, task_id):
-        return self._actions_model.get_action_items(
-            project_name, folder_id, task_id)
-
-    def set_application_force_not_open_workfile(
-        self, project_name, folder_id, task_id, action_ids, enabled
-    ):
-        self._actions_model.set_application_force_not_open_workfile(
-            project_name, folder_id, task_id, action_ids, enabled
+    # Workfiles
+    def get_workfile_items(
+        self,
+        project_name: Optional[str],
+        task_id: Optional[str],
+    ) -> list[WorkfileItem]:
+        return self._workfiles_model.get_workfile_items(
+            project_name,
+            task_id,
         )
 
-    def trigger_action(self, project_name, folder_id, task_id, identifier):
+    # Actions
+    def get_action_items(
+        self, project_name, folder_id, task_id, workfile_id
+    ):
+        return self._actions_model.get_action_items(
+            project_name, folder_id, task_id, workfile_id
+        )
+
+    def trigger_action(
+        self,
+        identifier,
+        project_name,
+        folder_id,
+        task_id,
+        workfile_id,
+    ):
         self._actions_model.trigger_action(
-            project_name, folder_id, task_id, identifier)
+            identifier,
+            project_name,
+            folder_id,
+            task_id,
+            workfile_id,
+        )
+
+    def trigger_webaction(self, context, action_label, form_data=None):
+        self._actions_model.trigger_webaction(
+            context, action_label, form_data
+        )
+
+    def get_action_config_values(self, context):
+        return self._actions_model.get_action_config_values(context)
+
+    def set_action_config_values(self, context, values):
+        return self._actions_model.set_action_config_values(context, values)
 
     # General methods
     def refresh(self):
@@ -154,6 +212,7 @@ class BaseLauncherController(
 
         self._projects_model.reset()
         self._hierarchy_model.reset()
+        self._users_model.reset()
 
         self._actions_model.refresh()
         self._projects_model.refresh()
@@ -169,22 +228,21 @@ class BaseLauncherController(
         self._projects_model.reset()
         # Refresh actions
         self._actions_model.refresh()
+        # Reset workfiles model
+        self._workfiles_model.reset()
 
         self._emit_event("controller.refresh.actions.finished")
 
-    def get_my_tasks_entity_ids(self, project_name: str):
-        username = self._get_my_username()
+    def get_my_tasks_entity_ids(
+        self, project_name: str
+    ) -> dict[str, list[str]]:
+        username = self._users_model.get_current_username()
         assignees = []
         if username:
             assignees.append(username)
         return self._hierarchy_model.get_entity_ids_for_assignees(
             project_name, assignees
         )
-
-    def _get_my_username(self):
-        if self._username is NOT_SET:
-            self._username = get_ayon_username()
-        return self._username
 
     def _emit_event(self, topic, data=None):
         self.emit_event(topic, data, "controller")

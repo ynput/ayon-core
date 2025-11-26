@@ -46,6 +46,8 @@ class CollectAnatomyInstanceData(pyblish.api.ContextPlugin):
     order = pyblish.api.CollectorOrder + 0.49
     label = "Collect Anatomy Instance data"
 
+    settings_category = "core"
+
     follow_workfile_version = False
 
     def process(self, context):

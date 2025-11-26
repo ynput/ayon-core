@@ -340,7 +340,7 @@ class ResizeModel(BaseSettingsModel):
         title="Type",
         description="Type of resizing",
         enum_resolver=lambda: _resize_types_enum,
-        conditionalEnum=True,
+        conditional_enum=True,
         default="source"
     )
 
@@ -373,7 +373,7 @@ class ExtractThumbnailOIIODefaultsModel(BaseSettingsModel):
         title="Type",
         description="Transcoding type",
         enum_resolver=lambda: _thumbnail_oiio_transcoding_type,
-        conditionalEnum=True,
+        conditional_enum=True,
         default="colorspace"
     )
 
@@ -476,7 +476,7 @@ class ExtractOIIOTranscodeOutputModel(BaseSettingsModel):
         "colorspace",
         title="Transcoding type",
         enum_resolver=_extract_oiio_transcoding_type,
-        conditionalEnum=True,
+        conditional_enum=True,
         description=(
             "Select the transcoding type for your output, choosing either "
             "*Colorspace* or *Display&View* transform."
@@ -746,6 +746,11 @@ class ExtractReviewProfileModel(BaseSettingsModel):
     # TODO use hosts enum
     hosts: list[str] = SettingsField(
         default_factory=list, title="Host names"
+    )
+    task_types: list[str] = SettingsField(
+        default_factory=list,
+        title="Task Types",
+        enum_resolver=task_types_enum,
     )
     outputs: list[ExtractReviewOutputDefModel] = SettingsField(
         default_factory=list, title="Output Definitions"
@@ -1348,6 +1353,7 @@ DEFAULT_PUBLISH_VALUES = {
             {
                 "product_types": [],
                 "hosts": [],
+                "task_types": [],
                 "outputs": [
                     {
                         "name": "png",

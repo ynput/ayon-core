@@ -242,7 +242,7 @@ function Run-From-Code {
 
 function Run-Tests {
     $Poetry = "$RepoRoot\.poetry\bin\poetry.exe"
-    $RunArgs = @( "run", "pytest", "$($RepoRoot)/tests")
+    $RunArgs = @( "run", "pytest", "$($RepoRoot)/tests", "-m",  "not server")
 
     & $Poetry $RunArgs @arguments
 }

@@ -65,7 +65,7 @@ class AlphaSlider(QtWidgets.QSlider):
 
         painter.fillRect(event.rect(), QtCore.Qt.transparent)
 
-        painter.setRenderHint(QtGui.QPainter.HighQualityAntialiasing)
+        painter.setRenderHint(QtGui.QPainter.Antialiasing)
 
         horizontal = self.orientation() == QtCore.Qt.Horizontal
 
