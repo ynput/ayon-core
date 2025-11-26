@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import warnings
 from functools import wraps
-from typing import Optional, Any
+from typing import Optional, Any, overload
 
 import ayon_api
 from ayon_core.lib import (
@@ -216,7 +216,7 @@ def _backwards_compatibility_product_name(func):
     return inner
 
 
-@_backwards_compatibility_product_name
+@overload
 def get_product_name(
     project_name: str,
     folder_entity: dict[str, Any],
@@ -241,9 +241,116 @@ def get_product_name(
     That's main reason why so many arguments are required to calculate product
     name.
 
-    Todos:
-        Find better filtering options to avoid requirement of
-            argument 'family_filter'.
+    Args:
+        project_name (str): Project name.
+        folder_entity (Optional[dict[str, Any]]): Folder entity.
+        task_entity (Optional[dict[str, Any]]): Task entity.
+        host_name (str): Host name.
+        product_type (str): Product type.
+        variant (str): In most of the cases it is user input during creation.
+        default_template (Optional[str]): Default template if any profile does
+            not match passed context. Constant 'DEFAULT_PRODUCT_TEMPLATE'
+            is used if is not passed.
+        dynamic_data (Optional[dict[str, Any]]): Dynamic data specific for
+            a creator which creates instance.
+        project_settings (Optional[dict[str, Any]]): Prepared settings
+            for project. Settings are queried if not passed.
+        product_type_filter (Optional[str]): Use different product type for
+            product template filtering. Value of `product_type` is used when
+            not passed.
+        project_entity (Optional[dict[str, Any]]): Project entity used when
+            task short name is required by template.
+
+    Returns:
+        TemplateResult: Product name.
+
+    Raises:
+        TaskNotSetError: If template requires task which is not provided.
+        TemplateFillError: If filled template contains placeholder key which
+            is not collected.
+
+    """
+
+
+@overload
+def get_product_name(
+    project_name,
+    task_name,
+    task_type,
+    host_name,
+    product_type,
+    variant,
+    default_template=None,
+    dynamic_data=None,
+    project_settings=None,
+    product_type_filter=None,
+    project_entity=None,
+) -> TemplateResult:
+    """Calculate product name based on passed context and AYON settings.
+
+    Product name templates are defined in `project_settings/global/tools
+    /creator/product_name_profiles` where are profiles with host name,
+    product type, task name and task type filters. If context does not match
+    any profile then `DEFAULT_PRODUCT_TEMPLATE` is used as default template.
+
+    That's main reason why so many arguments are required to calculate product
+    name.
+
+    Deprecated:
+        This function is using deprecate signature that does not support
+            folder entity data to be used.
+
+    Args:
+        project_name (str): Project name.
+        task_name (Optional[str]): Task name.
+        task_type (Optional[str]): Task type.
+        host_name (str): Host name.
+        product_type (str): Product type.
+        variant (str): In most of the cases it is user input during creation.
+        default_template (Optional[str]): Default template if any profile does
+            not match passed context. Constant 'DEFAULT_PRODUCT_TEMPLATE'
+            is used if is not passed.
+        dynamic_data (Optional[Dict[str, Any]]): Dynamic data specific for
+            a creator which creates instance.
+        project_settings (Optional[Union[Dict[str, Any]]]): Prepared settings
+            for project. Settings are queried if not passed.
+        product_type_filter (Optional[str]): Use different product type for
+            product template filtering. Value of `product_type` is used when
+            not passed.
+        project_entity (Optional[Dict[str, Any]]): Project entity used when
+            task short name is required by template.
+
+    Returns:
+        TemplateResult: Product name.
+
+    """
+    pass
+
+
+@_backwards_compatibility_product_name
+def get_product_name(
+    project_name: str,
+    folder_entity: dict[str, Any],
+    task_entity: Optional[dict[str, Any]],
+    host_name: str,
+    product_type: str,
+    variant: str,
+    *,
+    default_template: Optional[str] = None,
+    dynamic_data: Optional[dict[str, Any]] = None,
+    project_settings: Optional[dict[str, Any]] = None,
+    product_type_filter: Optional[str] = None,
+    project_entity: Optional[dict[str, Any]] = None,
+) -> TemplateResult:
+    """Calculate product name based on passed context and AYON settings.
+
+    Product name templates are defined in `project_settings/global/tools/creator
+    /product_name_profiles` where are profiles with host name, product type,
+    task name and task type filters. If context does not match any profile
+    then `DEFAULT_PRODUCT_TEMPLATE` is used as default template.
+
+    That's main reason why so many arguments are required to calculate product
+    name.
 
     Args:
         project_name (str): Project name.
