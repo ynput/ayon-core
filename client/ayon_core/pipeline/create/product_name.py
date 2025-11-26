@@ -1,5 +1,9 @@
 import ayon_api
-from ayon_core.lib import StringTemplate, filter_profiles, prepare_template_data
+from ayon_core.lib import (
+    StringTemplate,
+    filter_profiles,
+    prepare_template_data,
+)
 from ayon_core.settings import get_project_settings
 
 from .constants import DEFAULT_PRODUCT_TEMPLATE
@@ -48,15 +52,15 @@ def get_product_name_template(
         # TODO remove formatting keys replacement
         template = (
             matching_profile["template"]
-            .replace("{task[name]}", "{task}")
-            .replace("{Task[name]}", "{Task}")
-            .replace("{TASK[NAME]}", "{TASK}")
-            .replace("{product[type]}", "{family}")
-            .replace("{Product[type]}", "{Family}")
-            .replace("{PRODUCT[TYPE]}", "{FAMILY}")
-            .replace("{folder[name]}", "{asset}")
-            .replace("{Folder[name]}", "{Asset}")
-            .replace("{FOLDER[NAME]}", "{ASSET}")
+            .replace("{task}", "{task[name]}")
+            .replace("{Task}", "{Task[name]}")
+            .replace("{TASK}", "{TASK[NAME]}")
+            .replace("{family}", "{product[type]}")
+            .replace("{Family}", "{Product[type]}")
+            .replace("{FAMILY}", "{PRODUCT[TYPE]}")
+            .replace("{asset}", "{folder[name]}")
+            .replace("{Asset}", "{Folder[name]}")
+            .replace("{ASSET}", "{FOLDER[NAME]}")
         )
 
     # Make sure template is set (matching may have empty string)

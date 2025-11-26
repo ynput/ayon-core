@@ -255,7 +255,7 @@ def deliver_sequence(
         report_items[""].append(msg)
         return report_items, 0
 
-    dir_path, file_name = os.path.split(str(src_path))
+    dir_path, _file_name = os.path.split(str(src_path))
 
     context = repre["context"]
     ext = context.get("ext", context.get("representation"))
@@ -270,7 +270,7 @@ def deliver_sequence(
     # context.representation could be .psd
     ext = ext.replace("..", ".")
 
-    src_collections, remainder = clique.assemble(os.listdir(dir_path))
+    src_collections, _remainder = clique.assemble(os.listdir(dir_path))
     src_collection = None
     for col in src_collections:
         if col.tail != ext:
@@ -387,7 +387,7 @@ def get_representations_delivery_template_data(
         #   convert representation entity. Fixed in 'ayon_api' 1.0.10.
         if isinstance(template_data, str):
             con = ayon_api.get_server_api_connection()
-            repre_entity = con._representation_conversion(repre_entity)
+            con._representation_conversion(repre_entity)
             template_data = repre_entity["context"]
 
         template_data.update(copy.deepcopy(general_template_data))

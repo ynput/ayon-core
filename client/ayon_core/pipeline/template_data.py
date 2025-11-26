@@ -1,30 +1,58 @@
+from __future__ import annotations
+
+from typing import Optional, Any
+
 import ayon_api
 
 from ayon_core.settings import get_studio_settings
-from ayon_core.lib.local_settings import get_ayon_username
+from ayon_core.lib import DefaultKeysDict
+from ayon_core.lib.local_settings import get_ayon_user_entity
 
 
-def get_general_template_data(settings=None):
+def get_general_template_data(
+    settings: Optional[dict[str, Any]] = None,
+    username: Optional[str] = None,
+    user_entity: Optional[dict[str, Any]] = None,
+):
     """General template data based on system settings or machine.
 
     Output contains formatting keys:
-    - 'studio[name]'    - Studio name filled from system settings
-    - 'studio[code]'    - Studio code filled from system settings
-    - 'user'            - User's name using 'get_ayon_username'
+    - 'studio[name]'      - Studio name filled from system settings
+    - 'studio[code]'      - Studio code filled from system settings
+    - 'user[name]'        - User's name
+    - 'user[attrib][...]' - User's attributes
+    - 'user[data][...]'   - User's data
 
     Args:
         settings (Dict[str, Any]): Studio or project settings.
-    """
+        username (Optional[str]): AYON Username.
+        user_entity (Optional[dict[str, Any]]): User entity.
 
+    """
     if not settings:
         settings = get_studio_settings()
+
+    if user_entity is None:
+        user_entity = get_ayon_user_entity(username)
+
+    # Use dictionary with default value for backwards compatibility
+    # - we did support '{user}' now it should be '{user[name]}'
+    user_data = DefaultKeysDict(
+        "name",
+        {
+            "name": user_entity["name"],
+            "attrib": user_entity["attrib"],
+            "data": user_entity["data"],
+        }
+    )
+
     core_settings = settings["core"]
     return {
         "studio": {
             "name": core_settings["studio_name"],
             "code": core_settings["studio_code"]
         },
-        "user": get_ayon_username()
+        "user": user_data,
     }
 
 
@@ -87,14 +115,13 @@ def get_folder_template_data(folder_entity, project_name):
     """
 
     path = folder_entity["path"]
-    hierarchy_parts = path.split("/")
-    # Remove empty string from the beginning
-    hierarchy_parts.pop(0)
+    # Remove empty string from the beginning and split by '/'
+    parents = path.lstrip("/").split("/")
     # Remove last part which is folder name
-    folder_name = hierarchy_parts.pop(-1)
-    hierarchy = "/".join(hierarchy_parts)
-    if hierarchy_parts:
-        parent_name = hierarchy_parts[-1]
+    folder_name = parents.pop(-1)
+    hierarchy = "/".join(parents)
+    if parents:
+        parent_name = parents[-1]
     else:
         parent_name = project_name
 
@@ -103,6 +130,7 @@ def get_folder_template_data(folder_entity, project_name):
             "name": folder_name,
             "type": folder_entity["folderType"],
             "path": path,
+            "parents": parents,
         },
         "asset": folder_name,
         "hierarchy": hierarchy,
@@ -145,6 +173,8 @@ def get_template_data(
     task_entity=None,
     host_name=None,
     settings=None,
+    username=None,
+    user_entity=None,
 ):
     """Prepare data for templates filling from entered documents and info.
 
@@ -167,12 +197,18 @@ def get_template_data(
         host_name (Optional[str]): Used to fill '{app}' key.
         settings (Union[Dict, None]): Prepared studio or project settings.
             They're queried if not passed (may be slower).
+        username (Optional[str]): DEPRECATED AYON Username.
+        user_entity (Optional[dict[str, Any]): AYON user entity.
 
     Returns:
         Dict[str, Any]: Data prepared for filling workdir template.
     """
 
-    template_data = get_general_template_data(settings)
+    template_data = get_general_template_data(
+        settings,
+        username=username,
+        user_entity=user_entity,
+    )
     template_data.update(get_project_template_data(project_entity))
     if folder_entity:
         template_data.update(get_folder_template_data(

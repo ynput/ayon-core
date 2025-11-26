@@ -46,8 +46,13 @@ class SwitchAssetDialog(QtWidgets.QDialog):
 
     switched = QtCore.Signal()
 
-    def __init__(self, controller, parent=None, items=None):
-        super(SwitchAssetDialog, self).__init__(parent)
+    def __init__(self, controller, project_name, items, parent=None):
+        super().__init__(parent)
+
+        current_project_name = controller.get_current_project_name()
+        folder_id = None
+        if current_project_name == project_name:
+            folder_id = controller.get_current_folder_id()
 
         self.setWindowTitle("Switch selected items ...")
 
@@ -147,11 +152,10 @@ class SwitchAssetDialog(QtWidgets.QDialog):
         self._init_repre_name = None
 
         self._fill_check = False
+        self._project_name = project_name
+        self._folder_id = folder_id
 
-        self._project_name = controller.get_current_project_name()
-        self._folder_id = controller.get_current_folder_id()
-
-        self._current_folder_btn.setEnabled(self._folder_id is not None)
+        self._current_folder_btn.setEnabled(folder_id is not None)
 
         self._controller = controller
 
@@ -159,7 +163,7 @@ class SwitchAssetDialog(QtWidgets.QDialog):
         self._prepare_content_data()
 
     def showEvent(self, event):
-        super(SwitchAssetDialog, self).showEvent(event)
+        super().showEvent(event)
         self._show_timer.start()
 
     def refresh(self, init_refresh=False):

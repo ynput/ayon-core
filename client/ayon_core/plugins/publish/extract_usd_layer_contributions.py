@@ -1,7 +1,8 @@
 from operator import attrgetter
 import dataclasses
 import os
-from typing import Dict
+import platform
+from typing import Any, Dict, List
 
 import pyblish.api
 try:
@@ -14,7 +15,8 @@ from ayon_core.lib import (
     BoolDef,
     UISeparatorDef,
     UILabelDef,
-    EnumDef
+    EnumDef,
+    filter_profiles
 )
 try:
     from ayon_core.pipeline.usdlib import (
@@ -178,6 +180,8 @@ def get_instance_uri_path(
 
         # Ensure `None` for now is also a string
         path = str(path)
+        if platform.system().lower() == "windows":
+            path = path.replace("\\", "/")
 
     return path
 
@@ -255,6 +259,7 @@ class CollectUSDLayerContributions(pyblish.api.InstancePlugin,
     label = "Collect USD Layer Contributions (Asset/Shot)"
     families = ["usd"]
     enabled = True
+    settings_category = "core"
 
     # A contribution defines a contribution into a (department) layer which
     # will get layered into the target product, usually the asset or shot.
@@ -281,6 +286,9 @@ class CollectUSDLayerContributions(pyblish.api.InstancePlugin,
         "fx": 500,
         "lighting": 600,
     }
+    # Default profiles to set certain instance attribute defaults based on
+    # profiles in settings
+    profiles: List[Dict[str, Any]] = []
 
     @classmethod
     def apply_settings(cls, project_settings):
@@ -297,6 +305,8 @@ class CollectUSDLayerContributions(pyblish.api.InstancePlugin,
             contribution_layers[entry["name"]] = int(entry["order"])
         if contribution_layers:
             cls.contribution_layers = contribution_layers
+
+        cls.profiles = plugin_settings.get("profiles", [])
 
     def process(self, instance):
 
@@ -463,6 +473,29 @@ class CollectUSDLayerContributions(pyblish.api.InstancePlugin,
         if not cls.instance_matches_plugin_families(instance):
             return []
 
+        # Set default target layer based on product type
+        current_context_task_type = create_context.get_current_task_type()
+        profile = filter_profiles(cls.profiles, {
+            "product_types": instance.data["productType"],
+            "task_types": current_context_task_type
+        })
+        if not profile:
+            profile = {}
+
+        # Define defaults
+        default_enabled = profile.get("contribution_enabled", True)
+        default_contribution_layer = profile.get(
+            "contribution_layer", None)
+        default_apply_as_variant = profile.get(
+            "contribution_apply_as_variant", False)
+        default_target_product = profile.get(
+            "contribution_target_product", "usdAsset")
+        default_init_as = (
+            "asset"
+            if profile.get("contribution_target_product") == "usdAsset"
+            else "shot")
+        init_as_visible = False
+
         # Attributes logic
         publish_attributes = instance["publish_attributes"].get(
             cls.__name__, {})
@@ -485,7 +518,7 @@ class CollectUSDLayerContributions(pyblish.api.InstancePlugin,
                         "In both cases the USD data itself is free to have "
                         "references and sublayers of its own."
                     ),
-                    default=True),
+                    default=default_enabled),
             TextDef("contribution_target_product",
                     label="Target product",
                     tooltip=(
@@ -495,7 +528,7 @@ class CollectUSDLayerContributions(pyblish.api.InstancePlugin,
                         "the contribution itself will be added to the "
                         "department layer."
                     ),
-                    default="usdAsset",
+                    default=default_target_product,
                     visible=visible),
             EnumDef("contribution_target_product_init",
                     label="Initialize as",
@@ -507,8 +540,8 @@ class CollectUSDLayerContributions(pyblish.api.InstancePlugin,
                         "setting will do nothing."
                     ),
                     items=["asset", "shot"],
-                    default="asset",
-                    visible=visible),
+                    default=default_init_as,
+                    visible=visible and init_as_visible),
 
             # Asset layer, e.g. model.usd, look.usd, rig.usd
             EnumDef("contribution_layer",
@@ -520,7 +553,7 @@ class CollectUSDLayerContributions(pyblish.api.InstancePlugin,
                         "the list) will contribute as a stronger opinion."
                     ),
                     items=list(cls.contribution_layers.keys()),
-                    default="model",
+                    default=default_contribution_layer,
                     visible=visible),
             BoolDef("contribution_apply_as_variant",
                     label="Add as variant",
@@ -532,7 +565,7 @@ class CollectUSDLayerContributions(pyblish.api.InstancePlugin,
                         "appended to as a sublayer to the department layer "
                         "instead."
                     ),
-                    default=True,
+                    default=default_apply_as_variant,
                     visible=visible),
             TextDef("contribution_variant_set_name",
                     label="Variant Set Name",
@@ -588,31 +621,6 @@ class CollectUSDLayerContributions(pyblish.api.InstancePlugin,
             instance.set_publish_plugin_attr_defs(cls.__name__, new_attrs)
 
 
-class CollectUSDLayerContributionsHoudiniLook(CollectUSDLayerContributions):
-    """
-    This is solely here to expose the attribute definitions for the
-    Houdini "look" family.
-    """
-    # TODO: Improve how this is built for the look family
-    hosts = ["houdini"]
-    families = ["look"]
-    label = CollectUSDLayerContributions.label + " (Look)"
-
-    @classmethod
-    def get_attr_defs_for_instance(cls, create_context, instance):
-        # Filtering of instance, if needed, can be customized
-        if not cls.instance_matches_plugin_families(instance):
-            return []
-
-        defs = super().get_attr_defs_for_instance(create_context, instance)
-
-        # Update default for department layer to look
-        layer_def = next(d for d in defs if d.key == "contribution_layer")
-        layer_def.default = "look"
-
-        return defs
-
-
 class ValidateUSDDependencies(pyblish.api.InstancePlugin):
     families = ["usdLayer"]
 
@@ -628,6 +636,8 @@ class ExtractUSDLayerContribution(publish.Extractor):
     families = ["usdLayer"]
     label = "Extract USD Layer Contributions (Asset/Shot)"
     order = pyblish.api.ExtractorOrder + 0.45
+
+    settings_category = "core"
 
     use_ayon_entity_uri = False
 
@@ -790,6 +800,8 @@ class ExtractUSDAssetContribution(publish.Extractor):
     families = ["usdAsset"]
     label = "Extract USD Asset/Shot Contributions"
     order = ExtractUSDLayerContribution.order + 0.01
+
+    settings_category = "core"
 
     use_ayon_entity_uri = False
 

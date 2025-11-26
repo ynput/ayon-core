@@ -254,7 +254,7 @@ class FilesModel(QtGui.QStandardItemModel):
         """Make sure that removed items are removed from items mapping.
 
         Connected with '_on_insert'. When user drag item and drop it to same
-        view the item is actually removed and creted again but it happens in
+        view the item is actually removed and created again but it happens in
         inner calls of Qt.
         """
 
@@ -841,7 +841,7 @@ class FilesWidget(QtWidgets.QFrame):
                 self._multivalue
             )
             widget.context_menu_requested.connect(
-                self._on_context_menu_requested
+                self._on_item_context_menu_request
             )
             self._files_view.setIndexWidget(index, widget)
             self._files_proxy_model.setData(
@@ -859,7 +859,7 @@ class FilesWidget(QtWidgets.QFrame):
         for row in range(self._files_proxy_model.rowCount()):
             index = self._files_proxy_model.index(row, 0)
             item_id = index.data(ITEM_ID_ROLE)
-            available_item_ids.add(index.data(ITEM_ID_ROLE))
+            available_item_ids.add(item_id)
 
         widget_ids = set(self._widgets_by_id.keys())
         for item_id in available_item_ids:
@@ -892,6 +892,29 @@ class FilesWidget(QtWidgets.QFrame):
             self._add_filepaths(new_items)
         self._remove_item_by_ids(item_ids)
 
+    def _on_merge_request(self):
+        if self._multivalue:
+            return
+
+        item_ids = self._files_view.get_selected_item_ids()
+        if not item_ids:
+            return
+
+        all_paths = set()
+        merged_item_ids = set()
+        for item_id in item_ids:
+            file_item = self._files_model.get_file_item_by_id(item_id)
+            if file_item is None:
+                continue
+            merged_item_ids.add(item_id)
+            all_paths |= {
+                os.path.join(file_item.directory, filename)
+                for filename in file_item.filenames
+            }
+        self._remove_item_by_ids(merged_item_ids)
+        new_items = FileDefItem.from_value(list(all_paths), True)
+        self._add_filepaths(new_items)
+
     def _on_remove_requested(self):
         if self._multivalue:
             return
@@ -911,6 +934,9 @@ class FilesWidget(QtWidgets.QFrame):
                 split_action.triggered.connect(self._on_split_request)
                 menu.addAction(split_action)
 
+                merge_action = QtWidgets.QAction("Merge sequence", menu)
+                merge_action.triggered.connect(self._on_merge_request)
+                menu.addAction(merge_action)
             remove_action = QtWidgets.QAction("Remove", menu)
             remove_action.triggered.connect(self._on_remove_requested)
             menu.addAction(remove_action)
@@ -922,6 +948,9 @@ class FilesWidget(QtWidgets.QFrame):
 
         if menu.actions():
             menu.popup(pos)
+
+    def _on_item_context_menu_request(self, pos):
+        self._on_context_menu_requested(pos, True)
 
     def dragEnterEvent(self, event):
         if self._multivalue:

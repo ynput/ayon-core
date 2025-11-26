@@ -11,7 +11,11 @@ from ayon_core.pipeline import (
     registered_host,
     get_process_id,
 )
-from ayon_core.tools.common_models import ProjectsModel, HierarchyModel
+from ayon_core.tools.common_models import (
+    ProjectsModel,
+    HierarchyModel,
+    UsersModel,
+)
 
 from .models import (
     PublishModel,
@@ -20,7 +24,8 @@ from .models import (
 from .abstract import (
     AbstractPublisherBackend,
     AbstractPublisherFrontend,
-    CardMessageTypes
+    CardMessageTypes,
+    CommentDef,
 )
 
 
@@ -52,6 +57,8 @@ class PublisherController(
             changed.
         "create.context.create.attrs.changed" - Create attributes changed.
         "create.context.publish.attrs.changed" - Publish attributes changed.
+        "create.context.instance.requirement.changed" - Instance requirement
+            changed.
         "create.context.removed.instance" - Instance removed from context.
         "create.model.instances.context.changed" - Instances changed context.
             like folder, task or variant.
@@ -98,6 +105,7 @@ class PublisherController(
         # Cacher of avalon documents
         self._projects_model = ProjectsModel(self)
         self._hierarchy_model = HierarchyModel(self)
+        self._users_model = UsersModel(self)
 
     @property
     def log(self):
@@ -314,6 +322,17 @@ class PublisherController(
                 return False
         return True
 
+    def get_my_tasks_entity_ids(
+        self, project_name: str
+    ) -> dict[str, list[str]]:
+        username = self._users_model.get_current_username()
+        assignees = []
+        if username:
+            assignees.append(username)
+        return self._hierarchy_model.get_entity_ids_for_assignees(
+            project_name, assignees
+        )
+
     # --- Publish specific callbacks ---
     def get_context_title(self):
         """Get context title for artist shown at the top of main window."""
@@ -356,6 +375,7 @@ class PublisherController(
         self._emit_event("controller.reset.started")
 
         self._hierarchy_model.reset()
+        self._users_model.reset()
 
         # Publish part must be reset after plugins
         self._create_model.reset()
@@ -601,3 +621,17 @@ class PublisherController(
     def _start_publish(self, up_validation):
         self._publish_model.set_publish_up_validation(up_validation)
         self._publish_model.start_publish(wait=True)
+
+    def get_comment_def(self) -> CommentDef:
+        # Take the cached settings from the Create Context
+        settings = self.get_create_context().get_current_project_settings()
+        comment_minimum_required_chars: int = (
+            settings
+            .get("core", {})
+            .get("tools", {})
+            .get("publish", {})
+            .get("comment_minimum_required_chars", 0)
+        )
+        return CommentDef(
+            minimum_chars_required=comment_minimum_required_chars
+        )

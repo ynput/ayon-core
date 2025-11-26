@@ -7,6 +7,10 @@ from .constants import (
 
 from .anatomy import Anatomy
 
+from .tempdir import get_temp_dir
+
+from .staging_dir import get_staging_dir_info
+
 from .create import (
     BaseCreator,
     Creator,
@@ -15,11 +19,7 @@ from .create import (
     CreatedInstance,
     CreatorError,
 
-    LegacyCreator,
-    legacy_create,
-
     discover_creator_plugins,
-    discover_legacy_creator_plugins,
     register_creator_plugin,
     deregister_creator_plugin,
     register_creator_plugin_path,
@@ -96,6 +96,10 @@ from .context_tools import (
     get_current_task_name
 )
 
+from .compatibility import (
+    is_product_base_type_supported,
+)
+
 from .workfile import (
     discover_workfile_build_plugins,
     register_workfile_build_plugin,
@@ -117,6 +121,12 @@ __all__ = (
     # --- Anatomy ---
     "Anatomy",
 
+    # --- Temp dir ---
+    "get_temp_dir",
+
+    # --- Staging dir ---
+    "get_staging_dir_info",
+
     # --- Create ---
     "BaseCreator",
     "Creator",
@@ -127,12 +137,7 @@ __all__ = (
 
     "CreatorError",
 
-    # - legacy creation
-    "LegacyCreator",
-    "legacy_create",
-
     "discover_creator_plugins",
-    "discover_legacy_creator_plugins",
     "register_creator_plugin",
     "deregister_creator_plugin",
     "register_creator_plugin_path",
@@ -213,4 +218,7 @@ __all__ = (
     # Backwards compatible function names
     "install",
     "uninstall",
+
+    # Feature detection
+    "is_product_base_type_supported",
 )

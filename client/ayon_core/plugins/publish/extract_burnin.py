@@ -9,11 +9,13 @@ import clique
 import pyblish.api
 
 from ayon_core import resources, AYON_CORE_ROOT
-from ayon_core.pipeline import publish
+from ayon_core.pipeline import (
+    publish,
+    get_temp_dir
+)
 from ayon_core.lib import (
     run_ayon_launcher_process,
 
-    get_transcode_temp_directory,
     convert_input_paths_for_ffmpeg,
     should_convert_for_ffmpeg
 )
@@ -52,8 +54,10 @@ class ExtractBurnin(publish.Extractor):
         "houdini",
         "max",
         "blender",
-        "unreal"
+        "unreal",
+        "batchdelivery",
     ]
+    settings_category = "core"
 
     optional = True
 
@@ -250,7 +254,10 @@ class ExtractBurnin(publish.Extractor):
             #   - change staging dir of source representation
             #   - must be set back after output definitions processing
             if do_convert:
-                new_staging_dir = get_transcode_temp_directory()
+                new_staging_dir = get_temp_dir(
+                    project_name=instance.context.data["projectName"],
+                    use_local_temp=True,
+                )
                 repre["stagingDir"] = new_staging_dir
 
                 convert_input_paths_for_ffmpeg(
@@ -750,6 +757,15 @@ class ExtractBurnin(publish.Extractor):
                 burnin_frame_end - burnin_slate_frame_start + 1
             )
         })
+
+        # burnin source resolution which might be different than on review
+        repre_source_resolution_width = repre.get("source_resolution_width")
+        repre_source_resolution_height = repre.get("source_resolution_height")
+        if repre_source_resolution_width and repre_source_resolution_height:
+            burnin_data.update({
+                "source_resolution_width": repre_source_resolution_width,
+                "source_resolution_height": repre_source_resolution_height
+            })
 
     def filter_burnins_defs(self, profile, instance):
         """Filter outputs by their values from settings.

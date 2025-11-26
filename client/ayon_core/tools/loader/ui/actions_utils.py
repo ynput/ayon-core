@@ -1,6 +1,7 @@
 import uuid
+from typing import Optional, Any
 
-from qtpy import QtWidgets, QtGui
+from qtpy import QtWidgets, QtGui, QtCore
 import qtawesome
 
 from ayon_core.lib.attribute_definitions import AbstractAttrDef
@@ -11,9 +12,29 @@ from ayon_core.tools.utils.widgets import (
     OptionDialog,
 )
 from ayon_core.tools.utils import get_qt_icon
+from ayon_core.tools.loader.abstract import ActionItem
 
 
-def show_actions_menu(action_items, global_point, one_item_selected, parent):
+def _actions_sorter(item: tuple[ActionItem, str, str]):
+    """Sort the Loaders by their order and then their name.
+
+    Returns:
+        tuple[int, str]: Sort keys.
+
+    """
+    action_item, group_label, label = item
+    if group_label is None:
+        group_label = label
+        label = ""
+    return action_item.order, group_label, label
+
+
+def show_actions_menu(
+    action_items: list[ActionItem],
+    global_point: QtCore.QPoint,
+    one_item_selected: bool,
+    parent: QtWidgets.QWidget,
+) -> tuple[Optional[ActionItem], Optional[dict[str, Any]]]:
     selected_action_item = None
     selected_options = None
 
@@ -26,8 +47,16 @@ def show_actions_menu(action_items, global_point, one_item_selected, parent):
 
     menu = OptionalMenu(parent)
 
-    action_items_by_id = {}
+    action_items_with_labels = []
     for action_item in action_items:
+        action_items_with_labels.append(
+            (action_item, action_item.group_label, action_item.label)
+        )
+
+    group_menu_by_label = {}
+    action_items_by_id = {}
+    for item in sorted(action_items_with_labels, key=_actions_sorter):
+        action_item, _, _ = item
         item_id = uuid.uuid4().hex
         action_items_by_id[item_id] = action_item
         item_options = action_item.options
@@ -50,7 +79,18 @@ def show_actions_menu(action_items, global_point, one_item_selected, parent):
 
         action.setData(item_id)
 
-        menu.addAction(action)
+        group_label = action_item.group_label
+        if group_label:
+            group_menu = group_menu_by_label.get(group_label)
+            if group_menu is None:
+                group_menu = OptionalMenu(group_label, menu)
+                if icon is not None:
+                    group_menu.setIcon(icon)
+                menu.addMenu(group_menu)
+                group_menu_by_label[group_label] = group_menu
+            group_menu.addAction(action)
+        else:
+            menu.addAction(action)
 
     action = menu.exec_(global_point)
     if action is not None:
@@ -84,15 +124,17 @@ def _get_options(action, action_item, parent):
     if not getattr(action, "optioned", False) or not options:
         return {}
 
+    dialog_title = action.label + " Options"
     if isinstance(options[0], AbstractAttrDef):
         qargparse_options = False
-        dialog = AttributeDefinitionsDialog(options, parent)
+        dialog = AttributeDefinitionsDialog(
+            options, title=dialog_title, parent=parent
+        )
     else:
         qargparse_options = True
         dialog = OptionDialog(parent)
         dialog.create(options)
-
-    dialog.setWindowTitle(action.label + " Options")
+        dialog.setWindowTitle(dialog_title)
 
     if not dialog.exec_():
         return None

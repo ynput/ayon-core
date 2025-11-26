@@ -135,8 +135,6 @@ class ThumbnailPainterWidget(QtWidgets.QWidget):
             QtGui.QPainter.Antialiasing
             | QtGui.QPainter.SmoothPixmapTransform
         )
-        if hasattr(QtGui.QPainter, "HighQualityAntialiasing"):
-            render_hints |= QtGui.QPainter.HighQualityAntialiasing
 
         pix_painter.setRenderHints(render_hints)
         pix_painter.drawPixmap(pos_x, pos_y, scaled_pix)
@@ -171,8 +169,6 @@ class ThumbnailPainterWidget(QtWidgets.QWidget):
                 QtGui.QPainter.Antialiasing
                 | QtGui.QPainter.SmoothPixmapTransform
             )
-            if hasattr(QtGui.QPainter, "HighQualityAntialiasing"):
-                render_hints |= QtGui.QPainter.HighQualityAntialiasing
             pix_painter.setRenderHints(render_hints)
 
             tiled_rect = QtCore.QRectF(
@@ -265,8 +261,6 @@ class ThumbnailPainterWidget(QtWidgets.QWidget):
             QtGui.QPainter.Antialiasing
             | QtGui.QPainter.SmoothPixmapTransform
         )
-        if hasattr(QtGui.QPainter, "HighQualityAntialiasing"):
-            render_hints |= QtGui.QPainter.HighQualityAntialiasing
 
         final_painter.setRenderHints(render_hints)
 

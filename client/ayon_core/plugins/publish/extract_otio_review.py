@@ -23,10 +23,16 @@ from ayon_core.lib import (
     get_ffmpeg_tool_args,
     run_subprocess,
 )
-from ayon_core.pipeline import publish
+from ayon_core.pipeline import (
+    KnownPublishError,
+    publish,
+)
 
 
-class ExtractOTIOReview(publish.Extractor):
+class ExtractOTIOReview(
+    publish.Extractor,
+    publish.ColormanagedPyblishPluginMixin
+):
     """
     Extract OTIO timeline into one concuted image sequence file.
 
@@ -51,7 +57,7 @@ class ExtractOTIOReview(publish.Extractor):
     # plugin default attributes
     to_width = 1280
     to_height = 720
-    output_ext = ".jpg"
+    output_ext = ".png"
 
     def process(self, instance):
         # Not all hosts can import these modules.
@@ -68,17 +74,24 @@ class ExtractOTIOReview(publish.Extractor):
         # TODO: convert resulting image sequence to mp4
 
         # get otio clip and other time info from instance clip
+        otio_review_clips = instance.data.get("otioReviewClips")
+
+        if otio_review_clips is None:
+            self.log.info(f"Instance `{instance}` has no otioReviewClips")
+            return
+
         # TODO: what if handles are different in `versionData`?
         handle_start = instance.data["handleStart"]
         handle_end = instance.data["handleEnd"]
-        otio_review_clips = instance.data["otioReviewClips"]
 
         # add plugin wide attributes
         self.representation_files = []
         self.used_frames = []
         self.workfile_start = int(instance.data.get(
             "workfileFrameStart", 1001)) - handle_start
-        self.padding = len(str(self.workfile_start))
+        # NOTE: padding has to be converted from
+        #       end frame since start could be lower then 1000
+        self.padding = len(str(instance.data.get("frameEnd", 1001)))
         self.used_frames.append(self.workfile_start)
         self.to_width = instance.data.get(
             "resolutionWidth") or self.to_width
@@ -86,8 +99,13 @@ class ExtractOTIOReview(publish.Extractor):
             "resolutionHeight") or self.to_height
 
         # skip instance if no reviewable data available
-        if (not isinstance(otio_review_clips[0], otio.schema.Clip)) \
-                and (len(otio_review_clips) == 1):
+        if (
+            len(otio_review_clips) == 1
+            and (
+                not isinstance(otio_review_clips[0], otio.schema.Clip)
+                or otio_review_clips[0].media_reference.is_missing_reference
+            )
+        ):
             self.log.warning(
                 "Instance `{}` has nothing to process".format(instance))
             return
@@ -112,33 +130,39 @@ class ExtractOTIOReview(publish.Extractor):
                 # NOTE it looks like it is set only in hiero integration
                 res_data = {"width": self.to_width, "height": self.to_height}
                 for key in res_data:
-                    for meta_prefix in ("ayon.source.", "openpype.source."):
+                    for meta_prefix in ("ayon.source", "openpype.source"):
                         meta_key = f"{meta_prefix}.{key}"
                         value = media_metadata.get(meta_key)
                         if value is not None:
                             res_data[key] = value
                             break
 
-                self.to_width, self.to_height = res_data["width"], res_data["height"]
-                self.log.debug("> self.to_width x self.to_height: {} x {}".format(
-                    self.to_width, self.to_height
-                ))
+                self.to_width, self.to_height = (
+                    res_data["width"], res_data["height"]
+                )
+                self.log.debug(
+                    "> self.to_width x self.to_height:"
+                    f" {self.to_width} x {self.to_height}"
+                )
 
                 available_range = r_otio_cl.available_range()
+                available_range_start_frame = (
+                    available_range.start_time.to_frames()
+                )
                 processing_range = None
                 self.actual_fps = available_range.duration.rate
                 start = src_range.start_time.rescaled_to(self.actual_fps)
                 duration = src_range.duration.rescaled_to(self.actual_fps)
 
                 # Temporary.
-                # Some AYON custom OTIO exporter were implemented with relative
-                # source range for image sequence. Following code maintain
-                # backward-compatibility by adjusting available range
+                # Some AYON custom OTIO exporter were implemented with
+                # relative source range for image sequence. Following code
+                # maintain backward-compatibility by adjusting available range
                 # while we are updating those.
                 if (
                     is_clip_from_media_sequence(r_otio_cl)
-                    and available_range.start_time.to_frames() == media_ref.start_frame
-                    and src_range.start_time.to_frames() < media_ref.start_frame
+                    and available_range_start_frame == media_ref.start_frame
+                    and start.to_frames() < media_ref.start_frame
                 ):
                     available_range = otio.opentime.TimeRange(
                         otio.opentime.RationalTime(0, rate=self.actual_fps),
@@ -168,7 +192,7 @@ class ExtractOTIOReview(publish.Extractor):
                 start -= clip_handle_start
                 duration += clip_handle_start
             elif len(otio_review_clips) > 1 \
-                    and (index == len(otio_review_clips) - 1):
+                        and (index == len(otio_review_clips) - 1):
                 # more clips | last clip reframing with handle
                 duration += clip_handle_end
             elif len(otio_review_clips) == 1:
@@ -190,13 +214,9 @@ class ExtractOTIOReview(publish.Extractor):
                 # File sequence way
                 if is_sequence:
                     # Remap processing range to input file sequence.
-                    processing_range_as_frames = (
-                        processing_range.start_time.to_frames(),
-                        processing_range.end_time_inclusive().to_frames()
-                    )
                     first, last = remap_range_on_file_sequence(
                         r_otio_cl,
-                        processing_range_as_frames,
+                        processing_range,
                     )
                     input_fps = processing_range.start_time.rate
 
@@ -234,9 +254,10 @@ class ExtractOTIOReview(publish.Extractor):
 
                 # Single video way.
                 # Extraction via FFmpeg.
-                else:
+                elif hasattr(media_ref, "target_url"):
                     path = media_ref.target_url
-                    # Set extract range from 0 (FFmpeg ignores embedded timecode).
+                    # Set extract range from 0 (FFmpeg ignores
+                    #   embedded timecode).
                     extract_range = otio.opentime.TimeRange(
                         otio.opentime.RationalTime(
                             (
@@ -263,8 +284,15 @@ class ExtractOTIOReview(publish.Extractor):
 
         # creating and registering representation
         representation = self._create_representation(start, duration)
+
+        # add colorspace data to representation
+        if colorspace := instance.data.get("reviewColorspace"):
+            self.set_representation_colorspace(
+                representation, instance.context, colorspace
+            )
+
         instance.data["representations"].append(representation)
-        self.log.info("Adding representation: {}".format(representation))
+        self.log.debug("Adding representation: {}".format(representation))
 
     def _create_representation(self, start, duration):
         """
@@ -298,6 +326,9 @@ class ExtractOTIOReview(publish.Extractor):
         end = max(collection.indexes)
 
         files = [f for f in collection]
+        # single frame sequence
+        if len(files) == 1:
+            files = files[0]
         ext = collection.format("{tail}")
         representation_data.update({
             "name": ext[1:],
@@ -327,6 +358,7 @@ class ExtractOTIOReview(publish.Extractor):
         import opentimelineio as otio
         from ayon_core.pipeline.editorial import (
             trim_media_range,
+            OTIO_EPSILON,
         )
 
         def _round_to_frame(rational_time):
@@ -344,6 +376,13 @@ class ExtractOTIOReview(publish.Extractor):
                 ).to_frames()
 
         avl_start = avl_range.start_time
+
+        # Avoid rounding issue on media available range.
+        if start.almost_equal(
+            avl_start,
+            OTIO_EPSILON
+        ):
+            avl_start = start
 
         # An additional gap is required before the available
         # range to conform source start point and head handles.
@@ -363,6 +402,14 @@ class ExtractOTIOReview(publish.Extractor):
         # (media duration is shorter then clip requirement).
         end_point = start + duration
         avl_end_point = avl_range.end_time_exclusive()
+
+        # Avoid rounding issue on media available range.
+        if end_point.almost_equal(
+            avl_end_point,
+            OTIO_EPSILON
+        ):
+            avl_end_point = end_point
+
         if end_point > avl_end_point:
             gap_duration = end_point - avl_end_point
             duration -= gap_duration
@@ -397,7 +444,8 @@ class ExtractOTIOReview(publish.Extractor):
         to defined image sequence format.
 
         Args:
-            sequence (list): input dir path string, collection object, fps in list
+            sequence (list): input dir path string, collection object,
+                fps in list.
             video (list)[optional]: video_path string, otio_range in list
             gap (int)[optional]: gap duration
             end_offset (int)[optional]: offset gap frame start in frames
@@ -418,7 +466,7 @@ class ExtractOTIOReview(publish.Extractor):
         command = get_ffmpeg_tool_args("ffmpeg")
 
         input_extension = None
-        if sequence:
+        if sequence is not None:
             input_dir, collection, sequence_fps = sequence
             in_frame_start = min(collection.indexes)
 
@@ -452,7 +500,7 @@ class ExtractOTIOReview(publish.Extractor):
                 "-i", input_path
             ])
 
-        elif video:
+        elif video is not None:
             video_path, otio_range = video
             frame_start = otio_range.start_time.value
             input_fps = otio_range.start_time.rate
@@ -470,7 +518,7 @@ class ExtractOTIOReview(publish.Extractor):
                 "-i", video_path
             ])
 
-        elif gap:
+        elif gap is not None:
             sec_duration = frames_to_seconds(gap, self.actual_fps)
 
             # form command for rendering gap files
@@ -484,6 +532,15 @@ class ExtractOTIOReview(publish.Extractor):
                 "-tune", "stillimage"
             ])
 
+        else:
+            raise KnownPublishError("Sequence, video or gap is required.")
+
+        if video or sequence:
+            command.extend([
+                "-vf", f"scale={self.to_width}:{self.to_height}:flags=lanczos",
+                "-compression_level", "5",
+            ])
+
         # add output attributes
         command.extend([
             "-start_number", str(out_frame_start)
@@ -494,9 +551,10 @@ class ExtractOTIOReview(publish.Extractor):
             input_extension
             and self.output_ext == input_extension
         ):
-            command.extend([
-                "-c", "copy"
-            ])
+            command.extend(["-c", "copy"])
+        else:
+            # For lossy formats, force re-encode
+            command.extend(["-pix_fmt", "rgba"])
 
         # add output path at the end
         command.append(output_path)

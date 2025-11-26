@@ -3,6 +3,7 @@ from .constants import (
     ValidateContentsOrder,
     ValidateSceneOrder,
     ValidateMeshOrder,
+    FARM_JOB_ENV_DATA_KEY,
 )
 
 from .publish_plugins import (
@@ -45,6 +46,11 @@ from .lib import (
     get_publish_instance_families,
 
     main_cli_publish,
+
+    add_trait_representations,
+    get_trait_representations,
+    has_trait_representations,
+    set_trait_representations,
 )
 
 from .abstract_expected_files import ExpectedFiles
@@ -59,6 +65,7 @@ __all__ = (
     "ValidateContentsOrder",
     "ValidateSceneOrder",
     "ValidateMeshOrder",
+    "FARM_JOB_ENV_DATA_KEY",
 
     "AbstractMetaInstancePlugin",
     "AbstractMetaContextPlugin",
@@ -102,4 +109,9 @@ __all__ = (
 
     "RenderInstance",
     "AbstractCollectRender",
+
+    "add_trait_representations",
+    "get_trait_representations",
+    "has_trait_representations",
+    "set_trait_representations",
 )
