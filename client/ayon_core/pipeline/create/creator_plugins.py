@@ -6,7 +6,6 @@ import copy
 import os
 from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING, Any, Dict, Optional
-from warnings import warn
 
 from ayon_core.lib import Logger, get_version_from_path
 from ayon_core.pipeline.plugin_discover import (
@@ -399,12 +398,6 @@ class BaseCreator(ABC):
             product_type = self.product_type
 
         if not product_base_type and not self.product_base_type:
-            warn(
-                f"Creator {self.identifier} does not support "
-                "product base type. This will be required in future.",
-                DeprecationWarning,
-                stacklevel=2,
-            )
             product_base_type = product_type
 
         instance = CreatedInstance(
@@ -547,10 +540,6 @@ class BaseCreator(ABC):
             project_entity (Optional[dict[str, Any]]): Project entity.
 
         """
-        product_base_type = None
-        if hasattr(self, "product_base_type"):  # noqa: E501
-            product_base_type = self.product_base_type
-
         if host_name is None:
             host_name = self.create_context.host_name
 
