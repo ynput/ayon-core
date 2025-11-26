@@ -32,8 +32,8 @@ class GlobalHostDataHook(PreLaunchHook):
             "app": app,
 
             "project_entity": self.data["project_entity"],
-            "folder_entity": self.data["folder_entity"],
-            "task_entity": self.data["task_entity"],
+            "folder_entity": self.data.get("folder_entity"),
+            "task_entity": self.data.get("task_entity"),
 
             "anatomy": self.data["anatomy"],
 

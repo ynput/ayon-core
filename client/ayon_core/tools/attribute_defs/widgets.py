@@ -22,6 +22,7 @@ from ayon_core.tools.utils import (
     FocusSpinBox,
     FocusDoubleSpinBox,
     MultiSelectionComboBox,
+    MarkdownLabel,
     PlaceholderLineEdit,
     PlaceholderPlainTextEdit,
     set_style_property,
@@ -181,6 +182,7 @@ class AttributeDefinitionsWidget(QtWidgets.QWidget):
             layout.deleteLater()
 
         new_layout = QtWidgets.QGridLayout()
+        new_layout.setContentsMargins(0, 0, 0, 0)
         new_layout.setColumnStretch(0, 0)
         new_layout.setColumnStretch(1, 1)
         self.setLayout(new_layout)
@@ -209,12 +211,8 @@ class AttributeDefinitionsWidget(QtWidgets.QWidget):
             if not attr_def.visible:
                 continue
 
+            col_num = 0
             expand_cols = 2
-            if attr_def.is_value_def and attr_def.is_label_horizontal:
-                expand_cols = 1
-
-            col_num = 2 - expand_cols
-
             if attr_def.is_value_def and attr_def.label:
                 label_widget = AttributeDefinitionsLabel(
                     attr_def.id, attr_def.label, self
@@ -232,9 +230,12 @@ class AttributeDefinitionsWidget(QtWidgets.QWidget):
                         | QtCore.Qt.AlignVCenter
                     )
                 layout.addWidget(
-                    label_widget, row, 0, 1, expand_cols
+                    label_widget, row, col_num, 1, 1
                 )
-                if not attr_def.is_label_horizontal:
+                if attr_def.is_label_horizontal:
+                    col_num += 1
+                    expand_cols = 1
+                else:
                     row += 1
 
             if attr_def.is_value_def:
@@ -247,12 +248,10 @@ class AttributeDefinitionsWidget(QtWidgets.QWidget):
 
     def set_value(self, value):
         new_value = copy.deepcopy(value)
-        unused_keys = set(new_value.keys())
         for widget in self._widgets_by_id.values():
             attr_def = widget.attr_def
             if attr_def.key not in new_value:
                 continue
-            unused_keys.remove(attr_def.key)
 
             widget_value = new_value[attr_def.key]
             if widget_value is None:
@@ -350,7 +349,7 @@ class SeparatorAttrWidget(_BaseAttrDefWidget):
 
 class LabelAttrWidget(_BaseAttrDefWidget):
     def _ui_init(self):
-        input_widget = QtWidgets.QLabel(self)
+        input_widget = MarkdownLabel(self)
         label = self.attr_def.label
         if label:
             input_widget.setText(str(label))

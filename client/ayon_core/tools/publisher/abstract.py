@@ -13,7 +13,7 @@ from typing import (
 )
 
 from ayon_core.lib import AbstractAttrDef
-from ayon_core.host import HostBase
+from ayon_core.host import AbstractHost
 from ayon_core.pipeline.create import (
     CreateContext,
     ConvertorItem,
@@ -176,7 +176,7 @@ class AbstractPublisherBackend(AbstractPublisherCommon):
         pass
 
     @abstractmethod
-    def get_host(self) -> HostBase:
+    def get_host(self) -> AbstractHost:
         pass
 
     @abstractmethod
@@ -293,6 +293,21 @@ class AbstractPublisherFrontend(AbstractPublisherCommon):
     @abstractmethod
     def get_folder_id_from_path(self, folder_path: str) -> Optional[str]:
         """Get folder id from folder path."""
+        pass
+
+    @abstractmethod
+    def get_my_tasks_entity_ids(
+        self, project_name: str
+    ) -> dict[str, list[str]]:
+        """Get entity ids for my tasks.
+
+        Args:
+            project_name (str): Project name.
+
+        Returns:
+            dict[str, list[str]]: Folder and task ids.
+
+        """
         pass
 
     # --- Create ---
