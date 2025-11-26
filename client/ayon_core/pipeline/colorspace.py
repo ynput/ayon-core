@@ -26,6 +26,7 @@ from ayon_core.pipeline.load import get_representation_path_with_anatomy
 
 log = Logger.get_logger(__name__)
 
+
 @dataclass
 class ConfigData:
     """OCIO Config to use in a certain context.
