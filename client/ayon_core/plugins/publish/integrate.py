@@ -121,7 +121,6 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
         "version",
         "representation",
         "username",
-        "user",
         "output",
         # OpenPype keys - should be removed
         "asset",  # folder[name]
@@ -458,6 +457,9 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
             else:
                 version_data[key] = value
 
+        host_name = instance.context.data["hostName"]
+        version_data["host_name"] = host_name
+
         version_entity = new_version_entity(
             version_number,
             product_entity["id"],
@@ -619,8 +621,7 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
             # used for all represe
             # from temp to final
             original_directory = (
-                instance.data.get("originalDirname") or instance_stagingdir)
-
+                instance.data.get("originalDirname") or stagingdir)
             _rootless = self.get_rootless_path(anatomy, original_directory)
             if _rootless == original_directory:
                 raise KnownPublishError((
@@ -684,7 +685,7 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
 
         elif is_sequence_representation:
             # Collection of files (sequence)
-            src_collections, remainders = clique.assemble(files)
+            src_collections, _remainders = clique.assemble(files)
 
             src_collection = src_collections[0]
             destination_indexes = list(src_collection.indexes)
@@ -706,7 +707,8 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
                 # In case source are published in place we need to
                 # skip renumbering
                 repre_frame_start = repre.get("frameStart")
-                if repre_frame_start is not None:
+                explicit_frames = instance.data.get("hasExplicitFrames", False)
+                if not explicit_frames and repre_frame_start is not None:
                     index_frame_start = int(repre_frame_start)
                     # Shift destination sequence to the start frame
                     destination_indexes = [
@@ -795,6 +797,14 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
             value = template_data.get(key)
             if value is not None:
                 repre_context[key] = value
+
+        # Keep only username
+        # NOTE This is to avoid storing all user attributes and data
+        #   to representation
+        if "user" not in repre_context:
+            repre_context["user"] = {
+                "name": template_data["user"]["name"]
+            }
 
         # Use previous representation's id if there is a name match
         existing = existing_repres_by_name.get(repre["name"].lower())

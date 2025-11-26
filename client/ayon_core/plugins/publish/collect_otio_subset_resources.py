@@ -6,6 +6,7 @@ Provides:
     instance -> otioReviewClips
 """
 import os
+import math
 
 import clique
 import pyblish.api
@@ -59,6 +60,13 @@ class CollectOtioSubsetResources(
 
         # get basic variables
         otio_clip = instance.data["otioClip"]
+        if isinstance(
+            otio_clip.media_reference,
+            otio.schema.MissingReference
+        ):
+            self.log.info("Clip has no media reference")
+            return
+
         otio_available_range = otio_clip.available_range()
         media_fps = otio_available_range.start_time.rate
         available_duration = otio_available_range.duration.value
@@ -69,9 +77,17 @@ class CollectOtioSubsetResources(
         self.log.debug(
             ">> retimed_attributes: {}".format(retimed_attributes))
 
-        # break down into variables
-        media_in = int(retimed_attributes["mediaIn"])
-        media_out = int(retimed_attributes["mediaOut"])
+        # break down into variables as rounded frame numbers
+        #
+        # 0             1               2              3             4
+        # |-------------|---------------|--------------|-------------|
+        #         |_______________media range_______________|
+        #        0.6                                       3.2
+        #
+        #  As rounded frames, media_in = 0 and media_out = 4
+        media_in = math.floor(retimed_attributes["mediaIn"])
+        media_out = math.ceil(retimed_attributes["mediaOut"])
+
         handle_start = int(retimed_attributes["handleStart"])
         handle_end = int(retimed_attributes["handleEnd"])
 
@@ -149,7 +165,6 @@ class CollectOtioSubsetResources(
 
         self.log.info(
             "frame_start-frame_end: {}-{}".format(frame_start, frame_end))
-        review_repre = None
 
         if is_sequence:
             # file sequence way
@@ -174,17 +189,17 @@ class CollectOtioSubsetResources(
                     path, trimmed_media_range_h, metadata)
                 self.staging_dir, collection = collection_data
 
-            self.log.debug(collection)
-            repre = self._create_representation(
-                frame_start, frame_end, collection=collection)
+            if len(collection.indexes) > 1:
+                self.log.debug(collection)
+                repre = self._create_representation(
+                    frame_start, frame_end, collection=collection)
+            else:
+                filename = tuple(collection)[0]
+                self.log.debug(filename)
 
-            if (
-                not instance.data.get("otioReviewClips")
-                and "review" in instance.data["families"]
-            ):
-                review_repre = self._create_representation(
-                frame_start, frame_end, collection=collection,
-                delete=True, review=True)
+                # TODO: discuss this, it erases frame number.
+                repre = self._create_representation(
+                    frame_start, frame_end, file=filename)
 
         else:
             _trim = False
@@ -200,14 +215,6 @@ class CollectOtioSubsetResources(
             repre = self._create_representation(
                 frame_start, frame_end, file=filename, trim=_trim)
 
-            if (
-                not instance.data.get("otioReviewClips")
-                and "review" in instance.data["families"]
-            ):
-                review_repre = self._create_representation(
-                    frame_start, frame_end,
-                    file=filename, delete=True, review=True)
-
         instance.data["originalDirname"] = self.staging_dir
 
         # add representation to instance data
@@ -218,10 +225,6 @@ class CollectOtioSubsetResources(
                 repre, instance.context, colorspace)
 
             instance.data["representations"].append(repre)
-
-        # add review representation to instance data
-        if review_repre:
-            instance.data["representations"].append(review_repre)
 
         self.log.debug(instance.data)
 

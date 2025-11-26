@@ -36,6 +36,16 @@ class CollectOtioReview(pyblish.api.InstancePlugin):
         # optionally get `reviewTrack`
         review_track_name = instance.data.get("reviewTrack")
 
+        # [clip_media] setting:
+        # Extract current clip source range as reviewable.
+        # Flag review content from otio_clip.
+        if not review_track_name and "review" in instance.data["families"]:
+            otio_review_clips = [otio_clip]
+
+        # skip if no review track available
+        elif not review_track_name:
+            return
+
         # generate range in parent
         otio_tl_range = otio_clip.range_in_parent()
 
@@ -43,12 +53,14 @@ class CollectOtioReview(pyblish.api.InstancePlugin):
         clip_frame_end = int(
             otio_tl_range.start_time.value + otio_tl_range.duration.value)
 
-        # skip if no review track available
-        if not review_track_name:
-            return
-
         # loop all tracks and match with name in `reviewTrack`
         for track in otio_timeline.tracks:
+
+            # No review track defined, skip the loop
+            if review_track_name is None:
+                break
+
+            # Not current review track, skip it.
             if review_track_name != track.name:
                 continue
 
