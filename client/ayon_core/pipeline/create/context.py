@@ -766,6 +766,15 @@ class CreateContext:
                     "and skipping: %s", creator_identifier, creator_class
                 )
                 continue
+            if not creator_class.product_base_type:
+                warn(
+                    f"Provided creator {creator_class!r} doesn't have "
+                    "product base type attribute defined. This will be "
+                    "required in future.",
+                    DeprecationWarning,
+                    stacklevel=2
+                )
+                continue
 
             # Filter by host name
             if (
@@ -1235,15 +1244,6 @@ class CreateContext:
 
         """
         creator = self._get_creator_in_create(creator_identifier)
-
-        if not hasattr(creator, "product_base_type"):
-            warn(
-                f"Provided creator {creator!r} doesn't have "
-                "product base type attribute defined. This will be "
-                "required in future.",
-                DeprecationWarning,
-                stacklevel=2
-            )
 
         project_name = self.project_name
         if folder_entity is None:

@@ -405,7 +405,7 @@ class BaseCreator(ABC):
             product_name=product_name,
             data=data,
             creator=self,
-            product_base_type=product_base_type
+            product_base_type=product_base_type,
         )
         self._add_instance_to_context(instance)
         return instance
@@ -516,7 +516,7 @@ class BaseCreator(ABC):
         self,
         project_name: str,
         folder_entity: dict[str, Any],
-        task_entity: dict[str, Any],
+        task_entity: Optional[dict[str, Any]],
         variant: str,
         host_name: Optional[str] = None,
         instance: Optional[CreatedInstance] = None,
