@@ -10,7 +10,6 @@ from ayon_core.lib import (
     filter_profiles,
     prepare_template_data,
 )
-from ayon_core.pipeline.compatibility import is_product_base_type_supported
 from ayon_core.settings import get_project_settings
 
 from .constants import DEFAULT_PRODUCT_TEMPLATE
@@ -36,10 +35,10 @@ def get_product_name_template(
         host_name (str): Name of host in which the product name is calculated.
         task_name (str): Name of task in which context the product is created.
         task_type (str): Type of task in which context the product is created.
-        default_template (Optional, str): Default template which is used if
+        default_template (Optional[str]): Default template which is used if
             settings won't find any matching possibility. Constant
             'DEFAULT_PRODUCT_TEMPLATE' is used if not defined.
-        project_settings (Union[Dict[str, Any], None]): Prepared settings for
+        project_settings (Optional[dict[str, Any]]): Prepared settings for
             project. Settings are queried if not passed.
         product_base_type (Optional[str]): Base type of product.
 
@@ -58,14 +57,16 @@ def get_product_name_template(
         "task_types": task_type
     }
 
-    if is_product_base_type_supported():
-        if product_base_type:
-            filtering_criteria["product_base_types"] = product_base_type
-        else:
-            warn(
-                "Product base type is not provided, please update your"
-                "creation code to include it. It will be required in "
-                "the future.", DeprecationWarning, stacklevel=2)
+    if not product_base_type:
+        warn(
+            "Product base type is not provided, please update your"
+            "creation code to include it. It will be required in "
+            "the future.",
+            DeprecationWarning,
+            stacklevel=2
+        )
+    filtering_criteria["product_base_types"] = product_base_type
+       
 
     matching_profile = filter_profiles(profiles, filtering_criteria)
     template = None
@@ -192,16 +193,20 @@ def get_product_name(
 
     # look what we have to do to make mypy happy. We should stop using
     # those undefined dict based types.
-    product: dict[str, str] = {"type": product_type}
-    if is_product_base_type_supported():
-        if product_base_type:
-            product["baseType"] = product_base_type
-        elif "{product[basetype]}" in template.lower():
-            warn(
-                "You have Product base type in product name template,"
-                "but it is not provided by the creator, please update your"
-                "creation code to include it. It will be required in "
-                "the future.", DeprecationWarning, stacklevel=2)
+    product: dict[str, str] = {
+        "type": product_type,
+        "baseType": product_base_type
+    }
+    if not product_base_type and "{product[basetype]}" in template.lower():
+        product["baseType"] = product_type
+        warn(
+            "You have Product base type in product name template, "
+            "but it is not provided by the creator, please update your "
+            "creation code to include it. It will be required in "
+            "the future.",
+            DeprecationWarning,
+            stacklevel=2)
+
     fill_pairs: dict[str, Union[str, dict[str, str]]] = {
         "variant": variant,
         "family": product_type,
