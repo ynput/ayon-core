@@ -44,7 +44,7 @@ class ExtractOIIOPostProcess(publish.Extractor):
             self.log.debug("No profiles present for OIIO Post Process")
             return
 
-        if "representations" not in instance.data:
+        if not instance.data.get("representations"):
             self.log.debug("No representations, skipping.")
             return
 
