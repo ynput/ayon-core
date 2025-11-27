@@ -638,7 +638,7 @@ class ExtractOIIOPostProcessProfileModel(BaseSettingsModel):
         default_factory=list,
         title="Product types"
     )
-    hosts: list[str] = SettingsField(
+    host_names: list[str] = SettingsField(
         default_factory=list,
         title="Host names"
     )
