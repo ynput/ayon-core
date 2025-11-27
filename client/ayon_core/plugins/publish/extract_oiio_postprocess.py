@@ -62,7 +62,8 @@ class ExtractOIIOPostProcess(publish.Extractor):
             # it's included in the profile check. As such, an instance may have
             # a different profile applied per representation.
             profile = self._get_profile(
-                instance
+                instance,
+                repre
             )
             if not profile:
                 continue
