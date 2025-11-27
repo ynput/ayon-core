@@ -197,7 +197,7 @@ def get_product_name(
         "task": task_value,
         "product": {
             "type": product_type,
-            "baseType": product_base_type or product_type,
+            "basetype": product_base_type or product_type,
         }
     }
 

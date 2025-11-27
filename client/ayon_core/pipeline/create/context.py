@@ -758,18 +758,6 @@ class CreateContext:
                 "Skipping abstract Creator '%s'", str(creator_class)
             )
 
-        for creator_class in report.plugins:
-            if not creator_class.product_base_type:
-                message = (f"Provided creator {creator_class!r} doesn't have "
-                    "product base type attribute defined. This will be "
-                    "required in future.")
-                warn(
-                    message,
-                    DeprecationWarning,
-                    stacklevel=2
-                )
-                self.log.warning(message)
-
             creator_identifier = creator_class.identifier
             if creator_identifier in creators:
                 self.log.warning(
@@ -783,25 +771,36 @@ class CreateContext:
                 creator_class.host_name
                 and creator_class.host_name != self.host_name
             ):
-                self.log.info((
-                    "Creator's host name \"{}\""
-                    " is not supported for current host \"{}\""
-                ).format(creator_class.host_name, self.host_name))
+                self.log.info(
+                    (
+                        'Creator\'s host name "{}"'
+                        ' is not supported for current host "{}"'
+                    ).format(creator_class.host_name, self.host_name)
+                )
                 continue
 
             # TODO report initialization error
             try:
-                creator = creator_class(
-                    project_settings,
-                    self,
-                    self.headless
-                )
+                creator = creator_class(project_settings, self, self.headless)
             except Exception:
                 self.log.error(
                     f"Failed to initialize plugin: {creator_class}",
                     exc_info=True
                 )
                 continue
+
+            if not creator.product_base_type:
+                message = (
+                    f"Provided creator {creator!r} doesn't have "
+                    "product base type attribute defined. This will be "
+                    "required in future."
+                )
+                warn(
+                    message,
+                    DeprecationWarning,
+                    stacklevel=2
+                )
+                self.log.warning(message)
 
             if not creator.enabled:
                 disabled_creators[creator_identifier] = creator
