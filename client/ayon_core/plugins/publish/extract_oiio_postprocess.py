@@ -272,7 +272,7 @@ class ExtractOIIOPostProcess(publish.Extractor):
         repre_name: str = repre["name"]
         repre_ext: str = repre["ext"]
         filtering_criteria = {
-            "hosts": host_name,
+            "host_names": host_name,
             "product_types": product_type,
             "product_names": product_name,
             "task_names": task_name,
