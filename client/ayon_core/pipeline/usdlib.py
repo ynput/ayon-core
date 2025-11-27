@@ -684,3 +684,20 @@ def get_sdf_format_args(path):
     """Return SDF_FORMAT_ARGS parsed to `dict`"""
     _raw_path, data = Sdf.Layer.SplitIdentifier(path)
     return data
+
+
+def get_standard_default_prim_name(folder_path: str) -> str:
+    """Return the AYON-specified default prim name for a folder path.
+
+    This is used e.g. for the default prim in AYON USD Contribution workflows.
+    """
+    folder_name: str = folder_path.rsplit("/", 1)[-1]
+
+    # Prim names are not allowed to start with a digit in USD. Authoring them
+    # would mean generating essentially garbage data and may result in
+    # unexpected behavior in certain USD or DCC versions, like failure to
+    # refresh in usdview or crashes in Houdini 21.
+    if folder_name and folder_name[0].isdigit():
+        folder_name = f"_{folder_name}"
+
+    return folder_name
