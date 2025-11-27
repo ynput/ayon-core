@@ -261,7 +261,11 @@ class ExtractOIIOPostProcess(publish.Extractor):
                                        output_extension)
         return os.path.join(output_dir, new_file_name)
 
-    def _get_profile(self, instance: pyblish.api.Instance, repre: dict) -> Optional[dict[str, Any]]:
+    def _get_profile(
+            self,
+            instance: pyblish.api.Instance,
+            repre: dict
+    ) -> Optional[dict[str, Any]]:
         """Returns profile if it should process this instance."""
         host_name = instance.context.data["hostName"]
         product_type = instance.data["productType"]
@@ -296,7 +300,7 @@ class ExtractOIIOPostProcess(publish.Extractor):
 
         return profile
 
-    def _repre_is_valid(self, repre) -> bool:
+    def _repre_is_valid(self, repre: dict) -> bool:
         """Validation if representation should be processed.
 
         Args:
@@ -325,7 +329,12 @@ class ExtractOIIOPostProcess(publish.Extractor):
 
         return True
 
-    def _mark_original_repre_for_deletion(self, repre, profile, added_review):
+    def _mark_original_repre_for_deletion(
+        self,
+        repre: dict,
+        profile: dict,
+        added_review: bool
+    ):
         """If new transcoded representation created, delete old."""
         if not repre.get("tags"):
             repre["tags"] = []
