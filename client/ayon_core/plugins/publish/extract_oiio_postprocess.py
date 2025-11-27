@@ -43,6 +43,7 @@ class ExtractOIIOPostProcess(publish.Extractor):
         if instance.data.get("farm"):
             self.log.debug("Should be processed on farm, skipping.")
             return
+
         if not self.profiles:
             self.log.debug("No profiles present for OIIO Post Process")
             return
