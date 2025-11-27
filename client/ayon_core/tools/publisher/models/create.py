@@ -665,7 +665,6 @@ class CreateModel:
         kwargs = {
             "instance": instance,
             "project_entity": project_entity,
-            "product_base_type": creator.product_base_type,
         }
         # Backwards compatibility for 'project_entity' argument
         # - 'get_product_name' signature changed 24/07/08
