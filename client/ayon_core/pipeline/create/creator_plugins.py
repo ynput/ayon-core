@@ -290,8 +290,8 @@ class BaseCreator(ABC):
     def identifier(self):
         """Identifier of creator (must be unique).
 
-        Default implementation returns plugin's product base type, or falls back
-        to product type if product base type is not set.
+        Default implementation returns plugin's product base type,
+        or falls back to product type if product base type is not set.
 
         """
         identifier = self.product_base_type
