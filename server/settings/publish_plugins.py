@@ -633,12 +633,8 @@ class ExtractOIIOPostProcessOutputModel(BaseSettingsModel):
 
 
 class ExtractOIIOPostProcessProfileModel(BaseSettingsModel):
-    product_types: list[str] = SettingsField(
-        section="Profile",
-        default_factory=list,
-        title="Product types"
-    )
     host_names: list[str] = SettingsField(
+        section="Profile",
         default_factory=list,
         title="Host names"
     )
@@ -650,6 +646,10 @@ class ExtractOIIOPostProcessProfileModel(BaseSettingsModel):
     task_names: list[str] = SettingsField(
         default_factory=list,
         title="Task names"
+    )
+    product_types: list[str] = SettingsField(
+        default_factory=list,
+        title="Product types"
     )
     product_names: list[str] = SettingsField(
         default_factory=list,
