@@ -1038,7 +1038,10 @@ def get_imageio_config_preset(
             " either missing or there is typo in path inputs"
         )
 
-    return config_data
+    return {
+        "path": config_data.path,
+        "template": config_data.template,
+    }
 
 
 def _get_host_config_data(templates, template_data):
