@@ -1281,24 +1281,6 @@ def oiio_color_convert(
     run_subprocess(oiio_cmd, logger=logger)
 
 
-def split_cmd_args(in_args):
-    """Makes sure all entered arguments are separated in individual items.
-
-    Split each argument string with " -" to identify if string contains
-    one or more arguments.
-    Args:
-        in_args (list): of arguments ['-n', '-d uint10']
-    Returns
-        (list): ['-n', '-d', 'unint10']
-    """
-    splitted_args = []
-    for arg in in_args:
-        if not arg.strip():
-            continue
-        splitted_args.extend(arg.split(" "))
-    return splitted_args
-
-
 def get_rescaled_command_arguments(
         application,
         input_path,
