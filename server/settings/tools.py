@@ -379,6 +379,29 @@ class PublishToolModel(BaseSettingsModel):
     )
 
 
+class InventoryTemplateNameProfile(BaseSettingsModel):
+    _layout = "expanded"
+    host_names: list[str] = SettingsField(
+        title="Host names",
+        default_factory=list
+    )
+    task_name: list[str] = SettingsField(
+        title="Task names",
+        default_factory=list
+    )
+    template: str = SettingsField(
+        title="Template",
+        default_factory=str
+    )
+
+
+class InventoryToolModel(BaseSettingsModel):
+    profiles: list[InventoryTemplateNameProfile] = SettingsField(
+        default_factory=list,
+        title="Inventory label templates"
+    )
+
+
 class GlobalToolsModel(BaseSettingsModel):
     ayon_menu: AYONMenuModel = SettingsField(
         default_factory=AYONMenuModel,
@@ -399,6 +422,10 @@ class GlobalToolsModel(BaseSettingsModel):
     publish: PublishToolModel = SettingsField(
         default_factory=PublishToolModel,
         title="Publish"
+    )
+    inventory: InventoryToolModel = SettingsField(
+        default_factory=InventoryToolModel,
+        title="Inventory"
     )
 
 
@@ -690,7 +717,10 @@ DEFAULT_TOOLS_VALUES = {
                 "task_names": [],
                 "template_name": "simpleUnrealTextureHero"
             }
-        ],
-        "comment_minimum_required_chars": 0,
+        ]
+    },
+    "comment_minimum_required_chars": 0,
+    "inventory": {
+       "profiles": []
     }
 }
