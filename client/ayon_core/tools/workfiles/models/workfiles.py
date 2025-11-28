@@ -39,6 +39,7 @@ from ayon_core.pipeline.workfile import (
 from ayon_core.pipeline.version_start import get_versioning_start
 from ayon_core.tools.workfiles.abstract import (
     WorkareaFilepathResult,
+    PublishedWorkfileWrap,
     AbstractWorkfilesBackend,
 )
 
@@ -79,6 +80,7 @@ class WorkfilesModel:
 
         # Published workfiles
         self._repre_by_id = {}
+        self._version_comment_by_id = {}
         self._published_workfile_items_cache = NestedCacheItem(
             levels=1, default_factory=list
         )
@@ -95,6 +97,7 @@ class WorkfilesModel:
         self._workarea_file_items_cache.reset()
 
         self._repre_by_id = {}
+        self._version_comment_by_id = {}
         self._published_workfile_items_cache.reset()
 
         self._workfile_entities_by_task_id = {}
@@ -552,13 +555,13 @@ class WorkfilesModel:
         )
 
     def get_published_file_items(
-        self, folder_id: str, task_id: str
+        self, folder_id: Optional[str], task_id: Optional[str]
     ) -> list[PublishedWorkfileInfo]:
         """Published workfiles for passed context.
 
         Args:
-            folder_id (str): Folder id.
-            task_id (str): Task id.
+            folder_id (Optional[str]): Folder id.
+            task_id (Optional[str]): Task id.
 
         Returns:
             list[PublishedWorkfileInfo]: List of files for published workfiles.
@@ -586,7 +589,7 @@ class WorkfilesModel:
                 version_entities = list(ayon_api.get_versions(
                     project_name,
                     product_ids=product_ids,
-                    fields={"id", "author", "taskId"},
+                    fields={"id", "author", "taskId", "attrib.comment"},
                 ))
 
             repre_entities = []
@@ -600,6 +603,13 @@ class WorkfilesModel:
                 repre_entity["id"]: repre_entity
                 for repre_entity in repre_entities
             })
+
+            # Map versions by representation ID for easy lookup
+            self._version_comment_by_id.update({
+                version_entity["id"]: version_entity["attrib"].get("comment")
+                for version_entity in version_entities
+            })
+
             project_entity = self._controller.get_project_entity(project_name)
 
             prepared_data = ListPublishedWorkfilesOptionalData(
@@ -626,6 +636,34 @@ class WorkfilesModel:
             ]
         return items
 
+    def get_published_workfile_info(
+        self,
+        folder_id: Optional[str],
+        representation_id: Optional[str],
+    ) -> PublishedWorkfileWrap:
+        """Get published workfile info by representation ID.
+
+        Args:
+            folder_id (Optional[str]): Folder id.
+            representation_id (Optional[str]): Representation id.
+
+        Returns:
+            PublishedWorkfileWrap: Published workfile info or None
+                if not found.
+
+        """
+        if not representation_id:
+            return PublishedWorkfileWrap()
+
+        # Search through all cached published workfile items
+        for item in self.get_published_file_items(folder_id, None):
+            if item.representation_id == representation_id:
+                comment = self._get_published_workfile_version_comment(
+                    representation_id
+                )
+                return PublishedWorkfileWrap(item, comment)
+        return PublishedWorkfileWrap()
+
     @property
     def _project_name(self) -> str:
         return self._controller.get_current_project_name()
@@ -641,6 +679,25 @@ class WorkfilesModel:
         if self._current_username is _NOT_SET:
             self._current_username = get_ayon_username()
         return self._current_username
+
+    def _get_published_workfile_version_comment(
+        self, representation_id: str
+    ) -> Optional[str]:
+        """Get version comment for published workfile.
+
+        Args:
+            representation_id (str): Representation id.
+
+        Returns:
+            Optional[str]: Version comment or None.
+
+        """
+        if not representation_id:
+            return None
+        repre = self._repre_by_id.get(representation_id)
+        if not repre:
+            return None
+        return self._version_comment_by_id.get(repre["versionId"])
 
     # --- Host ---
     def _open_workfile(self, folder_id: str, task_id: str, filepath: str):

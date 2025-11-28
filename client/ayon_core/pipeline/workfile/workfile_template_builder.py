@@ -300,7 +300,11 @@ class AbstractTemplateBuilder(ABC):
             self._loaders_by_name = get_loaders_by_name()
         return self._loaders_by_name
 
-    def get_linked_folder_entities(self, link_type: Optional[str]):
+    def get_linked_folder_entities(
+        self,
+        link_type: Optional[str],
+        folder_path_regex: Optional[str],
+    ):
         if not link_type:
             return []
         project_name = self.project_name
@@ -317,7 +321,11 @@ class AbstractTemplateBuilder(ABC):
             if link["entityType"] == "folder"
         }
 
-        return list(get_folders(project_name, folder_ids=linked_folder_ids))
+        return list(get_folders(
+            project_name,
+            folder_path_regex=folder_path_regex,
+            folder_ids=linked_folder_ids,
+        ))
 
     def _collect_creators(self):
         self._creators_by_name = {
@@ -832,14 +840,24 @@ class AbstractTemplateBuilder(ABC):
         host_name = self.host_name
         task_name = self.current_task_name
         task_type = self.current_task_type
+        folder_path = self.current_folder_path
+        folder_type = None
+        folder_entity = self.current_folder_entity
+        if folder_entity:
+            folder_type = folder_entity["folderType"]
+
+        filter_data = {
+            "task_types": task_type,
+            "task_names": task_name,
+            "folder_types": folder_type,
+            "folder_paths": folder_path,
+        }
 
         build_profiles = self._get_build_profiles()
         profile = filter_profiles(
             build_profiles,
-            {
-                "task_types": task_type,
-                "task_names": task_name
-            }
+            filter_data,
+            logger=self.log
         )
         if not profile:
             raise TemplateProfileNotFound((
@@ -1638,7 +1656,10 @@ class PlaceholderLoadMixin(object):
                     linked_folder_entity["id"]
                     for linked_folder_entity in (
                         self.builder.get_linked_folder_entities(
-                            link_type=link_type))
+                            link_type=link_type,
+                            folder_path_regex=folder_path_regex
+                        )
+                    )
                 ]
 
         if not folder_ids:
@@ -1666,6 +1687,8 @@ class PlaceholderLoadMixin(object):
             for version in get_last_versions(
                 project_name, filtered_product_ids, fields={"id"}
             ).values()
+            # Version may be none if a product has no versions
+            if version is not None
         )
         return list(get_representations(
             project_name,
