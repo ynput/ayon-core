@@ -164,5 +164,6 @@ def convert_settings_overrides(
 ) -> dict[str, Any]:
     _convert_imageio_configs_0_3_1(overrides)
     _convert_imageio_configs_0_4_5(overrides)
+    _convert_imageio_configs_1_6_5(overrides)
     _convert_publish_plugins(overrides)
     return overrides
