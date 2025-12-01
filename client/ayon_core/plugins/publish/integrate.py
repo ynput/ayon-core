@@ -28,6 +28,7 @@ from ayon_core.pipeline.publish import (
     KnownPublishError,
     get_publish_template_name,
 )
+from pipeline import is_product_base_type_supported
 
 log = logging.getLogger(__name__)
 
@@ -396,15 +397,21 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
         product_id = None
         if existing_product_entity:
             product_id = existing_product_entity["id"]
-        product_entity = new_product_entity(
-            product_name,
-            product_type,
-            folder_entity["id"],
-            data=data,
-            attribs=attributes,
-            entity_id=product_id,
-            product_base_type=product_base_type
-        )
+
+        new_product_entity_kwargs = {
+            "product_name": product_name,
+            "product_type": product_type,
+            "folder_id": folder_entity["id"],
+            "data": data,
+            "attribs": attributes,
+            "entity_id": product_id,
+            "product_base_type": product_base_type,
+        }
+
+        if not is_product_base_type_supported():
+            new_product_entity_kwargs.pop("product_base_type")
+
+        product_entity = new_product_entity(**new_product_entity_kwargs)
 
         if existing_product_entity is None:
             # Create a new product
