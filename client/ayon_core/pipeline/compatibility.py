@@ -13,4 +13,5 @@ def is_product_base_type_supported() -> bool:
         bool: True if product base types are supported, False otherwise.
 
     """
-    return False
+    import ayon_api
+    return ayon_api.product_base_type_supported()
