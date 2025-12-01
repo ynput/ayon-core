@@ -24,6 +24,7 @@ class OCIOEnvHook(PreLaunchHook):
         "cinema4d",
         "silhouette",
         "gaffer",
+        "katana",
         "loki",
     }
     launch_types = set()
