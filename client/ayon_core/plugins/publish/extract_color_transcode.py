@@ -87,15 +87,19 @@ class ExtractOIIOTranscode(publish.Extractor):
         profile_output_defs = profile["outputs"]
         new_representations = []
         repres = instance.data["representations"]
-        for idx, repre in enumerate(list(repres)):
-            # target space, display and view might be defined upstream
-            # TODO: address https://github.com/ynput/ayon-core/pull/1268#discussion_r2156555474
-            #   Implement upstream logic to handle target_colorspace,
-            #   target_display, target_view in other DCCs
-            target_colorspace = False
-            target_display = instance.data.get("colorspaceDisplay")
-            target_view = instance.data.get("colorspaceView")
 
+        scene_display = instance.data.get(
+            "sceneDisplay",
+            # Backward compatibility
+            instance.data.get("colorspaceDisplay")
+        )
+        scene_view = instance.data.get(
+            "sceneView",
+            # Backward compatibility
+            instance.data.get("colorspaceView")
+        )
+
+        for idx, repre in enumerate(list(repres)):
             self.log.debug("repre ({}): `{}`".format(idx + 1, repre["name"]))
             if not self._repre_is_valid(repre):
                 continue
@@ -142,24 +146,18 @@ class ExtractOIIOTranscode(publish.Extractor):
 
                 transcoding_type = output_def["transcoding_type"]
 
-                # NOTE: we use colorspace_data as the fallback values for
-                #     the target colorspace.
+                # Set target colorspace/display/view based on transcoding type
+                target_colorspace = None
+                target_view = None
+                target_display = None
                 if transcoding_type == "colorspace":
-                    # TODO: Should we fallback to the colorspace
-                    #     (which used as source above) ?
-                    #     or should we compute the target colorspace from
-                    #     current view and display ?
-                    target_colorspace = (output_def["colorspace"] or
-                                         colorspace_data.get("colorspace"))
+                    target_colorspace = output_def["colorspace"]
                 elif transcoding_type == "display_view":
                     display_view = output_def["display_view"]
-                    target_view = (
-                        display_view["view"]
-                        or colorspace_data.get("view"))
-                    target_display = (
-                        display_view["display"]
-                        or colorspace_data.get("display")
-                    )
+                    # If empty values are provided in output definition,
+                    # fallback to scene display/view that is collected from DCC
+                    target_view = display_view["view"] or scene_view
+                    target_display = display_view["display"] or scene_display
 
                 # both could be already collected by DCC,
                 # but could be overwritten when transcoding
