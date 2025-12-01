@@ -812,7 +812,22 @@ def replace_with_published_scene_path(instance, replace_in_path=True):
     template_data["comment"] = None
 
     anatomy = instance.context.data["anatomy"]
-    template = anatomy.get_template_item("publish", "default", "path")
+    project_name = anatomy.project_name
+    task_name = task_type = None
+    task_entity = instance.data.get("taskEntity")
+    if task_entity:
+        task_name = task_entity["name"]
+        task_type = task_entity["taskType"]
+    project_settings = instance.context.data["project_settings"]
+    template_name = get_publish_template_name(
+        project_name=project_name,
+        host_name=instance.context.data["hostName"],
+        product_type=workfile_instance.data["productType"],
+        task_name=task_name,
+        task_type=task_type,
+        project_settings=project_settings,
+    )
+    template = anatomy.get_template_item("publish", template_name, "path")
     template_filled = template.format_strict(template_data)
     file_path = os.path.normpath(template_filled)
 
