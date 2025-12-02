@@ -48,6 +48,7 @@ class ExtractThumbnail(pyblish.api.InstancePlugin):
         "unreal",
         "houdini",
         "batchdelivery",
+        "webpublisher",
     ]
     settings_category = "core"
     enabled = False
