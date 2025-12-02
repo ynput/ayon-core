@@ -1,8 +1,10 @@
+import os
 from qtpy import QtWidgets, QtCore, QtGui
 import qtawesome
 
 from ayon_core import style, resources
-from ayon_core.tools.utils import PlaceholderLineEdit
+from ayon_core.pipeline import get_current_host_name
+from ayon_core.tools.utils import PlaceholderLineEdit, MessageOverlayObject
 
 from ayon_core.tools.sceneinventory import SceneInventoryController
 
@@ -13,20 +15,27 @@ class SceneInventoryWindow(QtWidgets.QDialog):
     """Scene Inventory window"""
 
     def __init__(self, controller=None, parent=None):
+        super().__init__(parent)
+
         if controller is None:
             controller = SceneInventoryController()
 
-        title = "AYON Scene Inventory"
-        subtitle = controller.get_window_subtitle()
-        if subtitle:
-            title += f" - {subtitle}"
-
-        super().__init__(parent)
-
-        self.setWindowTitle(title)
+        overlay_object = MessageOverlayObject(self)
+        project_name = controller.get_current_project_name()
         icon = QtGui.QIcon(resources.get_ayon_icon_filepath())
         self.setWindowIcon(icon)
 
+        # Set window title with application name and project name
+        base_title = "AYON Scene Inventory"
+        app_name = (
+            os.environ.get("AYON_APP_NAME")
+            or get_current_host_name()
+        )
+        if app_name:
+            window_title = f"{base_title} - {app_name} - {project_name}"
+        else:
+            window_title = f"{base_title} - {project_name}"
+        self.setWindowTitle(window_title)
         self.setObjectName("SceneInventory")
 
         self.resize(1100, 480)
@@ -40,6 +49,12 @@ class SceneInventoryWindow(QtWidgets.QDialog):
         )
         outdated_only_checkbox.setToolTip("Show outdated files only")
         outdated_only_checkbox.setChecked(False)
+
+        grouping_checkbox = QtWidgets.QCheckBox(
+            "Enable grouping", self
+        )
+        grouping_checkbox.setToolTip("Group items by product group")
+        grouping_checkbox.setChecked(True)
 
         update_all_icon = qtawesome.icon("fa.arrow-up", color="white")
         update_all_button = QtWidgets.QPushButton(self)
@@ -57,6 +72,7 @@ class SceneInventoryWindow(QtWidgets.QDialog):
         headers_layout.addWidget(filter_label, 0)
         headers_layout.addWidget(text_filter, 1)
         headers_layout.addWidget(outdated_only_checkbox, 0)
+        headers_layout.addWidget(grouping_checkbox, 0)
         headers_layout.addWidget(update_all_button, 0)
         headers_layout.addWidget(refresh_button, 0)
 
@@ -76,6 +92,9 @@ class SceneInventoryWindow(QtWidgets.QDialog):
         outdated_only_checkbox.stateChanged.connect(
             self._on_outdated_state_change
         )
+        grouping_checkbox.stateChanged.connect(
+            self._on_grouping_state_change
+        )
         view.hierarchy_view_changed.connect(
             self._on_hierarchy_view_change
         )
@@ -86,11 +105,17 @@ class SceneInventoryWindow(QtWidgets.QDialog):
         self._show_timer = show_timer
         self._show_counter = 0
         self._controller = controller
+        self._overlay_object = overlay_object
         self._update_all_button = update_all_button
         self._outdated_only_checkbox = outdated_only_checkbox
+        self._grouping_checkbox = grouping_checkbox
         self._view = view
 
         self._first_show = True
+
+        # Register event callbacks for load notifications
+        controller.register_event_callback("load.started", self._on_load_started)
+        controller.register_event_callback("load.finished", self._on_load_finished)
 
     def showEvent(self, event):
         super(SceneInventoryWindow, self).showEvent(event)
@@ -139,5 +164,36 @@ class SceneInventoryWindow(QtWidgets.QDialog):
             self._outdated_only_checkbox.isChecked()
         )
 
+    def _on_grouping_state_change(self):
+        self._view.set_enable_grouping(
+            self._grouping_checkbox.isChecked()
+        )
+
     def _on_update_all(self):
         self._view.update_all()
+
+    def _on_load_started(self, event):
+        """Handle load.started event and show toast notification."""
+        message = event.get("message")
+        if message:
+            self._overlay_object.add_message(message, message_id=event["id"])
+        else:
+            # Fallback message if loader doesn't provide one
+            self._overlay_object.add_message("Loading...", message_id=event["id"])
+
+    def _on_load_finished(self, event):
+        """Handle load.finished event and show completion/error notification."""
+        error_info = event["error_info"]
+        if not error_info:
+            # Show completion message if load was successful
+            self._overlay_object.add_message(
+                "Action completed successfully",
+                message_id=event["id"]
+            )
+        else:
+            # Show error message if load failed
+            self._overlay_object.add_message(
+                "Action failed",
+                "error",
+                message_id=event["id"]
+            )

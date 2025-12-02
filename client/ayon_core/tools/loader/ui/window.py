@@ -548,7 +548,7 @@ class LoaderWindow(QtWidgets.QWidget):
         if not error_info:
             # Show completion message if load was successful
             self._overlay_object.add_message(
-                "Loading completed successfully",
+                "Action completed successfully",
                 message_id=message_id,
                 message_type="success",
             )
