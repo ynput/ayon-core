@@ -201,6 +201,9 @@ class PublishFrame(QtWidgets.QWidget):
         controller.register_event_callback(
             "publish.process.plugin.changed", self._on_plugin_change
         )
+        controller.register_event_callback(
+            "publish.process.plugin.progress", self._on_plugin_progress
+        )
 
         self._shrunk_anim = shrunk_anim
 
@@ -386,6 +389,24 @@ class PublishFrame(QtWidgets.QWidget):
         self._last_plugin_label = event["plugin_label"]
         self._progress_bar.setValue(self._controller.get_publish_progress())
         self._plugin_label.setText(event["plugin_label"])
+        # Clear progress message when starting a new plugin
+        self._message_label_top.setText("")
+        QtWidgets.QApplication.processEvents()
+
+    def _on_plugin_progress(self, event):
+        """Update progress message when plugin reports sub-operation progress."""
+
+        message = event.get("message", "")
+        progress = event.get("progress", 0)
+
+        if not message or progress >= 100:
+            # Clear message when plugin finishes or no message provided
+            self._message_label_top.setText("")
+        else:
+            # Update top message label with progress information
+            progress_text = f"{progress}%"
+            self._message_label_top.setText(f"{progress_text} - {message}")
+
         QtWidgets.QApplication.processEvents()
 
     def _on_publish_stop(self):
