@@ -418,7 +418,7 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
                     "but it's defined - and it differs from product type %s. "
                     "Using product base type as product type."
                 ), product_base_type, product_type)
-                
+
                 new_product_entity_kwargs["product_type"] = (
                     product_base_type
                 )
