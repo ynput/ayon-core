@@ -1,0 +1,1605 @@
+<!doctype html><html lang=en class=no-js> <head><meta charset=utf-8><meta name=viewport content="width=device-width,initial-scale=1"><link rel=prev href=click_wrap.html><link rel=next href=ui/index.html><link rel=icon href=../../../../img/favicon.ico><meta name=generator content="mkdocs-1.6.1, mkdocs-material-9.7.0"><title>interfaces - ayon-core</title><link rel=stylesheet href=../../../../assets/stylesheets/main.618322db.min.css><link rel=stylesheet href=../../../../assets/stylesheets/palette.ab4e12ef.min.css><script src=https://unpkg.com/iframe-worker/shim></script><link rel=preconnect href=https://fonts.gstatic.com crossorigin><link rel=stylesheet href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback"><style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style><link rel=stylesheet href=../../../../assets/_mkdocstrings.css><link rel=stylesheet href=../../../../css/custom.css><script>__md_scope=new URL("../../../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script></head> <body dir=ltr data-md-color-scheme=slate data-md-color-primary=indigo data-md-color-accent=indigo> <input class=md-toggle data-md-toggle=drawer type=checkbox id=__drawer autocomplete=off> <input class=md-toggle data-md-toggle=search type=checkbox id=__search autocomplete=off> <label class=md-overlay for=__drawer></label> <div data-md-component=skip> <a href=#client.ayon_core.addon.interfaces class=md-skip> Skip to content </a> </div> <div data-md-component=announce> </div> <div data-md-color-scheme=default data-md-component=outdated hidden> </div> <header class="md-header md-header--shadow" data-md-component=header> <nav class="md-header__inner md-grid" aria-label=Header> <a href=../../../../index.html title=ayon-core class="md-header__button md-logo" aria-label=ayon-core data-md-component=logo> <img src=../../../../img/ay-symbol-blackw-full.png alt=logo> </a> <label class="md-header__button md-icon" for=__drawer> <svg xmlns=http://www.w3.org/2000/svg viewbox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg> </label> <div class=md-header__title data-md-component=header-title> <div class=md-header__ellipsis> <div class=md-header__topic> <span class=md-ellipsis> ayon-core </span> </div> <div class=md-header__topic data-md-component=header-topic> <span class=md-ellipsis> interfaces </span> </div> </div> </div> <form class=md-header__option data-md-component=palette> <input class=md-option data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme=slate data-md-color-primary=indigo data-md-color-accent=indigo aria-label="Switch to light mode" type=radio name=__palette id=__palette_0> <label class="md-header__button md-icon" title="Switch to light mode" for=__palette_1 hidden> <svg xmlns=http://www.w3.org/2000/svg viewbox="0 0 24 24"><path d="M12 7a5 5 0 0 1 5 5 5 5 0 0 1-5 5 5 5 0 0 1-5-5 5 5 0 0 1 5-5m0 2a3 3 0 0 0-3 3 3 3 0 0 0 3 3 3 3 0 0 0 3-3 3 3 0 0 0-3-3m0-7 2.39 3.42C13.65 5.15 12.84 5 12 5s-1.65.15-2.39.42zM3.34 7l4.16-.35A7.2 7.2 0 0 0 5.94 8.5c-.44.74-.69 1.5-.83 2.29zm.02 10 1.76-3.77a7.131 7.131 0 0 0 2.38 4.14zM20.65 7l-1.77 3.79a7.02 7.02 0 0 0-2.38-4.15zm-.01 10-4.14.36c.59-.51 1.12-1.14 1.54-1.86.42-.73.69-1.5.83-2.29zM12 22l-2.41-3.44c.74.27 1.55.44 2.41.44.82 0 1.63-.17 2.37-.44z"/></svg> </label> <input class=md-option data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme=default data-md-color-primary=indigo data-md-color-accent=indigo aria-label="Switch to dark mode" type=radio name=__palette id=__palette_1> <label class="md-header__button md-icon" title="Switch to dark mode" for=__palette_0 hidden> <svg xmlns=http://www.w3.org/2000/svg viewbox="0 0 24 24"><path d="m17.75 4.09-2.53 1.94.91 3.06-2.63-1.81-2.63 1.81.91-3.06-2.53-1.94L12.44 4l1.06-3 1.06 3zm3.5 6.91-1.64 1.25.59 1.98-1.7-1.17-1.7 1.17.59-1.98L15.75 11l2.06-.05L18.5 9l.69 1.95zm-2.28 4.95c.83-.08 1.72 1.1 1.19 1.85-.32.45-.66.87-1.08 1.27C15.17 23 8.84 23 4.94 19.07c-3.91-3.9-3.91-10.24 0-14.14.4-.4.82-.76 1.27-1.08.75-.53 1.93.36 1.85 1.19-.27 2.86.69 5.83 2.89 8.02a9.96 9.96 0 0 0 8.02 2.89m-1.64 2.02a12.08 12.08 0 0 1-7.8-3.47c-2.17-2.19-3.33-5-3.49-7.82-2.81 3.14-2.7 7.96.31 10.98 3.02 3.01 7.84 3.12 10.98.31"/></svg> </label> </form> <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script> <label class="md-header__button md-icon" for=__search> <svg xmlns=http://www.w3.org/2000/svg viewbox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg> </label> <div class=md-search data-md-component=search role=dialog> <label class=md-search__overlay for=__search></label> <div class=md-search__inner role=search> <form class=md-search__form name=search> <input type=text class=md-search__input name=query aria-label=Search placeholder=Search autocapitalize=off autocorrect=off autocomplete=off spellcheck=false data-md-component=search-query required> <label class="md-search__icon md-icon" for=__search> <svg xmlns=http://www.w3.org/2000/svg viewbox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg> <svg xmlns=http://www.w3.org/2000/svg viewbox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg> </label> <nav class=md-search__options aria-label=Search> <button type=reset class="md-search__icon md-icon" title=Clear aria-label=Clear tabindex=-1> <svg xmlns=http://www.w3.org/2000/svg viewbox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg> </button> </nav> </form> <div class=md-search__output> <div class=md-search__scrollwrap tabindex=0 data-md-scrollfix> <div class=md-search-result data-md-component=search-result> <div class=md-search-result__meta> Initializing search </div> <ol class=md-search-result__list role=presentation></ol> </div> </div> </div> </div> </div> <div class=md-header__source> <a href=https://github.com/ynput/ayon-core title="Go to repository" class=md-source data-md-component=source> <div class="md-source__icon md-icon"> <svg xmlns=http://www.w3.org/2000/svg viewbox="0 0 448 512"><!-- Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg> </div> <div class=md-source__repository> GitHub </div> </a> </div> </nav> </header> <div class=md-container data-md-component=container> <main class=md-main data-md-component=main> <div class="md-main__inner md-grid"> <div class="md-sidebar md-sidebar--primary" data-md-component=sidebar data-md-type=navigation> <div class=md-sidebar__scrollwrap> <div class=md-sidebar__inner> <nav class="md-nav md-nav--primary" aria-label=Navigation data-md-level=0> <label class=md-nav__title for=__drawer> <a href=../../../../index.html title=ayon-core class="md-nav__button md-logo" aria-label=ayon-core data-md-component=logo> <img src=../../../../img/ay-symbol-blackw-full.png alt=logo> </a> ayon-core </label> <div class=md-nav__source> <a href=https://github.com/ynput/ayon-core title="Go to repository" class=md-source data-md-component=source> <div class="md-source__icon md-icon"> <svg xmlns=http://www.w3.org/2000/svg viewbox="0 0 448 512"><!-- Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg> </div> <div class=md-source__repository> GitHub </div> </a> </div> <ul class=md-nav__list data-md-scrollfix> <li class=md-nav__item> <a href=../../../../index.html class=md-nav__link> <span class=md-ellipsis> Home </span> </a> </li> <li class=md-nav__item> <a href=../../../../license.html class=md-nav__link> <span class=md-ellipsis> License </span> </a> </li> <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested"> <input class="md-nav__toggle md-toggle " type=checkbox id=__nav_3 checked> <label class=md-nav__link for=__nav_3 id=__nav_3_label tabindex> <span class=md-ellipsis> Reference </span> <span class="md-nav__icon md-icon"></span> </label> <nav class=md-nav data-md-level=1 aria-labelledby=__nav_3_label aria-expanded=true> <label class=md-nav__title for=__nav_3> <span class="md-nav__icon md-icon"></span> Reference </label> <ul class=md-nav__list data-md-scrollfix> <li class="md-nav__item md-nav__item--active md-nav__item--nested"> <input class="md-nav__toggle md-toggle " type=checkbox id=__nav_3_1 checked> <label class=md-nav__link for=__nav_3_1 id=__nav_3_1_label tabindex=0> <span class=md-ellipsis> client </span> <span class="md-nav__icon md-icon"></span> </label> <nav class=md-nav data-md-level=2 aria-labelledby=__nav_3_1_label aria-expanded=true> <label class=md-nav__title for=__nav_3_1> <span class="md-nav__icon md-icon"></span> client </label> <ul class=md-nav__list data-md-scrollfix> <li class="md-nav__item md-nav__item--active md-nav__item--nested"> <input class="md-nav__toggle md-toggle " type=checkbox id=__nav_3_1_1 checked> <label class=md-nav__link for=__nav_3_1_1 id=__nav_3_1_1_label tabindex=0> <span class=md-ellipsis> ayon_core </span> <span class="md-nav__icon md-icon"></span> </label> <nav class=md-nav data-md-level=3 aria-labelledby=__nav_3_1_1_label aria-expanded=true> <label class=md-nav__title for=__nav_3_1_1> <span class="md-nav__icon md-icon"></span> ayon_core </label> <ul class=md-nav__list data-md-scrollfix> <li class=md-nav__item> <a href=../__main__.html class=md-nav__link> <span class=md-ellipsis> __main__ </span> </a> </li> <li class="md-nav__item md-nav__item--active md-nav__item--nested"> <input class="md-nav__toggle md-toggle " type=checkbox id=__nav_3_1_1_2 checked> <label class=md-nav__link for=__nav_3_1_1_2 id=__nav_3_1_1_2_label tabindex=0> <span class=md-ellipsis> addon </span> <span class="md-nav__icon md-icon"></span> </label> <nav class=md-nav data-md-level=4 aria-labelledby=__nav_3_1_1_2_label aria-expanded=true> <label class=md-nav__title for=__nav_3_1_1_2> <span class="md-nav__icon md-icon"></span> addon </label> <ul class=md-nav__list data-md-scrollfix> <li class=md-nav__item> <a href=base.html class=md-nav__link> <span class=md-ellipsis> base </span> </a> </li> <li class=md-nav__item> <a href=click_wrap.html class=md-nav__link> <span class=md-ellipsis> click_wrap </span> </a> </li> <li class="md-nav__item md-nav__item--active"> <input class="md-nav__toggle md-toggle" type=checkbox id=__toc> <label class="md-nav__link md-nav__link--active" for=__toc> <span class=md-ellipsis> interfaces </span> <span class="md-nav__icon md-icon"></span> </label> <a href=interfaces.html class="md-nav__link md-nav__link--active"> <span class=md-ellipsis> interfaces </span> </a> <nav class="md-nav md-nav--secondary" aria-label="Table of contents"> <label class=md-nav__title for=__toc> <span class="md-nav__icon md-icon"></span> Table of contents </label> <ul class=md-nav__list data-md-component=toc data-md-scrollfix> <li class=md-nav__item> <a href=#client.ayon_core.addon.interfaces class=md-nav__link> <span class=md-ellipsis> interfaces </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.addon.interfaces.AYONInterface class=md-nav__link> <span class=md-ellipsis> AYONInterface </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.addon.interfaces.IHostAddon class=md-nav__link> <span class=md-ellipsis> IHostAddon </span> </a> <nav class=md-nav aria-label=IHostAddon> <ul class=md-nav__list> <li class=md-nav__item> <a href=#client.ayon_core.addon.interfaces.IHostAddon.host_name class=md-nav__link> <span class=md-ellipsis> host_name </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.addon.interfaces.IHostAddon.get_workfile_extensions class=md-nav__link> <span class=md-ellipsis> get_workfile_extensions </span> </a> </li> </ul> </nav> </li> <li class=md-nav__item> <a href=#client.ayon_core.addon.interfaces.IPluginPaths class=md-nav__link> <span class=md-ellipsis> IPluginPaths </span> </a> <nav class=md-nav aria-label=IPluginPaths> <ul class=md-nav__list> <li class=md-nav__item> <a href=#client.ayon_core.addon.interfaces.IPluginPaths.get_create_plugin_paths class=md-nav__link> <span class=md-ellipsis> get_create_plugin_paths </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.addon.interfaces.IPluginPaths.get_inventory_action_paths class=md-nav__link> <span class=md-ellipsis> get_inventory_action_paths </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.addon.interfaces.IPluginPaths.get_launcher_action_paths class=md-nav__link> <span class=md-ellipsis> get_launcher_action_paths </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.addon.interfaces.IPluginPaths.get_load_plugin_paths class=md-nav__link> <span class=md-ellipsis> get_load_plugin_paths </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.addon.interfaces.IPluginPaths.get_loader_action_plugin_paths class=md-nav__link> <span class=md-ellipsis> get_loader_action_plugin_paths </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.addon.interfaces.IPluginPaths.get_plugin_paths class=md-nav__link> <span class=md-ellipsis> get_plugin_paths </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.addon.interfaces.IPluginPaths.get_publish_plugin_paths class=md-nav__link> <span class=md-ellipsis> get_publish_plugin_paths </span> </a> </li> </ul> </nav> </li> <li class=md-nav__item> <a href=#client.ayon_core.addon.interfaces.ITraits class=md-nav__link> <span class=md-ellipsis> ITraits </span> </a> <nav class=md-nav aria-label=ITraits> <ul class=md-nav__list> <li class=md-nav__item> <a href=#client.ayon_core.addon.interfaces.ITraits.get_addon_traits class=md-nav__link> <span class=md-ellipsis> get_addon_traits </span> </a> </li> </ul> </nav> </li> <li class=md-nav__item> <a href=#client.ayon_core.addon.interfaces.ITrayAction class=md-nav__link> <span class=md-ellipsis> ITrayAction </span> </a> <nav class=md-nav aria-label=ITrayAction> <ul class=md-nav__list> <li class=md-nav__item> <a href=#client.ayon_core.addon.interfaces.ITrayAction.label class=md-nav__link> <span class=md-ellipsis> label </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.addon.interfaces.ITrayAction.on_action_trigger class=md-nav__link> <span class=md-ellipsis> on_action_trigger </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.addon.interfaces.ITrayAction.tray_exit class=md-nav__link> <span class=md-ellipsis> tray_exit </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.addon.interfaces.ITrayAction.tray_menu class=md-nav__link> <span class=md-ellipsis> tray_menu </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.addon.interfaces.ITrayAction.tray_start class=md-nav__link> <span class=md-ellipsis> tray_start </span> </a> </li> </ul> </nav> </li> <li class=md-nav__item> <a href=#client.ayon_core.addon.interfaces.ITrayAddon class=md-nav__link> <span class=md-ellipsis> ITrayAddon </span> </a> <nav class=md-nav aria-label=ITrayAddon> <ul class=md-nav__list> <li class=md-nav__item> <a href=#client.ayon_core.addon.interfaces.ITrayAddon.add_action_to_admin_submenu class=md-nav__link> <span class=md-ellipsis> add_action_to_admin_submenu </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.addon.interfaces.ITrayAddon.add_doubleclick_callback class=md-nav__link> <span class=md-ellipsis> add_doubleclick_callback </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.addon.interfaces.ITrayAddon.admin_submenu class=md-nav__link> <span class=md-ellipsis> admin_submenu </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.addon.interfaces.ITrayAddon.execute_in_main_thread class=md-nav__link> <span class=md-ellipsis> execute_in_main_thread </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.addon.interfaces.ITrayAddon.show_tray_message class=md-nav__link> <span class=md-ellipsis> show_tray_message </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.addon.interfaces.ITrayAddon.tray_exit class=md-nav__link> <span class=md-ellipsis> tray_exit </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.addon.interfaces.ITrayAddon.tray_init class=md-nav__link> <span class=md-ellipsis> tray_init </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.addon.interfaces.ITrayAddon.tray_menu class=md-nav__link> <span class=md-ellipsis> tray_menu </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.addon.interfaces.ITrayAddon.tray_start class=md-nav__link> <span class=md-ellipsis> tray_start </span> </a> </li> </ul> </nav> </li> <li class=md-nav__item> <a href=#client.ayon_core.addon.interfaces.ITrayService class=md-nav__link> <span class=md-ellipsis> ITrayService </span> </a> <nav class=md-nav aria-label=ITrayService> <ul class=md-nav__list> <li class=md-nav__item> <a href=#client.ayon_core.addon.interfaces.ITrayService.label class=md-nav__link> <span class=md-ellipsis> label </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.addon.interfaces.ITrayService.add_service_action class=md-nav__link> <span class=md-ellipsis> add_service_action </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.addon.interfaces.ITrayService.get_icon_failed class=md-nav__link> <span class=md-ellipsis> get_icon_failed </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.addon.interfaces.ITrayService.get_icon_idle class=md-nav__link> <span class=md-ellipsis> get_icon_idle </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.addon.interfaces.ITrayService.get_icon_running class=md-nav__link> <span class=md-ellipsis> get_icon_running </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.addon.interfaces.ITrayService.services_submenu class=md-nav__link> <span class=md-ellipsis> services_submenu </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.addon.interfaces.ITrayService.set_service_failed_icon class=md-nav__link> <span class=md-ellipsis> set_service_failed_icon </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.addon.interfaces.ITrayService.set_service_idle_icon class=md-nav__link> <span class=md-ellipsis> set_service_idle_icon </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.addon.interfaces.ITrayService.set_service_running_icon class=md-nav__link> <span class=md-ellipsis> set_service_running_icon </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.addon.interfaces.ITrayService.tray_menu class=md-nav__link> <span class=md-ellipsis> tray_menu </span> </a> </li> </ul> </nav> </li> </ul> </nav> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=ui/process_ready_error.html class=md-nav__link> <span class=md-ellipsis> ui </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class=md-nav__item> <a href=utils.html class=md-nav__link> <span class=md-ellipsis> utils </span> </a> </li> </ul> </nav> </li> <li class=md-nav__item> <a href=../cli.html class=md-nav__link> <span class=md-ellipsis> cli </span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../hooks/pre_add_last_workfile_arg.html class=md-nav__link> <span class=md-ellipsis> hooks </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../host/abstract.html class=md-nav__link> <span class=md-ellipsis> host </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../lib/_compatibility.html class=md-nav__link> <span class=md-ellipsis> lib </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../pipeline/actions/inventory.html class=md-nav__link> <span class=md-ellipsis> pipeline </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../plugins/actions/open_file_explorer.html class=md-nav__link> <span class=md-ellipsis> plugins </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class=md-nav__item> <a href=../resources/index.html class=md-nav__link> <span class=md-ellipsis> resources </span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../scripts/ocio_wrapper.html class=md-nav__link> <span class=md-ellipsis> scripts </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../settings/lib.html class=md-nav__link> <span class=md-ellipsis> settings </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../style/color_defs.html class=md-nav__link> <span class=md-ellipsis> style </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../tests/conftest.html class=md-nav__link> <span class=md-ellipsis> tests </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../tools/attribute_defs/_constants.html class=md-nav__link> <span class=md-ellipsis> tools </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../vendor/python/qargparse.html class=md-nav__link> <span class=md-ellipsis> vendor </span> <span class="md-nav__icon md-icon"></span> </a> </li> <li class=md-nav__item> <a href=../version.html class=md-nav__link> <span class=md-ellipsis> version </span> </a> </li> </ul> </nav> </li> </ul> </nav> </li> <li class="md-nav__item md-nav__item--pruned md-nav__item--nested"> <a href=../../../server/settings/conversion.html class=md-nav__link> <span class=md-ellipsis> server </span> <span class="md-nav__icon md-icon"></span> </a> </li> </ul> </nav> </li> </ul> </nav> </div> </div> </div> <div class="md-sidebar md-sidebar--secondary" data-md-component=sidebar data-md-type=toc> <div class=md-sidebar__scrollwrap> <div class=md-sidebar__inner> <nav class="md-nav md-nav--secondary" aria-label="Table of contents"> <label class=md-nav__title for=__toc> <span class="md-nav__icon md-icon"></span> Table of contents </label> <ul class=md-nav__list data-md-component=toc data-md-scrollfix> <li class=md-nav__item> <a href=#client.ayon_core.addon.interfaces class=md-nav__link> <span class=md-ellipsis> interfaces </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.addon.interfaces.AYONInterface class=md-nav__link> <span class=md-ellipsis> AYONInterface </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.addon.interfaces.IHostAddon class=md-nav__link> <span class=md-ellipsis> IHostAddon </span> </a> <nav class=md-nav aria-label=IHostAddon> <ul class=md-nav__list> <li class=md-nav__item> <a href=#client.ayon_core.addon.interfaces.IHostAddon.host_name class=md-nav__link> <span class=md-ellipsis> host_name </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.addon.interfaces.IHostAddon.get_workfile_extensions class=md-nav__link> <span class=md-ellipsis> get_workfile_extensions </span> </a> </li> </ul> </nav> </li> <li class=md-nav__item> <a href=#client.ayon_core.addon.interfaces.IPluginPaths class=md-nav__link> <span class=md-ellipsis> IPluginPaths </span> </a> <nav class=md-nav aria-label=IPluginPaths> <ul class=md-nav__list> <li class=md-nav__item> <a href=#client.ayon_core.addon.interfaces.IPluginPaths.get_create_plugin_paths class=md-nav__link> <span class=md-ellipsis> get_create_plugin_paths </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.addon.interfaces.IPluginPaths.get_inventory_action_paths class=md-nav__link> <span class=md-ellipsis> get_inventory_action_paths </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.addon.interfaces.IPluginPaths.get_launcher_action_paths class=md-nav__link> <span class=md-ellipsis> get_launcher_action_paths </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.addon.interfaces.IPluginPaths.get_load_plugin_paths class=md-nav__link> <span class=md-ellipsis> get_load_plugin_paths </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.addon.interfaces.IPluginPaths.get_loader_action_plugin_paths class=md-nav__link> <span class=md-ellipsis> get_loader_action_plugin_paths </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.addon.interfaces.IPluginPaths.get_plugin_paths class=md-nav__link> <span class=md-ellipsis> get_plugin_paths </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.addon.interfaces.IPluginPaths.get_publish_plugin_paths class=md-nav__link> <span class=md-ellipsis> get_publish_plugin_paths </span> </a> </li> </ul> </nav> </li> <li class=md-nav__item> <a href=#client.ayon_core.addon.interfaces.ITraits class=md-nav__link> <span class=md-ellipsis> ITraits </span> </a> <nav class=md-nav aria-label=ITraits> <ul class=md-nav__list> <li class=md-nav__item> <a href=#client.ayon_core.addon.interfaces.ITraits.get_addon_traits class=md-nav__link> <span class=md-ellipsis> get_addon_traits </span> </a> </li> </ul> </nav> </li> <li class=md-nav__item> <a href=#client.ayon_core.addon.interfaces.ITrayAction class=md-nav__link> <span class=md-ellipsis> ITrayAction </span> </a> <nav class=md-nav aria-label=ITrayAction> <ul class=md-nav__list> <li class=md-nav__item> <a href=#client.ayon_core.addon.interfaces.ITrayAction.label class=md-nav__link> <span class=md-ellipsis> label </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.addon.interfaces.ITrayAction.on_action_trigger class=md-nav__link> <span class=md-ellipsis> on_action_trigger </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.addon.interfaces.ITrayAction.tray_exit class=md-nav__link> <span class=md-ellipsis> tray_exit </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.addon.interfaces.ITrayAction.tray_menu class=md-nav__link> <span class=md-ellipsis> tray_menu </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.addon.interfaces.ITrayAction.tray_start class=md-nav__link> <span class=md-ellipsis> tray_start </span> </a> </li> </ul> </nav> </li> <li class=md-nav__item> <a href=#client.ayon_core.addon.interfaces.ITrayAddon class=md-nav__link> <span class=md-ellipsis> ITrayAddon </span> </a> <nav class=md-nav aria-label=ITrayAddon> <ul class=md-nav__list> <li class=md-nav__item> <a href=#client.ayon_core.addon.interfaces.ITrayAddon.add_action_to_admin_submenu class=md-nav__link> <span class=md-ellipsis> add_action_to_admin_submenu </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.addon.interfaces.ITrayAddon.add_doubleclick_callback class=md-nav__link> <span class=md-ellipsis> add_doubleclick_callback </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.addon.interfaces.ITrayAddon.admin_submenu class=md-nav__link> <span class=md-ellipsis> admin_submenu </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.addon.interfaces.ITrayAddon.execute_in_main_thread class=md-nav__link> <span class=md-ellipsis> execute_in_main_thread </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.addon.interfaces.ITrayAddon.show_tray_message class=md-nav__link> <span class=md-ellipsis> show_tray_message </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.addon.interfaces.ITrayAddon.tray_exit class=md-nav__link> <span class=md-ellipsis> tray_exit </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.addon.interfaces.ITrayAddon.tray_init class=md-nav__link> <span class=md-ellipsis> tray_init </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.addon.interfaces.ITrayAddon.tray_menu class=md-nav__link> <span class=md-ellipsis> tray_menu </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.addon.interfaces.ITrayAddon.tray_start class=md-nav__link> <span class=md-ellipsis> tray_start </span> </a> </li> </ul> </nav> </li> <li class=md-nav__item> <a href=#client.ayon_core.addon.interfaces.ITrayService class=md-nav__link> <span class=md-ellipsis> ITrayService </span> </a> <nav class=md-nav aria-label=ITrayService> <ul class=md-nav__list> <li class=md-nav__item> <a href=#client.ayon_core.addon.interfaces.ITrayService.label class=md-nav__link> <span class=md-ellipsis> label </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.addon.interfaces.ITrayService.add_service_action class=md-nav__link> <span class=md-ellipsis> add_service_action </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.addon.interfaces.ITrayService.get_icon_failed class=md-nav__link> <span class=md-ellipsis> get_icon_failed </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.addon.interfaces.ITrayService.get_icon_idle class=md-nav__link> <span class=md-ellipsis> get_icon_idle </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.addon.interfaces.ITrayService.get_icon_running class=md-nav__link> <span class=md-ellipsis> get_icon_running </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.addon.interfaces.ITrayService.services_submenu class=md-nav__link> <span class=md-ellipsis> services_submenu </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.addon.interfaces.ITrayService.set_service_failed_icon class=md-nav__link> <span class=md-ellipsis> set_service_failed_icon </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.addon.interfaces.ITrayService.set_service_idle_icon class=md-nav__link> <span class=md-ellipsis> set_service_idle_icon </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.addon.interfaces.ITrayService.set_service_running_icon class=md-nav__link> <span class=md-ellipsis> set_service_running_icon </span> </a> </li> <li class=md-nav__item> <a href=#client.ayon_core.addon.interfaces.ITrayService.tray_menu class=md-nav__link> <span class=md-ellipsis> tray_menu </span> </a> </li> </ul> </nav> </li> </ul> </nav> </div> </div> </div> <div class=md-content data-md-component=content> <nav class=md-path aria-label=Navigation> <ol class=md-path__list> <li class=md-path__item> <a href=../../../../index.html class=md-path__link> <span class=md-ellipsis> Home </span> </a> </li> <li class=md-path__item> <a href=../__main__.html class=md-path__link> <span class=md-ellipsis> Reference </span> </a> </li> <li class=md-path__item> <a href=../__main__.html class=md-path__link> <span class=md-ellipsis> client </span> </a> </li> <li class=md-path__item> <a href=../__main__.html class=md-path__link> <span class=md-ellipsis> ayon_core </span> </a> </li> <li class=md-path__item> <a href=base.html class=md-path__link> <span class=md-ellipsis> addon </span> </a> </li> </ol> </nav> <article class="md-content__inner md-typeset"> <h1>interfaces</h1> <div class="doc doc-object doc-module"> <a id=client.ayon_core.addon.interfaces></a> <div class="doc doc-contents first"> <p>Addon interfaces for AYON.</p> <div class="doc doc-children"> <div class="doc doc-object doc-class"> <h2 id=client.ayon_core.addon.interfaces.AYONInterface class="doc doc-heading"> <code>AYONInterface</code> </h2> <div class="doc doc-contents "> <p>Base class of Interface that can be used as Mixin with abstract parts.</p> <p>This is way how AYON addon can define that contains specific predefined functionality.</p> <p>Child classes of AYONInterface may be used as mixin in different AYON addons which means they have to have implemented methods defined in the interface. By default, interface does not have any abstract parts.</p> <details class=mkdocstrings-source> <summary>Source code in <code>client/ayon_core/addon/interfaces.py</code></summary> <div class=highlight><table class=highlighttable><tr><td class=linenos><div class=linenodiv><pre><span></span><span class=normal>28</span>
+<span class=normal>29</span>
+<span class=normal>30</span>
+<span class=normal>31</span>
+<span class=normal>32</span>
+<span class=normal>33</span>
+<span class=normal>34</span>
+<span class=normal>35</span>
+<span class=normal>36</span>
+<span class=normal>37</span>
+<span class=normal>38</span>
+<span class=normal>39</span></pre></div></td><td class=code><div><pre><span></span><code><span class=k>class</span><span class=w> </span><span class=nc>AYONInterface</span><span class=p>(</span><span class=n>metaclass</span><span class=o>=</span><span class=n>_AYONInterfaceMeta</span><span class=p>):</span>
+<span class=w>    </span><span class=sd>&quot;&quot;&quot;Base class of Interface that can be used as Mixin with abstract parts.</span>
+
+<span class=sd>    This is way how AYON addon can define that contains specific predefined</span>
+<span class=sd>    functionality.</span>
+
+<span class=sd>    Child classes of AYONInterface may be used as mixin in different</span>
+<span class=sd>    AYON addons which means they have to have implemented methods defined</span>
+<span class=sd>    in the interface. By default, interface does not have any abstract parts.</span>
+<span class=sd>    &quot;&quot;&quot;</span>
+
+    <span class=n>log</span> <span class=o>=</span> <span class=kc>None</span>
+</code></pre></div></td></tr></table></div> </details> <div class="doc doc-children"> </div> </div> </div> <div class="doc doc-object doc-class"> <h2 id=client.ayon_core.addon.interfaces.IHostAddon class="doc doc-heading"> <code>IHostAddon</code> </h2> <div class="doc doc-contents "> <p class="doc doc-class-bases"> Bases: <code><a class="autorefs autorefs-internal" title="AYONInterface (client.ayon_core.addon.interfaces.AYONInterface)" href=#client.ayon_core.addon.interfaces.AYONInterface>AYONInterface</a></code></p> <p>Addon which also contain a host implementation.</p> <details class=mkdocstrings-source> <summary>Source code in <code>client/ayon_core/addon/interfaces.py</code></summary> <div class=highlight><table class=highlighttable><tr><td class=linenos><div class=linenodiv><pre><span></span><span class=normal>500</span>
+<span class=normal>501</span>
+<span class=normal>502</span>
+<span class=normal>503</span>
+<span class=normal>504</span>
+<span class=normal>505</span>
+<span class=normal>506</span>
+<span class=normal>507</span>
+<span class=normal>508</span>
+<span class=normal>509</span>
+<span class=normal>510</span>
+<span class=normal>511</span>
+<span class=normal>512</span>
+<span class=normal>513</span>
+<span class=normal>514</span>
+<span class=normal>515</span>
+<span class=normal>516</span>
+<span class=normal>517</span></pre></div></td><td class=code><div><pre><span></span><code><span class=k>class</span><span class=w> </span><span class=nc>IHostAddon</span><span class=p>(</span><span class=n>AYONInterface</span><span class=p>):</span>
+<span class=w>    </span><span class=sd>&quot;&quot;&quot;Addon which also contain a host implementation.&quot;&quot;&quot;</span>
+
+    <span class=nd>@property</span>
+    <span class=nd>@abstractmethod</span>
+    <span class=k>def</span><span class=w> </span><span class=nf>host_name</span><span class=p>(</span><span class=bp>self</span><span class=p>)</span> <span class=o>-&gt;</span> <span class=nb>str</span><span class=p>:</span>
+<span class=w>        </span><span class=sd>&quot;&quot;&quot;Name of host which addon represents.&quot;&quot;&quot;</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>get_workfile_extensions</span><span class=p>(</span><span class=bp>self</span><span class=p>)</span> <span class=o>-&gt;</span> <span class=nb>list</span><span class=p>[</span><span class=nb>str</span><span class=p>]:</span>  <span class=c1># noqa: PLR6301</span>
+<span class=w>        </span><span class=sd>&quot;&quot;&quot;Define workfile extensions for host.</span>
+
+<span class=sd>        Not all hosts support workfiles thus this is optional implementation.</span>
+
+<span class=sd>        Returns:</span>
+<span class=sd>            List[str]: Extensions used for workfiles with dot.</span>
+
+<span class=sd>        &quot;&quot;&quot;</span>
+        <span class=k>return</span> <span class=p>[]</span>
+</code></pre></div></td></tr></table></div> </details> <div class="doc doc-children"> <div class="doc doc-object doc-attribute"> <h3 id=client.ayon_core.addon.interfaces.IHostAddon.host_name class="doc doc-heading"> <code class="highlight language-python"><span class=n>host_name</span></code> <span class="doc doc-labels"> <small class="doc doc-label doc-label-abstractmethod"><code>abstractmethod</code></small> <small class="doc doc-label doc-label-property"><code>property</code></small> </span> </h3> <div class="doc doc-contents "> <p>Name of host which addon represents.</p> </div> </div> <div class="doc doc-object doc-function"> <h3 id=client.ayon_core.addon.interfaces.IHostAddon.get_workfile_extensions class="doc doc-heading"> <code class="highlight language-python"><span class=n>get_workfile_extensions</span><span class=p>()</span></code> </h3> <div class="doc doc-contents "> <p>Define workfile extensions for host.</p> <p>Not all hosts support workfiles thus this is optional implementation.</p> <p><span class=doc-section-title>Returns:</span></p> <table> <thead> <tr> <th>Type</th> <th>Description</th> </tr> </thead> <tbody> <tr class=doc-section-item> <td> <code><span title=list>list</span>[<span title=str>str</span>]</code> </td> <td> <div class=doc-md-description> <p>List[str]: Extensions used for workfiles with dot.</p> </div> </td> </tr> </tbody> </table> <details class=mkdocstrings-source> <summary>Source code in <code>client/ayon_core/addon/interfaces.py</code></summary> <div class=highlight><table class=highlighttable><tr><td class=linenos><div class=linenodiv><pre><span></span><span class=normal>508</span>
+<span class=normal>509</span>
+<span class=normal>510</span>
+<span class=normal>511</span>
+<span class=normal>512</span>
+<span class=normal>513</span>
+<span class=normal>514</span>
+<span class=normal>515</span>
+<span class=normal>516</span>
+<span class=normal>517</span></pre></div></td><td class=code><div><pre><span></span><code><span class=k>def</span><span class=w> </span><span class=nf>get_workfile_extensions</span><span class=p>(</span><span class=bp>self</span><span class=p>)</span> <span class=o>-&gt;</span> <span class=nb>list</span><span class=p>[</span><span class=nb>str</span><span class=p>]:</span>  <span class=c1># noqa: PLR6301</span>
+<span class=w>    </span><span class=sd>&quot;&quot;&quot;Define workfile extensions for host.</span>
+
+<span class=sd>    Not all hosts support workfiles thus this is optional implementation.</span>
+
+<span class=sd>    Returns:</span>
+<span class=sd>        List[str]: Extensions used for workfiles with dot.</span>
+
+<span class=sd>    &quot;&quot;&quot;</span>
+    <span class=k>return</span> <span class=p>[]</span>
+</code></pre></div></td></tr></table></div> </details> </div> </div> </div> </div> </div> <div class="doc doc-object doc-class"> <h2 id=client.ayon_core.addon.interfaces.IPluginPaths class="doc doc-heading"> <code>IPluginPaths</code> </h2> <div class="doc doc-contents "> <p class="doc doc-class-bases"> Bases: <code><a class="autorefs autorefs-internal" title="AYONInterface (client.ayon_core.addon.interfaces.AYONInterface)" href=#client.ayon_core.addon.interfaces.AYONInterface>AYONInterface</a></code></p> <p>Addon wants to register plugin paths.</p> <details class=mkdocstrings-source> <summary>Source code in <code>client/ayon_core/addon/interfaces.py</code></summary> <div class=highlight><table class=highlighttable><tr><td class=linenos><div class=linenodiv><pre><span></span><span class=normal> 42</span>
+<span class=normal> 43</span>
+<span class=normal> 44</span>
+<span class=normal> 45</span>
+<span class=normal> 46</span>
+<span class=normal> 47</span>
+<span class=normal> 48</span>
+<span class=normal> 49</span>
+<span class=normal> 50</span>
+<span class=normal> 51</span>
+<span class=normal> 52</span>
+<span class=normal> 53</span>
+<span class=normal> 54</span>
+<span class=normal> 55</span>
+<span class=normal> 56</span>
+<span class=normal> 57</span>
+<span class=normal> 58</span>
+<span class=normal> 59</span>
+<span class=normal> 60</span>
+<span class=normal> 61</span>
+<span class=normal> 62</span>
+<span class=normal> 63</span>
+<span class=normal> 64</span>
+<span class=normal> 65</span>
+<span class=normal> 66</span>
+<span class=normal> 67</span>
+<span class=normal> 68</span>
+<span class=normal> 69</span>
+<span class=normal> 70</span>
+<span class=normal> 71</span>
+<span class=normal> 72</span>
+<span class=normal> 73</span>
+<span class=normal> 74</span>
+<span class=normal> 75</span>
+<span class=normal> 76</span>
+<span class=normal> 77</span>
+<span class=normal> 78</span>
+<span class=normal> 79</span>
+<span class=normal> 80</span>
+<span class=normal> 81</span>
+<span class=normal> 82</span>
+<span class=normal> 83</span>
+<span class=normal> 84</span>
+<span class=normal> 85</span>
+<span class=normal> 86</span>
+<span class=normal> 87</span>
+<span class=normal> 88</span>
+<span class=normal> 89</span>
+<span class=normal> 90</span>
+<span class=normal> 91</span>
+<span class=normal> 92</span>
+<span class=normal> 93</span>
+<span class=normal> 94</span>
+<span class=normal> 95</span>
+<span class=normal> 96</span>
+<span class=normal> 97</span>
+<span class=normal> 98</span>
+<span class=normal> 99</span>
+<span class=normal>100</span>
+<span class=normal>101</span>
+<span class=normal>102</span>
+<span class=normal>103</span>
+<span class=normal>104</span>
+<span class=normal>105</span>
+<span class=normal>106</span>
+<span class=normal>107</span>
+<span class=normal>108</span>
+<span class=normal>109</span>
+<span class=normal>110</span>
+<span class=normal>111</span>
+<span class=normal>112</span>
+<span class=normal>113</span>
+<span class=normal>114</span>
+<span class=normal>115</span>
+<span class=normal>116</span>
+<span class=normal>117</span>
+<span class=normal>118</span>
+<span class=normal>119</span>
+<span class=normal>120</span>
+<span class=normal>121</span>
+<span class=normal>122</span>
+<span class=normal>123</span>
+<span class=normal>124</span>
+<span class=normal>125</span>
+<span class=normal>126</span>
+<span class=normal>127</span>
+<span class=normal>128</span>
+<span class=normal>129</span>
+<span class=normal>130</span>
+<span class=normal>131</span>
+<span class=normal>132</span>
+<span class=normal>133</span>
+<span class=normal>134</span>
+<span class=normal>135</span>
+<span class=normal>136</span>
+<span class=normal>137</span>
+<span class=normal>138</span>
+<span class=normal>139</span>
+<span class=normal>140</span>
+<span class=normal>141</span>
+<span class=normal>142</span>
+<span class=normal>143</span>
+<span class=normal>144</span>
+<span class=normal>145</span>
+<span class=normal>146</span>
+<span class=normal>147</span>
+<span class=normal>148</span>
+<span class=normal>149</span>
+<span class=normal>150</span>
+<span class=normal>151</span>
+<span class=normal>152</span>
+<span class=normal>153</span>
+<span class=normal>154</span>
+<span class=normal>155</span>
+<span class=normal>156</span>
+<span class=normal>157</span>
+<span class=normal>158</span>
+<span class=normal>159</span>
+<span class=normal>160</span>
+<span class=normal>161</span>
+<span class=normal>162</span>
+<span class=normal>163</span>
+<span class=normal>164</span>
+<span class=normal>165</span>
+<span class=normal>166</span>
+<span class=normal>167</span>
+<span class=normal>168</span>
+<span class=normal>169</span>
+<span class=normal>170</span>
+<span class=normal>171</span>
+<span class=normal>172</span>
+<span class=normal>173</span>
+<span class=normal>174</span>
+<span class=normal>175</span>
+<span class=normal>176</span>
+<span class=normal>177</span>
+<span class=normal>178</span>
+<span class=normal>179</span>
+<span class=normal>180</span>
+<span class=normal>181</span>
+<span class=normal>182</span>
+<span class=normal>183</span>
+<span class=normal>184</span>
+<span class=normal>185</span>
+<span class=normal>186</span>
+<span class=normal>187</span>
+<span class=normal>188</span>
+<span class=normal>189</span>
+<span class=normal>190</span>
+<span class=normal>191</span>
+<span class=normal>192</span>
+<span class=normal>193</span>
+<span class=normal>194</span>
+<span class=normal>195</span>
+<span class=normal>196</span>
+<span class=normal>197</span>
+<span class=normal>198</span>
+<span class=normal>199</span>
+<span class=normal>200</span></pre></div></td><td class=code><div><pre><span></span><code><span class=k>class</span><span class=w> </span><span class=nc>IPluginPaths</span><span class=p>(</span><span class=n>AYONInterface</span><span class=p>):</span>
+<span class=w>    </span><span class=sd>&quot;&quot;&quot;Addon wants to register plugin paths.&quot;&quot;&quot;</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>get_plugin_paths</span><span class=p>(</span><span class=bp>self</span><span class=p>)</span> <span class=o>-&gt;</span> <span class=nb>dict</span><span class=p>[</span><span class=nb>str</span><span class=p>,</span> <span class=nb>list</span><span class=p>[</span><span class=nb>str</span><span class=p>]]:</span>
+<span class=w>        </span><span class=sd>&quot;&quot;&quot;Return plugin paths for addon.</span>
+
+<span class=sd>        This method was abstract (required) in the past, so raise the required</span>
+<span class=sd>            &#39;core&#39; addon version when &#39;get_plugin_paths&#39; is removed from</span>
+<span class=sd>            addon.</span>
+
+<span class=sd>        Deprecated:</span>
+<span class=sd>            Please implement specific methods &#39;get_create_plugin_paths&#39;,</span>
+<span class=sd>                &#39;get_load_plugin_paths&#39;, &#39;get_inventory_action_paths&#39; and</span>
+<span class=sd>                &#39;get_publish_plugin_paths&#39; to return plugin paths.</span>
+
+<span class=sd>        Returns:</span>
+<span class=sd>            dict[str, list[str]]: Plugin paths for addon.</span>
+
+<span class=sd>        &quot;&quot;&quot;</span>
+        <span class=k>return</span> <span class=p>{}</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>_get_plugin_paths_by_type</span><span class=p>(</span>
+        <span class=bp>self</span><span class=p>,</span> <span class=n>plugin_type</span><span class=p>:</span> <span class=nb>str</span>
+    <span class=p>)</span> <span class=o>-&gt;</span> <span class=nb>list</span><span class=p>[</span><span class=nb>str</span><span class=p>]:</span>
+<span class=w>        </span><span class=sd>&quot;&quot;&quot;Get plugin paths by type.</span>
+
+<span class=sd>        Args:</span>
+<span class=sd>            plugin_type (str): Type of plugin paths to get.</span>
+
+<span class=sd>        Returns:</span>
+<span class=sd>            list[str]: List of plugin paths.</span>
+
+<span class=sd>        &quot;&quot;&quot;</span>
+        <span class=n>paths</span> <span class=o>=</span> <span class=bp>self</span><span class=o>.</span><span class=n>get_plugin_paths</span><span class=p>()</span>
+        <span class=k>if</span> <span class=ow>not</span> <span class=n>paths</span> <span class=ow>or</span> <span class=n>plugin_type</span> <span class=ow>not</span> <span class=ow>in</span> <span class=n>paths</span><span class=p>:</span>
+            <span class=k>return</span> <span class=p>[]</span>
+
+        <span class=n>paths</span> <span class=o>=</span> <span class=n>paths</span><span class=p>[</span><span class=n>plugin_type</span><span class=p>]</span>
+        <span class=k>if</span> <span class=ow>not</span> <span class=n>paths</span><span class=p>:</span>
+            <span class=k>return</span> <span class=p>[]</span>
+
+        <span class=k>if</span> <span class=ow>not</span> <span class=nb>isinstance</span><span class=p>(</span><span class=n>paths</span><span class=p>,</span> <span class=p>(</span><span class=nb>list</span><span class=p>,</span> <span class=nb>tuple</span><span class=p>,</span> <span class=nb>set</span><span class=p>)):</span>
+            <span class=n>paths</span> <span class=o>=</span> <span class=p>[</span><span class=n>paths</span><span class=p>]</span>
+
+        <span class=n>new_function_name</span> <span class=o>=</span> <span class=s2>&quot;get_launcher_action_paths&quot;</span>
+        <span class=k>if</span> <span class=n>plugin_type</span> <span class=o>==</span> <span class=s2>&quot;create&quot;</span><span class=p>:</span>
+            <span class=n>new_function_name</span> <span class=o>=</span> <span class=s2>&quot;get_create_plugin_paths&quot;</span>
+        <span class=k>elif</span> <span class=n>plugin_type</span> <span class=o>==</span> <span class=s2>&quot;load&quot;</span><span class=p>:</span>
+            <span class=n>new_function_name</span> <span class=o>=</span> <span class=s2>&quot;get_load_plugin_paths&quot;</span>
+        <span class=k>elif</span> <span class=n>plugin_type</span> <span class=o>==</span> <span class=s2>&quot;publish&quot;</span><span class=p>:</span>
+            <span class=n>new_function_name</span> <span class=o>=</span> <span class=s2>&quot;get_publish_plugin_paths&quot;</span>
+        <span class=k>elif</span> <span class=n>plugin_type</span> <span class=o>==</span> <span class=s2>&quot;inventory&quot;</span><span class=p>:</span>
+            <span class=n>new_function_name</span> <span class=o>=</span> <span class=s2>&quot;get_inventory_action_paths&quot;</span>
+
+        <span class=n>warnings</span><span class=o>.</span><span class=n>warn</span><span class=p>(</span>
+            <span class=sa>f</span><span class=s2>&quot;Addon &#39;</span><span class=si>{</span><span class=bp>self</span><span class=o>.</span><span class=n>name</span><span class=si>}</span><span class=s2>&#39; returns &#39;</span><span class=si>{</span><span class=n>plugin_type</span><span class=si>}</span><span class=s2>&#39; paths using&quot;</span>
+            <span class=s2>&quot; &#39;get_plugin_paths&#39; method. Please implement&quot;</span>
+            <span class=sa>f</span><span class=s2>&quot; &#39;</span><span class=si>{</span><span class=n>new_function_name</span><span class=si>}</span><span class=s2>&#39; instead.&quot;</span><span class=p>,</span>
+            <span class=ne>DeprecationWarning</span><span class=p>,</span>
+            <span class=n>stacklevel</span><span class=o>=</span><span class=mi>2</span>
+        <span class=p>)</span>
+        <span class=k>return</span> <span class=n>paths</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>get_launcher_action_paths</span><span class=p>(</span><span class=bp>self</span><span class=p>)</span> <span class=o>-&gt;</span> <span class=nb>list</span><span class=p>[</span><span class=nb>str</span><span class=p>]:</span>
+<span class=w>        </span><span class=sd>&quot;&quot;&quot;Receive launcher actions paths.</span>
+
+<span class=sd>        Give addons ability to add launcher actions paths.</span>
+
+<span class=sd>        Returns:</span>
+<span class=sd>            list[str]: List of launcher action paths.</span>
+
+<span class=sd>        &quot;&quot;&quot;</span>
+        <span class=k>return</span> <span class=bp>self</span><span class=o>.</span><span class=n>_get_plugin_paths_by_type</span><span class=p>(</span><span class=s2>&quot;actions&quot;</span><span class=p>)</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>get_create_plugin_paths</span><span class=p>(</span><span class=bp>self</span><span class=p>,</span> <span class=n>host_name</span><span class=p>:</span> <span class=nb>str</span><span class=p>)</span> <span class=o>-&gt;</span> <span class=nb>list</span><span class=p>[</span><span class=nb>str</span><span class=p>]:</span>
+<span class=w>        </span><span class=sd>&quot;&quot;&quot;Receive create plugin paths.</span>
+
+<span class=sd>        Give addons ability to add create plugin paths based on host name.</span>
+
+<span class=sd>        Notes:</span>
+<span class=sd>            Default implementation uses &#39;get_plugin_paths&#39; and always return</span>
+<span class=sd>                all create plugin paths.</span>
+
+<span class=sd>        Args:</span>
+<span class=sd>            host_name (str): For which host are the plugins meant.</span>
+
+<span class=sd>        Returns:</span>
+<span class=sd>            list[str]: List of create plugin paths.</span>
+
+<span class=sd>        &quot;&quot;&quot;</span>
+        <span class=k>return</span> <span class=bp>self</span><span class=o>.</span><span class=n>_get_plugin_paths_by_type</span><span class=p>(</span><span class=s2>&quot;create&quot;</span><span class=p>)</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>get_load_plugin_paths</span><span class=p>(</span><span class=bp>self</span><span class=p>,</span> <span class=n>host_name</span><span class=p>:</span> <span class=nb>str</span><span class=p>)</span> <span class=o>-&gt;</span> <span class=nb>list</span><span class=p>[</span><span class=nb>str</span><span class=p>]:</span>
+<span class=w>        </span><span class=sd>&quot;&quot;&quot;Receive load plugin paths.</span>
+
+<span class=sd>        Give addons ability to add load plugin paths based on host name.</span>
+
+<span class=sd>        Notes:</span>
+<span class=sd>            Default implementation uses &#39;get_plugin_paths&#39; and always return</span>
+<span class=sd>                all load plugin paths.</span>
+
+<span class=sd>        Args:</span>
+<span class=sd>            host_name (str): For which host are the plugins meant.</span>
+
+<span class=sd>        Returns:</span>
+<span class=sd>            list[str]: List of load plugin paths.</span>
+
+<span class=sd>        &quot;&quot;&quot;</span>
+        <span class=k>return</span> <span class=bp>self</span><span class=o>.</span><span class=n>_get_plugin_paths_by_type</span><span class=p>(</span><span class=s2>&quot;load&quot;</span><span class=p>)</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>get_publish_plugin_paths</span><span class=p>(</span><span class=bp>self</span><span class=p>,</span> <span class=n>host_name</span><span class=p>:</span> <span class=nb>str</span><span class=p>)</span> <span class=o>-&gt;</span> <span class=nb>list</span><span class=p>[</span><span class=nb>str</span><span class=p>]:</span>
+<span class=w>        </span><span class=sd>&quot;&quot;&quot;Receive publish plugin paths.</span>
+
+<span class=sd>        Give addons ability to add publish plugin paths based on host name.</span>
+
+<span class=sd>        Notes:</span>
+<span class=sd>           Default implementation uses &#39;get_plugin_paths&#39; and always return</span>
+<span class=sd>               all publish plugin paths.</span>
+
+<span class=sd>        Args:</span>
+<span class=sd>           host_name (str): For which host are the plugins meant.</span>
+
+<span class=sd>        Returns:</span>
+<span class=sd>            list[str]: List of publish plugin paths.</span>
+
+<span class=sd>        &quot;&quot;&quot;</span>
+        <span class=k>return</span> <span class=bp>self</span><span class=o>.</span><span class=n>_get_plugin_paths_by_type</span><span class=p>(</span><span class=s2>&quot;publish&quot;</span><span class=p>)</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>get_inventory_action_paths</span><span class=p>(</span><span class=bp>self</span><span class=p>,</span> <span class=n>host_name</span><span class=p>:</span> <span class=nb>str</span><span class=p>)</span> <span class=o>-&gt;</span> <span class=nb>list</span><span class=p>[</span><span class=nb>str</span><span class=p>]:</span>
+<span class=w>        </span><span class=sd>&quot;&quot;&quot;Receive inventory action paths.</span>
+
+<span class=sd>        Give addons ability to add inventory action plugin paths.</span>
+
+<span class=sd>        Notes:</span>
+<span class=sd>           Default implementation uses &#39;get_plugin_paths&#39; and always return</span>
+<span class=sd>               all publish plugin paths.</span>
+
+<span class=sd>        Args:</span>
+<span class=sd>           host_name (str): For which host are the plugins meant.</span>
+
+<span class=sd>        Returns:</span>
+<span class=sd>            list[str]: List of inventory action plugin paths.</span>
+
+<span class=sd>        &quot;&quot;&quot;</span>
+        <span class=k>return</span> <span class=bp>self</span><span class=o>.</span><span class=n>_get_plugin_paths_by_type</span><span class=p>(</span><span class=s2>&quot;inventory&quot;</span><span class=p>)</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>get_loader_action_plugin_paths</span><span class=p>(</span>
+        <span class=bp>self</span><span class=p>,</span> <span class=n>host_name</span><span class=p>:</span> <span class=n>Optional</span><span class=p>[</span><span class=nb>str</span><span class=p>]</span>
+    <span class=p>)</span> <span class=o>-&gt;</span> <span class=nb>list</span><span class=p>[</span><span class=nb>str</span><span class=p>]:</span>
+<span class=w>        </span><span class=sd>&quot;&quot;&quot;Receive loader action plugin paths.</span>
+
+<span class=sd>        Args:</span>
+<span class=sd>            host_name (Optional[str]): Current host name.</span>
+
+<span class=sd>        Returns:</span>
+<span class=sd>            list[str]: Paths to loader action plugins.</span>
+
+<span class=sd>        &quot;&quot;&quot;</span>
+        <span class=k>return</span> <span class=p>[]</span>
+</code></pre></div></td></tr></table></div> </details> <div class="doc doc-children"> <div class="doc doc-object doc-function"> <h3 id=client.ayon_core.addon.interfaces.IPluginPaths.get_create_plugin_paths class="doc doc-heading"> <code class="highlight language-python"><span class=n>get_create_plugin_paths</span><span class=p>(</span><span class=n>host_name</span><span class=p>)</span></code> </h3> <div class="doc doc-contents "> <p>Receive create plugin paths.</p> <p>Give addons ability to add create plugin paths based on host name.</p> <details class=notes open> <summary>Notes</summary> <p>Default implementation uses 'get_plugin_paths' and always return all create plugin paths.</p> </details> <p><span class=doc-section-title>Parameters:</span></p> <table> <thead> <tr> <th>Name</th> <th>Type</th> <th>Description</th> <th>Default</th> </tr> </thead> <tbody> <tr class=doc-section-item> <td> <code>host_name</code> </td> <td> <code><span title=str>str</span></code> </td> <td> <div class=doc-md-description> <p>For which host are the plugins meant.</p> </div> </td> <td> <em>required</em> </td> </tr> </tbody> </table> <p><span class=doc-section-title>Returns:</span></p> <table> <thead> <tr> <th>Type</th> <th>Description</th> </tr> </thead> <tbody> <tr class=doc-section-item> <td> <code><span title=list>list</span>[<span title=str>str</span>]</code> </td> <td> <div class=doc-md-description> <p>list[str]: List of create plugin paths.</p> </div> </td> </tr> </tbody> </table> <details class=mkdocstrings-source> <summary>Source code in <code>client/ayon_core/addon/interfaces.py</code></summary> <div class=highlight><table class=highlighttable><tr><td class=linenos><div class=linenodiv><pre><span></span><span class=normal>116</span>
+<span class=normal>117</span>
+<span class=normal>118</span>
+<span class=normal>119</span>
+<span class=normal>120</span>
+<span class=normal>121</span>
+<span class=normal>122</span>
+<span class=normal>123</span>
+<span class=normal>124</span>
+<span class=normal>125</span>
+<span class=normal>126</span>
+<span class=normal>127</span>
+<span class=normal>128</span>
+<span class=normal>129</span>
+<span class=normal>130</span>
+<span class=normal>131</span>
+<span class=normal>132</span></pre></div></td><td class=code><div><pre><span></span><code><span class=k>def</span><span class=w> </span><span class=nf>get_create_plugin_paths</span><span class=p>(</span><span class=bp>self</span><span class=p>,</span> <span class=n>host_name</span><span class=p>:</span> <span class=nb>str</span><span class=p>)</span> <span class=o>-&gt;</span> <span class=nb>list</span><span class=p>[</span><span class=nb>str</span><span class=p>]:</span>
+<span class=w>    </span><span class=sd>&quot;&quot;&quot;Receive create plugin paths.</span>
+
+<span class=sd>    Give addons ability to add create plugin paths based on host name.</span>
+
+<span class=sd>    Notes:</span>
+<span class=sd>        Default implementation uses &#39;get_plugin_paths&#39; and always return</span>
+<span class=sd>            all create plugin paths.</span>
+
+<span class=sd>    Args:</span>
+<span class=sd>        host_name (str): For which host are the plugins meant.</span>
+
+<span class=sd>    Returns:</span>
+<span class=sd>        list[str]: List of create plugin paths.</span>
+
+<span class=sd>    &quot;&quot;&quot;</span>
+    <span class=k>return</span> <span class=bp>self</span><span class=o>.</span><span class=n>_get_plugin_paths_by_type</span><span class=p>(</span><span class=s2>&quot;create&quot;</span><span class=p>)</span>
+</code></pre></div></td></tr></table></div> </details> </div> </div> <div class="doc doc-object doc-function"> <h3 id=client.ayon_core.addon.interfaces.IPluginPaths.get_inventory_action_paths class="doc doc-heading"> <code class="highlight language-python"><span class=n>get_inventory_action_paths</span><span class=p>(</span><span class=n>host_name</span><span class=p>)</span></code> </h3> <div class="doc doc-contents "> <p>Receive inventory action paths.</p> <p>Give addons ability to add inventory action plugin paths.</p> <details class=notes open> <summary>Notes</summary> <p>Default implementation uses 'get_plugin_paths' and always return all publish plugin paths.</p> </details> <p><span class=doc-section-title>Parameters:</span></p> <table> <thead> <tr> <th>Name</th> <th>Type</th> <th>Description</th> <th>Default</th> </tr> </thead> <tbody> <tr class=doc-section-item> <td> <code>host_name</code> </td> <td> <code><span title=str>str</span></code> </td> <td> <div class=doc-md-description> <p>For which host are the plugins meant.</p> </div> </td> <td> <em>required</em> </td> </tr> </tbody> </table> <p><span class=doc-section-title>Returns:</span></p> <table> <thead> <tr> <th>Type</th> <th>Description</th> </tr> </thead> <tbody> <tr class=doc-section-item> <td> <code><span title=list>list</span>[<span title=str>str</span>]</code> </td> <td> <div class=doc-md-description> <p>list[str]: List of inventory action plugin paths.</p> </div> </td> </tr> </tbody> </table> <details class=mkdocstrings-source> <summary>Source code in <code>client/ayon_core/addon/interfaces.py</code></summary> <div class=highlight><table class=highlighttable><tr><td class=linenos><div class=linenodiv><pre><span></span><span class=normal>170</span>
+<span class=normal>171</span>
+<span class=normal>172</span>
+<span class=normal>173</span>
+<span class=normal>174</span>
+<span class=normal>175</span>
+<span class=normal>176</span>
+<span class=normal>177</span>
+<span class=normal>178</span>
+<span class=normal>179</span>
+<span class=normal>180</span>
+<span class=normal>181</span>
+<span class=normal>182</span>
+<span class=normal>183</span>
+<span class=normal>184</span>
+<span class=normal>185</span>
+<span class=normal>186</span></pre></div></td><td class=code><div><pre><span></span><code><span class=k>def</span><span class=w> </span><span class=nf>get_inventory_action_paths</span><span class=p>(</span><span class=bp>self</span><span class=p>,</span> <span class=n>host_name</span><span class=p>:</span> <span class=nb>str</span><span class=p>)</span> <span class=o>-&gt;</span> <span class=nb>list</span><span class=p>[</span><span class=nb>str</span><span class=p>]:</span>
+<span class=w>    </span><span class=sd>&quot;&quot;&quot;Receive inventory action paths.</span>
+
+<span class=sd>    Give addons ability to add inventory action plugin paths.</span>
+
+<span class=sd>    Notes:</span>
+<span class=sd>       Default implementation uses &#39;get_plugin_paths&#39; and always return</span>
+<span class=sd>           all publish plugin paths.</span>
+
+<span class=sd>    Args:</span>
+<span class=sd>       host_name (str): For which host are the plugins meant.</span>
+
+<span class=sd>    Returns:</span>
+<span class=sd>        list[str]: List of inventory action plugin paths.</span>
+
+<span class=sd>    &quot;&quot;&quot;</span>
+    <span class=k>return</span> <span class=bp>self</span><span class=o>.</span><span class=n>_get_plugin_paths_by_type</span><span class=p>(</span><span class=s2>&quot;inventory&quot;</span><span class=p>)</span>
+</code></pre></div></td></tr></table></div> </details> </div> </div> <div class="doc doc-object doc-function"> <h3 id=client.ayon_core.addon.interfaces.IPluginPaths.get_launcher_action_paths class="doc doc-heading"> <code class="highlight language-python"><span class=n>get_launcher_action_paths</span><span class=p>()</span></code> </h3> <div class="doc doc-contents "> <p>Receive launcher actions paths.</p> <p>Give addons ability to add launcher actions paths.</p> <p><span class=doc-section-title>Returns:</span></p> <table> <thead> <tr> <th>Type</th> <th>Description</th> </tr> </thead> <tbody> <tr class=doc-section-item> <td> <code><span title=list>list</span>[<span title=str>str</span>]</code> </td> <td> <div class=doc-md-description> <p>list[str]: List of launcher action paths.</p> </div> </td> </tr> </tbody> </table> <details class=mkdocstrings-source> <summary>Source code in <code>client/ayon_core/addon/interfaces.py</code></summary> <div class=highlight><table class=highlighttable><tr><td class=linenos><div class=linenodiv><pre><span></span><span class=normal>105</span>
+<span class=normal>106</span>
+<span class=normal>107</span>
+<span class=normal>108</span>
+<span class=normal>109</span>
+<span class=normal>110</span>
+<span class=normal>111</span>
+<span class=normal>112</span>
+<span class=normal>113</span>
+<span class=normal>114</span></pre></div></td><td class=code><div><pre><span></span><code><span class=k>def</span><span class=w> </span><span class=nf>get_launcher_action_paths</span><span class=p>(</span><span class=bp>self</span><span class=p>)</span> <span class=o>-&gt;</span> <span class=nb>list</span><span class=p>[</span><span class=nb>str</span><span class=p>]:</span>
+<span class=w>    </span><span class=sd>&quot;&quot;&quot;Receive launcher actions paths.</span>
+
+<span class=sd>    Give addons ability to add launcher actions paths.</span>
+
+<span class=sd>    Returns:</span>
+<span class=sd>        list[str]: List of launcher action paths.</span>
+
+<span class=sd>    &quot;&quot;&quot;</span>
+    <span class=k>return</span> <span class=bp>self</span><span class=o>.</span><span class=n>_get_plugin_paths_by_type</span><span class=p>(</span><span class=s2>&quot;actions&quot;</span><span class=p>)</span>
+</code></pre></div></td></tr></table></div> </details> </div> </div> <div class="doc doc-object doc-function"> <h3 id=client.ayon_core.addon.interfaces.IPluginPaths.get_load_plugin_paths class="doc doc-heading"> <code class="highlight language-python"><span class=n>get_load_plugin_paths</span><span class=p>(</span><span class=n>host_name</span><span class=p>)</span></code> </h3> <div class="doc doc-contents "> <p>Receive load plugin paths.</p> <p>Give addons ability to add load plugin paths based on host name.</p> <details class=notes open> <summary>Notes</summary> <p>Default implementation uses 'get_plugin_paths' and always return all load plugin paths.</p> </details> <p><span class=doc-section-title>Parameters:</span></p> <table> <thead> <tr> <th>Name</th> <th>Type</th> <th>Description</th> <th>Default</th> </tr> </thead> <tbody> <tr class=doc-section-item> <td> <code>host_name</code> </td> <td> <code><span title=str>str</span></code> </td> <td> <div class=doc-md-description> <p>For which host are the plugins meant.</p> </div> </td> <td> <em>required</em> </td> </tr> </tbody> </table> <p><span class=doc-section-title>Returns:</span></p> <table> <thead> <tr> <th>Type</th> <th>Description</th> </tr> </thead> <tbody> <tr class=doc-section-item> <td> <code><span title=list>list</span>[<span title=str>str</span>]</code> </td> <td> <div class=doc-md-description> <p>list[str]: List of load plugin paths.</p> </div> </td> </tr> </tbody> </table> <details class=mkdocstrings-source> <summary>Source code in <code>client/ayon_core/addon/interfaces.py</code></summary> <div class=highlight><table class=highlighttable><tr><td class=linenos><div class=linenodiv><pre><span></span><span class=normal>134</span>
+<span class=normal>135</span>
+<span class=normal>136</span>
+<span class=normal>137</span>
+<span class=normal>138</span>
+<span class=normal>139</span>
+<span class=normal>140</span>
+<span class=normal>141</span>
+<span class=normal>142</span>
+<span class=normal>143</span>
+<span class=normal>144</span>
+<span class=normal>145</span>
+<span class=normal>146</span>
+<span class=normal>147</span>
+<span class=normal>148</span>
+<span class=normal>149</span>
+<span class=normal>150</span></pre></div></td><td class=code><div><pre><span></span><code><span class=k>def</span><span class=w> </span><span class=nf>get_load_plugin_paths</span><span class=p>(</span><span class=bp>self</span><span class=p>,</span> <span class=n>host_name</span><span class=p>:</span> <span class=nb>str</span><span class=p>)</span> <span class=o>-&gt;</span> <span class=nb>list</span><span class=p>[</span><span class=nb>str</span><span class=p>]:</span>
+<span class=w>    </span><span class=sd>&quot;&quot;&quot;Receive load plugin paths.</span>
+
+<span class=sd>    Give addons ability to add load plugin paths based on host name.</span>
+
+<span class=sd>    Notes:</span>
+<span class=sd>        Default implementation uses &#39;get_plugin_paths&#39; and always return</span>
+<span class=sd>            all load plugin paths.</span>
+
+<span class=sd>    Args:</span>
+<span class=sd>        host_name (str): For which host are the plugins meant.</span>
+
+<span class=sd>    Returns:</span>
+<span class=sd>        list[str]: List of load plugin paths.</span>
+
+<span class=sd>    &quot;&quot;&quot;</span>
+    <span class=k>return</span> <span class=bp>self</span><span class=o>.</span><span class=n>_get_plugin_paths_by_type</span><span class=p>(</span><span class=s2>&quot;load&quot;</span><span class=p>)</span>
+</code></pre></div></td></tr></table></div> </details> </div> </div> <div class="doc doc-object doc-function"> <h3 id=client.ayon_core.addon.interfaces.IPluginPaths.get_loader_action_plugin_paths class="doc doc-heading"> <code class="highlight language-python"><span class=n>get_loader_action_plugin_paths</span><span class=p>(</span><span class=n>host_name</span><span class=p>)</span></code> </h3> <div class="doc doc-contents "> <p>Receive loader action plugin paths.</p> <p><span class=doc-section-title>Parameters:</span></p> <table> <thead> <tr> <th>Name</th> <th>Type</th> <th>Description</th> <th>Default</th> </tr> </thead> <tbody> <tr class=doc-section-item> <td> <code>host_name</code> </td> <td> <code><span title=typing.Optional>Optional</span>[<span title=str>str</span>]</code> </td> <td> <div class=doc-md-description> <p>Current host name.</p> </div> </td> <td> <em>required</em> </td> </tr> </tbody> </table> <p><span class=doc-section-title>Returns:</span></p> <table> <thead> <tr> <th>Type</th> <th>Description</th> </tr> </thead> <tbody> <tr class=doc-section-item> <td> <code><span title=list>list</span>[<span title=str>str</span>]</code> </td> <td> <div class=doc-md-description> <p>list[str]: Paths to loader action plugins.</p> </div> </td> </tr> </tbody> </table> <details class=mkdocstrings-source> <summary>Source code in <code>client/ayon_core/addon/interfaces.py</code></summary> <div class=highlight><table class=highlighttable><tr><td class=linenos><div class=linenodiv><pre><span></span><span class=normal>188</span>
+<span class=normal>189</span>
+<span class=normal>190</span>
+<span class=normal>191</span>
+<span class=normal>192</span>
+<span class=normal>193</span>
+<span class=normal>194</span>
+<span class=normal>195</span>
+<span class=normal>196</span>
+<span class=normal>197</span>
+<span class=normal>198</span>
+<span class=normal>199</span>
+<span class=normal>200</span></pre></div></td><td class=code><div><pre><span></span><code><span class=k>def</span><span class=w> </span><span class=nf>get_loader_action_plugin_paths</span><span class=p>(</span>
+    <span class=bp>self</span><span class=p>,</span> <span class=n>host_name</span><span class=p>:</span> <span class=n>Optional</span><span class=p>[</span><span class=nb>str</span><span class=p>]</span>
+<span class=p>)</span> <span class=o>-&gt;</span> <span class=nb>list</span><span class=p>[</span><span class=nb>str</span><span class=p>]:</span>
+<span class=w>    </span><span class=sd>&quot;&quot;&quot;Receive loader action plugin paths.</span>
+
+<span class=sd>    Args:</span>
+<span class=sd>        host_name (Optional[str]): Current host name.</span>
+
+<span class=sd>    Returns:</span>
+<span class=sd>        list[str]: Paths to loader action plugins.</span>
+
+<span class=sd>    &quot;&quot;&quot;</span>
+    <span class=k>return</span> <span class=p>[]</span>
+</code></pre></div></td></tr></table></div> </details> </div> </div> <div class="doc doc-object doc-function"> <h3 id=client.ayon_core.addon.interfaces.IPluginPaths.get_plugin_paths class="doc doc-heading"> <code class="highlight language-python"><span class=n>get_plugin_paths</span><span class=p>()</span></code> </h3> <div class="doc doc-contents "> <p>Return plugin paths for addon.</p> <p>This method was abstract (required) in the past, so raise the required 'core' addon version when 'get_plugin_paths' is removed from addon.</p> <details class=deprecated open> <summary>Deprecated</summary> <p>Please implement specific methods 'get_create_plugin_paths', 'get_load_plugin_paths', 'get_inventory_action_paths' and 'get_publish_plugin_paths' to return plugin paths.</p> </details> <p><span class=doc-section-title>Returns:</span></p> <table> <thead> <tr> <th>Type</th> <th>Description</th> </tr> </thead> <tbody> <tr class=doc-section-item> <td> <code><span title=dict>dict</span>[<span title=str>str</span>, <span title=list>list</span>[<span title=str>str</span>]]</code> </td> <td> <div class=doc-md-description> <p>dict[str, list[str]]: Plugin paths for addon.</p> </div> </td> </tr> </tbody> </table> <details class=mkdocstrings-source> <summary>Source code in <code>client/ayon_core/addon/interfaces.py</code></summary> <div class=highlight><table class=highlighttable><tr><td class=linenos><div class=linenodiv><pre><span></span><span class=normal>45</span>
+<span class=normal>46</span>
+<span class=normal>47</span>
+<span class=normal>48</span>
+<span class=normal>49</span>
+<span class=normal>50</span>
+<span class=normal>51</span>
+<span class=normal>52</span>
+<span class=normal>53</span>
+<span class=normal>54</span>
+<span class=normal>55</span>
+<span class=normal>56</span>
+<span class=normal>57</span>
+<span class=normal>58</span>
+<span class=normal>59</span>
+<span class=normal>60</span>
+<span class=normal>61</span></pre></div></td><td class=code><div><pre><span></span><code><span class=k>def</span><span class=w> </span><span class=nf>get_plugin_paths</span><span class=p>(</span><span class=bp>self</span><span class=p>)</span> <span class=o>-&gt;</span> <span class=nb>dict</span><span class=p>[</span><span class=nb>str</span><span class=p>,</span> <span class=nb>list</span><span class=p>[</span><span class=nb>str</span><span class=p>]]:</span>
+<span class=w>    </span><span class=sd>&quot;&quot;&quot;Return plugin paths for addon.</span>
+
+<span class=sd>    This method was abstract (required) in the past, so raise the required</span>
+<span class=sd>        &#39;core&#39; addon version when &#39;get_plugin_paths&#39; is removed from</span>
+<span class=sd>        addon.</span>
+
+<span class=sd>    Deprecated:</span>
+<span class=sd>        Please implement specific methods &#39;get_create_plugin_paths&#39;,</span>
+<span class=sd>            &#39;get_load_plugin_paths&#39;, &#39;get_inventory_action_paths&#39; and</span>
+<span class=sd>            &#39;get_publish_plugin_paths&#39; to return plugin paths.</span>
+
+<span class=sd>    Returns:</span>
+<span class=sd>        dict[str, list[str]]: Plugin paths for addon.</span>
+
+<span class=sd>    &quot;&quot;&quot;</span>
+    <span class=k>return</span> <span class=p>{}</span>
+</code></pre></div></td></tr></table></div> </details> </div> </div> <div class="doc doc-object doc-function"> <h3 id=client.ayon_core.addon.interfaces.IPluginPaths.get_publish_plugin_paths class="doc doc-heading"> <code class="highlight language-python"><span class=n>get_publish_plugin_paths</span><span class=p>(</span><span class=n>host_name</span><span class=p>)</span></code> </h3> <div class="doc doc-contents "> <p>Receive publish plugin paths.</p> <p>Give addons ability to add publish plugin paths based on host name.</p> <details class=notes open> <summary>Notes</summary> <p>Default implementation uses 'get_plugin_paths' and always return all publish plugin paths.</p> </details> <p><span class=doc-section-title>Parameters:</span></p> <table> <thead> <tr> <th>Name</th> <th>Type</th> <th>Description</th> <th>Default</th> </tr> </thead> <tbody> <tr class=doc-section-item> <td> <code>host_name</code> </td> <td> <code><span title=str>str</span></code> </td> <td> <div class=doc-md-description> <p>For which host are the plugins meant.</p> </div> </td> <td> <em>required</em> </td> </tr> </tbody> </table> <p><span class=doc-section-title>Returns:</span></p> <table> <thead> <tr> <th>Type</th> <th>Description</th> </tr> </thead> <tbody> <tr class=doc-section-item> <td> <code><span title=list>list</span>[<span title=str>str</span>]</code> </td> <td> <div class=doc-md-description> <p>list[str]: List of publish plugin paths.</p> </div> </td> </tr> </tbody> </table> <details class=mkdocstrings-source> <summary>Source code in <code>client/ayon_core/addon/interfaces.py</code></summary> <div class=highlight><table class=highlighttable><tr><td class=linenos><div class=linenodiv><pre><span></span><span class=normal>152</span>
+<span class=normal>153</span>
+<span class=normal>154</span>
+<span class=normal>155</span>
+<span class=normal>156</span>
+<span class=normal>157</span>
+<span class=normal>158</span>
+<span class=normal>159</span>
+<span class=normal>160</span>
+<span class=normal>161</span>
+<span class=normal>162</span>
+<span class=normal>163</span>
+<span class=normal>164</span>
+<span class=normal>165</span>
+<span class=normal>166</span>
+<span class=normal>167</span>
+<span class=normal>168</span></pre></div></td><td class=code><div><pre><span></span><code><span class=k>def</span><span class=w> </span><span class=nf>get_publish_plugin_paths</span><span class=p>(</span><span class=bp>self</span><span class=p>,</span> <span class=n>host_name</span><span class=p>:</span> <span class=nb>str</span><span class=p>)</span> <span class=o>-&gt;</span> <span class=nb>list</span><span class=p>[</span><span class=nb>str</span><span class=p>]:</span>
+<span class=w>    </span><span class=sd>&quot;&quot;&quot;Receive publish plugin paths.</span>
+
+<span class=sd>    Give addons ability to add publish plugin paths based on host name.</span>
+
+<span class=sd>    Notes:</span>
+<span class=sd>       Default implementation uses &#39;get_plugin_paths&#39; and always return</span>
+<span class=sd>           all publish plugin paths.</span>
+
+<span class=sd>    Args:</span>
+<span class=sd>       host_name (str): For which host are the plugins meant.</span>
+
+<span class=sd>    Returns:</span>
+<span class=sd>        list[str]: List of publish plugin paths.</span>
+
+<span class=sd>    &quot;&quot;&quot;</span>
+    <span class=k>return</span> <span class=bp>self</span><span class=o>.</span><span class=n>_get_plugin_paths_by_type</span><span class=p>(</span><span class=s2>&quot;publish&quot;</span><span class=p>)</span>
+</code></pre></div></td></tr></table></div> </details> </div> </div> </div> </div> </div> <div class="doc doc-object doc-class"> <h2 id=client.ayon_core.addon.interfaces.ITraits class="doc doc-heading"> <code>ITraits</code> </h2> <div class="doc doc-contents "> <p class="doc doc-class-bases"> Bases: <code><a class="autorefs autorefs-internal" title="AYONInterface (client.ayon_core.addon.interfaces.AYONInterface)" href=#client.ayon_core.addon.interfaces.AYONInterface>AYONInterface</a></code></p> <p>Interface for traits.</p> <details class=mkdocstrings-source> <summary>Source code in <code>client/ayon_core/addon/interfaces.py</code></summary> <div class=highlight><table class=highlighttable><tr><td class=linenos><div class=linenodiv><pre><span></span><span class=normal>520</span>
+<span class=normal>521</span>
+<span class=normal>522</span>
+<span class=normal>523</span>
+<span class=normal>524</span>
+<span class=normal>525</span>
+<span class=normal>526</span>
+<span class=normal>527</span>
+<span class=normal>528</span>
+<span class=normal>529</span>
+<span class=normal>530</span></pre></div></td><td class=code><div><pre><span></span><code><span class=k>class</span><span class=w> </span><span class=nc>ITraits</span><span class=p>(</span><span class=n>AYONInterface</span><span class=p>):</span>
+<span class=w>    </span><span class=sd>&quot;&quot;&quot;Interface for traits.&quot;&quot;&quot;</span>
+
+    <span class=nd>@abstractmethod</span>
+    <span class=k>def</span><span class=w> </span><span class=nf>get_addon_traits</span><span class=p>(</span><span class=bp>self</span><span class=p>)</span> <span class=o>-&gt;</span> <span class=nb>list</span><span class=p>[</span><span class=n>Type</span><span class=p>[</span><span class=n>TraitBase</span><span class=p>]]:</span>
+<span class=w>        </span><span class=sd>&quot;&quot;&quot;Get trait classes for the addon.</span>
+
+<span class=sd>        Returns:</span>
+<span class=sd>            list[Type[TraitBase]]: Traits for the addon.</span>
+
+<span class=sd>        &quot;&quot;&quot;</span>
+</code></pre></div></td></tr></table></div> </details> <div class="doc doc-children"> <div class="doc doc-object doc-function"> <h3 id=client.ayon_core.addon.interfaces.ITraits.get_addon_traits class="doc doc-heading"> <code class="highlight language-python"><span class=n>get_addon_traits</span><span class=p>()</span></code> <span class="doc doc-labels"> <small class="doc doc-label doc-label-abstractmethod"><code>abstractmethod</code></small> </span> </h3> <div class="doc doc-contents "> <p>Get trait classes for the addon.</p> <p><span class=doc-section-title>Returns:</span></p> <table> <thead> <tr> <th>Type</th> <th>Description</th> </tr> </thead> <tbody> <tr class=doc-section-item> <td> <code><span title=list>list</span>[<span title=typing.Type>Type</span>[<span title=ayon_core.pipeline.traits.TraitBase>TraitBase</span>]]</code> </td> <td> <div class=doc-md-description> <p>list[Type[TraitBase]]: Traits for the addon.</p> </div> </td> </tr> </tbody> </table> <details class=mkdocstrings-source> <summary>Source code in <code>client/ayon_core/addon/interfaces.py</code></summary> <div class=highlight><table class=highlighttable><tr><td class=linenos><div class=linenodiv><pre><span></span><span class=normal>523</span>
+<span class=normal>524</span>
+<span class=normal>525</span>
+<span class=normal>526</span>
+<span class=normal>527</span>
+<span class=normal>528</span>
+<span class=normal>529</span>
+<span class=normal>530</span></pre></div></td><td class=code><div><pre><span></span><code><span class=nd>@abstractmethod</span>
+<span class=k>def</span><span class=w> </span><span class=nf>get_addon_traits</span><span class=p>(</span><span class=bp>self</span><span class=p>)</span> <span class=o>-&gt;</span> <span class=nb>list</span><span class=p>[</span><span class=n>Type</span><span class=p>[</span><span class=n>TraitBase</span><span class=p>]]:</span>
+<span class=w>    </span><span class=sd>&quot;&quot;&quot;Get trait classes for the addon.</span>
+
+<span class=sd>    Returns:</span>
+<span class=sd>        list[Type[TraitBase]]: Traits for the addon.</span>
+
+<span class=sd>    &quot;&quot;&quot;</span>
+</code></pre></div></td></tr></table></div> </details> </div> </div> </div> </div> </div> <div class="doc doc-object doc-class"> <h2 id=client.ayon_core.addon.interfaces.ITrayAction class="doc doc-heading"> <code>ITrayAction</code> </h2> <div class="doc doc-contents "> <p class="doc doc-class-bases"> Bases: <code><a class="autorefs autorefs-internal" title="ITrayAddon (client.ayon_core.addon.interfaces.ITrayAddon)" href=#client.ayon_core.addon.interfaces.ITrayAddon>ITrayAddon</a></code></p> <p>Implementation of Tray action.</p> <p>Add action to tray menu which will trigger <code>on_action_trigger</code>. It is expected to be used for showing tools.</p> <p>Methods <code>tray_start</code>, <code>tray_exit</code> and <code>connect_with_addons</code> are overridden as it's not expected that action will use them. But it is possible if necessary.</p> <details class=mkdocstrings-source> <summary>Source code in <code>client/ayon_core/addon/interfaces.py</code></summary> <div class=highlight><table class=highlighttable><tr><td class=linenos><div class=linenodiv><pre><span></span><span class=normal>330</span>
+<span class=normal>331</span>
+<span class=normal>332</span>
+<span class=normal>333</span>
+<span class=normal>334</span>
+<span class=normal>335</span>
+<span class=normal>336</span>
+<span class=normal>337</span>
+<span class=normal>338</span>
+<span class=normal>339</span>
+<span class=normal>340</span>
+<span class=normal>341</span>
+<span class=normal>342</span>
+<span class=normal>343</span>
+<span class=normal>344</span>
+<span class=normal>345</span>
+<span class=normal>346</span>
+<span class=normal>347</span>
+<span class=normal>348</span>
+<span class=normal>349</span>
+<span class=normal>350</span>
+<span class=normal>351</span>
+<span class=normal>352</span>
+<span class=normal>353</span>
+<span class=normal>354</span>
+<span class=normal>355</span>
+<span class=normal>356</span>
+<span class=normal>357</span>
+<span class=normal>358</span>
+<span class=normal>359</span>
+<span class=normal>360</span>
+<span class=normal>361</span>
+<span class=normal>362</span>
+<span class=normal>363</span>
+<span class=normal>364</span>
+<span class=normal>365</span>
+<span class=normal>366</span>
+<span class=normal>367</span>
+<span class=normal>368</span>
+<span class=normal>369</span>
+<span class=normal>370</span>
+<span class=normal>371</span>
+<span class=normal>372</span></pre></div></td><td class=code><div><pre><span></span><code><span class=k>class</span><span class=w> </span><span class=nc>ITrayAction</span><span class=p>(</span><span class=n>ITrayAddon</span><span class=p>):</span>
+<span class=w>    </span><span class=sd>&quot;&quot;&quot;Implementation of Tray action.</span>
+
+<span class=sd>    Add action to tray menu which will trigger `on_action_trigger`.</span>
+<span class=sd>    It is expected to be used for showing tools.</span>
+
+<span class=sd>    Methods `tray_start`, `tray_exit` and `connect_with_addons` are overridden</span>
+<span class=sd>    as it&#39;s not expected that action will use them. But it is possible if</span>
+<span class=sd>    necessary.</span>
+<span class=sd>    &quot;&quot;&quot;</span>
+
+    <span class=n>admin_action</span> <span class=o>=</span> <span class=kc>False</span>
+    <span class=n>_action_item</span> <span class=o>=</span> <span class=kc>None</span>
+
+    <span class=nd>@property</span>
+    <span class=nd>@abstractmethod</span>
+    <span class=k>def</span><span class=w> </span><span class=nf>label</span><span class=p>(</span><span class=bp>self</span><span class=p>)</span> <span class=o>-&gt;</span> <span class=nb>str</span><span class=p>:</span>
+<span class=w>        </span><span class=sd>&quot;&quot;&quot;Service label showed in menu.&quot;&quot;&quot;</span>
+
+    <span class=nd>@abstractmethod</span>
+    <span class=k>def</span><span class=w> </span><span class=nf>on_action_trigger</span><span class=p>(</span><span class=bp>self</span><span class=p>)</span> <span class=o>-&gt;</span> <span class=kc>None</span><span class=p>:</span>
+<span class=w>        </span><span class=sd>&quot;&quot;&quot;What happens on actions click.&quot;&quot;&quot;</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>tray_menu</span><span class=p>(</span><span class=bp>self</span><span class=p>,</span> <span class=n>tray_menu</span><span class=p>:</span> <span class=n>QtWidgets</span><span class=o>.</span><span class=n>QMenu</span><span class=p>)</span> <span class=o>-&gt;</span> <span class=kc>None</span><span class=p>:</span>
+<span class=w>        </span><span class=sd>&quot;&quot;&quot;Add action to tray menu.&quot;&quot;&quot;</span>
+        <span class=kn>from</span><span class=w> </span><span class=nn>qtpy</span><span class=w> </span><span class=kn>import</span> <span class=n>QtWidgets</span>
+
+        <span class=k>if</span> <span class=bp>self</span><span class=o>.</span><span class=n>admin_action</span><span class=p>:</span>
+            <span class=n>action</span> <span class=o>=</span> <span class=bp>self</span><span class=o>.</span><span class=n>add_action_to_admin_submenu</span><span class=p>(</span><span class=bp>self</span><span class=o>.</span><span class=n>label</span><span class=p>,</span> <span class=n>tray_menu</span><span class=p>)</span>
+        <span class=k>else</span><span class=p>:</span>
+            <span class=n>action</span> <span class=o>=</span> <span class=n>QtWidgets</span><span class=o>.</span><span class=n>QAction</span><span class=p>(</span><span class=bp>self</span><span class=o>.</span><span class=n>label</span><span class=p>,</span> <span class=n>tray_menu</span><span class=p>)</span>
+            <span class=n>tray_menu</span><span class=o>.</span><span class=n>addAction</span><span class=p>(</span><span class=n>action</span><span class=p>)</span>
+
+        <span class=n>action</span><span class=o>.</span><span class=n>triggered</span><span class=o>.</span><span class=n>connect</span><span class=p>(</span><span class=bp>self</span><span class=o>.</span><span class=n>on_action_trigger</span><span class=p>)</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>_action_item</span> <span class=o>=</span> <span class=n>action</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>tray_start</span><span class=p>(</span><span class=bp>self</span><span class=p>)</span> <span class=o>-&gt;</span> <span class=kc>None</span><span class=p>:</span>  <span class=c1># noqa: PLR6301</span>
+<span class=w>        </span><span class=sd>&quot;&quot;&quot;Start procedure in tray tool.&quot;&quot;&quot;</span>
+        <span class=k>return</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>tray_exit</span><span class=p>(</span><span class=bp>self</span><span class=p>)</span> <span class=o>-&gt;</span> <span class=kc>None</span><span class=p>:</span>  <span class=c1># noqa: PLR6301</span>
+<span class=w>        </span><span class=sd>&quot;&quot;&quot;Cleanup method which is executed on tray shutdown.&quot;&quot;&quot;</span>
+        <span class=k>return</span>
+</code></pre></div></td></tr></table></div> </details> <div class="doc doc-children"> <div class="doc doc-object doc-attribute"> <h3 id=client.ayon_core.addon.interfaces.ITrayAction.label class="doc doc-heading"> <code class="highlight language-python"><span class=n>label</span></code> <span class="doc doc-labels"> <small class="doc doc-label doc-label-abstractmethod"><code>abstractmethod</code></small> <small class="doc doc-label doc-label-property"><code>property</code></small> </span> </h3> <div class="doc doc-contents "> <p>Service label showed in menu.</p> </div> </div> <div class="doc doc-object doc-function"> <h3 id=client.ayon_core.addon.interfaces.ITrayAction.on_action_trigger class="doc doc-heading"> <code class="highlight language-python"><span class=n>on_action_trigger</span><span class=p>()</span></code> <span class="doc doc-labels"> <small class="doc doc-label doc-label-abstractmethod"><code>abstractmethod</code></small> </span> </h3> <div class="doc doc-contents "> <p>What happens on actions click.</p> <details class=mkdocstrings-source> <summary>Source code in <code>client/ayon_core/addon/interfaces.py</code></summary> <div class=highlight><table class=highlighttable><tr><td class=linenos><div class=linenodiv><pre><span></span><span class=normal>349</span>
+<span class=normal>350</span>
+<span class=normal>351</span></pre></div></td><td class=code><div><pre><span></span><code><span class=nd>@abstractmethod</span>
+<span class=k>def</span><span class=w> </span><span class=nf>on_action_trigger</span><span class=p>(</span><span class=bp>self</span><span class=p>)</span> <span class=o>-&gt;</span> <span class=kc>None</span><span class=p>:</span>
+<span class=w>    </span><span class=sd>&quot;&quot;&quot;What happens on actions click.&quot;&quot;&quot;</span>
+</code></pre></div></td></tr></table></div> </details> </div> </div> <div class="doc doc-object doc-function"> <h3 id=client.ayon_core.addon.interfaces.ITrayAction.tray_exit class="doc doc-heading"> <code class="highlight language-python"><span class=n>tray_exit</span><span class=p>()</span></code> </h3> <div class="doc doc-contents "> <p>Cleanup method which is executed on tray shutdown.</p> <details class=mkdocstrings-source> <summary>Source code in <code>client/ayon_core/addon/interfaces.py</code></summary> <div class=highlight><table class=highlighttable><tr><td class=linenos><div class=linenodiv><pre><span></span><span class=normal>370</span>
+<span class=normal>371</span>
+<span class=normal>372</span></pre></div></td><td class=code><div><pre><span></span><code><span class=k>def</span><span class=w> </span><span class=nf>tray_exit</span><span class=p>(</span><span class=bp>self</span><span class=p>)</span> <span class=o>-&gt;</span> <span class=kc>None</span><span class=p>:</span>  <span class=c1># noqa: PLR6301</span>
+<span class=w>    </span><span class=sd>&quot;&quot;&quot;Cleanup method which is executed on tray shutdown.&quot;&quot;&quot;</span>
+    <span class=k>return</span>
+</code></pre></div></td></tr></table></div> </details> </div> </div> <div class="doc doc-object doc-function"> <h3 id=client.ayon_core.addon.interfaces.ITrayAction.tray_menu class="doc doc-heading"> <code class="highlight language-python"><span class=n>tray_menu</span><span class=p>(</span><span class=n>tray_menu</span><span class=p>)</span></code> </h3> <div class="doc doc-contents "> <p>Add action to tray menu.</p> <details class=mkdocstrings-source> <summary>Source code in <code>client/ayon_core/addon/interfaces.py</code></summary> <div class=highlight><table class=highlighttable><tr><td class=linenos><div class=linenodiv><pre><span></span><span class=normal>353</span>
+<span class=normal>354</span>
+<span class=normal>355</span>
+<span class=normal>356</span>
+<span class=normal>357</span>
+<span class=normal>358</span>
+<span class=normal>359</span>
+<span class=normal>360</span>
+<span class=normal>361</span>
+<span class=normal>362</span>
+<span class=normal>363</span>
+<span class=normal>364</span></pre></div></td><td class=code><div><pre><span></span><code><span class=k>def</span><span class=w> </span><span class=nf>tray_menu</span><span class=p>(</span><span class=bp>self</span><span class=p>,</span> <span class=n>tray_menu</span><span class=p>:</span> <span class=n>QtWidgets</span><span class=o>.</span><span class=n>QMenu</span><span class=p>)</span> <span class=o>-&gt;</span> <span class=kc>None</span><span class=p>:</span>
+<span class=w>    </span><span class=sd>&quot;&quot;&quot;Add action to tray menu.&quot;&quot;&quot;</span>
+    <span class=kn>from</span><span class=w> </span><span class=nn>qtpy</span><span class=w> </span><span class=kn>import</span> <span class=n>QtWidgets</span>
+
+    <span class=k>if</span> <span class=bp>self</span><span class=o>.</span><span class=n>admin_action</span><span class=p>:</span>
+        <span class=n>action</span> <span class=o>=</span> <span class=bp>self</span><span class=o>.</span><span class=n>add_action_to_admin_submenu</span><span class=p>(</span><span class=bp>self</span><span class=o>.</span><span class=n>label</span><span class=p>,</span> <span class=n>tray_menu</span><span class=p>)</span>
+    <span class=k>else</span><span class=p>:</span>
+        <span class=n>action</span> <span class=o>=</span> <span class=n>QtWidgets</span><span class=o>.</span><span class=n>QAction</span><span class=p>(</span><span class=bp>self</span><span class=o>.</span><span class=n>label</span><span class=p>,</span> <span class=n>tray_menu</span><span class=p>)</span>
+        <span class=n>tray_menu</span><span class=o>.</span><span class=n>addAction</span><span class=p>(</span><span class=n>action</span><span class=p>)</span>
+
+    <span class=n>action</span><span class=o>.</span><span class=n>triggered</span><span class=o>.</span><span class=n>connect</span><span class=p>(</span><span class=bp>self</span><span class=o>.</span><span class=n>on_action_trigger</span><span class=p>)</span>
+    <span class=bp>self</span><span class=o>.</span><span class=n>_action_item</span> <span class=o>=</span> <span class=n>action</span>
+</code></pre></div></td></tr></table></div> </details> </div> </div> <div class="doc doc-object doc-function"> <h3 id=client.ayon_core.addon.interfaces.ITrayAction.tray_start class="doc doc-heading"> <code class="highlight language-python"><span class=n>tray_start</span><span class=p>()</span></code> </h3> <div class="doc doc-contents "> <p>Start procedure in tray tool.</p> <details class=mkdocstrings-source> <summary>Source code in <code>client/ayon_core/addon/interfaces.py</code></summary> <div class=highlight><table class=highlighttable><tr><td class=linenos><div class=linenodiv><pre><span></span><span class=normal>366</span>
+<span class=normal>367</span>
+<span class=normal>368</span></pre></div></td><td class=code><div><pre><span></span><code><span class=k>def</span><span class=w> </span><span class=nf>tray_start</span><span class=p>(</span><span class=bp>self</span><span class=p>)</span> <span class=o>-&gt;</span> <span class=kc>None</span><span class=p>:</span>  <span class=c1># noqa: PLR6301</span>
+<span class=w>    </span><span class=sd>&quot;&quot;&quot;Start procedure in tray tool.&quot;&quot;&quot;</span>
+    <span class=k>return</span>
+</code></pre></div></td></tr></table></div> </details> </div> </div> </div> </div> </div> <div class="doc doc-object doc-class"> <h2 id=client.ayon_core.addon.interfaces.ITrayAddon class="doc doc-heading"> <code>ITrayAddon</code> </h2> <div class="doc doc-contents "> <p class="doc doc-class-bases"> Bases: <code><a class="autorefs autorefs-internal" title="AYONInterface (client.ayon_core.addon.interfaces.AYONInterface)" href=#client.ayon_core.addon.interfaces.AYONInterface>AYONInterface</a></code></p> <p>Addon has special procedures when used in Tray tool.</p> <details class=important open> <summary>Important</summary> <p>The addon. still must be usable if is not used in tray even if it would do nothing.</p> </details> <details class=mkdocstrings-source> <summary>Source code in <code>client/ayon_core/addon/interfaces.py</code></summary> <div class=highlight><table class=highlighttable><tr><td class=linenos><div class=linenodiv><pre><span></span><span class=normal>203</span>
+<span class=normal>204</span>
+<span class=normal>205</span>
+<span class=normal>206</span>
+<span class=normal>207</span>
+<span class=normal>208</span>
+<span class=normal>209</span>
+<span class=normal>210</span>
+<span class=normal>211</span>
+<span class=normal>212</span>
+<span class=normal>213</span>
+<span class=normal>214</span>
+<span class=normal>215</span>
+<span class=normal>216</span>
+<span class=normal>217</span>
+<span class=normal>218</span>
+<span class=normal>219</span>
+<span class=normal>220</span>
+<span class=normal>221</span>
+<span class=normal>222</span>
+<span class=normal>223</span>
+<span class=normal>224</span>
+<span class=normal>225</span>
+<span class=normal>226</span>
+<span class=normal>227</span>
+<span class=normal>228</span>
+<span class=normal>229</span>
+<span class=normal>230</span>
+<span class=normal>231</span>
+<span class=normal>232</span>
+<span class=normal>233</span>
+<span class=normal>234</span>
+<span class=normal>235</span>
+<span class=normal>236</span>
+<span class=normal>237</span>
+<span class=normal>238</span>
+<span class=normal>239</span>
+<span class=normal>240</span>
+<span class=normal>241</span>
+<span class=normal>242</span>
+<span class=normal>243</span>
+<span class=normal>244</span>
+<span class=normal>245</span>
+<span class=normal>246</span>
+<span class=normal>247</span>
+<span class=normal>248</span>
+<span class=normal>249</span>
+<span class=normal>250</span>
+<span class=normal>251</span>
+<span class=normal>252</span>
+<span class=normal>253</span>
+<span class=normal>254</span>
+<span class=normal>255</span>
+<span class=normal>256</span>
+<span class=normal>257</span>
+<span class=normal>258</span>
+<span class=normal>259</span>
+<span class=normal>260</span>
+<span class=normal>261</span>
+<span class=normal>262</span>
+<span class=normal>263</span>
+<span class=normal>264</span>
+<span class=normal>265</span>
+<span class=normal>266</span>
+<span class=normal>267</span>
+<span class=normal>268</span>
+<span class=normal>269</span>
+<span class=normal>270</span>
+<span class=normal>271</span>
+<span class=normal>272</span>
+<span class=normal>273</span>
+<span class=normal>274</span>
+<span class=normal>275</span>
+<span class=normal>276</span>
+<span class=normal>277</span>
+<span class=normal>278</span>
+<span class=normal>279</span>
+<span class=normal>280</span>
+<span class=normal>281</span>
+<span class=normal>282</span>
+<span class=normal>283</span>
+<span class=normal>284</span>
+<span class=normal>285</span>
+<span class=normal>286</span>
+<span class=normal>287</span>
+<span class=normal>288</span>
+<span class=normal>289</span>
+<span class=normal>290</span>
+<span class=normal>291</span>
+<span class=normal>292</span>
+<span class=normal>293</span>
+<span class=normal>294</span>
+<span class=normal>295</span>
+<span class=normal>296</span>
+<span class=normal>297</span>
+<span class=normal>298</span>
+<span class=normal>299</span>
+<span class=normal>300</span>
+<span class=normal>301</span>
+<span class=normal>302</span>
+<span class=normal>303</span>
+<span class=normal>304</span>
+<span class=normal>305</span>
+<span class=normal>306</span>
+<span class=normal>307</span>
+<span class=normal>308</span>
+<span class=normal>309</span>
+<span class=normal>310</span>
+<span class=normal>311</span>
+<span class=normal>312</span>
+<span class=normal>313</span>
+<span class=normal>314</span>
+<span class=normal>315</span>
+<span class=normal>316</span>
+<span class=normal>317</span>
+<span class=normal>318</span>
+<span class=normal>319</span>
+<span class=normal>320</span>
+<span class=normal>321</span>
+<span class=normal>322</span>
+<span class=normal>323</span>
+<span class=normal>324</span>
+<span class=normal>325</span>
+<span class=normal>326</span>
+<span class=normal>327</span></pre></div></td><td class=code><div><pre><span></span><code><span class=k>class</span><span class=w> </span><span class=nc>ITrayAddon</span><span class=p>(</span><span class=n>AYONInterface</span><span class=p>):</span>
+<span class=w>    </span><span class=sd>&quot;&quot;&quot;Addon has special procedures when used in Tray tool.</span>
+
+<span class=sd>    Important:</span>
+<span class=sd>        The addon. still must be usable if is not used in tray even if it</span>
+<span class=sd>        would do nothing.</span>
+
+<span class=sd>    &quot;&quot;&quot;</span>
+    <span class=n>manager</span><span class=p>:</span> <span class=n>AddonsManager</span>
+    <span class=n>tray_initialized</span> <span class=o>=</span> <span class=kc>False</span>
+    <span class=n>_tray_manager</span><span class=p>:</span> <span class=n>TrayManager</span> <span class=o>=</span> <span class=kc>None</span>
+    <span class=n>_admin_submenu</span> <span class=o>=</span> <span class=kc>None</span>
+
+    <span class=nd>@abstractmethod</span>
+    <span class=k>def</span><span class=w> </span><span class=nf>tray_init</span><span class=p>(</span><span class=bp>self</span><span class=p>)</span> <span class=o>-&gt;</span> <span class=kc>None</span><span class=p>:</span>
+<span class=w>        </span><span class=sd>&quot;&quot;&quot;Initialization part of tray implementation.</span>
+
+<span class=sd>        Triggered between `initialization` and `connect_with_addons`.</span>
+
+<span class=sd>        This is where GUIs should be loaded or tray specific parts should be</span>
+<span class=sd>        prepared</span>
+
+<span class=sd>        &quot;&quot;&quot;</span>
+
+    <span class=nd>@abstractmethod</span>
+    <span class=k>def</span><span class=w> </span><span class=nf>tray_menu</span><span class=p>(</span><span class=bp>self</span><span class=p>,</span> <span class=n>tray_menu</span><span class=p>:</span> <span class=n>QtWidgets</span><span class=o>.</span><span class=n>QMenu</span><span class=p>)</span> <span class=o>-&gt;</span> <span class=kc>None</span><span class=p>:</span>
+<span class=w>        </span><span class=sd>&quot;&quot;&quot;Add addon&#39;s action to tray menu.&quot;&quot;&quot;</span>
+
+    <span class=nd>@abstractmethod</span>
+    <span class=k>def</span><span class=w> </span><span class=nf>tray_start</span><span class=p>(</span><span class=bp>self</span><span class=p>)</span> <span class=o>-&gt;</span> <span class=kc>None</span><span class=p>:</span>
+<span class=w>        </span><span class=sd>&quot;&quot;&quot;Start procedure in tray tool.&quot;&quot;&quot;</span>
+
+    <span class=nd>@abstractmethod</span>
+    <span class=k>def</span><span class=w> </span><span class=nf>tray_exit</span><span class=p>(</span><span class=bp>self</span><span class=p>)</span> <span class=o>-&gt;</span> <span class=kc>None</span><span class=p>:</span>
+<span class=w>        </span><span class=sd>&quot;&quot;&quot;Cleanup method which is executed on tray shutdown.</span>
+
+<span class=sd>        This is place where all threads should be shut.</span>
+
+<span class=sd>        &quot;&quot;&quot;</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>execute_in_main_thread</span><span class=p>(</span><span class=bp>self</span><span class=p>,</span> <span class=n>callback</span><span class=p>:</span> <span class=n>Callable</span><span class=p>)</span> <span class=o>-&gt;</span> <span class=kc>None</span><span class=p>:</span>
+<span class=w>        </span><span class=sd>&quot;&quot;&quot;Pushes callback to the queue or process &#39;callback&#39; on a main thread.</span>
+
+<span class=sd>        Some callbacks need to be processed on main thread (menu actions</span>
+<span class=sd>        must be added on main thread else they won&#39;t get triggered etc.)</span>
+
+<span class=sd>        Args:</span>
+<span class=sd>            callback (Callable): Function to be executed on main thread</span>
+
+<span class=sd>        &quot;&quot;&quot;</span>
+        <span class=k>if</span> <span class=ow>not</span> <span class=bp>self</span><span class=o>.</span><span class=n>tray_initialized</span><span class=p>:</span>
+            <span class=c1># TODO (Illicit): Called without initialized tray, still</span>
+            <span class=c1>#   main thread needed.</span>
+            <span class=k>try</span><span class=p>:</span>
+                <span class=n>callback</span><span class=p>()</span>
+
+            <span class=k>except</span> <span class=ne>Exception</span><span class=p>:</span>  <span class=c1># noqa: BLE001</span>
+                <span class=bp>self</span><span class=o>.</span><span class=n>log</span><span class=o>.</span><span class=n>warning</span><span class=p>(</span>
+                    <span class=s2>&quot;Failed to execute </span><span class=si>%s</span><span class=s2> callback in main thread&quot;</span><span class=p>,</span>
+                    <span class=nb>str</span><span class=p>(</span><span class=n>callback</span><span class=p>),</span> <span class=n>exc_info</span><span class=o>=</span><span class=kc>True</span><span class=p>)</span>
+
+            <span class=k>return</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>_tray_manager</span><span class=o>.</span><span class=n>tray_manager</span><span class=o>.</span><span class=n>execute_in_main_thread</span><span class=p>(</span><span class=n>callback</span><span class=p>)</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>show_tray_message</span><span class=p>(</span>
+            <span class=bp>self</span><span class=p>,</span>
+            <span class=n>title</span><span class=p>:</span> <span class=nb>str</span><span class=p>,</span>
+            <span class=n>message</span><span class=p>:</span> <span class=nb>str</span><span class=p>,</span>
+            <span class=n>icon</span><span class=p>:</span> <span class=n>Optional</span><span class=p>[</span><span class=n>QtWidgets</span><span class=o>.</span><span class=n>QSystemTrayIcon</span><span class=p>]</span> <span class=o>=</span> <span class=kc>None</span><span class=p>,</span>
+            <span class=n>msecs</span><span class=p>:</span> <span class=n>Optional</span><span class=p>[</span><span class=nb>int</span><span class=p>]</span> <span class=o>=</span> <span class=kc>None</span><span class=p>)</span> <span class=o>-&gt;</span> <span class=kc>None</span><span class=p>:</span>
+<span class=w>        </span><span class=sd>&quot;&quot;&quot;Show tray message.</span>
+
+<span class=sd>        Args:</span>
+<span class=sd>            title (str): Title of message.</span>
+<span class=sd>            message (str): Content of message.</span>
+<span class=sd>            icon (QSystemTrayIcon.MessageIcon): Message&#39;s icon. Default is</span>
+<span class=sd>                Information icon, may differ by Qt version.</span>
+<span class=sd>            msecs (int): Duration of message visibility in milliseconds.</span>
+<span class=sd>                Default is 10000 msecs, may differ by Qt version.</span>
+<span class=sd>        &quot;&quot;&quot;</span>
+        <span class=k>if</span> <span class=bp>self</span><span class=o>.</span><span class=n>_tray_manager</span><span class=p>:</span>
+            <span class=bp>self</span><span class=o>.</span><span class=n>_tray_manager</span><span class=o>.</span><span class=n>show_tray_message</span><span class=p>(</span><span class=n>title</span><span class=p>,</span> <span class=n>message</span><span class=p>,</span> <span class=n>icon</span><span class=p>,</span> <span class=n>msecs</span><span class=p>)</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>add_doubleclick_callback</span><span class=p>(</span><span class=bp>self</span><span class=p>,</span> <span class=n>callback</span><span class=p>:</span> <span class=n>Callable</span><span class=p>)</span> <span class=o>-&gt;</span> <span class=kc>None</span><span class=p>:</span>
+<span class=w>        </span><span class=sd>&quot;&quot;&quot;Add callback to be triggered on tray icon double click.&quot;&quot;&quot;</span>
+        <span class=k>if</span> <span class=nb>hasattr</span><span class=p>(</span><span class=bp>self</span><span class=o>.</span><span class=n>manager</span><span class=p>,</span> <span class=s2>&quot;add_doubleclick_callback&quot;</span><span class=p>):</span>
+            <span class=bp>self</span><span class=o>.</span><span class=n>manager</span><span class=o>.</span><span class=n>add_doubleclick_callback</span><span class=p>(</span><span class=bp>self</span><span class=p>,</span> <span class=n>callback</span><span class=p>)</span>
+
+    <span class=nd>@staticmethod</span>
+    <span class=k>def</span><span class=w> </span><span class=nf>admin_submenu</span><span class=p>(</span><span class=n>tray_menu</span><span class=p>:</span> <span class=n>QtWidgets</span><span class=o>.</span><span class=n>QMenu</span><span class=p>)</span> <span class=o>-&gt;</span> <span class=n>QtWidgets</span><span class=o>.</span><span class=n>QMenu</span><span class=p>:</span>
+<span class=w>        </span><span class=sd>&quot;&quot;&quot;Get or create admin submenu.</span>
+
+<span class=sd>        Returns:</span>
+<span class=sd>            QtWidgets.QMenu: Admin submenu.</span>
+
+<span class=sd>        &quot;&quot;&quot;</span>
+        <span class=k>if</span> <span class=n>ITrayAddon</span><span class=o>.</span><span class=n>_admin_submenu</span> <span class=ow>is</span> <span class=kc>None</span><span class=p>:</span>
+            <span class=kn>from</span><span class=w> </span><span class=nn>qtpy</span><span class=w> </span><span class=kn>import</span> <span class=n>QtWidgets</span>
+
+            <span class=n>admin_submenu</span> <span class=o>=</span> <span class=n>QtWidgets</span><span class=o>.</span><span class=n>QMenu</span><span class=p>(</span><span class=s2>&quot;Admin&quot;</span><span class=p>,</span> <span class=n>tray_menu</span><span class=p>)</span>
+            <span class=n>admin_submenu</span><span class=o>.</span><span class=n>menuAction</span><span class=p>()</span><span class=o>.</span><span class=n>setVisible</span><span class=p>(</span><span class=kc>False</span><span class=p>)</span>
+            <span class=n>ITrayAddon</span><span class=o>.</span><span class=n>_admin_submenu</span> <span class=o>=</span> <span class=n>admin_submenu</span>
+        <span class=k>return</span> <span class=n>ITrayAddon</span><span class=o>.</span><span class=n>_admin_submenu</span>
+
+    <span class=nd>@staticmethod</span>
+    <span class=k>def</span><span class=w> </span><span class=nf>add_action_to_admin_submenu</span><span class=p>(</span>
+            <span class=n>label</span><span class=p>:</span> <span class=nb>str</span><span class=p>,</span> <span class=n>tray_menu</span><span class=p>:</span> <span class=n>QtWidgets</span><span class=o>.</span><span class=n>QMenu</span><span class=p>)</span> <span class=o>-&gt;</span> <span class=n>QtWidgets</span><span class=o>.</span><span class=n>QAction</span><span class=p>:</span>
+<span class=w>        </span><span class=sd>&quot;&quot;&quot;Add action to admin submenu.</span>
+
+<span class=sd>        Args:</span>
+<span class=sd>            label (str): Label of action.</span>
+<span class=sd>            tray_menu (QtWidgets.QMenu): Tray menu to add action to.</span>
+
+<span class=sd>        Returns:</span>
+<span class=sd>            QtWidgets.QAction: Action added to admin submenu</span>
+
+<span class=sd>        &quot;&quot;&quot;</span>
+        <span class=kn>from</span><span class=w> </span><span class=nn>qtpy</span><span class=w> </span><span class=kn>import</span> <span class=n>QtWidgets</span>
+
+        <span class=n>menu</span> <span class=o>=</span> <span class=n>ITrayAddon</span><span class=o>.</span><span class=n>admin_submenu</span><span class=p>(</span><span class=n>tray_menu</span><span class=p>)</span>
+        <span class=n>action</span> <span class=o>=</span> <span class=n>QtWidgets</span><span class=o>.</span><span class=n>QAction</span><span class=p>(</span><span class=n>label</span><span class=p>,</span> <span class=n>menu</span><span class=p>)</span>
+        <span class=n>menu</span><span class=o>.</span><span class=n>addAction</span><span class=p>(</span><span class=n>action</span><span class=p>)</span>
+        <span class=k>if</span> <span class=ow>not</span> <span class=n>menu</span><span class=o>.</span><span class=n>menuAction</span><span class=p>()</span><span class=o>.</span><span class=n>isVisible</span><span class=p>():</span>
+            <span class=n>menu</span><span class=o>.</span><span class=n>menuAction</span><span class=p>()</span><span class=o>.</span><span class=n>setVisible</span><span class=p>(</span><span class=kc>True</span><span class=p>)</span>
+        <span class=k>return</span> <span class=n>action</span>
+</code></pre></div></td></tr></table></div> </details> <div class="doc doc-children"> <div class="doc doc-object doc-function"> <h3 id=client.ayon_core.addon.interfaces.ITrayAddon.add_action_to_admin_submenu class="doc doc-heading"> <code class="highlight language-python"><span class=n>add_action_to_admin_submenu</span><span class=p>(</span><span class=n>label</span><span class=p>,</span> <span class=n>tray_menu</span><span class=p>)</span></code> <span class="doc doc-labels"> <small class="doc doc-label doc-label-staticmethod"><code>staticmethod</code></small> </span> </h3> <div class="doc doc-contents "> <p>Add action to admin submenu.</p> <p><span class=doc-section-title>Parameters:</span></p> <table> <thead> <tr> <th>Name</th> <th>Type</th> <th>Description</th> <th>Default</th> </tr> </thead> <tbody> <tr class=doc-section-item> <td> <code>label</code> </td> <td> <code><span title=str>str</span></code> </td> <td> <div class=doc-md-description> <p>Label of action.</p> </div> </td> <td> <em>required</em> </td> </tr> <tr class=doc-section-item> <td> <code>tray_menu</code> </td> <td> <code><span title=qtpy.QtWidgets.QMenu>QMenu</span></code> </td> <td> <div class=doc-md-description> <p>Tray menu to add action to.</p> </div> </td> <td> <em>required</em> </td> </tr> </tbody> </table> <p><span class=doc-section-title>Returns:</span></p> <table> <thead> <tr> <th>Type</th> <th>Description</th> </tr> </thead> <tbody> <tr class=doc-section-item> <td> <code><span title=qtpy.QtWidgets.QAction>QAction</span></code> </td> <td> <div class=doc-md-description> <p>QtWidgets.QAction: Action added to admin submenu</p> </div> </td> </tr> </tbody> </table> <details class=mkdocstrings-source> <summary>Source code in <code>client/ayon_core/addon/interfaces.py</code></summary> <div class=highlight><table class=highlighttable><tr><td class=linenos><div class=linenodiv><pre><span></span><span class=normal>307</span>
+<span class=normal>308</span>
+<span class=normal>309</span>
+<span class=normal>310</span>
+<span class=normal>311</span>
+<span class=normal>312</span>
+<span class=normal>313</span>
+<span class=normal>314</span>
+<span class=normal>315</span>
+<span class=normal>316</span>
+<span class=normal>317</span>
+<span class=normal>318</span>
+<span class=normal>319</span>
+<span class=normal>320</span>
+<span class=normal>321</span>
+<span class=normal>322</span>
+<span class=normal>323</span>
+<span class=normal>324</span>
+<span class=normal>325</span>
+<span class=normal>326</span>
+<span class=normal>327</span></pre></div></td><td class=code><div><pre><span></span><code><span class=nd>@staticmethod</span>
+<span class=k>def</span><span class=w> </span><span class=nf>add_action_to_admin_submenu</span><span class=p>(</span>
+        <span class=n>label</span><span class=p>:</span> <span class=nb>str</span><span class=p>,</span> <span class=n>tray_menu</span><span class=p>:</span> <span class=n>QtWidgets</span><span class=o>.</span><span class=n>QMenu</span><span class=p>)</span> <span class=o>-&gt;</span> <span class=n>QtWidgets</span><span class=o>.</span><span class=n>QAction</span><span class=p>:</span>
+<span class=w>    </span><span class=sd>&quot;&quot;&quot;Add action to admin submenu.</span>
+
+<span class=sd>    Args:</span>
+<span class=sd>        label (str): Label of action.</span>
+<span class=sd>        tray_menu (QtWidgets.QMenu): Tray menu to add action to.</span>
+
+<span class=sd>    Returns:</span>
+<span class=sd>        QtWidgets.QAction: Action added to admin submenu</span>
+
+<span class=sd>    &quot;&quot;&quot;</span>
+    <span class=kn>from</span><span class=w> </span><span class=nn>qtpy</span><span class=w> </span><span class=kn>import</span> <span class=n>QtWidgets</span>
+
+    <span class=n>menu</span> <span class=o>=</span> <span class=n>ITrayAddon</span><span class=o>.</span><span class=n>admin_submenu</span><span class=p>(</span><span class=n>tray_menu</span><span class=p>)</span>
+    <span class=n>action</span> <span class=o>=</span> <span class=n>QtWidgets</span><span class=o>.</span><span class=n>QAction</span><span class=p>(</span><span class=n>label</span><span class=p>,</span> <span class=n>menu</span><span class=p>)</span>
+    <span class=n>menu</span><span class=o>.</span><span class=n>addAction</span><span class=p>(</span><span class=n>action</span><span class=p>)</span>
+    <span class=k>if</span> <span class=ow>not</span> <span class=n>menu</span><span class=o>.</span><span class=n>menuAction</span><span class=p>()</span><span class=o>.</span><span class=n>isVisible</span><span class=p>():</span>
+        <span class=n>menu</span><span class=o>.</span><span class=n>menuAction</span><span class=p>()</span><span class=o>.</span><span class=n>setVisible</span><span class=p>(</span><span class=kc>True</span><span class=p>)</span>
+    <span class=k>return</span> <span class=n>action</span>
+</code></pre></div></td></tr></table></div> </details> </div> </div> <div class="doc doc-object doc-function"> <h3 id=client.ayon_core.addon.interfaces.ITrayAddon.add_doubleclick_callback class="doc doc-heading"> <code class="highlight language-python"><span class=n>add_doubleclick_callback</span><span class=p>(</span><span class=n>callback</span><span class=p>)</span></code> </h3> <div class="doc doc-contents "> <p>Add callback to be triggered on tray icon double click.</p> <details class=mkdocstrings-source> <summary>Source code in <code>client/ayon_core/addon/interfaces.py</code></summary> <div class=highlight><table class=highlighttable><tr><td class=linenos><div class=linenodiv><pre><span></span><span class=normal>286</span>
+<span class=normal>287</span>
+<span class=normal>288</span>
+<span class=normal>289</span></pre></div></td><td class=code><div><pre><span></span><code><span class=k>def</span><span class=w> </span><span class=nf>add_doubleclick_callback</span><span class=p>(</span><span class=bp>self</span><span class=p>,</span> <span class=n>callback</span><span class=p>:</span> <span class=n>Callable</span><span class=p>)</span> <span class=o>-&gt;</span> <span class=kc>None</span><span class=p>:</span>
+<span class=w>    </span><span class=sd>&quot;&quot;&quot;Add callback to be triggered on tray icon double click.&quot;&quot;&quot;</span>
+    <span class=k>if</span> <span class=nb>hasattr</span><span class=p>(</span><span class=bp>self</span><span class=o>.</span><span class=n>manager</span><span class=p>,</span> <span class=s2>&quot;add_doubleclick_callback&quot;</span><span class=p>):</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>manager</span><span class=o>.</span><span class=n>add_doubleclick_callback</span><span class=p>(</span><span class=bp>self</span><span class=p>,</span> <span class=n>callback</span><span class=p>)</span>
+</code></pre></div></td></tr></table></div> </details> </div> </div> <div class="doc doc-object doc-function"> <h3 id=client.ayon_core.addon.interfaces.ITrayAddon.admin_submenu class="doc doc-heading"> <code class="highlight language-python"><span class=n>admin_submenu</span><span class=p>(</span><span class=n>tray_menu</span><span class=p>)</span></code> <span class="doc doc-labels"> <small class="doc doc-label doc-label-staticmethod"><code>staticmethod</code></small> </span> </h3> <div class="doc doc-contents "> <p>Get or create admin submenu.</p> <p><span class=doc-section-title>Returns:</span></p> <table> <thead> <tr> <th>Type</th> <th>Description</th> </tr> </thead> <tbody> <tr class=doc-section-item> <td> <code><span title=qtpy.QtWidgets.QMenu>QMenu</span></code> </td> <td> <div class=doc-md-description> <p>QtWidgets.QMenu: Admin submenu.</p> </div> </td> </tr> </tbody> </table> <details class=mkdocstrings-source> <summary>Source code in <code>client/ayon_core/addon/interfaces.py</code></summary> <div class=highlight><table class=highlighttable><tr><td class=linenos><div class=linenodiv><pre><span></span><span class=normal>291</span>
+<span class=normal>292</span>
+<span class=normal>293</span>
+<span class=normal>294</span>
+<span class=normal>295</span>
+<span class=normal>296</span>
+<span class=normal>297</span>
+<span class=normal>298</span>
+<span class=normal>299</span>
+<span class=normal>300</span>
+<span class=normal>301</span>
+<span class=normal>302</span>
+<span class=normal>303</span>
+<span class=normal>304</span>
+<span class=normal>305</span></pre></div></td><td class=code><div><pre><span></span><code><span class=nd>@staticmethod</span>
+<span class=k>def</span><span class=w> </span><span class=nf>admin_submenu</span><span class=p>(</span><span class=n>tray_menu</span><span class=p>:</span> <span class=n>QtWidgets</span><span class=o>.</span><span class=n>QMenu</span><span class=p>)</span> <span class=o>-&gt;</span> <span class=n>QtWidgets</span><span class=o>.</span><span class=n>QMenu</span><span class=p>:</span>
+<span class=w>    </span><span class=sd>&quot;&quot;&quot;Get or create admin submenu.</span>
+
+<span class=sd>    Returns:</span>
+<span class=sd>        QtWidgets.QMenu: Admin submenu.</span>
+
+<span class=sd>    &quot;&quot;&quot;</span>
+    <span class=k>if</span> <span class=n>ITrayAddon</span><span class=o>.</span><span class=n>_admin_submenu</span> <span class=ow>is</span> <span class=kc>None</span><span class=p>:</span>
+        <span class=kn>from</span><span class=w> </span><span class=nn>qtpy</span><span class=w> </span><span class=kn>import</span> <span class=n>QtWidgets</span>
+
+        <span class=n>admin_submenu</span> <span class=o>=</span> <span class=n>QtWidgets</span><span class=o>.</span><span class=n>QMenu</span><span class=p>(</span><span class=s2>&quot;Admin&quot;</span><span class=p>,</span> <span class=n>tray_menu</span><span class=p>)</span>
+        <span class=n>admin_submenu</span><span class=o>.</span><span class=n>menuAction</span><span class=p>()</span><span class=o>.</span><span class=n>setVisible</span><span class=p>(</span><span class=kc>False</span><span class=p>)</span>
+        <span class=n>ITrayAddon</span><span class=o>.</span><span class=n>_admin_submenu</span> <span class=o>=</span> <span class=n>admin_submenu</span>
+    <span class=k>return</span> <span class=n>ITrayAddon</span><span class=o>.</span><span class=n>_admin_submenu</span>
+</code></pre></div></td></tr></table></div> </details> </div> </div> <div class="doc doc-object doc-function"> <h3 id=client.ayon_core.addon.interfaces.ITrayAddon.execute_in_main_thread class="doc doc-heading"> <code class="highlight language-python"><span class=n>execute_in_main_thread</span><span class=p>(</span><span class=n>callback</span><span class=p>)</span></code> </h3> <div class="doc doc-contents "> <p>Pushes callback to the queue or process 'callback' on a main thread.</p> <p>Some callbacks need to be processed on main thread (menu actions must be added on main thread else they won't get triggered etc.)</p> <p><span class=doc-section-title>Parameters:</span></p> <table> <thead> <tr> <th>Name</th> <th>Type</th> <th>Description</th> <th>Default</th> </tr> </thead> <tbody> <tr class=doc-section-item> <td> <code>callback</code> </td> <td> <code><span title=typing.Callable>Callable</span></code> </td> <td> <div class=doc-md-description> <p>Function to be executed on main thread</p> </div> </td> <td> <em>required</em> </td> </tr> </tbody> </table> <details class=mkdocstrings-source> <summary>Source code in <code>client/ayon_core/addon/interfaces.py</code></summary> <div class=highlight><table class=highlighttable><tr><td class=linenos><div class=linenodiv><pre><span></span><span class=normal>243</span>
+<span class=normal>244</span>
+<span class=normal>245</span>
+<span class=normal>246</span>
+<span class=normal>247</span>
+<span class=normal>248</span>
+<span class=normal>249</span>
+<span class=normal>250</span>
+<span class=normal>251</span>
+<span class=normal>252</span>
+<span class=normal>253</span>
+<span class=normal>254</span>
+<span class=normal>255</span>
+<span class=normal>256</span>
+<span class=normal>257</span>
+<span class=normal>258</span>
+<span class=normal>259</span>
+<span class=normal>260</span>
+<span class=normal>261</span>
+<span class=normal>262</span>
+<span class=normal>263</span>
+<span class=normal>264</span>
+<span class=normal>265</span></pre></div></td><td class=code><div><pre><span></span><code><span class=k>def</span><span class=w> </span><span class=nf>execute_in_main_thread</span><span class=p>(</span><span class=bp>self</span><span class=p>,</span> <span class=n>callback</span><span class=p>:</span> <span class=n>Callable</span><span class=p>)</span> <span class=o>-&gt;</span> <span class=kc>None</span><span class=p>:</span>
+<span class=w>    </span><span class=sd>&quot;&quot;&quot;Pushes callback to the queue or process &#39;callback&#39; on a main thread.</span>
+
+<span class=sd>    Some callbacks need to be processed on main thread (menu actions</span>
+<span class=sd>    must be added on main thread else they won&#39;t get triggered etc.)</span>
+
+<span class=sd>    Args:</span>
+<span class=sd>        callback (Callable): Function to be executed on main thread</span>
+
+<span class=sd>    &quot;&quot;&quot;</span>
+    <span class=k>if</span> <span class=ow>not</span> <span class=bp>self</span><span class=o>.</span><span class=n>tray_initialized</span><span class=p>:</span>
+        <span class=c1># TODO (Illicit): Called without initialized tray, still</span>
+        <span class=c1>#   main thread needed.</span>
+        <span class=k>try</span><span class=p>:</span>
+            <span class=n>callback</span><span class=p>()</span>
+
+        <span class=k>except</span> <span class=ne>Exception</span><span class=p>:</span>  <span class=c1># noqa: BLE001</span>
+            <span class=bp>self</span><span class=o>.</span><span class=n>log</span><span class=o>.</span><span class=n>warning</span><span class=p>(</span>
+                <span class=s2>&quot;Failed to execute </span><span class=si>%s</span><span class=s2> callback in main thread&quot;</span><span class=p>,</span>
+                <span class=nb>str</span><span class=p>(</span><span class=n>callback</span><span class=p>),</span> <span class=n>exc_info</span><span class=o>=</span><span class=kc>True</span><span class=p>)</span>
+
+        <span class=k>return</span>
+    <span class=bp>self</span><span class=o>.</span><span class=n>_tray_manager</span><span class=o>.</span><span class=n>tray_manager</span><span class=o>.</span><span class=n>execute_in_main_thread</span><span class=p>(</span><span class=n>callback</span><span class=p>)</span>
+</code></pre></div></td></tr></table></div> </details> </div> </div> <div class="doc doc-object doc-function"> <h3 id=client.ayon_core.addon.interfaces.ITrayAddon.show_tray_message class="doc doc-heading"> <code class="highlight language-python"><span class=n>show_tray_message</span><span class=p>(</span><span class=n>title</span><span class=p>,</span> <span class=n>message</span><span class=p>,</span> <span class=n>icon</span><span class=o>=</span><span class=kc>None</span><span class=p>,</span> <span class=n>msecs</span><span class=o>=</span><span class=kc>None</span><span class=p>)</span></code> </h3> <div class="doc doc-contents "> <p>Show tray message.</p> <p><span class=doc-section-title>Parameters:</span></p> <table> <thead> <tr> <th>Name</th> <th>Type</th> <th>Description</th> <th>Default</th> </tr> </thead> <tbody> <tr class=doc-section-item> <td> <code>title</code> </td> <td> <code><span title=str>str</span></code> </td> <td> <div class=doc-md-description> <p>Title of message.</p> </div> </td> <td> <em>required</em> </td> </tr> <tr class=doc-section-item> <td> <code>message</code> </td> <td> <code><span title=str>str</span></code> </td> <td> <div class=doc-md-description> <p>Content of message.</p> </div> </td> <td> <em>required</em> </td> </tr> <tr class=doc-section-item> <td> <code>icon</code> </td> <td> <code><span title=QSystemTrayIcon.MessageIcon>MessageIcon</span></code> </td> <td> <div class=doc-md-description> <p>Message's icon. Default is Information icon, may differ by Qt version.</p> </div> </td> <td> <code>None</code> </td> </tr> <tr class=doc-section-item> <td> <code>msecs</code> </td> <td> <code><span title=int>int</span></code> </td> <td> <div class=doc-md-description> <p>Duration of message visibility in milliseconds. Default is 10000 msecs, may differ by Qt version.</p> </div> </td> <td> <code>None</code> </td> </tr> </tbody> </table> <details class=mkdocstrings-source> <summary>Source code in <code>client/ayon_core/addon/interfaces.py</code></summary> <div class=highlight><table class=highlighttable><tr><td class=linenos><div class=linenodiv><pre><span></span><span class=normal>267</span>
+<span class=normal>268</span>
+<span class=normal>269</span>
+<span class=normal>270</span>
+<span class=normal>271</span>
+<span class=normal>272</span>
+<span class=normal>273</span>
+<span class=normal>274</span>
+<span class=normal>275</span>
+<span class=normal>276</span>
+<span class=normal>277</span>
+<span class=normal>278</span>
+<span class=normal>279</span>
+<span class=normal>280</span>
+<span class=normal>281</span>
+<span class=normal>282</span>
+<span class=normal>283</span>
+<span class=normal>284</span></pre></div></td><td class=code><div><pre><span></span><code><span class=k>def</span><span class=w> </span><span class=nf>show_tray_message</span><span class=p>(</span>
+        <span class=bp>self</span><span class=p>,</span>
+        <span class=n>title</span><span class=p>:</span> <span class=nb>str</span><span class=p>,</span>
+        <span class=n>message</span><span class=p>:</span> <span class=nb>str</span><span class=p>,</span>
+        <span class=n>icon</span><span class=p>:</span> <span class=n>Optional</span><span class=p>[</span><span class=n>QtWidgets</span><span class=o>.</span><span class=n>QSystemTrayIcon</span><span class=p>]</span> <span class=o>=</span> <span class=kc>None</span><span class=p>,</span>
+        <span class=n>msecs</span><span class=p>:</span> <span class=n>Optional</span><span class=p>[</span><span class=nb>int</span><span class=p>]</span> <span class=o>=</span> <span class=kc>None</span><span class=p>)</span> <span class=o>-&gt;</span> <span class=kc>None</span><span class=p>:</span>
+<span class=w>    </span><span class=sd>&quot;&quot;&quot;Show tray message.</span>
+
+<span class=sd>    Args:</span>
+<span class=sd>        title (str): Title of message.</span>
+<span class=sd>        message (str): Content of message.</span>
+<span class=sd>        icon (QSystemTrayIcon.MessageIcon): Message&#39;s icon. Default is</span>
+<span class=sd>            Information icon, may differ by Qt version.</span>
+<span class=sd>        msecs (int): Duration of message visibility in milliseconds.</span>
+<span class=sd>            Default is 10000 msecs, may differ by Qt version.</span>
+<span class=sd>    &quot;&quot;&quot;</span>
+    <span class=k>if</span> <span class=bp>self</span><span class=o>.</span><span class=n>_tray_manager</span><span class=p>:</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>_tray_manager</span><span class=o>.</span><span class=n>show_tray_message</span><span class=p>(</span><span class=n>title</span><span class=p>,</span> <span class=n>message</span><span class=p>,</span> <span class=n>icon</span><span class=p>,</span> <span class=n>msecs</span><span class=p>)</span>
+</code></pre></div></td></tr></table></div> </details> </div> </div> <div class="doc doc-object doc-function"> <h3 id=client.ayon_core.addon.interfaces.ITrayAddon.tray_exit class="doc doc-heading"> <code class="highlight language-python"><span class=n>tray_exit</span><span class=p>()</span></code> <span class="doc doc-labels"> <small class="doc doc-label doc-label-abstractmethod"><code>abstractmethod</code></small> </span> </h3> <div class="doc doc-contents "> <p>Cleanup method which is executed on tray shutdown.</p> <p>This is place where all threads should be shut.</p> <details class=mkdocstrings-source> <summary>Source code in <code>client/ayon_core/addon/interfaces.py</code></summary> <div class=highlight><table class=highlighttable><tr><td class=linenos><div class=linenodiv><pre><span></span><span class=normal>235</span>
+<span class=normal>236</span>
+<span class=normal>237</span>
+<span class=normal>238</span>
+<span class=normal>239</span>
+<span class=normal>240</span>
+<span class=normal>241</span></pre></div></td><td class=code><div><pre><span></span><code><span class=nd>@abstractmethod</span>
+<span class=k>def</span><span class=w> </span><span class=nf>tray_exit</span><span class=p>(</span><span class=bp>self</span><span class=p>)</span> <span class=o>-&gt;</span> <span class=kc>None</span><span class=p>:</span>
+<span class=w>    </span><span class=sd>&quot;&quot;&quot;Cleanup method which is executed on tray shutdown.</span>
+
+<span class=sd>    This is place where all threads should be shut.</span>
+
+<span class=sd>    &quot;&quot;&quot;</span>
+</code></pre></div></td></tr></table></div> </details> </div> </div> <div class="doc doc-object doc-function"> <h3 id=client.ayon_core.addon.interfaces.ITrayAddon.tray_init class="doc doc-heading"> <code class="highlight language-python"><span class=n>tray_init</span><span class=p>()</span></code> <span class="doc doc-labels"> <small class="doc doc-label doc-label-abstractmethod"><code>abstractmethod</code></small> </span> </h3> <div class="doc doc-contents "> <p>Initialization part of tray implementation.</p> <p>Triggered between <code>initialization</code> and <code>connect_with_addons</code>.</p> <p>This is where GUIs should be loaded or tray specific parts should be prepared</p> <details class=mkdocstrings-source> <summary>Source code in <code>client/ayon_core/addon/interfaces.py</code></summary> <div class=highlight><table class=highlighttable><tr><td class=linenos><div class=linenodiv><pre><span></span><span class=normal>216</span>
+<span class=normal>217</span>
+<span class=normal>218</span>
+<span class=normal>219</span>
+<span class=normal>220</span>
+<span class=normal>221</span>
+<span class=normal>222</span>
+<span class=normal>223</span>
+<span class=normal>224</span>
+<span class=normal>225</span></pre></div></td><td class=code><div><pre><span></span><code><span class=nd>@abstractmethod</span>
+<span class=k>def</span><span class=w> </span><span class=nf>tray_init</span><span class=p>(</span><span class=bp>self</span><span class=p>)</span> <span class=o>-&gt;</span> <span class=kc>None</span><span class=p>:</span>
+<span class=w>    </span><span class=sd>&quot;&quot;&quot;Initialization part of tray implementation.</span>
+
+<span class=sd>    Triggered between `initialization` and `connect_with_addons`.</span>
+
+<span class=sd>    This is where GUIs should be loaded or tray specific parts should be</span>
+<span class=sd>    prepared</span>
+
+<span class=sd>    &quot;&quot;&quot;</span>
+</code></pre></div></td></tr></table></div> </details> </div> </div> <div class="doc doc-object doc-function"> <h3 id=client.ayon_core.addon.interfaces.ITrayAddon.tray_menu class="doc doc-heading"> <code class="highlight language-python"><span class=n>tray_menu</span><span class=p>(</span><span class=n>tray_menu</span><span class=p>)</span></code> <span class="doc doc-labels"> <small class="doc doc-label doc-label-abstractmethod"><code>abstractmethod</code></small> </span> </h3> <div class="doc doc-contents "> <p>Add addon's action to tray menu.</p> <details class=mkdocstrings-source> <summary>Source code in <code>client/ayon_core/addon/interfaces.py</code></summary> <div class=highlight><table class=highlighttable><tr><td class=linenos><div class=linenodiv><pre><span></span><span class=normal>227</span>
+<span class=normal>228</span>
+<span class=normal>229</span></pre></div></td><td class=code><div><pre><span></span><code><span class=nd>@abstractmethod</span>
+<span class=k>def</span><span class=w> </span><span class=nf>tray_menu</span><span class=p>(</span><span class=bp>self</span><span class=p>,</span> <span class=n>tray_menu</span><span class=p>:</span> <span class=n>QtWidgets</span><span class=o>.</span><span class=n>QMenu</span><span class=p>)</span> <span class=o>-&gt;</span> <span class=kc>None</span><span class=p>:</span>
+<span class=w>    </span><span class=sd>&quot;&quot;&quot;Add addon&#39;s action to tray menu.&quot;&quot;&quot;</span>
+</code></pre></div></td></tr></table></div> </details> </div> </div> <div class="doc doc-object doc-function"> <h3 id=client.ayon_core.addon.interfaces.ITrayAddon.tray_start class="doc doc-heading"> <code class="highlight language-python"><span class=n>tray_start</span><span class=p>()</span></code> <span class="doc doc-labels"> <small class="doc doc-label doc-label-abstractmethod"><code>abstractmethod</code></small> </span> </h3> <div class="doc doc-contents "> <p>Start procedure in tray tool.</p> <details class=mkdocstrings-source> <summary>Source code in <code>client/ayon_core/addon/interfaces.py</code></summary> <div class=highlight><table class=highlighttable><tr><td class=linenos><div class=linenodiv><pre><span></span><span class=normal>231</span>
+<span class=normal>232</span>
+<span class=normal>233</span></pre></div></td><td class=code><div><pre><span></span><code><span class=nd>@abstractmethod</span>
+<span class=k>def</span><span class=w> </span><span class=nf>tray_start</span><span class=p>(</span><span class=bp>self</span><span class=p>)</span> <span class=o>-&gt;</span> <span class=kc>None</span><span class=p>:</span>
+<span class=w>    </span><span class=sd>&quot;&quot;&quot;Start procedure in tray tool.&quot;&quot;&quot;</span>
+</code></pre></div></td></tr></table></div> </details> </div> </div> </div> </div> </div> <div class="doc doc-object doc-class"> <h2 id=client.ayon_core.addon.interfaces.ITrayService class="doc doc-heading"> <code>ITrayService</code> </h2> <div class="doc doc-contents "> <p class="doc doc-class-bases"> Bases: <code><a class="autorefs autorefs-internal" title="ITrayAddon (client.ayon_core.addon.interfaces.ITrayAddon)" href=#client.ayon_core.addon.interfaces.ITrayAddon>ITrayAddon</a></code></p> <p>Tray service Interface.</p> <details class=mkdocstrings-source> <summary>Source code in <code>client/ayon_core/addon/interfaces.py</code></summary> <div class=highlight><table class=highlighttable><tr><td class=linenos><div class=linenodiv><pre><span></span><span class=normal>375</span>
+<span class=normal>376</span>
+<span class=normal>377</span>
+<span class=normal>378</span>
+<span class=normal>379</span>
+<span class=normal>380</span>
+<span class=normal>381</span>
+<span class=normal>382</span>
+<span class=normal>383</span>
+<span class=normal>384</span>
+<span class=normal>385</span>
+<span class=normal>386</span>
+<span class=normal>387</span>
+<span class=normal>388</span>
+<span class=normal>389</span>
+<span class=normal>390</span>
+<span class=normal>391</span>
+<span class=normal>392</span>
+<span class=normal>393</span>
+<span class=normal>394</span>
+<span class=normal>395</span>
+<span class=normal>396</span>
+<span class=normal>397</span>
+<span class=normal>398</span>
+<span class=normal>399</span>
+<span class=normal>400</span>
+<span class=normal>401</span>
+<span class=normal>402</span>
+<span class=normal>403</span>
+<span class=normal>404</span>
+<span class=normal>405</span>
+<span class=normal>406</span>
+<span class=normal>407</span>
+<span class=normal>408</span>
+<span class=normal>409</span>
+<span class=normal>410</span>
+<span class=normal>411</span>
+<span class=normal>412</span>
+<span class=normal>413</span>
+<span class=normal>414</span>
+<span class=normal>415</span>
+<span class=normal>416</span>
+<span class=normal>417</span>
+<span class=normal>418</span>
+<span class=normal>419</span>
+<span class=normal>420</span>
+<span class=normal>421</span>
+<span class=normal>422</span>
+<span class=normal>423</span>
+<span class=normal>424</span>
+<span class=normal>425</span>
+<span class=normal>426</span>
+<span class=normal>427</span>
+<span class=normal>428</span>
+<span class=normal>429</span>
+<span class=normal>430</span>
+<span class=normal>431</span>
+<span class=normal>432</span>
+<span class=normal>433</span>
+<span class=normal>434</span>
+<span class=normal>435</span>
+<span class=normal>436</span>
+<span class=normal>437</span>
+<span class=normal>438</span>
+<span class=normal>439</span>
+<span class=normal>440</span>
+<span class=normal>441</span>
+<span class=normal>442</span>
+<span class=normal>443</span>
+<span class=normal>444</span>
+<span class=normal>445</span>
+<span class=normal>446</span>
+<span class=normal>447</span>
+<span class=normal>448</span>
+<span class=normal>449</span>
+<span class=normal>450</span>
+<span class=normal>451</span>
+<span class=normal>452</span>
+<span class=normal>453</span>
+<span class=normal>454</span>
+<span class=normal>455</span>
+<span class=normal>456</span>
+<span class=normal>457</span>
+<span class=normal>458</span>
+<span class=normal>459</span>
+<span class=normal>460</span>
+<span class=normal>461</span>
+<span class=normal>462</span>
+<span class=normal>463</span>
+<span class=normal>464</span>
+<span class=normal>465</span>
+<span class=normal>466</span>
+<span class=normal>467</span>
+<span class=normal>468</span>
+<span class=normal>469</span>
+<span class=normal>470</span>
+<span class=normal>471</span>
+<span class=normal>472</span>
+<span class=normal>473</span>
+<span class=normal>474</span>
+<span class=normal>475</span>
+<span class=normal>476</span>
+<span class=normal>477</span>
+<span class=normal>478</span>
+<span class=normal>479</span>
+<span class=normal>480</span>
+<span class=normal>481</span>
+<span class=normal>482</span>
+<span class=normal>483</span>
+<span class=normal>484</span>
+<span class=normal>485</span>
+<span class=normal>486</span>
+<span class=normal>487</span>
+<span class=normal>488</span>
+<span class=normal>489</span>
+<span class=normal>490</span>
+<span class=normal>491</span>
+<span class=normal>492</span>
+<span class=normal>493</span>
+<span class=normal>494</span>
+<span class=normal>495</span>
+<span class=normal>496</span>
+<span class=normal>497</span></pre></div></td><td class=code><div><pre><span></span><code><span class=k>class</span><span class=w> </span><span class=nc>ITrayService</span><span class=p>(</span><span class=n>ITrayAddon</span><span class=p>):</span>
+<span class=w>    </span><span class=sd>&quot;&quot;&quot;Tray service Interface.&quot;&quot;&quot;</span>
+    <span class=c1># Module&#39;s property</span>
+    <span class=n>menu_action</span><span class=p>:</span> <span class=n>QtWidgets</span><span class=o>.</span><span class=n>QAction</span> <span class=o>=</span> <span class=kc>None</span>
+
+    <span class=c1># Class properties</span>
+    <span class=n>_services_submenu</span><span class=p>:</span> <span class=n>QtWidgets</span><span class=o>.</span><span class=n>QMenu</span> <span class=o>=</span> <span class=kc>None</span>
+    <span class=n>_icon_failed</span><span class=p>:</span> <span class=n>QtWidgets</span><span class=o>.</span><span class=n>QIcon</span> <span class=o>=</span> <span class=kc>None</span>
+    <span class=n>_icon_running</span><span class=p>:</span> <span class=n>QtWidgets</span><span class=o>.</span><span class=n>QIcon</span> <span class=o>=</span> <span class=kc>None</span>
+    <span class=n>_icon_idle</span><span class=p>:</span> <span class=n>QtWidgets</span><span class=o>.</span><span class=n>QIcon</span> <span class=o>=</span> <span class=kc>None</span>
+
+    <span class=nd>@property</span>
+    <span class=nd>@abstractmethod</span>
+    <span class=k>def</span><span class=w> </span><span class=nf>label</span><span class=p>(</span><span class=bp>self</span><span class=p>)</span> <span class=o>-&gt;</span> <span class=nb>str</span><span class=p>:</span>
+<span class=w>        </span><span class=sd>&quot;&quot;&quot;Service label showed in menu.&quot;&quot;&quot;</span>
+
+    <span class=c1># TODO (Illicit): be able to get any sort of information to show/print</span>
+    <span class=c1># @abstractmethod</span>
+    <span class=c1># def get_service_info(self):</span>
+    <span class=c1>#     pass</span>
+
+    <span class=nd>@staticmethod</span>
+    <span class=k>def</span><span class=w> </span><span class=nf>services_submenu</span><span class=p>(</span><span class=n>tray_menu</span><span class=p>:</span> <span class=n>QtWidgets</span><span class=o>.</span><span class=n>QMenu</span><span class=p>)</span> <span class=o>-&gt;</span> <span class=n>QtWidgets</span><span class=o>.</span><span class=n>QMenu</span><span class=p>:</span>
+<span class=w>        </span><span class=sd>&quot;&quot;&quot;Get or create services submenu.</span>
+
+<span class=sd>        Returns:</span>
+<span class=sd>            QtWidgets.QMenu: Services submenu.</span>
+
+<span class=sd>        &quot;&quot;&quot;</span>
+        <span class=k>if</span> <span class=n>ITrayService</span><span class=o>.</span><span class=n>_services_submenu</span> <span class=ow>is</span> <span class=kc>None</span><span class=p>:</span>
+            <span class=kn>from</span><span class=w> </span><span class=nn>qtpy</span><span class=w> </span><span class=kn>import</span> <span class=n>QtWidgets</span>
+
+            <span class=n>services_submenu</span> <span class=o>=</span> <span class=n>QtWidgets</span><span class=o>.</span><span class=n>QMenu</span><span class=p>(</span><span class=s2>&quot;Services&quot;</span><span class=p>,</span> <span class=n>tray_menu</span><span class=p>)</span>
+            <span class=n>services_submenu</span><span class=o>.</span><span class=n>menuAction</span><span class=p>()</span><span class=o>.</span><span class=n>setVisible</span><span class=p>(</span><span class=kc>False</span><span class=p>)</span>
+            <span class=n>ITrayService</span><span class=o>.</span><span class=n>_services_submenu</span> <span class=o>=</span> <span class=n>services_submenu</span>
+        <span class=k>return</span> <span class=n>ITrayService</span><span class=o>.</span><span class=n>_services_submenu</span>
+
+    <span class=nd>@staticmethod</span>
+    <span class=k>def</span><span class=w> </span><span class=nf>add_service_action</span><span class=p>(</span><span class=n>action</span><span class=p>:</span> <span class=n>QtWidgets</span><span class=o>.</span><span class=n>QAction</span><span class=p>)</span> <span class=o>-&gt;</span> <span class=kc>None</span><span class=p>:</span>
+<span class=w>        </span><span class=sd>&quot;&quot;&quot;Add service action to services submenu.&quot;&quot;&quot;</span>
+        <span class=n>ITrayService</span><span class=o>.</span><span class=n>_services_submenu</span><span class=o>.</span><span class=n>addAction</span><span class=p>(</span><span class=n>action</span><span class=p>)</span>
+        <span class=k>if</span> <span class=ow>not</span> <span class=n>ITrayService</span><span class=o>.</span><span class=n>_services_submenu</span><span class=o>.</span><span class=n>menuAction</span><span class=p>()</span><span class=o>.</span><span class=n>isVisible</span><span class=p>():</span>
+            <span class=n>ITrayService</span><span class=o>.</span><span class=n>_services_submenu</span><span class=o>.</span><span class=n>menuAction</span><span class=p>()</span><span class=o>.</span><span class=n>setVisible</span><span class=p>(</span><span class=kc>True</span><span class=p>)</span>
+
+    <span class=nd>@staticmethod</span>
+    <span class=k>def</span><span class=w> </span><span class=nf>_load_service_icons</span><span class=p>()</span> <span class=o>-&gt;</span> <span class=kc>None</span><span class=p>:</span>
+<span class=w>        </span><span class=sd>&quot;&quot;&quot;Load service icons.&quot;&quot;&quot;</span>
+        <span class=kn>from</span><span class=w> </span><span class=nn>qtpy</span><span class=w> </span><span class=kn>import</span> <span class=n>QtGui</span>
+
+        <span class=n>ITrayService</span><span class=o>.</span><span class=n>_failed_icon</span> <span class=o>=</span> <span class=n>QtGui</span><span class=o>.</span><span class=n>QIcon</span><span class=p>(</span>
+            <span class=n>resources</span><span class=o>.</span><span class=n>get_resource</span><span class=p>(</span><span class=s2>&quot;icons&quot;</span><span class=p>,</span> <span class=s2>&quot;circle_red.png&quot;</span><span class=p>)</span>
+        <span class=p>)</span>
+        <span class=n>ITrayService</span><span class=o>.</span><span class=n>_icon_running</span> <span class=o>=</span> <span class=n>QtGui</span><span class=o>.</span><span class=n>QIcon</span><span class=p>(</span>
+            <span class=n>resources</span><span class=o>.</span><span class=n>get_resource</span><span class=p>(</span><span class=s2>&quot;icons&quot;</span><span class=p>,</span> <span class=s2>&quot;circle_green.png&quot;</span><span class=p>)</span>
+        <span class=p>)</span>
+        <span class=n>ITrayService</span><span class=o>.</span><span class=n>_icon_idle</span> <span class=o>=</span> <span class=n>QtGui</span><span class=o>.</span><span class=n>QIcon</span><span class=p>(</span>
+            <span class=n>resources</span><span class=o>.</span><span class=n>get_resource</span><span class=p>(</span><span class=s2>&quot;icons&quot;</span><span class=p>,</span> <span class=s2>&quot;circle_orange.png&quot;</span><span class=p>)</span>
+        <span class=p>)</span>
+
+    <span class=nd>@staticmethod</span>
+    <span class=k>def</span><span class=w> </span><span class=nf>get_icon_running</span><span class=p>()</span> <span class=o>-&gt;</span> <span class=n>QtWidgets</span><span class=o>.</span><span class=n>QIcon</span><span class=p>:</span>
+<span class=w>        </span><span class=sd>&quot;&quot;&quot;Get running icon.</span>
+
+<span class=sd>        Returns:</span>
+<span class=sd>            QtWidgets.QIcon: Returns &quot;running&quot; icon.</span>
+
+<span class=sd>        &quot;&quot;&quot;</span>
+        <span class=k>if</span> <span class=n>ITrayService</span><span class=o>.</span><span class=n>_icon_running</span> <span class=ow>is</span> <span class=kc>None</span><span class=p>:</span>
+            <span class=n>ITrayService</span><span class=o>.</span><span class=n>_load_service_icons</span><span class=p>()</span>
+        <span class=k>return</span> <span class=n>ITrayService</span><span class=o>.</span><span class=n>_icon_running</span>
+
+    <span class=nd>@staticmethod</span>
+    <span class=k>def</span><span class=w> </span><span class=nf>get_icon_idle</span><span class=p>()</span> <span class=o>-&gt;</span> <span class=n>QtWidgets</span><span class=o>.</span><span class=n>QIcon</span><span class=p>:</span>
+<span class=w>        </span><span class=sd>&quot;&quot;&quot;Get idle icon.</span>
+
+<span class=sd>        Returns:</span>
+<span class=sd>            QtWidgets.QIcon: Returns &quot;idle&quot; icon.</span>
+
+<span class=sd>        &quot;&quot;&quot;</span>
+        <span class=k>if</span> <span class=n>ITrayService</span><span class=o>.</span><span class=n>_icon_idle</span> <span class=ow>is</span> <span class=kc>None</span><span class=p>:</span>
+            <span class=n>ITrayService</span><span class=o>.</span><span class=n>_load_service_icons</span><span class=p>()</span>
+        <span class=k>return</span> <span class=n>ITrayService</span><span class=o>.</span><span class=n>_icon_idle</span>
+
+    <span class=nd>@staticmethod</span>
+    <span class=k>def</span><span class=w> </span><span class=nf>get_icon_failed</span><span class=p>()</span> <span class=o>-&gt;</span> <span class=n>QtWidgets</span><span class=o>.</span><span class=n>QIcon</span><span class=p>:</span>
+<span class=w>        </span><span class=sd>&quot;&quot;&quot;Get failed icon.</span>
+
+<span class=sd>        Returns:</span>
+<span class=sd>            QtWidgets.QIcon: Returns &quot;failed&quot; icon.</span>
+
+<span class=sd>        &quot;&quot;&quot;</span>
+        <span class=k>if</span> <span class=n>ITrayService</span><span class=o>.</span><span class=n>_icon_failed</span> <span class=ow>is</span> <span class=kc>None</span><span class=p>:</span>
+            <span class=n>ITrayService</span><span class=o>.</span><span class=n>_load_service_icons</span><span class=p>()</span>
+        <span class=k>return</span> <span class=n>ITrayService</span><span class=o>.</span><span class=n>_icon_failed</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>tray_menu</span><span class=p>(</span><span class=bp>self</span><span class=p>,</span> <span class=n>tray_menu</span><span class=p>:</span> <span class=n>QtWidgets</span><span class=o>.</span><span class=n>QMenu</span><span class=p>)</span> <span class=o>-&gt;</span> <span class=kc>None</span><span class=p>:</span>
+<span class=w>        </span><span class=sd>&quot;&quot;&quot;Add service to tray menu.&quot;&quot;&quot;</span>
+        <span class=kn>from</span><span class=w> </span><span class=nn>qtpy</span><span class=w> </span><span class=kn>import</span> <span class=n>QtWidgets</span>
+
+        <span class=n>action</span> <span class=o>=</span> <span class=n>QtWidgets</span><span class=o>.</span><span class=n>QAction</span><span class=p>(</span>
+            <span class=bp>self</span><span class=o>.</span><span class=n>label</span><span class=p>,</span>
+            <span class=bp>self</span><span class=o>.</span><span class=n>services_submenu</span><span class=p>(</span><span class=n>tray_menu</span><span class=p>)</span>
+        <span class=p>)</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>menu_action</span> <span class=o>=</span> <span class=n>action</span>
+
+        <span class=bp>self</span><span class=o>.</span><span class=n>add_service_action</span><span class=p>(</span><span class=n>action</span><span class=p>)</span>
+
+        <span class=bp>self</span><span class=o>.</span><span class=n>set_service_running_icon</span><span class=p>()</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>set_service_running_icon</span><span class=p>(</span><span class=bp>self</span><span class=p>)</span> <span class=o>-&gt;</span> <span class=kc>None</span><span class=p>:</span>
+<span class=w>        </span><span class=sd>&quot;&quot;&quot;Change icon of an QAction to green circle.&quot;&quot;&quot;</span>
+        <span class=k>if</span> <span class=bp>self</span><span class=o>.</span><span class=n>menu_action</span><span class=p>:</span>
+            <span class=bp>self</span><span class=o>.</span><span class=n>menu_action</span><span class=o>.</span><span class=n>setIcon</span><span class=p>(</span><span class=bp>self</span><span class=o>.</span><span class=n>get_icon_running</span><span class=p>())</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>set_service_failed_icon</span><span class=p>(</span><span class=bp>self</span><span class=p>)</span> <span class=o>-&gt;</span> <span class=kc>None</span><span class=p>:</span>
+<span class=w>        </span><span class=sd>&quot;&quot;&quot;Change icon of an QAction to red circle.&quot;&quot;&quot;</span>
+        <span class=k>if</span> <span class=bp>self</span><span class=o>.</span><span class=n>menu_action</span><span class=p>:</span>
+            <span class=bp>self</span><span class=o>.</span><span class=n>menu_action</span><span class=o>.</span><span class=n>setIcon</span><span class=p>(</span><span class=bp>self</span><span class=o>.</span><span class=n>get_icon_failed</span><span class=p>())</span>
+
+    <span class=k>def</span><span class=w> </span><span class=nf>set_service_idle_icon</span><span class=p>(</span><span class=bp>self</span><span class=p>)</span> <span class=o>-&gt;</span> <span class=kc>None</span><span class=p>:</span>
+<span class=w>        </span><span class=sd>&quot;&quot;&quot;Change icon of an QAction to orange circle.&quot;&quot;&quot;</span>
+        <span class=k>if</span> <span class=bp>self</span><span class=o>.</span><span class=n>menu_action</span><span class=p>:</span>
+            <span class=bp>self</span><span class=o>.</span><span class=n>menu_action</span><span class=o>.</span><span class=n>setIcon</span><span class=p>(</span><span class=bp>self</span><span class=o>.</span><span class=n>get_icon_idle</span><span class=p>())</span>
+</code></pre></div></td></tr></table></div> </details> <div class="doc doc-children"> <div class="doc doc-object doc-attribute"> <h3 id=client.ayon_core.addon.interfaces.ITrayService.label class="doc doc-heading"> <code class="highlight language-python"><span class=n>label</span></code> <span class="doc doc-labels"> <small class="doc doc-label doc-label-abstractmethod"><code>abstractmethod</code></small> <small class="doc doc-label doc-label-property"><code>property</code></small> </span> </h3> <div class="doc doc-contents "> <p>Service label showed in menu.</p> </div> </div> <div class="doc doc-object doc-function"> <h3 id=client.ayon_core.addon.interfaces.ITrayService.add_service_action class="doc doc-heading"> <code class="highlight language-python"><span class=n>add_service_action</span><span class=p>(</span><span class=n>action</span><span class=p>)</span></code> <span class="doc doc-labels"> <small class="doc doc-label doc-label-staticmethod"><code>staticmethod</code></small> </span> </h3> <div class="doc doc-contents "> <p>Add service action to services submenu.</p> <details class=mkdocstrings-source> <summary>Source code in <code>client/ayon_core/addon/interfaces.py</code></summary> <div class=highlight><table class=highlighttable><tr><td class=linenos><div class=linenodiv><pre><span></span><span class=normal>412</span>
+<span class=normal>413</span>
+<span class=normal>414</span>
+<span class=normal>415</span>
+<span class=normal>416</span>
+<span class=normal>417</span></pre></div></td><td class=code><div><pre><span></span><code><span class=nd>@staticmethod</span>
+<span class=k>def</span><span class=w> </span><span class=nf>add_service_action</span><span class=p>(</span><span class=n>action</span><span class=p>:</span> <span class=n>QtWidgets</span><span class=o>.</span><span class=n>QAction</span><span class=p>)</span> <span class=o>-&gt;</span> <span class=kc>None</span><span class=p>:</span>
+<span class=w>    </span><span class=sd>&quot;&quot;&quot;Add service action to services submenu.&quot;&quot;&quot;</span>
+    <span class=n>ITrayService</span><span class=o>.</span><span class=n>_services_submenu</span><span class=o>.</span><span class=n>addAction</span><span class=p>(</span><span class=n>action</span><span class=p>)</span>
+    <span class=k>if</span> <span class=ow>not</span> <span class=n>ITrayService</span><span class=o>.</span><span class=n>_services_submenu</span><span class=o>.</span><span class=n>menuAction</span><span class=p>()</span><span class=o>.</span><span class=n>isVisible</span><span class=p>():</span>
+        <span class=n>ITrayService</span><span class=o>.</span><span class=n>_services_submenu</span><span class=o>.</span><span class=n>menuAction</span><span class=p>()</span><span class=o>.</span><span class=n>setVisible</span><span class=p>(</span><span class=kc>True</span><span class=p>)</span>
+</code></pre></div></td></tr></table></div> </details> </div> </div> <div class="doc doc-object doc-function"> <h3 id=client.ayon_core.addon.interfaces.ITrayService.get_icon_failed class="doc doc-heading"> <code class="highlight language-python"><span class=n>get_icon_failed</span><span class=p>()</span></code> <span class="doc doc-labels"> <small class="doc doc-label doc-label-staticmethod"><code>staticmethod</code></small> </span> </h3> <div class="doc doc-contents "> <p>Get failed icon.</p> <p><span class=doc-section-title>Returns:</span></p> <table> <thead> <tr> <th>Type</th> <th>Description</th> </tr> </thead> <tbody> <tr class=doc-section-item> <td> <code><span title=qtpy.QtWidgets.QIcon>QIcon</span></code> </td> <td> <div class=doc-md-description> <p>QtWidgets.QIcon: Returns "failed" icon.</p> </div> </td> </tr> </tbody> </table> <details class=mkdocstrings-source> <summary>Source code in <code>client/ayon_core/addon/interfaces.py</code></summary> <div class=highlight><table class=highlighttable><tr><td class=linenos><div class=linenodiv><pre><span></span><span class=normal>458</span>
+<span class=normal>459</span>
+<span class=normal>460</span>
+<span class=normal>461</span>
+<span class=normal>462</span>
+<span class=normal>463</span>
+<span class=normal>464</span>
+<span class=normal>465</span>
+<span class=normal>466</span>
+<span class=normal>467</span>
+<span class=normal>468</span></pre></div></td><td class=code><div><pre><span></span><code><span class=nd>@staticmethod</span>
+<span class=k>def</span><span class=w> </span><span class=nf>get_icon_failed</span><span class=p>()</span> <span class=o>-&gt;</span> <span class=n>QtWidgets</span><span class=o>.</span><span class=n>QIcon</span><span class=p>:</span>
+<span class=w>    </span><span class=sd>&quot;&quot;&quot;Get failed icon.</span>
+
+<span class=sd>    Returns:</span>
+<span class=sd>        QtWidgets.QIcon: Returns &quot;failed&quot; icon.</span>
+
+<span class=sd>    &quot;&quot;&quot;</span>
+    <span class=k>if</span> <span class=n>ITrayService</span><span class=o>.</span><span class=n>_icon_failed</span> <span class=ow>is</span> <span class=kc>None</span><span class=p>:</span>
+        <span class=n>ITrayService</span><span class=o>.</span><span class=n>_load_service_icons</span><span class=p>()</span>
+    <span class=k>return</span> <span class=n>ITrayService</span><span class=o>.</span><span class=n>_icon_failed</span>
+</code></pre></div></td></tr></table></div> </details> </div> </div> <div class="doc doc-object doc-function"> <h3 id=client.ayon_core.addon.interfaces.ITrayService.get_icon_idle class="doc doc-heading"> <code class="highlight language-python"><span class=n>get_icon_idle</span><span class=p>()</span></code> <span class="doc doc-labels"> <small class="doc doc-label doc-label-staticmethod"><code>staticmethod</code></small> </span> </h3> <div class="doc doc-contents "> <p>Get idle icon.</p> <p><span class=doc-section-title>Returns:</span></p> <table> <thead> <tr> <th>Type</th> <th>Description</th> </tr> </thead> <tbody> <tr class=doc-section-item> <td> <code><span title=qtpy.QtWidgets.QIcon>QIcon</span></code> </td> <td> <div class=doc-md-description> <p>QtWidgets.QIcon: Returns "idle" icon.</p> </div> </td> </tr> </tbody> </table> <details class=mkdocstrings-source> <summary>Source code in <code>client/ayon_core/addon/interfaces.py</code></summary> <div class=highlight><table class=highlighttable><tr><td class=linenos><div class=linenodiv><pre><span></span><span class=normal>446</span>
+<span class=normal>447</span>
+<span class=normal>448</span>
+<span class=normal>449</span>
+<span class=normal>450</span>
+<span class=normal>451</span>
+<span class=normal>452</span>
+<span class=normal>453</span>
+<span class=normal>454</span>
+<span class=normal>455</span>
+<span class=normal>456</span></pre></div></td><td class=code><div><pre><span></span><code><span class=nd>@staticmethod</span>
+<span class=k>def</span><span class=w> </span><span class=nf>get_icon_idle</span><span class=p>()</span> <span class=o>-&gt;</span> <span class=n>QtWidgets</span><span class=o>.</span><span class=n>QIcon</span><span class=p>:</span>
+<span class=w>    </span><span class=sd>&quot;&quot;&quot;Get idle icon.</span>
+
+<span class=sd>    Returns:</span>
+<span class=sd>        QtWidgets.QIcon: Returns &quot;idle&quot; icon.</span>
+
+<span class=sd>    &quot;&quot;&quot;</span>
+    <span class=k>if</span> <span class=n>ITrayService</span><span class=o>.</span><span class=n>_icon_idle</span> <span class=ow>is</span> <span class=kc>None</span><span class=p>:</span>
+        <span class=n>ITrayService</span><span class=o>.</span><span class=n>_load_service_icons</span><span class=p>()</span>
+    <span class=k>return</span> <span class=n>ITrayService</span><span class=o>.</span><span class=n>_icon_idle</span>
+</code></pre></div></td></tr></table></div> </details> </div> </div> <div class="doc doc-object doc-function"> <h3 id=client.ayon_core.addon.interfaces.ITrayService.get_icon_running class="doc doc-heading"> <code class="highlight language-python"><span class=n>get_icon_running</span><span class=p>()</span></code> <span class="doc doc-labels"> <small class="doc doc-label doc-label-staticmethod"><code>staticmethod</code></small> </span> </h3> <div class="doc doc-contents "> <p>Get running icon.</p> <p><span class=doc-section-title>Returns:</span></p> <table> <thead> <tr> <th>Type</th> <th>Description</th> </tr> </thead> <tbody> <tr class=doc-section-item> <td> <code><span title=qtpy.QtWidgets.QIcon>QIcon</span></code> </td> <td> <div class=doc-md-description> <p>QtWidgets.QIcon: Returns "running" icon.</p> </div> </td> </tr> </tbody> </table> <details class=mkdocstrings-source> <summary>Source code in <code>client/ayon_core/addon/interfaces.py</code></summary> <div class=highlight><table class=highlighttable><tr><td class=linenos><div class=linenodiv><pre><span></span><span class=normal>434</span>
+<span class=normal>435</span>
+<span class=normal>436</span>
+<span class=normal>437</span>
+<span class=normal>438</span>
+<span class=normal>439</span>
+<span class=normal>440</span>
+<span class=normal>441</span>
+<span class=normal>442</span>
+<span class=normal>443</span>
+<span class=normal>444</span></pre></div></td><td class=code><div><pre><span></span><code><span class=nd>@staticmethod</span>
+<span class=k>def</span><span class=w> </span><span class=nf>get_icon_running</span><span class=p>()</span> <span class=o>-&gt;</span> <span class=n>QtWidgets</span><span class=o>.</span><span class=n>QIcon</span><span class=p>:</span>
+<span class=w>    </span><span class=sd>&quot;&quot;&quot;Get running icon.</span>
+
+<span class=sd>    Returns:</span>
+<span class=sd>        QtWidgets.QIcon: Returns &quot;running&quot; icon.</span>
+
+<span class=sd>    &quot;&quot;&quot;</span>
+    <span class=k>if</span> <span class=n>ITrayService</span><span class=o>.</span><span class=n>_icon_running</span> <span class=ow>is</span> <span class=kc>None</span><span class=p>:</span>
+        <span class=n>ITrayService</span><span class=o>.</span><span class=n>_load_service_icons</span><span class=p>()</span>
+    <span class=k>return</span> <span class=n>ITrayService</span><span class=o>.</span><span class=n>_icon_running</span>
+</code></pre></div></td></tr></table></div> </details> </div> </div> <div class="doc doc-object doc-function"> <h3 id=client.ayon_core.addon.interfaces.ITrayService.services_submenu class="doc doc-heading"> <code class="highlight language-python"><span class=n>services_submenu</span><span class=p>(</span><span class=n>tray_menu</span><span class=p>)</span></code> <span class="doc doc-labels"> <small class="doc doc-label doc-label-staticmethod"><code>staticmethod</code></small> </span> </h3> <div class="doc doc-contents "> <p>Get or create services submenu.</p> <p><span class=doc-section-title>Returns:</span></p> <table> <thead> <tr> <th>Type</th> <th>Description</th> </tr> </thead> <tbody> <tr class=doc-section-item> <td> <code><span title=qtpy.QtWidgets.QMenu>QMenu</span></code> </td> <td> <div class=doc-md-description> <p>QtWidgets.QMenu: Services submenu.</p> </div> </td> </tr> </tbody> </table> <details class=mkdocstrings-source> <summary>Source code in <code>client/ayon_core/addon/interfaces.py</code></summary> <div class=highlight><table class=highlighttable><tr><td class=linenos><div class=linenodiv><pre><span></span><span class=normal>396</span>
+<span class=normal>397</span>
+<span class=normal>398</span>
+<span class=normal>399</span>
+<span class=normal>400</span>
+<span class=normal>401</span>
+<span class=normal>402</span>
+<span class=normal>403</span>
+<span class=normal>404</span>
+<span class=normal>405</span>
+<span class=normal>406</span>
+<span class=normal>407</span>
+<span class=normal>408</span>
+<span class=normal>409</span>
+<span class=normal>410</span></pre></div></td><td class=code><div><pre><span></span><code><span class=nd>@staticmethod</span>
+<span class=k>def</span><span class=w> </span><span class=nf>services_submenu</span><span class=p>(</span><span class=n>tray_menu</span><span class=p>:</span> <span class=n>QtWidgets</span><span class=o>.</span><span class=n>QMenu</span><span class=p>)</span> <span class=o>-&gt;</span> <span class=n>QtWidgets</span><span class=o>.</span><span class=n>QMenu</span><span class=p>:</span>
+<span class=w>    </span><span class=sd>&quot;&quot;&quot;Get or create services submenu.</span>
+
+<span class=sd>    Returns:</span>
+<span class=sd>        QtWidgets.QMenu: Services submenu.</span>
+
+<span class=sd>    &quot;&quot;&quot;</span>
+    <span class=k>if</span> <span class=n>ITrayService</span><span class=o>.</span><span class=n>_services_submenu</span> <span class=ow>is</span> <span class=kc>None</span><span class=p>:</span>
+        <span class=kn>from</span><span class=w> </span><span class=nn>qtpy</span><span class=w> </span><span class=kn>import</span> <span class=n>QtWidgets</span>
+
+        <span class=n>services_submenu</span> <span class=o>=</span> <span class=n>QtWidgets</span><span class=o>.</span><span class=n>QMenu</span><span class=p>(</span><span class=s2>&quot;Services&quot;</span><span class=p>,</span> <span class=n>tray_menu</span><span class=p>)</span>
+        <span class=n>services_submenu</span><span class=o>.</span><span class=n>menuAction</span><span class=p>()</span><span class=o>.</span><span class=n>setVisible</span><span class=p>(</span><span class=kc>False</span><span class=p>)</span>
+        <span class=n>ITrayService</span><span class=o>.</span><span class=n>_services_submenu</span> <span class=o>=</span> <span class=n>services_submenu</span>
+    <span class=k>return</span> <span class=n>ITrayService</span><span class=o>.</span><span class=n>_services_submenu</span>
+</code></pre></div></td></tr></table></div> </details> </div> </div> <div class="doc doc-object doc-function"> <h3 id=client.ayon_core.addon.interfaces.ITrayService.set_service_failed_icon class="doc doc-heading"> <code class="highlight language-python"><span class=n>set_service_failed_icon</span><span class=p>()</span></code> </h3> <div class="doc doc-contents "> <p>Change icon of an QAction to red circle.</p> <details class=mkdocstrings-source> <summary>Source code in <code>client/ayon_core/addon/interfaces.py</code></summary> <div class=highlight><table class=highlighttable><tr><td class=linenos><div class=linenodiv><pre><span></span><span class=normal>489</span>
+<span class=normal>490</span>
+<span class=normal>491</span>
+<span class=normal>492</span></pre></div></td><td class=code><div><pre><span></span><code><span class=k>def</span><span class=w> </span><span class=nf>set_service_failed_icon</span><span class=p>(</span><span class=bp>self</span><span class=p>)</span> <span class=o>-&gt;</span> <span class=kc>None</span><span class=p>:</span>
+<span class=w>    </span><span class=sd>&quot;&quot;&quot;Change icon of an QAction to red circle.&quot;&quot;&quot;</span>
+    <span class=k>if</span> <span class=bp>self</span><span class=o>.</span><span class=n>menu_action</span><span class=p>:</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>menu_action</span><span class=o>.</span><span class=n>setIcon</span><span class=p>(</span><span class=bp>self</span><span class=o>.</span><span class=n>get_icon_failed</span><span class=p>())</span>
+</code></pre></div></td></tr></table></div> </details> </div> </div> <div class="doc doc-object doc-function"> <h3 id=client.ayon_core.addon.interfaces.ITrayService.set_service_idle_icon class="doc doc-heading"> <code class="highlight language-python"><span class=n>set_service_idle_icon</span><span class=p>()</span></code> </h3> <div class="doc doc-contents "> <p>Change icon of an QAction to orange circle.</p> <details class=mkdocstrings-source> <summary>Source code in <code>client/ayon_core/addon/interfaces.py</code></summary> <div class=highlight><table class=highlighttable><tr><td class=linenos><div class=linenodiv><pre><span></span><span class=normal>494</span>
+<span class=normal>495</span>
+<span class=normal>496</span>
+<span class=normal>497</span></pre></div></td><td class=code><div><pre><span></span><code><span class=k>def</span><span class=w> </span><span class=nf>set_service_idle_icon</span><span class=p>(</span><span class=bp>self</span><span class=p>)</span> <span class=o>-&gt;</span> <span class=kc>None</span><span class=p>:</span>
+<span class=w>    </span><span class=sd>&quot;&quot;&quot;Change icon of an QAction to orange circle.&quot;&quot;&quot;</span>
+    <span class=k>if</span> <span class=bp>self</span><span class=o>.</span><span class=n>menu_action</span><span class=p>:</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>menu_action</span><span class=o>.</span><span class=n>setIcon</span><span class=p>(</span><span class=bp>self</span><span class=o>.</span><span class=n>get_icon_idle</span><span class=p>())</span>
+</code></pre></div></td></tr></table></div> </details> </div> </div> <div class="doc doc-object doc-function"> <h3 id=client.ayon_core.addon.interfaces.ITrayService.set_service_running_icon class="doc doc-heading"> <code class="highlight language-python"><span class=n>set_service_running_icon</span><span class=p>()</span></code> </h3> <div class="doc doc-contents "> <p>Change icon of an QAction to green circle.</p> <details class=mkdocstrings-source> <summary>Source code in <code>client/ayon_core/addon/interfaces.py</code></summary> <div class=highlight><table class=highlighttable><tr><td class=linenos><div class=linenodiv><pre><span></span><span class=normal>484</span>
+<span class=normal>485</span>
+<span class=normal>486</span>
+<span class=normal>487</span></pre></div></td><td class=code><div><pre><span></span><code><span class=k>def</span><span class=w> </span><span class=nf>set_service_running_icon</span><span class=p>(</span><span class=bp>self</span><span class=p>)</span> <span class=o>-&gt;</span> <span class=kc>None</span><span class=p>:</span>
+<span class=w>    </span><span class=sd>&quot;&quot;&quot;Change icon of an QAction to green circle.&quot;&quot;&quot;</span>
+    <span class=k>if</span> <span class=bp>self</span><span class=o>.</span><span class=n>menu_action</span><span class=p>:</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>menu_action</span><span class=o>.</span><span class=n>setIcon</span><span class=p>(</span><span class=bp>self</span><span class=o>.</span><span class=n>get_icon_running</span><span class=p>())</span>
+</code></pre></div></td></tr></table></div> </details> </div> </div> <div class="doc doc-object doc-function"> <h3 id=client.ayon_core.addon.interfaces.ITrayService.tray_menu class="doc doc-heading"> <code class="highlight language-python"><span class=n>tray_menu</span><span class=p>(</span><span class=n>tray_menu</span><span class=p>)</span></code> </h3> <div class="doc doc-contents "> <p>Add service to tray menu.</p> <details class=mkdocstrings-source> <summary>Source code in <code>client/ayon_core/addon/interfaces.py</code></summary> <div class=highlight><table class=highlighttable><tr><td class=linenos><div class=linenodiv><pre><span></span><span class=normal>470</span>
+<span class=normal>471</span>
+<span class=normal>472</span>
+<span class=normal>473</span>
+<span class=normal>474</span>
+<span class=normal>475</span>
+<span class=normal>476</span>
+<span class=normal>477</span>
+<span class=normal>478</span>
+<span class=normal>479</span>
+<span class=normal>480</span>
+<span class=normal>481</span>
+<span class=normal>482</span></pre></div></td><td class=code><div><pre><span></span><code><span class=k>def</span><span class=w> </span><span class=nf>tray_menu</span><span class=p>(</span><span class=bp>self</span><span class=p>,</span> <span class=n>tray_menu</span><span class=p>:</span> <span class=n>QtWidgets</span><span class=o>.</span><span class=n>QMenu</span><span class=p>)</span> <span class=o>-&gt;</span> <span class=kc>None</span><span class=p>:</span>
+<span class=w>    </span><span class=sd>&quot;&quot;&quot;Add service to tray menu.&quot;&quot;&quot;</span>
+    <span class=kn>from</span><span class=w> </span><span class=nn>qtpy</span><span class=w> </span><span class=kn>import</span> <span class=n>QtWidgets</span>
+
+    <span class=n>action</span> <span class=o>=</span> <span class=n>QtWidgets</span><span class=o>.</span><span class=n>QAction</span><span class=p>(</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>label</span><span class=p>,</span>
+        <span class=bp>self</span><span class=o>.</span><span class=n>services_submenu</span><span class=p>(</span><span class=n>tray_menu</span><span class=p>)</span>
+    <span class=p>)</span>
+    <span class=bp>self</span><span class=o>.</span><span class=n>menu_action</span> <span class=o>=</span> <span class=n>action</span>
+
+    <span class=bp>self</span><span class=o>.</span><span class=n>add_service_action</span><span class=p>(</span><span class=n>action</span><span class=p>)</span>
+
+    <span class=bp>self</span><span class=o>.</span><span class=n>set_service_running_icon</span><span class=p>()</span>
+</code></pre></div></td></tr></table></div> </details> </div> </div> </div> </div> </div> </div> </div> </div> </article> </div> <script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script> </div> </main> <footer class=md-footer> <div class="md-footer-meta md-typeset"> <div class="md-footer-meta__inner md-grid"> <div class=md-copyright> Made with <a href=https://squidfunk.github.io/mkdocs-material/ target=_blank rel=noopener> Material for MkDocs </a> </div> </div> </div> </footer> </div> <div class=md-dialog data-md-component=dialog> <div class="md-dialog__inner md-typeset"></div> </div> <script id=__config type=application/json>{"annotate": null, "base": "../../../..", "features": ["navigation.sections", "navigation.path", "navigation.prune"], "search": "../../../../assets/javascripts/workers/search.7a47a382.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script> <script src=../../../../assets/javascripts/bundle.e71a0d61.min.js></script> </body> </html>
