@@ -149,6 +149,15 @@ def get_publish_template_name(
     Returns:
         str: Template name which should be used for integration.
     """
+    if not product_base_type:
+        msg = (
+            "Argument 'product_base_type' is not provided to"
+            " 'get_publish_template_name' function. This argument"
+            " will be required in future versions."
+        )
+        warnings.warn(msg, DeprecationWarning)
+        if logger:
+            logger.warning(msg)
 
     template = None
     filter_criteria = {
