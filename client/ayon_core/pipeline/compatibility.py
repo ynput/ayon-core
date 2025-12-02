@@ -1,4 +1,5 @@
 """Package to handle compatibility checks for pipeline components."""
+import ayon_api
 
 
 def is_product_base_type_supported() -> bool:
@@ -13,5 +14,7 @@ def is_product_base_type_supported() -> bool:
         bool: True if product base types are supported, False otherwise.
 
     """
-    import ayon_api
-    return ayon_api.product_base_type_supported()
+
+    if not hasattr(ayon_api, "is_product_base_type_supported"):
+        return False
+    return ayon_api.is_product_base_type_supported()
