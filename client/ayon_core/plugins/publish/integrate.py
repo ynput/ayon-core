@@ -410,6 +410,18 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
 
         if not is_product_base_type_supported():
             new_product_entity_kwargs.pop("product_base_type")
+            if (
+                    product_base_type is not None
+                    and product_base_type != product_type):
+                self.log.warning((
+                    "Product base type %s is not supported by the server, "
+                    "but it's defined - and it differs from product type %s. "
+                    "Using product base type as product type."
+                ), product_base_type, product_type)
+                
+                new_product_entity_kwargs["product_type"] = (
+                    product_base_type
+                )
 
         product_entity = new_product_entity(**new_product_entity_kwargs)
 
