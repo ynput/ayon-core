@@ -1383,19 +1383,20 @@ class PublishModel:
                 result = pyblish.plugin.process(
                     plugin, self._publish_context, instance
                 )
-            if log_handler is not None:
-                records = log_handler.get_records()
-                exception = result.get("error")
-                if exception is not None and records:
-                    last_record = records[-1]
-                    if (
-                        last_record.name == "pyblish.plugin"
-                        and last_record.levelno == logging.ERROR
-                    ):
-                        # Remove last record made by pyblish
-                        # - `log.exception(formatted_traceback)`
-                        records.pop(-1)
-                result["records"] = records
+                # Extract records BEFORE context exits to prevent them from being cleared
+                if log_handler is not None:
+                    records = log_handler.get_records()
+                    exception = result.get("error")
+                    if exception is not None and records:
+                        last_record = records[-1]
+                        if (
+                            last_record.name == "pyblish.plugin"
+                            and last_record.levelno == logging.ERROR
+                        ):
+                            # Remove last record made by pyblish
+                            # - `log.exception(formatted_traceback)`
+                            records.pop(-1)
+                    result["records"] = records
         finally:
             # Clear progress message when plugin finishes
             self._emit_event(
