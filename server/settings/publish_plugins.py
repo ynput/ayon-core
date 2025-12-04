@@ -1281,7 +1281,7 @@ class PublishPuginsModel(BaseSettingsModel):
         default_factory=ExtractThumbnailModel,
         title="Extract Thumbnail"
     )
-    ExtractThumbnailFromSource: ExtractThumbnailFromSourceModel = SettingsField(
+    ExtractThumbnailFromSource: ExtractThumbnailFromSourceModel = SettingsField(  # noqa: E501
         default_factory=ExtractThumbnailFromSourceModel,
         title="Extract Thumbnail (from source)",
         description=(
