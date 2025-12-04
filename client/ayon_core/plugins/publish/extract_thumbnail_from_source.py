@@ -89,7 +89,12 @@ class ExtractThumbnailFromSource(pyblish.api.InstancePlugin):
     profiles = None
 
     def process(self, instance):
-        self._create_context_thumbnail(instance.context)
+        if not self.profiles:
+            self.log.debug("No profiles present for color transcode")
+            return
+        profile_config = self._get_config_from_profile(instance)
+        if not profile_config:
+            return
 
         product_name = instance.data["productName"]
         self.log.debug(
