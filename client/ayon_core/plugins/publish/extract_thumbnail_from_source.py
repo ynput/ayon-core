@@ -129,6 +129,9 @@ class ExtractThumbnailFromSource(pyblish.api.InstancePlugin):
             "outputName": "thumbnail",
         }
 
+        if not profile_config.integrate_thumbnail:
+            new_repre["tags"].append("delete")
+
         # adding representation
         self.log.debug(
             "Adding thumbnail representation: {}".format(new_repre)
