@@ -469,6 +469,43 @@ class UseDisplayViewModel(BaseSettingsModel):
     )
 
 
+class ExtractThumbnailFromSourceProfileModel(BaseSettingsModel):
+    product_types: list[str] = SettingsField(
+        default_factory=list, title="Product types"
+    )
+    hosts: list[str] = SettingsField(default_factory=list, title="Host names")
+    task_types: list[str] = SettingsField(
+        default_factory=list, title="Task types", enum_resolver=task_types_enum
+    )
+    task_names: list[str] = SettingsField(
+        default_factory=list, title="Task names"
+    )
+    product_names: list[str] = SettingsField(
+        default_factory=list, title="Product names"
+    )
+
+    integrate_thumbnail: bool = SettingsField(
+        True, title="Integrate Thumbnail Representation"
+    )
+    target_size: ResizeModel = SettingsField(
+        default_factory=ResizeModel, title="Target size"
+    )
+    background_color: ColorRGBA_uint8 = SettingsField(
+        (0, 0, 0, 0.0), title="Background color"
+    )
+    ffmpeg_args: ExtractThumbnailFFmpegModel = SettingsField(
+        default_factory=ExtractThumbnailFFmpegModel
+    )
+
+
+class ExtractThumbnailFromSourceModel(BaseSettingsModel):
+    """Thumbnail extraction from source files using ffmpeg and oiiotool."""
+    enabled: bool = SettingsField(True)
+    profiles: list[ExtractThumbnailFromSourceProfileModel] = SettingsField(
+        default_factory=list, title="Profiles"
+    )
+
+
 class ExtractOIIOTranscodeOutputModel(BaseSettingsModel):
     _layout = "expanded"
     name: str = SettingsField(
@@ -1244,6 +1281,17 @@ class PublishPuginsModel(BaseSettingsModel):
         default_factory=ExtractThumbnailModel,
         title="Extract Thumbnail"
     )
+    ExtractThumbnailFromSource: ExtractThumbnailFromSourceModel = SettingsField(
+        default_factory=ExtractThumbnailFromSourceModel,
+        title="Extract Thumbnail (from source)",
+        description=(
+            "Extract thumbnails from explicit file set in "
+            "instance.data['thumbnailSource'] using ffmpeg "
+            "and oiiotool."
+            "Used when host does not provide thumbnail, but artist could set "
+            "custom thumbnail source file. (TrayPublisher, Webpublisher)"
+        )
+    )
     ExtractOIIOTranscode: ExtractOIIOTranscodeModel = SettingsField(
         default_factory=ExtractOIIOTranscodeModel,
         title="Extract OIIO Transcode"
@@ -1474,6 +1522,30 @@ DEFAULT_PUBLISH_VALUES = {
             ],
             "output": []
         }
+    },
+    "ExtractThumbnailFromSource": {
+        "enabled": True,
+        "profiles": [
+            {
+                "product_types": [],
+                "hosts": [],
+                "task_types": [],
+                "task_names": [],
+                "product_names": [],
+                "integrate_thumbnail": True,
+                "target_size": {
+                    "type": "source",
+                    "resize": {
+                        "width": 1920,
+                        "height": 1080
+                    }
+                },
+                "ffmpeg_args": {
+                    "input": [],
+                    "output": []
+                }
+            }
+        ]
     },
     "ExtractOIIOTranscode": {
         "enabled": True,
