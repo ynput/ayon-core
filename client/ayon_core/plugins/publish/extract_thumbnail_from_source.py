@@ -33,7 +33,10 @@ class ExtractThumbnailFromSource(pyblish.api.InstancePlugin):
 
     label = "Extract Thumbnail (from source)"
     # Before 'ExtractThumbnail' in global plugins
-    order = pyblish.api.ExtractorOrder - 0.00001
+    order = pyblish.api.ExtractorOrder + 0.48
+
+    # Settings
+    profiles = None
 
     def process(self, instance):
         self._create_context_thumbnail(instance.context)
