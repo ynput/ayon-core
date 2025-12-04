@@ -68,7 +68,7 @@ class ProfileConfig:
         # Get all field names defined in the dataclass
         field_names = {f.name for f in fields(cls)}
 
-        # Filter the input dictionary to include only keys that match field names
+        # Filter the input dictionary to include only keys matching field names
         filtered_data = {k: v for k, v in data.items() if k in field_names}
 
         # Unpack the filtered dictionary into the constructor
