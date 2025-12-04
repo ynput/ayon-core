@@ -96,10 +96,12 @@ class ExtractThumbnailFromSource(pyblish.api.InstancePlugin):
         if not profile_config:
             return
 
-        product_name = instance.data["productName"]
-        self.log.debug(
-            "Processing instance with product name {}".format(product_name)
+        context_thumbnail_path = self._create_context_thumbnail(
+            instance.context, profile_config
         )
+        if context_thumbnail_path:
+            instance.context.data["thumbnailPath"] = context_thumbnail_path
+
         thumbnail_source = instance.data.get("thumbnailSource")
         if not thumbnail_source:
             self.log.debug("Thumbnail source not filled. Skipping.")
