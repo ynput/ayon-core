@@ -54,8 +54,8 @@ def get_product_name_template(
     profiles = tools_settings["creator"]["product_name_profiles"]
     filtering_criteria = {
         "product_types": product_type,
-        "hosts": host_name,
-        "tasks": task_name,
+        "host_names": host_name,: host_name,
+        "task_names": task_name,
         "task_types": task_type,
         "product_base_types": product_base_type,
     }

@@ -163,7 +163,8 @@ class ExtractReview(pyblish.api.InstancePlugin):
         "flame",
         "unreal",
         "batchdelivery",
-        "photoshop"
+        "photoshop",
+        "substancepainter",
     ]
 
     settings_category = "core"
@@ -400,6 +401,10 @@ class ExtractReview(pyblish.api.InstancePlugin):
                     new_staging_dir,
                     self.log
                 )
+                # The OIIO conversion will remap the RGBA channels just to
+                # `R,G,B,A` so we will pass the intermediate file to FFMPEG
+                # without layer name.
+                layer_name = ""
 
             try:
                 self._render_output_definitions(
