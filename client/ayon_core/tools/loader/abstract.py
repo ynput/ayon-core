@@ -1,10 +1,18 @@
+"""Abstract base classes for loader tool."""
+from __future__ import annotations
+
 from abc import ABC, abstractmethod
-from typing import List
+from typing import Iterable, Any, Optional
 
 from ayon_core.lib.attribute_definitions import (
     AbstractAttrDef,
-    serialize_attr_defs,
     deserialize_attr_defs,
+    serialize_attr_defs,
+)
+from ayon_core.tools.common_models import (
+    TaskItem,
+    TagItem,
+    ProductTypeIconMapping,
 )
 
 
@@ -16,7 +24,7 @@ class ProductTypeItem:
         icon (dict[str, Any]): Product type icon definition.
     """
 
-    def __init__(self, name, icon):
+    def __init__(self, name: str, icon: dict[str, Any]):
         self.name = name
         self.icon = icon
 
@@ -31,6 +39,41 @@ class ProductTypeItem:
         return cls(**data)
 
 
+class ProductBaseTypeItem:
+    """Item representing the product base type."""
+
+    def __init__(self, name: str, icon: dict[str, Any]):
+        """Initialize product base type item."""
+        self.name = name
+        self.icon = icon
+
+    def to_data(self) -> dict[str, Any]:
+        """Convert item to data dictionary.
+
+        Returns:
+            dict[str, Any]: Data representation of the item.
+
+        """
+        return {
+            "name": self.name,
+            "icon": self.icon,
+        }
+
+    @classmethod
+    def from_data(
+            cls, data: dict[str, Any]) -> ProductBaseTypeItem:
+        """Create item from data dictionary.
+
+        Args:
+            data (dict[str, Any]): Data to create item from.
+
+        Returns:
+            ProductBaseTypeItem: Item created from the provided data.
+
+        """
+        return cls(**data)
+
+
 class ProductItem:
     """Product item with it versions.
 
@@ -39,7 +82,6 @@ class ProductItem:
         product_type (str): Product type.
         product_name (str): Product name.
         product_icon (dict[str, Any]): Product icon definition.
-        product_type_icon (dict[str, Any]): Product type icon definition.
         product_in_scene (bool): Is product in scene (only when used in DCC).
         group_name (str): Group name.
         folder_id (str): Folder id.
@@ -49,35 +91,35 @@ class ProductItem:
 
     def __init__(
         self,
-        product_id,
-        product_type,
-        product_name,
-        product_icon,
-        product_type_icon,
-        product_in_scene,
-        group_name,
-        folder_id,
-        folder_label,
-        version_items,
+        product_id: str,
+        product_type: str,
+        product_base_type: str,
+        product_name: str,
+        product_icon: dict[str, Any],
+        group_name: str,
+        folder_id: str,
+        folder_label: str,
+        version_items: dict[str, VersionItem],
+        product_in_scene: bool,
     ):
         self.product_id = product_id
         self.product_type = product_type
+        self.product_base_type = product_base_type
         self.product_name = product_name
         self.product_icon = product_icon
-        self.product_type_icon = product_type_icon
         self.product_in_scene = product_in_scene
         self.group_name = group_name
         self.folder_id = folder_id
         self.folder_label = folder_label
         self.version_items = version_items
 
-    def to_data(self):
+    def to_data(self) -> dict[str, Any]:
         return {
             "product_id": self.product_id,
             "product_type": self.product_type,
+            "product_base_type": self.product_base_type,
             "product_name": self.product_name,
             "product_icon": self.product_icon,
-            "product_type_icon": self.product_type_icon,
             "product_in_scene": self.product_in_scene,
             "group_name": self.group_name,
             "folder_id": self.folder_id,
@@ -113,6 +155,7 @@ class VersionItem:
         published_time (Union[str, None]): Published time in format
             '%Y%m%dT%H%M%SZ'.
         status (Union[str, None]): Status name.
+        tags (Union[list[str], None]): Tags.
         author (Union[str, None]): Author.
         frame_range (Union[str, None]): Frame range.
         duration (Union[int, None]): Duration.
@@ -124,21 +167,22 @@ class VersionItem:
 
     def __init__(
         self,
-        version_id,
-        version,
-        is_hero,
-        product_id,
-        task_id,
-        thumbnail_id,
-        published_time,
-        author,
-        status,
-        frame_range,
-        duration,
-        handles,
-        step,
-        comment,
-        source,
+        version_id: str,
+        version: int,
+        is_hero: bool,
+        product_id: str,
+        task_id: Optional[str],
+        thumbnail_id: Optional[str],
+        published_time: Optional[str],
+        tags: Optional[list[str]],
+        author: Optional[str],
+        status: Optional[str],
+        frame_range: Optional[str],
+        duration: Optional[int],
+        handles: Optional[str],
+        step: Optional[int],
+        comment: Optional[str],
+        source: Optional[str],
     ):
         self.version_id = version_id
         self.product_id = product_id
@@ -148,6 +192,7 @@ class VersionItem:
         self.is_hero = is_hero
         self.published_time = published_time
         self.author = author
+        self.tags = tags
         self.status = status
         self.frame_range = frame_range
         self.duration = duration
@@ -198,7 +243,7 @@ class VersionItem:
     def __le__(self, other):
         return self.__eq__(other) or self.__lt__(other)
 
-    def to_data(self):
+    def to_data(self) -> dict[str, Any]:
         return {
             "version_id": self.version_id,
             "product_id": self.product_id,
@@ -208,6 +253,7 @@ class VersionItem:
             "is_hero": self.is_hero,
             "published_time": self.published_time,
             "author": self.author,
+            "tags": self.tags,
             "status": self.status,
             "frame_range": self.frame_range,
             "duration": self.duration,
@@ -218,7 +264,7 @@ class VersionItem:
         }
 
     @classmethod
-    def from_data(cls, data):
+    def from_data(cls, data: dict[str, Any]) -> VersionItem:
         return cls(**data)
 
 
@@ -270,43 +316,34 @@ class ActionItem:
     Args:
         identifier (str): Action identifier.
         label (str): Action label.
-        icon (dict[str, Any]): Action icon definition.
-        tooltip (str): Action tooltip.
+        group_label (Optional[str]): Group label.
+        icon (Optional[dict[str, Any]]): Action icon definition.
+        tooltip (Optional[str]): Action tooltip.
+        order (int): Action order.
+        data (Optional[dict[str, Any]]): Additional action data.
         options (Union[list[AbstractAttrDef], list[qargparse.QArgument]]):
             Action options. Note: 'qargparse' is considered as deprecated.
-        order (int): Action order.
-        project_name (str): Project name.
-        folder_ids (list[str]): Folder ids.
-        product_ids (list[str]): Product ids.
-        version_ids (list[str]): Version ids.
-        representation_ids (list[str]): Representation ids.
-    """
 
+    """
     def __init__(
         self,
-        identifier,
-        label,
-        icon,
-        tooltip,
-        options,
-        order,
-        project_name,
-        folder_ids,
-        product_ids,
-        version_ids,
-        representation_ids,
+        identifier: str,
+        label: str,
+        group_label: Optional[str],
+        icon: Optional[dict[str, Any]],
+        tooltip: Optional[str],
+        order: int,
+        data: Optional[dict[str, Any]],
+        options: Optional[list],
     ):
         self.identifier = identifier
         self.label = label
+        self.group_label = group_label
         self.icon = icon
         self.tooltip = tooltip
-        self.options = options
+        self.data = data
         self.order = order
-        self.project_name = project_name
-        self.folder_ids = folder_ids
-        self.product_ids = product_ids
-        self.version_ids = version_ids
-        self.representation_ids = representation_ids
+        self.options = options
 
     def _options_to_data(self):
         options = self.options
@@ -318,30 +355,26 @@ class ActionItem:
         #   future development of detached UI tools it would be better to be
         #   prepared for it.
         raise NotImplementedError(
-            "{}.to_data is not implemented. Use Attribute definitions"
-            " from 'ayon_core.lib' instead of 'qargparse'.".format(
-                self.__class__.__name__
-            )
+            f"{self.__class__.__name__}.to_data is not implemented."
+            " Use Attribute definitions from 'ayon_core.lib'"
+            " instead of 'qargparse'."
         )
 
-    def to_data(self):
+    def to_data(self) -> dict[str, Any]:
         options = self._options_to_data()
         return {
             "identifier": self.identifier,
             "label": self.label,
+            "group_label": self.group_label,
             "icon": self.icon,
             "tooltip": self.tooltip,
-            "options": options,
             "order": self.order,
-            "project_name": self.project_name,
-            "folder_ids": self.folder_ids,
-            "product_ids": self.product_ids,
-            "version_ids": self.version_ids,
-            "representation_ids": self.representation_ids,
+            "data": self.data,
+            "options": options,
         }
 
     @classmethod
-    def from_data(cls, data):
+    def from_data(cls, data) -> "ActionItem":
         options = data["options"]
         if options:
             options = deserialize_attr_defs(options)
@@ -354,8 +387,8 @@ class ProductTypesFilter:
 
     Defines the filtering for product types.
     """
-    def __init__(self, product_types: List[str], is_allow_list: bool):
-        self.product_types: List[str] = product_types
+    def __init__(self, product_types: list[str], is_allow_list: bool):
+        self.product_types: list[str] = product_types
         self.is_allow_list: bool = is_allow_list
 
 
@@ -450,8 +483,8 @@ class BackendLoaderController(_BaseLoaderController):
             topic (str): Event topic name.
             data (Optional[dict[str, Any]]): Event data.
             source (Optional[str]): Event source.
-        """
 
+        """
         pass
 
     @abstractmethod
@@ -460,8 +493,20 @@ class BackendLoaderController(_BaseLoaderController):
 
         Returns:
             set[str]: Set of loaded product ids.
-        """
 
+        """
+        pass
+
+    @abstractmethod
+    def get_product_type_icons_mapping(
+        self, project_name: Optional[str]
+    ) -> ProductTypeIconMapping:
+        """Product type icons mapping.
+
+        Returns:
+            ProductTypeIconMapping: Product type icons mapping.
+
+        """
         pass
 
 
@@ -517,8 +562,21 @@ class FrontendLoaderController(_BaseLoaderController):
 
         Returns:
             list[ProjectItem]: List of project items.
-        """
 
+        """
+        pass
+
+    @abstractmethod
+    def get_project_anatomy_tags(self, project_name: str) -> list[TagItem]:
+        """Tag items defined on project anatomy.
+
+        Args:
+            project_name (str): Project name.
+
+        Returns:
+            list[TagItem]: Tag definition items.
+
+        """
         pass
 
     @abstractmethod
@@ -542,7 +600,12 @@ class FrontendLoaderController(_BaseLoaderController):
         pass
 
     @abstractmethod
-    def get_task_items(self, project_name, folder_ids, sender=None):
+    def get_task_items(
+        self,
+        project_name: str,
+        folder_ids: Iterable[str],
+        sender: Optional[str] = None,
+    ) -> list[TaskItem]:
         """Task items for folder ids.
 
         Args:
@@ -586,6 +649,36 @@ class FrontendLoaderController(_BaseLoaderController):
 
         Returns:
             dict[str, Optional[str]]: Folder labels by folder id.
+
+        """
+        pass
+
+    @abstractmethod
+    def get_my_tasks_entity_ids(
+        self, project_name: str
+    ) -> dict[str, list[str]]:
+        """Get entity ids for my tasks.
+
+        Args:
+            project_name (str): Project name.
+
+        Returns:
+            dict[str, list[str]]: Folder and task ids.
+
+        """
+        pass
+
+    @abstractmethod
+    def get_available_tags_by_entity_type(
+        self, project_name: str
+    ) -> dict[str, list[str]]:
+        """Get available tags by entity type.
+
+        Args:
+            project_name (str): Project name.
+
+        Returns:
+            dict[str, list[str]]: Available tags by entity type.
 
         """
         pass
@@ -899,43 +992,35 @@ class FrontendLoaderController(_BaseLoaderController):
 
     # Load action items
     @abstractmethod
-    def get_versions_action_items(self, project_name, version_ids):
+    def get_action_items(
+        self,
+        project_name: str,
+        entity_ids: set[str],
+        entity_type: str,
+    ) -> list[ActionItem]:
         """Action items for versions selection.
 
         Args:
             project_name (str): Project name.
-            version_ids (Iterable[str]): Version ids.
+            entity_ids (set[str]): Entity ids.
+            entity_type (str): Entity type.
 
         Returns:
             list[ActionItem]: List of action items.
+
         """
-
-        pass
-
-    @abstractmethod
-    def get_representations_action_items(
-        self, project_name, representation_ids
-    ):
-        """Action items for representations selection.
-
-        Args:
-            project_name (str): Project name.
-            representation_ids (Iterable[str]): Representation ids.
-
-        Returns:
-            list[ActionItem]: List of action items.
-        """
-
         pass
 
     @abstractmethod
     def trigger_action_item(
         self,
-        identifier,
-        options,
-        project_name,
-        version_ids,
-        representation_ids
+        identifier: str,
+        project_name: str,
+        selected_ids: set[str],
+        selected_entity_type: str,
+        data: Optional[dict[str, Any]],
+        options: dict[str, Any],
+        form_values: dict[str, Any],
     ):
         """Trigger action item.
 
@@ -953,13 +1038,15 @@ class FrontendLoaderController(_BaseLoaderController):
             }
 
         Args:
-            identifier (str): Action identifier.
-            options (dict[str, Any]): Action option values from UI.
+            identifier (sttr): Plugin identifier.
             project_name (str): Project name.
-            version_ids (Iterable[str]): Version ids.
-            representation_ids (Iterable[str]): Representation ids.
-        """
+            selected_ids (set[str]): Selected entity ids.
+            selected_entity_type (str): Selected entity type.
+            data (Optional[dict[str, Any]]): Additional action item data.
+            options (dict[str, Any]): Action option values from UI.
+            form_values (dict[str, Any]): Action form values from UI.
 
+        """
         pass
 
     @abstractmethod

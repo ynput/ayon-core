@@ -1,22 +1,25 @@
+from __future__ import annotations
+
 import os
 import uuid
-import platform
+import warnings
 import logging
 import inspect
 import collections
 import numbers
-from typing import Optional, Union, Any
+import copy
+from functools import wraps
+from typing import Optional, Union, Any, overload
 
 import ayon_api
 
-from ayon_core.host import ILoadHost
+from ayon_core.host import ILoadHost, AbstractHost
 from ayon_core.lib import (
     StringTemplate,
     TemplateUnsolved,
 )
-from ayon_core.pipeline import (
-    Anatomy,
-)
+from ayon_core.lib.path_templates import TemplateResult
+from ayon_core.pipeline import Anatomy
 
 log = logging.getLogger(__name__)
 
@@ -288,7 +291,12 @@ def get_representation_context(project_name, representation):
 
 
 def load_with_repre_context(
-    Loader, repre_context, namespace=None, name=None, options=None, **kwargs
+    Loader,
+    repre_context,
+    namespace=None,
+    name=None,
+    options=None,
+    **kwargs
 ):
 
     # Ensure the Loader is compatible for the representation
@@ -320,7 +328,12 @@ def load_with_repre_context(
 
 
 def load_with_product_context(
-    Loader, product_context, namespace=None, name=None, options=None, **kwargs
+    Loader,
+    product_context,
+    namespace=None,
+    name=None,
+    options=None,
+    **kwargs
 ):
 
     # Ensure options is a dictionary when no explicit options provided
@@ -343,7 +356,12 @@ def load_with_product_context(
 
 
 def load_with_product_contexts(
-    Loader, product_contexts, namespace=None, name=None, options=None, **kwargs
+    Loader,
+    product_contexts,
+    namespace=None,
+    name=None,
+    options=None,
+    **kwargs
 ):
 
     # Ensure options is a dictionary when no explicit options provided
@@ -553,15 +571,20 @@ def update_container(container, version=-1):
     return Loader().update(container, context)
 
 
-def switch_container(container, representation, loader_plugin=None):
+def switch_container(
+    container,
+    representation,
+    loader_plugin=None,
+):
     """Switch a container to representation
 
     Args:
         container (dict): container information
         representation (dict): representation entity
+        loader_plugin (LoaderPlugin)
 
     Returns:
-        function call
+        return from function call
     """
     from ayon_core.pipeline import get_current_project_name
 
@@ -624,15 +647,15 @@ def get_representation_path_from_context(context):
 
     representation = context["representation"]
     project_entity = context.get("project")
-    root = None
-    if (
-        project_entity
-        and project_entity["name"] != get_current_project_name()
-    ):
-        anatomy = Anatomy(project_entity["name"])
-        root = anatomy.roots
-
-    return get_representation_path(representation, root)
+    if project_entity:
+        project_name = project_entity["name"]
+    else:
+        project_name = get_current_project_name()
+    return get_representation_path(
+        project_name,
+        representation,
+        project_entity=project_entity,
+    )
 
 
 def get_representation_path_with_anatomy(repre_entity, anatomy):
@@ -651,137 +674,248 @@ def get_representation_path_with_anatomy(repre_entity, anatomy):
         anatomy (Anatomy): Project anatomy object.
 
     Returns:
-        Union[None, TemplateResult]: None if path can't be received
+        TemplateResult: Resolved representation path.
 
     Raises:
         InvalidRepresentationContext: When representation data are probably
             invalid or not available.
+
     """
+    return get_representation_path(
+        anatomy.project_name,
+        repre_entity,
+        anatomy=anatomy,
+    )
+
+
+def get_representation_path_with_roots(
+    representation: dict[str, Any],
+    roots: dict[str, str],
+) -> Optional[TemplateResult]:
+    """Get filename from representation with custom root.
+
+    Args:
+        representation(dict): Representation entity.
+        roots (dict[str, str]): Roots to use.
+
+
+    Returns:
+        Optional[TemplateResult]: Resolved representation path.
+
+    """
+    try:
+        template = representation["attrib"]["template"]
+    except KeyError:
+        return None
+
+    try:
+        context = representation["context"]
+
+        _fix_representation_context_compatibility(context)
+
+        context["root"] = roots
+        path = StringTemplate.format_strict_template(
+            template, context
+        )
+    except (TemplateUnsolved, KeyError):
+        # Template references unavailable data
+        return None
+
+    return path.normalized()
+
+
+def _backwards_compatibility_repre_path(func):
+    """Wrapper handling backwards compatibility of 'get_representation_path'.
+
+    Allows 'get_representation_path' to support old and new signatures of the
+        function. The old signature supported passing in representation entity
+        and optional roots. The new signature requires the project name
+        to be passed. In case custom roots should be used, a dedicated function
+        'get_representation_path_with_roots' is available.
+
+    The wrapper handles passed arguments, and based on kwargs and types
+        of the arguments will call the function which relates to
+        the arguments.
+
+    The function is also marked with an attribute 'version' so other addons
+        can check if the function is using the new signature or is using
+        the old signature. That should allow addons to adapt to new signature.
+        >>> if getattr(get_representation_path, "version", None) == 2:
+        >>>     path = get_representation_path(project_name, repre_entity)
+        >>> else:
+        >>>     path = get_representation_path(repre_entity)
+
+    The plan to remove backwards compatibility is 1.1.2026.
+
+    """
+    # Add an attribute to the function so addons can check if the new variant
+    #   of the function is available.
+    # >>> getattr(get_representation_path, "version", None) == 2
+    # >>> True
+    setattr(func, "version", 2)
+
+    @wraps(func)
+    def inner(*args, **kwargs):
+        from ayon_core.pipeline import get_current_project_name
+
+        # Decide which variant of the function based on passed arguments
+        #   will be used.
+        if args:
+            arg_1 = args[0]
+            if isinstance(arg_1, str):
+                return func(*args, **kwargs)
+
+        elif "project_name" in kwargs:
+            return func(*args, **kwargs)
+
+        warnings.warn(
+            (
+                "Used deprecated variant of 'get_representation_path'."
+                " Please change used arguments signature to follow"
+                " new definition. Will be removed 1.1.2026."
+            ),
+            DeprecationWarning,
+            stacklevel=2,
+        )
+
+        # Find out which arguments were passed
+        if args:
+            representation = args[0]
+        else:
+            representation = kwargs.get("representation")
+
+        if len(args) > 1:
+            roots = args[1]
+        else:
+            roots = kwargs.get("root")
+
+        if roots is not None:
+            return get_representation_path_with_roots(
+                representation, roots
+            )
+
+        project_name = (
+            representation["context"].get("project", {}).get("name")
+        )
+        if project_name is None:
+            project_name = get_current_project_name()
+
+        return func(project_name, representation)
+
+    return inner
+
+
+@overload
+def get_representation_path(
+    representation: dict[str, Any],
+    root: Optional[dict[str, Any]] = None,
+) -> TemplateResult:
+    """DEPRECATED Get filled representation path.
+
+    Use 'get_representation_path' using the new function signature.
+
+    Args:
+        representation (dict[str, Any]): Representation entity.
+        root (Optional[dict[str, Any]): Roots to fill the path.
+
+    Returns:
+        TemplateResult: Resolved path to representation.
+
+    Raises:
+        InvalidRepresentationContext: When representation data are probably
+            invalid or not available.
+
+    """
+    pass
+
+
+@overload
+def get_representation_path(
+    project_name: str,
+    repre_entity: dict[str, Any],
+    *,
+    anatomy: Optional[Anatomy] = None,
+    project_entity: Optional[dict[str, Any]] = None,
+) -> TemplateResult:
+    """Get filled representation path.
+
+    Args:
+        project_name (str): Project name.
+        repre_entity (dict[str, Any]): Representation entity.
+        anatomy (Optional[Anatomy]): Project anatomy.
+        project_entity (Optional[dict[str, Any]): Project entity. Is used to
+            initialize Anatomy and is not needed if 'anatomy' is passed in.
+
+    Returns:
+        TemplateResult: Resolved path to representation.
+
+    Raises:
+        InvalidRepresentationContext: When representation data are probably
+            invalid or not available.
+
+    """
+    pass
+
+
+@_backwards_compatibility_repre_path
+def get_representation_path(
+    project_name: str,
+    repre_entity: dict[str, Any],
+    *,
+    anatomy: Optional[Anatomy] = None,
+    project_entity: Optional[dict[str, Any]] = None,
+) -> TemplateResult:
+    """Get filled representation path.
+
+    Args:
+        project_name (str): Project name.
+        repre_entity (dict[str, Any]): Representation entity.
+        anatomy (Optional[Anatomy]): Project anatomy.
+        project_entity (Optional[dict[str, Any]): Project entity. Is used to
+            initialize Anatomy and is not needed if 'anatomy' is passed in.
+
+    Returns:
+        TemplateResult: Resolved path to representation.
+
+    Raises:
+        InvalidRepresentationContext: When representation data are probably
+            invalid or not available.
+
+    """
+    if anatomy is None:
+        anatomy = Anatomy(project_name, project_entity=project_entity)
 
     try:
         template = repre_entity["attrib"]["template"]
 
-    except KeyError:
-        raise InvalidRepresentationContext((
-            "Representation document does not"
-            " contain template in data ('data.template')"
-        ))
+    except KeyError as exc:
+        raise InvalidRepresentationContext(
+            "Failed to receive template from representation entity."
+        ) from exc
 
     try:
-        context = repre_entity["context"]
+        context = copy.deepcopy(repre_entity["context"])
         _fix_representation_context_compatibility(context)
         context["root"] = anatomy.roots
 
         path = StringTemplate.format_strict_template(template, context)
 
     except TemplateUnsolved as exc:
-        raise InvalidRepresentationContext((
-            "Couldn't resolve representation template with available data."
-            " Reason: {}".format(str(exc))
-        ))
+        raise InvalidRepresentationContext(
+            "Failed to resolve representation template with available data."
+        ) from exc
 
     return path.normalized()
 
 
-def get_representation_path(representation, root=None):
-    """Get filename from representation document
-
-    There are three ways of getting the path from representation which are
-    tried in following sequence until successful.
-    1. Get template from representation['data']['template'] and data from
-       representation['context']. Then format template with the data.
-    2. Get template from project['config'] and format it with default data set
-    3. Get representation['data']['path'] and use it directly
-
-    Args:
-        representation(dict): representation document from the database
-
-    Returns:
-        str: fullpath of the representation
-
-    """
-
-    if root is None:
-        from ayon_core.pipeline import registered_root
-
-        root = registered_root()
-
-    def path_from_representation():
-        try:
-            template = representation["attrib"]["template"]
-        except KeyError:
-            return None
-
-        try:
-            context = representation["context"]
-
-            _fix_representation_context_compatibility(context)
-
-            context["root"] = root
-            path = StringTemplate.format_strict_template(
-                template, context
-            )
-            # Force replacing backslashes with forward slashed if not on
-            #   windows
-            if platform.system().lower() != "windows":
-                path = path.replace("\\", "/")
-        except (TemplateUnsolved, KeyError):
-            # Template references unavailable data
-            return None
-
-        if not path:
-            return path
-
-        normalized_path = os.path.normpath(path)
-        if os.path.exists(normalized_path):
-            return normalized_path
-        return path
-
-    def path_from_data():
-        if "path" not in representation["attrib"]:
-            return None
-
-        path = representation["attrib"]["path"]
-        # Force replacing backslashes with forward slashed if not on
-        #   windows
-        if platform.system().lower() != "windows":
-            path = path.replace("\\", "/")
-
-        if os.path.exists(path):
-            return os.path.normpath(path)
-
-        dir_path, file_name = os.path.split(path)
-        if not os.path.exists(dir_path):
-            return
-
-        base_name, ext = os.path.splitext(file_name)
-        file_name_items = None
-        if "#" in base_name:
-            file_name_items = [part for part in base_name.split("#") if part]
-        elif "%" in base_name:
-            file_name_items = base_name.split("%")
-
-        if not file_name_items:
-            return
-
-        filename_start = file_name_items[0]
-
-        for _file in os.listdir(dir_path):
-            if _file.startswith(filename_start) and _file.endswith(ext):
-                return os.path.normpath(path)
-
-    return (
-        path_from_representation() or path_from_data()
-    )
-
-
 def get_representation_path_by_names(
-        project_name: str,
-        folder_path: str,
-        product_name: str,
-        version_name: str,
-        representation_name: str,
-        anatomy: Optional[Anatomy] = None) -> Optional[str]:
+    project_name: str,
+    folder_path: str,
+    product_name: str,
+    version_name: Union[int, str],
+    representation_name: str,
+    anatomy: Optional[Anatomy] = None
+) -> Optional[TemplateResult]:
     """Get (latest) filepath for representation for folder and product.
 
     See `get_representation_by_names` for more details.
@@ -798,22 +932,21 @@ def get_representation_path_by_names(
         representation_name
     )
     if not representation:
-        return
+        return None
 
-    if not anatomy:
-        anatomy = Anatomy(project_name)
-
-    if representation:
-        path = get_representation_path_with_anatomy(representation, anatomy)
-        return str(path).replace("\\", "/")
+    return get_representation_path(
+        project_name,
+        representation,
+        anatomy=anatomy,
+    )
 
 
 def get_representation_by_names(
-        project_name: str,
-        folder_path: str,
-        product_name: str,
-        version_name: Union[int, str],
-        representation_name: str,
+    project_name: str,
+    folder_path: str,
+    product_name: str,
+    version_name: Union[int, str],
+    representation_name: str,
 ) -> Optional[dict]:
     """Get representation entity for asset and subset.
 
@@ -830,7 +963,7 @@ def get_representation_by_names(
         folder_entity = ayon_api.get_folder_by_path(
             project_name, folder_path, fields=["id"])
     if not folder_entity:
-        return
+        return None
 
     if isinstance(product_name, dict) and "name" in product_name:
         # Allow explicitly passing subset document
@@ -842,7 +975,7 @@ def get_representation_by_names(
             folder_id=folder_entity["id"],
             fields=["id"])
     if not product_entity:
-        return
+        return None
 
     if version_name == "hero":
         version_entity = ayon_api.get_hero_version_by_product_id(
@@ -854,7 +987,7 @@ def get_representation_by_names(
         version_entity = ayon_api.get_version_by_name(
             project_name, version_name, product_id=product_entity["id"])
     if not version_entity:
-        return
+        return None
 
     return ayon_api.get_representation_by_name(
         project_name, representation_name, version_id=version_entity["id"])
@@ -920,15 +1053,21 @@ def any_outdated_containers(host=None, project_name=None):
     return False
 
 
-def get_outdated_containers(host=None, project_name=None):
+def get_outdated_containers(
+    host: Optional[AbstractHost] = None,
+    project_name: Optional[str] = None,
+    ignore_locked_versions: bool = False,
+):
     """Collect outdated containers from host scene.
 
     Currently registered host and project in global session are used if
     arguments are not passed.
 
     Args:
-        host (ModuleType): Host implementation with 'ls' function available.
-        project_name (str): Name of project in which context we are.
+        host (Optional[AbstractHost]): Host implementation.
+        project_name (Optional[str]): Name of project in which context we are.
+        ignore_locked_versions (bool): Locked versions are ignored.
+
     """
     from ayon_core.pipeline import registered_host, get_current_project_name
 
@@ -942,7 +1081,16 @@ def get_outdated_containers(host=None, project_name=None):
         containers = host.get_containers()
     else:
         containers = host.ls()
-    return filter_containers(containers, project_name).outdated
+
+    outdated_containers = []
+    for container in filter_containers(containers, project_name).outdated:
+        if (
+            not ignore_locked_versions
+            and container.get("version_locked") is True
+        ):
+            continue
+        outdated_containers.append(container)
+    return outdated_containers
 
 
 def _is_valid_representation_id(repre_id: Any) -> bool:
@@ -963,6 +1111,9 @@ def filter_containers(containers, project_name):
     'invalid' are invalid containers (invalid content) and 'not_found' has
     some missing entity in database.
 
+    Todos:
+        Respect 'project_name' on containers if is available.
+
     Args:
         containers (Iterable[dict]): List of containers referenced into scene.
         project_name (str): Name of project in which context shoud look for
@@ -971,8 +1122,8 @@ def filter_containers(containers, project_name):
     Returns:
         ContainersFilterResult: Named tuple with 'latest', 'outdated',
             'invalid' and 'not_found' containers.
-    """
 
+    """
     # Make sure containers is list that won't change
     containers = list(containers)
 
@@ -1020,13 +1171,13 @@ def filter_containers(containers, project_name):
         hero=True,
         fields={"id", "productId", "version"}
     )
-    verisons_by_id = {}
+    versions_by_id = {}
     versions_by_product_id = collections.defaultdict(list)
     hero_version_ids = set()
     for version_entity in version_entities:
         version_id = version_entity["id"]
         # Store versions by their ids
-        verisons_by_id[version_id] = version_entity
+        versions_by_id[version_id] = version_entity
         # There's no need to query products for hero versions
         #   - they are considered as latest?
         if version_entity["version"] < 0:
@@ -1061,24 +1212,23 @@ def filter_containers(containers, project_name):
 
         repre_entity = repre_entities_by_id.get(repre_id)
         if not repre_entity:
-            log.debug((
-                "Container '{}' has an invalid representation."
+            log.debug(
+                f"Container '{container_name}' has an invalid representation."
                 " It is missing in the database."
-            ).format(container_name))
+            )
             not_found_containers.append(container)
             continue
 
         version_id = repre_entity["versionId"]
-        if version_id in outdated_version_ids:
-            outdated_containers.append(container)
-
-        elif version_id not in verisons_by_id:
-            log.debug((
-                "Representation on container '{}' has an invalid version."
-                " It is missing in the database."
-            ).format(container_name))
+        if version_id not in versions_by_id:
+            log.debug(
+                f"Representation on container '{container_name}' has an"
+                " invalid version. It is missing in the database."
+            )
             not_found_containers.append(container)
 
+        elif version_id in outdated_version_ids:
+            outdated_containers.append(container)
         else:
             uptodate_containers.append(container)
 

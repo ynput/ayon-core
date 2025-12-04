@@ -25,16 +25,27 @@ class ProductNameProfile(BaseSettingsModel):
     _layout = "expanded"
 
     product_types: list[str] = SettingsField(
-        default_factory=list, title="Product types"
+        default_factory=list,
+        title="Product types",
     )
-    hosts: list[str] = SettingsField(default_factory=list, title="Hosts")
+    host_names: list[str] = SettingsField(
+        default_factory=list,
+        title="Host names",
+    )
     task_types: list[str] = SettingsField(
         default_factory=list,
         title="Task types",
-        enum_resolver=task_types_enum
+        enum_resolver=task_types_enum,
     )
-    tasks: list[str] = SettingsField(default_factory=list, title="Task names")
-    template: str = SettingsField("", title="Template")
+    task_names: list[str] = SettingsField(
+        default_factory=list,
+        title="Task names",
+    )
+    template: str = SettingsField(
+        "",
+        title="Template",
+        regex=r"^[<>{}\[\]a-zA-Z0-9_.]+$",
+    )
 
 
 class FilterCreatorProfile(BaseSettingsModel):
@@ -358,6 +369,14 @@ class PublishToolModel(BaseSettingsModel):
             title="Custom Staging Dir Profiles"
         )
     )
+    comment_minimum_required_chars: int = SettingsField(
+        0,
+        title="Publish comment minimum required characters",
+        description=(
+            "Minimum number of characters required in the comment field "
+            "before the publisher UI is allowed to continue publishing"
+        )
+    )
 
 
 class GlobalToolsModel(BaseSettingsModel):
@@ -425,39 +444,39 @@ DEFAULT_TOOLS_VALUES = {
         "product_name_profiles": [
             {
                 "product_types": [],
-                "hosts": [],
+                "host_names": [],
                 "task_types": [],
-                "tasks": [],
+                "task_names": [],
                 "template": "{product[type]}{variant}"
             },
             {
                 "product_types": [
                     "workfile"
                 ],
-                "hosts": [],
+                "host_names": [],
                 "task_types": [],
-                "tasks": [],
+                "task_names": [],
                 "template": "{product[type]}{Task[name]}"
             },
             {
                 "product_types": [
                     "render"
                 ],
-                "hosts": [],
+                "host_names": [],
                 "task_types": [],
-                "tasks": [],
-                "template": "{product[type]}{Task[name]}{Variant}"
+                "task_names": [],
+                "template": "{product[type]}{Task[name]}{Variant}<_{Aov}>"
             },
             {
                 "product_types": [
                     "renderLayer",
                     "renderPass"
                 ],
-                "hosts": [
+                "host_names": [
                     "tvpaint"
                 ],
                 "task_types": [],
-                "tasks": [],
+                "task_names": [],
                 "template": (
                     "{product[type]}{Task[name]}_{Renderlayer}_{Renderpass}"
                 )
@@ -467,65 +486,65 @@ DEFAULT_TOOLS_VALUES = {
                     "review",
                     "workfile"
                 ],
-                "hosts": [
+                "host_names": [
                     "aftereffects",
                     "tvpaint"
                 ],
                 "task_types": [],
-                "tasks": [],
+                "task_names": [],
                 "template": "{product[type]}{Task[name]}"
             },
             {
                 "product_types": ["render"],
-                "hosts": [
+                "host_names": [
                     "aftereffects"
                 ],
                 "task_types": [],
-                "tasks": [],
+                "task_names": [],
                 "template": "{product[type]}{Task[name]}{Composition}{Variant}"
             },
             {
                 "product_types": [
                     "staticMesh"
                 ],
-                "hosts": [
+                "host_names": [
                     "maya"
                 ],
                 "task_types": [],
-                "tasks": [],
+                "task_names": [],
                 "template": "S_{folder[name]}{variant}"
             },
             {
                 "product_types": [
                     "skeletalMesh"
                 ],
-                "hosts": [
+                "host_names": [
                     "maya"
                 ],
                 "task_types": [],
-                "tasks": [],
+                "task_names": [],
                 "template": "SK_{folder[name]}{variant}"
             },
             {
                 "product_types": [
                     "hda"
                 ],
-                "hosts": [
+                "host_names": [
                     "houdini"
                 ],
                 "task_types": [],
-                "tasks": [],
+                "task_names": [],
                 "template": "{folder[name]}_{variant}"
             },
             {
                 "product_types": [
                     "textureSet"
                 ],
-                "hosts": [
+                "host_names": [
                     "substancedesigner"
                 ],
                 "task_types": [],
-                "tasks": [],
+                "task_names": [],
                 "template": "T_{folder[name]}{variant}"
             }
         ],
@@ -671,6 +690,7 @@ DEFAULT_TOOLS_VALUES = {
                 "task_names": [],
                 "template_name": "simpleUnrealTextureHero"
             }
-        ]
+        ],
+        "comment_minimum_required_chars": 0,
     }
 }

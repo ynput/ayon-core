@@ -59,6 +59,7 @@ def _ocio_config_profile_types():
         {"value": "builtin_path", "label": "AYON built-in OCIO config"},
         {"value": "custom_path", "label": "Path to OCIO config"},
         {"value": "published_product", "label": "Published product"},
+        {"value": "disabled", "label": "Disable OCIO management"},
     ]
 
 
@@ -106,7 +107,7 @@ class FallbackProductModel(BaseSettingsModel):
     fallback_type: str = SettingsField(
         title="Fallback config type",
         enum_resolver=_fallback_ocio_config_profile_types,
-        conditionalEnum=True,
+        conditional_enum=True,
         default="builtin_path",
         description=(
             "Type of config which needs to be used in case published "
@@ -162,7 +163,7 @@ class CoreImageIOConfigProfilesModel(BaseSettingsModel):
     type: str = SettingsField(
         title="Profile type",
         enum_resolver=_ocio_config_profile_types,
-        conditionalEnum=True,
+        conditional_enum=True,
         default="builtin_path",
         section="---",
     )
@@ -319,6 +320,10 @@ class CoreSettings(BaseSettingsModel):
         "{}",
         widget="textarea",
         title="Project folder structure",
+        description=(
+            "Defines project folders to create on disk"
+            " for 'Create project folders' action."
+        ),
         section="---"
     )
     project_environments: str = SettingsField(

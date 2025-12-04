@@ -384,8 +384,8 @@ class RepresentationsWidget(QtWidgets.QWidget):
 
     def _on_context_menu(self, point):
         repre_ids = self._get_selected_repre_ids()
-        action_items = self._controller.get_representations_action_items(
-            self._selected_project_name, repre_ids
+        action_items = self._controller.get_action_items(
+            self._selected_project_name, repre_ids, "representation"
         )
         global_point = self._repre_view.mapToGlobal(point)
         result = show_actions_menu(
@@ -399,9 +399,11 @@ class RepresentationsWidget(QtWidgets.QWidget):
             return
 
         self._controller.trigger_action_item(
-            action_item.identifier,
-            options,
-            action_item.project_name,
-            version_ids=action_item.version_ids,
-            representation_ids=action_item.representation_ids,
+            identifier=action_item.identifier,
+            project_name=self._selected_project_name,
+            selected_ids=repre_ids,
+            selected_entity_type="representation",
+            data=action_item.data,
+            options=options,
+            form_values={},
         )
