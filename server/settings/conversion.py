@@ -160,7 +160,9 @@ def _convert_publish_plugins(overrides):
 
 def _convert_extract_thumbnail(overrides):
     """ExtractThumbnail config settings did change to profiles."""
-    extract_thumbnail_overrides = overrides.get("ExtractThumbnail") or {}
+    extract_thumbnail_overrides = (
+        overrides.get("publish", {}).get("ExtractThumbnail") or {}
+    )
     if "profiles" in extract_thumbnail_overrides:
         return
 
