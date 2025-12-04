@@ -15,7 +15,7 @@ Todos:
 import os
 from dataclasses import dataclass, field, fields
 import tempfile
-from typing import Dict, Any, List, Tuple
+from typing import Dict, Any, List, Tuple, Optional
 
 import pyblish.api
 from ayon_core.lib import (
@@ -88,7 +88,7 @@ class ExtractThumbnailFromSource(pyblish.api.InstancePlugin):
     # Settings
     profiles = None
 
-    def process(self, instance):
+    def process(self, instance: pyblish.api.Instance):
         if not self.profiles:
             self.log.debug("No profiles present for color transcode")
             return
@@ -144,7 +144,7 @@ class ExtractThumbnailFromSource(pyblish.api.InstancePlugin):
         context: pyblish.api.Context,
         thumbnail_source: str,
         profile_config: ProfileConfig
-    ) -> str:
+    ) -> Optional[str]:
         if not thumbnail_source:
             self.log.debug("Thumbnail source not filled. Skipping.")
             return
@@ -285,7 +285,7 @@ class ExtractThumbnailFromSource(pyblish.api.InstancePlugin):
         self,
         context: pyblish.api.Context,
         profile: ProfileConfig
-    ) -> str:
+    ) -> Optional[str]:
         hasContextThumbnail = "thumbnailPath" in context.data
         if hasContextThumbnail:
             return
@@ -335,10 +335,10 @@ class ExtractThumbnailFromSource(pyblish.api.InstancePlugin):
 
     def _get_resolution_arg(
         self,
-        application,
-        input_path,
-        profile
-    ):
+        application: str,
+        input_path: str,
+        profile: ProfileConfig
+    ) -> List[str]:
         # get settings
         if profile.target_size["type"] == "source":
             return []
