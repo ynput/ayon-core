@@ -199,7 +199,7 @@ class ExtractThumbnailFromSource(pyblish.api.InstancePlugin):
 
         self.log.warning("Thumbnail has not been created.")
 
-    def _instance_has_thumbnail(self, instance):
+    def _instance_has_thumbnail(self, instance: pyblish.api.Instance) -> bool:
         if "representations" not in instance.data:
             self.log.warning(
                 "Instance does not have 'representations' key filled"
