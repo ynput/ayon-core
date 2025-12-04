@@ -158,6 +158,35 @@ def _convert_publish_plugins(overrides):
     _convert_oiio_transcode_0_4_5(overrides["publish"])
 
 
+def _convert_extract_thumbnail(overrides):
+    """ExtractThumbnail config settings did change to profiles."""
+    extract_thumbnail_overrides = overrides.get("ExtractThumbnail") or {}
+    if "profiles" in extract_thumbnail_overrides:
+        return
+
+    base_value = {
+        "product_types": [],
+        "hosts": [],
+        "task_types": [],
+        "task_names": [],
+        "product_names": [],
+        "integrate_thumbnail": True,
+        "target_size": {"type": "source"},
+        "duration_split": 0.5,
+        "oiiotool_defaults": {
+            "type": "colorspace",
+            "colorspace": "color_picking",
+        },
+        "ffmpeg_args": {"input": ["-apply_trc gamma22"], "output": []},
+    }
+    base_value.update(extract_thumbnail_overrides)
+
+    extract_thumbnail_profiles = extract_thumbnail_overrides.setdefault(
+        "profiles", []
+    )
+    extract_thumbnail_profiles.append(base_value)
+
+
 def convert_settings_overrides(
     source_version: str,
     overrides: dict[str, Any],
@@ -166,4 +195,5 @@ def convert_settings_overrides(
     _convert_imageio_configs_0_4_5(overrides)
     _convert_imageio_configs_1_6_5(overrides)
     _convert_publish_plugins(overrides)
+    _convert_extract_thumbnail(overrides)
     return overrides
