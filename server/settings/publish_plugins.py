@@ -49,6 +49,14 @@ class CollectAudioModel(BaseSettingsModel):
     )
 
 
+class CollectHierarchyModel(BaseSettingsModel):
+    _isGroup = True
+    ignore_shot_attributes_on_update: bool = SettingsField(
+        False,
+        title="Ignore shot attributes on update"
+    )
+
+
 class CollectSceneVersionModel(BaseSettingsModel):
     _isGroup = True
     hosts: list[str] = SettingsField(
@@ -1220,6 +1228,10 @@ class PublishPuginsModel(BaseSettingsModel):
         default_factory=CollectExplicitResolutionModel,
         title="Collect Explicit Resolution"
     )
+    CollectHierarchy: CollectHierarchyModel = SettingsField(
+        default_factory=CollectHierarchyModel,
+        title="Collect Hierarchy"
+    )
     ValidateEditorialAssetName: ValidateBaseModel = SettingsField(
         default_factory=ValidateBaseModel,
         title="Validate Editorial Asset Name"
@@ -1406,6 +1418,9 @@ DEFAULT_PUBLISH_VALUES = {
             "shot"
         ],
         "options": []
+    },
+    "CollectHierarchy": {
+        "ignore_shot_attributes_on_update": False,
     },
     "ValidateEditorialAssetName": {
         "enabled": True,
