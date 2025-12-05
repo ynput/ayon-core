@@ -648,7 +648,7 @@ class Creator(BaseCreator):
 
     Creation requires prepared product name and instance data.
     """
-
+    is_base_class = True
     # GUI Purposes
     # - default_variants may not be used if `get_default_variants`
     #   is overridden
@@ -937,6 +937,8 @@ class Creator(BaseCreator):
 
 
 class HiddenCreator(BaseCreator):
+    is_base_class = True
+
     @abstractmethod
     def create(self, instance_data, source_data):
         pass
@@ -947,6 +949,7 @@ class AutoCreator(BaseCreator):
 
     Can be used e.g. for `workfile`.
     """
+    is_base_class = True
 
     def remove_instances(self, instances):
         """Skip removal."""
