@@ -122,7 +122,8 @@ def get_publish_template_name(
     task_type,
     project_settings=None,
     hero=False,
-    logger=None
+    product_base_type: Optional[str] = None,
+    logger=None,
 ):
     """Get template name which should be used for passed context.
 
@@ -140,17 +141,29 @@ def get_publish_template_name(
         task_type (str): Task type on which is instance working.
         project_settings (Dict[str, Any]): Prepared project settings.
         hero (bool): Template is for hero version publishing.
+        product_base_type (Optional[str]): Product type for which should
+            be found template.
         logger (logging.Logger): Custom logger used for 'filter_profiles'
             function.
 
     Returns:
         str: Template name which should be used for integration.
     """
+    if not product_base_type:
+        msg = (
+            "Argument 'product_base_type' is not provided to"
+            " 'get_publish_template_name' function. This argument"
+            " will be required in future versions."
+        )
+        warnings.warn(msg, DeprecationWarning)
+        if logger:
+            logger.warning(msg)
 
     template = None
     filter_criteria = {
         "hosts": host_name,
         "product_types": product_type,
+        "product_base_types": product_base_type,
         "task_names": task_name,
         "task_types": task_type,
     }
@@ -812,7 +825,22 @@ def replace_with_published_scene_path(instance, replace_in_path=True):
     template_data["comment"] = None
 
     anatomy = instance.context.data["anatomy"]
-    template = anatomy.get_template_item("publish", "default", "path")
+    project_name = anatomy.project_name
+    task_name = task_type = None
+    task_entity = instance.data.get("taskEntity")
+    if task_entity:
+        task_name = task_entity["name"]
+        task_type = task_entity["taskType"]
+    project_settings = instance.context.data["project_settings"]
+    template_name = get_publish_template_name(
+        project_name=project_name,
+        host_name=instance.context.data["hostName"],
+        product_type=workfile_instance.data["productType"],
+        task_name=task_name,
+        task_type=task_type,
+        project_settings=project_settings,
+    )
+    template = anatomy.get_template_item("publish", template_name, "path")
     template_filled = template.format_strict(template_data)
     file_path = os.path.normpath(template_filled)
 
