@@ -1,8 +1,10 @@
+"""Functions for handling product names."""
 from __future__ import annotations
 
 import warnings
 from functools import wraps
-from typing import Optional, Any, overload
+from typing import Any, Optional, Union, overload
+from warnings import warn
 
 import ayon_api
 from ayon_core.lib import (
@@ -22,14 +24,15 @@ log = Logger.get_logger(__name__)
 
 
 def get_product_name_template(
-    project_name,
-    product_type,
-    task_name,
-    task_type,
-    host_name,
-    default_template=None,
-    project_settings=None
-):
+    project_name: str,
+    product_type: str,
+    task_name: Optional[str],
+    task_type: Optional[str],
+    host_name: str,
+    default_template: Optional[str] = None,
+    project_settings: Optional[dict[str, Any]] = None,
+    product_base_type: Optional[str] = None
+) -> str:
     """Get product name template based on passed context.
 
     Args:
@@ -37,26 +40,32 @@ def get_product_name_template(
         product_type (str): Product type for which the product name is
             calculated.
         host_name (str): Name of host in which the product name is calculated.
-        task_name (str): Name of task in which context the product is created.
-        task_type (str): Type of task in which context the product is created.
+        task_name (Optional[str]): Name of task in which context the
+            product is created.
+        task_type (Optional[str]): Type of task in which context the
+            product is created.
         default_template (Optional[str]): Default template which is used if
             settings won't find any matching possibility. Constant
             'DEFAULT_PRODUCT_TEMPLATE' is used if not defined.
         project_settings (Optional[dict[str, Any]]): Prepared settings for
             project. Settings are queried if not passed.
-    """
+        product_base_type (Optional[str]): Base type of product.
 
+    Returns:
+        str: Product name template.
+
+    """
     if project_settings is None:
         project_settings = get_project_settings(project_name)
     tools_settings = project_settings["core"]["tools"]
     profiles = tools_settings["creator"]["product_name_profiles"]
     filtering_criteria = {
         "product_types": product_type,
-        "hosts": host_name,
-        "tasks": task_name,
-        "task_types": task_type
+        "host_names": host_name,
+        "task_names": task_name,
+        "task_types": task_type,
+        "product_base_types": product_base_type,
     }
-
     matching_profile = filter_profiles(profiles, filtering_criteria)
     template = None
     if matching_profile:
@@ -92,6 +101,7 @@ def _get_product_name_old(
     project_settings: Optional[dict[str, Any]] = None,
     product_type_filter: Optional[str] = None,
     project_entity: Optional[dict[str, Any]] = None,
+    product_base_type: Optional[str] = None,
 ) -> TemplateResult:
     warnings.warn(
         "Used deprecated 'task_name' and 'task_type' arguments."
@@ -103,13 +113,14 @@ def _get_product_name_old(
         return StringTemplate("").format({})
 
     template = get_product_name_template(
-        project_name,
-        product_type_filter or product_type,
-        task_name,
-        task_type,
-        host_name,
+        project_name=project_name,
+        product_type=product_type_filter or product_type,
+        task_name=task_name,
+        task_type=task_type,
+        host_name=host_name,
         default_template=default_template,
-        project_settings=project_settings
+        project_settings=project_settings,
+        product_base_type=product_base_type,
     )
 
     template_low = template.lower()
@@ -140,12 +151,22 @@ def _get_product_name_old(
         task_short = task_types_by_name.get(task_type, {}).get("shortName")
         task_value["short"] = task_short
 
-    fill_pairs = {
+    if not product_base_type and "{product[basetype]}" in template.lower():
+        warn(
+            "You have Product base type in product name template, "
+            "but it is not provided by the creator, please update your "
+            "creation code to include it. It will be required in "
+            "the future.",
+            DeprecationWarning,
+            stacklevel=2)
+
+    fill_pairs: dict[str, Union[str, dict[str, str]]] = {
         "variant": variant,
         "family": product_type,
         "task": task_value,
         "product": {
-            "type": product_type
+            "type": product_type,
+            "basetype": product_base_type or product_type,
         }
     }
 
@@ -160,10 +181,11 @@ def _get_product_name_old(
             data=prepare_template_data(fill_pairs)
         )
     except KeyError as exp:
-        raise TemplateFillError(
-            "Value for {} key is missing in template '{}'."
-            " Available values are {}".format(str(exp), template, fill_pairs)
+        msg = (
+            f"Value for {exp} key is missing in template '{template}'."
+            f" Available values are {fill_pairs}"
         )
+        raise TemplateFillError(msg) from exp
 
 
 def _backwards_compatibility_product_name(func):
@@ -198,9 +220,9 @@ def _backwards_compatibility_product_name(func):
         if "folder_entity" in kwargs or "task_entity" in kwargs:
             return func(*args, **kwargs)
 
-        # Using more than 6 positional arguments is not allowed
+        # Using more than 7 positional arguments is not allowed
         #   in the new function
-        if len(args) > 6:
+        if len(args) > 7:
             return _get_product_name_old(*args, **kwargs)
 
         if len(args) > 1:
@@ -332,15 +354,16 @@ def get_product_name(
     project_name: str,
     folder_entity: dict[str, Any],
     task_entity: Optional[dict[str, Any]],
-    host_name: str,
+    product_base_type: str,
     product_type: str,
+    host_name: str,
     variant: str,
     *,
-    default_template: Optional[str] = None,
     dynamic_data: Optional[dict[str, Any]] = None,
     project_settings: Optional[dict[str, Any]] = None,
-    product_type_filter: Optional[str] = None,
     project_entity: Optional[dict[str, Any]] = None,
+    default_template: Optional[str] = None,
+    product_base_type_filter: Optional[str] = None,
 ) -> TemplateResult:
     """Calculate product name based on passed context and AYON settings.
 
@@ -357,20 +380,21 @@ def get_product_name(
         folder_entity (Optional[dict[str, Any]]): Folder entity.
         task_entity (Optional[dict[str, Any]]): Task entity.
         host_name (str): Host name.
+        product_base_type (str): Product base type.
         product_type (str): Product type.
         variant (str): In most of the cases it is user input during creation.
-        default_template (Optional[str]): Default template if any profile does
-            not match passed context. Constant 'DEFAULT_PRODUCT_TEMPLATE'
-            is used if is not passed.
         dynamic_data (Optional[dict[str, Any]]): Dynamic data specific for
             a creator which creates instance.
         project_settings (Optional[dict[str, Any]]): Prepared settings
             for project. Settings are queried if not passed.
-        product_type_filter (Optional[str]): Use different product type for
-            product template filtering. Value of `product_type` is used when
-            not passed.
         project_entity (Optional[dict[str, Any]]): Project entity used when
             task short name is required by template.
+        default_template (Optional[str]): Default template if any profile does
+            not match passed context. Constant 'DEFAULT_PRODUCT_TEMPLATE'
+            is used if is not passed.
+        product_base_type_filter (Optional[str]): Use different product base
+            type for product template filtering. Value of
+            `product_base_type_filter` is used when not passed.
 
     Returns:
         TemplateResult: Product name.
@@ -390,13 +414,14 @@ def get_product_name(
         task_type = task_entity["taskType"]
 
     template = get_product_name_template(
-        project_name,
-        product_type_filter or product_type,
-        task_name,
-        task_type,
-        host_name,
+        project_name=project_name,
+        product_base_type=product_base_type_filter or product_base_type,
+        product_type=product_type,
+        task_name=task_name,
+        task_type=task_type,
+        host_name=host_name,
         default_template=default_template,
-        project_settings=project_settings
+        project_settings=project_settings,
     )
 
     template_low = template.lower()
@@ -421,8 +446,8 @@ def get_product_name(
         if project_entity is None:
             project_entity = ayon_api.get_project(project_name)
         task_types_by_name = {
-            task["name"]: task for task in
-            project_entity["taskTypes"]
+            task["name"]: task
+            for task in project_entity["taskTypes"]
         }
         task_short = task_types_by_name.get(task_type, {}).get("shortName")
         task_value["short"] = task_short
@@ -433,7 +458,8 @@ def get_product_name(
         "family": product_type,
         "task": task_value,
         "product": {
-            "type": product_type
+            "type": product_type,
+            "basetype": product_base_type,
         }
     }
     if folder_entity:
@@ -453,7 +479,8 @@ def get_product_name(
             data=prepare_template_data(fill_pairs)
         )
     except KeyError as exp:
-        raise TemplateFillError(
+        msg = (
             f"Value for {exp} key is missing in template '{template}'."
             f" Available values are {fill_pairs}"
         )
+        raise TemplateFillError(msg)
