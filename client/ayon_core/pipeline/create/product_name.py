@@ -367,13 +367,15 @@ def get_product_name(
 ) -> TemplateResult:
     """Calculate product name based on passed context and AYON settings.
 
-    Product name templates are defined in `project_settings/global/tools/creator
-    /product_name_profiles` where are profiles with host name, product type,
-    task name and task type filters. If context does not match any profile
-    then `DEFAULT_PRODUCT_TEMPLATE` is used as default template.
+    Product name templates are defined in `project_settings/global/tools
+    /creator/product_name_profiles` where are profiles with host name,
+    product base type, product type, task name and task type filters.
+
+    If context does not match any profile then `DEFAULT_PRODUCT_TEMPLATE`
+        is used as default template.
 
     That's main reason why so many arguments are required to calculate product
-    name.
+        name.
 
     Args:
         project_name (str): Project name.
