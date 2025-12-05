@@ -160,7 +160,7 @@ class ExtractThumbnail(pyblish.api.InstancePlugin):
 
     def _main_process(self, instance):
         if not self.profiles:
-            self.log.debug("No profiles present for color transcode")
+            self.log.debug("No profiles present for extract review thumbnail.")
             return
         profile_config = self._get_config_from_profile(instance)
         if not profile_config:
