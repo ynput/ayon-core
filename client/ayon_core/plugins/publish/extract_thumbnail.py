@@ -237,7 +237,8 @@ class ExtractThumbnail(pyblish.api.InstancePlugin):
                     )
                     file_path = self._create_frame_from_video(
                         video_file_path,
-                        dst_staging
+                        dst_staging,
+                        profile_config
                     )
                     if file_path:
                         src_staging, input_file = os.path.split(file_path)
@@ -612,7 +613,12 @@ class ExtractThumbnail(pyblish.api.InstancePlugin):
             )
             return False
 
-    def _create_frame_from_video(self, video_file_path, output_dir):
+    def _create_frame_from_video(
+        self,
+        video_file_path,
+        output_dir,
+        profile_config
+    ):
         """Convert video file to one frame image via ffmpeg"""
         # create output file path
         base_name = os.path.basename(video_file_path)
@@ -637,7 +643,7 @@ class ExtractThumbnail(pyblish.api.InstancePlugin):
         seek_position = 0.0
         # Only use timestamp calculation for videos longer than 0.1 seconds
         if duration > 0.1:
-            seek_position = duration * self.duration_split
+            seek_position = duration * profile_config.duration_split
 
         # Build command args
         cmd_args = []
