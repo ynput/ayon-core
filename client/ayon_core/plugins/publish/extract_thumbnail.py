@@ -4,7 +4,7 @@ import os
 import re
 import subprocess
 import tempfile
-from typing import Dict, Any, List, Tuple
+from typing import Dict, Any, List, Tuple, Optional
 
 import pyblish.api
 from ayon_core.lib import (
@@ -744,7 +744,7 @@ class ExtractThumbnail(pyblish.api.InstancePlugin):
     def _get_config_from_profile(
         self,
         instance: pyblish.api.Instance
-    ) -> ProfileConfig:
+    ) -> Optional[ProfileConfig]:
         """Returns profile if and how repre should be color transcoded."""
         host_name = instance.context.data["hostName"]
         product_type = instance.data["productType"]
