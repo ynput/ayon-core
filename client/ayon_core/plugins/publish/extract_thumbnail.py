@@ -113,30 +113,7 @@ class ExtractThumbnail(pyblish.api.InstancePlugin):
     settings_category = "core"
     enabled = False
 
-    integrate_thumbnail = False
-    target_size = {
-        "type": "source",
-        "resize": {
-            "width": 1920,
-            "height": 1080
-        }
-    }
-    background_color = (0, 0, 0, 0.0)
-    duration_split = 0.5
-    # attribute presets from settings
-    oiiotool_defaults = {
-        "type": "colorspace",
-        "colorspace": "color_picking",
-        "display_and_view": {
-            "display": "default",
-            "view": "sRGB"
-        }
-    }
-    ffmpeg_args = {
-        "input": [],
-        "output": []
-    }
-    product_names = []
+    profiles = []
 
     def process(self, instance):
         # run main process
