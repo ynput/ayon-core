@@ -28,7 +28,7 @@ from ayon_core.pipeline.publish import (
     KnownPublishError,
     get_publish_template_name,
 )
-from pipeline import is_product_base_type_supported
+from ayon_core.pipeline import is_product_base_type_supported
 
 log = logging.getLogger(__name__)
 
