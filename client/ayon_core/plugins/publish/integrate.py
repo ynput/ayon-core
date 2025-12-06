@@ -399,7 +399,7 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
             product_id = existing_product_entity["id"]
 
         new_product_entity_kwargs = {
-            "product_name": product_name,
+            "name": product_name,
             "product_type": product_type,
             "folder_id": folder_entity["id"],
             "data": data,
