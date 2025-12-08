@@ -168,7 +168,7 @@ def _convert_extract_thumbnail(overrides):
 
     base_value = {
         "product_types": [],
-        "hosts": [],
+        "host_names": [],
         "task_types": [],
         "task_names": [],
         "product_names": [],

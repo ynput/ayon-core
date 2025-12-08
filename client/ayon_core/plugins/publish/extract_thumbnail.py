@@ -753,7 +753,7 @@ class ExtractThumbnail(pyblish.api.InstancePlugin):
         task_name = task_data.get("name")
         task_type = task_data.get("type")
         filtering_criteria = {
-            "hosts": host_name,
+            "host_names": host_name,
             "product_types": product_type,
             "product_names": product_name,
             "task_names": task_name,

@@ -404,7 +404,9 @@ class ExtractThumbnailProfileModel(BaseSettingsModel):
     product_types: list[str] = SettingsField(
         default_factory=list, title="Product types"
     )
-    hosts: list[str] = SettingsField(default_factory=list, title="Host names")
+    host_names: list[str] = SettingsField(
+        default_factory=list, title="Host names"
+    )
     task_types: list[str] = SettingsField(
         default_factory=list, title="Task types", enum_resolver=task_types_enum
     )
@@ -1474,7 +1476,7 @@ DEFAULT_PUBLISH_VALUES = {
         "profiles": [
             {
                 "product_types": [],
-                "hosts": [],
+                "host_names": [],
                 "task_types": [],
                 "task_names": [],
                 "product_names": [],
