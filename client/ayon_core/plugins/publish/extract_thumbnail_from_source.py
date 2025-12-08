@@ -30,7 +30,7 @@ from ayon_core.lib import (
 
 
 @dataclass
-class ProfileConfig:
+class ThumbnailDefinition:
     """
     Data class representing the full configuration for selected profile
 
@@ -53,10 +53,11 @@ class ProfileConfig:
     background_color: Tuple[int, int, int, float] = (0, 0, 0, 0.0)
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "ProfileConfig":
+    def from_dict(cls, data: Dict[str, Any]) -> "ThumbnailDefinition":
         """
-        Creates a ProfileConfig instance from a dictionary, safely ignoring
-        any keys in the dictionary that are not fields in the dataclass.
+        Creates a ThumbnailDefinition instance from a dictionary,
+        safely ignoring any keys in the dictionary that are not fields
+        in the dataclass.
 
         Args:
             data (Dict[str, Any]): The dictionary containing configuration data
@@ -142,7 +143,7 @@ class ExtractThumbnailFromSource(pyblish.api.InstancePlugin):
         self,
         context: pyblish.api.Context,
         thumbnail_source: str,
-        profile_config: ProfileConfig
+        profile_config: ThumbnailDefinition
     ) -> Optional[str]:
         if not thumbnail_source:
             self.log.debug("Thumbnail source not filled. Skipping.")
@@ -214,7 +215,7 @@ class ExtractThumbnailFromSource(pyblish.api.InstancePlugin):
         self,
         src_path: str,
         dst_path: str,
-        profile_config: ProfileConfig
+        profile_config: ThumbnailDefinition
     ) -> bool:
         self.log.debug("Outputting thumbnail with OIIO: {}".format(dst_path))
         resolution_arg = self._get_resolution_arg(
@@ -244,7 +245,7 @@ class ExtractThumbnailFromSource(pyblish.api.InstancePlugin):
         self,
         src_path: str,
         dst_path: str,
-        profile_config: ProfileConfig
+        profile_config: ThumbnailDefinition
     ) -> bool:
         resolution_arg = self._get_resolution_arg(
             "ffmpeg", src_path, profile_config
@@ -283,7 +284,7 @@ class ExtractThumbnailFromSource(pyblish.api.InstancePlugin):
     def _create_context_thumbnail(
         self,
         context: pyblish.api.Context,
-        profile: ProfileConfig
+        profile: ThumbnailDefinition
     ) -> Optional[str]:
         hasContextThumbnail = "thumbnailPath" in context.data
         if hasContextThumbnail:
@@ -298,7 +299,7 @@ class ExtractThumbnailFromSource(pyblish.api.InstancePlugin):
     def _get_config_from_profile(
         self,
         instance: pyblish.api.Instance
-    ) -> ProfileConfig:
+    ) -> ThumbnailDefinition:
         """Returns profile if and how repre should be color transcoded."""
         host_name = instance.context.data["hostName"]
         product_type = instance.data["productType"]
@@ -330,13 +331,13 @@ class ExtractThumbnailFromSource(pyblish.api.InstancePlugin):
             )
             return
 
-        return ProfileConfig.from_dict(profile)
+        return ThumbnailDefinition.from_dict(profile)
 
     def _get_resolution_arg(
         self,
         application: str,
         input_path: str,
-        profile: ProfileConfig
+        profile: ThumbnailDefinition
     ) -> List[str]:
         # get settings
         if profile.target_size["type"] == "source":
