@@ -9,7 +9,11 @@ from ayon_core.lib.attribute_definitions import (
     deserialize_attr_defs,
     serialize_attr_defs,
 )
-from ayon_core.tools.common_models import TaskItem, TagItem
+from ayon_core.tools.common_models import (
+    TaskItem,
+    TagItem,
+    ProductTypeIconMapping,
+)
 
 
 class ProductTypeItem:
@@ -78,7 +82,6 @@ class ProductItem:
         product_type (str): Product type.
         product_name (str): Product name.
         product_icon (dict[str, Any]): Product icon definition.
-        product_type_icon (dict[str, Any]): Product type icon definition.
         product_in_scene (bool): Is product in scene (only when used in DCC).
         group_name (str): Group name.
         folder_id (str): Folder id.
@@ -93,8 +96,6 @@ class ProductItem:
         product_base_type: str,
         product_name: str,
         product_icon: dict[str, Any],
-        product_type_icon: dict[str, Any],
-        product_base_type_icon: dict[str, Any],
         group_name: str,
         folder_id: str,
         folder_label: str,
@@ -106,8 +107,6 @@ class ProductItem:
         self.product_base_type = product_base_type
         self.product_name = product_name
         self.product_icon = product_icon
-        self.product_type_icon = product_type_icon
-        self.product_base_type_icon = product_base_type_icon
         self.product_in_scene = product_in_scene
         self.group_name = group_name
         self.folder_id = folder_id
@@ -121,8 +120,6 @@ class ProductItem:
             "product_base_type": self.product_base_type,
             "product_name": self.product_name,
             "product_icon": self.product_icon,
-            "product_type_icon": self.product_type_icon,
-            "product_base_type_icon": self.product_base_type_icon,
             "product_in_scene": self.product_in_scene,
             "group_name": self.group_name,
             "folder_id": self.folder_id,
@@ -319,43 +316,34 @@ class ActionItem:
     Args:
         identifier (str): Action identifier.
         label (str): Action label.
-        icon (dict[str, Any]): Action icon definition.
-        tooltip (str): Action tooltip.
+        group_label (Optional[str]): Group label.
+        icon (Optional[dict[str, Any]]): Action icon definition.
+        tooltip (Optional[str]): Action tooltip.
+        order (int): Action order.
+        data (Optional[dict[str, Any]]): Additional action data.
         options (Union[list[AbstractAttrDef], list[qargparse.QArgument]]):
             Action options. Note: 'qargparse' is considered as deprecated.
-        order (int): Action order.
-        project_name (str): Project name.
-        folder_ids (list[str]): Folder ids.
-        product_ids (list[str]): Product ids.
-        version_ids (list[str]): Version ids.
-        representation_ids (list[str]): Representation ids.
-    """
 
+    """
     def __init__(
         self,
-        identifier,
-        label,
-        icon,
-        tooltip,
-        options,
-        order,
-        project_name,
-        folder_ids,
-        product_ids,
-        version_ids,
-        representation_ids,
+        identifier: str,
+        label: str,
+        group_label: Optional[str],
+        icon: Optional[dict[str, Any]],
+        tooltip: Optional[str],
+        order: int,
+        data: Optional[dict[str, Any]],
+        options: Optional[list],
     ):
         self.identifier = identifier
         self.label = label
+        self.group_label = group_label
         self.icon = icon
         self.tooltip = tooltip
-        self.options = options
+        self.data = data
         self.order = order
-        self.project_name = project_name
-        self.folder_ids = folder_ids
-        self.product_ids = product_ids
-        self.version_ids = version_ids
-        self.representation_ids = representation_ids
+        self.options = options
 
     def _options_to_data(self):
         options = self.options
@@ -367,30 +355,26 @@ class ActionItem:
         #   future development of detached UI tools it would be better to be
         #   prepared for it.
         raise NotImplementedError(
-            "{}.to_data is not implemented. Use Attribute definitions"
-            " from 'ayon_core.lib' instead of 'qargparse'.".format(
-                self.__class__.__name__
-            )
+            f"{self.__class__.__name__}.to_data is not implemented."
+            " Use Attribute definitions from 'ayon_core.lib'"
+            " instead of 'qargparse'."
         )
 
-    def to_data(self):
+    def to_data(self) -> dict[str, Any]:
         options = self._options_to_data()
         return {
             "identifier": self.identifier,
             "label": self.label,
+            "group_label": self.group_label,
             "icon": self.icon,
             "tooltip": self.tooltip,
-            "options": options,
             "order": self.order,
-            "project_name": self.project_name,
-            "folder_ids": self.folder_ids,
-            "product_ids": self.product_ids,
-            "version_ids": self.version_ids,
-            "representation_ids": self.representation_ids,
+            "data": self.data,
+            "options": options,
         }
 
     @classmethod
-    def from_data(cls, data):
+    def from_data(cls, data) -> "ActionItem":
         options = data["options"]
         if options:
             options = deserialize_attr_defs(options)
@@ -499,8 +483,8 @@ class BackendLoaderController(_BaseLoaderController):
             topic (str): Event topic name.
             data (Optional[dict[str, Any]]): Event data.
             source (Optional[str]): Event source.
-        """
 
+        """
         pass
 
     @abstractmethod
@@ -509,8 +493,20 @@ class BackendLoaderController(_BaseLoaderController):
 
         Returns:
             set[str]: Set of loaded product ids.
-        """
 
+        """
+        pass
+
+    @abstractmethod
+    def get_product_type_icons_mapping(
+        self, project_name: Optional[str]
+    ) -> ProductTypeIconMapping:
+        """Product type icons mapping.
+
+        Returns:
+            ProductTypeIconMapping: Product type icons mapping.
+
+        """
         pass
 
 
@@ -653,6 +649,21 @@ class FrontendLoaderController(_BaseLoaderController):
 
         Returns:
             dict[str, Optional[str]]: Folder labels by folder id.
+
+        """
+        pass
+
+    @abstractmethod
+    def get_my_tasks_entity_ids(
+        self, project_name: str
+    ) -> dict[str, list[str]]:
+        """Get entity ids for my tasks.
+
+        Args:
+            project_name (str): Project name.
+
+        Returns:
+            dict[str, list[str]]: Folder and task ids.
 
         """
         pass
@@ -981,43 +992,35 @@ class FrontendLoaderController(_BaseLoaderController):
 
     # Load action items
     @abstractmethod
-    def get_versions_action_items(self, project_name, version_ids):
+    def get_action_items(
+        self,
+        project_name: str,
+        entity_ids: set[str],
+        entity_type: str,
+    ) -> list[ActionItem]:
         """Action items for versions selection.
 
         Args:
             project_name (str): Project name.
-            version_ids (Iterable[str]): Version ids.
+            entity_ids (set[str]): Entity ids.
+            entity_type (str): Entity type.
 
         Returns:
             list[ActionItem]: List of action items.
+
         """
-
-        pass
-
-    @abstractmethod
-    def get_representations_action_items(
-        self, project_name, representation_ids
-    ):
-        """Action items for representations selection.
-
-        Args:
-            project_name (str): Project name.
-            representation_ids (Iterable[str]): Representation ids.
-
-        Returns:
-            list[ActionItem]: List of action items.
-        """
-
         pass
 
     @abstractmethod
     def trigger_action_item(
         self,
-        identifier,
-        options,
-        project_name,
-        version_ids,
-        representation_ids
+        identifier: str,
+        project_name: str,
+        selected_ids: set[str],
+        selected_entity_type: str,
+        data: Optional[dict[str, Any]],
+        options: dict[str, Any],
+        form_values: dict[str, Any],
     ):
         """Trigger action item.
 
@@ -1035,13 +1038,15 @@ class FrontendLoaderController(_BaseLoaderController):
             }
 
         Args:
-            identifier (str): Action identifier.
-            options (dict[str, Any]): Action option values from UI.
+            identifier (sttr): Plugin identifier.
             project_name (str): Project name.
-            version_ids (Iterable[str]): Version ids.
-            representation_ids (Iterable[str]): Representation ids.
-        """
+            selected_ids (set[str]): Selected entity ids.
+            selected_entity_type (str): Selected entity type.
+            data (Optional[dict[str, Any]]): Additional action item data.
+            options (dict[str, Any]): Action option values from UI.
+            form_values (dict[str, Any]): Action form values from UI.
 
+        """
         pass
 
     @abstractmethod

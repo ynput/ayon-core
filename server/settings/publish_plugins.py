@@ -251,6 +251,19 @@ class AyonEntityURIModel(BaseSettingsModel):
     )
 
 
+class ExtractUSDLayerContributionModel(AyonEntityURIModel):
+    enforce_default_prim: bool = SettingsField(
+        title="Always set default prim to folder name.",
+        description=(
+            "When enabled ignore any default prim specified on older "
+            "published versions of a layer and always override it to the "
+            "AYON standard default prim. When disabled, preserve default prim "
+            "on the layer and then only the initial version would be setting "
+            "the AYON standard default prim."
+        )
+    )
+
+
 class PluginStateByHostModelProfile(BaseSettingsModel):
     _layout = "expanded"
     # Filtering
@@ -443,7 +456,7 @@ class UseDisplayViewModel(BaseSettingsModel):
         title="Target Display",
         description=(
             "Display of the target transform. If left empty, the"
-            " source Display value will be used."
+            " scene Display value will be used."
         )
     )
     view: str = SettingsField(
@@ -451,7 +464,7 @@ class UseDisplayViewModel(BaseSettingsModel):
         title="Target View",
         description=(
             "View of the target transform. If left empty, the"
-            " source View value will be used."
+            " scene View value will be used."
         )
     )
 
@@ -565,8 +578,121 @@ class ExtractOIIOTranscodeProfileModel(BaseSettingsModel):
 
 
 class ExtractOIIOTranscodeModel(BaseSettingsModel):
+    """Color conversion transcoding using OIIO for images mostly aimed at
+    transcoding for reviewables (it'll process and output only RGBA channels).
+    """
     enabled: bool = SettingsField(True)
     profiles: list[ExtractOIIOTranscodeProfileModel] = SettingsField(
+        default_factory=list, title="Profiles"
+    )
+
+
+class ExtractOIIOPostProcessOutputModel(BaseSettingsModel):
+    _layout = "expanded"
+    name: str = SettingsField(
+        "",
+        title="Name",
+        description="Output name (no space)",
+        regex=r"[a-zA-Z0-9_]([a-zA-Z0-9_\.\-]*[a-zA-Z0-9_])?$",
+    )
+    extension: str = SettingsField(
+        "",
+        title="Extension",
+        description=(
+            "Target extension. If left empty, original"
+            " extension is used."
+        ),
+    )
+    input_arguments: list[str] = SettingsField(
+        default_factory=list,
+        title="Input arguments",
+        description="Arguments passed prior to the input file argument.",
+    )
+    output_arguments: list[str] = SettingsField(
+        default_factory=list,
+        title="Output arguments",
+        description="Arguments passed prior to the -o argument.",
+    )
+    tags: list[str] = SettingsField(
+        default_factory=list,
+        title="Tags",
+        description=(
+            "Additional tags that will be added to the created representation."
+            "\nAdd *review* tag to create review from the transcoded"
+            " representation instead of the original."
+        )
+    )
+    custom_tags: list[str] = SettingsField(
+        default_factory=list,
+        title="Custom Tags",
+        description=(
+            "Additional custom tags that will be added"
+            " to the created representation."
+        )
+    )
+
+
+class ExtractOIIOPostProcessProfileModel(BaseSettingsModel):
+    host_names: list[str] = SettingsField(
+        section="Profile",
+        default_factory=list,
+        title="Host names"
+    )
+    task_types: list[str] = SettingsField(
+        default_factory=list,
+        title="Task types",
+        enum_resolver=task_types_enum
+    )
+    task_names: list[str] = SettingsField(
+        default_factory=list,
+        title="Task names"
+    )
+    product_types: list[str] = SettingsField(
+        default_factory=list,
+        title="Product types"
+    )
+    product_names: list[str] = SettingsField(
+        default_factory=list,
+        title="Product names"
+    )
+    representation_names: list[str] = SettingsField(
+        default_factory=list,
+        title="Representation names",
+    )
+    representation_exts: list[str] = SettingsField(
+        default_factory=list,
+        title="Representation extensions",
+    )
+    delete_original: bool = SettingsField(
+        True,
+        title="Delete Original Representation",
+        description=(
+            "Choose to preserve or remove the original representation.\n"
+            "Keep in mind that if the transcoded representation includes"
+            " a `review` tag, it will take precedence over"
+            " the original for creating reviews."
+        ),
+        section="Conversion Outputs",
+    )
+    outputs: list[ExtractOIIOPostProcessOutputModel] = SettingsField(
+        default_factory=list,
+        title="Output Definitions",
+    )
+
+    @validator("outputs")
+    def validate_unique_outputs(cls, value):
+        ensure_unique_names(value)
+        return value
+
+
+class ExtractOIIOPostProcessModel(BaseSettingsModel):
+    """Process representation images with `oiiotool` on publish.
+
+    This could be used to convert images to different formats, convert to
+    scanline images or flatten deep images.
+    """
+    enabled: bool = SettingsField(True)
+    profiles: list[ExtractOIIOPostProcessProfileModel] = SettingsField(
         default_factory=list, title="Profiles"
     )
 
@@ -1122,6 +1248,10 @@ class PublishPuginsModel(BaseSettingsModel):
         default_factory=ExtractOIIOTranscodeModel,
         title="Extract OIIO Transcode"
     )
+    ExtractOIIOPostProcess: ExtractOIIOPostProcessModel = SettingsField(
+        default_factory=ExtractOIIOPostProcessModel,
+        title="Extract OIIO Post Process"
+    )
     ExtractReview: ExtractReviewModel = SettingsField(
         default_factory=ExtractReviewModel,
         title="Extract Review"
@@ -1134,9 +1264,11 @@ class PublishPuginsModel(BaseSettingsModel):
         default_factory=AyonEntityURIModel,
         title="Extract USD Asset Contribution",
     )
-    ExtractUSDLayerContribution: AyonEntityURIModel = SettingsField(
-        default_factory=AyonEntityURIModel,
-        title="Extract USD Layer Contribution",
+    ExtractUSDLayerContribution: ExtractUSDLayerContributionModel = (
+        SettingsField(
+            default_factory=ExtractUSDLayerContributionModel,
+            title="Extract USD Layer Contribution",
+        )
     )
     PreIntegrateThumbnails: PreIntegrateThumbnailsModel = SettingsField(
         default_factory=PreIntegrateThumbnailsModel,
@@ -1347,6 +1479,10 @@ DEFAULT_PUBLISH_VALUES = {
         "enabled": True,
         "profiles": []
     },
+    "ExtractOIIOPostProcess": {
+        "enabled": True,
+        "profiles": []
+    },
     "ExtractReview": {
         "enabled": True,
         "profiles": [
@@ -1448,6 +1584,105 @@ DEFAULT_PUBLISH_VALUES = {
                         "fill_missing_frames": "closest_existing"
                     }
                 ]
+            },
+            {
+                "product_types": [],
+                "hosts": ["substancepainter"],
+                "task_types": [],
+                "outputs": [
+                    {
+                        "name": "png",
+                        "ext": "png",
+                        "tags": [
+                            "ftrackreview",
+                            "kitsureview",
+                            "webreview"
+                        ],
+                        "burnins": [],
+                        "ffmpeg_args": {
+                            "video_filters": [],
+                            "audio_filters": [],
+                            "input": [],
+                            "output": []
+                        },
+                        "filter": {
+                            "families": [
+                                "render",
+                                "review",
+                                "ftrack"
+                            ],
+                            "product_names": [],
+                            "custom_tags": [],
+                            "single_frame_filter": "single_frame"
+                        },
+                        "overscan_crop": "",
+                        # "overscan_color": [0, 0, 0],
+                        "overscan_color": [0, 0, 0, 0.0],
+                        "width": 1920,
+                        "height": 1080,
+                        "scale_pixel_aspect": True,
+                        "bg_color": [0, 0, 0, 0.0],
+                        "letter_box": {
+                            "enabled": False,
+                            "ratio": 0.0,
+                            "fill_color": [0, 0, 0, 1.0],
+                            "line_thickness": 0,
+                            "line_color": [255, 0, 0, 1.0]
+                        },
+                        "fill_missing_frames": "only_rendered"
+                    },
+                    {
+                        "name": "h264",
+                        "ext": "mp4",
+                        "tags": [
+                            "burnin",
+                            "ftrackreview",
+                            "kitsureview",
+                            "webreview"
+                        ],
+                        "burnins": [],
+                        "ffmpeg_args": {
+                            "video_filters": [],
+                            "audio_filters": [],
+                            "input": [
+                                "-apply_trc gamma22"
+                            ],
+                            "output": [
+                                "-pix_fmt yuv420p",
+                                "-crf 18",
+                                "-c:a aac",
+                                "-b:a 192k",
+                                "-g 1",
+                                "-movflags faststart"
+                            ]
+                        },
+                        "filter": {
+                            "families": [
+                                "render",
+                                "review",
+                                "ftrack"
+                            ],
+                            "product_names": [],
+                            "custom_tags": [],
+                            "single_frame_filter": "multi_frame"
+                        },
+                        "overscan_crop": "",
+                        # "overscan_color": [0, 0, 0],
+                        "overscan_color": [0, 0, 0, 0.0],
+                        "width": 0,
+                        "height": 0,
+                        "scale_pixel_aspect": True,
+                        "bg_color": [0, 0, 0, 0.0],
+                        "letter_box": {
+                            "enabled": False,
+                            "ratio": 0.0,
+                            "fill_color": [0, 0, 0, 1.0],
+                            "line_thickness": 0,
+                            "line_color": [255, 0, 0, 1.0]
+                        },
+                        "fill_missing_frames": "only_rendered"
+                    }
+                ]
             }
         ]
     },
@@ -1526,6 +1761,7 @@ DEFAULT_PUBLISH_VALUES = {
     },
     "ExtractUSDLayerContribution": {
         "use_ayon_entity_uri": False,
+        "enforce_default_prim": False,
     },
     "PreIntegrateThumbnails": {
         "enabled": True,

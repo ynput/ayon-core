@@ -1,7 +1,14 @@
+from __future__ import annotations
+
 import os
 from abc import ABC, abstractmethod
+import typing
+from typing import Optional
 
 from ayon_core.style import get_default_entity_icon_color
+
+if typing.TYPE_CHECKING:
+    from ayon_core.host import PublishedWorkfileInfo
 
 
 class FolderItem:
@@ -157,6 +164,17 @@ class WorkareaFilepathResult:
         self.filename = filename
         self.exists = exists
         self.filepath = filepath
+
+
+class PublishedWorkfileWrap:
+    """Wrapper for workfile info that also contains version comment."""
+    def __init__(
+        self,
+        info: Optional[PublishedWorkfileInfo] = None,
+        comment: Optional[str] = None,
+    ) -> None:
+        self.info = info
+        self.comment = comment
 
 
 class AbstractWorkfilesCommon(ABC):
@@ -783,6 +801,25 @@ class AbstractWorkfilesFrontend(AbstractWorkfilesCommon):
 
         Returns:
             list[PublishedWorkfileInfo]: List of published file items.
+
+        """
+        pass
+
+    @abstractmethod
+    def get_published_workfile_info(
+        self,
+        folder_id: Optional[str],
+        representation_id: Optional[str],
+    ) -> PublishedWorkfileWrap:
+        """Get published workfile info by representation ID.
+
+        Args:
+            folder_id (Optional[str]): Folder id.
+            representation_id (Optional[str]): Representation id.
+
+        Returns:
+            PublishedWorkfileWrap: Published workfile info or None
+                if not found.
 
         """
         pass
