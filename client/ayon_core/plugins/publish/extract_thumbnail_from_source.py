@@ -50,8 +50,7 @@ class ProfileConfig:
     )
 
     # Background color defined as (R, G, B, A) tuple.
-    # Note: Use float for alpha channel (0.0 to 1.0).
-    background_color: Tuple[float, float, float, float] = (0.0, 0.0, 0.0, 0.0)
+    background_color: Tuple[int, int, int, float] = (0, 0, 0, 0.0)
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "ProfileConfig":
