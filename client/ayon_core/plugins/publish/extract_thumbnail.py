@@ -30,7 +30,7 @@ from ayon_core.lib.transcoding import VIDEO_EXTENSIONS, IMAGE_EXTENSIONS
 
 
 @dataclass
-class ProfileConfig:
+class ThumbnailDef:
     """
     Data class representing the full configuration for selected profile
 
@@ -65,9 +65,9 @@ class ProfileConfig:
     background_color: Tuple[int, int, int, float] = (0, 0, 0, 0.0)
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "ProfileConfig":
+    def from_dict(cls, data: Dict[str, Any]) -> "ThumbnailDef":
         """
-        Creates a ProfileConfig instance from a dictionary, safely ignoring
+        Creates a ThumbnailDef instance from a dictionary, safely ignoring
         any keys in the dictionary that are not fields in the dataclass.
 
         Args:
@@ -746,7 +746,7 @@ class ExtractThumbnail(pyblish.api.InstancePlugin):
     def _get_config_from_profile(
         self,
         instance: pyblish.api.Instance
-    ) -> Optional[ProfileConfig]:
+    ) -> Optional[ThumbnailDef]:
         """Returns profile if and how repre should be color transcoded."""
         host_name = instance.context.data["hostName"]
         product_type = instance.data["productType"]
@@ -778,4 +778,4 @@ class ExtractThumbnail(pyblish.api.InstancePlugin):
             )
             return
 
-        return ProfileConfig.from_dict(profile)
+        return ThumbnailDef.from_dict(profile)
