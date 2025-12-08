@@ -257,11 +257,7 @@ class IntegrateThumbnailsAYON(pyblish.api.ContextPlugin):
         repre_path: str,
         content_type: str,
     ):
-        """Upload file with simple exponential backoff retries.
-
-        If all retries fail we raise a PublishXmlValidationError with a help key
-        to guide the user to retry publish.
-        """
+        """Upload file with simple retries."""
         # How long to sleep before next attempt
         wait_time = 1
 
