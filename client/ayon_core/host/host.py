@@ -12,7 +12,7 @@ import ayon_api
 from ayon_core.lib import emit_event
 
 from .constants import ContextChangeReason
-from .abstract import AbstractHost
+from .abstract import AbstractHost, ApplicationInformation
 
 if typing.TYPE_CHECKING:
     from ayon_core.pipeline import Anatomy
@@ -95,6 +95,18 @@ class HostBase(AbstractHost):
         """
 
         pass
+
+    def get_app_information(self) -> ApplicationInformation:
+        """Running application information.
+
+        Host integration should override this method and return correct
+            information.
+
+        Returns:
+            ApplicationInformation: Application information.
+
+        """
+        return ApplicationInformation()
 
     def install(self):
         """Install host specific functionality.

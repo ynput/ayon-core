@@ -1,6 +1,7 @@
 from operator import attrgetter
 import dataclasses
 import os
+import platform
 from typing import Any, Dict, List
 
 import pyblish.api
@@ -24,7 +25,8 @@ try:
         variant_nested_prim_path,
         setup_asset_layer,
         add_ordered_sublayer,
-        set_layer_defaults
+        set_layer_defaults,
+        get_standard_default_prim_name
     )
 except ImportError:
     pass
@@ -175,10 +177,17 @@ def get_instance_uri_path(
 
         # If for whatever reason we were unable to retrieve from the context
         # then get the path from an existing database entry
-        path = get_representation_path_by_names(**query)
+        path = get_representation_path_by_names(
+            anatomy=context.data["anatomy"],
+            **names
+        )
+        if not path:
+            raise RuntimeError(f"Unable to resolve publish path for: {names}")
 
         # Ensure `None` for now is also a string
         path = str(path)
+        if platform.system().lower() == "windows":
+            path = path.replace("\\", "/")
 
     return path
 
@@ -491,7 +500,7 @@ class CollectUSDLayerContributions(pyblish.api.InstancePlugin,
             "asset"
             if profile.get("contribution_target_product") == "usdAsset"
             else "shot")
-        init_as_visible = False
+        init_as_visible = True
 
         # Attributes logic
         publish_attributes = instance["publish_attributes"].get(
@@ -637,6 +646,7 @@ class ExtractUSDLayerContribution(publish.Extractor):
     settings_category = "core"
 
     use_ayon_entity_uri = False
+    enforce_default_prim = False
 
     def process(self, instance):
 
@@ -647,9 +657,18 @@ class ExtractUSDLayerContribution(publish.Extractor):
         path = get_last_publish(instance)
         if path and BUILD_INTO_LAST_VERSIONS:
             sdf_layer = Sdf.Layer.OpenAsAnonymous(path)
+
+            # If enabled in settings, ignore any default prim specified on
+            # older publish versions and always publish with the AYON
+            # standard default prim
+            if self.enforce_default_prim:
+                sdf_layer.defaultPrim = get_standard_default_prim_name(
+                    folder_path
+                )
+
             default_prim = sdf_layer.defaultPrim
         else:
-            default_prim = folder_path.rsplit("/", 1)[-1]  # use folder name
+            default_prim = get_standard_default_prim_name(folder_path)
             sdf_layer = Sdf.Layer.CreateAnonymous()
             set_layer_defaults(sdf_layer, default_prim=default_prim)
 
@@ -807,7 +826,7 @@ class ExtractUSDAssetContribution(publish.Extractor):
         folder_path = instance.data["folderPath"]
         product_name = instance.data["productName"]
         self.log.debug(f"Building asset: {folder_path} > {product_name}")
-        folder_name = folder_path.rsplit("/", 1)[-1]
+        asset_name = get_standard_default_prim_name(folder_path)
 
         # Contribute layers to asset
         # Use existing asset and add to it, or initialize a new asset layer
@@ -825,8 +844,9 @@ class ExtractUSDAssetContribution(publish.Extractor):
             # If no existing publish of this product exists then we initialize
             # the layer as either a default asset or shot structure.
             init_type = instance.data["contribution_target_product_init"]
+            self.log.debug("Initializing layer as type: %s", init_type)
             asset_layer, payload_layer = self.init_layer(
-                asset_name=folder_name, init_type=init_type
+                asset_name=asset_name, init_type=init_type
             )
 
         # Author timeCodesPerSecond and framesPerSecond if the asset layer
@@ -906,7 +926,7 @@ class ExtractUSDAssetContribution(publish.Extractor):
             payload_layer.Export(payload_path, args={"format": "usda"})
             self.add_relative_file(instance, payload_path)
 
-    def init_layer(self, asset_name, init_type):
+    def init_layer(self, asset_name: str, init_type: str):
         """Initialize layer if no previous version exists"""
 
         if init_type == "asset":

@@ -38,18 +38,20 @@ class AddLastWorkfileToLaunchArgs(PreLaunchHook):
     launch_types = {LaunchTypes.local}
 
     def execute(self):
-        if not self.data.get("start_last_workfile"):
-            self.log.info("It is set to not start last workfile on start.")
-            return
+        workfile_path = self.data.get("workfile_path")
+        if not workfile_path:
+            if not self.data.get("start_last_workfile"):
+                self.log.info("It is set to not start last workfile on start.")
+                return
 
-        last_workfile = self.data.get("last_workfile_path")
-        if not last_workfile:
-            self.log.warning("Last workfile was not collected.")
-            return
+            workfile_path = self.data.get("last_workfile_path")
+            if not workfile_path:
+                self.log.warning("Last workfile was not collected.")
+                return
 
-        if not os.path.exists(last_workfile):
+        if not os.path.exists(workfile_path):
             self.log.info("Current context does not have any workfile yet.")
             return
 
         # Add path to workfile to arguments
-        self.launch_context.launch_args.append(last_workfile)
+        self.launch_context.launch_args.append(workfile_path)

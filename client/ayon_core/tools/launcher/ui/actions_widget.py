@@ -1,22 +1,12 @@
 import time
-import uuid
 import collections
 
 from qtpy import QtWidgets, QtCore, QtGui
 
 from ayon_core.lib import Logger
-from ayon_core.lib.attribute_definitions import (
-    UILabelDef,
-    EnumDef,
-    TextDef,
-    BoolDef,
-    NumberDef,
-    HiddenDef,
-)
+from ayon_core.pipeline.actions import webaction_fields_to_attribute_defs
 from ayon_core.tools.flickcharm import FlickCharm
-from ayon_core.tools.utils import (
-    get_qt_icon,
-)
+from ayon_core.tools.utils import get_qt_icon
 from ayon_core.tools.attribute_defs import AttributeDefinitionsDialog
 from ayon_core.tools.launcher.abstract import WebactionContext
 
@@ -136,6 +126,10 @@ class ActionsQtModel(QtGui.QStandardItemModel):
             "selection.task.changed",
             self._on_selection_task_changed,
         )
+        controller.register_event_callback(
+            "selection.workfile.changed",
+            self._on_selection_workfile_changed,
+        )
 
         self._controller = controller
 
@@ -146,6 +140,7 @@ class ActionsQtModel(QtGui.QStandardItemModel):
         self._selected_project_name = None
         self._selected_folder_id = None
         self._selected_task_id = None
+        self._selected_workfile_id = None
 
     def get_selected_project_name(self):
         return self._selected_project_name
@@ -155,6 +150,9 @@ class ActionsQtModel(QtGui.QStandardItemModel):
 
     def get_selected_task_id(self):
         return self._selected_task_id
+
+    def get_selected_workfile_id(self):
+        return self._selected_workfile_id
 
     def get_group_items(self, action_id):
         return self._groups_by_id[action_id]
@@ -194,6 +192,7 @@ class ActionsQtModel(QtGui.QStandardItemModel):
             self._selected_project_name,
             self._selected_folder_id,
             self._selected_task_id,
+            self._selected_workfile_id,
         )
         if not items:
             self._clear_items()
@@ -286,18 +285,28 @@ class ActionsQtModel(QtGui.QStandardItemModel):
         self._selected_project_name = event["project_name"]
         self._selected_folder_id = None
         self._selected_task_id = None
+        self._selected_workfile_id = None
         self.refresh()
 
     def _on_selection_folder_changed(self, event):
         self._selected_project_name = event["project_name"]
         self._selected_folder_id = event["folder_id"]
         self._selected_task_id = None
+        self._selected_workfile_id = None
         self.refresh()
 
     def _on_selection_task_changed(self, event):
         self._selected_project_name = event["project_name"]
         self._selected_folder_id = event["folder_id"]
         self._selected_task_id = event["task_id"]
+        self._selected_workfile_id = None
+        self.refresh()
+
+    def _on_selection_workfile_changed(self, event):
+        self._selected_project_name = event["project_name"]
+        self._selected_folder_id = event["folder_id"]
+        self._selected_task_id = event["task_id"]
+        self._selected_workfile_id = event["workfile_id"]
         self.refresh()
 
 
@@ -576,9 +585,6 @@ class ActionMenuPopup(QtWidgets.QWidget):
 
     def _on_clicked(self, index):
         if not index or not index.isValid():
-            return
-
-        if not index.data(ACTION_HAS_CONFIGS_ROLE):
             return
 
         action_id = index.data(ACTION_ID_ROLE)
@@ -970,10 +976,11 @@ class ActionsWidget(QtWidgets.QWidget):
                 event["project_name"],
                 event["folder_id"],
                 event["task_id"],
+                event["workfile_id"],
                 event["addon_name"],
                 event["addon_version"],
             ),
-            event["action_label"],
+            event["full_label"],
             form_data,
         )
 
@@ -1050,24 +1057,26 @@ class ActionsWidget(QtWidgets.QWidget):
         project_name = self._model.get_selected_project_name()
         folder_id = self._model.get_selected_folder_id()
         task_id = self._model.get_selected_task_id()
+        workfile_id = self._model.get_selected_workfile_id()
         action_item = self._model.get_action_item_by_id(action_id)
 
         if action_item.action_type == "webaction":
             action_item = self._model.get_action_item_by_id(action_id)
             context = WebactionContext(
-                action_id,
-                project_name,
-                folder_id,
-                task_id,
-                action_item.addon_name,
-                action_item.addon_version
+                identifier=action_id,
+                project_name=project_name,
+                folder_id=folder_id,
+                task_id=task_id,
+                workfile_id=workfile_id,
+                addon_name=action_item.addon_name,
+                addon_version=action_item.addon_version,
             )
             self._controller.trigger_webaction(
                 context, action_item.full_label
             )
         else:
             self._controller.trigger_action(
-                action_id, project_name, folder_id, task_id
+                action_id, project_name, folder_id, task_id, workfile_id
             )
 
         if index is None:
@@ -1087,11 +1096,13 @@ class ActionsWidget(QtWidgets.QWidget):
         project_name = self._model.get_selected_project_name()
         folder_id = self._model.get_selected_folder_id()
         task_id = self._model.get_selected_task_id()
+        workfile_id = self._model.get_selected_workfile_id()
         context = WebactionContext(
-            action_id,
+            identifier=action_id,
             project_name=project_name,
             folder_id=folder_id,
             task_id=task_id,
+            workfile_id=workfile_id,
             addon_name=action_item.addon_name,
             addon_version=action_item.addon_version,
         )
@@ -1152,74 +1163,7 @@ class ActionsWidget(QtWidgets.QWidget):
             float - 'label', 'value', 'placeholder', 'min', 'max'
 
         """
-        attr_defs = []
-        for config_field in config_fields:
-            field_type = config_field["type"]
-            attr_def = None
-            if field_type == "label":
-                label = config_field.get("value")
-                if label is None:
-                    label = config_field.get("text")
-                attr_def = UILabelDef(
-                    label, key=uuid.uuid4().hex
-                )
-            elif field_type == "boolean":
-                value = config_field["value"]
-                if isinstance(value, str):
-                    value = value.lower() == "true"
-
-                attr_def = BoolDef(
-                    config_field["name"],
-                    default=value,
-                    label=config_field.get("label"),
-                )
-            elif field_type == "text":
-                attr_def = TextDef(
-                    config_field["name"],
-                    default=config_field.get("value"),
-                    label=config_field.get("label"),
-                    placeholder=config_field.get("placeholder"),
-                    multiline=config_field.get("multiline", False),
-                    regex=config_field.get("regex"),
-                    # syntax=config_field["syntax"],
-                )
-            elif field_type in ("integer", "float"):
-                value = config_field.get("value")
-                if isinstance(value, str):
-                    if field_type == "integer":
-                        value = int(value)
-                    else:
-                        value = float(value)
-                attr_def = NumberDef(
-                    config_field["name"],
-                    default=value,
-                    label=config_field.get("label"),
-                    decimals=0 if field_type == "integer" else 5,
-                    # placeholder=config_field.get("placeholder"),
-                    minimum=config_field.get("min"),
-                    maximum=config_field.get("max"),
-                )
-            elif field_type in ("select", "multiselect"):
-                attr_def = EnumDef(
-                    config_field["name"],
-                    items=config_field["options"],
-                    default=config_field.get("value"),
-                    label=config_field.get("label"),
-                    multiselection=field_type == "multiselect",
-                )
-            elif field_type == "hidden":
-                attr_def = HiddenDef(
-                    config_field["name"],
-                    default=config_field.get("value"),
-                )
-
-            if attr_def is None:
-                print(f"Unknown config field type: {field_type}")
-                attr_def = UILabelDef(
-                    f"Unknown field type '{field_type}",
-                    key=uuid.uuid4().hex
-                )
-            attr_defs.append(attr_def)
+        attr_defs = webaction_fields_to_attribute_defs(config_fields)
 
         dialog = AttributeDefinitionsDialog(
             attr_defs,

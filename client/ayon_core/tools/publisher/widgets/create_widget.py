@@ -710,11 +710,13 @@ class CreateWidget(QtWidgets.QWidget):
 
     def _on_first_show(self):
         width = self.width()
-        part = int(width / 4)
-        rem_width = width - part
-        self._main_splitter_widget.setSizes([part, rem_width])
-        rem_width = rem_width - part
-        self._creators_splitter.setSizes([part, rem_width])
+        part = int(width / 9)
+        context_width = part * 3
+        create_sel_width = part * 2
+        rem_width = width - context_width
+        self._main_splitter_widget.setSizes([context_width, rem_width])
+        rem_width -= create_sel_width
+        self._creators_splitter.setSizes([create_sel_width, rem_width])
 
     def showEvent(self, event):
         super().showEvent(event)

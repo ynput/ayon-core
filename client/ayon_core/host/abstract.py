@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import logging
 from abc import ABC, abstractmethod
+from dataclasses import dataclass
 import typing
 from typing import Optional, Any
 
@@ -11,6 +12,19 @@ if typing.TYPE_CHECKING:
     from ayon_core.pipeline import Anatomy
 
     from .typing import HostContextData
+
+
+@dataclass
+class ApplicationInformation:
+    """Application information.
+
+    Attributes:
+        app_name (Optional[str]): Application name. e.g. Maya, NukeX, Nuke
+        app_version (Optional[str]): Application version. e.g. 15.2.1
+
+    """
+    app_name: Optional[str] = None
+    app_version: Optional[str] = None
 
 
 class AbstractHost(ABC):
@@ -24,6 +38,16 @@ class AbstractHost(ABC):
     @abstractmethod
     def name(self) -> str:
         """Host name."""
+        pass
+
+    @abstractmethod
+    def get_app_information(self) -> ApplicationInformation:
+        """Information about the application where host is running.
+
+        Returns:
+            ApplicationInformation: Application information.
+
+        """
         pass
 
     @abstractmethod

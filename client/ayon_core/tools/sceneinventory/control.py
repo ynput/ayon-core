@@ -1,3 +1,5 @@
+from typing import Optional
+
 import ayon_api
 
 from ayon_core.lib.events import QueuedEventSystem
@@ -6,7 +8,11 @@ from ayon_core.pipeline import (
     registered_host,
     get_current_context,
 )
-from ayon_core.tools.common_models import HierarchyModel, ProjectsModel
+from ayon_core.tools.common_models import (
+    HierarchyModel,
+    ProjectsModel,
+    ProductTypeIconMapping,
+)
 
 from .models import SiteSyncModel, ContainersModel
 
@@ -91,6 +97,13 @@ class SceneInventoryController:
             project_name = self.get_current_project_name()
         return self._projects_model.get_project_status_items(
             project_name, None
+        )
+
+    def get_product_type_icons_mapping(
+        self, project_name: Optional[str]
+    ) -> ProductTypeIconMapping:
+        return self._projects_model.get_product_type_icons_mapping(
+            project_name
         )
 
     # Containers methods
