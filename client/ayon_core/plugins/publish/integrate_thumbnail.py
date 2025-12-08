@@ -26,16 +26,13 @@ import os
 import collections
 import time
 
-import pyblish.api
 import ayon_api
 from ayon_api import RequestTypes
 from ayon_api.operations import OperationsSession
-try:
-    from ayon_api.utils import get_media_mime_type
-except ImportError:
-    from ayon_core.lib import get_media_mime_type
+import pyblish.api
 import requests
 
+from ayon_core.lib import get_media_mime_type
 from ayon_core.pipeline.publish import PublishXmlValidationError
 
 
