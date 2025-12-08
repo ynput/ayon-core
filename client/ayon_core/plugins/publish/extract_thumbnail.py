@@ -36,8 +36,6 @@ class ThumbnailDef:
 
     Any change of controllable fields in Settings must propagate here!
     """
-    product_names: List[str] = field(default_factory=list)
-
     integrate_thumbnail: bool = False
 
     target_size: Dict[str, Any] = field(
@@ -174,24 +172,6 @@ class ExtractThumbnail(pyblish.api.InstancePlugin):
         if "crypto" in product_name.lower():
             self.log.debug("Skipping crypto passes.")
             return
-
-        # We only want to process the produces needed from settings.
-        def validate_string_against_patterns(input_str, patterns):
-            for pattern in patterns:
-                if re.match(pattern, input_str):
-                    return True
-            return False
-
-        product_names = profile_config.product_names
-        if product_names:
-            result = validate_string_against_patterns(
-                product_name, product_names
-            )
-            if not result:
-                self.log.debug((
-                    "Product name \"{}\" did not match settings filters: {}"
-                ).format(product_name, product_names))
-                return
 
         # first check for any explicitly marked representations for thumbnail
         explicit_repres = self._get_explicit_repres_for_thumbnail(instance)
