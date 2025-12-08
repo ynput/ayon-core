@@ -181,7 +181,16 @@ def _convert_extract_thumbnail(overrides):
         },
         "ffmpeg_args": {"input": ["-apply_trc gamma22"], "output": []},
     }
-    base_value.update(extract_thumbnail_overrides)
+    for key in (
+        "product_names",
+        "integrate_thumbnail",
+        "target_size",
+        "duration_split",
+        "oiiotool_defaults",
+        "ffmpeg_args",
+    ):
+        if key in extract_thumbnail_overrides:
+            base_value[key] = extract_thumbnail_overrides[key]
 
     extract_thumbnail_profiles = extract_thumbnail_overrides.setdefault(
         "profiles", []
