@@ -470,18 +470,20 @@ class UseDisplayViewModel(BaseSettingsModel):
 
 
 class ExtractThumbnailFromSourceProfileModel(BaseSettingsModel):
+    host_names: list[str] = SettingsField(
+        default_factory=list, title="Host names"
+    )
+    product_names: list[str] = SettingsField(
+        default_factory=list, title="Product names"
+    )
     product_types: list[str] = SettingsField(
         default_factory=list, title="Product types"
     )
-    hosts: list[str] = SettingsField(default_factory=list, title="Host names")
     task_types: list[str] = SettingsField(
         default_factory=list, title="Task types", enum_resolver=task_types_enum
     )
     task_names: list[str] = SettingsField(
         default_factory=list, title="Task names"
-    )
-    product_names: list[str] = SettingsField(
-        default_factory=list, title="Product names"
     )
 
     integrate_thumbnail: bool = SettingsField(
@@ -1527,11 +1529,11 @@ DEFAULT_PUBLISH_VALUES = {
         "enabled": True,
         "profiles": [
             {
+                "product_names": [],
                 "product_types": [],
-                "hosts": [],
+                "host_names": [],
                 "task_types": [],
                 "task_names": [],
-                "product_names": [],
                 "integrate_thumbnail": True,
                 "target_size": {
                     "type": "source",
