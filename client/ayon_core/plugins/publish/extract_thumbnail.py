@@ -250,7 +250,9 @@ class ExtractThumbnail(pyblish.api.InstancePlugin):
                 # exclude first frame if slate in representation tags
                 if "slate-frame" in repre.get("tags", []):
                     repre_files_thumb = repre_files_thumb[1:]
-                file_index = int(float(len(repre_files_thumb)) * profile_config.duration_split)  # noqa: E501
+                file_index = int(
+                    float(len(repre_files_thumb)) * profile_config.duration_split  # noqa: E501
+                )
                 input_file = repre_files[file_index]
 
             full_input_path = os.path.join(src_staging, input_file)
