@@ -267,7 +267,6 @@ class IntegrateThumbnailsAYON(pyblish.api.ContextPlugin):
         """
         # How long to sleep before next attempt
         wait_time = 1
-        filename = os.path.basename(repre_path)
 
         ayon_con = ayon_api.get_server_api_connection()
         headers = ayon_con.get_headers(content_type)
