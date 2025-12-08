@@ -158,12 +158,13 @@ class IntegrateAYONReview(pyblish.api.InstancePlugin):
         raise PublishXmlValidationError(
             self,
             (
-                "Upload of reviewable timed out or failed after multiple attempts."
-                " Please try publishing again."
+                "Upload of reviewable timed out or failed after multiple"
+                " attempts. Please try publishing again."
             ),
-            key="upload_timeout",
             formatting_data={
+                "upload_type": "Review",
                 "file": repre_path,
                 "error": str(last_error),
             },
+            help_filename="upload_file.xml",
         )

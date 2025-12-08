@@ -1,23 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <root>
-<error id="upload_timeout">
-<title>Review upload timed out</title>
-<description>
-## Review upload failed after retries
-
-The connection to the AYON server timed out while uploading a reviewable file.
-
-### How to repair?
-
-1. Try publishing again. Intermittent network hiccups often resolve on retry.
-2. Ensure your network/VPN is stable and large uploads are allowed.
-3. If it keeps failing, try again later or contact your admin.
-
-<pre>File: {file}
-Error: {error}</pre>
-
-</description>
-</error>
 <error id="main">
 <title>Source directory not collected</title>
 <description>
