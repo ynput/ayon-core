@@ -138,6 +138,7 @@ class HierarchyPage(QtWidgets.QWidget):
         self._folders_widget.refresh()
         self._tasks_widget.refresh()
         self._workfiles_page.refresh()
+        # Update my tasks
         self._on_my_tasks_checkbox_state_changed(
             self._my_tasks_filter_enabled
         )
