@@ -1299,9 +1299,9 @@ def set_colorspace_data_to_representation(
     if isinstance(filename, list):
         filename = filename[0]
 
-    # get matching colorspace from rules
-    if colorspace is None:
-        colorspace = get_imageio_file_rules_colorspace_from_filepath(
+    colorspace_from_rules = None
+    if file_rules:
+        colorspace_from_rules = get_imageio_file_rules_colorspace_from_filepath(
             filename,
             host_name,
             project_name,
@@ -1309,6 +1309,10 @@ def set_colorspace_data_to_representation(
             file_rules=file_rules,
             project_settings=project_settings
         )
+
+    # get matching colorspace from rules
+    if colorspace_from_rules:
+        colorspace = colorspace_from_rules
 
     # infuse data to representation
     if colorspace:
