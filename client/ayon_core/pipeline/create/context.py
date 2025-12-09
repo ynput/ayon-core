@@ -15,6 +15,7 @@ from typing import (
     Any,
     Callable,
 )
+from warnings import warn
 
 import pyblish.logic
 import pyblish.api
@@ -752,13 +753,13 @@ class CreateContext:
         manual_creators = {}
         report = discover_creator_plugins(return_report=True)
         self.creator_discover_result = report
-        for creator_class in report.plugins:
-            if inspect.isabstract(creator_class):
-                self.log.debug(
-                    "Skipping abstract Creator {}".format(str(creator_class))
-                )
-                continue
+        for creator_class in report.abstract_plugins:
+            self.log.debug(
+                "Skipping abstract Creator '%s'",
+                str(creator_class)
+            )
 
+        for creator_class in report.plugins:
             creator_identifier = creator_class.identifier
             if creator_identifier in creators:
                 self.log.warning(
@@ -772,25 +773,36 @@ class CreateContext:
                 creator_class.host_name
                 and creator_class.host_name != self.host_name
             ):
-                self.log.info((
-                    "Creator's host name \"{}\""
-                    " is not supported for current host \"{}\""
-                ).format(creator_class.host_name, self.host_name))
+                self.log.info(
+                    (
+                        'Creator\'s host name "{}"'
+                        ' is not supported for current host "{}"'
+                    ).format(creator_class.host_name, self.host_name)
+                )
                 continue
 
             # TODO report initialization error
             try:
-                creator = creator_class(
-                    project_settings,
-                    self,
-                    self.headless
-                )
+                creator = creator_class(project_settings, self, self.headless)
             except Exception:
                 self.log.error(
                     f"Failed to initialize plugin: {creator_class}",
                     exc_info=True
                 )
                 continue
+
+            if not creator.product_base_type:
+                message = (
+                    f"Provided creator {creator!r} doesn't have "
+                    "product base type attribute defined. This will be "
+                    "required in future."
+                )
+                warn(
+                    message,
+                    DeprecationWarning,
+                    stacklevel=2
+                )
+                self.log.warning(message)
 
             if not creator.enabled:
                 disabled_creators[creator_identifier] = creator
@@ -1289,8 +1301,12 @@ class CreateContext:
             "folderPath": folder_entity["path"],
             "task": task_entity["name"] if task_entity else None,
             "productType": creator.product_type,
+            # Add product base type if supported. Fallback to product type
+            "productBaseType": (
+                creator.product_base_type or creator.product_type),
             "variant": variant
         }
+
         if active is not None:
             if not isinstance(active, bool):
                 self.log.warning(
