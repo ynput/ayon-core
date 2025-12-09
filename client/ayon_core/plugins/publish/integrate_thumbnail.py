@@ -279,7 +279,7 @@ class IntegrateThumbnailsAYON(pyblish.api.ContextPlugin):
                     headers=headers,
                     request_type=RequestTypes.post,
                 )
-                self.log.info(f"Uploade in {time.time() - start}s.")
+                self.log.debug(f"Uploaded in {time.time() - start}s.")
                 return output
 
             except (
