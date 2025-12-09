@@ -120,6 +120,8 @@ class HierarchyPage(QtWidgets.QWidget):
 
         self._project_name = None
 
+        self._my_tasks_filter_enabled = False
+
         # Post init
         projects_combobox.set_listen_to_selection_change(self._is_visible)
 
@@ -136,6 +138,9 @@ class HierarchyPage(QtWidgets.QWidget):
         self._folders_widget.refresh()
         self._tasks_widget.refresh()
         self._workfiles_page.refresh()
+        self._on_my_tasks_checkbox_state_changed(
+            self._my_tasks_filter_enabled
+        )
 
     def _on_back_clicked(self):
         self._controller.set_selected_project(None)
@@ -155,6 +160,7 @@ class HierarchyPage(QtWidgets.QWidget):
             )
             folder_ids = entity_ids["folder_ids"]
             task_ids = entity_ids["task_ids"]
+        self._my_tasks_filter_enabled = enabled
         self._folders_widget.set_folder_ids_filter(folder_ids)
         self._tasks_widget.set_task_ids_filter(task_ids)
 
