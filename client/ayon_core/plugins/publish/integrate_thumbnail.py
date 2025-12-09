@@ -27,7 +27,7 @@ import collections
 import time
 
 import ayon_api
-from ayon_api import RequestTypes
+from ayon_api import RequestTypes, TransferProgress
 from ayon_api.operations import OperationsSession
 import pyblish.api
 import requests
@@ -258,12 +258,16 @@ class IntegrateThumbnailsAYON(pyblish.api.ContextPlugin):
         content_type: str,
     ):
         """Upload file with simple retries."""
-        # How long to sleep before next attempt
-        wait_time = 1
-
         ayon_con = ayon_api.get_server_api_connection()
         headers = ayon_con.get_headers(content_type)
         max_retries = ayon_con.get_default_max_retries()
+        # Retries are already implemented in 'ayon_api.upload_file'
+        # - added in ayon api 1.2.7
+        if hasattr(TransferProgress, "get_attempt"):
+            max_retries = 1
+
+        # How long to sleep before next attempt
+        wait_time = 1
         last_error = None
         for attempt in range(max_retries):
             attempt += 1
@@ -278,10 +282,11 @@ class IntegrateThumbnailsAYON(pyblish.api.ContextPlugin):
             except (
                 requests.exceptions.Timeout,
                 requests.exceptions.ConnectionError
-            ):
+            ) as exc:
                 # Log and retry with backoff if attempts remain
                 if attempt >= max_retries:
-                    raise
+                    last_error = exc
+                    break
 
                 self.log.warning(
                     f"Review upload failed ({attempt}/{max_retries})."

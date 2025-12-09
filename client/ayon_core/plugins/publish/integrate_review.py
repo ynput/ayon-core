@@ -2,8 +2,10 @@ import os
 import time
 
 import ayon_api
-import pyblish.api
+from ayon_api import TransferProgress
 from ayon_api.server_api import RequestTypes
+import pyblish.api
+
 from ayon_core.lib import get_media_mime_type
 from ayon_core.pipeline.publish import (
     PublishXmlValidationError,
@@ -108,13 +110,18 @@ class IntegrateAYONReview(pyblish.api.InstancePlugin):
         content_type: str,
     ):
         """Upload file with simple retries."""
-        # How long to sleep before next attempt
-        wait_time = 1
         filename = os.path.basename(repre_path)
 
         headers = ayon_con.get_headers(content_type)
         headers["x-file-name"] = filename
         max_retries = ayon_con.get_default_max_retries()
+        # Retries are already implemented in 'ayon_api.upload_file'
+        # - added in ayon api 1.2.7
+        if hasattr(TransferProgress, "get_attempt"):
+            max_retries = 1
+
+        # How long to sleep before next attempt
+        wait_time = 1
         last_error = None
         for attempt in range(max_retries):
             attempt += 1
@@ -129,10 +136,11 @@ class IntegrateAYONReview(pyblish.api.InstancePlugin):
             except (
                 requests.exceptions.Timeout,
                 requests.exceptions.ConnectionError
-            ):
+            ) as exc:
                 # Log and retry with backoff if attempts remain
                 if attempt >= max_retries:
-                    raise
+                    last_error = exc
+                    break
 
                 self.log.warning(
                     f"Review upload failed ({attempt}/{max_retries})."
