@@ -32,7 +32,7 @@ from ayon_api.operations import OperationsSession
 import pyblish.api
 import requests
 
-from ayon_core.lib import get_media_mime_type
+from ayon_core.lib import get_media_mime_type, format_file_size
 from ayon_core.pipeline.publish import PublishXmlValidationError
 
 
@@ -266,18 +266,26 @@ class IntegrateThumbnailsAYON(pyblish.api.ContextPlugin):
         if hasattr(TransferProgress, "get_attempt"):
             max_retries = 1
 
+        size = os.path.getsize(repre_path)
+        self.log.info(
+            f"Uploading '{repre_path}' (size: {format_file_size(size)})"
+        )
+
         # How long to sleep before next attempt
         wait_time = 1
         last_error = None
         for attempt in range(max_retries):
             attempt += 1
+            start = time.time()
             try:
-                return ayon_con.upload_file(
+                output = ayon_con.upload_file(
                     endpoint,
                     repre_path,
                     headers=headers,
                     request_type=RequestTypes.post,
                 )
+                self.log.info(f"Uploade in {time.time() - start}s.")
+                return output
 
             except (
                 requests.exceptions.Timeout,
@@ -289,7 +297,8 @@ class IntegrateThumbnailsAYON(pyblish.api.ContextPlugin):
                     break
 
                 self.log.warning(
-                    f"Review upload failed ({attempt}/{max_retries})."
+                    f"Review upload failed ({attempt}/{max_retries})"
+                    f" after {time.time() - start}s."
                     f" Retrying in {wait_time}s...",
                     exc_info=True,
                 )
