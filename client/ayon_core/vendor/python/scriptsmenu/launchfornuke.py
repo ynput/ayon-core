@@ -17,6 +17,10 @@ def _nuke_main_menubar():
     menubar = [i for i in nuke_window.children()
                if isinstance(i, QtWidgets.QMenuBar)]
 
+    # OSX fix - nuke_window.children() can't find menubars
+    if not menubar:
+        menubar = [nuke_window.menuBar()]
+
     assert len(menubar) == 1, "Error, could not find menu bar!"
     return menubar[0]
 
