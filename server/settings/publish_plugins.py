@@ -1597,7 +1597,8 @@ DEFAULT_PUBLISH_VALUES = {
                             "ftrackreview",
                             "kitsureview",
                             "webreview",
-                            "delete"
+                            "delete",
+                            "need_thumbnail"
                         ],
                         "burnins": [],
                         "ffmpeg_args": {
