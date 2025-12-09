@@ -169,12 +169,7 @@ class IntegrateThumbnailsAYON(pyblish.api.ContextPlugin):
         return os.path.normpath(filled_path)
 
     def _create_thumbnail(self, project_name: str, src_filepath: str) -> str:
-        """Upload thumbnail to AYON and return its id.
-
-        This is temporary fix of 'create_thumbnail' function in ayon_api to
-            fix jpeg mime type.
-
-        """
+        """Upload thumbnail to AYON and return its id."""
         mime_type = get_media_mime_type(src_filepath)
         if mime_type is None:
             return ayon_api.create_thumbnail(
