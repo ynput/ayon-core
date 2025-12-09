@@ -131,16 +131,28 @@ def get_transcode_temp_directory():
     )
 
 
-def get_oiio_info_for_input(filepath, logger=None, subimages=False):
+def get_oiio_info_for_input(
+    filepath,
+    logger=None,
+    subimages=False,
+    verbose=True,
+):
     """Call oiiotool to get information about input and return stdout.
+
+    Args:
+        filepath (str): Path to file.
+        logger (logging.Logger): Logger used for logging.
+        subimages (bool): include info about subimages in the output.
+        verbose (bool): get the full metadata about each input image.
 
     Stdout should contain xml format string.
     """
     args = get_oiio_tool_args(
         "oiiotool",
         "--info",
-        "-v"
     )
+    if verbose:
+        args.append("-v")
     if subimages:
         args.append("-a")
 
@@ -1178,7 +1190,11 @@ def oiio_color_convert(
     if logger is None:
         logger = logging.getLogger(__name__)
 
-    input_info = get_oiio_info_for_input(input_path, logger=logger)
+    input_info = get_oiio_info_for_input(
+        input_path,
+        logger=logger,
+        verbose=False,
+    )
 
     # Collect channels to export
     input_arg, channels_arg = get_oiio_input_and_channel_args(input_info)
