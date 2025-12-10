@@ -112,6 +112,7 @@ class HierarchyPage(QtWidgets.QWidget):
         self._is_visible = False
         self._controller = controller
 
+        self._filters_widget = filters_widget
         self._btn_back = btn_back
         self._projects_combobox = projects_combobox
         self._folders_widget = folders_widget
@@ -136,6 +137,10 @@ class HierarchyPage(QtWidgets.QWidget):
         self._folders_widget.refresh()
         self._tasks_widget.refresh()
         self._workfiles_page.refresh()
+        # Update my tasks
+        self._on_my_tasks_checkbox_state_changed(
+            self._filters_widget.is_my_tasks_checked()
+        )
 
     def _on_back_clicked(self):
         self._controller.set_selected_project(None)
@@ -155,6 +160,7 @@ class HierarchyPage(QtWidgets.QWidget):
             )
             folder_ids = entity_ids["folder_ids"]
             task_ids = entity_ids["task_ids"]
+
         self._folders_widget.set_folder_ids_filter(folder_ids)
         self._tasks_widget.set_task_ids_filter(task_ids)
 
