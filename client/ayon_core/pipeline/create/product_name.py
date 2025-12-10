@@ -243,15 +243,16 @@ def get_product_name(
     project_name: str,
     folder_entity: dict[str, Any],
     task_entity: Optional[dict[str, Any]],
-    host_name: str,
+    product_base_type: str,
     product_type: str,
+    host_name: str,
     variant: str,
     *,
-    default_template: Optional[str] = None,
     dynamic_data: Optional[dict[str, Any]] = None,
     project_settings: Optional[dict[str, Any]] = None,
-    product_type_filter: Optional[str] = None,
     project_entity: Optional[dict[str, Any]] = None,
+    default_template: Optional[str] = None,
+    product_base_type_filter: Optional[str] = None,
 ) -> TemplateResult:
     """Calculate product name based on passed context and AYON settings.
 
@@ -268,20 +269,21 @@ def get_product_name(
         folder_entity (Optional[dict[str, Any]]): Folder entity.
         task_entity (Optional[dict[str, Any]]): Task entity.
         host_name (str): Host name.
+        product_base_type (str): Product base type.
         product_type (str): Product type.
         variant (str): In most of the cases it is user input during creation.
-        default_template (Optional[str]): Default template if any profile does
-            not match passed context. Constant 'DEFAULT_PRODUCT_TEMPLATE'
-            is used if is not passed.
         dynamic_data (Optional[dict[str, Any]]): Dynamic data specific for
             a creator which creates instance.
         project_settings (Optional[dict[str, Any]]): Prepared settings
             for project. Settings are queried if not passed.
-        product_type_filter (Optional[str]): Use different product type for
-            product template filtering. Value of `product_type` is used when
-            not passed.
         project_entity (Optional[dict[str, Any]]): Project entity used when
             task short name is required by template.
+        default_template (Optional[str]): Default template if any profile does
+            not match passed context. Constant 'DEFAULT_PRODUCT_TEMPLATE'
+            is used if is not passed.
+        product_base_type_filter (Optional[str]): Use different product base
+            type for product template filtering. Value of
+            `product_base_type_filter` is used when not passed.
 
     Returns:
         TemplateResult: Product name.
