@@ -469,42 +469,15 @@ class UseDisplayViewModel(BaseSettingsModel):
     )
 
 
-class ExtractThumbnailFromSourceProfileModel(BaseSettingsModel):
-    host_names: list[str] = SettingsField(
-        default_factory=list, title="Host names"
-    )
-    product_names: list[str] = SettingsField(
-        default_factory=list, title="Product names"
-    )
-    product_types: list[str] = SettingsField(
-        default_factory=list, title="Product types"
-    )
-    task_types: list[str] = SettingsField(
-        default_factory=list, title="Task types", enum_resolver=task_types_enum
-    )
-    task_names: list[str] = SettingsField(
-        default_factory=list, title="Task names"
-    )
+class ExtractThumbnailFromSourceModel(BaseSettingsModel):
+    """Thumbnail extraction from source files using ffmpeg and oiiotool."""
+    enabled: bool = SettingsField(True)
 
-    integrate_thumbnail: bool = SettingsField(
-        True, title="Integrate Thumbnail Representation"
-    )
     target_size: ResizeModel = SettingsField(
         default_factory=ResizeModel, title="Target size"
     )
     background_color: ColorRGBA_uint8 = SettingsField(
         (0, 0, 0, 0.0), title="Background color"
-    )
-    ffmpeg_args: ExtractThumbnailFFmpegModel = SettingsField(
-        default_factory=ExtractThumbnailFFmpegModel
-    )
-
-
-class ExtractThumbnailFromSourceModel(BaseSettingsModel):
-    """Thumbnail extraction from source files using ffmpeg and oiiotool."""
-    enabled: bool = SettingsField(True)
-    profiles: list[ExtractThumbnailFromSourceProfileModel] = SettingsField(
-        default_factory=list, title="Profiles"
     )
 
 
@@ -1527,27 +1500,13 @@ DEFAULT_PUBLISH_VALUES = {
     },
     "ExtractThumbnailFromSource": {
         "enabled": True,
-        "profiles": [
-            {
-                "product_names": [],
-                "product_types": [],
-                "host_names": [],
-                "task_types": [],
-                "task_names": [],
-                "integrate_thumbnail": True,
-                "target_size": {
-                    "type": "source",
-                    "resize": {
-                        "width": 1920,
-                        "height": 1080
-                    }
-                },
-                "ffmpeg_args": {
-                    "input": [],
-                    "output": []
-                }
+        "target_size": {
+            "type": "resize",
+            "resize": {
+                "width": 300,
+                "height": 170
             }
-        ]
+        },
     },
     "ExtractOIIOTranscode": {
         "enabled": True,

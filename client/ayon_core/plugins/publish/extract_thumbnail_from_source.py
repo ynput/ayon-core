@@ -29,52 +29,6 @@ from ayon_core.lib import (
 )
 
 
-@dataclass
-class ThumbnailDefinition:
-    """
-    Data class representing the full configuration for selected profile
-
-    Any change of controllable fields in Settings must propagate here!
-    """
-    integrate_thumbnail: bool = False
-
-    target_size: Dict[str, Any] = field(
-        default_factory=lambda: {
-            "type": "source",
-            "resize": {"width": 1920, "height": 1080},
-        }
-    )
-
-    ffmpeg_args: Dict[str, List[Any]] = field(
-        default_factory=lambda: {"input": [], "output": []}
-    )
-
-    # Background color defined as (R, G, B, A) tuple.
-    background_color: Tuple[int, int, int, float] = (0, 0, 0, 0.0)
-
-    @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "ThumbnailDefinition":
-        """
-        Creates a ThumbnailDefinition instance from a dictionary,
-        safely ignoring any keys in the dictionary that are not fields
-        in the dataclass.
-
-        Args:
-            data (Dict[str, Any]): The dictionary containing configuration data
-
-        Returns:
-            MediaConfig: A new instance of the dataclass.
-        """
-        # Get all field names defined in the dataclass
-        field_names = {f.name for f in fields(cls)}
-
-        # Filter the input dictionary to include only keys matching field names
-        filtered_data = {k: v for k, v in data.items() if k in field_names}
-
-        # Unpack the filtered dictionary into the constructor
-        return cls(**filtered_data)
-
-
 class ExtractThumbnailFromSource(pyblish.api.InstancePlugin):
     """Create jpg thumbnail for instance based on 'thumbnailSource'.
 
@@ -86,18 +40,13 @@ class ExtractThumbnailFromSource(pyblish.api.InstancePlugin):
     order = pyblish.api.ExtractorOrder + 0.48
 
     # Settings
-    profiles = None
+    target_size = {"type": "source", "resize": {"width": 1920, "height": 1080}}
+    background_color = (0, 0, 0, 0.0)
+
 
     def process(self, instance: pyblish.api.Instance):
-        if not self.profiles:
-            self.log.debug("No profiles present for color transcode")
-            return
-        profile_config = self._get_config_from_profile(instance)
-        if not profile_config:
-            return
-
         context_thumbnail_path = self._create_context_thumbnail(
-            instance.context, profile_config
+            instance.context
         )
         if context_thumbnail_path:
             instance.context.data["thumbnailPath"] = context_thumbnail_path
@@ -113,7 +62,7 @@ class ExtractThumbnailFromSource(pyblish.api.InstancePlugin):
             return
 
         dst_filepath = self._create_thumbnail(
-            instance.context, thumbnail_source, profile_config
+            instance.context, thumbnail_source
         )
         if not dst_filepath:
             return
@@ -129,8 +78,7 @@ class ExtractThumbnailFromSource(pyblish.api.InstancePlugin):
             "outputName": "thumbnail",
         }
 
-        if not profile_config.integrate_thumbnail:
-            new_repre["tags"].append("delete")
+        new_repre["tags"].append("delete")
 
         # adding representation
         self.log.debug(
@@ -143,7 +91,6 @@ class ExtractThumbnailFromSource(pyblish.api.InstancePlugin):
         self,
         context: pyblish.api.Context,
         thumbnail_source: str,
-        profile_config: ThumbnailDefinition
     ) -> Optional[str]:
         if not thumbnail_source:
             self.log.debug("Thumbnail source not filled. Skipping.")
@@ -177,7 +124,7 @@ class ExtractThumbnailFromSource(pyblish.api.InstancePlugin):
             # If the input can read by OIIO then use OIIO method for
             # conversion otherwise use ffmpeg
             thumbnail_created = self.create_thumbnail_oiio(
-                thumbnail_source, full_output_path, profile_config
+                thumbnail_source, full_output_path
             )
 
         # Try to use FFMPEG if OIIO is not supported or for cases when
@@ -190,7 +137,7 @@ class ExtractThumbnailFromSource(pyblish.api.InstancePlugin):
                 )
 
             thumbnail_created = self.create_thumbnail_ffmpeg(
-                thumbnail_source, full_output_path, profile_config
+                thumbnail_source, full_output_path
             )
 
         # Skip representation and try next one if  wasn't created
@@ -215,11 +162,10 @@ class ExtractThumbnailFromSource(pyblish.api.InstancePlugin):
         self,
         src_path: str,
         dst_path: str,
-        profile_config: ThumbnailDefinition
     ) -> bool:
         self.log.debug("Outputting thumbnail with OIIO: {}".format(dst_path))
         resolution_arg = self._get_resolution_arg(
-            "oiiotool", src_path, profile_config
+            "oiiotool", src_path
         )
         oiio_cmd = get_oiio_tool_args("oiiotool", "-a", src_path)
         if resolution_arg:
@@ -245,10 +191,9 @@ class ExtractThumbnailFromSource(pyblish.api.InstancePlugin):
         self,
         src_path: str,
         dst_path: str,
-        profile_config: ThumbnailDefinition
     ) -> bool:
         resolution_arg = self._get_resolution_arg(
-            "ffmpeg", src_path, profile_config
+            "ffmpeg", src_path
         )
 
         max_int = str(2147483647)
@@ -261,13 +206,10 @@ class ExtractThumbnailFromSource(pyblish.api.InstancePlugin):
             "-frames:v", "1",
         )
 
-        ffmpeg_cmd.extend(profile_config.ffmpeg_args.get("input") or [])
-
         if resolution_arg:
             ffmpeg_cmd.extend(resolution_arg)
 
         # possible resize must be before output args
-        ffmpeg_cmd.extend(profile_config.ffmpeg_args.get("output") or [])
         ffmpeg_cmd.append(dst_path)
 
         self.log.debug("Running: {}".format(" ".join(ffmpeg_cmd)))
@@ -284,7 +226,6 @@ class ExtractThumbnailFromSource(pyblish.api.InstancePlugin):
     def _create_context_thumbnail(
         self,
         context: pyblish.api.Context,
-        profile: ThumbnailDefinition
     ) -> Optional[str]:
         hasContextThumbnail = "thumbnailPath" in context.data
         if hasContextThumbnail:
@@ -292,58 +233,20 @@ class ExtractThumbnailFromSource(pyblish.api.InstancePlugin):
 
         thumbnail_source = context.data.get("thumbnailSource")
         thumbnail_path = self._create_thumbnail(
-            context, thumbnail_source, profile
+            context, thumbnail_source
         )
         return thumbnail_path
-
-    def _get_config_from_profile(
-        self,
-        instance: pyblish.api.Instance
-    ) -> ThumbnailDefinition:
-        """Returns profile if and how repre should be color transcoded."""
-        host_name = instance.context.data["hostName"]
-        product_type = instance.data["productType"]
-        product_name = instance.data["productName"]
-        task_data = instance.data["anatomyData"].get("task", {})
-        task_name = task_data.get("name")
-        task_type = task_data.get("type")
-        filtering_criteria = {
-            "host_names": host_name,
-            "product_types": product_type,
-            "product_names": product_name,
-            "task_names": task_name,
-            "task_types": task_type,
-        }
-        profile = filter_profiles(
-            self.profiles, filtering_criteria,
-            logger=self.log
-        )
-
-        if not profile:
-            self.log.debug(
-                (
-                    "Skipped instance. None of profiles in presets are for"
-                    ' Host: "{}" | Product types: "{}" | Product names: "{}"'
-                    ' | Task name "{}" | Task type "{}"'
-                ).format(
-                    host_name, product_type, product_name, task_name, task_type
-                )
-            )
-            return
-
-        return ThumbnailDefinition.from_dict(profile)
 
     def _get_resolution_arg(
         self,
         application: str,
         input_path: str,
-        profile: ThumbnailDefinition
     ) -> List[str]:
         # get settings
-        if profile.target_size["type"] == "source":
+        if self.target_size["type"] == "source":
             return []
 
-        resize = profile.target_size["resize"]
+        resize = self.target_size["resize"]
         target_width = resize["width"]
         target_height = resize["height"]
 
@@ -353,6 +256,6 @@ class ExtractThumbnailFromSource(pyblish.api.InstancePlugin):
             input_path,
             target_width,
             target_height,
-            bg_color=profile.background_color,
+            bg_color=self.background_color,
             log=self.log,
         )
