@@ -328,9 +328,6 @@ class CreateWidget(QtWidgets.QWidget):
             folder_path = self._context_widget.get_selected_folder_path()
             if folder_path:
                 task_name = self._context_widget.get_selected_task_name()
-
-        if not task_name:
-            task_name = self.get_current_task_name()
         return task_name
 
     def _set_context_enabled(self, enabled):
