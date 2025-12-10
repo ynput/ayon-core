@@ -16,7 +16,7 @@ from ayon_core.lib import (
     UISeparatorDef,
     UILabelDef,
     EnumDef,
-    filter_profiles
+    filter_profiles, NumberDef
 )
 try:
     from ayon_core.pipeline.usdlib import (
@@ -275,7 +275,7 @@ class CollectUSDLayerContributions(pyblish.api.InstancePlugin,
     # the contributions so that we can design a system where custom
     # contributions outside the predefined orders are possible to be
     # managed. So that if a particular asset requires an extra contribution
-    # level, you can add itdirectly from the publisher at that particular
+    # level, you can add it directly from the publisher at that particular
     # order. Future publishes will then see the existing contribution and will
     # persist adding it to future bootstraps at that order
     contribution_layers: Dict[str, int] = {
@@ -334,10 +334,12 @@ class CollectUSDLayerContributions(pyblish.api.InstancePlugin,
             attr_values[key] = attr_values[key].format(**data)
 
         # Define contribution
-        order = self.contribution_layers.get(
+        order: int = self.contribution_layers.get(
             attr_values["contribution_layer"], 0
         )
 
+        # Allow offsetting the order to the contribution to department layer
+        order_offset: int = attr_values.get("contribution_order_offset", 0)
         if attr_values["contribution_apply_as_variant"]:
             contribution = VariantContribution(
                 instance=instance,
@@ -346,14 +348,14 @@ class CollectUSDLayerContributions(pyblish.api.InstancePlugin,
                 variant_set_name=attr_values["contribution_variant_set_name"],
                 variant_name=attr_values["contribution_variant"],
                 variant_is_default=attr_values["contribution_variant_is_default"],  # noqa: E501
-                order=order
+                order=order + order_offset
             )
         else:
             contribution = SublayerContribution(
                 instance=instance,
                 layer_id=attr_values["contribution_layer"],
                 target_product=attr_values["contribution_target_product"],
-                order=order
+                order=order + order_offset
             )
 
         asset_product = contribution.target_product
@@ -370,7 +372,7 @@ class CollectUSDLayerContributions(pyblish.api.InstancePlugin,
             contribution
         )
         layer_instance.data["usd_layer_id"] = contribution.layer_id
-        layer_instance.data["usd_layer_order"] = contribution.order
+        layer_instance.data["usd_layer_order"] = order
 
         layer_instance.data["productGroup"] = (
             instance.data.get("productGroup") or "USD Layer"
@@ -561,6 +563,19 @@ class CollectUSDLayerContributions(pyblish.api.InstancePlugin,
                     items=list(cls.contribution_layers.keys()),
                     default=default_contribution_layer,
                     visible=visible),
+            # TODO: We may want to make the visibility of this optional
+            #  based on studio preference, to avoid complexity when not needed
+            NumberDef("contribution_order_offset",
+                    label="Strength order offset",
+                    tooltip=(
+                        "The contribution to the department layer will be "
+                        "made with this offset applied. A higher number means "
+                        "a stronger opinion."
+                    ),
+                    default=0,
+                    minimum=-99999,
+                    maximum=99999,
+                    visible=visible),
             BoolDef("contribution_apply_as_variant",
                     label="Add as variant",
                     tooltip=(
@@ -729,7 +744,7 @@ class ExtractUSDLayerContribution(publish.Extractor):
                     layer=sdf_layer,
                     contribution_path=path,
                     layer_id=product_name,
-                    order=None,  # unordered
+                    order=contribution.order,
                     add_sdf_arguments_metadata=True
                 )
             else:
