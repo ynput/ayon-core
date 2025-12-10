@@ -334,12 +334,7 @@ class CollectUSDLayerContributions(pyblish.api.InstancePlugin,
             attr_values[key] = attr_values[key].format(**data)
 
         # Define contribution
-        order: int = self.contribution_layers.get(
-            attr_values["contribution_layer"], 0
-        )
-
-        # Allow offsetting the order to the contribution to department layer
-        order_offset: int = attr_values.get("contribution_order_offset", 0)
+        in_layer_order: int = attr_values.get("contribution_in_layer_order", 0)
         if attr_values["contribution_apply_as_variant"]:
             contribution = VariantContribution(
                 instance=instance,
@@ -348,18 +343,21 @@ class CollectUSDLayerContributions(pyblish.api.InstancePlugin,
                 variant_set_name=attr_values["contribution_variant_set_name"],
                 variant_name=attr_values["contribution_variant"],
                 variant_is_default=attr_values["contribution_variant_is_default"],  # noqa: E501
-                order=order + order_offset
+                order=in_layer_order
             )
         else:
             contribution = SublayerContribution(
                 instance=instance,
                 layer_id=attr_values["contribution_layer"],
                 target_product=attr_values["contribution_target_product"],
-                order=order + order_offset
+                order=in_layer_order
             )
 
         asset_product = contribution.target_product
         layer_product = "{}_{}".format(asset_product, contribution.layer_id)
+        layer_order: int = self.contribution_layers.get(
+            attr_values["contribution_layer"], 0
+        )
 
         # Layer contribution instance
         layer_instance = self.get_or_create_instance(
@@ -372,7 +370,7 @@ class CollectUSDLayerContributions(pyblish.api.InstancePlugin,
             contribution
         )
         layer_instance.data["usd_layer_id"] = contribution.layer_id
-        layer_instance.data["usd_layer_order"] = order
+        layer_instance.data["usd_layer_order"] = layer_order
 
         layer_instance.data["productGroup"] = (
             instance.data.get("productGroup") or "USD Layer"
@@ -565,10 +563,10 @@ class CollectUSDLayerContributions(pyblish.api.InstancePlugin,
                     visible=visible),
             # TODO: We may want to make the visibility of this optional
             #  based on studio preference, to avoid complexity when not needed
-            NumberDef("contribution_order_offset",
-                    label="Strength order offset",
+            NumberDef("contribution_in_layer_order",
+                    label="Strength order",
                     tooltip=(
-                        "The contribution to the department layer will be "
+                        "The contribution inside the department layer will be "
                         "made with this offset applied. A higher number means "
                         "a stronger opinion."
                     ),
