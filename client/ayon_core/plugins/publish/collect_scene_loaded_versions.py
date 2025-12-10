@@ -106,5 +106,4 @@ class CollectSceneLoadedVersions(pyblish.api.ContextPlugin):
                 continue
             valid.append(container)
 
-
         return valid
