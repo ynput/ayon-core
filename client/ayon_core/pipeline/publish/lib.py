@@ -192,7 +192,9 @@ class HelpContent:
         self.detail = detail
 
 
-def load_help_content_from_filepath(filepath):
+def load_help_content_from_filepath(
+    filepath: str
+) -> dict[str, dict[str, HelpContent]]:
     """Load help content from xml file.
     Xml file may contain errors and warnings.
     """
@@ -227,15 +229,20 @@ def load_help_content_from_filepath(filepath):
     return output
 
 
-def load_help_content_from_plugin(plugin):
+def load_help_content_from_plugin(
+    plugin: pyblish.api.Plugin,
+    help_filename: Optional[str] = None,
+) -> dict[str, dict[str, HelpContent]]:
     cls = plugin
     if not inspect.isclass(plugin):
         cls = plugin.__class__
+
     plugin_filepath = inspect.getfile(cls)
     plugin_dir = os.path.dirname(plugin_filepath)
-    basename = os.path.splitext(os.path.basename(plugin_filepath))[0]
-    filename = basename + ".xml"
-    filepath = os.path.join(plugin_dir, "help", filename)
+    if help_filename is None:
+        basename = os.path.splitext(os.path.basename(plugin_filepath))[0]
+        help_filename = basename + ".xml"
+    filepath = os.path.join(plugin_dir, "help", help_filename)
     return load_help_content_from_filepath(filepath)
 
 
