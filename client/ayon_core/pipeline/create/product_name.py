@@ -321,7 +321,7 @@ def get_product_name(
     name.
 
     Deprecated:
-        This function is using deprecate signature that does not support
+        This function is using deprecated signature that does not support
             folder entity data to be used.
 
     Args:
