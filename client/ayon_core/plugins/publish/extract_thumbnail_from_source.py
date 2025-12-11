@@ -33,7 +33,7 @@ class ExtractThumbnailFromSource(pyblish.api.InstancePlugin):
     Thumbnail source must be a single image or video filepath.
     """
 
-    label = "Extract Thumbnail (from source)"
+    label = "Extract Thumbnail from source"
     # Before 'ExtractThumbnail' in global plugins
     order = pyblish.api.ExtractorOrder + 0.48
 
