@@ -1264,7 +1264,7 @@ class PublishPuginsModel(BaseSettingsModel):
             "instance.data['thumbnailSource'] using ffmpeg "
             "and oiiotool."
             "Used when host does not provide thumbnail, but artist could set "
-            "custom thumbnail source file. (TrayPublisher, Webpublisher)"
+            "custom thumbnail source file."
         )
     )
     ExtractOIIOTranscode: ExtractOIIOTranscodeModel = SettingsField(
