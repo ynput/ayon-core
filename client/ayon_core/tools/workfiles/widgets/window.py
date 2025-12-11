@@ -205,6 +205,8 @@ class WorkfilesToolWindow(QtWidgets.QWidget):
 
         self._folders_widget = folder_widget
 
+        self._filters_widget = filters_widget
+
         return col_widget
 
     def _create_col_3_widget(self, controller, parent):
@@ -343,6 +345,10 @@ class WorkfilesToolWindow(QtWidgets.QWidget):
 
         self._project_name = self._controller.get_current_project_name()
         self._folders_widget.set_project_name(self._project_name)
+        # Update my tasks
+        self._on_my_tasks_checkbox_state_changed(
+            self._filters_widget.is_my_tasks_checked()
+        )
 
     def _on_save_as_finished(self, event):
         if event["failed"]:
