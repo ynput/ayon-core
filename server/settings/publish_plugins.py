@@ -1258,7 +1258,7 @@ class PublishPuginsModel(BaseSettingsModel):
     )
     ExtractThumbnailFromSource: ExtractThumbnailFromSourceModel = SettingsField(  # noqa: E501
         default_factory=ExtractThumbnailFromSourceModel,
-        title="Extract Thumbnail (from source)",
+        title="Extract Thumbnail from source",
         description=(
             "Extract thumbnails from explicit file set in "
             "instance.data['thumbnailSource'] using ffmpeg "
