@@ -40,7 +40,10 @@ class ExtractThumbnailFromSource(pyblish.api.InstancePlugin):
     order = pyblish.api.ExtractorOrder + 0.48
 
     # Settings
-    target_size = {"type": "source", "resize": {"width": 1920, "height": 1080}}
+    target_size = {
+        "type": "resize",
+        "resize": {"width": 1920, "height": 1080}
+    }
     background_color = (0, 0, 0, 0.0)
 
 
