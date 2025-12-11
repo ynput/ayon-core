@@ -223,8 +223,7 @@ class ExtractThumbnailFromSource(pyblish.api.InstancePlugin):
         self,
         context: pyblish.api.Context,
     ):
-        hasContextThumbnail = "thumbnailPath" in context.data
-        if hasContextThumbnail:
+        if "thumbnailPath" in context.data:
             return
 
         thumbnail_source = context.data.get("thumbnailSource")
