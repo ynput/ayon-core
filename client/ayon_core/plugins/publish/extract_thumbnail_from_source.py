@@ -45,11 +45,7 @@ class ExtractThumbnailFromSource(pyblish.api.InstancePlugin):
     background_color = (0, 0, 0, 0.0)
 
     def process(self, instance: pyblish.api.Instance):
-        context_thumbnail_path = self._create_context_thumbnail(
-            instance.context
-        )
-        if context_thumbnail_path:
-            instance.context.data["thumbnailPath"] = context_thumbnail_path
+        self._create_context_thumbnail(instance.context)
 
         thumbnail_source = instance.data.get("thumbnailSource")
         if not thumbnail_source:
@@ -226,16 +222,15 @@ class ExtractThumbnailFromSource(pyblish.api.InstancePlugin):
     def _create_context_thumbnail(
         self,
         context: pyblish.api.Context,
-    ) -> Optional[str]:
+    ):
         hasContextThumbnail = "thumbnailPath" in context.data
         if hasContextThumbnail:
             return
 
         thumbnail_source = context.data.get("thumbnailSource")
-        thumbnail_path = self._create_thumbnail(
+        context.data["thumbnailPath"] = self._create_thumbnail(
             context, thumbnail_source
         )
-        return thumbnail_path
 
     def _get_resolution_arg(
         self,
