@@ -13,9 +13,8 @@ Todos:
 """
 
 import os
-from dataclasses import dataclass, field, fields
 import tempfile
-from typing import Dict, Any, List, Tuple, Optional
+from typing import List, Optional
 
 import pyblish.api
 from ayon_core.lib import (
@@ -25,7 +24,6 @@ from ayon_core.lib import (
 
     run_subprocess,
     get_rescaled_command_arguments,
-    filter_profiles,
 )
 
 
