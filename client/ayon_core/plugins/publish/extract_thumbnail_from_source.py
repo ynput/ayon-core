@@ -44,7 +44,6 @@ class ExtractThumbnailFromSource(pyblish.api.InstancePlugin):
     }
     background_color = (0, 0, 0, 0.0)
 
-
     def process(self, instance: pyblish.api.Instance):
         context_thumbnail_path = self._create_context_thumbnail(
             instance.context
