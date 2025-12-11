@@ -310,9 +310,6 @@ class CreateWidget(QtWidgets.QWidget):
         folder_path = None
         if self._context_change_is_enabled():
             folder_path = self._context_widget.get_selected_folder_path()
-
-        if folder_path is None:
-            folder_path = self.get_current_folder_path()
         return folder_path or None
 
     def _get_folder_id(self):
