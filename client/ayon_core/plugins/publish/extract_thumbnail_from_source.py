@@ -160,7 +160,7 @@ class ExtractThumbnailFromSource(pyblish.api.InstancePlugin):
         dst_path: str,
     ) -> bool:
         self.log.debug("Outputting thumbnail with OIIO: {}".format(dst_path))
-        resolution_arg = self._get_resolution_arg(
+        resolution_arg = self._get_resolution_args(
             "oiiotool", src_path
         )
         oiio_cmd = get_oiio_tool_args("oiiotool", "-a", src_path)
@@ -188,7 +188,7 @@ class ExtractThumbnailFromSource(pyblish.api.InstancePlugin):
         src_path: str,
         dst_path: str,
     ) -> bool:
-        resolution_arg = self._get_resolution_arg(
+        resolution_arg = self._get_resolution_args(
             "ffmpeg", src_path
         )
 
@@ -232,7 +232,7 @@ class ExtractThumbnailFromSource(pyblish.api.InstancePlugin):
             context, thumbnail_source
         )
 
-    def _get_resolution_arg(
+    def _get_resolution_args(
         self,
         application: str,
         input_path: str,
