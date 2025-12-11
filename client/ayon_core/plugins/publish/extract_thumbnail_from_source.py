@@ -35,7 +35,7 @@ class ExtractThumbnailFromSource(pyblish.api.InstancePlugin):
 
     label = "Extract Thumbnail from source"
     # Before 'ExtractThumbnail' in global plugins
-    order = pyblish.api.ExtractorOrder + 0.48
+    order = pyblish.api.ExtractorOrder - 0.00001
 
     # Settings
     target_size = {
