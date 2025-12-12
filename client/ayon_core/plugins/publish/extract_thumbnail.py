@@ -741,7 +741,8 @@ class ExtractThumbnail(pyblish.api.InstancePlugin):
             "task_types": task_type,
         }
         profile = filter_profiles(
-            self.profiles, filtering_criteria,
+            self.profiles,
+            filtering_criteria,
             logger=self.log
         )
 
