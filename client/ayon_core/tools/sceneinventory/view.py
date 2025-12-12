@@ -17,6 +17,7 @@ from ayon_core.tools.utils.lib import (
     format_version,
     preserve_expanded_rows,
     preserve_selection,
+    get_qt_icon,
 )
 from ayon_core.tools.utils.delegates import StatusDelegate
 
@@ -46,7 +47,7 @@ class SceneInventoryView(QtWidgets.QTreeView):
     hierarchy_view_changed = QtCore.Signal(bool)
 
     def __init__(self, controller, parent):
-        super(SceneInventoryView, self).__init__(parent=parent)
+        super().__init__(parent=parent)
 
         # view settings
         self.setIndentation(12)
@@ -524,7 +525,14 @@ class SceneInventoryView(QtWidgets.QTreeView):
             submenu = QtWidgets.QMenu("Actions", self)
             for action in custom_actions:
                 color = action.color or DEFAULT_COLOR
-                icon = qtawesome.icon("fa.%s" % action.icon, color=color)
+                icon_def = action.icon
+                if not isinstance(action.icon, dict):
+                    icon_def = {
+                        "type": "awesome-font",
+                        "name": icon_def,
+                        "color": color,
+                    }
+                icon = get_qt_icon(icon_def)
                 action_item = QtWidgets.QAction(icon, action.label, submenu)
                 action_item.triggered.connect(
                     partial(
@@ -622,7 +630,7 @@ class SceneInventoryView(QtWidgets.QTreeView):
             if isinstance(result, (list, set)):
                 self._select_items_by_action(result)
 
-            if isinstance(result, dict):
+            elif isinstance(result, dict):
                 self._select_items_by_action(
                     result["objectNames"], result["options"]
                 )
@@ -959,11 +967,13 @@ class SceneInventoryView(QtWidgets.QTreeView):
             remove_container(container)
         self.data_changed.emit()
 
-    def _show_version_error_dialog(self, version, item_ids):
+    def _show_version_error_dialog(self, version, item_ids, exception):
         """Shows QMessageBox when version switch doesn't work
 
         Args:
             version: str or int or None
+            item_ids (Iterable[str]): List of item ids to run the
+            exception (Exception): Exception that occurred
         """
         if version == -1:
             version_str = "latest"
@@ -988,10 +998,11 @@ class SceneInventoryView(QtWidgets.QTreeView):
         dialog.addButton(QtWidgets.QMessageBox.Cancel)
 
         msg = (
-            "Version update to '{}' failed as representation doesn't exist."
+            "Version update to '{}' failed with the following error:\n"
+            "{}."
             "\n\nPlease update to version with a valid representation"
             " OR \n use 'Switch Folder' button to change folder."
-        ).format(version_str)
+        ).format(version_str, exception)
         dialog.setText(msg)
         dialog.exec_()
 
@@ -1103,12 +1114,14 @@ class SceneInventoryView(QtWidgets.QTreeView):
         try:
             for item_id, item_version in zip(item_ids, versions):
                 container = containers_by_id[item_id]
+                if container.get("version_locked"):
+                    continue
                 try:
                     update_container(container, item_version)
-                except AssertionError:
+                except Exception as exc:
                     log.warning("Update failed", exc_info=True)
                     self._show_version_error_dialog(
-                        item_version, [item_id]
+                        item_version, [item_id], exc
                     )
         finally:
             # Always update the scene inventory view, even if errors occurred

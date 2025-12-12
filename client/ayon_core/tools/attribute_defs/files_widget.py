@@ -892,6 +892,29 @@ class FilesWidget(QtWidgets.QFrame):
             self._add_filepaths(new_items)
         self._remove_item_by_ids(item_ids)
 
+    def _on_merge_request(self):
+        if self._multivalue:
+            return
+
+        item_ids = self._files_view.get_selected_item_ids()
+        if not item_ids:
+            return
+
+        all_paths = set()
+        merged_item_ids = set()
+        for item_id in item_ids:
+            file_item = self._files_model.get_file_item_by_id(item_id)
+            if file_item is None:
+                continue
+            merged_item_ids.add(item_id)
+            all_paths |= {
+                os.path.join(file_item.directory, filename)
+                for filename in file_item.filenames
+            }
+        self._remove_item_by_ids(merged_item_ids)
+        new_items = FileDefItem.from_value(list(all_paths), True)
+        self._add_filepaths(new_items)
+
     def _on_remove_requested(self):
         if self._multivalue:
             return
@@ -911,6 +934,9 @@ class FilesWidget(QtWidgets.QFrame):
                 split_action.triggered.connect(self._on_split_request)
                 menu.addAction(split_action)
 
+                merge_action = QtWidgets.QAction("Merge sequence", menu)
+                merge_action.triggered.connect(self._on_merge_request)
+                menu.addAction(merge_action)
             remove_action = QtWidgets.QAction("Remove", menu)
             remove_action.triggered.connect(self._on_remove_requested)
             menu.addAction(remove_action)

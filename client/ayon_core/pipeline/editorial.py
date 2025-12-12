@@ -7,6 +7,10 @@ import opentimelineio as otio
 from opentimelineio import opentime as _ot
 
 
+# https://github.com/AcademySoftwareFoundation/OpenTimelineIO/issues/1822
+OTIO_EPSILON = 1e-9
+
+
 def otio_range_to_frame_range(otio_range):
     start = _ot.to_frames(
         otio_range.start_time, otio_range.start_time.rate)
@@ -198,7 +202,8 @@ def is_clip_from_media_sequence(otio_clip):
 
 
 def remap_range_on_file_sequence(otio_clip, otio_range):
-    """
+    """ Remap the provided range on a file sequence clip.
+
     Args:
         otio_clip (otio.schema.Clip): The OTIO clip to check.
         otio_range (otio.schema.TimeRange): The trim range to apply.
@@ -245,7 +250,11 @@ def remap_range_on_file_sequence(otio_clip, otio_range):
     if (
         is_clip_from_media_sequence(otio_clip)
         and available_range_start_frame == media_ref.start_frame
-        and conformed_src_in.to_frames() < media_ref.start_frame
+
+        # source range should be included in available range from media
+        # using round instead of conformed_src_in.to_frames() to avoid
+        # any precision issue with frame rate.
+        and round(conformed_src_in.value) < media_ref.start_frame
     ):
         media_in = otio.opentime.RationalTime(
             0, rate=available_range_rate
