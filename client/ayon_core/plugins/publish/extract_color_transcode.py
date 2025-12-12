@@ -172,20 +172,33 @@ class ExtractOIIOTranscode(publish.Extractor):
                 additional_command_args = (output_def["oiiotool_args"]
                                            ["additional_command_args"])
 
-                sequence_files = self._translate_to_sequence(files_to_convert)
+                sequence_files = self._translate_to_sequence(
+                    files_to_convert)
                 self.log.debug("Files to convert: {}".format(sequence_files))
                 missing_rgba_review_channels = False
                 for file_name in sequence_files:
                     if isinstance(file_name, clique.Collection):
-                        # Convert to filepath that can be directly converted
-                        # by oiio like `frame.1001-1025%04d.exr`
-                        file_name: str = file_name.format(
-                            "{head}{range}{padding}{tail}"
+                        # Support sequences with holes by supplying
+                        # dedicated `--frames` argument to `oiiotool`
+                        # Create `frames` string like "1001-1002,1004,1010-1012
+                        # Create `filename` string like "file.#.exr"
+                        frames = file_name.format("{ranges}").replace(" ", "")
+                        frame_padding = file_name.padding
+                        file_name = file_name.format("{head}#{tail}")
+                        parallel_frames = True
+                    elif isinstance(file_name, str):
+                        # Single file
+                        frames = None
+                        frame_padding = None
+                        parallel_frames = False
+                    else:
+                        raise TypeError(
+                            f"Unsupported file name type: {type(file_name)}."
+                            " Expected str or clique.Collection."
                         )
 
                     self.log.debug("Transcoding file: `{}`".format(file_name))
-                    input_path = os.path.join(original_staging_dir,
-                                              file_name)
+                    input_path = os.path.join(original_staging_dir, file_name)
                     output_path = self._get_output_file_path(input_path,
                                                              new_staging_dir,
                                                              output_extension)
@@ -201,6 +214,9 @@ class ExtractOIIOTranscode(publish.Extractor):
                             source_display=source_display,
                             source_view=source_view,
                             additional_command_args=additional_command_args,
+                            frames=frames,
+                            frame_padding=frame_padding,
+                            parallel_frames=parallel_frames,
                             logger=self.log
                         )
                     except MissingRGBAChannelsError as exc:
@@ -294,16 +310,18 @@ class ExtractOIIOTranscode(publish.Extractor):
         new_repre["files"] = renamed_files
 
     def _translate_to_sequence(self, files_to_convert):
-        """Returns original list or a clique.Collection of a sequence.
+        """Returns original individual filepaths or list of clique.Collection.
 
-        Uses clique to find frame sequence Collection.
-        If sequence not found, it returns original list.
+        Uses clique to find frame sequence, and return the collections instead.
+        If sequence not detected in input filenames, it returns original list.
 
         Args:
-            files_to_convert (list): list of file names
+            files_to_convert (list[str]): list of file names
         Returns:
-            list[str | clique.Collection]: List of filepaths or a list
-                of Collections (usually one, unless there are holes)
+            list[str | clique.Collection]: List of
+                filepaths ['fileA.exr', 'fileB.exr']
+                or clique.Collection for a sequence.
+
         """
         pattern = [clique.PATTERNS["frames"]]
         collections, _ = clique.assemble(
@@ -314,14 +332,7 @@ class ExtractOIIOTranscode(publish.Extractor):
                 raise ValueError(
                     "Too many collections {}".format(collections))
 
-            collection = collections[0]
-            # TODO: Technically oiiotool supports holes in the sequence as well
-            #  using the dedicated --frames argument to specify the frames.
-            #  We may want to use that too so conversions of sequences with
-            #  holes will perform faster as well.
-            # Separate the collection so that we have no holes/gaps per
-            # collection.
-            return collection.separate()
+            return collections
 
         return files_to_convert
 

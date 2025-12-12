@@ -146,7 +146,15 @@ class BaseCreator(ABC):
         project_settings (dict[str, Any]): Project settings.
         create_context (CreateContext): Context which initialized creator.
         headless (bool): Running in headless mode.
+
     """
+    # Attribute 'skip_discovery' is used during discovery phase to skip
+    #   plugins, which can be used to mark base plugins that should not be
+    #   considered as plugins "to use". The discovery logic does NOT use
+    #   the attribute value from parent classes. Each base class has to define
+    #   the attribute again.
+    skip_discovery = True
+
     # Label shown in UI
     label = None
     group_label = None
@@ -544,11 +552,6 @@ class BaseCreator(ABC):
         if host_name is None:
             host_name = self.create_context.host_name
 
-        task_name = task_type = None
-        if task_entity:
-            task_name = task_entity["name"]
-            task_type = task_entity["taskType"]
-
         dynamic_data = self.get_dynamic_data(
             project_name,
             folder_entity,
@@ -564,16 +567,15 @@ class BaseCreator(ABC):
 
         return get_product_name(
             project_name,
-            task_name,
-            task_type,
-            host_name,
-            self.product_type,
-            variant,
+            folder_entity=folder_entity,
+            task_entity=task_entity,
+            product_base_type=self.product_base_type,
+            product_type=self.product_type,
+            host_name=host_name,
+            variant=variant,
             dynamic_data=dynamic_data,
             project_settings=self.project_settings,
             project_entity=project_entity,
-            # until we make product_base_type mandatory
-            product_base_type=self.product_base_type
         )
 
     def get_instance_attr_defs(self):
@@ -648,7 +650,7 @@ class Creator(BaseCreator):
 
     Creation requires prepared product name and instance data.
     """
-
+    skip_discovery = True
     # GUI Purposes
     # - default_variants may not be used if `get_default_variants`
     #   is overridden
@@ -937,6 +939,8 @@ class Creator(BaseCreator):
 
 
 class HiddenCreator(BaseCreator):
+    skip_discovery = True
+
     @abstractmethod
     def create(self, instance_data, source_data):
         pass
@@ -947,6 +951,7 @@ class AutoCreator(BaseCreator):
 
     Can be used e.g. for `workfile`.
     """
+    skip_discovery = True
 
     def remove_instances(self, instances):
         """Skip removal."""
