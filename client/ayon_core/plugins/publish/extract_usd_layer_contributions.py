@@ -276,7 +276,7 @@ class CollectUSDLayerContributions(pyblish.api.InstancePlugin,
     # the contributions so that we can design a system where custom
     # contributions outside the predefined orders are possible to be
     # managed. So that if a particular asset requires an extra contribution
-    # level, you can add itdirectly from the publisher at that particular
+    # level, you can add it directly from the publisher at that particular
     # order. Future publishes will then see the existing contribution and will
     # persist adding it to future bootstraps at that order
     contribution_layers: Dict[str, Dict[str, int]] = {
