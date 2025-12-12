@@ -1122,9 +1122,6 @@ def convert_colorspace(
     view=None,
     display=None,
     additional_command_args=None,
-    frames=None,
-    frame_padding=None,
-    parallel_frames=False,
     logger=None,
 ):
     """DEPRECATED function use `oiio_color_convert` instead
@@ -1176,6 +1173,9 @@ def oiio_color_convert(
     target_display=None,
     target_view=None,
     additional_command_args=None,
+    frames=None,
+    frame_padding=None,
+    parallel_frames=False,
     logger=None,
 ):
     """Transcode source file to other with colormanagement.
@@ -1212,10 +1212,10 @@ def oiio_color_convert(
         frames (Optional[str]): Complex frame range to process. This requires
             input path and output path to use frame token placeholder like
             `#` or `%d`, e.g. file.#.exr
-        parallel_frames (bool): If True, process frames in parallel inside
-            the `oiiotool` process. Only supported in OIIO 2.5.20.0+.
         frame_padding (Optional[int]): Frame padding to use for the input and
             output when using a sequence filepath.
+        parallel_frames (bool): If True, process frames in parallel inside
+            the `oiiotool` process. Only supported in OIIO 2.5.20.0+.
         logger (logging.Logger): Logger used for logging.
 
     Raises:
