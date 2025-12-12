@@ -141,9 +141,9 @@ def discover_plugins(
             for cls in classes_from_module(base_class, module):
                 if cls is base_class:
                     continue
-                # Class has defined 'is_base_class = True'
-                is_base_class = cls.__dict__.get("is_base_class")
-                if is_base_class is True:
+                # Class has defined 'skip_discovery = True'
+                skip_discovery = cls.__dict__.get("skip_discovery")
+                if skip_discovery is True:
                     continue
                 all_plugins.append(cls)
 
