@@ -748,13 +748,12 @@ class ExtractThumbnail(pyblish.api.InstancePlugin):
 
         if not profile:
             self.log.debug(
-                (
-                    "Skipped instance. None of profiles in presets are for"
-                    ' Host: "{}" | Product types: "{}" | Product names: "{}"'
-                    ' | Task name "{}" | Task type "{}"'
-                ).format(
-                    host_name, product_type, product_name, task_name, task_type
-                )
+                "Skipped instance. None of profiles in presets are for"
+                f' Host: "{host_name}"'
+                f' | Product types: "{product_type}"'
+                f' | Product names: "{product_name}"'
+                f' | Task name "{task_name}"'
+                f' | Task type "{task_type}"'
             )
             return None
 
