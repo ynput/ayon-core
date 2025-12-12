@@ -924,8 +924,12 @@ class IntegrateAsset(pyblish.api.InstancePlugin):
 
         # Include optional data if present in
         optionals = [
-            "frameStart", "frameEnd", "step",
-            "handleEnd", "handleStart", "sourceHashes"
+            "frameStart", "frameEnd",
+            "handleEnd", "handleStart",
+            "step",
+            "resolutionWidth", "resolutionHeight",
+            "pixelAspect",
+            "sourceHashes"
         ]
         for key in optionals:
             if key in instance.data:
